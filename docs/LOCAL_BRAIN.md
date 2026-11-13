@@ -33,8 +33,8 @@ questions:{attribute:[canonical phrasings]}, place}`.
   site `notes`, lesson facts) or templates whose slots are data fields (`"{title} is about {diameter_km} km across."`,
   `"{crew} landed it, on {mission}."`, `"{site} gets sunlight about {sunlight_pct}% of the time."`). Estimated
   (crew-proposed) places never get a size: their size line says it is only an estimate.
-- **Rotation:** the 2-3 lines per attribute rotate deterministically per session (`ctx.session`, seeded by
-  md5(session|card|attr)), so a kid asking twice hears a different true line.
+- **Rotation:** the first line per attribute is the canonical one (the definition, the size); asking again in the same
+  session (`ctx.session`) rotates deterministically to the next true line.
 - **Claim check stays** as the safety net: place lines are re-read by Arc Tagger (`claims.verify_draft`); a test
   (`test_every_place_template_passes_the_claim_check`) asserts every place template passes. Non-place cards (terms,
   concepts, sites, lessons) carry their card source as the claim source.

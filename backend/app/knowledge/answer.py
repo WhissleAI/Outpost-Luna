@@ -4,7 +4,7 @@
 2. Attribute: keyword rules ("how big" -> size, "where" -> where, "who" -> who, ...).
 3. When the rules don't settle it: the tiny embedder's nearest card+attribute over the canonical question bank.
    >= ACCEPT answer; >= ASK offer the top 2 ("Did you mean ...?"); below: an honest "I don't know that one yet".
-4. The line is one of the card's 2-3 templates, rotated deterministically per session.
+4. The line is one of the card's 2-3 templates: the first one first, then rotated per session (deterministic).
 """
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ class Brain:
     def line(self, cid: str, attr: str, session: str = "") -> str:
         lines = self.cards[cid]["answers"][attr]
         k = (session, cid, attr)
-        n = self._rot.get(k, int(hashlib.md5(f"{session}|{cid}|{attr}".encode()).hexdigest(), 16) % len(lines))
+        n = self._rot.get(k, 0)  # the first line is the canonical one (a definition, the size); repeats rotate
         self._rot[k] = n + 1
         return lines[n % len(lines)]
 

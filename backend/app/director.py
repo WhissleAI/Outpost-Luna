@@ -591,6 +591,8 @@ def decision(t: str, priority: int = P_ANSWER, after: str | None = None, **paylo
 
 
 YES = {"t": "typed", "text": "yes"}
+STYLE_HINT = {"ask": "question", "houston": "alert", "fly": "story", "play": "story", "tour": "story", "guard": "alert",
+              "command": "explain", "status": "explain"}  # default `style_hint` per action (cards set their own)
 NO = {"t": "typed", "text": "no"}
 
 
@@ -623,7 +625,7 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     out.append(card)
     if say:
         s = decision("say", P_ANSWER, text=say, voice=voice, delay_ms=r.get("delay_ms") if a == "houston" else None,
-                     style_hint=r.get("style_hint") or ("question" if a == "ask" else "alert" if a == "houston" else None))
+                     style_hint=r.get("style_hint") or STYLE_HINT.get(a, "explain"))
         out.append(s)
     else:
         s = None
