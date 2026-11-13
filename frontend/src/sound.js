@@ -1,4 +1,4 @@
-// Sound cues and the guide's voice. The guide and the crew take turns; nothing here mixes speech under crew audio.
+// Sound cues: the chime (the floor's effects channel) and volume fades. No speech here; see floor.js.
 
 let ctx = null;
 function ac() {
@@ -36,33 +36,5 @@ export function fadeTo(el, to, ms = 180) {
   });
 }
 
-const synth = window.speechSynthesis || null;
-export const ttsAvailable = !!synth;
-export const tts = { on: true };
-let seq = 0;
-
-function pickVoice() {
-  const v = synth ? synth.getVoices() : [];
-  return v.find(x => /Samantha|Google US English|Karen|Moira/.test(x.name)) || v.find(x => x.lang && x.lang.startsWith("en"));
-}
-
-/** The voice a piece of hardware tells its own story in: a little slower and higher than the guide. */
-export const STORY_VOICE = { rate: 0.92, pitch: 1.4 };
-
-/** Speak and resolve when done (or cancelled). Resolves immediately when read-aloud is off. */
-export function speak(text, { rate = 0.98, pitch = 1.08 } = {}) {
-  const my = ++seq;
-  if (!synth || !tts.on || !text) return Promise.resolve(false);
-  synth.cancel();
-  return new Promise(res => {
-    const u = new SpeechSynthesisUtterance(text); const v = pickVoice(); if (v) u.voice = v;
-    u.rate = rate; u.pitch = pitch;
-    let done = false; const fin = ok => { if (!done) { done = true; clearTimeout(cap); res(ok && my === seq); } };
-    u.onend = () => fin(true); u.onerror = () => fin(false);
-    // Safety net: Chrome sometimes never fires onend.
-    const cap = setTimeout(() => fin(true), 1500 + text.split(/\s+/).length * 450);
-    synth.speak(u);
-  });
-}
-export function stopSpeaking() { seq++; if (synth) synth.cancel(); }
-export function isSpeaking() { return !!(synth && (synth.speaking || synth.pending)); }
+// The guide's voice moved to floor.js (server TTS as in-page audio, speechSynthesis fallback): speak, stopSpeaking,
+// isSpeaking and STORY_VOICE are exported from there.

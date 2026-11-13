@@ -1,0 +1,9 @@
+/* Mic level meter (#micLevel, voice.js): a thin bar in the askbar's listen row, so the kid sees the mic hears them.
+   Uses the askbar tokens; --lvl (0..1) is set per 80 ms mic frame. */
+.mic-level{flex:none;width:28px;height:6px;border-radius:3px;background:var(--line);overflow:hidden;position:relative}
+.mic-level[hidden]{display:none}
+.mic-level i{position:absolute;inset:0;transform-origin:left center;transform:scaleX(var(--lvl,0));background:var(--dim);
+  border-radius:3px;transition:transform 80ms linear,background-color .2s}
+.mic-level.is-hot i,.askbar.is-hearing .mic-level i{background:var(--accent)}
+@media (max-width:520px){ .mic-level{width:18px} }
+@media (prefers-reduced-motion:reduce){ .mic-level i{transition:none} }

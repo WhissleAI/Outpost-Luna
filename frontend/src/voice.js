@@ -1,18 +1,25 @@
 // Voice in: always-on mic over WS /ws/listen (listen.js), Web Speech fallback, Space push-to-talk (Head Start model).
 // The mic opens after the first gesture and stays open. Holding Space marks the turn "for the guide"; on release
 // (after a 500 ms tail so the last word lands) or on the server's turn end, the app asks.
-// Drives the .askbar state classes, #listenState, #liveWords and #spaceHint from index.html.
+// Barge-in follows docs/SESSION_CONTRACT.md §3 rule 2: Space always wins; open-mic speech while the guide or the crew
+// is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
+// Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 import { createListener } from "./listen.js";
+import { floor, shouldBargeIn, spaceAction, micErrorText } from "./floor.js";
+export { spaceAction, micErrorText };
+import "./floor.css";
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking"];
 const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", hearing: "is-hearing", thinking: "is-thinking", speaking: "is-speaking" };
+const ECHO_TAIL_MS = 2000;   // after output stops, the mic can still deliver its echo for a moment
 
 /**
  * @param {object} o
  * @param {(text:string)=>Promise} o.onTurn   the kid finished a turn
- * @param {()=>void} o.onBargeIn              the kid started talking (stop the guide, duck the crew)
+ * @param {()=>void} o.onBargeIn              the kid started talking (the floor already stopped the guide, ducked the crew)
  * @param {()=>void} o.onKidDone              the kid stopped without asking
  * @param {(label:string)=>void} o.onEmotion
+ * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
  */
 export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false }) {
   const $ = id => document.getElementById(id);
@@ -23,42 +30,104 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const ptt = { held: false, tail: null };
   const turnText = () => (finalBuf + " " + interim).trim();
 
+  // ----- mic level meter (#micLevel, in the listen row) -----
+  const meter = document.createElement("span");
+  meter.id = "micLevel"; meter.className = "mic-level"; meter.setAttribute("aria-hidden", "true"); meter.hidden = true;
+  meter.innerHTML = "<i></i>";
+  const listenRow = $("listen"); if (listenRow) listenRow.insertBefore(meter, stateEl);
+  let lvl = 0;
+  function level(rms) {
+    const v = Math.min(1, Math.sqrt(rms) * 2.2);          // perceptual-ish: quiet speech still moves the bar
+    lvl = v > lvl ? v : lvl * 0.7 + v * 0.3;
+    meter.style.setProperty("--lvl", lvl.toFixed(3));
+    meter.classList.toggle("is-hot", lvl > 0.25);
+  }
+
   function set(s, label = "") {
     state = s; bar.classList.remove(...CLASSES); bar.classList.add(CLASS_OF[s]);
     stateEl.textContent = label;
     micBtn.classList.toggle("on", mode === "ws" || srOn);
     micBtn.setAttribute("aria-label", mode === "ws" ? "Turn the mic off" : "Turn the mic on");
+    meter.hidden = mode !== "ws"; if (meter.hidden) meter.style.setProperty("--lvl", "0");
   }
   const idle = () => { if (!kidTalking) set(mode === "ws" ? "listening" : "off"); };
   const showWords = () => { wordsEl.textContent = turnText(); };
   const note = text => { hintEl.lastElementChild.textContent = text; };
+  function micBlocked(e) {
+    set("error", "Mic blocked");
+    const msg = micErrorText(e);
+    wordsEl.textContent = msg; wordsEl.title = msg; note("Type instead");
+  }
 
-  function bargeIn() { kidTalking = true; onBargeIn(); }
-  function kidDone() { kidTalking = false; onKidDone(); idle(); }
+  // ----- the floor -----
+  function bargeIn() {
+    kidTalking = true;
+    if (floor) { floor.setKid(true); floor.stopGuide(); floor.duck(0.15); }
+    onBargeIn();
+  }
+  function kidDone() {
+    kidTalking = false;
+    if (floor) { floor.setKid(false); floor.unduck(); }      // no request: the crew comes back, the guide doesn't repeat
+    onKidDone(); idle();
+  }
   function askTurn(text) {
     turnAsked = true; finalBuf = ""; interim = ""; kidTalking = false; wordsEl.textContent = text || "";
+    if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
     set("thinking");
-    onTurn(text).finally(() => { if (state === "thinking") idle(); });
+    onTurn(text).finally(() => {
+      if (state === "thinking") idle();
+      if (floor && !floor.guideBusy && !kidTalking) floor.unduck();   // the answer didn't take the floor: un-duck the crew
+    });
+  }
+
+  // Echo references: what we're playing now, plus what we played in the last ECHO_TAIL_MS (the mic lags the speaker).
+  let recent = { refs: [], until: 0 };
+  const liveRefs = () => floor ? [floor.guideText, floor.guideSentence, floor.crewText].filter(Boolean) : [];
+  if (floor) floor.on("floor", ({ holder }) => {
+    if (holder === "guide" || holder === "crew") recent = { refs: liveRefs(), until: Infinity };
+    else if (recent.until === Infinity) recent.until = performance.now() + ECHO_TAIL_MS;
+  });
+  if (floor) floor.on("sentence", () => { recent.refs = liveRefs(); });
+  const outputBusy = () => {
+    const h = floor ? floor.holder : "none";
+    return h === "guide" || h === "crew" || isOutputBusy() || performance.now() < recent.until;
+  };
+  const refsNow = () => [...liveRefs(), ...recent.refs];
+
+  // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
+  let gated = null, turnDD = null;
+  function gate(m) {
+    if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "" }; return; }
+    if (!gated) return;                                     // words of a turn whose start we didn't see while busy
+    if (m.text) gated.text = m.text;
+    const pass = shouldBargeIn({ started: true, text: gated.text, refs: refsNow(), dd: turnDD });
+    if (!pass) { if (m.t === "turn" && m.state === "end") gated = null; return; }   // echo / chatter: drop it
+    const text = gated.text; gated = null;
+    turnAsked = false; finalBuf = ""; interim = text;
+    bargeIn(); set("hearing"); showWords();
+    if (m.t === "turn" && m.state === "end") askTurn(text);
   }
 
   const listener = createListener({
     message(m) {
       if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
-      // While the guide or the crew is playing, the open mic hears the speakers too (echo cancellation misses some of it).
-      // Then only a held Space counts as the kid; open-mic words and turns are ignored.
-      else if ((m.t === "words" || m.t === "turn") && isOutputBusy() && !ptt.held && !kidTalking) return;
-      else if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
-      else if (m.t === "turn") {
-        if (m.state === "start") { turnAsked = false; bargeIn(); set("hearing"); }
-        else if (m.state === "resumed") { kidTalking = true; turnAsked = false; set("hearing"); }
+      else if (m.t === "arc") { if (typeof m.device_directed === "number") turnDD = m.device_directed; }
+      else if (m.t === "words" || m.t === "turn") {
+        if (m.t === "turn" && m.state === "start") turnDD = null;
+        // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
+        if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
+        if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
+        else if (m.state === "start") { turnAsked = false; bargeIn(); set("hearing"); }
+        else if (m.state === "resumed") { kidTalking = true; if (floor) floor.setKid(true); turnAsked = false; set("hearing"); }
         else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
       else if (m.t === "error") note("Voice hiccup: " + (m.message || "try again"));
     },
-    close() { if (mode === "ws") { mode = "off"; kidTalking = false; set("off"); } },
-    micError() { set("error", "Mic blocked"); note("Allow the mic, or type"); },
+    level,
+    close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); } },
+    micError: micBlocked,
   });
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -72,7 +141,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     };
     rec.onstart = () => { srOn = true; set("hearing"); };
     rec.onend = () => { srOn = false; askTurn(turnText()); };
-    rec.onerror = e => { if (e.error === "not-allowed" || e.error === "service-not-allowed") set("error", "Mic blocked"); };
+    rec.onerror = e => { if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") micBlocked(e); };
   }
   const canWS = !!(navigator.mediaDevices && window.AudioWorkletNode);
   if (!canWS && !SR) { set("error", "Type to ask"); micBtn.hidden = true; } else { micBtn.hidden = false; set("off"); }
@@ -82,10 +151,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
     if (ok === true) { mode = "ws"; idle(); return true; }
-    if (ok !== "mic") wsBroken = true;
-    set(ok === "mic" ? "error" : "off", ok === "mic" ? "Mic blocked" : ""); return false;
+    if (ok !== "mic") { wsBroken = true; set("off"); }       // "mic": micBlocked already showed why
+    return false;
   }
-  function stopAlwaysOn() { listener.stop(); mode = "off"; kidTalking = false; set("off"); }
+  function stopAlwaysOn() { listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
   function srStart() { if (!rec || srOn) return; finalBuf = ""; interim = ""; turnAsked = false; try { rec.start(); } catch (e) { /* already running */ } }
 
   // First gesture anywhere opens the mic (browsers need a gesture for audio + mic).
@@ -99,11 +168,17 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (!starting) srStart();
   };
 
-  const typing = e => e.target && e.target.closest && e.target.closest("input, textarea, select, button, [contenteditable], dialog[open]");
+  // Space = push-to-talk anywhere except while typing. A focused button is blurred first (it would otherwise eat the
+  // key, or click on keyup).
   addEventListener("keydown", async e => {
-    if (e.code !== "Space" || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
-    e.preventDefault(); if (e.repeat || ptt.held) return;
+    if (e.code !== "Space" || e.metaKey || e.ctrlKey || e.altKey) return;
+    const act = spaceAction(e.target);
+    if (act === "ignore") return;
+    e.preventDefault();
+    if (act === "blur" && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (e.repeat || ptt.held) return;
     ptt.held = true; if (ptt.tail) { clearTimeout(ptt.tail); ptt.tail = null; }
+    gated = null;
     bargeIn(); turnAsked = false; finalBuf = ""; interim = ""; wordsEl.textContent = "";
     if (mode !== "ws" && !wsBroken) await startAlwaysOn();
     set("hearing");
