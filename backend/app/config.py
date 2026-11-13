@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     model_server_url: str = "http://127.0.0.1:8200"
     model_timeout_s: float = 2.0
     anthropic_api_key: str = ""
+    deepgram_api_key: str = ""
     ask_model: str = "claude-haiku-5-5"
     frontend_dist: Path = ROOT.parent / "frontend/dist"
     cors_origins: str = "http://localhost:5173"

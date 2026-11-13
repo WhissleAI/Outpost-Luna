@@ -3,19 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/../data"
 mkdir -p media/audio media/img ../../.cache
-UA="Mozilla/5.0"
-B=https://www.nasa.gov/wp-content/uploads
-CLIPS=(
-  2026/10/art002a000005-ck-vg-relief-color-audio
-  2026/10/art002a00003708-clipped
-  2026/10/art002a000025-reid-tourist
-  2026/10/art002a000024-clipped
-  2026/10/art002a000015-omg-stop-it
-  2026/01/artemis-ii-names-new-craters-integrity-and-carroll
-)
-for p in "${CLIPS[@]}"; do
-  f=media/audio/$(basename "$p").mp3
-  [ -s "$f" ] || { echo "↓ $f"; curl -fsSL -A "$UA" -o "$f" "$B/$p.mp3"; }
+UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+# Clip URLs come from clips_manifest.json (rebuild it with `python -m pipeline.scrape_manifest`).
+python3 -c 'import json; [print(c["stem"], c["url"]) for c in json.load(open("clips_manifest.json"))["clips"]]' |
+while read -r stem url; do
+  f=media/audio/$stem.mp3
+  [ -s "$f" ] || { echo "↓ $f"; curl -fsSL -A "$UA" -o "$f.part" "$url" && mv "$f.part" "$f"; }
 done
 if [ ! -s media/img/moon4k.jpg ]; then
   echo "↓ LRO color map (4K, from NASA SVS CGI Moon Kit)"
