@@ -45,7 +45,7 @@ async function boot() {
     isOutputBusy: () => isSpeaking() || player.active,
   });
   const missionUI = createMissionUI({
-    globe, card, placeById, say: t => guideSay(t), onContext: f => voice.sendContext(f),
+    globe, card, placeById, say: t => guideSay(t), onContext: f => voice.sendContext(f), askDirector: t => ask(t),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
   });
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });

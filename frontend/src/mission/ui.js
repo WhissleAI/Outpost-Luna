@@ -31,7 +31,7 @@ const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="
  * @param {()=>void} o.alertSound
  * @param {(frame:object)=>void} o.onContext  forward a context frame to the listen socket
  */
-export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {} }) {
+export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null }) {
   const $ = id => document.getElementById(id);
   const panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
@@ -208,11 +208,14 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
 
   // ---------- commands, events, CAPCOM ----------
-  function capcom({ say: line, readback, confirm, eyebrow } = {}) {
+  function capcom({ say: line, readback, confirm, eyebrow, viaDirector = false } = {}) {
     const s = state;
+    // A confirmation the Director is holding (e.g. another officer must agree) is answered through the Director;
+    // one the sim asked for directly goes to the sim.
+    const answer = yes => (viaDirector && askDirector) ? askDirector(yes ? "yes" : "no") : run({ type: yes ? "confirm" : "cancel" });
     const actions = confirm ? [
-      { label: "Yes", hot: true, once: true, onClick: () => run({ type: "confirm" }) },
-      { label: "No", once: true, onClick: () => run({ type: "cancel" }) }] : [];
+      { label: "Yes", hot: true, once: true, onClick: () => answer(true) },
+      { label: "No", once: true, onClick: () => answer(false) }] : [];
     card.show({ title: "CAPCOM", eyebrow: eyebrow || [s ? `Day ${s.day} · shift ${s.shift}` : "Mission", client && client.sample ? "Sample data" : ""].filter(Boolean).join(" · "),
       say: line || readback || "", actions });
   }
@@ -284,7 +287,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (!r || !state) return false;
     if (r.action === "command" && r.command) {
       // Assumption: if the Director already applied it, it returns state; otherwise we post it to the sim.
-      if (r.state) { applyState(r.state); pending = r.needs_confirm ? r.command : null; capcom({ say: r.say, confirm: !!r.needs_confirm }); await say(r.say); }
+      if (r.state) { applyState(r.state); pending = r.needs_confirm ? r.command : null; capcom({ say: r.say, confirm: !!r.needs_confirm, viaDirector: true }); await say(r.say); }
       else await run(r.command, { spoken: true });
       return true;
     }
