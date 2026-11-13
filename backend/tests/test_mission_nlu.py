@@ -149,3 +149,12 @@ def test_llm_fallback_validated(monkeypatch):
 def test_arc_numbers_fill_in_amount():
     out = nlu.parse("move the shields up by some", read={"numbers": ["twenty percent"]})
     assert out["commands"] == [A("shields", "delta", 20)]
+
+
+def test_set_to_is_absolute_share():
+    from app.mission.nlu import parse
+    for t in ["shields to 40", "make the shields 40", "set shields to 40", "heaters at 30 percent"]:
+        c = parse(t)["commands"][0]
+        assert c["amount"] == {"kind": "percent", "value": int(t.split()[-1]) if t.split()[-1].isdigit() else 30}, t
+    c = parse("move 20% to shields")["commands"][0]
+    assert c["amount"]["kind"] == "delta" and c["amount"]["value"] == 20

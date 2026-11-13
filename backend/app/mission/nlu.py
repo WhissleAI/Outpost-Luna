@@ -195,8 +195,12 @@ def _allocate(t: str, read: dict | None, prev: dict | None) -> tuple[dict | None
     elif n is not None and "percent" not in t and not POWER_WORD.search(t) and n > 100:
         return None, None
     elif n is not None:
-        absolute = bool(SET_TO.search(t)) and not MORE.search(t) and not LESS.search(t) and not re.search(
-            r"\b(move|give|add|send|shift|transfer|take)\b", t)
+        # "shields to 40" / "make the shields 40" = set the share to 40; "move 20 to shields" = add 20.
+        load_then_to = bool(re.search(r"\b(shields?|life support|air|oxygen|greenhouse|plants|science|rover|buggy|"
+                                      r"comms|radio|heaters?)\b\s+(to|at)\s+\d+", t))
+        make_n = bool(re.search(r"\bmake\b.*\b\d+\b", t))
+        absolute = (bool(SET_TO.search(t)) or load_then_to or make_n) and not MORE.search(t) and not LESS.search(t) \
+            and not re.search(r"\b(move|give|add|send|shift|transfer|take)\b", t)
         if absolute:
             amount = {"kind": "percent", "value": _num(min(n, 100))}
         else:
