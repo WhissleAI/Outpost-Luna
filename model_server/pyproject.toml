@@ -15,6 +15,7 @@ dependencies = [
   "python-multipart>=0.0.33",
   "arc-transcriber",
   "scipy>=1.17.1",
+  "steertts-edge",
 ]
 
 [dependency-groups]
@@ -25,3 +26,4 @@ pythonpath = ["."]
 
 [tool.uv.sources]
 arc-transcriber = { path = "../../../../../../dv3work/arc/arc_transcriber", editable = true }
+steertts-edge = { path = "../../steer-tts/edge", editable = true }

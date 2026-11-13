@@ -1,6 +1,7 @@
 // Mission Trainer UI: briefing (pick a site), HUD (3 resources, loads, environment, rover, End shift), events,
 // CAPCOM card, Houston delay, debrief. Talks to the backend through client.js, or the local mock (labelled "Sample data").
 import { createMissionClient } from "./client.js";
+import { sayStyle } from "../floor.js";
 import { parseCommand } from "./mock.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
@@ -264,7 +265,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
 
   /** Houston: show the signal travelling (each way) and wait the real round trip before speaking. */
-  async function houston(line, delayMs = 2600) {
+  async function houston(line, delayMs = 2600, style = null) {
     const oneWay = (delayMs / 2000).toFixed(1);
     signal.hidden = false; signal.style.setProperty("--trip", delayMs + "ms");
     signal.innerHTML = `<span class="m-sig-moon">Moon</span><span class="m-sig-track"><i></i></span><span class="m-sig-earth">Earth</span><small>Signal travelling to Earth… ${oneWay} s each way</small>`;
@@ -272,7 +273,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     await new Promise(r => setTimeout(r, delayMs));
     signal.hidden = true;
     capcom({ say: line, eyebrow: "Houston" });
-    await say(line);
+    await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
   }
 
   // ---------- voice ----------
@@ -290,12 +291,12 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (!r || !state) return false;
     if (r.action === "command" && r.command) {
       // Assumption: if the Director already applied it, it returns state; otherwise we post it to the sim.
-      if (r.state) { applyState(r.state); pending = r.needs_confirm ? r.command : null; capcom({ say: r.say, confirm: !!r.needs_confirm, viaDirector: true }); await say(r.say); }
+      if (r.state) { applyState(r.state); pending = r.needs_confirm ? r.command : null; capcom({ say: r.say, confirm: !!r.needs_confirm, viaDirector: true }); await say(r.say, sayStyle(r)); }
       else await run(r.command, { spoken: true });
       return true;
     }
-    if (r.action === "status") { if (r.state) applyState(r.state); capcom({ say: r.say }); await say(r.say); return true; }
-    if (r.action === "houston") { await houston(r.say, +r.delay_ms || 2600); return true; }
+    if (r.action === "status") { if (r.state) applyState(r.state); capcom({ say: r.say }); await say(r.say, sayStyle(r)); return true; }
+    if (r.action === "houston") { await houston(r.say, +r.delay_ms || 2600, sayStyle(r)); return true; }
     return false;
   }
   // ---------- [session hook] decisions from the session Director (frontend/src/session.js) ----------

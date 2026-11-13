@@ -1,7 +1,10 @@
 // Floor manager: the one owner of every sound the app makes (docs/SESSION_CONTRACT.md §3 rules 1, 3, 5 and §4).
 //
 // Channels
-//   guide    server speech, GET /api/tts?text=…&voice=guide|capcom|story, one sentence at a time with the next one
+//   guide    server speech, GET /api/tts?text=…&voice=guide|capcom|story|houston&style=…, one sentence at a time with
+//            the next one prefetched. `style` is the Director's say.style (Steer TTS steering, docs/VOICE_STEERING.md);
+//            each sentence also sends i/n/next so Steer's performance director plans it in context. The URL (and so the
+//            browser and server caches) includes the style.
 //            prefetched, played as an in-page <audio> so the browser's echo canceller removes it from the mic.
 //            Fallback (no key / offline / 5xx): speechSynthesis, sentence by sentence, never cancel() right before
 //            speak() (≥ 60 ms gap), with a keep-alive so Chrome doesn't cut long utterances at ~15 s.
@@ -16,7 +19,7 @@
 // The session Director forwards "playback" (and "floor") on WS /ws/session as {t:"playback", …}.
 //
 // Control
-//   say(text, {voice, priority, id}) → Promise<boolean>   true when spoken to the end
+//   say(text, {voice, priority, id, style}) → Promise<boolean>   true when spoken to the end
 //       priority (0 highest, §3.6): ≤ 2 waits for the current guide sentence to end, then takes over;
 //       3 replaces the current guide speech now; ≥ 4 (proactive) waits until the floor is "none" (§3.5).
 //       Every say waits while the kid holds the floor (§3.3); with crew audio playing it waits for the crew's
@@ -115,7 +118,16 @@ const VOICE_PARAMS = {          // speechSynthesis fallback only
   guide: { rate: 0.98, pitch: 1.08 },
   capcom: { rate: 1.04, pitch: 0.92 },
   story: { rate: 0.92, pitch: 1.4 },
+  houston: { rate: 0.98, pitch: 0.85 },
 };
+
+/** The /api/tts URL for one sentence: voice, the Director's style, and its place in the text (for Steer's director). */
+export function ttsUrlFor(base, text, voice, style, i, n, next) {
+  const q = new URLSearchParams({ voice, text });
+  if (style && typeof style === "object" && Object.keys(style).length) q.set("style", JSON.stringify(style));
+  if (n > 1) { q.set("i", String(i)); q.set("n", String(n)); if (next) q.set("next", next); }
+  return `${base}?${q.toString()}`;
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export function createFloor({ ttsUrl = "/api/tts" } = {}) {
@@ -157,10 +169,10 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     return guideEl;
   }
   /** Fetch one sentence's audio → blob URL, or null (fall back for this sentence). A 503 turns server TTS off. */
-  async function fetchTTS(text, voice) {
+  async function fetchTTS(text, voice, style, i = 0, n = 1, next = "") {
     if (!server) return null;
     try {
-      const r = await fetch(`${ttsUrl}?voice=${encodeURIComponent(voice)}&text=${encodeURIComponent(text)}`);
+      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, style, i, n, next));
       if (r.status === 503) { server = false; return null; }
       if (!r.ok) return null;
       return URL.createObjectURL(await r.blob());
@@ -202,7 +214,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   }
 
   // ----- say -----
-  async function say(text, { voice = "guide", priority = 3, id } = {}) {
+  async function say(text, { voice = "guide", priority = 3, id, style } = {}) {
     const sentences = splitSentences(text);
     if (!sentences.length) return false;
     if (!VOICE_PARAMS[voice]) voice = "guide";
@@ -225,18 +237,19 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
         else { await crew.pauseAtSentenceEnd(); pausedCrew = true; }
       }
       if (tok.cancelled) return false;
-      const ok = await speakAll(tok, sentences, voice);
+      const ok = await speakAll(tok, sentences, voice, style);
       if (pausedCrew && !kid && crew.resume && cur === tok) crew.resume();
       return ok;
     } finally { tok.finished = true; pending.delete(tok); if (cur === tok) { tok.speaking = false; recompute(); } }
   }
   const pending = new Set();
 
-  async function speakAll(tok, sentences, voice) {
-    let next = fetchTTS(sentences[0], voice), started = false;
-    for (let i = 0; i < sentences.length; i++) {
+  async function speakAll(tok, sentences, voice, style) {
+    const n = sentences.length, get = i => fetchTTS(sentences[i], voice, style, i, n, sentences[i + 1] || "");
+    let next = get(0), started = false;
+    for (let i = 0; i < n; i++) {
       const url = await next;
-      next = i + 1 < sentences.length ? fetchTTS(sentences[i + 1], voice) : null;   // prefetch while this one plays
+      next = i + 1 < n ? get(i + 1) : null;   // prefetch while this one plays
       if (tok.cancelled) { if (url) URL.revokeObjectURL(url); break; }
       tok.sentence = sentences[i]; tok.speaking = true;
       if (!started) { started = true; playback("guide", "start", tok.id); }
@@ -300,6 +313,8 @@ export const floor = typeof window !== "undefined" ? createFloor() : null;
 export const STORY_VOICE = { voice: "story" };
 export const CAPCOM_VOICE = { voice: "capcom" };
 /** Speak on the guide channel; resolves true when spoken to the end. Old {rate, pitch} options mean the guide voice. */
-export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3 }) : Promise.resolve(false); }
+export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3, style: opts.style }) : Promise.resolve(false); }
+/** The style of the first `say` decision in a Director / Academy response (Steer steering), if any. */
+export const sayStyle = r => ((r && r.decisions) || []).find(d => d.t === "say" && d.style)?.style;
 export function stopSpeaking() { if (floor) floor.stopGuide(); }
 export function isSpeaking() { return !!(floor && floor.guideBusy); }

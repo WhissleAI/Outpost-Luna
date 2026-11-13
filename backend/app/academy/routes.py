@@ -8,6 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from .. import steering
 from . import content, ride as rides
 from .grade import grade
 
@@ -29,20 +30,24 @@ class AttemptReq(BaseModel):
     ride_id: str | None = None
 
 
-def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | None = None) -> list[dict]:
+def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | None = None, badge: bool = False,
+               emotion: str | None = None) -> list[dict]:
     d = [{"t": "lesson", "id": f"ac-{lesson_id}-{step}-{status}", "priority": 4, "lesson_id": lesson_id, "step": step,
           "status": status}]
     if score is not None:
         d[0]["score"] = score
     if say:
         d.append({"t": "say", "id": f"ac-{lesson_id}-{step}-say", "priority": 4, "text": say, "voice": "capcom",
-                  "after": d[0]["id"]})
+                  "after": d[0]["id"],
+                  "style": steering.style_for("capcom", say, situation=steering.lesson_situation(status, badge),
+                                              emotion=emotion)})
     return d
 
 
 def _out(lesson_id: str, step: int, status: str, say: str, **extra) -> dict:
     return {"status": status, "say": say, **{k: v for k, v in extra.items() if v is not None},
-            "decisions": _decisions(lesson_id, step, status, say, extra.get("score"))}
+            "decisions": _decisions(lesson_id, step, status, say, extra.get("score"), badge=bool(extra.get("badge")),
+                                    emotion=extra.get("emotion"))}
 
 
 @router.get("/api/academy/course")

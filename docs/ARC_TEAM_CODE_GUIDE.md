@@ -161,3 +161,10 @@ back to `POST /api/ask` (flag: `?session=0` or `localStorage atm-session=0` turn
 | `ui:end_shift` | sim advance → `hud` + `card` + `say`, then the shift's events proactively | `Session.end_shift` |
 | `playback` start/end | floor holder; releases held proactive bundles | `on_playback`, `release_held` |
 | Lesson events | `lesson` decisions | `on_lesson` (the Academy owns the content) |
+
+**Voice steering.** Every `say` decision carries `style` (tag, controls, emphasis, performance director), chosen by
+`backend/app/steering.py` from the persona, the situation (storm, all clear, night low power, hard word, awe, badge,
+retry, story, readback), the kid's emotion and whether the line asks a question. `director.decision()` adds it to any
+`say` that doesn't name one; the Academy routes add theirs. `floor.js` sends it to `/api/tts`, which renders with
+Steer TTS Edge on the model server (`POST /v1/tts`) and falls back to Deepgram, then the browser voice. The table,
+voices, measurements and fallback chain: `docs/VOICE_STEERING.md`.
