@@ -32,7 +32,7 @@ def fact_numbers(facts: dict, place_ids) -> list[float]:
     out: list[float] = []
     for pid in place_ids:
         f = facts.get(pid) or {}
-        if f.get("diameter_km"):
+        if f.get("diameter_km") and not f.get("estimated"):  # crew-proposed sizes are guesses, never said
             out.append(float(f["diameter_km"]))
         for x in f.get("facts", []):
             out += [float(n) for n in x.get("numbers", [])]

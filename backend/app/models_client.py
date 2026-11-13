@@ -1,17 +1,23 @@
 """Client for the model server. Fails open: if the server is down, callers get None and fall back to rules."""
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 
 from .config import settings
 
 _client: httpx.AsyncClient | None = None
+_loop = None
 
 
 def client() -> httpx.AsyncClient:
-    global _client
-    if _client is None:
+    """One pooled client per event loop (tests and scripts run several loops in one process)."""
+    global _client, _loop
+    loop = asyncio.get_running_loop()
+    if _client is None or _loop is not loop:
         _client = httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.model_timeout_s)
+        _loop = loop
     return _client
 
 
@@ -20,7 +26,7 @@ async def tag(text: str, domain: str = "assistant") -> dict | None:
         r = await client().post("/v1/tag", json={"text": text, "domain": domain})
         r.raise_for_status()
         return r.json()
-    except httpx.HTTPError:
+    except (httpx.HTTPError, RuntimeError, ValueError):
         return None
 
 
