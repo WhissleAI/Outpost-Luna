@@ -29,7 +29,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   const controls = new OrbitControls(camera, renderer.domElement);
   Object.assign(controls, { enablePan: false, minDistance: 1.5, maxDistance: 6, enableDamping: true, rotateSpeed: 0.6 });
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.35 * Math.PI));
+  const ambient = new THREE.AmbientLight(0xffffff, 0.35 * Math.PI); scene.add(ambient);
   const sun = new THREE.DirectionalLight(0xfff4e0, 1.15 * Math.PI); scene.add(sun);
   sun.position.copy(ll2v(10, -40).multiplyScalar(5));
 
@@ -89,7 +89,74 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   function showFeature(f, { dist } = {}) {
     highlight(f); flyTo(f.lat, f.lon, dist || (f.kind === "artifact" ? 2.3 : f.km > 800 ? 3.2 : 2.5));
-    sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
+    if (!mi.on) sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
+  }
+
+  // ---------- Mission layer: outpost, Sun-driven day/night shading, Earth's direction, rover path ----------
+  const mi = { on: false, site: null, group: new THREE.Group(), marks: [], earth: null, earthLine: null, rover: null, roverDot: null, path: null };
+  scene.add(mi.group); mi.group.visible = false;
+  const mlayer = document.createElement("div"); mlayer.className = "mmarks"; stage.append(mlayer); mlayer.hidden = true;
+  function mark(cls, text) { const el = document.createElement("div"); el.className = "mmark " + cls; el.textContent = text; mlayer.append(el); const m = { el, p: new THREE.Vector3() }; mi.marks.push(m); return m; }
+  const outpostMark = mark("is-outpost", "Outpost"), earthMark = mark("is-earth", "Earth"), roverMark = mark("is-rover", "Rover");
+  /** Local frame at the site: up (normal), toward-Earth-side tangent, and the tangent 90° from it. */
+  function frame(site) {
+    const n = ll2v(site.lat, site.lon).normalize(), e0 = ll2v(0, 0).normalize();
+    let t = e0.clone().sub(n.clone().multiplyScalar(n.dot(e0))); if (t.lengthSq() < 1e-6) t = new THREE.Vector3(1, 0, 0); t.normalize();
+    return { n, t, b: new THREE.Vector3().crossVectors(n, t).normalize() };
+  }
+  const dirAt = (f, elevDeg, azDeg) => {   // az 0 = toward the Earth-facing side
+    const e = elevDeg * Math.PI / 180, a = azDeg * Math.PI / 180;
+    return f.t.clone().multiplyScalar(Math.cos(a)).add(f.b.clone().multiplyScalar(Math.sin(a))).multiplyScalar(Math.cos(e)).add(f.n.clone().multiplyScalar(Math.sin(e))).normalize();
+  };
+  const earthMat = new THREE.MeshBasicMaterial({ color: 0x6fa3db });
+  mi.earth = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), earthMat); mi.group.add(mi.earth);
+  mi.earthLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x6fa3db, dashSize: 0.012, gapSize: 0.008, transparent: true, opacity: .9 }));
+  mi.group.add(mi.earthLine);
+  mi.path = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x4fc08a, transparent: true, opacity: .95 }));
+  mi.group.add(mi.path);
+  const outpostDot = new THREE.Mesh(new THREE.SphereGeometry(0.006, 12, 8), new THREE.MeshBasicMaterial({ color: 0xefc463 })); mi.group.add(outpostDot);
+  let arc = [];
+
+  const mission = {
+    enter() { mi.on = true; mi.group.visible = true; mlayer.hidden = false; ambient.intensity = 0.07 * Math.PI; pins.visible = false; layer.style.display = "none"; },
+    exit() { mi.on = false; mi.group.visible = false; mlayer.hidden = true; ambient.intensity = 0.35 * Math.PI; pins.visible = true; layer.style.display = "";
+      if (ring) { scene.remove(ring); ring = null; } sel = null; label.hidden = true; },
+    /** Preview or place the outpost; flies there (south-pole sites are seen from 75°S, the camera's limit). */
+    setSite(site, { dist = 1.75 } = {}) {
+      mi.site = site; mi.f = frame(site);
+      const p = ll2v(site.lat, site.lon, R * 1.004); outpostDot.position.copy(p); outpostMark.p.copy(p); outpostMark.el.textContent = site.short || "Outpost";
+      flyTo(site.lat, site.lon, dist); label.hidden = true; sel = null; if (ring) { scene.remove(ring); ring = null; }
+    },
+    /** Day/night: aim the Sun so it stands sunElev degrees above the outpost's horizon, circling once per lunar day. */
+    setSun(sunElevDeg, timeH = 0) { if (!mi.f) return; sun.position.copy(dirAt(mi.f, sunElevDeg, 140 + timeH * 360 / 708).multiplyScalar(5)); },
+    /** Earth's direction from the outpost: a dashed pointer, solid blue when Earth is above the horizon. */
+    setEarth(earthElevDeg) {
+      if (!mi.f) return;
+      const p0 = ll2v(mi.site.lat, mi.site.lon, R * 1.004), d = dirAt(mi.f, earthElevDeg, 0), p1 = p0.clone().add(d.multiplyScalar(0.32));
+      mi.earth.position.copy(p1); earthMark.p.copy(p1);
+      mi.earthLine.geometry.setFromPoints([p0, p1]); mi.earthLine.computeLineDistances();
+      const up = earthElevDeg > 0; mi.earthLine.material.opacity = up ? .95 : .35; earthMat.color.set(up ? 0x6fa3db : 0x51607a);
+      earthMark.el.textContent = up ? `Earth ↑ ${earthElevDeg.toFixed(1)}°` : "Earth below horizon"; earthMark.el.classList.toggle("is-down", !up);
+    },
+    /** Rover path to a target {lat, lon}; progress 0..1 moves the rover dot. null clears it. */
+    setRover(target, progress = 0) {
+      if (!target || !mi.site) { mi.path.visible = false; roverMark.el.hidden = true; arc = []; return; }
+      const a = ll2v(mi.site.lat, mi.site.lon).normalize(), b = ll2v(target.lat, target.lon).normalize();
+      arc = []; for (let i = 0; i <= 32; i++) arc.push(a.clone().lerp(b, i / 32).normalize().multiplyScalar(R * 1.004));
+      mi.path.geometry.setFromPoints(arc); mi.path.visible = true;
+      const k = Math.max(0, Math.min(1, progress)), at = arc[Math.round(k * 32)]; roverMark.p.copy(at); roverMark.el.hidden = false;
+    },
+  };
+  function tickMission() {
+    if (!mi.on) return;
+    const w = stage.clientWidth, h = stage.clientHeight;
+    mi.marks.forEach(m => {
+      if (m.el.hidden || !mi.site) { m.el.style.visibility = "hidden"; return; }
+      const facing = m.p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05;
+      m.el.style.visibility = facing ? "" : "hidden"; if (!facing) return;
+      tmp.copy(m.p).project(camera);
+      m.el.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px)`;
+    });
   }
 
   function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
@@ -124,6 +191,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
       label.style.opacity = facing ? 1 : 0;
     }
+    tickMission();
     renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -147,7 +215,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   });
 
   return {
-    showFeature, highlight, flyTo, nearest,
+    showFeature, highlight, flyTo, nearest, mission,
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },

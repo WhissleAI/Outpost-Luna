@@ -70,5 +70,8 @@ export function createListener(on) {
     cleanup();
   }
 
-  return { start, stop, get live() { return live; } };
+  /** Send a JSON control frame (e.g. {t:"context",…}) when the socket is open. Returns whether it was sent. */
+  function send(obj) { if (!ws || ws.readyState !== 1) return false; try { ws.send(JSON.stringify(obj)); return true; } catch (e) { return false; } }
+
+  return { start, stop, send, get live() { return live; } };
 }
