@@ -66,6 +66,16 @@ def clips():
     return {"clips": S["index"].clips}
 
 
+@app.get("/api/clips/{clip_id}")
+def clip(clip_id: str):
+    """One clip's word timings, tags and utterances (karaoke + place-following for a playing moment)."""
+    S["index"].refresh()
+    c = next((c for c in S["index"].clips if c["id"] == clip_id), None)
+    if not c:
+        raise HTTPException(404, "no such clip")
+    return {k: c.get(k) for k in ("id", "title", "file", "dur", "words", "tags", "utterances")}
+
+
 @app.get("/api/moments")
 def moments(place: str | None = None):
     S["index"].refresh()
