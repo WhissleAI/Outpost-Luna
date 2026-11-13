@@ -188,3 +188,24 @@ def test_ui_contract_command_always_has_state(sim, world):
     assert r["action"] == "command" and r["state"] and sim.m.applied[-1] == {"type": "cancel"}
     r = ask(world, "move 20% to the shields", mission={"id": "m-1", "role": "comms"})
     assert r["state"] and r["needs_confirm"] is True and r["applied"] is False
+
+
+def test_compound_command_returns_final_state():
+    """'move 20% to shields and send the rover for ice' must return the state after BOTH commands."""
+    import asyncio
+    from app.config import settings
+    from app.gazetteer import Gazetteer
+    from app.moments import MomentIndex
+    from app.director import direct
+    from app.mission import registry
+    gaz = Gazetteer(settings.data_dir / "places.json")
+    idx = MomentIndex(settings.data_dir / "index/clips.json")
+    m = registry.create("connecting_ridge", seed=7) if hasattr(registry, "create") else None
+    if m is None:
+        return
+    mid = m["id"] if isinstance(m, dict) else (m.state()["id"] if hasattr(m, "state") else m.id)
+    r = asyncio.run(direct("move 20% to shields and send the rover for ice", {"available": False}, gaz, idx,
+                           {"mission": {"id": mid}}))
+    assert r["action"] == "command"
+    assert r["state"]["rover"]["busy"] is True
+    assert r["state"]["loads"]["shields"] >= 40

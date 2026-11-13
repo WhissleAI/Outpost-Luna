@@ -514,8 +514,8 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
             resp["needs_confirm"] = True
     if resp.get("action") in ("command", "houston") and len(cmds) > 1:
         resp["commands"] = cmds
-    if resp.get("action") == "status":
-        resp["state"] = state
+    if resp.get("action") in ("status", "command") and state is not None:
+        resp["state"] = state  # the LAST state: with several commands in one turn, the client must see all of them
     # one "Copy, commander." per turn, however many commands
     lines = [x if i == 0 else re.sub(r"^Copy, commander\. ", "", x) for i, x in enumerate(y for y in lines if y)]
     say = _tone(" ".join(lines), emotion)
