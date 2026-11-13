@@ -205,3 +205,10 @@ def test_moments_for_place_ranked_max5():
 
 def test_unsafe_moments_are_never_ranked():
     assert all(m["kid_safe"] for p in GAZ.places for m in IDX.for_place(p))
+
+
+def test_bridge_never_says_a_speaker_number():
+    from app.director import _bridge
+    assert _bridge({"speaker": "1"}).startswith("The crew")
+    assert _bridge({"speaker": 0}).startswith("The crew")
+    assert _bridge({"speaker": "Christina Koch"}).startswith("Christina")

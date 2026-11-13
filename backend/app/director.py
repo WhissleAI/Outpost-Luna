@@ -65,7 +65,9 @@ def _short(text: str, n: int = 14) -> str:
 
 def _bridge(m: dict) -> str:
     who = m.get("speaker") or "crew"
-    who = "The crew" if who.lower() in ("crew", "unknown") else who.split()[0]
+    # Deepgram diarization gives numbers (0, 1, ...), not names: only use a real name.
+    who = str(who)
+    who = who.split()[0] if re.match(r"^[A-Za-z][A-Za-z.'-]+", who) and who.lower() not in ("crew", "unknown") else "The crew"
     return f"{who} saw this from Orion. Listen!"
 
 
