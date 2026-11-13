@@ -1,8 +1,20 @@
-# Ask the Moon
+# Moonbase Cadet: Junior Astronaut Mission Trainer
 
-A voice-first 3D Moon explorer for kids, built for NASA Space Apps 2026 (Nov 14–15). A kid says "show me the giant
-bullseye" and the Moon turns to Mare Orientale. They ask what the astronauts said, and real Artemis II crew audio
-plays while the globe follows each place the crew mentions.
+A voice-first trainer for kids 7–12, built for NASA Space Apps 2026 (Nov 14–15) on the challenge **"Build a Junior
+Astronaut Mission Trainer"**. Inspired by NASA's Artemis program and built on NASA open data. Not affiliated with or
+endorsed by NASA. (Repo name `ask-the-moon` is the project's earlier name.)
+
+**One story, three steps:**
+1. **Academy.** Seven short voice lessons: the Moon, Mission Control radio talk, power from the Sun, radiation and
+   solar storms, air/water/ice, lessons from past missions, and a check ride. Taught with real Artemis II crew audio
+   and the hardware left on the Moon. Passing earns the Mission Commander badge.
+2. **Mission.** Command an outpost near the lunar south pole, the region where Artemis III plans to land, for 10 days.
+   Balance power, life support and radiation dose against real Sun and Earth positions (JPL Horizons) and real solar
+   storms (NASA DONKI). Every choice costs something.
+3. **Debrief, then replay.** See what happened, the real data behind each event, and try another strategy or site.
+
+The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with sources, Artemis II crew moments) is a
+small button inside the app, used by the lessons.
 
 ## Layout: three services
 

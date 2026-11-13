@@ -19,7 +19,7 @@ it streams: where, who, what happened, what they want, how it feels, when to ans
 - the synthetic data to generate;
 - how to fine-tune with name lists as context, so any list works at runtime.
 
-The product using it is **Ask the Moon** (this repo), a voice-first 3D Moon for kids built for NASA Space Apps 2026 on
+The product using it is **Moonbase Cadet** (formerly Ask the Moon) (this repo), a voice-first 3D Moon for kids built for NASA Space Apps 2026 on
 the challenge *Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars*.
 
 Contents:
