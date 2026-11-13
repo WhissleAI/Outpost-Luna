@@ -36,3 +36,17 @@ async def health() -> dict:
         return r.json()
     except httpx.HTTPError as e:
         return {"ok": False, "error": f"model server unreachable at {settings.model_server_url}: {e.__class__.__name__}"}
+
+
+async def embed(texts: list[str], kind: str = "query", timeout: float | None = None) -> list[list[float]] | None:
+    """Normalized vectors from the model server's tiny embedder (POST /v1/embed). None when it is off or down."""
+    out: list[list[float]] = []
+    try:
+        for i in range(0, len(texts), 256):
+            r = await client().post("/v1/embed", json={"texts": texts[i:i + 256], "kind": kind},
+                                    timeout=timeout or settings.model_timeout_s)
+            r.raise_for_status()
+            out += r.json()["vectors"]
+        return out
+    except (httpx.HTTPError, RuntimeError, ValueError, KeyError):
+        return None
