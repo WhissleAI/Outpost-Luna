@@ -88,24 +88,44 @@ All NASA media: free to use, no implied NASA endorsement
 | Dataset | What it gives | Size | Download |
 | --- | --- | --- | --- |
 | [IAU Gazetteer of Planetary Nomenclature, Moon](https://planetarynames.wr.usgs.gov/GIS_Downloads) (USGS) | 9,087 named lunar features: name, type, diameter, center lat/lon, extent, origin of the name and its language/ethnicity, approval date, link | 24 MB zip (shapefile; `.dbf` holds the attributes) | `curl -LO https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip && unzip MOON_nomenclature_center_pts.zip` |
-| [NASA Artemis Audio Library](https://www.nasa.gov/artemisaudio/) | ~113 clips (MP3 + WAV): 59 Artemis II lunar-flyby crew observations (13 shorter + 46 extended), launch/in-flight/splashdown loops, Apollo astronaut messages to the crew (Charlie Duke, Jim Lovell), crew interviews, 24 briefing/podcast WAVs incl. `3-hour-lunar-surface-observation.wav` | 60 flyby MP3s ≈ 250 MB; WAVs 0.3–110 MB each | `cd backend && uv run python -m pipeline.scrape_manifest && bash pipeline/fetch_media.sh` (manifest-driven; send a browser User-Agent) |
+| [NASA Artemis Audio Library](https://www.nasa.gov/artemisaudio/) | ~113 clips (MP3 + WAV): 59 Artemis II lunar-flyby crew observations (13 shorter + 46 extended), launch/in-flight/splashdown loops, Apollo astronaut messages to the crew (Charlie Duke, Jim Lovell), crew interviews, 24 briefing/podcast WAVs (96 kHz/24-bit; note `3-hour-lunar-surface-observation.wav` is a 26 s clip, not 3 hours) | 60 flyby MP3s ≈ 250 MB; WAVs 0.3–110 MB each | `cd backend && uv run python -m pipeline.scrape_manifest && bash pipeline/fetch_media.sh` (manifest-driven; send a browser User-Agent) |
 | Shared Drive folder "original" (collaborator) | 50 files, all also on the NASA page above (the non-flyby half) | ~700 MB | Fetch from NASA directly |
 | [NASA SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/) | LRO LROC color maps (1k–27k), LOLA elevation | 2–100s of MB | `curl -LO https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_4k.tif` |
 
-### 3.2 Being verified now (to add before training)
+### 3.2 Training sources (verified 2026-11-13)
 
-Each needs its URL, licence and command verified. Status: the research pass is in progress; it adds a full table here.
+Full inventory, with per-dataset notes, the URLs opened and the gaps: [`NASA_DATASETS.md`](NASA_DATASETS.md). Each source
+was checked by opening its page. "PD" means a US-government work.
 
-- **Fearless Steps corpus (UT Dallas):** Apollo 11 mission audio with human labels (speech activity, diarization,
-  speaker ID, ASR transcripts, topics). This is the largest labeled space-speech set we know of.
-- **Apollo mission audio:** the 30-track Apollo 11 Mission Operations Control Room audio, and Apollo air-to-ground loops.
-- **Apollo Flight Journal + Apollo Lunar Surface Journal:** human transcripts timestamped in mission elapsed time
-  (GET), so the audio can be force-aligned.
-- **NASA Image and Video Library API** (`images-api.nasa.gov`, `media_type=audio`).
-- **ARISS school contacts:** recordings of kids asking ISS astronauts questions. The closest real data to our kid queries.
-- **Event timelines:** Apollo GET timelines, the Artemis II mission timeline and ephemeris (JPL Horizons / NASA AROW), and
-  space weather events (DONKI API). Used to label `event.space.*` against the audio clock.
-- **Hardware on the Moon:** NSSDCA Master Catalog pages and LROC landing-site pages, for coordinates and facts.
+| Source | What it gives | Size | Labels | Licence | How to get it | Use it for |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Apollo in Real Time** (A11/A13/A17) | Mission audio synced to GET + utterance CSVs | A11: 11,000 h MOCR + 240 h space-to-ground; 14,895 utterances | GET, speaker callsign, text, milestones | Source audio PD; repo has **no licence file** (ask) | `curl -L https://raw.githubusercontent.com/bfeist/apolloinrealtime.org/main/mission-data/11/MISSION_DATA/A11_merged_utterances.csv` (`GET\|type\|speaker\|text`) | **Best alignment source**: words, speakers, roles, events |
+| **Apollo audio, Internet Archive** | Raw 30-track Apollo 11 mission control (1,428 items, 6.5 TB, ~11.9k h); 484 Apollo 13 items; `apolloaudiocollection` reels for Apollo 1–17 | ~12k h + per-mission TBs | None (raw); channel number = console loop | PD | `pip install internetarchive; ia download Apollo17 --glob="*.mp3"` | Self-supervised pretraining, radio robustness, speaker/role via channel |
+| **Fearless Steps** (UT Dallas, FS-1..FS-4) | Apollo 11 (+A13, A8) mission control, 0–20 dB SNR | 100 h challenge set (~36 h speech) + 10 h A8 + 5 h A13 | Speech activity, diarization, speaker ID, ASR; FS-3 summaries/hotspots; FS-4 speaker verification, topics | NASA media guidelines | **Request access**: email FearlessSteps@utdallas.edu (registration closed) | Gold speakers + words on noisy radio |
+| **Apollo Flight Journal + Lunar Surface Journal** (apollojournals.org) | Corrected transcripts with commentary and audio clips, all crewed Apollo flights + EVAs | All missions | GET per utterance, speaker, role class (`cc`=CAPCOM, `onboard`, `pao`) | No licence statement found (credit; ask before redistributing commentary) | HTML scrape; anchors `<a name="HHHMMSS">` | Text for the tagger; alignment; roles |
+| **NASA Artemis Audio Library** | 113 clips (13 + 46 flyby + 54 other) | ~1 GB | Title/description only | "No additional permission is required" | Scrape page → `wp-content/uploads/...mp3/wav` (in this repo) | Modern Orion comms, awe, lunar names |
+| **NASA Images API, `media_type=audio`** | 79 "Houston We Have a Podcast" episodes + KSC launch multitrack feeds (incl. Artemis II) + ISS calls | 136 items (2025–26 only; nothing from 1960–75) | Podcast `description` = **full transcript** (median ~38k chars) | PD | `GET https://images-api.nasa.gov/search?media_type=audio&page_size=100` → `/asset/{nasa_id}` | Audio + transcript pairs (no timestamps): long-form ASR, host/guest speakers |
+| **JPL Horizons** Artemis II (−1024), Artemis I (−1023) | Ephemeris + major events with MET/UTC (TLI, OTC, 8,282 km flyby, splashdown) | Text | Event times | PD | `curl "https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND='-1024'&OBJ_DATA=YES&MAKE_EPHEM=NO"` | `event.space.*` aligned to Artemis audio |
+| **Artemis II ephemeris (AROW)** | CCSDS OEM state vectors, 2–10 Apr 2026 | 1.5 MB | Time-tagged position | NASA | `https://www.nasa.gov/wp-content/uploads/2026/03/all-artemis-ii-oem-files.zip` | Mission phase per moment |
+| **DONKI** space weather | CME, storms, SEP events | JSON | Event type/time | PD | `https://api.nasa.gov/DONKI/CME?startDate=…&endDate=…&api_key=KEY` (FLR endpoint 404 today) | Synthetic event call-outs |
+| **Lunar hardware coordinates** | LROC 2016 tables (Apollo LMs, LRVs, Surveyors, Rangers, S-IVBs, GRAIL, LADEE) + NSSDCA + NASA 2012 catalogue | 3 PDFs/pages | Coordinates (±0.3–19 m) | NASA/ASU | See `NASA_DATASETS.md` | Hardware gazetteer (Tier A names) |
+| **ARISS school contacts** | Students' question lists (text, several languages) for each ISS contact | Ongoing | Questions, school, astronaut | Text public; **recordings are school-owned, not PD** | Scrape `ariss.org/upcoming-educational-contacts.html` | **Real kid question wording** for the synthetic templates |
+| **JSC Oral History Project** | ~755 PDF interview transcripts (flight controllers, astronauts) | Text only, no audio | Speaker turns | PD | PDFs from the JSC oral-history index | Vocabulary and roles for the tagger |
+| **Perseverance SuperCam mic** (PDS) | Mars microphone audio (wind, laser zaps, Ingenuity) | PDS bundle | PDS4 labels | PD | `wget -r -np https://pds-geosciences.wustl.edu/m2020/urn-nasa-pds-mars2020_supercam/data_raw_audio/` | Non-speech sound events, noise augmentation |
+| **LOLA DEM 118 m** (USGS) | Global elevation GeoTIFF | Large | — | PD | `https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif` | App terrain, horizon |
+
+**What still has to be synthetic** (no real source exists):
+- kids' speech about the Moon;
+- labeled Artemis-era mission-control audio (multichannel, roles, diarization);
+- emotion labels and app intents;
+- event tags aligned to audio frames;
+- Orion/ISS cabin acoustics;
+- word-level timestamps for any of these sources (they come from forced alignment).
+
+**Do first:**
+- Email Fearless Steps for the labeled packages.
+- Ask Ben Feist about licence terms for the Apollo in Real Time CSVs.
+- Scrape ARISS question lists into the kid templates.
 
 ---
 
@@ -317,7 +337,7 @@ Split by recording, never by sentence. The pipeline already runs in this repo (`
 5. **Splits.**
    - **train:** Apollo + Artemis interviews and loops;
    - **dev:** 10 Artemis II flyby clips;
-   - **test:** 10 other flyby clips + the 3-hour lunar observation, never trained on.
+   - **test:** 10 other flyby clips + the Apollo in Real Time held-out hours (below), never trained on.
    - The crew's two proposed craters (Integrity, Carroll) and their spoken directions stay in test as the relation
      probe.
 6. **Kid safety.** Crew audio has occasional adult language. Mark it `kid_safe=false` for playback but keep it in
