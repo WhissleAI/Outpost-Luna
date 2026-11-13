@@ -1,5 +1,4 @@
 import { defineConfig } from "vite";
-import { resolve } from "node:path";
 
 // Dev: Vite serves the UI on :5173 and forwards API and media calls to the backend.
 // Prod: `npm run build` → dist/, which the backend serves itself.
@@ -13,11 +12,6 @@ export default defineConfig({
       "/api": backend,
       "/media": backend,
       "/ws": { target: backend.replace(/^http/, "ws"), ws: true },
-    },
-  },
-  build: {
-    rollupOptions: {
-      input: { main: resolve(__dirname, "index.html"), about: resolve(__dirname, "about.html") },
     },
   },
 });
