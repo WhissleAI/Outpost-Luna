@@ -59,3 +59,14 @@ The Director then may return:
 - `action:"status"` + `say` (answer from State) + `state`
 - `action:"houston"` + `say` + `delay_ms` (real round trip ~2,600 ms on the Moon; client waits before speaking)
 - any existing action (fly, play, explain…) for non-mission questions
+
+## Additive fields (sim agent, feat/mission-sim)
+Nothing above was changed; these were only added:
+- **State**: `seed`, `science:{collected, sent_home}` (science only scores fully once sent home over a comm window), `pending` (the command awaiting confirm, or null), `site.window_sunlit_pct` (sunlit % in the actual 10-day window). `env.storm`, when active, is `{active, name, source, url, severity, real_date}`. `outcome` is `null | "survived" | "life_support_out" | "power_out" | "dose_limit"`.
+- **Alerts**: `low_power`, `life_support_low`, `dose_rate_high`, `dose_near_limit`, `solar_storm`, `array_damaged`.
+- **Event kinds**: `mission_complete` (sent on a win), plus the contract kinds. `failure` also covers the seeded solar-array damage.
+- **Command result**: `call_houston` adds `delay_ms` (2600). The command type `rule` is accepted as a no-op; the voice layer owns rules.
+- **Allocate amounts**: `percent` sets the new absolute share; `delta` is a signed change in points; `little` is ±5 (the sign comes from `value`); `half`, `all` and `none` set the share to 50, 100 and 0. The other loads rebalance in proportion, or take the whole difference from `from` when it is given. Total stays 100.
+- **Telemetry frames**: `forecast:true` when the frame is a preview into the current shift (a 6-hour shift plays out over ~30 s, then holds), plus `over`.
+- **Debrief**: `outcome`, `why` (one sentence), `lose_reason`, `site`, `seed`, `final{...}`, and `log` (the event/command text log). `timeline` has one entry per shift: `{t_h, power, life_support, dose_msv, events:[kind]}`.
+- **Python** (Director): `app.mission.registry.get(mid)` returns a Mission with `.apply(cmd)` returning `{state, result}` and `.state()`. `registry.apply(mid, cmd)` returns the same shape.
