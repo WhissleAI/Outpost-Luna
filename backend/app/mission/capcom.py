@@ -24,7 +24,7 @@ ROLE_NAME = {"power": "power officer", "life": "life support officer", "comms": 
 
 # Mission words a 7-year-old won't know. Explained once per mission, then used plainly.
 TERMS = {
-    "msv": "mSv, a unit for radiation dose",
+    "msv": "an mSv is a unit for radiation dose",
     "solar storm": "a solar storm, a burst of fast particles from the Sun",
     "battery": "the battery, which stores the solar panels' power for the dark",
     "life support": "life support, the machines that make air and clean water",
@@ -152,9 +152,11 @@ def status(what: str, state: dict | None, mid: str | None = None) -> str:
     if what in ("dose", "all"):
         d, lim = r.get("dose_msv"), r.get("dose_limit_msv")
         if d is not None:
-            unit = term(mid, "msv", "mSv")
-            line = f"The crew has had {d:g} {unit} so far"
+            explain = term(mid, "msv", "") != ""
+            line = f"The crew has had {d:g} mSv of radiation so far"
             line += f", out of a safe limit of {lim:g}." if lim else "."
+            if explain:
+                line += " An mSv is a unit for radiation dose."
             rate = r.get("dose_rate_msv_h")
             if rate:
                 line += f" Right now it goes up by {rate:g} every hour."

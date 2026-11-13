@@ -78,12 +78,12 @@ def test_command_readback_and_tradeoff(sim, world):
 def test_compound_applies_both(sim, world):
     r = ask(world, "move 20% to shields and send the rover for ice")
     assert [c["type"] for c in sim.m.applied] == ["allocate", "dispatch"]
-    assert len(r["commands"]) == 2 and "rover" in r["say"]
+    assert len(r["commands"]) == 2 and "rover" in r["say"] and r["say"].count("Copy, commander.") == 1
 
 
 def test_status_answer_explains_units_once(sim, world):
     r = ask(world, "how much radiation did we get?")
-    assert r["action"] == "status" and "14.2 mSv, a unit for radiation dose" in r["say"] and r["state"]
+    assert r["action"] == "status" and "14.2 mSv" in r["say"] and "a unit for radiation dose" in r["say"] and r["state"]
     r2 = ask(world, "how much radiation did we get?")
     assert "a unit for radiation dose" not in r2["say"] and "14.2 mSv" in r2["say"]
 

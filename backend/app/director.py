@@ -513,5 +513,6 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         resp["commands"] = cmds
     if resp.get("action") == "status":
         resp["state"] = state
-    say = " ".join(x for x in lines if x)
-    return {**base, **resp, "say": _tone(say, emotion)}
+    # one "Copy, commander." per turn, however many commands
+    lines = [x if i == 0 else re.sub(r"^Copy, commander\. ", "", x) for i, x in enumerate(y for y in lines if y)]
+    return {**base, **resp, "say": _tone(" ".join(lines), emotion)}
