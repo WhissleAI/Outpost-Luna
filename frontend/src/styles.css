@@ -240,7 +240,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 
 /* ---------- guide answer card ---------- */
 .card{position:absolute;z-index:3;left:var(--s4);bottom:calc(var(--s4) + var(--dock-h) + var(--s3));width:min(380px,calc(100% - 2*var(--s4)));
-  max-height:calc(100% - var(--dock-h) - 96px);overflow:auto;scrollbar-width:thin;
+  max-height:calc(100% - var(--dock-h) - 136px);overflow:auto;scrollbar-width:thin;
   background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 40px rgba(0,0,0,.4);
   padding:var(--s3) var(--s4) var(--s3);display:flex;flex-direction:column;gap:var(--s2);animation:rise .22s ease-out}
 .card[hidden]{display:none}
@@ -341,7 +341,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 @media (max-width:859px){
   .stage{--dock-h:128px}
   .nowplaying{width:calc(100% - 2*var(--s4));min-width:0;top:60px}
-  .card{max-height:calc(100% - var(--dock-h) - 130px)}
+  .card{max-height:calc(100% - var(--dock-h) - 150px)}
   .mcard{top:60px}
 }
 @media (hover:none){ .hint{display:none} }

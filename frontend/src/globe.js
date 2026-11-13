@@ -108,9 +108,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     controls.update();
     if (ring) ring.material.opacity = .65 + .3 * Math.sin(now / 300);
     if (layer.style.display !== "none") {
-      const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+      const w = stage.clientWidth, h = stage.clientHeight;
       ghosts.forEach(g => {
-        const facing = g.p.clone().normalize().dot(cam) > 0.12;
+        // visible only in front of the horizon (n·C > R), with a small margin so markers don't sit on the limb
+        const facing = g.p.dot(camera.position) / g.p.length() > R * 1.06;
         g.el.classList.toggle("is-hidden", !facing);
         if (!facing) return;
         tmp.copy(g.p).project(camera);
