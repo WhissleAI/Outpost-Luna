@@ -1,0 +1,176 @@
+{
+ "window": {
+  "start_utc": "2026-04-08 00:00",
+  "stop_utc": "2026-04-18 00:00",
+  "why": "10 days in April 2026, the month Artemis II flew around the Moon. Earth rises from below the horizon (comm blackout) to above it, and the Sun sinks low at the outer sites."
+ },
+ "sources": [
+  {
+   "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
+   "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+  },
+  {
+   "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+   "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+  },
+  {
+   "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
+   "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+  },
+  {
+   "title": "Mazarico et al. 2011, Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211",
+   "url": "https://doi.org/10.1016/j.icarus.2010.10.030"
+  },
+  {
+   "title": "JPL Horizons API",
+   "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+  }
+ ],
+ "sites": [
+  {
+   "id": "shackleton_rim",
+   "name": "Shackleton Crater Rim",
+   "lat": -89.68,
+   "lon": -166.0,
+   "alt_km": 1.9,
+   "sunlight_pct": 86,
+   "ice": false,
+   "rover_to_ice_h": 6,
+   "notes": "One of the sunniest spots on the Moon, on the rim of Shackleton crater (a 'Peak Near Shackleton' was an Artemis III candidate region in 2022). Ice is a short drive down into the crater.",
+   "sources": [
+    {
+     "title": "IAU Gazetteer of Planetary Nomenclature: Shackleton",
+     "url": "https://planetarynames.wr.usgs.gov/Feature/5450"
+    },
+    {
+     "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
+     "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+    },
+    {
+     "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
+     "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+    }
+   ],
+   "horizon_deg": -1.312,
+   "earth_visible_pct": 45,
+   "window_sunlit_pct": 100
+  },
+  {
+   "id": "shackleton_floor",
+   "name": "Shackleton Crater Floor",
+   "lat": -89.67,
+   "lon": 129.78,
+   "alt_km": -2.5,
+   "sunlight_pct": 0,
+   "ice": true,
+   "rover_to_ice_h": 0,
+   "power_from": {
+    "site": "shackleton_rim",
+    "efficiency": 0.5,
+    "why": "Game assumption: solar arrays up on the sunny rim, power sent down a long cable (half lost)."
+   },
+   "comm_from": {
+    "site": "shackleton_rim",
+    "why": "Game assumption: the crater walls hide Earth, so radio goes through a relay on the rim."
+   },
+   "notes": "Permanently shadowed: the Sun never reaches the floor, so it is colder than -170 C and can hold ice. Great for water, terrible for solar power.",
+   "sources": [
+    {
+     "title": "IAU Gazetteer of Planetary Nomenclature: Shackleton",
+     "url": "https://planetarynames.wr.usgs.gov/Feature/5450"
+    },
+    {
+     "title": "NASA: Ice confirmed at the Moon's poles (M3 / Chandrayaan-1, 2018)",
+     "url": "https://www.nasa.gov/news-release/ice-confirmed-at-the-moons-poles/"
+    },
+    {
+     "title": "Mazarico et al. 2011, Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211",
+     "url": "https://doi.org/10.1016/j.icarus.2010.10.030"
+    }
+   ],
+   "horizon_deg": 90.0,
+   "earth_visible_pct": 37,
+   "window_sunlit_pct": 0
+  },
+  {
+   "id": "connecting_ridge",
+   "name": "Connecting Ridge",
+   "lat": -89.44,
+   "lon": -141.8,
+   "alt_km": 1.6,
+   "sunlight_pct": 82,
+   "ice": false,
+   "rover_to_ice_h": 12,
+   "notes": "The ridge between Shackleton and de Gerlache craters; an Artemis III candidate region in 2022. Long sunlit stretches and views toward Earth.",
+   "sources": [
+    {
+     "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
+     "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+    },
+    {
+     "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
+     "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+    }
+   ],
+   "horizon_deg": -1.23,
+   "earth_visible_pct": 44,
+   "window_sunlit_pct": 100
+  },
+  {
+   "id": "de_gerlache_rim",
+   "name": "de Gerlache Crater Rim",
+   "lat": -88.71,
+   "lon": -68.7,
+   "alt_km": 1.5,
+   "sunlight_pct": 81,
+   "ice": false,
+   "rover_to_ice_h": 10,
+   "notes": "Rim of de Gerlache crater ('de Gerlache Rim 2' is an Artemis III candidate region). Sunny rim next to a shadowed crater floor.",
+   "sources": [
+    {
+     "title": "IAU Gazetteer of Planetary Nomenclature: de Gerlache",
+     "url": "https://planetarynames.wr.usgs.gov/Feature/1439"
+    },
+    {
+     "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
+     "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+    },
+    {
+     "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+     "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+    }
+   ],
+   "horizon_deg": -1.334,
+   "earth_visible_pct": 51,
+   "window_sunlit_pct": 81
+  },
+  {
+   "id": "malapert_massif",
+   "name": "Malapert Massif",
+   "lat": -85.98,
+   "lon": -1.67,
+   "alt_km": 5.0,
+   "sunlight_pct": 73,
+   "ice": false,
+   "rover_to_ice_h": 18,
+   "notes": "A 5 km-tall mountain (Mons Malapert) on the Earth-facing side of the pole, so Earth is above the horizon much more often: best for talking to Houston, farther from ice. Artemis III candidate region.",
+   "sources": [
+    {
+     "title": "IAU Gazetteer of Planetary Nomenclature: Mons Malapert",
+     "url": "https://planetarynames.wr.usgs.gov/Feature/16338"
+    },
+    {
+     "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+     "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+    },
+    {
+     "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
+     "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+    }
+   ],
+   "horizon_deg": -2.363,
+   "earth_visible_pct": 93,
+   "window_sunlit_pct": 35
+  }
+ ]
+}
