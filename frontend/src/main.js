@@ -10,6 +10,13 @@ import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
 import { chime, speak, stopSpeaking, isSpeaking, STORY_VOICE } from "./sound.js";
+import { createSession } from "./session.js";
+
+// [session] The session Director (docs/SESSION_CONTRACT.md) is ON unless ?session=0 or localStorage atm-session=0.
+// If its socket fails, mission turns fall back to POST /api/ask exactly as before.
+const SESSION_ON = (() => { try { return new URLSearchParams(location.search).get("session") !== "0" && localStorage.getItem("atm-session") !== "0"; } catch (e) { return true; } })();
+// The audio agent's floor manager (floor.js) is optional: code to its bus when it exists.
+const FLOOR_MOD = import.meta.glob("./floor.js");
 
 const $ = id => document.getElementById(id);
 const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?", "What did Surveyor 3 do?",
@@ -38,15 +45,23 @@ async function boot() {
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
   });
   const voice = createVoice({
-    onTurn: text => ask(text),
-    onBargeIn: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); player.duck(); },
-    onKidDone: () => player.unduck(),
+    onTurn: text => ask(text, "voice"),
+    onBargeIn: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); player.duck(); if (useSession()) { session.dropAll(); session.ui("barge_in"); } },
+    onKidDone: () => { player.unduck(); if (useSession()) session.ui("kid_done"); },
     onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
   });
+  // [session] the socket, its decision handlers, and the hooks the mission UI calls.
+  let session = null, floor = null;
+  const useSession = () => !!(session && session.connected);
   const missionUI = createMissionUI({
-    globe, card, placeById, say: t => guideSay(t), onContext: f => voice.sendContext(f), askDirector: t => ask(t),
+    globe, card, placeById, say: t => guideSay(t),
+    onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+    session: {
+      onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
+      endShift: () => useSession() && session.ui("end_shift"),
+    },
   });
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
@@ -72,11 +87,15 @@ async function boot() {
   /** The hardware tells its own story, in its own voice. */
   const storySay = text => guideSay(text, { voice: STORY_VOICE });
 
-  async function ask(raw) {
+  async function ask(raw, source) {
     const text = (raw || "").trim(); if (!text) return;
     const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
     if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
+    // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
+    if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
+      session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
+    }
     let r;
     try { r = await api.ask(text, context()); }
     catch (e) {
@@ -263,6 +282,40 @@ async function boot() {
     }, 8000);
   }
 
+  // ---------- [session] decisions → modules ----------
+  const sendRaw = m => { if (!m) return; if (m.t === "typed") ask(m.text); else session.sendRaw(m); };
+  const handlers = {
+    say: async d => {
+      if (d.delay_ms) { await missionUI.houston(d.text, +d.delay_ms); return; }
+      if (floor && floor.say) { await floor.say(d.text, { voice: d.voice, id: d.id }); return; }
+      await guideSay(d.text, { voice: d.voice === "story" ? STORY_VOICE : undefined });
+    },
+    play: async d => { const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
+    stop: () => { stopSpeaking(); if (floor && floor.stop) floor.stop(); if (player.active) player.stop(true); },
+    card: d => { if (missionUI.active) missionUI.showCard(d, sendRaw); else card.show({ title: d.title, asked: d.asked, say: d.body, claims: d.claims, arc: readoutLine({ readout: d.readout, source: d.source, action: d.action }) }); },
+    hud: d => missionUI.applyRemote(d.state),
+    alert: d => missionUI.active && missionUI.alert(d),
+    ask_confirm: d => missionUI.askConfirm(d, sendRaw),
+    fly: d => { if (missionUI.active) return; const f = placeById(d.place); if (f) globe.showFeature(f); else if (d.view) globe.flyTo(d.view.lat, d.view.lon, 3.6); },
+    highlight: () => {},
+    floor: d => { document.body.dataset.floor = d.holder; },
+    lesson: d => dispatchEvent(new CustomEvent("atm:lesson", { detail: d })),   // the Academy UI listens
+  };
+  if (SESSION_ON) {
+    const loadFloor = FLOOR_MOD["./floor.js"];
+    if (loadFloor) {
+      try {
+        const mod = await loadFloor(); floor = mod.floor || mod.default || null;
+        if (floor && typeof floor.on !== "function") floor = null;
+      } catch (e) { floor = null; }
+    }
+    session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
+    if (floor) { floor.on("playback", e => session.playback(e)); floor.on("floor", e => { if (e && e.holder === "kid") session.ui("barge_in"); }); }
+    let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
+    session.hello({ mode: m0 });
+    session.connect().then(ok => { if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); } });
+  }
+
   $("askForm").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });
   CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
@@ -286,6 +339,7 @@ async function boot() {
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
     try { localStorage.setItem("atm-mode", m); } catch (e) { /* private mode */ }
     cancelTour(); cancelNudge(); stopSpeaking();
+    if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m === "mission") {
       if (player.active) player.stop(true);
       if (missions.open) $("mClose").click();
