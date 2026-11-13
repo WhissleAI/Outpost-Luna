@@ -9,6 +9,8 @@ import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
+import { createAcademyUI } from "./academy/ui.js";   // Academy
+import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { chime } from "./sound.js";
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor } from "./floor.js";
@@ -29,6 +31,8 @@ const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0
 
 async function boot() {
   initAbout();
+  const nameEl = document.querySelector(".appname");
+  if (nameEl) { nameEl.textContent = APP_NAME; nameEl.title = APP_TAGLINE; }
   let places;
   try { places = await api.places(); }
   catch (e) { $("loading").textContent = "Can't reach the backend. Start everything with `make dev`."; return; }
@@ -64,6 +68,15 @@ async function boot() {
       endShift: () => useSession() && session.ui("end_shift"),
     },
   });
+  // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
+  const academyUI = createAcademyUI({
+    globe, placeById, player, say: t => guideSay(t, { voice: CAPCOM_VOICE }) /* floor.say, CAPCOM voice */, stop: () => stopSpeaking(),
+    alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+    goMission: () => setMode("mission"),
+    openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
+    onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
+  });
+  document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
@@ -93,6 +106,7 @@ async function boot() {
     const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
     if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
+    if (academyUI.active && await academyUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // Academy
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -186,6 +200,7 @@ async function boot() {
   /** Tapped a ghost marker: card + story right away, and the Director is asked about it so it stays in charge of what's said. */
   async function onArtifact(a) {
     voice.clearWords();
+    if (academyUI.onArtifact(a)) return;   // Academy
     if (missions.onTap({ lat: a.lat, lon: a.lon }, a)) return;
     cancelTour(); cancelNudge();
     const my = ++turn.seq;
@@ -249,6 +264,7 @@ async function boot() {
 
   function onTap(p) {
     if (missionUI.active) return;   // the globe is a map of the outpost in mission mode
+    if (academyUI.onTap(p)) return;   // Academy
     voice.clearWords(); cancelTour();
     if (missions.onTap(p)) return;
     const { f, d } = globe.nearest(p);
@@ -272,7 +288,7 @@ async function boot() {
   function scheduleNudge() {
     clearTimeout(nudgeT);
     nudgeT = setTimeout(async () => {
-      if (missionUI.active) return;
+      if (missionUI.active || academyUI.active) return;
       if (voice.kidTalking || isSpeaking() || player.active) return;
       const n = $("nudge");
       if (!missions.started && !missions.open) { n.textContent = "Try a mission?"; n.onclick = () => { cancelNudge(); missions.openCard(); }; n.hidden = false; return; }
@@ -331,16 +347,25 @@ async function boot() {
   };
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
-  const PH = { mission: "Or type: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon" };
+  let lastMode = "academy";
+  const PH = { mission: "Or type: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon",
+    academy: "Or type your answer: show me the south pole" };
   function setMode(mode) {
-    const m = mode === "cadet" ? "cadet" : "mission";
+    const m = ["cadet", "academy"].includes(mode) ? mode : "mission";
     document.body.dataset.mode = m;
-    $("modeMission").setAttribute("aria-pressed", m === "mission"); $("modeCadet").setAttribute("aria-pressed", m === "cadet");
+    $("modeMission").setAttribute("aria-pressed", m === "mission");
+    $("modeAcademy").setAttribute("aria-pressed", m === "academy");
+    $("libraryBtn").setAttribute("aria-pressed", m === "cadet");
+    if (m !== "cadet") lastMode = m;
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
-    try { localStorage.setItem("atm-mode", m); } catch (e) { /* private mode */ }
     cancelTour(); cancelNudge(); stopSpeaking();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
-    if (m === "mission") {
+    if (m !== "academy") academyUI.exit();
+    if (m === "academy") {   // Academy
+      if (player.active) player.stop(true);
+      if (missions.open) $("mClose").click();
+      missionUI.exit(); card.hide(); academyUI.enter();
+    } else if (m === "mission") {
       if (player.active) player.stop(true);
       if (missions.open) $("mClose").click();
       missionUI.enter();
@@ -350,9 +375,11 @@ async function boot() {
     }
   }
   $("modeMission").onclick = () => setMode("mission");
-  $("modeCadet").onclick = () => setMode("cadet");
-  let saved = null; try { saved = localStorage.getItem("atm-mode"); } catch (e) { /* none */ }
-  setMode(saved || "mission");
+  $("modeAcademy").onclick = () => setMode("academy");
+  // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
+  $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");
+  // A new cadet starts in the Academy; a qualified one in Mission.
+  setMode(academyUI.progress.qualified ? "mission" : "academy");
 }
 
 boot();

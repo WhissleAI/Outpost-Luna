@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Ask the Moon</title>
+<title>Moonbase Cadet: Junior Astronaut Mission Trainer</title>
 <!-- Theme before first paint: a saved choice wins, else prefers-color-scheme (handled in CSS). -->
 <script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,10 +18,12 @@
     <span class="appname">Ask the Moon</span>
   </div>
   <div class="modes" role="group" aria-label="Mode">
+    <!-- Two modes: Academy (training, the default for a new cadet) → Mission. The explorer is the "Moon library" button. -->
+    <button type="button" id="modeAcademy" aria-pressed="false">Academy</button>
     <button type="button" id="modeMission" aria-pressed="true">Mission</button>
-    <button type="button" id="modeCadet" aria-pressed="false">Cadet</button>
   </div>
   <nav class="topnav">
+    <button class="nav-btn" id="libraryBtn" type="button" aria-pressed="false" title="Explore the Moon, its hardware and the Artemis II crew audio">Moon library</button>
     <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Find it</button>
     <button class="nav-btn" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false">About</button>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
@@ -65,6 +67,8 @@
 
     <!-- Mission Trainer (mission/ui.js): side panel (briefing / HUD), event banner, Houston signal, debrief -->
     <aside class="mpanel" id="mPanel" hidden aria-label="Mission control"></aside>
+    <!-- Junior Astronaut Academy (academy/ui.js): course map, lesson, badge -->
+    <aside class="mpanel apanel" id="aPanel" hidden aria-label="Junior Astronaut Academy"></aside>
     <div class="m-banner" id="mBanner" hidden role="status"></div>
     <div class="m-signal" id="mSignal" hidden role="status"></div>
     <section class="m-debrief" id="mDebrief" hidden aria-label="Mission debrief"></section>
@@ -146,8 +150,14 @@
         <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift." CAPCOM reads it back, and asks first before anything risky.</li>
         <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer, just like real crews.</li>
         <li><b>Debrief.</b> See your timeline, your grade, and what the past missions teach. Then try a different strategy.</li>
-        <li><b>Cadet mode</b> is training: explore the Moon, the hardware people left there, and the Artemis II crew's own words.</li>
+        <li><b>Moon library</b>: explore the Moon, the hardware people left there, and the Artemis II crew's own words.</li>
       </ul>
+    </section>
+
+    <section>
+      <span class="eyebrow">How the Academy works</span>
+      <h2>Train first, then command</h2>
+      <p>The Academy is seven short lessons with CAPCOM: the Moon's south pole, radio talk, solar power, radiation and solar storms, air and ice, and lessons from Apollo. Each step takes a spoken, typed or tapped answer, and gives a hint after two misses. Every fact shows its NASA source. The last lesson is a check ride: two days on the real mission simulator with the real May 2024 solar storm. Pass it to earn the Mission Commander badge. Badges are saved only on this device, with no names. The story is inspired by NASA's Artemis program: Artemis I flew uncrewed in 2022, Artemis II flew its crew around the Moon in April 2026, and Artemis III plans a landing near the south pole, where you train. It uses NASA open data and is not endorsed by NASA.</p>
     </section>
 
     <section>
