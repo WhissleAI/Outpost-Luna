@@ -17,8 +17,12 @@
     <span class="sa-badge">SpaceApps 2026</span>
     <span class="appname">Ask the Moon</span>
   </div>
+  <div class="modes" role="group" aria-label="Mode">
+    <button type="button" id="modeMission" aria-pressed="true">Mission</button>
+    <button type="button" id="modeCadet" aria-pressed="false">Cadet</button>
+  </div>
   <nav class="topnav">
-    <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Missions</button>
+    <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Find it</button>
     <button class="nav-btn" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false">About</button>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
       <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
@@ -59,7 +63,14 @@
       </button>
     </div>
 
-    <!-- Mission: one at a time -->
+    <!-- Mission Trainer (mission/ui.js): side panel (briefing / HUD), event banner, Houston signal, debrief -->
+    <aside class="mpanel" id="mPanel" hidden aria-label="Mission control"></aside>
+    <div class="m-banner" id="mBanner" hidden role="status"></div>
+    <div class="m-signal" id="mSignal" hidden role="status"></div>
+    <section class="m-debrief" id="mDebrief" hidden aria-label="Mission debrief"></section>
+    <span class="m-shade" id="mShade" hidden>Day/night shading: approximate</span>
+
+    <!-- Find-it clues: one at a time -->
     <section class="mcard" id="missionCard" hidden aria-label="Mission">
       <header><span class="mstep" id="mStep"></span><span class="mstars" id="mStars"></span>
         <button class="x" id="mClose" type="button" aria-label="Close missions">&times;</button></header>
@@ -86,6 +97,7 @@
       <p class="card-crew" id="cardCrew" hidden></p>
       <div class="card-sources" id="cardSources" hidden></div>
       <p class="card-note" id="cardNote" hidden></p>
+      <div class="card-lessons" id="cardLessons" hidden></div>
       <div class="card-claims" id="cardClaims" hidden></div>
       <div class="card-actions" id="cardActions" hidden></div>
       <div class="tag-src" id="cardArc" hidden></div>
@@ -117,45 +129,48 @@
   <div class="about-bar"><span class="eyebrow">About</span><button class="x" id="aboutClose" type="button" aria-label="Close">&times;</button></div>
   <div class="about-body">
 
-  <header class="about-head"><h1 id="aboutTitle">Ask the Moon</h1><p>A voice Moon explorer for kids. Ask out loud, and the Moon turns to show you the places, and the machines people left there.</p></header>
+  <header class="about-head"><h1 id="aboutTitle">Ask the Moon: Mission Trainer</h1><p>A voice game for kids 7 to 12. You command a small base near the Moon's south pole, and real NASA data decides what happens.</p></header>
   <div class="brief">
     <section>
       <span class="eyebrow">The challenge</span>
-      <h2>Abandoned but not forgotten</h2>
-      <p class="lede">NASA Space Apps 2026 asks for stories about the equipment left behind on the Moon and Mars. Landers, rovers, impact sites and instruments are still out there, and each one has a story.</p>
+      <h2>Build a Junior Astronaut Mission Trainer</h2>
+      <p class="lede">NASA Space Apps 2026 asks for a way for young people to practise what astronauts do: make decisions, manage resources and handle surprises on a mission.</p>
     </section>
 
     <section>
-      <span class="eyebrow">What it does</span>
-      <h2>Ghost hardware you can talk to</h2>
+      <span class="eyebrow">How you play</span>
+      <h2>Ten days on the Moon, one shift at a time</h2>
       <ul>
-        <li><b>Find it.</b> Glowing diamonds on the 3D Moon mark the hardware, coloured by kind: lander, rover, impact, instrument, memorial.</li>
-        <li><b>Hear it.</b> Tap one and it tells its own story, in its own voice. More facts, the crew and the sources are one tap away.</li>
-        <li><b>Ask it.</b> "Who drove the Apollo 16 rover?" The guide answers, flies there, and can take you on a tour.</li>
-        <li><b>Listen to the crew.</b> Real Artemis II recordings play while the globe follows the places the astronauts name.</li>
-        <li><b>Missions.</b> Find-it clues; tap the Moon to answer.</li>
+        <li><b>Pick a site.</b> Each one trades sunlight, ice and how often you can see Earth.</li>
+        <li><b>Balance three things.</b> Power, life support and radiation dose. Every choice costs something: shields use power that the greenhouse needs.</li>
+        <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift." CAPCOM reads it back, and asks first before anything risky.</li>
+        <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer, just like real crews.</li>
+        <li><b>Debrief.</b> See your timeline, your grade, and what the past missions teach. Then try a different strategy.</li>
+        <li><b>Cadet mode</b> is training: explore the Moon, the hardware people left there, and the Artemis II crew's own words.</li>
       </ul>
     </section>
 
     <section>
       <span class="eyebrow">How it works</span>
       <h2>Whissle's Arc models, running locally</h2>
-      <p>Arc Tagger reads every question for places, numbers and private details; names and addresses are caught and never looked up. Arc audio metadata listens for when a kid starts and stops talking. Both run on a local model server, not in the cloud. Every fact the guide says is checked against a fact sheet built from the sources below.</p>
+      <p>Arc Tagger turns what a kid says into a mission command, and catches names and addresses so they are never looked up. Arc audio metadata hears when a kid starts and stops talking. Both run on a local model server, not in the cloud.</p>
     </section>
 
     <section>
       <span class="eyebrow">Data</span>
-      <h2>Public NASA and IAU data</h2>
+      <h2>Public NASA data</h2>
       <div class="tbl"><table>
         <thead><tr><th>Source</th><th>Used for</th></tr></thead>
         <tbody>
-          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings from the lunar flyby, and mission sounds</td></tr>
-          <tr><td><a href="https://nssdc.gsfc.nasa.gov/" target="_blank" rel="noopener">NSSDCA</a></td><td>Mission, landing date, site and status of each piece of hardware</td></tr>
-          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's color map, and orbital pictures of the landing sites</td></tr>
-          <tr><td><a href="https://planetarynames.wr.usgs.gov/" target="_blank" rel="noopener">IAU Gazetteer of Planetary Nomenclature</a></td><td>Crater and sea names, coordinates and sizes</td></tr>
+          <tr><td><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">NASA DONKI</a></td><td>Real solar storms (flares, CMEs, particle events) with their real dates</td></tr>
+          <tr><td><a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a></td><td>Where the Sun and Earth sit in the sky at each site, for day/night and comm windows</td></tr>
+          <tr><td><a href="https://pds-geosciences.wustl.edu/missions/lro/lola.htm" target="_blank" rel="noopener">LRO LOLA</a></td><td>How much sunlight each south-pole site gets, and the dark craters where ice hides</td></tr>
+          <tr><td><a href="https://nssdc.gsfc.nasa.gov/" target="_blank" rel="noopener">NSSDCA</a></td><td>The hardware on the Moon, and the lessons from past missions</td></tr>
+          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's color map</td></tr>
+          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings in Cadet mode</td></tr>
         </tbody>
       </table></div>
-      <p class="muted">Integrity and Carroll are names the Artemis II crew proposed, not IAU names; their locations are estimates from the crew's directions.</p>
+      <p class="muted">When the mission server is not running, the game uses a small practice model and says "Sample data". The storms in it are still real DONKI events.</p>
     </section>
   </div>
 

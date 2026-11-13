@@ -18,6 +18,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
   let mode = "off", wsBroken = false, starting = false, srOn = false;
+  let lastContext = null;
   let finalBuf = "", interim = "", turnAsked = false, kidTalking = false, state = "off";
   const ptt = { held: false, tail: null };
   const turnText = () => (finalBuf + " " + interim).trim();
@@ -43,7 +44,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
 
   const listener = createListener({
     message(m) {
-      if (m.t === "ready") idle();
+      if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
       // While the guide or the crew is playing, the open mic hears the speakers too (echo cancellation misses some of it).
       // Then only a held Space counts as the kid; open-mic words and turns are ignored.
       else if ((m.t === "words" || m.t === "turn") && isOutputBusy() && !ptt.held && !kidTalking) return;
@@ -124,6 +125,8 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     /** Show the guide speaking / thinking / back to listening. Never overrides the kid's own turn. */
     show(s) { if (kidTalking || ptt.held) return; if (s === "idle") idle(); else set(s); },
     clearWords() { wordsEl.textContent = ""; },
+    /** Forward a context frame on the listen socket (kept and re-sent when the socket becomes ready). */
+    sendContext(frame) { lastContext = frame; listener.send(frame); },
     get kidTalking() { return kidTalking || ptt.held; },
     get micOn() { return mode === "ws" || srOn; },
   };

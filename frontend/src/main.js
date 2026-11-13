@@ -8,6 +8,7 @@ import { createPlayer } from "./player.js";
 import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
+import { createMissionUI } from "./mission/ui.js";
 import { chime, speak, stopSpeaking, isSpeaking, STORY_VOICE } from "./sound.js";
 
 const $ = id => document.getElementById(id);
@@ -43,6 +44,10 @@ async function boot() {
     onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
   });
+  const missionUI = createMissionUI({
+    globe, card, placeById, say: t => guideSay(t), onContext: f => voice.sendContext(f),
+    alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+  });
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
@@ -60,6 +65,7 @@ async function boot() {
     if (turn.lastPlace) c.last_place = turn.lastPlace;
     if (turn.emotion) c.emotion = turn.emotion;
     const p = player.playing; if (p) c.playing = p;
+    const m = missionUI.active && missionUI.context(); if (m) c.mission = m;
     return c;
   };
 
@@ -70,6 +76,7 @@ async function boot() {
     const text = (raw || "").trim(); if (!text) return;
     const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
+    if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
     let r;
     try { r = await api.ask(text, context()); }
     catch (e) {
@@ -79,6 +86,12 @@ async function boot() {
     for (let w = 0; voice.kidTalking && w < 100; w++) await new Promise(res => setTimeout(res, 100));   // WAIT
     if (my !== turn.seq) return;
     voice.clearWords();
+    if (missionUI.active) {
+      // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
+      if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
+      card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
+      await guideSay(r.say); return;
+    }
     await act(r, text, my);
   }
 
@@ -215,6 +228,7 @@ async function boot() {
   addEventListener("keydown", e => { if (e.code === "Space" && tour.active && !(e.target && e.target.closest && e.target.closest("input, textarea"))) { stopSpeaking(); cancelTour(); } }, true);
 
   function onTap(p) {
+    if (missionUI.active) return;   // the globe is a map of the outpost in mission mode
     voice.clearWords(); cancelTour();
     if (missions.onTap(p)) return;
     const { f, d } = globe.nearest(p);
@@ -238,6 +252,7 @@ async function boot() {
   function scheduleNudge() {
     clearTimeout(nudgeT);
     nudgeT = setTimeout(async () => {
+      if (missionUI.active) return;
       if (voice.kidTalking || isSpeaking() || player.active) return;
       const n = $("nudge");
       if (!missions.started && !missions.open) { n.textContent = "Try a mission?"; n.onclick = () => { cancelNudge(); missions.openCard(); }; n.hidden = false; return; }
@@ -262,8 +277,28 @@ async function boot() {
     runTour(hw.map(a => a.id), `Here is the hardware people left on the Moon. ${hw.length} stops!`);
   };
 
-  // open on the crew's view of Orientale
-  if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
+  // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
+  const PH = { mission: "Or type: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon" };
+  function setMode(mode) {
+    const m = mode === "cadet" ? "cadet" : "mission";
+    document.body.dataset.mode = m;
+    $("modeMission").setAttribute("aria-pressed", m === "mission"); $("modeCadet").setAttribute("aria-pressed", m === "cadet");
+    $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
+    try { localStorage.setItem("atm-mode", m); } catch (e) { /* private mode */ }
+    cancelTour(); cancelNudge(); stopSpeaking();
+    if (m === "mission") {
+      if (player.active) player.stop(true);
+      if (missions.open) $("mClose").click();
+      missionUI.enter();
+    } else {
+      missionUI.exit(); card.hide();
+      if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
+    }
+  }
+  $("modeMission").onclick = () => setMode("mission");
+  $("modeCadet").onclick = () => setMode("cadet");
+  let saved = null; try { saved = localStorage.getItem("atm-mode"); } catch (e) { /* none */ }
+  setMode(saved || "mission");
 }
 
 boot();
