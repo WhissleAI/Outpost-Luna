@@ -19,6 +19,9 @@ def summarize(out: dict | None) -> dict:
         "numbers": [s["text"] for s in spans if s.get("family") == "number" and s["type"] != "entity.numeral"],
         "pii": pii,
         "hard_pii": sorted(set(pii) & HARD_PII),
+        # The words behind each PII tag, so the Director can drop false hits on Moon names ("Moon" -> street_address).
+        "pii_spans": [{"type": s["type"].split(".")[-1], "text": s.get("text", "")} for s in spans
+                      if s.get("family") == "pii"],
         "complete": any(e.get("type") == "discourse.assistant.command_complete" for e in out.get("events") or []),
         "ms": out.get("ms"),
     }

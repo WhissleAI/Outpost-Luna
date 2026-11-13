@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from dataclasses import asdict
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +11,7 @@ from . import llm, models_client
 from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
-from .director import direct
+from .director import _voice as voice_moment, direct
 from .moments import MomentIndex, public
 from .readout import summarize
 
@@ -50,14 +48,14 @@ class AskRequest(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "places": len(S["gaz"].places), "clips": len(S["index"].clips),
+    return {"ok": True, "places": len(S["gaz"].places), "artifacts": len(S["gaz"].artifacts), "clips": len(S["index"].clips),
             "moments": len(S["index"].moments), "facts": len(S["index"].facts), "glossary": len(S["index"].glossary_terms),
             "llm": "on" if llm.available() else "off", "model_server": await models_client.health()}
 
 
 @app.get("/api/places")
 def places():
-    return {"places": [asdict(p) for p in S["gaz"].places.values()]}
+    return {"places": [p.public() for p in S["gaz"].places.values()]}
 
 
 @app.get("/api/clips")
@@ -88,6 +86,9 @@ def moments(place: str | None = None):
 def moment(moment_id: str):
     S["index"].refresh()
     m = S["index"].get(moment_id)
+    if not m and "-voice-" in moment_id:  # an artifact's voices span ("duke-voice-apollo16_lrv")
+        p = S["gaz"].places.get(moment_id.split("-voice-", 1)[1])
+        m = voice_moment(p, S["index"]) if p else None
     if not m:
         raise HTTPException(404, "no such moment")
     return public(m)

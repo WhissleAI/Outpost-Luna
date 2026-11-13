@@ -61,7 +61,7 @@ class Place:
         d = {k: getattr(self, k) for k in ("id", "name", "lat", "lon", "diameter_km", "fact", "estimated", "aliases",
                                            "kind")}
         if self.kind == "artifact":
-            d["artifact_kind"] = self.type
+            d["type"] = self.type  # lander|rover|impact|instrument|memorial (artifacts.json `kind`)
             d.update({k: getattr(self, k) for k in ARTIFACT_FIELDS})
         return d
 
@@ -75,6 +75,8 @@ def _spoken_variants(alias: str) -> set[str]:
     return out
 
 
+HARDWARE_WORDS = {"moon", "lunar", "buggy", "buggies", "rover", "rovers", "lander", "landers", "module", "lrv", "rocket",
+                  "apollo", "surveyor", "ranger", "luna", "the", "a", "show", "me", "drove", "who", "space", "spacecraft"}
 KIND_WORDS = {"lander": ["lander", "lunar module", "landing site"], "rover": ["rover", "moon buggy", "buggy"],
               "impact": ["impact", "crash site", "impact site"]}
 
@@ -111,6 +113,8 @@ class Gazetteer:
             for a in {p.name, *p.aliases}:
                 self._keys.append((norm(a), p.id))
         self._names = [k for k, _ in self._keys]
+        # Every word of every name/alias, plus Moon hardware words: used to drop false PII hits on Moon talk.
+        self.vocab = {w for k in self._names for w in k.split() if not w.isdigit()} | HARDWARE_WORDS
 
     @property
     def features(self) -> list[Place]:

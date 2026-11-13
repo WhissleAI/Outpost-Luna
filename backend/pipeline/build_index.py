@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
         events.sort(key=lambda e: (e["i"] is None, e["i"] or 0))
         speakers = sorted({w[2] for w in words if w[2] >= 0})
         out.append({"id": c["id"], "title": c["title"], "file": f"/media/audio/{c['stem']}.mp3",
-                    "url": c.get("url"), "set": c.get("set"), "transcript": src, "speakers": speakers,
+                    "url": c.get("url"), "set": c.get("set"), "who": c.get("who"), "transcript": src, "speakers": speakers,
                     "dur": round(words[-1][3] + 1), "words": words, "tags": [tags[i] for i in sorted(tags)],
                     "utterances": utts, "events": events, "tagger_ms": arc.get("ms")})
         stats["places"] = stats.get("places", 0) + sum(t["type"] == "FEATURE" for t in tags.values())
