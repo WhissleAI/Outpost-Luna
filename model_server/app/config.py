@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     # Handles per domain kept warm. A handle is not thread-safe, so each request borrows one.
     arctag_pool_size: int = 2
     arctag_domains: str = "assistant,news,talk"
+    # Live dedicated handles for WS /v1/tag/stream (one per connection). Over the cap, new connections close with 1013.
+    tag_stream_max: int = 16
 
 
 settings = Settings()
