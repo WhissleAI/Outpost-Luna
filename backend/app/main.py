@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import llm, models_client
+from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
 from .moments import MomentIndex
@@ -58,6 +59,8 @@ async def ask(req: AskRequest):
     read = summarize(await models_client.tag(req.text, "assistant"))
     return await resolve(req.text, read, S["gaz"], S["index"])
 
+
+app.include_router(listen_router)
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
 app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")

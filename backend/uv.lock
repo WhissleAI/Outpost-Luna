@@ -369,6 +369,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "rapidfuzz" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -384,6 +385,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "==2.6.1" },
     { name = "rapidfuzz", specifier = "==3.10.1" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.32.1" },
+    { name = "websockets", specifier = "==17.4" },
 ]
 
 [package.metadata.requires-dev]
