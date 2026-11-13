@@ -553,7 +553,7 @@ body[data-mode="mission"] .stage:has(.m-debrief:not([hidden])) .card{display:non
 .m-chart polyline.c-power{stroke:var(--c-power)} .m-chart polyline.c-life{stroke:var(--c-life)} .m-chart polyline.c-dose{stroke:var(--c-dose)}
 .c-grid{stroke:var(--line);stroke-width:1}
 .c-ax{font-family:var(--f-mono);font-size:10px;fill:var(--dim)}
-.c-lab{font-size:11px;font-weight:600;fill:var(--mute)}
+.c-lab{font-size:11px;font-weight:600;fill:var(--mute);paint-order:stroke;stroke:var(--surface);stroke-width:3px}
 .c-ev line{stroke:var(--mute);stroke-width:1;stroke-dasharray:3 3}
 .c-ev text{font-size:10px;fill:var(--mute)}
 .c-cross{stroke:var(--ink);stroke-width:1;opacity:.4}

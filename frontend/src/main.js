@@ -285,7 +285,7 @@ async function boot() {
     $("modeMission").setAttribute("aria-pressed", m === "mission"); $("modeCadet").setAttribute("aria-pressed", m === "cadet");
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
     try { localStorage.setItem("atm-mode", m); } catch (e) { /* private mode */ }
-    cancelTour(); cancelNudge();
+    cancelTour(); cancelNudge(); stopSpeaking();
     if (m === "mission") {
       if (player.active) player.stop(true);
       if (missions.open) $("mClose").click();

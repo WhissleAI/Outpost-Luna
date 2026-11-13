@@ -132,7 +132,7 @@ function apply(m, c) {
     const cur = m.loads[c.to], a = c.amount || {}, v = a.value ?? 0;
     const target = a.kind === "percent" ? v : a.kind === "delta" ? cur + v : a.kind === "all" ? 100 : a.kind === "half" ? 50 : a.kind === "little" ? cur + 5 : a.kind === "none" ? 0 : cur;
     const risky = target >= 90 || ((c.to === "heaters" || c.to === "life_support") && target <= 0);
-    if (risky && !c._confirmed) { m.pending = c; const rb = `Put ${NAME[c.to]} at ${clamp(Math.round(target))} percent? That takes power from everything else.`; return { ok: true, needs_confirm: true, readback: rb, say: rb + " Say yes or no.", events: [] }; }
+    if (risky && !c._confirmed) { m.pending = c; const rb = target <= 0 ? `Turn ${NAME[c.to]} off? ${c.to === "heaters" ? "Things can freeze in the dark." : "The crew needs air and water."}` : `Put ${NAME[c.to]} at ${clamp(Math.round(target))} percent? That takes power from everything else.`; return { ok: true, needs_confirm: true, readback: rb, say: rb + " Say yes or no.", events: [] }; }
     setLoad(m, c.to, target);
     const rb = `${cap(NAME[c.to])} at ${m.loads[c.to]} percent.`; m.log.push({ t_h: m.t, text: rb, kind: "command" });
     return { ok: true, readback: rb, say: "Copy. " + rb, events: [] };

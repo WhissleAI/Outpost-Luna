@@ -343,24 +343,27 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const marks = tl.filter(d => (d.events || []).length).map(d => { const k = d.events.includes("solar_storm") ? "storm" : d.events.some(e => e === "low_power" || e === "dose_alert") ? "warn" : "info";
       return k === "info" ? "" : `<g class="c-ev is-${k}"><line x1="${x(d.t_h)}" x2="${x(d.t_h)}" y1="${T}" y2="${H - B}"/><text x="${x(d.t_h) + 3}" y="${T + 9}">${k === "storm" ? "☀ storm" : "⚠"}</text></g>`; }).join("");
     const last = tl[tl.length - 1];
-    const labels = series.map(([k, n, f]) => { const yy = y(f(last)); return `<text class="c-lab" x="${W - Rm - 2}" y="${(yy < T + 14 ? yy + 13 : yy - 5).toFixed(1)}" text-anchor="end">${n.split(" (")[0]}</text>`; }).join("");
+    // direct labels at the line ends, nudged apart so they never collide
+    const ly = series.map(([k, n, f]) => ({ n: n.split(" (")[0], y: Math.max(T + 10, y(f(last)) - 5) })).sort((a, b) => a.y - b.y);
+    ly.forEach((l, i) => { if (i && l.y - ly[i - 1].y < 13) l.y = ly[i - 1].y + 13; });
+    const labels = ly.map(l => `<text class="c-lab" x="${W - Rm - 2}" y="${l.y.toFixed(1)}" text-anchor="end">${l.n}</text>`).join("");
     window.__mChart = { tl, x, series, lim, L, W, Rm };
     return `<figure class="m-chart"><figcaption><span class="eyebrow">Your 3 resources</span>
       <span class="m-legend">${series.map(([k, n]) => `<span><i class="c-${k}"></i>${n}</span>`).join("")}<span><i class="c-storm"></i>Solar storm</span></span></figcaption>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of power, life support and radiation dose">${grid}${days.join("")}${marks}${lines}${labels}
-      <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="-10" x2="-10"/></svg><div class="c-tip" id="cTip" hidden></div></figure>`;
+      <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="0" x2="0" visibility="hidden"/></svg><div class="c-tip" id="cTip" hidden></div></figure>`;
   }
   function wireChart() {
     const svg = debriefEl.querySelector(".m-chart svg"), tip = $("cTip"), cross = $("cCross"), c = window.__mChart; if (!svg || !c) return;
     svg.addEventListener("pointermove", e => {
       const r = svg.getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * c.W;
       let best = c.tl[0]; c.tl.forEach(d => { if (Math.abs(c.x(d.t_h) - vx) < Math.abs(c.x(best.t_h) - vx)) best = d; });
-      cross.setAttribute("x1", c.x(best.t_h)); cross.setAttribute("x2", c.x(best.t_h));
+      cross.setAttribute("x1", c.x(best.t_h)); cross.setAttribute("x2", c.x(best.t_h)); cross.setAttribute("visibility", "visible");
       tip.hidden = false; tip.style.left = (c.x(best.t_h) / c.W * 100) + "%";
       tip.innerHTML = `<b>Day ${Math.floor(best.t_h / 24) + 1}, hour ${best.t_h % 24}</b>` + c.series.map(([k, n, f]) => `<span><i class="c-${k}"></i>${n.split(" (")[0]} ${k === "dose" ? (+best.dose_msv).toFixed(1) + " mSv" : Math.round(f(best)) + "%"}</span>`).join("")
         + ((best.events || []).length ? `<span>${esc(best.events.join(", ").replace(/_/g, " "))}</span>` : "");
     });
-    svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("x1", -10); cross.setAttribute("x2", -10); });
+    svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }
 
   return {
