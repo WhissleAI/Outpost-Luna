@@ -1,20 +1,25 @@
 // Live mic over WS /ws/listen: mic → AudioWorklet → 16 kHz PCM16 mono, 80 ms frames → server.
+// The worklet runs at the AudioContext's real rate (`sampleRate`, often 48 kHz or 44.1 kHz) and resamples by linear
+// interpolation, carrying the last sample across 128-frame blocks so non-integer ratios (44.1k) don't drift.
+// echoCancellation / noiseSuppression / autoGainControl stay on: the guide now plays as in-page audio (floor.js),
+// which the echo canceller can subtract. on.level(rms 0..1) reports the mic level per 80 ms frame (the meter).
 // Server → {t:"ready"|"words"|"turn"|"arc"|"emotion"|"error"}. Resolves start() false when the socket can't open,
 // so the caller can fall back to Web Speech.
 
-const WORKLET = `
+export const WORKLET = `
 class Pcm16 extends AudioWorkletProcessor {
-  constructor(){ super(); this.ratio = sampleRate / 16000; this.pos = 0; this.buf = new Int16Array(1280); this.n = 0; }
+  constructor(){ super(); this.ratio = sampleRate / 16000; this.pos = 0; this.last = 0; this.buf = new Int16Array(1280); this.n = 0; }
   process(inputs){
     const ch = inputs[0] && inputs[0][0]; if (!ch) return true;
-    // linear-interpolation resample to 16 kHz
-    while (this.pos < ch.length - 1) {
-      const i = Math.floor(this.pos), f = this.pos - i, s = ch[i] * (1 - f) + ch[i + 1] * f;
+    // linear-interpolation resample to 16 kHz; index -1 is the previous block's last sample
+    const L = ch.length;
+    while (this.pos < L - 1) {
+      const i = Math.floor(this.pos), f = this.pos - i, a = i < 0 ? this.last : ch[i], s = a * (1 - f) + ch[i + 1] * f;
       const v = Math.max(-1, Math.min(1, s)); this.buf[this.n++] = v < 0 ? v * 0x8000 : v * 0x7fff;
       if (this.n === this.buf.length) { this.port.postMessage(this.buf.buffer, [this.buf.buffer]); this.buf = new Int16Array(1280); this.n = 0; }
       this.pos += this.ratio;
     }
-    this.pos -= ch.length; if (this.pos < 0) this.pos = 0;
+    this.pos -= L; this.last = ch[L - 1];
     return true;
   }
 }
@@ -42,11 +47,15 @@ export function createListener(on) {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
       const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
       await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
       src = ctx.createMediaStreamSource(stream);
       node = new AudioWorkletNode(ctx, "pcm16-80ms");
-      node.port.onmessage = e => { if (ws && ws.readyState === 1) ws.send(e.data); };
+      node.port.onmessage = e => {
+        if (ws && ws.readyState === 1) ws.send(e.data);
+        if (on.level) { const a = new Int16Array(e.data); let sum = 0; for (let k = 0; k < a.length; k += 4) sum += a[k] * a[k]; on.level(Math.sqrt(sum / (a.length / 4)) / 32768); }
+      };
       const mute = ctx.createGain(); mute.gain.value = 0;
       src.connect(node).connect(mute).connect(ctx.destination);
       live = true; return true;
@@ -73,5 +82,5 @@ export function createListener(on) {
   /** Send a JSON control frame (e.g. {t:"context",…}) when the socket is open. Returns whether it was sent. */
   function send(obj) { if (!ws || ws.readyState !== 1) return false; try { ws.send(JSON.stringify(obj)); return true; } catch (e) { return false; } }
 
-  return { start, stop, send, get live() { return live; } };
+  return { start, stop, send, get live() { return live; }, get sampleRate() { return ctx ? ctx.sampleRate : 0; } };
 }

@@ -11,7 +11,10 @@ import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
-import { chime, speak, stopSpeaking, isSpeaking, STORY_VOICE } from "./sound.js";
+import { chime } from "./sound.js";
+// ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
+import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE } from "./floor.js";
+// ---- end audio floor ----
 
 const $ = id => document.getElementById(id);
 const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?", "What did Surveyor 3 do?",
@@ -49,12 +52,12 @@ async function boot() {
     isOutputBusy: () => isSpeaking() || player.active,
   });
   const missionUI = createMissionUI({
-    globe, card, placeById, say: t => guideSay(t), onContext: f => voice.sendContext(f), askDirector: t => ask(t),
+    globe, card, placeById, say: t => guideSay(t, { voice: CAPCOM_VOICE }) /* audio floor: CAPCOM voice */, onContext: f => voice.sendContext(f), askDirector: t => ask(t),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
   const academyUI = createAcademyUI({
-    globe, placeById, player, say: t => guideSay(t), stop: () => stopSpeaking(),
+    globe, placeById, player, say: t => guideSay(t, { voice: CAPCOM_VOICE }) /* floor.say, CAPCOM voice */, stop: () => stopSpeaking(),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
     goMission: () => setMode("mission"),
     openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
@@ -104,7 +107,7 @@ async function boot() {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
       if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
       card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
-      await guideSay(r.say); return;
+      await guideSay(r.say, { voice: CAPCOM_VOICE }); return;   // audio floor: CAPCOM voice
     }
     await act(r, text, my);
   }

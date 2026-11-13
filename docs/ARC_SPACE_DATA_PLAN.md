@@ -19,8 +19,9 @@ it streams: where, who, what happened, what they want, how it feels, when to ans
 - the synthetic data to generate;
 - how to fine-tune with name lists as context, so any list works at runtime.
 
-The product using it is **Ask the Moon** (this repo), a voice-first 3D Moon for kids built for NASA Space Apps 2026 on
-the challenge *Abandoned but not Forgotten: Storytelling about NASA's Discarded Equipment on the Moon and Mars*.
+The product using it is **Moonbase Cadet** (this repo; formerly Ask the Moon), a voice-first Junior Astronaut Mission
+Trainer for kids 7–12 built for NASA Space Apps 2026 on the challenge *Build a Junior Astronaut Mission Trainer*: an
+Academy of voice lessons, then commanding an Artemis-era south-pole outpost by voice against real NASA data.
 
 Contents:
 1. Why: smart transcription, on-device
