@@ -1,48 +1,56 @@
 // Wiring only: load places, build the modules, route asks / taps / voice turns between them.
 import "./styles.css";
-import { api, normMoment } from "./api.js";
+import { api, normMoment, hwType } from "./api.js";
+import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
-import { chime, speak, stopSpeaking, isSpeaking } from "./sound.js";
+import { chime, speak, stopSpeaking, isSpeaking, STORY_VOICE } from "./sound.js";
 
 const $ = id => document.getElementById(id);
-const CHIPS = ["Where did Apollo 11 land?", "Show me the giant bullseye", "What did the astronauts say about the yellow part?",
-  "Show me the far side", "Where will astronauts land next?", "Which crater did the crew name after their spaceship?"];
+const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?", "What did Surveyor 3 do?",
+  "Who drove the Apollo 16 rover?", "What did the astronauts see?", "Play the launch"];
+const HW_LABEL = { lander: "Lander", rover: "Rover", impact: "Impact site", instrument: "Instrument", memorial: "Memorial" };
+const TOUR_MS = 3000;   // minimum time at each tour stop
+/** First two sentences: a tour stop's short story. */
+const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0, 2).join(" ").trim();
 
 async function boot() {
   initAbout();
   let places;
   try { places = await api.places(); }
   catch (e) { $("loading").textContent = "Can't reach the backend. Start everything with `make dev`."; return; }
+  // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
+  const sample = !places.some(p => p.kind === "artifact");
+  if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
   const byId = Object.fromEntries(places.map(f => [f.id, f]));
   const placeById = id => byId[id] || null;
 
   const turn = { lastPlace: null, emotion: null, seq: 0 };
   const card = createCard();
-  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap });
+  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
   });
   const voice = createVoice({
     onTurn: text => ask(text),
-    onBargeIn: () => { cancelNudge(); if (isSpeaking()) stopSpeaking(); player.duck(); },
+    onBargeIn: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); player.duck(); },
     onKidDone: () => player.unduck(),
     onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
   });
-  const missions = createMissions({ globe, placeById, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
+  const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
-  async function guideSay(text, { keepCrew } = {}) {
+  async function guideSay(text, { keepCrew, voice: v } = {}) {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text);
+    const ok = await speak(text, v);
     voice.show("idle");
     return ok;
   }
@@ -55,9 +63,12 @@ async function boot() {
     return c;
   };
 
+  /** The hardware tells its own story, in its own voice. */
+  const storySay = text => guideSay(text, { voice: STORY_VOICE });
+
   async function ask(raw) {
     const text = (raw || "").trim(); if (!text) return;
-    const my = ++turn.seq; cancelNudge();
+    const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
     let r;
     try { r = await api.ask(text, context()); }
@@ -76,6 +87,8 @@ async function boot() {
     const arc = readoutLine(r);
     if (r.action === "guard") { card.show({ title: "Let's keep that private", asked, say, arc }); await guideSay(say); scheduleNudge(); return; }
     if (r.action === "ask" && r.ask) { askCard(r, asked, arc); return; }
+    if (r.action === "tour") { runTour(r.places, say, { asked, arc }); return; }
+    if (f && f.kind === "artifact") { await artifactAnswer(f, r, asked, my); return; }
     if (r.view && !f) globe.flyTo(r.view.lat, r.view.lon, 3.6);
     if (f) { if (f.id !== turn.lastPlace) chime(); globe.showFeature(f); if (r.view) globe.flyTo(r.view.lat, r.view.lon); turn.lastPlace = f.id; }
     const token = card.show({
@@ -109,8 +122,100 @@ async function boot() {
     scheduleNudge();
   }
 
-  function onTap(p) {
+  // ---------- ghost hardware ----------
+  function artifactEntry(a, extra = {}) {
+    const eyebrow = [extra.eyebrow, HW_LABEL[a.hw], sample ? "Sample data" : ""].filter(Boolean).join(" · ");
+    return { title: a.name, artifact: a, ...extra, eyebrow, actions: [...voiceActions(a), ...(extra.actions || [])] };
+  }
+  /** "▶ Hear Charlie Duke": the artifact's own audio segments, played through the crew player. */
+  function voiceActions(a) {
+    return (a.voices || []).filter(v => v && v.clip_id).map(v => ({
+      label: "▶ Hear " + (v.who || "the crew"), hot: true,
+      onClick: () => { cancelTour(); stopSpeaking(); player.play({ clip_id: v.clip_id, t0: v.t0, t1: v.t1, speaker: v.who || "crew", places: [a.id], jargon: [] }); },
+    }));
+  }
+  function focusArtifact(a) { if (a.id !== turn.lastPlace) chime(); globe.showFeature(a); turn.lastPlace = a.id; }
+
+  /** The Director answered with an artifact: its line first (guide voice), then the artifact's story (its own voice). */
+  async function artifactAnswer(a, r, asked, my) {
+    const moment = normMoment(r.moment);
+    focusArtifact(a);
+    const token = card.show(artifactEntry(a, { asked, say: r.say, arc: readoutLine(r), claims: r.claims }));
+    if (r.action !== "play") offerCrew(token, null, moment);
+    if (player.active) player.stop(true);
+    const spoke = await guideSay(r.say || "");
+    if (my !== turn.seq) return;
+    if (r.action === "play" && moment) { if (!spoke && voice.kidTalking) return; await player.play(moment); return; }
+    await storySay(a.story);
+    if (my === turn.seq) scheduleNudge();
+  }
+
+  /** Tapped a ghost marker: card + story right away, and the Director is asked about it so it stays in charge of what's said. */
+  async function onArtifact(a) {
     voice.clearWords();
+    if (missions.onTap({ lat: a.lat, lon: a.lon }, a)) return;
+    cancelTour(); cancelNudge();
+    const my = ++turn.seq;
+    focusArtifact(a);
+    const token = card.show(artifactEntry(a, { arc: readoutLine({ source: "tap", action: "fly" }) }));
+    if (player.active) player.stop(true);
+    let r = null;
+    try { r = await api.ask(a.name, context()); } catch (e) { /* the story alone is fine */ }
+    if (my !== turn.seq) return;
+    if (r && r.action !== "guard" && r.say) {
+      card.update(token, { say: r.say, claims: r.claims, arc: readoutLine(r) });
+      offerCrew(token, null, normMoment(r.moment));
+      await guideSay(r.say);
+      if (my !== turn.seq) return;
+    }
+    await storySay(a.story);
+    if (my === turn.seq) scheduleNudge();
+  }
+
+  // ---------- tour: fly through stops one by one; kid speech, Space, a tap or a new question cancels it ----------
+  const tour = { id: 0, active: false, stops: [], i: -1, timer: null, token: 0 };
+  function cancelTour(note) {
+    if (!tour.active) return;
+    tour.active = false; tour.id++; clearTimeout(tour.timer);
+    $("tourBtn").setAttribute("aria-pressed", "false");
+    card.update(tour.token, { actions: [], eyebrow: note || "Tour stopped" });
+  }
+  async function runTour(ids, intro, { asked, arc } = {}) {
+    const stops = (ids || []).map(placeById).filter(Boolean);
+    if (!stops.length) { card.show({ title: "Guide", asked, say: intro, arc }); await guideSay(intro); return; }
+    cancelTour(); cancelNudge(); ++turn.seq;
+    Object.assign(tour, { active: true, stops, i: -1 }); const my = ++tour.id;
+    $("tourBtn").setAttribute("aria-pressed", "true");
+    if (intro) {
+      tour.token = card.show({ title: "Hardware tour", eyebrow: `Tour · ${stops.length} stops`, asked, say: intro, arc, actions: tourActions(), transient: true });
+      if (player.active) player.stop(true);
+      await guideSay(intro);
+    }
+    tourStep(my, 0);
+  }
+  function tourActions() {
+    return [
+      { label: "Next ›", hot: true, onClick: () => { if (!tour.active) return; stopSpeaking(); tourStep(++tour.id, tour.i + 1); } },
+      { label: "Stop", onClick: () => { stopSpeaking(); cancelTour(); } },
+    ];
+  }
+  async function tourStep(my, i) {
+    if (my !== tour.id || !tour.active) return;
+    if (i >= tour.stops.length) { cancelTour("Tour done"); scheduleNudge(); return; }
+    tour.i = i; const a = tour.stops[i], hw = a.kind === "artifact";
+    chime(); globe.showFeature(a); turn.lastPlace = a.id;
+    const extra = { eyebrow: `Tour · stop ${i + 1} of ${tour.stops.length}`, actions: tourActions(), transient: true };
+    tour.token = card.show(hw ? artifactEntry(a, extra) : { title: a.name, place: true, say: a.fact, ...extra });
+    const t0 = performance.now();
+    if (hw) await storySay(shortStory(a.story)); else await guideSay(a.fact);
+    if (my !== tour.id) return;
+    tour.timer = setTimeout(() => tourStep(my, i + 1), Math.max(400, TOUR_MS - (performance.now() - t0)));
+  }
+  // Space always cancels a tour (even when a card button has focus).
+  addEventListener("keydown", e => { if (e.code === "Space" && tour.active && !(e.target && e.target.closest && e.target.closest("input, textarea"))) { stopSpeaking(); cancelTour(); } }, true);
+
+  function onTap(p) {
+    voice.clearWords(); cancelTour();
     if (missions.onTap(p)) return;
     const { f, d } = globe.nearest(p);
     ++turn.seq;
@@ -147,7 +252,15 @@ async function boot() {
   CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
   $("farBtn").onclick = () => globe.flyTo(0, 180, 3.6);
-  $("pinsBtn").onclick = e => { const on = globe.togglePins(); e.currentTarget.textContent = on ? "Hide pins" : "Show pins"; e.currentTarget.setAttribute("aria-pressed", on); };
+  $("pinsBtn").onclick = e => { e.currentTarget.setAttribute("aria-pressed", globe.togglePins()); };
+  $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); $("hwKey").hidden = !on; };
+  // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
+  $("tourBtn").onclick = () => {
+    if (tour.active) { stopSpeaking(); cancelTour(); return; }
+    const hw = places.filter(p => p.kind === "artifact").sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
+    if (!globe.hardwareOn) $("hwBtn").click();
+    runTour(hw.map(a => a.id), `Here is the hardware people left on the Moon. ${hw.length} stops!`);
+  };
 
   // open on the crew's view of Orientale
   if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });

@@ -124,11 +124,45 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 .label{position:absolute;left:0;top:0;pointer-events:none;transform:translate(-50%,-140%);background:var(--accent-2);color:var(--accent-2-ink);z-index:1;
   font-family:var(--f-display);font-weight:700;font-size:14px;padding:5px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.5);transition:opacity .2s}
 .label small{font-family:var(--f-body);font-weight:500;opacity:.75;margin-left:6px}
-.hud{position:absolute;left:var(--s4);top:var(--s4);display:flex;gap:var(--s2);flex-wrap:wrap;z-index:2}
+.hud{position:absolute;left:var(--s4);top:var(--s4);display:flex;flex-direction:column;align-items:flex-start;gap:6px;z-index:2}
+.hud-row,.legend{display:flex;gap:var(--s2);flex-wrap:wrap}
 .hud button{background:var(--glass);border:1px solid var(--glass-line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--on-space-mute);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .hud button:hover{color:var(--on-space)}
-.hud button[aria-pressed="false"]{color:var(--on-space)}
+/* legend toggles: Places (gold pins) · Hardware (ghost diamonds) · Tour */
+.legend button{display:inline-flex;align-items:center;gap:6px;color:var(--on-space)}
+.legend button[aria-pressed="false"]{color:var(--on-space-mute);opacity:.75}
+.legend i{display:inline-block;width:8px;height:8px;flex:none}
+.lg-place{border-radius:50%;background:var(--t-feature)}
+.lg-hw{transform:rotate(45deg);border-radius:2px;background:var(--t-dir);box-shadow:0 0 8px var(--t-dir)}
+.legend button[aria-pressed="false"] i{background:none;box-shadow:inset 0 0 0 1.5px currentColor}
+.legend .lg-tour{color:var(--accent-2)}
+.legend .lg-tour[aria-pressed="true"]{background:var(--accent-2);border-color:var(--accent-2);color:var(--accent-2-ink)}
+.hw-key{display:flex;flex-wrap:wrap;gap:4px 10px;padding:0 4px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.03em;color:var(--on-space-mute)}
+.hw-key[hidden]{display:none}
+.hw-key span{display:inline-flex;align-items:center;gap:5px}
+.hw-key span::before{content:"";width:6px;height:6px;transform:rotate(45deg);border-radius:1px;background:var(--k)}
+
+/* ---------- ghost hardware markers (positioned by globe.js) ---------- */
+.k-lander{--k:var(--t-dir)} .k-rover{--k:var(--t-awe)} .k-impact{--k:var(--t-color)} .k-instrument{--k:var(--t-geo)} .k-memorial{--k:var(--on-space)}
+.ghosts{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.ghost{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;padding:0;border:0;border-radius:50%;background:none;
+  pointer-events:auto;display:grid;place-items:center;will-change:transform}
+.ghost.is-hidden{visibility:hidden}
+.ghost::before{content:"";width:10px;height:10px;transform:rotate(45deg);border-radius:2px;background:var(--k);opacity:.92;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--k) 30%,transparent),0 0 14px 3px color-mix(in srgb,var(--k) 65%,transparent);transition:width .15s,height .15s}
+.ghost::after{content:"";position:absolute;inset:4px;border-radius:50%;border:1.5px solid var(--k);opacity:0;animation:ghostPulse 2.6s ease-out infinite}
+.ghost:hover::before,.ghost:focus-visible::before,.ghost.is-on::before{width:14px;height:14px;opacity:1}
+.ghost.is-on::after{animation-duration:1.4s}
+.ghost:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px}
+@keyframes ghostPulse{0%{opacity:.8;transform:scale(.5)}100%{opacity:0;transform:scale(1.5)}}
+/* tooltip: name · year */
+.ghost:hover,.ghost:focus-visible{z-index:2}
+.ghost:hover>.tip,.ghost:focus-visible>.tip{opacity:1;transform:translate(-50%,0)}
+.tip{position:absolute;bottom:calc(100% + 2px);left:50%;transform:translate(-50%,4px);opacity:0;pointer-events:none;white-space:nowrap;
+  font-family:var(--f-body);font-size:12.5px;font-weight:600;padding:4px 9px;border-radius:8px;transition:opacity .12s,transform .12s;
+  background:var(--glass);color:var(--on-space);border:1px solid var(--glass-line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.tip::before{content:"";display:inline-block;width:6px;height:6px;transform:rotate(45deg) translateY(-1px);border-radius:1px;background:var(--k);margin-right:7px}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--on-space-mute);font-family:var(--f-mono);font-size:13px;text-align:center;padding:var(--s5)}
 .x{flex:none;width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--dim);font-size:20px;line-height:1}
 .x:hover{background:var(--surface-2);color:var(--ink)}
@@ -148,7 +182,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 .listen-state:empty::before{content:"Mic off"}
 .live-words{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   font-size:16px;font-weight:500;color:var(--ink)}
-.live-words:empty::before{content:"Try: “show me the giant bullseye”";color:var(--dim);font-weight:400;font-size:14px}
+.live-words:empty::before{content:"Try: “who drove the Apollo 16 rover?”";color:var(--dim);font-weight:400;font-size:14px}
 .hint{flex:none;display:flex;align-items:center;gap:var(--s2);font-size:13px;color:var(--mute);white-space:nowrap}
 
 /* listening: mic is open, waiting for words */
@@ -206,7 +240,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 
 /* ---------- guide answer card ---------- */
 .card{position:absolute;z-index:3;left:var(--s4);bottom:calc(var(--s4) + var(--dock-h) + var(--s3));width:min(380px,calc(100% - 2*var(--s4)));
-  max-height:calc(100% - var(--dock-h) - 96px);overflow:auto;scrollbar-width:thin;
+  max-height:calc(100% - var(--dock-h) - 136px);overflow:auto;scrollbar-width:thin;
   background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 10px 40px rgba(0,0,0,.4);
   padding:var(--s3) var(--s4) var(--s3);display:flex;flex-direction:column;gap:var(--s2);animation:rise .22s ease-out}
 .card[hidden]{display:none}
@@ -226,6 +260,29 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 .chip-claim.is-impression{border-style:dashed;color:var(--mute);border-color:var(--dim)}
 .chip-claim.is-impression::before{content:"◌ "}
 .card-actions{display:flex;flex-wrap:wrap;gap:var(--s2)}
+/* hardware story card */
+.card-eyebrow{font-family:var(--f-mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin:0 0 -4px!important}
+.card-head h2.is-hw::before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;transform:rotate(45deg) translateY(-2px);margin-right:var(--s2);vertical-align:middle;background:var(--k,var(--t-dir))}
+.card-head h2[data-hw="lander"]{--k:var(--t-dir)} .card-head h2[data-hw="rover"]{--k:var(--t-awe)} .card-head h2[data-hw="impact"]{--k:var(--t-color)}
+.card-head h2[data-hw="instrument"]{--k:var(--t-geo)} .card-head h2[data-hw="memorial"]{--k:var(--mute)}
+.card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px var(--s2);font-size:13px;color:var(--mute)}
+.agency{font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.06em;padding:2px 7px;border-radius:6px;background:var(--accent);color:var(--accent-ink)}
+.card-img{width:100%;max-height:150px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.card-story{margin:0;padding:2px 0 2px 12px;border-left:3px solid var(--accent-2);font-size:15.5px;line-height:1.5;color:var(--ink);font-style:italic}
+.card-say+.card-story{margin-top:2px}
+.card-more summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);width:max-content;list-style:none}
+.card-more summary::-webkit-details-marker{display:none}
+.card-more summary::before{content:"+ "}
+.card-more[open] summary::before{content:"− "}
+.card-more div{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.card-more b{font-size:12px;font-family:var(--f-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--dim);font-weight:600}
+.card-more p{font-size:14px;color:var(--mute);margin:0 0 6px!important}
+.card-crew{font-size:13.5px;color:var(--mute)}
+.card-crew b{color:var(--ink);font-weight:600}
+.card-sources{display:flex;flex-wrap:wrap;gap:6px}
+.chip-src{font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--accent);text-decoration:none;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-src::after{content:" ↗"}
+.chip-src:hover{border-color:var(--accent)}
 .card .tag-src{padding-top:6px;border-top:1px dashed var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card [hidden]{display:none}
 .pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13.5px;color:var(--mute)}
@@ -284,7 +341,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 @media (max-width:859px){
   .stage{--dock-h:128px}
   .nowplaying{width:calc(100% - 2*var(--s4));min-width:0;top:60px}
-  .card{max-height:calc(100% - var(--dock-h) - 130px)}
+  .card{max-height:calc(100% - var(--dock-h) - 150px)}
   .mcard{top:60px}
 }
 @media (hover:none){ .hint{display:none} }
@@ -302,6 +359,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .askbar.is-hearing .orb i,.askbar.is-speaking .orb i{height:12px}
+  .ghost::after{opacity:.5;transform:none;animation:none}
 }
 
 /* ---------- About: the concept brief in a drawer ---------- */
