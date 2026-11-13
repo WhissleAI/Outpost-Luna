@@ -213,6 +213,14 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
 
 
 async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None) -> dict:
+    """One kid turn -> the old single-action response (docs/CONTRACT.md), plus `decisions:[…]` (docs/SESSION_CONTRACT.md
+    §2): the same answer as typed, ordered decisions. The session Director (session.py) adds proactive ones around them."""
+    out = await _direct(text, read, gaz, index, context)
+    out["decisions"] = decisions_for(out, text, context or {})
+    return out
+
+
+async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None) -> dict:
     ctx = context or {}
     q = norm(text)
     emotion = (ctx.get("emotion") or "").lower()
@@ -282,7 +290,7 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     if place is None and cands:
         names = [f"{p.name}" for p, _ in cands]
         question = f"Did you mean {names[0]}?" if len(names) == 1 else f"Did you mean {', '.join(names[:-1])} or {names[-1]}?"
-        return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands]},
+        return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands], "labels": names},
                 "place": cands[0][0].id, "view": _view(cands[0][0]), "source": "arc+link"}
     last = gaz.places.get(ctx.get("last_place") or "")
     if place is None and last and (MORE.search(target) or wants_crew or (last.kind == "artifact" and WHO.search(q))):
@@ -526,3 +534,67 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         resp["applied"] = not resp.get("needs_confirm") and resp["command"]["type"] not in ("rule", "cancel")
         resp["readback"] = say
     return {**base, **resp, "say": say}
+
+
+# ---- decisions (docs/SESSION_CONTRACT.md §2) --------------------------------------------------------------------------
+# Priorities (§3 rule 6): 0 safety/privacy guard, 1 kid barge-in, 2 critical alert, 3 answer to the kid,
+# 4 lesson/mission narration, 5 nudges.
+P_GUARD, P_BARGE, P_CRITICAL, P_ANSWER, P_NARRATION, P_NUDGE = 0, 1, 2, 3, 4, 5
+_seq = [0]
+
+
+def new_id(prefix: str = "d") -> str:
+    _seq[0] += 1
+    return f"{prefix}-{_seq[0]}"
+
+
+def decision(t: str, priority: int = P_ANSWER, after: str | None = None, **payload) -> dict:
+    d = {"t": t, "id": new_id(), "priority": priority, **{k: v for k, v in payload.items() if v is not None}}
+    if after:
+        d["after"] = after
+    return d
+
+
+YES = {"t": "typed", "text": "yes"}
+NO = {"t": "typed", "text": "no"}
+
+
+def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dict]:
+    """The single-action response -> ordered typed decisions. Visual decisions first (they apply at once), then speech;
+    anything that must wait for the line (crew audio, Yes/No) carries `after` = the say's id."""
+    a, say = r.get("action"), (r.get("say") or "").strip()
+    mission = r.get("source", "").startswith("mission") or a in ("command", "status", "houston")
+    voice = "capcom" if mission else "guide"
+    title = "CAPCOM" if mission else "Guide"
+    out: list[dict] = []
+    if a == "none":
+        return out
+    if a == "guard":
+        out.append(decision("card", P_GUARD, title="Let's keep that private", body=say, asked=asked or None))
+        out.append(decision("say", P_GUARD, text=say, voice="guide"))
+        return out
+    if r.get("state") is not None and a in ("command", "status", "houston"):
+        out.append(decision("hud", P_ANSWER, state=r["state"]))
+    if a in ("fly", "play", "view") and (r.get("place") or r.get("view")):
+        out.append(decision("fly", P_ANSWER, place=r.get("place"), view=r.get("view")))
+    if a == "tour" and r.get("places"):
+        out.append(decision("highlight", P_ANSWER, ids=r["places"]))
+    actions = []
+    if a == "ask" and r.get("ask"):
+        actions = [{"label": o, "send": {"t": "typed", "text": o}} for o in (r["ask"].get("labels") or r["ask"].get("options") or [])]
+    card = decision("card", P_ANSWER, title=title, body=say, asked=asked or None, chips=[], actions=actions,
+                    place=r.get("place"), claims=r.get("claims") or None, readout=r.get("readout"),
+                    source=r.get("source"), action=a)
+    out.append(card)
+    if say:
+        s = decision("say", P_ANSWER, text=say, voice=voice, delay_ms=r.get("delay_ms") if a == "houston" else None)
+        out.append(s)
+    else:
+        s = None
+    if a == "play" and r.get("moment"):
+        m = r["moment"]
+        out.append(decision("play", P_ANSWER, after=s["id"] if s else None, moment=m, clip_id=m.get("clip_id") or m.get("clip"),
+                            t0=m.get("t0"), t1=m.get("t1"), explain=m.get("jargon") or []))
+    if r.get("needs_confirm") and a == "command":
+        out.append(decision("ask_confirm", P_ANSWER, after=s["id"] if s else None, text=say or "Are you sure?", yes=YES, no=NO))
+    return out

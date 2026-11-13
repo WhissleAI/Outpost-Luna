@@ -31,7 +31,8 @@ const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="
  * @param {()=>void} o.alertSound
  * @param {(frame:object)=>void} o.onContext  forward a context frame to the listen socket
  */
-export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null }) {
+export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null, session = null }) {
+  // [session hook] `session` (optional): {onStart(state), endShift(state) → true when the session Director handles it}.
   const $ = id => document.getElementById(id);
   const panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
@@ -97,6 +98,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
     showHud();
+    if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
     const line = `Mission started at ${site.name}. Day 1. Check your power split, then say "end shift".`;
     capcom({ say: line }); say(line);
   }
@@ -236,6 +238,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function endShift() {
     if (!state || state.over) return;
+    if (session && !client.sample && session.endShift && session.endShift(state)) return;   // [session hook]
     const btn = $("mEnd"); if (btn) btn.disabled = true;
     let r;
     try { r = await client.advance(state.id, 1); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); if (btn) btn.disabled = false; return; }
@@ -295,6 +298,30 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (r.action === "houston") { await houston(r.say, +r.delay_ms || 2600); return true; }
     return false;
   }
+  // ---------- [session hook] decisions from the session Director (frontend/src/session.js) ----------
+  function applyRemote(s) {
+    if (!s) return;
+    if (state && s.mission_time_h !== state.mission_time_h) { prev = state; applyState(s, true); } else applyState(s);
+    if (s.over) showDebrief();
+  }
+  function alert(d) {
+    const icon = d.level === "critical" ? "☢" : d.level === "warn" ? "⚠" : "🌍";
+    if (d.level !== "info") alertSound();
+    renderBanner({ level: d.level === "critical" ? "storm" : d.level, html: `<b>${icon} ${d.level === "critical" ? "Alert" : d.level === "warn" ? "Warning" : "Update"}</b><span>${esc(d.text)}</span>` });
+  }
+  /** A CAPCOM card from a decision: body, chips, and actions whose clicks go back through `send`. */
+  function showCard(d, send) {
+    const s = state;
+    card.show({ title: d.title || "CAPCOM", asked: d.asked || "", say: d.body || "", arc: d.arc || "",
+      eyebrow: [d.hint ? "Heads up" : d.nudge ? "Coach" : "", s ? `Day ${s.day} · shift ${s.shift}` : "Mission"].filter(Boolean).join(" · "),
+      actions: (d.actions || []).map(a => ({ label: a.label, hot: true, once: true, onClick: () => send(a.send) })) });
+  }
+  function askConfirm(d, send) {
+    pending = { type: "confirm" };
+    card.show({ title: "CAPCOM", say: d.text || "Are you sure?", eyebrow: "Confirm",
+      actions: [{ label: "Yes", hot: true, once: true, onClick: () => send(d.yes) }, { label: "No", once: true, onClick: () => send(d.no) }] });
+  }
+
   function context() { return state ? { id: state.id, role: roles.size === 1 ? [...roles][0] : null } : null; }
   function pushContext() {
     if (!state) return;
@@ -371,6 +398,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   return {
     enter, exit, handleText, handleDirector, context,
+    applyRemote, alert, showCard, askConfirm, houston,   // [session hook]
     get active() { return screen !== "off"; },
     get running() { return !!state && screen === "hud"; },
     get sample() { return !!(client && client.sample); },
