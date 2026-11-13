@@ -8,3 +8,5 @@ frontend/dist/
 .cache/
 # NASA media: re-download with `make data`
 backend/data/media
+# Server TTS cache (GET /api/tts)
+backend/data/tts_cache/
