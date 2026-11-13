@@ -1,7 +1,8 @@
 // Moon Moment playback: one server moment (t0..t1 of a crew clip) with a karaoke caption, the globe following the
 // places the crew names, PAUSE_EXPLAIN for hard words (at the next sentence end, max 1 per 30 s, none in the first
 // 5 s), ducking while the kid talks, and a chime on every scene change.
-import { chime, fadeTo, speak } from "./sound.js";
+import { chime, fadeTo } from "./sound.js";
+import { floor, speak } from "./floor.js";
 import { normMoment } from "./api.js";
 
 const MAX_LINE = 14;   // words per karaoke line when the transcript has no punctuation
@@ -28,6 +29,25 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   const audio = new Audio(); audio.preload = "none";
   let P = null;          // {m, clip, a, b, lines, ends, li, wi, j, pending, lastPause, explaining, follow, spans}
   let seq = 0;
+
+  // The floor owns this element as the crew channel: it reads the moment text (echo check), pauses the crew at a
+  // sentence end so the guide can speak (§3.1), and resumes it after.
+  const momentText = () => P ? P.clip.words.slice(P.a, P.b + 1).map(w => w[1]).join(" ") : "";
+  function pauseAtSentenceEnd() {
+    if (!P || audio.paused) return Promise.resolve();
+    const my = P, t = audio.currentTime, at = Math.min(P.ends.find(e => e >= t) ?? P.t1, t + 8);
+    return new Promise(res => {
+      const iv = setInterval(async () => {
+        if (P !== my || audio.paused) { clearInterval(iv); res(); return; }
+        if (audio.currentTime >= at - 0.08) { clearInterval(iv); my.held = true; await fadeTo(audio, 0, 120); audio.pause(); res(); }
+      }, 40);
+    });
+  }
+  function resume() {
+    if (!P || !P.held || P.explaining) return;
+    P.held = false; audio.volume = 0; audio.play().catch(() => {}); fadeTo(audio, 1, 250);
+  }
+  if (floor) floor.attachCrew(audio, { text: momentText, pauseAtSentenceEnd, resume });
 
   $("npStop").onclick = () => stop();
   bar.addEventListener("click", e => {
@@ -65,6 +85,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     await seek(m.t0); if (my !== seq) return false;
     audio.volume = 1;
     try { await audio.play(); } catch (e) { bar.classList.add("is-blocked"); }   // autoplay blocked: tap the bar
+    if (floor && P && P.m === m) floor.crewPlayback("start", m.clip_id);
     return true;
   }
 
@@ -84,7 +105,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   function onTime() {
     if (!P || P.explaining) return;
     const t = audio.currentTime, W = P.clip.words;
-    if (t >= P.t1) { stop(); return; }
+    if (t >= P.t1) { stop(false, true); return; }
     // karaoke: current word i, current line li
     let i = P.a; while (i < P.b && W[i + 1][0] <= t) i++;
     if (W[i][0] > t + 0.05) i = -1;
@@ -128,22 +149,24 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   }
 
   /** End the moment (fade out). `quiet` skips the end callback (another moment or answer is taking over). */
-  function stop(quiet) { seq++; halt(quiet); }
-  function halt(quiet) {
+  function stop(quiet, natural) { seq++; halt(quiet, natural); }
+  function halt(quiet, natural) {
     const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked");
+    if (was && floor) floor.crewPlayback(natural ? "end" : "interrupted", was.m.clip_id);
     if (!audio.paused) fadeTo(audio, 0, 200).then(() => { audio.pause(); audio.volume = 1; });
     if (was && !quiet) onEnd();
   }
 
-  audio.addEventListener("ended", () => { if (P) stop(); });
+  audio.addEventListener("ended", () => { if (P) stop(false, true); });
 
   return {
     play, stop,
     get active() { return !!P; },
     /** context.playing for /api/ask */
     get playing() { return P && !audio.paused ? { clip_id: P.m.clip_id, t: +audio.currentTime.toFixed(2) } : null; },
-    duck() { if (P && !audio.paused) fadeTo(audio, 0.2, 150); },
-    unduck() { if (P && !audio.paused && !P.explaining) fadeTo(audio, 1, 250); },
+    /** Barge-in: crew to 15% (the floor tracks it, so unduck after a no-request turn restores it). */
+    duck() { if (floor) floor.duck(0.15); else if (P && !audio.paused) fadeTo(audio, 0.15, 150); },
+    unduck() { if (P && P.explaining) return; if (floor) floor.unduck(); else if (P && !audio.paused) fadeTo(audio, 1, 250); },
     dispose() { clearInterval(timer); },
   };
 }
