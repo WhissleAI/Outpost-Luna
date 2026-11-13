@@ -22,6 +22,9 @@ transcribe:      ## Word-timed transcripts for any new clips (mlx-whisper)
 index:           ## Rebuild the crew index with Arc Tagger (needs `make models` running)
 	cd backend && uv run python -m pipeline.build_index
 
+meta:            ## Arc audio metadata + awe peaks for every crew clip -> backend/data/index/audio_meta.json (needs `make models`)
+	cd backend && uv run python -m pipeline.build_audio_meta
+
 dev:             ## Run model server, backend and frontend together (Ctrl-C stops all)
 	uvx honcho@2.0.0 -f Procfile.dev start
 
@@ -46,4 +49,4 @@ health:          ## Check that all three are up
 	@curl -s localhost:8100/api/health | python3 -m json.tool | head -20
 	@curl -s -o /dev/null -w "frontend :5173 -> %{http_code}\n" localhost:5173/
 
-.PHONY: help setup data transcribe index dev models backend frontend test build health
+.PHONY: help setup data transcribe index meta dev models backend frontend test build health

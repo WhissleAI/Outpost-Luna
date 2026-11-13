@@ -349,6 +349,16 @@ Reuse Head Start's eval harness (`eval/run_ab.py`, the policy simulator) and add
 ## 10. Open questions
 
 - Answered: Arc v1.1 takes Deepgram's words directly (`arc-transcribe --asr deepgram`, `predict(..., transcript="external", words=...)`, `stream.add_words`) and still reads the audio for metadata. Still open: how long a `names` list Arc can link against before accuracy drops. Steer says verify a short candidate list rather than bias on the whole catalog.
+- Emotion (checked 2026-11-13, agent B, EMOTION=off): no local streaming emotion model fits today. (1) Arc v1.1 Mini lists
+  `affect.emotion.{neutral,happy,angry,sad,surprised}` and `affect.arousal.*` in `mini/tags.json` (status experimental,
+  gate meta.speech, domains talk/news/meeting/...), but `arc.tags(domain, include_experimental=True)` returns no `affect.*`
+  tag for any domain and `predict(...)` utterances never carry them: the readout does not expose the head. (2) The HF cache
+  `models--WhissleAI--STT-meta-1B` holds only README.md (no weights, `model_config.yaml` recorded as missing), so it would
+  need a download plus its runtime, and a 1B model is unlikely to stay near real time on CPU next to Arc. The model server
+  sends `{"t":"emotion","available":false}` once per `/v1/stream` session. To turn it on: an Arc build that exposes the
+  affect head (then read it from `live.utt` and emit only `emotion`, never age/gender). Arc's experimental audio events
+  (laughter, applause, scream, glass_break) also saturate on air-to-ground radio audio, which is why the awe score is
+  relative to the clip (app/arcmeta.py).
 - Emotion for kids: is the metadata head calibrated on children's voices? If not, use it only to adapt pacing, never to label a child.
 - What are the exact Deepgram keyterm limits for nova-3 batch vs Flux? Check the docs before relying on 100+ names.
 - Should we name the astronauts in moments? Their names are public, but the diarization-to-name map must be checked
