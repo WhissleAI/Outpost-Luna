@@ -26,6 +26,7 @@ from urllib.parse import urlencode
 import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from . import session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
 from .keyterms import base_keyterms
@@ -93,11 +94,16 @@ def context_message(d: dict) -> dict:
 async def listen(ws: WebSocket):
     await ws.accept()
     lock = asyncio.Lock()
+    # Session Director hook (docs/SESSION_CONTRACT.md §1): ?session=<id>, or `session` in a context frame, makes this
+    # relay also post its words / turn / arc / emotion into that session server-side.
+    sid = {"id": ws.query_params.get("session")}
 
     async def send(m: dict):
         with contextlib.suppress(Exception):
             async with lock:
                 await ws.send_json(m)
+        if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion"):
+            await sessions.post(sid["id"], m)
 
     if not settings.deepgram_api_key:
         await send({"t": "error", "message": "DEEPGRAM_API_KEY is not set on the backend"})
@@ -170,6 +176,8 @@ async def listen(ws: WebSocket):
                 with contextlib.suppress(ValueError, AttributeError):
                     d = json.loads(msg["text"])
                     if d.get("t") == "context":
+                        if d.get("session"):
+                            sid["id"] = str(d["session"])
                         await tee_meta(json.dumps(context_message(d)))
                         continue
                     if d.get("t") == "stop":
