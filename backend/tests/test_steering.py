@@ -61,6 +61,7 @@ def test_readback_emphasizes_numbers_and_place():
     st = S("capcom", "Copy, commander. Setting the shields to 40% at Shackleton.", situation="readback",
            places=["Shackleton"])
     assert st["markup"] and st["emph"] == ["40", "Shackleton"]
+    assert S("capcom", "Shields to 40. Shields now get 40%.", situation="readback")["emph"] == ["40"]   # once each
     assert steering.apply_emphasis("Shields to 40% at Shackleton.", st["emph"]) == "Shields to *40*% at *Shackleton*."
     assert steering.apply_emphasis("Go to Mare Tranquillitatis.", ["Mare Tranquillitatis"]) == \
         "Go to <emph>Mare Tranquillitatis</emph>."

@@ -82,7 +82,9 @@ def emphasis(text: str, places: list[str] | None = None, numbers: bool = True) -
     """Words/phrases to emphasize: key numbers and the place name(s) that appear in the text."""
     out: list[str] = []
     if numbers:
-        out += [m for m in _NUM.findall(text)][:3]
+        for m in _NUM.findall(text):
+            if m not in out and len(out) < 3:
+                out.append(m)
     for p in places or []:
         if p and p.lower() in text.lower() and p not in out:
             out.append(p)
