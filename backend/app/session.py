@@ -22,7 +22,7 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from . import director, models_client
+from . import director, models_client, steering
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
 from .gazetteer import norm
 from .mission import capcom
@@ -307,6 +307,8 @@ class Session:
             for d in ds:
                 if d["t"] == "say":
                     d["text"] = "Okay, we've got this. " + capcom.short(d["text"])
+                    d["style"] = steering.style_for(d.get("voice") or "capcom", d["text"], emotion=emotion,
+                                                    situation=(d.get("style") or {}).get("situation") or "storm_alert")
         # Multi-stream: a storm starting within the next shift → one warning alongside the answer.
         if b["mission_id"] and r.get("action") in ("command", "status"):
             ds += self._storm_lookahead()
@@ -368,6 +370,9 @@ class Session:
             out += self.proactive(e)
         return out
 
+    def _emotion(self) -> str | None:
+        return self.belief["kid"].get("emotion") or None
+
     def proactive(self, e: dict) -> list[dict]:
         """One sim event → decisions. Text mirrors the sim's own line; CAPCOM speaks short."""
         kind, s = e.get("kind"), self.belief["state"] or {}
@@ -385,7 +390,8 @@ class Session:
             if calm:
                 line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
-            say = decision("say", pri, text=line, voice="capcom", proactive=True)
+            say = decision("say", pri, text=line, voice="capcom", proactive=True,
+                           situation="storm_warning" if warning else "storm_alert", emotion=self._emotion())
             card = decision("card", pri, title="CAPCOM", body=e.get("text") or line, chips=["Solar storm", src or "NASA"],
                             actions=[{"label": "Go to shelter", "send": {"t": "typed", "text": "go to the shelter"}},
                                      {"label": "Shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
@@ -396,11 +402,17 @@ class Session:
         if kind == "comm_open":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Comm window open."),
                     decision("say", P_NARRATION, text="Houston can hear us. Comm window open.", voice="capcom",
-                             proactive=True)]
+                             proactive=True, situation="comm_open", emotion=self._emotion())]
+        if kind == "storm_end":
+            return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "The storm is over.", source=src),
+                    decision("say", P_NARRATION, text="The storm is over. All clear, Commander!", voice="capcom",
+                             proactive=True, situation="all_clear", emotion=self._emotion())]
         if kind == "dose_alert":
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Radiation is high.", source=src)]
         if kind in ("low_power",) or (kind == "sunset" and ((s.get("resources") or {}).get("power_pct") or 100) < 35):
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Battery is low."),
+                    decision("say", P_NARRATION, text="It's dark and the battery is low. Let's save power together.",
+                             voice="capcom", proactive=True, situation="night_low_power", emotion=self._emotion()),
                     decision("card", P_NUDGE, title="Coach", nudge=True,
                              body="Dark and low battery: turn science and the rover down, keep heaters and life support on.",
                              actions=[{"label": "Science to 5", "send": {"t": "typed", "text": "science to 5"}}])]
@@ -408,7 +420,7 @@ class Session:
             return [decision("alert", P_CRITICAL if kind == "failure" else P_NARRATION,
                              level="critical" if kind == "failure" else "info", text=e.get("text") or kind),
                     decision("say", P_CRITICAL if kind == "failure" else P_NARRATION, text=e.get("text") or "",
-                             voice="capcom", proactive=True)]
+                             voice="capcom", proactive=True, situation=kind, emotion=self._emotion())]
         return []
 
     def _storm_of(self, e: dict):
@@ -459,7 +471,8 @@ class Session:
             out = [decision("hud", P_ANSWER, state=r["state"])]
             evs = await self._new_events(spoken=True)
             text = r.get("say") or ""
-            say = decision("say", P_NARRATION, text=text, voice="capcom") if text else None
+            say = decision("say", P_NARRATION, text=text, voice="capcom", situation=steering.situation_for(
+                {"action": "status", "state": r["state"]}), emotion=self._emotion()) if text else None
             card = decision("card", P_NARRATION, title="CAPCOM", body=text, chips=[])
             out += [card] + ([say] if say else [])
             out += self._storm_lookahead()

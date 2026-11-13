@@ -10,7 +10,7 @@ from __future__ import annotations
 import inspect
 import re
 
-from . import claims, llm
+from . import claims, llm, steering
 from .mission import capcom, nlu
 from .gazetteer import Gazetteer, Place, norm
 from .moments import MomentIndex, public
@@ -216,7 +216,11 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     """One kid turn -> the old single-action response (docs/CONTRACT.md), plus `decisions:[…]` (docs/SESSION_CONTRACT.md
     §2): the same answer as typed, ordered decisions. The session Director (session.py) adds proactive ones around them."""
     out = await _direct(text, read, gaz, index, context)
-    out["decisions"] = decisions_for(out, text, context or {})
+    ctx = dict(context or {})
+    p = gaz.places.get(out.get("place")) if out.get("place") else None
+    if p is not None:
+        ctx["place_name"] = p.name
+    out["decisions"] = decisions_for(out, text, ctx)
     return out
 
 
@@ -548,7 +552,13 @@ def new_id(prefix: str = "d") -> str:
     return f"{prefix}-{_seq[0]}"
 
 
-def decision(t: str, priority: int = P_ANSWER, after: str | None = None, **payload) -> dict:
+def decision(t: str, priority: int = P_ANSWER, after: str | None = None, situation: str | None = None,
+             emotion: str | None = None, places: list[str] | None = None, **payload) -> dict:
+    """One typed decision. Every `say` carries `style` (backend/app/steering.py): from the situation, the kid's affect
+    and the persona voice, unless the caller passes one."""
+    if t == "say" and "style" not in payload:
+        payload["style"] = steering.style_for(payload.get("voice") or "guide", payload.get("text") or "",
+                                              situation=situation, emotion=emotion, places=places)
     d = {"t": t, "id": new_id(), "priority": priority, **{k: v for k, v in payload.items() if v is not None}}
     if after:
         d["after"] = after
@@ -563,15 +573,18 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     """The single-action response -> ordered typed decisions. Visual decisions first (they apply at once), then speech;
     anything that must wait for the line (crew audio, Yes/No) carries `after` = the say's id."""
     a, say = r.get("action"), (r.get("say") or "").strip()
+    ctx = ctx or {}
     mission = r.get("source", "").startswith("mission") or a in ("command", "status", "houston")
-    voice = "capcom" if mission else "guide"
+    voice = "houston" if a == "houston" else "capcom" if mission else "guide"
+    steer = {"situation": steering.situation_for(r), "emotion": ctx.get("emotion"),
+             "places": [ctx["place_name"]] if ctx.get("place_name") else None}
     title = "CAPCOM" if mission else "Guide"
     out: list[dict] = []
     if a == "none":
         return out
     if a == "guard":
         out.append(decision("card", P_GUARD, title="Let's keep that private", body=say, asked=asked or None))
-        out.append(decision("say", P_GUARD, text=say, voice="guide"))
+        out.append(decision("say", P_GUARD, text=say, voice="guide", situation="guard"))
         return out
     if r.get("state") is not None and a in ("command", "status", "houston"):
         out.append(decision("hud", P_ANSWER, state=r["state"]))
@@ -587,7 +600,8 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
                     source=r.get("source"), action=a)
     out.append(card)
     if say:
-        s = decision("say", P_ANSWER, text=say, voice=voice, delay_ms=r.get("delay_ms") if a == "houston" else None)
+        s = decision("say", P_ANSWER, text=say, voice=voice, delay_ms=r.get("delay_ms") if a == "houston" else None,
+                     **steer)
         out.append(s)
     else:
         s = None
