@@ -60,7 +60,7 @@ SPLIT = re.compile(r"\s*(?:,|;|\band then\b|\bthen\b|\band also\b|\balso\b|\baft
 SHELTER_IN = re.compile(r"\b(shelter|hide|take cover|duck and cover|bunker|safe room|get inside|go inside|everyone in|"
                         r"everybody in)\b")
 SHELTER_OUT = re.compile(r"\b(leave|out of|come out|get out|exit|go outside|all clear)\b")
-HOUSTON = re.compile(r"\b(houston|mission control|call earth|call home|phone home|ground control|talk to earth|"
+HOUSTON = re.compile(r"\b(houston|mission control|call earth|call home|phone home|ground control|"
                      r"radio earth|message earth)\b")
 END_SHIFT = re.compile(r"^(end( the| this| my)? (shift|turn|day)|next( shift| turn)?|next please|go to sleep|sleep|"
                        r"advance( time)?|skip( ahead)?|fast forward|time to sleep|we re done( for now)?|done( for now)?|"

@@ -199,8 +199,9 @@ def houston(text: str, state: dict | None, mid: str | None = None) -> tuple[str,
 
 def short(line: str) -> str:
     """Confused / frustrated kid: the first sentence only, calm."""
-    first = re.split(r"(?<=[.!?])\s+", line.strip())[0]
-    return first.replace("!", ".")
+    body = re.sub(r"^(Copy, commander\.|Copy[.!]|Confirmed\.)\s*", "", line.strip())
+    first = re.split(r"(?<=[.!?])\s+", body)[0].replace("!", ".") if body else ""
+    return f"Copy. {first}".strip() if body != line.strip() else first
 
 
 def excited(line: str) -> str:
