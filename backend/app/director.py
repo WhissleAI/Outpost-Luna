@@ -83,7 +83,7 @@ def _voice(p: Place, index: MomentIndex) -> dict | None:
 def _who_line(p: Place) -> str:
     if not p.crew:
         return f"No one! {p.name} was a robot spacecraft, sent by {p.agency}. No people rode on it."
-    verb = "drove" if p.type == "rover" else "flew" if p.type == "lander" else "left"
+    verb = "drove" if p.type == "rover" else "landed" if p.type == "lander" else "left"
     return f"{_names(p.crew)} {verb} it, on {p.mission}."
 
 
