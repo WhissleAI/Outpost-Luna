@@ -137,7 +137,8 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 
 /* ---------- ask bar (Head Start pattern: always listening, hold Space to ask) ---------- */
 .askbar{flex:none;display:flex;flex-direction:column;gap:var(--s2);min-width:0}
-.chips{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;padding:2px}
+.chips{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;padding:2px;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 40px),transparent)}
 .chips::-webkit-scrollbar{display:none}
 .chips button{flex:none;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13.5px;color:var(--mute)}
 .chips button:hover{color:var(--ink);border-color:var(--accent)}
