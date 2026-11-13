@@ -47,28 +47,32 @@ ONES = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven":
 
 CONFIRM = re.compile(r"^(yes|yeah|yep|yup|ya|sure|ok|okay|okey dokey|do it|confirm(ed)?|go ahead|go for it|affirmative|"
                      r"roger|roger that|correct|that s right|right|i agree|agree|agreed|yes please|yes do it|"
-                     r"(ok|okay|yes|yeah) (do it|go ahead|confirm))( please| commander| captain)?$")
+                     r"(ok|okay|yes|yeah) (do it|go ahead|confirm)|(ok |okay |yeah |yes )?(that )?sounds good|let s do it|make it so|"
+                     r"engage|do that)( please| commander| captain)?$")
 CANCEL = re.compile(r"^(no|nope|nah|never ?mind|cancel( that| it)?|abort|stop|wait|don t|do not|forget it|negative|"
-                    r"no thanks|no thank you|undo|don t do it|no don t|no wait|no stop|i changed my mind)( please)?$")
+                    r"no thanks|no thank you|undo|don t do it|no don t|no wait|no stop|i changed my mind|"
+                    r"(nah |no )?forget (about )?it|nah (never ?mind|don t))( please)?$")
 NEGATION = re.compile(r"\b(don t|do not|dont|never|not|no don t|stop)\b")
-OFF = re.compile(r"\b(turn(ing)? off|switch(ing)? off|shut(ting)? (off|down)|cut|kill|power down|unplug|no power)\b")
+OFF = re.compile(r"\b(turn(ing)? off|switch(ing)? off|shut(ting)? (off|down)|cut|kill|power down|unplug|no power)\b|"
+                 r"\b(turn|switch|shut)\s+(the\s+)?\w+(\s\w+)?\s+off\b")
 ON = re.compile(r"\b(turn(ing)? on|switch(ing)? on|power up|start|boot up|wake up)\b")
 COND = re.compile(r"^(if|when|whenever|in case|as soon as)\s+(.+?)(?:,|\bthen\b|\s(?=(?:go|get|move|send|turn|put|give|"
                   r"everyone|everybody|all|take|bring|hide|shelter|call)\b))\s*(.+)$")
 SPLIT = re.compile(r"\s*(?:,|;|\band then\b|\bthen\b|\band also\b|\balso\b|\bafter that\b|\band\b)\s*")
 
+COLD = re.compile(r"\b(freezing|so cold|too cold|cold in here|it s cold|we re cold|brr+)\b")
 SHELTER_IN = re.compile(r"\b(shelter|hide|take cover|duck and cover|bunker|safe room|get inside|go inside|everyone in|"
                         r"everybody in)\b")
 SHELTER_OUT = re.compile(r"\b(leave|out of|come out|get out|exit|go outside|all clear)\b")
 HOUSTON = re.compile(r"\b(houston|mission control|call earth|call home|phone home|ground control|"
                      r"radio earth|message earth)\b")
 END_SHIFT = re.compile(r"^(end( the| this| my)? (shift|turn|day)|next( shift| turn)?|next please|go to sleep|sleep|"
-                       r"advance( time)?|skip( ahead)?|fast forward|time to sleep|we re done( for now)?|done( for now)?|"
+                       r"advance( time)?|skip( ahead)?|fast forward|time to sleep|(we re )?done( for (now|today|the day|tonight))?|"
                        r"finish (the )?(shift|turn))( please)?$")
 QUESTION = re.compile(r"^(how|what|what s|whats|when|where|is|are|do|does|did|can|will|tell me|give me a report|report|"
                       r"status|check|show me)\b|\b(how much|how many|how long|how are|is it|status|report|left)\b")
 DISPATCH_VERB = re.compile(r"\b(send|go|drive|take|use|get|move|roll|dispatch|bring|fetch|collect|dig|mine|explore|"
-                            r"fix|repair|scout|come back|return|head)\b")
+                            r"fix|repair|scout|come back|come home|return|head)\b")
 TASK_WORDS = [
     (re.compile(r"\b(ice|water|frozen water|dig|mine|collect)\b"), "collect_ice"),
     (re.compile(r"\b(fix|repair|mend)\b|\b(solar|panel|panels|array|arrays)\b"), "repair_array"),
@@ -122,6 +126,8 @@ def norm(text: str) -> str:
 def _words_to_digits(t: str) -> str:
     """'twenty five percent' -> '25 percent'; 'a hundred' -> '100'."""
     t = re.sub(r"\b(a|one) hundred\b", "100", t)
+    t = re.sub(r"\b(ten|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b(?![ -](?:" + "|".join(ONES) +
+               r")\b)", lambda m: str(NUM_WORDS[m.group(1)]), t)
     t = re.sub(r"\b(" + "|".join(TENS) + r")[ -](" + "|".join(ONES) + r")\b",
                lambda m: str(TENS[m.group(1)] + ONES[m.group(2)]), t)
     def word(m):
@@ -276,6 +282,10 @@ def clause(t: str, read: dict | None = None, prev: dict | None = None) -> tuple[
         return {"type": "cancel"}, None
     if END_SHIFT.match(t):
         return {"type": "end_shift"}, None
+    if HOUSTON.search(t) and "houston" not in t and re.match(r"(when|how long|how soon|can we|what time)\b", t):
+        return {"type": "query", "what": "comms"}, None   # "how long till we can call home" asks about the radio
+    if COLD.search(t) and not NEGATION.search(t):
+        return {"type": "allocate", "to": "heaters", "amount": {"kind": "delta", "value": 10}, "from": None}, None
     if HOUSTON.search(t):
         rest = HOUSTON.sub(" ", t)
         rest = re.sub(r"^\s*(hey|hi|hello|ok|okay|call|please|calling|this is (the )?(commander|base))\b", " ", rest)

@@ -84,6 +84,14 @@ TABLE = [
     ("when it gets dark turn the heaters up", [{"type": "rule", "when": "dark", "then": A("heaters", "delta", 10)}]),
     ("if the power gets low, turn off the science lab", [{"type": "rule", "when": "low_power",
                                                           "then": A("science", "none", 0)}]),
+    # held-out misses, fixed after measuring
+    ("switch the radio off", [A("comms", "none", 0)]),
+    ("rover come home", [D("return")]),
+    ("give the greenhouse thirty and take it from science", [A("greenhouse", "delta", 30, "science")]),
+    ("ok that sounds good", [{"type": "confirm"}]),
+    ("nah forget about it", [{"type": "cancel"}]),
+    ("how long till we can call home", [Q("comms")]),
+    ("we're freezing in here", [A("heaters", "delta", 10)]),
     # vague -> ask
     ("more power", CLARIFY),
 ]
