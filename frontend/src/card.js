@@ -30,7 +30,10 @@ export function createCard() {
     title.textContent = e.title || "Guide";
     title.classList.toggle("is-place", !!e.place);
     asked.textContent = e.asked ? "“" + e.asked + "”" : ""; asked.hidden = !e.asked;
-    sayEl.textContent = e.say || ""; sayEl.hidden = !e.say;
+    // The Director often answers a hardware question with the artifact's own story; don't print it twice.
+    const flat = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const dupStory = e.artifact && e.artifact.story && flat(e.say) && flat(e.artifact.story).startsWith(flat(e.say).slice(0, 60));
+    sayEl.textContent = e.say || ""; sayEl.hidden = !e.say || !!dupStory;
     renderArtifact(e);
     note.textContent = e.note || ""; note.hidden = !e.note;
     claims.textContent = "";
