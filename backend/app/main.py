@@ -106,6 +106,7 @@ async def ask(req: AskRequest):
 
 app.include_router(listen_router)
 from .mission.routes import router as mission_router; app.include_router(mission_router)  # noqa: E402
+from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
 app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")

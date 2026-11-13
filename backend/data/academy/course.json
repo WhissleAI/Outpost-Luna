@@ -1,0 +1,277 @@
+{
+ "_note": "Junior Astronaut Academy: 7 short lessons a cadet takes before commanding the outpost. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check that every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; see app/academy/grade.py for the accept types.",
+ "title": "Junior Astronaut Academy",
+ "pass_badge": "commander",
+ "lessons": [
+  {
+   "id": "moon",
+   "title": "Know your Moon",
+   "minutes": 3,
+   "badge": {"id": "scout", "name": "Moon Scout", "glyph": "S"},
+   "globe": {"lat": 0, "lon": 0, "dist": 3.6},
+   "brief": "Welcome, cadet. The Moon always shows Earth the same side, the near side. Our outpost will sit at the south pole, next to a crater called Shackleton.",
+   "facts": [
+    {"text": "The far side is the half of the Moon that never faces Earth.", "from": ["facts.json", "glossary.json"],
+     "source": {"title": "IAU Gazetteer of Planetary Nomenclature", "url": "https://planetarynames.wr.usgs.gov/"}},
+    {"text": "Shackleton is a crater about 21 km wide and about 4 km deep, right at the Moon's south pole.", "from": ["facts.json"],
+     "source": {"title": "IAU Gazetteer of Planetary Nomenclature: Shackleton", "url": "https://planetarynames.wr.usgs.gov/Feature/5450"}},
+    {"text": "Its floor never gets sunlight, so it is colder than -170 C and can hold ice.", "from": ["mission/sites.json"],
+     "source": {"title": "NASA: Ice confirmed at the Moon's poles (M3 / Chandrayaan-1, 2018)", "url": "https://www.nasa.gov/news-release/ice-confirmed-at-the-moons-poles/"}}
+   ],
+   "steps": [
+    {"prompt": "Show me the south pole. Say it, or tap the very bottom of the Moon.",
+     "accept": {"type": "intent", "place": "shackleton"},
+     "hint": "Try saying: show me the south pole.",
+     "success": "Roger! That's the south pole. See how the Sun barely rises there?",
+     "fail": "Not quite. The south pole is at the very bottom of the Moon."},
+    {"prompt": "Now tap Shackleton crater, inside the gold ring at the pole.",
+     "accept": {"type": "tap", "place": "shackleton", "radius_deg": 8},
+     "hint": "Spin the Moon so the bottom faces you, then tap inside the gold ring.",
+     "success": "Copy. That's Shackleton, 21 km wide.",
+     "fail": "That's not it. Look for the gold ring at the bottom."},
+    {"prompt": "Why do astronauts want to land near Shackleton?",
+     "accept": {"type": "choice", "answer": "ice", "options": [
+       {"id": "ice", "label": "Its dark floor may hold ice", "say": ["ice", "water", "dark", "cold"]},
+       {"id": "bright", "label": "It is the brightest spot", "say": ["bright", "brightest"]},
+       {"id": "earth", "label": "Earth is always overhead", "say": ["overhead", "always"]}]},
+     "hint": "Think about what never gets sunlight, and what stays frozen there.",
+     "success": "Correct! Ice can become water and air.",
+     "fail": "Not that one. What could stay frozen in a crater with no sunlight?"}
+   ]
+  },
+  {
+   "id": "comms",
+   "title": "Talk like Mission Control",
+   "minutes": 4,
+   "badge": {"id": "radio", "name": "Radio Ready", "glyph": "R"},
+   "clip": {"clip_id": "loud-and-clear", "t0": 0, "t1": 21.5, "who": "Artemis II crew and Houston"},
+   "brief": "Radio is noisy, so crews use short words. Copy or roger means I heard you. A readback repeats the order, so both sides know it's right.",
+   "facts": [
+    {"text": "Artemis II and Houston really say it: \"Houston, we have you loud and clear.\" ... \"Houston copies all.\"", "from": ["index/clips.json"],
+     "source": {"title": "NASA Artemis II audio: Houston, We Have You Loud and Clear", "url": "https://www.nasa.gov/wp-content/uploads/2026/01/artemis-ii-houston-we-have-you-loud-and-clear-1.mp3"}}
+   ],
+   "steps": [
+    {"prompt": "What does \"copy\" mean on the radio?",
+     "accept": {"type": "choice", "answer": "heard", "options": [
+       {"id": "heard", "label": "I heard you", "say": ["heard", "hear", "understood"]},
+       {"id": "write", "label": "Write it down", "say": ["write"]},
+       {"id": "again", "label": "Say it again", "say": ["again", "repeat"]}]},
+     "hint": "When Houston says \"Houston copies all\", they are telling the crew something about hearing.",
+     "success": "Roger! Copy means I heard you.",
+     "fail": "Not quite. Copy is about hearing."},
+    {"prompt": "CAPCOM: \"Commander, set the shields to 40 percent.\" Read it back!",
+     "capcom": "Commander, set the shields to 40 percent.",
+     "accept": {"type": "keywords", "all": [["shield", "shields"], ["40", "forty"]]},
+     "hint": "Repeat the order: \"Copy, shields to 40.\"",
+     "success": "Good readback. Shields to 40, confirmed.",
+     "fail": "Say again? A readback repeats what and how much."},
+    {"prompt": "CAPCOM: \"Send the rover for ice.\" Start your readback with roger.",
+     "capcom": "Send the rover for ice.",
+     "accept": {"type": "keywords", "all": [["roger", "copy"], ["rover", "buggy"], ["ice", "water"]]},
+     "hint": "Try: \"Roger, rover for ice.\"",
+     "success": "Perfect readback, Commander.",
+     "fail": "Almost. Say roger, then repeat the order."},
+    {"prompt": "The radio crackled and you missed the last order. What do you say?",
+     "accept": {"type": "keywords", "any": [["say again", "repeat", "again", "one more time"]]},
+     "hint": "Crews say: \"Say again.\"",
+     "success": "Copy. Say again is how you ask for a repeat.",
+     "fail": "Ask CAPCOM to repeat it."}
+   ]
+  },
+  {
+   "id": "power",
+   "title": "Power from the Sun",
+   "minutes": 4,
+   "badge": {"id": "sun", "name": "Sun Tracker", "glyph": "P"},
+   "globe": {"place": "shackleton", "dist": 2.6},
+   "brief": "The outpost runs on solar panels and batteries. At the pole the Sun stays low and can hide behind mountains. No Sun means batteries only.",
+   "facts": [
+    {"text": "Shackleton Crater Rim gets sunlight about 86% of the time; Malapert Massif about 73%.", "from": ["mission/sites.json"],
+     "source": {"title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208", "url": "https://doi.org/10.1016/j.icarus.2010.03.028"}},
+    {"text": "In our 10-day mission window in April 2026, Malapert was in sunlight only 35% of the time.", "from": ["mission/sites.json"],
+     "source": {"title": "JPL Horizons API", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"}},
+    {"text": "Its longest night in that window lasted 157 hours, more than 6 days.", "from": ["mission/ephemeris_malapert_massif.json"],
+     "calc": {"kind": "longest_dark_h", "site": "malapert_massif"},
+     "source": {"title": "JPL Horizons API", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"}}
+   ],
+   "steps": [
+    {"prompt": "Which site gets more sunlight for the solar panels?",
+     "accept": {"type": "choice", "answer": "shackleton_rim", "options": [
+       {"id": "shackleton_rim", "label": "Shackleton Rim: 86% sun", "say": ["shackleton", "rim", "86", "eighty six"], "place": "shackleton"},
+       {"id": "malapert_massif", "label": "Malapert Massif: 73% sun", "say": ["malapert", "73", "seventy three"]}]},
+     "hint": "Compare the two numbers. Bigger means more sunshine.",
+     "success": "Correct! More sun means more power.",
+     "fail": "Check the numbers again. Which is bigger?"},
+    {"prompt": "Malapert's longest night lasted 157 hours. What keeps the lights on in the dark?",
+     "accept": {"type": "choice", "answer": "battery", "options": [
+       {"id": "battery", "label": "Batteries", "say": ["battery", "batteries"]},
+       {"id": "panels", "label": "Solar panels", "say": ["solar", "panel", "panels"]},
+       {"id": "dish", "label": "The radio dish", "say": ["dish", "radio", "antenna"]}]},
+     "hint": "Solar panels need the Sun. What stores power for later?",
+     "success": "Right. Batteries carry you through the night.",
+     "fail": "Not that one. Solar panels can't work without the Sun."},
+    {"prompt": "Night is coming. Move more power to the heaters so the water pipes don't freeze.",
+     "accept": {"type": "command", "expect": {"type": "allocate", "to": "heaters", "more": true}},
+     "hint": "Say: \"More power to the heaters.\"",
+     "success": "Copy. Heaters up. Pipes stay warm tonight.",
+     "fail": "Negative. Ask for more power to the heaters."}
+   ]
+  },
+  {
+   "id": "radiation",
+   "title": "Radiation and solar storms",
+   "minutes": 4,
+   "badge": {"id": "storm", "name": "Storm Watcher", "glyph": "W"},
+   "brief": "Radiation dose is measured in millisieverts, or mSv. One mSv is about 10 chest x-rays. Sometimes the Sun throws out a storm of fast particles.",
+   "facts": [
+    {"text": "On the Moon's surface, the Chang'e 4 lander measured 1369 microsieverts a day, about 2.6 times more than inside the ISS.", "from": ["mission/radiation.json"],
+     "source": {"title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances 6:eaaz1334", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"}},
+    {"text": "On 2024-05-10 a real G5 solar storm came with solar particles and a CME at 1561 km/s.", "from": ["mission/donki_events.json"],
+     "source": {"title": "DONKI 2024-05-10T15:00:00-GST-001 (NASA CCMC)", "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/30693/-1"}},
+    {"text": "Moon soil (regolith) stops solar-storm particles well, so the plan is a shelter covered in soil.", "from": ["mission/radiation.json"],
+     "source": {"title": "NASA NTRS 19890004839, Solar-flare shielding with regolith at a lunar-base site", "url": "https://ntrs.nasa.gov/citations/19890004839"}}
+   ],
+   "steps": [
+    {"prompt": "What is an mSv?",
+     "accept": {"type": "choice", "answer": "dose", "options": [
+       {"id": "dose", "label": "A unit of radiation dose", "say": ["radiation", "dose", "unit"]},
+       {"id": "rocket", "label": "A kind of rocket", "say": ["rocket"]},
+       {"id": "soil", "label": "Moon soil", "say": ["soil", "dirt"]}]},
+     "hint": "It's how we measure something you can't see, like x-rays.",
+     "success": "Correct. One mSv is about 10 chest x-rays.",
+     "fail": "Not that one. Think of x-rays."},
+    {"prompt": "A big solar storm is coming. What protects the crew best?",
+     "accept": {"type": "choice", "answer": "shelter", "options": [
+       {"id": "shelter", "label": "A shelter under Moon soil", "say": ["shelter", "soil", "under"]},
+       {"id": "outside", "label": "Go outside to watch", "say": ["outside", "watch"]},
+       {"id": "off", "label": "Turn the shields off", "say": ["off"]}]},
+     "hint": "Moon soil stops the particles.",
+     "success": "Right. Soil is a great shield.",
+     "fail": "That would be dangerous. What stops the particles?"},
+    {"prompt": "ALERT! Solar storm, the real one from May 2024. Give the order!",
+     "alert": true,
+     "accept": {"type": "command", "expect": {"type": "shelter", "on": true}},
+     "hint": "Say: \"Everyone to the shelter!\"",
+     "success": "Copy, crew is in the shelter. Dose rate way down.",
+     "fail": "Say again? The crew needs to get into the shelter."}
+   ]
+  },
+  {
+   "id": "life",
+   "title": "Air, water and ice",
+   "minutes": 3,
+   "badge": {"id": "ice", "name": "Ice Hunter", "glyph": "I"},
+   "globe": {"place": "lcross_centaur_impact", "dist": 2.4},
+   "brief": "Life support makes air and clean water for the crew. Water is heavy to bring from Earth. Ice on the Moon could become water and oxygen.",
+   "facts": [
+    {"text": "In 2009 NASA crashed a 2000 kg Centaur rocket into Cabeus crater near the south pole. It threw up roughly 350 metric tons of material.", "from": ["artifacts.json"],
+     "source": {"title": "NSSDCA Master Catalog: LCROSS", "url": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=2009-031B"}},
+    {"text": "The LCROSS spacecraft flew through the dust cloud, and its measurements showed water near the south pole.", "from": ["artifacts.json"],
+     "source": {"title": "NASA Science: LCROSS", "url": "https://science.nasa.gov/mission/lcross/"}}
+   ],
+   "steps": [
+    {"prompt": "Where did LCROSS find water?",
+     "accept": {"type": "choice", "answer": "cabeus", "options": [
+       {"id": "cabeus", "label": "Cabeus crater, near the south pole", "say": ["cabeus", "south pole", "pole"]},
+       {"id": "tycho", "label": "Tycho crater", "say": ["tycho"]},
+       {"id": "apollo11", "label": "The Apollo 11 landing site", "say": ["apollo"]}]},
+     "hint": "It was near the south pole, in a dark crater.",
+     "success": "Correct! Dark, cold craters keep ice.",
+     "fail": "Not that one. Think dark and cold."},
+    {"prompt": "Tap where the LCROSS rocket crashed. It's the marker near the south pole.",
+     "accept": {"type": "tap", "place": "lcross_centaur_impact", "also": ["lcross_impact"], "radius_deg": 8},
+     "hint": "Look just above the south pole for the impact marker, then tap it.",
+     "success": "Roger. That's Cabeus, where water was found.",
+     "fail": "Not there. Look near the bottom of the Moon."},
+    {"prompt": "Life support is getting low. Send the rover for ice!",
+     "accept": {"type": "command", "expect": {"type": "dispatch", "task": "collect_ice"}},
+     "hint": "Say: \"Send the rover for ice.\"",
+     "success": "Copy. Rover rolling out for ice.",
+     "fail": "Negative. Tell the rover to go get ice."}
+   ]
+  },
+  {
+   "id": "history",
+   "title": "Lessons from past missions",
+   "minutes": 5,
+   "badge": {"id": "history", "name": "Historian", "glyph": "H"},
+   "globe": {"place": "surveyor3", "dist": 2.3},
+   "brief": "Every mission teaches the next one. Apollo 12 landed next to an old robot, Surveyor 3, and took parts home to study. Apollo astronauts also sent messages to the Artemis II crew.",
+   "facts": [
+    {"text": "Surveyor 3 sent 6,326 pictures. In 1969 Apollo 12 astronauts walked over and took about 10 kg of parts home, including its TV camera.", "from": ["artifacts.json"],
+     "source": {"title": "NSSDCA Master Catalog: Surveyor 3", "url": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A"}},
+    {"text": "Jim Lovell commanded Apollo 13 and flew around the Moon on Apollo 8.", "from": ["artifacts.json"],
+     "source": {"title": "NASA Artemis II audio: Message from Apollo Astronaut Jim Lovell", "url": "https://www.nasa.gov/wp-content/uploads/2026/01/artemis-ii-message-from-apollo-astronaut-jim-lovell.mp3"}},
+    {"text": "John Young and Charlie Duke drove the Apollo 16 rover 26.7 km across the Moon's highlands.", "from": ["artifacts.json"],
+     "source": {"title": "NSSDCA: Apollo Lunar Roving Vehicle", "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_lrv.html"}}
+   ],
+   "steps": [
+    {"prompt": "What did the Apollo 12 crew take home from Surveyor 3?",
+     "accept": {"type": "choice", "answer": "camera", "options": [
+       {"id": "camera", "label": "Its TV camera", "say": ["camera", "tv"]},
+       {"id": "rover", "label": "A rover", "say": ["rover"]},
+       {"id": "ice", "label": "A block of ice", "say": ["ice"]}]},
+     "hint": "Surveyor 3 took 6,326 pictures. With what?",
+     "success": "Correct! Scientists studied what the Moon did to it.",
+     "fail": "Not that one. It took pictures."},
+    {"prompt": "Listen to Jim Lovell. Which mission first took him around the Moon?",
+     "clip": {"clip_id": "lovell", "t0": 4.6, "t1": 25.8, "who": "Jim Lovell"},
+     "accept": {"type": "choice", "answer": "apollo8", "options": [
+       {"id": "apollo8", "label": "Apollo 8", "say": ["apollo 8", "apollo eight", "eight", "8"]},
+       {"id": "apollo11", "label": "Apollo 11", "say": ["apollo 11", "eleven", "11"]},
+       {"id": "artemis2", "label": "Artemis II", "say": ["artemis"]}]},
+     "hint": "Play the clip again and listen for \"on Apollo...\"",
+     "success": "Roger! Apollo 8 was the first crew to fly around the Moon.",
+     "fail": "Listen again. He says the mission name."},
+    {"prompt": "Listen to Charlie Duke. Who landed on the Moon with him?",
+     "clip": {"clip_id": "duke", "t0": 10.4, "t1": 30.0, "who": "Charlie Duke"},
+     "accept": {"type": "choice", "answer": "young", "options": [
+       {"id": "young", "label": "John Young", "say": ["john", "young"]},
+       {"id": "armstrong", "label": "Neil Armstrong", "say": ["neil", "armstrong"]},
+       {"id": "lovell", "label": "Jim Lovell", "say": ["jim", "lovell"]}]},
+     "hint": "He names his partner right after saying who he is.",
+     "success": "Correct! John Young and Charlie Duke drove their rover 26.7 km.",
+     "fail": "Listen again for the name."}
+   ]
+  },
+  {
+   "id": "checkride",
+   "title": "Check ride",
+   "minutes": 5,
+   "badge": {"id": "commander", "name": "Mission Commander", "glyph": "C"},
+   "ride": {"site": "shackleton_rim", "seed": 2026, "storm_event": "2024-05-10T15:00:00-GST-001", "storm_start_h": 6,
+            "mission_h": 48, "max_missed": 0},
+   "brief": "This is your check ride: two days at Shackleton Rim, run by the real mission simulator. A real solar storm is on its way. Give good orders and you earn the Mission Commander badge.",
+   "facts": [
+    {"text": "The storm in this ride is the real G5 storm of 2024-05-10, replayed at your outpost.", "from": ["mission/donki_events.json"],
+     "source": {"title": "DONKI 2024-05-10T15:00:00-GST-001 (NASA CCMC)", "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/30693/-1"}}
+   ],
+   "steps": [
+    {"prompt": "Day 1. Houston sees an active region on the Sun. Give the radiation shields more power.",
+     "accept": {"type": "command", "expect": {"type": "allocate", "to": "shields", "more": true}},
+     "advance": 1,
+     "hint": "Say: \"More power to the shields.\"",
+     "success": "Copy, shields up.",
+     "fail": "Negative. The shields need more power."},
+    {"prompt": "SOLAR STORM! The real G5 storm of May 2024 is hitting the outpost. Your order, Commander?",
+     "alert": true,
+     "accept": {"type": "command", "expect": {"type": "shelter", "on": true}},
+     "advance": "storm",
+     "hint": "Say: \"Everyone to the shelter!\"",
+     "success": "Copy, crew is in the shelter. Riding out the storm.",
+     "fail": "Say again? Radiation is climbing."},
+    {"prompt": "The storm has passed. Bring the crew out of the shelter.",
+     "accept": {"type": "command", "expect": {"type": "shelter", "on": false}},
+     "hint": "Say: \"Come out of the shelter.\"",
+     "success": "Copy, crew is out. Back to work.",
+     "fail": "Negative. Tell the crew to leave the shelter."},
+    {"prompt": "Life support is dropping. Send the rover for ice before day 2 ends.",
+     "accept": {"type": "command", "expect": {"type": "dispatch", "task": "collect_ice"}},
+     "advance": "end",
+     "hint": "Say: \"Send the rover for ice.\"",
+     "success": "Copy, rover rolling out for ice.",
+     "fail": "Negative. The rover should go get ice."}
+   ]
+  }
+ ]
+}
