@@ -1,10 +1,10 @@
 """Mission command understanding: a kid's words (+ Arc read-out + the current State) -> Commands (docs/MISSION_CONTRACT.md).
 
 Rules first (synonyms, amounts, direction, compound, negation, conditionals, confirm/cancel). When the rules find
-nothing, an LLM fallback (Anthropic, thinking off, as llm.py) gets the State and must answer with Commands as JSON;
-every one is validated against the contract schema and anything invalid is dropped.
+nothing, an embedding nearest-neighbour over data/mission/command_bank.json gives the command shape (no cloud LLM);
+slots are re-read from the words and every command is validated against the contract schema.
 
-Returned shape: {"commands": [Command, ...], "confidence": float, "needs_clarify": str | None, "source": "rules|llm|none"}
+Returned shape: {"commands": [Command, ...], "confidence": float, "needs_clarify": str | None, "source": "rules|embed|none"}
 
 Amount semantics for `allocate` (what the sim receives):
   percent  value = the load's new share of power (absolute, 0-100)        "set the shields to 30 percent"
@@ -452,56 +452,109 @@ def valid(c) -> dict | None:
     return None
 
 
-# --------------------------------------------------------------------------------------------------- LLM fallback
-SCHEMA = """Command JSON objects (exact keys):
-{"type":"allocate","to":LOAD,"amount":{"kind":"percent|delta|all|half|little|none","value":NUMBER},"from":LOAD|null}
-  percent = the load's new share (0-100); delta = signed change in points ("move 20% to shields" = +20); little = +5/-5
-{"type":"dispatch","vehicle":"rover","task":"collect_ice|repair_array|explore|return","target":null}
-{"type":"shelter","on":true|false}
-{"type":"query","what":"power|oxygen|life_support|dose|storm|comms|all"}
-{"type":"call_houston","text":"..."}
-{"type":"end_shift"}  {"type":"confirm"}  {"type":"cancel"}
-{"type":"rule","when":"storm|low_power|dark|comm_closed|dose_high|low_oxygen","then":<one Command>}
-LOAD is one of: shields, life_support, greenhouse, science, rover, comms, heaters."""
-
-_client = None
+# --------------------------------------------------------------------------------------------- embedding fallback
+# No cloud LLM. When the rules find nothing, the kid's words are embedded (model server /v1/embed, all-MiniLM-L6-v2)
+# and matched to the nearest example in data/mission/command_bank.json (tools/gen_command_bank.py). The example gives
+# the command *shape*; slots (load, number, task, query) are re-read from the kid's own words by the same rules, then
+# the schema check `valid()` runs. Below BANK_ACCEPT nothing happens: a wrong command is worse than "say that again".
+BANK_ACCEPT = 0.66
+_BANK: dict = {"examples": None, "vecs": None}
 
 
-async def llm_parse(text: str, state: dict | None = None) -> list[dict] | None:
-    """None when the LLM is off or fails; else the validated Commands (possibly empty)."""
-    global _client
-    from ..config import settings
-    if not settings.anthropic_api_key:
-        return None
-    if _client is None:
-        from anthropic import AsyncAnthropic
-        _client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    st = {k: (state or {}).get(k) for k in ("resources", "loads", "env", "rover", "shelter", "alerts")}
-    prompt = (f"A child (7-12) is commanding a Moon base by voice in a training game. They said: \"{text}\"\n"
-              f"Current base state: {json.dumps(st)}\n\n{SCHEMA}\n\n"
-              'Reply ONLY with JSON: {"commands": [ ... ]}. Use [] if they did not give a command or ask about the base. '
-              "Never invent commands they didn't ask for. A negated request (\"don't ...\") is not a command.")
-    try:
-        msg = await _client.messages.create(model=settings.ask_model, max_tokens=300,
-                                            extra_body={"thinking": {"type": "disabled"}},
-                                            messages=[{"role": "user", "content": prompt}])
-        raw = "".join(b.text for b in msg.content if b.type == "text")
-        m = re.search(r"\{[\s\S]*\}", raw)
-        data = json.loads(m.group(0)) if m else {}
-    except Exception:  # noqa: BLE001 (fail open to rules)
-        return None
-    cmds = data.get("commands") if isinstance(data, dict) else None
-    return [v for v in map(valid, cmds if isinstance(cmds, list) else []) if v]
+def _bank() -> list[dict]:
+    if _BANK["examples"] is None:
+        from ..config import settings
+        f = settings.data_dir / "mission/command_bank.json"
+        _BANK["examples"] = json.loads(f.read_text())["examples"] if f.exists() else []
+    return _BANK["examples"]
 
 
-async def understand(text: str, read: dict | None = None, state: dict | None = None, use_llm: bool = True) -> dict:
+async def _bank_vecs():
+    if _BANK["vecs"] is None and _bank():
+        import hashlib
+
+        import numpy as np
+
+        from .. import models_client
+        from ..config import settings
+        texts = [e["text"] for e in _bank()]
+        f = settings.data_dir / "cache" / f"command_vectors_{hashlib.sha1(json.dumps(texts).encode()).hexdigest()[:16]}.npy"
+        if f.exists():
+            _BANK["vecs"] = np.load(f)
+        else:
+            v = await models_client.embed(texts, "doc", timeout=60.0)
+            if v is None:
+                return None
+            _BANK["vecs"] = np.asarray(v, dtype=np.float32)
+            f.parent.mkdir(parents=True, exist_ok=True)
+            np.save(f, _BANK["vecs"])
+    return _BANK["vecs"]
+
+
+def fill_slots(example: dict, t: str, read: dict | None = None) -> dict | None:
+    """The example's command with slots re-read from the kid's words (t = norm + words-to-digits)."""
+    cmd = json.loads(json.dumps(example["command"]))
+    ty = cmd["type"]
+    if ty == "allocate":
+        loads = find_loads(t)
+        if loads:
+            cmd["to"] = loads[0]
+        n, a = _number(t, read), cmd["amount"]
+        if n is not None and a["kind"] in ("percent", "delta", "little"):
+            sign = -1 if (a["value"] or 0) < 0 or LESS.search(t) else 1
+            cmd["amount"] = {"kind": "percent", "value": _num(n)} if a["kind"] == "percent" else \
+                {"kind": "delta", "value": _num(sign * n)}
+        elif n is None and a["kind"] in ("percent", "delta"):
+            cmd["amount"] = {"kind": "little", "value": -5 if (a["value"] or 0) < 0 else 5}
+    elif ty == "dispatch":
+        for rx, task in TASK_WORDS:
+            if rx.search(t):
+                cmd["task"] = task
+                break
+    elif ty == "query":
+        for rx, what in QUERY_WORDS:
+            if rx.search(t):
+                cmd["what"] = what
+                break
+    elif ty == "call_houston":
+        cmd["text"] = t[:300]
+    return valid(cmd)
+
+
+async def bank_parse(text: str, read: dict | None = None) -> tuple[list[dict], float, str | None]:
+    """-> (commands, score, nearest example text). [] when the embedder is down or nothing is close enough."""
+    import numpy as np
+
+    from .. import models_client
+    t = _words_to_digits(norm(text))
+    if not t or len(t.split()) > 25:
+        return [], 0.0, None
+    vecs = await _bank_vecs()
+    if vecs is None:
+        return [], 0.0, None
+    q = await models_client.embed([text], "query")
+    if not q:
+        return [], 0.0, None
+    sims = vecs @ np.asarray(q[0], dtype=np.float32)
+    i = int(np.argmax(sims))
+    ex, score = _bank()[i], float(sims[i])
+    if score < BANK_ACCEPT:
+        return [], score, ex["text"]
+    if NEGATION.search(t) and not NEGATION.search(norm(ex["text"])):
+        return [], score, ex["text"]          # "don't ..." never borrows a positive example's command
+    cmd = fill_slots(ex, t, read)
+    return ([cmd] if cmd else []), score, ex["text"]
+
+
+async def understand(text: str, read: dict | None = None, state: dict | None = None, use_embed: bool = True) -> dict:
     out = parse(text, read, state)
     out["commands"] = [v for v in map(valid, out["commands"]) if v]
-    if out["commands"] or out["needs_clarify"] or not use_llm:
+    if out["commands"] or out["needs_clarify"] or not use_embed:
         if not out["commands"] and not out["needs_clarify"]:
             out["source"] = "none"
         return out
-    cmds = await llm_parse(text, state)
+    cmds, score, near = await bank_parse(text, read)
     if cmds:
-        return {"commands": cmds, "confidence": 0.7, "needs_clarify": None, "source": "llm"}
+        return {"commands": cmds, "confidence": round(score, 3), "needs_clarify": None, "source": "embed",
+                "nearest": near}
     return {**out, "source": "none"}
