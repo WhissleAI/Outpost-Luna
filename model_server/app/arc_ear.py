@@ -54,6 +54,17 @@ def written(text: str) -> str:
         return (text or "").strip()
 
 
+def with_written(out: dict) -> list[dict]:
+    """Final utterances with Arc's own written form attached (`written`): numbers as digits AND names linked to the
+    context list in the list's spelling ("Malapart" -> "Malapert", "captain" -> "CAPCOM"). transcript_written has one
+    entry per new transcript utterance; when the counts disagree, fall back to text-only written()."""
+    us = list(out.get("transcript") or [])
+    tw = list(out.get("transcript_written") or [])
+    if len(tw) == len(us):
+        return [dict(u, written=w.get("text") or "") for u, w in zip(us, tw)]
+    return us
+
+
 class Vad:
     """Energy VAD with an adaptive floor, per chunk."""
 
@@ -107,7 +118,7 @@ class TurnTracker:
         for e in out.get("events") or []:
             if e.get("tag") == arcmeta.CC and e.get("p") is not None:
                 self.cc = max(self.cc, float(e["p"]))
-        for u in out.get("transcript") or []:
+        for u in with_written(out):
             msgs += self.final(u, "arc_pause")
         tp = out.get("transcript_partial")
         if tp and not tp.get("final"):
@@ -121,7 +132,7 @@ class TurnTracker:
         return msgs
 
     def final(self, u: dict, reason: str) -> list[dict]:
-        t = written(u.get("text", ""))
+        t = (u.get("written") or "").strip() or written(u.get("text", ""))
         if not t and not self.in_turn:
             return []
         if not self.in_turn:
@@ -149,7 +160,7 @@ class TurnTracker:
     def force_end(self, out: dict, reason: str) -> list[dict]:
         """Results of Stream.end_turn() / flush(): the final(s), or close the turn on the last partial text."""
         msgs = []
-        us = [u for u in out.get("transcript") or [] if (u.get("text") or "").strip()]
+        us = [u for u in with_written(out) if (u.get("text") or "").strip()]
         for u in us:
             msgs += self.final(u, reason)
         if not us and self.in_turn:

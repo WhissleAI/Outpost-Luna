@@ -150,3 +150,12 @@ def test_live_bullseye_through_arc_ear(client):
     assert words and words[-1]["final"] and "bull" in words[-1]["text"].lower()
     assert turns[0] == "start" and turns[-1] == "end"
     assert any(m["t"] == "context_ack" and m["terms_to_arc"] for m in got)
+
+
+def test_final_uses_arcs_written_form_with_linked_names():
+    t = arc_ear.TurnTracker()
+    out = {"transcript": [{"text": "can we land near malapart"}], "transcript_written": [{"text": "can we land near Malapert"}]}
+    msgs = t.on_arc(out)
+    assert msgs[-2] == {"t": "words", "text": "can we land near Malapert", "final": True}
+    # counts disagree -> text-only written form
+    assert arc_ear.with_written({"transcript": [{"text": "a"}], "transcript_written": []}) == [{"text": "a"}]
