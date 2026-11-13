@@ -1,5 +1,6 @@
 import asyncio
 
+from app import models_client
 from app.config import settings
 from app.gazetteer import Gazetteer
 from app.moments import MomentIndex
@@ -9,6 +10,10 @@ from app.resolve import resolve
 GAZ = Gazetteer(settings.data_dir / "places.json")
 IDX = MomentIndex(settings.data_dir / "index/clips.json")
 NO_ARC = {"available": False}
+
+
+async def _no_arc(*a, **k):
+    return None
 
 
 def ask(text, read=NO_ARC):
@@ -33,8 +38,8 @@ def test_self_correction_uses_the_last_place():
 
 def test_crew_request_plays_a_moment_when_indexed():
     r = ask("what did the astronauts say about Aristarchus")
-    if IDX.best_for("aristarchus"):
-        assert r["action"] == "play" and r["clip"]["id"]
+    if IDX.best_moment("aristarchus"):
+        assert r["action"] == "play" and r["moment"]["clip_id"]
     else:
         assert r["action"] == "fly"
 
@@ -52,4 +57,5 @@ def test_hard_pii_is_guarded():
 
 def test_unknown_without_llm(monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "")
+    monkeypatch.setattr(models_client, "tag", _no_arc)
     assert ask("tell me a joke")["action"] == "say"

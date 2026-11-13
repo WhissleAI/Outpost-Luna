@@ -27,7 +27,7 @@ async def place_question(text: str, gaz: Gazetteer) -> dict | None:
               'Pick the one place that best answers them, or null if none fits. Reply ONLY as JSON: '
               '{"feature": "<id or null>", "say": "<1-2 short sentences in simple words, friendly, true>"}. '
               "If the question isn't about space, kindly steer them back to the Moon.")
-    msg = await _client.messages.create(model=settings.ask_model, max_tokens=300,
+    msg = await _client.messages.create(model=settings.ask_model, max_tokens=300, extra_body={"thinking": {"type": "disabled"}},
                                         messages=[{"role": "user", "content": prompt}])
     out = "".join(b.text for b in msg.content if b.type == "text")
     m = re.search(r"\{[\s\S]*\}", out)
