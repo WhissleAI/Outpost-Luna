@@ -13,6 +13,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
 from .arctag import ArcTagger
+from . import tag_stream
 from .config import settings
 
 STATE: dict = {"tagger": None, "tagger_error": None, "loaded_s": None}
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Ask the Moon model server", version="0.1.0", lifespan=lifespan)
+app.include_router(tag_stream.router)  # WS /v1/tag/stream
 
 
 class TagRequest(BaseModel):
