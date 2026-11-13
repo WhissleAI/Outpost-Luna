@@ -10,6 +10,7 @@ dependencies = [
   "httpx==0.28.1",
   "rapidfuzz==3.10.1",
   "anthropic==0.40.0",
+  "websockets==17.4",
 ]
 
 [dependency-groups]

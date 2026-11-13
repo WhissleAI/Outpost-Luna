@@ -19,6 +19,9 @@ data:            ## Download NASA media (Moon map + crew clips)
 transcribe:      ## Word-timed transcripts for any new clips (mlx-whisper)
 	bash backend/pipeline/transcribe.sh
 
+transcribe-dg:   ## Diarized nova-3 transcripts for any new clips (Deepgram; needs DEEPGRAM_API_KEY)
+	cd backend && uv run python -m pipeline.transcribe_deepgram
+
 index:           ## Rebuild the crew index with Arc Tagger (needs `make models` running)
 	cd backend && uv run python -m pipeline.build_index
 
@@ -46,4 +49,4 @@ health:          ## Check that all three are up
 	@curl -s localhost:8100/api/health | python3 -m json.tool | head -20
 	@curl -s -o /dev/null -w "frontend :5173 -> %{http_code}\n" localhost:5173/
 
-.PHONY: help setup data transcribe index dev models backend frontend test build health
+.PHONY: help setup data transcribe transcribe-dg index dev models backend frontend test build health
