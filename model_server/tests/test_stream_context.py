@@ -22,7 +22,7 @@ def test_names_reach_arc_and_terms_are_recorded():
                       "mission": {"power_pct": 72}}, ms)
     assert ms.s.names == ["Shackleton", {"name": "Houston"}]
     assert ack == {"t": "context_ack", "v": 1, "names": 2, "terms": 1, "names_to_arc": True, "terms_to_arc": False,
-                   "at_audio_s": 3.25}
+                   "topic_to_arc": False, "at_audio_s": 3.25}
     out = ctx.decorate({"t": "arc", "act": None})
     assert out["context"] == {"v": 1, "names": 2, "terms": 1, "telemetry": {"power_pct": 72}}
 

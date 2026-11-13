@@ -1,9 +1,11 @@
 """Arc v1.1 Mini audio metadata (ARC_META=mini|off), the same model and package Head Start loads.
 
-Arc runs in external-transcript mode: the words come from someone else (Deepgram live, Whisper offline) and Arc only
-listens to the audio for its heads: utterance act / intent, device_directed, command_complete, speaker, audio events
-(laughter, cheer, ...) and bio events. Its own decoder is never loaded (load_decoder=False) and never used as a
-fallback (fallback=None).
+Two live modes share one loaded model (weights loaded once, per-stream state):
+  metadata (MetaStream, /v1/stream): external-transcript mode: the words come from someone else (Deepgram live, Whisper
+    offline) and Arc only listens to the audio for its heads: utterance act / intent, device_directed, command_complete,
+    speaker, audio events (laughter, cheer, ...) and bio events. Never falls back to its own transcript (fallback=None).
+  ear (arc_ear.EarStream, /v1/stream?ear=arc): Arc's own decoder gives the words and the turns as well. Needs the
+    decoder (ARC_EAR=on, the default); ARC_EAR=off loads the heads only (load_decoder=False), as before.
 
 Emotion: Arc v1.1 Mini lists affect.emotion.* in tags.json (experimental) but its readout exposes none of them for any
 domain, even with include_experimental=True, and the STT-meta-1B weights are not on this machine. So EMOTION stays off
@@ -41,7 +43,8 @@ meta_settings = MetaSettings()
 EMOTION_REASON = ("Arc v1.1 Mini has no emotion output (affect.emotion.* is in tags.json but not in the readout for any "
                   "domain); STT-meta-1B weights are not in the local HF cache. See docs/REVAMP.md section 10.")
 
-STATE: dict = {"arc": None, "error": None, "load_s": None, "sessions": 0}
+STATE: dict = {"arc": None, "error": None, "load_s": None, "sessions": 0, "decoder": False, "rss_mb": None,
+               "rss_delta_mb": None}
 _lock = threading.Lock()
 
 
@@ -52,17 +55,40 @@ def load() -> None:
         STATE["error"] = f"ARC_META={v} (disabled)"
         return
     t = time.perf_counter()
+    rss0 = _rss_mb()
     try:
         from arc_audio import Arc
+
+        from .arc_ear import ear_settings
+        dec = ear_settings.arc_ear.strip().lower() == "on"
         STATE["arc"] = Arc.from_pretrained(str(meta_settings.arc_meta_weights), backbone="mini", device="cpu",
-                                           threads=meta_settings.arc_meta_threads, load_decoder=False)
+                                           threads=meta_settings.arc_meta_threads, load_decoder=dec)
+        STATE["decoder"] = dec
         warm = np.zeros(SR, np.float32)
         STATE["arc"].predict(warm, domain="assistant", transcript="external", words=[], fallback=None,
                              return_frames=False)
+        if dec:   # warm the decoder path too, so the first ear connection doesn't pay for it
+            ws = STATE["arc"].stream(domain="assistant", transcript="builtin", partials=True, fallback=None)
+            rng = np.random.default_rng(0)
+            for i in range(10):
+                ws.feed(rng.standard_normal(1600).astype(np.float32) * (0.05 if i < 5 else 0.0005))
+            ws.flush()
+            ws.close()
     except Exception as e:  # noqa: BLE001
         STATE["arc"] = None
         STATE["error"] = f"{type(e).__name__}: {e}"[:300]
     STATE["load_s"] = round(time.perf_counter() - t, 2)
+    STATE["rss_mb"] = _rss_mb()
+    if rss0 is not None and STATE["rss_mb"] is not None:
+        STATE["rss_delta_mb"] = round(STATE["rss_mb"] - rss0, 1)
+
+
+def _rss_mb():
+    try:
+        import psutil
+        return round(psutil.Process().memory_info().rss / 1e6, 1)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def health() -> dict:
@@ -70,6 +96,9 @@ def health() -> dict:
         "arc_meta": {"loaded": STATE["arc"] is not None, "error": STATE["error"], "model": "arc-v1.1 mini",
                      "load_s": STATE["load_s"], "sessions": STATE["sessions"],
                      "max_sessions": meta_settings.meta_max_sessions},
+        "arc_ear": {"available": STATE["arc"] is not None and STATE["decoder"], "decoder_loaded": STATE["decoder"],
+                    "load_s": STATE["load_s"], "rss_after_load_mb": STATE["rss_mb"], "rss_load_delta_mb": STATE["rss_delta_mb"],
+                    "rss_now_mb": _rss_mb()},
         "emotion": {"loaded": False, "enabled": False, "reason": EMOTION_REASON},
     }
 
