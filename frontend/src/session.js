@@ -68,6 +68,7 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
       try { const h = handlers[d.t]; if (h) h(d); } catch (e) { console.warn("session handler", d.t, e); }
       finish(d.id); return;
     }
+    if (d.t === "say" && reportsPlayback) { direct(d); return; }   // the floor manager arbitrates guide speech
     if (SPEECH.has(d.t)) {
       queue.push({ d, n: seq++ });
       queue.sort((a, b) => (a.d.priority ?? 3) - (b.d.priority ?? 3) || a.n - b.n);
@@ -93,6 +94,16 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     pump();
   }
 
+  /** With a floor manager: hand the say over at once (its priority rules order it); finish or cancel on its result. */
+  const active = new Set();
+  async function direct(d) {
+    active.add(d.id);
+    let ok = false;
+    try { ok = await handlers.say(d); } catch (e) { ok = false; }
+    active.delete(d.id);
+    if (ok !== false && !cancelled.has(d.id)) finish(d.id); else cancelDeps(d.id);
+  }
+
   function cancelDeps(did) {
     const deps = waiting.get(did) || []; waiting.delete(did);
     deps.forEach(x => { cancelled.add(x.id); cancelDeps(x.id); });
@@ -102,12 +113,13 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     ids.forEach(i => { cancelled.add(i); cancelDeps(i); });
     queue = queue.filter(q => !cancelled.has(q.d.id));
     if (current && cancelled.has(current.id) && handlers.stop) handlers.stop(current);
+    else if ([...active].some(i => cancelled.has(i)) && handlers.stop) handlers.stop();
   }
 
   const api = {
     id, connect, log,
     get connected() { return connected; },
-    get busy() { return !!current || queue.length > 0; },
+    get busy() { return !!current || queue.length > 0 || active.size > 0; },
     hello(o = {}) { lastHello = { t: "hello", session: id, ...o }; return send(lastHello); },
     typed(text, source) { return send({ t: "typed", text, ...(source ? { source } : {}) }); },
     ui(event, extra = {}) { return send({ t: "ui", event, ...extra }); },
@@ -115,7 +127,7 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     /** A card/confirm action's `send` payload ({t:"typed",text} or {t:"ui",…}). */
     sendRaw(m) { return m && m.t ? send(m) : false; },
     /** Local cancel of everything unplayed (e.g. the kid pressed Space before the server's cancel arrives). */
-    dropAll() { cancel([...(current ? [current.id] : []), ...queue.map(q => q.d.id)]); },
+    dropAll() { cancel([...(current ? [current.id] : []), ...queue.map(q => q.d.id), ...active]); },
     close() { try { ws && ws.close(); } catch (e) { /* */ } },
   };
   try { window.__atmSession = api; } catch (e) { /* no window */ }
