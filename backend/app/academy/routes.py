@@ -118,7 +118,8 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     passed = missed <= les["ride"]["max_missed"] and not m.over
     res = m.state()["resources"]
     summary = (f"Check ride complete. Power {res['power_pct']:.0f}%, life support {res['life_support_pct']:.0f}%, "
-               f"dose {res['dose_msv']:.1f} of {res['dose_limit_msv']:.0f} mSv. {score} of {len(steps)} orders right.")
+               f"dose {res['dose_msv']:.1f} of {res['dose_limit_msv']:.0f} mSv. {score} of {len(steps)} orders right. "
+               "On Mars, Houston would answer 6–44 minutes later.")
     if passed:
         return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " You are qualified, Commander!",
                     badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events)

@@ -321,6 +321,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         <div class="m-grade" aria-label="Grade ${esc(d.grade)}"><b>${esc(d.grade)}</b><span>★ ${Math.round(d.score || 0)}</span></div>
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
+      <p class="m-mars">On Mars, Houston would answer 6–44 minutes later.</p>
       <div class="m-db-cols">
         <section><span class="eyebrow">Lessons</span><ul>${ls.map(l => `<li>${esc(l.text)} ${src(l.source)}</li>`).join("")}</ul></section>
         <section><span class="eyebrow">Data we used</span><ul>${(d.data_used || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a> ${esc(x.how || "")}</li>`).join("")}</ul></section>
