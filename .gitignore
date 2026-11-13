@@ -7,4 +7,4 @@ node_modules/
 frontend/dist/
 .cache/
 # NASA media: re-download with `make data`
-backend/data/media/
+backend/data/media
