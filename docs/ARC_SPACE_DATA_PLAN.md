@@ -3,6 +3,12 @@
 2026-11-13 · Whissle · For the Arc modelling team (Arc Transcriber, Arc Tagger). Share as-is; every number in here was
 measured on our data or read from the source linked next to it.
 
+> **v3: Mission Trainer + multi-stream → see [`ARC_MULTISTREAM_PLAN.md`](ARC_MULTISTREAM_PLAN.md).** Ask the Moon is
+> now also a NASA Space Apps 2026 *Junior Astronaut Mission Trainer* (kids 7–12 command a lunar outpost by voice while
+> real telemetry flows; contract in [`MISSION_CONTRACT.md`](MISSION_CONTRACT.md)). That plan makes Arc read telemetry,
+> events, game state, context lists and dialogue state next to 1..N audio streams, with masks for missing streams. It
+> builds on this doc. Changes here: mission command intents in §6, telemetry datasets in §3.3.
+
 **In one paragraph.** We want Arc Transcriber and Arc Tagger to run fully on-device and be great at space speech. That
 means hearing every named place on the Moon, every piece of hardware and every crew member, and marking the meaning as
 it streams: where, who, what happened, what they want, how it feels, when to answer. This doc covers:
@@ -113,6 +119,21 @@ was checked by opening its page. "PD" means a US-government work.
 | **JSC Oral History Project** | ~755 PDF interview transcripts (flight controllers, astronauts) | Text only, no audio | Speaker turns | PD | PDFs from the JSC oral-history index | Vocabulary and roles for the tagger |
 | **Perseverance SuperCam mic** (PDS) | Mars microphone audio (wind, laser zaps, Ingenuity) | PDS bundle | PDS4 labels | PD | `wget -r -np https://pds-geosciences.wustl.edu/m2020/urn-nasa-pds-mars2020_supercam/data_raw_audio/` | Non-speech sound events, noise augmentation |
 | **LOLA DEM 118 m** (USGS) | Global elevation GeoTIFF | Large | — | PD | `https://planetarymaps.usgs.gov/mosaic/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014.tif` | App terrain, horizon |
+
+### 3.3 Telemetry, event and timeline sources (v3, verified 2026-11-13)
+
+For the multi-stream work. Full table, pairing and licences: [`ARC_MULTISTREAM_PLAN.md`](ARC_MULTISTREAM_PLAN.md) §5.
+
+| Source | What it gives | How to get it | Use it for |
+| --- | --- | --- | --- |
+| **Apollo in Real Time milestones + A13 Flight Director loop** | `A11_TOC.csv` 274 / `A13_TOC.csv` 380 milestones (`GET\|level\|title`); `flight-director-loop.txt` 4,267 FD-loop turns, GET 55:46–62:06 (the Apollo 13 accident) | `curl -LO https://raw.githubusercontent.com/bfeist/apolloinrealtime.org/main/mission-data/13/MISSION_DATA/flight-director-loop.txt` (repo has no licence file) | Event stream for Apollo replays; urgency vs alarm on real speech |
+| **ISS live telemetry** (Lightstreamer, adapter `ISSLIVE`) | Live public ISS channels (`TimeStamp`, `Value`); ISS Mimic subscribes to 337 ids, meanings in `Telemetry/ISS_Public_Telemetry.xlsx` | `LightstreamerClient("https://push.lightstreamer.com","ISSLIVE")` as in `github.com/ISS-Mimic/Mimic` `Pi/iss_telemetry.py` (MIT). No archive found: record it | Real channel rates, gaps, staleness for the telemetry encoder |
+| **OSDR Environmental Data App** | ISS cabin temperature, CO2, RH, radiation dose (GCR/SAA) per mission | `https://visualization.osdr.nasa.gov/eda/` (UI; bulk endpoint UNVERIFIED) | Realistic life-support and dose curves for the sim |
+| **LRO CRaTER dose rates** | Daily lunar-orbit dose rates (L30, shadow-corrected) | `https://crater-products.sr.unh.edu/` → Dose/Dose Rates | Real lunar dose levels and storm spikes |
+| **NOAA SWPC GOES proton flux** | 5-min ≥1/≥10/≥100 MeV flux, last 7 days | `curl https://services.swpc.noaa.gov/json/goes/primary/integral-protons-7-day.json` | Shape of storm onset in the dose-rate channel |
+| **JPL Horizons from a lunar site** | Sun/Earth azimuth/elevation at the outpost (sunset/sunrise, comm windows) | `horizons.api` with `CENTER='coord@301'`, `SITE_COORD='0,-89.5,0'`, `QUANTITIES='4'` | `sun_elev_deg`, `earth_elev_deg` in the sim |
+| **Mars 2020 MEDA / MOXIE, MSL REMS** (PDS) | Mars environment telemetry; MOXIE oxygen production | `https://atmos.nmsu.edu/PDS/data/PDS4/Mars2020/` (`meda_derived.tar.gz`, `moxie_bundle.tar.gz`); `.../mslrem_1001/` | Unseen telemetry channels to test channel generalisation |
+| DONKI (already above) | GST/CME/SEP for storm events | real `api.nasa.gov` key needed (DEMO_KEY 429 today) | Storm events in the sim |
 
 **What still has to be synthetic** (no real source exists):
 - kids' speech about the Moon;
@@ -274,6 +295,19 @@ gets synthetic training data (section 9) and a held-out spoken test set.
 | | `off_topic` | — | "what's for lunch" |
 | App | `theme`, `open_about`, `help`, `mute` | light/dark | "make it dark", "what can you do" |
 | Safety | `pii_disclosure`, `unkind`, `jailbreak` | — | handled by the guard; never answered with the content |
+| **Mission (v3)** | `intent.mission.allocate` | `load` (shields, life_support, greenhouse, science, rover, comms, heaters), `amount` {kind: percent/delta/all/half/little/none, value}, `from` | "put 30 percent into shields", "more to heaters" |
+| | `intent.mission.dispatch` | `vehicle`, `task` (collect_ice, repair_array, explore, return), `target` | "send the rover to get ice" |
+| | `intent.mission.shelter` | `on` | "everyone into the shelter" |
+| | `intent.mission.query` | `what` (power, oxygen, life_support, dose, storm, comms, all) | "how much power is left?" |
+| | `intent.mission.call_houston` | `text` | "Houston, we have a problem" |
+| | `intent.mission.confirm`, `intent.mission.cancel` | — (only while a confirm is pending) | "yes, do it", "no wait" |
+| | `intent.mission.end_shift` | — | "end shift", "next" |
+| | Modifiers: `cmd.boundary`, `cmd.negation`, `cmd.condition`, `cmd.correction`, `cmd.amount` | compound, negated, conditional ("if power drops below 20…"), self-corrected, numbers + units | "shields to 40 and bring the rover home", "don't touch life support" |
+| | Radio: `discourse.radio.{copy,roger,say_again,go,no_go,readback,…}` | readback match vs the last CAPCOM line | "copy, shields forty" |
+
+Mission intents map 1:1 onto `Command` in [`MISSION_CONTRACT.md`](MISSION_CONTRACT.md). Slots, targets, grounding on
+telemetry ("it's dropping" → power), addressee (device / team / Houston) and tiers are in
+[`ARC_MULTISTREAM_PLAN.md`](ARC_MULTISTREAM_PLAN.md) §4.
 
 Context the app sends with each turn: `last_place`, `playing` (clip id + time), `tour` (stop i of n), `mission` (active
 id), `emotion`. Follow-ups ("who drove *it*?", "what's *that* crater?") must resolve against them.
