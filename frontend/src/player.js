@@ -30,6 +30,10 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   let seq = 0;
 
   $("npStop").onclick = () => stop();
+  bar.addEventListener("click", e => {
+    if (!P || e.target.closest("#npStop") || !audio.paused || P.explaining) return;
+    bar.classList.remove("is-blocked"); audio.play().catch(() => bar.classList.add("is-blocked"));
+  });
 
   function seek(t) {
     return new Promise(res => {
@@ -50,7 +54,8 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     let b = a; while (b + 1 < W.length && W[b + 1][0] < t1) b++;
     const L = lines(clip, a, b);
     P = { m, clip, a, b, t1, lines: L, ends: L.map(([, e]) => wordEnd(clip, e)), li: -1, wi: -1, j: 0, pending: null, lastPause: -1e9, explaining: false, follow: null, spans: [] };
-    whoEl.textContent = m.speaker && m.speaker !== "crew" ? m.speaker : "Artemis II crew";
+    const sp = String(m.speaker || "crew");
+    whoEl.textContent = sp === "crew" ? "Artemis II crew" : /^\d+$/.test(sp) ? "Astronaut " + (+sp + 1) : sp;
     whereEl.textContent = ""; lineEl.textContent = "…"; lineEl.classList.remove("is-explain");
     bar.hidden = false;
     if (audio.src !== new URL(clip.file, location.href).href) audio.src = clip.file;
@@ -59,7 +64,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     chime();
     await seek(m.t0); if (my !== seq) return false;
     audio.volume = 1;
-    try { await audio.play(); } catch (e) { lineEl.textContent = "Tap ▶ to listen"; }
+    try { await audio.play(); } catch (e) { bar.classList.add("is-blocked"); }   // autoplay blocked: tap the bar
     return true;
   }
 
@@ -112,7 +117,8 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     const my = P; my.explaining = true; my.lastPause = performance.now();
     await fadeTo(audio, 0, 200); audio.pause();
     const w = jg.word.charAt(0).toUpperCase() + jg.word.slice(1);
-    const line = `${w} means ${jg.explain.replace(/\.$/, "").split(/\s+/).slice(0, 12).join(" ")}.`;
+    const ex = jg.explain.charAt(0).toLowerCase() + jg.explain.slice(1);
+    const line = `${w} means ${ex.replace(/\.$/, "").split(/\s+/).slice(0, 12).join(" ")}.`;
     chime(); lineEl.textContent = line; lineEl.classList.add("is-explain"); my.li = -1;
     await speak(line, { rate: 0.9, pitch: 1.0 });
     if (P !== my) return;
@@ -124,7 +130,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   /** End the moment (fade out). `quiet` skips the end callback (another moment or answer is taking over). */
   function stop(quiet) { seq++; halt(quiet); }
   function halt(quiet) {
-    const was = P; P = null; bar.hidden = true;
+    const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked");
     if (!audio.paused) fadeTo(audio, 0, 200).then(() => { audio.pause(); audio.volume = 1; });
     if (was && !quiet) onEnd();
   }

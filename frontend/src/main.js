@@ -66,6 +66,7 @@ async function boot() {
     }
     for (let w = 0; voice.kidTalking && w < 100; w++) await new Promise(res => setTimeout(res, 100));   // WAIT
     if (my !== turn.seq) return;
+    voice.clearWords();
     await act(r, text, my);
   }
 
@@ -108,6 +109,7 @@ async function boot() {
   }
 
   function onTap(p) {
+    voice.clearWords();
     if (missions.onTap(p)) return;
     const { f, d } = globe.nearest(p);
     ++turn.seq;

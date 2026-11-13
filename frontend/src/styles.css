@@ -118,7 +118,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 .stage{position:relative;flex:1;min-width:0;min-height:0;border-radius:var(--radius);overflow:hidden;isolation:isolate;
   background:radial-gradient(70% 80% at 50% 45%,var(--space-2) 0%,var(--space) 62%);
   box-shadow:0 0 0 1px var(--line),var(--shadow);color:var(--on-space);
-  --dock-w:min(680px,calc(100% - 2*var(--s4)));--dock-h:136px}
+  --dock-w:min(680px,calc(100% - 2*var(--s4)));--dock-h:150px}
 .stage::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 0 80px rgba(0,0,0,.35);z-index:0}
 .stage canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
 .label{position:absolute;left:0;top:0;pointer-events:none;transform:translate(-50%,-140%);background:var(--accent-2);color:var(--accent-2-ink);z-index:1;
@@ -255,6 +255,9 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 .np-line span:not(.past):not(.now){color:var(--on-space-mute);opacity:.75}
 .np-line span.now{color:var(--accent-2-ink);background:var(--accent-2);border-radius:4px;padding:0 3px;margin:0 -3px}
 .np-line.is-explain{color:var(--accent-2);font-style:italic}
+.nowplaying.is-blocked{cursor:pointer;border-color:var(--accent-2)}
+.nowplaying.is-blocked .np-meta::after{content:"· tap to play";color:var(--accent-2)}
+.nowplaying.is-blocked .np-eq i{animation:none}
 .np-stop{flex:none;width:36px;height:36px;border-radius:10px;border:1px solid var(--glass-line);background:rgba(241,240,240,.08);color:var(--on-space);display:grid;place-items:center}
 .np-stop:hover{background:rgba(241,240,240,.16)}
 .np-stop svg{width:14px;height:14px}
@@ -290,7 +293,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 /* short desktop viewports: tighten so everything still fits */
 @media (min-width:860px) and (max-height:760px){
   :root{--topbar:46px}
-  .stage{--dock-h:124px}
+  .stage{--dock-h:142px}
   .listen{height:40px}
   .ask{padding:6px 6px 6px var(--s4)}
   .card-say{font-size:15px}
