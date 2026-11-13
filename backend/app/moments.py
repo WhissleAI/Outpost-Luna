@@ -49,6 +49,7 @@ class MomentIndex:
         self.meta_path = path.parent / "audio_meta.json"
         self.glossary = glossary if glossary is not None else load_glossary(path.parent.parent / "glossary.json")
         self.facts = facts if facts is not None else load_facts(path.parent.parent / "facts.json")
+        self.glossary_terms = sorted({v[0] for v in self.glossary.values()})
         self._mtime = None
         self.clips: list[dict] = []
         self.moments: list[dict] = []

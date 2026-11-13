@@ -59,3 +59,14 @@ class Gazetteer:
             return None
         _, score, idx = hit
         return self.places[self._keys[idx][1]], score
+
+    def candidates(self, mention: str, floor: float = 75, limit: int = 3) -> list[tuple[Place, float]]:
+        """Best fuzzy score per place for one mention, highest first (for the Director's ask band)."""
+        m = norm(mention)
+        if len(m) < 3:
+            return []
+        best: dict[str, float] = {}
+        for _, score, idx in process.extract(m, self._names, scorer=fuzz.ratio, score_cutoff=floor, limit=30):
+            pid = self._keys[idx][1]
+            best[pid] = max(best.get(pid, 0), score)
+        return [(self.places[p], s) for p, s in sorted(best.items(), key=lambda x: -x[1])[:limit]]

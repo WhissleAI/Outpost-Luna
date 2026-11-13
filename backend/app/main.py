@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -12,9 +12,9 @@ from pydantic import BaseModel, Field
 from . import llm, models_client
 from .config import settings
 from .gazetteer import Gazetteer
-from .moments import MomentIndex
+from .director import direct
+from .moments import MomentIndex, public
 from .readout import summarize
-from .resolve import resolve
 
 S: dict = {}
 
@@ -31,13 +31,26 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","
                    allow_headers=["*"])
 
 
+class Playing(BaseModel):
+    clip_id: str
+    t: float = 0.0
+
+
+class AskContext(BaseModel):
+    last_place: str | None = None
+    emotion: str | None = None
+    playing: Playing | None = None
+
+
 class AskRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=300)
+    context: AskContext | None = None
 
 
 @app.get("/api/health")
 async def health():
     return {"ok": True, "places": len(S["gaz"].places), "clips": len(S["index"].clips),
+            "moments": len(S["index"].moments), "facts": len(S["index"].facts), "glossary": len(S["index"].glossary_terms),
             "llm": "on" if llm.available() else "off", "model_server": await models_client.health()}
 
 
@@ -52,11 +65,29 @@ def clips():
     return {"clips": S["index"].clips}
 
 
+@app.get("/api/moments")
+def moments(place: str | None = None):
+    S["index"].refresh()
+    if place:
+        return {"moments": [public(m) for m in S["index"].for_place(place, 5)]}
+    return {"moments": [public(m) for m in S["index"].moments]}
+
+
+@app.get("/api/moments/{moment_id}")
+def moment(moment_id: str):
+    S["index"].refresh()
+    m = S["index"].get(moment_id)
+    if not m:
+        raise HTTPException(404, "no such moment")
+    return public(m)
+
+
 @app.post("/api/ask")
 async def ask(req: AskRequest):
     S["index"].refresh()
     read = summarize(await models_client.tag(req.text, "assistant"))
-    return await resolve(req.text, read, S["gaz"], S["index"])
+    ctx = req.context.model_dump(exclude_none=True) if req.context else None
+    return await direct(req.text, read, S["gaz"], S["index"], ctx)
 
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
