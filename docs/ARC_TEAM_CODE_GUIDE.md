@@ -118,3 +118,46 @@ Run: `make setup && make data && make dev`, then open http://localhost:5173. Tes
   - `index/audio_meta.json`: Arc v1.1 awe.
 - **Mission:** `backend/data/mission/` (sites, ephemerides, solar events, radiation numbers, each with source URLs).
 - **NASA media** (gitignored): `backend/data/media/`, fetched with `make data`.
+
+## 8. Director v2: the session Director
+
+`/api/ask` answers one turn. The session Director (`backend/app/session.py`, contract in
+[`SESSION_CONTRACT.md`](SESSION_CONTRACT.md)) keeps one live session per browser on `WS /ws/session`. It reads every
+stream, keeps one belief state, and sends several typed decisions back. The turn logic is still `director.direct()`, which
+now also returns `decisions:[…]` (so `/api/ask` returns them too, beside the old fields).
+
+```
+ INPUTS                               BELIEF (Session.belief)                 POLICY                       DECISIONS
+ ───────────────────────────────      ─────────────────────────────────      ──────────────────────────   ─────────────────
+ /ws/listen relay (?session=id,       mode, role, mission_id + State,         turn end → direct()          say  play
+   or `session` in a context frame)   lesson progress, floor holder,          → decisions_for()            card hud alert
+   words · turn · arc · emotion  ──►  kid turn {words, start/end,        ──►  + storm lookahead       ──►  fly  highlight
+ WS /ws/session                       command_complete, device_directed,      + calm lines on alarm        ask_confirm
+   hello · typed · ui · playback      emotion}, last place, what's playing,   barge-in → cancel            lesson  floor
+ mission sim (polled 1 s):            referent of "it" (last change),         sim event → proactive        cancel
+   new events · State deltas          pending (unplayed) decisions,           floor rules gate/hold
+ lesson events (Academy)              held proactive bundles, history         nudge rate limits
+```
+
+Every decision has `id`, `priority` (0 guard, 1 barge-in, 2 critical alert, 3 answer, 4 narration, 5 nudge) and an
+optional `after`. The browser (`frontend/src/session.js`) applies visual decisions at once, plays speech one voice at a
+time in priority order, holds `after` decisions until their parent finishes, and drops whatever a `cancel` names. It
+reports `playback` start/end (or the floor manager does, when `floor.js` exists). If the socket fails, `main.js` falls
+back to `POST /api/ask` (flag: `?session=0` or `localStorage atm-session=0` turns the session off).
+
+| Stream | Drives | Rule (code) |
+| --- | --- | --- |
+| Kid turn end (listen `turn:end`, or `typed`) | `hud` + `card` + `say` (+ `play` / `ask_confirm` after the say) | `Session._turn` → `director.direct` → `decisions_for`; same text from listen and client counts once (6 s) |
+| Kid `turn:start` + ≥ 2 non-echo words (dd ≥ 0.5), or `ui:barge_in` (Space / client echo check) | `cancel` of every unplayed decision above the guard + `floor:kid` | `Session._is_barge`, `barge_in` (§3 rule 2) |
+| A newer turn | `cancel` of older unplayed decisions | `_turn` (§3 rule 3) |
+| Arc `device_directed` < 0.5 and no command | nothing | `director._mission_turn` → `action:"none"` → no decisions |
+| Telemetry / State deltas | the referent of "it"/"that" | `_observe_state` → `resolve_referent` ("give it more" → "give shields more" after a dose rise) |
+| Emotion frustrated/confused during an alarm | shorter, calmer `say` | `_turn`, `proactive` ("Okay, we've got this." + `capcom.short`) |
+| `hello.role` | role gating of commands | `ctx.mission.role` → `capcom.role_check` |
+| Sim `solar_storm` (warning or start) | `alert` (critical at severity 3) + hint `card` (Shelter / Shields) + CAPCOM `say` | `Session.proactive` → `offer`: only when the floor is none; critical takes the floor after the current sentence, never over the kid |
+| Storm start within the next shift, during a command/status turn or End shift | `alert` "Solar storm coming in the next shift" | `_storm_lookahead` (once per storm) |
+| Sim `comm_open` | `alert:info` + `say` "Houston can hear us" | `proactive` |
+| Sim `low_power` (or sunset under 35%) | `alert:warn` + coaching `card` (a nudge) | `offer`: no nudge within 8 s of speech, max 1 per 30 s (§3 rule 7) |
+| `ui:end_shift` | sim advance → `hud` + `card` + `say`, then the shift's events proactively | `Session.end_shift` |
+| `playback` start/end | floor holder; releases held proactive bundles | `on_playback`, `release_held` |
+| Lesson events | `lesson` decisions | `on_lesson` (the Academy owns the content) |

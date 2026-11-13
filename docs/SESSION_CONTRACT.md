@@ -68,3 +68,17 @@ A turn or an event can produce **several decisions**. Each has `id`, `priority` 
 - **Crew channel:** the existing crew-audio player.
 - **Effects:** the chime.
 - A single **floor manager** owns all three. It reports `playback` events on the session socket.
+
+## 5. Additive fields (session Director, feat/session-director)
+
+Nothing above was changed; these were only added:
+- **`hello`**: `session` (the session id; required on the first hello), `mission_id` may be re-sent with a later
+  `hello` (mode switch, new mission). Server replies `{t:"ready", session}` once.
+- **`typed`**: `source:"voice"|"typed"` (the same turn text from the listen relay and from the client counts once).
+- **`ui` events**: `barge_in` (the client accepted a barge-in: Space or its echo check), `kid_done`, `mission_start`
+  `{id}`, `end_shift` (the session advances the sim and answers with `hud` + `card` + `say` + event decisions).
+- **`/ws/listen`**: `?session=<id>`, or `session` inside a `{"t":"context"}` frame, attaches the relay to a session.
+- **Decisions**: `say.delay_ms` (Houston round trip; the client waits before speaking), `say.proactive`; `card.asked`,
+  `card.claims`, `card.readout`, `card.source`, `card.action`, `card.place`, `card.resolved` (the turn after "it" was
+  resolved), `card.hint` (a heads-up card), `card.nudge` (a coaching card); `alert.source`; `play.moment` (the full
+  moment). `ask.labels` (place names) on the old `/api/ask` `ask` object.

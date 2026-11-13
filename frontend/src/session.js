@@ -28,6 +28,7 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
   const done = new Set(), cancelled = new Set();
   const waiting = new Map();          // after-id -> [decisions]
   let queue = [], current = null, seq = 0;
+  const log = [];                     // last 100 decisions received (debugging: window.__atmSession.log)
 
   const url = () => (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/session";
   const send = (m) => { if (ws && ws.readyState === 1) { ws.send(JSON.stringify({ ts: Date.now(), ...m })); return true; } return false; };
@@ -41,6 +42,7 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
         let d; try { d = JSON.parse(ev.data); } catch (e) { return; }
         if (d.t === "ready") { connected = true; clearTimeout(t); res(true); return; }
         if (d.t === "error") { console.warn("session:", d.message); return; }
+        log.push({ t: d.t, id: d.id, priority: d.priority, after: d.after, text: d.text || d.body || d.level, at: Date.now() }); log.splice(0, log.length - 100);
         receive(d);
       };
       ws.onclose = () => { const was = connected; connected = false; clearTimeout(t); if (!was) res(false); else onClose(); };
@@ -102,8 +104,8 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     if (current && cancelled.has(current.id) && handlers.stop) handlers.stop(current);
   }
 
-  return {
-    id, connect,
+  const api = {
+    id, connect, log,
     get connected() { return connected; },
     get busy() { return !!current || queue.length > 0; },
     hello(o = {}) { lastHello = { t: "hello", session: id, ...o }; return send(lastHello); },
@@ -116,4 +118,6 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     dropAll() { cancel([...(current ? [current.id] : []), ...queue.map(q => q.d.id)]); },
     close() { try { ws && ws.close(); } catch (e) { /* */ } },
   };
+  try { window.__atmSession = api; } catch (e) { /* no window */ }
+  return api;
 }
