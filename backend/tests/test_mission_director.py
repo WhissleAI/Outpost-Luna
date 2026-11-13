@@ -176,3 +176,15 @@ def test_api_ask_passes_mission_context(sim):
         r = c.post("/api/ask", json={"text": "Houston, are we okay?",
                                      "context": {"mission": {"id": "m-1", "role": "comms"}}}).json()
     assert r["action"] == "houston" and r["delay_ms"] == 2600
+
+
+def test_ui_contract_command_always_has_state(sim, world):
+    """UI: `state` present = handled server-side (never POST again); needs_confirm = nothing applied yet."""
+    r = ask(world, "move 20% to the shields")
+    assert r["state"] and r["applied"] is True and r["readback"] == r["say"] and r["needs_confirm"] is False
+    r = ask(world, "turn off the heaters")
+    assert r["state"] and r["needs_confirm"] is True and r["applied"] is False
+    r = ask(world, "no")
+    assert r["action"] == "command" and r["state"] and sim.m.applied[-1] == {"type": "cancel"}
+    r = ask(world, "move 20% to the shields", mission={"id": "m-1", "role": "comms"})
+    assert r["state"] and r["needs_confirm"] is True and r["applied"] is False

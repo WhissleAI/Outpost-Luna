@@ -515,4 +515,11 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         resp["state"] = state
     # one "Copy, commander." per turn, however many commands
     lines = [x if i == 0 else re.sub(r"^Copy, commander\. ", "", x) for i, x in enumerate(y for y in lines if y)]
-    return {**base, **resp, "say": _tone(" ".join(lines), emotion)}
+    say = _tone(" ".join(lines), emotion)
+    if resp.get("action") == "command":
+        # UI contract: a command response always carries `state` = the server already handled it (applied through the
+        # sim, stored as a standing order, or held for confirmation). The client never POSTs it again. needs_confirm
+        # -> nothing applied yet; the client shows Yes/No and sends "yes"/"no" as the next /api/ask.
+        resp["applied"] = not resp.get("needs_confirm") and resp["command"]["type"] not in ("rule", "cancel")
+        resp["readback"] = say
+    return {**base, **resp, "say": say}

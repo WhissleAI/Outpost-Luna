@@ -72,3 +72,17 @@ def test_context_forwarded_and_acked(fakes):
 def test_context_message_limits():
     m = listen.context_message({"t": "context", "names": ["a" * 200, 5, None, {"x": 1}], "terms": "not a list"})
     assert m == {"t": "context", "names": ["a" * 80, "5"], "terms": []}
+
+
+def test_context_before_and_after_ready_does_not_break_audio(fakes):
+    """The UI sends context right away and again after `ready`; audio and stop still work, junk is ignored."""
+    with TestClient(app) as c, c.websocket_connect("/ws/listen") as ws:
+        ws.send_text(json.dumps({"t": "context", "names": ["Shackleton"]}))
+        assert ws.receive_json() == {"t": "ready"}
+        ws.send_text("[1, 2]")
+        ws.send_text("not json")
+        ws.send_text(json.dumps({"t": "context", "names": ["Shackleton"], "mission": {"power_pct": 70}}))
+        ws.send_bytes(bytes(2560))
+        acks = [ws.receive_json(), ws.receive_json()]
+        ws.send_text(json.dumps({"t": "stop"}))
+    assert [a["t"] for a in acks] == ["context_ack", "context_ack"] and len(fakes["context"]) == 2
