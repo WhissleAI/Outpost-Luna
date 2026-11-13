@@ -134,6 +134,47 @@
         {"text": "It is the biggest and oldest known basin on the Moon.", "source": "NASA LRO", "numbers": []},
         {"text": "It is about 8 km deep in places.", "source": "NASA LRO / LOLA", "numbers": [8]}
       ]
+    },
+    "grimaldi": {
+      "name": "Grimaldi", "type": "crater", "diameter_km": 173.49, "lat": -5.38, "lon": -68.36, "side": "near",
+      "facts": [
+        {"text": "Grimaldi is a crater about 173 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [173.49]},
+        {"text": "It is named after Francesco Maria Grimaldi, an Italian astronomer who lived from 1618 to 1663.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1618, 1663]}
+      ]
+    },
+    "kepler": {
+      "name": "Kepler", "type": "crater", "diameter_km": 29.49, "lat": 8.12, "lon": -38.01, "side": "near",
+      "facts": [
+        {"text": "Kepler is a crater about 29 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [29.49]},
+        {"text": "It is named after Johannes Kepler, a German astronomer who lived from 1571 to 1630.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1571, 1630]}
+      ]
+    },
+    "byrgius_a": {
+      "name": "Byrgius A", "type": "crater", "diameter_km": 18.45, "lat": -24.55, "lon": -63.81, "side": "near",
+      "facts": [
+        {"text": "Byrgius A is a crater about 18 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [18.45]},
+        {"text": "It is a satellite crater of Byrgius, which is named after Joost Bürgi, a Swiss clockmaker who lived from 1552 to 1632.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1552, 1632]}
+      ]
+    },
+    "pythagoras": {
+      "name": "Pythagoras", "type": "crater", "diameter_km": 144.55, "lat": 63.68, "lon": -62.98, "side": "near",
+      "facts": [
+        {"text": "Pythagoras is a crater about 145 km wide in the far north of the near side.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [144.55]},
+        {"text": "It is named after Pythagoras of Samos, a Greek mathematician.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "humorum": {
+      "name": "Mare Humorum", "type": "mare", "diameter_km": 419.67, "lat": -24.48, "lon": -38.57, "side": "near",
+      "facts": [
+        {"text": "Mare Humorum, the Sea of Moisture, is about 420 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [419.67]},
+        {"text": "The dark seas are old lava that cooled flat; there is no water in them.", "source": "NASA Moon facts", "numbers": []}
+      ]
+    },
+    "north_pole": {
+      "name": "North Pole", "type": "pole", "diameter_km": 0, "lat": 90, "lon": 0, "side": "near",
+      "facts": [
+        {"text": "The north pole is at 90 degrees north latitude.", "source": "definition", "numbers": [90]}
+      ]
     }
   }
 }
