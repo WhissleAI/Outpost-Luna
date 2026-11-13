@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
-from . import arcmeta
+from . import arcmeta, embed
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings
@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
         STATE["tagger_error"] = str(e)
     STATE["loaded_s"] = round(time.perf_counter() - t, 2)
     arcmeta.load()   # ARC_META=mini|off; fails open, reason in /health
+    embed.load()     # EMBED=on|off; fails open, reason in /health
     yield
     if STATE["tagger"]:
         STATE["tagger"].close()
@@ -40,6 +41,7 @@ app = FastAPI(title="Ask the Moon model server", version="0.1.0", lifespan=lifes
 app.include_router(tag_stream.router)  # WS /v1/tag/stream
 from .routes_meta import router as meta_router  # noqa: E402
 app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream
+app.include_router(embed.router)  # POST /v1/embed
 
 
 class TagRequest(BaseModel):
@@ -64,7 +66,7 @@ def health():
         "models": {"arc_tagger": {"loaded": tg is not None, "error": STATE["tagger_error"],
                                   "domains": sorted(tg.pools) if tg else [],
                                   "pool_size": settings.arctag_pool_size},
-                   **arcmeta.health()},
+                   **arcmeta.health(), **embed.health()},
         "load_s": STATE["loaded_s"],
         "rss_mb": _rss_mb(),
     }

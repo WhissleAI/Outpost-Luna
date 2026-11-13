@@ -10,3 +10,7 @@ frontend/dist/
 backend/data/media
 # Server TTS cache (GET /api/tts)
 backend/data/tts_cache/
+
+# Local embedder weights (model_server/tools/export_embedder.py) and the card-vector cache
+model_server/models/
+backend/data/cache/
