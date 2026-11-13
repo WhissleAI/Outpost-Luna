@@ -9,7 +9,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { "/api": backend, "/media": backend },
+    proxy: {
+      "/api": backend,
+      "/media": backend,
+      "/ws": { target: backend.replace(/^http/, "ws"), ws: true },
+    },
   },
   build: {
     rollupOptions: {
