@@ -13,7 +13,7 @@ import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { chime } from "./sound.js";
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
-import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor } from "./floor.js";
+import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
 // ---- end audio floor ----
 import { createSession } from "./session.js";
 
@@ -60,7 +60,7 @@ async function boot() {
   let session = null;
   const useSession = () => !!(session && session.connected);
   const missionUI = createMissionUI({
-    globe, card, placeById, say: t => guideSay(t, { voice: CAPCOM_VOICE }) /* audio floor: CAPCOM voice */,
+    globe, card, placeById, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* audio floor: CAPCOM voice, Director style */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
     session: {
@@ -70,7 +70,7 @@ async function boot() {
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
   const academyUI = createAcademyUI({
-    globe, placeById, player, say: t => guideSay(t, { voice: CAPCOM_VOICE }) /* floor.say, CAPCOM voice */, stop: () => stopSpeaking(),
+    globe, placeById, player, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking(),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
     goMission: () => setMode("mission"),
     openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
@@ -80,11 +80,11 @@ async function boot() {
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
-  async function guideSay(text, { keepCrew, voice: v } = {}) {
+  async function guideSay(text, { keepCrew, voice: v, style } = {}) {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text, v);
+    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined) });
     voice.show("idle");
     return ok;
   }
@@ -99,7 +99,7 @@ async function boot() {
   };
 
   /** The hardware tells its own story, in its own voice. */
-  const storySay = text => guideSay(text, { voice: STORY_VOICE });
+  const storySay = text => guideSay(text, { voice: STORY_VOICE, style: { situation: "story" } });
 
   async function ask(raw, source) {
     const text = (raw || "").trim(); if (!text) return;
@@ -124,7 +124,7 @@ async function boot() {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
       if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
       card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
-      await guideSay(r.say, { voice: CAPCOM_VOICE }); return;   // audio floor: CAPCOM voice
+      await guideSay(r.say, { voice: CAPCOM_VOICE, style: sayStyle(r) }); return;   // audio floor: CAPCOM voice
     }
     await act(r, text, my);
   }
@@ -132,7 +132,7 @@ async function boot() {
   async function act(r, asked, my) {
     const f = placeById(r.place), moment = normMoment(r.moment), say = r.say || "";
     const arc = readoutLine(r);
-    if (r.action === "guard") { card.show({ title: "Let's keep that private", asked, say, arc }); await guideSay(say); scheduleNudge(); return; }
+    if (r.action === "guard") { card.show({ title: "Let's keep that private", asked, say, arc }); await guideSay(say, { style: sayStyle(r) }); scheduleNudge(); return; }
     if (r.action === "ask" && r.ask) { askCard(r, asked, arc); return; }
     if (r.action === "tour") { runTour(r.places, say, { asked, arc }); return; }
     if (f && f.kind === "artifact") { await artifactAnswer(f, r, asked, my); return; }
@@ -144,7 +144,7 @@ async function boot() {
     });
     if (r.action !== "play") offerCrew(token, f, moment);
     if (player.active) player.stop(true);
-    const spoke = await guideSay(say);
+    const spoke = await guideSay(say, { style: sayStyle(r) });
     if (my !== turn.seq) return;
     if (r.action === "play" && moment) { if (!spoke && voice.kidTalking) return; await player.play(moment); return; }
     scheduleNudge();
@@ -190,7 +190,7 @@ async function boot() {
     const token = card.show(artifactEntry(a, { asked, say: r.say, arc: readoutLine(r), claims: r.claims }));
     if (r.action !== "play") offerCrew(token, null, moment);
     if (player.active) player.stop(true);
-    const spoke = await guideSay(r.say || "");
+    const spoke = await guideSay(r.say || "", { style: sayStyle(r) });
     if (my !== turn.seq) return;
     if (r.action === "play" && moment) { if (!spoke && voice.kidTalking) return; await player.play(moment); return; }
     await storySay(a.story);
@@ -213,7 +213,7 @@ async function boot() {
     if (r && r.action !== "guard" && r.say) {
       card.update(token, { say: r.say, claims: r.claims, arc: readoutLine(r) });
       offerCrew(token, null, normMoment(r.moment));
-      await guideSay(r.say);
+      await guideSay(r.say, { style: sayStyle(r) });
       if (my !== turn.seq) return;
     }
     await storySay(a.story);
@@ -304,11 +304,11 @@ async function boot() {
   const handlers = {
     // The floor manager is the only audio owner: say decisions go to floor.say() with the contract priority.
     say: async d => {
-      if (d.delay_ms) { await missionUI.houston(d.text, +d.delay_ms); return true; }
-      if (!floor) return guideSay(d.text, { voice: d.voice === "story" ? STORY_VOICE : d.voice === "capcom" ? CAPCOM_VOICE : undefined });
+      if (d.delay_ms) { await missionUI.houston(d.text, +d.delay_ms, d.style); return true; }
+      if (!floor) return guideSay(d.text, { voice: d.voice === "story" ? STORY_VOICE : d.voice === "capcom" ? CAPCOM_VOICE : undefined, style: d.style });
       if (player.active && (d.priority ?? 3) <= 3) player.stop(true);
       voice.show("speaking");
-      const ok = await floor.say(d.text, { voice: d.voice || "guide", priority: d.priority ?? 3, id: d.id });
+      const ok = await floor.say(d.text, { voice: d.voice || "guide", priority: d.priority ?? 3, id: d.id, style: d.style });
       voice.show("idle");
       return ok;
     },

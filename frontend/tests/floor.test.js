@@ -110,3 +110,20 @@ for (const rate of [48000, 44100, 16000]) {
     assert.ok(Math.abs(out[n] - want) < 0x7fff * 0.02, `sample ${n}: ${out[n]} vs ${want.toFixed(0)}`);
   });
 }
+
+test("ttsUrlFor: the style and the sentence's place are in the URL (so caches key on them)", async () => {
+  const { ttsUrlFor, sayStyle } = await import("../src/floor.js");
+  const plain = new URL(ttsUrlFor("/api/tts", "Hi.", "guide", null, 0, 1, ""), "http://x");
+  assert.equal(plain.searchParams.get("style"), null);
+  assert.equal(plain.searchParams.get("i"), null);
+  const st = { tag: "determined", controls: { rate: 0.6, loud: 0.8 } };
+  const u = new URL(ttsUrlFor("/api/tts", "Storm is here!", "capcom", st, 0, 2, "Into the shelter."), "http://x");
+  assert.deepEqual(JSON.parse(u.searchParams.get("style")), st);
+  assert.equal(u.searchParams.get("i"), "0");
+  assert.equal(u.searchParams.get("n"), "2");
+  assert.equal(u.searchParams.get("next"), "Into the shelter.");
+  const calm = ttsUrlFor("/api/tts", "Storm is here!", "capcom", { tag: "serenity" }, 0, 1, "");
+  assert.notEqual(calm, ttsUrlFor("/api/tts", "Storm is here!", "capcom", st, 0, 1, ""));
+  assert.deepEqual(sayStyle({ decisions: [{ t: "card" }, { t: "say", style: st }] }), st);
+  assert.equal(sayStyle({}), undefined);
+});

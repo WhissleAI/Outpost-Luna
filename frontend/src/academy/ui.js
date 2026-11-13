@@ -2,6 +2,7 @@
 // after 2 misses) → badge moment. Lesson 7 is a check ride on the real mission simulator; passing it qualifies the
 // cadet for Mission mode. Grading is server-side (POST /api/academy/attempt); progress stays on this device.
 import { academyApi, progress } from "./client.js";
+import { sayStyle } from "../floor.js";
 import { APP_NAME } from "../brand.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -30,7 +31,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const lessons = () => (course ? course.lessons : []);
   const has = id => prog.badges.includes(id);
   const nextLesson = () => lessons().find(l => !has(l.badge.id)) || null;
-  const speakLine = t => { if (t) say(t); };
+  const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
 
   async function enter() {
     ui.active = true; panel.hidden = false;
@@ -82,7 +83,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (f) globe.showFeature(f, { dist: L.globe.dist }); else if (L.globe.lat != null) globe.flyTo(L.globe.lat, L.globe.lon, L.globe.dist || 3.6);
     }
     render();
-    say(`${L.brief} ${L.steps[0].prompt}`);
+    say(`${L.brief} ${L.steps[0].prompt}`, { situation: "lesson_brief" });
     if (L.steps[0].alert) alertSound();
   }
 
@@ -133,14 +134,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       feedback = { kind: "ok", text: r.say };
       const acc = L.steps[i].accept;
       if (acc.type === "intent" || acc.type === "tap") { const f = placeById(acc.place); if (f) globe.showFeature(f); }
-      if (r.badge) { award(r.badge); speakLine(r.say); setTimeout(() => showBadge(r.badge), 900); return true; }
-      waitingNext = true; render(); speakLine(r.say);
+      if (r.badge) { award(r.badge); speakLine(r.say, r); setTimeout(() => showBadge(r.badge), 900); return true; }
+      waitingNext = true; render(); speakLine(r.say, r);
       return true;
     }
     misses++;
     if (btn) btn.classList.add("is-wrong");
     feedback = { kind: "retry", text: r.status === "hint" ? L.steps[i].fail : r.say, hint: r.hint };
-    render(); speakLine(r.say);
+    render(); speakLine(r.say, r);
     return true;
   }
 
@@ -182,15 +183,15 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function rideStep(r) {
     if (r.status === "done") {
       feedback = { kind: r.passed ? "ok" : "retry", text: r.say };
-      if (r.passed && r.badge) { award(r.badge, true); render(); speakLine(r.say); setTimeout(() => showBadge(r.badge, true), 1200); return true; }
-      waitingNext = false; render(); speakLine(r.say);
+      if (r.passed && r.badge) { award(r.badge, true); render(); speakLine(r.say, r); setTimeout(() => showBadge(r.badge, true), 1200); return true; }
+      waitingNext = false; render(); speakLine(r.say, r);
       const sec = panel.querySelector(".a-step");
       sec.insertAdjacentHTML("beforeend", `<button type="button" class="m-go" id="aRetry">Try the check ride again</button>`);
       panel.querySelector("#aRetry").onclick = () => openLesson(L.id);
       return true;
     }
     feedback = { kind: r.status === "passed" ? "ok" : "retry", text: r.say + (r.sim_say ? " " + r.sim_say : "") };
-    waitingNext = true; misses = 0; render(); speakLine(r.say);
+    waitingNext = true; misses = 0; render(); speakLine(r.say, r);
     return true;
   }
 
@@ -217,7 +218,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <button type="button" class="pill" id="aMap">Course map</button>
         </div>
       </div>`;
-    say(commander ? `Congratulations, Commander! You earned the ${badge.name} badge.` : `Badge earned: ${badge.name}!`);
+    say(commander ? `Congratulations, Commander! You earned the ${badge.name} badge.` : `Badge earned: ${badge.name}!`, { situation: "badge" });
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = showMap;

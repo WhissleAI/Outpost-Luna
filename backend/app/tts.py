@@ -65,6 +65,10 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     """The client's style (from the Director) made safe, or the persona default. Only what reaches the engine."""
     if not isinstance(style, dict) or not style:
         style = steering.style_for(voice, text)
+    elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
+        sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
+        persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
+        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"))
     persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
     tag = str(style.get("tag") or "none")
     if tag in steering.FORBIDDEN:
