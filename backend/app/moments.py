@@ -111,6 +111,18 @@ def _segments(clip: dict) -> list[tuple[int, int]]:
     """Utterance word ranges; any single utterance longer than MAX_S is split at sentence ends only."""
     words, dur = clip["words"], float(clip.get("dur") or 0)
     utts = [tuple(u) for u in clip.get("utterances") or []] or [(0, len(words))]
+    # The tagger's utterances can leave words uncovered (before the first, between two, after the last; e.g. a
+    # Deepgram transcript whose tail has no sentence end). Cover them, so moments tile the whole clip.
+    filled, pos = [], 0
+    for a, b in sorted(utts):
+        if a > pos:
+            filled.append((pos, a))
+        if b > max(a, pos):
+            filled.append((max(a, pos), b))
+        pos = max(pos, b)
+    if pos < len(words):
+        filled.append((pos, len(words)))
+    utts = filled
 
     def t(i: int) -> float:
         return float(words[i][0]) if i < len(words) else max(dur, float(words[-1][0]) if words else 0)
@@ -154,13 +166,17 @@ def cut_clip(clip: dict, meta: dict | None, glossary: dict, facts: dict) -> list
         groups.append(cur)
     # A short tail joins the previous group when that stays near the limit.
     if len(groups) > 1 and t(groups[-1][1]) - t(groups[-1][0]) < MIN_S and t(groups[-1][1]) - t(groups[-2][0]) <= MAX_S * 1.2:
-        groups[-2][1] = groups.pop()[1]
+        tail = groups.pop()  # pop first: `groups[-2][1] = groups.pop()[1]` evaluates the pop before indexing
+        groups[-1][1] = tail[1]
 
     utt_meta = (meta or {}).get("utterances") or []
     peaks = (meta or {}).get("awe_peaks") or []
     out = []
     for k, (a, b) in enumerate(groups):
         t0, t1 = round(t(a), 2), round(min(t(b), dur) if dur else t(b), 2)
+        last = words[b - 1]
+        if len(last) > 3 and last[3]:  # end at the last word's own end time, not at the next word (drops trailing silence)
+            t1 = round(min(t1, float(last[3]) + 0.3), 2)
         ws = words[a:b]
         tags = [x for x in clip.get("tags") or [] if a <= x.get("i", -1) < b]
         places: list[str] = []
