@@ -2,10 +2,14 @@
 
 WebSocket /ws/listen
   client -> server: binary PCM16 mono 16 kHz frames (~80 ms each); text {"t":"stop"} ends the session.
+                    text {"t":"context","mission":{...},"names":[...],"terms":[...]} (any time): a side channel of
+                    what the app knows (mission State subset, crew/place names, terms). Forwarded to the model server
+                    stream as-is (docs/STREAMS.md); its {"t":"context_ack"} comes back to the client.
   server -> client: {"t":"ready"}
                     {"t":"words","text":str,"final":bool}           every Flux TurnInfo (the whole current turn)
                     {"t":"turn","state":"start"|"eager"|"end"|"resumed","text":str}
                     {"t":"arc",...} / {"t":"emotion","label":str,"p":float}   relayed from the model server stream
+                    {"t":"context_ack",...}                                   the model server took the context
                     {"t":"error","message":str}
 The model server stream (ws://.../v1/stream) is optional: if it doesn't connect, metadata is skipped (fail open).
 Flux protocol: developers.deepgram.com/reference/speech-to-text/listen-flux.
@@ -68,6 +72,23 @@ def flux_messages(d: dict) -> list[dict]:
     return []
 
 
+CONTEXT_KEYS = ("mission", "names", "terms", "telemetry", "topic")
+
+
+def context_message(d: dict) -> dict:
+    """The client's context message, limited to the keys the model server reads (docs/STREAMS.md)."""
+    out = {"t": "context"}
+    for k in CONTEXT_KEYS:
+        if d.get(k) is not None:
+            out[k] = d[k]
+    for k in ("names", "terms"):
+        if k in out:
+            xs = out[k] if isinstance(out[k], list) else []
+            out[k] = [x if isinstance(x, dict) else str(x)[:80] for x in xs
+                      if isinstance(x, (str, int, float)) or (isinstance(x, dict) and x.get("name"))][:200]
+    return out
+
+
 @router.websocket("/ws/listen")
 async def listen(ws: WebSocket):
     await ws.accept()
@@ -119,7 +140,7 @@ async def listen(ws: WebSocket):
             async for raw in meta:
                 with contextlib.suppress(ValueError):
                     d = json.loads(raw)
-                    if isinstance(d, dict) and d.get("t") in ("arc", "emotion"):
+                    if isinstance(d, dict) and d.get("t") in ("arc", "emotion", "context_ack"):
                         await send(d)
         except Exception:  # noqa: BLE001
             pass
@@ -146,8 +167,12 @@ async def listen(ws: WebSocket):
                 await dg.send(msg["bytes"])
                 await tee_meta(msg["bytes"])
             elif msg.get("text"):
-                with contextlib.suppress(ValueError):
-                    if json.loads(msg["text"]).get("t") == "stop":
+                with contextlib.suppress(ValueError, AttributeError):
+                    d = json.loads(msg["text"])
+                    if d.get("t") == "context":
+                        await tee_meta(json.dumps(context_message(d)))
+                        continue
+                    if d.get("t") == "stop":
                         await tee_meta(msg["text"])
                         if turn_open:
                             ended.clear()

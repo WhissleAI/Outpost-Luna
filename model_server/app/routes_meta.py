@@ -11,6 +11,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket,
 from fastapi.concurrency import run_in_threadpool
 
 from . import arcmeta
+from .stream_context import StreamContext
 
 router = APIRouter()
 
@@ -56,6 +57,7 @@ async def stream(ws: WebSocket):
     await ws.accept()
     domain = ws.query_params.get("domain", "assistant")
     await ws.send_json({"t": "emotion", "available": False, "reason": arcmeta.EMOTION_REASON})
+    ctx = StreamContext()   # {"t":"context"} side channel (app/stream_context.py, docs/STREAMS.md)
     if not arcmeta.admit():
         # fail open: the client keeps working without metadata
         await ws.send_json({"t": "arc", "available": False,
@@ -65,6 +67,8 @@ async def stream(ws: WebSocket):
                 m = await ws.receive()
                 if m["type"] == "websocket.disconnect" or (m.get("text") and '"stop"' in m["text"]):
                     break
+                if m.get("text") and '"context"' in m["text"]:
+                    await ws.send_json(ctx.update(json.loads(m["text"])))
         except WebSocketDisconnect:
             pass
         return
@@ -92,7 +96,9 @@ async def stream(ws: WebSocket):
                 except ValueError:
                     continue
                 t = msg.get("t")
-                if t == "words":
+                if t == "context":
+                    await ws.send_json(await loop.run_in_executor(pool, ctx.update, msg, ms))
+                elif t == "words":
                     await loop.run_in_executor(pool, ms.add_words, msg.get("words") or [])
                 elif t == "end_turn":
                     out = await loop.run_in_executor(pool, ms.end_turn)
@@ -100,10 +106,10 @@ async def stream(ws: WebSocket):
                     out = await loop.run_in_executor(pool, ms.flush)
                     if out:
                         out["final"] = True
-                        await ws.send_json(out)
+                        await ws.send_json(ctx.decorate(out))
                     break
             if out:
-                await ws.send_json(out)
+                await ws.send_json(ctx.decorate(out))
     except WebSocketDisconnect:
         pass
     finally:
