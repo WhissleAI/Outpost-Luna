@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { chime, fadeTo, speak, stopSpeaking, isSpeaking, tts, ttsAvailable } from "./sound.js";
+import { getMoments, deriveMoments, normMoment, sentenceEnds } from "./moments.js";
+import { createListener } from "./listen.js";
+import "./listen.css";
 
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(url + " " + r.status); return r.json(); }
 
@@ -17,26 +21,43 @@ try {
 const FBY = Object.fromEntries(F.map(f=>[f.id,f]));
 const clipFor = id => CL.find(c=>c.tags.some(t=>t.f===id));
 
-/* ---------- voice in / voice out (browser Web Speech API) ---------- */
+/* ---------- the guide's voice + shared turn state ---------- */
 const $ = id => document.getElementById(id);
-let ttsOn=true, llm=true, listening=false;
-const synth=window.speechSynthesis||null;
+let lastPlace=null, lastEmotion=null, kidTalking=false, askSeq=0, voiceScene=null;
+const el=(tag,cls,attrs={})=>{const e=document.createElement(tag); if(cls)e.className=cls; Object.assign(e,attrs); return e;};
+// UI that index.html doesn't own: built here, inside existing containers.
+{
+  const stage=$("stage"), bar=document.querySelector(".askbar");
+  stage.append(el("div","atm-caption",{id:"caption",hidden:true}));
+  $("caption").setAttribute("aria-live","polite");
+  const ls=el("div","atm-listen",{id:"listenState"}); ls.dataset.state="off";
+  ls.append(el("span","atm-listen-dot"),el("span","atm-listen-label",{id:"listenLabel",textContent:"Tap anywhere to turn on the mic · hold Space to ask"}),el("span","atm-listen-words",{id:"live"}));
+  ls.setAttribute("aria-live","polite");
+  bar.prepend(el("button","atm-nudge",{id:"nudge",type:"button",hidden:true}),ls);
+  const crew=$("pane-crew"), la=el("div","atm-la-bar",{id:"laBar"});
+  const lab=el("label"); lab.append(el("input","",{type:"checkbox",id:"explainOn",checked:true})," Explain hard words");
+  la.append(lab,el("span","atm-la-state",{id:"laState"}));
+  crew.insertBefore(la,$("clips"));
+}
 {const s=$("ttsState"), b=$("ttsBtn");
-  if(!synth){s.textContent="Read-aloud isn't available in this browser, so answers show as text.";}
+  if(!ttsAvailable){s.textContent="Read-aloud isn't available in this browser, so answers show as text.";}
   else{s.textContent="The guide reads answers out loud."; b.hidden=false;
-    b.onclick=()=>{ttsOn=!ttsOn;b.textContent="Read aloud: "+(ttsOn?"on":"off"); if(!ttsOn)synth.cancel();};}}
-function pickVoice(){const v=synth?synth.getVoices():[]; return v.find(x=>/Samantha|Google US English|Karen|Moira/.test(x.name))||v.find(x=>x.lang&&x.lang.startsWith("en"));}
-function say(text){ if(!synth||!ttsOn)return; synth.cancel(); const u=new SpeechSynthesisUtterance(text); const v=pickVoice(); if(v)u.voice=v; u.rate=0.98; u.pitch=1.08; synth.speak(u); }
-function stopTalking(){ if(synth)synth.cancel(); }
-{const SR=window.SpeechRecognition||window.webkitSpeechRecognition, m=$("mic"), n=$("voiceNote");
-  if(!SR){n.textContent="Voice input works in Chrome or Edge. Here, type your question.";}
-  else{const rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=false; let finalBuf="";
-    m.hidden=false;
-    rec.onresult=e=>{let interim="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalBuf+=r[0].transcript+" ";else interim+=r[0].transcript;} $("q").value=(finalBuf+interim).trim();};
-    rec.onstart=()=>{listening=true;m.classList.add("on");m.setAttribute("aria-label","Stop listening");};
-    rec.onend=()=>{listening=false;m.classList.remove("on");m.setAttribute("aria-label","Talk"); const q=finalBuf.trim(); finalBuf=""; if(q)ask(q);};
-    rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){m.hidden=true;n.textContent="Mic is blocked. Allow it in the address bar, or type instead.";} };
-    m.onclick=()=>{ if(listening){rec.stop();return;} stopTalking(); finalBuf=""; $("q").value=""; try{rec.start()}catch(e){} };}}
+    b.onclick=()=>{tts.on=!tts.on;b.textContent="Read aloud: "+(tts.on?"on":"off"); if(!tts.on)stopSpeaking();};}}
+/** Scene changes (guide ↔ crew, new place) get one soft chime. */
+function setScene(s){ if(s&&s!==voiceScene)chime(); voiceScene=s; }
+function caption(who,text){const c=$("caption"); if(!text){c.hidden=true;return;} c.className="atm-caption"+(who==="Guide"?" is-guide":""); c.innerHTML=""; const b=document.createElement("b"); b.textContent=who; c.append(b,text); c.hidden=false;}
+let capTimer=null;
+const ttsOn=()=>ttsAvailable&&tts.on;
+/** The guide speaks: captions always; never over crew audio (crew is faded and paused first). */
+async function guideSay(text,opts){
+  if(!text)return false;
+  if(audio&&!audio.paused){await fadeTo(audio,0,180); audio.pause(); audio.volume=1;}
+  setScene("guide"); caption("Guide",text); clearTimeout(capTimer);
+  const ok=await speak(text,opts);
+  capTimer=setTimeout(()=>{ if(voiceScene==="guide")caption(null); }, ttsOn()?1200:Math.max(3000,text.length*60));
+  return ok;
+}
+const say=t=>{guideSay(t)};
 
 /* ---------- three.js globe ---------- */
 const stage=$("stage");
@@ -136,71 +157,213 @@ function setTab(name){tabs.forEach(t=>{const on=t.dataset.tab===name;t.setAttrib
   try{localStorage.setItem("atm-tab",name)}catch(e){} }
 tabs.forEach(t=>t.onclick=()=>setTab(t.dataset.tab));
 
-/* ---------- ask / intent ---------- */
+/* ---------- ask / Director actions ---------- */
 const log=$("log");
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function bubble(cls){const d=document.createElement("div");d.className=cls;log.append(d);$("pane-ask").scrollTop=1e9;return d;}
 function kidSays(q){bubble("kid").textContent=q;}
-function guideCard(f,lead){
-  const g=bubble("guide"); const h=document.createElement("h3"); h.textContent=f.name; g.append(h);
-  const p=document.createElement("p"); p.textContent=(lead?lead+" ":"")+f.fact; g.append(p);
-  if(f.est){const m=document.createElement("p");m.className="muted";m.textContent="Location estimated from the crew's own directions.";g.append(m);}
-  const row=document.createElement("div"); row.className="row"; g.append(row);
-  const c=clipFor(f.id);
-  if(c){const b=document.createElement("button");b.className="pill hot";b.type="button";b.textContent="▶ Hear the crew talk about it";b.onclick=()=>playAt(c,f.id);row.append(b);}
-  const ll=document.createElement("span"); ll.className="tag-src"; ll.textContent=`${Math.abs(f.lat).toFixed(1)}°${f.lat>=0?"N":"S"} ${Math.abs(f.lon).toFixed(1)}°${f.lon>=0?"E":"W"}`; row.append(ll);
-  say(f.name+". "+(lead?lead+" ":"")+f.fact);
-}
-function guideText(t){const g=bubble("guide");const p=document.createElement("p");p.textContent=t;g.append(p);say(t);return g;}
+function para(g,t,cls){const p=document.createElement("p");p.textContent=t;if(cls)p.className=cls;g.append(p);return p;}
+function guideText(t){const g=bubble("guide");para(g,t);say(t);return g;}
+let thinkingEl=null;
+function thinking(on){ if(on&&!thinkingEl){thinkingEl=bubble("guide");para(thinkingEl,"…");} if(!on&&thinkingEl){thinkingEl.remove();thinkingEl=null;} }
 
 function readout(r){
   const x=r.readout||{}; const bits=[];
   if(x.available){ if(x.act&&x.act.length)bits.push("act: "+x.act.join(", ")); if(x.mentions&&x.mentions.length)bits.push("heard: "+x.mentions.join(", ")); if(x.hard_pii&&x.hard_pii.length)bits.push("private: "+x.hard_pii.join(", ")); if(x.ms!=null)bits.push(x.ms+" ms"); }
   else bits.push("Arc Tagger offline: rules only");
   if(r.corrected)bits.push("self-correction");
-  bits.push("via "+r.source);
+  if(r.action)bits.push(r.action.toUpperCase());
+  if(r.source)bits.push("via "+r.source);
   return bits.join(" · ");
 }
 function tagLine(el,r){const d=document.createElement("div");d.className="tag-src";d.textContent="Arc read-out · "+readout(r);el.append(d);}
+/** Source chips: verified = solid, crew impression = outlined, contradicted/removed = hidden. */
+function claimChips(el,claims){
+  const vis=(claims||[]).filter(c=>c&&c.text&&(c.status==="verified"||c.status==="impression"||c.status==="crew_impression"));
+  if(!vis.length)return; const row=document.createElement("div"); row.className="atm-claims";
+  vis.forEach(c=>{const s=document.createElement("span"); const imp=c.status!=="verified"; s.className="atm-claim"+(imp?" is-impression":"");
+    s.textContent=c.text; const sm=document.createElement("small"); sm.textContent=imp?"how it looked to the crew":(c.source?"· "+c.source:"· checked");
+    s.append(sm); if(c.source)s.title=c.source; row.append(s);});
+  el.append(row);
+}
+
+function context(){
+  const c={}; if(lastPlace)c.last_place=lastPlace; if(lastEmotion)c.emotion=lastEmotion;
+  if(cur&&!audio.paused)c.playing={clip_id:cur.id,t:+audio.currentTime.toFixed(2)};
+  return c;
+}
+
+/** Accept the Director contract and the v0.2 shape (`lead`, `clip:{id,t}`). */
+async function normalize(r){
+  const f=r.place&&FBY[r.place]?FBY[r.place]:null;
+  let say=r.say||"";
+  if(f&&("lead" in r||!say)) say=[f.name+".",r.lead,f.fact].filter(Boolean).join(" ");
+  let moment=r.moment?normMoment(r.moment):null;
+  if(!moment&&r.clip&&r.clip.id){
+    const c=CL.find(x=>x.id===r.clip.id);
+    if(c){const t=+r.clip.t||0; const ds=deriveMoments(c,placeName).filter(m=>m.t0<=t+0.5&&m.t1>=t);
+      moment=ds.find(m=>!f||m.places.includes(f.id))||ds[0]||{id:"x-"+c.id,clip_id:c.id,t0:Math.max(0,t-1.5),t1:Math.min(c.dur,t+20),places:f?[f.id]:[],jargon:[],speaker:"crew"};}
+  }
+  return {action:r.action||(f?"fly":"say"),say,f,view:r.view||null,moment,ask:r.ask||null,claims:r.claims||[],raw:r};
+}
 
 async function ask(raw){
-  const text=(raw||"").trim(); if(!text)return; setTab("ask"); kidSays(text); $("q").value="";
-  const g=guideText("…"); let r;
-  try{ const res=await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})}); if(!res.ok)throw new Error(res.status); r=await res.json(); }
-  catch(e){ g.querySelector("p").textContent="I can't reach my brain right now. Is the backend running?"; return; }
-  g.remove();
-  const f=r.place&&FBY[r.place];
-  if(r.view)flyTo(r.view.lat,r.view.lon,3.6);
-  if(f){ showFeature(f); guideCard(f,r.lead||""); }
-  else if(r.say){ tagLine(guideText(r.say),r); }
-  if(f) tagLine(log.lastElementChild,r);
-  if(r.action==="play"&&r.clip){ const c=CL.find(c=>c.id===r.clip.id); if(c) load(c,true,r.clip.t); }
+  const text=(raw||"").trim(); if(!text)return;
+  const ctx=context(); const my=++askSeq; cancelNudge();
+  setTab("ask"); kidSays(text); $("q").value=""; $("live").textContent=""; thinking(true);
+  let r;
+  try{ const res=await fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text,context:ctx})}); if(!res.ok)throw new Error(res.status); r=await res.json(); }
+  catch(e){ if(my!==askSeq)return; thinking(false); const g=bubble("guide"); para(g,"I can't reach my brain right now. Is the backend running?"); return; }
+  // WAIT: never answer while the kid is still talking.
+  for(let w=0;kidTalking&&w<100;w++)await sleep(100);
+  if(my!==askSeq)return;
+  thinking(false);
+  await act(await normalize(r),my);
 }
+
+async function act(d,my){
+  const r=d.raw, f=d.f;
+  if(d.action==="guard"){ const g=bubble("guide"); para(g,d.say); tagLine(g,r); await guideSay(d.say); scheduleNudge(); return; }
+  if(d.action==="ask"&&d.ask){ askCard(d); return; }
+  if(d.view&&!f){ flyTo(d.view.lat,d.view.lon,3.6); }
+  if(f){ if(f.id!==lastPlace)chime(); showFeature(f); if(d.view)flyTo(d.view.lat,d.view.lon); lastPlace=f.id; }
+  const g=bubble("guide");
+  if(f){const h=document.createElement("h3"); h.textContent=f.name; g.append(h);}
+  para(g,d.say);
+  if(f&&f.est)para(g,"Location estimated from the crew's own directions.","muted");
+  claimChips(g,d.claims);
+  const row=document.createElement("div"); row.className="row"; g.append(row);
+  if(f&&d.action!=="play"){ getMoments(f.id,CL,placeName).then(ms=>{ if(!ms.length)return; const b=document.createElement("button");b.className="pill hot";b.type="button";b.textContent="▶ Hear the crew talk about it";b.onclick=()=>playMoment(ms[0]);row.prepend(b);}); }
+  if(f){const ll=document.createElement("span"); ll.className="tag-src"; ll.textContent=`${Math.abs(f.lat).toFixed(1)}°${f.lat>=0?"N":"S"} ${Math.abs(f.lon).toFixed(1)}°${f.lon>=0?"E":"W"}`; row.append(ll);}
+  tagLine(g,r);
+  const spoke=await guideSay(d.say);
+  if(my!==askSeq)return;
+  if(d.action==="play"&&d.moment){ if(!spoke&&kidTalking)return; await playMoment(d.moment,{fromAsk:true}); return; }
+  scheduleNudge();
+}
+
+/** ASK: options preview-fly the globe; a choice goes back as a new ask. */
+function askCard(d){
+  const q=d.ask.question||d.say; const g=bubble("guide"); para(g,q); tagLine(g,d.raw);
+  const opts=(d.ask.options||[]).map(id=>FBY[id]).filter(Boolean);
+  const row=document.createElement("div"); row.className="atm-opts"; g.append(row);
+  opts.forEach(f=>{const b=document.createElement("button"); b.type="button"; b.className="pill hot"; b.textContent=f.name;
+    const pv=()=>showFeature(f); b.onmouseenter=pv; b.onfocus=pv;
+    b.onclick=()=>{row.querySelectorAll("button").forEach(x=>x.disabled=true); lastPlace=f.id; ask(f.name);};
+    row.append(b);});
+  guideSay(q);
+  // a short preview tour while the question is read out
+  opts.forEach((f,i)=>setTimeout(()=>{ if(!kidTalking)showFeature(f); },400+i*1600));
+  scheduleNudge();
+}
+
 $("askForm").addEventListener("submit",e=>{e.preventDefault();ask($("q").value)});
 const CHIPS=["Where did Apollo 11 land?","Show me the giant bullseye","What did the astronauts say about the yellow part?","Show me the far side","Where will astronauts land next?","Which crater did the crew name after their spaceship?","What's the biggest crater?","Show me Earthrise"];
 CHIPS.forEach(c=>{const b=document.createElement("button");b.type="button";b.textContent=c;b.onclick=()=>ask(c);$("chips").append(b)});
 
-/* ---------- crew logs ---------- */
+/* ---------- NUDGE: 8 s of quiet after an answer ---------- */
+let nudgeT=null;
+function cancelNudge(){clearTimeout(nudgeT); nudgeT=null; $("nudge").hidden=true;}
+function scheduleNudge(){
+  clearTimeout(nudgeT);
+  nudgeT=setTimeout(async()=>{
+    if(kidTalking||isSpeaking()||!audio.paused||micOn()){ if(!micOn()||!kidTalking)scheduleNudge(); return; }
+    const n=$("nudge");
+    if(!done.size){ n.textContent="Try mission 1?"; n.onclick=()=>{cancelNudge(); active=0; renderMissions(); setTab("mission"); say(M[0].clue);}; n.hidden=false; return; }
+    const all=await getMoments(null,CL,placeName); const m=all.find(x=>x.places.some(p=>p!==lastPlace&&FBY[p]))||all[0];
+    if(!m){ return; }
+    const nm=FBY[m.places[0]]?FBY[m.places[0]].name:"the Moon";
+    n.textContent=`Hear the crew at ${nm}?`; n.onclick=()=>{cancelNudge(); playMoment(m);}; n.hidden=false;
+  },8000);
+}
+
+/* ---------- crew logs: Listen Along ---------- */
 const audio=$("audio"), tr=$("transcript"); let cur=null, spans=[], lastI=-1, followF=null;
 const fmt=s=>`${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,"0")}`;
-CL.forEach(c=>{const b=document.createElement("button");b.className="clip";b.type="button";b.dataset.id=c.id;b.setAttribute("aria-pressed","false");
-  const fs=[...new Set(c.tags.filter(t=>t.f&&FBY[t.f]).map(t=>FBY[t.f].name))];
-  const l=document.createElement("div"); const t=document.createElement("b"); t.textContent=c.title; const s=document.createElement("span"); s.textContent=fs.length?fs.join(" · "):"Earth, the limb"; l.append(t,s);
-  const tm=document.createElement("time"); tm.textContent=fmt(c.dur); b.append(l,tm); b.onclick=()=>load(c,true); $("clips").append(b);});
-function load(c,autoplay,startAt){
-  if(cur!==c){cur=c; lastI=-1; followF=null;
-    document.querySelectorAll(".clip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.id===c.id));
-    audio.src=c.file; tr.innerHTML=""; spans=[];
-    const tagAt={}; c.tags.forEach(t=>tagAt[t.i]=t);
-    c.words.forEach(([t,w],i)=>{const s=document.createElement("span"); s.textContent=w; const tg=tagAt[i]; if(tg){s.className="t-"+tg.type; s.title=tg.type+(tg.f&&FBY[tg.f]?" → "+FBY[tg.f].name:"")+(tg.src?"  ["+tg.src+"]":"");}
-      s.onclick=()=>{audio.currentTime=t; audio.play().catch(()=>{})}; spans.push(s); tr.append(s," ");});
-    const cnt={}; c.tags.forEach(t=>cnt[t.type]=(cnt[t.type]||0)+1);
-    $("tagStats").textContent=`${c.words.length} words indexed · `+Object.entries(cnt).map(([k,v])=>`${k} ${v}`).join(" · ");
-    $("player").hidden=false;}
-  setTab("crew");
-  if(startAt!=null){const go=()=>{audio.currentTime=Math.max(0,startAt-1.5)}; if(audio.readyState>=1)go(); else audio.addEventListener("loadedmetadata",go,{once:true});}
-  if(autoplay){ stopTalking(); audio.play().catch(()=>{}); }
+const placeName=id=>FBY[id]?FBY[id].name:id;
+let explainOn=true; $("explainOn").onchange=e=>{explainOn=e.target.checked;};
+let LA=null;   // the moment playing: {m, ends, j, pending, lastPause, explaining}
+
+function load(c){
+  if(cur===c)return;
+  cur=c; lastI=-1; followF=null;
+  audio.src=c.file; tr.innerHTML=""; spans=[];
+  const tagAt={}; c.tags.forEach(t=>tagAt[t.i]=t);
+  c.words.forEach(([t,w],i)=>{const s=document.createElement("span"); s.textContent=w; const tg=tagAt[i]; if(tg){s.className="t-"+tg.type; s.title=tg.type+(tg.f&&FBY[tg.f]?" → "+FBY[tg.f].name:"")+(tg.src?"  ["+tg.src+"]":"");}
+    s.onclick=()=>{audio.currentTime=t; audio.play().catch(()=>{})}; spans.push(s); tr.append(s," ");});
+  const cnt={}; c.tags.forEach(t=>cnt[t.type]=(cnt[t.type]||0)+1);
+  $("tagStats").textContent=`${c.words.length} words indexed · `+Object.entries(cnt).map(([k,v])=>`${k} ${v}`).join(" · ");
+  $("player").hidden=false;
 }
-function playAt(c,fid){const tg=fid&&c.tags.find(t=>t.f===fid); load(c,true,tg?c.words[tg.i][0]:0);}
+function seek(t){return new Promise(res=>{const go=()=>{audio.currentTime=t;res();}; if(audio.readyState>=1)go(); else audio.addEventListener("loadedmetadata",go,{once:true});});}
+
+async function renderMoments(){
+  const box=$("clips"); const ms=await getMoments(null,CL,placeName); box.innerHTML="";
+  if(!ms.length){box.textContent="No crew moments yet.";return;}
+  ms.slice(0,24).forEach(m=>{const c=CL.find(x=>x.id===m.clip_id); if(!c)return;
+    const b=document.createElement("button"); b.className="clip"; b.type="button"; b.dataset.id=m.id; b.setAttribute("aria-pressed","false");
+    const l=document.createElement("div"); const t=document.createElement("b"); t.textContent=(m.places||[]).map(placeName).join(" · ")||c.title;
+    const who=document.createElement("span"); who.className="atm-moment-who"; who.textContent=(m.speaker&&m.speaker!=="crew"?m.speaker+" · ":"")+c.title;
+    const q=document.createElement("q"); q.className="atm-moment-text"; q.textContent=(m.text||"").split(/\s+/).slice(0,14).join(" ")+"…";
+    l.append(t,who,q); const tm=document.createElement("time"); tm.textContent=fmt(Math.max(1,(m.t1??c.dur)-m.t0));
+    b.append(l,tm); b.onclick=()=>playMoment(m); box.append(b);});
+}
+
+/** PLAY a moment from t0 and stop at t1; fly as places are spoken; PAUSE_EXPLAIN at sentence ends. */
+async function playMoment(m,{fromAsk}={}){
+  m=normMoment(m); const c=CL.find(x=>x.id===m.clip_id); if(!c)return;
+  cancelNudge(); if(!fromAsk)stopSpeaking();
+  document.querySelectorAll(".clip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.id===m.id));
+  load(c); setTab("crew");
+  const p=m.places.find(id=>FBY[id]);
+  if(p){ showFeature(FBY[p]); followF=p; lastPlace=p; }
+  LA={m,c,ends:sentenceEnds(c),j:0,pending:null,lastPause:-1e9,explaining:false};
+  await seek(m.t0); audio.volume=1;
+  setScene("crew"); caption(null);
+  try{ await audio.play(); }catch(e){ $("laState").textContent="Press play to listen."; }
+}
+
+function crewLoop(){
+  if(!LA||audio.paused||LA.explaining)return;
+  const {m,c}=LA, t=audio.currentTime;
+  if(m.t1!=null&&t>=m.t1){ endMoment(); return; }
+  if(explainOn&&!LA.pending){
+    while(LA.j<m.jargon.length&&m.jargon[LA.j].t<=t){
+      const jg=m.jargon[LA.j++]; const at=LA.ends.find(e=>e>=jg.t+0.05);
+      if(at!=null&&(m.t1==null||at<m.t1-0.3)){ LA.pending={jg,at}; break; }
+    }
+  }
+  if(LA.pending&&t>=LA.pending.at-0.08){
+    const {jg}=LA.pending; LA.pending=null;
+    const ok=t-m.t0>=5&&performance.now()-LA.lastPause>=30000&&!kidTalking;
+    if(ok)explain(jg);
+  }
+}
+setInterval(crewLoop,60);
+
+async function explain(jg){
+  const my=LA; my.explaining=true; my.lastPause=performance.now();
+  await fadeTo(audio,0,200); audio.pause();
+  const w=jg.word.charAt(0).toUpperCase()+jg.word.slice(1);
+  const line=`${w} means ${jg.explain.split(/\s+/).slice(0,10).join(" ")}.`;
+  $("laState").textContent="Explaining “"+jg.word+"”";
+  setScene("guide"); caption("Guide",line);
+  await speak(line,{rate:0.9,pitch:1.0});
+  if(!ttsOn())await sleep(2200);
+  if(LA!==my)return;
+  my.explaining=false; $("laState").textContent="";
+  if(kidTalking)return;           // kid barged in: stay paused, they get the floor
+  caption(null); setScene("crew");
+  audio.volume=0; try{ await audio.play(); }catch(e){} fadeTo(audio,1,250);
+}
+
+function endMoment(){
+  const my=LA; if(!my)return; LA=null;
+  fadeTo(audio,0,200).then(()=>{audio.pause(); audio.volume=1;});
+  setScene("guide"); caption(null); $("follow").hidden=true; $("laState").textContent="";
+  scheduleNudge();
+}
+
 audio.addEventListener("timeupdate",()=>{ if(!cur)return; const t=audio.currentTime, W=cur.words;
   let lo=0,hi=W.length-1,i=-1; while(lo<=hi){const m=(lo+hi)>>1; if(W[m][0]<=t){i=m;lo=m+1}else hi=m-1;}
   if(i===lastI)return;
@@ -209,11 +372,120 @@ audio.addEventListener("timeupdate",()=>{ if(!cur)return; const t=audio.currentT
   if(i<lastI) spans.forEach((s,k)=>s.classList.toggle("past",k<i));
   lastI=i; if(i<0)return; const s=spans[i]; s.classList.add("now");
   const top=s.offsetTop-tr.clientHeight/2; tr.scrollTop=Math.max(0,top);
+  // captions for crew audio: the last few words
+  if(!audio.paused&&voiceScene==="crew") caption(LA&&LA.m.speaker&&LA.m.speaker!=="crew"?LA.m.speaker:"Crew",W.slice(Math.max(0,i-9),i+1).map(w=>w[1]).join(" "));
   // follow the crew: most recent FEATURE tag at or before i
   let ft=null; for(const tg of cur.tags){ if(tg.i>i)break; if(tg.f&&FBY[tg.f])ft=tg; }
-  if(ft&&ft.f!==followF){followF=ft.f; const f=FBY[ft.f]; showFeature(f); const fl=$("follow"); fl.hidden=false; fl.textContent="Following the crew → "+f.name;}
+  if(ft&&ft.f!==followF){followF=ft.f; const f=FBY[ft.f]; chime(); showFeature(f); lastPlace=f.id; const fl=$("follow"); fl.hidden=false; fl.textContent="Following the crew → "+f.name;}
 });
-audio.addEventListener("pause",()=>{$("follow").hidden=true});
+audio.addEventListener("pause",()=>{$("follow").hidden=true; if(voiceScene==="crew"&&!(LA&&LA.explaining))caption(null);});
+audio.addEventListener("play",()=>{ if(voiceScene!=="crew"&&!(LA&&LA.explaining)){stopSpeaking(); setScene("crew");} cancelNudge(); });
+audio.addEventListener("ended",()=>{ if(LA)endMoment(); });
+renderMoments();
+
+/* ---------- live mic: always-on WS /ws/listen + Space push-to-talk (Head Start model) ---------- */
+// The mic opens after the first gesture and stays open. Holding Space marks the turn "for the guide";
+// on release (after a 500 ms tail so the last word lands) or on the server's turn end, the app asks.
+// Without /ws/listen, Space (or the mic button) is push-to-talk on the browser's Web Speech recognizer.
+const micBtn=$("mic"), note=$("voiceNote");
+let mode="off", wsBroken=false, starting=false, finalBuf="", interim="", turnAsked=false;
+const ptt={held:false,tail:null};
+const micOn=()=>mode==="ws"||srOn;
+const turnText=()=>(finalBuf+" "+interim).trim();
+function indicator(state,label){
+  const ls=$("listenState"); ls.dataset.state=state;
+  $("listenLabel").textContent=label||({off:"Mic off · tap the mic or hold Space to ask",listening:"Listening · hold Space to ask the guide",hearing:"Hearing you…",ptt:"Talk to the guide · let go of Space when done",thinking:"Thinking…",error:"Mic unavailable · type your question"})[state];
+  micBtn.classList.toggle("on",state!=="off"&&state!=="error"); micBtn.setAttribute("aria-label",mode==="ws"?"Turn the mic off":"Talk");
+}
+const idle=()=>indicator(mode==="ws"?"listening":"off");
+function showWords(){ $("live").textContent=turnText(); }
+function bargeIn(){
+  kidTalking=true; cancelNudge();
+  if(isSpeaking())stopSpeaking();
+  if(!audio.paused)fadeTo(audio,0.2,150);
+}
+function kidDone(){ kidTalking=false; if(!audio.paused)fadeTo(audio,1,250); idle(); }
+function askTurn(text){
+  turnAsked=true; finalBuf=""; interim=""; kidTalking=false; thinking(false); $("live").textContent="";
+  if(!text){ kidDone(); return; }
+  indicator("thinking"); ask(text).finally(()=>{ if($("listenState").dataset.state==="thinking")idle(); });
+}
+
+const listener=createListener({
+  message(m){
+    if(m.t==="ready"){ idle(); }
+    else if(m.t==="words"){ if(m.final){finalBuf+=(m.text||"")+" "; interim="";} else interim=m.text||""; showWords(); }
+    else if(m.t==="turn"){
+      if(m.state==="start"){ turnAsked=false; bargeIn(); if(!ptt.held)indicator("hearing"); }
+      else if(m.state==="eager"){ if(!turnAsked)thinking(true); }
+      else if(m.state==="resumed"){ kidTalking=true; askSeq++; thinking(false); turnAsked=false; if(!ptt.held)indicator("hearing"); }
+      else if(m.state==="end"){ if(ptt.held)return;   // Space still down: the kid isn't done
+        if(!turnAsked)askTurn((m.text||turnText()).trim()); }
+    }
+    else if(m.t==="emotion"){ if(m.label)lastEmotion=m.label; }
+    else if(m.t==="error"){ note.textContent="Voice hiccup: "+(m.message||"try again"); }
+  },
+  close(){ if(mode==="ws"){ mode="off"; kidTalking=false; indicator("off"); } },
+  micError(){ note.textContent="Mic is blocked. Allow it in the address bar, or type instead."; indicator("error"); },
+});
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null, srOn=false;
+if(SR){ rec=new SR(); rec.lang="en-US"; rec.interimResults=true; rec.continuous=true;
+  rec.onresult=e=>{interim="";for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)finalBuf+=r[0].transcript+" ";else interim+=r[0].transcript;} showWords(); if(!kidTalking)bargeIn();};
+  rec.onstart=()=>{srOn=true;indicator(ptt.held?"ptt":"hearing");};
+  rec.onend=()=>{srOn=false; askTurn(turnText());};
+  rec.onerror=e=>{ if(e.error==="not-allowed"||e.error==="service-not-allowed"){note.textContent="Mic is blocked. Allow it in the address bar, or type instead.";indicator("error");} };
+}
+const canWS=!!(navigator.mediaDevices&&window.AudioWorkletNode);
+if(!canWS&&!SR){ note.textContent="Voice input works in Chrome or Edge. Here, type your question."; indicator("error"); }
+else { micBtn.hidden=false; indicator("off"); }
+
+async function startAlwaysOn(){
+  if(mode==="ws"||starting||wsBroken||!canWS)return mode==="ws";
+  starting=true; indicator("thinking","Turning the mic on…");
+  const ok=await listener.start(); starting=false;
+  if(ok===true){ mode="ws"; idle(); return true; }
+  if(ok!=="mic"){ wsBroken=true; note.textContent=SR?"Hold Space (or tap the mic) to talk.":"Live voice isn't available here. Type your question."; }
+  indicator(ok==="mic"?"error":"off"); return false;
+}
+function stopAlwaysOn(){ listener.stop(); mode="off"; kidTalking=false; indicator("off"); }
+function srStart(){ if(!rec||srOn)return; stopSpeaking(); finalBuf=""; interim=""; turnAsked=false; try{rec.start()}catch(e){} }
+
+// First gesture anywhere opens the mic (browsers need a gesture for audio + mic).
+const firstGesture=()=>{ removeEventListener("pointerdown",firstGesture,true); removeEventListener("keydown",firstGesture,true); startAlwaysOn(); };
+addEventListener("pointerdown",firstGesture,true); addEventListener("keydown",firstGesture,true);
+
+micBtn.onclick=async()=>{
+  if(mode==="ws"){ stopAlwaysOn(); return; }
+  if(srOn){ rec.stop(); return; }
+  if(await startAlwaysOn())return;
+  if(starting)return;
+  srStart();
+};
+
+const typing=e=>e.target&&e.target.closest&&e.target.closest("input, textarea, select, [contenteditable]");
+addEventListener("keydown",async e=>{
+  if(e.code!=="Space"||typing(e)||e.metaKey||e.ctrlKey||e.altKey)return;
+  e.preventDefault(); if(e.repeat||ptt.held)return;
+  ptt.held=true; if(ptt.tail){clearTimeout(ptt.tail);ptt.tail=null;}
+  bargeIn(); turnAsked=false;
+  if(mode!=="ws"&&!wsBroken){ await startAlwaysOn(); }
+  if(mode==="ws"){ indicator("ptt"); return; }
+  if(!ptt.held)return;
+  srStart(); indicator("ptt");
+});
+function release(){
+  if(!ptt.held)return; ptt.held=false;
+  ptt.tail=setTimeout(()=>{ ptt.tail=null;
+    if(mode==="ws"){ if(!turnAsked)askTurn(turnText()); }
+    else if(srOn) rec.stop();
+    else kidDone();
+  },500);
+}
+addEventListener("keyup",e=>{ if(e.code!=="Space"||!ptt.held)return; e.preventDefault(); release(); });
+addEventListener("blur",release);
+
 
 /* ---------- missions ---------- */
 const M=[
@@ -243,7 +515,7 @@ function onTap(p){
       const nx=M.findIndex((_,i)=>!done.has(i)); if(nx>=0)active=nx; renderMissions(); return;}
     const n=nearest(p).f; say("That's "+n.name+". Keep looking!"); highlight(n); return;}
   const {f,d}=nearest(p);
-  if(d<12){showFeature(f); setTab("ask"); guideCard(f,"You tapped near "+f.name+".");}
+  if(d<12){showFeature(f); setTab("ask"); lastPlace=f.id; act({action:"fly",say:`You tapped near ${f.name}. ${f.fact}`,f,view:null,moment:null,ask:null,claims:[],raw:{action:"fly",source:"tap",readout:{available:true}}},askSeq);}
   else { setTab("ask"); guideText(`That spot is ${Math.abs(p.lat).toFixed(0)}° ${p.lat>=0?"north":"south"}, ${Math.abs(p.lon).toFixed(0)}° ${p.lon>=0?"east":"west"}. No named place in my list is close. Try a darker or brighter patch!`);}
 }
 
