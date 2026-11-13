@@ -28,7 +28,21 @@ OUT = Path(__file__).resolve().parent.parent / "data" / "mission"
 HORIZONS = "https://ssd.jpl.nasa.gov/api/horizons.api"
 HORIZONS_DOC = "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
 DONKI = "https://api.nasa.gov/DONKI"
-NASA_KEY = os.environ.get("NASA_API_KEY", "DEMO_KEY")
+
+
+def _nasa_key() -> str:
+    """NASA_API_KEY from the environment or the gitignored .env (never printed or cached); DEMO_KEY otherwise."""
+    if os.environ.get("NASA_API_KEY"):
+        return os.environ["NASA_API_KEY"]
+    for env in (Path(__file__).resolve().parents[2] / ".env", Path(__file__).resolve().parents[1] / ".env"):
+        if env.exists():
+            for line in env.read_text().splitlines():
+                if line.startswith("NASA_API_KEY=") and line.split("=", 1)[1].strip():
+                    return line.split("=", 1)[1].strip().strip('"')
+    return "DEMO_KEY"
+
+
+NASA_KEY = _nasa_key()
 
 # Mission window: 10 days in April 2026, the month Artemis II flew around the Moon. Chosen (after scanning Mar-May 2026)
 # because in these days Earth climbs from below the south-pole horizon to above it (a real comm blackout, then
@@ -163,14 +177,24 @@ def build_sites_and_ephemeris(only_sites: bool = False):
 
 
 def donki(kind: str, start: str, end: str) -> list:
-    for attempt in range(5):
-        r = httpx.get(f"{DONKI}/{kind}", params={"startDate": start, "endDate": end, "api_key": NASA_KEY}, timeout=90)
-        if r.status_code == 200:
-            return r.json() or []
-        print(f"DONKI {kind} {r.status_code}; retrying", file=sys.stderr)
-        time.sleep(10 * (attempt + 1))
-    r.raise_for_status()
-    return []
+    """One DONKI list, fetched in 59-day chunks (DONKI rejects ranges over 60 days). Errors never echo the URL (it holds the key)."""
+    out = []
+    a = datetime.fromisoformat(start)
+    stop = datetime.fromisoformat(end)
+    while a <= stop:
+        b = min(stop, a + timedelta(days=58))
+        for attempt in range(4):
+            r = httpx.get(f"{DONKI}/{kind}", params={"startDate": a.date().isoformat(), "endDate": b.date().isoformat(),
+                                                    "api_key": NASA_KEY}, timeout=90)
+            if r.status_code == 200:
+                out += (r.json() or []) if r.content.strip() else []
+                break
+            print(f"DONKI {kind} {a.date()} HTTP {r.status_code}; retrying", file=sys.stderr)
+            time.sleep(5 * (attempt + 1))
+        else:
+            raise RuntimeError(f"DONKI {kind} failed with HTTP {r.status_code}")
+        a = b + timedelta(days=1)
+    return out
 
 
 # The curated storms (DONKI activity IDs are looked up from the fetched lists). severity/multiplier mapping:
@@ -192,9 +216,10 @@ def severity(ev: dict) -> int:
 
 
 def build_donki():
-    start, end = "2017-09-01", "2025-12-31"
-    gst = donki("GST", start, end)
-    sep = donki("SEP", start, end)
+    # Sept 2017 (the last big solar-cycle-24 storms) + solar cycle 25's active years.
+    ranges = [("2017-09-01", "2017-10-15"), ("2021-10-01", "2025-12-31")]
+    gst = [g for a, b in ranges for g in donki("GST", a, b)]
+    sep = [x for a, b in ranges for x in donki("SEP", a, b)]
     time.sleep(2)
     (OUT / "raw").mkdir(exist_ok=True)
     (OUT / "raw" / "donki_gst.json").write_text(json.dumps(gst))
@@ -208,9 +233,12 @@ def build_donki():
         day = g["startTime"][:10]
         d0 = datetime.fromisoformat(day)
         near_sep = next((s for d, s in sep_days.items() if abs((datetime.fromisoformat(d) - d0).days) <= 4), None)
-        events.append({"id": g["gstID"], "date": day, "type": "GST+SEP" if near_sep else "GST", "kp_max": kp,
-                       "sep": bool(near_sep), "sep_id": near_sep["sepID"] if near_sep else None,
+        events.append({"id": g["gstID"], "date": day, "type": "geomagnetic storm", "kp_max": kp,
+                       "class": f"G{min(5, int(kp) - 4)}", "sep": bool(near_sep),
+                       "sep_id": near_sep["sepID"] if near_sep else None,
                        "link": g.get("link"), "cme_speed_kms": None})
+    events.sort(key=lambda e: (-e["kp_max"], -e["sep"], e["date"]))
+    events = events[:15]
     # Fastest CME per storm (from the CME list around each storm date): one small call per storm.
     for ev in events:
         d0 = datetime.fromisoformat(ev["date"])
@@ -219,17 +247,26 @@ def build_donki():
             speeds = [c.get("speed") or 0 for c in cmes if c.get("isMostAccurate")]
             ev["cme_speed_kms"] = round(max(speeds)) if speeds else None
         except Exception as e:  # rate-limited: keep the storm, mark speed unknown
-            print("CME lookup failed", ev["date"], e, file=sys.stderr)
+            print("CME lookup failed", ev["date"], type(e).__name__, file=sys.stderr)
         time.sleep(1)
     for ev in events:
         ev["severity"] = severity(ev)
         ev["dose_multiplier"] = SEVERITY_MULT[ev["severity"]]
+        parts = ["with solar particles (SEP)" if ev["sep"] else None,
+                 f"CME {ev['cme_speed_kms']} km/s" if ev["cme_speed_kms"] else None]
+        extra = ", ".join(p for p in parts if p)
+        ev["name"] = f"Real {ev['class']} solar storm, {ev['date']}" + (f" ({extra})" if extra else "")
+        ev["source"] = {"title": f"DONKI {ev['id']} (NASA CCMC)", "url": ev["link"]}
+    # Curate: every Kp>=8 storm plus the strongest Kp 7s, 15 max, newest first among ties.
+    events.sort(key=lambda e: (-e["kp_max"], -e["sep"], e["date"]), reverse=False)
+    events = sorted(events[:15], key=lambda e: e["date"])
     write_donki(events)
 
 
 def write_donki(events: list[dict]):
     doc = {"source": {"title": "DONKI: Space Weather Database Of Notifications, Knowledge, Information (NASA CCMC), "
                                "via api.nasa.gov", "url": "https://api.nasa.gov/#DONKI"},
+           "path": "donki",
            "mapping": {"severity_to_dose_multiplier": SEVERITY_MULT,
                        "rule": "3 = SEP + Kp>=8 storm or CME >= 2000 km/s; 2 = SEP, or Kp 7, or CME >= 1200 km/s; "
                                "1 = otherwise. On the Moon there is no magnetic field, so solar energetic particles "
@@ -307,7 +344,7 @@ def main():
         try:
             build_donki()
         except Exception as e:  # DONKI DEMO_KEY 429 / CCMC unreachable -> verified fallback list
-            print("DONKI unavailable:", e, "-> verified fallback", file=sys.stderr)
+            print("DONKI unavailable:", type(e).__name__, "-> verified fallback", file=sys.stderr)
             build_storms_verified()
 
 
