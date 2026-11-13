@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>About Ask the Moon</title>
+<script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="/src/styles.css">
+</head>
+<body class="page-about">
+<header class="topbar">
+  <div class="brandline">
+    <span class="sa-badge">SpaceApps 2026</span>
+    <a class="appname" href="./">Ask the Moon</a>
+  </div>
+  <nav class="topnav">
+    <a href="./">&larr; Back to the Moon</a>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </nav>
+</header>
+<div class="about-wrap">
+  <header class="about-head"><h1>Ask the Moon</h1><p>A voice-first Moon explorer for kids. Say what you want to see, and the Moon turns to show you. Then listen to the Artemis II crew describe it in their own words.</p></header>
+  <main class="brief">
+    <section>
+      <span class="eyebrow">The idea</span>
+      <h2>Let kids explore the Moon by talking to it, and hear the astronauts who just flew past it</h2>
+      <p class="lede">Most kids can't type "Mare Orientale," but they can say "show me the giant bullseye." Ask the Moon puts our Head Start voice-search pattern on a 3D Moon. A child speaks, we work out which place they mean, and the Moon turns to it.</p>
+      <p>The second part is new. In April 2026 the Artemis II crew flew around the Moon and narrated what they saw: colors, craters, Earthrise. NASA published 59 of those recordings. We transcribe and tag every one, then link each spoken place name to a point on the Moon. As a recording plays, the globe follows the astronauts' words.</p>
+      <p class="quote">"If you look at Orientale on the far side and then draw a line straight up to Ohm… relatively in the middle is an unnamed crater, and we would like to suggest it be called Integrity." (Artemis II crew)</p>
+      <p>The crew gave directions using other craters as landmarks. Following those directions is the kind of spatial-language task our tagger can learn, and it's the hook for the kids' missions.</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">How it works</span>
+      <h2>Arc turns hours of crew audio into a Moon you can search by voice</h2>
+      <div class="flow">
+        <div class="step"><em>INGEST</em><b>NASA audio + imagery</b><small>59 flyby clips, LRO color map, NASA image library, IAU crater names</small></div>
+        <div class="step"><em>ARC TRANSCRIBER</em><b>Words + timing + feel</b><small>Word timestamps, speaker, emotion (awe, laughter), sound events</small></div>
+        <div class="step"><em>ARC TAGGER</em><b>Word-level tags</b><small>FEATURE, COLOR, GEO_TERM, DIRECTION, RELATION, AWE</small></div>
+        <div class="step"><em>INDEX</em><b>Moon gazetteer</b><small>Each tag links to a place (lat, lon) and a moment (clip, second)</small></div>
+        <div class="step"><em>VOICE SEARCH</em><b>Kid asks, Moon answers</b><small>Kid speech → intent + place → fly to it, highlight, play the crew's words</small></div>
+      </div>
+      <p>The same index answers questions in both directions. "Where is Aristarchus?" returns a place. "What did the astronauts say about Aristarchus?" returns the second in the clip where they said "yellow snow-capped mountain." "Where were they amazed?" filters on AWE tags.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Crew said (real transcript)</th><th>Tagger output</th><th>Resolved place</th></tr></thead>
+        <tbody>
+          <tr><td>"…draw a line straight up to Ohm… relatively in the middle is an unnamed crater"</td><td><code>RELATION midpoint(Orientale, Ohm)</code></td><td>Integrity ≈ 0.7°S, 104°W <span class="muted">(estimate)</span></td></tr>
+          <tr><td>"look at Glushko and it's just to the northwest… at the same latitude as Ohm"</td><td><code>RELATION northwest_of(Glushko) ∧ lat = lat(Ohm)</code></td><td>Carroll ≈ 18.4°N, 82°W <span class="muted">(estimate)</span></td></tr>
+          <tr><td>"it is like a yellow snow-capped mountain where the snow is the Aristarchus…"</td><td><code>COLOR yellow</code> · <code>FEATURE Aristarchus</code></td><td>Aristarchus Plateau, 26°N 51°W</td></tr>
+          <tr><td>"Oh my gosh! It's amazing!"</td><td><code>AWE</code> + audio emotion</td><td>Earthrise, far-side limb</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">In this build, place names and numbers come from Arc Tagger v0.3 (via the model server) linked to the gazetteer; colors, geology words and directions are still small rule lists until a lunar tagger domain exists. The two proposed-crater locations are estimates worked out from the crew's directions, not official coordinates.</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">More ideas</span>
+      <h2>Eight things the same index makes possible</h2>
+      <div class="ideas">
+        <div class="idea core"><b>1. Voice Moon explorer</b><p>The core of the demo: say a place, or describe one ("the bullseye," "the yellow part"), and the Moon flies there with a kid-level fact.</p><span class="uses">ASR · intent · gazetteer</span></div>
+        <div class="idea core"><b>2. Crew log follow-along</b><p>Play an Artemis II recording while the globe follows the crew's words and the transcript highlights each one as it's spoken.</p><span class="uses">Arc Transcriber · Arc Tagger</span></div>
+        <div class="idea"><b>3. Talk like an astronaut</b><p>The crew trained to describe terrain in geology words (they even practiced on a maple cookie). Kids describe a crater out loud and earn badges for using words like <em>ejecta</em>, <em>rays</em> and <em>albedo</em>.</p><span class="uses">Arc Tagger GEO_TERM scoring</span></div>
+        <div class="idea"><b>4. Find-it missions</b><p>Clues written the way the crew gives directions: "northwest of Glushko, same latitude as Ohm." Kids tap the Moon to answer. Already in the prototype.</p><span class="uses">RELATION tags · spatial reasoning</span></div>
+        <div class="idea"><b>5. Awe map</b><p>Pins where the crew gasped, laughed, or went quiet. Kids can tap a spot and hear how it felt to be there.</p><span class="uses">Arc emotion + AWE tags</span></div>
+        <div class="idea"><b>6. SoundID: Mission Control quiz</b><p>Play a sound from the library (go/no-go poll, liftoff, splashdown, "Full send") and kids guess which part of the mission it's from.</p><span class="uses">Arc audio event tagging</span></div>
+        <div class="idea"><b>7. Name a crater</b><p>The Artemis II crew proposed Integrity and Carroll. Kids pick an unnamed crater, say a name and why, and the class map keeps it.</p><span class="uses">ASR · shared class map</span></div>
+        <div class="idea"><b>8. Show me pictures</b><p>"Show me Earthrise photos" searches NASA's image library through the same tags, so pictures and recordings both land on the globe.</p><span class="uses">Image captions → tagger index</span></div>
+      </div>
+      <p>Classroom mode builds on the Head Start work. A teacher asks a question and the class answers out loud. Multilingual ASR means a Spanish- or Hindi-speaking child can ask in their own language and still find "el Mar de la Tranquilidad."</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">Data</span>
+      <h2>Everything here is public NASA data</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Dataset</th><th>What we use it for</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">Artemis Audio Library</a></td><td>About 113 clips. 59 are lunar-flyby crew observations naming Orientale, Aristarchus, Reiner Gamma, Hertzsprung, Vavilov, Ohm, Glushko and Byrgius A; the rest are launch, in-flight and splashdown sounds for SoundID.</td></tr>
+          <tr><td><a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit (LRO LROC color)</a></td><td>The 3D globe's color map (4K in the prototype). Elevation maps from the same kit can add real relief.</td></tr>
+          <tr><td>IAU Gazetteer of Planetary Nomenclature</td><td>About 9,000 named lunar features with coordinates and sizes. This is our place index and the word list for ASR biasing.</td></tr>
+          <tr><td>NASA Image and Video Library</td><td>Photos and captions of Artemis II and Apollo, tagged into the same index.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <span class="eyebrow">Weekend plan</span>
+      <h2>Build plan for Nov 14–15</h2>
+      <dl class="plan">
+        <dt>Sat AM</dt><dd>Run the 59 flyby clips through Arc Transcriber. Load the IAU gazetteer. Add a lunar tag set to Arc Tagger: FEATURE, COLOR, GEO_TERM, DIRECTION, RELATION, AWE.</dd>
+        <dt>Sat PM</dt><dd>Build the index (tag → place + clip time). Voice search over kid phrasing, with ASR hotword biasing on crater names.</dd>
+        <dt>Sun AM</dt><dd>Polish the globe (relief from elevation data), finish missions, add Talk Like an Astronaut scoring. Add SoundID if there's time.</dd>
+        <dt>Sun PM</dt><dd>Record the 30-second demo with a real kid asking "where did Apollo 11 land?" Submit.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <span class="eyebrow">What to train later</span>
+      <h2>Models that make this work for real kids</h2>
+      <ul>
+        <li><b>Kid-speech ASR.</b> Fine-tune on children's voices. Kids say "Oriental," "Aris-tar-cus" and "the Moon's eye," so we need fuzzy matching against the gazetteer.</li>
+        <li><b>Lunar Arc Tagger domain.</b> Train on the crew transcripts plus synthetic kid questions. RELATION spans ("northwest of," "midpoint between") need their own head.</li>
+        <li><b>Spatial resolver.</b> A small model that turns a RELATION parse into lat/lon. The two proposed craters make a ready-made test set.</li>
+        <li><b>Audio event tags for SoundID.</b> Liftoff, countdown, comms beeps, splashdown, applause.</li>
+        <li><b>Safety for under-13s.</b> Use Arc Tagger safety domains on what kids say. Store no audio by default.</li>
+      </ul>
+      <p class="muted">Risks: proposed crater locations are estimates until the IAU confirms them. NASA media can't be used to imply endorsement. Voice input in the prototype depends on browser support.</p>
+    </section>
+  </main>
+
+  <p class="foot">Moon imagery: NASA SVS CGI Moon Kit (LRO LROC). Crew audio: NASA Artemis Audio Library, used under NASA media guidelines. Transcripts in this prototype were made with Whisper large-v3-turbo; place and number tags come from Arc Tagger v0.3; color, geology and direction tags are rules. Space Apps 2026 is Nov 14–15.</p>
+</div>
+<!-- Theme toggle: kept out of main.js so it works even when the backend is down. -->
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById("themeBtn");
+  var mq=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)");
+  function current(){return root.dataset.theme||(mq&&mq.matches?"dark":"light")}
+  function sync(){var d=current()==="dark";btn.setAttribute("aria-label",d?"Switch to light mode":"Switch to dark mode");btn.dataset.mode=d?"dark":"light"}
+  btn.addEventListener("click",function(){var n=current()==="dark"?"light":"dark";root.dataset.theme=n;try{localStorage.setItem("atm-theme",n)}catch(e){}sync()});
+  if(mq&&mq.addEventListener)mq.addEventListener("change",sync);
+  sync();
+})();
+</script>
+</body>
+</html>
