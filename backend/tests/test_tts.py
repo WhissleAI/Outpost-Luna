@@ -18,6 +18,7 @@ def fake_dg(monkeypatch, tmp_path):
     monkeypatch.setattr(tts, "_synth", synth)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "tts_cache")
     monkeypatch.setattr(settings, "deepgram_api_key", "test-key")
+    monkeypatch.setattr(settings, "tts_engine", "deepgram")
     return calls
 
 
@@ -44,6 +45,7 @@ def test_tts_voices_are_distinct(fake_dg):
 def test_tts_without_key_is_503_json(monkeypatch, tmp_path):
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "tts_cache")
     monkeypatch.setattr(settings, "deepgram_api_key", "")
+    monkeypatch.setattr(settings, "tts_engine", "deepgram")
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Hi."})
     assert r.status_code == 503 and r.json()["fallback"] == "browser"
@@ -61,6 +63,7 @@ def test_tts_upstream_failure_is_502(monkeypatch, tmp_path):
     monkeypatch.setattr(tts, "_synth", boom)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "tts_cache")
     monkeypatch.setattr(settings, "deepgram_api_key", "k")
+    monkeypatch.setattr(settings, "tts_engine", "deepgram")
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Hi."})
     assert r.status_code == 502 and r.json()["fallback"] == "browser"

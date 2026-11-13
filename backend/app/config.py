@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     model_timeout_s: float = 2.0
     anthropic_api_key: str = ""
     deepgram_api_key: str = ""
+    # Guide-channel TTS: steer (Steer TTS Edge on the model server, falls back to deepgram) | deepgram
+    tts_engine: str = "steer"
+    tts_timeout_s: float = 8.0
     flux_url: str = "wss://api.deepgram.com/v2/listen"
     model_stream_url: str = ""  # default: model_server_url as ws:// + /v1/stream
     ask_model: str = "claude-haiku-5-5"
