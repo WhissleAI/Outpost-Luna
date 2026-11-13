@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from . import content, ride as rides
-from .grade import grade
+from .grade import grade, similar
 
 router = APIRouter()
 HINT_AFTER = 2   # misses before the hint
@@ -58,7 +58,7 @@ def academy_ride():
 
 
 @router.post("/api/academy/attempt")
-def academy_attempt(req: AttemptReq):
+async def academy_attempt(req: AttemptReq):
     les = content.lesson(req.lesson_id)
     if not les:
         raise HTTPException(404, "no such lesson")
@@ -69,6 +69,8 @@ def academy_attempt(req: AttemptReq):
         return _ride_attempt(les, req)
     st = steps[req.step]
     ok, extra = grade(st, req.input.model_dump(exclude_none=True))
+    if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
+        ok = await similar(st, req.input.text)
     last = req.step == len(steps) - 1
     if ok:
         return _out(les["id"], req.step, "passed", st["success"], next_step=None if last else req.step + 1,

@@ -148,8 +148,11 @@ class Brain:
         q = norm(text)
         rule_attr = detect_attr(q)
         ents = self.alias_cards(q)
-        if place_hint:
+        if place_hint:  # a named place beats generic glossary words in the same question ("how big is X crater")
+            ents = {cid for cid in ents if self.cards[cid]["kind"] != "term" or rule_attr == "what" and len(ents) == 1}
             ents |= {cid for cid, c in self.cards.items() if c["place"] == place_hint}
+        elif rule_attr not in ("what", None):  # "how big is the oldest basin": "basin" is not a definition question
+            ents = {cid for cid in ents if self.cards[cid]["kind"] != "term"}
         # Rules settle it: exactly one named card that has the asked-for attribute.
         if len(ents) == 1:
             cid = next(iter(ents))

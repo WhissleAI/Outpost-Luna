@@ -457,7 +457,9 @@ def valid(c) -> dict | None:
 # and matched to the nearest example in data/mission/command_bank.json (tools/gen_command_bank.py). The example gives
 # the command *shape*; slots (load, number, task, query) are re-read from the kid's own words by the same rules, then
 # the schema check `valid()` runs. Below BANK_ACCEPT nothing happens: a wrong command is worse than "say that again".
-BANK_ACCEPT = 0.66
+BANK_ACCEPT = 0.55   # cosine, all-MiniLM-L6-v2; calibrated on tests/eval/commands_heldout.json (docs/LOCAL_BRAIN.md)
+BANK_MARGIN = 0.03   # top two examples that disagree on the command and are this close: ambiguous, do nothing
+NEED = re.compile(r"\b(need|needs|hungry|starving|want|snack|thirsty|help)\b")
 _BANK: dict = {"examples": None, "vecs": None}
 
 
@@ -491,6 +493,10 @@ async def _bank_vecs():
     return _BANK["vecs"]
 
 
+def _shape(c: dict) -> tuple:
+    return (c["type"], c.get("to"), c.get("task"), c.get("what"), c.get("on"), c.get("when"))
+
+
 def fill_slots(example: dict, t: str, read: dict | None = None) -> dict | None:
     """The example's command with slots re-read from the kid's words (t = norm + words-to-digits)."""
     cmd = json.loads(json.dumps(example["command"]))
@@ -501,11 +507,12 @@ def fill_slots(example: dict, t: str, read: dict | None = None) -> dict | None:
             cmd["to"] = loads[0]
         n, a = _number(t, read), cmd["amount"]
         if n is not None and a["kind"] in ("percent", "delta", "little"):
-            sign = -1 if (a["value"] or 0) < 0 or LESS.search(t) else 1
+            sign = -1 if LESS.search(t) else 1 if (MORE.search(t) or NEED.search(t)) else (-1 if (a["value"] or 0) < 0 else 1)
             cmd["amount"] = {"kind": "percent", "value": _num(n)} if a["kind"] == "percent" else \
                 {"kind": "delta", "value": _num(sign * n)}
-        elif n is None and a["kind"] in ("percent", "delta"):
-            cmd["amount"] = {"kind": "little", "value": -5 if (a["value"] or 0) < 0 else 5}
+        elif n is None and a["kind"] in ("percent", "delta", "little"):
+            neg = LESS.search(t) or (not (MORE.search(t) or NEED.search(t)) and (a["value"] or 0) < 0)
+            cmd["amount"] = {"kind": "little", "value": -5 if neg else 5}
     elif ty == "dispatch":
         for rx, task in TASK_WORDS:
             if rx.search(t):
@@ -536,10 +543,15 @@ async def bank_parse(text: str, read: dict | None = None) -> tuple[list[dict], f
     if not q:
         return [], 0.0, None
     sims = vecs @ np.asarray(q[0], dtype=np.float32)
-    i = int(np.argmax(sims))
+    order = np.argsort(-sims)
+    i = int(order[0])
     ex, score = _bank()[i], float(sims[i])
     if score < BANK_ACCEPT:
         return [], score, ex["text"]
+    key = _shape(ex["command"])
+    rival = next((int(j) for j in order[1:6] if _shape(_bank()[int(j)]["command"]) != key), None)
+    if rival is not None and score - float(sims[rival]) < BANK_MARGIN:
+        return [], score, ex["text"]           # two different commands about equally close: ambiguous
     if NEGATION.search(t) and not NEGATION.search(norm(ex["text"])):
         return [], score, ex["text"]          # "don't ..." never borrows a positive example's command
     cmd = fill_slots(ex, t, read)
