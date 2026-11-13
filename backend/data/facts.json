@@ -1,0 +1,139 @@
+{
+  "_note": "Kid-safe fact sheet per place id (places.json). Only facts we are confident in; each carries a source. 'estimated': true marks crew-proposed names whose size/position are estimates, not IAU values. 'numbers' lists every number the guide may say about the place (checked within +-10%).",
+  "places": {
+    "tranquillitatis": {
+      "name": "Sea of Tranquility", "type": "mare", "diameter_km": 873, "lat": 8.5, "lon": 31.4, "side": "near",
+      "facts": [
+        {"text": "Neil Armstrong and Buzz Aldrin landed here on July 20, 1969, on Apollo 11.", "source": "NASA Apollo 11 mission page", "numbers": [20, 1969, 11]},
+        {"text": "The Sea of Tranquility is about 873 km across.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [873]},
+        {"text": "It isn't water: the dark 'seas' are old lava that cooled flat.", "source": "NASA Moon facts", "numbers": []},
+        {"text": "The astronauts' footprints are still there, because there is no wind on the Moon.", "source": "NASA Apollo 11 mission page", "numbers": []}
+      ]
+    },
+    "aristarchus": {
+      "name": "Aristarchus Plateau", "type": "plateau", "diameter_km": 200, "lat": 26, "lon": -51, "side": "near",
+      "facts": [
+        {"text": "The plateau is about 200 km across and rises above the lava plains around it.", "source": "NASA LRO / LROC", "numbers": [200]},
+        {"text": "Aristarchus crater, on its edge, is about 40 km wide and the brightest big crater on the side we see.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [40]},
+        {"text": "The plateau is covered in dark volcanic glass beads sprayed out long ago.", "source": "NASA LRO / LROC", "numbers": []}
+      ]
+    },
+    "orientale": {
+      "name": "Mare Orientale", "type": "basin", "diameter_km": 930, "lat": -19.87, "lon": -94.67, "side": "limb",
+      "facts": [
+        {"text": "Orientale is a bullseye of rings about 930 km wide, made by a giant impact.", "source": "NASA GRAIL / LRO", "numbers": [930]},
+        {"text": "It has three main rings, like ripples in a pond that froze.", "source": "NASA LRO / LROC", "numbers": [3]},
+        {"text": "It sits on the Moon's western edge, so from Earth we only see its side.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "It formed about 3.8 billion years ago.", "source": "NASA GRAIL", "numbers": [3800000000]}
+      ]
+    },
+    "hertzsprung": {
+      "name": "Hertzsprung", "type": "basin", "diameter_km": 570, "lat": 2.6, "lon": -128.7, "side": "far",
+      "facts": [
+        {"text": "Hertzsprung is a huge ringed basin, more than 500 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [570, 536, 500]},
+        {"text": "It is on the far side, which never faces Earth.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "vavilov": {
+      "name": "Vavilov", "type": "crater", "diameter_km": 98, "lat": -0.8, "lon": -138.8, "side": "far",
+      "facts": [
+        {"text": "Vavilov is a far-side crater about 98 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [98]},
+        {"text": "It sits on the edge of the giant Hertzsprung basin.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "ohm": {
+      "name": "Ohm", "type": "crater", "diameter_km": 64, "lat": 18.4, "lon": -113.5, "side": "far",
+      "facts": [
+        {"text": "Ohm is a far-side crater about 64 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [64, 62]},
+        {"text": "It is young, so its bright rays haven't faded yet.", "source": "NASA LRO / LROC", "numbers": []}
+      ]
+    },
+    "glushko": {
+      "name": "Glushko", "type": "crater", "diameter_km": 43, "lat": 8.4, "lon": -77.6, "side": "limb",
+      "facts": [
+        {"text": "Glushko is about 43 km wide, near the Moon's western edge.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [43]},
+        {"text": "It is a young crater with long bright rays.", "source": "NASA LRO / LROC", "numbers": []}
+      ]
+    },
+    "reiner": {
+      "name": "Reiner Gamma", "type": "swirl", "diameter_km": 70, "lat": 7.5, "lon": -59, "side": "near",
+      "facts": [
+        {"text": "Reiner Gamma is a bright swirl about 70 km long, shaped like a tadpole.", "source": "NASA LRO / LROC", "numbers": [70]},
+        {"text": "It sits where the Moon's rocks have a little magnetic field.", "source": "NASA LRO / LROC", "numbers": []},
+        {"text": "It is on the side we see, in a big dark lava plain.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "integrity": {
+      "name": "Integrity", "type": "crater", "diameter_km": 20, "lat": -0.7, "lon": -104, "side": "far", "estimated": true,
+      "facts": [
+        {"text": "The Artemis II crew proposed naming this crater Integrity, after their Orion spacecraft.", "source": "NASA Artemis II mission audio", "numbers": [2]},
+        {"text": "The crew said it lies halfway between Orientale and Ohm. Its size and spot here are estimates.", "source": "NASA Artemis II mission audio (position estimated)", "numbers": []}
+      ]
+    },
+    "carroll": {
+      "name": "Carroll", "type": "crater", "diameter_km": 20, "lat": 18.4, "lon": -82, "side": "limb", "estimated": true,
+      "facts": [
+        {"text": "The Artemis II crew proposed the name Carroll for a bright spot, to remember someone from their astronaut family.", "source": "NASA Artemis II mission audio", "numbers": [2]},
+        {"text": "The crew said it is northwest of Glushko. Its size and spot here are estimates.", "source": "NASA Artemis II mission audio (position estimated)", "numbers": []}
+      ]
+    },
+    "tycho": {
+      "name": "Tycho", "type": "crater", "diameter_km": 85, "lat": -43.3, "lon": -11.2, "side": "near",
+      "facts": [
+        {"text": "Tycho is about 85 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [85]},
+        {"text": "Its bright rays stretch more than 1,500 km across the Moon.", "source": "NASA LRO / LROC", "numbers": [1500]},
+        {"text": "It is young for a Moon crater, about 100 million years old.", "source": "NASA LRO / LROC (Apollo 17 sample ages)", "numbers": [100000000, 108000000, 17]},
+        {"text": "It has a mountain in the middle, about 2 km tall.", "source": "NASA LRO / LROC", "numbers": [2]}
+      ]
+    },
+    "copernicus": {
+      "name": "Copernicus", "type": "crater", "diameter_km": 93, "lat": 9.6, "lon": -20.1, "side": "near",
+      "facts": [
+        {"text": "Copernicus is about 93 km wide and nearly 4 km deep.", "source": "IAU Gazetteer of Planetary Nomenclature / NASA LRO", "numbers": [93, 4, 3.8]},
+        {"text": "It has stair-step walls and mountains in the middle.", "source": "NASA LRO / LROC", "numbers": []},
+        {"text": "It is about 800 million years old.", "source": "NASA LRO / LROC (Apollo 12 sample ages)", "numbers": [800000000, 12]}
+      ]
+    },
+    "imbrium": {
+      "name": "Sea of Rains", "type": "mare", "diameter_km": 1146, "lat": 32.8, "lon": -15.6, "side": "near",
+      "facts": [
+        {"text": "The Sea of Rains, Mare Imbrium, is about 1,146 km across.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1146, 1100]},
+        {"text": "It is a giant impact basin later filled with dark lava.", "source": "NASA LRO / LROC", "numbers": []},
+        {"text": "Apollo 15 astronauts landed at its eastern edge in 1971.", "source": "NASA Apollo 15 mission page", "numbers": [15, 1971]}
+      ]
+    },
+    "crisium": {
+      "name": "Sea of Crises", "type": "mare", "diameter_km": 556, "lat": 17, "lon": 59.1, "side": "near",
+      "facts": [
+        {"text": "The Sea of Crises is about 556 km across.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [556]},
+        {"text": "It is a round dark patch you can see with just your eyes.", "source": "NASA Moon facts", "numbers": []},
+        {"text": "The Luna 24 robot brought soil home from here in 1976.", "source": "NASA NSSDCA Luna 24 page", "numbers": [24, 1976]}
+      ]
+    },
+    "shackleton": {
+      "name": "Shackleton", "type": "crater", "diameter_km": 21, "lat": -89.67, "lon": 129.78, "side": "limb",
+      "facts": [
+        {"text": "Shackleton is a crater about 21 km wide at the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [21]},
+        {"text": "Its floor never gets sunlight, so it is super cold and may hold ice.", "source": "NASA LRO / LOLA", "numbers": []},
+        {"text": "It is about 4 km deep.", "source": "NASA LRO / LOLA", "numbers": [4, 4.2]},
+        {"text": "Artemis astronauts plan to land in the south pole region.", "source": "NASA Artemis program", "numbers": []}
+      ]
+    },
+    "tsiolkovskiy": {
+      "name": "Tsiolkovskiy", "type": "crater", "diameter_km": 185, "lat": -20.4, "lon": 129.1, "side": "far",
+      "facts": [
+        {"text": "Tsiolkovskiy is a far-side crater about 185 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [185]},
+        {"text": "Its floor is filled with dark lava, with a bright mountain in the middle.", "source": "NASA LRO / LROC", "numbers": []},
+        {"text": "It was first seen in 1959 in photos from the Luna 3 spacecraft.", "source": "NASA NSSDCA Luna 3 page", "numbers": [1959, 3]}
+      ]
+    },
+    "spa": {
+      "name": "South Pole–Aitken Basin", "type": "basin", "diameter_km": 2500, "lat": -53, "lon": -169, "side": "far",
+      "facts": [
+        {"text": "It is about 2,500 km across, one of the biggest impact craters in the solar system.", "source": "NASA LRO / GRAIL", "numbers": [2500]},
+        {"text": "It is the biggest and oldest known basin on the Moon.", "source": "NASA LRO", "numbers": []},
+        {"text": "It is about 8 km deep in places.", "source": "NASA LRO / LOLA", "numbers": [8]}
+      ]
+    }
+  }
+}

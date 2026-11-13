@@ -1,0 +1,30 @@
+{
+  "_note": "Kid explanations (<= 12 words) for words the Artemis II crew uses. 'forms' are spellings to match in transcripts.",
+  "terms": {
+    "albedo": {"explain": "How bright or dark a surface is in sunlight.", "forms": ["albedo"]},
+    "ejecta": {"explain": "Rock and dust thrown out when something smashes into the Moon.", "forms": ["ejecta"]},
+    "regolith": {"explain": "The Moon's dusty, rocky soil.", "forms": ["regolith"]},
+    "limb": {"explain": "The edge of the Moon as we see it.", "forms": ["limb", "limbs"]},
+    "terminator": {"explain": "The line between the Moon's day side and night side.", "forms": ["terminator"]},
+    "mare": {"explain": "A dark, flat 'sea' of old cooled lava.", "forms": ["mare", "maria"]},
+    "rays": {"explain": "Bright streaks of splashed rock spreading out from a crater.", "forms": ["ray", "rays"]},
+    "basin": {"explain": "A giant crater, hundreds of kilometers wide.", "forms": ["basin", "basins"]},
+    "plateau": {"explain": "A big raised area of land with a flat top.", "forms": ["plateau", "plateaus"]},
+    "relief": {"explain": "How bumpy the ground is: hills, holes and ridges.", "forms": ["relief"]},
+    "hummocky": {"explain": "Covered in lots of small, rounded bumps.", "forms": ["hummocky", "hummocks"]},
+    "swirl": {"explain": "A bright, curly pattern painted on the Moon's surface.", "forms": ["swirl", "swirls"]},
+    "impact flash": {"explain": "A tiny burst of light when a space rock hits.", "forms": ["impact flash", "impact flashes", "flash", "flashes"]},
+    "corona": {"explain": "The Sun's glowing outer air, seen when the Sun is hidden.", "forms": ["corona"]},
+    "earthset": {"explain": "Earth sinking out of sight behind the Moon's edge.", "forms": ["earthset", "earth set"]},
+    "earthrise": {"explain": "Earth coming up over the Moon's edge.", "forms": ["earthrise", "earth rise"]},
+    "crater": {"explain": "A round hole made when a space rock crashed in.", "forms": ["crater", "craters"]},
+    "central peak": {"explain": "A mountain in a crater's middle that bounced up.", "forms": ["central peak", "central peaks"]},
+    "pyroclastic": {"explain": "Made by volcanoes spraying out tiny glass beads.", "forms": ["pyroclastic"]},
+    "lava": {"explain": "Melted rock that flowed out, then cooled hard.", "forms": ["lava"]},
+    "highlands": {"explain": "The bright, old, bumpy parts of the Moon.", "forms": ["highlands"]},
+    "pillowing": {"explain": "Soft, puffy-looking rounded shapes, like pillows.", "forms": ["pillowing"]},
+    "blanketing": {"explain": "A layer of thrown-out rock covering the ground.", "forms": ["blanketing", "blanket"]},
+    "orbit": {"explain": "Going around and around something in space.", "forms": ["orbit", "orbiting"]},
+    "far side": {"explain": "The Moon's side that always faces away from Earth.", "forms": ["far side", "farside"]}
+  }
+}
