@@ -238,6 +238,64 @@ def write_donki(events: list[dict]):
     (OUT / "donki_events.json").write_text(json.dumps(doc, indent=1))
 
 
+# Fallback when DONKI (api.nasa.gov DEMO_KEY) is rate-limited and the CCMC host is unreachable, as on 2026-11-13:
+# real events reported by NASA's Solar Cycle 25 blog (flare class quoted in each post) and NOAA SWPC.
+# build_storms_verified() re-opens every URL and checks the class string is on the page before writing.
+SC25 = "https://science.nasa.gov/blogs/solar-cycle-25/"
+VERIFIED_STORMS = [
+    ("2021-10-28", "flare", "X1", SC25 + "2021/10/28/sun-releases-significant-solar-flare/"),
+    ("2023-02-17", "flare", "X2.2", SC25 + "2023/02/17/sun-releases-strong-solar-flare-17/"),
+    ("2023-12-14", "flare", "X2.8", SC25 + "2023/12/14/sun-releases-strong-solar-flare-13/"),
+    ("2023-12-31", "flare", "X5.0", SC25 + "2023/12/31/strong-solar-flare-erupts-from-sun-21/"),
+    ("2024-02-22", "flare", "X6.3", SC25 + "2024/02/22/strong-solar-flare-erupts-from-sun-19/"),
+    ("2024-05-10", "geomagnetic storm", "G5",
+     "https://science.nasa.gov/science-research/heliophysics/how-nasa-tracked-the-most-intense-solar-storm-in-decades/"),
+    ("2024-05-14", "flare", "X8.7", SC25 + "2024/05/14/strong-solar-flare-erupts-from-sun-15/"),
+    ("2024-08-05", "flare", "X1.7", SC25 + "2024/08/05/strong-solar-flare-erupts-from-sun-10/"),
+    ("2024-10-03", "flare", "X9.0", SC25 + "2024/10/03/sun-releases-strong-solar-flare-6/"),
+    ("2024-10-09", "flare", "X1.8", SC25 + "2024/10/09/sun-releases-strong-solar-flare-4/"),
+    ("2025-01-06", "flare", "X1.8", SC25 + "2025/01/06/strong-solar-flare-erupts-from-sun-2/"),
+    ("2025-06-20", "flare", "X1.9", SC25 + "2025/06/20/strong-flare-erupts-from-sun-5/"),
+    ("2025-11-14", "flare", "X4.0", SC25 + "2025/11/14/sun-releases-strong-flare-9/"),
+    ("2026-02-04", "flare", "X4.2", SC25 + "2026/02/04/sun-releases-strong-flare-10/"),
+]
+NOAA_G5 = {"title": "NOAA SWPC: G5 Conditions Observed! (May 10, 2024)", "url": "https://www.swpc.noaa.gov/news/g5-conditions-observed"}
+
+
+def flare_severity(cls: str) -> int:
+    """Flare class -> game severity. X>=5 or a G5 storm = 3; X2-X5 = 2; X1-X2 = 1. Flare class is only a proxy for the
+    particle dose at the Moon (that depends on the event's particles and where on the Sun it erupted)."""
+    if cls.startswith("G"):
+        return 3 if cls >= "G4" else 2
+    x = float(cls[1:])
+    return 3 if x >= 5 else 2 if x >= 2 else 1
+
+
+def build_storms_verified():
+    events = []
+    for date, kind, cls, url in VERIFIED_STORMS:
+        r = httpx.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=30, follow_redirects=True)
+        if r.status_code != 200 or cls not in r.text:
+            print("could not verify", date, cls, url, r.status_code, file=sys.stderr)
+            continue
+        sev = flare_severity(cls)
+        name = (f"Real {cls} solar flare, {date}" if kind == "flare" else f"Real {cls} solar storm, {date}")
+        events.append({"id": f"{date}-{cls}", "date": date, "type": kind, "class": cls, "name": name,
+                       "severity": sev, "dose_multiplier": SEVERITY_MULT[sev], "link": url,
+                       "source": {"title": "NASA Solar Cycle 25 blog" if "blogs" in url else "NASA Science", "url": url},
+                       "extra_sources": [NOAA_G5] if cls == "G5" else []})
+    doc = {"source": {"title": "NASA Solar Cycle 25 blog + NOAA SWPC (fallback: DONKI api.nasa.gov rate-limited)",
+                      "url": SC25},
+           "path": "verified_fallback",
+           "mapping": {"severity_to_dose_multiplier": SEVERITY_MULT,
+                       "rule": "Flare class X>=5 or a G4-G5 geomagnetic storm = 3; X2-X5 = 2; X1-X2 = 1. The game "
+                               "treats each event as a solar particle storm at the Moon of that size. Real particle "
+                               "doses depend on more than flare class; this is a teaching proxy."},
+           "events": events}
+    (OUT / "donki_events.json").write_text(json.dumps(doc, indent=1))
+    print(f"wrote {len(events)} verified storms", file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", choices=["sites", "donki"], default=None)
@@ -246,7 +304,11 @@ def main():
     if a.only in (None, "sites"):
         build_sites_and_ephemeris()
     if a.only in (None, "donki"):
-        build_donki()
+        try:
+            build_donki()
+        except Exception as e:  # DONKI DEMO_KEY 429 / CCMC unreachable -> verified fallback list
+            print("DONKI unavailable:", e, "-> verified fallback", file=sys.stderr)
+            build_storms_verified()
 
 
 if __name__ == "__main__":
