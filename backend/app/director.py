@@ -452,7 +452,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     if reg is not None and mid:
         for then in due_rules(mid, state):
             state, res = await _sim_apply(reg, mid, then)
-            lines.append("Standing order! " + (res.get("readback") or capcom.readback(then, state, mid)))
+            lines.append("Standing order! " + (capcom.readback(then, state, mid)))
 
     resp: dict = {}
     for cmd in cmds:
@@ -480,7 +480,7 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
             PENDING.pop(mid)
             for c in p["commands"]:
                 state, res = await _sim_apply(reg, mid, c) if reg else (state, {})
-                lines.append(res.get("readback") or capcom.readback(c, state, mid))
+                lines.append(capcom.readback(c, state, mid))
             resp = resp or {"action": "command", "command": p["commands"][0], "needs_confirm": False, "state": state}
             continue
         if ty == "cancel" and mid in PENDING:
@@ -498,13 +498,16 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         if reg is None or state is None:
             return {**base, "action": "say", "say": NOT_STARTED, "command": cmd}
         state, res = await _sim_apply(reg, mid, cmd)
-        rb = res.get("readback") or capcom.readback(cmd, state, mid)
+        rb = capcom.readback(cmd, state, mid)
         if res.get("needs_confirm"):
             lines.append(rb if "?" in rb else f"{rb} Are you sure? Say yes or no.")
         else:
             lines.append(rb)
             if res.get("say") and res["say"] != rb:
-                lines.append(res["say"])
+                # The sim's own line adds the result ("Shields now gets 40%"); drop its "Copy." so CAPCOM says it once.
+                extra = re.sub(r"^\s*copy[,.!]?\s*", "", res["say"], flags=re.I)
+                if extra:
+                    lines.append(extra)
         resp = resp or {"action": "command", "command": cmd, "needs_confirm": bool(res.get("needs_confirm")),
                         "state": state, "events": res.get("events") or []}
         if res.get("needs_confirm"):
