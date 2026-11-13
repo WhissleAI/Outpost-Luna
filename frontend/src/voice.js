@@ -14,7 +14,7 @@ const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", 
  * @param {()=>void} o.onKidDone              the kid stopped without asking
  * @param {(label:string)=>void} o.onEmotion
  */
-export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion }) {
+export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false }) {
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
   let mode = "off", wsBroken = false, starting = false, srOn = false;
@@ -44,6 +44,9 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion }) {
   const listener = createListener({
     message(m) {
       if (m.t === "ready") idle();
+      // While the guide or the crew is playing, the open mic hears the speakers too (echo cancellation misses some of it).
+      // Then only a held Space counts as the kid; open-mic words and turns are ignored.
+      else if ((m.t === "words" || m.t === "turn") && isOutputBusy() && !ptt.held && !kidTalking) return;
       else if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
       else if (m.t === "turn") {
         if (m.state === "start") { turnAsked = false; bargeIn(); set("hearing"); }

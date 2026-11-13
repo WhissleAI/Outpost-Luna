@@ -33,6 +33,7 @@ async function boot() {
     onBargeIn: () => { cancelNudge(); if (isSpeaking()) stopSpeaking(); player.duck(); },
     onKidDone: () => player.unduck(),
     onEmotion: label => { turn.emotion = label; },
+    isOutputBusy: () => isSpeaking() || player.active,
   });
   const missions = createMissions({ globe, placeById, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
