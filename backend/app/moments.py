@@ -13,6 +13,8 @@ from .gazetteer import norm
 
 MIN_S, MAX_S = 8.0, 25.0
 SENT_END = re.compile(r"[.?!]['\"]?$")
+# Not for a 5-year-old's ears (crew audio is unscripted). A hit makes the moment kid_safe=false: never ranked/played.
+UNSAFE = re.compile(r"\b(sperm|damn|dammit|hell|shit|crap|ass|sexy|piss|bloody|goddamn)\b", re.I)
 NUM = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
@@ -71,7 +73,7 @@ class MomentIndex:
         return next((m for m in self.moments if m["id"] == moment_id), None)
 
     def for_place(self, place_id: str, limit: int = 5) -> list[dict]:
-        scored = [(score(m, place_id), m) for m in self.moments if place_id in m["places"]]
+        scored = [(score(m, place_id), m) for m in self.moments if place_id in m["places"] and m["kid_safe"]]
         scored.sort(key=lambda x: -x[0])
         return [m for _, m in scored[:limit]]
 
@@ -80,7 +82,7 @@ class MomentIndex:
         return r[0] if r else None
 
     def best_in_clip(self, clip_id: str) -> dict | None:
-        ms = [m for m in self.moments if m["clip_id"] == clip_id]
+        ms = [m for m in self.moments if m["clip_id"] == clip_id and m["kid_safe"]]
         return max(ms, key=lambda m: (MIN_S <= m["t1"] - m["t0"] <= MAX_S, m["awe"], -m["t0"])) if ms else None
 
     # ---- legacy (v1 clip-level) ----------------------------------------------------------------------------------
@@ -100,7 +102,8 @@ def score(m: dict, place_id: str) -> float:
     s += m.get("awe", 0.0)
     s += 0.5 if any(c["status"] == "verified" for c in m.get("claims", [])) else 0.0
     s += 0.2 if m.get("speaker") not in (None, "", "crew") else 0.0
-    s += 0.1 * m.get("_mentions", 0)
+    s += 0.1 * min(m.get("_mentions", 0), 5)
+    s += 0.3 if m["places"] and m["places"][0] == place_id else 0.0  # the place is what this moment is about
     return round(s, 3)
 
 
@@ -189,7 +192,7 @@ def cut_clip(clip: dict, meta: dict | None, glossary: dict, facts: dict) -> list
         out.append({
             "id": f"{clip['id']}-{k:02d}", "clip_id": clip["id"], "t0": t0, "t1": t1, "speaker": speaker,
             "places": places, "text": " ".join(str(w[1]) for w in ws), "jargon": jargon, "awe": round(awe, 3),
-            "claims": claims, "_mentions": sum(1 for x in tags if x.get("f")), "words": [a, b],
+            "claims": claims, "kid_safe": not UNSAFE.search(" ".join(str(w[1]) for w in ws)), "_mentions": sum(1 for x in tags if x.get("f")), "words": [a, b],
         })
     return out
 
@@ -216,4 +219,4 @@ def public(m: dict | None) -> dict | None:
     """The moment as the API returns it (contract in docs/CONTRACT.md)."""
     if m is None:
         return None
-    return {k: m[k] for k in ("id", "clip_id", "t0", "t1", "speaker", "places", "text", "jargon", "awe", "claims")}
+    return {k: m[k] for k in ("id", "clip_id", "t0", "t1", "speaker", "places", "text", "jargon", "awe", "claims", "kid_safe")}

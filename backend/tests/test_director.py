@@ -201,3 +201,7 @@ def test_cut_clip_defensive_speaker_and_awe():
 def test_moments_for_place_ranked_max5():
     ms = IDX.for_place("hertzsprung")
     assert 0 < len(ms) <= 5 and all("hertzsprung" in m["places"] for m in ms)
+
+
+def test_unsafe_moments_are_never_ranked():
+    assert all(m["kid_safe"] for p in GAZ.places for m in IDX.for_place(p))
