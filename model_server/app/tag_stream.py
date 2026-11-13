@@ -86,7 +86,7 @@ async def tag_stream(ws: WebSocket, domain: str = "assistant", emit: str | None 
                 if held is not None:
                     out, held = {"op": "error", "error": held}, None
                 elif op == "poll":
-                    out = await asyncio.to_thread(tg.poll, h)
+                    out = tg.poll(h)   # cheap (~0.02 ms): inference happens in push, so no thread hop
                 elif op == "tag_text":
                     out = await asyncio.to_thread(tg.tag_text_on, h, m.get("text") or "")
                 elif op == "info":
