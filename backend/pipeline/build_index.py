@@ -33,7 +33,8 @@ RULES = [
 ]
 DESCRIPTOR_ALIASES = {"yellow", "brightest", "shiny", "snow", "bullseye", "target", "rings", "ring", "rays", "splash",
                       "swirl", "tadpole", "gamma", "spaceship", "spacecraft", "water", "biggest", "largest", "oldest",
-                      "island", "face", "rains", "crises", "crisis", "monarch", "landed", "footprint", "orion", "pole"}
+                      "island", "face", "rains", "crises", "crisis", "monarch", "landed", "footprint", "orion", "pole",
+                      "humorous", "grimaldy"}
 
 
 def words_of(path: Path) -> list[list]:
@@ -58,7 +59,7 @@ def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     whisper_only = "--whisper" in argv  # A/B against the old transcripts
     dest = settings.data_dir / ("index/clips_whisper.json" if whisper_only else "index/clips.json")
-    gaz = Gazetteer(settings.data_dir / "places.json")
+    gaz = Gazetteer(settings.data_dir / "places.json", features_only=True)  # crew audio links to landforms only
     names = {}
     for p in gaz.places.values():
         for a in {p.name, *p.aliases}:
@@ -126,7 +127,7 @@ def main(argv: list[str] | None = None) -> None:
         events.sort(key=lambda e: (e["i"] is None, e["i"] or 0))
         speakers = sorted({w[2] for w in words if w[2] >= 0})
         out.append({"id": c["id"], "title": c["title"], "file": f"/media/audio/{c['stem']}.mp3",
-                    "url": c.get("url"), "set": c.get("set"), "transcript": src, "speakers": speakers,
+                    "url": c.get("url"), "set": c.get("set"), "who": c.get("who"), "transcript": src, "speakers": speakers,
                     "dur": round(words[-1][3] + 1), "words": words, "tags": [tags[i] for i in sorted(tags)],
                     "utterances": utts, "events": events, "tagger_ms": arc.get("ms")})
         stats["places"] = stats.get("places", 0) + sum(t["type"] == "FEATURE" for t in tags.values())

@@ -11,8 +11,6 @@
    "fact": "Neil Armstrong and Buzz Aldrin landed here on July 20, 1969. The dark 'seas' are old lava that cooled flat.",
    "aliases": [
     "tranquil",
-    "apollo 11",
-    "apollo eleven",
     "armstrong",
     "neil",
     "buzz",
@@ -20,7 +18,8 @@
     "first people",
     "landed",
     "footprint"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "aristarchus",
@@ -37,7 +36,8 @@
     "brightest",
     "shiny",
     "snow"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "orientale",
@@ -54,8 +54,11 @@
     "bulls eye",
     "target",
     "rings",
-    "ring"
-   ]
+    "ring",
+    "orientale basin",
+    "oriental basin"
+   ],
+   "kind": "feature"
   },
   {
    "id": "hertzsprung",
@@ -67,8 +70,11 @@
    "fact": "A huge crater with rings on the far side, the side that never faces Earth.",
    "aliases": [
     "hertzsprung",
-    "hertz"
-   ]
+    "hertz",
+    "hertzprung",
+    "hertzsprung basin"
+   ],
+   "kind": "feature"
   },
   {
    "id": "vavilov",
@@ -79,8 +85,10 @@
    "estimated": false,
    "fact": "A far-side crater with a mountain in the middle and walls stepped like stairs.",
    "aliases": [
-    "vavilov"
-   ]
+    "vavilov",
+    "babilov"
+   ],
+   "kind": "feature"
   },
   {
    "id": "ohm",
@@ -91,8 +99,11 @@
    "estimated": false,
    "fact": "A young far-side crater with bright rays that spread out like a splash.",
    "aliases": [
-    "ohm"
-   ]
+    "ohm",
+    "ohms",
+    "ohm rays"
+   ],
+   "kind": "feature"
   },
   {
    "id": "glushko",
@@ -104,7 +115,8 @@
    "fact": "A bright young crater near the edge of the side we see, with long bright rays.",
    "aliases": [
     "glushko"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "reiner",
@@ -119,7 +131,8 @@
     "swirl",
     "tadpole",
     "gamma"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "integrity",
@@ -136,7 +149,8 @@
     "named after",
     "new crater",
     "orion"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "carroll",
@@ -149,7 +163,8 @@
    "aliases": [
     "carroll",
     "carol"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "tycho",
@@ -165,7 +180,8 @@
     "splash",
     "star burst",
     "starburst"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "copernicus",
@@ -178,7 +194,8 @@
    "aliases": [
     "copernicus",
     "monarch"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "imbrium",
@@ -195,7 +212,8 @@
     "face",
     "man in the moon",
     "eye"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "crisium",
@@ -209,7 +227,8 @@
     "crisium",
     "crises",
     "crisis"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "shackleton",
@@ -230,7 +249,8 @@
     "artemis iii",
     "land next",
     "pole"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "tsiolkovskiy",
@@ -243,7 +263,8 @@
    "aliases": [
     "tsiolkovsk",
     "island"
-   ]
+   ],
+   "kind": "feature"
   },
   {
    "id": "spa",
@@ -260,7 +281,99 @@
     "giant crater",
     "huge crater",
     "oldest"
-   ]
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "grimaldi",
+   "name": "Grimaldi",
+   "lat": -5.38,
+   "lon": -68.36,
+   "diameter_km": 173.49,
+   "estimated": false,
+   "fact": "Grimaldi is a big, old crater about 173 km wide near the western edge of the side we see. It is named after Francesco Maria Grimaldi, an Italian astronomer.",
+   "aliases": [
+    "grimaldi",
+    "grimaldy"
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "kepler",
+   "name": "Kepler",
+   "lat": 8.12,
+   "lon": -38.01,
+   "diameter_km": 29.49,
+   "estimated": false,
+   "fact": "Kepler is a crater about 29 km wide on the side of the Moon we see. It is named after Johannes Kepler, the German astronomer who worked out how planets move.",
+   "aliases": [
+    "kepler",
+    "keppler"
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "byrgius_a",
+   "name": "Byrgius A",
+   "lat": -24.55,
+   "lon": -63.81,
+   "diameter_km": 18.45,
+   "estimated": false,
+   "fact": "Byrgius A is a small crater about 18 km wide near the western edge of the side we see. It is a little neighbor of the crater Byrgius, named after Joost Bürgi, a Swiss clockmaker.",
+   "aliases": [
+    "byrgius a",
+    "byrgius alpha",
+    "burgius alpha",
+    "burgius a",
+    "byrgius",
+    "burgius",
+    "bergius alpha"
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "pythagoras",
+   "name": "Pythagoras",
+   "lat": 63.68,
+   "lon": -62.98,
+   "diameter_km": 144.55,
+   "estimated": false,
+   "fact": "Pythagoras is a crater about 145 km wide, far in the north near the edge of the side we see. It is named after Pythagoras, the Greek mathematician.",
+   "aliases": [
+    "pythagoras",
+    "pythagorus"
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "humorum",
+   "name": "Mare Humorum",
+   "lat": -24.48,
+   "lon": -38.57,
+   "diameter_km": 419.67,
+   "estimated": false,
+   "fact": "Mare Humorum, the Sea of Moisture, is a dark lava plain about 420 km wide on the side of the Moon we see. There is no water in it; the dark seas are old lava that cooled flat.",
+   "aliases": [
+    "humorum",
+    "mare humorum",
+    "sea of moisture"
+   ],
+   "kind": "feature"
+  },
+  {
+   "id": "north_pole",
+   "name": "North Pole",
+   "lat": 90.0,
+   "lon": 0.0,
+   "diameter_km": 0,
+   "estimated": false,
+   "fact": "This is the Moon's north pole, the very top of the Moon at 90 degrees north. Near the poles the Sun stays low in the sky, so long shadows stretch across the ground.",
+   "aliases": [
+    "north pole",
+    "lunar north pole",
+    "top of the moon"
+   ],
+   "kind": "feature"
   }
  ]
 }

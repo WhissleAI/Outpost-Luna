@@ -134,6 +134,437 @@
         {"text": "It is the biggest and oldest known basin on the Moon.", "source": "NASA LRO", "numbers": []},
         {"text": "It is about 8 km deep in places.", "source": "NASA LRO / LOLA", "numbers": [8]}
       ]
+    },
+    "grimaldi": {
+      "name": "Grimaldi", "type": "crater", "diameter_km": 173.49, "lat": -5.38, "lon": -68.36, "side": "near",
+      "facts": [
+        {"text": "Grimaldi is a crater about 173 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [173.49]},
+        {"text": "It is named after Francesco Maria Grimaldi, an Italian astronomer who lived from 1618 to 1663.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1618, 1663]}
+      ]
+    },
+    "kepler": {
+      "name": "Kepler", "type": "crater", "diameter_km": 29.49, "lat": 8.12, "lon": -38.01, "side": "near",
+      "facts": [
+        {"text": "Kepler is a crater about 29 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [29.49]},
+        {"text": "It is named after Johannes Kepler, a German astronomer who lived from 1571 to 1630.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1571, 1630]}
+      ]
+    },
+    "byrgius_a": {
+      "name": "Byrgius A", "type": "crater", "diameter_km": 18.45, "lat": -24.55, "lon": -63.81, "side": "near",
+      "facts": [
+        {"text": "Byrgius A is a crater about 18 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [18.45]},
+        {"text": "It is a satellite crater of Byrgius, which is named after Joost Bürgi, a Swiss clockmaker who lived from 1552 to 1632.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1552, 1632]}
+      ]
+    },
+    "pythagoras": {
+      "name": "Pythagoras", "type": "crater", "diameter_km": 144.55, "lat": 63.68, "lon": -62.98, "side": "near",
+      "facts": [
+        {"text": "Pythagoras is a crater about 145 km wide in the far north of the near side.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [144.55]},
+        {"text": "It is named after Pythagoras of Samos, a Greek mathematician.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "humorum": {
+      "name": "Mare Humorum", "type": "mare", "diameter_km": 419.67, "lat": -24.48, "lon": -38.57, "side": "near",
+      "facts": [
+        {"text": "Mare Humorum, the Sea of Moisture, is about 420 km wide.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [419.67]},
+        {"text": "The dark seas are old lava that cooled flat; there is no water in them.", "source": "NASA Moon facts", "numbers": []}
+      ]
+    },
+    "north_pole": {
+      "name": "North Pole", "type": "pole", "diameter_km": 0, "lat": 90, "lon": 0, "side": "near",
+      "facts": [
+        {"text": "The north pole is at 90 degrees north latitude.", "source": "definition", "numbers": [90]}
+      ]
+    },
+    "apollo11_lm_eagle": {
+      "name": "Apollo 11 Lunar Module Eagle (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 11", "lat": 0.67416, "lon": 23.47314, "side": "near",
+      "facts": [
+        {"text": "I'm Eagle, the bottom half of the Apollo 11 Moon lander.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [11]},
+        {"text": "On July 20, 1969, I carried Neil Armstrong and Buzz Aldrin to the Moon, the first people ever to land there.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [20, 1969]},
+        {"text": "When they flew home, I stayed behind as their launch pad.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Eagle carried Neil Armstrong and Buzz Aldrin to the first human landing on the Moon.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "When they left, the top half flew back to orbit and the bottom half (the descent stage) stayed behind as a launch pad.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "The crew collected 21.55 kg of lunar rock and soil and set up experiments including a seismometer and a laser reflector.", "source": "NSSDCA Master Catalog: Apollo 11 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [21.55]}
+      ]
+    },
+    "apollo12_lm_intrepid": {
+      "name": "Apollo 12 Lunar Module Intrepid (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 12", "lat": -3.0128, "lon": -23.4219, "side": "near",
+      "facts": [
+        {"text": "I'm Intrepid, the Apollo 12 Moon lander.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [12]},
+        {"text": "I landed so carefully that my astronauts could walk over to visit an old robot, Surveyor 3.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [3]},
+        {"text": "My bottom half is still parked right where I touched down.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Intrepid made a pinpoint landing within about 180 meters of the robot lander Surveyor 3.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [3, 180]},
+        {"text": "Its descent stage stayed behind when Pete Conrad and Alan Bean blasted off.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "The crew set up a full science station (ALSEP) with six instruments and brought home 34.35 kg of rock and soil, plus about 10 kg of parts from Surveyor 3.", "source": "NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [3, 6, 10, 34.35]}
+      ]
+    },
+    "apollo14_lm_antares": {
+      "name": "Apollo 14 Lunar Module Antares (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 14", "lat": -3.64589, "lon": -17.47194, "side": "near",
+      "facts": [
+        {"text": "I'm Antares, the Apollo 14 Moon lander.", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [14]},
+        {"text": "Alan Shepard and Edgar Mitchell lived inside me on the Moon.", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Alan even hit two golf balls nearby with a 6-iron!", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [2, 6]},
+        {"text": "Antares landed Alan Shepard and Edgar Mitchell near Fra Mauro.", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Its descent stage stayed on the Moon after the two moonwalks.", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [2]},
+        {"text": "The crew set up an ALSEP science station with six instruments and collected 42.28 kg of lunar samples.", "source": "NSSDCA Master Catalog: Apollo 14 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [6, 42.28]}
+      ]
+    },
+    "apollo15_lm_falcon": {
+      "name": "Apollo 15 Lunar Module Falcon (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 15", "lat": 26.13239, "lon": 3.6333, "side": "near",
+      "facts": [
+        {"text": "I'm Falcon, the Apollo 15 Moon lander.", "source": "NSSDCA Master Catalog: Apollo 15 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [15]},
+        {"text": "I landed next to tall Moon mountains and carried the first Moon car.", "source": "NSSDCA Master Catalog: Apollo 15 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Dave Scott and Jim Irwin drove it all around, and my bottom half is still parked there.", "source": "NSSDCA Master Catalog: Apollo 15 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Falcon landed Dave Scott and Jim Irwin at the foot of the Apennine mountains, carrying the first Lunar Roving Vehicle.", "source": "NSSDCA Master Catalog: Apollo 15 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "The crew spent 18 hours, 35 minutes on moonwalks, traveled 27.9 km on foot and by rover, and brought home 77.31 kg of rock and soil.", "source": "NSSDCA Master Catalog: Apollo 15 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [18, 27.9, 35, 77.31]}
+      ]
+    },
+    "apollo16_lm_orion": {
+      "name": "Apollo 16 Lunar Module Orion (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 16", "lat": -8.9734, "lon": 15.5011, "side": "near",
+      "facts": [
+        {"text": "I'm Orion, the Apollo 16 Moon lander.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [16]},
+        {"text": "I brought John Young and Charlie Duke to the bumpy Moon highlands.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "A special ultraviolet camera sat in my shadow and took pictures of Earth.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Orion landed John Young and Charlie Duke in the Descartes highlands near Dolland crater.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Its descent stage stayed behind.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "The crew spent 20 hours, 14 minutes on moonwalks and collected 95.71 kg of rock and soil from 11 sites.", "source": "NSSDCA Master Catalog: Apollo 16 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [11, 14, 20, 95.71]}
+      ]
+    },
+    "apollo17_lm_challenger": {
+      "name": "Apollo 17 Lunar Module Challenger (descent stage)", "type": "lander", "artifact": true, "mission": "Apollo 17", "lat": 20.1911, "lon": 30.7723, "side": "near",
+      "facts": [
+        {"text": "I'm Challenger, the last Apollo Moon lander.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Gene Cernan and Harrison Schmitt rode me down in December 1972.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [1972]},
+        {"text": "Harrison, a rock scientist, found orange soil near me!", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "Challenger was the sixth and last Apollo lunar lander.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "It carried Gene Cernan and Harrison Schmitt to the southeastern edge of Mare Serenitatis.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []},
+        {"text": "The crew spent 22 hours, 4 minutes on moonwalks and brought home 110.52 kg of samples.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": [4, 22, 110.52]},
+        {"text": "Schmitt, a geologist, discovered a patch of orange soil.", "source": "NSSDCA Master Catalog: Apollo 17 Lunar Module; NSSDCA: Apollo Landing Site Coordinates; NSSDCA: Apollo Lunar Landings; NSSDCA: Apollo - Where Are They Now?", "numbers": []}
+      ]
+    },
+    "apollo15_lrv": {
+      "name": "Apollo 15 Lunar Roving Vehicle (LRV-1)", "type": "rover", "artifact": true, "mission": "Apollo 15", "lat": 26.13174, "lon": 3.63803, "side": "near",
+      "facts": [
+        {"text": "I'm the very first Moon car, from Apollo 15!", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": [15]},
+        {"text": "Dave Scott and Jim Irwin drove me 27.8 kilometers over dusty hills.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": [27.8]},
+        {"text": "Today I'm parked near their lander, Falcon.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": []},
+        {"text": "The first Moon car.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": []},
+        {"text": "Dave Scott and Jim Irwin drove it 27.8 km across the Hadley-Apennine area, getting up to 5.0 km away from their lander.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": [5, 27.8]},
+        {"text": "The rover let astronauts reach far-off rocks and craters; on Apollo 15 the crew found the Genesis Rock near Spur Crater.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 15 Lunar Module; NASA: 50 Years Ago: Apollo 15 on the Moon at Hadley-Apennine", "numbers": [15]}
+      ]
+    },
+    "apollo16_lrv": {
+      "name": "Apollo 16 Lunar Roving Vehicle (LRV-2)", "type": "rover", "artifact": true, "mission": "Apollo 16", "lat": -8.9729, "lon": 15.5037, "side": "near",
+      "facts": [
+        {"text": "I'm the Apollo 16 rover.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": [16]},
+        {"text": "John Young and Charlie Duke drove me 26.7 kilometers across the Moon's highlands.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": [26.7]},
+        {"text": "I'm still parked near their lander, Orion.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "John Young and Charlie Duke drove this rover 26.7 km in the Descartes highlands, as far as 4.5 km from their lander.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": [4.5, 26.7]},
+        {"text": "The rover carried the crew to sample sites such as North Ray Crater, helping them collect 95.71 kg of highland rocks and soil.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": [95.71]}
+      ]
+    },
+    "apollo17_lrv": {
+      "name": "Apollo 17 Lunar Roving Vehicle (LRV-3)", "type": "rover", "artifact": true, "mission": "Apollo 17", "lat": 20.1896, "lon": 30.7769, "side": "near",
+      "facts": [
+        {"text": "I'm the Apollo 17 rover, and I drove the farthest of all the Moon cars: 35.9 kilometers!", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 17 Lunar Module", "numbers": [17, 35.9]},
+        {"text": "Gene Cernan and Harrison Schmitt rode me on the last Apollo trip.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 17 Lunar Module", "numbers": []},
+        {"text": "I'm parked near their lander, Challenger.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 17 Lunar Module", "numbers": []},
+        {"text": "Gene Cernan and Harrison Schmitt drove this rover 35.9 km, the most of any Apollo rover, getting as far as 7.6 km from their lander.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 17 Lunar Module", "numbers": [7.6, 35.9]},
+        {"text": "The rover let the crew explore widely; on the second moonwalk Schmitt discovered a patch of orange soil.", "source": "NSSDCA: Apollo Lunar Roving Vehicle; NSSDCA Master Catalog: Apollo 17 Lunar Module", "numbers": []}
+      ]
+    },
+    "apollo11_lrrr": {
+      "name": "Apollo 11 Laser Ranging Retroreflector", "type": "instrument", "artifact": true, "mission": "Apollo 11", "lat": 0.67345, "lon": 23.47307, "side": "near",
+      "facts": [
+        {"text": "I'm a mirror panel that Neil Armstrong and Buzz Aldrin left on the Moon.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "Scientists on Earth shine lasers at me, and I bounce the light right back.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "That's how we learned the Moon drifts about 3.8 centimeters farther away every year!", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [3.8]},
+        {"text": "A panel of 100 special mirror cubes that bounces laser light straight back to Earth.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [100]},
+        {"text": "Armstrong and Aldrin set it up about 5 m from their seismometer at Tranquility Base.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [5]},
+        {"text": "Timing laser pulses that bounce off it measures the Earth-Moon distance to about 3 cm, and shows the Moon is moving away from Earth by about 3.8 cm per year.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 11 Lunar Module; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [3, 3.8]}
+      ]
+    },
+    "apollo15_lrrr": {
+      "name": "Apollo 15 Laser Ranging Retroreflector", "type": "instrument", "artifact": true, "mission": "Apollo 15", "lat": 26.13341, "lon": 3.6285, "side": "near",
+      "facts": [
+        {"text": "I'm a laser mirror from Apollo 15.", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [15]},
+        {"text": "Dave Scott and Jim Irwin set me down near their science station.", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "When scientists on Earth aim a laser at me, I send the light right back!", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "A laser reflector that Dave Scott and Jim Irwin left near their science station at Hadley-Apennine.", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "It sends laser light fired from Earth straight back to where it came from.", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": []},
+        {"text": "Together with the Apollo 11 reflector, it lets scientists measure the Earth-Moon distance very precisely with laser timing.", "source": "NSSDCA: Apollo Landing Site Coordinates; NASA Eclipse Web Site: Measuring the Moon's Distance", "numbers": [11]}
+      ]
+    },
+    "apollo12_alsep": {
+      "name": "Apollo 12 ALSEP science station", "type": "instrument", "artifact": true, "mission": "Apollo 12", "lat": -3.0098, "lon": -23.4249, "side": "near",
+      "facts": [
+        {"text": "I'm the Apollo 12 science station.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [12]},
+        {"text": "Pete Conrad and Alan Bean set me up with six instruments to listen and measure.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [6]},
+        {"text": "I even felt the Moon shake when a rocket crashed far away!", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "A science station with six instruments around a central station, including a seismometer, a magnetometer and a solar wind spectrometer.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [6]},
+        {"text": "Later Apollo missions left similar stations, and the stations were shut down together on 30 September 1977.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [30, 1977]},
+        {"text": "Its seismometer was the only one running when the Apollo 13 rocket stage hit the Moon, and it recorded the crash about 135 km away, helping scientists measure how quakes travel through the Moon's crust.", "source": "NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 12 Lunar Module; NSSDCA Master Catalog: Apollo 15 Lunar Module; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [13, 135]}
+      ]
+    },
+    "apollo16_far_uv_camera": {
+      "name": "Apollo 16 Far Ultraviolet Camera/Spectrograph", "type": "instrument", "artifact": true, "mission": "Apollo 16", "lat": -8.9734, "lon": 15.5011, "side": "near",
+      "facts": [
+        {"text": "I'm the first telescope ever used on the Moon!", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "George Carruthers built me, and John Young set me up in the shade of the lander Orion.", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "I took ultraviolet pictures of Earth's glowing air and the stars.", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "The first Moon-based telescope, built by George Carruthers.", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "John Young set it on a tripod in the shadow of the lander Orion, so its coordinates here are the Orion landing site (approximate).", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": []},
+        {"text": "It took the first pictures of Earth from far away in ultraviolet light, showing Earth's hydrogen glow (the geocorona) and auroras; the crew brought back 178 frames of film.", "source": "NASA: Remembering the First Moon-Based Telescope; NASA: Looking Back: Dr. George Carruthers and Apollo 16 Far Ultraviolet Camera/Spectrograph; NSSDCA: Apollo Landing Site Coordinates; NSSDCA Master Catalog: Apollo 16 Lunar Module", "numbers": [178]}
+      ]
+    },
+    "apollo15_fallen_astronaut": {
+      "name": "Fallen Astronaut memorial", "type": "memorial", "artifact": true, "mission": "Apollo 15", "lat": 26.13174, "lon": 3.63803, "side": "near",
+      "facts": [
+        {"text": "I'm a tiny statue called Fallen Astronaut.", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": []},
+        {"text": "Dave Scott quietly placed me next to the Apollo 15 rover with a plaque of 14 names.", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": [14, 15]},
+        {"text": "I help everyone remember the space explorers who didn't get to come home.", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": []},
+        {"text": "A small aluminum figure and a plaque naming 14 astronauts and cosmonauts who died before Apollo 15.", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": [14, 15]},
+        {"text": "Dave Scott placed it right by the rover's final parking spot, so these are the rover's coordinates (approximate).", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": []},
+        {"text": "Not a science instrument: it is a memorial honoring American and Soviet space explorers who gave their lives.", "source": "Apollo Lunar Surface Journal: Apollo 15 Hammer and Feather; NASA Science: Memorial to Fallen Astronauts on the Moon; NSSDCA Master Catalog: Apollo 15 Lunar Module", "numbers": []}
+      ]
+    },
+    "surveyor1": {
+      "name": "Surveyor 1", "type": "lander", "artifact": true, "mission": "Surveyor 1", "lat": -2.4745, "lon": -43.3398, "side": "near",
+      "facts": [
+        {"text": "I'm Surveyor 1, a robot with a TV camera.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [1]},
+        {"text": "In June 1966 I landed gently on the Moon, one of America's first safe Moon landings.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [1966]},
+        {"text": "My pictures helped show the ground was solid enough for astronauts.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "The first Surveyor lander, which touched down safely near the crater Flamsteed P and sent back TV pictures of the ground around it.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "Surveyor close-ups helped show whether the Moon's surface was safe and solid enough for astronauts to land on.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []}
+      ]
+    },
+    "surveyor3": {
+      "name": "Surveyor 3", "type": "lander", "artifact": true, "mission": "Surveyor 3", "lat": -3.0162, "lon": -23.418, "side": "near",
+      "facts": [
+        {"text": "I'm Surveyor 3.", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [3]},
+        {"text": "I bounced three times when I landed, then took 6,326 pictures.", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [3, 6326]},
+        {"text": "In 1969, astronauts Pete Conrad and Alan Bean walked over to visit me and took my camera home!", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [1969]},
+        {"text": "Surveyor 3 bounced three times before settling in a 200 m crater, sent 6,326 pictures, and dug trenches with a scoop.", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [3, 200, 6326]},
+        {"text": "In November 1969 Apollo 12 astronauts walked over and removed about 10 kg of parts, including its TV camera.", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [10, 12, 1969]},
+        {"text": "Its scoop dug trenches up to 18 cm deep to test the lunar soil.", "source": "NSSDCA Master Catalog: Surveyor 3; NSSDCA: Surveyor (1966-1968)", "numbers": [18]}
+      ]
+    },
+    "surveyor5": {
+      "name": "Surveyor 5", "type": "lander", "artifact": true, "mission": "Surveyor 5", "lat": 1.4551, "lon": 23.1943, "side": "near",
+      "facts": [
+        {"text": "I'm Surveyor 5.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [5]},
+        {"text": "I landed in the Sea of Tranquility, the same big plain where Apollo 11 landed later.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [11]},
+        {"text": "I had a special tool to find out what Moon dirt is made of.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "Surveyor 5 landed in Mare Tranquillitatis with a TV camera, magnets on its footpads, and an alpha scattering instrument.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [5]},
+        {"text": "Its alpha scattering instrument made a chemical analysis of the lunar soil.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []}
+      ]
+    },
+    "surveyor6": {
+      "name": "Surveyor 6", "type": "lander", "artifact": true, "mission": "Surveyor 6", "lat": 0.4742, "lon": -1.4275, "side": "near",
+      "facts": [
+        {"text": "I'm Surveyor 6.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [6]},
+        {"text": "I landed almost in the middle of the Moon's face that points at Earth.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "I took wide pictures all around me and checked what the soil was made of.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "Surveyor 6 landed in Sinus Medii, near the middle of the Moon's near side, and took panoramas with its TV camera.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [6]},
+        {"text": "Like Surveyors 5 and 7, it carried footpad magnets and an alpha scattering instrument to analyze the chemistry of the soil.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [5, 7]}
+      ]
+    },
+    "surveyor7": {
+      "name": "Surveyor 7", "type": "lander", "artifact": true, "mission": "Surveyor 7", "lat": -40.9812, "lon": -11.5127, "side": "near",
+      "facts": [
+        {"text": "I'm Surveyor 7, the last Surveyor.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [7]},
+        {"text": "I landed next to Tycho, a big bright crater.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "I had a scoop to dig and a tool to study the rocks.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "The last Surveyor, it landed on the north rim of the crater Tycho.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
+        {"text": "It carried a soil scoop and an alpha scattering instrument, so scientists could dig into and analyze the soil there.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []}
+      ]
+    },
+    "ranger7_impact": {
+      "name": "Ranger 7 impact site", "type": "impact", "artifact": true, "mission": "Ranger 7", "lat": -10.634, "lon": -20.677, "side": "near",
+      "facts": [
+        {"text": "I'm Ranger 7.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [7]},
+        {"text": "My job was to fly right into the Moon and take pictures all the way down.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "My last photos were much sharper than any view of the Moon from Earth.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "Ranger 7 flew straight at the Moon on purpose, taking pictures with six cameras until it crashed in Mare Cognitum.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [6, 7]},
+        {"text": "Its first image came about 17 minutes before impact.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [17]},
+        {"text": "Ranger close-ups were about 1000 times sharper than views from Earth, and showed Apollo planners that finding a smooth landing site would be difficult.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [1000]}
+      ]
+    },
+    "ranger8_impact": {
+      "name": "Ranger 8 impact site", "type": "impact", "artifact": true, "mission": "Ranger 8", "lat": 2.6376, "lon": 24.7881, "side": "near",
+      "facts": [
+        {"text": "I'm Ranger 8.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [8]},
+        {"text": "I took pictures of the Sea of Tranquility as I zoomed toward the Moon.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "A few years later, Apollo 11 landed on that same big plain.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [11]},
+        {"text": "Ranger 8 photographed the Sea of Tranquility on its way down, then crashed there as planned.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [8]},
+        {"text": "Ranger close-ups were about 1000 times sharper than views from Earth, and showed Apollo planners that finding a smooth landing site would be difficult.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [1000]}
+      ]
+    },
+    "ranger9_impact": {
+      "name": "Ranger 9 impact site", "type": "impact", "artifact": true, "mission": "Ranger 9", "lat": -12.8281, "lon": -2.3884, "side": "near",
+      "facts": [
+        {"text": "I'm Ranger 9, the last Ranger.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [9]},
+        {"text": "I dove into a huge crater called Alphonsus, snapping pictures the whole way.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "My very last picture was taken less than a second before I hit.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "The last Ranger, it dove into the large highland crater Alphonsus, sending pictures until just before impact.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": []},
+        {"text": "Ranger close-ups were about 1000 times sharper than views from Earth, and showed Apollo planners that finding a smooth landing site would be difficult.", "source": "NSSDCA: Ranger (1961-1965)", "numbers": [1000]}
+      ]
+    },
+    "apollo13_sivb_impact": {
+      "name": "Apollo 13 S-IVB rocket stage impact site", "type": "impact", "artifact": true, "mission": "Apollo 13", "lat": -2.555, "lon": -27.8875, "side": "near",
+      "facts": [
+        {"text": "I'm the third stage of the Apollo 13 rocket.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [13]},
+        {"text": "After I pushed the astronauts toward the Moon, I crashed into it on purpose.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The Apollo 12 seismometer felt me hit, like a Moon quake!", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [12]},
+        {"text": "The S-IVB was the Saturn V's third stage, which pushed Apollo 13 toward the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [13]},
+        {"text": "After separating, it was aimed at the Moon and crashed.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "It hit at about 2.58 km/s.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [2.58]},
+        {"text": "Because the time and place of each rocket crash were known, the Apollo seismometers used them as test signals to measure how fast quake waves move through the Moon's upper crust.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []}
+      ]
+    },
+    "apollo14_sivb_impact": {
+      "name": "Apollo 14 S-IVB rocket stage impact site", "type": "impact", "artifact": true, "mission": "Apollo 14", "lat": -8.181, "lon": -26.0305, "side": "near",
+      "facts": [
+        {"text": "I'm the third stage of the Apollo 14 rocket.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [14]},
+        {"text": "I gave the astronauts a big push to the Moon, then crashed into it.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "Seismometers on the Moon felt my crash.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The S-IVB was the Saturn V's third stage, which pushed Apollo 14 toward the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [14]},
+        {"text": "After separating, it was aimed at the Moon and crashed.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "It hit at about 2.54 km/s.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [2.54]},
+        {"text": "Because the time and place of each rocket crash were known, the Apollo seismometers used them as test signals to measure how fast quake waves move through the Moon's upper crust.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []}
+      ]
+    },
+    "apollo15_sivb_impact": {
+      "name": "Apollo 15 S-IVB rocket stage impact site", "type": "impact", "artifact": true, "mission": "Apollo 15", "lat": -1.2897, "lon": -11.8245, "side": "near",
+      "facts": [
+        {"text": "I'm the third stage of the Apollo 15 rocket.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [15]},
+        {"text": "After sending the astronauts on their way, I smashed into the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "My crash helped scientists study what's inside the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The S-IVB was the Saturn V's third stage, which pushed Apollo 15 toward the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [15]},
+        {"text": "After separating, it was aimed at the Moon and crashed.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "It hit at about 2.58 km/s.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [2.58]},
+        {"text": "Because the time and place of each rocket crash were known, the Apollo seismometers used them as test signals to measure how fast quake waves move through the Moon's upper crust.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []}
+      ]
+    },
+    "apollo16_sivb_impact": {
+      "name": "Apollo 16 S-IVB rocket stage impact site", "type": "impact", "artifact": true, "mission": "Apollo 16", "lat": 1.921, "lon": -24.623, "side": "near",
+      "facts": [
+        {"text": "I'm the third stage of the Apollo 16 rocket.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [16]},
+        {"text": "People lost track of me before I hit the Moon, but the seismometers felt my crash.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "Later, a camera in orbit spotted my crater.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The S-IVB was the Saturn V's third stage, which pushed Apollo 16 toward the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [16]},
+        {"text": "After separating, it was aimed at the Moon and crashed.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "Tracking was lost before impact, so its time and location were estimated from seismic data.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "Because the time and place of each rocket crash were known, the Apollo seismometers used them as test signals to measure how fast quake waves move through the Moon's upper crust.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []}
+      ]
+    },
+    "apollo17_sivb_impact": {
+      "name": "Apollo 17 S-IVB rocket stage impact site", "type": "impact", "artifact": true, "mission": "Apollo 17", "lat": -4.1681, "lon": -12.3307, "side": "near",
+      "facts": [
+        {"text": "I'm the third stage of the last Apollo rocket, Apollo 17.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [17]},
+        {"text": "I pushed the astronauts to the Moon, then crashed into it.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The seismometers left by earlier astronauts felt me hit.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "The S-IVB was the Saturn V's third stage, which pushed Apollo 17 toward the Moon.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [17]},
+        {"text": "After separating, it was aimed at the Moon and crashed.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []},
+        {"text": "It hit at about 2.55 km/s.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": [2.55]},
+        {"text": "Because the time and place of each rocket crash were known, the Apollo seismometers used them as test signals to measure how fast quake waves move through the Moon's upper crust.", "source": "NSSDCA: Impact Sites of the Apollo LMs and S-IVBs; LROC: Rocket impacts recorded by the Apollo seismic network", "numbers": []}
+      ]
+    },
+    "lunar_prospector_impact": {
+      "name": "Lunar Prospector impact site", "type": "impact", "artifact": true, "mission": "Lunar Prospector", "lat": -87.7, "lon": 42.0, "side": "near",
+      "facts": [
+        {"text": "I'm Lunar Prospector.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": []},
+        {"text": "I circled the Moon mapping it, and at the end I crashed into a dark crater near the south pole.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": []},
+        {"text": "Scientists hoped I'd splash up water from hidden ice, but nobody saw a puff.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": []},
+        {"text": "At the end of its mission, Lunar Prospector was steered into a permanently shadowed crater near the south pole at 1.69 km/s.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": [1.69]},
+        {"text": "Its location is approximate.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": []},
+        {"text": "Scientists hoped the crash would kick up water vapor from hidden ice that telescopes on Earth could see, but no plume was observed.", "source": "NSSDCA Master Catalog: Lunar Prospector", "numbers": []}
+      ]
+    },
+    "lcross_centaur_impact": {
+      "name": "LCROSS Centaur rocket impact site", "type": "impact", "artifact": true, "mission": "LCROSS", "lat": -84.678, "lon": -48.725, "side": "near",
+      "facts": [
+        {"text": "I'm the Centaur rocket from the LCROSS mission.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "I crashed into a dark, freezing crater called Cabeus to throw up a big cloud of dust.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "In that cloud, scientists found water!", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "The 2000 kg Centaur upper stage was crashed into Cabeus crater near the south pole to blast up a cloud of buried material.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [2000]},
+        {"text": "It dug out roughly 350 metric tons of material and made a crater about 20 meters wide.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [20, 350]},
+        {"text": "Measurements of the debris cloud showed NASA that the mission had uncovered water near the Moon's south pole.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []}
+      ]
+    },
+    "lcross_impact": {
+      "name": "LCROSS Shepherding Spacecraft impact site", "type": "impact", "artifact": true, "mission": "LCROSS", "lat": -84.72, "lon": -49.62, "side": "near",
+      "facts": [
+        {"text": "I'm LCROSS.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "I followed my rocket partner, watched it crash, and flew right through the dust cloud to sniff it.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "Then I crashed too, and helped prove there's water on the Moon!", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
+        {"text": "The LCROSS spacecraft flew through the debris cloud made by its Centaur rocket, collecting data, then hit Cabeus crater itself about four minutes later.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [4]},
+        {"text": "Its instruments helped confirm water near the south pole, and scientists later reported the soil in Cabeus also held useful materials like mercury, magnesium, calcium, silver and sodium.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []}
+      ]
+    },
+    "grail_ebb_flow_impact": {
+      "name": "GRAIL Ebb and Flow impact site (Sally K. Ride Impact Site)", "type": "impact", "artifact": true, "mission": "GRAIL", "lat": 75.6088, "lon": -26.594, "side": "near",
+      "facts": [
+        {"text": "We're Ebb and Flow, twin spacecraft who flew around the Moon together to map its gravity.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": []},
+        {"text": "At the end, we crashed into a mountain near the north pole.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": []},
+        {"text": "The spot is named for Sally Ride, America's first woman in space.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": []},
+        {"text": "The twin GRAIL spacecraft, Ebb and Flow, were flown into the southern face of a mountain about 2.5 km tall near the crater Goldschmidt, hitting at about 1.7 km/s.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": [1.7, 2.5]},
+        {"text": "These are Ebb's coordinates; Flow hit close by about 30 seconds later.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": [30]},
+        {"text": "Ebb and Flow made the highest-resolution gravity map of any world, revealing mascons, dense spots linked to giant ancient impacts.", "source": "NASA Science: GRAIL Lunar Impact Site Named for Astronaut Sally Ride; NASA Science: GRAIL", "numbers": []}
+      ]
+    },
+    "ladee_impact": {
+      "name": "LADEE impact site", "type": "impact", "artifact": true, "mission": "LADEE", "lat": 11.8494, "lon": -93.2494, "side": "far",
+      "facts": [
+        {"text": "I'm LADEE.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": []},
+        {"text": "I flew very low around the Moon to sniff its super-thin air and look for floating dust.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": []},
+        {"text": "At the end, I crashed on the far side and made a crater smaller than a car.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": []},
+        {"text": "LADEE studied the Moon's very thin atmosphere and dust from low orbit, then hit the eastern rim of Sundman V crater on the far side, as planned.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": []},
+        {"text": "Its crater is less than 3 meters wide.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": [3]},
+        {"text": "LADEE measured what the thin lunar atmosphere is made of and checked whether dust gets lofted into the lunar sky.", "source": "NASA: NASA's LRO Spacecraft Captures Images of LADEE's Impact Crater; NASA Science: LADEE", "numbers": []}
+      ]
+    },
+    "luna2_impact": {
+      "name": "Luna 2 impact site", "type": "impact", "artifact": true, "mission": "Luna 2", "lat": 29.1, "lon": 0.0, "side": "near",
+      "facts": [
+        {"text": "I'm Luna 2 from the Soviet Union.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [2]},
+        {"text": "In 1959 I became the very first thing from Earth to reach the Moon.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [1959]},
+        {"text": "I didn't land softly, I crashed, but I got there first!", "source": "NSSDCA: Soviet Lunar Missions", "numbers": []},
+        {"text": "Luna 2 was the first spacecraft to hit the Moon, crashing in Palus Putredinis.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [2]},
+        {"text": "The listed coordinates are approximate.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": []},
+        {"text": "As the first probe to impact the Moon, it proved a spacecraft could fly from Earth all the way to the Moon.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": []}
+      ]
+    },
+    "lunokhod1": {
+      "name": "Lunokhod 1 rover", "type": "rover", "artifact": true, "mission": "Luna 17", "lat": 38.315, "lon": -35.0081, "side": "near",
+      "facts": [
+        {"text": "I'm Lunokhod 1, a robot rover from the Soviet Union.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [1]},
+        {"text": "I rolled onto the Moon in 1970, before any astronaut drove a Moon car.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [1970]},
+        {"text": "A team back on Earth steered me across the Sea of Rains.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": []},
+        {"text": "Lunokhod 1 was a robotic rover delivered to Mare Imbrium by the Luna 17 lander.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": [1, 17]},
+        {"text": "It was the first robot rover on the Moon, driven by a team on Earth to explore and photograph the surface.", "source": "NSSDCA: Soviet Lunar Missions", "numbers": []}
+      ]
+    },
+    "change3_lander": {
+      "name": "Chang'e 3 lander", "type": "lander", "artifact": true, "mission": "Chang'e 3", "lat": 44.1214, "lon": -19.5117, "side": "near",
+      "facts": [
+        {"text": "I'm Chang'e 3 from China.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [3]},
+        {"text": "In December 2013 I landed softly on the Sea of Rains.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [2013]},
+        {"text": "I carried a little rover named Yutu, the Jade Rabbit!", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": []},
+        {"text": "China's Chang'e 3 landed in Mare Imbrium, about 60 m east of the rim of a 450 m wide crater, and released the Yutu rover.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [3, 60, 450]},
+        {"text": "It landed on a mare of higher-titanium lava thought to be about 3.0 billion years old, giving scientists a new spot to study.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [3000000000]}
+      ]
+    },
+    "yutu_rover": {
+      "name": "Yutu (Jade Rabbit) rover", "type": "rover", "artifact": true, "mission": "Chang'e 3", "lat": 44.1208, "lon": -19.5122, "side": "near",
+      "facts": [
+        {"text": "I'm Yutu, the Jade Rabbit rover from China.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": []},
+        {"text": "I rolled off my lander and drove a loop around it.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": []},
+        {"text": "Now I rest 17 meters away from my lander friend.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [17]},
+        {"text": "Yutu, about 150 cm wide, rolled off the Chang'e 3 lander soon after landing.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [3, 150]},
+        {"text": "LRO pictures show its tracks looping around the lander before it parked 17 meters southwest of it.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [17]},
+        {"text": "Orbit images taken in December 2013, January 2014 and February 2014 let scientists follow its tracks and see where it drove.", "source": "LROC: Chang'e 3 Lander and Rover From Above; LROC: Still There!", "numbers": [2013, 2014]}
+      ]
     }
   }
 }

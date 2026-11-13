@@ -103,7 +103,8 @@ def places_in(text: str, gaz: Gazetteer, spans: list[dict] | None = None) -> set
     for s in spans or []:
         if s.get("family") == "entity" and len(norm(s["text"])) >= 3:
             hit = process.extractOne(norm(s["text"]), names, scorer=fuzz.ratio, score_cutoff=90)
-            if hit:
+            # "Surveyor 3" is 90% like "surveyor 1": a fuzzy hit must not change a number.
+            if hit and re.findall(r"\d+", norm(s["text"])) == re.findall(r"\d+", hit[0]):
                 out.add(keys[hit[2]][1])
     return out
 

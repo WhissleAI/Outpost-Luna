@@ -55,6 +55,7 @@ class MomentIndex:
         self._mtime = None
         self.clips: list[dict] = []
         self.moments: list[dict] = []
+        self.extra: dict[str, dict] = {}  # span moments for artifact voices (see span())
         self.refresh()
 
     # ---- loading -------------------------------------------------------------------------------------------------
@@ -70,7 +71,19 @@ class MomentIndex:
 
     # ---- moments -------------------------------------------------------------------------------------------------
     def get(self, moment_id: str) -> dict | None:
-        return next((m for m in self.moments if m["id"] == moment_id), None)
+        return next((m for m in self.moments if m["id"] == moment_id), None) or self.extra.get(moment_id)
+
+    def span(self, clip_id: str, t0: float, t1: float, mid: str, speaker: str, places: list[str]) -> dict | None:
+        """A moment over an exact span of a clip (an artifact's `voices` entry). Registered so /api/moments/<id> works."""
+        c = next((c for c in self.clips if c["id"] == clip_id), None)
+        if not c:
+            return None
+        ws = [w for w in c["words"] if t0 - 0.05 <= float(w[0]) < t1]
+        text = " ".join(str(w[1]) for w in ws)
+        m = {"id": mid, "clip_id": clip_id, "t0": t0, "t1": t1, "speaker": speaker, "places": places, "text": text,
+             "jargon": [], "awe": 0.0, "claims": [], "kid_safe": not UNSAFE.search(text), "_mentions": 0, "words": []}
+        self.extra[mid] = m
+        return m
 
     def for_place(self, place_id: str, limit: int = 5) -> list[dict]:
         scored = [(score(m, place_id), m) for m in self.moments if place_id in m["places"] and m["kid_safe"]]
@@ -183,7 +196,7 @@ def cut_clip(clip: dict, meta: dict | None, glossary: dict, facts: dict) -> list
         for x in tags:
             if x.get("f") and x["f"] not in places:
                 places.append(x["f"])
-        speaker = _speaker(ws, utt_meta, t0, t1)
+        speaker = clip.get("who") or _speaker(ws, utt_meta, t0, t1)  # single-speaker voices clips name the speaker
         awe = max([float(u.get("awe") or 0) for u in utt_meta if u.get("t0", 0) < t1 and u.get("t1", 0) > t0]
                   + [float(p.get("score") or 0) for p in peaks if t0 <= p.get("t", -1) <= t1] + [0.0])
         jargon, seen = [], set()

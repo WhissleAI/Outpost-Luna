@@ -1,6 +1,6 @@
 """The Director (docs/REVAMP.md §3.5): one kid turn -> one action, as rules over Arc Tagger's read-out.
 
-Actions returned: guard | fly | play | say | ask | view. WAIT / NUDGE / PAUSE_EXPLAIN are client behaviours driven by
+Actions returned: guard | fly | play | say | ask | view | tour (a list of artifacts: "show me the rovers"). WAIT / NUDGE / PAUSE_EXPLAIN are client behaviours driven by
 the fields here (`readout.complete`, `moment.jargon`). Every spoken line goes through the claim check (claims.py).
 Response shape: docs/CONTRACT.md.
 """
@@ -18,6 +18,124 @@ WANTS_CREW = re.compile(r"\b(astronauts?|crew|hear|listen|what did|they say|say 
 NAME_GIVEN = re.compile(r"\b(my name is|my name s|i m called|call me)\b")
 MORE = re.compile(r"\b(there|that one|it|this one|more|again|that place|that crater)\b")
 DEFINE = re.compile(r"\b(what does|what s|what is|whats|what are|mean|means|meaning)\b")
+
+# ---- hardware left on the Moon (artifacts.json) ----------------------------------------------------------------------
+TOURS = [  # (pattern, artifact types or None = all, say)
+    (re.compile(r"\b(ghost )?(rovers?|moon buggies|moon buggy|buggies|lrvs?)\b"), {"rover"},
+     "Here are the rovers still parked on the Moon. Tap one to hear its story!"),
+    (re.compile(r"\b(landers|landing sites|lunar modules|where (did|have) (people|astronauts|we) landed?)\b"), {"lander"},
+     "Here is every spacecraft that landed on the Moon and stayed there. Tap one to hear its story!"),
+    (re.compile(r"\b(crash(es| sites)|impacts?( sites)?|crashed)\b"), {"impact"},
+     "These are the places where spacecraft crashed into the Moon, many of them on purpose, for science!"),
+    (re.compile(r"\b(instruments|experiments|science stations|mirrors|reflectors)\b"), {"instrument"},
+     "These science tools were left on the Moon. One mirror still bounces lasers back to Earth!"),
+    (re.compile(r"\b(hardware|junk|trash|left (behind )?on the moon|left behind|left there|left on it|stuff (on|left)|"
+                r"things (on|left)|abandoned|ghost|what s on the moon|spacecraft on the moon|machines)\b"), None,
+     "People have left lots of hardware on the Moon: landers, rovers, science tools and crash sites. Tap one to hear its story!"),
+]
+WHO = re.compile(r"\b(who (left|drove|put|flew|landed|built|sent|parked|rode|brought|made|used|set)|who was (in|on|driving)|"
+                 r"whose|who did)\b")
+HEAR_VOICE = re.compile(r"\b(hear|listen|voice|message|play)\b")
+SOUNDS = [  # mission sounds from the NASA Artemis Audio Library (set "voices")
+    (re.compile(r"\b(go no go|countdown|count down|poll)\b"), "go-no-go", "Mission control asks every team: go or no-go?"),
+    (re.compile(r"\b(launch|liftoff|lift off|blast ?off|take ?off|rocket start)\b"), "liftoff",
+     "Here's the moment Artemis II lifted off. Listen!"),
+    (re.compile(r"\bfull send\b"), "full-send", "Right before launch, the crew said who they were flying for. Listen!"),
+    (re.compile(r"\b(translunar|tli|go for the moon|head(ed|ing)? to the moon)\b"), "tli",
+     "This is when Houston said go to fly to the Moon. Listen!"),
+    (re.compile(r"\b(good burn|engine burn|burn)\b"), "good-burn", "Here's the engine burn. Listen!"),
+    (re.compile(r"\b(distance record|farthest|furthest|apollo 13 record|broke the record|record)\b"), "apollo13-record",
+     "Artemis II flew farther from Earth than Apollo 13! Listen!"),
+    (re.compile(r"\b(splash ?down|splash|landed in the (ocean|sea|water)|coming home|came home)\b"), "splashdown",
+     "Here's Orion splashing down in the ocean. Listen!"),
+    (re.compile(r"\b(loud and clear|houston we have you)\b"), "loud-and-clear", "Houston hears the crew again. Listen!"),
+    (re.compile(r"\b(charlie duke)\b"), "duke", "Here's Apollo 16 astronaut Charlie Duke. Listen!"),
+    (re.compile(r"\b(jim lovell|lovell)\b"), "lovell", "Here's Apollo astronaut Jim Lovell. Listen!"),
+]
+SOUND_ASK = re.compile(r"\b(sound|sounded|hear|listen|play|audio|recording)\b")
+
+
+def _tour(q: str, gaz: Gazetteer) -> tuple[list[str], str] | None:
+    for pat, types, say in TOURS:
+        if pat.search(q):
+            ps = sorted((p for p in gaz.artifacts if types is None or p.type in types), key=lambda p: p.landed)
+            if ps:
+                return [p.id for p in ps], say
+    return None
+
+
+def _names(crew: list[str]) -> str:
+    short = [re.sub(r'\s+(jr|sr)\.?$', "", re.sub(r'"[^"]*"\s*|\b[A-Z]\.\s*', "", c).strip(), flags=re.I) for c in crew]
+    nick = [re.search(r'"([^"]+)"', c) for c in crew]
+    short = [f"{m.group(1)} {s.split()[-1]}" if m else s for m, s in zip(nick, short)]
+    short = [re.sub(r"^Charles ", "Charlie ", s) for s in short]
+    return short[0] if len(short) == 1 else ", ".join(short[:-1]) + " and " + short[-1]
+
+
+def _voice(p: Place, index: MomentIndex) -> dict | None:
+    for v in p.voices:
+        m = index.span(v["clip_id"], float(v["t0"]), float(v["t1"]), f"{v['clip_id']}-voice-{p.id}", v.get("who", ""), [p.id])
+        if m:
+            return m
+    return None
+
+
+def _who_line(p: Place) -> str:
+    if not p.crew:
+        return f"No one! {p.name} was a robot spacecraft, sent by {p.agency}. No people rode on it."
+    verb = "drove" if p.type == "rover" else "landed" if p.type == "lander" else "left"
+    return f"{_names(p.crew)} {verb} it, on {p.mission}."
+
+
+def _sound_moment(clip_id: str, q: str, index: MomentIndex) -> dict | None:
+    ms = [m for m in index.moments if m["clip_id"] == clip_id and m["kid_safe"]]
+    if not ms:
+        return None
+    key = {"liftoff": "lift", "splashdown": "splashdown", "apollo13-record": "record", "go-no-go": "go"}.get(clip_id)
+    hit = [m for m in ms if key and key in m["text"].lower()]
+    return hit[0] if hit else index.best_in_clip(clip_id)
+
+
+async def _artifact(p: Place, text: str, q: str, base: dict, gaz: Gazetteer, index: MomentIndex, short: bool) -> dict:
+    """An artifact was named (or tapped, or is the last place and the kid asks who left it)."""
+    voice = _voice(p, index)
+    if WHO.search(q) or (HEAR_VOICE.search(q) and voice):
+        if voice:
+            who = voice["speaker"] or "an astronaut"
+            line = f"{_who_line(p)} Listen to {who}!" if p.crew else f"Listen to {who}!"
+            return {**base, "action": "play", "say": line, "moment": public(voice), "source": base["source"] + "+voice"}
+        line = _who_line(p)
+        return {**base, "action": "say" if not p.crew else "fly", "say": line,
+                "claims": [{"text": line, "status": "verified", "source": "artifacts.json (crew)"}],
+                "source": base["source"] + "+crew"}
+    # The first-person story, claim-checked sentence by sentence; the story verbatim if nothing survives.
+    story = claims.SENT.split(p.story)[0] if short else p.story
+    cl = await claims.verify_draft(story, [p.id], gaz, index.facts)
+    say = " ".join(c["text"] for c in cl if c["status"] == "verified")
+    if not say:
+        say, cl = story, cl + [{"text": story, "status": "verified", "source": claims.PREVERIFIED}]
+    return {**base, "action": "fly", "say": say, "claims": cl, "moment": public(voice),
+            "source": base["source"] + "+story+claimcheck"}
+
+
+def _benign_pii(text: str, gaz: Gazetteer) -> bool:
+    """Arc tags Moon words as PII ("Moon" -> street_address in "Apollo 16 Moon buggy"). A span that names a place or
+    artifact, or is made only of gazetteer / hardware words (no digits), is not a child's private detail."""
+    t = norm(text)
+    if not t:
+        return True
+    if gaz.match_text(t):
+        return True
+    return not re.search(r"\d|@", text) and all(w in gaz.vocab for w in t.split())
+
+
+def _hard_pii(read: dict, gaz: Gazetteer) -> bool:
+    spans = read.get("pii_spans")
+    if spans is None:  # older read-outs: trust the type list
+        return bool(read.get("hard_pii"))
+    from .readout import HARD_PII
+    return any(s["type"] in HARD_PII and not _benign_pii(s["text"], gaz) for s in spans)
+
 
 ACCEPT, ASK_LO, ASK_MARGIN = 89.0, 82.0, 5.0
 
@@ -100,7 +218,7 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
            "readout": read, "source": "rules", "corrected": False}
 
     # 1. Privacy first: never send a child's address, phone or name anywhere (no LLM call).
-    if read.get("hard_pii") or ("private_name" in read.get("pii", []) and NAME_GIVEN.search(q)) or NAME_GIVEN.search(q):
+    if _hard_pii(read, gaz) or NAME_GIVEN.search(q):
         return {**out, "action": "guard", "say": GUARD, "source": "arc" if read.get("available") else "rules"}
 
     target, corrected = _after_correction(text)
@@ -129,6 +247,25 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
         return {**out, "action": "play" if m else "say", "say": EARTHRISE, "view": {"lat": 5, "lon": -100},
                 "moment": public(m)}
 
+    # 4b. Mission sounds ("play the launch", "what did liftoff sound like") -> the Artemis voices clip.
+    for pat, clip_id, line in SOUNDS:
+        if pat.search(target) and (SOUND_ASK.search(q) or clip_id in ("duke", "lovell")):
+            m = _sound_moment(clip_id, target, index)
+            if m:
+                return {**out, "action": "play", "say": line, "moment": public(m), "source": "sounds"}
+
+    # 4c. Hardware tours ("show me the rovers", "what's left on the Moon"), unless one artifact is named.
+    named = gaz.match_text(target)
+    if not (named and named.kind == "artifact"):
+        tour = _tour(target, gaz)
+        if tour and WHO.search(q):  # "who drove the rovers?" -> every crew, from the data
+            crews = [f"{_names(p.crew)} on {p.mission}" for p in map(gaz.places.get, tour[0]) if p.crew]
+            if crews:
+                say = "These astronauts did: " + "; ".join(crews) + "."
+                tour = (tour[0], say)
+        if tour:
+            return {**out, "action": "tour", "places": tour[0], "say": tour[1], "source": "tour"}
+
     # 5. Link a place: alias in the (corrected) words, else an Arc mention by fuzzy match (with an ask band).
     place, how, cands = _link(target, read, gaz)
     if place is None and corrected and not cands:
@@ -138,14 +275,19 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
         question = f"Did you mean {names[0]}?" if len(names) == 1 else f"Did you mean {', '.join(names[:-1])} or {names[-1]}?"
         return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands]},
                 "place": cands[0][0].id, "view": _view(cands[0][0]), "source": "arc+link"}
-    if place is None and ctx.get("last_place") in gaz.places and (MORE.search(target) or wants_crew):
-        place, how = gaz.places[ctx["last_place"]], "context"
+    last = gaz.places.get(ctx.get("last_place") or "")
+    if place is None and last and (MORE.search(target) or wants_crew or (last.kind == "artifact" and WHO.search(q))):
+        place, how = last, "context"
 
     if place is None:
         if re.search(r"\b(far|back|dark|other) side\b", target):
             return {**out, "action": "view", "view": {"lat": 0, "lon": 180}, "say": _short(FAR) if short else FAR}
         if re.search(r"\b(near side|side we see|front)\b", target):
             return {**out, "action": "view", "view": {"lat": 0, "lon": 0}, "say": _short(NEAR) if short else NEAR}
+
+    if place is not None and place.kind == "artifact":
+        return await _artifact(place, text, q, {**out, "place": place.id, "view": _view(place), "source": how},
+                               gaz, index, short)
 
     if place is not None:
         moment = index.best_moment(place.id)
