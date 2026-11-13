@@ -295,7 +295,7 @@ function load(c){
   $("tagStats").textContent=`${c.words.length} words indexed · `+Object.entries(cnt).map(([k,v])=>`${k} ${v}`).join(" · ");
   $("player").hidden=false;
 }
-function seek(t){return new Promise(res=>{const go=()=>{audio.currentTime=t;res();}; if(audio.readyState>=1)go(); else audio.addEventListener("loadedmetadata",go,{once:true});});}
+function seek(t){return new Promise(res=>{const go=()=>{audio.currentTime=t;res();}; if(audio.readyState>=1)return go(); audio.addEventListener("loadedmetadata",go,{once:true}); audio.preload="auto"; audio.load(); setTimeout(res,4000);});}
 
 async function renderMoments(){
   const box=$("clips"); const ms=await getMoments(null,CL,placeName); box.innerHTML="";
