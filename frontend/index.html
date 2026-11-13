@@ -33,9 +33,18 @@
     <div class="label" id="label" hidden></div>
 
     <div class="hud">
-      <button id="nearBtn" type="button">Near side</button>
-      <button id="farBtn" type="button">Far side</button>
-      <button id="pinsBtn" type="button" aria-pressed="true">Hide pins</button>
+      <div class="legend" role="group" aria-label="Show on the Moon">
+        <button id="pinsBtn" type="button" aria-pressed="true"><i class="lg-place" aria-hidden="true"></i>Places</button>
+        <button id="hwBtn" type="button" aria-pressed="true"><i class="lg-hw" aria-hidden="true"></i>Hardware</button>
+        <button id="tourBtn" type="button" class="lg-tour">▶ Tour</button>
+      </div>
+      <div class="hw-key" id="hwKey" aria-hidden="true">
+        <span class="k-lander">lander</span><span class="k-rover">rover</span><span class="k-impact">impact</span><span class="k-instrument">instrument</span><span class="k-memorial">memorial</span>
+      </div>
+      <div class="hud-row">
+        <button id="nearBtn" type="button">Near side</button>
+        <button id="farBtn" type="button">Far side</button>
+      </div>
     </div>
 
     <!-- Now playing: one crew moment, karaoke caption, stop -->
@@ -62,13 +71,20 @@
 
     <!-- The guide's latest answer -->
     <article class="card" id="card" hidden aria-live="polite">
+      <p class="card-eyebrow" id="cardEyebrow" hidden></p>
       <header class="card-head">
         <h2 id="cardTitle"></h2>
         <button class="card-prev" id="cardPrev" type="button" hidden aria-pressed="false">Previous</button>
         <button class="x" id="cardClose" type="button" aria-label="Close">&times;</button>
       </header>
       <p class="card-asked" id="cardAsked" hidden></p>
+      <div class="card-meta" id="cardMeta" hidden></div>
+      <img class="card-img" id="cardImg" alt="" hidden>
       <p class="card-say" id="cardSay"></p>
+      <blockquote class="card-story" id="cardStory" hidden></blockquote>
+      <details class="card-more" id="cardMore" hidden><summary>More</summary><div id="cardMoreBody"></div></details>
+      <p class="card-crew" id="cardCrew" hidden></p>
+      <div class="card-sources" id="cardSources" hidden></div>
       <p class="card-note" id="cardNote" hidden></p>
       <div class="card-claims" id="cardClaims" hidden></div>
       <div class="card-actions" id="cardActions" hidden></div>
@@ -86,7 +102,7 @@
           <span class="hint" id="spaceHint"><kbd>Space</kbd><span>Hold to ask</span></span>
         </div>
         <form class="ask" id="askForm">
-          <input id="q" autocomplete="off" placeholder="Or type: show me where Apollo 11 landed" aria-label="Ask the Moon">
+          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Ask the Moon">
           <button class="send" type="submit">Ask</button>
           <button class="mic" id="mic" type="button" aria-label="Turn the mic on" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>

@@ -19,13 +19,26 @@ export function normMoment(m) {
   };
 }
 
+/** Hardware kind for an artifact's marker colour: the backend's type field if it has one, else a guess from the text. */
+export function hwType(a) {
+  const t = String(a.type || a.category || a.hardware || "").toLowerCase();
+  for (const k of ["lander", "rover", "impact", "instrument", "memorial"]) if (t.includes(k)) return k;
+  const s = `${a.name} ${a.status || ""} ${a.what_it_did || ""}`.toLowerCase();
+  if (/rover|buggy|lunokhod|yutu|pragyan/.test(s)) return "rover";
+  if (/impact|crash/.test(s)) return "impact";
+  if (/memorial|plaque|figure|fallen/.test(s)) return "memorial";
+  if (/mirror|retroreflector|seismometer|experiment|instrument|package|alsep/.test(s)) return "instrument";
+  return "lander";
+}
+
 const clipCache = new Map();
 const momentCache = new Map();
 
 export const api = {
   async places() {
     const j = await getJSON("/api/places");
-    return j.places.map(p => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon, km: p.diameter_km, fact: p.fact, est: p.estimated }));
+    return j.places.map(p => ({ ...p, kind: p.kind === "artifact" ? "artifact" : "feature", km: +p.diameter_km || 0, est: p.estimated,
+      ...(p.kind === "artifact" ? { hw: hwType(p) } : {}) }));
   },
   /** Ranked kid-safe moments for a place (best first), or all when place is null. */
   moments(place) {

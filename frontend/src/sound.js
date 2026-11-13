@@ -46,6 +46,9 @@ function pickVoice() {
   return v.find(x => /Samantha|Google US English|Karen|Moira/.test(x.name)) || v.find(x => x.lang && x.lang.startsWith("en"));
 }
 
+/** The voice a piece of hardware tells its own story in: a little slower and higher than the guide. */
+export const STORY_VOICE = { rate: 0.92, pitch: 1.4 };
+
 /** Speak and resolve when done (or cancelled). Resolves immediately when read-aloud is off. */
 export function speak(text, { rate = 0.98, pitch = 1.08 } = {}) {
   const my = ++seq;

@@ -1,4 +1,4 @@
-// The three.js Moon: LRO color map, pins, highlight ring, fly-to, tap-to-pick.
+// The three.js Moon: LRO color map, place pins, ghost-hardware markers (HTML over the canvas), highlight ring, fly-to, tap-to-pick.
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
@@ -18,7 +18,8 @@ export const angDist = (a, b) => Math.acos(Math.min(1, ll2v(a.lat, a.lon).normal
 /** A feature's angular radius in degrees. */
 export const angRadius = f => (f.km / 2) / MOON_KM * 180 / Math.PI;
 
-export function createGlobe({ stage, label, loading, places, onTap }) {
+export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {} }) {
+  const features = places.filter(f => f.kind !== "artifact"), artifacts = places.filter(f => f.kind === "artifact");
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   stage.prepend(renderer.domElement);
@@ -47,7 +48,22 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
 
   const pins = new THREE.Group(); scene.add(pins);
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xffc35a }), pinEst = new THREE.MeshBasicMaterial({ color: 0x7cc7ff });
-  places.forEach(f => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), f.est ? pinEst : pinMat); m.position.copy(ll2v(f.lat, f.lon, R * 1.002)); pins.add(m); });
+  features.forEach(f => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.009, 10, 8), f.est ? pinEst : pinMat); m.position.copy(ll2v(f.lat, f.lon, R * 1.002)); pins.add(m); });
+
+  // Ghost hardware: one small glowing diamond per artifact, coloured by hardware kind. HTML so it can be focused,
+  // hovered (name + year tooltip) and tapped; positioned every frame and hidden when it is round the back.
+  const layer = document.createElement("div"); layer.className = "ghosts"; stage.append(layer);
+  const ghosts = artifacts.map(a => {
+    const el = document.createElement("button"); el.type = "button";
+    el.className = "ghost k-" + (a.hw || "lander");
+    const yr = (a.landed || "").slice(0, 4);
+    const tip = document.createElement("span"); tip.className = "tip"; tip.setAttribute("aria-hidden", "true");
+    tip.textContent = a.name + (yr ? " · " + yr : ""); el.append(tip);
+    el.setAttribute("aria-label", `${a.name}${yr ? ", " + yr : ""}. Hear its story`);
+    el.onclick = e => { e.stopPropagation(); onArtifact(a); };
+    layer.append(el);
+    return { a, el, p: ll2v(a.lat, a.lon, R * 1.003) };
+  });
 
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xffc35a, side: THREE.DoubleSide, transparent: true, opacity: .95 });
   let ring = null, sel = null, fly = null;
@@ -55,10 +71,11 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
   function highlight(f) {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); }
     const ang = Math.max((f.km / 2) / MOON_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
-    ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.92, r, 96), ringMat);
+    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.8 : 0.92), r, 96), ringMat);
     const n = ll2v(f.lat, f.lon).normalize();
     ring.position.copy(n.clone().multiplyScalar(h * R + 0.004)); ring.lookAt(n.clone().multiplyScalar(5));
     scene.add(ring); sel = f;
+    ghosts.forEach(g => g.el.classList.toggle("is-on", g.a === f));
     label.textContent = f.name;
     if (f.est) { const s = document.createElement("small"); s.textContent = "est."; label.append(s); }
     label.hidden = false;
@@ -71,7 +88,7 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
   }
 
   function showFeature(f, { dist } = {}) {
-    highlight(f); flyTo(f.lat, f.lon, dist || (f.km > 800 ? 3.2 : 2.5));
+    highlight(f); flyTo(f.lat, f.lon, dist || (f.kind === "artifact" ? 2.3 : f.km > 800 ? 3.2 : 2.5));
     sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
   }
 
@@ -90,6 +107,16 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
     }
     controls.update();
     if (ring) ring.material.opacity = .65 + .3 * Math.sin(now / 300);
+    if (layer.style.display !== "none") {
+      const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+      ghosts.forEach(g => {
+        const facing = g.p.clone().normalize().dot(cam) > 0.12;
+        g.el.classList.toggle("is-hidden", !facing);
+        if (!facing) return;
+        tmp.copy(g.p).project(camera);
+        g.el.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px)`;
+      });
+    }
     if (sel) {
       const p = ll2v(sel.lat, sel.lon, R * 1.01), facing = p.clone().normalize().dot(camera.position.clone().normalize()) > 0.15;
       tmp.copy(p).project(camera);
@@ -103,7 +130,7 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
   /** Nearest named place to a point, scored by distance minus a share of its radius. */
   function nearest(p) {
     let best = null, bd = 1e9;
-    places.forEach(f => { const d = angDist(p, f) - angRadius(f) * 0.6; if (d < bd) { bd = d; best = f; } });
+    features.forEach(f => { const d = angDist(p, f) - angRadius(f) * 0.6; if (d < bd) { bd = d; best = f; } });
     return { f: best, d: bd };
   }
 
@@ -121,5 +148,7 @@ export function createGlobe({ stage, label, loading, places, onTap }) {
   return {
     showFeature, highlight, flyTo, nearest,
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
+    toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
+    get hardwareOn() { return layer.style.display !== "none"; },
   };
 }

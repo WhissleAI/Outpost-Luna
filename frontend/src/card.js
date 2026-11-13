@@ -21,14 +21,17 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 export function createCard() {
   const $ = id => document.getElementById(id);
   const card = $("card"), title = $("cardTitle"), asked = $("cardAsked"), sayEl = $("cardSay"), note = $("cardNote"),
-    claims = $("cardClaims"), actions = $("cardActions"), arc = $("cardArc"), prevBtn = $("cardPrev");
+    claims = $("cardClaims"), actions = $("cardActions"), arc = $("cardArc"), prevBtn = $("cardPrev"),
+    eyebrow = $("cardEyebrow"), meta = $("cardMeta"), img = $("cardImg"), story = $("cardStory"), more = $("cardMore"),
+    moreBody = $("cardMoreBody"), crew = $("cardCrew"), sources = $("cardSources");
   let cur = null, prev = null, showingPrev = false, gen = 0;
 
   function render(e) {
     title.textContent = e.title || "Guide";
     title.classList.toggle("is-place", !!e.place);
     asked.textContent = e.asked ? "“" + e.asked + "”" : ""; asked.hidden = !e.asked;
-    sayEl.textContent = e.say || "";
+    sayEl.textContent = e.say || ""; sayEl.hidden = !e.say;
+    renderArtifact(e);
     note.textContent = e.note || ""; note.hidden = !e.note;
     claims.textContent = "";
     (e.claims || []).filter(c => c && c.text && (c.status === "verified" || c.status === "impression")).forEach(c => {
@@ -44,6 +47,32 @@ export function createCard() {
     prevBtn.hidden = !prev; prevBtn.textContent = showingPrev ? "Latest" : "Previous";
     prevBtn.setAttribute("aria-pressed", showingPrev);
     card.hidden = false;
+  }
+
+  /** Hardware story parts: eyebrow, mission/year/agency row, image, first-person story, More, crew, sources. */
+  function renderArtifact(e) {
+    const a = e.artifact;
+    eyebrow.textContent = e.eyebrow || ""; eyebrow.hidden = !e.eyebrow;
+    title.classList.toggle("is-hw", !!a);
+    title.dataset.hw = a ? a.hw || "lander" : "";
+    meta.textContent = ""; story.textContent = ""; moreBody.textContent = ""; crew.textContent = ""; sources.textContent = "";
+    img.hidden = true; more.open = false;
+    if (!a) { [meta, story, more, crew, sources].forEach(x => { x.hidden = true; }); return; }
+    if (a.agency) meta.append(el("span", "agency", a.agency));
+    const bits = [a.mission, a.landed ? "landed " + a.landed.slice(0, 4) : "", a.status].filter(Boolean);
+    meta.append(el("span", "", bits.join(" · ")));
+    meta.hidden = false;
+    if (a.image) { img.src = a.image; img.alt = a.name; img.hidden = false; img.onerror = () => { img.hidden = true; }; }
+    story.textContent = a.story || ""; story.hidden = !a.story;
+    [["What it did", a.what_it_did], ["Science", a.science]].forEach(([h, t]) => { if (t) { moreBody.append(el("b", "", h)); moreBody.append(el("p", "", t)); } });
+    more.hidden = !moreBody.childElementCount;
+    const names = (a.crew || []).filter(Boolean);
+    if (names.length) { crew.append(el("b", "", "Crew ")); crew.append(names.join(", ")); }
+    crew.hidden = !names.length;
+    (a.sources || []).filter(x => x && x.url).forEach(x => {
+      const l = el("a", "chip-src", x.title || new URL(x.url).hostname); l.href = x.url; l.target = "_blank"; l.rel = "noopener"; sources.append(l);
+    });
+    sources.hidden = !sources.childElementCount;
   }
 
   function button(a) {
@@ -62,6 +91,12 @@ export function createCard() {
       if (cur && !cur.transient) prev = cur;
       cur = { ...entry, actions: [...(entry.actions || [])] }; showingPrev = false; render(cur); return ++gen;
     },
+    /** Patch the current answer in place (e.g. the Director's line arriving after the story card is up). */
+    update(token, patch) {
+      if (token !== gen || !cur) return;
+      Object.assign(cur, patch); if (!showingPrev) render(cur);
+    },
+    get token() { return gen; },
     addAction(token, action) {
       if (token !== gen || !cur) return;
       cur.actions.unshift(action); if (!showingPrev) render(cur);

@@ -1,19 +1,23 @@
-// Find-it missions: one compact card over the globe, one mission at a time. Tap the Moon to answer.
+// Find-it missions: one compact card over the globe, one mission at a time. Tap the Moon (or a ghost marker) to answer.
+// A mission names its target by place id (f) or, for hardware, by a test on the artifact's own fields (hw), so it only
+// appears when the data can back it up.
 import { angDist, angRadius } from "./globe.js";
 
+const isApollo = n => a => new RegExp("\\bApollo " + n + "\\b", "i").test(a.mission || "");
 const M = [
+  { hw: a => isApollo(11)(a) && a.hw === "lander", t: "First footprints", clue: "Find the lander that carried the first people to walk on the Moon, in 1969. Look for a glowing diamond!" },
   { f: "aristarchus", t: "The yellow cheek", clue: "The crew said one plateau looked like a yellow, snow-capped mountain. Can you find it on the near side?" },
-  { f: "tranquillitatis", t: "First footprints", clue: "Find the dark sea where people first walked on the Moon in 1969." },
+  { hw: a => isApollo(16)(a) && a.hw === "rover", t: "The Moon buggy", clue: "Two astronauts drove a rover over the highlands in 1972. Find the rover they parked there." },
   { f: "orientale", t: "The giant bullseye", clue: "Find the huge target with rings, right on the edge between the near and far side." },
-  { f: "integrity", t: "A crater named after a spaceship", clue: "Start at Orientale. Go straight up to Ohm. Tap halfway between them." },
   { f: "shackleton", t: "Where astronauts go next", clue: "Find the place at the very bottom of the Moon where ice might hide." },
 ];
 
-export function createMissions({ globe, placeById, say, onFound }) {
+export function createMissions({ globe, placeById, places = [], say, onFound }) {
   const $ = id => document.getElementById(id);
   const card = $("missionCard"), btn = $("missionsBtn");
   let active = 0; const done = new Set();
-  const list = M.filter(m => placeById(m.f));
+  const target = m => (m.hw ? places.find(p => p.kind === "artifact" && m.hw(p)) : placeById(m.f)) || null;
+  const list = M.map(m => ({ ...m, place: target(m) })).filter(m => m.place);
 
   function render(result) {
     const m = list[active];
@@ -36,22 +40,23 @@ export function createMissions({ globe, placeById, say, onFound }) {
   btn.onclick = () => (card.hidden ? open() : close());
   $("mClose").onclick = close;
   $("mNext").onclick = next;
-  $("mShow").onclick = () => globe.showFeature(placeById(list[active].f));
+  $("mShow").onclick = () => globe.showFeature(list[active].place);
 
   return {
     get open() { return !card.hidden; },
     openCard: open,
     /** Handle a tap while the card is open. Returns true when it was a mission answer. */
-    onTap(p) {
+    onTap(p, tapped) {
       if (card.hidden || done.has(active)) return false;
-      const f = placeById(list[active].f), tol = Math.max(angRadius(f) * 1.4, f.est ? 9 : 7);
-      if (angDist(p, f) <= tol) {
+      const f = list[active].place, hw = f.kind === "artifact";
+      const hit = hw ? (tapped ? tapped.id === f.id : angDist(p, f) <= 2.5) : angDist(p, f) <= Math.max(angRadius(f) * 1.4, f.est ? 9 : 7);
+      if (hit) {
         done.add(active); globe.showFeature(f); onFound(f);
         render(done.size === list.length ? "All missions done! ★★★" : "Found it! ★");
-        say("You found it! " + f.name + ". " + f.fact);
+        say("You found it! " + f.name + ". " + (hw ? f.story || "" : f.fact));
         return true;
       }
-      const n = globe.nearest(p).f; globe.highlight(n);
+      const n = tapped || globe.nearest(p).f; globe.highlight(n);
       render("That's " + n.name + ". Keep looking!"); say("That's " + n.name + ". Keep looking!");
       return true;
     },
