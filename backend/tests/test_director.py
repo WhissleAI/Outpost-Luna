@@ -13,7 +13,7 @@ from app.readout import summarize
 GAZ = Gazetteer(settings.data_dir / "places.json")
 IDX = MomentIndex(settings.data_dir / "index/clips.json")
 NO_ARC = {"available": False}
-KEYS = {"action", "say", "place", "view", "moment", "ask", "claims", "readout", "source", "corrected"}
+KEYS = {"action", "say", "place", "view", "moment", "ask", "claims", "readout", "source", "corrected", "decisions"}  # decisions: additive (docs/SESSION_CONTRACT.md §2)
 
 
 def ask(text, read=NO_ARC, context=None):
