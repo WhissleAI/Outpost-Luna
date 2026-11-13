@@ -1,0 +1,16 @@
+[project]
+name = "moon-model-server"
+version = "0.1.0"
+description = "Hosts Whissle models (Arc Tagger now; Arc audio metadata and embeddings next) behind one HTTP API."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.32.1",
+  "pydantic-settings==2.6.1",
+]
+
+[dependency-groups]
+dev = ["pytest==8.3.4", "httpx==0.28.1"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

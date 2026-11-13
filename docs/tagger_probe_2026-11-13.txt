@@ -1,0 +1,79 @@
+
+=== [news] artemis-ii-names-new-craters-integ | 331 words | 31 ms | 0.09 ms/word
+ feature words in transcript: 13; entity spans: 12; spans covering a feature word: 8
+ entity spans: [('person', 'Kelsey', 0.98), ('organization', 'Oriental', 0.95), ('person', 'Ohm', 0.59), ('place', 'Earth,', 0.91), ('place', 'Earth.', 0.96), ('person', 'Carol,', 0.96), ('person', 'Reed,', 0.86), ('person', 'Katie', 0.92), ('person', 'Ellie.', 0.92), ('person', 'Glushko', 0.98), ('person', 'Ohm', 0.62), ('person', 'Carol', 0.93)]
+ number spans: [('ordinal', 'first'), ('ordinal', 'second')]
+ events: ['content.story_start', 'discourse.turn_yield', 'speaker.change']
+ utterances: 19; acts: {'statement': 13, 'ritual_procedural': 5}
+
+=== [news] art002a000005-ck-vg-relief-color-a | 161 words | 13 ms | 0.08 ms/word
+ feature words in transcript: 5; entity spans: 4; spans covering a feature word: 2
+ entity spans: [('person', 'Aristarchus', 0.72), ('person', 'Plateau', 0.92), ('organization', 'Aristarchus', 0.64), ('person', 'sandwich', 0.53)]
+ number spans: []
+ events: ['discourse.turn_yield']
+ utterances: 1; acts: {'statement': 1}
+
+=== [news] art002a000025-reid-tourist | 321 words | 27 ms | 0.08 ms/word
+ feature words in transcript: 12; entity spans: 15; spans covering a feature word: 12
+ entity spans: [('person', 'Orin Ta', 0.98), ('person', 'Hertzsprung', 0.85), ('person', 'Hertzsprung,', 0.82), ('organization', 'Hertzsprung', 0.97), ('person', 'Oriental,', 0.96), ('person', 'Vavilov', 0.85), ('person', 'Vavilov.', 0.94), ('person', 'Vavilov.', 0.93), ('person', 'Vavilov,', 0.94), ('person', 'Vavilov,', 0.96), ('person', 'Vavilov,', 0.95), ('organization', 'LRO', 0.73), ('person', 'Vavilov', 0.89), ('person', 'Hertzprung.', 0.79), ('person', 'Oriental.', 0.98)]
+ number spans: []
+ events: ['content.story_start', 'discourse.turn_yield', 'speaker.change']
+ utterances: 39; acts: {'statement': 35, 'ritual_procedural': 2}
+ subject: [('And now I can zoom in.', []), ("I'm just gonna take out Orin Ta for a se", []), ('Oh my god, look at those walls.', []), ('Oh, it looks so different now.', []), ('All right, let me get in on Hertzsprung ', [])]
+
+=== [news] art002a00003708-clipped | 1105 words | 121 ms | 0.11 ms/word
+ feature words in transcript: 15; entity spans: 19; spans covering a feature word: 8
+ entity spans: [('person', 'Victor,', 1.0), ('person', 'Pythagoras,', 0.86), ('person', 'Pythagoras.', 0.81), ('person', 'Pythagoras', 0.94), ('person', 'Aristarchus', 0.67), ('person', 'albedo.', 0.61), ('person', 'Earth,', 0.94), ('person', 'oriental', 0.54), ('organization', 'Peltor', 0.79), ('person', 'Middle', 0.6), ('person', 'Hertzsprung.', 0.84), ('place', 'Hertzsprung,', 0.89), ('organization', 'Hertzsprung', 0.91), ('organization', 'Peltor', 0.87), ('person', 'Hertzsprung.', 0.9), ('organization', 'Galveston', 0.9), ('place', 'Hertzsprung.', 0.91), ('organization', '-south', 0.83), ('person', 'albedo.', 0.63)]
+ number spans: [('count', 'five degrees'), ('count', '400'), ('count', 'two'), ('count', 'three'), ('count', 'two'), ('count', 'five,'), ('count', 'four'), ('count', 'two'), ('count', 'three.'), ('count', 'three,'), ('count', 'two'), ('percent', '100%.')]
+ events: ['discourse.turn_yield', 'speaker.change']
+ utterances: 134; acts: {'statement': 128, 'question': 2}
+
+=== [talk] artemis-ii-names-new-craters-integ | 331 words | 27 ms | 0.08 ms/word
+ feature words in transcript: 13; entity spans: 12; spans covering a feature word: 8
+ entity spans: [('person', 'Kelsey', 0.98), ('organization', 'Oriental', 0.96), ('organization', 'Ohm', 0.82), ('place', 'Earth,', 0.93), ('place', 'Earth.', 0.98), ('person', 'Carol,', 0.97), ('organization', 'Reed,', 0.86), ('person', 'Katie', 0.92), ('person', 'Ellie.', 0.89), ('organization', 'Glushko', 0.98), ('organization', 'Ohm', 0.87), ('person', 'Carol', 0.95)]
+ number spans: [('ordinal', 'first'), ('ordinal', 'second')]
+ events: ['content.story_start', 'discourse.turn_yield', 'speaker.change']
+ utterances: 19; acts: {'statement': 6, 'ritual_procedural': 5}
+
+=== [talk] art002a000005-ck-vg-relief-color-a | 161 words | 12 ms | 0.08 ms/word
+ feature words in transcript: 5; entity spans: 3; spans covering a feature word: 2
+ entity spans: [('organization', 'Aristarchus Plateau', 0.96), ('organization', 'Aristarchus', 0.61), ('place', 'northwest', 0.58)]
+ number spans: []
+ events: ['discourse.turn_yield']
+ utterances: 1; acts: {'statement': 1}
+
+=== [talk] art002a000025-reid-tourist | 321 words | 26 ms | 0.08 ms/word
+ feature words in transcript: 12; entity spans: 15; spans covering a feature word: 12
+ entity spans: [('person', 'Orin Ta', 0.94), ('organization', 'Hertzsprung', 0.96), ('person', 'Hertzsprung,', 0.9), ('organization', 'Hertzsprung', 0.95), ('person', 'Oriental,', 0.94), ('person', 'Vavilov', 0.9), ('person', 'Vavilov.', 0.94), ('person', 'Vavilov.', 0.9), ('person', 'Vavilov,', 0.92), ('person', 'Vavilov,', 0.93), ('person', 'Vavilov,', 0.93), ('organization', 'LRO', 0.62), ('person', 'Vavilov', 0.94), ('person', 'Hertzprung.', 0.88), ('person', 'Oriental.', 0.96)]
+ number spans: []
+ events: ['content.story_start', 'discourse.turn_yield', 'speaker.change']
+ utterances: 39; acts: {'statement': 31, 'ritual_procedural': 2}
+
+=== [talk] art002a00003708-clipped | 1105 words | 127 ms | 0.11 ms/word
+ feature words in transcript: 15; entity spans: 23; spans covering a feature word: 8
+ entity spans: [('person', 'Victor,', 1.0), ('person', 'Brown', 0.52), ('organization', 'Pythagoras,', 0.92), ('person', 'Ah,', 0.57), ('organization', 'Pythagoras.', 0.89), ('organization', 'Pythagoras', 0.96), ('organization', 'Aristarchus', 0.68), ('organization', 'albedo.', 0.69), ('place', 'Earth,', 0.95), ('organization', 'oriental', 0.78), ('organization', 'Peltor', 0.88), ('place', 'Middle', 0.81), ('place', 'south', 0.54), ('organization', 'albedo', 0.53), ('organization', 'Hertzsprung.', 0.89), ('organization', 'Hertzsprung,', 0.9), ('organization', 'Hertzsprung', 0.88), ('organization', 'Peltor', 0.93), ('organization', 'Hertzsprung.', 0.91), ('organization', 'Galveston', 0.93), ('organization', 'Hertzsprung.', 0.88), ('organization', '-south', 0.89), ('place', 'albedo.', 0.54)]
+ number spans: [('count', 'five degrees'), ('count', '400'), ('count', 'two'), ('count', 'three'), ('count', 'two'), ('count', 'five,'), ('count', 'four'), ('count', 'two'), ('count', 'three.'), ('count', 'three,'), ('count', 'two'), ('percent', '100%.')]
+ events: ['discourse.turn_yield', 'speaker.change']
+ utterances: 134; acts: {'statement': 126, 'question': 1}
+
+=== KID QUESTIONS (domain=assistant)
+- 'show me where Neil Armstrong landed'
+   spans [('person', 'Neil Armstrong')] | act ['command_request', 'device_directed'] | intent [] | safety ['request'] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'what did the astronauts say about the yellow part'
+   spans [] | act ['question', 'device_directed'] | intent ['request_information', 'qa_factoid'] | safety [] | events ['discourse.assistant.command_complete', 'discourse.assistant.command_complete'] | redacted: -
+- 'show me Tycho, wait no I mean Copernicus'
+   spans [('person', 'Copernicus')] | act ['command_request', 'device_directed'] | intent [] | safety ['request'] | events ['discourse.assistant.command_complete', 'discourse.assistant.command_complete'] | redacted: -
+- 'how big is Orientale'
+   spans [('organization', 'Orientale')] | act ['question', 'device_directed'] | intent ['request_information', 'qa_factoid'] | safety ['request'] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'is there ice on the Moon'
+   spans [('organization', 'Moon')] | act ['question', 'device_directed'] | intent ['request_information'] | safety ['request'] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'my name is Maya and I live at 42 Oak Street'
+   spans [('person', 'Maya'), ('private_name', 'Maya'), ('place', '42 Oak Street'), ('street_address', '42 Oak Street'), ('time_of_day', '42')] | act ['statement', 'device_directed'] | intent ['report_inform'] | safety ['leak'] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'play the part where they saw the Earth'
+   spans [('place', 'Earth')] | act ['command_request', 'device_directed'] | intent [] | safety [] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'why is the Moon gray'
+   spans [('organization', 'Moon gray')] | act ['question', 'device_directed'] | intent ['request_information', 'qa_factoid'] | safety ['request', 'leak'] | events [] | redacted: -
+- 'the moon is made of cheese right'
+   spans [] | act ['device_directed'] | intent [] | safety ['request'] | events ['discourse.assistant.command_complete'] | redacted: -
+- 'you are stupid'
+   spans [] | act ['opinion_assessment', 'device_directed'] | intent ['complain_criticize'] | safety ['leak'] | events [] | redacted: -

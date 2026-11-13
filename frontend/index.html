@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ask the Moon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one dark "mission window" (moon + guide panel) up top, then the scope brief as a single readable column. Committed single dark theme: it is a night-sky app. */
+:root{
+  --void:#070a14; --deck:#0e1324; --panel:#141a30; --line:#252d4a;
+  --ink:#eef0f7; --mute:#9aa3c0; --dim:#6b7494;
+  --sun:#ffc35a; --sun-ink:#1d1405; --sky:#7cc7ff; --rose:#ff8fa3; --leaf:#8ee6b0; --lilac:#c3a6ff;
+  --f-display:"Bricolage Grotesque",ui-rounded,system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--void);color:var(--ink)}
+body{font-family:var(--f-body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 64px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+a{color:var(--sky)}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--sun);outline-offset:2px}
+
+/* masthead */
+.mast{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px}
+.mast h1{font-size:clamp(34px,6vw,56px);font-weight:800;letter-spacing:-.02em}
+.mast h1 span{color:var(--sun)}
+.mast p{margin:6px 0 0;color:var(--mute);max-width:60ch}
+.badge{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--sun);border:1px solid color-mix(in srgb,var(--sun) 40%,transparent);padding:6px 10px;border-radius:999px;white-space:nowrap}
+
+/* app window */
+.app{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);background:var(--deck);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+@media (max-width:860px){.app{grid-template-columns:1fr}}
+.stage{position:relative;min-height:420px;aspect-ratio:1/1;max-height:640px;width:100%;background:radial-gradient(120% 90% at 30% 20%,#121a36 0%,var(--void) 70%)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.label{position:absolute;left:0;top:0;pointer-events:none;transform:translate(-50%,-140%);background:var(--sun);color:var(--sun-ink);font-family:var(--f-display);font-weight:700;font-size:15px;padding:5px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 6px 20px #0008;transition:opacity .2s}
+.label small{font-family:var(--f-body);font-weight:400;opacity:.75;margin-left:6px}
+.hud{position:absolute;left:14px;top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.hud button{background:#0b1022cc;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--mute)}
+.hud button:hover{color:var(--ink)}
+.follow{position:absolute;right:14px;top:14px;font-family:var(--f-mono);font-size:12px;background:#0b1022cc;border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--sky)}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font-family:var(--f-mono);font-size:13px}
+
+/* ask bar */
+.askbar{position:absolute;left:14px;right:14px;bottom:14px;display:flex;flex-direction:column;gap:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips button{flex:none;background:#0b1022d9;border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:14px}
+.chips button:hover{border-color:var(--sun)}
+.ask{display:flex;gap:10px;align-items:center;background:#0b1022ee;border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 18px}
+.ask input{flex:1;min-width:0;background:none;border:0;color:var(--ink);font:inherit;font-size:17px;outline:none}
+.ask input::placeholder{color:var(--dim)}
+.mic{width:52px;height:52px;flex:none;border-radius:50%;border:0;background:var(--sun);color:var(--sun-ink);display:grid;place-items:center;position:relative}
+.mic svg{width:24px;height:24px}
+.mic.on::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--sun);animation:ping 1.2s ease-out infinite}
+@keyframes ping{from{opacity:1;transform:scale(.9)}to{opacity:0;transform:scale(1.25)}}
+.send{height:44px;padding:0 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-weight:700}
+
+/* side panel */
+.side{display:flex;flex-direction:column;min-width:0;border-left:1px solid var(--line);max-height:640px}
+@media (max-width:860px){.side{border-left:0;border-top:1px solid var(--line);max-height:none}}
+.tabs{display:flex;gap:4px;padding:10px 10px 0}
+.tabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:10px 6px;font-family:var(--f-display);font-weight:700;font-size:16px;color:var(--mute)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-color:var(--sun)}
+.pane{flex:1;overflow:auto;padding:16px;min-height:0}
+.pane[hidden]{display:none}
+.tts{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--mute)}
+.tts button{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+
+/* ask log */
+.log{display:flex;flex-direction:column;gap:12px}
+.kid{align-self:flex-end;background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 4px 18px;padding:8px 14px;max-width:85%}
+.guide{align-self:flex-start;max-width:100%;display:flex;flex-direction:column;gap:6px}
+.guide h3{font-size:20px;color:var(--sun)}
+.guide p{margin:0}
+.guide .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.pill{background:none;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:14px}
+.pill.hot{border-color:var(--sun);color:var(--sun)}
+.muted{color:var(--mute);font-size:14px}
+.tag-src{font-family:var(--f-mono);font-size:11px;color:var(--dim);letter-spacing:.04em}
+
+/* crew logs */
+.clips{display:flex;flex-direction:column;gap:8px}
+.clip{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;width:100%}
+.clip[aria-pressed="true"]{border-color:var(--sun)}
+.clip b{font-family:var(--f-display);font-size:15px;display:block}
+.clip span{font-size:12px;color:var(--mute)}
+.clip time{font-family:var(--f-mono);font-size:12px;color:var(--dim)}
+.player{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.player audio{width:100%}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--f-mono);font-size:11px;color:var(--mute)}
+.legend i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.transcript{background:var(--void);border:1px solid var(--line);border-radius:14px;padding:12px 14px;max-height:230px;overflow:auto;font-size:15px;line-height:1.75;position:relative}
+.transcript span{cursor:pointer;border-radius:4px;padding:0 1px}
+.transcript span.now{background:var(--sun);color:var(--sun-ink)}
+.transcript span.past{color:var(--mute)}
+.t-FEATURE{box-shadow:inset 0 -3px var(--sun);font-weight:700}
+.t-COLOR{box-shadow:inset 0 -3px var(--rose)}
+.t-GEO_TERM{box-shadow:inset 0 -3px var(--sky)}
+.t-DIRECTION{box-shadow:inset 0 -3px var(--leaf)}
+.t-AWE{box-shadow:inset 0 -3px var(--lilac)}
+.t-NUMBER{box-shadow:inset 0 -3px var(--ink);font-family:var(--f-mono);font-size:.92em}
+
+/* missions */
+.missions{display:flex;flex-direction:column;gap:10px}
+.mission{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.mission.active{border-color:var(--sun)}
+.mission.done{opacity:.7}
+.star{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px dashed var(--dim);color:var(--dim);font-size:15px}
+.mission.done .star{border:0;background:var(--sun);color:var(--sun-ink)}
+.mission b{font-family:var(--f-display);font-size:16px}
+.mission p{margin:2px 0 6px;font-size:14px;color:var(--mute)}
+.score{font-family:var(--f-mono);font-size:13px;color:var(--sun);margin-bottom:6px}
+
+/* brief */
+.brief{max-width:780px;display:flex;flex-direction:column;gap:36px;margin-inline:auto;width:100%}
+.brief section{display:flex;flex-direction:column;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--sun)}
+.brief h2{font-size:clamp(24px,3.4vw,32px);font-weight:700}
+.brief p,.brief li{color:#d6d9e6;max-width:68ch}
+.brief p{margin:0}
+.brief ul,.brief ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px}
+.lede{font-size:19px;color:var(--ink)!important}
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;overflow-x:auto}
+@media (max-width:700px){.flow{grid-template-columns:1fr}}
+.step{background:var(--deck);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.step b{font-family:var(--f-display);display:block;font-size:15px}
+.step small{color:var(--mute);font-size:13px;display:block;margin-top:4px}
+.step em{font-style:normal;font-family:var(--f-mono);font-size:11px;color:var(--sun);display:block;margin-bottom:4px;letter-spacing:.05em}
+.ideas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.ideas{grid-template-columns:1fr}}
+.idea{border-top:2px solid var(--line);padding-top:10px}
+.idea.core{border-color:var(--sun)}
+.idea b{font-family:var(--f-display);font-size:17px;display:block}
+.idea p{font-size:15px;margin-top:4px}
+.idea .uses{font-family:var(--f-mono);font-size:11px;color:var(--sky);margin-top:6px;display:block}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-weight:600}
+tr:last-child td{border-bottom:0}
+td code,p code,li code{font-family:var(--f-mono);font-size:12.5px;color:var(--sky)}
+.quote{border-left:3px solid var(--sun);padding:4px 0 4px 14px;font-style:italic;color:var(--ink)}
+.plan{display:grid;grid-template-columns:auto 1fr;gap:8px 16px}
+.plan dt{font-family:var(--f-mono);font-size:13px;color:var(--sun);white-space:nowrap}
+.plan dd{margin:0;color:#d6d9e6}
+.foot{color:var(--dim);font-size:13px;max-width:780px;margin-inline:auto}
+@media (prefers-reduced-motion:reduce){.mic.on::after{animation:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <h1>Ask the <span>Moon</span></h1>
+      <p>A voice-first Moon explorer for kids. Say what you want to see, and the Moon turns to show you. Then listen to the Artemis II crew describe it in their own words.</p>
+    </div>
+    <span class="badge">Space Apps 2026 · Prototype</span>
+  </header>
+
+  <div class="app">
+    <div class="stage" id="stage">
+      <div class="loading" id="loading">Loading NASA LRO color map…</div>
+      <div class="hud">
+        <button id="nearBtn" type="button">Near side</button>
+        <button id="farBtn" type="button">Far side</button>
+        <button id="pinsBtn" type="button" aria-pressed="true">Hide pins</button>
+      </div>
+      <div class="follow" id="follow" hidden></div>
+      <div class="label" id="label" hidden></div>
+      <div class="askbar">
+        <div class="chips" id="chips"></div>
+        <form class="ask" id="askForm">
+          <input id="q" autocomplete="off" placeholder="Try: show me where Apollo 11 landed" aria-label="Ask the Moon">
+          <button class="send" type="submit">Go</button>
+          <button class="mic" id="mic" type="button" aria-label="Talk" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="tabs" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="ask" id="tab-ask">Ask</button>
+        <button role="tab" aria-selected="false" data-tab="crew" id="tab-crew">Crew logs</button>
+        <button role="tab" aria-selected="false" data-tab="mission" id="tab-mission">Missions</button>
+      </div>
+      <div class="pane" id="pane-ask">
+        <div class="log" id="log">
+          <div class="guide">
+            <h3>Hi, explorer!</h3>
+            <p>Ask me about any place on the Moon. Tap the yellow button and talk, or type. You can also tap the Moon to see what's there.</p>
+            <p class="muted" id="voiceNote"></p>
+          </div>
+        </div>
+      </div>
+      <div class="pane" id="pane-crew" hidden>
+        <p class="muted" style="margin:0 0 10px">Real recordings from the Artemis II lunar flyby (April 2026). As the crew speaks, the Moon turns to the place they're talking about.</p>
+        <div class="clips" id="clips"></div>
+        <div class="player" id="player" hidden>
+          <audio id="audio" controls preload="none"></audio>
+          <div class="legend">
+            <span><i style="background:var(--sun)"></i>FEATURE</span>
+            <span><i style="background:var(--rose)"></i>COLOR</span>
+            <span><i style="background:var(--sky)"></i>GEO_TERM</span>
+            <span><i style="background:var(--leaf)"></i>DIRECTION</span>
+            <span><i style="background:var(--lilac)"></i>AWE</span>
+            <span><i style="background:var(--ink)"></i>NUMBER</span>
+          </div>
+          <div class="transcript" id="transcript"></div>
+          <div class="tag-src" id="tagStats"></div>
+        </div>
+      </div>
+      <div class="pane" id="pane-mission" hidden>
+        <div class="score" id="score"></div>
+        <div class="missions" id="missions"></div>
+      </div>
+      <div class="tts"><span id="ttsState">Read-aloud is starting…</span><button id="ttsBtn" type="button" hidden>Read aloud: on</button></div>
+    </aside>
+  </div>
+
+  <main class="brief">
+    <section>
+      <span class="eyebrow">The idea</span>
+      <h2>Let kids explore the Moon by talking to it, and hear the astronauts who just flew past it</h2>
+      <p class="lede">Most kids can't type "Mare Orientale," but they can say "show me the giant bullseye." Ask the Moon puts our Head Start voice-search pattern on a 3D Moon. A child speaks, we work out which place they mean, and the Moon turns to it.</p>
+      <p>The second part is new. In April 2026 the Artemis II crew flew around the Moon and narrated what they saw: colors, craters, Earthrise. NASA published 59 of those recordings. We transcribe and tag every one, then link each spoken place name to a point on the Moon. As a recording plays, the globe follows the astronauts' words.</p>
+      <p class="quote">"If you look at Orientale on the far side and then draw a line straight up to Ohm… relatively in the middle is an unnamed crater, and we would like to suggest it be called Integrity." (Artemis II crew, transcribed above)</p>
+      <p>The crew gave directions using other craters as landmarks. Following those directions is the kind of spatial-language task our tagger can learn, and it's the hook for the kids' missions.</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">How it works</span>
+      <h2>Arc turns hours of crew audio into a Moon you can search by voice</h2>
+      <div class="flow">
+        <div class="step"><em>INGEST</em><b>NASA audio + imagery</b><small>59 flyby clips, LRO color map, NASA image library, IAU crater names</small></div>
+        <div class="step"><em>ARC TRANSCRIBER</em><b>Words + timing + feel</b><small>Word timestamps, speaker, emotion (awe, laughter), sound events</small></div>
+        <div class="step"><em>ARC TAGGER</em><b>Word-level tags</b><small>FEATURE, COLOR, GEO_TERM, DIRECTION, RELATION, AWE</small></div>
+        <div class="step"><em>INDEX</em><b>Moon gazetteer</b><small>Each tag links to a place (lat, lon) and a moment (clip, second)</small></div>
+        <div class="step"><em>VOICE SEARCH</em><b>Kid asks, Moon answers</b><small>Kid speech → intent + place → fly to it, highlight, play the crew's words</small></div>
+      </div>
+      <p>The same index answers questions in both directions. "Where is Aristarchus?" returns a place. "What did the astronauts say about Aristarchus?" returns the second in the clip where they said "yellow snow-capped mountain." "Where were they amazed?" filters on AWE tags.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Crew said (real transcript)</th><th>Tagger output</th><th>Resolved place</th></tr></thead>
+        <tbody>
+          <tr><td>"…draw a line straight up to Ohm… relatively in the middle is an unnamed crater"</td><td><code>RELATION midpoint(Orientale, Ohm)</code></td><td>Integrity ≈ 0.7°S, 104°W <span class="muted">(estimate)</span></td></tr>
+          <tr><td>"look at Glushko and it's just to the northwest… at the same latitude as Ohm"</td><td><code>RELATION northwest_of(Glushko) ∧ lat = lat(Ohm)</code></td><td>Carroll ≈ 18.4°N, 82°W <span class="muted">(estimate)</span></td></tr>
+          <tr><td>"it is like a yellow snow-capped mountain where the snow is the Aristarchus…"</td><td><code>COLOR yellow</code> · <code>FEATURE Aristarchus</code></td><td>Aristarchus Plateau, 26°N 51°W</td></tr>
+          <tr><td>"Oh my gosh! It's amazing!"</td><td><code>AWE</code> + audio emotion</td><td>Earthrise, far-side limb</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">In this build, place names and numbers come from Arc Tagger v0.3 (via the model server) linked to the gazetteer; colors, geology words and directions are still small rule lists until a lunar tagger domain exists. The two proposed-crater locations are estimates worked out from the crew's directions, not official coordinates.</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">More ideas</span>
+      <h2>Eight things the same index makes possible</h2>
+      <div class="ideas">
+        <div class="idea core"><b>1. Voice Moon explorer</b><p>The core of the demo: say a place, or describe one ("the bullseye," "the yellow part"), and the Moon flies there with a kid-level fact.</p><span class="uses">ASR · intent · gazetteer</span></div>
+        <div class="idea core"><b>2. Crew log follow-along</b><p>Play an Artemis II recording while the globe follows the crew's words and the transcript highlights each one as it's spoken.</p><span class="uses">Arc Transcriber · Arc Tagger</span></div>
+        <div class="idea"><b>3. Talk like an astronaut</b><p>The crew trained to describe terrain in geology words (they even practiced on a maple cookie). Kids describe a crater out loud and earn badges for using words like <em>ejecta</em>, <em>rays</em> and <em>albedo</em>.</p><span class="uses">Arc Tagger GEO_TERM scoring</span></div>
+        <div class="idea"><b>4. Find-it missions</b><p>Clues written the way the crew gives directions: "northwest of Glushko, same latitude as Ohm." Kids tap the Moon to answer. Already in the prototype.</p><span class="uses">RELATION tags · spatial reasoning</span></div>
+        <div class="idea"><b>5. Awe map</b><p>Pins where the crew gasped, laughed, or went quiet. Kids can tap a spot and hear how it felt to be there.</p><span class="uses">Arc emotion + AWE tags</span></div>
+        <div class="idea"><b>6. SoundID: Mission Control quiz</b><p>Play a sound from the library (go/no-go poll, liftoff, splashdown, "Full send") and kids guess which part of the mission it's from.</p><span class="uses">Arc audio event tagging</span></div>
+        <div class="idea"><b>7. Name a crater</b><p>The Artemis II crew proposed Integrity and Carroll. Kids pick an unnamed crater, say a name and why, and the class map keeps it.</p><span class="uses">ASR · shared class map</span></div>
+        <div class="idea"><b>8. Show me pictures</b><p>"Show me Earthrise photos" searches NASA's image library through the same tags, so pictures and recordings both land on the globe.</p><span class="uses">Image captions → tagger index</span></div>
+      </div>
+      <p>Classroom mode builds on the Head Start work. A teacher asks a question and the class answers out loud. Multilingual ASR means a Spanish- or Hindi-speaking child can ask in their own language and still find "el Mar de la Tranquilidad."</p>
+    </section>
+
+    <section>
+      <span class="eyebrow">Data</span>
+      <h2>Everything here is public NASA data</h2>
+      <div class="tbl"><table>
+        <thead><tr><th>Dataset</th><th>What we use it for</th></tr></thead>
+        <tbody>
+          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">Artemis Audio Library</a></td><td>About 113 clips. 59 are lunar-flyby crew observations naming Orientale, Aristarchus, Reiner Gamma, Hertzsprung, Vavilov, Ohm, Glushko and Byrgius A; the rest are launch, in-flight and splashdown sounds for SoundID.</td></tr>
+          <tr><td><a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit (LRO LROC color)</a></td><td>The 3D globe's color map (4K in the prototype). Elevation maps from the same kit can add real relief.</td></tr>
+          <tr><td>IAU Gazetteer of Planetary Nomenclature</td><td>About 9,000 named lunar features with coordinates and sizes. This is our place index and the word list for ASR biasing.</td></tr>
+          <tr><td>NASA Image and Video Library</td><td>Photos and captions of Artemis II and Apollo, tagged into the same index.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <span class="eyebrow">Weekend plan</span>
+      <h2>Build plan for Nov 14–15</h2>
+      <dl class="plan">
+        <dt>Sat AM</dt><dd>Run the 59 flyby clips through Arc Transcriber. Load the IAU gazetteer. Add a lunar tag set to Arc Tagger: FEATURE, COLOR, GEO_TERM, DIRECTION, RELATION, AWE.</dd>
+        <dt>Sat PM</dt><dd>Build the index (tag → place + clip time). Voice search over kid phrasing, with ASR hotword biasing on crater names.</dd>
+        <dt>Sun AM</dt><dd>Polish the globe (relief from elevation data), finish missions, add Talk Like an Astronaut scoring. Add SoundID if there's time.</dd>
+        <dt>Sun PM</dt><dd>Record the 30-second demo with a real kid asking "where did Apollo 11 land?" Submit.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <span class="eyebrow">What to train later</span>
+      <h2>Models that make this work for real kids</h2>
+      <ul>
+        <li><b>Kid-speech ASR.</b> Fine-tune on children's voices. Kids say "Oriental," "Aris-tar-cus" and "the Moon's eye," so we need fuzzy matching against the gazetteer.</li>
+        <li><b>Lunar Arc Tagger domain.</b> Train on the crew transcripts plus synthetic kid questions. RELATION spans ("northwest of," "midpoint between") need their own head.</li>
+        <li><b>Spatial resolver.</b> A small model that turns a RELATION parse into lat/lon. The two proposed craters make a ready-made test set.</li>
+        <li><b>Audio event tags for SoundID.</b> Liftoff, countdown, comms beeps, splashdown, applause.</li>
+        <li><b>Safety for under-13s.</b> Use Arc Tagger safety domains on what kids say. Store no audio by default.</li>
+      </ul>
+      <p class="muted">Risks: proposed crater locations are estimates until the IAU confirms them. NASA media can't be used to imply endorsement. Voice input in the prototype depends on browser support.</p>
+    </section>
+  </main>
+
+  <p class="foot">Moon imagery: NASA SVS CGI Moon Kit (LRO LROC). Crew audio: NASA Artemis Audio Library, used under NASA media guidelines. Transcripts in this prototype were made with Whisper large-v3-turbo; place and number tags come from Arc Tagger v0.3; color, geology and direction tags are rules. Space Apps 2026 is Nov 14–15.</p>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,3 @@
+models: cd model_server && uv run uvicorn app.main:app --host 127.0.0.1 --port 8200
+backend: cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8100 --reload
+frontend: cd frontend && npm run dev

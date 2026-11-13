@@ -1,0 +1,266 @@
+{
+ "source": "Hand-curated starter gazetteer; coordinates from the IAU Gazetteer of Planetary Nomenclature. Integrity and Carroll are crew-proposed names whose locations are estimated from the crew's spoken directions.",
+ "places": [
+  {
+   "id": "tranquillitatis",
+   "name": "Sea of Tranquility",
+   "lat": 0.67,
+   "lon": 23.47,
+   "diameter_km": 180,
+   "estimated": false,
+   "fact": "Neil Armstrong and Buzz Aldrin landed here on July 20, 1969. The dark 'seas' are old lava that cooled flat.",
+   "aliases": [
+    "tranquil",
+    "apollo 11",
+    "apollo eleven",
+    "armstrong",
+    "neil",
+    "buzz",
+    "first landing",
+    "first people",
+    "landed",
+    "footprint"
+   ]
+  },
+  {
+   "id": "aristarchus",
+   "name": "Aristarchus Plateau",
+   "lat": 26,
+   "lon": -51,
+   "diameter_km": 200,
+   "estimated": false,
+   "fact": "The brightest crater on the side we can see. The crew said the plateau looked like a yellow, snow-capped mountain.",
+   "aliases": [
+    "aristarchus",
+    "aristarcus",
+    "yellow",
+    "brightest",
+    "shiny",
+    "snow"
+   ]
+  },
+  {
+   "id": "orientale",
+   "name": "Mare Orientale",
+   "lat": -19.87,
+   "lon": -94.67,
+   "diameter_km": 930,
+   "estimated": false,
+   "fact": "A giant bullseye 930 km wide, made by a huge impact. From Earth we only see its edge. Artemis II saw all of it.",
+   "aliases": [
+    "orientale",
+    "oriental",
+    "bullseye",
+    "bulls eye",
+    "target",
+    "rings",
+    "ring"
+   ]
+  },
+  {
+   "id": "hertzsprung",
+   "name": "Hertzsprung",
+   "lat": 2.6,
+   "lon": -128.7,
+   "diameter_km": 570,
+   "estimated": false,
+   "fact": "A huge crater with rings on the far side, the side that never faces Earth.",
+   "aliases": [
+    "hertzsprung",
+    "hertz"
+   ]
+  },
+  {
+   "id": "vavilov",
+   "name": "Vavilov",
+   "lat": -0.8,
+   "lon": -138.8,
+   "diameter_km": 98,
+   "estimated": false,
+   "fact": "A far-side crater with a mountain in the middle and walls stepped like stairs.",
+   "aliases": [
+    "vavilov"
+   ]
+  },
+  {
+   "id": "ohm",
+   "name": "Ohm",
+   "lat": 18.4,
+   "lon": -113.5,
+   "diameter_km": 64,
+   "estimated": false,
+   "fact": "A young far-side crater with bright rays that spread out like a splash.",
+   "aliases": [
+    "ohm"
+   ]
+  },
+  {
+   "id": "glushko",
+   "name": "Glushko",
+   "lat": 8.4,
+   "lon": -77.6,
+   "diameter_km": 43,
+   "estimated": false,
+   "fact": "A bright young crater near the edge of the side we see, with long bright rays.",
+   "aliases": [
+    "glushko"
+   ]
+  },
+  {
+   "id": "reiner",
+   "name": "Reiner Gamma",
+   "lat": 7.5,
+   "lon": -59,
+   "diameter_km": 70,
+   "estimated": false,
+   "fact": "A bright swirl shaped like a tadpole. Scientists think a magnetic field keeps it from darkening.",
+   "aliases": [
+    "reiner",
+    "swirl",
+    "tadpole",
+    "gamma"
+   ]
+  },
+  {
+   "id": "integrity",
+   "name": "Integrity",
+   "lat": -0.7,
+   "lon": -104,
+   "diameter_km": 20,
+   "estimated": true,
+   "fact": "The Artemis II crew proposed naming this crater after their Orion spacecraft, Integrity. They said it is halfway between Orientale and Ohm.",
+   "aliases": [
+    "integrity",
+    "spaceship",
+    "spacecraft",
+    "named after",
+    "new crater",
+    "orion"
+   ]
+  },
+  {
+   "id": "carroll",
+   "name": "Carroll",
+   "lat": 18.4,
+   "lon": -82,
+   "diameter_km": 20,
+   "estimated": true,
+   "fact": "A bright spot the crew proposed naming Carroll, in memory of someone from their astronaut family. It's northwest of Glushko.",
+   "aliases": [
+    "carroll",
+    "carol"
+   ]
+  },
+  {
+   "id": "tycho",
+   "name": "Tycho",
+   "lat": -43.3,
+   "lon": -11.2,
+   "diameter_km": 85,
+   "estimated": false,
+   "fact": "Tycho's bright rays stretch more than 1,500 km. At full Moon you can see them from Earth with binoculars.",
+   "aliases": [
+    "tycho",
+    "rays",
+    "splash",
+    "star burst",
+    "starburst"
+   ]
+  },
+  {
+   "id": "copernicus",
+   "name": "Copernicus",
+   "lat": 9.6,
+   "lon": -20.1,
+   "diameter_km": 93,
+   "estimated": false,
+   "fact": "A big, sharp crater with terraced walls and mountains in the middle. Scientists call it the 'Monarch of the Moon.'",
+   "aliases": [
+    "copernicus",
+    "monarch"
+   ]
+  },
+  {
+   "id": "imbrium",
+   "name": "Sea of Rains",
+   "lat": 32.8,
+   "lon": -15.6,
+   "diameter_km": 1146,
+   "estimated": false,
+   "fact": "Mare Imbrium, one of the biggest dark patches. It forms part of the 'face' people see in the Moon.",
+   "aliases": [
+    "imbrium",
+    "rains",
+    "sea of rain",
+    "face",
+    "man in the moon",
+    "eye"
+   ]
+  },
+  {
+   "id": "crisium",
+   "name": "Sea of Crises",
+   "lat": 17,
+   "lon": 59.1,
+   "diameter_km": 556,
+   "estimated": false,
+   "fact": "A round dark sea near the Moon's right edge. It's easy to spot with your own eyes.",
+   "aliases": [
+    "crisium",
+    "crises",
+    "crisis"
+   ]
+  },
+  {
+   "id": "shackleton",
+   "name": "Shackleton (south pole)",
+   "lat": -89.67,
+   "lon": 129.78,
+   "diameter_km": 21,
+   "estimated": false,
+   "fact": "At the south pole, some crater floors never get sunlight, so ice may be hiding there. Artemis astronauts plan to land in this region.",
+   "aliases": [
+    "shackleton",
+    "south pole",
+    "ice",
+    "water",
+    "next landing",
+    "artemis 3",
+    "artemis three",
+    "artemis iii",
+    "land next",
+    "pole"
+   ]
+  },
+  {
+   "id": "tsiolkovskiy",
+   "name": "Tsiolkovskiy",
+   "lat": -20.4,
+   "lon": 129.1,
+   "diameter_km": 185,
+   "estimated": false,
+   "fact": "A far-side crater with a dark, lava-filled floor and a bright mountain in the middle. It looks like an island in a sea.",
+   "aliases": [
+    "tsiolkovsk",
+    "island"
+   ]
+  },
+  {
+   "id": "spa",
+   "name": "South Pole–Aitken Basin",
+   "lat": -53,
+   "lon": -169,
+   "diameter_km": 2500,
+   "estimated": false,
+   "fact": "One of the biggest impact craters in the solar system: about 2,500 km across, almost as wide as the USA.",
+   "aliases": [
+    "aitken",
+    "biggest",
+    "largest",
+    "giant crater",
+    "huge crater",
+    "oldest"
+   ]
+  }
+ ]
+}
