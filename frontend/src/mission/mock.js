@@ -90,7 +90,7 @@ function step(m) {
   }
   const after = env(m, m.t);
   for (const s of m.storms) {
-    if (s.t_h > m.t - SHIFT_H && s.t_h <= m.t) events.push(ev(m, "solar_storm", `Solar storm! This is a real one: the ${s.name}. Raise the shields or take shelter.`, s));
+    if (s.t_h > m.t - SHIFT_H && s.t_h <= m.t) events.push(ev(m, "solar_storm", `Solar storm! A real one from NASA records: ${s.name}. Raise the shields or take shelter.`, s));
     if (s.t_h + s.dur > m.t - SHIFT_H && s.t_h + s.dur <= m.t) events.push(ev(m, "storm_end", "The storm is over. Radiation is back to normal."));
   }
   if (before.in_sun && !after.in_sun) events.push(ev(m, "sunset", "Sunset. The solar panels stop charging. Keep the heaters on."));

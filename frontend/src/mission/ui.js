@@ -13,9 +13,9 @@ const TASK = { collect_ice: "collecting ice", explore: "exploring", repair_array
 const TARGETS = { collect_ice: { lat: -89.67, lon: 129.78, name: "Shackleton" }, explore: { lat: -84.68, lon: -48.7, name: "Cabeus" }, repair_array: null, return: null };
 // Lessons from hardware already on the Moon: the artifact id, and what it teaches an outpost commander.
 const LESSONS = [
-  ["surveyor3", "Machines can last. Apollo 12 astronauts took Surveyor 3's camera home after 2½ years on the Moon, so engineers could see what space does to hardware."],
-  ["lcross_centaur_impact", "Ice hides in the dark. LCROSS crashed into Cabeus crater near the south pole, and the cloud it threw up had water in it."],
-  ["apollo15_lrv", "Don't drive too far. The Apollo 15 crew drove 27.8 km but never more than 5 km from their lander, so they could always walk back."],
+  ["surveyor3", "Machines can last. Apollo 12 took Surveyor 3's camera home after 2½ years, to see what space does to hardware."],
+  ["lcross_centaur_impact", "Ice hides in the dark. LCROSS hit Cabeus crater near the south pole and found water in the dust cloud."],
+  ["apollo15_lrv", "Don't drive too far. Apollo 15's rover went 27.8 km but stayed within 5 km of the lander, so the crew could walk back."],
 ];
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -37,7 +37,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
   let screen = "off", pending = null, bannerT = null, siteSeed = null;
 
-  const lessons = () => LESSONS.map(([id, text]) => { const a = placeById(id); return a ? { text, name: a.name, source: (a.sources || [])[0] } : null; }).filter(Boolean);
+  const shortName = n => n.split(" (")[0].replace(/ rocket impact site| impact site/, "");
+  const lessons = () => LESSONS.map(([id, text]) => { const a = placeById(id); return a ? { text, name: shortName(a.name), source: (a.sources || [])[0] } : null; }).filter(Boolean);
   const sampleTag = () => client && client.sample ? `<span class="m-sample" title="The mission server isn't running yet; this is a local practice model.">Sample data</span>` : "";
 
   // ---------- briefing ----------
@@ -58,18 +59,16 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     panel.innerHTML = `
       <header class="m-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
       <h2 class="m-title">Pick your outpost</h2>
-      <p class="m-sub">Near the Moon's south pole. Sunlight charges your batteries, ice gives you water, and you can only call home when Earth is in the sky.</p>
+      <p class="m-sub">Sun charges batteries. Ice makes water. You can call home only when Earth is up.</p>
       <div class="m-sites" role="radiogroup" aria-label="Outpost site">${sites.map(s => `
         <button type="button" class="m-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}">
           <b>${esc(s.name)}</b>
           <span class="m-facts"><span title="How much of the time the Sun shines here">☀ ${Math.round(s.sunlight_pct)}% sun</span>
             <span>${s.ice ? "❄ Ice nearby" : "No ice nearby"}</span><span title="How much of the time Earth is above the horizon">🌍 Earth ${Math.round(s.earth_visible_pct)}%</span></span>
-          <small>${esc(s.notes || "")}</small>
         </button>`).join("")}
       </div>
+      <p class="m-note">${esc(site && site.notes || "")}</p>
       <div class="m-srcrow">${(site && site.sources || []).map(src).join("")}</div>
-      <section class="m-lessons"><span class="eyebrow">Lessons from past missions</span>
-        <ul>${lessons().map(l => `<li>${esc(l.text)} ${src({ ...l.source, title: l.name })}</li>`).join("")}</ul></section>
       <section class="m-roles"><span class="eyebrow">Team roles (optional)</span>
         <div>${ROLES.map(([id, n]) => `<button type="button" class="m-role" data-role="${id}" aria-pressed="${roles.has(id)}">${n}</button>`).join("")}</div></section>
       <button type="button" class="m-go" id="mStart">Start mission</button>`;
@@ -77,12 +76,17 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     panel.querySelectorAll(".m-role").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
     $("mStart").onclick = () => start();
     previewSite();
-    card.show({ title: "CAPCOM", eyebrow: "Mission Trainer" + (client.sample ? " · Sample data" : ""),
-      say: "Welcome, Commander. Pick a site for your Moon base. Then keep power, life support and radiation safe for ten days." });
+    briefCard();
+  }
+  /** CAPCOM's welcome + lessons from hardware already on the Moon (real artifacts from /api/places). */
+  function briefCard() {
+    card.show({ title: "CAPCOM", eyebrow: "Briefing" + (client.sample ? " · Sample data" : ""),
+      say: "Welcome, Commander. Pick a site, then keep power, life support and radiation safe for ten days.",
+      lessons: lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })) });
   }
   function previewSite() {
     if (!site) return;
-    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] });
+    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.5 });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
   }
 
@@ -114,8 +118,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <div class="m-bars">
         ${bar("power", "Power", "Battery charge")}
         ${bar("life", "Life support", "Air and water left")}
-        ${bar("dose", "Radiation dose", "")}
-        <p class="m-unit"><b>mSv</b> (millisievert): how we measure radiation dose. Stay under the limit.</p>
+        ${bar("dose", "Dose", "Radiation")}
+        <p class="m-unit"><b>mSv</b>: how we measure radiation dose. Stay under the limit. <span id="mRate"></span></p>
       </div>
       <section class="m-loads" aria-label="Power split"><header><span class="eyebrow">Power split</span><small id="mSum"></small></header>
         ${LOADS.map(([k, n]) => `<div class="m-load" data-k="${k}"><span class="m-ln" title="${esc(LOAD_HELP[k])}">${n}</span>
@@ -138,8 +142,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     render();
   }
   function bar(id, name, help) {
-    return `<div class="m-bar" id="mb-${id}"><div class="m-bl"><b>${name}</b><span class="m-help">${help}</span><span class="m-tr" aria-hidden="true"></span><span class="m-val"></span></div>
-      <div class="m-track"><i class="m-fill"></i><i class="m-next" title="Next shift (estimate)"></i><i class="m-limit"></i></div><small class="m-nx"></small></div>`;
+    return `<div class="m-bar" id="mb-${id}"><div class="m-bl"><b>${name}</b><span class="m-help">${help}</span><span class="m-tr" aria-hidden="true"></span><span class="m-val"></span><small class="m-nx"></small></div>
+      <div class="m-track"><i class="m-fill"></i><i class="m-next" title="Next shift (estimate)"></i></div></div>`;
   }
   function setBar(id, value, max, before, next, fmt) {
     const el = $("mb-" + id); if (!el) return;
@@ -148,7 +152,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     el.querySelector(".m-next").style.left = pct(next / max * 100) + "%";
     el.querySelector(".m-val").textContent = fmt(value);
     const a = arrow(value, before); el.querySelector(".m-tr").textContent = a;
-    el.querySelector(".m-nx").textContent = `Next shift ≈ ${fmt(next)}`;
+    el.querySelector(".m-nx").textContent = `next ≈ ${fmt(next).replace(/ \/.*/, "")}`;
     const bad = id === "dose" ? value / max > .7 : value < 25; el.classList.toggle("is-alert", bad);
   }
   function renderBars(r, live) {
@@ -157,12 +161,12 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     setBar("power", r.power_pct, 100, p && p.power_pct, nx.power, v => Math.round(v) + "%");
     setBar("life", r.life_support_pct, 100, p && p.life_support_pct, nx.life, v => Math.round(v) + "%");
     setBar("dose", r.dose_msv, lim, p && p.dose_msv, nx.dose, v => `${(+v).toFixed(1)} / ${lim} mSv`);
-    const db = $("mb-dose"); if (db) { db.querySelector(".m-help").textContent = `Rate ${(+(live ? live.dose_rate : r.dose_rate_msv_h) || 0).toFixed(2)} mSv/h`; db.querySelector(".m-limit").style.left = "100%"; }
+    const rt = $("mRate"); if (rt) rt.textContent = `Now +${(+(live ? live.dose_rate : r.dose_rate_msv_h) || 0).toFixed(2)} mSv each hour.`;
   }
   function render() {
     if (screen !== "hud" || !state) return;
     const s = state;
-    $("mClock").textContent = `Day ${s.day} of 10 · Shift ${s.shift} of 4`;
+    $("mClock").textContent = `Day ${s.day}/10 · Shift ${s.shift}/4`;
     $("mScore").textContent = `★ ${s.score || 0}`;
     renderBars(s.resources);
     let sum = 0;
@@ -171,8 +175,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const e = s.env || {};
     $("mEnv").innerHTML = `
       <span class="m-chip ${e.in_sun ? "is-on" : ""}">${e.in_sun ? "☀ Sun up" : "☾ Sun down"} <small>${(+e.sun_elev_deg || 0).toFixed(1)}°</small></span>
-      <span class="m-chip ${e.earth_visible ? "is-on" : ""}">${e.earth_visible ? "🌍 Earth visible · comms open" : `🌍 Earth hidden · next window ${e.next_comm_window_h ?? "?"} h`}</span>
-      <span class="m-chip">Radio delay ${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way</span>`;
+      <span class="m-chip ${e.earth_visible ? "is-on" : ""}" title="Radio takes ${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way">${e.earth_visible ? "🌍 Earth up · comms open" : `🌍 Earth hidden · comms in ${e.next_comm_window_h ?? "?"} h`}</span>`;
     const rv = s.rover || {};
     $("mRover").innerHTML = `<b>Rover</b> ${rv.busy ? `${TASK[rv.task] || rv.task}, back in ${rv.eta_h} h` : "parked at the outpost"}`;
     panel.querySelectorAll("[data-task]").forEach(b => { b.disabled = !!rv.busy; });
@@ -237,9 +240,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const evs = r.events || [];
     capcom({ say: r.say });
     handleEvents(evs);
-    await say(r.say);
     const b2 = $("mEnd"); if (b2) b2.disabled = false;
-    if (state.over) showDebrief();
+    if (state.over) { showDebrief(); return; }
+    say(r.say);
   }
 
   function applyState(s, keepPrev) { if (!s) return; if (!keepPrev && state) prev = prev || state; state = s; render(); pushContext(); }
@@ -311,7 +314,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     debriefEl.innerHTML = `
       <header class="m-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}<button class="x" id="mDbClose" type="button" aria-label="Back to the mission">&times;</button></header>
       <div class="m-db-top">
-        <div><h2 class="m-title">${head}</h2><p class="m-sub">${esc(d.why || state.log && state.log.slice(-1)[0] && state.log.slice(-1)[0].text || "")}</p></div>
+        <div><h2 class="m-title">${head}</h2><p class="m-sub">${esc(outcome === "in_progress" ? `You stopped on day ${state.day}. You can go back and keep playing.` : d.why || "")}</p></div>
         <div class="m-grade" aria-label="Grade ${esc(d.grade)}"><b>${esc(d.grade)}</b><span>★ ${Math.round(d.score || 0)}</span></div>
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
@@ -340,7 +343,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const marks = tl.filter(d => (d.events || []).length).map(d => { const k = d.events.includes("solar_storm") ? "storm" : d.events.some(e => e === "low_power" || e === "dose_alert") ? "warn" : "info";
       return k === "info" ? "" : `<g class="c-ev is-${k}"><line x1="${x(d.t_h)}" x2="${x(d.t_h)}" y1="${T}" y2="${H - B}"/><text x="${x(d.t_h) + 3}" y="${T + 9}">${k === "storm" ? "☀ storm" : "⚠"}</text></g>`; }).join("");
     const last = tl[tl.length - 1];
-    const labels = series.map(([k, n, f]) => `<text class="c-lab" x="${W - Rm - 2}" y="${(y(f(last)) - 5).toFixed(1)}" text-anchor="end">${n.split(" (")[0]}</text>`).join("");
+    const labels = series.map(([k, n, f]) => { const yy = y(f(last)); return `<text class="c-lab" x="${W - Rm - 2}" y="${(yy < T + 14 ? yy + 13 : yy - 5).toFixed(1)}" text-anchor="end">${n.split(" (")[0]}</text>`; }).join("");
     window.__mChart = { tl, x, series, lim, L, W, Rm };
     return `<figure class="m-chart"><figcaption><span class="eyebrow">Your 3 resources</span>
       <span class="m-legend">${series.map(([k, n]) => `<span><i class="c-${k}"></i>${n}</span>`).join("")}<span><i class="c-storm"></i>Solar storm</span></span></figcaption>

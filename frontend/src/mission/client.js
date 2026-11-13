@@ -13,7 +13,7 @@ export async function createMissionClient() {
   let real = true, sites;
   try { sites = await j("/api/mission/sites"); }
   catch (e) { real = false; sites = await mock.sites(); }
-  if (!real) return { sample: true, sites: sites.sites, ...mock };
+  if (!real) return { ...mock, sample: true, sites: sites.sites };
   const enc = encodeURIComponent;
   return {
     sample: false, sites: sites.sites,

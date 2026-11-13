@@ -23,7 +23,7 @@ export function createCard() {
   const card = $("card"), title = $("cardTitle"), asked = $("cardAsked"), sayEl = $("cardSay"), note = $("cardNote"),
     claims = $("cardClaims"), actions = $("cardActions"), arc = $("cardArc"), prevBtn = $("cardPrev"),
     eyebrow = $("cardEyebrow"), meta = $("cardMeta"), img = $("cardImg"), story = $("cardStory"), more = $("cardMore"),
-    moreBody = $("cardMoreBody"), crew = $("cardCrew"), sources = $("cardSources");
+    moreBody = $("cardMoreBody"), crew = $("cardCrew"), sources = $("cardSources"), lessons = $("cardLessons");
   let cur = null, prev = null, showingPrev = false, gen = 0;
 
   function render(e) {
@@ -36,6 +36,14 @@ export function createCard() {
     sayEl.textContent = e.say || ""; sayEl.hidden = !e.say || !!dupStory;
     renderArtifact(e);
     note.textContent = e.note || ""; note.hidden = !e.note;
+    lessons.textContent = "";
+    if (e.lessons && e.lessons.length) {
+      lessons.append(el("b", "", "Lessons from past missions"));
+      const ul = el("ul");
+      e.lessons.forEach(l => { const li = el("li", "", l.text + " "); if (l.source && l.source.url) { const a = el("a", "chip-src", l.source.title || "source"); a.href = l.source.url; a.target = "_blank"; a.rel = "noopener"; li.append(a); } ul.append(li); });
+      lessons.append(ul);
+    }
+    lessons.hidden = !lessons.childElementCount;
     claims.textContent = "";
     (e.claims || []).filter(c => c && c.text && (c.status === "verified" || c.status === "impression")).forEach(c => {
       const imp = c.status !== "verified";

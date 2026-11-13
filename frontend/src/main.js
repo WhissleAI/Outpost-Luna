@@ -86,7 +86,12 @@ async function boot() {
     for (let w = 0; voice.kidTalking && w < 100; w++) await new Promise(res => setTimeout(res, 100));   // WAIT
     if (my !== turn.seq) return;
     voice.clearWords();
-    if (missionUI.active && await missionUI.handleDirector(r)) { voice.show("idle"); return; }
+    if (missionUI.active) {
+      // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
+      if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
+      card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
+      await guideSay(r.say); return;
+    }
     await act(r, text, my);
   }
 
