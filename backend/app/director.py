@@ -2,13 +2,16 @@
 
 Actions returned: guard | fly | play | say | ask | view | tour (a list of artifacts: "show me the rovers"). WAIT / NUDGE / PAUSE_EXPLAIN are client behaviours driven by
 the fields here (`readout.complete`, `moment.jargon`). Every spoken line goes through the claim check (claims.py).
-Response shape: docs/CONTRACT.md.
+Response shape: docs/CONTRACT.md. Mission mode (`context.mission` set): the mission layer answers first, see
+_mission_turn and docs/MISSION_CONTRACT.md.
 """
 from __future__ import annotations
 
+import inspect
 import re
 
 from . import claims, llm
+from .mission import capcom, nlu
 from .gazetteer import Gazetteer, Place, norm
 from .moments import MomentIndex, public
 
@@ -221,6 +224,12 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     if _hard_pii(read, gaz) or NAME_GIVEN.search(q):
         return {**out, "action": "guard", "say": GUARD, "source": "arc" if read.get("available") else "rules"}
 
+    # 1b. Mission mode: commands, status, Houston. Non-mission questions fall through to the Moon explorer below.
+    if ctx.get("mission"):
+        m = await _mission_turn(text, read, ctx, out, index)
+        if m is not None:
+            return m
+
     target, corrected = _after_correction(text)
     out["corrected"] = corrected
     wants_crew = bool(WANTS_CREW.search(q))
@@ -319,3 +328,191 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
         if say:
             return {**out, "action": "say", "say": _short(say) if short else say, "claims": cl, "source": "llm"}
     return {**out, "action": "say", "say": UNKNOWN, "source": "none"}
+
+
+# ---- mission mode (docs/MISSION_CONTRACT.md "/api/ask in mission mode") -----------------------------------------------
+# The sim lives in app/mission/registry.py (another work stream). It is called through this thin adapter only:
+# registry.get(mid) -> a mission (State dict, or an object with .state()/.to_dict()) and mission.apply(cmd)
+# (or registry.apply(mid, cmd)) -> {"state": State, "result": {ok, needs_confirm?, say, readback, events}}.
+NOT_STARTED = "The mission hasn't started yet. Pick a landing site, then give your orders, commander!"
+CHATTER_DD = 0.5          # Arc device_directed under this, and no command: the kid is talking to the team, not to us
+RULES: dict[str, list[dict]] = {}       # mid -> standing orders [{"rule": Command, "armed": bool}]
+PENDING: dict[str, dict] = {}           # mid -> {"commands": [...], "role": needed role} waiting for another officer
+
+
+def _sim():
+    try:
+        from .mission import registry  # type: ignore[attr-defined]
+    except ImportError:
+        return None
+    return registry
+
+
+async def _maybe(v):
+    return await v if inspect.isawaitable(v) else v
+
+
+def _as_state(m) -> dict | None:
+    if m is None or isinstance(m, dict):
+        return m
+    for a in ("state", "to_dict", "public", "model_dump"):
+        f = getattr(m, a, None)
+        if isinstance(f, dict):
+            return f
+        if callable(f):
+            try:
+                r = f()
+            except TypeError:
+                continue
+            if isinstance(r, dict):
+                return r
+    return None
+
+
+async def _sim_state(reg, mid: str | None) -> dict | None:
+    if reg is None or not mid:
+        return None
+    try:
+        return _as_state(await _maybe(reg.get(mid)))
+    except Exception:  # noqa: BLE001 (unknown mission id, sim error)
+        return None
+
+
+async def _sim_apply(reg, mid: str, cmd: dict) -> tuple[dict | None, dict]:
+    m = await _maybe(reg.get(mid))
+    if m is not None and callable(getattr(m, "apply", None)):
+        r = await _maybe(m.apply(cmd))
+    else:
+        r = await _maybe(reg.apply(mid, cmd))
+    if isinstance(r, dict) and "result" in r:
+        return _as_state(r.get("state")) or await _sim_state(reg, mid), r["result"] or {}
+    return await _sim_state(reg, mid), (r if isinstance(r, dict) else {"ok": bool(r)})
+
+
+TRIGGER_ON = {
+    "storm": lambda s: bool(((s.get("env") or {}).get("storm") or {}).get("active")),
+    "low_power": lambda s: ((s.get("resources") or {}).get("power_pct") or 100) < 25,
+    "low_oxygen": lambda s: ((s.get("resources") or {}).get("life_support_pct") or 100) < 30,
+    "dark": lambda s: (s.get("env") or {}).get("in_sun") is False,
+    "comm_closed": lambda s: (s.get("env") or {}).get("earth_visible") is False,
+    "dose_high": lambda s: ((s.get("resources") or {}).get("dose_msv") or 0) >=
+                           0.8 * ((s.get("resources") or {}).get("dose_limit_msv") or 1e9),
+}
+
+
+def due_rules(mid: str, state: dict | None) -> list[dict]:
+    """Standing orders whose trigger just became true (each fires once per time its trigger turns on)."""
+    if not state:
+        return []
+    fire = []
+    for r in RULES.get(mid, []):
+        on = TRIGGER_ON.get(r["rule"]["when"], lambda s: False)(state)
+        if on and r["armed"]:
+            fire.append(r["rule"]["then"])
+        r["armed"] = not on
+    return fire
+
+
+def _tone(say: str, emotion: str) -> str:
+    if emotion in ("confused", "frustrated"):
+        return capcom.short(say)
+    if emotion == "excited":
+        return capcom.excited(say)
+    return say
+
+
+async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: MomentIndex) -> dict | None:
+    """Mission layer first. None = not a mission turn (the Moon explorer answers)."""
+    mctx = ctx.get("mission") or {}
+    mid, role = mctx.get("id"), mctx.get("role")
+    emotion = (ctx.get("emotion") or "").lower()
+    reg = _sim()
+    state = await _sim_state(reg, mid)
+    base = {**out, "source": "mission", "mission": mid}
+
+    if DEFINE.search(norm(text)):
+        g = capcom.glossary_line(text, None)   # mission words; Moon words fall through to the app glossary
+        if g:
+            return {**base, "action": "say", "say": _tone(g, emotion), "source": "mission+glossary"}
+
+    nl = await nlu.understand(text, read, state)
+    cmds, dd = nl["commands"], ctx.get("device_directed")
+    if not cmds and not nl["needs_clarify"]:
+        if dd is not None and float(dd) < CHATTER_DD:
+            return {**base, "action": "none", "say": "", "source": "mission+chatter"}
+        return None
+    base["source"] = f"mission+{nl['source']}"
+    base["nlu"] = {"commands": cmds, "confidence": nl["confidence"]}
+    if nl["needs_clarify"]:
+        q = nl["needs_clarify"]
+        return {**base, "action": "ask", "say": _tone(q, emotion), "ask": {"question": q, "options": []}}
+
+    lines: list[str] = []
+    # Standing orders whose moment has come go first.
+    if reg is not None and mid:
+        for then in due_rules(mid, state):
+            state, res = await _sim_apply(reg, mid, then)
+            lines.append("Standing order! " + (res.get("readback") or capcom.readback(then, state, mid)))
+
+    resp: dict = {}
+    for cmd in cmds:
+        ty = cmd["type"]
+        if ty == "query":
+            lines.append(capcom.status(cmd["what"], state, mid))
+            resp = resp or {"action": "status", "state": state}
+            continue
+        if ty == "call_houston":
+            say, delay = capcom.houston(cmd.get("text") or "", state, mid)
+            lines.append(say)
+            resp = {"action": "houston", "delay_ms": delay, "command": cmd, "state": state}
+            continue
+        if ty == "rule":
+            RULES.setdefault(mid or "-", []).append({"rule": cmd, "armed": True})
+            lines.append(capcom.readback(cmd, state, mid))
+            resp = resp or {"action": "command", "command": cmd, "needs_confirm": False, "state": state}
+            continue
+        if ty == "confirm" and mid in PENDING:
+            p = PENDING[mid]
+            if role and p["role"] and role != p["role"]:
+                lines.append(f"We need the {capcom.ROLE_NAME.get(p['role'], p['role'])} to agree.")
+                resp = resp or {"action": "command", "command": cmd, "needs_confirm": True, "state": state}
+                continue
+            PENDING.pop(mid)
+            for c in p["commands"]:
+                state, res = await _sim_apply(reg, mid, c) if reg else (state, {})
+                lines.append(res.get("readback") or capcom.readback(c, state, mid))
+            resp = resp or {"action": "command", "command": p["commands"][0], "needs_confirm": False, "state": state}
+            continue
+        if ty == "cancel" and mid in PENDING:
+            PENDING.pop(mid)
+            lines.append(capcom.readback(cmd))
+            resp = resp or {"action": "command", "command": cmd, "needs_confirm": False, "state": state}
+            continue
+        gate = capcom.role_check(cmd, role)
+        if gate:
+            PENDING[mid] = {"commands": [cmd], "role": capcom.ROLE_OF.get(ty)}
+            lines.append(gate)
+            resp = resp or {"action": "command", "command": cmd, "needs_confirm": True, "state": state,
+                            "needs_role": capcom.ROLE_OF.get(ty)}
+            continue
+        if reg is None or state is None:
+            return {**base, "action": "say", "say": NOT_STARTED, "command": cmd}
+        state, res = await _sim_apply(reg, mid, cmd)
+        rb = res.get("readback") or capcom.readback(cmd, state, mid)
+        if res.get("needs_confirm"):
+            lines.append(rb if "?" in rb else f"{rb} Are you sure? Say yes or no.")
+        else:
+            lines.append(rb)
+            if res.get("say") and res["say"] != rb:
+                lines.append(res["say"])
+        resp = resp or {"action": "command", "command": cmd, "needs_confirm": bool(res.get("needs_confirm")),
+                        "state": state, "events": res.get("events") or []}
+        if res.get("needs_confirm"):
+            resp["needs_confirm"] = True
+    if resp.get("action") in ("command", "houston") and len(cmds) > 1:
+        resp["commands"] = cmds
+    if resp.get("action") == "status":
+        resp["state"] = state
+    # one "Copy, commander." per turn, however many commands
+    lines = [x if i == 0 else re.sub(r"^Copy, commander\. ", "", x) for i, x in enumerate(y for y in lines if y)]
+    return {**base, **resp, "say": _tone(" ".join(lines), emotion)}
