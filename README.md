@@ -10,7 +10,7 @@ plays while the globe follows each place the crew mentions.
 |---|---|---|---|
 | `frontend/` | Vite 5, three.js 0.160 (npm) | 5173 (dev) | Globe, voice in/out (Web Speech), crew player, missions. No model or data logic |
 | `backend/` | FastAPI, pydantic-settings, httpx, rapidfuzz, Anthropic SDK; uv | 8100 | Places (gazetteer), crew index, `/api/ask` (the turn resolver, first version of the Director), NASA media, and the built frontend |
-| `model_server/` | FastAPI, pydantic-settings; uv | 8200 | **The only process that loads models.** Arc Tagger v0.3 now (native int8, a pool of handles per domain); Arc audio metadata and embeddings next |
+| `model_server/` | FastAPI, pydantic-settings; uv | 8200 | **The only process that loads models.** Arc Tagger v0.3 (native int8, a pool of handles per domain) and Arc v1.1 Mini audio metadata (`ARC_META=mini|off`; `POST /v1/meta`, `WS /v1/stream`: act, intent, device_directed, command_complete, speaker, audio/bio events, awe). Measured on M3 Pro (machine under load avg ~13 from other jobs): Arc load 6-12 s, process RSS ~0.35 GB idle / 0.9 GB peak with both models; `/v1/meta` RTF 0.03-0.06 (a 344 s clip in 14 s); live stream RTF 0.25-0.4 in-process, 0.9-1.1 through the server with 1-4 real-time sessions, metadata lag p50 1.2-1.4 s (Head Start measured RTF 0.10 on an idle machine). Emotion: off (no local model, see docs/REVAMP.md §10). Embeddings next |
 
 ```
 browser ──► frontend (Vite :5173) ──/api, /media──► backend (:8100) ──/v1/tag──► model_server (:8200)

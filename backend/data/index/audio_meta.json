@@ -1,0 +1,6663 @@
+{
+ "aristarchus": {
+  "stem": "art002a000005-ck-vg-relief-color-audio",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 0.5,
+    "t1": 4.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 2.0,
+      "t1": 4.6,
+      "p": 0.833
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 2.7,
+      "t1": 3.4,
+      "p": 0.728
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 3.8,
+      "t1": 4.1,
+      "p": 0.588
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 2.7,
+      "t1": 3.6,
+      "p": 0.543
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 3.6,
+      "t1": 4.1,
+      "p": 0.496
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 3.7,
+      "t1": 4.2,
+      "p": 0.452
+     },
+     {
+      "label": "scene.crying",
+      "t0": 3.8,
+      "t1": 4.1,
+      "p": 0.39
+     },
+     {
+      "label": "scene.distress",
+      "t0": 2.7,
+      "t1": 3.1,
+      "p": 0.352
+     }
+    ],
+    "bio_events": [],
+    "text": "relief on the limb you've got to be kidding me this is",
+    "awe": 0.05
+   },
+   {
+    "t0": 6.8,
+    "t1": 12.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 6.6,
+      "t1": 7.6,
+      "p": 0.927
+     },
+     {
+      "label": "scene.applause",
+      "t0": 7.2,
+      "t1": 7.3,
+      "p": 0.821
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 6.5,
+      "t1": 7.7,
+      "p": 0.757
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 6.7,
+      "t1": 7.0,
+      "p": 0.728
+     },
+     {
+      "label": "scene.crying",
+      "t0": 6.6,
+      "t1": 7.0,
+      "p": 0.716
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 6.7,
+      "t1": 7.6,
+      "p": 0.713
+     },
+     {
+      "label": "scene.distress",
+      "t0": 6.5,
+      "t1": 7.7,
+      "p": 0.682
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 7.1,
+      "t1": 7.6,
+      "p": 0.592
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 6.7,
+      "t1": 7.7,
+      "p": 0.561
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 11.9,
+      "t1": 13.2,
+      "p": 0.551
+     },
+     {
+      "label": "scene.scream",
+      "t0": 6.8,
+      "t1": 6.9,
+      "p": 0.544
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 7.2,
+      "t1": 7.7,
+      "p": 0.532
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 7.1,
+      "t1": 7.4,
+      "p": 0.461
+     }
+    ],
+    "bio_events": [],
+    "text": "is a picture of relief on the moon you can actually see mountains on the limb of the moon I",
+    "awe": 0.35
+   },
+   {
+    "t0": 14.1,
+    "t1": 16.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 16.5,
+      "t1": 18.0,
+      "p": 0.547
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 16.9,
+      "t1": 17.8,
+      "p": 0.385
+     }
+    ],
+    "bio_events": [],
+    "text": "I want to talk about the area of color",
+    "awe": 0.0
+   },
+   {
+    "t0": 17.7,
+    "t1": 70.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 26.5,
+      "t1": 27.9,
+      "p": 0.911
+     },
+     {
+      "label": "scene.applause",
+      "t0": 61.5,
+      "t1": 61.7,
+      "p": 0.897
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 28.6,
+      "t1": 29.2,
+      "p": 0.828
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 48.7,
+      "t1": 49.1,
+      "p": 0.813
+     },
+     {
+      "label": "scene.crying",
+      "t0": 46.9,
+      "t1": 47.7,
+      "p": 0.729
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 44.8,
+      "t1": 45.2,
+      "p": 0.61
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 46.7,
+      "t1": 48.2,
+      "p": 0.572
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 44.8,
+      "t1": 45.2,
+      "p": 0.561
+     },
+     {
+      "label": "scene.scream",
+      "t0": 47.0,
+      "t1": 47.1,
+      "p": 0.533
+     },
+     {
+      "label": "scene.distress",
+      "t0": 46.9,
+      "t1": 48.0,
+      "p": 0.515
+     },
+     {
+      "label": "scene.music",
+      "t0": 53.4,
+      "t1": 53.7,
+      "p": 0.504
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 45.6,
+      "t1": 45.9,
+      "p": 0.389
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 21.8,
+      "t1": 21.9,
+      "p": 0.317
+     }
+    ],
+    "bio_events": [],
+    "text": "color so Aristarchus Plateau I could never see the color before that they were talking about but I completely see it now it is like a yellow snow -capped mountain where the snow is the Aristarchus I guess craters that are on its eastern side very high albedo and then a more textured area that's just kind of hummocky and bumpy that is distinctly yellow like I said before it's like a jaundiced cheek of the moon and that color does resemble the tanner color in the northwest area of the bigger seas of mare but it is more yellow than the other brown and it also almost even has a green tint to it",
+    "awe": 0.35
+   },
+   {
+    "t0": 71.6,
+    "t1": 75.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 73.7,
+      "t1": 74.8,
+      "p": 0.683
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 73.9,
+      "t1": 74.1,
+      "p": 0.426
+     }
+    ],
+    "bio_events": [],
+    "text": "almost looks like mold growing on sandwich bread",
+    "awe": 0.0
+   }
+  ],
+  "awe_peaks": []
+ },
+ "orientale": {
+  "stem": "art002a000024-clipped",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 1.4,
+    "t1": 4.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 2.1,
+      "t1": 8.0,
+      "p": 0.843
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 3.3,
+      "t1": 4.0,
+      "p": 0.751
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 1.3,
+      "t1": 5.8,
+      "p": 0.702
+     },
+     {
+      "label": "scene.traffic",
+      "t0": 3.5,
+      "t1": 3.7,
+      "p": 0.691
+     },
+     {
+      "label": "scene.distress",
+      "t0": 3.3,
+      "t1": 4.0,
+      "p": 0.566
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 3.5,
+      "t1": 3.7,
+      "p": 0.549
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 2.8,
+      "t1": 2.9,
+      "p": 0.547
+     },
+     {
+      "label": "scene.music",
+      "t0": 3.1,
+      "t1": 3.3,
+      "p": 0.506
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 4.5,
+      "t1": 4.6,
+      "p": 0.506
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 4.4,
+      "t1": 4.7,
+      "p": 0.473
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 3.4,
+      "t1": 4.0,
+      "p": 0.455
+     },
+     {
+      "label": "scene.wind",
+      "t0": 3.5,
+      "t1": 3.6,
+      "p": 0.391
+     }
+    ],
+    "bio_events": [],
+    "text": "Wow the pillowing the blanketing of ejecta I",
+    "awe": 0.23
+   },
+   {
+    "t0": 5.5,
+    "t1": 18.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 8.8,
+      "t1": 18.3,
+      "p": 0.934
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 11.3,
+      "t1": 17.5,
+      "p": 0.801
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 6.1,
+      "t1": 6.4,
+      "p": 0.799
+     },
+     {
+      "label": "scene.traffic",
+      "t0": 8.1,
+      "t1": 8.8,
+      "p": 0.77
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 4.8,
+      "t1": 5.7,
+      "p": 0.755
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 7.0,
+      "t1": 9.1,
+      "p": 0.723
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 11.7,
+      "t1": 12.4,
+      "p": 0.62
+     },
+     {
+      "label": "scene.distress",
+      "t0": 7.0,
+      "t1": 9.1,
+      "p": 0.585
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 7.5,
+      "t1": 8.5,
+      "p": 0.58
+     },
+     {
+      "label": "scene.crying",
+      "t0": 12.0,
+      "t1": 12.4,
+      "p": 0.518
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 7.2,
+      "t1": 9.1,
+      "p": 0.5
+     },
+     {
+      "label": "scene.wind",
+      "t0": 8.0,
+      "t1": 8.8,
+      "p": 0.498
+     },
+     {
+      "label": "scene.music",
+      "t0": 12.8,
+      "t1": 13.2,
+      "p": 0.493
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 11.4,
+      "t1": 12.4,
+      "p": 0.455
+     },
+     {
+      "label": "scene.ambience.street",
+      "t0": 8.7,
+      "t1": 8.8,
+      "p": 0.341
+     }
+    ],
+    "bio_events": [],
+    "text": "Commented on it earlier, and it's really cool down on it almost looks like windswept desert But but nothing like a dude just like just just pillowing just blanketing of ejecta and",
+    "awe": 0.25
+   },
+   {
+    "t0": 18.7,
+    "t1": 19.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 19.5,
+      "t1": 27.3,
+      "p": 0.762
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 18.8,
+      "t1": 18.9,
+      "p": 0.64
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 19.5,
+      "t1": 20.3,
+      "p": 0.598
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 18.3,
+      "t1": 18.7,
+      "p": 0.542
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 18.8,
+      "t1": 18.9,
+      "p": 0.504
+     }
+    ],
+    "bio_events": [],
+    "text": "and then",
+    "awe": 0.0
+   },
+   {
+    "t0": 21.2,
+    "t1": 23.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 23.8,
+      "t1": 25.6,
+      "p": 0.845
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 19.5,
+      "t1": 27.3,
+      "p": 0.762
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 21.0,
+      "t1": 21.3,
+      "p": 0.566
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 22.2,
+      "t1": 22.7,
+      "p": 0.541
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 22.4,
+      "t1": 23.1,
+      "p": 0.518
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 20.9,
+      "t1": 21.4,
+      "p": 0.498
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 20.7,
+      "t1": 21.3,
+      "p": 0.469
+     },
+     {
+      "label": "scene.distress",
+      "t0": 22.2,
+      "t1": 22.7,
+      "p": 0.451
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 22.4,
+      "t1": 22.5,
+      "p": 0.438
+     },
+     {
+      "label": "scene.crying",
+      "t0": 21.8,
+      "t1": 22.0,
+      "p": 0.337
+     }
+    ],
+    "bio_events": [],
+    "text": "There is one ejecta south",
+    "awe": 0.0
+   },
+   {
+    "t0": 24.9,
+    "t1": 35.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 27.4,
+      "t1": 32.6,
+      "p": 0.89
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 27.4,
+      "t1": 32.1,
+      "p": 0.784
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 29.8,
+      "t1": 31.1,
+      "p": 0.691
+     },
+     {
+      "label": "scene.crying",
+      "t0": 30.0,
+      "t1": 31.3,
+      "p": 0.687
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 29.8,
+      "t1": 31.2,
+      "p": 0.663
+     },
+     {
+      "label": "scene.scream",
+      "t0": 30.2,
+      "t1": 30.5,
+      "p": 0.607
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 29.5,
+      "t1": 29.9,
+      "p": 0.563
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 30.0,
+      "t1": 31.1,
+      "p": 0.553
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 30.7,
+      "t1": 30.8,
+      "p": 0.504
+     },
+     {
+      "label": "scene.distress",
+      "t0": 29.8,
+      "t1": 31.2,
+      "p": 0.476
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 30.0,
+      "t1": 30.4,
+      "p": 0.397
+     }
+    ],
+    "bio_events": [],
+    "text": "The ejecta to the south is cool. I think if I was gonna do a PhD that is what I would do my PhD in Because when I first started studying oriental it was the bouldering that I loved the most and",
+    "awe": 0.44
+   },
+   {
+    "t0": 37.1,
+    "t1": 41.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.chant",
+      "t0": 36.9,
+      "t1": 37.2,
+      "p": 0.952
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 41.7,
+      "t1": 42.3,
+      "p": 0.774
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 37.3,
+      "t1": 40.7,
+      "p": 0.752
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 41.1,
+      "t1": 42.3,
+      "p": 0.665
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 41.6,
+      "t1": 42.3,
+      "p": 0.651
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 39.0,
+      "t1": 39.3,
+      "p": 0.603
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 38.0,
+      "t1": 39.2,
+      "p": 0.578
+     },
+     {
+      "label": "scene.distress",
+      "t0": 38.9,
+      "t1": 39.2,
+      "p": 0.555
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 41.4,
+      "t1": 42.7,
+      "p": 0.527
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 41.5,
+      "t1": 41.7,
+      "p": 0.447
+     },
+     {
+      "label": "scene.crying",
+      "t0": 36.9,
+      "t1": 37.5,
+      "p": 0.422
+     },
+     {
+      "label": "scene.music",
+      "t0": 38.2,
+      "t1": 38.4,
+      "p": 0.327
+     }
+    ],
+    "bio_events": [],
+    "text": "And now it's really the south ejecta that I am the most fascinated by",
+    "awe": 0.0
+   }
+  ],
+  "awe_peaks": []
+ },
+ "hertz": {
+  "stem": "art002a000025-reid-tourist",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 0.6,
+    "t1": 10.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 8.6,
+      "t1": 9.2,
+      "p": 0.909
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 2.9,
+      "t1": 3.0,
+      "p": 0.744
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 1.7,
+      "t1": 4.0,
+      "p": 0.741
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 2.3,
+      "t1": 3.7,
+      "p": 0.738
+     },
+     {
+      "label": "scene.music",
+      "t0": 2.4,
+      "t1": 3.0,
+      "p": 0.736
+     },
+     {
+      "label": "scene.distress",
+      "t0": 6.8,
+      "t1": 7.1,
+      "p": 0.652
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 6.8,
+      "t1": 7.1,
+      "p": 0.584
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 6.8,
+      "t1": 7.0,
+      "p": 0.583
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 2.7,
+      "t1": 2.8,
+      "p": 0.582
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 6.8,
+      "t1": 7.1,
+      "p": 0.544
+     },
+     {
+      "label": "scene.crying",
+      "t0": 5.5,
+      "t1": 6.0,
+      "p": 0.541
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 3.6,
+      "t1": 4.0,
+      "p": 0.498
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 6.9,
+      "t1": 7.1,
+      "p": 0.454
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 8.6,
+      "t1": 9.2,
+      "p": 0.412
+     }
+    ],
+    "bio_events": [],
+    "text": "And now I can zoom in. I'm just gonna take out Orin Ta for a second. Oh my god, look at those walls. Oh,",
+    "awe": 0.35
+   },
+   {
+    "t0": 10.6,
+    "t1": 12.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 12.5,
+      "t1": 14.0,
+      "p": 0.937
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 12.5,
+      "t1": 14.1,
+      "p": 0.597
+     },
+     {
+      "label": "scene.music",
+      "t0": 12.3,
+      "t1": 12.4,
+      "p": 0.33
+     }
+    ],
+    "bio_events": [],
+    "text": "Oh, it looks so different now.",
+    "awe": 0.0
+   },
+   {
+    "t0": 13.2,
+    "t1": 15.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 12.5,
+      "t1": 14.0,
+      "p": 0.937
+     },
+     {
+      "label": "scene.applause",
+      "t0": 15.5,
+      "t1": 15.7,
+      "p": 0.765
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 12.5,
+      "t1": 14.1,
+      "p": 0.597
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 15.5,
+      "t1": 15.6,
+      "p": 0.365
+     }
+    ],
+    "bio_events": [],
+    "text": "All right, let me get in on Hertzsprung a little bit.",
+    "awe": 0.35
+   },
+   {
+    "t0": 18.2,
+    "t1": 31.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 28.0,
+      "t1": 28.4,
+      "p": 0.862
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 25.2,
+      "t1": 26.2,
+      "p": 0.814
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 24.9,
+      "t1": 26.2,
+      "p": 0.765
+     },
+     {
+      "label": "scene.scream",
+      "t0": 22.1,
+      "t1": 22.2,
+      "p": 0.595
+     },
+     {
+      "label": "scene.distress",
+      "t0": 28.0,
+      "t1": 28.4,
+      "p": 0.533
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 22.1,
+      "t1": 22.3,
+      "p": 0.521
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 20.6,
+      "t1": 20.9,
+      "p": 0.509
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 21.6,
+      "t1": 22.3,
+      "p": 0.499
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 22.0,
+      "t1": 22.3,
+      "p": 0.498
+     },
+     {
+      "label": "scene.crying",
+      "t0": 22.0,
+      "t1": 22.3,
+      "p": 0.45
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 28.1,
+      "t1": 28.4,
+      "p": 0.424
+     }
+    ],
+    "bio_events": [],
+    "text": "the swirls that I thought were swirls are not swirls. The swirls that I thought were swirls are just like terrain. I do see that sperm looking feature that goes right up the center. Wow, that is fascinating.",
+    "awe": 0.44
+   },
+   {
+    "t0": 34.3,
+    "t1": 43.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 33.3,
+      "t1": 34.3,
+      "p": 0.935
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 34.2,
+      "t1": 36.9,
+      "p": 0.919
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 34.8,
+      "t1": 42.7,
+      "p": 0.903
+     },
+     {
+      "label": "scene.applause",
+      "t0": 36.2,
+      "t1": 36.3,
+      "p": 0.823
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 36.1,
+      "t1": 36.3,
+      "p": 0.82
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 33.3,
+      "t1": 34.5,
+      "p": 0.8
+     },
+     {
+      "label": "scene.ambience.cafe",
+      "t0": 37.9,
+      "t1": 38.0,
+      "p": 0.791
+     },
+     {
+      "label": "scene.crying",
+      "t0": 33.3,
+      "t1": 34.6,
+      "p": 0.759
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 33.2,
+      "t1": 35.0,
+      "p": 0.712
+     },
+     {
+      "label": "scene.distress",
+      "t0": 33.2,
+      "t1": 35.3,
+      "p": 0.682
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 33.4,
+      "t1": 34.4,
+      "p": 0.65
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 37.4,
+      "t1": 38.2,
+      "p": 0.611
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 33.9,
+      "t1": 34.3,
+      "p": 0.535
+     },
+     {
+      "label": "scene.music",
+      "t0": 36.1,
+      "t1": 36.5,
+      "p": 0.506
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 42.3,
+      "t1": 43.2,
+      "p": 0.479
+     }
+    ],
+    "bio_events": [],
+    "text": "And then you can definitely tell that Hertzsprung, look at the eject of the pillowing. The pillowing that I was seeing on Hertzsprung is, I think it is from, I",
+    "awe": 0.35
+   },
+   {
+    "t0": 45.0,
+    "t1": 55.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 54.7,
+      "t1": 55.5,
+      "p": 0.977
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 51.6,
+      "t1": 53.0,
+      "p": 0.941
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 50.3,
+      "t1": 53.0,
+      "p": 0.829
+     },
+     {
+      "label": "scene.applause",
+      "t0": 51.3,
+      "t1": 51.4,
+      "p": 0.768
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 54.8,
+      "t1": 55.3,
+      "p": 0.719
+     },
+     {
+      "label": "scene.distress",
+      "t0": 49.4,
+      "t1": 50.1,
+      "p": 0.717
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 54.2,
+      "t1": 55.3,
+      "p": 0.692
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 54.8,
+      "t1": 55.3,
+      "p": 0.61
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 45.2,
+      "t1": 46.3,
+      "p": 0.608
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 54.9,
+      "t1": 55.3,
+      "p": 0.579
+     },
+     {
+      "label": "scene.crying",
+      "t0": 54.2,
+      "t1": 54.7,
+      "p": 0.558
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 49.2,
+      "t1": 49.9,
+      "p": 0.42
+     }
+    ],
+    "bio_events": [],
+    "text": "I think it is from Oriental, man. Oh, dude. All right, Vavilov looking straight. I am looking straight down on Vavilov. Straight down. Oh",
+    "awe": 0.35
+   },
+   {
+    "t0": 55.6,
+    "t1": 56.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 56.9,
+      "t1": 57.2,
+      "p": 0.914
+     },
+     {
+      "label": "scene.distress",
+      "t0": 56.8,
+      "t1": 57.6,
+      "p": 0.785
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 56.8,
+      "t1": 57.3,
+      "p": 0.687
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 56.9,
+      "t1": 57.2,
+      "p": 0.681
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 56.9,
+      "t1": 57.6,
+      "p": 0.668
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 56.6,
+      "t1": 61.3,
+      "p": 0.644
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 56.9,
+      "t1": 57.5,
+      "p": 0.53
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 56.9,
+      "t1": 57.1,
+      "p": 0.443
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 56.9,
+      "t1": 57.1,
+      "p": 0.362
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 56.0,
+      "t1": 56.3,
+      "p": 0.359
+     }
+    ],
+    "bio_events": [],
+    "text": "Oh my god,",
+    "awe": 0.0
+   },
+   {
+    "t0": 57.4,
+    "t1": 59.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.distress",
+      "t0": 56.8,
+      "t1": 57.6,
+      "p": 0.785
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 57.9,
+      "t1": 58.9,
+      "p": 0.739
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 58.9,
+      "t1": 59.5,
+      "p": 0.719
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 56.9,
+      "t1": 57.6,
+      "p": 0.668
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 56.6,
+      "t1": 61.3,
+      "p": 0.644
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 58.9,
+      "t1": 59.4,
+      "p": 0.636
+     },
+     {
+      "label": "scene.crying",
+      "t0": 57.0,
+      "t1": 57.4,
+      "p": 0.625
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 58.4,
+      "t1": 59.6,
+      "p": 0.607
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 56.9,
+      "t1": 57.5,
+      "p": 0.53
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 58.7,
+      "t1": 59.4,
+      "p": 0.521
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 58.6,
+      "t1": 59.8,
+      "p": 0.469
+     }
+    ],
+    "bio_events": [],
+    "text": "god, I can't freaking take this straight",
+    "awe": 0.0
+   },
+   {
+    "t0": 61.3,
+    "t1": 68.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 61.4,
+      "t1": 62.7,
+      "p": 0.664
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 61.5,
+      "t1": 62.6,
+      "p": 0.644
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 61.5,
+      "t1": 61.6,
+      "p": 0.456
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 61.5,
+      "t1": 61.6,
+      "p": 0.37
+     },
+     {
+      "label": "scene.music",
+      "t0": 63.8,
+      "t1": 64.0,
+      "p": 0.323
+     }
+    ],
+    "bio_events": [],
+    "text": "straight down on Vavilov. So Vavilov, inside of Vavilov, that is just amazing. I",
+    "awe": 0.24
+   },
+   {
+    "t0": 68.5,
+    "t1": 100.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 90.9,
+      "t1": 91.6,
+      "p": 0.906
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 71.7,
+      "t1": 72.5,
+      "p": 0.863
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 85.5,
+      "t1": 87.5,
+      "p": 0.828
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 78.4,
+      "t1": 79.2,
+      "p": 0.777
+     },
+     {
+      "label": "scene.applause",
+      "t0": 88.5,
+      "t1": 88.6,
+      "p": 0.754
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 90.9,
+      "t1": 91.3,
+      "p": 0.647
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 90.9,
+      "t1": 91.5,
+      "p": 0.645
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 85.7,
+      "t1": 86.4,
+      "p": 0.609
+     },
+     {
+      "label": "scene.traffic",
+      "t0": 78.5,
+      "t1": 78.7,
+      "p": 0.609
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 78.5,
+      "t1": 79.1,
+      "p": 0.588
+     },
+     {
+      "label": "scene.distress",
+      "t0": 68.1,
+      "t1": 68.5,
+      "p": 0.579
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 76.4,
+      "t1": 77.0,
+      "p": 0.511
+     },
+     {
+      "label": "scene.crying",
+      "t0": 83.7,
+      "t1": 84.1,
+      "p": 0.377
+     }
+    ],
+    "bio_events": [],
+    "text": "I gotta shield my eyes from the sunlight coming in the cabin. I'm gonna actually close my right eye completely. But Vavilov, the right half of the inner area is smooth. And then there's some uplift in the left half is just really, really dynamic and jagged. Dear god, that is so unbelievably awesome looking. I just cannot get over this picture. There is so much data in this one shot. I know you already have all the LRO data. You don't care about pictures. But, dude, come",
+    "awe": 0.58
+   },
+   {
+    "t0": 101.0,
+    "t1": 101.7,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.ambience.office",
+      "t0": 101.7,
+      "t1": 101.8,
+      "p": 0.448
+     }
+    ],
+    "bio_events": [],
+    "text": "on. There's",
+    "awe": 0.0
+   },
+   {
+    "t0": 101.7,
+    "t1": 105.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 103.1,
+      "t1": 103.6,
+      "p": 0.726
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 103.1,
+      "t1": 103.5,
+      "p": 0.591
+     },
+     {
+      "label": "scene.crying",
+      "t0": 102.9,
+      "t1": 103.5,
+      "p": 0.557
+     },
+     {
+      "label": "scene.distress",
+      "t0": 103.0,
+      "t1": 103.6,
+      "p": 0.503
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 102.9,
+      "t1": 103.5,
+      "p": 0.495
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 103.1,
+      "t1": 103.5,
+      "p": 0.489
+     },
+     {
+      "label": "scene.ambience.office",
+      "t0": 101.7,
+      "t1": 101.8,
+      "p": 0.448
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 102.1,
+      "t1": 102.3,
+      "p": 0.43
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 102.1,
+      "t1": 102.6,
+      "p": 0.373
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 103.2,
+      "t1": 103.5,
+      "p": 0.347
+     }
+    ],
+    "bio_events": [],
+    "text": "There's no way we are here looking at all of this.",
+    "awe": 0.0
+   },
+   {
+    "t0": 123.5,
+    "t1": 126.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 125.3,
+      "t1": 126.2,
+      "p": 0.783
+     },
+     {
+      "label": "scene.crying",
+      "t0": 122.9,
+      "t1": 123.8,
+      "p": 0.781
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 123.7,
+      "t1": 127.1,
+      "p": 0.713
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 123.7,
+      "t1": 127.5,
+      "p": 0.696
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 122.7,
+      "t1": 123.8,
+      "p": 0.692
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 125.3,
+      "t1": 126.2,
+      "p": 0.634
+     },
+     {
+      "label": "scene.distress",
+      "t0": 122.2,
+      "t1": 123.8,
+      "p": 0.626
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 125.2,
+      "t1": 126.2,
+      "p": 0.599
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 125.4,
+      "t1": 126.2,
+      "p": 0.511
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 125.8,
+      "t1": 126.2,
+      "p": 0.482
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 125.4,
+      "t1": 126.2,
+      "p": 0.407
+     }
+    ],
+    "bio_events": [],
+    "text": "Alright, here's Vavilov and Hertzprung.",
+    "awe": 0.04
+   },
+   {
+    "t0": 132.9,
+    "t1": 133.1,
+    "speaker": null,
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 133.0,
+      "t1": 136.0,
+      "p": 0.905
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 131.1,
+      "t1": 133.8,
+      "p": 0.787
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 131.0,
+      "t1": 133.2,
+      "p": 0.703
+     },
+     {
+      "label": "scene.traffic",
+      "t0": 132.8,
+      "t1": 132.9,
+      "p": 0.644
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 132.7,
+      "t1": 133.0,
+      "p": 0.567
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 132.9,
+      "t1": 135.4,
+      "p": 0.557
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 132.9,
+      "t1": 133.1,
+      "p": 0.549
+     },
+     {
+      "label": "scene.distress",
+      "t0": 132.7,
+      "t1": 134.0,
+      "p": 0.444
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 133.1,
+      "t1": 133.8,
+      "p": 0.335
+     }
+    ],
+    "bio_events": [],
+    "text": "And then I'm",
+    "awe": 0.0
+   },
+   {
+    "t0": 135.7,
+    "t1": 137.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 133.0,
+      "t1": 136.0,
+      "p": 0.905
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 136.2,
+      "t1": 138.4,
+      "p": 0.676
+     },
+     {
+      "label": "scene.music",
+      "t0": 137.1,
+      "t1": 137.5,
+      "p": 0.419
+     }
+    ],
+    "bio_events": [],
+    "text": "Yeah, that's so good. Thank you.",
+    "awe": 0.02
+   },
+   {
+    "t0": 145.6,
+    "t1": 145.9,
+    "speaker": null,
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 145.7,
+      "t1": 146.6,
+      "p": 0.968
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 145.7,
+      "t1": 152.1,
+      "p": 0.857
+     },
+     {
+      "label": "scene.distress",
+      "t0": 143.1,
+      "t1": 146.6,
+      "p": 0.726
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 145.9,
+      "t1": 146.6,
+      "p": 0.693
+     },
+     {
+      "label": "scene.crying",
+      "t0": 144.7,
+      "t1": 145.8,
+      "p": 0.632
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 145.9,
+      "t1": 146.5,
+      "p": 0.619
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 145.9,
+      "t1": 146.5,
+      "p": 0.616
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 143.4,
+      "t1": 145.8,
+      "p": 0.529
+     }
+    ],
+    "bio_events": [],
+    "text": "Man, so many",
+    "awe": 0.15
+   },
+   {
+    "t0": 146.4,
+    "t1": 154.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 145.7,
+      "t1": 146.6,
+      "p": 0.968
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 145.7,
+      "t1": 152.1,
+      "p": 0.857
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 147.9,
+      "t1": 152.3,
+      "p": 0.828
+     },
+     {
+      "label": "scene.applause",
+      "t0": 150.8,
+      "t1": 150.9,
+      "p": 0.803
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 150.9,
+      "t1": 151.0,
+      "p": 0.762
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 146.0,
+      "t1": 146.7,
+      "p": 0.734
+     },
+     {
+      "label": "scene.distress",
+      "t0": 143.1,
+      "t1": 146.6,
+      "p": 0.726
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 145.9,
+      "t1": 146.6,
+      "p": 0.693
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 150.8,
+      "t1": 151.0,
+      "p": 0.69
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 145.9,
+      "t1": 146.5,
+      "p": 0.619
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 145.9,
+      "t1": 146.5,
+      "p": 0.616
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 146.0,
+      "t1": 146.5,
+      "p": 0.607
+     },
+     {
+      "label": "scene.music",
+      "t0": 151.4,
+      "t1": 151.5,
+      "p": 0.419
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 150.9,
+      "t1": 151.4,
+      "p": 0.366
+     }
+    ],
+    "bio_events": [],
+    "text": "many shadows across. There's still, down in the very south area, there's still that bouldering from Oriental. Oh, like, man.",
+    "awe": 0.35
+   },
+   {
+    "t0": 154.9,
+    "t1": 158.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 157.1,
+      "t1": 157.2,
+      "p": 0.628
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 155.2,
+      "t1": 155.9,
+      "p": 0.374
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 155.2,
+      "t1": 155.9,
+      "p": 0.362
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 155.3,
+      "t1": 155.4,
+      "p": 0.323
+     }
+    ],
+    "bio_events": [],
+    "text": "That is just so awesome. That, the shadows here are so",
+    "awe": 0.23
+   },
+   {
+    "t0": 158.5,
+    "t1": 159.5,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.distress",
+      "t0": 159.4,
+      "t1": 160.9,
+      "p": 0.473
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 159.3,
+      "t1": 160.9,
+      "p": 0.443
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 159.4,
+      "t1": 159.5,
+      "p": 0.372
+     }
+    ],
+    "bio_events": [],
+    "text": "are so wild.",
+    "awe": 0.0
+   },
+   {
+    "t0": 170.8,
+    "t1": 173.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 173.5,
+      "t1": 174.0,
+      "p": 0.87
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 173.4,
+      "t1": 174.4,
+      "p": 0.65
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 168.5,
+      "t1": 171.1,
+      "p": 0.642
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 173.3,
+      "t1": 174.7,
+      "p": 0.616
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 173.4,
+      "t1": 173.9,
+      "p": 0.595
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 170.0,
+      "t1": 171.3,
+      "p": 0.534
+     },
+     {
+      "label": "scene.distress",
+      "t0": 173.5,
+      "t1": 174.6,
+      "p": 0.523
+     },
+     {
+      "label": "scene.crying",
+      "t0": 170.7,
+      "t1": 171.0,
+      "p": 0.397
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 170.9,
+      "t1": 171.0,
+      "p": 0.396
+     }
+    ],
+    "bio_events": [],
+    "text": "I just, I am having trouble comprehending this right now.",
+    "awe": 0.0
+   },
+   {
+    "t0": 173.7,
+    "t1": 173.8,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 173.5,
+      "t1": 174.0,
+      "p": 0.87
+     },
+     {
+      "label": "scene.ambience.cafe",
+      "t0": 173.8,
+      "t1": 173.9,
+      "p": 0.733
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 173.4,
+      "t1": 174.4,
+      "p": 0.65
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 173.3,
+      "t1": 174.7,
+      "p": 0.616
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 173.4,
+      "t1": 173.9,
+      "p": 0.595
+     },
+     {
+      "label": "scene.distress",
+      "t0": 173.5,
+      "t1": 174.6,
+      "p": 0.523
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 173.8,
+      "t1": 173.9,
+      "p": 0.408
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 173.6,
+      "t1": 173.7,
+      "p": 0.361
+     }
+    ],
+    "bio_events": [],
+    "text": "",
+    "awe": 0.0
+   },
+   {
+    "t0": 174.6,
+    "t1": 175.3,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 175.0,
+      "t1": 175.1,
+      "p": 0.706
+     },
+     {
+      "label": "scene.crying",
+      "t0": 174.1,
+      "t1": 174.6,
+      "p": 0.685
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 173.3,
+      "t1": 174.7,
+      "p": 0.616
+     },
+     {
+      "label": "scene.distress",
+      "t0": 173.5,
+      "t1": 174.6,
+      "p": 0.523
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 174.0,
+      "t1": 174.6,
+      "p": 0.392
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 175.0,
+      "t1": 175.1,
+      "p": 0.319
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 175.0,
+      "t1": 175.1,
+      "p": 0.308
+     }
+    ],
+    "bio_events": [],
+    "text": "I am in full -on",
+    "awe": 0.0
+   },
+   {
+    "t0": 175.3,
+    "t1": 176.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 176.4,
+      "t1": 177.1,
+      "p": 0.938
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 176.3,
+      "t1": 177.1,
+      "p": 0.662
+     },
+     {
+      "label": "scene.distress",
+      "t0": 176.4,
+      "t1": 176.9,
+      "p": 0.564
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 176.5,
+      "t1": 176.8,
+      "p": 0.498
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 176.4,
+      "t1": 176.9,
+      "p": 0.473
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 176.5,
+      "t1": 176.9,
+      "p": 0.473
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 176.5,
+      "t1": 176.9,
+      "p": 0.466
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 175.9,
+      "t1": 176.9,
+      "p": 0.443
+     }
+    ],
+    "bio_events": [],
+    "text": "full -on tourist mode.",
+    "awe": 0.0
+   }
+  ],
+  "awe_peaks": [
+   {
+    "t": 84.45,
+    "t0": 68.5,
+    "t1": 100.4,
+    "score": 0.58
+   }
+  ]
+ },
+ "mare": {
+  "stem": "art002a00003708-clipped",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 0.0,
+    "t1": 17.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 4.5,
+      "t1": 6.1,
+      "p": 0.99
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 2.5,
+      "t1": 8.1,
+      "p": 0.96
+     },
+     {
+      "label": "scene.applause",
+      "t0": 7.4,
+      "t1": 7.8,
+      "p": 0.868
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 11.6,
+      "t1": 11.9,
+      "p": 0.81
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 11.6,
+      "t1": 12.0,
+      "p": 0.738
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 11.6,
+      "t1": 12.3,
+      "p": 0.714
+     },
+     {
+      "label": "scene.crying",
+      "t0": 11.6,
+      "t1": 12.0,
+      "p": 0.528
+     },
+     {
+      "label": "scene.distress",
+      "t0": 11.6,
+      "t1": 12.0,
+      "p": 0.448
+     },
+     {
+      "label": "scene.music",
+      "t0": 5.1,
+      "t1": 5.2,
+      "p": 0.344
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 7.7,
+      "t1": 7.9,
+      "p": 0.319
+     }
+    ],
+    "bio_events": [],
+    "text": "So, Victor, one of my favorite things to do with, let me know if it's a good time. Yeah, absolutely. The color albedo, I mean, I am just obsessed with the different colors in the mare on the eastern side. Same, same. Some serious interesting colors. I don't know about you, but I see, like, a very distinctive contact in the north that's,",
+    "awe": 0.35
+   },
+   {
+    "t0": 18.9,
+    "t1": 43.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 28.0,
+      "t1": 36.9,
+      "p": 0.975
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 29.8,
+      "t1": 33.9,
+      "p": 0.881
+     },
+     {
+      "label": "scene.crying",
+      "t0": 41.6,
+      "t1": 42.4,
+      "p": 0.624
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 30.3,
+      "t1": 30.6,
+      "p": 0.535
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 30.3,
+      "t1": 30.4,
+      "p": 0.453
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 33.4,
+      "t1": 33.7,
+      "p": 0.388
+     },
+     {
+      "label": "scene.distress",
+      "t0": 34.0,
+      "t1": 34.2,
+      "p": 0.31
+     }
+    ],
+    "bio_events": [],
+    "text": "that's, like, brownish tan to the middle, which I see is definitely more gray. Brown and tan and gray. Yes, and I even saw some green in there. Yes, I saw a lot of green. What I thought was gray, but it was green and gray. You know, green over the gray or under the gray. Absolutely. Yes, and we're both talking about the mare off in the east. Yes. And then, so",
+    "awe": 0.02
+   },
+   {
+    "t0": 43.6,
+    "t1": 49.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 44.6,
+      "t1": 45.6,
+      "p": 0.984
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 44.0,
+      "t1": 46.0,
+      "p": 0.956
+     },
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 45.0,
+      "t1": 45.1,
+      "p": 0.916
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 44.7,
+      "t1": 45.2,
+      "p": 0.844
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 44.0,
+      "t1": 44.2,
+      "p": 0.672
+     },
+     {
+      "label": "scene.music",
+      "t0": 44.8,
+      "t1": 45.2,
+      "p": 0.628
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 44.6,
+      "t1": 45.3,
+      "p": 0.525
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 44.1,
+      "t1": 44.2,
+      "p": 0.423
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 43.5,
+      "t1": 43.6,
+      "p": 0.416
+     },
+     {
+      "label": "scene.distress",
+      "t0": 43.5,
+      "t1": 43.7,
+      "p": 0.413
+     }
+    ],
+    "bio_events": [],
+    "text": "so I wanted to see if you see the same boundary between the tan and the gray in the northern mare.",
+    "awe": 0.35
+   },
+   {
+    "t0": 50.3,
+    "t1": 86.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 57.5,
+      "t1": 58.1,
+      "p": 0.977
+     },
+     {
+      "label": "scene.scream",
+      "t0": 63.6,
+      "t1": 64.6,
+      "p": 0.942
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 55.2,
+      "t1": 56.0,
+      "p": 0.941
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 53.8,
+      "t1": 59.3,
+      "p": 0.933
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 60.3,
+      "t1": 66.0,
+      "p": 0.923
+     },
+     {
+      "label": "scene.siren",
+      "t0": 64.0,
+      "t1": 64.1,
+      "p": 0.892
+     },
+     {
+      "label": "scene.crying",
+      "t0": 63.5,
+      "t1": 64.8,
+      "p": 0.887
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 63.1,
+      "t1": 64.8,
+      "p": 0.864
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 74.0,
+      "t1": 74.6,
+      "p": 0.835
+     },
+     {
+      "label": "scene.beep",
+      "t0": 64.0,
+      "t1": 64.1,
+      "p": 0.751
+     },
+     {
+      "label": "scene.distress",
+      "t0": 63.0,
+      "t1": 64.6,
+      "p": 0.697
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 55.2,
+      "t1": 56.2,
+      "p": 0.693
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 55.3,
+      "t1": 56.2,
+      "p": 0.687
+     },
+     {
+      "label": "scene.music",
+      "t0": 83.4,
+      "t1": 83.9,
+      "p": 0.514
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 82.2,
+      "t1": 82.6,
+      "p": 0.457
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 55.3,
+      "t1": 55.4,
+      "p": 0.401
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 55.9,
+      "t1": 56.0,
+      "p": 0.358
+     }
+    ],
+    "bio_events": [],
+    "text": "mare. I don't have the camera, but... So from the mare that we see on the near side of the earth to the north pole, like five degrees around the north pole, it becomes very high albedo. It becomes much lighter. Yes, it does. That's almost like... And that's where Pythagoras, that crater is. Ah, nice. If you see a distinct one on the horizon, that's Pythagoras. That's cool. And if you can see Pythagoras in the center, there's a white, almost a tan albedo spot, like Aristarchus in the center. Yeah. You can see it through the 400 zoom lens easy. And that, so, yeah, when you're done, I want to describe something that I've noticed that, and see if you see this. Okay. About, like, color and albedo. Okay. Well,",
+    "awe": 0.58
+   },
+   {
+    "t0": 86.6,
+    "t1": 87.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 87.2,
+      "t1": 91.9,
+      "p": 0.899
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 85.6,
+      "t1": 86.6,
+      "p": 0.741
+     }
+    ],
+    "bio_events": [],
+    "text": "Well, I'm trying to,",
+    "awe": 0.03
+   },
+   {
+    "t0": 87.4,
+    "t1": 94.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 88.8,
+      "t1": 90.2,
+      "p": 0.972
+     },
+     {
+      "label": "scene.applause",
+      "t0": 93.5,
+      "t1": 94.2,
+      "p": 0.97
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 92.3,
+      "t1": 95.0,
+      "p": 0.957
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 92.3,
+      "t1": 92.6,
+      "p": 0.831
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 93.5,
+      "t1": 93.6,
+      "p": 0.654
+     },
+     {
+      "label": "scene.distress",
+      "t0": 92.3,
+      "t1": 92.6,
+      "p": 0.445
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 92.4,
+      "t1": 92.5,
+      "p": 0.437
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 92.4,
+      "t1": 92.5,
+      "p": 0.306
+     }
+    ],
+    "bio_events": [],
+    "text": "trying to, I'm going to see if I can describe where this contact is. It's like there's, I saw it a lot through the lens, but do you see, so",
+    "awe": 0.35
+   },
+   {
+    "t0": 95.4,
+    "t1": 116.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 97.9,
+      "t1": 99.5,
+      "p": 0.984
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 104.3,
+      "t1": 107.1,
+      "p": 0.968
+     },
+     {
+      "label": "scene.applause",
+      "t0": 109.4,
+      "t1": 109.9,
+      "p": 0.938
+     },
+     {
+      "label": "scene.whistle",
+      "t0": 110.0,
+      "t1": 110.1,
+      "p": 0.789
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 109.8,
+      "t1": 110.1,
+      "p": 0.788
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 110.0,
+      "t1": 110.1,
+      "p": 0.728
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 109.3,
+      "t1": 109.7,
+      "p": 0.658
+     },
+     {
+      "label": "scene.music",
+      "t0": 98.7,
+      "t1": 99.2,
+      "p": 0.634
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 113.0,
+      "t1": 113.1,
+      "p": 0.308
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 113.0,
+      "t1": 113.1,
+      "p": 0.306
+     }
+    ],
+    "bio_events": [],
+    "text": "so of the mare, on its western edge, there's almost like two higher albedo infills that look like snakes, almost like rivers, and they kind of, like, parallel each other. Oh, yes. So, that's kind of the southern extent of the, what I see is the tan. And then going off from that to the northeast, there's, like, maybe three little high albedo craters in",
+    "awe": 0.35
+   },
+   {
+    "t0": 116.3,
+    "t1": 120.2,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 118.6,
+      "t1": 119.0,
+      "p": 0.88
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 117.9,
+      "t1": 120.8,
+      "p": 0.704
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 118.0,
+      "t1": 118.1,
+      "p": 0.499
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 120.2,
+      "t1": 120.6,
+      "p": 0.355
+     },
+     {
+      "label": "scene.distress",
+      "t0": 117.7,
+      "t1": 117.8,
+      "p": 0.324
+     }
+    ],
+    "bio_events": [],
+    "text": "craters in a row. So, to me, the contact between the tan and",
+    "awe": 0.35
+   },
+   {
+    "t0": 120.2,
+    "t1": 123.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 117.9,
+      "t1": 120.8,
+      "p": 0.704
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 120.2,
+      "t1": 120.6,
+      "p": 0.355
+     }
+    ],
+    "bio_events": [],
+    "text": "tan and the gray is kind of along that line.",
+    "awe": 0.0
+   },
+   {
+    "t0": 123.8,
+    "t1": 162.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 137.3,
+      "t1": 151.6,
+      "p": 0.981
+     },
+     {
+      "label": "scene.applause",
+      "t0": 149.3,
+      "t1": 150.3,
+      "p": 0.98
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 127.0,
+      "t1": 127.9,
+      "p": 0.979
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 140.3,
+      "t1": 151.8,
+      "p": 0.968
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 149.5,
+      "t1": 150.2,
+      "p": 0.89
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 149.5,
+      "t1": 149.6,
+      "p": 0.808
+     },
+     {
+      "label": "scene.whistle",
+      "t0": 149.5,
+      "t1": 149.6,
+      "p": 0.789
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 127.0,
+      "t1": 127.9,
+      "p": 0.763
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 127.3,
+      "t1": 127.8,
+      "p": 0.709
+     },
+     {
+      "label": "scene.distress",
+      "t0": 126.8,
+      "t1": 127.9,
+      "p": 0.694
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 127.0,
+      "t1": 127.8,
+      "p": 0.693
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 127.1,
+      "t1": 127.9,
+      "p": 0.68
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 138.1,
+      "t1": 139.0,
+      "p": 0.636
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 127.3,
+      "t1": 127.7,
+      "p": 0.632
+     },
+     {
+      "label": "scene.scream",
+      "t0": 138.3,
+      "t1": 138.4,
+      "p": 0.608
+     },
+     {
+      "label": "scene.crying",
+      "t0": 138.0,
+      "t1": 139.0,
+      "p": 0.597
+     },
+     {
+      "label": "scene.music",
+      "t0": 133.8,
+      "t1": 133.9,
+      "p": 0.553
+     }
+    ],
+    "bio_events": [],
+    "text": "Like, if you follow the snakes and then go north and east. Yeah, I see that. And then everything. The snakes, yeah, they kind of cross. Yeah. Like, it produces, yeah. And then the snakes, the snakes area is the gray area. That's great. And the north of them. The center of the mare. Is more brown. These two little river, light rivers that cross. I also see brown in the southern part of that mare. I see brown in the southern. Yeah. I definitely, I didn't in the beginning, and as my eyes adjusted, I see brown in the south of that mare. I definitely see brown in the south. That contact is more gradual and difficult to discern. Yes. But I swear, that contact in the north that I tried to just describe is, like, literally, I could draw a picture of it. And I'm going to actually try to do that right now.",
+    "awe": 0.35
+   },
+   {
+    "t0": 162.9,
+    "t1": 164.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 162.0,
+      "t1": 166.3,
+      "p": 0.883
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 160.9,
+      "t1": 163.1,
+      "p": 0.828
+     },
+     {
+      "label": "scene.whistle",
+      "t0": 162.8,
+      "t1": 162.9,
+      "p": 0.812
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 163.6,
+      "t1": 163.7,
+      "p": 0.613
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 163.6,
+      "t1": 163.7,
+      "p": 0.474
+     },
+     {
+      "label": "scene.crying",
+      "t0": 162.8,
+      "t1": 162.9,
+      "p": 0.437
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 163.6,
+      "t1": 163.7,
+      "p": 0.436
+     },
+     {
+      "label": "scene.distress",
+      "t0": 163.3,
+      "t1": 163.8,
+      "p": 0.423
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 163.3,
+      "t1": 163.7,
+      "p": 0.357
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 163.3,
+      "t1": 163.4,
+      "p": 0.347
+     }
+    ],
+    "bio_events": [],
+    "text": "So, check this out. Something that stood",
+    "awe": 0.02
+   },
+   {
+    "t0": 164.7,
+    "t1": 166.0,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 162.0,
+      "t1": 166.3,
+      "p": 0.883
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 165.1,
+      "t1": 165.3,
+      "p": 0.567
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 165.1,
+      "t1": 165.2,
+      "p": 0.392
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 165.5,
+      "t1": 165.6,
+      "p": 0.324
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 165.1,
+      "t1": 165.3,
+      "p": 0.323
+     },
+     {
+      "label": "scene.distress",
+      "t0": 165.1,
+      "t1": 165.3,
+      "p": 0.31
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 165.0,
+      "t1": 165.2,
+      "p": 0.301
+     }
+    ],
+    "bio_events": [],
+    "text": "that stood out to me is that",
+    "awe": 0.02
+   },
+   {
+    "t0": 166.0,
+    "t1": 168.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 162.0,
+      "t1": 166.3,
+      "p": 0.883
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 167.8,
+      "t1": 168.3,
+      "p": 0.607
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 167.8,
+      "t1": 167.9,
+      "p": 0.542
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 167.6,
+      "t1": 167.9,
+      "p": 0.417
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 167.7,
+      "t1": 167.9,
+      "p": 0.323
+     }
+    ],
+    "bio_events": [],
+    "text": "me is that region we were just describing, even",
+    "awe": 0.02
+   },
+   {
+    "t0": 169.6,
+    "t1": 171.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 170.5,
+      "t1": 171.7,
+      "p": 0.654
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 171.2,
+      "t1": 172.0,
+      "p": 0.602
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 170.9,
+      "t1": 171.0,
+      "p": 0.569
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 170.8,
+      "t1": 171.0,
+      "p": 0.462
+     },
+     {
+      "label": "scene.distress",
+      "t0": 170.8,
+      "t1": 171.1,
+      "p": 0.422
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 170.8,
+      "t1": 171.1,
+      "p": 0.403
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 170.7,
+      "t1": 171.0,
+      "p": 0.338
+     }
+    ],
+    "bio_events": [],
+    "text": "even with the variation in color. Uh -huh. That",
+    "awe": 0.0
+   },
+   {
+    "t0": 171.4,
+    "t1": 172.5,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 170.5,
+      "t1": 171.7,
+      "p": 0.654
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 171.2,
+      "t1": 172.0,
+      "p": 0.602
+     }
+    ],
+    "bio_events": [],
+    "text": "Uh -huh. That kind of, just like",
+    "awe": 0.0
+   },
+   {
+    "t0": 172.5,
+    "t1": 178.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 175.7,
+      "t1": 178.3,
+      "p": 0.837
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 174.5,
+      "t1": 175.0,
+      "p": 0.506
+     }
+    ],
+    "bio_events": [],
+    "text": "just like on Earth, we have continents and oceans. If that was one, that's like one continent. Yep. And then between oriental",
+    "awe": 0.0
+   },
+   {
+    "t0": 179.9,
+    "t1": 181.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "oriental and",
+    "awe": 0.0
+   },
+   {
+    "t0": 181.8,
+    "t1": 184.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 183.4,
+      "t1": 183.8,
+      "p": 0.495
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 183.1,
+      "t1": 183.8,
+      "p": 0.463
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 183.4,
+      "t1": 183.9,
+      "p": 0.405
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 181.6,
+      "t1": 182.2,
+      "p": 0.379
+     },
+     {
+      "label": "scene.crying",
+      "t0": 181.7,
+      "t1": 182.0,
+      "p": 0.34
+     }
+    ],
+    "bio_events": [],
+    "text": "and ohm, the wedge that defines ohm, that",
+    "awe": 0.0
+   },
+   {
+    "t0": 185.6,
+    "t1": 194.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 186.4,
+      "t1": 188.8,
+      "p": 0.965
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 193.0,
+      "t1": 194.5,
+      "p": 0.964
+     },
+     {
+      "label": "scene.applause",
+      "t0": 193.3,
+      "t1": 194.2,
+      "p": 0.946
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 187.5,
+      "t1": 187.9,
+      "p": 0.514
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 187.6,
+      "t1": 187.7,
+      "p": 0.489
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 187.5,
+      "t1": 187.7,
+      "p": 0.478
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 186.6,
+      "t1": 187.8,
+      "p": 0.412
+     },
+     {
+      "label": "scene.distress",
+      "t0": 187.4,
+      "t1": 187.7,
+      "p": 0.385
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 187.5,
+      "t1": 187.7,
+      "p": 0.357
+     },
+     {
+      "label": "scene.crying",
+      "t0": 188.1,
+      "t1": 188.4,
+      "p": 0.309
+     }
+    ],
+    "bio_events": [],
+    "text": "that whole area in the center is kind of like the middle color. Hold on, my Peltor powered off as well. Uh -oh. Let me see if it's still coming through. Sorry to, uh, it seems like it's still working.",
+    "awe": 0.35
+   },
+   {
+    "t0": 194.2,
+    "t1": 195.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 193.0,
+      "t1": 194.5,
+      "p": 0.964
+     },
+     {
+      "label": "scene.applause",
+      "t0": 193.3,
+      "t1": 194.2,
+      "p": 0.946
+     }
+    ],
+    "bio_events": [],
+    "text": "working. That middle color",
+    "awe": 0.35
+   },
+   {
+    "t0": 195.4,
+    "t1": 199.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 195.5,
+      "t1": 199.1,
+      "p": 0.929
+     },
+     {
+      "label": "scene.applause",
+      "t0": 199.1,
+      "t1": 199.2,
+      "p": 0.757
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 195.0,
+      "t1": 196.1,
+      "p": 0.735
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 199.0,
+      "t1": 199.3,
+      "p": 0.612
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 197.9,
+      "t1": 198.0,
+      "p": 0.501
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 197.8,
+      "t1": 198.2,
+      "p": 0.493
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 197.9,
+      "t1": 198.0,
+      "p": 0.439
+     }
+    ],
+    "bio_events": [],
+    "text": "middle color is like the middle texture and color of the moon.",
+    "awe": 0.35
+   },
+   {
+    "t0": 199.7,
+    "t1": 203.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 199.8,
+      "t1": 203.9,
+      "p": 0.866
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 200.9,
+      "t1": 202.2,
+      "p": 0.677
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 202.6,
+      "t1": 202.8,
+      "p": 0.41
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 202.5,
+      "t1": 202.8,
+      "p": 0.377
+     }
+    ],
+    "bio_events": [],
+    "text": "The middle color of the mare? Middle color and texture. No, so, like,",
+    "awe": 0.01
+   },
+   {
+    "t0": 204.4,
+    "t1": 211.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 209.1,
+      "t1": 214.0,
+      "p": 0.92
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 208.8,
+      "t1": 212.4,
+      "p": 0.754
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 207.7,
+      "t1": 207.9,
+      "p": 0.676
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 207.7,
+      "t1": 208.2,
+      "p": 0.639
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 207.7,
+      "t1": 208.3,
+      "p": 0.607
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 206.0,
+      "t1": 206.3,
+      "p": 0.568
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 206.0,
+      "t1": 206.7,
+      "p": 0.536
+     },
+     {
+      "label": "scene.music",
+      "t0": 210.1,
+      "t1": 210.7,
+      "p": 0.52
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 207.7,
+      "t1": 208.3,
+      "p": 0.487
+     },
+     {
+      "label": "scene.distress",
+      "t0": 207.7,
+      "t1": 208.1,
+      "p": 0.451
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 206.0,
+      "t1": 206.1,
+      "p": 0.407
+     },
+     {
+      "label": "scene.crying",
+      "t0": 207.7,
+      "t1": 208.1,
+      "p": 0.376
+     }
+    ],
+    "bio_events": [],
+    "text": "it's, so, the contact, it's just called the mare one contact. Uh -huh. And then the middle of the moon, kind of the main part of our",
+    "awe": 0.0
+   },
+   {
+    "t0": 211.9,
+    "t1": 214.6,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 209.1,
+      "t1": 214.0,
+      "p": 0.92
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 213.4,
+      "t1": 214.2,
+      "p": 0.92
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 208.8,
+      "t1": 212.4,
+      "p": 0.754
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 213.4,
+      "t1": 214.2,
+      "p": 0.68
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 213.4,
+      "t1": 214.3,
+      "p": 0.65
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 213.4,
+      "t1": 214.4,
+      "p": 0.647
+     },
+     {
+      "label": "scene.distress",
+      "t0": 213.4,
+      "t1": 214.4,
+      "p": 0.611
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 213.4,
+      "t1": 213.7,
+      "p": 0.592
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 213.5,
+      "t1": 214.0,
+      "p": 0.541
+     }
+    ],
+    "bio_events": [],
+    "text": "main part of our view right now. Yes. If you connect oriental and ohm,",
+    "awe": 0.0
+   },
+   {
+    "t0": 214.6,
+    "t1": 216.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 215.9,
+      "t1": 223.0,
+      "p": 0.951
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 215.9,
+      "t1": 218.1,
+      "p": 0.836
+     }
+    ],
+    "bio_events": [],
+    "text": "oriental and ohm, that region surrounding there between",
+    "awe": 0.07
+   },
+   {
+    "t0": 216.9,
+    "t1": 217.6,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 215.9,
+      "t1": 223.0,
+      "p": 0.951
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 215.9,
+      "t1": 218.1,
+      "p": 0.836
+     },
+     {
+      "label": "scene.crying",
+      "t0": 217.1,
+      "t1": 217.6,
+      "p": 0.674
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 217.1,
+      "t1": 217.5,
+      "p": 0.56
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 217.1,
+      "t1": 217.5,
+      "p": 0.473
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 217.1,
+      "t1": 217.6,
+      "p": 0.369
+     },
+     {
+      "label": "scene.distress",
+      "t0": 217.1,
+      "t1": 217.5,
+      "p": 0.367
+     }
+    ],
+    "bio_events": [],
+    "text": "there between them.",
+    "awe": 0.07
+   },
+   {
+    "t0": 217.6,
+    "t1": 241.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 237.4,
+      "t1": 245.0,
+      "p": 0.98
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 237.5,
+      "t1": 244.3,
+      "p": 0.973
+     },
+     {
+      "label": "scene.applause",
+      "t0": 238.7,
+      "t1": 239.2,
+      "p": 0.97
+     },
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 239.0,
+      "t1": 239.1,
+      "p": 0.958
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 238.7,
+      "t1": 239.4,
+      "p": 0.899
+     },
+     {
+      "label": "scene.phone_ring",
+      "t0": 219.8,
+      "t1": 219.9,
+      "p": 0.746
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 219.8,
+      "t1": 220.2,
+      "p": 0.742
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 219.6,
+      "t1": 220.5,
+      "p": 0.694
+     },
+     {
+      "label": "scene.crying",
+      "t0": 217.1,
+      "t1": 217.6,
+      "p": 0.674
+     },
+     {
+      "label": "scene.music",
+      "t0": 238.7,
+      "t1": 239.7,
+      "p": 0.552
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 221.0,
+      "t1": 221.4,
+      "p": 0.526
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 220.9,
+      "t1": 221.5,
+      "p": 0.511
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 219.9,
+      "t1": 220.0,
+      "p": 0.476
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 219.6,
+      "t1": 220.2,
+      "p": 0.461
+     },
+     {
+      "label": "scene.distress",
+      "t0": 220.9,
+      "t1": 221.4,
+      "p": 0.442
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 221.1,
+      "t1": 221.2,
+      "p": 0.397
+     }
+    ],
+    "bio_events": [],
+    "text": "them. Because the wedge is different. The wedge, the cutout of the wedge, I'm going to connect that in a second. Yep. But the lighter part of the wedge to the south and east, I'm sorry, south and west, that all is like, not just lighter. That's kind of like five, maybe four albedo on average. Uh -huh. It also appears that everything down there is, like, loose and maybe more dusty and jagged. Yes. Go to Hertzsprung. Yes. And around Hertzsprung,",
+    "awe": 0.35
+   },
+   {
+    "t0": 241.1,
+    "t1": 241.7,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 237.4,
+      "t1": 245.0,
+      "p": 0.98
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 237.5,
+      "t1": 244.3,
+      "p": 0.973
+     },
+     {
+      "label": "scene.music",
+      "t0": 241.1,
+      "t1": 241.5,
+      "p": 0.473
+     }
+    ],
+    "bio_events": [],
+    "text": "around Hertzsprung, two",
+    "awe": 0.09
+   },
+   {
+    "t0": 241.7,
+    "t1": 247.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 237.4,
+      "t1": 245.0,
+      "p": 0.98
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 237.5,
+      "t1": 244.3,
+      "p": 0.973
+     },
+     {
+      "label": "scene.scream",
+      "t0": 245.9,
+      "t1": 246.1,
+      "p": 0.839
+     },
+     {
+      "label": "scene.applause",
+      "t0": 245.9,
+      "t1": 246.0,
+      "p": 0.795
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 244.0,
+      "t1": 244.4,
+      "p": 0.792
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 241.9,
+      "t1": 242.0,
+      "p": 0.669
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 245.5,
+      "t1": 246.2,
+      "p": 0.63
+     },
+     {
+      "label": "scene.distress",
+      "t0": 245.5,
+      "t1": 246.2,
+      "p": 0.595
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 244.0,
+      "t1": 244.4,
+      "p": 0.591
+     },
+     {
+      "label": "scene.crying",
+      "t0": 245.9,
+      "t1": 246.1,
+      "p": 0.586
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 244.1,
+      "t1": 244.6,
+      "p": 0.489
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 245.9,
+      "t1": 246.1,
+      "p": 0.487
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 244.1,
+      "t1": 244.6,
+      "p": 0.445
+     },
+     {
+      "label": "scene.music",
+      "t0": 241.9,
+      "t1": 242.0,
+      "p": 0.357
+     }
+    ],
+    "bio_events": [],
+    "text": "Hertzsprung, two Hertzsprung diameter. Yep. That looks to be average of three. Oh, I got a full power off.",
+    "awe": 0.35
+   },
+   {
+    "t0": 247.0,
+    "t1": 248.3,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 245.3,
+      "t1": 247.5,
+      "p": 0.732
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 248.3,
+      "t1": 248.7,
+      "p": 0.532
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 248.0,
+      "t1": 248.1,
+      "p": 0.507
+     }
+    ],
+    "bio_events": [],
+    "text": "power off. Shoot. That mare",
+    "awe": 0.0
+   },
+   {
+    "t0": 248.3,
+    "t1": 252.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 249.8,
+      "t1": 251.3,
+      "p": 0.965
+     },
+     {
+      "label": "scene.applause",
+      "t0": 250.0,
+      "t1": 250.6,
+      "p": 0.919
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 250.0,
+      "t1": 251.5,
+      "p": 0.793
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 249.0,
+      "t1": 249.1,
+      "p": 0.517
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 250.8,
+      "t1": 251.0,
+      "p": 0.427
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 250.9,
+      "t1": 251.0,
+      "p": 0.412
+     },
+     {
+      "label": "scene.crying",
+      "t0": 250.9,
+      "t1": 251.1,
+      "p": 0.371
+     }
+    ],
+    "bio_events": [],
+    "text": "That mare is three, and it's also smoother. Test.",
+    "awe": 0.35
+   },
+   {
+    "t0": 253.4,
+    "t1": 259.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 254.5,
+      "t1": 255.6,
+      "p": 0.902
+     },
+     {
+      "label": "scene.applause",
+      "t0": 255.0,
+      "t1": 255.2,
+      "p": 0.786
+     }
+    ],
+    "bio_events": [],
+    "text": "Test. It seems like my Peltor is still working, although it did power off. So hopefully yours will pick mine up. From",
+    "awe": 0.35
+   },
+   {
+    "t0": 259.3,
+    "t1": 260.1,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 259.3,
+      "t1": 264.3,
+      "p": 0.868
+     }
+    ],
+    "bio_events": [],
+    "text": "up. From images,",
+    "awe": 0.01
+   },
+   {
+    "t0": 260.1,
+    "t1": 265.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 259.3,
+      "t1": 264.3,
+      "p": 0.868
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 262.5,
+      "t1": 264.2,
+      "p": 0.816
+     },
+     {
+      "label": "scene.applause",
+      "t0": 260.6,
+      "t1": 260.7,
+      "p": 0.784
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 260.5,
+      "t1": 260.6,
+      "p": 0.379
+     },
+     {
+      "label": "scene.music",
+      "t0": 261.4,
+      "t1": 261.6,
+      "p": 0.366
+     }
+    ],
+    "bio_events": [],
+    "text": "images, those look like two different, sorry, one, it looked like one kind of color",
+    "awe": 0.35
+   },
+   {
+    "t0": 265.2,
+    "t1": 266.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 266.2,
+      "t1": 266.8,
+      "p": 0.557
+     }
+    ],
+    "bio_events": [],
+    "text": "of color and",
+    "awe": 0.0
+   },
+   {
+    "t0": 267.0,
+    "t1": 267.7,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 267.3,
+      "t1": 272.6,
+      "p": 0.974
+     }
+    ],
+    "bio_events": [],
+    "text": "and texture. But",
+    "awe": 0.08
+   },
+   {
+    "t0": 267.7,
+    "t1": 269.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 268.7,
+      "t1": 276.2,
+      "p": 0.99
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 267.3,
+      "t1": 272.6,
+      "p": 0.974
+     },
+     {
+      "label": "scene.applause",
+      "t0": 269.0,
+      "t1": 269.5,
+      "p": 0.929
+     },
+     {
+      "label": "scene.music",
+      "t0": 268.7,
+      "t1": 269.1,
+      "p": 0.4
+     }
+    ],
+    "bio_events": [],
+    "text": "texture. But I see smoothness around",
+    "awe": 0.35
+   },
+   {
+    "t0": 269.1,
+    "t1": 270.1,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 268.7,
+      "t1": 276.2,
+      "p": 0.99
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 267.3,
+      "t1": 272.6,
+      "p": 0.974
+     },
+     {
+      "label": "scene.applause",
+      "t0": 269.0,
+      "t1": 269.5,
+      "p": 0.929
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 269.2,
+      "t1": 269.5,
+      "p": 0.609
+     },
+     {
+      "label": "scene.music",
+      "t0": 268.7,
+      "t1": 269.1,
+      "p": 0.4
+     }
+    ],
+    "bio_events": [],
+    "text": "smoothness around Hertzsprung. Absolutely.",
+    "awe": 0.35
+   },
+   {
+    "t0": 270.1,
+    "t1": 276.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 268.7,
+      "t1": 276.2,
+      "p": 0.99
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 267.3,
+      "t1": 272.6,
+      "p": 0.974
+     },
+     {
+      "label": "scene.applause",
+      "t0": 271.6,
+      "t1": 272.0,
+      "p": 0.942
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 272.0,
+      "t1": 272.3,
+      "p": 0.773
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 271.7,
+      "t1": 272.0,
+      "p": 0.673
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 272.0,
+      "t1": 272.2,
+      "p": 0.527
+     },
+     {
+      "label": "scene.music",
+      "t0": 271.6,
+      "t1": 272.0,
+      "p": 0.506
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 272.0,
+      "t1": 272.2,
+      "p": 0.476
+     },
+     {
+      "label": "scene.distress",
+      "t0": 272.0,
+      "t1": 272.2,
+      "p": 0.348
+     },
+     {
+      "label": "scene.crying",
+      "t0": 270.9,
+      "t1": 271.0,
+      "p": 0.326
+     }
+    ],
+    "bio_events": [],
+    "text": "Hertzsprung. Absolutely. It looks like it almost got shaved or packed. 100%. Like the beach in Galveston where everybody drives. It's a hard pack. Yeah. It's like",
+    "awe": 0.35
+   },
+   {
+    "t0": 276.1,
+    "t1": 277.7,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 268.7,
+      "t1": 276.2,
+      "p": 0.99
+     },
+     {
+      "label": "scene.applause",
+      "t0": 276.8,
+      "t1": 276.9,
+      "p": 0.784
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 275.5,
+      "t1": 278.0,
+      "p": 0.72
+     }
+    ],
+    "bio_events": [],
+    "text": "It's like almost concrete.",
+    "awe": 0.35
+   },
+   {
+    "t0": 277.7,
+    "t1": 281.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 280.0,
+      "t1": 285.3,
+      "p": 0.85
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 280.5,
+      "t1": 281.9,
+      "p": 0.826
+     },
+     {
+      "label": "scene.applause",
+      "t0": 280.5,
+      "t1": 280.6,
+      "p": 0.764
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 281.0,
+      "t1": 281.1,
+      "p": 0.522
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 281.3,
+      "t1": 281.4,
+      "p": 0.519
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 280.8,
+      "t1": 281.1,
+      "p": 0.506
+     },
+     {
+      "label": "scene.crying",
+      "t0": 278.2,
+      "t1": 278.4,
+      "p": 0.381
+     },
+     {
+      "label": "scene.distress",
+      "t0": 278.2,
+      "t1": 278.4,
+      "p": 0.342
+     }
+    ],
+    "bio_events": [],
+    "text": "concrete. Like concrete, yeah. Yep. And the craters in there even have",
+    "awe": 0.35
+   },
+   {
+    "t0": 281.4,
+    "t1": 282.8,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 280.0,
+      "t1": 285.3,
+      "p": 0.85
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 280.5,
+      "t1": 281.9,
+      "p": 0.826
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 281.3,
+      "t1": 281.4,
+      "p": 0.519
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 281.3,
+      "t1": 281.4,
+      "p": 0.465
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 281.2,
+      "t1": 281.4,
+      "p": 0.446
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 281.6,
+      "t1": 281.7,
+      "p": 0.358
+     }
+    ],
+    "bio_events": [],
+    "text": "even have really distinct rings and",
+    "awe": 0.0
+   },
+   {
+    "t0": 282.8,
+    "t1": 290.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 280.0,
+      "t1": 285.3,
+      "p": 0.85
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 289.1,
+      "t1": 291.5,
+      "p": 0.784
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 289.5,
+      "t1": 289.6,
+      "p": 0.472
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 283.1,
+      "t1": 283.2,
+      "p": 0.326
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 283.1,
+      "t1": 283.3,
+      "p": 0.321
+     }
+    ],
+    "bio_events": [],
+    "text": "rings and edges. Absolutely. The whole thing, it's almost like the craters were made in like a liquid versus like a rugged terrain. A liquid versus in like, and",
+    "awe": 0.0
+   },
+   {
+    "t0": 290.6,
+    "t1": 293.9,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 293.3,
+      "t1": 299.1,
+      "p": 0.931
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 289.1,
+      "t1": 291.5,
+      "p": 0.784
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 291.1,
+      "t1": 291.2,
+      "p": 0.366
+     }
+    ],
+    "bio_events": [],
+    "text": "like, and so, oh man, that's good. I like that. And then the",
+    "awe": 0.05
+   },
+   {
+    "t0": 294.4,
+    "t1": 299.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 293.3,
+      "t1": 299.1,
+      "p": 0.931
+     },
+     {
+      "label": "scene.applause",
+      "t0": 297.6,
+      "t1": 298.1,
+      "p": 0.903
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 295.6,
+      "t1": 298.0,
+      "p": 0.902
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 298.1,
+      "t1": 298.5,
+      "p": 0.757
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 297.6,
+      "t1": 297.7,
+      "p": 0.67
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 294.4,
+      "t1": 294.9,
+      "p": 0.557
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 295.7,
+      "t1": 296.1,
+      "p": 0.557
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 296.2,
+      "t1": 296.4,
+      "p": 0.464
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 295.8,
+      "t1": 296.1,
+      "p": 0.449
+     },
+     {
+      "label": "scene.music",
+      "t0": 297.6,
+      "t1": 297.7,
+      "p": 0.435
+     },
+     {
+      "label": "scene.distress",
+      "t0": 295.9,
+      "t1": 296.1,
+      "p": 0.332
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 298.1,
+      "t1": 298.3,
+      "p": 0.323
+     }
+    ],
+    "bio_events": [],
+    "text": "the wedge, the darker part of the wedge matches the darkness around Hertzsprung.",
+    "awe": 0.35
+   },
+   {
+    "t0": 299.3,
+    "t1": 300.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 300.1,
+      "t1": 305.4,
+      "p": 0.958
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 300.4,
+      "t1": 304.4,
+      "p": 0.86
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 300.2,
+      "t1": 300.3,
+      "p": 0.393
+     },
+     {
+      "label": "scene.crying",
+      "t0": 300.2,
+      "t1": 300.5,
+      "p": 0.385
+     }
+    ],
+    "bio_events": [],
+    "text": "around Hertzsprung.",
+    "awe": 0.0
+   },
+   {
+    "t0": 300.4,
+    "t1": 302.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 300.1,
+      "t1": 305.4,
+      "p": 0.958
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 300.4,
+      "t1": 304.4,
+      "p": 0.86
+     },
+     {
+      "label": "scene.crying",
+      "t0": 300.9,
+      "t1": 301.5,
+      "p": 0.549
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 301.0,
+      "t1": 301.6,
+      "p": 0.519
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 301.0,
+      "t1": 301.5,
+      "p": 0.466
+     }
+    ],
+    "bio_events": [],
+    "text": "Hertzsprung. Yes. That's the color. They're very similar.",
+    "awe": 0.0
+   },
+   {
+    "t0": 302.7,
+    "t1": 303.2,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 300.1,
+      "t1": 305.4,
+      "p": 0.958
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 300.4,
+      "t1": 304.4,
+      "p": 0.86
+     }
+    ],
+    "bio_events": [],
+    "text": "similar. They have the",
+    "awe": 0.0
+   },
+   {
+    "t0": 303.2,
+    "t1": 305.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 300.1,
+      "t1": 305.4,
+      "p": 0.958
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 300.4,
+      "t1": 304.4,
+      "p": 0.86
+     }
+    ],
+    "bio_events": [],
+    "text": "They have the same average color. Yeah. There's like a,",
+    "awe": 0.0
+   },
+   {
+    "t0": 305.2,
+    "t1": 318.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 300.1,
+      "t1": 305.4,
+      "p": 0.958
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 305.9,
+      "t1": 307.1,
+      "p": 0.644
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 312.9,
+      "t1": 313.0,
+      "p": 0.529
+     }
+    ],
+    "bio_events": [],
+    "text": "There's like a, you know, that line, like you said, of the higher albedo. But everything, and actually, if we're going to talk about the contact of where, like, it's very distinct where it starts, I think. Like there's kind of that almost like a white line and below it, it matches the color",
+    "awe": 0.0
+   },
+   {
+    "t0": 318.4,
+    "t1": 318.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 318.9,
+      "t1": 320.0,
+      "p": 0.787
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 318.7,
+      "t1": 319.3,
+      "p": 0.661
+     }
+    ],
+    "bio_events": [],
+    "text": "matches the color of the wedge.",
+    "awe": 0.0
+   },
+   {
+    "t0": 318.9,
+    "t1": 320.8,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 318.9,
+      "t1": 320.0,
+      "p": 0.787
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 319.4,
+      "t1": 320.9,
+      "p": 0.755
+     }
+    ],
+    "bio_events": [],
+    "text": "color of the wedge. Yes. Yes. And then the rest of the contact",
+    "awe": 0.0
+   },
+   {
+    "t0": 320.8,
+    "t1": 321.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 319.4,
+      "t1": 320.9,
+      "p": 0.755
+     }
+    ],
+    "bio_events": [],
+    "text": "rest of the contact to",
+    "awe": 0.0
+   },
+   {
+    "t0": 321.3,
+    "t1": 324.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 322.1,
+      "t1": 322.5,
+      "p": 0.418
+     }
+    ],
+    "bio_events": [],
+    "text": "contact to me is almost like an exact north -south longitude.",
+    "awe": 0.0
+   },
+   {
+    "t0": 324.4,
+    "t1": 326.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 325.9,
+      "t1": 326.0,
+      "p": 0.765
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 325.3,
+      "t1": 326.5,
+      "p": 0.669
+     }
+    ],
+    "bio_events": [],
+    "text": "longitude. It's not distinct though.",
+    "awe": 0.35
+   },
+   {
+    "t0": 326.3,
+    "t1": 328.0,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 325.3,
+      "t1": 326.5,
+      "p": 0.669
+     }
+    ],
+    "bio_events": [],
+    "text": "distinct though. It's more gradual. It",
+    "awe": 0.0
+   },
+   {
+    "t0": 328.0,
+    "t1": 328.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.background_speech",
+      "t0": 328.2,
+      "t1": 330.2,
+      "p": 0.803
+     }
+    ],
+    "bio_events": [],
+    "text": "gradual. It is gradual.",
+    "awe": 0.0
+   },
+   {
+    "t0": 328.6,
+    "t1": 331.9,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 330.2,
+      "t1": 330.5,
+      "p": 0.835
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 329.8,
+      "t1": 330.8,
+      "p": 0.83
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 328.2,
+      "t1": 330.2,
+      "p": 0.803
+     }
+    ],
+    "bio_events": [],
+    "text": "is gradual. Yes. But it's there, like, you know, a",
+    "awe": 0.35
+   },
+   {
+    "t0": 333.2,
+    "t1": 334.7,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "a couple longitude lines to",
+    "awe": 0.0
+   },
+   {
+    "t0": 334.7,
+    "t1": 336.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "lines to the right, it's that",
+    "awe": 0.0
+   },
+   {
+    "t0": 336.2,
+    "t1": 337.1,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "it's that lighter albedo.",
+    "awe": 0.0
+   },
+   {
+    "t0": 337.1,
+    "t1": 337.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "lighter albedo. And to",
+    "awe": 0.0
+   },
+   {
+    "t0": 337.6,
+    "t1": 339.4,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 337.7,
+      "t1": 339.2,
+      "p": 0.527
+     }
+    ],
+    "bio_events": [],
+    "text": "albedo. And to the left, it's definitely that darker wedge",
+    "awe": 0.0
+   },
+   {
+    "t0": 339.4,
+    "t1": 340.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "darker wedge colored albedo.",
+    "awe": 0.0
+   },
+   {
+    "t0": 340.7,
+    "t1": 343.2,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "albedo. So I agree. Those two match.",
+    "awe": 0.0
+   },
+   {
+    "t0": 343.2,
+    "t1": 343.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "match. Yeah.",
+    "awe": 0.0
+   }
+  ],
+  "awe_peaks": [
+   {
+    "t": 68.45,
+    "t0": 50.3,
+    "t1": 86.6,
+    "score": 0.58
+   }
+  ]
+ },
+ "earthrise": {
+  "stem": "art002a000015-omg-stop-it",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 1.6,
+    "t1": 1.7,
+    "speaker": null,
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.alarm",
+      "t0": 0.1,
+      "t1": 1.8,
+      "p": 0.831
+     },
+     {
+      "label": "scene.crying",
+      "t0": 0.3,
+      "t1": 1.8,
+      "p": 0.821
+     },
+     {
+      "label": "scene.distress",
+      "t0": 0.0,
+      "t1": 1.8,
+      "p": 0.596
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 1.2,
+      "t1": 2.1,
+      "p": 0.314
+     }
+    ],
+    "bio_events": [],
+    "text": "Oh,",
+    "awe": 0.0
+   },
+   {
+    "t0": 3.1,
+    "t1": 4.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 2.8,
+      "t1": 4.5,
+      "p": 0.993
+     },
+     {
+      "label": "scene.applause",
+      "t0": 3.0,
+      "t1": 4.3,
+      "p": 0.988
+     },
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 3.0,
+      "t1": 3.5,
+      "p": 0.984
+     },
+     {
+      "label": "scene.whistle",
+      "t0": 2.9,
+      "t1": 3.3,
+      "p": 0.947
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 2.9,
+      "t1": 4.0,
+      "p": 0.937
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 2.9,
+      "t1": 3.5,
+      "p": 0.928
+     },
+     {
+      "label": "scene.horn",
+      "t0": 3.0,
+      "t1": 3.1,
+      "p": 0.891
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 3.0,
+      "t1": 4.0,
+      "p": 0.884
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 3.8,
+      "t1": 4.2,
+      "p": 0.746
+     },
+     {
+      "label": "scene.music",
+      "t0": 3.0,
+      "t1": 3.7,
+      "p": 0.718
+     },
+     {
+      "label": "scene.crying",
+      "t0": 2.9,
+      "t1": 3.1,
+      "p": 0.503
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 4.0,
+      "t1": 4.3,
+      "p": 0.489
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 3.8,
+      "t1": 3.9,
+      "p": 0.406
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 3.2,
+      "t1": 3.5,
+      "p": 0.349
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 4.0,
+      "t1": 4.3,
+      "p": 0.337
+     },
+     {
+      "label": "scene.distress",
+      "t0": 3.8,
+      "t1": 4.3,
+      "p": 0.315
+     }
+    ],
+    "bio_events": [],
+    "text": "that looks cool!",
+    "awe": 0.58
+   },
+   {
+    "t0": 5.3,
+    "t1": 16.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 15.0,
+      "t1": 15.9,
+      "p": 0.994
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 5.0,
+      "t1": 17.8,
+      "p": 0.985
+     },
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 15.6,
+      "t1": 15.7,
+      "p": 0.906
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 10.3,
+      "t1": 11.7,
+      "p": 0.893
+     },
+     {
+      "label": "scene.horn",
+      "t0": 15.6,
+      "t1": 15.7,
+      "p": 0.862
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 15.6,
+      "t1": 15.7,
+      "p": 0.786
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 15.4,
+      "t1": 15.7,
+      "p": 0.723
+     },
+     {
+      "label": "scene.music",
+      "t0": 15.4,
+      "t1": 15.8,
+      "p": 0.705
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 7.6,
+      "t1": 7.7,
+      "p": 0.668
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 4.8,
+      "t1": 5.7,
+      "p": 0.533
+     },
+     {
+      "label": "scene.crying",
+      "t0": 4.9,
+      "t1": 5.6,
+      "p": 0.527
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 11.0,
+      "t1": 11.4,
+      "p": 0.468
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 11.1,
+      "t1": 11.3,
+      "p": 0.453
+     },
+     {
+      "label": "scene.distress",
+      "t0": 7.6,
+      "t1": 7.8,
+      "p": 0.332
+     }
+    ],
+    "bio_events": [],
+    "text": "There's some lofted dust! Do you guys think so? Well, but it was like... I think that's my own. But no, it was gray where it was popping out. I mean, it could just be an optical... Oh my god!",
+    "awe": 0.8
+   },
+   {
+    "t0": 18.9,
+    "t1": 19.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 19.0,
+      "t1": 19.3,
+      "p": 0.894
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 18.7,
+      "t1": 19.4,
+      "p": 0.598
+     },
+     {
+      "label": "scene.scream",
+      "t0": 18.9,
+      "t1": 19.0,
+      "p": 0.544
+     },
+     {
+      "label": "scene.crying",
+      "t0": 18.6,
+      "t1": 19.0,
+      "p": 0.43
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 18.6,
+      "t1": 19.1,
+      "p": 0.362
+     },
+     {
+      "label": "scene.distress",
+      "t0": 18.6,
+      "t1": 19.0,
+      "p": 0.345
+     }
+    ],
+    "bio_events": [],
+    "text": "Oh my...",
+    "awe": 0.35
+   },
+   {
+    "t0": 19.8,
+    "t1": 21.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 19.8,
+      "t1": 19.9,
+      "p": 0.93
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 20.4,
+      "t1": 23.0,
+      "p": 0.852
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 20.5,
+      "t1": 20.7,
+      "p": 0.398
+     }
+    ],
+    "bio_events": [],
+    "text": "my... Terrain of the limb! Shhh,",
+    "awe": 0.33
+   },
+   {
+    "t0": 22.5,
+    "t1": 25.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 20.4,
+      "t1": 23.0,
+      "p": 0.852
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 24.0,
+      "t1": 24.1,
+      "p": 0.499
+     },
+     {
+      "label": "scene.music",
+      "t0": 25.0,
+      "t1": 25.2,
+      "p": 0.489
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 24.9,
+      "t1": 25.2,
+      "p": 0.376
+     }
+    ],
+    "bio_events": [],
+    "text": "Shhh, on the earth! Stop it!",
+    "awe": 0.56
+   },
+   {
+    "t0": 26.5,
+    "t1": 27.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 27.0,
+      "t1": 28.1,
+      "p": 1.0
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 25.9,
+      "t1": 26.5,
+      "p": 0.779
+     },
+     {
+      "label": "scene.crying",
+      "t0": 25.8,
+      "t1": 26.9,
+      "p": 0.756
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 25.9,
+      "t1": 26.5,
+      "p": 0.688
+     },
+     {
+      "label": "scene.distress",
+      "t0": 25.8,
+      "t1": 26.9,
+      "p": 0.6
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 25.9,
+      "t1": 26.9,
+      "p": 0.571
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 26.6,
+      "t1": 26.7,
+      "p": 0.432
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 26.0,
+      "t1": 26.5,
+      "p": 0.398
+     }
+    ],
+    "bio_events": [],
+    "text": "",
+    "awe": 0.0
+   },
+   {
+    "t0": 28.3,
+    "t1": 28.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "bio_ev.cough",
+      "t0": 28.3,
+      "t1": 28.4,
+      "p": 0.364
+     }
+    ],
+    "bio_events": [],
+    "text": "my gosh!",
+    "awe": 0.23
+   },
+   {
+    "t0": 29.8,
+    "t1": 31.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 31.1,
+      "t1": 31.7,
+      "p": 0.991
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 29.7,
+      "t1": 29.9,
+      "p": 0.642
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 30.5,
+      "t1": 31.2,
+      "p": 0.506
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 29.7,
+      "t1": 29.9,
+      "p": 0.505
+     },
+     {
+      "label": "scene.music",
+      "t0": 30.6,
+      "t1": 31.2,
+      "p": 0.494
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 29.7,
+      "t1": 29.9,
+      "p": 0.458
+     },
+     {
+      "label": "scene.crying",
+      "t0": 29.8,
+      "t1": 29.9,
+      "p": 0.369
+     },
+     {
+      "label": "scene.distress",
+      "t0": 29.7,
+      "t1": 29.9,
+      "p": 0.366
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 30.6,
+      "t1": 30.9,
+      "p": 0.309
+     }
+    ],
+    "bio_events": [],
+    "text": "gosh!",
+    "awe": 0.23
+   },
+   {
+    "t0": 33.1,
+    "t1": 35.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.applause",
+      "t0": 33.4,
+      "t1": 34.1,
+      "p": 0.953
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 33.2,
+      "t1": 33.6,
+      "p": 0.853
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 32.2,
+      "t1": 34.2,
+      "p": 0.82
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 32.4,
+      "t1": 33.2,
+      "p": 0.587
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 35.3,
+      "t1": 37.8,
+      "p": 0.521
+     },
+     {
+      "label": "scene.distress",
+      "t0": 32.2,
+      "t1": 33.6,
+      "p": 0.484
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 33.2,
+      "t1": 33.5,
+      "p": 0.468
+     },
+     {
+      "label": "scene.music",
+      "t0": 34.4,
+      "t1": 34.5,
+      "p": 0.417
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 33.2,
+      "t1": 33.4,
+      "p": 0.403
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 33.3,
+      "t1": 33.7,
+      "p": 0.401
+     }
+    ],
+    "bio_events": [],
+    "text": "It's amazing!",
+    "awe": 0.58
+   },
+   {
+    "t0": 37.3,
+    "t1": 46.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.laughter",
+      "t0": 37.1,
+      "t1": 48.3,
+      "p": 0.962
+     },
+     {
+      "label": "scene.applause",
+      "t0": 42.9,
+      "t1": 43.5,
+      "p": 0.961
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 36.5,
+      "t1": 37.7,
+      "p": 0.936
+     },
+     {
+      "label": "scene.background_speech",
+      "t0": 38.8,
+      "t1": 40.6,
+      "p": 0.919
+     },
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 39.9,
+      "t1": 40.0,
+      "p": 0.91
+     },
+     {
+      "label": "scene.horn",
+      "t0": 39.7,
+      "t1": 39.9,
+      "p": 0.878
+     },
+     {
+      "label": "scene.buzzer",
+      "t0": 39.3,
+      "t1": 39.4,
+      "p": 0.827
+     },
+     {
+      "label": "scene.music",
+      "t0": 39.3,
+      "t1": 40.3,
+      "p": 0.783
+     },
+     {
+      "label": "scene.crying",
+      "t0": 41.3,
+      "t1": 42.1,
+      "p": 0.768
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 37.1,
+      "t1": 37.7,
+      "p": 0.71
+     },
+     {
+      "label": "scene.cheer",
+      "t0": 39.8,
+      "t1": 40.2,
+      "p": 0.698
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 40.8,
+      "t1": 41.7,
+      "p": 0.665
+     },
+     {
+      "label": "scene.distress",
+      "t0": 36.4,
+      "t1": 37.8,
+      "p": 0.622
+     },
+     {
+      "label": "scene.scream",
+      "t0": 41.4,
+      "t1": 41.7,
+      "p": 0.612
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 35.3,
+      "t1": 37.8,
+      "p": 0.521
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 36.7,
+      "t1": 37.7,
+      "p": 0.495
+     },
+     {
+      "label": "scene.door_knock",
+      "t0": 40.8,
+      "t1": 41.2,
+      "p": 0.468
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 40.8,
+      "t1": 41.1,
+      "p": 0.409
+     }
+    ],
+    "bio_events": [],
+    "text": "No, I tried, but no, yeah, you can't. It's impossible. You might be able to fly a spaceship and talk, but if you can see that and talk, you just ain't right.",
+    "awe": 0.35
+   },
+   {
+    "t0": 50.5,
+    "t1": 50.9,
+    "speaker": null,
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 50.9,
+      "t1": 52.6,
+      "p": 1.0
+     }
+    ],
+    "bio_events": [],
+    "text": "word!",
+    "awe": 0.23
+   }
+  ],
+  "awe_peaks": [
+   {
+    "t": 11.05,
+    "t0": 5.3,
+    "t1": 16.8,
+    "score": 0.8
+   },
+   {
+    "t": 3.8,
+    "t0": 3.1,
+    "t1": 4.5,
+    "score": 0.58
+   },
+   {
+    "t": 34.2,
+    "t0": 33.1,
+    "t1": 35.3,
+    "score": 0.58
+   },
+   {
+    "t": 23.75,
+    "t0": 22.5,
+    "t1": 25.0,
+    "score": 0.56
+   }
+  ]
+ },
+ "naming": {
+  "stem": "artemis-ii-names-new-craters-integrity-and-carroll",
+  "model": "arc-v1.1 mini",
+  "domain": "talk",
+  "utterances": [
+   {
+    "t0": 0.0,
+    "t1": 4.4,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 4.4,
+      "t1": 5.2,
+      "p": 0.818
+     },
+     {
+      "label": "scene.crying",
+      "t0": 0.2,
+      "t1": 0.5,
+      "p": 0.495
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 0.0,
+      "t1": 0.5,
+      "p": 0.441
+     },
+     {
+      "label": "scene.distress",
+      "t0": 0.0,
+      "t1": 0.5,
+      "p": 0.436
+     }
+    ],
+    "bio_events": [],
+    "text": "Our science team helped us out with a couple of relatively",
+    "awe": 0.0
+   },
+   {
+    "t0": 5.1,
+    "t1": 15.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 4.9,
+      "t1": 5.2,
+      "p": 0.86
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 4.4,
+      "t1": 5.2,
+      "p": 0.818
+     },
+     {
+      "label": "scene.crying",
+      "t0": 4.9,
+      "t1": 5.5,
+      "p": 0.72
+     },
+     {
+      "label": "scene.distress",
+      "t0": 4.9,
+      "t1": 5.5,
+      "p": 0.643
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 5.0,
+      "t1": 5.2,
+      "p": 0.619
+     },
+     {
+      "label": "scene.scream",
+      "t0": 5.0,
+      "t1": 5.1,
+      "p": 0.616
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 4.9,
+      "t1": 5.7,
+      "p": 0.546
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 5.0,
+      "t1": 5.2,
+      "p": 0.528
+     }
+    ],
+    "bio_events": [],
+    "text": "relatively fresh craters on the moon that have not been previously named. And our crew would like to propose a couple of potential names for those items or those areas. And",
+    "awe": 0.21
+   },
+   {
+    "t0": 16.4,
+    "t1": 31.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 31.5,
+      "t1": 32.3,
+      "p": 0.979
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 31.5,
+      "t1": 31.7,
+      "p": 0.86
+     },
+     {
+      "label": "scene.distress",
+      "t0": 15.8,
+      "t1": 16.6,
+      "p": 0.642
+     },
+     {
+      "label": "scene.crying",
+      "t0": 27.8,
+      "t1": 28.1,
+      "p": 0.431
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 31.5,
+      "t1": 31.6,
+      "p": 0.307
+     }
+    ],
+    "bio_events": [],
+    "text": "And we spent a bit of time this morning looking out the window and we're able to see them now both with our naked eye and through the long lens. And so we feel this is a good time to send this down. And a special shout out to Kelsey for helping us with this. The",
+    "awe": 0.0
+   },
+   {
+    "t0": 32.2,
+    "t1": 34.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 31.5,
+      "t1": 32.3,
+      "p": 0.979
+     },
+     {
+      "label": "scene.scream",
+      "t0": 31.8,
+      "t1": 32.2,
+      "p": 0.788
+     },
+     {
+      "label": "scene.distress",
+      "t0": 31.5,
+      "t1": 32.5,
+      "p": 0.606
+     },
+     {
+      "label": "scene.crying",
+      "t0": 31.7,
+      "t1": 32.2,
+      "p": 0.517
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 34.5,
+      "t1": 35.0,
+      "p": 0.303
+     }
+    ],
+    "bio_events": [],
+    "text": "The first one we'd like to suggest is a",
+    "awe": 0.21
+   },
+   {
+    "t0": 35.3,
+    "t1": 55.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 39.9,
+      "t1": 40.7,
+      "p": 0.976
+     },
+     {
+      "label": "scene.scream",
+      "t0": 40.1,
+      "t1": 40.4,
+      "p": 0.672
+     },
+     {
+      "label": "scene.distress",
+      "t0": 40.5,
+      "t1": 40.8,
+      "p": 0.465
+     }
+    ],
+    "bio_events": [],
+    "text": "a named crater in honor of our great spacecraft integrity. And so if you were to look at Oriental on the far side and then draw a line straight up to Ohm on the far side, relatively in the middle is an unnamed crater and we would like to suggest it be called integrity in the future.",
+    "awe": 0.21
+   },
+   {
+    "t0": 59.3,
+    "t1": 63.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.scream",
+      "t0": 63.0,
+      "t1": 63.7,
+      "p": 0.949
+     },
+     {
+      "label": "scene.crying",
+      "t0": 63.0,
+      "t1": 63.8,
+      "p": 0.901
+     },
+     {
+      "label": "scene.distress",
+      "t0": 62.9,
+      "t1": 63.8,
+      "p": 0.82
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 62.9,
+      "t1": 63.6,
+      "p": 0.806
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 60.3,
+      "t1": 60.7,
+      "p": 0.766
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 58.7,
+      "t1": 59.8,
+      "p": 0.739
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 60.6,
+      "t1": 60.7,
+      "p": 0.479
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 60.6,
+      "t1": 60.8,
+      "p": 0.446
+     }
+    ],
+    "bio_events": [],
+    "text": "And the second one, and especially meaningful for this crew, is",
+    "awe": 0.21
+   },
+   {
+    "t0": 63.6,
+    "t1": 70.7,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.scream",
+      "t0": 63.0,
+      "t1": 63.7,
+      "p": 0.949
+     },
+     {
+      "label": "scene.crying",
+      "t0": 63.0,
+      "t1": 63.8,
+      "p": 0.901
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 66.3,
+      "t1": 66.8,
+      "p": 0.879
+     },
+     {
+      "label": "scene.distress",
+      "t0": 62.9,
+      "t1": 63.8,
+      "p": 0.82
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 63.2,
+      "t1": 63.8,
+      "p": 0.813
+     }
+    ],
+    "bio_events": [],
+    "text": "is a number of years ago we started this journey in our close -knit astronaut family and we lost a loved one.",
+    "awe": 0.21
+   },
+   {
+    "t0": 71.6,
+    "t1": 83.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 78.9,
+      "t1": 79.2,
+      "p": 0.724
+     },
+     {
+      "label": "scene.scream",
+      "t0": 71.7,
+      "t1": 71.8,
+      "p": 0.535
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 71.0,
+      "t1": 72.0,
+      "p": 0.521
+     },
+     {
+      "label": "scene.distress",
+      "t0": 70.8,
+      "t1": 72.0,
+      "p": 0.495
+     },
+     {
+      "label": "scene.crying",
+      "t0": 71.6,
+      "t1": 71.8,
+      "p": 0.447
+     }
+    ],
+    "bio_events": [],
+    "text": "And there's a feature in a really neat place on the moon and it is on the near side, far side boundary. In fact, it's just on the near side of that boundary. And so at certain times of",
+    "awe": 0.21
+   },
+   {
+    "t0": 84.8,
+    "t1": 85.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 84.7,
+      "t1": 85.1,
+      "p": 0.881
+     },
+     {
+      "label": "scene.phone_ring",
+      "t0": 84.9,
+      "t1": 85.0,
+      "p": 0.734
+     },
+     {
+      "label": "scene.crying",
+      "t0": 84.6,
+      "t1": 85.1,
+      "p": 0.667
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 84.2,
+      "t1": 85.2,
+      "p": 0.64
+     },
+     {
+      "label": "scene.distress",
+      "t0": 84.1,
+      "t1": 85.1,
+      "p": 0.615
+     },
+     {
+      "label": "scene.scream",
+      "t0": 84.9,
+      "t1": 85.1,
+      "p": 0.594
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 84.9,
+      "t1": 85.0,
+      "p": 0.53
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 84.7,
+      "t1": 85.1,
+      "p": 0.501
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 84.9,
+      "t1": 85.1,
+      "p": 0.407
+     }
+    ],
+    "bio_events": [],
+    "text": "of the moon's",
+    "awe": 0.21
+   },
+   {
+    "t0": 86.1,
+    "t1": 88.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "moon's transit around Earth, you can, we",
+    "awe": 0.0
+   },
+   {
+    "t0": 88.3,
+    "t1": 89.8,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crying",
+      "t0": 89.7,
+      "t1": 89.9,
+      "p": 0.548
+     },
+     {
+      "label": "scene.distress",
+      "t0": 89.8,
+      "t1": 89.9,
+      "p": 0.303
+     }
+    ],
+    "bio_events": [],
+    "text": "can, we will be able to see this from Earth.",
+    "awe": 0.0
+   },
+   {
+    "t0": 89.8,
+    "t1": 90.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crying",
+      "t0": 89.7,
+      "t1": 89.9,
+      "p": 0.548
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 90.3,
+      "t1": 90.5,
+      "p": 0.502
+     },
+     {
+      "label": "scene.distress",
+      "t0": 89.8,
+      "t1": 89.9,
+      "p": 0.303
+     }
+    ],
+    "bio_events": [],
+    "text": "from Earth.",
+    "awe": 0.0
+   },
+   {
+    "t0": 90.9,
+    "t1": 94.1,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.noise_other",
+      "t0": 90.4,
+      "t1": 91.1,
+      "p": 0.99
+     },
+     {
+      "label": "scene.scream",
+      "t0": 90.9,
+      "t1": 91.1,
+      "p": 0.74
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 94.0,
+      "t1": 94.2,
+      "p": 0.671
+     },
+     {
+      "label": "scene.distress",
+      "t0": 90.9,
+      "t1": 91.1,
+      "p": 0.573
+     },
+     {
+      "label": "scene.crying",
+      "t0": 91.0,
+      "t1": 91.1,
+      "p": 0.387
+     }
+    ],
+    "bio_events": [],
+    "text": "And so we lost a loved one, her name was Carol, the",
+    "awe": 0.21
+   },
+   {
+    "t0": 96.1,
+    "t1": 98.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 97.3,
+      "t1": 97.4,
+      "p": 0.724
+     },
+     {
+      "label": "scene.scream",
+      "t0": 96.0,
+      "t1": 96.1,
+      "p": 0.634
+     },
+     {
+      "label": "scene.distress",
+      "t0": 95.8,
+      "t1": 96.3,
+      "p": 0.472
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 95.8,
+      "t1": 96.3,
+      "p": 0.377
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 96.1,
+      "t1": 96.3,
+      "p": 0.337
+     },
+     {
+      "label": "scene.crying",
+      "t0": 96.9,
+      "t1": 97.0,
+      "p": 0.308
+     }
+    ],
+    "bio_events": [],
+    "text": "the spouse of Reed, the mother of",
+    "awe": 0.21
+   },
+   {
+    "t0": 98.5,
+    "t1": 99.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 99.5,
+      "t1": 100.7,
+      "p": 0.737
+     },
+     {
+      "label": "scene.gunshot_explosion",
+      "t0": 99.7,
+      "t1": 99.9,
+      "p": 0.388
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 99.6,
+      "t1": 99.9,
+      "p": 0.376
+     },
+     {
+      "label": "scene.distress",
+      "t0": 99.5,
+      "t1": 100.0,
+      "p": 0.366
+     }
+    ],
+    "bio_events": [],
+    "text": "of Katie and Ellie.",
+    "awe": 0.0
+   },
+   {
+    "t0": 103.3,
+    "t1": 106.0,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.alarm",
+      "t0": 103.2,
+      "t1": 103.7,
+      "p": 0.315
+     }
+    ],
+    "bio_events": [],
+    "text": "And if you want to find this one, you look at Glushko and",
+    "awe": 0.0
+   },
+   {
+    "t0": 107.7,
+    "t1": 114.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.scream",
+      "t0": 107.8,
+      "t1": 108.0,
+      "p": 0.713
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 107.5,
+      "t1": 108.1,
+      "p": 0.582
+     },
+     {
+      "label": "scene.distress",
+      "t0": 107.5,
+      "t1": 108.1,
+      "p": 0.553
+     },
+     {
+      "label": "scene.crying",
+      "t0": 107.8,
+      "t1": 108.0,
+      "p": 0.494
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 107.8,
+      "t1": 108.0,
+      "p": 0.313
+     }
+    ],
+    "bio_events": [],
+    "text": "and it's just to the northwest of that, at the same latitude as Ohm and it's a bright spot on the moon.",
+    "awe": 0.21
+   },
+   {
+    "t0": 116.7,
+    "t1": 118.8,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.crowd_ambience",
+      "t0": 116.4,
+      "t1": 116.7,
+      "p": 0.947
+     },
+     {
+      "label": "scene.glass_break",
+      "t0": 118.5,
+      "t1": 118.6,
+      "p": 0.577
+     },
+     {
+      "label": "scene.distress",
+      "t0": 118.4,
+      "t1": 118.7,
+      "p": 0.398
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 118.6,
+      "t1": 118.7,
+      "p": 0.364
+     },
+     {
+      "label": "scene.laughter",
+      "t0": 118.5,
+      "t1": 118.8,
+      "p": 0.308
+     }
+    ],
+    "bio_events": [],
+    "text": "And we would like to call her Carol and",
+    "awe": 0.22
+   },
+   {
+    "t0": 119.8,
+    "t1": 121.3,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 119.8,
+      "t1": 120.3,
+      "p": 0.871
+     },
+     {
+      "label": "scene.scream",
+      "t0": 119.4,
+      "t1": 120.2,
+      "p": 0.831
+     },
+     {
+      "label": "scene.phone_ring",
+      "t0": 120.1,
+      "t1": 120.2,
+      "p": 0.773
+     },
+     {
+      "label": "scene.alarm",
+      "t0": 119.4,
+      "t1": 120.3,
+      "p": 0.703
+     },
+     {
+      "label": "scene.distress",
+      "t0": 119.2,
+      "t1": 120.3,
+      "p": 0.67
+     },
+     {
+      "label": "scene.crying",
+      "t0": 119.4,
+      "t1": 120.2,
+      "p": 0.647
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 120.0,
+      "t1": 120.2,
+      "p": 0.579
+     },
+     {
+      "label": "bio_ev.sneeze",
+      "t0": 120.0,
+      "t1": 120.2,
+      "p": 0.469
+     },
+     {
+      "label": "scene.noise_other",
+      "t0": 119.9,
+      "t1": 120.2,
+      "p": 0.448
+     }
+    ],
+    "bio_events": [],
+    "text": "and you spell that C -A -R",
+    "awe": 0.21
+   },
+   {
+    "t0": 121.9,
+    "t1": 123.2,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.glass_break",
+      "t0": 122.9,
+      "t1": 123.0,
+      "p": 0.488
+     }
+    ],
+    "bio_events": [],
+    "text": "-R -R -O -L",
+    "awe": 0.0
+   },
+   {
+    "t0": 123.9,
+    "t1": 124.5,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "-L -L. Thank",
+    "awe": 0.0
+   },
+   {
+    "t0": 131.0,
+    "t1": 132.6,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [
+     {
+      "label": "scene.alarm",
+      "t0": 126.4,
+      "t1": 131.2,
+      "p": 0.676
+     },
+     {
+      "label": "bio_ev.cough",
+      "t0": 131.2,
+      "t1": 131.3,
+      "p": 0.421
+     }
+    ],
+    "bio_events": [],
+    "text": "Thank you.",
+    "awe": 0.0
+   },
+   {
+    "t0": 132.6,
+    "t1": 134.6,
+    "speaker": "S2",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "Thank you. Thank",
+    "awe": 0.0
+   },
+   {
+    "t0": 134.6,
+    "t1": 134.9,
+    "speaker": "S1",
+    "act": null,
+    "intent": null,
+    "device_directed": null,
+    "audio_events": [],
+    "bio_events": [],
+    "text": "you. Thank",
+    "awe": 0.0
+   }
+  ],
+  "awe_peaks": []
+ }
+}
