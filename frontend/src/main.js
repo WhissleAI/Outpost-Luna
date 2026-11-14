@@ -39,7 +39,7 @@ const TOUR_MS = 3000;   // minimum time at each tour stop
 const TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”";
 /** Mirrors turn_router.clear_question: a wh- / "tell me" / "can you" question of ≥ 3 words. */
 const clearQuestion = t => { const q = String(t || "").toLowerCase().replace(/[^a-z0-9 ?]/g, " ").replace(/\s+/g, " ").trim();
-  return q.split(" ").length >= 3 && (/^(what|where|when|why|who|whose|which|how)\b/.test(q) || /^(tell me|show me|can you|could you|do you|does|did|is|are|was|were|will|explain)\b/.test(q) || q.endsWith("?")); };
+  return q.split(" ").length >= 3 && (/^(what|where|when|why|who|whose|which|how)\b/.test(q) || /^(tell me|show me|can you tell|can you show|could you tell|explain|teach me)\b/.test(q)); };
 /** First two sentences: a tour stop's short story. */
 const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0, 2).join(" ").trim();
 

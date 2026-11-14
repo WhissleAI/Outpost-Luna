@@ -52,8 +52,12 @@ YES = re.compile(r"^(?:yes|yeah|yep|yup|sure|ok|okay|alright|all right|let s do 
                  r"yes please|ready|i m ready|affirmative|roger|copy)$")
 NO = re.compile(r"^(?:no|nope|nah|not now|no thanks|no thank you|negative|later|maybe later|stop|cancel)$")
 WH = re.compile(r"^(?:what|whats|what s|where|wheres|where s|when|why|who|whos|who s|whose|which|how|hows|how s)\b")
-ASKY = re.compile(r"^(?:tell me|show me|can you|could you|would you|do you|did|does|do|is|are|was|were|will|can|"
-                  r"could|should|have you|has|explain|i want to know|i wonder|teach me|let me (?:see|hear))\b")
+ASKY = re.compile(r"^(?:tell me|show me|can you (?:tell|show)|could you (?:tell|show)|explain|i want to know|"
+                  r"teach me|let me (?:see|hear))\b")
+# Yes/no question starts ("did you…", "is it…") are just as often one adult asking another: they count as a question
+# for us only when Arc says the turn is clearly device-directed.
+YESNO = re.compile(r"^(?:can you|could you|would you|do you|did|does|do|is|are|was|were|will|can|could|should|"
+                   r"have you|has|i wonder)\b")
 
 WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "first": 1,
            "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7, "eighth": 8, "1": 1, "2": 2,
@@ -169,7 +173,9 @@ def clear_question(text: str, dd: float | None = None, act: list[str] | None = N
     if act and not any(a in ("question", "request", "command") for a in act) and not text.strip().endswith("?") and \
             not WH.match(q):
         return False
-    return bool(WH.match(q) or ASKY.match(q) or text.strip().endswith("?"))
+    if WH.match(q) or ASKY.match(q):
+        return True
+    return bool((YESNO.match(q) or text.strip().endswith("?")) and dd is not None and float(dd) >= DD_STRONG)
 
 
 def lesson_number(tok: str, lessons: list[tuple[str, str]]) -> str | None:

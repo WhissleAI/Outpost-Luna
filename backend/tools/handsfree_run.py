@@ -373,16 +373,15 @@ class Live:
         return await self.drain(1.2)
 
     async def turn_audio(self, text: str) -> list[dict]:
-        """Render the line with Steer TTS, resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
+        """Render the line with Steer TTS (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
         import io
         import wave
 
         import httpx
         import numpy as np
         import websockets
-        async with httpx.AsyncClient(timeout=60) as h:
-            r = await h.post(self.models.rstrip("/") + "/v1/tts", json={"text": text, "voice": "guide"})
-            r.raise_for_status()
+        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # Steer TTS, a kid-ish voice
+        r.raise_for_status()
         w = wave.open(io.BytesIO(r.content))
         sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)
         n = int(len(x) * 16000 / sr)
