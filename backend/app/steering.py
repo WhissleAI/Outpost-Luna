@@ -57,6 +57,9 @@ SITUATIONS: dict[str, dict] = {
     "story":           {"tag": "nostalgia", "controls": {"rate": -0.5, "f0_med": 0.4}},
     "lesson_brief":    {"tag": "interest", "controls": {"rate": -0.2}},
     "guard":           {"tag": "serenity", "controls": {"rate": -0.3, "loud": -0.3}},
+    # ---- a11y / vocabulary (docs/VOICE_STEERING.md §4b) ----
+    # Slower and enunciated, with clear gaps and a little more melody: new words for younger kids, vocab exercises.
+    "vocab":           {"tag": "enunciated", "controls": {"rate": -1.0, "pause": 0.6, "f0_iqr": 0.3}},
 }
 
 # Kid affect (Arc / emotion) -> overrides. Applied on top of the situation, except it never speeds up a calming line.
@@ -115,7 +118,8 @@ def _merge(base: dict, over: dict, calm_only: bool = False) -> dict:
 
 
 def style_for(voice: str = "guide", text: str = "", situation: str | None = None, emotion: str | None = None,
-              places: list[str] | None = None, tag: str | None = None, controls: dict | None = None) -> dict:
+              places: list[str] | None = None, tag: str | None = None, controls: dict | None = None,
+              vocab: list[str] | None = None) -> dict:
     """The style of one `say`. voice: persona (guide|capcom|story|houston). situation: a SITUATIONS key.
     emotion: the kid's affect (Arc / emotion stream). places: names to emphasize. tag/controls: explicit overrides."""
     persona = voice if voice in VOICES else "guide"
@@ -156,6 +160,9 @@ def style_for(voice: str = "guide", text: str = "", situation: str | None = None
         out["situation"] = situation
     if emph:
         out["emph"], out["markup"] = emph, True
+    vw = vocab_words(text, vocab)          # a11y: vocabulary words said slower and stressed (§4b)
+    if vw:
+        out["vocab"], out["markup"] = vw, True
     return out
 
 
@@ -194,3 +201,59 @@ def lesson_situation(status: str, badge: bool = False) -> str:
         return "badge"
     return {"passed": "passed", "retry": "retry", "hint": "retry", "missed": "retry", "brief": "lesson_brief",
             "done": "passed"}.get(status, "lesson_brief")
+
+
+# ---- a11y: speaking pace + vocabulary emphasis (docs/VOICE_STEERING.md §4b, docs/ACCESSIBILITY.md) -------------------
+SPEEDS = (0.75, 1.0, 1.25, 1.5)       # the kid's caption-bar speed setting
+SPEED_RANGE = (0.6, 1.6)
+
+
+def speed_steer(speed: float | None) -> tuple[float, float]:
+    """The kid's speed (0.75×–1.5×) → (rate z-offset, pace). `rate` is added on top of the Director's style so the
+    voice still sounds like itself (an articulation change, not a tape speed-up); `pace` (Steer's global duration
+    divisor) carries the rest, since rate z-scores are clamped at ±2.5. 1× → (0, 1)."""
+    import math
+    try:
+        s = float(speed or 1.0)
+    except (TypeError, ValueError):
+        s = 1.0
+    s = max(SPEED_RANGE[0], min(SPEED_RANGE[1], s))
+    if abs(s - 1.0) < 1e-3:
+        return 0.0, 1.0
+    return round(2.0 * math.log2(s), 2), round(s ** 0.55, 2)
+
+
+def with_speed(controls: dict | None, speed: float | None) -> tuple[dict, float]:
+    """Controls with the speed's rate offset added (clamped) → (controls, pace)."""
+    d, pace = speed_steer(speed)
+    c = dict(controls or {})
+    if d:
+        c["rate"] = round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(c.get("rate", 0.0)) + d)), 2)
+    return c, pace
+
+
+def vocab_words(text: str, vocab: list[str] | None) -> list[str]:
+    """The vocabulary words (lesson terms) that appear in `text`, in order, at most 3."""
+    out: list[str] = []
+    for w in vocab or []:
+        w = str(w).strip()
+        if w and w not in out and re.search(rf"(?<![\w*]){re.escape(w)}(?![\w*])", text, re.I) and len(out) < 3:
+            out.append(w)
+    return out
+
+
+def apply_vocab(text: str, vocab: list[str] | None) -> str:
+    """Wrap each vocabulary word in `<slow><emph>…</emph></slow>` (first occurrence): ×1.4 × 1.2 duration, +2.5 st,
+    +4 dB on just that word, so a new word stands out without slowing the whole line."""
+    for w in vocab or []:
+        if not w:
+            continue
+        pat = re.compile(rf"(?<![\w*>]){re.escape(w)}(?![\w*<])", re.I)
+        text = pat.sub(lambda m: f"<slow><emph>{m.group(0)}</emph></slow>", text, count=1)
+    return text
+
+
+def apply_markup(text: str, emph: list[str] | None = None, vocab: list[str] | None = None) -> str:
+    """Vocabulary markup first, then emphasis on anything not already inside a vocab span."""
+    vs = {v.lower() for v in vocab or []}
+    return apply_emphasis(apply_vocab(text, vocab), [e for e in (emph or []) if e.lower() not in vs])
