@@ -94,7 +94,12 @@ def test_course_spoken_lines_short():
                       "Time's up. " + s["hint"]]                  # a missed check-ride order
         for line in lines:
             assert words(line) <= SPOKEN_MAX, f"{l['id']}: {line!r} has {words(line)} words"
-        assert words(l["title"]) <= 6, l["title"]
+        assert words(l["title"]) <= 6 and len(l["title"]) <= 24, l["title"]   # fits 2 lines under a patch stop
+        for s in l["steps"]:
+            assert len(s["prompt"]) <= 90, f"{l['id']}: prompt over 90 characters: {s['prompt']!r}"
+            assert "say it, or tap" not in s["prompt"].lower() and "or say it" not in s["prompt"].lower(), s["prompt"]
+            if s["accept"]["type"] == "keywords" and s["accept"].get("all"):
+                assert re.search(r'"[^"]+"', s["prompt"]), f"{l['id']}: a readback prompt keeps its quoted order"
 
 
 def test_course_still_valid():

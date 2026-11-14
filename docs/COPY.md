@@ -87,7 +87,68 @@ Also when speaking:
   - Show `callSign.shown()`.
 - Only the 12 presets in `CALLSIGNS` are ever said aloud.
 
-## 3. Glossary: one word for one thing
+### Numbers
+
+- Every number must come from data, never typed in by hand.
+  - In a fact, the number must appear in the cited data file. `content.check()` enforces this.
+  - In a sim or CAPCOM line, interpolate the sim's own value. For example, a storm's "Radiation 4x normal" is `ev['dose_multiplier']`, the same value `dose_rate()` multiplies by.
+  - If a number can't be derived, leave it out.
+- Round the way a kid would read it: "about 21 km wide", "157 hours".
+
+## 3. Writing a lesson (`course.json`)
+
+Use this checklist for any new or redesigned lesson. `backend/tests/test_copy.py` and `content.check()` enforce the starred (★) rules.
+
+### Copy fields
+
+| Field | Seen or heard | Rule |
+|---|---|---|
+| `title` | Under the patch stop on the course map; also spoken by voice ("lesson power from the sun") | ★ 6 words or fewer. **24 characters or fewer**. Plain words, title case not required. Must be unique: the router matches titles by voice. |
+| `brief` | Spoken at lesson start, after the story beat and "Ready, Nova?"; shown inside the brief disclosure | ★ 20 words or fewer. Aim for 15 or fewer, in **1 or 2 sentences**. One idea, the why. No welcome ("Welcome, cadet…"); the beat does that. |
+| `steps[].prompt` | The 20px question on screen, and spoken | ★ 20 words or fewer. **90 characters or fewer**. A question or one order. Never "say it, or tap…": the panel's "how" line covers input. |
+| `steps[].success` | Spoken and shown after a pass | 8 words or fewer. Radio word first ("Roger.", "Copy.", "Correct.", "Yes."), then the payoff fact. |
+| `steps[].fail` | Spoken and shown on a miss | 6 words or fewer. Kind and specific: "Not quite. Look lower." Never "Wrong". |
+| `steps[].hint` | After 2 misses: spoken as `fail + " Hint: " + hint`, also shown | ★ fail + hint is 20 words or fewer. The hint is 10 words or fewer. It nudges toward the answer and doesn't quote the exact order (the open mic hears it back). |
+| `steps[].capcom` | The order CAPCOM speaks in a readback step | Starts with "Commander,", then the order. |
+| `accept.options[].label` | An answer row (52px), which the kid can also say | 6 words or fewer. Labels within a step share no key words: a spoken label matches by its words. |
+| `facts[].text` | "NASA facts" disclosure, and the guide's lesson card | ★ Has a `source {title,url}`, and its numbers appear in its `from` files. One sentence where you can. |
+| `library.label` | Button | 1 to 3 words, verb first: "Open Surveyor 3". |
+| `badge.name` | The patch name | 1 to 2 words: "Sun Tracker", "Ice Hunter". |
+
+### Hard constraints, which are matching logic and not copy
+
+- **Keyword (readback) steps** must keep the order **in double quotes** inside `prompt`:
+  `CAPCOM: "Send the rover for ice." Start your readback with roger.`
+  The paraphrase matcher (`grade.references`) and the hands-free test both read the quoted text.
+- **Don't put quotes in other keyword prompts.** Quotes there would become references.
+- **Never change these:** ids, `accept` (except option labels; see the label rule above), `from`, or `source`.
+
+### Space words
+
+- First use in a lesson: give a 6-word gloss in the success line.
+  - "Yes. A mare is a dark plain of old lava."
+  - "Right. Regolith, the Moon's dusty soil."
+- After that, use the word plainly.
+
+### Tone per step type
+
+| Step type | How to write it |
+|---|---|
+| choice | Ask a real question with one clearly right answer. Wrong options are plausible, never silly. |
+| tap / intent | Say what to find, plus one visual landmark ("inside the gold ring"). |
+| command | A situation, then the need: "Night is coming. Move power to the heaters so the pipes don't freeze." |
+| clip | "Listen to Jim Lovell." Then the question. |
+
+## 4. Mission lines that UX wires
+
+| Key | When it is said | Rule |
+|---|---|---|
+| `CAPCOM.missionStart` | Once, when the outpost comes online | Spoken with `callSign.spoken()` |
+| `CAPCOM.firstShift` | **First mission only.** Said once right after `missionStart`, and again only after a silence with no order yet. Never more than that. | 12 words or fewer: "Set your power, then end the shift." |
+| `RIDE.mars` | **On screen only**, on the check-ride result card. The backend also sends it as `fact` on the ride's `done` reply. | Never spoken |
+| `OFFER.*` | Once, after the line it follows | Never add "Say yes" or "Say next" |
+
+## 5. Glossary: one word for one thing
 
 | Term | Use it for | Don't say |
 |---|---|---|
@@ -120,12 +181,12 @@ Radio words are taught in Lesson 2 and used everywhere after it:
 | **Negative** | No, not that |
 | **Confirmed** | Done as asked |
 
-## 4. Before → after: the worst 30
+## 6. Before → after: the worst 30
 
 | # | Where | Before | After |
 |---|---|---|---|
 | 1 | CAPCOM readback | Copy, commander. Moving 20 percent of power to the radiation shields. That leaves less for the life support. Shields now gets 40% of the power. | Copy. Radiation shields up 20 percent. Less for the life support. Shields now at 40%. |
-| 2 | Check-ride result | …Check ride complete. Power 62%, life support 71%, dose 3.4 of 50 mSv. 4 of 4 orders right. On Mars, Houston would answer 6–44 minutes later. You are qualified, Commander! | Copy. Rover rolling out for ice. Check ride done. 4 of 4 orders right. You're qualified, Commander. |
+| 2 | Check-ride result | …Check ride complete. Power 62%, life support 71%, dose 3.4 of 50 mSv. 4 of 4 orders right. On Mars, Houston would answer 6–44 minutes later. You are qualified, Commander! | Copy. Rover rolling out for ice. Check ride done. 4 of 4 orders right. You're qualified, Commander. (The Mars fact moves to the result card as `fact`.) |
 | 3 | Mission start (spoken) | Outpost Luna is online at Malapert Massif, Nova. Day 1. Check your power levers, then say "end shift". | Outpost Luna is online at Malapert Massif. Day one, Nova. |
 | 4 | Academy patch offer | Patch earned, Nova: Sun Tracker! Next up: Radiation and solar storms. Say next when you're ready. | Patch earned: Sun Tracker. Nice work, Nova. Ready for the next lesson? |
 | 5 | Debrief offer | …Your grade is B, with 812 points. Want to fly again? Say fly again. | Nice flying, Nova. Grade B, 812 points. Fly again? |
@@ -155,7 +216,7 @@ Radio words are taught in Lesson 2 and used everywhere after it:
 | 29 | Sim: sunset | The Sun just slipped below the horizon. Batteries only until it comes back. | Sunset. Batteries only until the Sun returns. |
 | 30 | Shift report | Day 3, shift 2. (two events) Power 62%, life support 71%, dose 3.4 of 50 mSv. | Day 3, shift 2. (latest event) Power 62%, air 71%, dose 3.4 mSv. |
 
-## 5. Keys for UX templates (`story.js`)
+## 7. Keys for UX templates (`story.js`)
 
 Templates should import these keys and not hardcode the words.
 
