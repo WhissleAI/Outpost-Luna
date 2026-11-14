@@ -93,16 +93,18 @@ export function createCabin(root, o = {}) {
 
     <section class="cb-controls" aria-label="Controls">
       <div class="cb-grp" data-panel="habitat" role="group" aria-label="Habitat panel">
-        <div class="cb-plate cb-hab"><h3>Habitat</h3><div class="cb-sws">${sw("heaters")}${sw("science")}</div></div>
+        <div class="cb-plate cb-hab"><h3>Habitat</h3><div class="cb-info" id="cbInfoHab"></div><div class="cb-sws">${sw("heaters")}${sw("science")}</div><ol class="cb-obj" id="cbObj" hidden></ol></div>
       </div>
       <div class="cb-grp" data-panel="rover" role="group" aria-label="Rover panel">
         <div class="cb-plate cb-rv"><h3>Rover</h3>
           <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
           <span class="cb-rvst" id="cbRvSt"></span>
+          <svg class="cb-route" id="cbRoute" viewBox="0 0 200 64" aria-hidden="true"></svg>
+          <div class="cb-info" id="cbInfoRv"></div>
         </div>
       </div>
       <div class="cb-grp" data-panel="radiation" role="group" aria-label="Radiation panel">
-        <div class="cb-plate cb-shield"><h3>Radiation</h3>
+        <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-info" id="cbInfoRad"></div>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
             <span class="cb-shl">Shields ${pretend()}</span>
@@ -126,7 +128,7 @@ export function createCabin(root, o = {}) {
         </div>
       </div>
       <div class="cb-grp" data-panel="comm" role="group" aria-label="Comm panel">
-        <div class="cb-plate cb-comm"><h3>Comm</h3>
+        <div class="cb-plate cb-comm"><h3>Comm</h3><div class="cb-tl" id="cbCommTl" aria-hidden="true"></div><div class="cb-info" id="cbInfoComm"></div><ul class="cb-fc" id="cbFc" hidden></ul>
           <button type="button" class="cb-ptt" id="cbPtt" aria-label="Call Houston"><span class="cb-ptt-t">${ic("houston", 18)}<span>Call Houston</span></span><small id="cbPttSub"></small><i class="cb-trip" aria-hidden="true"></i></button>
         </div>
       </div>
@@ -287,6 +289,32 @@ export function createCabin(root, o = {}) {
     const panel = node.closest("[data-panel]"); if (move && c3 && panel) c3.open(k === "load" ? "power" : panel.dataset.panel);
     return node;
   }
+  /** Panel read-outs (real fields when the sim sends them; nothing is shown for a field that is absent). */
+  const mbar = (v, max = 100, cls = "") => `<i class="cb-mbar ${cls}"><b style="width:${clamp(v / max * 100)}%"></b></i>`;
+  const irow = (k, v, bar = "") => `<div class="cb-irow"><span>${k}</span>${bar}<b>${v}</b></div>`;
+  function paintInfo(s) {
+    const r = s.resources, e = s.env || {}, L = s.loads, rv = s.rover || {}, lim = r.dose_limit_msv || 50;
+    const hab = q("#cbInfoHab"); if (hab) hab.innerHTML = irow("Life support", Math.round(r.life_support_pct) + "%", mbar(r.life_support_pct, 100, r.life_support_pct < 25 ? "is-warn" : ""))
+      + irow(`Greenhouse ${pretend()}`, Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0)) + irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0));
+    const obj = q("#cbObj"), O = s.objectives || null;
+    if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
+    const rad = q("#cbInfoRad"), wn = stormWarning(s);
+    if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
+      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
+    const ri = q("#cbInfoRv"); if (ri) ri.innerHTML = (rv.busy ? irow("Back in", `${rv.eta_h} h`) : "") + (rv.battery_pct != null ? irow("Battery", Math.round(rv.battery_pct) + "%", mbar(rv.battery_pct)) : "")
+      + (rv.dose_msv != null ? irow("Rover dose", (+rv.dose_msv).toFixed(1) + " mSv") : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
+    const rt = q("#cbRoute"); if (rt) { const tot = TOTAL_H[rv.task] || 8, pr = rv.busy ? clamp(1 - (rv.eta_h || 0) / tot, 0, 1) : 0, out = rv.task === "return" ? 1 - pr : pr < .5 ? pr * 2 : (1 - pr) * 2;
+      const x = 20 + out * 160, y = 40 - Math.sin(out * Math.PI) * 18;
+      rt.innerHTML = `<path class="r-line" d="M20 40 Q100 4 180 40"/><circle class="r-base" cx="20" cy="40" r="6"/><circle class="r-goal" cx="180" cy="40" r="6"/>
+        <circle class="r-rover${rv.busy ? " is-on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5"/><text x="20" y="60">Base</text><text x="180" y="60" text-anchor="end">${rv.task === "explore" ? "Cabeus" : "Ice"}</text>`; }
+    const tl = q("#cbCommTl"); if (tl) { const W = s.env.comm_windows || s.comm_windows || null, t = (s.mission_time_h || 0) / 240;
+      tl.innerHTML = `<div class="tl-bar">${W ? W.map(w => `<i style="left:${w.start_h / 2.4}%;width:${(w.end_h - w.start_h) / 2.4}%"></i>`).join("") : `<i class="${e.earth_visible ? "" : "is-off"}" style="left:0;width:${clamp(t * 100)}%"></i>`}<em style="left:${clamp(t * 100)}%"></em></div><span>Day 1</span><span>Day 10</span>`; }
+    const ci = q("#cbInfoComm"); if (ci) ci.innerHTML = irow("Earth", e.earth_visible ? "In view" : "Below the horizon") + (!e.earth_visible && e.next_comm_window_h != null ? irow("Next window", `${e.next_comm_window_h} h`) : "")
+      + (e.earth_visible ? irow("Radio delay", `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way`) : "") + (s.science_waiting != null ? irow("Science to send", Math.round(s.science_waiting)) : "");
+    const fc = q("#cbFc"), F = s.forecasts || null;
+    if (fc) { fc.hidden = !(F && F.length); if (F && F.length) fc.innerHTML = F.slice(0, 3).map(f => { const c = f.confidence ?? f.probability, cp = c == null ? null : Math.round(c > 1 ? c : c * 100);
+      return `<li>${ic("storm", 14)}<span>${esc(f.name || "Solar storm")}</span><b>${f.lead_h != null ? `in ~${f.lead_h} h` : ""}${cp != null ? ` · ${cp}%` : ""}</b></li>`; }).join(""); }
+  }
   function moved(el) { if (!el) return; el.classList.remove("is-moved"); void el.offsetWidth; el.classList.add("is-moved"); }
 
   function update(s) {
@@ -330,7 +358,7 @@ export function createCabin(root, o = {}) {
     q("#cbPttSub").textContent = e.earth_visible ? "Earth in view" : "No signal";
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
     q("#cbEndSub").textContent = s.over ? "Mission over" : `Shift ${s.shift} of 4`;
-    applyCue(false);
+    applyCue(false); paintInfo(s);
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 

@@ -286,7 +286,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
     if (!waitingNext && R.wire) R.wire(panel.querySelector("#aInput"), ctx);
     const slot = panel.querySelector("#aRideSlot"); if (slot && rideEl) { slot.replaceWith(rideEl); if (ride.state) rideCk.update(ride.state); }
-    if (ride && rideCk && ride.state) { rideCk.update(ride.state); rideCue(); }   // [ride]
+    if (ride && rideCk) { if (ride.state) rideCk.update(ride.state); setTimeout(rideCue, 400); }   // [ride]
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
   }
 
@@ -339,7 +339,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!host) { host = document.createElement("section"); host.id = "aRideCabin"; host.className = "m-cabin a-ridecabin"; host.setAttribute("aria-label", "Check ride cabin"); panel.parentNode.insertBefore(host, panel); }
     host.hidden = false; document.body.dataset.ride = "1";
     rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
-    if (ride && ride.state) { rideCk.update(ride.state); rideCue(); }
+    if (ride && ride.state) rideCk.update(ride.state);
+    setTimeout(rideCue, 400);
     if (!rideSite) return;
     globe.mission.enter();
     globe.mission.setSite({ ...rideSite, short: rideSite.name.split(" (")[0] }, { dist: 2.2 });

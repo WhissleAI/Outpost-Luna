@@ -21,10 +21,10 @@ const LAYOUT = {
   // the three display units, side by side under the window (DU1 commander-side power, DU2 shared, DU3 radiation)
   displays: { pos: [0, 0.98, -1.5], rot: [-0.42, 0, 0], w: 2.0, px: 1200, pxh: 330, pedestal: true },
   // switch panels round the displays: habitat + rover on the left, radiation + comm on the right, C&W + End shift below
-  habitat: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 300 },
-  rover: { pos: [-1.12, 0.66, -1.02], rot: [-0.62, 0.6, 0], w: 0.8, px: 560, pxh: 250 },
-  radiation: { pos: [1.25, 1.14, -1.2], rot: [-0.22, -0.6, 0], w: 0.8, px: 560, pxh: 300 },
-  comm: { pos: [1.12, 0.66, -1.02], rot: [-0.62, -0.6, 0], w: 0.8, px: 560, pxh: 250 },
+  habitat: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 340 },
+  rover: { pos: [-1.12, 0.62, -1.02], rot: [-0.62, 0.6, 0], w: 0.8, px: 560, pxh: 300 },
+  radiation: { pos: [1.25, 1.14, -1.2], rot: [-0.22, -0.6, 0], w: 0.8, px: 560, pxh: 340 },
+  comm: { pos: [1.12, 0.62, -1.02], rot: [-0.62, -0.6, 0], w: 0.8, px: 560, pxh: 320 },
   pedestal: { pos: [0, 0.6, -1.12], rot: [-1.0, 0, 0], w: 1.15, px: 800, pxh: 300 },
 };
 /** Zoom targets that are part of a bigger console: [object, left fraction, right fraction]. */

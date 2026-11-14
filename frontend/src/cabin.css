@@ -372,6 +372,48 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 /* Cadet: when the offer is on its panel, CAPCOM's card does not repeat the buttons */
 body:has(.cb-offer) .card .card-actions{display:none}
 .cb-grp[hidden]{display:none}
+/* panel read-outs */
+.cb-info{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--text-sm)}
+.cb-info:empty{display:none}
+.cb-irow{display:grid;grid-template-columns:auto minmax(40px,1fr) auto;align-items:center;gap:var(--space-2);color:var(--cb-text-2)}
+.cb-irow>span{font-family:var(--font-ui);font-size:var(--text-sm);font-weight:var(--weight-medium);white-space:nowrap}
+.cb-irow>b{grid-column:3;font-weight:var(--weight-semibold);color:var(--color-on-space);white-space:nowrap}
+.cb-mbar{display:block;height:6px;border-radius:3px;background:var(--color-display);overflow:hidden}
+.cb-mbar b{display:block;height:100%;border-radius:3px;background:var(--color-phosphor);transition:width var(--dur-slow) var(--ease-out)}
+.cb-mbar.is-warn b{background:var(--color-lamp-warning)} .cb-mbar.is-caution b{background:var(--color-lamp-caution)}
+.cb-obj{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--text-sm);color:var(--cb-text-2)}
+.cb-obj li{display:flex;align-items:center;gap:var(--space-2)} .cb-obj li.is-done{color:var(--color-on-space)} .cb-obj li.is-done .ic{color:var(--color-lamp-caution)}
+.cb-route{width:100%;height:64px}
+.cb-route .r-line{fill:none;stroke:var(--cb-line);stroke-width:2;stroke-dasharray:4 4}
+.cb-route .r-base{fill:var(--color-on-space-2)} .cb-route .r-goal{fill:none;stroke:var(--color-lamp-info);stroke-width:2}
+.cb-route .r-rover{fill:var(--cb-text-2);transition:cx var(--dur-slow),cy var(--dur-slow)} .cb-route .r-rover.is-on{fill:var(--color-phosphor)}
+.cb-route text{font-family:var(--font-ui);font-size:10px;fill:var(--cb-text-2)}
+.cb-tl{display:grid;grid-template-columns:1fr 1fr;gap:2px 0;font-size:10px;color:var(--cb-text-2)}
+.cb-tl span:last-child{text-align:right}
+.tl-bar{grid-column:1/-1;position:relative;height:10px;border-radius:5px;background:var(--color-display);overflow:hidden}
+.tl-bar i{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--color-lamp-info) 70%,transparent)}
+.tl-bar i.is-off{background:var(--cb-line)}
+.tl-bar em{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--color-on-space)}
+.cb-fc{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--text-sm);color:var(--cb-text-2)}
+.cb-fc li{display:flex;align-items:center;gap:var(--space-2)} .cb-fc li b{margin-left:auto;font-family:var(--font-mono);color:var(--color-lamp-caution)}
+.cb-grp.c3-panel[data-panel="habitat"],.cb-grp.c3-panel[data-panel="radiation"]{height:340px}
+.cb-grp.c3-panel[data-panel="rover"]{height:300px}
+.cb-grp.c3-panel[data-panel="comm"]{height:320px}
+.c3-panel .cb-plate{gap:var(--space-3)}
+/* check ride: the cabin fills the stage left of the lesson card; the app's own voice bar and captions are in use */
+.a-ridecabin{right:calc(var(--panel-w) + var(--space-4) * 2)}
+.a-ridecabin[hidden]{display:none}
+.a-ridecabin .cb-commrow{display:none}
+/* pedestal: readable lamps from the seat, End shift a proportionate lit push-button (not a slab) */
+.cb-grp.c3-panel[data-panel="pedestal"]{grid-template-columns:minmax(0,1fr) 220px}
+.c3-panel[data-panel="pedestal"] .cb-lamp{min-height:48px;font-size:15px;letter-spacing:.02em}
+.c3-panel[data-panel="pedestal"] .cb-lamps{gap:var(--space-2)}
+.c3-panel[data-panel="pedestal"] .cb-master{width:96px;font-size:var(--text-sm)}
+.c3-panel[data-panel="pedestal"] .cb-ped{align-items:center;justify-content:center}
+.c3-panel[data-panel="pedestal"] .cb-end{flex:none;width:168px;height:120px;border-radius:var(--radius-lg);
+  box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--color-on-accent-strong) 25%,transparent),0 0 24px color-mix(in srgb,var(--color-accent-strong) 55%,transparent),0 6px 0 var(--color-space)}
+.c3-panel[data-panel="pedestal"] .cb-end span{font-size:var(--text-lg)}
+.c3-panel[data-panel="pedestal"] .cb-end:active{transform:translateY(3px);box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--color-on-accent-strong) 25%,transparent),0 2px 0 var(--color-space)}
 /* check ride: the next order's control pulses (one at a time) */
 .is-cue{position:relative;border-radius:var(--radius-md);box-shadow:0 0 0 3px var(--color-accent-strong),0 0 24px color-mix(in srgb,var(--color-accent-strong) 60%,transparent)!important;
   animation:cbCue 1.4s var(--ease-in-out) infinite}
