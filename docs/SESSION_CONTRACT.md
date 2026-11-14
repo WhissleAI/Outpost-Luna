@@ -15,6 +15,7 @@ its events into the session server-side.
 | `ui` | client | `{event:"tap_place"\|"tap_artifact"\|"button"\|"end_shift"\|"lesson_answer"…, id?, value?}` | Taps and buttons are input too |
 | `playback` | client | `{kind:"guide"\|"crew", state:"start"\|"end"\|"interrupted", id?, t?}` | So the Director knows who holds the floor |
 | `typed` | client | `{text}` | Typed questions; same path as speech |
+| `prefs` (or `type:"prefs"`) | client | `{voice?, voice_all?, rate?, expressiveness?, filter?, level?}` | Settings, after `hello` on every connect (partial updates fine); acked with `{t:"prefs", applied}`. Never persisted server-side. See `VOICES.md` |
 | (server-side) `words` / `turn` / `arc` / `emotion` | `/ws/listen` relay | as today | Flux words + turns, Arc metadata |
 | (server-side) `telemetry` / `event` | mission sim | as `MISSION_CONTRACT.md` | Proactive: storms, comm windows, alarms |
 

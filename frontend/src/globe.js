@@ -65,13 +65,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     return { a, el, p: ll2v(a.lat, a.lon, R * 1.003) };
   });
 
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffc35a, side: THREE.DoubleSide, transparent: true, opacity: .95 });
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xf3f5f8, side: THREE.DoubleSide, transparent: true, opacity: .8 });
   let ring = null, sel = null, fly = null;
 
   function highlight(f) {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); }
     const ang = Math.max((f.km / 2) / MOON_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
-    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.8 : 0.92), r, 96), ringMat);
+    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.86 : 0.965), r, 96), ringMat);
     const n = ll2v(f.lat, f.lon).normalize();
     ring.position.copy(n.clone().multiplyScalar(h * R + 0.004)); ring.lookAt(n.clone().multiplyScalar(5));
     scene.add(ring); sel = f;
@@ -81,8 +81,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     label.hidden = false;
   }
 
-  function flyTo(lat, lon, dist) {
-    const d = ll2v(Math.max(-75, Math.min(75, lat)), lon).normalize();
+  function flyTo(lat, lon, dist, maxLat = 75) {   // maxLat: how close to a pole the camera may look (the map's polar view: 88)
+    const d = ll2v(Math.max(-maxLat, Math.min(maxLat, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
     fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: 1300 };
   }
@@ -173,6 +173,69 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     });
   }
 
+  // ---------- Route: the Flight School course map as pins on the Moon (academy/ui.js) ----------
+  // Each stop is an HTML button the caller builds (patch art, label); the globe places it every frame at its real
+  // lat/lon (plus an optional pixel nudge so close polar stops don't overlap), with a dot at the true spot and a dotted
+  // line linking the stops in order. Stops round the back of the Moon fade out.
+  const rlayer = document.createElement("div"); rlayer.className = "route"; rlayer.hidden = true; stage.append(rlayer);
+  const rsvg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); rsvg.setAttribute("class", "route-lines"); rsvg.setAttribute("aria-hidden", "true");
+  rlayer.append(rsvg);
+  let rstops = [], rdone = 0;
+  const route = {
+    /** stops: [{id, lat, lon, el, nudge:[dx,dy]}]; done = how many stops (from the start) are complete */
+    set(stops, done = 0) {
+      rlayer.querySelectorAll(".route-stop, .route-dot").forEach(e => e.remove());
+      rstops = stops.map(s => {
+        const dot = document.createElement("i"); dot.className = "route-dot"; rlayer.append(dot);
+        s.el.classList.add("route-stop"); rlayer.append(s.el);
+        return { ...s, dot, p: ll2v(s.lat, s.lon, R * 1.003), x: 0, y: 0, on: false };
+      });
+      rdone = done; rlayer.hidden = !rstops.length;
+    },
+    clear() { route.set([]); },
+  };
+  function tickRoute() {
+    if (rlayer.hidden) return;
+    const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+    // pins on the near hemisphere only (fading out well before the limb, where they'd be squashed); then pushed apart
+    // on screen so close stops (the south-pole cluster) never overlap, with a dot left on the true spot
+    rstops.forEach(s => {
+      const f = s.p.clone().normalize().dot(cam);
+      s.f = f; s.on = f > 0.3; tmp.copy(s.p).project(camera);
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 30 : 6);   // the next pin keeps room for its label
+    });
+    const vis = rstops.filter(s => s.on);
+    for (let it = 0; it < 6; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
+      const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
+      if (d >= need) return;
+      const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
+    }));
+    rstops.forEach(s => {
+      const op = Math.max(0, Math.min(1, (s.f - 0.3) / 0.15)).toFixed(2);
+      s.dot.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px)`; s.dot.style.opacity = Math.hypot(s.bx - s.x, s.by - s.y) > 4 ? op : 0;
+      s.el.style.transform = `translate(${s.bx.toFixed(1)}px,${s.by.toFixed(1)}px)`; s.el.style.opacity = op;
+      s.el.style.visibility = s.on ? "" : "hidden"; s.el.tabIndex = s.on ? 0 : -1;
+    });
+    // the route follows the surface: each leg is a great-circle arc, drawn only where it faces the camera
+    let d = "", dd = "";
+    const q = new THREE.Vector3();
+    for (let i = 1; i < rstops.length; i++) {
+      if (i > rdone) break;   // only the legs flown, and the one to the next stop
+      const a = rstops[i - 1].p.clone().normalize(), b = rstops[i].p.clone().normalize();
+      const om = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))), n = Math.max(2, Math.ceil(om * 40)); let pen = false, seg = "";
+      for (let k = 0; k <= n; k++) {
+        const t = k / n, s0 = Math.sin(om) || 1;
+        q.copy(a).multiplyScalar(Math.sin((1 - t) * om) / s0).add(b.clone().multiplyScalar(Math.sin(t * om) / s0)).normalize().multiplyScalar(R * 1.003);
+        if (q.clone().normalize().dot(cam) < 0.08) { pen = false; continue; }
+        tmp.copy(q).project(camera);
+        seg += `${pen ? "L" : "M"}${((tmp.x + 1) / 2 * w).toFixed(1)},${((1 - tmp.y) / 2 * h).toFixed(1)}`; pen = true;
+      }
+      if (i <= rdone - 1) dd += seg; else if (i === rdone) d += seg;
+    }
+    rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
+  }
+
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
   let band = null, paused = false;
@@ -213,7 +276,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
       label.style.opacity = facing ? 1 : 0;
     }
-    tickMission();
+    tickMission(); tickRoute();
     if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -238,6 +301,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   return {
     showFeature, highlight, flyTo, nearest, mission, setViewport,
+    /** Screen position (px in the stage) of a surface point, and whether it faces the camera. Used by the site pins. */
+    project(lat, lon) { const p = ll2v(lat, lon, R * 1.004), v = p.clone().project(camera);
+      return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05 }; },
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
@@ -253,6 +319,11 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     },
     /** Stop any flight in progress where it is. */
     halt() { fly = null; },
+    route,
+    /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */
+    setQuality(q) { renderer.setPixelRatio(q === "low" ? 1 : Math.min(devicePixelRatio, 2)); resize(); },
+    /** Place dots + hardware markers on/off (off on Flight School screens, where the route pins are the map). */
+    setDecor(on) { if (mi.on) return; pins.visible = !!on; layer.style.display = on ? "" : "none"; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },

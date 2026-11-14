@@ -117,58 +117,129 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     btn = mk("button", "icon-btn a11y-btn", { id: "a11yBtn", type: "button" });
     (document.querySelector(".topnav") || document.querySelector(".topbar") || document.body).append(btn);
   }
-  if (!btn.innerHTML.trim()) btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2" fill="currentColor"/><path fill="currentColor" d="M4 8.5 12 10l8-1.5.4 2L15 11.6V14l2 7-2 .6-2.4-6.2h-1.2L9 21.6 7 21l2-7v-2.4l-5.4-1.1.4-2Z"/></svg>`;
-  ariaControl(btn, "Accessibility settings", { expanded: false });
-  btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Accessibility: speed, captions, contrast, text size";
-  (document.querySelector(".topnav") || btn.parentElement).append(noAudio);
+  if (!btn.innerHTML.trim()) btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5 12 10l7-1.5M12 10v4l-3 7M12 14l3 7"/></svg>`;
+  ariaControl(btn, "Settings", { expanded: false });
+  btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Settings";
+  // "No audio needed" lives in the settings panel (the top bar stays quiet).
 
+  const scrim = mk("div", "set-scrim", { hidden: "", "aria-hidden": "true" });
   const panel = mk("div", "a11y-panel", { role: "dialog", "aria-modal": "true", "aria-labelledby": "a11yTitle", hidden: "" });
-  document.body.append(panel);
+  document.body.append(scrim, panel);
+  // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
+  // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
+  const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
+    ["cadets", "Cadets"], ["help", "Help"]];
+  let section = "voice", resetArmed = false;
   function renderPanel() {
+    const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
+    const seg = (key, label, opts) => `<fieldset class="set-seg"><legend>${label}</legend><div class="a11y-speed">${opts.map(([v, t]) =>
+      `<label><input type="radio" name="p-${key}" data-p="${key}" value="${v}" ${P[key] === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div></fieldset>`;
+    const range = (key, label, lo, hi, step, fmt) => `<label class="a11y-range"><b>${label} <output>${fmt(P[key])}</output></b>
+      <input type="range" min="${lo}" max="${hi}" step="${step}" value="${P[key]}" data-p="${key}" aria-valuetext="${fmt(P[key])}"></label>`;
+    const pct = v => Math.round((+v || 0) * 100) + "%";
+    const body = {
+      voice: `<div class="set-voices" id="setVoices" aria-live="polite"></div>
+        <fieldset class="set-seg"><legend>Speed</legend><div class="a11y-speed">
+          ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""} aria-label="Voice speed ${v} times"><span>${v}×</span></label>`).join("")}</div></fieldset>
+        ${PA ? range("expressiveness", "Expressiveness", 0, 1, 0.25, v => (v <= 0.25 ? "Calm" : v >= 0.75 ? "Lively" : "Balanced")) : ""}
+        ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`,
+      sound: PA ? `${range("volume", "Volume", 0, 1, 0.05, pct)}${range("alarms", "Alarms", 0, 1, 0.05, pct)}
+        ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
+        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}` : "",
+      listen: PA ? `${seg("listen", "How to talk", [["handsfree", "Hands-free"], ["ptt", "Hold to talk"]])}
+        <p class="set-help">${P.listen === "ptt" ? "Hold <kbd>Space</kbd> or the mic while you talk." : "The mic listens all the time. <kbd>Space</kbd> still works."}</p>
+        ${seg("filter", "Ignore other voices", [["relaxed", "Relaxed"], ["normal", "Normal"], ["strict", "Strict"]])}
+        <p class="set-help">Strict ignores more room chatter.</p>` : "",
+      read: `${sw("captions", "Captions", "Every voice as text, word by word")}
+        <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
+          <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
+        <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>
+          <input type="range" min="1" max="1.5" step="0.25" value="${S.textScale}" data-k="textScale" aria-valuetext="${Math.round(S.textScale * 100)} percent"></label>
+        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}`,
+      display: `${PA ? seg("theme", "Theme", [["system", "System"], ["light", "Light"], ["dark", "Dark"]]) : ""}
+        ${sw("contrast", "High contrast", "Black, white and yellow")}
+        ${sw("reducedMotion", "Less motion", "No flying or spinning")}
+        ${PA ? seg("graphics", "Graphics", [["high", "High"], ["low", "Low"]]) : ""}
+        <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`,
+      cadets: PA ? `<ul class="set-cadets">${PA.listProfiles().map(p => `<li class="${p.active ? "is-active" : ""}">
+          <span class="set-av" aria-hidden="true">${escH((p.callsign || "?").slice(0, 1).toUpperCase())}</span>
+          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of 8 patches`}</small></span>
+          ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
+        <button type="button" class="btn" data-prof-add>Add a cadet</button>
+        ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
+        <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
+      help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
+        <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
+        <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
+          <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
+          <li>“Faster” · “Slower” · “Say that again” · “Bigger text” · “High contrast”</li>
+          <li>“Move the voice bar to the top” · “Reset the voice bar”</li>
+          <li>Keys: <kbd>Tab</kbd> move · <kbd>Enter</kbd> press · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>A</kbd> settings · <kbd>Alt</kbd>+<kbd>W</kbd> where am I · <kbd>Alt</kbd>+<kbd>P</kbd> pick a place</li></ul></details>
+        ${places.length ? `<details class="a11y-place"><summary>Pick a place on the Moon</summary>
+          <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
+          <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
+        <p class="a11y-note">Saved on this device only.</p>`,
+    };
+    // Sections other modules add (e.g. "Camera & gestures" from the gestures agent): window.__outpost.settingsSections =
+    // [{id, title, after?, html() → string, bind?(el)}]. A section with nothing to show is not listed.
+    const extraSecs = (O.settingsSections || []).filter(x => x && x.id && x.title && typeof x.html === "function");
+    extraSecs.forEach(x => { try { body[x.id] = x.html(); } catch (e) { body[x.id] = ""; } });
+    const order = SECTIONS.slice(); extraSecs.forEach(x => { const k = order.findIndex(s => s[0] === (x.after || "listen")); order.splice(k < 0 ? order.length - 1 : k + 1, 0, [x.id, x.title]); });
+    const shown = order.filter(([id]) => body[id]);
+    if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
-      <header><h2 id="a11yTitle">Accessibility</h2><button type="button" class="x" data-close aria-label="Close accessibility settings">&times;</button></header>
-      <fieldset class="a11y-speed"><legend>Voice speed</legend>
-        ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""}><span>${v}×</span></label>`).join("")}</fieldset>
-      <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>
-        <input type="range" min="1" max="1.5" step="0.25" value="${S.textScale}" data-k="textScale" aria-valuetext="${Math.round(S.textScale * 100)} percent"></label>
-      <div class="a11y-group" role="group" aria-label="Seeing">
-        ${sw("contrast", "High contrast", "Stronger colours and borders")}
-        ${sw("describe", "Describe what happens", "Says out loud when the Moon moves, a card opens or an alert shows")}
-        ${sw("reducedMotion", "Less motion", "No spinning or flying animations")}
-        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}
-      </div>
-      <div class="a11y-group" role="group" aria-label="Hearing">
-        ${sw("captions", "Captions", "Show every voice as text, word by word")}
-        ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alert sound")}
-        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets that can")}
-      </div>
-      <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
-        <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
-      <details class="a11y-transcript"><summary>Transcript (everything said)</summary><ol id="a11yTranscript"></ol></details>
-      <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
-        <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
-        <li>“Faster” · “Slower” · “Say that again” · “Bigger text” · “High contrast”</li>
-        <li>Keys: <kbd>Tab</kbd> move · <kbd>Enter</kbd> press · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>A</kbd> this panel · <kbd>Alt</kbd>+<kbd>W</kbd> where am I · <kbd>Alt</kbd>+<kbd>P</kbd> pick a place</li></ul></details>
-      ${places.length ? `<label class="a11y-place"><b>Pick a place on the Moon</b><small>Same as tapping it on the globe</small>
-        <span><select id="a11yPlace">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
-        <button type="button" class="pill" id="a11yPlaceGo">Tap it</button></span></label>` : ""}
-      <div id="a11yGestures"></div>
-      <p class="a11y-note">Saved on this device only. Never sent anywhere.</p>`;
+      <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
+      <div class="set-body">
+        <nav class="set-nav" aria-label="Settings sections">${shown.map(([id, t]) => `<button type="button" data-sec="${id}" aria-current="${id === section ? "page" : "false"}">${escH(t)}</button>`).join("")}</nav>
+        <section class="set-sec" aria-labelledby="set-h">
+          <h3 id="set-h">${escH(order.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
+      </div>`;
     fillTranscript();
-    dispatchEvent(new CustomEvent("outpost:settings-render", { detail: panel }));   // [gestures] Camera & gestures mounts here
+    const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
+    if (section === "voice" && PA) PA.loadVoices().then(vs => {
+      const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
+      const ap = PA.applied, vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "the default voice";
+      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id || (!PA.value.voice && i === 0) ? "checked" : ""}>
+          <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
+          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
+        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: CAPCOM and Houston keep their own voices</small></span></label>
+        ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
+      box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
+    });
   }
   function open(v = panel.hidden) {
-    if (v) { renderPanel(); panel.hidden = false; btn.setAttribute("aria-expanded", "true"); (panel.querySelector("input:checked") || panel.querySelector("input")).focus(); }
-    else { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
+    if (v) {
+      const about = document.getElementById("about"); if (about && about.open) about.close();   // one sheet at a time
+      renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
+      (panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector("input")).focus();
+    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
+  scrim.addEventListener("click", () => open(false));
+  // the session's echo of what it applied: refresh the Voice section's "In use" line
+  addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
   btn.addEventListener("click", () => open());
   panel.addEventListener("click", e => {
+    const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
+    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); panel.querySelector(`[data-sec="${section}"]`).focus(); }
+    if (e.target.closest("[data-vbar-reset]") && O.voiceBar) O.voiceBar.reset();
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
+    const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);
+    if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();
+    if (e.target.closest("[data-prof-reset]") && PA) { if (resetArmed) PA.resetProgress(); else { resetArmed = true; renderPanel(); panel.querySelector("[data-prof-reset]").focus(); } }
   });
   panel.addEventListener("change", e => {
     const t = e.target;
+    if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); return; }   // a boolean pref
+    if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
+      const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
+      O.prefsApi.update({ [k]: v });
+      if (t.type === "range") { const out = t.closest("label").querySelector("output"); renderPanel(); const again = panel.querySelector(`[data-p="${k}"]`); if (again) again.focus(); void out; }
+      else if (k === "listen") { renderPanel(); const again = panel.querySelector(`[data-p="listen"]:checked`); if (again) again.focus(); }
+      return;
+    }
     if (t.name === "a11ySpeed") set({ speed: +t.value });
     else if (t.dataset.k && t.type === "checkbox") set({ [t.dataset.k]: t.checked });
     else if (t.dataset.k) set({ [t.dataset.k]: +t.value });
@@ -185,7 +256,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     }
   });
 
-  function set(patch) { S = saveSettings(store, { ...S, ...patch }); apply(); }
+  function set(patch) { S = saveSettings(store, { ...S, ...patch }); apply(); dispatchEvent(new CustomEvent("outpost:a11y", { detail: S })); }
   function apply() {
     root.dataset.contrast = S.contrast ? "high" : "";
     root.dataset.dyslexia = S.dyslexia ? "1" : "";
@@ -193,9 +264,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     root.dataset.captions = S.captions ? "on" : "off";
     root.style.setProperty("--a11y-zoom", String(S.textScale));
     root.dataset.textScale = S.textScale > 1 ? "big" : "";
-    if (S.dyslexia && !document.getElementById("a11yFont")) {
-      const l = mk("link", "", { id: "a11yFont", rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" });
-      document.head.append(l);
+    if (S.dyslexia && !apply.font) {   // easy-read font: bundled with the app (offline), loaded only when chosen
+      apply.font = Promise.all([import("@fontsource/atkinson-hyperlegible/400.css"), import("@fontsource/atkinson-hyperlegible/700.css")]).catch(() => {});
     }
     if (floor) floor.setSpeed(S.speed);
     const c = floor && floor.crewEl; if (c) { c.playbackRate = S.speed; c.preservesPitch = true; }
@@ -317,7 +387,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const k = e.key.toLowerCase();
     if (k === "a" || e.code === "KeyA") { e.preventDefault(); open(); }
     else if (k === "w" || e.code === "KeyW") { e.preventDefault(); const t = where(); describe(t, { quiet: true }); if (say) say(t, {}); }
-    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); open(true); const s = panel.querySelector("#a11yPlace"); if (s) s.focus(); }
+    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); open(true); const s = panel.querySelector("#a11yPlace"); if (s) { s.closest("details").open = true; s.focus(); } }
   });
   // Every icon-only control gets a name (title → aria-label), and focusable marks show focus (CSS :focus-visible).
   const nameControls = () => document.querySelectorAll("button:not([aria-label]), [role=button]:not([aria-label])").forEach(b => {

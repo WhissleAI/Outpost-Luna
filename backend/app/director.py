@@ -28,16 +28,16 @@ DEFINE = re.compile(r"\b(what does|what s|what is|whats|what are|mean|means|mean
 # ---- hardware left on the Moon (artifacts.json) ----------------------------------------------------------------------
 TOURS = [  # (pattern, artifact types or None = all, say)
     (re.compile(r"\b(ghost )?(rovers?|moon buggies|moon buggy|buggies|lrvs?)\b"), {"rover"},
-     "Here are the rovers still parked on the Moon. Tap one to hear its story!"),
+     "These rovers are still parked on the Moon. Tap one to hear its story."),
     (re.compile(r"\b(landers|landing sites|lunar modules|where (did|have) (people|astronauts|we) landed?)\b"), {"lander"},
-     "Here is every spacecraft that landed on the Moon and stayed there. Tap one to hear its story!"),
+     "Every spacecraft that landed here and stayed. Tap one to hear its story."),
     (re.compile(r"\b(crash(es| sites)|impacts?( sites)?|crashed)\b"), {"impact"},
-     "These are the places where spacecraft crashed into the Moon, many of them on purpose, for science!"),
+     "Crash sites. Many spacecraft hit the Moon on purpose, for science."),
     (re.compile(r"\b(instruments|experiments|science stations|mirrors|reflectors)\b"), {"instrument"},
-     "These science tools were left on the Moon. One mirror still bounces lasers back to Earth!"),
+     "Science tools left on the Moon. One mirror still bounces lasers back to Earth."),
     (re.compile(r"\b(hardware|junk|trash|left (behind )?on the moon|left behind|left there|left on it|stuff (on|left)|"
                 r"things (on|left)|abandoned|ghost|what s on the moon|spacecraft on the moon|machines)\b"), None,
-     "People have left lots of hardware on the Moon: landers, rovers, science tools and crash sites. Tap one to hear its story!"),
+     "Landers, rovers, science tools and crash sites. Tap one to hear its story."),
 ]
 WHO = re.compile(r"\b(who (left|drove|put|flew|landed|built|sent|parked|rode|brought|made|used|set)|who was (in|on|driving)|"
                  r"whose|who did)\b")
@@ -45,15 +45,15 @@ HEAR_VOICE = re.compile(r"\b(hear|listen|voice|message|play)\b")
 SOUNDS = [  # mission sounds from the NASA Artemis Audio Library (set "voices")
     (re.compile(r"\b(go no go|countdown|count down|poll)\b"), "go-no-go", "Mission control asks every team: go or no-go?"),
     (re.compile(r"\b(launch|liftoff|lift off|blast ?off|take ?off|rocket start)\b"), "liftoff",
-     "Here's the moment Artemis II lifted off. Listen!"),
-    (re.compile(r"\bfull send\b"), "full-send", "Right before launch, the crew said who they were flying for. Listen!"),
+     "Artemis II lifting off. Listen!"),
+    (re.compile(r"\bfull send\b"), "full-send", "Before launch, the crew said who they flew for. Listen."),
     (re.compile(r"\b(translunar|tli|go for the moon|head(ed|ing)? to the moon)\b"), "tli",
-     "This is when Houston said go to fly to the Moon. Listen!"),
+     "Houston gives the go for the Moon. Listen!"),
     (re.compile(r"\b(good burn|engine burn|burn)\b"), "good-burn", "Here's the engine burn. Listen!"),
     (re.compile(r"\b(distance record|farthest|furthest|apollo 13 record|broke the record|record)\b"), "apollo13-record",
-     "Artemis II flew farther from Earth than Apollo 13! Listen!"),
+     "Artemis II flew farther from Earth than Apollo 13. Listen!"),
     (re.compile(r"\b(splash ?down|splash|landed in the (ocean|sea|water)|coming home|came home)\b"), "splashdown",
-     "Here's Orion splashing down in the ocean. Listen!"),
+     "Orion splashing down in the ocean. Listen!"),
     (re.compile(r"\b(loud and clear|houston we have you)\b"), "loud-and-clear", "Houston hears the crew again. Listen!"),
     (re.compile(r"\b(charlie duke)\b"), "duke", "Here's Apollo 16 astronaut Charlie Duke. Listen!"),
     (re.compile(r"\b(jim lovell|lovell)\b"), "lovell", "Here's Apollo astronaut Jim Lovell. Listen!"),
@@ -88,7 +88,7 @@ def _voice(p: Place, index: MomentIndex) -> dict | None:
 
 def _who_line(p: Place) -> str:
     if not p.crew:
-        return f"No one! {p.name} was a robot spacecraft, sent by {p.agency}. No people rode on it."
+        return f"No one. {p.name} was a robot, sent by {p.agency}."
     verb = "drove" if p.type == "rover" else "landed" if p.type == "lander" else "left"
     return f"{_names(p.crew)} {verb} it, on {p.mission}."
 
@@ -157,31 +157,31 @@ def _hard_pii(read: dict, gaz: Gazetteer) -> bool:
 
 ACCEPT, ASK_LO, ASK_MARGIN = 89.0, 82.0, 5.0
 
-FAR = "This is the far side. It always faces away from Earth, so nobody saw it until spacecraft flew around."
-NEAR = "This is the near side, the face we always see from Earth. The dark patches are old lava seas."
-EARTHRISE = "When Orion went behind the Moon, Earth came up over the edge. Listen to how the crew reacted!"
-SAY_AGAIN = "Sorry, I didn't catch that. Can you say it again?"
+FAR = "The far side. It always faces away from Earth."
+NEAR = "The near side, the face we always see. The dark patches are old lava."
+EARTHRISE = "Behind the Moon, the crew watched Earth rise. Listen!"
+SAY_AGAIN = "Say again? I missed that."
 # Spoken: the short line only. The examples are shown on the card (TRY), never spoken: a spoken example command
 # ("show me the giant bullseye") heard back through the speakers by the open mic would be answered as a new turn.
 UNKNOWN = "I don't know that one yet."
 TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
-GUARD = "Let's keep names and addresses private! Ask me about a place on the Moon instead."
-MISSION = "Want a mission? Find the giant bullseye on the far side, then ask what the crew said about it!"
-NO_MOMENT = "The crew didn't talk about that place in our recordings, but here it is!"
+GUARD = "Let's keep names and addresses private. Ask me about the Moon."
+MISSION = "Want a mission? Find the giant bullseye on the far side."
+NO_MOMENT = "The crew didn't talk about this place. Here it is."
 
 # Kid claims that contradict the fact sheet -> gentle correction (pre-verified text) + an optional related place.
 MISCONCEPTIONS = [
     (re.compile(r"\b(made (of|out of) cheese|is cheese|cheese moon)\b"),
-     "Not cheese! The Moon is made of rock and dust. But the crew did say one place looked yellow, like a snowy mountain.",
+     "Not cheese. The Moon is rock and dust. But the crew saw one spot look yellow.",
      "aristarchus"),
     (re.compile(r"\b(no craters|doesn t have (any )?craters|has no craters|not have craters|smooth)\b"),
-     "The Moon is covered in craters! Space rocks made them. Here's a giant one, like a bullseye.", "orientale"),
+     "The Moon is covered in craters, made by space rocks. Here's a giant one.", "orientale"),
     (re.compile(r"\b(makes (its|it s) own light|moon glows by itself|own light|moon is a star)\b"),
-     "The Moon doesn't make its own light. It shines because sunlight bounces off it.", None),
+     "The Moon makes no light of its own. It shines with bounced sunlight.", None),
     (re.compile(r"\b(dark side (never|doesn t|does not) (get|see|have) (any )?(sun|light)|always dark on the (dark|far) side)\b"),
-     "The far side gets sunlight too! We just never see it from Earth, because it always faces away.", "hertzsprung"),
+     "The far side gets sunlight too. We just never see it from Earth.", "hertzsprung"),
     (re.compile(r"\b(moon is bigger than (the )?earth|moon is (a )?planet)\b"),
-     "The Moon is smaller than Earth. It's Earth's partner that goes around us.", None),
+     "The Moon is smaller than Earth. It circles us.", None),
 ]
 
 
@@ -386,7 +386,7 @@ async def _brain_turn(text: str, out: dict, gaz: Gazetteer, index: MomentIndex, 
 # The sim lives in app/mission/registry.py (another work stream). It is called through this thin adapter only:
 # registry.get(mid) -> a mission (State dict, or an object with .state()/.to_dict()) and mission.apply(cmd)
 # (or registry.apply(mid, cmd)) -> {"state": State, "result": {ok, needs_confirm?, say, readback, events}}.
-NOT_STARTED = "The mission hasn't started yet. Pick a landing site, then give your orders, commander!"
+NOT_STARTED = "No mission yet. Pick a landing site first."
 CHATTER_DD = 0.5          # Arc device_directed under this, and no command: the kid is talking to the team, not to us
 RULES: dict[str, list[dict]] = {}       # mid -> standing orders [{"rule": Command, "armed": bool}]
 PENDING: dict[str, dict] = {}           # mid -> {"commands": [...], "role": needed role} waiting for another officer
@@ -556,10 +556,11 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         state, res = await _sim_apply(reg, mid, cmd)
         rb = capcom.readback(cmd, state, mid)
         if res.get("needs_confirm"):
-            lines.append(rb if "?" in rb else f"{rb} Are you sure? Say yes or no.")
+            lines.append(rb if "?" in rb else f"{rb} Are you sure?")
         else:
             lines.append(rb)
-            if res.get("say") and res["say"] != rb:
+            same = ty == "allocate" and (cmd.get("amount") or {}).get("kind") == "percent"   # already in the readback
+            if res.get("say") and res["say"] != rb and not same:
                 # The sim's own line adds the result ("Shields now gets 40%"); drop its "Copy." so CAPCOM says it once.
                 extra = re.sub(r"^\s*copy[,.!]?\s*", "", res["say"], flags=re.I)
                 if extra:
@@ -572,8 +573,8 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         resp["commands"] = cmds
     if resp.get("action") in ("status", "command") and state is not None:
         resp["state"] = state  # the LAST state: with several commands in one turn, the client must see all of them
-    # one "Copy, commander." per turn, however many commands
-    lines = [x if i == 0 else re.sub(r"^Copy, commander\. ", "", x) for i, x in enumerate(y for y in lines if y)]
+    # one "Copy." per turn, however many commands
+    lines = [x if i == 0 else re.sub(r"^(Copy, commander\.|Copy\.)\s+", "", x) for i, x in enumerate(y for y in lines if y)]
     say = _tone(" ".join(lines), emotion)
     if resp.get("action") == "command":
         # UI contract: a command response always carries `state` = the server already handled it (applied through the

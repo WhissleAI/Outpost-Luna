@@ -1,5 +1,5 @@
 {
- "_note": "Junior Astronaut Academy: 7 short lessons a cadet takes before commanding the outpost. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check that every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; see app/academy/grade.py for the accept types.",
+ "_note": "Junior Astronaut Academy: 8 short lessons a cadet takes before commanding the outpost. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check that every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; see app/academy/grade.py for the accept types.",
  "title": "Junior Astronaut Academy",
  "pass_badge": "commander",
  "lessons": [
@@ -17,16 +17,16 @@
     "lon": 0,
     "dist": 3.6
    },
-   "brief": "Welcome, cadet. Artemis III, the first landing near the Moon's south pole, hasn't happened yet. You're training to help run Outpost Luna, a base next to a crater called Shackleton.",
+   "brief": "The next crews will land near the south pole, by a crater called Shackleton.",
    "facts": [
     {
-     "text": "NASA has named candidate landing regions near the south pole for Artemis III, including the rim of Shackleton crater.",
+     "text": "NASA's 2024 list of 9 possible landing regions near the south pole includes Malapert Massif and de Gerlache Rim 2.",
      "from": [
       "mission/sites.json"
      ],
      "source": {
-      "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
-      "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+      "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+      "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
      }
     },
     {
@@ -63,28 +63,28 @@
    ],
    "steps": [
     {
-     "prompt": "The near side always faces Earth. Now show me the south pole: say it, or tap the very bottom of the Moon.",
+     "prompt": "The near side always faces Earth. Now find the south pole.",
      "accept": {
       "type": "intent",
       "place": "shackleton"
      },
-     "hint": "Try saying: show me the south pole.",
-     "success": "Roger! That's the south pole. See how the Sun barely rises there?",
-     "fail": "Not quite. The south pole is at the very bottom of the Moon."
+     "hint": "The south pole is at the very bottom.",
+     "success": "Roger. The south pole. The Sun barely rises there.",
+     "fail": "Not quite. Look lower."
     },
     {
-     "prompt": "Now tap Shackleton crater, inside the gold ring at the pole.",
+     "prompt": "Now tap Shackleton crater, inside the gold ring.",
      "accept": {
       "type": "tap",
       "place": "shackleton",
       "radius_deg": 8
      },
-     "hint": "Spin the Moon so the bottom faces you, then tap inside the gold ring.",
-     "success": "Copy. That's Shackleton, 21 km wide.",
-     "fail": "That's not it. Look for the gold ring at the bottom."
+     "hint": "Spin the Moon and find the gold ring.",
+     "success": "Copy. Shackleton, 21 km wide.",
+     "fail": "Not that one."
     },
     {
-     "prompt": "Why do astronauts want to land near Shackleton?",
+     "prompt": "Why do crews want to land near Shackleton?",
      "accept": {
       "type": "choice",
       "answer": "ice",
@@ -117,12 +117,12 @@
        }
       ]
      },
-     "hint": "Think about what never gets sunlight, and what stays frozen there.",
-     "success": "Correct! Ice can become water and air.",
-     "fail": "Not that one. What could stay frozen in a crater with no sunlight?"
+     "hint": "What stays frozen where sunlight never reaches?",
+     "success": "Correct. Ice can become water and air.",
+     "fail": "Not that one."
     },
     {
-     "prompt": "Space word! What does mare mean? Tap the meaning, or say it.",
+     "prompt": "Space word: mare. What does it mean?",
      "accept": {
       "type": "vocab_match",
       "term": "mare",
@@ -131,15 +131,15 @@
        "highlands"
       ]
      },
-     "hint": "The dark patches you can see from Earth.",
-     "success": "Yes! A mare is a dark, flat sea of old cooled lava.",
-     "fail": "Not quite. Look at the dark patches."
+     "hint": "The dark patches you see from Earth.",
+     "success": "Yes. A mare is a dark plain of old lava.",
+     "fail": "Not quite."
     }
    ]
   },
   {
    "id": "comms",
-   "title": "Talk like Mission Control",
+   "title": "Talk on the radio",
    "minutes": 4,
    "badge": {
     "id": "radio",
@@ -152,7 +152,7 @@
     "t1": 21.5,
     "who": "Artemis II crew and Houston"
    },
-   "brief": "Radio is noisy, so crews use short words. Copy or roger means I heard you. A readback repeats the order, so both sides know it's right.",
+   "brief": "Radio is noisy, so crews keep it short. Copy means I heard you.",
    "facts": [
     {
      "text": "Artemis II and Houston really say it: \"Houston, we have you loud and clear.\" ... \"Houston copies all.\"",
@@ -198,12 +198,12 @@
        }
       ]
      },
-     "hint": "When Houston says \"Houston copies all\", they are telling the crew something about hearing.",
-     "success": "Roger! Copy means I heard you.",
-     "fail": "Not quite. Copy is about hearing."
+     "hint": "It's about hearing.",
+     "success": "Roger. Copy means I heard you.",
+     "fail": "Not quite."
     },
     {
-     "prompt": "CAPCOM: \"Commander, set the shields to 40 percent.\" Read it back!",
+     "prompt": "CAPCOM: \"Commander, set the shields to 40 percent.\" Read it back.",
      "capcom": "Commander, set the shields to 40 percent.",
      "accept": {
       "type": "keywords",
@@ -218,9 +218,9 @@
        ]
       ]
      },
-     "hint": "Repeat the order: \"Copy, shields to 40.\"",
-     "success": "Good readback. Shields to 40, confirmed.",
-     "fail": "Say again? A readback repeats what and how much."
+     "hint": "Repeat what, and how much.",
+     "success": "Good readback. Shields to 40.",
+     "fail": "Say again? Repeat the order."
     },
     {
      "prompt": "CAPCOM: \"Send the rover for ice.\" Start your readback with roger.",
@@ -242,12 +242,12 @@
        ]
       ]
      },
-     "hint": "Try: \"Roger, rover for ice.\"",
-     "success": "Perfect readback, Commander.",
-     "fail": "Almost. Say roger, then repeat the order."
+     "hint": "Roger first, then the order.",
+     "success": "Perfect readback.",
+     "fail": "Almost. Start with roger."
     },
     {
-     "prompt": "The radio crackled and you missed the last order. What do you say?",
+     "prompt": "Static! You missed the last order. What do you say?",
      "accept": {
       "type": "keywords",
       "any": [
@@ -259,8 +259,8 @@
        ]
       ]
      },
-     "hint": "Crews say: \"Say again.\"",
-     "success": "Copy. Say again is how you ask for a repeat.",
+     "hint": "Two words. The second one is again.",
+     "success": "Copy. Say again asks for a repeat.",
      "fail": "Ask CAPCOM to repeat it."
     }
    ]
@@ -278,7 +278,7 @@
     "place": "shackleton",
     "dist": 2.6
    },
-   "brief": "The outpost runs on solar panels and batteries. At the pole the Sun stays low and can hide behind mountains. No Sun means batteries only.",
+   "brief": "The outpost runs on solar panels and batteries. No Sun means batteries only.",
    "facts": [
     {
      "text": "Shackleton Crater Rim gets sunlight about 86% of the time; Malapert Massif about 73%.",
@@ -317,7 +317,7 @@
    ],
    "steps": [
     {
-     "prompt": "Which site gets more sunlight for the solar panels?",
+     "prompt": "Which site gets more sunlight?",
      "accept": {
       "type": "choice",
       "answer": "shackleton_rim",
@@ -344,12 +344,12 @@
        }
       ]
      },
-     "hint": "Compare the two numbers. Bigger means more sunshine.",
-     "success": "Correct! More sun means more power.",
-     "fail": "Check the numbers again. Which is bigger?"
+     "hint": "Bigger number, more sunshine.",
+     "success": "Correct. More sun, more power.",
+     "fail": "Check the numbers again."
     },
     {
-     "prompt": "Malapert's longest night lasted 157 hours. What keeps the lights on in the dark?",
+     "prompt": "Malapert's longest night lasted 157 hours. What keeps the lights on?",
      "accept": {
       "type": "choice",
       "answer": "battery",
@@ -382,12 +382,12 @@
        }
       ]
      },
-     "hint": "Solar panels need the Sun. What stores power for later?",
+     "hint": "What stores power for later?",
      "success": "Right. Batteries carry you through the night.",
-     "fail": "Not that one. Solar panels can't work without the Sun."
+     "fail": "Not that one. Panels need the Sun."
     },
     {
-     "prompt": "Night is coming. Move more power to the heaters so the water pipes don't freeze.",
+     "prompt": "Night is coming. Move power to the heaters so the pipes don't freeze.",
      "accept": {
       "type": "command",
       "expect": {
@@ -396,12 +396,12 @@
        "more": true
       }
      },
-     "hint": "Say: \"More power to the heaters.\"",
-     "success": "Copy. Heaters up. Pipes stay warm tonight.",
-     "fail": "Negative. Ask for more power to the heaters."
+     "hint": "Ask for more power to the heaters.",
+     "success": "Copy. Heaters up. Pipes stay warm.",
+     "fail": "Negative. The heaters need more power."
     },
     {
-     "prompt": "Space word! Listen: the line between the Moon's day side and night side. Which word?",
+     "prompt": "Space word. Listen: the line between the Moon's day and night. Which word?",
      "accept": {
       "type": "vocab_listen",
       "term": "terminator",
@@ -410,22 +410,22 @@
        "corona"
       ]
      },
-     "hint": "Solar panels near this line see the Sun low on the horizon.",
-     "success": "Yes! The terminator.",
+     "hint": "Solar panels near it see a low Sun.",
+     "success": "Yes. The terminator, where day meets night.",
      "fail": "Listen again: day side, night side."
     }
    ]
   },
   {
    "id": "radiation",
-   "title": "Radiation and solar storms",
+   "title": "Radiation and storms",
    "minutes": 4,
    "badge": {
     "id": "storm",
     "name": "Storm Watcher",
     "glyph": "W"
    },
-   "brief": "Radiation dose is measured in millisieverts, or mSv. One mSv is about 10 chest x-rays. Sometimes the Sun throws out a storm of fast particles.",
+   "brief": "We measure radiation dose in mSv. One mSv is about 10 chest x-rays.",
    "facts": [
     {
      "text": "On the Moon's surface, the Chang'e 4 lander measured 1369 microsieverts a day, about 2.6 times more than inside the ISS.",
@@ -438,7 +438,7 @@
      }
     },
     {
-     "text": "On 2024-05-10 a real G5 solar storm came with solar particles and a CME at 1561 km/s.",
+     "text": "On 2024-05-10 a huge solar storm gave Earth bright auroras. It also threw out fast particles and a CME at 1561 km/s.",
      "from": [
       "mission/donki_events.json"
      ],
@@ -448,7 +448,7 @@
      }
     },
     {
-     "text": "Moon soil (regolith) stops solar-storm particles well, so the plan is a shelter covered in soil.",
+     "text": "Regolith, the Moon's dusty soil, stops storm particles well. Scientists have studied covering a base with it.",
      "from": [
       "mission/radiation.json"
      ],
@@ -491,9 +491,9 @@
        }
       ]
      },
-     "hint": "It's how we measure something you can't see, like x-rays.",
+     "hint": "Think of x-rays.",
      "success": "Correct. One mSv is about 10 chest x-rays.",
-     "fail": "Not that one. Think of x-rays."
+     "fail": "Not that one."
     },
     {
      "prompt": "A big solar storm is coming. What protects the crew best?",
@@ -528,11 +528,11 @@
       ]
      },
      "hint": "Moon soil stops the particles.",
-     "success": "Right. Soil is a great shield.",
-     "fail": "That would be dangerous. What stops the particles?"
+     "success": "Right. Soil makes a great shield.",
+     "fail": "Too risky. What stops the particles?"
     },
     {
-     "prompt": "ALERT! Solar storm, the real one from May 2024. Give the order!",
+     "prompt": "Alert! A solar particle storm, like the real one in May 2024. Your order?",
      "alert": true,
      "accept": {
       "type": "command",
@@ -541,9 +541,9 @@
        "on": true
       }
      },
-     "hint": "Say: \"Everyone to the shelter!\"",
-     "success": "Copy, crew is in the shelter. Dose rate way down.",
-     "fail": "Say again? The crew needs to get into the shelter."
+     "hint": "Get the whole crew under cover.",
+     "success": "Copy. Crew in the shelter. Dose rate way down.",
+     "fail": "Say again? The crew needs the shelter."
     }
    ]
   },
@@ -560,7 +560,7 @@
     "place": "lcross_centaur_impact",
     "dist": 2.4
    },
-   "brief": "Life support makes air and clean water for the crew. Water is heavy to bring from Earth. Ice on the Moon could become water and oxygen.",
+   "brief": "Life support makes air and water. Water is heavy to ship. Moon ice could help.",
    "facts": [
     {
      "text": "In 2009 NASA crashed a 2000 kg Centaur rocket into Cabeus crater near the south pole. It threw up roughly 350 metric tons of material.",
@@ -615,12 +615,12 @@
        }
       ]
      },
-     "hint": "It was near the south pole, in a dark crater.",
-     "success": "Correct! Dark, cold craters keep ice.",
+     "hint": "A dark crater near the south pole.",
+     "success": "Correct. Dark, cold craters keep ice.",
      "fail": "Not that one. Think dark and cold."
     },
     {
-     "prompt": "Tap where the LCROSS rocket crashed. It's the marker near the south pole.",
+     "prompt": "Tap where the LCROSS rocket crashed, near the south pole.",
      "accept": {
       "type": "tap",
       "place": "lcross_centaur_impact",
@@ -629,9 +629,9 @@
       ],
       "radius_deg": 8
      },
-     "hint": "Look just above the south pole for the impact marker, then tap it.",
-     "success": "Roger. That's Cabeus, where water was found.",
-     "fail": "Not there. Look near the bottom of the Moon."
+     "hint": "Look just above the pole for the marker.",
+     "success": "Roger. Cabeus, where water was found.",
+     "fail": "Not there. Look lower."
     },
     {
      "prompt": "Life support is getting low. Send the rover for ice!",
@@ -642,15 +642,15 @@
        "task": "collect_ice"
       }
      },
-     "hint": "Say: \"Send the rover for ice.\"",
+     "hint": "The rover can dig up ice.",
      "success": "Copy. Rover rolling out for ice.",
-     "fail": "Negative. Tell the rover to go get ice."
+     "fail": "Negative. The rover needs to fetch ice."
     }
    ]
   },
   {
    "id": "history",
-   "title": "Lessons from past missions",
+   "title": "Lessons from Apollo",
    "minutes": 5,
    "badge": {
     "id": "history",
@@ -661,7 +661,7 @@
     "place": "surveyor3",
     "dist": 2.3
    },
-   "brief": "Every mission teaches the next one. Apollo 12 landed next to an old robot, Surveyor 3, and took parts home to study. Apollo astronauts also sent messages to the Artemis II crew.",
+   "brief": "Every mission teaches the next. Apollo 12 landed beside an old robot, Surveyor 3.",
    "facts": [
     {
      "text": "Surveyor 3 sent 6,326 pictures. In 1969 Apollo 12 astronauts walked over and took about 10 kg of parts home, including its TV camera.",
@@ -736,7 +736,7 @@
       ]
      },
      "hint": "Surveyor 3 took 6,326 pictures. With what?",
-     "success": "Correct! Scientists studied what the Moon did to it.",
+     "success": "Correct. Scientists studied what the Moon did to it.",
      "fail": "Not that one. It took pictures."
     },
     {
@@ -779,9 +779,9 @@
        }
       ]
      },
-     "hint": "Play the clip again and listen for \"on Apollo...\"",
-     "success": "Roger! Apollo 8 was the first crew to fly around the Moon.",
-     "fail": "Listen again. He says the mission name."
+     "hint": "Listen for the mission name.",
+     "success": "Roger. Apollo 8 was the first crew around the Moon.",
+     "fail": "Listen again."
     },
     {
      "prompt": "Listen to Charlie Duke. Who landed on the Moon with him?",
@@ -821,12 +821,12 @@
        }
       ]
      },
-     "hint": "He names his partner right after saying who he is.",
-     "success": "Correct! John Young and Charlie Duke drove their rover 26.7 km.",
+     "hint": "He names his partner right away.",
+     "success": "Correct. John Young and Charlie Duke drove their rover 26.7 km.",
      "fail": "Listen again for the name."
     },
     {
-     "prompt": "Space word! Fill the blank: \"Astronaut boot prints stay in the Moon's dusty soil, the ____.\"",
+     "prompt": "Fill the blank: \"Astronaut boot prints stay in the Moon's dusty soil, the ____.\"",
      "accept": {
       "type": "vocab_fill",
       "term": "regolith",
@@ -837,13 +837,13 @@
       ]
      },
      "hint": "It starts with r.",
-     "success": "Right! Regolith.",
-     "fail": "Not that one. Which word means Moon soil?"
+     "success": "Right. Regolith, the Moon's dusty soil.",
+     "fail": "Which word means Moon soil?"
     }
    ],
    "library": {
     "place": "surveyor3",
-    "label": "Open Surveyor 3 in the Moon library"
+    "label": "Open Surveyor 3"
    }
   },
   {
@@ -862,7 +862,7 @@
     "earthrise",
     "terminator"
    ],
-   "brief": "Astronauts use special words to describe the Moon. Every word here is one the Artemis II crew really said. Learn them and you'll understand the crew like a pro.",
+   "brief": "The Artemis II crew really used these words. Learn them and talk like the crew.",
    "facts": [
     {
      "text": "The Artemis II crew said \"albedo\" while describing the Aristarchus Plateau.",
@@ -897,7 +897,7 @@
    ],
    "steps": [
     {
-     "prompt": "Listen: a round hole made when a space rock crashed in. Which word is it?",
+     "prompt": "Listen: a round hole made when a space rock crashed in. Which word?",
      "accept": {
       "type": "vocab_listen",
       "term": "crater",
@@ -906,12 +906,12 @@
        "limb"
       ]
      },
-     "hint": "It's the most common shape on the Moon. Tycho is one.",
-     "success": "Yes! That's a crater.",
-     "fail": "Not that one. Listen again."
+     "hint": "Tycho is one.",
+     "success": "Yes. A crater.",
+     "fail": "Listen again."
     },
     {
-     "prompt": "What does albedo mean? Tap the meaning, or say it.",
+     "prompt": "What does albedo mean?",
      "accept": {
       "type": "vocab_match",
       "term": "albedo",
@@ -920,9 +920,9 @@
        "terminator"
       ]
      },
-     "hint": "Albedo is about light: bright or dark.",
-     "success": "Right! Albedo is how bright or dark a surface is.",
-     "fail": "Not quite. Think about sunlight."
+     "hint": "It's about light.",
+     "success": "Right. Albedo is how bright or dark a surface is.",
+     "fail": "Think about sunlight."
     },
     {
      "prompt": "Say this word back to me: regolith.",
@@ -930,9 +930,9 @@
       "type": "vocab_say",
       "term": "regolith"
      },
-     "hint": "Say it in three parts: reg, oh, lith.",
-     "success": "Great! Regolith is the Moon's dusty, rocky soil.",
-     "fail": "Say again? Try: regolith."
+     "hint": "Three parts: reg, oh, lith.",
+     "success": "Great. Regolith is the Moon's dusty, rocky soil.",
+     "fail": "Say again? Regolith."
     },
     {
      "prompt": "Fill the blank: \"When Earth comes up over the Moon's edge, the crew sees an ____.\"",
@@ -945,12 +945,12 @@
        "corona"
       ]
      },
-     "hint": "Earth is coming up, like the Sun at sunrise.",
-     "success": "Yes! Earthrise.",
-     "fail": "Not quite. Is Earth coming up or going down?"
+     "hint": "Like a sunrise, but it's Earth.",
+     "success": "Yes. Earthrise.",
+     "fail": "Is Earth coming up, or going down?"
     },
     {
-     "prompt": "What does terminator mean on the Moon? Tap the meaning, or say it.",
+     "prompt": "What does terminator mean on the Moon?",
      "accept": {
       "type": "vocab_match",
       "term": "terminator",
@@ -959,9 +959,9 @@
        "mare"
       ]
      },
-     "hint": "It's a line between light and dark.",
-     "success": "Correct! The terminator splits the Moon's day side from its night side.",
-     "fail": "Not that one. Think day and night."
+     "hint": "A line between light and dark.",
+     "success": "Correct. The terminator splits day from night.",
+     "fail": "Think day and night."
     }
    ]
   },
@@ -982,10 +982,10 @@
     "mission_h": 48,
     "max_missed": 0
    },
-   "brief": "This is your check ride: your first solo shift at Outpost Luna, two days at Shackleton Rim on the real mission simulator. A real solar storm is on its way. Give good orders and you earn the Mission Commander badge.",
+   "brief": "Your check ride: two days at Shackleton Rim. A real solar storm is coming.",
    "facts": [
     {
-     "text": "The storm in this ride is the real G5 storm of 2024-05-10, replayed at your outpost.",
+     "text": "The storm in this ride is based on the real storm of 2024-05-10, which gave Earth huge auroras.",
      "from": [
       "mission/donki_events.json"
      ],
@@ -997,7 +997,7 @@
    ],
    "steps": [
     {
-     "prompt": "Day 1. Houston sees an active region on the Sun. Give the radiation shields more power.",
+     "prompt": "Day 1. Houston sees an active region on the Sun. Power up the shields.",
      "accept": {
       "type": "command",
       "expect": {
@@ -1007,12 +1007,12 @@
       }
      },
      "advance": 1,
-     "hint": "Say: \"More power to the shields.\"",
-     "success": "Copy, shields up.",
+     "hint": "Ask for more power to the shields.",
+     "success": "Copy. Shields up.",
      "fail": "Negative. The shields need more power."
     },
     {
-     "prompt": "SOLAR STORM! The real G5 storm of May 2024 is hitting the outpost. Your order, Commander?",
+     "prompt": "Solar particle storm! Based on the real May 2024 storm. Your order?",
      "alert": true,
      "accept": {
       "type": "command",
@@ -1022,8 +1022,8 @@
       }
      },
      "advance": "storm",
-     "hint": "Say: \"Everyone to the shelter!\"",
-     "success": "Copy, crew is in the shelter. Riding out the storm.",
+     "hint": "Get the whole crew under cover.",
+     "success": "Copy. Crew in the shelter.",
      "fail": "Say again? Radiation is climbing."
     },
     {
@@ -1035,9 +1035,9 @@
        "on": false
       }
      },
-     "hint": "Say: \"Come out of the shelter.\"",
-     "success": "Copy, crew is out. Back to work.",
-     "fail": "Negative. Tell the crew to leave the shelter."
+     "hint": "The crew can leave the shelter now.",
+     "success": "Copy. Crew is out. Back to work.",
+     "fail": "Negative. Bring the crew out."
     },
     {
      "prompt": "Life support is dropping. Send the rover for ice before day 2 ends.",
@@ -1049,9 +1049,9 @@
       }
      },
      "advance": "end",
-     "hint": "Say: \"Send the rover for ice.\"",
-     "success": "Copy, rover rolling out for ice.",
-     "fail": "Negative. The rover should go get ice."
+     "hint": "The rover can dig up ice.",
+     "success": "Copy. Rover rolling out for ice.",
+     "fail": "Negative. The rover needs to fetch ice."
     }
    ]
   }

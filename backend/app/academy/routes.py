@@ -6,6 +6,8 @@ shape (docs/SESSION_CONTRACT.md: `lesson` + `say`), so a session Director can re
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from .. import steering
@@ -16,6 +18,8 @@ router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
 router.include_router(_vocab_router)
 HINT_AFTER = 2   # misses before the hint
+# The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
+MARS_FACT = "On Mars, Houston would answer 6 to 44 minutes later."
 
 
 class AttemptInput(BaseModel):
@@ -30,6 +34,7 @@ class AttemptReq(BaseModel):
     input: AttemptInput
     misses: int = Field(0, ge=0, le=50)   # misses so far on this step (client-side progress)
     ride_id: str | None = None
+    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): for the learning design; no effect yet
 
 
 def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | None = None, badge: bool = False,
@@ -117,7 +122,7 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     r["step"] += 1
     r["misses"] = 0
     events = [{"kind": e["kind"], "text": e["text"], "source": e.get("source")} for e in evs]
-    said = (st["success"] if ok else "Time's up on that one. " + st["hint"])
+    said = (st["success"] if ok else "Time's up. " + st["hint"])
     if r["step"] < len(steps) and not m.over:
         return _out(les["id"], r["step"] - 1, "passed" if ok else "missed", said, next_step=r["step"],
                     state=rides.hud(r), events=events, sim_say=sim_say or None)
@@ -127,15 +132,14 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     missed = sum(r["missed"])
     score = len(r["missed"]) - missed
     passed = missed <= les["ride"]["max_missed"] and not m.over
-    res = m.state()["resources"]
-    summary = (f"Check ride complete. Power {res['power_pct']:.0f}%, life support {res['life_support_pct']:.0f}%, "
-               f"dose {res['dose_msv']:.1f} of {res['dose_limit_msv']:.0f} mSv. {score} of {len(steps)} orders right. "
-               "On Mars, Houston would answer 6–44 minutes later.")
+    # Spoken: the score only. The HUD in `state` shows power, life support and dose; `fact` is on screen, never spoken.
+    summary = f"Check ride done. {score} of {len(steps)} orders right."
     if passed:
-        return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " You are qualified, Commander!",
-                    badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events)
-    return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " Not qualified yet. Try the ride again!",
-                passed=False, score=score, state=rides.hud(r), events=events)
+        return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " You're qualified, Commander.",
+                    badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events,
+                    fact=MARS_FACT)
+    return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " Not qualified yet. Fly it again.",
+                passed=False, score=score, state=rides.hud(r), events=events, fact=MARS_FACT)
 
 
 def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra: dict) -> dict:

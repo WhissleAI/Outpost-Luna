@@ -116,6 +116,7 @@ class Mission:
     ice_runs: int = 0
     houston_calls: int = 0
     shifts: list = field(default_factory=list)    # per-shift snapshots for the debrief timeline
+    level: str = "cadet"                          # Settings: cadet | commander (passed through; no effect here yet)
 
     # Convenience API for the Director / registry (contract: State and command result shapes).
     def state(self) -> dict:
@@ -131,11 +132,12 @@ class Mission:
 
 # ---------------------------------------------------------------- setup
 
-def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None) -> Mission:
+def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None,
+                level: str = "cadet") -> Mission:
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
     rng = random.Random(f"{site_id}:{seed}")
-    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []))
+    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=level or "cadet")
     cat = storms_catalog()["events"]
     n = 2 + (rng.random() < 0.5)
     picks = rng.sample(cat, n)
@@ -146,7 +148,7 @@ def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str
         dur = {1: 12, 2: 24, 3: 36}[ev["severity"]]
         m.storms.append(Storm(start, dur, ev))
     m.failure_h = rng.randrange(60, 180)
-    m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. 10 days to go. Good luck, Commander!"})
+    m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
     return m
 
 
@@ -263,13 +265,13 @@ def _rover_tick(m: Mission, out: list):
     if task == "collect_ice":
         m.life = min(100.0, m.life + ICE_GAIN)
         m.ice_runs += 1
-        text = f"Rover is back with ice! Life support +{ICE_GAIN:.0f}%."
+        text = f"Rover's back with ice. Life support up {ICE_GAIN:.0f}%."
     elif task == "repair_array":
         m.array_eff = 1.0
-        text = "Rover crew fixed the solar arrays. Full power from the Sun again."
+        text = "Rover fixed the solar arrays. Full power again."
     elif task == "explore":
         m.science += EXPLORE_SCIENCE
-        text = f"Rover is back from exploring with samples! Science +{EXPLORE_SCIENCE:.0f}."
+        text = f"Rover's back with samples. Science up {EXPLORE_SCIENCE:.0f}."
     rv.update(busy=False, task=None, eta_h=0)
     _emit(m, out, "rover_back", text)
 
@@ -286,30 +288,30 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
     s = site(m.site_id)
     if env_before["in_sun"] != env["in_sun"] and not s.get("power_from"):
         _emit(m, out, "sunrise" if env["in_sun"] else "sunset",
-              "The Sun is up over the outpost. Solar arrays are charging." if env["in_sun"] else
-              "The Sun just slipped below the horizon. Batteries only until it comes back.",
+              "Sunrise. Solar arrays charging." if env["in_sun"] else
+              "Sunset. Batteries only until the Sun returns.",
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
     if env_before["earth_visible"] != env["earth_visible"]:
         _emit(m, out, "comm_open" if env["earth_visible"] else "comm_closed",
-              "Earth is above the horizon. Comm window open: you can call Houston." if env["earth_visible"] else
-              "Earth set below the horizon. No radio contact with Houston until it rises.",
+              "Earth is up. You can call Houston." if env["earth_visible"] else
+              "Earth has set. No radio until it rises.",
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
     for st in m.storms:
         ev = st.event
         if m.t_h == st.start_h - 6 and env["earth_visible"]:
-            _emit(m, out, "solar_storm", f"Houston: we just saw a big flare on the Sun. Particles may reach you in about "
-                  f"6 hours. Think about the shelter!", ev["source"], ev["date"])
+            _emit(m, out, "solar_storm", f"Houston: solar flare. Storm in about "
+                  f"6 hours.", ev["source"], ev["date"])
         if m.t_h == st.start_h:
-            _emit(m, out, "solar_storm", f"SOLAR STORM! This is a real event: the {ev['class']} "
-                  f"{'flare' if ev['type'] == 'flare' else 'storm'} of {ev['date']} (severity {ev['severity']} of 3), "
-                  f"replayed in your mission. Radiation is {ev['dose_multiplier']}x normal.", ev["source"], ev["date"])
+            _emit(m, out, "solar_storm", f"Solar storm! The real {ev['date']} "
+                  f"{'flare' if ev['type'] == 'flare' else 'storm'}. "
+                  f"Radiation {ev['dose_multiplier']}x normal.", ev["source"], ev["date"])
         if m.t_h == st.start_h + st.dur_h:
-            _emit(m, out, "storm_end", f"The storm from {ev['date']} has passed. Radiation is back to normal.",
+            _emit(m, out, "storm_end", f"The storm has passed. Radiation is back to normal.",
                   ev["source"], ev["date"])
     if m.t_h == m.failure_h and not m.over:
         m.array_eff = 0.5
-        _emit(m, out, "failure", "Dust and a small micrometeorite hit the solar arrays: they now make half power. "
-              "Send the rover to repair them?", None, None)
+        _emit(m, out, "failure", "Micrometeorite! Arrays at half power. "
+              "Rover can fix them.", None, None)
 
 
 def _check_end(m: Mission, out: list):
@@ -317,16 +319,16 @@ def _check_end(m: Mission, out: list):
         return
     if m.life <= 0:
         m.over, m.outcome, m.lose_reason = True, "life_support_out", "life_support"
-        _emit(m, out, "failure", "Life support ran out. Mission over: the crew has to go home.")
+        _emit(m, out, "failure", "Life support ran out. Mission over. The crew heads home.")
     elif m.dose > DOSE_LIMIT:
         m.over, m.outcome, m.lose_reason = True, "dose_limit", "dose"
-        _emit(m, out, "failure", f"The crew passed the {DOSE_LIMIT:.0f} mSv radiation limit. Mission over.")
+        _emit(m, out, "failure", f"The crew passed the {DOSE_LIMIT:.0f} mSv limit. Mission over.")
     elif m.zero_power_shifts >= 2:
         m.over, m.outcome, m.lose_reason = True, "power_out", "power"
-        _emit(m, out, "failure", "The batteries stayed empty for two shifts. Mission over.")
+        _emit(m, out, "failure", "Batteries empty for two shifts. Mission over.")
     elif m.t_h >= MISSION_H:
         m.over, m.outcome = True, "survived"
-        _emit(m, out, "mission_complete", "Day 10 complete. The outpost survived. Welcome home, Commander!")
+        _emit(m, out, "mission_complete", "Day 10 done. The outpost made it. Welcome home, Commander.")
 
 
 def advance(m: Mission, shifts: int = 1) -> list:
@@ -341,9 +343,9 @@ def advance(m: Mission, shifts: int = 1) -> list:
                 break
         m.zero_power_shifts = m.zero_power_shifts + 1 if m.power <= 0.01 else 0
         if m.power < 20 and not was_low and not m.over:
-            _emit(m, out, "low_power", f"Battery is low: {m.power:.0f}%. Cut some loads or wait for the Sun.")
+            _emit(m, out, "low_power", f"Battery low: {m.power:.0f}%. Cut some loads.")
         if dose_rate(m, m.t_h) > 0.3 and not any(e["kind"] == "dose_alert" and e["t_h"] == m.t_h for e in out):
-            _emit(m, out, "dose_alert", f"Radiation is high: {dose_rate(m, m.t_h):.2f} mSv per hour.")
+            _emit(m, out, "dose_alert", f"Radiation high: {dose_rate(m, m.t_h):.2f} mSv an hour.")
         m.pending = None
         _check_end(m, out)
         m.shifts.append({"t_h": m.t_h, "power": round(m.power, 1), "life_support": round(m.life, 1),
@@ -404,14 +406,14 @@ def _risky(m: Mission, cmd: dict) -> str | None:
         to = cmd.get("to")
         target = _amount(m.loads[to], cmd.get("amount"))
         if target >= 90:
-            return f"That puts {target}% of all power into {to.replace('_', ' ')} and almost nothing else. Are you sure?"
+            return f"That puts {target}% into {to.replace('_', ' ')}, almost nothing else. Are you sure?"
         if to in ("heaters", "life_support") and target <= 0:
-            return f"Turning {to.replace('_', ' ')} off can hurt the crew. Are you sure?"
+            return f"Turning off {to.replace('_', ' ')} can hurt the crew. Are you sure?"
     if t == "dispatch" and cmd.get("task") != "return":
         env = env_at(m, m.t_h)
         soon = any(st.start_h - 6 <= m.t_h < st.start_h + st.dur_h for st in m.storms)
         if env["storm"] or (soon and env["earth_visible"]):
-            return "A solar storm is on. Driving the rover now means extra radiation for the crew. Send it anyway?"
+            return "Storm's on. Driving now means extra radiation. Send the rover anyway?"
     if t == "shelter" and not cmd.get("on") and env_at(m, m.t_h)["storm"]:
         return "The storm is still going. Leave the shelter anyway?"
     return None
@@ -435,7 +437,7 @@ def apply_command(m: Mission, cmd: dict) -> dict:
     """Returns {ok, needs_confirm?, say, readback, events}. Mutates m."""
     t = cmd.get("type")
     if m.over and t not in ("query",):
-        return {"ok": False, "say": "The mission is over. Check your debrief!", "readback": "", "events": []}
+        return {"ok": False, "say": "The mission is over. Open your debrief.", "readback": "", "events": []}
     if t == "confirm":
         if not m.pending:
             return {"ok": False, "say": "Nothing to confirm.", "readback": "", "events": []}
@@ -454,14 +456,14 @@ def apply_command(m: Mission, cmd: dict) -> dict:
     if t == "query":
         return {"ok": True, "say": status_say(m, cmd.get("what", "all")), "readback": "", "events": []}
     if t not in ("allocate", "dispatch", "shelter", "call_houston"):
-        return {"ok": False, "say": f"I don't know the command {t!r}.", "readback": "", "events": []}
+        return {"ok": False, "say": f"I don't know that order: {t!r}.", "readback": "", "events": []}
     try:
         warn = _risky(m, cmd)
     except (KeyError, ValueError) as e:
         return {"ok": False, "say": f"I couldn't do that: {e}", "readback": "", "events": []}
     if warn:
         m.pending = cmd
-        return {"ok": True, "needs_confirm": True, "say": warn + " Say yes to confirm or no to cancel.",
+        return {"ok": True, "needs_confirm": True, "say": warn,
                 "readback": readback(cmd), "events": []}
     return _execute(m, cmd)
 
@@ -476,7 +478,7 @@ def _execute(m: Mission, cmd: dict) -> dict:
             return {"ok": False, "say": f"There is no load called {to}.", "readback": rb, "events": []}
         target = _amount(m.loads[to], cmd.get("amount"))
         m.loads = reallocate(m.loads, to, target, cmd.get("from"))
-        say = f"Copy. {to.replace('_', ' ').capitalize()} now gets {m.loads[to]}% of the power."
+        say = f"Copy. {to.replace('_', ' ').capitalize()} now at {m.loads[to]}%."
         m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": evs}
     if t == "dispatch":
@@ -486,14 +488,14 @@ def _execute(m: Mission, cmd: dict) -> dict:
             if not rv["busy"]:
                 return {"ok": False, "say": "The rover is already home.", "readback": rb, "events": []}
             rv.update(task="return_home", eta_h=max(1, rv["eta_h"] // 2))
-            say = f"Rover turning around. Home in {rv['eta_h']} hours, empty-handed."
+            say = f"Rover turning around. Home in {rv['eta_h']} hours."
             m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
             return {"ok": True, "say": say, "readback": rb, "events": []}
         if rv["busy"]:
-            return {"ok": False, "say": f"The rover is busy ({rv['task'].replace('_', ' ')}), back in {rv['eta_h']} h.",
+            return {"ok": False, "say": f"The rover is busy. Back in {rv['eta_h']} hours.",
                     "readback": rb, "events": []}
         if m.shelter:
-            return {"ok": False, "say": "The crew is in the shelter. Come out first to drive the rover.",
+            return {"ok": False, "say": "The crew is in the shelter. Come out first.",
                     "readback": rb, "events": []}
         if task not in ("collect_ice", "repair_array", "explore"):
             return {"ok": False, "say": f"The rover can't do {task!r}.", "readback": rb, "events": []}
@@ -504,26 +506,26 @@ def _execute(m: Mission, cmd: dict) -> dict:
         m.power -= ROVER_POWER
         m.science = max(0.0, m.science - 1.0)  # crew time driving instead of experiments
         rv.update(busy=True, task=task, eta_h=eta)
-        say = (f"Rover rolling out to {task.replace('_', ' ')}. Back in about {eta} hours. "
-               f"Charging it used {ROVER_POWER:.0f}% battery, and the drivers get extra radiation while outside.")
+        say = (f"Rover back in about {eta} hours. "
+               f"It used {ROVER_POWER:.0f}% battery.")
         m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": []}
     if t == "shelter":
         on = bool(cmd.get("on", True))
         if on and m.rover["busy"]:
-            return {"ok": False, "say": "The rover crew is still outside. Call them back first.", "readback": rb,
+            return {"ok": False, "say": "The rover crew is still outside. Call them home first.", "readback": rb,
                     "events": []}
         m.shelter = on
-        say = ("Crew is in the shelter under the regolith. Much less radiation, but no science and the outpost idles."
-               if on else "Crew is out of the shelter. Science can start again.")
+        say = ("Crew in the shelter. Much less radiation, but science stops."
+               if on else "Crew is out. Science can start again.")
         m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": []}
     if t == "call_houston":
         env = env_at(m, m.t_h)
         if not env["earth_visible"]:
             n = next_comm_window_h(m, m.t_h)
-            return {"ok": False, "say": "Earth is below the horizon, so the radio can't reach Houston. " +
-                    (f"Next window in about {n} hours." if n is not None else "No window left in this mission."),
+            return {"ok": False, "say": "Earth has set, so Houston can't hear us. " +
+                    (f"Next window in about {n} hours." if n is not None else "No window left this mission."),
                     "readback": rb, "events": []}
         if m.power < HOUSTON_POWER:
             return {"ok": False, "say": "Not enough battery for the big antenna.", "readback": rb, "events": []}
@@ -531,9 +533,9 @@ def _execute(m: Mission, cmd: dict) -> dict:
         m.science = max(0.0, m.science - HOUSTON_SCIENCE)
         m.houston_calls += 1
         nxt = next((st for st in m.storms if st.start_h > m.t_h), None)
-        tip = (f"Our forecasters see an active region on the Sun. Expect a storm in about {nxt.start_h - m.t_h} hours."
-               if nxt and nxt.start_h - m.t_h <= 48 else "Space weather looks quiet for the next two days.")
-        say = f"Houston here (your words took {COMM_DELAY_S/2:.1f} s to reach us). {tip}"
+        tip = (f"Active region on the Sun. Storm likely in about {nxt.start_h - m.t_h} hours."
+               if nxt and nxt.start_h - m.t_h <= 48 else "Space weather looks quiet for two days.")
+        say = f"Houston here. Your words took {COMM_DELAY_S/2:.1f} seconds to reach us. {tip}"
         m.log.append({"t_h": m.t_h, "kind": "houston", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": [], "delay_ms": int(COMM_DELAY_S * 1000)}
     return {"ok": False, "say": "?", "readback": rb, "events": []}
@@ -543,21 +545,21 @@ def _shift_say(m: Mission, evs: list) -> str:
     if m.over:
         return evs[-1]["text"] if evs else "Mission over."
     bits = [f"Day {m.t_h // 24 + 1}, shift {(m.t_h % 24) // SHIFT_H + 1}."]
-    bits += [e["text"] for e in evs[-2:]]
-    bits.append(f"Power {m.power:.0f}%, life support {m.life:.0f}%, dose {m.dose:.1f} of {DOSE_LIMIT:.0f} mSv.")
+    bits += [e["text"] for e in evs[-1:]]   # the latest news only: the spoken line stays a breath long
+    bits.append(f"Power {m.power:.0f}%, air {m.life:.0f}%, dose {m.dose:.1f} mSv.")
     return " ".join(bits)
 
 
 def status_say(m: Mission, what: str = "all") -> str:
     env = env_at(m, m.t_h)
     parts = {
-        "power": f"Battery is at {m.power:.0f}%" + (", and the Sun is up." if env["in_sun"] else ", and we're in the dark."),
-        "life_support": f"Life support is at {m.life:.0f}%.",
-        "dose": f"The crew has {m.dose:.1f} mSv of radiation so far; the limit is {DOSE_LIMIT:.0f}.",
-        "storm": (f"A real solar storm from {env['storm'].event['date']} is hitting us now." if env["storm"]
-                  else "No storm right now."),
-        "comms": ("Earth is up: we can talk to Houston." if env["earth_visible"] else
-                  f"Earth is below the horizon. Next comm window in about {next_comm_window_h(m, m.t_h)} hours."),
+        "power": f"Battery at {m.power:.0f}%." + (" The Sun is up." if env["in_sun"] else " It's dark."),
+        "life_support": f"Life support at {m.life:.0f}%.",
+        "dose": f"Crew dose: {m.dose:.1f} of {DOSE_LIMIT:.0f} mSv.",
+        "storm": (f"A real solar storm from {env['storm'].event['date']} is hitting now." if env["storm"]
+                  else "No storm."),
+        "comms": ("Earth is up. Houston can hear us." if env["earth_visible"] else
+                  f"Earth has set. Next window in about {next_comm_window_h(m, m.t_h)} hours."),
     }
     parts["oxygen"] = parts["life_support"]
     if what in parts:

@@ -48,6 +48,44 @@ NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shi
 ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
 
 
+# Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
+PREF_DEFAULTS = {"voice": None, "voice_all": False, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
+                 "filter": "normal", "level": "cadet", "listen": "handsfree"}
+LEVELS = ("cadet", "commander")
+LISTEN = ("handsfree", "ptt")
+OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
+
+
+def clean_prefs(m: dict, cur: dict | None = None) -> dict:
+    """A prefs message → the session's prefs. Unknown or invalid fields keep their current value (partial updates)."""
+    from . import voices
+    p = dict(cur or PREF_DEFAULTS)
+    if "voice" in m:
+        v = m.get("voice")
+        if v in (None, "", "default"):
+            p["voice"] = None
+        elif voices.allowed(v):
+            p["voice"] = v
+    if "voice_all" in m:
+        p["voice_all"] = bool(m.get("voice_all"))
+    if "rate" in m:
+        try:
+            r = float(m["rate"])
+            if r == r:
+                p["rate"] = round(max(steering.SPEED_RANGE[0], min(steering.SPEED_RANGE[1], r)), 2)
+        except (TypeError, ValueError):
+            pass
+    if "expressiveness" in m:
+        p["expressiveness"] = steering.clamp_expr(m["expressiveness"])
+    if m.get("filter") in router_.FILTERS:
+        p["filter"] = m["filter"]
+    if m.get("level") in LEVELS:
+        p["level"] = m["level"]
+    if m.get("listen") in LISTEN:
+        p["listen"] = m["listen"]
+    return p
+
+
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
 _CACHE: dict = {}
@@ -106,6 +144,8 @@ class Session:
         self.screen: dict = {}                 # {screen, step_type, step_options, offer} from the client (ui:screen)
         self.last_unknown = -1e9
         self.routes: list[dict] = []           # every routed turn (tests and /api/session/{id}/routes read it; capped)
+        # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
+        self.prefs: dict = dict(PREF_DEFAULTS)
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -121,6 +161,7 @@ class Session:
                 self.pending[d["id"]] = d
             if d["t"] == "say":
                 self.spoken.said(d.get("text") or "")
+                self._with_prefs(d)
             self.outbox.append(d)
             self.history.append({"out": d["t"], "id": d["id"], "text": d.get("text") or d.get("title"), "ts": self.clock()})
         del self.outbox[:-400]
@@ -131,6 +172,41 @@ class Session:
                 except Exception:  # noqa: BLE001
                     self.sockets.discard(ws)
                     break
+
+    # ---- Settings (docs/VOICES.md) ------------------------------------------------------------------------------------
+    @property
+    def level(self) -> str:
+        """cadet | commander: for the mission sim and the Academy (the learning designer's), passed through only."""
+        return self.prefs.get("level") or "cadet"
+
+    def ptt_only(self) -> bool:
+        return self.prefs.get("listen") == "ptt"
+
+    def filter_thresholds(self) -> tuple[float, float]:
+        return router_.thresholds(self.prefs.get("filter"))
+
+    def _with_prefs(self, d: dict):
+        """A say decision gets the kid's voice / rate / expressiveness on its style; /api/tts applies them."""
+        persona = d.get("voice") or (d.get("style") or {}).get("voice") or "guide"
+        base = d.get("style") or steering.style_for(persona, d.get("text") or "")
+        new = steering.apply_prefs(base, base.get("voice") or persona, self.prefs)
+        if new != base:           # default Settings leave the decision exactly as it was
+            d["style"] = new
+
+    def _pass_level(self):
+        """The level onto the mission sim object (the sim reads it if it wants; no behaviour here)."""
+        m = self._mission()
+        if m is not None:
+            with contextlib.suppress(Exception):
+                m.level = self.level
+
+    async def on_prefs(self, m: dict):
+        self.prefs = clean_prefs(m, self.prefs)
+        self._pass_level()
+        self.history.append({"in": "prefs", "ts": self.clock()})
+        for ws in list(self.sockets):    # an ack with what was applied (not a decision: never in the outbox)
+            with contextlib.suppress(Exception):
+                await ws.send_json({"t": "prefs", "applied": dict(self.prefs)})
 
     def _mission(self):
         reg, mid = self.registry(), self.belief["mission_id"]
@@ -145,7 +221,10 @@ class Session:
 
     # ---- streams in --------------------------------------------------------------------------------------------------
     async def handle(self, m: dict):
-        t = m.get("t")
+        t = m.get("t") or m.get("type")      # the Settings UI sends {type: "prefs"}; everything else uses `t`
+        if t == "prefs":
+            await self.on_prefs(m)
+            return
         # The learned Director steps on every event (turn ends and typed turns step in _turn, after Arc Tagger).
         if self.dm is not None and t != "typed" and not (t == "turn" and m.get("state") == "end"):
             with contextlib.suppress(Exception):
@@ -178,6 +257,9 @@ class Session:
             b["state"] = self._state()
         if m.get("mode") == "cadet":
             b["mission_id"] = None
+        if isinstance(m.get("prefs"), dict):      # Settings may ride on hello too
+            self.prefs = clean_prefs(m["prefs"], self.prefs)
+        self._pass_level()
         self.history.append({"in": "hello", "mode": b["mode"], "ts": self.clock()})
 
     async def on_ui(self, m: dict):
@@ -229,12 +311,15 @@ class Session:
     async def on_listen(self, m: dict):
         """Posted by /ws/listen (server-side relay): Flux words + turns, Arc metadata, emotion."""
         k, t = self.belief["kid"], m.get("t")
+        ptt = self.ptt_only()
         if t == "words":
             k["words"] = m.get("text") or ""
-            if k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
+            if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
             st = m.get("state")
+            if ptt and st != "end":
+                return            # push-to-talk only: the open mic never takes the floor (Arc metadata still kept)
             if st in ("start", "resumed"):
                 k.update(open=True, start=self.clock(), end=None, words=m.get("text") or "")
                 if st == "start":
@@ -265,7 +350,7 @@ class Session:
         if router_.echo_of(words, self.spoken.recent()):   # any of our last few lines, not only the one playing
             return False
         dd = self.belief["kid"]["device_directed"]
-        return dd is None or float(dd) >= 0.5
+        return dd is None or float(dd) >= self.filter_thresholds()[0]
 
     async def set_floor(self, holder: str):
         if self.belief["floor"] != holder:
@@ -318,7 +403,13 @@ class Session:
 
     async def on_turn(self, text: str, source: str = "typed"):
         text = text.strip()
-        if not text or self._dup(text, source):
+        if not text:
+            return
+        if self.ptt_only() and source in OPEN_MIC:
+            # Settings listen="ptt": open-mic turns are not for us; only push-to-talk (source "ptt") and typed count.
+            self.history.append({"route": "ignore", "reason": "ptt_only", "text": text, "ts": self.clock()})
+            return
+        if self._dup(text, source):
             return
         async with self.lock:
             await self._turn(text, source)
@@ -339,7 +430,9 @@ class Session:
         # When the kid's turn started (the ear's StartOfTurn): echo can only begin while we speak.
         now = self.clock()
         t0 = k["start"] if k.get("start") is not None and now - k["start"] < 20 else now
+        dd_min, dd_strong = self.filter_thresholds()
         return router_.Ctx(
+            dd_min=dd_min, dd_strong=dd_strong,
             screen=self.screen_name(), step_type=self.screen.get("step_type"),
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
             source=source if heard else "typed",
@@ -408,12 +501,13 @@ class Session:
                 out = self.dm.step(ev, read)
         emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
+        ctx["level"] = self.level          # Settings: cadet | commander (passed through; docs/VOICES.md)
         if b["last_place"]:
             ctx["last_place"] = b["last_place"]
         if emotion:
             ctx["emotion"] = emotion
         if b["mission_id"] and b["mode"] == "mission":
-            ctx["mission"] = {"id": b["mission_id"], "role": b["role"]}
+            ctx["mission"] = {"id": b["mission_id"], "role": b["role"], "level": self.level}
         if k.get("device_directed") is not None and source == "listen":
             ctx["device_directed"] = k["device_directed"]
         override = None
@@ -481,7 +575,7 @@ class Session:
         if not (unknown or guess):
             return r
         none = {**r, "action": "none", "say": "", "decisions": [], "source": "router+quiet"}
-        if heard and not router_.clear_question(text, ctx_r.dd, act):
+        if heard and not router_.clear_question(text, ctx_r.dd, act, ctx_r.dd_strong):
             return none
         if unknown:
             now = self.clock()
@@ -561,8 +655,8 @@ class Session:
             warning = bool(st and e.get("t_h", 0) < st.start_h)
             crit = sev >= 3 and not warning
             pri = P_CRITICAL if crit else P_NARRATION
-            line = ("Storm coming. Get ready: shields up or go to the shelter." if warning else
-                    "Storm is here! Into the shelter, and shields up.")
+            line = ("Storm coming. Shields up, or get to the shelter." if warning else
+                    "Storm's here! Shelter, and shields up.")
             if calm:
                 line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
@@ -577,20 +671,20 @@ class Session:
             return [al, card, say]
         if kind == "comm_open":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Comm window open."),
-                    decision("say", P_NARRATION, text="Houston can hear us. Comm window open.", voice="capcom",
+                    decision("say", P_NARRATION, text="Comm window open. Houston can hear us.", voice="capcom",
                              proactive=True, situation="comm_open", emotion=self._emotion())]
         if kind == "storm_end":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "The storm is over.", source=src),
-                    decision("say", P_NARRATION, text="The storm is over. All clear, Commander!", voice="capcom",
+                    decision("say", P_NARRATION, text="Storm's over. All clear, Commander.", voice="capcom",
                              proactive=True, situation="all_clear", emotion=self._emotion())]
         if kind == "dose_alert":
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Radiation is high.", source=src)]
         if kind in ("low_power",) or (kind == "sunset" and ((s.get("resources") or {}).get("power_pct") or 100) < 35):
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Battery is low."),
-                    decision("say", P_NARRATION, text="It's dark and the battery is low. Let's save power together.",
+                    decision("say", P_NARRATION, text="Dark, and the battery's low. Let's save power.",
                              voice="capcom", proactive=True, situation="night_low_power", emotion=self._emotion()),
                     decision("card", P_NUDGE, title="Coach", nudge=True,
-                             body="Dark and low battery: turn science and the rover down, keep heaters and life support on.",
+                             body="Turn down science and the rover. Keep heaters and life support on.",
                              actions=[{"label": "Science to 5", "send": {"t": "typed", "text": "science to 5"}}])]
         if kind in ("failure", "mission_complete"):
             return [decision("alert", P_CRITICAL if kind == "failure" else P_NARRATION,

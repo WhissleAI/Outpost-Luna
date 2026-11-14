@@ -1,0 +1,240 @@
+/* Outpost Luna design tokens. The single source for colour, space, type, radii, elevation, focus and motion.
+   Names are stable (docs/DESIGN_SYSTEM.md); values may still be tuned. Component CSS uses ONLY these variables.
+   Two type families, both self-hosted (the desktop app runs offline): Inter (UI) and JetBrains Mono (telemetry).
+   Contrast: every text token is >= 4.5:1 on --color-bg, --color-surface and --color-surface-2 in its theme. */
+
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-600.css";
+
+:root {
+  /* ---------- type ---------- */
+  --font-ui: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 12px;     /* captions on controls, eyebrows */
+  --text-sm: 14px;     /* secondary text, small buttons */
+  --text-md: 16px;     /* body, buttons, answers */
+  --text-lg: 20px;     /* questions, card titles */
+  --text-xl: 28px;     /* screen titles */
+  --text-2xl: 40px;    /* hero (home, patch earned) */
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.015em;  /* titles */
+  --tracking-caps: 0.08em;     /* uppercase eyebrows and instrument legends */
+
+  /* ---------- space (6 steps) ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 40px;
+
+  /* ---------- radii ---------- */
+  --radius-sm: 6px;    /* chips, kbd, small tags */
+  --radius-md: 10px;   /* buttons, inputs, list rows */
+  --radius-lg: 16px;   /* cards, panels */
+  --radius-xl: 24px;   /* hero surfaces, dialogs */
+  --radius-full: 999px;
+
+  /* ---------- sizes ---------- */
+  --control-sm: 36px;  /* icon buttons in bars */
+  --control-md: 44px;  /* default touch target */
+  --control-lg: 52px;  /* primary action */
+  --topbar-h: 56px;
+  --panel-w: 420px;    /* the side panel next to the Moon (lesson, briefing) */
+  --dock-w: 640px;     /* the comm strip (voice + type) */
+
+  /* ---------- motion ---------- */
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 360ms;
+
+  /* ---------- layers ---------- */
+  --z-stage: 0;
+  --z-overlay: 10;     /* HUD bits on the globe */
+  --z-panel: 20;       /* side panels, cards */
+  --z-dock: 30;        /* comm strip, captions */
+  --z-toast: 40;
+  --z-modal: 50;
+
+  /* ---------- colour: light ---------- */
+  --color-bg: #F4F5F7;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #EEF0F3;        /* hover, inset rows, secondary buttons */
+  --color-surface-3: #E3E6EB;        /* pressed */
+  --color-line: #DCE0E6;             /* hairlines */
+  --color-line-strong: #C3C9D2;      /* control borders */
+  --color-text: #0F1218;
+  --color-text-2: #465062;           /* secondary */
+  --color-text-3: #5E6878;           /* tertiary (still AA) */
+  --color-accent: #2A55CC;           /* the ONE accent: primary actions, selection, progress */
+  --color-accent-hover: #2148B3;
+  --color-on-accent: #FFFFFF;
+  --color-accent-soft: #E7EDFC;      /* selected rows, current step */
+  --color-accent-strong: #3563E9;    /* solid fill of the primary button (both themes; white text 5.1:1) */
+  --color-on-accent-strong: #FFFFFF;
+  --color-success: #1E7A4C;          /* correct answer, earned */
+  --color-success-soft: #E3F4EA;
+  --color-warning: #8F5B00;          /* amber: real cautions only */
+  --color-warning-soft: #FDF1DC;
+  --color-danger: #B42318;           /* red: real alerts only */
+  --color-danger-soft: #FDE7E5;
+  --color-focus: #2A55CC;
+  --color-scrim: rgba(15, 18, 24, .45);
+
+  /* the sky behind the Moon and the cockpit: dark in BOTH themes */
+  --color-space: #05070B;
+  --color-space-2: #0E1420;
+  --color-on-space: #F3F5F8;
+  --color-on-space-2: #AEB7C4;
+  --color-glass: rgba(10, 13, 19, .72);    /* panels floating over the Moon */
+  --color-glass-line: rgba(243, 245, 248, .14);
+  /* overlay: the theme-aware glass for panels and the voice strip floating over the Moon (text tokens stay AA on it) */
+  --color-overlay: rgba(255, 255, 255, .92);
+  --color-overlay-line: rgba(15, 18, 24, .10);
+  --blur-overlay: blur(24px) saturate(1.4);
+
+  /* instruments (cabin + check-ride cockpit): dark in BOTH themes */
+  --color-panel: #1A1D22;            /* panel metal */
+  --color-panel-2: #23272E;
+  --color-display: #070B0A;          /* display unit glass */
+  --color-phosphor: #8FF0B4;         /* display text */
+  --color-phosphor-dim: #5FA87E;
+  --color-lamp-caution: #F2B54B;
+  --color-lamp-warning: #FF6B5E;
+  --color-lamp-info: #8DB2FF;
+
+  /* data: the three mission resources */
+  --color-power: #B7791F;
+  --color-life: #2F6FB5;
+  --color-dose: #B03A7E;
+
+  /* ---------- elevation ---------- */
+  --shadow-1: 0 1px 2px rgba(15, 18, 24, .06), 0 1px 1px rgba(15, 18, 24, .04);
+  --shadow-2: 0 2px 6px rgba(15, 18, 24, .06), 0 8px 24px rgba(15, 18, 24, .08);
+  --shadow-3: 0 8px 24px rgba(15, 18, 24, .12), 0 24px 64px rgba(15, 18, 24, .16);
+
+  /* ---------- focus ---------- */
+  --focus-width: 3px;
+  --focus-offset: 2px;
+  --focus-ring: 0 0 0 var(--focus-offset) var(--color-bg), 0 0 0 calc(var(--focus-offset) + var(--focus-width)) var(--color-focus);
+
+  color-scheme: light;
+}
+
+/* ---------- colour: dark (OS preference unless the user picked light; or an explicit choice) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0B0D12;
+    --color-surface: #141821;
+    --color-surface-2: #1C212C;
+    --color-surface-3: #252B38;
+    --color-line: #262C38;
+    --color-line-strong: #384050;
+    --color-text: #F3F5F8;
+    --color-text-2: #B9C1CE;
+    --color-text-3: #8E98A8;
+    --color-accent: #8DB2FF;
+    --color-accent-hover: #A8C4FF;
+    --color-on-accent: #0B0D12;
+    --color-accent-soft: #1A2742;
+    --color-success: #5CCB8F;
+    --color-success-soft: #13291E;
+    --color-warning: #F2B54B;
+    --color-warning-soft: #2E2410;
+    --color-danger: #FF8A80;
+    --color-danger-soft: #331716;
+    --color-focus: #8DB2FF;
+    --color-scrim: rgba(0, 0, 0, .6);
+    --color-overlay: rgba(18, 21, 28, .88);
+    --color-overlay-line: rgba(243, 245, 248, .10);
+    --color-power: #D9A240;
+    --color-life: #5E9CEB;
+    --color-dose: #E0609F;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-2: 0 2px 6px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+    --shadow-3: 0 8px 24px rgba(0, 0, 0, .4), 0 24px 64px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: #0B0D12;
+  --color-surface: #141821;
+  --color-surface-2: #1C212C;
+  --color-surface-3: #252B38;
+  --color-line: #262C38;
+  --color-line-strong: #384050;
+  --color-text: #F3F5F8;
+  --color-text-2: #B9C1CE;
+  --color-text-3: #8E98A8;
+  --color-accent: #8DB2FF;
+  --color-accent-hover: #A8C4FF;
+  --color-on-accent: #0B0D12;
+  --color-accent-soft: #1A2742;
+  --color-success: #5CCB8F;
+  --color-success-soft: #13291E;
+  --color-warning: #F2B54B;
+  --color-warning-soft: #2E2410;
+  --color-danger: #FF8A80;
+  --color-danger-soft: #331716;
+  --color-focus: #8DB2FF;
+  --color-scrim: rgba(0, 0, 0, .6);
+  --color-overlay: rgba(18, 21, 28, .88);
+  --color-overlay-line: rgba(243, 245, 248, .10);
+  --color-power: #D9A240;
+  --color-life: #5E9CEB;
+  --color-dose: #E0609F;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-3: 0 8px 24px rgba(0, 0, 0, .4), 0 24px 64px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+/* ---------- high contrast (Access settings): black / white / yellow, thicker focus ---------- */
+:root[data-contrast="high"] {
+  --color-bg: #000000;
+  --color-surface: #000000;
+  --color-surface-2: #000000;
+  --color-surface-3: #1A1A1A;
+  --color-line: #FFFFFF;
+  --color-line-strong: #FFFFFF;
+  --color-text: #FFFFFF;
+  --color-text-2: #FFFFFF;
+  --color-text-3: #FFFFFF;
+  --color-accent: #FFE14D;
+  --color-accent-hover: #FFEA80;
+  --color-on-accent: #000000;
+  --color-accent-soft: #000000;
+  --color-success: #7CFFB0;
+  --color-success-soft: #000000;
+  --color-warning: #FFE14D;
+  --color-warning-soft: #000000;
+  --color-danger: #FF9C94;
+  --color-danger-soft: #000000;
+  --color-focus: #FFE14D;
+  --color-on-space-2: #FFFFFF;
+  --color-glass: #000000;
+  --color-glass-line: #FFFFFF;
+  --color-overlay: #000000;
+  --color-overlay-line: #FFFFFF;
+  --color-accent-strong: #FFE14D;
+  --color-on-accent-strong: #000000;
+  --color-phosphor: #FFFFFF;
+  --color-phosphor-dim: #FFFFFF;
+  --focus-width: 4px;
+  color-scheme: dark;
+}
+
+/* ---------- less motion (OS setting, or Access → Less motion sets data-motion="reduce") ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
+}
+:root[data-motion="reduce"] { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; }
