@@ -1,0 +1,56 @@
+# Outpost Luna desktop: electron-builder config. Inputs come from `make desktop-python desktop-models desktop-arctag`
+# (desktop/resources/) plus the NASA media straight from backend/data/media. docs/DESKTOP.md has the full layout.
+appId: ai.whissle.outpostluna
+productName: Outpost Luna
+copyright: Copyright © 2026 Whissle Inc.
+directories:
+  output: dist
+  buildResources: build-resources
+files:
+  - main/**/*
+  - "!main/**/*.test.js"
+  - package.json
+asar: true
+# The Python tree is huge and full of native libraries: ship it as plain files next to the asar.
+extraResources:
+  - from: resources/python
+    to: python
+  - from: resources/site
+    to: site
+  - from: resources/app
+    to: app
+  - from: resources/models
+    to: models
+  - from: resources/native
+    to: native
+  - from: ../backend/data/media
+    to: app/backend/data/media
+    filter: ["**/*", "!.DS_Store"]
+compression: normal
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.education
+  # Ad-hoc signature only (identity "-"). Developer ID signing + notarization: docs/DESKTOP.md.
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  entitlements: build-resources/entitlements.mac.plist
+  entitlementsInherit: build-resources/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: "Outpost Luna listens when you hold the talk button, so you can ask the Moon questions and give mission orders. Everything stays on this computer."
+    LSApplicationCategoryType: public.app-category.education
+dmg:
+  writeUpdateInfo: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # Unsigned. Authenticode signing: docs/DESKTOP.md.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  differentialPackage: false
+publish: null

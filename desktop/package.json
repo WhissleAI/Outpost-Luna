@@ -1,0 +1,20 @@
+{
+  "name": "outpost-luna-desktop",
+  "productName": "Outpost Luna",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Outpost Luna as one offline desktop app: Electron shell supervising the backend and the model server, every model bundled.",
+  "author": "Whissle Inc.",
+  "main": "main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test main/",
+    "dist:mac": "electron-builder --mac dmg --arm64",
+    "dist:win": "electron-builder --win nsis --x64",
+    "dir:mac": "electron-builder --mac dir --arm64"
+  },
+  "devDependencies": {
+    "electron": "44.10.0",
+    "electron-builder": "26.18.1"
+  }
+}
