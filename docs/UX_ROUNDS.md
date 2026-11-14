@@ -342,6 +342,108 @@ vocab_listen, vocab_say, patch.
 - warming
 - patch
 
+## Round 4: lesson step types, polar map zoom, accuracy, functional pass
+
+### Critique of round 3 (coordinator + own)
+
+- **Polar map:** with the next stop at the pole, the 4 polar pins were a tight, unlabelled cluster in the middle of a
+  whole-Moon view.
+- **Fill-the-blank:** the prompt quotes the whole sentence, and then the step draws the same sentence again.
+- **Say-it-back:** "Say this word back to me: regolith" sits above a "SAY IT BACK" label above "regolith".
+- **Vocab source:** "Heard in:" plus a truncated 60-character link title plus "Hear the crew say it" on 3 lines.
+- **Vocab listen:** the "how" line overlaps the revealed meaning (a negative margin).
+- **Voice bar:**
+  - It jumped to the bottom left in some lessons because the lesson card counted as an obstacle even though the
+    card's max-height already keeps clear of a bottom bar.
+  - "Reset the voice bar" could land somewhere other than the bottom: the Next-up card moved down while the bar was
+    at the top, and then blocked the bottom.
+  - It moved when Settings opened, even though the modal sits above it.
+- **About:** "Artemis III hasn't landed yet" is wrong since 2026-02-27 (audit #1). It also over-claimed "real NASA
+  data" (#10).
+
+### What changed
+
+- **Polar map:**
+  - When the next stop is polar, the camera looks straight down at the pole (`flyTo` takes a `maxLat`; the map uses
+    88°) at a close zoom, so the polar pins spread out.
+  - The next pin is always labelled and reserves room for its label in the de-overlap; the other pins are labelled
+    on hover or focus.
+  - Anywhere else, the whole Moon.
+- **Step types:**
+  - Fill-the-blank shows only the prompt's lead-in ("Fill the blank"); the full prompt is still spoken.
+  - Say-it-back drops the duplicate label.
+  - The vocab source is one quiet row: "Hear the crew say it" plus a "Source" link, with the title as its tooltip.
+  - The answer area has a consistent gap.
+  - New harness state `lesson_retry`: two misses give try-again feedback plus a hint.
+- **Voice bar:** a lesson or ride card, or the Next-up card, never counts as an obstacle for a bottom anchor, because
+  they stack above it by design. Modals (Settings, About) don't move the bar.
+- **About:**
+  - Rewritten to the audit: Artemis III is a 2027 Earth-orbit test, and the first south-pole landing is planned for
+    Artemis IV.
+  - Pasted verbatim from COPY.md §8: the header line, the Flight School paragraph, and the LOLA/Kaguya and DONKI
+    cells.
+  - Added: CAPCOM and Houston are played by the game; privacy.
+  - Merged feat/artemis-ref and feat/copy-v3 694f2e8. The copy guard tests pass.
+- **Functional pass** (`frontend/tools/ux_flow.py`, 20 checks, 0 console errors), covering both input paths:
+  1. first launch and the call sign by voice;
+  2. lesson 1 entirely by voice (intent, tap by naming, choice, vocab_match), the patch, then "next";
+  3. lesson 2 by click and typing (choice + 3 read-backs);
+  4. Map; a done pin, then Replay, then back;
+  5. the voice bar moved and reset by command;
+  6. Settings: a pref saved, Esc closes;
+  7. a Library question opens the card; back to Flight School.
+- **Backend tests:** `test_handsfree_run`, `test_turn_router`, `test_academy` and `test_copy` pass (90 tests).
+
+### Screenshots
+
+`docs/img/ux/r4-*.jpg` (1440 dark + 1280 light):
+- map_mid (polar zoom)
+- lesson_keywords, lesson_command, lesson_retry
+- vocab_listen, vocab_match, vocab_say, vocab_fill
+- patch
+- ride
+
+## Round 5: Library details, qualified map, high contrast + 150%, Settings on the backend
+
+### Critique (own)
+
+- **High contrast + 150% text:**
+  - The voice bar vanished off screen, because its left/top were multiplied by the CSS zoom.
+  - The lesson card was shrunk back to 400px, so the title wrapped onto 3 lines.
+- **Library:** the card, tour and Find-it were never shot. They read fine, but the answer card is long (the story
+  plus More plus sources).
+- **Settings → Voice:**
+  - It showed a made-up "CAPCOM" entry on top of the server's own default.
+  - The server's echo of the applied prefs was dropped by `session.js`, because "prefs" was not in its VISUAL set.
+- **Voice choice:** the chosen voice also changed CAPCOM. The contract says only the guide changes, unless
+  `voice_all` is on.
+
+### What changed
+
+- **Voice bar:** zoom-aware. It uses its on-screen size, and left/top are divided by the zoom.
+- **Lesson card at 150%:** grows with the text instead of being shrunk.
+- **Settings → Voice:**
+  - The server's 10 voices, with the first as the default, and ▶ previews.
+  - A "Use this voice for everyone" toggle.
+  - The server's `applied` echo shows as "In use: …".
+- **Client-spoken lines:** they carry `steer_voice` (guide only, unless `voice_all`), `speed` and `expr`.
+- **Barge-in:** the client thresholds follow the filter level, with a test.
+- **New states:** `library_card`, `library_find`, `library_tour`, `map_done`, `hc_lesson`.
+
+### Pending
+
+- **Steer recalibration** (feat/settings-be: −14 LUFS, faster baseline): re-check the speed labels, the
+  master-volume mapping and the crew gain against the numbers in `docs/VOICES.md` when it lands.
+- **Check ride:** the Mission ride API.
+
+### Screenshots
+
+`docs/img/ux/r5-*.jpg` (1280 light):
+- library_card, library_find, library_tour
+- map_done
+- hc_lesson (high contrast, 150%)
+- access (Settings · Voice with the server's voices)
+
 ## Router requests (for the hands-free owner)
 
 - **Done** (feat/router-v2): "move the voice bar to the top / bottom / left / right / top left / bottom right …",

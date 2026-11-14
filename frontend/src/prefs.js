@@ -8,6 +8,7 @@
 
 export const PREF_DEFAULTS = Object.freeze({
   voice: "",                 // "" = the default CAPCOM voice; else an id from GET /api/voices
+  voice_all: false,          // true = every voice (CAPCOM, Houston, the story) uses the chosen voice
   expressiveness: 0.5,       // 0 calm … 1 lively
   volume: 1,                 // master: every voice and the crew audio
   alarms: 1,                 // alarm chimes
@@ -35,6 +36,7 @@ export function normalizePrefs(x) {
   const pick = (k, opts) => { if (opts.includes(s[k])) o[k] = s[k]; };
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
   pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
+  if (typeof s.voice_all === "boolean") o.voice_all = s.voice_all;
   return o;
 }
 
@@ -83,7 +85,11 @@ export function createPrefs({ globe = null } = {}) {
     dispatchEvent(new CustomEvent("outpost:prefs", { detail: P }));
   }
   /** What the session needs (main.js sends it on the socket). */
-  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, rate, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
+  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, rate: Math.max(0.6, Math.min(1.6, rate)),
+    expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
+  /** What the server applied ({t:"prefs", applied}); Settings shows it. */
+  let applied = null;
+  const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };
 
   // ---- voices (GET /api/voices → [{id, name, desc, preview_url}]); none = only the default voice, no picker ----
   let voices = null;
@@ -133,7 +139,7 @@ export function createPrefs({ globe = null } = {}) {
   function resetProgress() { set("atm-academy", null); location.reload(); }
 
   return {
-    get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire,
+    get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire, setApplied, get applied() { return applied; },
     loadVoices, previewVoice, listProfiles, switchProfile, addProfile, resetProgress,
   };
 }

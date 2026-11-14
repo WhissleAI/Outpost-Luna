@@ -116,6 +116,7 @@ class Mission:
     ice_runs: int = 0
     houston_calls: int = 0
     shifts: list = field(default_factory=list)    # per-shift snapshots for the debrief timeline
+    level: str = "cadet"                          # Settings: cadet | commander (passed through; no effect here yet)
 
     # Convenience API for the Director / registry (contract: State and command result shapes).
     def state(self) -> dict:
@@ -131,11 +132,12 @@ class Mission:
 
 # ---------------------------------------------------------------- setup
 
-def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None) -> Mission:
+def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None,
+                level: str = "cadet") -> Mission:
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
     rng = random.Random(f"{site_id}:{seed}")
-    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []))
+    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=level or "cadet")
     cat = storms_catalog()["events"]
     n = 2 + (rng.random() < 0.5)
     picks = rng.sample(cat, n)

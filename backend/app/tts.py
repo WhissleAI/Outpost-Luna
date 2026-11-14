@@ -63,9 +63,12 @@ def cache_path(model: str, text: str, style: dict | None = None, engine: str = "
 
 
 def clean_style(voice: str, text: str, style: dict | None) -> dict:
-    """The client's style (from the Director) made safe, or the persona default. Only what reaches the engine."""
-    if not isinstance(style, dict) or not style:
-        style = steering.style_for(voice, text)
+    """The client's style (from the Director) made safe, or the persona default. Only what reaches the engine.
+    Settings ride on the style (docs/VOICES.md): `steer_voice` (a curated or persona voice id), `speed` (the rate
+    setting, applied in speak()) and `expr` (expressiveness 0–1, steering.with_expressiveness)."""
+    prefs = {k: style[k] for k in ("steer_voice", "speed", "expr") if k in style} if isinstance(style, dict) else {}
+    if not isinstance(style, dict) or not (set(style) - {"steer_voice", "speed", "expr"}):
+        style = steering.style_for(voice, text)   # none, or only Settings: the persona default style, with them
     elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
         sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
         persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
@@ -94,6 +97,22 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     if isinstance(perf, dict):
         out["perform"] = {"genre": str(perf.get("genre") or "children"),
                           "strength": max(0.0, min(1.0, float(perf.get("strength", 0.7))))}
+    # ---- Settings (docs/VOICES.md) ----
+    from . import voices
+    if voices.allowed(prefs.get("steer_voice")):
+        out["steer_voice"] = prefs["steer_voice"]
+    if "expr" in prefs:
+        e = steering.clamp_expr(prefs["expr"])
+        out["tag"], out["controls"], p2 = steering.with_expressiveness(out["tag"], out["controls"], out.get("perform"), e)
+        if p2 is not None:
+            out["perform"] = p2
+        out["expr"] = e
+    try:
+        sp = float(prefs["speed"]) if prefs.get("speed") is not None else None
+    except (TypeError, ValueError):
+        sp = None
+    if sp is not None and sp == sp:
+        out["speed"] = round(max(0.5, min(2.0, sp)), 2)
     return out
 
 
@@ -159,6 +178,8 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
     for engine in engines:
         if engine == "steer":
             st = clean_style(voice, text, style)
+            speed = speed if speed is not None else st.pop("speed", None)   # an explicit ?speed= wins over Settings
+            st.pop("speed", None)
             if speed and abs(float(speed) - 1.0) > 1e-3:             # a11y: the kid's speed, on top of the style
                 st["controls"], st["pace"] = steering.with_speed(st["controls"], speed)
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}

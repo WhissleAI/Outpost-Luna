@@ -119,6 +119,7 @@ from .mission.routes import router as mission_router; app.include_router(mission
 from .session import router as session_router; app.include_router(session_router)  # noqa: E402  (docs/SESSION_CONTRACT.md)
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
+from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 
 @app.get("/api/director/stats")
 def director_stats():
@@ -129,6 +130,8 @@ def director_stats():
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
 app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
+# Settings voice previews (pre-rendered, offline): before the frontend's catch-all mount.
+app.mount(_voices.PREVIEW_PREFIX, StaticFiles(directory=_voices.previews_dir(), check_dir=False), name="voice_previews")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
 

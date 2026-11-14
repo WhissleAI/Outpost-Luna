@@ -9,13 +9,13 @@ MISSIONS: dict[str, sim.Mission] = {}
 MAX_MISSIONS = 500
 
 
-def create(site: str, seed: int | None = None, roles: list[str] | None = None) -> sim.Mission:
+def create(site: str, seed: int | None = None, roles: list[str] | None = None, level: str = "cadet") -> sim.Mission:
     if len(MISSIONS) >= MAX_MISSIONS:  # drop the oldest
         MISSIONS.pop(next(iter(MISSIONS)))
     mid = "m-" + secrets.token_hex(4)
     if seed is None:
         seed = secrets.randbelow(1_000_000)
-    m = sim.new_mission(mid, site, seed, roles)
+    m = sim.new_mission(mid, site, seed, roles, level=level)
     MISSIONS[mid] = m
     return m
 

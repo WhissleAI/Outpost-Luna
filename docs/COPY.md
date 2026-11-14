@@ -71,12 +71,37 @@ Also when speaking:
   - A mare is a dark plain of old lava.
   - The terminator is where day meets night.
   - An mSv measures radiation dose.
-- Use real NASA and Artemis grounding. Every fact in `course.json` keeps its source, and its numbers match the cited data. `content.check()` enforces this.
+- Ground every line in real sources (NASA first). Every fact in `course.json` keeps its source, and its numbers match the cited data. `content.check()` enforces this.
 
 ### Accuracy
 
-- Artemis II flew around the Moon in April 2026.
-- Artemis III has not landed. Never write "when we landed", and never imply that it has.
+Source for these rules: `docs/ACCURACY_AUDIT.md` and `docs/ARTEMIS_REFERENCE.md` on `feat/artemis-ref`.
+
+**Artemis**
+- Artemis II flew its crew around the Moon in April 2026.
+- NASA restructured Artemis on 2026-02-27:
+  - **Artemis III (2027) is a crewed test flight in Earth orbit, with no landing.** Never call it the first landing.
+  - **The first crewed landing is planned for Artemis IV (2028).** Always say "planned".
+  - NASA has not confirmed the Artemis IV landing site. Never say where it will land.
+- **No crew has landed at the south pole.** The approved line is "No crew has landed at the south pole yet."
+- Landing regions: cite NASA's **2024** list of 9, which includes Malapert Massif and de Gerlache Rim 2. Shackleton's rim and Connecting Ridge are not on it.
+
+**Storms**
+- At the Moon, the hazard is a **solar particle storm**: fast protons from the Sun. Never write "G5", "Kp", or "geomagnetic storm at the outpost". Those scales measure Earth's magnetic field, and the Moon has none.
+- For May 2024, use Earth as context: "the real May 2024 storm, which gave Earth huge auroras".
+- Particles from a storm arrive within minutes to a few hours, not on a fixed "6 hours".
+
+**What's real, and what we claim**
+- **Never over-claim.** Don't write "everything uses real NASA data" or "every fact shows its NASA source".
+  - Some data is not NASA's: the baseline dose comes from China's Chang'e 4, and some numbers come from science papers.
+  - Some rules are game choices: the dose is doubled, and the shields are pretend.
+  - The approved line is `SOURCES_LINE`: "Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it."
+- **Pretend tech gets a tag.** Use `PRETEND_TECH` ("Pretend tech") with `PRETEND_TECH_TIP` ("Made up for the game. Real crews don't have this.").
+  - It applies to the powered radiation shields, the greenhouse, the rim-to-floor power cable and the rim relay.
+  - Never say "the plan is" for something NASA has not planned. Real crews in Orion build a storm shelter out of their supply bags. A soil-covered base is a studied idea.
+- CAPCOM and Houston are played by the game.
+
+**Endorsement**
 - Never imply NASA endorsement. The credit line is exact and must not change:
   **"Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA."**
 
@@ -235,3 +260,35 @@ Two places currently speak with `callSign.shown()` where they should speak with 
 - `CAPCOM.missionStart`
 
 If the mission UI's `say` reads the brief card aloud, it must pass `callSign.spoken()`.
+
+New keys from the accuracy round:
+
+| Key | Text |
+|---|---|
+| `SOURCES_LINE` | The honest sourcing line, for About and Debrief |
+| `PRETEND_TECH`, `PRETEND_TECH_TIP` | The tag and tooltip for game-only hardware |
+| `STORM.name`, `STORM.may2024` | "Solar particle storm", plus the Earth-auroras context line |
+| `RIDE.mars` | The Mars fact, for the check-ride result card |
+| `CAPCOM.firstShift` | The first-shift coach line |
+
+## 8. About dialog (`index.html`): exact text for the UX lead
+
+These replace the Artemis III framing and the over-claims (audit #1, #3, #10). Swap each one in as written.
+
+**Header `<p>`** (replaces "A voice game for kids 7 to 12. Artemis III hasn't landed yet: …"):
+
+> A voice game for kids 7 to 12. No crew has landed at the Moon's south pole yet. Train at Flight School, then run Outpost Luna, a base there.
+
+**Flight School paragraph** (replaces "Flight School is short lessons with CAPCOM: … not endorsed by NASA."):
+
+> Flight School is short lessons with CAPCOM: the south pole, radio talk, solar power, radiation, air and ice, and lessons from Apollo. Answer by voice, typing or tapping. A hint comes after two misses. Every fact shows its source. The last lesson is a check ride: two days on the mission simulator, with a solar particle storm based on the real May 2024 storm, the one that gave Earth huge auroras. Pass it to earn the Mission Commander patch. Patches and your call sign stay on this device. The story is inspired by NASA's Artemis program. Artemis I flew uncrewed in 2022. Artemis II flew its crew around the Moon in April 2026. Artemis III, planned for 2027, is a crewed test flight in Earth orbit. The first crew landing is planned for Artemis IV in 2028, and NASA hasn't picked the site yet. Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it. CAPCOM and Houston are played by the game.
+
+**Credit line:** keep it exactly as `CREDIT`.
+
+**Data table row "LRO LOLA"** (audit, `index.html` table): the Use cell becomes
+
+> How much sunlight each site gets (LRO LOLA and Kaguya illumination studies)
+
+**Data table row "NASA DONKI"**: the Use cell becomes
+
+> Real solar storms and particle events, with their real dates

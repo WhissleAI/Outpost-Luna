@@ -169,9 +169,14 @@ def stage_app(skip_frontend: bool):
         sys.exit("frontend/dist/index.html missing: run `npm run build` in frontend/")
     shutil.copytree(dist, app / "frontend")
     for must in ("backend/app/director_model/weights.json", "backend/app/director_model/weights.npz",
-                 "backend/data/places.json", "backend/data/index/clips.json"):
+                 "backend/data/places.json", "backend/data/index/clips.json", "backend/data/voices.json"):
         if not (app / must).exists():
             sys.exit(f"bundle is missing {must}")
+    # Settings voices (docs/VOICES.md): every curated voice needs its offline preview clip in the bundle.
+    import json
+    for v in json.loads((app / "backend/data/voices.json").read_text())["voices"]:
+        if not (app / "backend/data/voice_previews" / f"{v['id']}.wav").exists():
+            sys.exit(f"bundle is missing the preview for {v['id']}")
     # Never ship a key: fail the build if any .env slipped in.
     leaked = [p for p in RES.rglob(".env*") if p.is_file()]
     if leaked:

@@ -199,10 +199,13 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
     if (section === "voice" && PA) PA.loadVoices().then(vs => {
       const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
-      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${[{ id: "", name: "CAPCOM", desc: "The default voice" }, ...vs].map(v => `
-        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id ? "checked" : ""}>
+      const ap = PA.applied, vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "the default voice";
+      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id || (!PA.value.voice && i === 0) ? "checked" : ""}>
           <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
-          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>`;
+          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
+        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: CAPCOM and Houston keep their own voices</small></span></label>
+        ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
     });
   }
@@ -214,6 +217,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
+  // the session's echo of what it applied: refresh the Voice section's "In use" line
+  addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
   btn.addEventListener("click", () => open());
   panel.addEventListener("click", e => {
     const PA = O.prefsApi;
@@ -227,6 +232,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   });
   panel.addEventListener("change", e => {
     const t = e.target;
+    if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); return; }   // a boolean pref
     if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
       O.prefsApi.update({ [k]: v });
@@ -250,7 +256,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     }
   });
 
-  function set(patch) { S = saveSettings(store, { ...S, ...patch }); apply(); }
+  function set(patch) { S = saveSettings(store, { ...S, ...patch }); apply(); dispatchEvent(new CustomEvent("outpost:a11y", { detail: S })); }
   function apply() {
     root.dataset.contrast = S.contrast ? "high" : "";
     root.dataset.dyslexia = S.dyslexia ? "1" : "";
