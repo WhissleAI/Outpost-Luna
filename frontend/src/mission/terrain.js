@@ -9,6 +9,7 @@
 // window agrees with the SUN EL / EARTH EL readouts. The Moon's curvature is applied to the mesh (−d²/2R).
 // Post: pmndrs postprocessing (bloom for the Sun's glare and the beacons, a light grain + vignette, ACES).
 import * as THREE from "three";
+import { CSM } from "three/examples/jsm/csm/CSM.js";
 import { EffectComposer, RenderPass, EffectPass, BloomEffect, NoiseEffect, VignetteEffect, ToneMappingEffect, ToneMappingMode, BlendFunction } from "postprocessing";
 
 const R_MOON = 1737400, SKY = 800e3, DEG = Math.PI / 180;
@@ -80,6 +81,8 @@ function rover() {
   const dish = new THREE.Mesh(new THREE.SphereGeometry(.38, 16, 8, 0, Math.PI * 2, 0, .9), white); dish.position.set(-.6, 2.1, .9); dish.rotation.x = -1.1; g.add(dish);
   const beacon = new THREE.Mesh(new THREE.SphereGeometry(.08, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0, 6, 3) })); beacon.position.set(.6, 2.95, 1.3); g.add(beacon);
   g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  const work = new THREE.PointLight(0xdfe9ff, 26, 30, 1.6); work.position.set(0, 3.4, -1.6); g.add(work);   // mast work light (it drives in the dark)
+  const head = new THREE.SpotLight(0xfff2dc, 160, 90, .5, .6, 1.4); head.position.set(0, 1.4, 1.7); head.target.position.set(0, 0, 30); g.add(head, head.target);
   g.userData = { wheels, beacon };
   return g;
 }
@@ -114,6 +117,9 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   const mk = (cls, text) => { const e = document.createElement("span"); e.className = "tv-mark " + cls; e.textContent = text; marks.append(e); return e; };
   const mHab = mk("is-hab", "OUTPOST"), mRover = mk("is-rover", "ROVER"), mEarth = mk("is-earth", "EARTH"), mSun = mk("is-sun", "SUN");
   const tag = document.createElement("span"); tag.className = "tv-tag"; marks.append(tag);
+  const credit = document.createElement("span"); credit.className = "tv-credit";
+  credit.textContent = "Terrain: NASA LRO LOLA elevation · Earth: NASA Blue Marble · Uses NASA open data; not endorsed by NASA.";
+  marks.append(credit);
 
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance", logarithmicDepthBuffer: true, stencil: false, depth: true }); }
@@ -130,8 +136,12 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   composer.addPass(new EffectPass(camera, bloom, vignette, noise, new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })));
 
   // ---- lights: the Sun (shadow-casting), a faint earthshine fill, and nothing else (the Moon has no sky light) ----
-  const sun = new THREE.DirectionalLight(0xfff4e6, 3.2); sun.castShadow = true; scene.add(sun, sun.target);
-  Object.assign(sun.shadow.mapSize, { width: 4096, height: 4096 }); sun.shadow.bias = -0.00002; sun.shadow.normalBias = 2;
+  // Cascaded shadow maps (three's CSM addon): at a 1-2° Sun a ridge 10 km up-sun shades the site, so the shadows
+  // must reach far; three cascades cover 0-26 km from the camera, the light sits 60 km up-sun.
+  const csm = new CSM({ camera, parent: scene, cascades: 3, maxFar: 26000, mode: "practical", shadowMapSize: 2048, shadowBias: -0.00003,
+    lightDirection: new THREE.Vector3(0, -1, 0), lightIntensity: 3.2, lightNear: 1, lightFar: 160000, lightMargin: 60000 });
+  csm.lights.forEach((l, i) => { l.color.set(0xfff4e6); l.shadow.normalBias = [0.4, 2, 8][i]; });
+  const sun = { set intensity(v) { csm.lights.forEach(l => { l.intensity = v; }); }, get intensity() { return csm.lights[0].intensity; } };
   const earthshine = new THREE.HemisphereLight(0x9fb8e0, 0x000000, .06); scene.add(earthshine);
 
   // ---- sky: stars, the Sun's disc (HDR, so bloom makes the glare), the Earth (NASA Blue Marble), all at "infinity" ----
@@ -163,6 +173,13 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   const rv = rover(); scene.add(rv);
   const track = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x7cffb0, dashSize: 6, gapSize: 5, transparent: true, opacity: .55, depthWrite: false }));
   scene.add(track);
+  // every lit material reads the cascades (the CSM lights would otherwise add up); keep the ground's detail patch
+  const groundPatch = groundMat.onBeforeCompile;
+  const lit = new Set([groundMat, earth.material]);
+  [hab, rv].forEach(g => g.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) lit.add(o.material); }));
+  lit.forEach(m => csm.setupMaterial(m));
+  const csmPatch = groundMat.onBeforeCompile;
+  groundMat.onBeforeCompile = (sh, r) => { csmPatch(sh, r); groundPatch(sh, r); };
 
   const S = { site: null, meta: null, levels: {}, h0: 0, view: "site", visible: false, sunEl: 1, sunLon: sunLon(0), earthEl: 3, storm: false, alarm: false,
     rover: { d: 0, dGoal: 0, heading: new THREE.Vector3(0, 0, -1), busy: false, task: null }, cam: null, tween: null, t0: performance.now(), drift: 0,
@@ -255,12 +272,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     hab.userData.dish.rotateX(Math.PI / 2);
     S.sunDir = sd; S.earthDir = ed;
   }
-  function placeShadow(center, r) {
-    const sd = S.sunDir || skyDir(1, 0);
-    sun.target.position.copy(center); sun.position.copy(center).addScaledVector(sd, 60e3);
-    const c = sun.shadow.camera; c.left = -r; c.right = r; c.top = r; c.bottom = -r; c.near = 100; c.far = 140e3; c.updateProjectionMatrix();
-    sun.shadow.normalBias = r / 4096 * 1.6;
-  }
+  function placeShadow() { csm.lightDirection.copy(S.sunDir || skyDir(1, 0)).negate(); csm.update(); }
 
   // ---- rover on its route ----
   function routeDir(task) {
@@ -302,9 +314,10 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   }
   function roverPose() {
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rv.quaternion); fwd.y = 0; fwd.normalize();
-    const pos = rv.position.clone().addScaledVector(fwd, -9); pos.y = Math.max(heightAt(pos.x, pos.z) + 1.8, rv.position.y + 3.1);
-    const look = rv.position.clone().addScaledVector(fwd, 40); look.y = Math.max(heightAt(look.x, look.z), rv.position.y) + 1.2;
-    return pose(pos, look, 46);
+    // chase camera: low, just above the mast, the rover in the lower third and the route ahead
+    const pos = rv.position.clone().addScaledVector(fwd, -8.5); pos.y = Math.max(heightAt(pos.x, pos.z) + 1.6, rv.position.y + 3.2);
+    const look = rv.position.clone().addScaledVector(fwd, 32); look.y = rv.position.y + (heightAt(look.x, look.z) - rv.position.y) * .35 - .2;
+    return pose(pos, look, 42);
   }
   function earthPose() {
     // a long lens from the hab: Earth above the lunar skyline when it is up, the skyline where it hides when not
@@ -317,7 +330,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     return pose(pos, new THREE.Vector3(0, hab.position.y, 0), 52);
   }
   const target = () => S.view === "rover" ? roverPose() : S.view === "earth" ? earthPose() : sitePose((performance.now() - S.t0) / 1000);
-  function apply(p) { camera.position.copy(p.pos); camera.lookAt(p.look); if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); } S.cam = { pos: p.pos.clone(), look: p.look.clone(), fov: p.fov }; }
+  function apply(p) { camera.position.copy(p.pos); camera.lookAt(p.look); if (Math.abs(camera.fov - p.fov) > .01) { camera.fov = p.fov; camera.updateProjectionMatrix(); csm.updateFrustums(); } S.cam = { pos: p.pos.clone(), look: p.look.clone(), fov: p.fov }; }
   function poseNow() { apply(target()); S.tween = null; }
   /** Fly the camera from where it is to the new view; long hops arc upward like a hopper. */
   function flyTo(from, dur) {
@@ -351,8 +364,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     }
     apply(p);
     sky.position.copy(camera.position);
-    const near = S.view === "rover" ? rv.position : hab.position;
-    placeShadow(near, S.view === "rover" ? 900 : camera.position.distanceTo(hab.position) > 4000 ? 14000 : 3200);
+    placeShadow();
     const blink = (Math.sin(now / 260) > .6) || reduced();
     hab.userData.beacon.visible = blink; rv.userData.beacon.visible = S.rover.busy && (Math.sin(now / 200 + 1) > .2 || reduced());
     hab.userData.lamp.intensity = S.sunEl < 0 ? 60 : 0;
@@ -365,7 +377,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   }
   function resize() {
     W = host.clientWidth || 1; H = host.clientHeight || 1;
-    renderer.setSize(W, H, false); composer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix();
+    renderer.setSize(W, H, false); composer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); csm.updateFrustums();
   }
   new ResizeObserver(resize).observe(host); resize();
   document.addEventListener("visibilitychange", () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else if (S.visible && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } });

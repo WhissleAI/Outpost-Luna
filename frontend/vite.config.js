@@ -5,6 +5,8 @@ import { defineConfig } from "vite";
 const backend = process.env.BACKEND_URL || "http://127.0.0.1:8100";
 
 export default defineConfig({
+  // pre-bundle three + its addons + postprocessing together, so dev never loads two copies of three
+  optimizeDeps: { include: ["three", "three/examples/jsm/controls/OrbitControls.js", "three/examples/jsm/csm/CSM.js", "postprocessing"] },
   server: {
     port: 5173,
     strictPort: true,
