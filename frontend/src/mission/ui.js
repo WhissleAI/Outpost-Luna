@@ -400,7 +400,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     stop() { clearTimeout(this.t); this.left = 0; } };
 
   // ---------- the live mission clock (mission/clock.js) ----------
-  let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = false;
+  let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = null;
   /** Why time must wait right now (docs/GAMEPLAY.md §2), or null. */
   function held() {
     if (screen !== "hud" || !state) return "away";
@@ -424,8 +424,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   async function stepClock(dt) {
     if (!state || !client || screen !== "hud" || !client.step) return;
     const g = gen, id = state.id;
-    stepping = true;
-    let r; try { r = await client.step(id, dt); } finally { stepping = false; }
+    const p = client.step(id, dt); stepping = p;
+    let r; try { r = await p; } finally { if (stepping === p) stepping = null; }
     if (!alive(g) || !state || state.id !== id) return;
     applyLive(r);
   }
@@ -466,7 +466,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
   /** Skip to next event: the sim runs until something happens (at most a day), then the clock carries on. */
   async function skipEvent() {
-    if (!state || state.over || stepping) return;
+    if (!state || state.over) return;
+    // a clock step in flight: wait for it, never drop the press (a slow PC is posting steps most of the time)
+    if (stepping) { try { await stepping; } catch (e) { /* the skip below reports a dead server */ } }
+    if (!state || state.over) return;
     nudge.stop();
     if (cockpit) cockpit.busy(true);
     const g = gen; let r;

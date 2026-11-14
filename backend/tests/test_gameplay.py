@@ -305,3 +305,16 @@ def test_commander_life_check_always_offers_a_real_change():
         assert opt["id"] == "recycler" and opt["label"] == f"Recycler to {expect}%", (share, opt)
     m.loads = sim.reallocate(m.loads, "life_support", 60)
     assert [o["id"] for o in gameplay._life_check(m)["steps"][0]["options"]] == ["ice"]
+
+
+def test_skip_line_names_the_job_it_stopped_for():
+    m = sim.new_mission("m", "shackleton_rim", 4, level="cadet")
+    sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+    for _ in range(8):
+        r = sim.apply_command(m, {"type": "skip"})
+        kinds = {(e["kind"], e.get("phase")) for e in r["events"]}
+        if ("task", "start") in kinds and not any(k in sim.SKIP_STOPS - {"task", "beat"} for k, _ in kinds):
+            assert "A quiet day" not in r["say"] and ("New task" in r["say"] or ":" in r["say"]), r["say"]
+            assert len(r["say"].split()) <= 20
+            return
+    pytest.skip("no task-only skip stop in this seed")

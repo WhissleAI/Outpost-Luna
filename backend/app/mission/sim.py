@@ -746,7 +746,16 @@ def _skip_say(m: Mission, evs: list) -> str:
         return news[-1]["text"] if news else "Mission over."
     stop = next((e for e in reversed(evs) if e["kind"] in SKIP_STOPS and e["kind"] not in ("task", "beat")), None)
     clock = f"Day {m.t_h // 24 + 1}, hour {m.t_h % 24}."
-    return f"{clock} {stop['text']}" if stop else f"{clock} A quiet day. All steady."
+    if stop:
+        return f"{clock} {stop['text']}"
+    # stopped for a job (a new task, or a step that just opened) or a story beat: say that, never "a quiet day"
+    job = next((e for e in reversed(evs) if e["kind"] == "task" and e.get("phase") in ("start", "ready")), None)
+    beat = next((e for e in reversed(evs) if e["kind"] == "beat"), None)
+    if job:
+        return f"{clock} {job['text']}"
+    if beat and len(evs) < SKIP_MAX_H:
+        return f"{clock} {beat.get('title', '')}."
+    return f"{clock} A quiet day. All steady."
 
 
 def _execute(m: Mission, cmd: dict) -> dict:
