@@ -74,9 +74,9 @@ RULES = [("if a storm comes go to the shelter", "storm", {"type": "shelter", "on
          ("when the sun storm hits hide in the bunker", "storm", {"type": "shelter", "on": True}),
          ("if the power gets low turn off the science lab", "low_power",
           {"type": "allocate", "to": "science", "amount": {"kind": "none", "value": 0}}),
-         ("when it gets dark turn up the heaters", "dark", {"type": "allocate", "to": "heaters", "amount": {"kind": "little", "value": 5}}),
+         ("when it gets dark turn up the heaters", "dark", {"type": "allocate", "to": "heaters", "amount": {"kind": "delta", "value": 10}}),
          ("if the air gets low give more to life support", "low_oxygen",
-          {"type": "allocate", "to": "life_support", "amount": {"kind": "little", "value": 5}})]
+          {"type": "allocate", "to": "life_support", "amount": {"kind": "delta", "value": 10}})]
 
 
 def A(load: str, kind: str, v: float) -> dict:
@@ -88,8 +88,8 @@ def main() -> None:
     for load, names in SYN.items():
         for i, l in enumerate(names):
             pick = lambda xs, k: [xs[(i * k + j) % len(xs)] for j in range(k)]  # noqa: E731 - spread shapes over synonyms
-            ex += [{"text": t.format(l=l), "command": A(load, "little", 5)} for t in pick(MORE, 4)]
-            ex += [{"text": t.format(l=l), "command": A(load, "little", -5)} for t in pick(LESS, 3)]
+            ex += [{"text": t.format(l=l), "command": A(load, "delta", 10)} for t in pick(MORE, 4)]   # more = +10
+            ex += [{"text": t.format(l=l), "command": A(load, "delta", -10)} for t in pick(LESS, 3)]  # less = -10
             ex += [{"text": t.format(l=l), "command": A(load, "none", 0)} for t in pick(OFF, 2)]
             ex += [{"text": t.format(l=l), "command": A(load, "all", 100)} for t in pick(ALL, 1)]
             ex += [{"text": t.format(l=l), "command": A(load, "half", 50)} for t in pick(HALF, 1)]

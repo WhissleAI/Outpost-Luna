@@ -277,6 +277,40 @@ def explorer(rng: random.Random, split: str) -> dict:
     return {"text": rng.choice(TOURS), "cat": "explorer_tour", "root": "tour"}
 
 
+# Questions a kid asks DURING a mission that are NOT commands (gold: answer), many naming a base part, a place or a
+# rover task: "how deep is shackleton", "why do we need shields", "what is a solar storm". Split by question root.
+MQ_FORMS = ["how deep is {p}", "how big is {p}", "how far away is {p}", "how cold is it in {p}", "how old is {p}",
+            "what is {p}", "what's at {p}", "who is {p} named after", "where is {p}", "is there ice in {p}",
+            "why is {p} so dark", "how wide is {p}", "what does {p} look like", "can we see {p} from here"]
+MQ_FIXED = ["why do we need shields", "what do the shields do", "how does the greenhouse work", "why do plants need light",
+            "what is a solar storm", "why are solar storms dangerous", "what does life support do",
+            "how does the rover drive on the moon", "why is it so cold at night", "what is radiation",
+            "how far can the rover go", "why do we need heaters", "what is a millisievert", "how does the radio reach earth",
+            "why can't we talk to earth all the time", "what is the shelter made of", "how long is a day on the moon",
+            "why is there ice in the craters", "what is regolith", "how do solar panels work", "why does the rover need power",
+            "what happens if the power runs out", "who built the first moon base", "how fast does the rover go",
+            "how heavy is the rover", "what are the experiments for", "why do astronauts need oxygen",
+            "how do we make water on the moon", "what is science power for", "why is the sky black on the moon",
+            "how do the heaters work", "where does the power come from", "what does capcom mean",
+            "how many astronauts live here", "why does the sun hurt us", "what is a crater", "how did the craters get there",
+            "what is the dish for", "why is the moon gray", "how hot does it get in the sun"]
+MQ_WRAP = ["{q}", "um {q}", "hey {q}", "wait {q}", "so {q}", "guide {q}", "{q} guide", "okay but {q}"]
+
+
+def mission_question(rng: random.Random, split: str) -> dict:
+    if rng.random() < 0.5:
+        pool = [q for q in MQ_FIXED if split_of("mq:" + q) == split] or MQ_FIXED
+        q = rng.choice(pool)
+        root = "mq:" + q
+    else:
+        forms = [f for f in MQ_FORMS if split_of("mqf:" + f) == split] or MQ_FORMS
+        f = rng.choice(forms)
+        q = f.format(p=rng.choice(place_names() + PLACES_X))
+        root = "mqf:" + f
+    return {"text": rng.choice(MQ_WRAP).format(q=q), "cat": "explorer_mission_q", "root": root,
+            "gold": {"act": "answer"}}
+
+
 def pii(rng) -> dict:
     s = rng.choice(["my name is {n}", "call me {n}", "i live at {k} {s} street", "my phone number is 555 {k}",
                     "hi i'm {n} and i live on {s} street", "my address is {k} {s} road"])

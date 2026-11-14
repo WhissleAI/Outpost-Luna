@@ -35,8 +35,24 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import train as TR  # noqa: E402
 from train import FX  # noqa: E402
+from app.director_model import runtime as RT  # noqa: E402
+from app.mission import nlu  # noqa: E402
 
-SETS = ["test_clean", "test_asr", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr", "test_gold"]
+_PARSE: dict = {}
+
+
+def rules_cmds(heard: str) -> list[dict]:
+    """What runtime.decide_turn sees: the deterministic parse of the heard words (valid commands)."""
+    if heard not in _PARSE:
+        _PARSE[heard] = [c for c in map(nlu.valid, nlu.parse(heard).get("commands") or []) if c]
+    return _PARSE[heard]
+
+
+def guard_of(m: dict) -> bool:
+    return m["rules_act"] == "guard"
+
+SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr",
+        "test_gold"]
 EXEC = ("command", "confirm_yes", "confirm_no")
 CONF = 0.7          # runtime.CONF
 
@@ -85,12 +101,90 @@ def tune_when(model, data_dir: Path, target=0.05) -> float:
     return best
 
 
-def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | None:
+def turn_rows(model, data_dir: Path, name: str):
+    """Per turn end with a gold act: (meta, model outputs at that step)."""
+    ss = TR.load_split(data_dir / f"{name}.npz")
+    metas = load_meta(data_dir / f"{name}.meta.jsonl")
+    pr = TR.predict(model, ss)
+    out = []
+    for p, ms in zip(pr, metas):
+        for t, m in enumerate(ms):
+            if m.get("end") and m.get("gold_act") is not None:
+                out.append((m, {k: p[k][t] for k in p}))
+    return out
+
+
+def on_outcome(m: dict, o: dict, thr: dict):
+    """The shipped `on` policy at one turn, exactly as runtime.decide_turn + session run it -> (act, Command)."""
+    ra = m["rules_act"]
+    rc = m.get("rules_cmd") if ra == "command" else None
+    words = FX.words_of(m["heard"])
+    ov = RT.policy(o, words, rules_cmds(m["heard"]), guard_of(m), thr, mission=m["mode"] == "mission")
+    if ov and ov["act"] == "command" and m["mode"] != "mission":
+        ov = None
+    if not ov:
+        return ra, rc
+    return ov["act"], ov.get("command")
+
+
+def is_wrong(m, a, c) -> bool:
+    g, gc = m["gold_act"], m.get("gold_cmd")
+    if m.get("expect"):
+        return a in EXEC and not (a == "command" and h40_ok(c, m["expect"]))
+    return a in EXEC and not (a == g and (a != "command" or (gc and FX.same_command(c, gc))))
+
+
+def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
+    """Per-act thresholds on val: no more wrong actions than the rules on val (the hard constraint), then the best
+    act accuracy; ties -> the more conservative (higher) thresholds."""
+    rows = [r for s_ in sets for r in turn_rows(model, data_dir, s_)]
+    r_wrong = sum(is_wrong(m, m["rules_act"], m.get("rules_cmd") if m["rules_act"] == "command" else None)
+                  for m, _ in rows)
+    for m, o in rows:          # memo for the grid: the decode and its confidence do not depend on the thresholds
+        o["_conf"] = RT.cmd_conf(o)
+        o["_cmd"] = FX.decode_command(o, FX.words_of(m["heard"]))
+    rw = [is_wrong(m, m["rules_act"], m.get("rules_cmd") if m["rules_act"] == "command" else None) for m, _ in rows]
+    grid = [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 1.01]
+    best = None
+    cands = []
+    for cmd in grid:
+        for veto in [None, 0.9, 0.95, 0.98, 0.99, 0.995]:
+            for ign in (0.7, 0.8, 0.9, 0.95, 1.01):
+                for ask in (0.7, 0.8, 0.9, 0.95, 1.01):
+                    thr = {"cmd": cmd, "veto": veto, "ignore": ign, "ask": ask}
+                    w = ok = extra = 0
+                    for (m, o), r_ in zip(rows, rw):
+                        a, c = on_outcome(m, o, thr)
+                        wr = is_wrong(m, a, c)
+                        w += wr
+                        extra += wr and not r_
+                        ok += a == m["gold_act"]
+                    # zero EXTRA wrong actions vs the rules (turns where the rules were right and `on` acts wrongly),
+                    # then the fewest wrong actions, then act accuracy, then the more conservative thresholds
+                    key = (-extra, -w, ok, cmd, veto or 2, ign, ask)
+                    cands.append((thr, w, ok, extra))
+                    if best is None or key > best[0]:
+                        best = (key, thr, w, ok, extra)
+    _, thr, w, ok, extra = best
+    # robustness (val is small): the most conservative thresholds within 0.5 % act accuracy of the best, with no more
+    # wrong actions and still zero extra -> fewer turns ride on a single val example
+    slack = 0.005 * len(rows)
+    safe = [c for c in cands if c[3] == 0 and c[1] <= w and c[2] >= ok - slack]
+    thr, w, ok, extra = max(safe, key=lambda c: (c[0]["cmd"] + (c[0]["veto"] or 1.01) + c[0]["ignore"] + c[0]["ask"],
+                                                 c[2]))
+    print(f"policy fit on {sets}: {thr} -> wrong {w} (extra {extra}) vs rules {r_wrong}, act ok {ok}/{len(rows)}",
+          flush=True)
+    return {**thr, "fit": {"sets": list(sets), "wrong": w, "extra_wrong": extra, "rules_wrong": r_wrong, "act_ok": ok,
+                           "turns": len(rows)}}
+
+
+def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | None = None) -> dict | None:
     if not (data_dir / f"{name}.npz").exists():
         return None
     ss = TR.load_split(data_dir / f"{name}.npz")
     metas = load_meta(data_dir / f"{name}.meta.jsonl")
     pr = TR.predict(model, ss)
+    pol = pol or RT.DEFAULT_POLICY
     R = {"model": Counter(), "rules": Counter(), "on": Counter(), "on_fill": Counter()}
     cats = defaultdict(lambda: Counter())
     errs = Counter()
@@ -138,18 +232,10 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
             rc = m.get("rules_cmd") if ra == "command" else None
             gc = m.get("gold_cmd")
             cat = m.get("cat") or "?"
-            # the shipped `on` policy (runtime.Shadow.decide_turn): the rules' guard wins; the model may override only
-            # with ignore / ask_clarify / command (a valid Command) at p >= CONF; anything else -> the rules.
-            # `on_fill`: the model may only act where the rules found no command (never re-slot a rules command).
-            pm = float(np.max(p["act"][t]))
-            oa, oc = ra, rc
-            fa, fc = ra, rc
-            if ra != "guard" and pm >= CONF and ma in ("ignore", "ask_clarify", "command") and \
-                    (ma != "command" or mc is not None):
-                if not (ma == "command" and m["mode"] != "mission"):
-                    oa, oc = ma, mc
-                    if ra not in EXEC:
-                        fa, fc = ma, mc
+            # `on` = the shipped policy (runtime.policy with the fitted thresholds, exactly as decide_turn runs it);
+            # `on_fill` = round 3's shipped policy (CONF 0.7, fill only where the rules parse no command), for reference.
+            oa, oc = on_outcome(m, o, pol)
+            fa, fc = on_outcome(m, o, RT.DEFAULT_POLICY)
             for who, a, c in (("model", ma, mc), ("rules", ra, rc), ("on", oa, oc), ("on_fill", fa, fc)):
                 Rw = R[who]
                 Rw["turns"] += 1
@@ -159,11 +245,10 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
                 if g == "command" and gc:
                     Rw["cmds"] += 1
                     Rw["cmd_exact"] += int(a == "command" and FX.same_command(c, gc))
-                if m.get("expect"):
-                    wrong = a in EXEC and not (a == "command" and h40_ok(c, m["expect"]))
-                else:
-                    wrong = a in EXEC and not (a == g and (a != "command" or (gc and FX.same_command(c, gc))))
+                wrong = is_wrong(m, a, c)
                 Rw["wrong_actions"] += int(wrong)
+                if who in ("on", "rules") and wrong and len(examples[("WRONG_" + who, g, a)]) < 6:
+                    examples[("WRONG_" + who, g, a)].append(f"{m['heard']} -> {a} {json.dumps(c)}")
                 if m.get("expect"):
                     Rw["h40_n"] += 1
                     Rw["h40_ok"] += int(a == "command" and h40_ok(c, m["expect"]))
@@ -217,6 +302,7 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
                      for c in sorted({c for c, _ in cats})}
     out["top_errors"] = [{"cat": k[0], "gold": k[1], "model": k[2], "n": v, "ex": examples[k]}
                          for k, v in errs.most_common(12)]
+    out["wrong_examples"] = {f"{k[0]}:{k[1]}->{k[2]}": v for k, v in examples.items() if k[0].startswith("WRONG_")}
     return out
 
 
@@ -232,9 +318,10 @@ def main():
     model.eval()
     d = Path(a.data)
     thr = tune_when(model, d)
-    res = {"run": a.run, "params": cfg["params"], "size": cfg["size_name"], "thr_when": thr, "sets": {}}
+    pol = fit_policy(model, d)
+    res = {"run": a.run, "params": cfg["params"], "size": cfg["size_name"], "thr_when": thr, "policy": pol, "sets": {}}
     for name in SETS:
-        r = evaluate_set(model, d, name, thr)
+        r = evaluate_set(model, d, name, thr, pol)
         if r:
             res["sets"][name] = r
     out = Path(a.out or f"{a.run}/eval.json")

@@ -1,7 +1,9 @@
 """The learned Director at runtime: a tiny streaming Mamba-3 (trained in director_model/, exported int8) stepped once per
 session event, numpy only (no torch).
 
-DIRECTOR_MODEL=off|shadow|on (env; default shadow):
+DIRECTOR_MODEL=off|shadow|on (env; default on since round 4: the guarded policy met the switch-on criteria in
+director_model/RESULTS.md; the rules remain the fallback on every turn the policy does not take, and whenever the
+weights fail to load):
   off     the model never runs.
   shadow  the model runs on every step and logs what it would do next to what the rules did; it never acts.
   on      the model decides at a kid's turn end where the rules read no command, with the rules as guardrails: the
@@ -30,8 +32,8 @@ CONF = 0.7                     # `on`: the model's act must be at least this sur
 
 
 def mode() -> str:
-    m = (os.environ.get("DIRECTOR_MODEL") or "shadow").strip().lower()
-    return m if m in ("off", "shadow", "on") else "shadow"
+    m = (os.environ.get("DIRECTOR_MODEL") or "on").strip().lower()
+    return m if m in ("off", "shadow", "on") else "on"
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward
@@ -288,25 +290,86 @@ class Shadow:
     def decide_turn(self, out: dict | None, text: str, rules_guard: bool) -> dict | None:
         """At a turn end, `on` mode: the model's decision if it may override the rules, else None (rules decide).
         -> {"act": "ignore"|"ask_clarify"|"command", "command"?: Command}."""
-        if mode() != "on" or not out or rules_guard:
+        if mode() != "on" or not out:
             return None
-        act, p = self.model_act(out)
-        if p < CONF:
-            return None
-        # `on_fill` (director_model/evaluate.py): the model never overrides a turn where the rules read a command
-        # (incl. yes/no); it fills the turns the rules would answer, ignore or ask about.
         from ..mission import nlu
-        if [c for c in map(nlu.valid, nlu.parse(text).get("commands") or []) if c]:
-            return None
-        if act == "ignore":
-            return {"act": "ignore"}
-        if act == "ask_clarify":
-            return {"act": "ask_clarify"}
-        if act == "command":
-            c = FX.decode_command(out, FX.words_of(text))
-            if c is not None:
-                return {"act": "command", "command": c}
+        rc = [c for c in map(nlu.valid, nlu.parse(text).get("commands") or []) if c]
+        m = model()
+        thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        b = self.sess.belief
+        return policy(out, FX.words_of(text), rc, rules_guard, thr,
+                      mission=bool(b.get("mission_id")) and b.get("mode") == "mission")
+
+
+DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None}
+
+
+def policy(out: dict, words: list[str], rules_cmds: list[dict], rules_guard: bool, thr: dict,
+           mission: bool = True) -> dict | None:
+    """The cost-aware decision layer (ONE definition: runtime `on` and director_model/evaluate.py). A wrong action costs
+    far more than a clarifying ask, so per-act thresholds are fit on val (evaluate.fit_policy) to add no wrong actions
+    over the rules there:
+      * the privacy guard always wins (rules);
+      * the rules read a command (rules_cmds): it stands, unless thr["veto"] is set and the model is at least that sure
+        the turn is NOT a command (a question / chatter / unclear) -> ask_clarify (mission mode only: an Academy
+        command step's answer IS a command; never on yes/no);
+      * no rules command: the model may fill a command (p >= thr["cmd"], the decoded Command passes nlu.valid),
+        ignore (p >= thr["ignore"]) or ask (p >= thr["ask"]); else the rules decide (None).
+    -> {"act": "ignore"|"ask_clarify"|"command", "command"?, "clarify"?} or None."""
+    if rules_guard or not out:
         return None
+    i = int(np.argmax(out["act"]))
+    act, p = FX.ACTS[i], float(out["act"][i])
+    if rules_cmds:
+        v = thr.get("veto")
+        if v is not None and mission and act in ("answer", "ignore", "ask_clarify") and p >= v and \
+                rules_cmds[0].get("type") not in ("confirm", "cancel"):
+            return {"act": "ask_clarify", "clarify": clarify_options(out)}
+        return None
+    if act == "command" and min(p, out["_conf"] if "_conf" in out else cmd_conf(out)) >= thr.get("cmd", CONF):
+        c = out["_cmd"] if "_cmd" in out else FX.decode_command(out, words)   # (_cmd/_conf: evaluate's memo)
+        if c is not None:
+            return {"act": "command", "command": c}
+        return None
+    if act == "ignore" and p >= thr.get("ignore", CONF):
+        return {"act": "ignore"}
+    if act == "ask_clarify" and p >= thr.get("ask", CONF):
+        return {"act": "ask_clarify", "clarify": clarify_options(out)}
+    return None
+
+
+def cmd_conf(out: dict) -> float:
+    """How sure the model is of the command it would fill: the weakest of its type and main-slot probabilities."""
+    ct = np.asarray(out["cmd_type"])
+    k = int(np.argmax(ct))
+    ps = [float(ct[k])]
+    t = FX.CMD_TYPES[k]
+    if t == "rule":
+        ps.append(float(np.max(out["rule_when"])))
+        t = FX.CMD_TYPES[int(np.argmax(out["sub_type"]))]
+    if t == "allocate":
+        ps += [float(np.max(out["load_to"])), float(np.max(out["amount"]))]
+    elif t == "dispatch":
+        ps.append(float(np.max(out["task"])))
+    elif t == "query":
+        ps.append(float(np.max(out["query"])))
+    return min(ps)
+
+
+LOAD_SAY = {"shields": "shields", "life_support": "life support", "greenhouse": "greenhouse", "science": "science",
+            "rover": "rover", "comms": "radio", "heaters": "heaters"}
+
+
+def clarify_options(out: dict) -> list[str]:
+    """The model's two most likely base parts when it is torn between them ("Did you mean shields or heaters?")."""
+    pl = np.asarray(out.get("load_to") if out.get("load_to") is not None else [])
+    ct = out.get("cmd_type")
+    if pl.size < 3 or ct is None or FX.CMD_TYPES[int(np.argmax(ct))] != "allocate":
+        return []
+    order = [j for j in np.argsort(-pl[1:]) + 1][:2]
+    if pl[order[1]] < 0.15:
+        return []
+    return [LOAD_SAY.get(FX.LOADS[j], FX.LOADS[j]) for j in order]
 
 
 def _slim(d: dict) -> dict:

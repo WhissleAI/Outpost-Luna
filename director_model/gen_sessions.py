@@ -88,7 +88,9 @@ def mission_script(rng: random.Random, split: str, seed: int) -> dict:
             items.append(P.risky(rng))
             items.append(P.yes_no(rng, rng.random() < 0.6))
         elif r < 0.66:
-            items.append(P.explorer(rng, split))
+            ex = P.explorer(rng, split)
+            sub = random.Random(seed * 1000 + len(items))     # own stream: the session's rng stream stays as before
+            items.append(ex if sub.random() < 0.5 else P.mission_question(sub, split))
         elif r < 0.69:
             items.append(P.chatter(rng))
         elif r < 0.73:
@@ -152,6 +154,12 @@ def academy_script(rng, split, seed) -> dict:
     return {"mode": "academy", "lesson": L["id"], "seed": seed, "items": items}
 
 
+def kind_script(rng, split, seed):
+    r = rng.random()
+    return mission_script(rng, split, seed) if r < 0.5 else cadet_script(rng, split, seed) if r < 0.8 else \
+        academy_script(rng, split, seed)
+
+
 def set_script(items: list[dict], mode: str, seed: int, site: str | None = None) -> dict:
     return {"mode": mode, "site": site or SITES[seed % len(SITES)], "seed": seed, "role": None, "items": items}
 
@@ -176,8 +184,28 @@ async def play_pending(sess, clock, rng, leave_playing=False):
     return None
 
 
-async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12) -> tuple[list, dict]:
-    """-> (sink steps, turn annotations by turn id)."""
+def real_stream(d: dict):
+    """A cached real Arc decode -> (final words, partial word lists, eager?, dd, cc)."""
+    hw = FX.words_of(d["hyp"])
+    ps, last = [], None
+    for e in d["events"]:
+        if e["t"] == "words" and not e["final"]:
+            w = FX.words_of(e["text"])
+            if w and w != last:
+                ps.append(w)
+                last = w
+    if not ps or ps[-1] != hw:
+        ps.append(hw)
+    states = [e["state"] for e in d["events"] if e["t"] == "turn"]
+    arcs = [e for e in d["events"] if e["t"] == "arc" and e.get("dd") is not None]
+    dd = arcs[-1]["dd"] if arcs else None
+    cc = arcs[-1]["cc"] if arcs else None
+    return hw, ps, "eager" in states, dd, cc
+
+
+async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12, real=None) -> tuple[list, dict]:
+    """-> (sink steps, turn annotations by turn id). real = (RealEar, group, p): replay real Arc decodes of the turn
+    texts (with probability p, when the cache has the text) instead of the fitted error model."""
     clock = Clock()
     sink: list = []
     sid = f"g-{script['seed']}-{rng.randrange(1 << 30)}"
@@ -230,7 +258,13 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             cw = pw[a:a + rng.randint(3, 7)]
             it = {**it, "text": " ".join(cw), "root": "echo"}
         cw = FX.words_of(it["text"])
-        if "heard" in it and noise is not None:
+        rd = None
+        if real is not None and noise is not None and op != "echo" and "heard" not in it and rng.random() < real[2]:
+            d = real[0].get(real[1], it["text"], rng)
+            rd = real_stream(d) if d else None
+        if rd is not None:
+            hw, al = rd[0], None
+        elif "heard" in it and noise is not None:
             hw, al = FX.words_of(it["heard"]), None
         elif noise is not None and op != "echo":
             em, noisy, level = noise
@@ -240,11 +274,13 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         if not hw:
             continue
         ann = {"tid": tid, "item": it, "clean": cw, "heard": hw, "al": al, "words": [], "end": None,
-               "lesson": lesson_step if mode == "academy" else None}
+               "lesson": lesson_step if mode == "academy" else None, "real": rd is not None}
         anns[tid] = ann
         dd_rng = it.get("dd") or ((0.3, 0.7) if op == "echo" else (0.55, 0.98))
         dd = rng.uniform(*dd_rng)
-        typed = rng.random() < typed_p and not playing and op != "echo"
+        if rd is not None and rd[3] is not None and rng.random() < 0.5:
+            dd = rd[3]       # Arc's own device_directed on the rendered audio (TTS: always "to the device")
+        typed = rng.random() < typed_p and not playing and op != "echo" and rd is None
         if typed:
             i0 = sess.dm.n
             await sess.handle({"t": "typed", "text": " ".join(hw), "source": "typed"})
@@ -252,7 +288,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         else:
             ann["words"].append((sess.dm.n, []))
             await sess.handle({"t": "turn", "state": "start", "text": ""})
-            ps = partials(hw, rng)
+            ps = rd[1] if rd is not None else partials(hw, rng)
             for j, p in enumerate(ps):
                 clock.t += 0.32 * rng.uniform(0.7, 1.5)
                 ann["words"].append((sess.dm.n, p))
@@ -261,7 +297,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                     ann["words"].append((sess.dm.n, p))
                     await sess.handle({"t": "arc", "device_directed": round(dd, 3),
                                        "command_complete": round(rng.uniform(0.5, 0.95), 3)})
-            if rng.random() < 0.4:
+            if (rd[2] if rd is not None else rng.random() < 0.4):
                 clock.t += 0.25
                 ann["words"].append((sess.dm.n, hw))
                 await sess.handle({"t": "turn", "state": "eager", "text": " ".join(hw)})
@@ -392,7 +428,7 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
 
 
 # ------------------------------------------------------------------------------------------------- driver
-async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split):
+async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split, real=None):
     TAG["on"] = tag_on
     director.RULES.clear(); director.PENDING.clear(); capcom._explained.clear()
     rng = random.Random(rng_seed)
@@ -402,9 +438,12 @@ async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split):
     else:
         csink, canns = await run(script, random.Random(rng_seed), None, arc_on)
         director.RULES.clear(); director.PENDING.clear()
-        sink, anns = await run(script, random.Random(rng_seed), noise, arc_on)
+        sink, anns = await run(script, random.Random(rng_seed), noise, arc_on, real=real)
     base = {"set": set_name, "split": split, "mode": script["mode"], "seed": script["seed"], "noise": noise is not None,
             "arc": arc_on, "tag": tag_on}
+    for a in anns.values():
+        if a.get("real"):
+            a["item"] = {**a["item"], "real_ear": True}
     return label_session(sink, anns, canns, csink, base)
 
 
@@ -421,6 +460,26 @@ def save(out: Path, name: str, sessions: list):
     print(f"  {name}: {len(sessions)} sessions, {len(arrs['feats'])} steps", flush=True)
 
 
+def merge(out: Path, n: int):
+    parts = [np.load(out / f"train_s{i}.npz") for i in range(n)]
+    keys = [k for k in parts[0].files if k != "off"]
+    arrs = {k: np.concatenate([p[k] for p in parts]) for k in keys}
+    lens = [np.diff(p["off"]) for p in parts]
+    arrs["off"] = np.cumsum([0] + [int(x) for ls in lens for x in ls]).astype(np.int64)
+    np.savez_compressed(out / "train.npz", **arrs)
+    base = 0
+    with open(out / "train.meta.jsonl", "w") as f:
+        for i in range(n):
+            ns = 0
+            for line in open(out / f"train_s{i}.meta.jsonl"):
+                m = json.loads(line)
+                ns = max(ns, m["sess"] + 1)
+                m["sess"] += base
+                f.write(json.dumps(m) + "\n")
+            base += ns
+    print(f"merged {n} shards: {len(arrs['off']) - 1} sessions, {len(arrs['feats'])} steps")
+
+
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(HERE / "data" / "ds"))
@@ -429,37 +488,61 @@ async def main():
     ap.add_argument("--test", type=int, default=200)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--only", default="", help="comma list of sets to (re)build")
+    ap.add_argument("--shard", default="", help="i/n: build only train sessions k with k %% n == i -> train_s<i>.npz "
+                    "(run n in parallel, then merge with --merge n)")
+    ap.add_argument("--merge", type=int, default=0, help="merge train_s0..n-1 into train and exit")
+    ap.add_argument("--real-p", type=float, default=0.9, help="P(use a cached real Arc decode) for a noised turn")
+    ap.add_argument("--no-real", action="store_true", help="fitted error model only (rounds 1-3)")
     a = ap.parse_args()
+    if a.merge:
+        merge(Path(a.out), a.merge)
+        return
+    from real_ear import RealEar
+    RE = None if a.no_real else RealEar()
+    if RE is not None:
+        print("real Arc decodes:", {g: RE.n(g) for g in ("train", "val", "test")}, flush=True)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     em = ErrorModel.load()
     only = set(x for x in a.only.split(",") if x)
     t0 = time.time()
 
-    def kind_script(rng, split, seed):
-        r = rng.random()
-        return mission_script(rng, split, seed) if r < 0.5 else cadet_script(rng, split, seed) if r < 0.8 else \
-            academy_script(rng, split, seed)
-
-    async def gen(name, split, n, seed0, noise_mode):
+    async def gen(name, split, n, seed0, noise_mode, group=None, real_p=None):
         if only and name not in only:
             return
         ss = []
+        si, sn = (int(x) for x in a.shard.split("/")) if a.shard else (0, 1)
+        if a.shard:
+            name = f"{name}_s{si}"
         for k in range(n):
+            if k % sn != si:
+                continue
             rng = random.Random(seed0 + k)
             sc = kind_script(rng, split, seed0 + k)
             nz = None
             if noise_mode == "half" and rng.random() < 0.5 or noise_mode == "all":
                 nz = (em, rng.random() < 0.5, rng.uniform(0.5, 1.5) if noise_mode == "half" else 1.0)
-            ss.append(await make(sc, seed0 + k, nz, rng.random() < 0.8, rng.random() < 0.85, name, split))
+            real = (RE, group, a.real_p if real_p is None else real_p) if (RE is not None and group) else None
+            if noise_mode == "real":
+                txt = [it["text"] for it in sc["items"] if it.get("text") and it.get("op") not in ("echo",)]
+                if any(RE.get(group, t, random.Random(0)) is None for t in txt):
+                    continue        # the real set keeps only sessions whose every turn has a real decode
+                nz, real = (em, False, 0.0), (RE, group, 1.0)
+            ss.append(await make(sc, seed0 + k, nz, rng.random() < 0.8, rng.random() < 0.85, name, split, real))
             if k % 100 == 99:
                 print(f"  {name} {k + 1}/{n} ({time.time() - t0:.0f} s)", flush=True)
         save(out, name, ss)
 
-    await gen("train", "train", a.train, 10_000 + a.seed * 1_000_000, "half")
-    await gen("val", "val", a.val, 500_000, "half")
+    await gen("train", "train", a.train, 10_000 + a.seed * 1_000_000, "half", "train")
+    if a.shard:
+        print(f"shard done in {time.time() - t0:.0f} s")
+        return
+    await gen("val", "val", a.val, 500_000, "half", "val")
     await gen("test_clean", "test", a.test, 900_000, "none")
     await gen("test_asr", "test", a.test, 900_000, "all")
+    if RE is not None and RE.n("test"):
+        # REAL Arc decodes of held-out sessions: unseen templates / card questions, held-out voices (real_ear.py)
+        await gen("test_real", "test", a.test, 900_000, "real", "test")
 
     async def set_sessions(name, items, mode_of, per=8, noise=None):
         if only and name not in only:

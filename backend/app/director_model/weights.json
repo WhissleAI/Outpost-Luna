@@ -1,15 +1,15 @@
 {
  "size": {
-  "d": 48,
-  "layers": 2,
+  "d": 32,
+  "layers": 1,
   "d_state": 16,
   "head_dim": 16,
-  "buckets": 2048,
+  "buckets": 1024,
   "emb": 8
  },
- "size_name": "m",
- "params": 77637,
- "F": 167,
+ "size_name": "s",
+ "params": 28985,
+ "F": 169,
  "heads": [
   [
    "act",
@@ -82,13 +82,19 @@
   "w_task"
  ],
  "thr": {
-  "when": 0.9600000000000004
+  "when": 0.8800000000000003
  },
- "run": "r3_m",
- "data": "ds_r3",
+ "policy": {
+  "cmd": 0.95,
+  "veto": 0.99,
+  "ignore": 0.8,
+  "ask": 1.01
+ },
+ "run": "r4_s",
+ "data": "ds_r4",
  "trained": {
-  "n_train_sessions": 3000,
-  "n_train_steps": 290839,
-  "best_step": 4400
+  "n_train_sessions": 2400,
+  "n_train_steps": 232430,
+  "best_step": 1200
  }
 }
