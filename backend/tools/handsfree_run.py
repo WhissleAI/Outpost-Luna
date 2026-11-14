@@ -126,7 +126,7 @@ class Client:
         opts = acc.get("options") or (self.vocab.options(acc) if self.vocab and acc["type"].startswith("vocab_")
                                        and acc["type"] != "vocab_say" else [])
         return {"screen": "ride" if self.L.get("ride") else "lesson", "step_type": acc["type"],
-                "step_options": [o["label"] for o in opts]}
+                "step_options": [o["label"] for o in opts], "lesson_id": self.L["id"], "step": self.i}
 
     async def push(self):
         await self.t.send({"t": "ui", "event": "screen", **self.frame()})

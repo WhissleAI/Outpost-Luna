@@ -39,7 +39,13 @@ const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="
  * @param {()=>void} o.alertSound
  * @param {(frame:object)=>void} o.onContext  forward a context frame to the listen socket
  */
-export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null, session = null, academy = null }) {
+export function createMissionUI({ globe, card, placeById, say: say0, alertSound, onContext = () => {}, askDirector = null, session = null, academy = null }) {
+  // [rc] Screen generation (QA-19/20): exit() bumps it. Every async continuation (a loading picker, an order reply,
+  // Houston's delayed answer, the end of a shift) captures it first and stops if the kid left Mission meanwhile, so
+  // nothing from Mission (picker, CAPCOM card, Houston's voice) ever shows or speaks over another mode.
+  let gen = 0;
+  const alive = g => g === gen && screen !== "off";
+  const say = (...a) => (screen === "off" ? Promise.resolve(false) : say0(...a));   // Mission never speaks while away
   // `academy` (optional): {badges() → [{id,name,patch,lesson}], has(lessonId) → bool}: Flight School patches carry over.
   // [session hook] `session` (optional): {onStart(state), endShift(state) → true when the session Director handles it}.
   const $ = id => document.getElementById(id);
@@ -104,11 +110,15 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   const firstSentence = t => { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return (m ? m[0] : String(t || "")).trim(); };
 
   // ---------- briefing ----------
+  let entered = false;
   async function enter() {
+    const g = ++gen; entered = true;
     globe.mission.enter();
     if (!client) {
       panel.hidden = false; panel.innerHTML = `<p class="m-wait">Loading mission sites…</p>`;
-      client = await createMissionClient(); sites = client.sites || [];
+      const c = await createMissionClient();
+      client = client || c; sites = client.sites || [];
+      if (g !== gen || !entered) return;   // QA-19: left Mission while the sites loaded: no picker over another mode
     }
     if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
     briefing();
@@ -170,7 +180,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { if (tour.active) tour.end(false); screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
@@ -283,11 +293,12 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
     const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
     let st = null;
+    const g = gen;
     try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
     starting = false;
     document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
+    if (!alive(g)) return;   // left Mission while it started (even if the kid is back on a new screen generation)
     if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
-    if (screen === "off") return;   // left Mission while it started
     state = st; prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
@@ -406,6 +417,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   // ---------- commands, events, CAPCOM ----------
   function capcom({ say: line, readback, confirm, eyebrow, viaDirector = false } = {}) {
+    if (screen === "off") return;   // the CAPCOM card belongs to Mission (QA-20)
     const s = state;
     // A confirmation the Director is holding (e.g. another officer must agree) is answered through the Director;
     // one the sim asked for directly goes to the sim.
@@ -424,14 +436,16 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     nudge.stop();
     if (command.type === "end_shift") return endShift();
     let r;
-    try { r = await client.command(state.id, command); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); return; }
+    const g = gen;
+    try { r = await client.command(state.id, command); } catch (e) { if (alive(g)) capcom({ say: "CAPCOM can't reach the mission server." }); return; }
+    if (!alive(g)) { if (r && r.state) state = r.state; return; }   // QA-20: left Mission while the order ran
     applyState(r.state);
     const res = r.result || {};
     pending = res.needs_confirm ? command : null;
     capcom({ say: res.say || res.readback, confirm: !!res.needs_confirm });
     handleEvents(res.events || []);
     if (spoken || res.needs_confirm || command.type === "query" || !res.ok) await say(res.say || res.readback);
-    if (r.state && r.state.over) showDebrief();
+    if (alive(g) && r.state && r.state.over) showDebrief();
   }
 
   async function endShift() {
@@ -440,7 +454,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (session && !client.sample && session.endShift && session.endShift(state)) return;   // [session hook]
     if (cockpit) cockpit.busy(true);
     let r;
-    try { r = await client.advance(state.id, 1); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); if (cockpit) cockpit.busy(false); return; }
+    const g = gen;
+    try { r = await client.advance(state.id, 1); } catch (e) { if (alive(g)) capcom({ say: "CAPCOM can't reach the mission server." }); if (cockpit) cockpit.busy(false); return; }
+    if (!alive(g)) { if (r && r.state) { prev = state; state = r.state; } return; }   // QA-20: the shift ended while away
     prev = state; applyState(r.state, true);
     const evs = r.events || [];
     capcom({ say: r.say });
@@ -481,10 +497,13 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function houston(line, delayMs = 2600, style = null) {
     const oneWay = (delayMs / 2000).toFixed(1);
     void oneWay;
+    const g = gen;
+    if (!alive(g)) return;
     capcom({ say: CAPCOM.houstonCalling, eyebrow: "Houston · radio delay" });
     if (cockpit) cockpit.calling(true, delayMs);
     await new Promise(r => setTimeout(r, delayMs));
     if (cockpit) cockpit.calling(false);
+    if (!alive(g)) return;   // QA-20: Houston never answers over another mode
     capcom({ say: line, eyebrow: "Houston" }); radio("houston", line);
     await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
   }
@@ -511,7 +530,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
   /** A Director answer with a mission action. Returns true if handled. */
   async function handleDirector(r) {
-    if (!r || !state) return false;
+    if (!r || !state || screen === "off") return false;   // a Director reply that lands after the kid left Mission
     if (r.action === "command" && r.command) {
       nudge.stop();
       // Assumption: if the Director already applied it, it returns state; otherwise we post it to the sim.
@@ -640,9 +659,14 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     // [qa] no "Nice flying" on a failed mission
     const line = cs => paused ? `${head}.` : `${head}. ${(won ? DEBRIEF.grade : DEBRIEF.gradeOver || DEBRIEF.grade)(cs, d.grade, Math.round(d.score || 0))}`;
     // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer). A typed name is never spoken.
+    // QA-21: every failure reply already ends "… Mission over." (the order reply or the shift line, just spoken):
+    // the debrief doesn't say it again, it goes straight to the grade.
+    const T = (window.__outpost && window.__outpost.transcript) || [];
+    const saidOver = T.slice(-4).some(e => e.who !== "kid" && Date.now() - (e.t || 0) < 20000 && /\bmission over\b/i.test(e.text || ""));
+    const spoken = cs => (head === "Mission over" && saidOver && !paused) ? line(cs).replace(/^Mission over\.\s*/, "") : line(cs);
     // three short lines: the result, the story's turning point, then what to try and the one offer
     radio("capcom", line(callSign.shown()));
-    Promise.resolve(say(line(callSign.spoken()))).catch(() => {})
+    Promise.resolve(say(spoken(callSign.spoken()))).catch(() => {})
       .then(() => screen === "debrief" && !paused && say(story.beats[1]))
       .then(() => screen === "debrief" && say(paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`));
   }

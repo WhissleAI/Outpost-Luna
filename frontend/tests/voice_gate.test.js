@@ -1,0 +1,123 @@
+// Hands-free RC bug: "Oh, it's." / "Okay." heard while CAPCOM's lines played back to back counted as lesson answers.
+// voice.js must hold its hard mute across a whole queued CAPCOM sequence (brief → beat → prompt), including the gaps
+// while the next line's audio is still loading, and the floor must tell the session that more is coming (`more`).
+// Drives the real createVoice + createFloor with a fake ear, fake TTS fetches and a fake <audio>.
+import { test, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+
+// ---- a tiny DOM + browser surface (only what voice.js and floor.js touch) ----
+function el() {
+  const cls = new Set();
+  return {
+    classList: { add: (...c) => c.forEach(x => cls.add(x)), remove: (...c) => c.forEach(x => cls.delete(x)), toggle: (c, on) => (on ?? !cls.has(c)) ? cls.add(c) : cls.delete(c), contains: c => cls.has(c) },
+    style: { setProperty() {} }, setAttribute() {}, insertBefore() {}, append() {}, textContent: "", title: "", hidden: false,
+    lastElementChild: { textContent: "" },
+  };
+}
+const els = {};
+globalThis.window = globalThis;
+globalThis.document = { getElementById: id => (els[id] = els[id] || el()), createElement: () => el(), activeElement: null };
+globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
+let audios = [];
+globalThis.Audio = class { constructor() { this.paused = true; audios.push(this); } setAttribute() {} play() { this.paused = false; return Promise.resolve(); } pause() { this.paused = true; } };
+URL.createObjectURL = () => "blob:x"; URL.revokeObjectURL = () => {};
+let fetches = [];   // each TTS fetch waits until the test releases it (the gap between lines is the fetch latency)
+globalThis.fetch = () => new Promise(res => fetches.push(() => res({ status: 200, ok: true, blob: async () => ({}), headers: { get: () => "" } })));
+
+const { createFloor } = await import("../src/floor.js");
+const { createVoice } = await import("../src/voice.js");
+
+const tick = () => new Promise(r => setTimeout(r, 0));
+async function settle(n = 6) { for (let k = 0; k < n; k++) await tick(); }
+async function releaseFetch() { while (!fetches.length) await tick(); fetches.shift()(); await settle(); }
+function endAudio() { const a = audios[audios.length - 1]; a.paused = true; a.onended && a.onended(); }
+
+let floor, ear, turns, barges, events;
+beforeEach(() => {
+  audios = []; fetches = []; turns = []; barges = 0; events = [];
+  floor = createFloor();
+  floor.on("playback", e => events.push(e));
+  createVoice({
+    onTurn: async t => { turns.push(t); }, onBargeIn: () => { barges++; }, onKidDone() {}, onEmotion() {},
+    screen: () => ({ screen: "lesson", step_type: "vocab_match", step_options: ["A dark, flat sea of old cooled lava."], lesson_id: "history", step: 0 }),
+    floor, createListener: on => { ear = on; return { start: async () => false, stop() {}, send() {} }; },
+  });
+});
+function hear(text, dd) {
+  ear.message({ t: "turn", state: "start", text: "" });
+  if (dd != null) ear.message({ t: "arc", device_directed: dd });
+  ear.message({ t: "words", text, final: true });
+  ear.message({ t: "turn", state: "end", text });
+}
+
+const LINES = ["Every crew learns from the crews before.", "Every mission teaches the next one, cadet.", "Apollo 11 landed on a mare. What does mare mean?"];
+
+test("a multi-line say is one on-air span: chatter between its lines never becomes a turn", async () => {
+  const done = floor.say(LINES, { voice: "capcom" });
+  await releaseFetch();                       // line 1 audio arrives and plays
+  assert.equal(floor.holder, "guide");
+  endAudio(); await settle();                 // line 1 ends; line 2's audio is still loading: the gap
+  assert.equal(floor.holder, "guide", "the floor stays with CAPCOM between queued lines");
+  assert.equal(floor.onAir, true);
+  hear("Okay.");
+  hear("Oh, it's.");
+  await releaseFetch(); endAudio(); await settle();   // line 2
+  hear("Oh, it's.");
+  while (fetches.length || audios[audios.length - 1].paused === false) { if (fetches.length) await releaseFetch(); else { endAudio(); await settle(); } }
+  assert.equal(await done, true, "CAPCOM finished the whole sequence: nothing barged in");
+  assert.deepEqual(turns, []);
+  assert.equal(barges, 0);
+  const pb = events.filter(e => e.kind === "guide");
+  assert.deepEqual(pb.map(e => e.state), ["start", "end"], "one playback span for the three lines");
+});
+
+test("back-to-back says: the gap while the next one loads is on air, and the line's end says more is coming", async () => {
+  const a = floor.say(LINES[0], { voice: "capcom" });
+  const b = floor.say(LINES[1], { voice: "capcom", priority: 4 });   // queued behind it
+  await releaseFetch(); endAudio(); await settle();
+  assert.equal(events.find(e => e.state === "end").more, true);
+  assert.equal(floor.onAir, true, "the next line is queued: still on air while its audio loads");
+  hear("Oh, it's.");
+  await releaseFetch(); endAudio(); await settle();
+  assert.equal(await a, true); assert.equal(await b, true);
+  assert.equal(events.filter(e => e.state === "end").pop().more, undefined, "the last line has nothing after it");
+  assert.deepEqual(turns, []); assert.equal(barges, 0);
+  assert.equal(floor.onAir, false);
+});
+
+// One utterance per user action (packaged-app bug: a tap on the Moon said its line twice, in two voices).
+test("floor: the same line asked for twice within 3 s, in any voice, is spoken once; an explicit repeat is not dropped", async () => {
+  const line = "Not quite. Try the near side of the Moon.";
+  const a = floor.say(line, { voice: "capcom" });
+  const b = floor.say("Not quite, try the near side of the Moon!", { voice: "guide", priority: 4 });   // near-identical
+  assert.equal(await b, false, "the duplicate is dropped at once");
+  await releaseFetch(); endAudio(); await settle();
+  assert.equal(await a, true);
+  assert.equal(await floor.say(line, { voice: "story" }), false, "just said: still a duplicate");
+  const c = floor.say(line, { voice: "capcom", repeat: true });   // "Hear it again"
+  await releaseFetch(); endAudio(); await settle();
+  assert.equal(await c, true);
+  assert.equal(events.filter(e => e.state === "start").length, 2);
+});
+
+test("floor: a sentence that errors after it was heard is not said again in the browser voice", async () => {
+  const done = floor.say("Copy. The Sea of Tranquility, July 1969.", { voice: "capcom" });
+  await releaseFetch();
+  const a = audios[audios.length - 1];
+  a.onplaying && a.onplaying(); a.currentTime = 1.2;
+  a.onerror && a.onerror();                        // a late decode error at the very end
+  await settle();
+  assert.equal(await done, true, "the line ended once; no speechSynthesis replay");
+});
+
+test("the gate is not deaf: a clearly directed answer still barges into the sequence", async () => {
+  const done = floor.say(LINES, { voice: "capcom" });
+  await releaseFetch(); endAudio(); await settle();
+  hear("a dark flat sea of lava", 0.9);
+  await settle();
+  assert.equal(barges, 1);
+  assert.deepEqual(turns, ["a dark flat sea of lava"]);
+  while (fetches.length) await releaseFetch();
+  assert.equal(await done, false, "the kid's barge-in stopped CAPCOM");
+});

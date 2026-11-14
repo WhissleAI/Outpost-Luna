@@ -8,6 +8,7 @@ import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
+import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
 import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
@@ -109,7 +110,7 @@ async function boot() {
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
   const academyUI = createAcademyUI({
-    globe, placeById, player, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking(),
+    globe, placeById, player, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, repeat: o.repeat, source: "academy" }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking(),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     goMission: () => setMode("mission"),
     openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
@@ -121,7 +122,8 @@ async function boot() {
   // ---- [a11y] settings + voice commands + audio description, captions, highlights ----
   const a11ySay = (t, o = {}) => o.describe
     ? (floor ? floor.say(t, { voice: "guide", priority: 5, style: { situation: "explain" } }) : speak(t))
-    : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true });
+    : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true,
+      repeat: true /* "say that again", a word's "hear it" button: asked for on purpose */, source: "a11y" });
   const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => {   // [qa] Help → "Pick a place": a globe tap (Flight School tap steps included); in Mission, shown in the Library
     if (document.body.dataset.mode === "mission") { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
     return p.kind === "artifact" ? onArtifact(p) : onTap(p); }, places, playCrew: m => player.play(m) });
@@ -137,11 +139,11 @@ async function boot() {
   // ---- end [a11y] ----
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
-  async function guideSay(text, { keepCrew, voice: v, style } = {}) {
+  async function guideSay(text, { keepCrew, voice: v, style, repeat, source } = {}) {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined) });
+    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined), repeat, source });
     voice.show("idle");
     return ok;
   }
@@ -488,6 +490,7 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
+  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe });   // what tests read (tools/*.py)
 
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";
@@ -553,7 +556,10 @@ async function boot() {
     if (m !== "cadet") lastMode = m;
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
     globe.setDecor(m === "cadet");   // place dots + hardware belong to the Library; Flight School draws its own route
-    cancelTour(); cancelNudge(); stopSpeaking();
+    // Suspend the screen we leave: its speech, tour / nudge timers, crew audio and its cards (the card belongs to the
+    // screen it was shown on). Flight School keeps its lesson and resumes it on the way back (academyUI.exit/enter).
+    cancelTour(); cancelNudge(); stopSpeaking(); card.hide();
+    if (useSession()) session.dropAll();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m !== "academy") academyUI.exit();
     if (m === "academy") {   // Academy
@@ -569,7 +575,21 @@ async function boot() {
       missionUI.exit(); card.hide();
       if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
     }
+    screenInvariant();
+    pushScreen(true);          // the router hears about the new screen now, not on the next 400 ms tick
   }
+  // The screen manager's one rule: only the current mode's cards may show. A stray card from another mode (a late
+  // render, an answer graded after the switch) is hidden on sight; styles.css enforces the same by body[data-mode].
+  const OWNED = { aPanel: "academy", mPanel: "mission", mDebrief: "mission", mBanner: "mission" };
+  function screenInvariant() {
+    const m = document.body.dataset.mode;
+    for (const [id, owner] of Object.entries(OWNED)) {
+      const e = $(id);
+      if (e && owner !== m && !e.hidden) { e.hidden = true; console.warn(`[screen] hid #${id}: it belongs to ${owner}, the screen is ${m}`); }
+    }
+  }
+  Object.keys(OWNED).forEach(id => { const e = $(id); if (e) new MutationObserver(screenInvariant).observe(e, { attributes: true, attributeFilter: ["hidden"] }); });
+  (window.__outpost = window.__outpost || {}).screenInvariant = screenInvariant;
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.

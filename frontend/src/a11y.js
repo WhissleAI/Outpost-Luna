@@ -325,12 +325,18 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function visualAlert(text) {
     if (S.visualAlerts) {
       flash.classList.remove("is-on"); void flash.offsetWidth; flash.classList.add("is-on");
+      // the flash ends with its animation (with reduced motion `is-on` is a static border that would otherwise stay)
+      clearTimeout(visualAlert.f); visualAlert.f = setTimeout(() => flash.classList.remove("is-on"), 1800);
       vbanner.innerHTML = `<span class="a11y-vb-icon" aria-hidden="true">${icon("warning", { size: 18 })}</span><span>${escH(text.slice(0, 140))}</span>`;
       vbanner.hidden = false; clearTimeout(visualAlert.t); visualAlert.t = setTimeout(() => { vbanner.hidden = true; }, 5000);
     }
     if (S.vibrate && navigator.vibrate) { try { navigator.vibrate([180, 80, 180]); } catch (e) { /* not allowed */ } }
     describe(text, { alert: true, quiet: true });
   }
+
+  /** QA-68: an alert's flash and banner belong to the screen that raised it: a mode switch ends them. */
+  function clearAlerts() { clearTimeout(visualAlert.t); clearTimeout(visualAlert.f); flash.classList.remove("is-on"); vbanner.hidden = true; }
+  new MutationObserver(clearAlerts).observe(document.body, { attributes: true, attributeFilter: ["data-mode"] });
 
   // ---- screen state on request ----
   function where() {
