@@ -20,11 +20,13 @@ test("spoken lines are 20 words or fewer", () => {
     ...Object.values(S.LESSON_STORY).map(b => S.CAPCOM.lessonHello(cs, b.beat)),
     S.CAPCOM.patch(cs, "Mission Commander"), S.CAPCOM.qualified(cs, "Mission Commander"),
     S.CAPCOM.missionBrief(cs), S.CAPCOM.missionStart(cs, site), S.CAPCOM.houstonCalling,
+    S.CAPCOM.missionStart(cs, site) + " " + S.CAPCOM.firstShift,
     S.CALLSIGN_COPY.say, ...Object.values(S.OFFER),
     ...Object.keys(S.CALLBACKS).flatMap(k => [S.callbackLine(k, true), S.callbackLine(k, false)]),
     S.DEBRIEF.grade(cs, "A", 1234), S.DEBRIEF.mars,
   ];
   for (const line of spoken) assert.ok(words(line) <= 20, `${words(line)} words: ${line}`);
+  assert.ok(words(S.CAPCOM.firstShift) <= 12);
   // patch line + one offer, as the Academy says them together
   assert.ok(words(S.CAPCOM.patch(cs, "Mission Commander") + " " + S.OFFER.nextLesson) <= 20);
 });

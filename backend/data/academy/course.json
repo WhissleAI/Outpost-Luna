@@ -139,7 +139,7 @@
   },
   {
    "id": "comms",
-   "title": "Talk like Mission Control",
+   "title": "Talk on the radio",
    "minutes": 4,
    "badge": {
     "id": "radio",
@@ -418,7 +418,7 @@
   },
   {
    "id": "radiation",
-   "title": "Radiation and solar storms",
+   "title": "Radiation and storms",
    "minutes": 4,
    "badge": {
     "id": "storm",
@@ -650,7 +650,7 @@
   },
   {
    "id": "history",
-   "title": "Lessons from past missions",
+   "title": "Lessons from Apollo",
    "minutes": 5,
    "badge": {
     "id": "history",

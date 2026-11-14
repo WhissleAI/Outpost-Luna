@@ -290,6 +290,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   return {
     showFeature, highlight, flyTo, nearest, mission, setViewport,
+    /** Screen position (px in the stage) of a surface point, and whether it faces the camera. Used by the site pins. */
+    project(lat, lon) { const p = ll2v(lat, lon, R * 1.004), v = p.clone().project(camera);
+      return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05 }; },
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     route,
