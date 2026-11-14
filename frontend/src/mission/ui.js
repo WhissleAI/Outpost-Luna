@@ -169,6 +169,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
    *  of time in view during the mission's own 10-day window (JPL Horizons), the same numbers the sim and debrief use. */
+  /** NASA's list of nine Artemis candidate landing regions (Oct 2024): two of our sites are on it; the others are sites
+   *  that scientists study. The backend can send `nasa_candidate`; until then this table (docs/ACCURACY_AUDIT.md). */
+  const NASA_CANDIDATE = new Set(["malapert_massif", "de_gerlache_rim"]);
+  const siteTag = s => (s.nasa_candidate ?? NASA_CANDIDATE.has(s.id)) ? "NASA candidate region" : "Studied by scientists";
   const sunPct = s => Math.round(s.window_sunlit_pct ?? s.sunlight_pct);
   /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
   const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
@@ -187,13 +191,13 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
           aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${s.ice ? "ice nearby" : "no ice nearby"}">
-          <b>${esc(s.name)}${s === site && s.sunlight_pct != null ? `<small>Year average: ${Math.round(s.sunlight_pct)}% sun</small>` : ""}</b>
+          <b>${esc(s.name)}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)</small>` : ""}</b>
           <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
           <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
         </button>`).join("")}
       </div>
-      <p class="mx-srcline">Days of your 10-day mission · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
+      <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
       <button type="button" class="mx-go" id="mStart">Take command</button>`;
     const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
     panel.querySelectorAll(".mx-site").forEach(b => {
@@ -509,7 +513,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : firstSentence(d.why);
     (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
-    const tks = (d.lessons || []).filter(l => l && l.text).map(l => ({ text: takeaway(l.text), source: l.source }));
+    const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).map(l => ({ text: takeaway(l.text), source: l.source }));
     [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
     if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
     const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
@@ -612,8 +616,25 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     return false;
   }
 
+  /** One path for every input (router nav, taps, the gestures bus): intent names match the router's where they exist.
+   *  Returns true when the cabin ran it. Works with the camera off; gestures only add another way in. */
+  function intent(name, arg) {
+    if (screen !== "hud" || !cockpit) return nav(name, arg);
+    switch (name) {
+      case "look": cockpit.look && cockpit.look(arg && arg.dx, arg && arg.dy); return true;
+      case "highlight_panel": cockpit.highlightPanel && cockpit.highlightPanel(arg); return true;
+      case "panel_next": cockpit.nextPanel && cockpit.nextPanel(); return true;
+      case "panel_prev": cockpit.prevPanel && cockpit.prevPanel(); return true;
+      case "panel_open": { const id = arg || cockpit.highlighted; if (!id) return false; cockpit.openPanel(id); return true; }
+      case "view_next": case "view_prev": { const order = ["orbit", "site", "rover", "earth"], i = order.indexOf(cockpit.view);
+        cockpit.setView(order[(i + (name === "view_next" ? 1 : -1) + order.length) % order.length]); return true; }
+      case "confirm": case "cancel": if (pending) { run({ type: name }); return true; } return false;
+      default: return nav(name, arg);
+    }
+  }
+
   return {
-    screen: screenFrame, nav, radioKid: t => radio("kid", t),
+    screen: screenFrame, nav, intent, radioKid: t => radio("kid", t),
     enter, exit, handleText, handleDirector, context,
     applyRemote, alert, showCard, askConfirm, houston,   // [session hook]
     get active() { return screen !== "off"; },

@@ -8,12 +8,16 @@
 // Every control is a <button> (or role=slider) whose aria-label states its state. An order that changes a control
 // (by voice or by click) animates that control (.is-moved). Colours and sizes come from tokens.css only.
 import "../cabin.css";
-import { callSign } from "../story.js";
+import * as story from "../story.js";
+const { callSign } = story;
 import { LOADS } from "./cockpit.js";
 import { icon } from "../assets/icons.js";
 import { createCockpit3D, PANELS } from "./cockpit3d.js";
 
+const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** Invented hardware gets a small tag (docs/ACCURACY_AUDIT.md): the copy owner's words when they land. */
+const pretend = () => `<span class="cb-pretend" title="Not real NASA hardware">${esc(story.PRETEND_TECH || "Pretend tech")}</span>`;
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, +v || 0));
 const deg = v => `${v >= 0 ? "+" : "−"}${Math.abs(+v || 0).toFixed(1)}°`;
 const PAGES = [["PWR", "Power"], ["LIFE", "Life support"], ["RAD", "Radiation"], ["COMM", "Comms"]];
@@ -100,6 +104,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-plate cb-shield"><h3>Radiation</h3>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
+            <span class="cb-shl">Shields ${pretend()}</span>
             <button type="button" class="cb-mini" id="cbShMinus" aria-label="Shields down 10">−</button>
             <div class="cb-knob" id="cbKnob" role="slider" tabindex="0" aria-label="Shield power" aria-valuemin="0" aria-valuemax="60" aria-valuenow="0">
               <svg viewBox="0 0 80 80" aria-hidden="true"><circle class="k-track" cx="40" cy="40" r="32" pathLength="100"/><circle class="k-val" id="cbKval" cx="40" cy="40" r="32" pathLength="100"/></svg>
@@ -214,7 +219,7 @@ export function createCabin(root, o = {}) {
     if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}
       <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
-      ${row("Air system", Math.round(L.life_support) + "%")}${row("Greenhouse", Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
+      ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
       return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
       ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row("Shields", Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
@@ -257,6 +262,8 @@ export function createCabin(root, o = {}) {
     if (busy) { const p = clamp(1 - (rv.eta_h || 0) / (TOTAL_H[rv.task] || 8), 0, 1);
       ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.eta_h} h</span>`; }
   }
+  const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
+  function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
   function moved(el) { if (!el) return; el.classList.remove("is-moved"); void el.offsetWidth; el.classList.add("is-moved"); }
 
   function update(s) {
@@ -277,10 +284,12 @@ export function createCabin(root, o = {}) {
       const pr = prev.rover || {}, rv = s.rover || {};
       if (!!pr.busy !== !!rv.busy || pr.task !== rv.task) moved(q(".cb-rv"));
     }
-    const lit = new Set();
+    const lit = new Set(); let newWarn = false;
     LAMPS.forEach(([id, , lvl, f]) => { let on = false; try { on = f(s); } catch (x) { /* partial state */ }
       const el = q("#cbl-" + id); el.classList.toggle("is-lit", on); el.querySelector(".cb-vh").textContent = on ? ": lit" : ": off";
-      if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id) && prev) masterOn = true; } });
+      if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id) && prev) { masterOn = true; if (lvl === "warn") newWarn = true; } } });
+    // a new warning brings the commander back to the seat: the window's alert strip and the lit panel are both in view
+    if (newWarn && c3 && c3.panel) c3.back();
     litBefore = lit; paintMaster();
     // each alarm lights the panel it belongs to (warn beats caution)
     const ALARM_PANEL = { storm: "radiation", watch: "radiation", dose: "radiation", power: "displays", array: "displays", life: "habitat" };
@@ -305,17 +314,17 @@ export function createCabin(root, o = {}) {
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
     const wn = stormWarning(st);
-    const a = stm ? { level: "warn", icon: "storm", title: "Solar storm",
-        text: [stm.real_date ? `Real event, ${stm.real_date}` : stm.name, stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : "", "NASA " + (stm.source || "DONKI")].filter(Boolean).join(" · "),
+    const a = stm ? { level: "warn", icon: "storm", title: "Solar particle storm", link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
+        text: [stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
         actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] }
-      : wn ? { level: "caution", icon: "storm", title: "Storm warning", conf: wn.conf,
-        text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : "", "NASA " + wn.source].filter(Boolean).join(" · "),
+      : wn ? { level: "caution", icon: "storm", title: "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
+        text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
         actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Shields 40"]] }
       : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
-    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}</span>
+    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
       ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${n}</button>`).join("")}</span>` : ""}`;
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
       : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
@@ -344,7 +353,10 @@ export function createCabin(root, o = {}) {
   function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); }
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
-    openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
+    openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
+    /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
+    look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
+    nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
     dispose() { if (c3) c3.dispose(); qualityOff(); },
     setQuality: q => c3 && c3.setQuality(q),
     /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */

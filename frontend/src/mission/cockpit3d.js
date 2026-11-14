@@ -132,7 +132,11 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
 
   // ---------- camera: seat, parallax, dolly ----------
   let open = null, tween = null, pointer = { x: 0, y: 0 }, size = { w: 1, h: 1 };
+  // look-around offset (gestures: head pose / grab-drag), clamped; eased toward its target each frame
+  const lookT = { x: 0, y: 0 }, lookC = { x: 0, y: 0 }, MAX_YAW = 0.55, MAX_PITCH = 0.3;
+  let hl = null;
   const target = { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
+  host.dataset.panel = "seat";
   const cur = { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
   function poseFor(id) {
     const sub = SUB[id], P = objs[sub ? sub[0] : id]; if (!P) return { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
@@ -202,8 +206,10 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     }
     const red = reduced(), bob = red ? 0 : Math.sin(now / 1900) * 0.004;
     const par = red || open ? 0 : 1;
+    const kk = red ? 1 : Math.min(1, dt * 6); lookC.x += (lookT.x - lookC.x) * kk; lookC.y += (lookT.y - lookC.y) * kk;
     camera.position.set(cur.pos.x + pointer.x * 0.07 * par, cur.pos.y + bob - pointer.y * 0.035 * par, cur.pos.z);
     camera.lookAt(cur.look.x + pointer.x * 0.03 * par, cur.look.y - pointer.y * 0.02 * par, cur.look.z);
+    if (lookC.x || lookC.y) { camera.rotateY(-lookC.x); camera.rotateX(-lookC.y); }
     renderer.render(scene, camera); cssR.render(cssScene, camera); const r = placeHole();
     if (!tween && (open === null)) fitGlass(r);
     frames++; if (now - fpsT > 1000) { fps = Math.round(frames * 1000 / (now - fpsT)); frames = 0; fpsT = now; }
@@ -213,6 +219,11 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
 
   return {
     open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
+    /** Look around from where the camera is: dx, dy in -1..1 (yaw, pitch), clamped. look(0, 0) recentres. */
+    look(dx, dy) { lookT.x = Math.max(-1, Math.min(1, +dx || 0)) * MAX_YAW; lookT.y = Math.max(-1, Math.min(1, +dy || 0)) * MAX_PITCH; },
+    /** Mark a panel as the one a lean-in would open (null clears). */
+    highlight(id) { hl = id || null; Object.entries(objs).forEach(([k, P]) => P.el.classList.toggle("is-hl", k === hl)); },
+    get highlighted() { return hl; },
     resize, dispose() { running = false; cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); pmrem.dispose(); renderer.domElement.remove(); cssR.domElement.remove(); },
   };
 }
