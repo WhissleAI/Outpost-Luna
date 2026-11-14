@@ -29,6 +29,7 @@ export const INTENTS = Object.freeze({
   panel_power: "cabin: power panel", panel_comm: "cabin: comm panel", panel_habitat: "cabin: habitat panel",
   panel_rover: "cabin: rover panel", panel_radiation: "cabin: radiation panel", panel_back: "cabin: back to the seat",
   answer: "the current step's answer (text)", end_shift: "end the shift",
+  skip_tour: "end the cabin tour", cabin_tour: "replay the cabin tour ('show me around')",
   // device-neutral intents that gestures (and keys) make
   stop: "stop / pause: interrupts speech and motion (open palm)",
   yes: "yes / confirm (thumbs up)", no: "no / cancel (thumbs down)",

@@ -19,6 +19,9 @@ export const PRETEND_TECH_TIP = "Made up for the game. Real crews don't have thi
 /** The May 2024 storm, told truthfully: Earth saw a magnetic storm (auroras); the Moon's hazard is the particles. */
 export const STORM = {
   name: "Solar particle storm",
+  /** QA-27: a storm with few particles (sep: false) is named by what it is at the Moon */
+  weak: "Storm at Earth",
+  weakText: "Few particles here",
   may2024: "Based on the real May 2024 storm. It gave Earth huge auroras.",
 };
 
@@ -32,6 +35,111 @@ export const BEATS = [
   { id: "mission", title: "Command", text: "Run Outpost Luna for 10 days." },
   { id: "debrief", title: "Debrief", text: "See what you learned." },
 ];
+
+// ---------- The story arc (docs/STORY.md) ----------
+// Kid -> cadet in Flight School -> qualified (check ride) -> commander of Outpost Luna for 10 days -> debrief -> fly
+// again, or try another site. At every transition one short beat says where you are, why, and what's next: spoken
+// (`say`, 20 words or fewer) and on screen (`where` eyebrow + `line`, 12 words or fewer). The screen's own button is the
+// next action, so a beat never explains the button.
+/** Where the kid is on the arc: index into BEATS (0 school, 1 ride, 2 command, 3 debrief). */
+export const ARC_STEP = (k, n = BEATS.length) => `Step ${k + 1} of ${n}`;
+export const TRANSITION = {
+  /** first launch -> map (after the call sign) */
+  firstMap: {
+    where: "Flight School", line: "Earn a patch at each pin. Then fly your check ride.",
+    say: "Each pin on the Moon is a lesson. Earn the patches, then command the outpost.",
+  },
+  /** map -> lesson: lessonHello (LESSON_STORY beats) carries it. */
+  /** lesson -> patch: the sub line under the patch name. */
+  patchProgress: (n, total) => `${n} of ${total} patches. ${total - n === 1 ? "One lesson to go." : total - n > 1 ? `${total - n} lessons to go.` : ""}`.trim(),
+  /** last lesson -> ride */
+  toRide: {
+    where: "Check ride", line: "One solo shift. Pass it and you take command.",
+    say: "Your check ride is next: one solo shift. Pass it to take command.",
+  },
+  /** ride -> qualified -> Mission */
+  qualified: {
+    line: "Next: pick a site and run Outpost Luna for 10 days.",
+  },
+  /** picker (first time in) */
+  picker: {
+    where: "Command", line: "Sun means power. Earth means radio. Pick your trade-off.",
+  },
+  /** picker -> cabin: missionStart, then the tour (first mission) or the objective line. */
+  /** cabin -> debrief: DEBRIEF.story. debrief -> again: OFFER.flyAgain. */
+};
+
+/** The site picker: why the choice matters, and the first-timer's pick (the check ride flew there). */
+export const PICKER = {
+  title: "Pick your outpost site",
+  why: "Sun means power. Earth means radio. Pick your trade-off.",
+  recommended: "shackleton_rim",
+  recTag: "Best first pick",
+  recLine: "For a first mission, try Shackleton Rim: Sun all 10 days.",
+};
+
+// ---------- First mission: CAPCOM's cabin tour (mission/tour.js) ----------
+// Each beat is 12 words or fewer, spoken and shown with a Next button. "next", Enter, a swipe or a thumbs up moves on;
+// "skip tour" ends it; "show me around" (or Settings -> Help) replays it. `show` is what the cabin lights up:
+// view:<id> | du:<0-2> | panel:<id> | lamps | goals | start. Cadet hears the full tour, Commander the short one.
+export const TOUR = {
+  title: "Cabin tour",
+  next: "Next",
+  done: "Got it",
+  skip: "Skip tour",
+  replay: "Show me around",
+  step: (n, of) => `${n} of ${of}`,
+  cadet: [
+    { show: "window", text: "This is your window. Switch views: Orbit, Site, Rover, Earth." },
+    { show: "du:0", text: "Your three screens. First, power: the battery the Sun fills." },
+    { show: "du:1", text: "Life support: the air and water your crew needs." },
+    { show: "du:2", text: "Dose: the radiation your crew has taken. Keep it low." },
+    { show: "panel:power", text: "Power panel: pick a system, then press plus or minus." },
+    { show: "panel:habitat", text: "Habitat: heaters, science, and your mission goals." },
+    { show: "panel:rover", text: "Rover: send it for ice, then bring it home." },
+    { show: "panel:radiation", text: "Radiation: shields, and the storm shelter under its cover." },
+    { show: "panel:comm", text: "Comm: call Houston when Earth is in view." },
+    { show: "lamps", text: "Warning lights. Red means act now. Amber means get ready." },
+    { show: "goals", text: "Your goal: ten safe days. Send science home. Bring back ice." },
+    { show: "start", text: "First job: set power, then press End shift." },
+  ],
+  commander: [
+    { show: "window", text: "Window up top. Three screens below. Five panels around you." },
+    { show: "start", text: "Ten safe days, science home, ice back. First: set power, End shift." },
+  ],
+};
+
+// ---------- The cabin's "what now" strip (mission/objective.js picks one) ----------
+/** Each line: on screen after "Now:" (12 words or fewer) and spoken for "what do I do?". */
+export const NOW = {
+  label: "Now",
+  firstShift: "Set power, then End shift.",
+  stormHit: "Storm hitting. Get the crew into the shelter.",
+  weakStorm: "Storm at Earth, few particles here. Keep working.",
+  sheltered: "Crew sheltered. End shift to ride out the storm.",
+  warning: h => (h != null ? `Storm forecast: about ${h} hours to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
+  lowPower: "Battery low. Turn on night mode, or cut a load.",
+  lowAir: "Air is low. Send the rover for ice.",
+  roverDark: "Rover out. Bring it home before dark.",
+  roverOut: h => `Rover out, back in ${h} hours. End shift to wait.`,
+  sunset: h => `Sunset in ${h} hours. Turn on night mode before dark.`,
+  dark: "Dark outside. Night mode saves power.",
+  ice: "No storm due. Send the rover for ice.",
+  steady: "All steady. End shift to move on.",
+  /** said before the line when the kid asks "what do I do?" */
+  ask: "Here's your next job.",
+};
+
+/** "What do I do?" on the other screens (the router's `help`, outside lessons). Spoken; 20 words or fewer. */
+export const HELP = {
+  map: "Press Start on the lesson card, or say next. Each lesson earns a patch.",
+  mapQualified: "You're qualified. Say take command to run the outpost.",
+  patch: "Say next for the next lesson, or press Map to look around.",
+  picker: "Pick a site from the list, then say take command.",
+  debrief: "Say fly again to try this site again, or new site.",
+  library: "Tap a place on the Moon, or ask a question.",
+  callsign: "Pick a call sign, then press Start.",
+};
 
 // ---------- call sign (stored on this device only; never sent to the server) ----------
 /** Playful, non-identifying call signs. Only these are ever SPOKEN aloud (a typed one is shown, not spoken). */
@@ -108,21 +216,22 @@ export const SCHOOL = {
 };
 
 /** One short story beat per lesson (shown above CAPCOM's brief, and spoken before it). Keyed by course.json lesson id.
+ *  CAPCOM says them, so they are first person or plain statements (never narrator copy, never a question it won't wait for).
  *  Patches are drawn by the art set (no emoji here). */
 export const LESSON_STORY = {
-  moon: { beat: "Day one. CAPCOM pulls up a map of the Moon." },
+  moon: { beat: "Day one. Let's start with a map of the Moon." },
   comms: { beat: "Radio check. Houston is 384,000 km away." },
   power: { beat: "The outpost runs on sunlight." },
   radiation: { beat: "Storm drill. The Sun can throw storms at the Moon." },
-  life: { beat: "No air, no rivers. But is there ice?" },
+  life: { beat: "No air, no rivers. Let's go looking for ice." },
   history: { beat: "Every crew learns from the crews before." },
   words: { beat: "A new world needs new words." },
-  checkride: { beat: "Solo shift. CAPCOM is only watching." },
+  checkride: { beat: "Solo shift. I'm only watching this time." },
 };
 
 /** CAPCOM's lines that use the call sign (the spoken form is passed in, so a typed name is never read aloud). */
 export const CAPCOM = {
-  lessonHello: (cs, beat) => `${beat} Ready, ${cs}?`,
+  lessonHello: (cs, beat) => `${beat} Here we go, ${cs}.`,
   patch: (cs, name) => `Patch earned: ${name}. Nice work, ${cs}.`,
   qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
   missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
@@ -143,6 +252,8 @@ export const OFFER = {
   ride: "Ready for your check ride?",
   mission: "Ready to take command?",
   flyAgain: "Fly again?",
+  resume: "Back to the cabin?",
+  firstLesson: "Ready for lesson one?",
   nextStep: "Ready for the next one?",
 };
 
@@ -171,5 +282,29 @@ export const DEBRIEF = {
   mars: "On Mars, Houston would answer 6 to 44 minutes later.",
   /** On screen and spoken (pass callSign.spoken() when speaking). */
   grade: (cs, g, pts) => `Nice flying, ${cs}. Grade ${g}, ${pts} points.`,
+  /** The story of the mission in three beats (mission/objective.js debriefStory picks them from the debrief). */
+  storyTitle: "What happened",
+  tryTitle: "Try next",
+  start: (site, days) => `You ran ${site} for ${days} day${days === 1 ? "" : "s"}.`,
+  stormSafe: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew stayed safe.`,
+  stormHurt: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew took a big dose.`,
+  noStorm: "The Sun stayed quiet this time.",
+  goalsBoth: "You sent science home and brought back ice.",
+  goalsScience: "You sent science home. No ice run yet.",
+  goalsIce: "You brought back ice. Science still waiting.",
+  goalsNone: "No science home and no ice yet.",
+  endWon: "All ten days done. The crew is home safe.",
+  endPaused: d => `Paused on day ${d}. Your outpost is waiting.`,
+  endLost: "The mission ended early.",
+  /** The one clear choice at the end (the primary button) and its spoken offer. */
+  choiceAgain: "Fly again",
+  choiceNew: "Pick a new site",
+  resume: "Resume mission",
+  /** QA-26: leaving a paused mission asks first */
+  wipeAsk: "Start over? This mission ends, and you begin again at shift 1.",
+  wipeYes: "Start over",
+  wipeNo: "Keep my mission",
+  tryDefault: "Next time, watch the warning lights and act early.",
+  tryNewSite: "Next, try a site with a long night, like Malapert.",
   gradeOver: (cs, g, pts) => `Grade ${g}, ${pts} points. Let's learn from it, ${cs}.`,   // [qa] a failed mission isn't "nice flying"
 };

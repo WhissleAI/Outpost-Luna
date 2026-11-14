@@ -398,8 +398,9 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
             relay = m.difficulty == "cadet" and not env["earth_visible"]
             if env["earth_visible"] or relay:
                 m.warned[ev["id"]] = {"by": "relay" if relay else "houston", "t_h": m.t_h}
-                _emit(m, out, "storm_warning", f"Houston: big flare. Particle storm {storm_confidence(ev)} "
-                      f"within {lead} hours.", ev["source"], ev["date"],
+                # QA-64: the lead is the game's (WARN_LEAD_H); the copy never claims a precise arrival time
+                _emit(m, out, "storm_warning", f"Houston: particles {storm_confidence(ev)} within hours. "
+                      f"Forecast: {lead} hours (game).", ev["source"], ev["date"],
                       extra={"confidence": storm_confidence(ev), "lead_h": lead, "by": m.warned[ev["id"]]["by"]})
         if m.t_h == st.start_h and ev.get("sep") and m.shelter:
             _good(m, "sheltered_early", f"In the shelter before the {ev['date']} storm hit.")

@@ -15,7 +15,7 @@ import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
-import { callSign } from "./story.js";
+import { callSign, HELP } from "./story.js";
 import { chime } from "./sound.js";
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
@@ -513,6 +513,9 @@ async function boot() {
   const tourStepBy = d => { if (!tour.active) return false; stopSpeaking(); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
   onIntent("next", () => tourStepBy(1), { priority: 10 });
   onIntent("prev", () => tourStepBy(-1), { priority: 10 });
+  // [story] "What do I do?" outside a lesson: one spoken line for the screen (Mission answers its own screens first).
+  onIntent("help", () => { const m = document.body.dataset.mode, t = m === "academy" ? academyUI.whatNow() : m === "cadet" ? HELP.library : null;
+    if (!t) return false; guideSay(t, { voice: CAPCOM_VOICE }); return true; }, { priority: 5 });
   // [gestures] Settings → Camera & gestures registers itself (settingsSections); the camera chip sits next to the gear.
   initGestures({
     screen: screenFrame, inCabin, isSpeaking, cabinPanel,
@@ -594,6 +597,8 @@ async function boot() {
       const m = document.body.dataset.mode;
       if (m === "academy") return academyHelp();
       if (m === "cadet") return "Tap a place on the Moon to hear about it, or ask a question.";
+      const own = missionUI.whatNow && missionUI.whatNow();   // the cabin's objective strip, picker, debrief (docs/STORY.md)
+      if (own) return own;
       const sc = (missionUI.screen && missionUI.screen()) || {};
       if (sc.screen === "debrief") return "Tap Fly again, or pick a new site.";
       if (sc.screen === "cabin") return "Set your power, then tap End shift.";

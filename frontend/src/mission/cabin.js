@@ -42,8 +42,11 @@ const LAMPS = [
 export function stormWarning(s) {
   const w = s && s.env && (s.env.warning || s.env.storm_warning || s.env.storm_forecast);
   if (!w || w.active === false || (s.env.storm && s.env.storm.active)) return null;
-  const c = w.confidence ?? w.probability, conf = c == null ? null : Math.round(c > 1 ? c : c * 100);
-  return { lead: w.lead_h ?? w.eta_h ?? null, conf, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "", by: w.by || null };
+  // the sim sends a word ("likely" | "possible"); older shapes sent a number (0-1 or %)
+  const c = w.confidence ?? w.probability, num = typeof c === "number" ? c : (c != null && c !== "" && !isNaN(+c) ? +c : null);
+  const conf = num == null ? null : Math.round(num > 1 ? num : num * 100);
+  const word = typeof c === "string" && isNaN(+c) ? c[0].toUpperCase() + c.slice(1) : null;
+  return { lead: w.lead_h ?? w.eta_h ?? null, conf, word, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "", by: w.by || null };
 }
 /** Hab switches: [id, label, guarded, on(state), command(on)] */
 const SWITCHES = [
@@ -81,6 +84,7 @@ export function createCabin(root, o = {}) {
         </div>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
+        <p class="cb-now" id="cbNow" hidden role="status" aria-live="polite"><b>${esc((story.NOW || {}).label || "Now")}</b><span id="cbNowT"></span></p>
       </div>
     </section>
 
@@ -124,7 +128,7 @@ export function createCabin(root, o = {}) {
         </div>
         <div class="cb-plate cb-ped">
           <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
-          <button type="button" class="cb-db" id="cbDb">Finish mission</button>
+          <button type="button" class="cb-db" id="cbDb">See debrief</button>
         </div>
       </div>
       <div class="cb-grp" data-panel="comm" role="group" aria-label="Comm panel">
@@ -153,7 +157,7 @@ export function createCabin(root, o = {}) {
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
     const holeEl = document.createElement("div"); holeEl.className = "cb-hole";
-    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => holeEl.append(q(sel)));
+    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => holeEl.append(q(sel)));
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
@@ -163,7 +167,7 @@ export function createCabin(root, o = {}) {
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
     if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
-    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
+    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
       // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live
@@ -233,12 +237,12 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50;
     const sunCh = e.next_sun_change_h != null ? row(e.in_sun ? "Sunset in" : "Sunrise in", `${Math.round(e.next_sun_change_h)} h`, e.in_sun && e.next_sun_change_h <= 6 ? "is-warn" : "") : "";
     if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
-      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
+      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}${k === "shields" || k === "greenhouse" ? ` ${pretend()}` : ""}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
       ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
       return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
-      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row("Shields", Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
+      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(`Shields ${pretend()}`, Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
     return `${big("Comms", e.earth_visible ? "Open" : "Closed", "", false)}
       ${row(e.earth_visible ? "Radio delay" : "Next window", e.earth_visible ? `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way` : `${e.next_comm_window_h ?? "?"} h`)}
       <ol class="du-log">${logLines.slice(-3).map(l => `<li><b>${esc(l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM")}</b> ${esc(l.text)}</li>`).join("")}</ol>`;
@@ -307,7 +311,7 @@ export function createCabin(root, o = {}) {
     if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
     const rad = q("#cbInfoRad"), wn = stormWarning(s);
     if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
-      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
+      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : wn.word ? ` · ${wn.word}` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
     const ri = q("#cbInfoRv"); if (ri) ri.innerHTML = (rv.busy ? irow("Back in", `${rv.eta_h} h`) : "") + (rv.battery_pct != null ? irow("Battery", Math.round(rv.battery_pct) + "%", mbar(rv.battery_pct)) : "")
       + (rv.dose_msv != null ? irow("Rover dose", (+rv.dose_msv).toFixed(1) + " mSv") : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
     const rt = q("#cbRoute"); if (rt) { const tot = TOTAL_H[rv.task] || 8, pr = rv.busy ? clamp(1 - (rv.eta_h || 0) / tot, 0, 1) : 0, out = rv.task === "return" ? 1 - pr : pr < .5 ? pr * 2 : (1 - pr) * 2;
@@ -329,7 +333,7 @@ export function createCabin(root, o = {}) {
     if (!s) return; prev = st; st = s;
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
-    sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible);
+    sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible, e.in_sun);
     q("#cbClock").innerHTML = `<b>Day ${s.day} <span>· Shift ${s.shift}</span></b><small>${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
     paintDus(); paintSwitches(); paintRover();
     const sh = Math.round(s.loads.shields || 0), kn = q("#cbKnob");
@@ -375,26 +379,33 @@ export function createCabin(root, o = {}) {
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
     const wn = stormWarning(st);
-    const a = stm ? { level: "warn", icon: "storm", title: "Solar particle storm", link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
-        text: [stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
-        actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] }
-      : wn ? { level: "caution", icon: "storm", title: "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
-        text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
-        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Shields 40"]] }
+    const weak = !!stm && stm.sep === false;   // QA-27: few particles reach the Moon
+    const a = stm ? { level: weak ? "caution" : "warn", icon: "storm", title: weak ? (story.STORM.weak || "Storm at Earth") : story.STORM.name, link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
+        text: [weak ? story.STORM.weakText : "", stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
+        actions: st.shelter || weak ? [] : [["shelter", "Shelter the crew"], ["shields", "Set shields to 40", true]] }
+      : wn ? { level: "caution", icon: "storm", title: wn.word ? `Storm warning · ${wn.word}` : "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
+        text: [wn.lead != null ? `Forecast ~${wn.lead} h (game)` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
+        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Set shields to 40", true]] }
       : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
+    const hole = root.querySelector(".cb-hole"); if (hole) hole.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
     el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
-      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${n}</button>`).join("")}</span>` : ""}`;
+      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n, fake], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${esc(n)}${fake ? ` ${pretend()}` : ""}</button>`).join("")}</span>` : ""}`;
+    // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
+    requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
       : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
   }
 
-  function sky(sunDeg, earthDeg, up) {
-    q("#cbSky").innerHTML = `<span><em>Sun</em> ${deg(sunDeg)}</span><span><em>Earth</em> ${earthDeg == null ? (up ? "up" : "down") : up ? deg(earthDeg) : "below"}</span>`;
+  /** QA-24: the sim's "in sun" (a ridge-top site stays lit with the Sun a degree under the flat horizon) decides the
+   *  word; the elevation stays in the tooltip for the curious. */
+  function sky(sunDeg, earthDeg, up, inSun) {
+    const lit = inSun == null ? sunDeg > 0 : !!inSun;
+    q("#cbSky").innerHTML = `<span title="Sun elevation ${deg(sunDeg)}"><em>Sun</em> ${lit ? "up" : "down"}</span><span><em>Earth</em> ${earthDeg == null ? (up ? "up" : "down") : up ? deg(earthDeg) : "below"}</span>`;
   }
-  function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible); }
+  function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible, f.in_sun != null ? f.in_sun : st.env.in_sun); }
   /** Radio log (COMM page) + the fallback caption line (the caption bar takes over when captions are on). */
   function log(who, text) {
     if (!text) return;
@@ -425,6 +436,34 @@ export function createCabin(root, o = {}) {
     /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
      *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
     cue(target) { cueT = target || null; return applyCue(true); },
+    /** Glow what the tour or the objective points at, without opening anything (null clears). Targets:
+     *  window | du:<0-2> | panel:<id> | lamps | goals | start, or an objective control: end_shift | shelter | shields |
+     *  night | houston | rover:<task> | load:<key>. Returns the nodes lit. */
+    point(target) {
+      root.querySelectorAll(".is-point").forEach(n => n.classList.remove("is-point"));
+      if (!target) return [];
+      const [k, v] = String(target).split(":");
+      const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
+        goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
+        night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]' }[k];
+      const nodes = sel ? [...root.querySelectorAll(sel)] : [];
+      if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
+      nodes.forEach(n => n.classList.add("is-point"));
+      return nodes;
+    },
+    /** Progressive disclosure (Cadet): the panel the tour or the objective is about stays bright, the rest dim. A panel
+     *  with an alarm is never dimmed. null: everything bright. */
+    focus(panelId) {
+      const ids = (Array.isArray(panelId) ? panelId : [panelId]).filter(Boolean).map(id => (id === "power" ? "displays" : id));
+      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", ids.length > 0);
+      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", ids.includes(n.dataset.panel)));
+    },
+    /** The "what now" strip on the window: {text, level} or null. */
+    objective(o) {
+      const el = q("#cbNow"); if (!el) return;
+      el.hidden = !o; if (!o) return;
+      el.className = "cb-now is-" + (o.level || "info"); q("#cbNowT").textContent = o.text;
+    },
     /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
     offer(panelId, actions) {
       root.querySelectorAll(".cb-offer").forEach(n => n.remove());

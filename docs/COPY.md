@@ -4,6 +4,7 @@ Every word on screen and every word spoken. Short, clear, warm, and there for a 
 
 **Where copy lives**
 - On screen: `frontend/src/story.js`. Templates read from it and never hardcode story text.
+- The story arc, transitions, cabin tour and the "Now" strip: `story.js` (`TRANSITION`, `PICKER`, `TOUR`, `NOW`, `HELP`), described in `docs/STORY.md`.
 - Lessons: `backend/data/academy/course.json`.
 - CAPCOM radio: `backend/app/mission/capcom.py`.
 - Guide: `backend/app/director.py`.
