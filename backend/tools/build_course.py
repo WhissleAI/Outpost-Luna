@@ -6,7 +6,11 @@ content.check() and tests/test_copy.py validate. Copy budgets: docs/COPY.md §3.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from app.academy.grade import compare_data  # noqa: E402  (QA-28: compare lines quote the numbers the cards show)
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "academy" / "course.json"
 C = "learning/concepts.json"
@@ -22,6 +26,16 @@ HORIZONS = src("JPL Horizons API", "https://ssd-api.jpl.nasa.gov/doc/horizons.ht
 SEP_MAY24 = src("DONKI 2024-05-09T14:25:00-SEP-001 (NASA CCMC)", "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/30610/-1")
 ZHANG = src("Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances 6:eaaz1334",
             "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/")
+
+
+# One source of truth for the compare steps' numbers: the sim's window days and distances, exactly as the result
+# cards show them after the answer (grade.compare_data).
+SITE = compare_data({"options": [{"id": "malapert_massif"}, {"id": "shackleton_rim"}]})
+
+
+def num(v) -> str:
+    """9.5 -> "9.5", 10.0 -> "10"."""
+    return f"{v:g}"
 
 
 def fact(text, frm, source, **kw):
@@ -190,7 +204,7 @@ LESSONS = [
               {"type": "compare", "answer": "malapert_massif", "metric": "earth_days",
                "options": [opt("malapert_massif", "Malapert Massif", "malapert", "mountain"),
                            opt("shackleton_rim", "Shackleton Rim", "shackleton", "rim")]},
-              "Malapert. Earth was up 9 of 10 days.", "Not that one.",
+              f"Malapert. Earth was up {num(SITE['malapert_massif']['earth_days'])} of 10 days.", "Not that one.",
               "Malapert sits on the side facing Earth.",
               globe={"do": "pair", "places": ["malapert_massif", "shackleton_rim"]}),
          step("Static! You missed the last order. Ask CAPCOM to repeat it, radio style.",
@@ -233,7 +247,8 @@ LESSONS = [
               {"type": "compare", "answer": "shackleton_rim", "metric": "sun_days",
                "options": [opt("shackleton_rim", "Shackleton Rim", "shackleton", "rim"),
                            opt("malapert_massif", "Malapert Massif", "malapert", "mountain")]},
-              "Shackleton Rim. Sun all 10 days in our model.", "Not that one.",
+              "Shackleton Rim. Sun " + ("all 10 days" if SITE["shackleton_rim"]["sun_days"] >= 10
+                                          else f"{num(SITE['shackleton_rim']['sun_days'])} of 10 days") + " in our model.", "Not that one.",
               "Malapert goes dark early in our mission.",
               globe={"do": "pair", "places": ["shackleton_rim", "malapert_massif"]}),
          step("Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
@@ -250,7 +265,7 @@ LESSONS = [
      "brief": "The Sun sometimes throws out fast particles. On the Moon, nothing stops them.",
      "facts": [
          fact("China's Chang'e 4 lander measured 1369 microsieverts a day on the Moon, about 2.6 times the cosmic-ray "
-              "dose inside the ISS (523).", "mission/radiation.json", ZHANG),
+              "dose inside the ISS, 523 microsieverts a day.", "mission/radiation.json", ZHANG),
          fact("In May 2024 a real solar particle storm hit space near Earth and the Moon. Earth also got huge auroras.",
               "mission/donki_events.json", SEP_MAY24),
          fact("After a big flare, particles can arrive in tens of minutes to a few hours.", C, S_CONCEPT["sep_timing"]),
@@ -313,7 +328,7 @@ LESSONS = [
               {"type": "compare", "answer": "shackleton_rim", "metric": "ice_km",
                "options": [opt("shackleton_rim", "Shackleton Rim", "shackleton", "rim"),
                            opt("malapert_massif", "Malapert Massif", "malapert", "mountain")]},
-              "The rim, about 10 km. Malapert, about 130.", "Not that one.",
+              f"The rim, about {SITE['shackleton_rim']['ice_km']} km. Malapert, about {SITE['malapert_massif']['ice_km']}.", "Not that one.",
               "Look at the Moon. The rim sits right on the crater.",
               show=["shackleton"], globe={"do": "pair", "places": ["shackleton_rim", "malapert_massif"]}),
          step("Life support is getting low. Send the rover for ice!",

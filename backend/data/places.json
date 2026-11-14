@@ -41,7 +41,7 @@
   },
   {
    "id": "orientale",
-   "name": "Mare Orientale",
+   "name": "Orientale Basin",
    "lat": -19.87,
    "lon": -94.67,
    "diameter_km": 930,
@@ -49,6 +49,7 @@
    "fact": "A giant bullseye 930 km wide, made by a huge impact. From Earth we only see its edge. Artemis II saw all of it.",
    "aliases": [
     "orientale",
+    "mare orientale",
     "oriental",
     "bullseye",
     "bulls eye",

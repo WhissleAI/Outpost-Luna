@@ -17,6 +17,7 @@ import io
 import json
 import os
 import sys
+import time
 
 from playwright.sync_api import sync_playwright
 
@@ -159,9 +160,12 @@ def run(base, out, only=None):
                 rec = {"lesson": L["id"], "step": k + 1, "type": st["accept"]["type"], "open": page.evaluate(PROBE, ids)}
                 shot(page, out, tag + "_a_open")
                 tries = []
+                t_open = time.time() - 2.6
                 for m in range(3):
                     if page.query_selector("#aNext"):
                         break
+                    if m == 2:   # the reveal waits for 3 real misses and ~20 s on the step (grade.reveal_due)
+                        page.wait_for_timeout(max(0, int((21 - (time.time() - t_open)) * 1000)))
                     t = st["accept"]["type"]
                     did = ""
                     if t in ("tap", "intent", "terminator", "route"):
@@ -181,9 +185,12 @@ def run(base, out, only=None):
                         if btn:
                             did = "picked: " + (btn.text_content() or "").strip()
                             btn.click()
-                        else:
-                            did = "typed: I don't know"
-                            page.fill("#q", "I don't know"); page.press("#q", "Enter")
+                        elif m >= 1 and st["accept"].get("all"):   # a half readback (a real try, wrong)
+                            did = "typed: " + st["accept"]["all"][0][0]
+                            page.fill("#q", st["accept"]["all"][0][0]); page.press("#q", "Enter")
+                        else:   # a kid with no idea asks for help (routed to the step's hint, not a miss)
+                            did = "typed: what do I do"
+                            page.fill("#q", "what do I do"); page.press("#q", "Enter")
                     page.wait_for_timeout(1800)
                     pr = page.evaluate(PROBE, ids)
                     tries.append({"did": did, **pr})
@@ -220,6 +227,7 @@ def run(base, out, only=None):
             page.wait_for_timeout(2500)
             shot(page, out, "checkride_z_end")
             log["screens"].append({"screen": "checkride end", **page.evaluate(PROBE, [])})
+        page.goto(base); page.wait_for_selector(".mp-card", timeout=30000); page.wait_for_timeout(1500)
         # ---- mode switch in the middle of a step ----
         if True:
             open_lesson(page, "history"); page.wait_for_timeout(2500)

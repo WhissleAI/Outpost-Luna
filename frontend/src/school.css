@@ -265,3 +265,5 @@ html[data-motion="reduce"] .gd-mark.is-pulse .gd-ring{animation:none}
 .a-phrase{font-size:var(--text-md, 16px);font-weight:600;color:var(--color-text);border:1px dashed var(--color-accent);border-radius:var(--radius-md);padding:6px 10px;margin:0}
 .a-choice.is-out{opacity:.45;text-decoration:line-through}
 .a-feedback.is-progress{color:var(--color-text)}
+.gd-mark:not(.is-ring) .gd-label{top:12px}
+.gd-mark.is-above .gd-label{top:auto;bottom:calc(var(--r) + 6px)}

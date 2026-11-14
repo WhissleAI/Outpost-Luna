@@ -361,10 +361,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (waitingNext) return "Tap Next, or say next.";
     const st = L.steps[i], acc = st.accept;
     if (gs.rung >= 1 && feedback && feedback.text) return feedback.text;
-    // nothing tried yet: the hint, and the same visual as a first miss (no miss is counted)
+    // nothing tried yet: the hint, on the card too, and the same visual as a first miss (no miss is counted)
     const focus = acc.type === "route" ? [acc.stops[stepState.taps.length] || acc.stops[0]] : acc.place ? [acc.place] : [];
-    if (focus.length && !L.ride) { gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; render(); turnToFocus(focus); }
-    return `${doLine(st)}. ${st.hint}`;
+    const line = `${doLine(st)}. ${st.hint}`;
+    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: line }; render(); turnToFocus(focus); }
+    return line;
   }
   try { (window.__outpost = window.__outpost || {}).help = help; } catch (e) { /* tests */ }
 

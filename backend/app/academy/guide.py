@@ -24,7 +24,7 @@ OPTION_TYPES = ("choice", "compare", "earth_view", "vocab_match", "vocab_fill", 
 
 def _plain(name: str) -> str:
     """"Mare Orientale" -> "Orientale", "Shackleton (south pole)" -> "Shackleton": the name the prompts use."""
-    return re.sub(r"^Mare ", "", re.sub(r"\s*\(.*?\)", "", name))
+    return re.sub(r"^Mare | Basin$", "", re.sub(r"\s*\(.*?\)", "", name))
 
 
 def short(pid: str) -> str:

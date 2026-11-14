@@ -623,7 +623,7 @@
       ]
      },
      "hint": "Malapert sits on the side facing Earth.",
-     "success": "Malapert. Earth was up 9 of 10 days.",
+     "success": "Malapert. Earth was up 9.5 of 10 days.",
      "fail": "Not that one."
     },
     {
@@ -862,7 +862,7 @@
    "brief": "The Sun sometimes throws out fast particles. On the Moon, nothing stops them.",
    "facts": [
     {
-     "text": "China's Chang'e 4 lander measured 1369 microsieverts a day on the Moon, about 2.6 times the cosmic-ray dose inside the ISS (523).",
+     "text": "China's Chang'e 4 lander measured 1369 microsieverts a day on the Moon, about 2.6 times the cosmic-ray dose inside the ISS, 523 microsieverts a day.",
      "from": [
       "mission/radiation.json"
      ],
@@ -1177,7 +1177,7 @@
       ]
      },
      "hint": "Look at the Moon. The rim sits right on the crater.",
-     "success": "The rim, about 10 km. Malapert, about 130.",
+     "success": "The rim, about 10 km. Malapert, about 129.",
      "fail": "Not that one."
     },
     {

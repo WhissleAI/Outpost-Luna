@@ -44,7 +44,7 @@ export function firstUse(type, storage = typeof localStorage !== "undefined" ? l
 }
 export function resetSeen() { seenMem = null; }
 
-const short = f => String((f && f.name) || "").split(" (")[0].replace(/^Mare /, "");   // "Orientale", as the prompts say it
+const short = f => String((f && f.name) || "").split(" (")[0].replace(/^Mare | Basin$/g, "");   // "Orientale", as the prompts say it
 const degR = f => Math.max(2.5, ((f && (f.km || f.diameter_km)) || 60) / 2 / 30.3);
 
 /**
@@ -70,7 +70,7 @@ export function marks(st, g, find) {
   const stops = acc.type === "route" ? acc.stops || [] : [];
   (st.show || []).forEach(id => {
     const k = stops.indexOf(id);
-    add(id, { label: short(find(id)), num: k >= 0 ? k + 1 : undefined, pulse: k >= 0 && k === (g.next || 0), ring: true });
+    add(id, { label: short(find(id)), num: k >= 0 ? k + 1 : undefined, pulse: k >= 0 && k === (g.next || 0), ring: true, above: k < 0 });   // a shown place names itself above its ring, clear of answer pins below
   });
   (st.ring || []).forEach(id => add(id, { ring: true, gold: true, pulse: true }));
   if (g.rung >= 1) (g.focus || []).forEach(id => add(id, { ring: true, pulse: true, label: g.rung >= 2 && (g.label || []).includes(id) ? short(find(id)) : undefined }));

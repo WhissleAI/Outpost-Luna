@@ -115,7 +115,7 @@ O.stepRenderers.compare = ctx => withDirective(ctx, {
  *  so the kid hears "Yes, Orientale. Now Ohm." The taps live in ctx.state (academy/ui.js), which survives re-renders. */
 O.stepRenderers.route = ctx => {
   const S = ctx.state || { taps: [] }, taps = S.taps || (S.taps = []), n = (ctx.acc.stops || []).length;
-  const nameOf = id => { const f = O.placeById && O.placeById(id); return f ? String(f.name).split(" (")[0].replace(/^Mare /, "") : id; };
+  const nameOf = id => { const f = O.placeById && O.placeById(id); return f ? String(f.name).split(" (")[0].replace(/^Mare | Basin$/g, "") : id; };
   const stopLine = k => `Tap ${k + 1}: ${nameOf(ctx.acc.stops[k])}`;   // "Tap 1: Orientale", matching the numbered ring
   let root = null;
   const paint = () => {

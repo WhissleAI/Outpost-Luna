@@ -267,7 +267,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       glayer.textContent = "";
       gmarks = (list || []).map(m => {
         const el = document.createElement("div");
-        el.className = "gd-mark" + (m.pulse ? " is-pulse" : "") + (m.ring ? " is-ring" : " is-dot") + (m.gold ? " is-gold" : "") + (m.label ? " has-label" : "");
+        el.className = "gd-mark" + (m.pulse ? " is-pulse" : "") + (m.ring ? " is-ring" : " is-dot") + (m.gold ? " is-gold" : "") + (m.label ? " has-label" : "") + (m.above ? " is-above" : "");
         el.setAttribute("aria-hidden", "true");
         el.innerHTML = `<i class="gd-ring"></i>${m.num ? `<b class="gd-num"></b>` : ""}${m.label ? `<span class="gd-label"></span>` : ""}`;
         if (m.num) el.querySelector(".gd-num").textContent = String(m.num);
