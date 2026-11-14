@@ -3,7 +3,9 @@
    (docs/DESIGN_SYSTEM.md). --strip-h is the voice strip's live height (main.js), so cards never sit under it. */
 
 .apanel{position:absolute;z-index:var(--z-panel);color:var(--color-text)}
-.apanel[hidden]{display:none}
+/* !important: `.apanel.is-lesson{display:flex}` below has the same specificity and came later, so a hidden lesson card
+   stayed on screen over the Mission site picker (the mode-switch leak). */
+.apanel[hidden]{display:none!important}
 @keyframes fade{from{opacity:0}}
 .a-wait{position:absolute;left:50%;top:40%;transform:translateX(-50%);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);
   background:var(--color-overlay);-webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay)}

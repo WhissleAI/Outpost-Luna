@@ -60,6 +60,11 @@ export function splitSentences(text, max = 280) {
   return merged;
 }
 
+/** A say's sentences: one text, or a list of lines spoken as one (each line split on its own). */
+export function sayLines(text) {
+  return (Array.isArray(text) ? text : [text]).flatMap(t => splitSentences(t));
+}
+
 /** Lowercase words without punctuation ("Shields, to 40!" → ["shields","to","40"]). */
 export function normWords(text) {
   return String(text || "").toLowerCase().replace(/[’']/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").filter(Boolean);
@@ -202,6 +207,18 @@ export function ttsUrlFor(base, text, voice, style, i, n, next, speed) {
   return `${base}?${q.toString()}`;
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const DUP_MS = 3000;   // a line asked for again within 3 s of the same line (queued, playing or just said) is dropped
+const DEV = (() => { try { return !!(import.meta.env && import.meta.env.DEV); } catch (e) { return false; } })();
+const callerOf = e => String((e && e.stack) || "").split("\n").slice(2, 4).map(s => s.trim()).join(" < ");
+/** Two lines are the same utterance: identical words, or >= 85% of the words shared both ways (>= 3 words). */
+export function nearSame(a, b) {
+  if (!a.length || !b.length) return false;
+  if (a.join(" ") === b.join(" ")) return true;
+  if (Math.min(a.length, b.length) < 3) return false;
+  const A = new Set(a), B = new Set(b);
+  const ab = [...A].filter(w => B.has(w)).length;
+  return ab / A.size >= 0.85 && ab / B.size >= 0.85;
+}
 
 export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   const subs = {};
@@ -236,7 +253,8 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     });
   }
   // `text`: what we are saying (the session's echo check covers every app voice: guide, CAPCOM, story, Houston, crew)
-  const playback = (kind, state, id, text) => emit("playback", { kind, state, id, t: Date.now(), ...(text ? { text } : {}) });
+  // `more`: another say is queued right behind this one (the session's hard mute holds through the gap, Spoken.end)
+  const playback = (kind, state, id, text, extra) => emit("playback", { kind, state, id, t: Date.now(), ...(text ? { text } : {}), ...(extra || {}) });
 
   // ----- guide: server audio -----
   function el() {
@@ -258,11 +276,16 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     const a = el();
     return new Promise(res => {
       let done = false;
-      const fin = v => { if (done) return; done = true; a.onended = a.onerror = null; tok.stop = null; res(v); };
-      a.onended = () => fin("end"); a.onerror = () => fin("error");
+      const fin = v => { if (done) return; done = true; a.onended = a.onerror = a.onplaying = null; tok.stop = null; res(v); };
+      // An error AFTER the sentence was heard (a late decode error, a play() promise rejected by the next load) is its
+      // end, not a reason to say it again in the browser voice: that spoke one line twice, in two different voices.
+      let heard = false;
+      a.onplaying = () => { heard = true; };
+      const failed = () => fin(heard || (a.currentTime || 0) > 0.25 ? "end" : "error");
+      a.onended = () => fin("end"); a.onerror = failed;
       tok.stop = () => { a.pause(); fin("stop"); };
       a.volume = 1; a.src = url;
-      a.play().catch(() => fin("error"));      // autoplay blocked / decode error → browser voice for this sentence
+      a.play().catch(failed);      // autoplay blocked / decode error before any sound → browser voice for this sentence
     });
   }
 
@@ -291,11 +314,32 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   }
 
   // ----- say -----
-  async function say(text, { voice = "guide", priority = 3, id, style } = {}) {
-    const sentences = splitSentences(text);
+  // `text` may be a list of lines (CAPCOM's hello → brief → question): they play as ONE say, one on-air span with
+  // one playback start / end, the floor held by the guide between lines (no gap where the ear slips in).
+  async function say(text, opts = {}) {
+    // One utterance per user action: the same (or nearly the same) line asked for again while it is queued, playing
+    // or within DUP_MS of either, in ANY voice, is dropped (a tap once spoke its line twice, in two voices). Explicit
+    // repeats ("Hear it again", "say that again") pass {repeat: true}.
+    const words = normWords(sayLines(text).join(" "));
+    const now = performance.now();
+    const dup = !opts.repeat && words.length && said_.find(s => (s.end === Infinity || now - s.end < DUP_MS || now - s.at < DUP_MS) && nearSame(s.words, words));
+    if (dup) {
+      if (DEV) console.info("[floor] dropped a duplicate say", { text: words.join(" ").slice(0, 80), voice: opts.voice || "guide", first: dup.voice, source: opts.source || callerOf(new Error()) });
+      return false;
+    }
+    const rec = { words, voice: opts.voice || "guide", at: now, end: Infinity };
+    said_.push(rec); if (said_.length > 12) said_.shift();
+    const tok0 = { cancelled: false };
+    queued.add(tok0);
+    try { return await say_(text, opts, tok0); } finally { queued.delete(tok0); rec.end = performance.now(); }
+  }
+  const said_ = [];
+  async function say_(text, { voice = "guide", priority = 3, id, style } = {}, tok0) {
+    const sentences = sayLines(text);
     if (!sentences.length) return false;
     if (!VOICE_PARAMS[voice]) voice = "guide";
     const tok = { id: id || "g" + nextId++, text: sentences.join(" "), sentence: "", speaking: false, cancelled: false, stop: null, yield: false, priority };
+    tok0.tok = tok;
     const prev = cur;
     if (prev && !prev.cancelled) {
       if (priority <= 2) { prev.yield = true; await waitFor(() => cur !== prev || prev.cancelled || prev.finished, tok); }
@@ -320,6 +364,9 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     } finally { tok.finished = true; pending.delete(tok); if (cur === tok) { tok.speaking = false; recompute(); } }
   }
   const pending = new Set();
+  const queued = new Set();      // every say() from its call to its return (also while it waits for the floor)
+  /** Another say is queued behind `tok` (it will play next): the line's end is not the end of what we're saying. */
+  const moreAfter = tok => [...queued].some(q => q.tok !== tok && !(q.tok && (q.tok.cancelled || q.tok.finished)));
 
   async function speakAll(tok, sentences, voice, style) {
     const n = sentences.length, get = i => fetchTTS(sentences[i], voice, style, i, n, sentences[i + 1] || "");
@@ -333,7 +380,11 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       recompute();
       emit("sentence", { id: tok.id, index: i, text: sentences[i], voice, words: got ? got.words : "", engine: got ? got.engine : "browser", audio: url ? el() : null, speed });
       let r = url ? await playUrl(url, tok) : "error";
-      if (url) URL.revokeObjectURL(url);
+      if (url) {
+        // stopped / failed mid-load: detach the element first, or it keeps fetching a revoked blob (a console error)
+        if (r !== "end" && guideEl && guideEl.src === url) { try { guideEl.removeAttribute("src"); guideEl.load(); } catch (e) { /* */ } }
+        URL.revokeObjectURL(url);
+      }
       if (r === "error" && !tok.cancelled) r = await speakSynth(sentences[i], voice, tok);
       if (r === "stop" || tok.cancelled) break;
       if (tok.yield) { tok.cancelled = true; break; }                   // a critical alert takes the floor after this sentence
@@ -341,7 +392,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     if (next) next.then(u => u && u.url && URL.revokeObjectURL(u.url));
     tok.speaking = false;
     const full = !tok.cancelled;
-    if (started) playback("guide", full ? "end" : "interrupted", tok.id);
+    if (started) playback("guide", full ? "end" : "interrupted", tok.id, "", full && moreAfter(tok) ? { more: true } : null);
     recompute();
     return full;
   }
@@ -374,6 +425,9 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     setKid(v) { v = !!v; if (v !== kid) { kid = v; recompute(); } },
     get holder() { return holder; },
     get guideBusy() { return [...pending].some(t => !t.cancelled && !t.finished); },
+    /** On air for the ear's hard mute: a voice is playing, or a say is still running or queued (between the lines of
+     *  a sequence, while the next line's audio is fetched, the floor is "none" but we have not finished talking). */
+    get onAir() { return holder === "guide" || holder === "crew" || [...pending].some(t => !t.cancelled && !t.finished) || moreAfter(null); },
     get guideText() { return cur && !cur.cancelled && !cur.finished ? cur.text : ""; },
     get guideSentence() { return cur && cur.speaking ? cur.sentence : ""; },
     get crewText() { try { return crewPlaying() ? crew.text() || "" : ""; } catch (e) { return ""; } },
@@ -396,7 +450,7 @@ export const floor = typeof window !== "undefined" ? createFloor() : null;
 export const STORY_VOICE = { voice: "story" };
 export const CAPCOM_VOICE = { voice: "capcom" };
 /** Speak on the guide channel; resolves true when spoken to the end. Old {rate, pitch} options mean the guide voice. */
-export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3, style: opts.style }) : Promise.resolve(false); }
+export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3, style: opts.style, repeat: opts.repeat, source: opts.source }) : Promise.resolve(false); }
 /** The style of the first `say` decision in a Director / Academy response (Steer steering), if any. */
 export const sayStyle = r => ((r && r.decisions) || []).find(d => d.t === "say" && d.style)?.style;
 export function stopSpeaking() { if (floor) floor.stopGuide(); }

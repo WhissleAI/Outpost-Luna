@@ -162,6 +162,21 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 .askbar[data-anchor^="t"]{flex-direction:column-reverse}
 .askbar[data-anchor^="t"] .dock{flex-direction:column-reverse}
 .askbar[data-anchor^="t"] .caption-bar{padding:0 var(--space-5) var(--space-3)}
+/* A floating bar never changes its own box (voicebar.js moves it only on drags, screen changes and resizes): the
+   caption floats out of flow, growing upward from a bottom bar (downward from a top one), and the chips row does too. */
+.askbar.is-floating .dock{overflow:visible}
+.askbar.is-floating .dock .caption-bar{position:absolute;left:0;right:0;bottom:calc(100% + var(--space-2));padding:var(--space-3) var(--space-5);
+  border-radius:var(--radius-lg);background:var(--color-overlay);border:1px solid var(--color-overlay-line);box-shadow:var(--shadow-3);
+  -webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay);pointer-events:none}
+.askbar.is-floating[data-anchor^="t"] .dock .caption-bar{bottom:auto;top:calc(100% + var(--space-2));padding:var(--space-3) var(--space-5)}
+.askbar.is-floating .chips{position:absolute;left:0;right:0;bottom:calc(100% + var(--space-2))}
+.askbar.is-floating:has(.caption-bar:not(:empty):not(.is-dup):not([hidden])) .chips{visibility:hidden}
+.askbar.is-floating[data-anchor^="t"] .chips{bottom:auto;top:calc(100% + var(--space-2))}
+/* One screen's cards at a time (main.js screenInvariant does the same in JS): a hidden panel stays hidden whatever its
+   layout class says, and a panel never shows under another mode. */
+.mpanel[hidden],.m-debrief[hidden],.m-banner[hidden],.card[hidden]{display:none!important}
+body:not([data-mode="academy"]) #aPanel,body:not([data-mode="academy"]) #aRideCabin,body:not([data-mode="mission"]) #mPanel,
+body:not([data-mode="mission"]) #mDebrief,body:not([data-mode="mission"]) #mBanner{display:none!important}
 .stage{--strip-h:var(--strip-live,62px)}
 .stage[data-vbar^="t"]{--strip-h:0px}
 .vs-grip{flex:none;width:20px;height:44px;display:grid;place-items:center;border:0;border-radius:var(--radius-sm);background:none;color:var(--color-text-3);cursor:grab;touch-action:none}
@@ -197,7 +212,9 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 @keyframes ping{from{transform:scale(.92);opacity:.6}to{transform:scale(1.18);opacity:0}}
 .mic:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 /* state: bars + one word */
-.listen{flex:none;display:flex;align-items:center;gap:var(--space-2);min-width:128px;padding-right:var(--space-3);border-right:1px solid var(--color-line);height:28px}
+/* fixed width: "Listening" / "Hearing you" / "Starting voice…" / "Didn't catch that" and the dots never resize the row */
+.listen{flex:none;display:flex;align-items:center;gap:var(--space-2);width:156px;overflow:hidden;padding-right:var(--space-3);border-right:1px solid var(--color-line);height:28px}
+.listen-state{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cs-tag{display:none}
 .orb{flex:none;display:flex;align-items:center;gap:3px;height:20px;width:22px;justify-content:center}
 .orb i{display:block;width:3px;height:4px;border-radius:2px;background:var(--color-text-3);transition:height var(--dur-fast),background-color var(--dur-base)}
@@ -232,7 +249,7 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 @keyframes eq{0%,100%{height:5px}50%{height:18px}}
 @keyframes breathe{0%,100%{height:6px}50%{height:11px}}
 @keyframes dots{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
-@keyframes nudge{20%{transform:translateX(-3px)}60%{transform:translateX(3px)}}
+@keyframes nudge{from{opacity:0}to{opacity:1}}   /* a fade, not a wiggle: the bar must never look like it shakes */
 /* field: typing, or the words being heard laid over it */
 .ask{position:relative;flex:1;min-width:0;display:flex;align-items:center;gap:var(--space-2);height:100%;margin:0}
 .ask input{flex:1;min-width:0;height:44px;background:none;border:0;color:var(--color-text);font:inherit;font-size:var(--text-md);outline:none;padding:0 var(--space-2)}

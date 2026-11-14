@@ -138,8 +138,9 @@ def test_check_ride_storm_without_shelter_fails(client):
 
 def test_shelter_cuts_storm_dose(client):
     good = _ride(client, GOOD)["state"]["resources"]["dose_msv"]
-    bad = _ride(client, ["yes", "Houston, any space weather?", "x", "x", "x", "come out of the shelter",
-                         "send the rover for ice"])
+    # "x" is not a try (grade.plausible): ignored, no miss. Three real wrong orders let the storm hit.
+    bad = _ride(client, ["yes", "Houston, any space weather?", "x", "more power to the heaters", "end shift",
+                         "send the rover for ice", "come out of the shelter", "send the rover for ice"])
     assert bad["state"]["resources"]["dose_msv"] > good * 2
 
 
@@ -200,10 +201,10 @@ def test_ladder_rung2_per_kind(client):
     r = _att(client, "history", k, {"choice": "rover"}, 1)
     assert r["rung"] == 2 and r["eliminate"] in ("rover", "ice")
     k = _step("comms", "keywords")
-    r = _att(client, "comms", k, {"text": "um"}, 1)
+    r = _att(client, "comms", k, {"text": "set the heaters"}, 1)   # a real try (names the heaters), missing the number
     assert r["phrase"].startswith("set the heaters") and "heaters" not in r["say"].lower()   # words on screen only
     k = _step("power", "command")
-    r = _att(client, "power", k, {"text": "um"}, 1)
+    r = _att(client, "power", k, {"text": "shields up"}, 1)        # a real order, the wrong one
     assert r["cue"]["to"] == "heaters"
 
 
