@@ -47,6 +47,10 @@ PRONOUN = re.compile(r"\b(it|that|this one|that one)\b", re.I)
 NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shields?|greenhouse|science|rover|comms?|"
                    r"radio|heaters?)\b", re.I)
 ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
+# Story beats CAPCOM speaks from the session (docs/GAMEPLAY.md). The others ride on a sim event that already has a line
+# (forecast = storm_warning, crisis = solar_storm, recovery = storm_end, earthrise = comm_open), or the client says them
+# (arrival: the cabin hello).
+SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlink")
 
 
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
@@ -727,6 +731,7 @@ class Session:
         m = self._mission()
         evs = list(getattr(m, "events", []) or [])
         new, self.ev_seen = evs[self.ev_seen:], len(evs)
+        new = [e for e in new if e.get("kind") != "beat"] + [e for e in new if e.get("kind") == "beat"]   # news first
         out: list[dict] = []
         for e in new:
             out += self.proactive(e)
@@ -766,6 +771,11 @@ class Session:
             if st:
                 self.warned.add(st.start_h)   # the sim warned already: no second lookahead alert
             return [al, card, say]
+        if kind == "beat" and e.get("beat") in SPOKEN_BEATS:
+            # a story beat (gameplay.py) with no sim event line of its own: CAPCOM says it once, under the floor rules
+            return [decision("say", P_NARRATION, text=e.get("text") or "", voice="capcom", proactive=True,
+                             situation="all_clear" if e.get("beat") in ("ice_return", "complete") else None,
+                             emotion=self._emotion())]
         if kind == "shelter_limit":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Crew out of the shelter."),
                     decision("say", P_NARRATION, text="A day in the shelter is the limit. Crew out to rest.",

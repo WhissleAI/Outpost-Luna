@@ -90,6 +90,19 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
+    # The live mission clock (docs/GAMEPLAY.md), cabin only: skip to the next event, pause / run time, time warp.
+    # Before "start" (which takes "resume") and "skip_tour" (which takes a bare "skip").
+    ("skip_event", re.compile(r"^(?:skip|jump|fast forward|go|warp)(?: ahead| forward)?(?: to)?(?: the)? next "
+                              r"(?:event|thing|job|task)$|^(?:skip|jump) (?:ahead|forward)$|^fast forward$|"
+                              r"^next event$|^skip (?:the )?(?:wait|waiting)$")),
+    ("time_pause", re.compile(r"^(?:pause|stop|freeze|hold)(?: the)? (?:clock|time|game|mission)$|^pause(?: it)?$|"
+                              r"^time out$|^wait a (?:sec|second|minute)$")),
+    ("time_resume", re.compile(r"^(?:start|resume|run|unpause|restart)(?: the)? (?:clock|time|game|mission clock)$|"
+                               r"^(?:resume|unpause|play|let time run|go go go)$|^start the clock$")),
+    ("time_warp", re.compile(r"^(?:time ?warp|warp(?: speed)?|speed up (?:the )?(?:time|clock)|(?:double|quad) "
+                             r"(?:time|speed)|(?:normal|slow) (?:time|speed)|time (?:normal|slow)|"
+                             r"(?:time ?warp|warp|time|clock)(?: speed)? (?:one|two|four|1|2|4)(?: x| times)?|"
+                             r"(?:one|two|four|1|2|4)(?: x| times) (?:time|speed|warp))$")),
     # The cabin tour (mission/tour.js): replay it, or skip it.
     ("cabin_tour", re.compile(r"^(?:show me around|give me (?:a|the) tour|(?:start |replay |do )?(?:the )?(?:cabin )?tour|"
                               r"show me the cabin|what s in (?:the|this) cabin|teach me the cabin)$")),
@@ -144,6 +157,31 @@ VBAR_MOVE = re.compile(r"^(?:move|put|drag|send|place) (?:the |my )?(?:voice|mic
                        r"(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?"
                        r"(?: (?:side|corner|edge))?$")
 VBAR_RESET = re.compile(r"^(?:reset|restore) (?:the |my )?(?:voice|mic|microphone|talk) ?bar(?: position)?$")
+
+
+CLOCK_INTENTS = ("skip_event", "time_pause", "time_resume", "time_warp")
+_WARP_WORDS = {"one": 1, "1": 1, "normal": 1, "slow": 1, "two": 2, "2": 2, "double": 2, "four": 4, "4": 4, "quad": 4}
+
+
+def warp_of(q: str) -> int | None:
+    """The speed in a time-warp turn ("time warp four" -> 4, "normal speed" -> 1); None: the next speed up."""
+    for w in q.split():
+        if w in _WARP_WORDS:
+            return _WARP_WORDS[w]
+    return None
+
+
+def task_choice(q: str, options: list[str]) -> str | None:
+    """A spoken pick on the cabin's task card ("left", "the ridge", "shelter now"): the one option it names, or None."""
+    if not options or len(q.split()) > 5:
+        return None
+    stop = {"the", "a", "an", "go", "now", "please", "take", "pick", "choose", "route", "i", "want", "lets", "let", "s",
+            "steer", "to", "and", "or", "up", "it"}
+    qw = set(q.split()) - stop
+    if not qw:
+        return None
+    hits = [o for o in options if qw & (set(norm(o).split()) - stop)]
+    return hits[0] if len(hits) == 1 else None
 
 
 def voicebar_intent(q: str) -> str | None:
@@ -319,6 +357,10 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         pn = panel_intent(q)
         if pn:
             return pn
+        if ctx.offer == "task":   # a choice on the task card (route, steer, shelter or wait, normal or high)
+            tc = task_choice(q, ctx.step_options)
+            if tc:
+                return "task_choice", tc
     for intent, pat in NAV:
         m = pat.match(q)
         if not m:
@@ -338,6 +380,10 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue
+        if intent in CLOCK_INTENTS:
+            if ctx.screen != "cabin" or ctx.offer == "tour":
+                continue
+            return intent, (warp_of(q) if intent == "time_warp" else None)
         if intent == "skip_tour" and q in ("skip", "skip it", "i know it", "i know this", "i ve got it", "i have got it") and \
                 ctx.offer != "tour":
             continue                 # a bare "skip" is a tour word only while the tour runs
