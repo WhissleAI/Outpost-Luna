@@ -6,6 +6,8 @@ shape (docs/SESSION_CONTRACT.md: `lesson` + `say`), so a session Director can re
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from .. import steering
@@ -30,6 +32,7 @@ class AttemptReq(BaseModel):
     input: AttemptInput
     misses: int = Field(0, ge=0, le=50)   # misses so far on this step (client-side progress)
     ride_id: str | None = None
+    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): for the learning design; no effect yet
 
 
 def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | None = None, badge: bool = False,
