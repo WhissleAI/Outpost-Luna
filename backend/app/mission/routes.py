@@ -21,7 +21,7 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
-    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): passed to the sim, no effect yet
+    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): the difficulty band, ages 7-9 / 10-12
 
 
 class CommandReq(BaseModel):

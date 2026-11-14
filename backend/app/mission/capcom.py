@@ -19,7 +19,7 @@ NAMES = {"shields": "radiation shields", "life_support": "life support", "greenh
          "science": "science lab", "rover": "rover", "comms": "radio", "heaters": "heaters"}
 TASK_SAY = {"collect_ice": "for ice", "repair_array": "to fix the solar panels", "explore": "to explore",
             "return": "back to base"}
-ROLE_OF = {"allocate": "power", "shelter": "life", "dispatch": "life", "call_houston": "comms"}
+ROLE_OF = {"allocate": "power", "power_save": "power", "shelter": "life", "dispatch": "life", "call_houston": "comms"}
 ROLE_NAME = {"power": "power officer", "life": "life support officer", "comms": "communications officer"}
 COPY = "Copy."          # every readback opens with it; the Director keeps only the first one per turn
 
@@ -114,6 +114,8 @@ def readback(cmd: dict, state: dict | None = None, mid: str | None = None) -> st
         if cmd["on"]:
             return f"{COPY} Everyone into the shelter."
         return f"{COPY} Crew leaving the shelter."
+    if ty == "power_save":
+        return f"{COPY} Night mode on. Lab and greenhouse sleep." if cmd.get("on") else f"{COPY} Night mode off."
     if ty == "end_shift":
         return COPY      # the shift report that follows says the rest ("Day 1, shift 4. …")
     if ty == "confirm":

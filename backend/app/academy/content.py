@@ -9,7 +9,9 @@ from pathlib import Path
 DATA = Path(__file__).resolve().parents[2] / "data"
 COURSE = DATA / "academy" / "course.json"
 ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
-                "vocab_match", "vocab_say", "vocab_fill", "vocab_listen")   # vocab: app/academy/vocab.py
+                "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
+                "predict", "globe_side", "terminator", "compare", "route", "earth_view")   # globe steps: grade.py
+GLOBE_DO = ("fly", "side", "pole", "sun", "zoom", "pair", "earth", "route")   # step.globe.do (client directive)
 NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
@@ -32,6 +34,19 @@ def public() -> dict:
                               for o in a["options"]]
         if a["type"] in ("tap", "intent"):
             acc["place"] = a["place"]
+        if a["type"] in ("predict", "compare"):
+            acc["options"] = [{"id": o["id"], "label": o["label"]} for o in a["options"]]
+            if a.get("metric"):
+                acc["metric"] = a["metric"]
+        if a["type"] == "globe_side":
+            acc["want"] = a["want"]
+        if a["type"] == "terminator":
+            acc |= {"sun_lon": a["sun_lon"], "tol_deg": a.get("tol_deg", 10)}
+        if a["type"] == "route":
+            acc["stops"] = list(a["stops"])
+        if a["type"] == "earth_view":
+            acc["place"] = a["place"]
+            acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -50,6 +65,37 @@ def longest_dark_h(site_id: str) -> int:
         cur = 0 if elev > e["horizon_deg"] else cur + 1
         best = max(best, cur)
     return best
+
+
+def _check_globe_step(s: dict, a: dict) -> list[str]:
+    from .grade import gaz, where
+    out = []
+    t = a.get("type")
+    if t in ("predict", "compare") and a.get("answer") not in {o["id"] for o in a.get("options", [])}:
+        out.append("answer not among options")
+    if t == "compare":
+        out += [f"unknown place {o['id']}" for o in a.get("options", []) if where(o["id"]) is None]
+    if t == "predict" and not s.get("reveal"):
+        out.append("predict step needs a reveal line (said after any other guess)")
+    if t == "globe_side" and a.get("want") not in ("near", "far"):
+        out.append("globe_side.want must be near or far")
+    if t == "terminator" and not isinstance(a.get("sun_lon"), (int, float)):
+        out.append("terminator needs sun_lon")
+    if t == "route":
+        out += [f"unknown stop {x}" for x in a.get("stops", []) if x not in gaz().places]
+        if len(a.get("stops", [])) < 2:
+            out.append("route needs 2+ stops")
+    if t == "earth_view" and where(a.get("place", "")) is None:
+        out.append(f"unknown place {a.get('place')}")
+    g = s.get("globe")
+    if g and g.get("do") not in GLOBE_DO:
+        out.append(f"bad globe.do {g.get('do')!r}")
+    if g and g.get("place") and where(g["place"]) is None:
+        out.append(f"globe.place unknown: {g['place']}")
+    c = s.get("clip")
+    if c and not (c.get("clip_id") and c.get("t1", 0) > c.get("t0", -1) and c.get("t1", 0) - c.get("t0", 0) <= 25.5):
+        out.append("clip needs clip_id and 0 < t1 - t0 <= 25 s")
+    return out
 
 
 def check() -> list[str]:
@@ -99,4 +145,17 @@ def check() -> list[str]:
             if str(a.get("type", "")).startswith("vocab_"):
                 from .vocab import check_step
                 probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
+            probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
+        pl = l.get("place")   # the Moon-map pin for this lesson (UX: data-driven map)
+        if isinstance(pl, str):
+            from .grade import where
+            if where(pl) is None:
+                probs.append(f"{lid}: place {pl!r} is not in places.json or mission/sites.json")
+        elif isinstance(pl, dict) and not (pl.get("name") and isinstance(pl.get("lat"), (int, float))
+                                           and isinstance(pl.get("lon"), (int, float))):
+            probs.append(f"{lid}: place needs name, lat, lon")
+        if i_types := [s.get("accept", {}).get("type") for s in l.get("steps", [])]:
+            for k in range(1, len(i_types)):
+                if i_types[k] == i_types[k - 1] and not l.get("ride"):
+                    probs.append(f"{lid}[{k}]: two {i_types[k]} steps in a row")
     return probs

@@ -487,9 +487,9 @@
         {"text": "I'm the Centaur rocket from the LCROSS mission.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
         {"text": "I crashed into a dark, freezing crater called Cabeus to throw up a big cloud of dust.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
         {"text": "In that cloud, scientists found water!", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []},
-        {"text": "The 2000 kg Centaur upper stage was crashed into Cabeus crater near the south pole to blast up a cloud of buried material.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [2000]},
-        {"text": "It dug out roughly 350 metric tons of material and made a crater about 20 meters wide.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [20, 350]},
-        {"text": "Measurements of the debris cloud showed NASA that the mission had uncovered water near the Moon's south pole.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": []}
+        {"text": "The Centaur upper stage, about 2,300 kg, was crashed into Cabeus crater near the south pole to blast up buried material.", "source": "Colaprete et al. 2010, Science 330; NTRS 20100026403", "numbers": [2300]},
+        {"text": "About 4,000 to 6,000 kg of debris rose into sunlight, and the new crater was about 25 to 30 meters wide.", "source": "Colaprete et al. 2010, Science 330; NTRS 20100026403", "numbers": [4000, 6000, 25, 30]},
+        {"text": "The plume held about 155 kg of water, about 5.6% of the soil by mass: water near the Moon's south pole.", "source": "Colaprete et al. 2010, Science 330", "numbers": [155, 5.6]}
       ]
     },
     "lcross_impact": {

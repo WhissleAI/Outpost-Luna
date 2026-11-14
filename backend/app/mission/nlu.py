@@ -294,6 +294,21 @@ def _query(t: str) -> dict | None:
     return None
 
 
+NIGHT = re.compile(r"\b(night mode|power save|power saving|save power mode|saving mode|hibernat\w*|sleep mode|"
+                   r"power down|eco mode|energy save)\b")
+NIGHT_OFF = re.compile(r"\b(off|stop|end|exit|leave|wake|disable|no more|turn off|switch off)\b")
+
+
+def _power_save(t: str) -> dict | None:
+    """'night mode on' / 'hibernate' / 'wake up, night mode off' -> power_save (docs/LEARNING_DESIGN.md T3)."""
+    m = NIGHT.search(t)
+    if m:
+        return {"type": "power_save", "on": not NIGHT_OFF.search(t)}
+    if re.search(r"\b(wake (up )?the (outpost|base|lab)|wake up)\b", t):
+        return {"type": "power_save", "on": False}
+    return None
+
+
 def _shelter(t: str) -> dict | None:
     if not SHELTER_IN.search(t):
         return None
@@ -323,6 +338,9 @@ def clause(t: str, read: dict | None = None, prev: dict | None = None) -> tuple[
     q = _query(t)
     if q and not re.search(r"\b(give|move|send|put|set|turn|switch|shut)\b", t):
         return q, None
+    ps = _power_save(t)
+    if ps:
+        return ps, None
     s = _shelter(t)
     if s:
         return s, None
@@ -465,6 +483,8 @@ def valid(c) -> dict | None:
         return {"type": "dispatch", "vehicle": "rover", "task": c["task"], "target": tg if isinstance(tg, str) else None}
     if ty == "shelter":
         return {"type": "shelter", "on": bool(c.get("on"))} if isinstance(c.get("on"), bool) else None
+    if ty == "power_save":
+        return {"type": "power_save", "on": bool(c.get("on"))} if isinstance(c.get("on"), bool) else None
     if ty == "query":
         return {"type": "query", "what": c["what"]} if c.get("what") in QUERIES else None
     if ty == "call_houston":

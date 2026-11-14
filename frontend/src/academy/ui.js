@@ -78,7 +78,7 @@ try {   // share one registry: keep anything registered before this module loade
 export function createAcademyUI({ globe, placeById, say, player, alertSound = () => {}, stop = () => {}, goMission = () => {}, openLibrary = () => {}, onProgress = () => {} }) {
   const panel = document.getElementById("aPanel");
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
-  let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false;
+  let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
@@ -246,11 +246,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
     const E = STEP_RENDERERS[acc.type];
     const R = typeof E === "function"
-      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el) }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true }))
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe }))
       : (E || { html: () => "" });
     const firstLook = i === 0 && !waitingNext && !feedback;
     const how = HOW[acc.type];
     const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${feedback.kind === "ok" ? icon("check", { size: 18 }) : ""}<p>${esc(feedback.text)}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
+    stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     panel.innerHTML = `
       <header class="a-head m-head">
         <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
@@ -321,6 +322,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!waitingNext) return;
     if (i + 1 >= L.steps.length) { showMap(); return; }   // never a dead end
     waitingNext = false; feedback = null; misses = 0; nagged = false; i++;
+    if (globe.setSunDir) globe.setSunDir(null);   // [learning-v3] a terminator step's lighting ends with the step
     render(); speakLine(L.steps[i].prompt);
     if (L.steps[i].alert) alertSound();
   }
@@ -466,7 +468,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function onTap(p) {
     if (!ui.active || view !== "lesson" || waitingNext || L.ride) return ui.active;
     const acc = L.steps[i].accept;
-    if (acc.type !== "tap" && acc.type !== "intent") return true;
+    if (acc.type !== "tap" && acc.type !== "intent") { if (stepTap) stepTap(p); return true; }
     const { f, d } = globe.nearest(p);
     answer({ tap: { lat: p.lat, lon: p.lon, ...(f && d < 12 ? { place: f.id } : {}) } });
     return true;

@@ -59,16 +59,15 @@ Steering: every non-pass reply uses the `vocab` situation, and every reply stres
 
 ## Where the steps are
 
-| Lesson | Step | Type | Term | Distractors |
+Flight School v3 (docs/LEARNING_DESIGN.md §5) has no separate Space words lesson: each word is taught where it is used,
+next to a place on the globe or a crew clip. The `words` patch is retired (`course.json` `retired_badges`). Words
+without a step of their own (albedo, terminator, earthrise, far side…) are still tap-to-define in every caption.
+
+| Lesson | Step | Type | Term | Context |
 | --- | --- | --- | --- | --- |
-| moon | 4 | `vocab_match` | mare | crater, highlands |
-| power | 4 | `vocab_listen` | terminator | limb, corona |
-| history | 4 | `vocab_fill` | regolith | albedo, ejecta |
-| words | 1 | `vocab_listen` | crater | basin, limb |
-| words | 2 | `vocab_match` | albedo | regolith, terminator |
-| words | 3 | `vocab_say` | regolith | — |
-| words | 4 | `vocab_fill` | earthrise | earthset, corona |
-| words | 5 | `vocab_match` | terminator | limb, mare |
+| history | 1 | `vocab_match` | mare | the globe flies to Tranquility, where Apollo 11 landed |
+| power | 1 | `terminator` (globe) | terminator | tap the real day/night line; the success line glosses the word |
+| life | 5 | `vocab_fill` | regolith | "Ice hides in the Moon's dusty soil" |
 
 The front end (`frontend/src/academy/vocab.js`) registers one renderer per type on
 `window.__outpost.stepRenderers[type]`; the Academy UI dispatches to it (a marked block in `academy/ui.js`). Options are
