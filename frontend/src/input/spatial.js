@@ -65,15 +65,20 @@ export function pickBest(from, cands, dir, { cone = 0 } = {}) {
   const beam = cone ? [] : cands.map((c, i) => ok[i] < Infinity && inBeam(from, c.rect, dir) ? i : -1).filter(i => i >= 0);
   let best = -1, bs = Infinity;
   (beam.length ? beam : ok.map((_, i) => i)).forEach(i => { if (ok[i] < bs) { bs = ok[i]; best = i; } });
+  // ...unless the beam's best is far away (across the screen) and something off-beam is under a third of its distance
+  if (beam.length) ok.forEach((s, i) => { if (s * 3 < bs) { bs = s; best = i; } });
   return best;
 }
 
 /** Same region first (the top bar, the card, the voice bar…); only when nothing is that way there, any region. */
 export function pickInRegion(from, fromRegion, cands, dir) {
   const same = cands.map((c, i) => ({ ...c, i })).filter(c => c.region === fromRegion);
-  const k = pickBest(from, same, dir);
-  if (k >= 0) return same[k].i;
-  return pickBest(from, cands, dir);
+  const k = pickBest(from, same, dir), g = pickBest(from, cands, dir);
+  if (k < 0) return g;
+  // a region can be split across the screen (the map's header and its card): when something in another region is
+  // much nearer (under half the distance), it wins; otherwise the region keeps focus
+  if (g >= 0 && cands[g].region !== fromRegion && score(from, cands[g].rect, dir) * 2 < score(from, same[k].rect, dir)) return g;
+  return same[k].i;
 }
 
 /** The scope that traps arrow focus: the first open layer, top-most first ([{id, open}]); null = the whole screen. */
@@ -279,7 +284,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (in3d()) {
       const p = cabinPanel() || "seat";
       if (p !== "seat") { const open = doc.querySelector("#mCabin .c3-panel.is-open"); if (open) return { id: "panel:" + p, roots: [open, shown(".c3-back")] }; }
-      return { id: "seat", roots: [doc.getElementById("mCabin")], seat: true };
+      return { id: "seat", roots: [doc.getElementById("mCabin"), doc.querySelector(".topbar")], seat: true };
     }
     const st = lessonStep();
     if (st || doc.body.dataset.ride === "1") {
@@ -347,7 +352,14 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const from = a.getBoundingClientRect(), cands = candidates(roots).filter(c => c !== a);
     if (moonActive() && !cands.includes(moonEl) && within(moonEl, roots)) cands.push(moonEl);
     const items = cands.map(el => ({ el, rect: el.getBoundingClientRect(), region: regionOf(el) }));
-    const k = sc.id === "screen" ? pickInRegion(from, regionOf(a), items, dir) : pickBest(from, items, dir);
+    // the top bar is the screen's edge: it is reached only when nothing on the stage lies that way (Up from the map
+    // card goes to the pins above it, not to the Library button that happens to be in line)
+    let k = -1;
+    if (sc.id === "screen") {
+      const mine = regionOf(a), stage = items.map((it, i) => ({ ...it, i })).filter(it => it.region !== ".topbar" || mine === ".topbar");
+      const j = pickInRegion(from, mine, stage, dir);
+      k = j >= 0 ? stage[j].i : pickInRegion(from, mine, items, dir);
+    } else k = pickBest(from, items, dir);
     if (k < 0) return scrollOn(a, roots, dir);
     focusEl(items[k].el); onMove();
     return true;
@@ -370,7 +382,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const from = fromEl.getBoundingClientRect();
     const items = [
       ...panelEls().filter(p => p.dataset.panel !== (a === seatEl ? seatPanel : "")).map(p => ({ panel: p.dataset.panel, rect: p.getBoundingClientRect() })),
-      ...candidates([cab]).filter(c => c !== a && !c.closest(".c3-panel")).map(el => ({ el, rect: el.getBoundingClientRect() })),
+      // the cabin's own controls (window views, the alert strip, the comm row) and the top bar (sections, Settings)
+      ...candidates([cab, doc.querySelector(".topbar")]).filter(c => c !== a && !c.closest(".c3-panel")).map(el => ({ el, rect: el.getBoundingClientRect() })),
     ];
     const k = pickBest(from, items, dir); if (k < 0) return false;
     if (items[k].panel) focusSeat(items[k].panel); else { seatEl.hidden = true; focusEl(items[k].el); }
@@ -409,7 +422,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     } else lastPanel = "seat";
     const roots = sc.roots.filter(Boolean);
     const ok = a === seatEl ? atSeat() && !seatEl.hidden
-      : !!(a && a !== doc.body && a.isConnected && visible(a) && (sc.id === "screen" || within(a, roots)));
+      : !!(a && a !== doc.body && a.isConnected && visible(a) && (sc.id === "screen" || within(a, roots) || (isTextField(a) && !sc.id.match(/^(help|settings|dialog|modal)$/))));
     if (!ok) restore();
     lastScope = sc.id;
   }

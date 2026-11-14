@@ -39,10 +39,16 @@ test("score: only what is that way counts; overlap on the other axis is preferre
 
 test("regions: inside the current region first, then any region", () => {
   const from = rect(0, 0, 50, 50);
-  const c = [{ rect: rect(70, 0, 50, 50), region: "other" }, { rect: rect(400, 0, 50, 50), region: "card" }];
+  const c = [{ rect: rect(250, 0, 50, 50), region: "other" }, { rect: rect(400, 0, 50, 50), region: "card" }];
   assert.equal(pickInRegion(from, "card", c, "right"), 1, "the card's own control, though further");
   assert.equal(pickInRegion(from, "voicebar", c, "right"), 0, "nothing in the region: the nearest anywhere");
   assert.equal(pickInRegion(from, "card", c, "left"), -1);
+});
+
+test("regions: a split region (the map's header far above its card) loses to a much nearer control", () => {
+  const start = rect(900, 600, 200, 48);
+  const c = [{ rect: rect(40, 20, 120, 32), region: "panel" }, { rect: rect(880, 420, 60, 60), region: "route" }];
+  assert.equal(pickInRegion(start, "panel", c, "up"), 1, "the pin just above, not the header across the screen");
 });
 
 test("Moon hops: tiny place rects pick the nearest place that way (the reticle at the centre)", () => {

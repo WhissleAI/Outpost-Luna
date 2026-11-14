@@ -55,6 +55,7 @@ Phase 1 is on when the camera is on. Phase 2 is behind **Extra gestures (try-out
 There is one intent bus (`input/intents.js`). Every device emits the same intents:
 - **voice:** the router's `nav` decisions, `main.js` `runNav` → `emitIntent(intent, {arg, text}, "voice")`;
 - **keys:** <kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd> next / prev, <kbd>Alt</kbd>+<kbd>Y</kbd>/<kbd>N</kbd> yes / no, <kbd>Alt</kbd>+<kbd>.</kbd> stop;
+- **remote keys and game controllers** (docs/KEYBOARD.md): `input/keys.js` and `input/gamepad.js` emit `move`, `select`, `back`, `mic`, `pick`, `help` and the same `next` / `prev` / `yes` / `no`;
 - **gestures:** `bind.js`.
 
 Taps stay native DOM clicks, the reference path. A gesture `select` makes the same tap at the cursor: focus plus
