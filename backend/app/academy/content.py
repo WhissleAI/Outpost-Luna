@@ -8,7 +8,8 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[2] / "data"
 COURSE = DATA / "academy" / "course.json"
-ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice")
+ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
+                "vocab_match", "vocab_say", "vocab_fill", "vocab_listen")   # vocab: app/academy/vocab.py
 NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
@@ -31,6 +32,9 @@ def public() -> dict:
                               for o in a["options"]]
         if a["type"] in ("tap", "intent"):
             acc["place"] = a["place"]
+        if a["type"].startswith("vocab_"):           # Space words: options without the answer key
+            from .vocab import public_accept
+            acc = public_accept(a)
         return {k: v for k, v in s.items() if k not in ("accept",)} | {"accept": acc}
     c = course()
     return {"title": c["title"], "pass_badge": c["pass_badge"],
@@ -92,4 +96,7 @@ def check() -> list[str]:
                 probs.append(f"{lid}[{i}]: bad accept type {a.get('type')!r}")
             if a.get("type") == "choice" and a.get("answer") not in {o["id"] for o in a.get("options", [])}:
                 probs.append(f"{lid}[{i}]: answer not among options")
+            if str(a.get("type", "")).startswith("vocab_"):
+                from .vocab import check_step
+                probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
     return probs

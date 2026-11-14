@@ -13,6 +13,8 @@ from . import content, ride as rides
 from .grade import grade, similar
 
 router = APIRouter()
+from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
+router.include_router(_vocab_router)
 HINT_AFTER = 2   # misses before the hint
 
 
@@ -77,6 +79,8 @@ async def academy_attempt(req: AttemptReq):
     if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
         ok = await similar(st, req.input.text)
     last = req.step == len(steps) - 1
+    if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed
+        return _vocab_out(les, req, st, ok, last, extra)
     if ok:
         return _out(les["id"], req.step, "passed", st["success"], next_step=None if last else req.step + 1,
                     badge=les["badge"] if last else None, **extra)
@@ -132,3 +136,22 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
                     badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events)
     return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " Not qualified yet. Try the ride again!",
                 passed=False, score=score, state=rides.hud(r), events=events)
+
+
+def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra: dict) -> dict:
+    """A vocab step's reply: the same shape, steered with the `vocab` situation and per-word emphasis (§4b)."""
+    from .vocab import term
+    t = term(st["accept"]["term"]) or {}
+    if ok:
+        out = _out(les["id"], req.step, "passed", st["success"], next_step=None if last else req.step + 1,
+                   badge=les["badge"] if last else None, term=t or None, **{k: v for k, v in extra.items() if k != "term"})
+    elif req.misses + 1 >= HINT_AFTER:
+        out = _out(les["id"], req.step, "hint", st["fail"] + " Hint: " + st["hint"], hint=st["hint"])
+    else:
+        out = _out(les["id"], req.step, "retry", st["fail"])
+    if not out.get("badge"):                          # a badge line keeps its proud style
+        sit = "passed" if out["status"] == "passed" else "vocab"
+        for d in out["decisions"]:
+            if d["t"] == "say":
+                d["style"] = steering.style_for("capcom", d["text"], situation=sit, vocab=[t.get("term", "")])
+    return out

@@ -120,6 +120,20 @@
      "hint": "Think about what never gets sunlight, and what stays frozen there.",
      "success": "Correct! Ice can become water and air.",
      "fail": "Not that one. What could stay frozen in a crater with no sunlight?"
+    },
+    {
+     "prompt": "Space word! What does mare mean? Tap the meaning, or say it.",
+     "accept": {
+      "type": "vocab_match",
+      "term": "mare",
+      "distractors": [
+       "crater",
+       "highlands"
+      ]
+     },
+     "hint": "The dark patches you can see from Earth.",
+     "success": "Yes! A mare is a dark, flat sea of old cooled lava.",
+     "fail": "Not quite. Look at the dark patches."
     }
    ]
   },
@@ -385,6 +399,20 @@
      "hint": "Say: \"More power to the heaters.\"",
      "success": "Copy. Heaters up. Pipes stay warm tonight.",
      "fail": "Negative. Ask for more power to the heaters."
+    },
+    {
+     "prompt": "Space word! Listen: the line between the Moon's day side and night side. Which word?",
+     "accept": {
+      "type": "vocab_listen",
+      "term": "terminator",
+      "distractors": [
+       "limb",
+       "corona"
+      ]
+     },
+     "hint": "Solar panels near this line see the Sun low on the horizon.",
+     "success": "Yes! The terminator.",
+     "fail": "Listen again: day side, night side."
     }
    ]
   },
@@ -796,12 +824,146 @@
      "hint": "He names his partner right after saying who he is.",
      "success": "Correct! John Young and Charlie Duke drove their rover 26.7 km.",
      "fail": "Listen again for the name."
+    },
+    {
+     "prompt": "Space word! Fill the blank: \"Astronaut boot prints stay in the Moon's dusty soil, the ____.\"",
+     "accept": {
+      "type": "vocab_fill",
+      "term": "regolith",
+      "sentence": "Astronaut boot prints stay in the Moon's dusty soil, the ____.",
+      "distractors": [
+       "albedo",
+       "ejecta"
+      ]
+     },
+     "hint": "It starts with r.",
+     "success": "Right! Regolith.",
+     "fail": "Not that one. Which word means Moon soil?"
     }
    ],
    "library": {
     "place": "surveyor3",
     "label": "Open Surveyor 3 in the Moon library"
    }
+  },
+  {
+   "id": "words",
+   "title": "Space words",
+   "minutes": 4,
+   "badge": {
+    "id": "words",
+    "name": "Word Explorer",
+    "glyph": "V"
+   },
+   "vocab": [
+    "crater",
+    "albedo",
+    "regolith",
+    "earthrise",
+    "terminator"
+   ],
+   "brief": "Astronauts use special words to describe the Moon. Every word here is one the Artemis II crew really said. Learn them and you'll understand the crew like a pro.",
+   "facts": [
+    {
+     "text": "The Artemis II crew said \"albedo\" while describing the Aristarchus Plateau.",
+     "from": [
+      "index/clips.json"
+     ],
+     "source": {
+      "title": "NASA Artemis II crew audio: Aristarchus Plateau: Color and Limb Relief Observations",
+      "url": "https://www.nasa.gov/wp-content/uploads/2026/10/art002a000005-ck-vg-relief-color-audio.mp3"
+     }
+    },
+    {
+     "text": "The crew talked about \"regolith\" while studying the rays around Ohm Crater.",
+     "from": [
+      "index/clips.json"
+     ],
+     "source": {
+      "title": "NASA Artemis II crew audio: Ohm Crater: Ray Systems and Texture Analysis",
+      "url": "https://www.nasa.gov/wp-content/uploads/2026/10/art002a000009.mp3"
+     }
+    },
+    {
+     "text": "The crew saw Earth rise from behind the Moon and cheered.",
+     "from": [
+      "index/clips.json"
+     ],
+     "source": {
+      "title": "NASA Artemis II crew audio: Crew Reacts Joyfully to Earth Rise from Behind the Moon",
+      "url": "https://www.nasa.gov/wp-content/uploads/2026/10/art002a00004915-clipped.mp3"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "Listen: a round hole made when a space rock crashed in. Which word is it?",
+     "accept": {
+      "type": "vocab_listen",
+      "term": "crater",
+      "distractors": [
+       "basin",
+       "limb"
+      ]
+     },
+     "hint": "It's the most common shape on the Moon. Tycho is one.",
+     "success": "Yes! That's a crater.",
+     "fail": "Not that one. Listen again."
+    },
+    {
+     "prompt": "What does albedo mean? Tap the meaning, or say it.",
+     "accept": {
+      "type": "vocab_match",
+      "term": "albedo",
+      "distractors": [
+       "regolith",
+       "terminator"
+      ]
+     },
+     "hint": "Albedo is about light: bright or dark.",
+     "success": "Right! Albedo is how bright or dark a surface is.",
+     "fail": "Not quite. Think about sunlight."
+    },
+    {
+     "prompt": "Say this word back to me: regolith.",
+     "accept": {
+      "type": "vocab_say",
+      "term": "regolith"
+     },
+     "hint": "Say it in three parts: reg, oh, lith.",
+     "success": "Great! Regolith is the Moon's dusty, rocky soil.",
+     "fail": "Say again? Try: regolith."
+    },
+    {
+     "prompt": "Fill the blank: \"When Earth comes up over the Moon's edge, the crew sees an ____.\"",
+     "accept": {
+      "type": "vocab_fill",
+      "term": "earthrise",
+      "sentence": "When Earth comes up over the Moon's edge, the crew sees an ____.",
+      "distractors": [
+       "earthset",
+       "corona"
+      ]
+     },
+     "hint": "Earth is coming up, like the Sun at sunrise.",
+     "success": "Yes! Earthrise.",
+     "fail": "Not quite. Is Earth coming up or going down?"
+    },
+    {
+     "prompt": "What does terminator mean on the Moon? Tap the meaning, or say it.",
+     "accept": {
+      "type": "vocab_match",
+      "term": "terminator",
+      "distractors": [
+       "limb",
+       "mare"
+      ]
+     },
+     "hint": "It's a line between light and dark.",
+     "success": "Correct! The terminator splits the Moon's day side from its night side.",
+     "fail": "Not that one. Think day and night."
+    }
+   ]
   },
   {
    "id": "checkride",
