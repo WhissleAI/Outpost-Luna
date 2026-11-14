@@ -39,7 +39,16 @@ def mode() -> str:
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward
-_ERF = np.vectorize(math.erf)
+def _ERF(x):
+    """Vectorised erf (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7): np.vectorize(math.erf) was a Python call per
+    unit, the slowest part of a step once the model grew (round 7 xl)."""
+    x = np.asarray(x, np.float64)
+    s = np.sign(x)
+    a = np.abs(x)
+    t = 1.0 / (1.0 + 0.3275911 * a)
+    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * \
+        np.exp(-a * a)
+    return (s * y).astype(np.float32)
 
 
 def _gelu(x):
