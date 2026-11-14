@@ -280,7 +280,7 @@ export function createCabin(root, o = {}) {
   }
   const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
   function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
-  let cueT = null;
+  let cueT = null, wins = null;   // wins: {hours, earth: [[s, e]], sun: [[s, e]]} from /api/mission/{id}/windows
   function applyCue(move) {
     root.querySelectorAll(".is-cue").forEach(n => n.classList.remove("is-cue")); if (!cueT) return null;
     const [k, v] = String(cueT).split(":");
@@ -312,8 +312,9 @@ export function createCabin(root, o = {}) {
       const x = 20 + out * 160, y = 40 - Math.sin(out * Math.PI) * 18;
       rt.innerHTML = `<path class="r-line" d="M20 40 Q100 4 180 40"/><circle class="r-base" cx="20" cy="40" r="6"/><circle class="r-goal" cx="180" cy="40" r="6"/>
         <circle class="r-rover${rv.busy ? " is-on" : ""}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5"/><text x="20" y="60">Base</text><text x="180" y="60" text-anchor="end">${rv.task === "explore" ? "Cabeus" : "Ice"}</text>`; }
-    const tl = q("#cbCommTl"); if (tl) { const W = s.env.comm_windows || s.comm_windows || null, t = (s.mission_time_h || 0) / 240;
-      tl.innerHTML = `<div class="tl-bar">${W ? W.map(w => `<i style="left:${w.start_h / 2.4}%;width:${(w.end_h - w.start_h) / 2.4}%"></i>`).join("") : `<i class="${e.earth_visible ? "" : "is-off"}" style="left:0;width:${clamp(t * 100)}%"></i>`}<em style="left:${clamp(t * 100)}%"></em></div><span>Day 1</span><span>Day 10</span>`; }
+    const tl = q("#cbCommTl"); if (tl) { const H = (wins && wins.hours) || 240, t = (s.mission_time_h || 0) / H, E = wins ? wins.earth : null;
+      tl.innerHTML = E ? `<div class="tl-bar" role="img" aria-label="Earth in view ${E.map(([a, b]) => `from hour ${a} to ${b}`).join(", ") || "never"} of ${H}">${E.map(([a, b]) => `<i style="left:${(a / H * 100).toFixed(2)}%;width:${((b - a) / H * 100).toFixed(2)}%"></i>`).join("")}<em style="left:${clamp(t * 100)}%"></em></div>
+        <span>Day 1</span><span class="tl-key"><i></i>Earth up</span><span>Day 10</span>` : ""; tl.hidden = !E; }
     const ci = q("#cbInfoComm"); if (ci) ci.innerHTML = irow("Earth", e.earth_visible ? "In view" : "Below the horizon") + (!e.earth_visible && e.next_comm_window_h != null ? irow("Next window", `${e.next_comm_window_h} h`) : "")
       + (e.earth_visible ? irow("Radio delay", `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way`) : "") + (s.science_waiting != null ? irow("Science to send", Math.round(s.science_waiting)) : "");
     const fc = q("#cbFc"), F = s.forecasts || null;
@@ -417,6 +418,8 @@ export function createCabin(root, o = {}) {
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
     dispose() { if (c3) c3.dispose(); qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
+    /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
+    setWindows(w) { wins = w || null; if (st) paintInfo(st); },
     /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
      *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
     cue(target) { cueT = target || null; return applyCue(true); },

@@ -436,6 +436,12 @@ async def main_live(a):
     await script(c, a.shifts)
     print(f"\nspoken 'I don't know that one yet': {c.unknowns()}   replies to noise: {c.replies_to_noise}   "
           f"qualified: {c.qualified}   mission: {c.mid}")
+    # one summary line a script (or a person) can check: no replies to noise, no fallback loop, the whole flow reached
+    fails = [k for k, bad in (("replies to noise", c.replies_to_noise), ("fallback spoken", c.unknowns()),
+                              ("not qualified", not c.qualified), ("no mission", not c.mid)) if bad]
+    print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
+    if fails:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

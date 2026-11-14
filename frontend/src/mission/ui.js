@@ -76,7 +76,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     };
     return tv;
   }
-  let fakeDebrief = null;   // dev-only: a debrief payload for screenshots of every outcome
+  let fakeDebrief = null, windows = null;   // dev-only: a debrief payload for screenshots of every outcome
   function fakeDb(outcome, extra) {
     const tl = []; for (let i = 1; i <= 40; i++) { const st = i >= 14 && i <= 16;
       tl.push({ t_h: i * 6, power: Math.max(5, 100 - (outcome === "failed" ? i * 2.4 : i * .4) - (st ? 8 : 0)), life_support: Math.max(4, 80 - (outcome === "failed" ? i * 1.9 : i * .3)),
@@ -271,6 +271,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     pushContext();
     showHud();
     if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
+    windows = null; if (client.windows) client.windows(state.id).then(w => { windows = w; if (cockpit && cockpit.setWindows) cockpit.setWindows(w); }).catch(() => {});
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
     const first = !firstDone();
     Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {}).then(() => { if (first && screen === "hud") { say(CAPCOM.firstShift); nudge.arm(); } });
@@ -305,6 +306,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-hole") || cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
+    if (windows && cockpit.setWindows) cockpit.setWindows(windows);
     render();
   }
   function render() {

@@ -58,6 +58,23 @@ def mission_state(mid: str):
     return sim.to_state(_mission(mid))
 
 
+@router.get("/api/mission/{mid}/windows")
+def mission_windows(mid: str):
+    """Read-only: when Earth and the Sun are up over the whole mission, hour by hour, by the sim's own rule (env_at),
+    as [start_h, end_h] spans. The cabin's Comm timeline and Power Sun strip draw these (Mission UX)."""
+    m = _mission(mid)
+    def spans(key):
+        out, start = [], None
+        for t in range(0, sim.MISSION_H + 1):
+            up = bool(sim.env_at(m, t)[key]) if t < sim.MISSION_H else False
+            if up and start is None:
+                start = t
+            elif not up and start is not None:
+                out.append([start, t]); start = None
+        return out
+    return {"hours": sim.MISSION_H, "earth": spans("earth_visible"), "sun": spans("in_sun")}
+
+
 @router.post("/api/mission/{mid}/command")
 def mission_command(mid: str, req: CommandReq):
     _mission(mid)

@@ -99,8 +99,19 @@ function outpost() {
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(.25, .35, 22, 10), grey); mast.position.y = 11; array.add(mast);
   const wing = new THREE.Group(); wing.position.y = 13; array.add(wing);
   // cells on the sun side, a light substrate on the back and edges (a back-lit array read as a black box in the sky)
-  const back = new THREE.MeshStandardMaterial({ color: 0x9aa1a9, roughness: .7, metalness: .2 }), cellLit = cell.clone(); cellLit.emissive = new THREE.Color(0x10234a); cellLit.emissiveIntensity = .5;
-  [-4.4, 4.4].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 14, .12), [back, back, back, back, cellLit, back]); p.position.x = x; wing.add(p); });
+  // PV panels: a blue-black cell grid (a canvas texture, no glow) with a specular sheen, a light substrate on the back,
+  // and an aluminium frame, so the array reads as hardware in the window instead of a flat blue card.
+  const pvTex = (() => { const c = document.createElement("canvas"); c.width = 128; c.height = 224; const g = c.getContext("2d");
+    g.fillStyle = "#0a1220"; g.fillRect(0, 0, 128, 224); g.strokeStyle = "#24324a"; g.lineWidth = 2;
+    for (let x = 0; x <= 128; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 224); g.stroke(); }
+    for (let y = 0; y <= 224; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke(); }
+    g.fillStyle = "rgba(120,150,200,.08)"; for (let x = 0; x < 128; x += 16) for (let y = 0; y < 224; y += 16) g.fillRect(x + 3, y + 3, 4, 4);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; })();
+  const pv = new THREE.MeshStandardMaterial({ map: pvTex, color: 0xffffff, roughness: .18, metalness: .55, envMapIntensity: 1.2 });
+  const back = new THREE.MeshStandardMaterial({ color: 0x9aa1a9, roughness: .7, metalness: .2 });
+  const frameM = new THREE.MeshStandardMaterial({ color: 0x7d838a, roughness: .55, metalness: .6 });   // matte: no bloom halo
+  [-4.4, 4.4].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 14, .12), [back, back, back, back, pv, back]); p.position.x = x; wing.add(p);
+    [[0, 7, 8.2, .2], [0, -7, 8.2, .2], [4, 0, .2, 14.2], [-4, 0, .2, 14.2]].forEach(([fx, fy, fw, fh]) => { const f = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, .2), frameM); f.position.set(x + fx, fy, 0); wing.add(f); }); });
   // comm dish aimed at Earth
   const dishM = new THREE.Group(); dishM.position.set(-12, 0, -6); g.add(dishM);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.15, .2, 4, 8), grey); post.position.y = 2; dishM.add(post);

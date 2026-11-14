@@ -22,6 +22,8 @@ export async function createMissionClient() {
     command: (id, command) => post(`/api/mission/${enc(id)}/command`, { command }),
     advance: (id, shifts = 1) => post(`/api/mission/${enc(id)}/advance`, { shifts }),
     debrief: id => j(`/api/mission/${enc(id)}/debrief`),
+    /** Earth-up and Sun-up spans over the whole mission ([start_h, end_h]), by the sim's own rule. */
+    windows: id => j(`/api/mission/${enc(id)}/windows`),
     /** WS /ws/mission/{mid} telemetry; reconnects once a second while subscribed. */
     subscribe(id, fn) {
       let ws = null, stop = false, timer = null;
