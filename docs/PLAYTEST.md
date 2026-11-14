@@ -19,11 +19,12 @@ miss that didn't tell them what to do · stuck = they can't do it without knowle
 
 | | clear | confusing | stuck |
 |---|---|---|---|
-| **Before** (57bd674) | 20 | 17 | 6 |
-| **After** (`fix/guidance`) | 41 | 2 | 0 |
+| **Before** (57bd674) | 22 | 17 | 6 |
+| **After** (`fix/guidance`, with `fix/rc-polish` and `qa/sweep` merged) | 44 | 1 | 0 |
 
-43 entries: 33 steps (6 lessons + the 5-step check ride), plus home, map, lesson card, patch, picker, first shift,
-debrief, Library, the mode switch and the open-mic check. The two "confusing" after the fix are justified at the end.
+45 entries: 33 steps (6 lessons + the 5-step check ride) and 12 screens or cross-cutting checks (home, map, lesson
+card, patch, stale card, picker, first shift, debrief, Library, mode switch, voice-bar error, open mic). The one
+"confusing" left is the open mic on yes/no steps, justified at the end.
 
 ## The guidance system (what changed)
 
@@ -134,15 +135,33 @@ The ride already lit one control at a time (`rideCue`). Header said "Lesson 7 of
 | First shift | A dense cockpit; "Set your power, then end the shift." spoken once, gone from screen | confusing | clear: the line stays on CAPCOM's strip; "what do I do" says it again |
 | Debrief | Grade, score, chart, Fly again | clear | clear |
 | Library | Place chips (Where did Apollo 11 land?…) | clear | clear |
-| Switch Flight School → Mission mid-step | **The lesson card stays on top of the site picker**; from Library, the card stays over the explorer (img 6) | stuck | (`fix/rc-polish` owns the leak; re-check after merge) |
-| Voice bar error | "Voice hiccup: local ear closed: sent 1011 (internal error) keep…" shown to the kid | confusing | (reported to `fix/rc-polish`: `voicebar.js`) |
+| Switch Flight School → Mission → Library → Flight School mid-step | **The lesson card stayed on top of the site picker** and over the Library | stuck | clear (with `fix/rc-polish` merged): the picker shows alone with its do line, the Library shows its chips, and Flight School resumes the same step with its labelled marks |
+| Voice bar error | "Voice hiccup: local ear closed: sent 1011 (internal error) keepalive ping timeout…" shown to the kid | confusing | clear: "Voice paused. Reconnecting…" (the raw error goes to the console) |
 | Open mic on 2-option steps | Room speech "yes", "no", "yeah right" is routed as an answer (router: answer/step). A predict passes on any named option, so a parent's "no" answers "Does the Moon have a shield?" before the kid has read it. Seen in the router directly for every predict/earth_view step (moon 2–3, history 3, radiation 1, life 1, ride 1) | confusing | not changed here (gating is `fix/rc-polish`'s). Recommendation: in a lesson, a one-word yes/no counts only when Arc's device_directed ≥ 0.7 or after the prompt has finished playing plus ~1 s; otherwise ignore it |
 
-### The two "confusing" that remain
+### The one "confusing" that remains
 
-- **Open-mic answers on yes/no steps**: needs the rc-polish gating (above), not copy.
-- **Mode switch mid-step**: the card leak is being fixed on `fix/rc-polish`; after merge, each switch should land on a
-  screen that says what to do (picker do line, Library chips, Flight School map card), which the guidance work covers.
+- **Open-mic answers on yes/no steps.** `fix/rc-polish` made room talk that names no option "not a try" (no miss, no
+  line), which fixes chatter counting as misses. But a "yes" or "no" from the room still names an option, so on a
+  yes/no predict it is still an answer, before the kid has read the question. Recommendation (not done here; it's
+  the router's gating, not guidance): on a predict / earth_view step, a bare one-word yes/no counts only with Arc
+  `device_directed` >= 0.7, or after the prompt has finished playing plus about 1 s.
+
+### Also fixed from the QA sweep (`docs/QA.md`)
+
+- QA-03: lessons read "Lesson n of 6"; the check ride reads "Check ride" (never "Lesson 7"); patches stay n/7.
+- QA-28: the compare steps' lines quote the sim's own numbers, the same ones the result cards show (Malapert's Earth
+  9.5 of 10 days; ice 10 km and 129 km), generated from `grade.compare_data` in `build_course.py`.
+- QA-58: the map blurb wraps to two lines instead of being cut off.
+- QA-59: "inside the ISS, 523 microsieverts a day".
+- QA-60: the 930 km feature is the **Orientale Basin** (places.json, facts.json); "mare orientale" stays an alias.
+- QA-72: the owner's "Trace it" step (Lesson 2, step 4 above).
+
+### Notes
+
+- At 1280x720 the vocab card's third answer can sit under the voice-bar caption until it scrolls; the card scrolls.
+- Lessons can still be started out of order from the map; the guidance does not assume earlier lessons were done
+  (each step shows what it needs).
 
 ## Before / after
 
