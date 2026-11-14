@@ -81,16 +81,27 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     label.hidden = false;
   }
 
-  function flyTo(lat, lon, dist) {
-    const d = ll2v(Math.max(-75, Math.min(75, lat)), lon).normalize();
+  function flyTo(lat, lon, dist, { clamp = true } = {}) {
+    const d = ll2v(clamp ? Math.max(-75, Math.min(75, lat)) : Math.max(-89, Math.min(89, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
     fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: 1300 };
   }
 
   function showFeature(f, { dist } = {}) {
     highlight(f); flyTo(f.lat, f.lon, dist || (f.kind === "artifact" ? 2.3 : f.km > 800 ? 3.2 : 2.5));
-    if (!mi.on) sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
+    if (!mi.on && !sunLock) sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
   }
+  // ---------- Flight School globe verbs (docs/LEARNING_DESIGN.md §3) ----------
+  let sunLock = false;
+  /** Light the Moon from a sub-solar point (lat, lon): the day/night line is the real terminator. null = default light. */
+  function setSunDir(lat, lon) {
+    if (lat == null) { sunLock = false; sun.position.copy(ll2v(10, -40).multiplyScalar(5)); return; }
+    sunLock = true; sun.position.copy(ll2v(lat, lon).multiplyScalar(5));
+  }
+  /** Look straight down on a pole (flyTo stops at 75°; the south-pole lessons need the view from above). */
+  function poleView(pole = "south", dist = 2.2) { flyTo(pole === "north" ? 88 : -88, 0, dist, { clamp: false }); }
+  /** Where the camera looks: the lat/lon at the centre of the view (graded by globe_side). */
+  function centerLatLon() { return v2ll(camera.position); }
 
   // ---------- Mission layer: outpost, Sun-driven day/night shading, Earth's direction, rover path ----------
   const mi = { on: false, site: null, group: new THREE.Group(), marks: [], earth: null, earthLine: null, rover: null, roverDot: null, path: null };
@@ -237,7 +248,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   });
 
   return {
-    showFeature, highlight, flyTo, nearest, mission, setViewport,
+    showFeature, highlight, flyTo, nearest, mission, setViewport, setSunDir, poleView, centerLatLon,
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },

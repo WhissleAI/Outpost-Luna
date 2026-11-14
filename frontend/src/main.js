@@ -24,6 +24,7 @@ import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
 import "./academy/vocab.js";
+import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
 // ---- end [a11y] ----
 
 // [session] The session Director (docs/SESSION_CONTRACT.md) is ON unless ?session=0 or localStorage atm-session=0.
@@ -58,6 +59,7 @@ async function boot() {
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
   const byId = Object.fromEntries(places.map(f => [f.id, f]));
   const placeById = id => byId[id] || null;
+  (window.__outpost = window.__outpost || {}).placeById = placeById;   // [learning-v3] globe step directives
 
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
