@@ -502,14 +502,22 @@ export function createCabin(root, o = {}) {
     q("#cbNowTitle").textContent = c.progress ? c.title : "";
     q("#cbNowT").textContent = c.text;
     const left = c.left_h != null ? (c.left_h >= 1 ? `${Math.round(c.left_h)} h left` : `${Math.max(1, Math.round(c.left_h * 60))} min left`) : "";
-    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), left, ack, (c.readouts || []).map(r => r.v), c.progress]);
-    if (key === cardKey) return; cardKey = key;
+    // Rebuild the card (and its buttons) only when its structure changes. The countdown and readouts tick about once a
+    // second; re-rendering the buttons that often replaced them mid-click, so a real mouse click could be lost.
+    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, !!left]);
+    if (key === cardKey) {
+      const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
+      q("#cbNowMore").querySelectorAll(".cb-now-ro").forEach((n, i) => { const r = (c.readouts || [])[i]; if (r) n.lastChild.textContent = " " + r.v; });
+      q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));   // latest task object
+      return;
+    }
+    cardKey = key;
     const steps = c.progress ? `<span class="cb-now-steps" aria-label="Step ${Math.min(c.progress.done + 1, c.progress.total)} of ${c.progress.total}">${Array.from({ length: c.progress.total }, (_, i) => `<i class="${i < c.progress.done ? "is-done" : ""}"></i>`).join("")}<em>${c.progress.done} of ${c.progress.total}</em></span>` : "";
     const lesson = c.lesson && c.lesson.n ? `<span class="cb-now-lesson" title="${esc(c.lesson.title || "")}">${esc((story.NOW.lessonHelps || (n => `Lesson ${n}`))(c.lesson.n))}</span>` : "";
-    const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em> ${esc(r.v)}</span>`).join("");
+    const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em><span> ${esc(r.v)}</span></span>`).join("");
     const btns = (c.buttons || []).map((b, i) => `<button type="button" class="cb-now-b${i ? "" : " is-hot"}" data-b="${i}" ${i === 0 ? 'data-intent="yes"' : ""}>${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</button>`).join("");
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
-      <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}${esc(left)}</span>` : ""}${lesson}</div>
+      <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
       ${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
       ${btns ? `<div class="cb-now-btns" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}`;
     q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));
