@@ -32,8 +32,12 @@ def short(pid: str) -> str:
     return _plain(p.name) if p else pid.replace("_", " ").title()
 
 
+REACH_DEG = 5.0   # a named place within this many degrees of its rim counts as what the tap hit
+
+
 def tapped_name(tap) -> str | None:
-    """The named place a tap landed on (inside its rim, or within 3 degrees of a small one), else None."""
+    """The named place a tap landed on, else None: inside its rim (or within 3 degrees of a small one), or within
+    REACH_DEG of the rim (a mare's edge is ragged; "That's Mare Imbrium" beats "Not there")."""
     if not isinstance(tap, dict) or tap.get("lat") is None or tap.get("lon") is None:
         return None
     best, bd = None, 1e9
@@ -42,8 +46,12 @@ def tapped_name(tap) -> str | None:
             continue
         r = max((p.diameter_km or 0) / 2 / 30.3, 3.0)
         d = _ang((tap["lat"], tap["lon"]), (p.lat, p.lon)) - r
-        if d <= 0 and d < bd:
+        if d <= REACH_DEG and d < bd:
             best, bd = p, d
+    if best is None and tap.get("place"):   # the client's nearest named place (globe.nearest, within ~12 degrees)
+        p = gaz().places.get(tap["place"])
+        if p is not None and getattr(p, "kind", "feature") != "artifact" and not getattr(p, "estimated", False):
+            best = p
     return _plain(best.name) if best else None
 
 

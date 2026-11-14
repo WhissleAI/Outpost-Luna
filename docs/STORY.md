@@ -43,8 +43,9 @@ next action, and saying "what do I do?" on any screen outside a lesson speaks th
 ## 3. The first-mission cabin tour (`frontend/src/mission/tour.js`)
 
 On the first mission, CAPCOM shows the cabin before the first shift. Each beat lights one thing (an outline and a pulse,
-never colour alone), turns the camera a little toward it, and on Cadet keeps every other panel dim. The card is small,
-at the top of the window (the first beat sits low, under the window it describes).
+never colour alone), turns the camera a little toward it, and on Cadet keeps every other panel dim. The card is small and
+docks in the window just under the HUD (day, shift, site, sky readout), so it never covers them; it re-docks as the
+camera settles. While it runs the Now strip steps aside. Moving on (Next, skip) stops the beat still being spoken.
 
 **Cadet (full, 12 beats):**
 
@@ -134,3 +135,13 @@ lit ridge), QA-25 (Pretend tech tags wherever shields or the greenhouse show), Q
 asking), QA-27 ("Storm at Earth · Few particles here" for storms without particles), QA-64 (warning copy: "Houston: particles likely
 within hours. Forecast: N hours (game)."), QA-69 (buttons start with a verb), QA-73 (the owner's "no
 direction" report). Status lines are in `docs/QA.md`.
+
+## 8. Owner's first-timer play of rc/2 (fixed on rc/3)
+
+| Issue | Fix | Check |
+|---|---|---|
+| Picker ICE column spilled past the card ("6 h away") | "Ice / away" header, values "6 h" / "Here" / "No", wider column | `frontend/tools/picker_select.py` (1440x900, 1280x720) |
+| "take command" started Malapert, not the preselected Shackleton Rim | start() flies the row shown checked; hover only highlights; "start the mission" on the picker is take-command | `picker_select.py`, `backend/tests/test_playtest_rc3.py` |
+| The tour card covered "Day 1 · Shift 1" and the site | the card docks under the HUD | `frontend/tools/tour_clear.py` (all 12 beats) |
+| Silent orders: no readback for "more power to the heaters", a silent first "end shift" | the floor's TTS fetch times out after 8 s (browser voice for that sentence) and a clip that never ends releases the floor; the first-shift nudge and the objective lines are proactive (priority 4: they wait, never cut a readback); any order stops the nudge; the tour hushes its beat when the kid moves on | `frontend/tools/orders_spoken.py` (each readback and report plays to its end) |
+| A wrong tap said "Not there." with Mare Imbrium right there | a named place within 5 degrees of its rim (or the client's nearest named place) leads the line: "That's Sea of Rains." | `test_playtest_rc3.py` |

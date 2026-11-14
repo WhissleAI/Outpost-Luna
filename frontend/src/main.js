@@ -100,7 +100,7 @@ async function boot() {
   let session = null;
   const useSession = () => !!(session && session.connected);
   const missionUI = createMissionUI({
-    globe, card, placeById, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* audio floor: CAPCOM voice, Director style */,
+    globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id) },   // Flight School patches carry over
@@ -140,11 +140,11 @@ async function boot() {
   // ---- end [a11y] ----
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
-  async function guideSay(text, { keepCrew, voice: v, style, repeat, source } = {}) {
+  async function guideSay(text, { keepCrew, voice: v, style, repeat, source, priority } = {}) {
     if (!text) return false;
     if (!keepCrew && player.active) player.stop(true);
     voice.show("speaking");
-    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined), repeat, source });
+    const ok = await speak(text, { ...(v || {}), style: style || (turn.emotion ? { emotion: turn.emotion } : undefined), repeat, source, ...(priority != null ? { priority } : {}) });
     voice.show("idle");
     return ok;
   }

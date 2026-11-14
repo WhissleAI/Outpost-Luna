@@ -328,6 +328,8 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             if lid:
                 return "lesson", lid
             continue
+        if intent == "go_mission" and ctx.screen == "brief" and dict(NAV)["take_command"].match(q):
+            return "take_command", None     # on the picker "start the mission" flies the selected site
         if intent == "end_shift" and ctx.screen == "cabin":
             return None              # in the cabin "end shift" is an order (the sim advances; the session handles it)
         if intent in ("view_orbit", "view_rover", "view_site") and ctx.screen not in ("cabin", "brief"):

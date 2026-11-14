@@ -1,7 +1,7 @@
 // Mission Trainer UI: briefing (pick a site), HUD (3 resources, loads, environment, rover, End shift), events,
 // CAPCOM card, Houston delay, debrief. Talks to the backend through client.js, or the local mock (labelled "Sample data").
 import { createMissionClient } from "./client.js";
-import { sayStyle } from "../floor.js";
+import { sayStyle, stopSpeaking } from "../floor.js";
 import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
 import { createTerrainView } from "./terrain.js";
@@ -214,14 +214,14 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       <p class="mx-sub">${esc(PICKER.why)}</p>
       <p class="mx-do">Tap a site to compare. Then tap Take command.</p>
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
-        <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
+        <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice<small>away</small></span></div>
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
           aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${iceLabel(s)}">
           <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>${s.power_from ? `Power by cable from the rim <span class="mx-pretend" title="${esc(PRETEND_TECH_TIP)}">${esc(PRETEND_TECH)}</span>` : `About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)`}</small>` : ""}</b>
           <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
           <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
-          <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : s.rover_to_ice_h ? `${s.rover_to_ice_h}<small> h away</small>` : "No"}</span>
+          <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Here" : s.rover_to_ice_h ? `${s.rover_to_ice_h}<small> h</small>` : "No"}</span>
         </button>`).join("")}
       </div>
       <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${srcLink(HORIZONS, "JPL Horizons")}</p>
@@ -296,6 +296,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
     let st = null;
     const g = gen;
+    // the row the kid sees selected is the one that flies (QA rc/2: "take command" started another site): the picker's
+    // checked row wins over any stale `site`; hover only highlights (hot()), it never selects
+    const checked = screen === "brief" && panel.querySelector('.mx-site[aria-checked="true"]');
+    if (checked) site = sites.find(s => s.id === checked.dataset.site) || site;
+    window.__outpost && (window.__outpost.missionSite = site && site.id);   // tools/picker_select.py reads it
     try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
     starting = false;
     document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
@@ -331,13 +336,13 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const markFirstDone = () => { try { localStorage.setItem(firstKey(), "1"); } catch (e) { /* private mode */ } };
   const nudge = { t: null, left: 0,
     arm() { this.left = 2; this.wait(); },
-    wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => { if (screen !== "hud" || !state) return; this.left--; say(CAPCOM.firstShift); this.wait(); }, 20000); },
+    wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => { if (screen !== "hud" || !state) return; this.left--; say(CAPCOM.firstShift, null, { priority: 4 }); this.wait(); }, 20000); },
     heard() { if (this.left > 0) this.wait(); },   // the kid spoke: the silence starts again
     stop() { clearTimeout(this.t); this.left = 0; } };
 
   // ---------- first-mission cabin tour (tour.js) ----------
-  const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), callsign: () => callSign.get(),
-    onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowObjective(state); if (ob) say(ob.text); nudge.arm(); } });
+  const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking(), callsign: () => callSign.get(),
+    onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowObjective(state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
   function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(levelNow()); return true; }
   addEventListener("outpost:tour", () => { if (!replayTour()) { try { localStorage.removeItem("outpost-tour-done:" + (callSign.get() || "cadet")); } catch (e) { /* blocked */ } } });
@@ -354,7 +359,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function paintObjective() {
     if (!cockpit || !cockpit.objective) return;
     const ob = nowObjective(state);
-    cockpit.objective(ob);
+    cockpit.objective(tour.active ? null : ob);
     if (tour.active) return;
     const key = ob ? ob.key + ":" + ob.target : "";
     cockpit.point(ob ? ob.target : null);
@@ -551,6 +556,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function applyRemote(s) {
     if (!s) return;
     if (state && s.mission_time_h !== state.mission_time_h) nudge.stop();   // a shift ended through the session Director
+    // any order applied through the session Director (loads, shelter, rover, night mode) stops the first-shift nudge
+    if (state && (JSON.stringify(s.loads) !== JSON.stringify(state.loads) || s.shelter !== state.shelter || s.power_save !== state.power_save
+      || JSON.stringify(s.rover) !== JSON.stringify(state.rover))) nudge.stop();
     const st0 = state;
     if (st0 && s.env && s.env.storm && s.env.storm.active && !(st0.env.storm && st0.env.storm.active)) handleEvents([{ kind: "solar_storm" }]);
     (s.alerts || []).forEach(a => { if (a === "low_power" || a === "life_support_low") seen.add(a); });

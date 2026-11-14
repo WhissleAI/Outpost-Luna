@@ -263,25 +263,35 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     return guideEl;
   }
   /** Fetch one sentence's audio → blob URL, or null (fall back for this sentence). A 503 turns server TTS off. */
+  // A stalled TTS request (a busy model server) must never leave a readback silent with the floor held: after
+  // TTS_TIMEOUT_MS the sentence goes to the browser voice instead (owner's rc/2 play: silent orders).
+  const TTS_TIMEOUT_MS = 8000;
   async function fetchTTS(text, voice, style, i = 0, n = 1, next = "") {
     if (!server) return null;
+    const ac = typeof AbortController === "function" ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), TTS_TIMEOUT_MS) : 0;
     try {
-      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, prefStyle(style, voice, speed), i, n, next, speed));
+      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, prefStyle(style, voice, speed), i, n, next, speed), ac ? { signal: ac.signal } : undefined);
       if (r.status === 503) { server = false; return null; }
       if (!r.ok) return null;
       // [a11y] word timings (X-TTS-Words, "startMs-endMs,…" per display word) for the caption bar (caption.js)
       return { url: URL.createObjectURL(await r.blob()), words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "" };
-    } catch (e) { return null; }
+    } catch (e) { return null; } finally { if (t) clearTimeout(t); }
   }
   function playUrl(url, tok) {
     const a = el();
     return new Promise(res => {
       let done = false;
-      const fin = v => { if (done) return; done = true; a.onended = a.onerror = a.onplaying = null; tok.stop = null; res(v); };
+      let watch = 0;
+      const fin = v => { if (done) return; done = true; clearTimeout(watch); a.onended = a.onerror = a.onplaying = null; tok.stop = null; res(v); };
       // An error AFTER the sentence was heard (a late decode error, a play() promise rejected by the next load) is its
       // end, not a reason to say it again in the browser voice: that spoke one line twice, in two different voices.
       let heard = false;
-      a.onplaying = () => { heard = true; };
+      // watchdog: a clip that never starts (8 s) or never reports its end (its length + 2 s) releases the floor
+      watch = setTimeout(() => failed(), 8000);
+      a.onplaying = () => { heard = true; clearTimeout(watch);
+        const len = isFinite(a.duration) && a.duration > 0 ? a.duration : 15;
+        watch = setTimeout(() => fin("end"), (len / (a.playbackRate || 1) + 2) * 1000); };
       const failed = () => fin(heard || (a.currentTime || 0) > 0.25 ? "end" : "error");
       a.onended = () => fin("end"); a.onerror = failed;
       tok.stop = () => { a.pause(); fin("stop"); };
