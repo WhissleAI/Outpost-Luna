@@ -393,6 +393,15 @@ async function boot() {
   }
   new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
     .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
+  // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
+  // caption stays in #captionBar for screen readers and the transcript, but folds out of the voice strip (.is-dup).
+  const norm = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .m-title, #card:not([hidden]) .card-say")]
+    .map(e => e.textContent).join(" | "));
+  new MutationObserver(() => {
+    const bar = $("captionBar"), line = norm((bar.querySelector(".cap-line") || bar).textContent);
+    bar.classList.toggle("is-dup", !!line && line.length > 3 && onScreen().includes(line));
+  }).observe($("captionBar"), { childList: true });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function runNav(intent, arg, text) {
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
@@ -467,6 +476,7 @@ async function boot() {
     $("libraryBtn").setAttribute("aria-pressed", m === "cadet");
     if (m !== "cadet") lastMode = m;
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
+    globe.setDecor(m === "cadet");   // place dots + hardware belong to the Library; Flight School draws its own route
     cancelTour(); cancelNudge(); stopSpeaking();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m !== "academy") academyUI.exit();

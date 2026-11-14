@@ -11,7 +11,7 @@ import "../school.css";
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCockpit } from "../mission/cockpit.js";
-import { icon, patch } from "../ui-icons.js";
+import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
 
@@ -20,17 +20,30 @@ const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="
 const NEXT_WORDS = /^(next|next one|continue|go on|ok|okay|ready|let s go|lets go|start|yes)\b/;
 /** UI labels (not story copy). Copy requests: docs/UX_ROUNDS.md. */
 const UI = {
-  start: "Start", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "CAPCOM's brief",
+  start: "Start", cont: "Continue", replay2: "Replay", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "Brief",
   nextUp: "Next up", lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: m => `${m} min`,
   patches: (n, of) => `${n} of ${of} patches`, qualified: "Qualified", retry: "Fly it again", shuffle: "New call signs",
   callsign: "Call sign", ride: "Check ride", patchEarned: "Patch earned", commander: "Take command",
+};
+/** Where each lesson sits on the Moon (course.json lesson id → a real place). The route runs from the near side down
+ *  to the south-pole outpost, where the check ride (and then the Mission) happens. nudge = pixel offset of the pin
+ *  badge from its true spot, so the polar stops don't stack. Data lives here for now (copy owner: names). */
+const LESSON_PLACE = {
+  moon: { name: "Sea of Rains", lat: 32.8, lon: -15.6 },
+  comms: { name: "Tranquility Base", lat: 0.67, lon: 23.47 },
+  words: { name: "Aristarchus Plateau", lat: 26, lon: -51 },
+  history: { name: "Surveyor 3 · Apollo 12", lat: -3.02, lon: -23.42 },
+  power: { name: "Malapert Massif", lat: -85.98, lon: -1.67, nudge: [44, -30] },
+  radiation: { name: "de Gerlache Rim", lat: -88.71, lon: -68.7, nudge: [-6, 34] },
+  life: { name: "Cabeus · LCROSS", lat: -84.68, lon: -48.73, nudge: [-52, -26] },
+  checkride: { name: "Outpost Luna · Connecting Ridge", lat: -89.44, lon: -141.8, nudge: [58, 30] },
 };
 /** How to answer, per step type: one short line under the question (the dock shows the voice state). */
 const HOW = { intent: "Say it, or tap the Moon", tap: "Tap the Moon, or say it", command: "Tap an order, or say it",
   keywords: "Say it back, or type it", choice: "" };
 /** Cockpit orders a kid can tap on a command step (each is sent as the words, so voice and tap grade the same way). */
-const ORDERS = [["sun", "Heaters up", "more power to the heaters"], ["shield", "Shields up", "more power to the shields"],
-  ["lock", "Into the shelter", "everyone into the shelter"], ["chevron-right", "Leave the shelter", "leave the shelter"], ["droplet", "Rover: get ice", "send the rover for ice"]];
+const ORDERS = [["heater", "Heaters up", "more power to the heaters"], ["shield", "Shields up", "more power to the shields"],
+  ["shelter", "Into the shelter", "everyone into the shelter"], ["leave", "Leave the shelter", "leave the shelter"], ["rover", "Rover: get ice", "send the rover for ice"]];
 
 /** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done} */
 export const STEP_RENDERERS = {
@@ -70,7 +83,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
     /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
-    badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 20 }) })),
+    badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
   };
 
@@ -78,10 +91,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const has = id => prog.badges.includes(id);
   const nextLesson = () => lessons().find(l => !has(l.badge.id)) || null;
   const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
-  /** Panel layout for this view: home + map fill the stage; lesson / patch / ride are the side panel. */
+  /** Panel layout for this view. The Moon is always the backdrop: home and map are overlays on it, lesson / patch /
+   *  ride are glass cards. The route pins live only on the map; the place dots only on steps that ask for a tap. */
   function setLayout(kind) {
     panel.className = "apanel is-" + kind;
-    if (kind === "home" || kind === "map") document.body.dataset.aview = kind; else delete document.body.dataset.aview;
+    document.body.dataset.aview = kind;
+    if (kind !== "map") { globe.route.clear(); globe.setViewport(null); }
+    globe.setDecor(false);
   }
 
   async function enter() {
@@ -94,7 +110,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!ui.active) return;
     showMap();
   }
-  function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); leaveCatalog(); }
+  function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); leaveCatalog(); globe.route.clear(); globe.setViewport(null); }
 
   // ---------- home: what this is, a call sign, one Start ----------
   const shuffled = () => [...CALLSIGNS].sort(() => Math.random() - .5);
@@ -112,9 +128,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <label class="h-label" for="aCsIn">${esc(CALLSIGN_COPY.title)}</label>
           <div class="h-field">
             <input id="aCsIn" maxlength="18" autocomplete="off" value="${esc(pick)}" aria-describedby="aCsHelp">
-            <button type="button" class="btn-icon" id="aCsRand" aria-label="${esc(UI.shuffle)}" title="${esc(UI.shuffle)}">${icon("shuffle")}</button>
+            <button type="button" class="btn-icon" id="aCsRand" aria-label="${esc(UI.shuffle)}" title="${esc(UI.shuffle)}">${icon("random")}</button>
           </div>
-          <div class="h-chips" role="group" aria-label="${esc(CALLSIGN_COPY.title)}">${csDeck.slice(0, 5).map(c => `<button type="button" class="chip a-csb" aria-pressed="${c === pick}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+          <div class="h-chips" role="group" aria-label="${esc(CALLSIGN_COPY.title)}">${csDeck.slice(0, 3).map(c => `<button type="button" class="chip a-csb" aria-pressed="${c === pick}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
           <p class="sr-only" id="aCsHelp">${esc(CALLSIGN_COPY.sub)}</p>
           <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.start)}${icon("chevron-right")}</button>
         </form>
@@ -131,54 +147,54 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!back && !reshuffled) say("Every astronaut has a call sign. Pick yours!", { situation: "lesson_brief" });
   }
 
-  // ---------- course map: one flight path of patches + the next lesson ----------
+  // ---------- course map = the Moon: each lesson is a pin on a real place, the route ends at the south-pole outpost ----------
   function trackOf(id) { const t = TRACKS.find(t => t.lessons.includes(id)); return t ? t.id : "foundations"; }
-  /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the path. */
+  /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the route. */
   const shownOrder = () => { const ls = lessons(); return TRACKS.flatMap(t => ls.filter(l => trackOf(l.id) === t.id)).concat(ls.filter(l => !TRACKS.some(t => trackOf(l.id) === t.id))); };
+  let mapSel = null;   // the pin the cadet tapped (null = the next lesson)
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
-    view = "map"; L = null; endRide(); globe.flyTo(0, 0, 3.6);
+    view = "map"; L = null; endRide(); setLayout("map");
     const ls = shownOrder(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
-    setLayout("map");
-    const stop = (l, k) => {
-      const done = has(l.badge.id), next = nx && nx.id === l.id;
-      const state = done ? "is-done" : next ? "is-next" : "";
-      return `<li class="p-stop ${state}${l.ride ? " is-ride" : ""}">
-        <button type="button" class="a-lcard" data-l="${esc(l.id)}" aria-label="${esc(`${k + 1}. ${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}`)}">
-          <span class="patch ${done ? "is-earned" : next ? "is-next" : ""}">${patch(l.id, { size: 56 })}${done ? `<i class="p-check">${icon("check", { size: 12 })}</i>` : ""}</span>
-          <span class="p-num">${k + 1}</span>
-          <span class="p-name">${esc(l.title)}</span>
-        </button></li>`;
-    };
-    const k = nx ? ls.indexOf(nx) : -1;
-    const hero = prog.qualified
-      ? `<div class="m-hero is-qualified"><span class="patch is-earned">${patch("checkride", { size: 88 })}</span>
-          <div class="m-hero-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2><p class="m-hero-sub">${esc(SCHOOL.subDone)}</p></div>
+    const sel = (mapSel && ls.find(l => l.id === mapSel)) || nx;
+    // the whole route in view, the Moon lifted above the Next-up card and the voice strip
+    const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 230) / H));
+    if (!quiet || !mapSel) globe.flyTo(-38, -14, 3.25);
+    // pins: earned patch art for done lessons, a grey outline for the rest; the next one is bigger and labelled
+    const stops = ls.map((l, k) => {
+      const done = has(l.badge.id), next = nx && nx.id === l.id, at = LESSON_PLACE[l.id] || LESSON_PLACE.moon;
+      const b = document.createElement("button"); b.type = "button";
+      b.className = `pin a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${sel && sel.id === l.id ? " is-sel" : ""}`;
+      b.dataset.l = l.id;
+      b.setAttribute("aria-label", `${k + 1}. ${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}. ${at.name}`);
+      b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label"><b>${k + 1}</b>${esc(l.title)}</span>`;
+      b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
+      return { id: l.id, lat: at.lat, lon: at.lon, nudge: at.nudge, el: b };
+    });
+    globe.route.set(stops, n);
+    const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && (LESSON_PLACE[sel.id] || {});
+    const cta = !sel ? "" : selDone ? UI.replay2 : sel === nx && n > 0 ? UI.cont : UI.start;
+    const card = prog.qualified && (!mapSel || !sel)
+      ? `<div class="mp-card"><span class="mp-patch">${patch("checkride", { earned: true, size: 64 })}</span>
+          <div class="mp-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2></div>
           <button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button></div>`
-      : nx ? `<div class="m-hero"><span class="patch is-next">${patch(nx.id, { size: 88 })}</span>
-          <div class="m-hero-copy"><p class="eyebrow">${esc(UI.nextUp)} · ${esc(nx.ride ? UI.ride : UI.lesson(k + 1, ls.length))} · ${esc(UI.min(nx.minutes))}</p>
-            <h2>${esc(nx.title)}</h2><p class="m-hero-sub">${esc(LESSON_BLURB[nx.id] || nx.brief)}</p></div>
-          <button type="button" class="btn-primary" id="aStart">${esc(UI.start)}${icon("chevron-right")}</button></div>` : "";
+      : sel ? `<div class="mp-card"><span class="mp-patch">${patch(sel.id, { earned: selDone, size: 64 })}</span>
+          <div class="mp-copy"><p class="eyebrow">${esc(sel === nx ? UI.nextUp : UI.lesson(k + 1, ls.length))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
+            <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(LESSON_BLURB[sel.id] || sel.brief)}</p></div>
+          <button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button></div>` : "";
     panel.innerHTML = `
-      <div class="m-wrap">
-        <header class="m-top">
-          <div><p class="eyebrow">${esc(SCHOOL.eyebrow)}</p><h1 class="m-h1">${esc(SCHOOL.title(cs))}</h1></div>
-          <div class="m-meta">
-            <span class="m-count" aria-label="${esc(UI.patches(n, ls.length))}"><b>${n}</b>/${ls.length}<small>patches</small></span>
-            <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${esc(cs)}</button>
-          </div>
-        </header>
-        <ol class="p-path" style="--done:${ls.length > 1 ? Math.max(0, (Math.min(n, ls.length - 1)) / (ls.length - 1)) : 0}">${ls.map(stop).join("")}</ol>
-        ${hero}
-        <p class="m-credit">${esc(CREDIT)}</p>
-      </div>`;
-    panel.querySelectorAll(".a-lcard").forEach(b => b.onclick = () => openLesson(b.dataset.l));
+      <header class="mp-top">
+        <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
+        <span class="mp-count" aria-label="${esc(UI.patches(n, ls.length))}">${n}<small>/${ls.length}</small></span>
+        <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
+      </header>
+      ${card}
+      <p class="mp-credit">${esc(CREDIT)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
-    const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(nx.id);
-    void quiet;   // the map stays quiet; the Director speaks the offer
+    const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);
   }
-  function leaveCatalog() { delete document.body.dataset.aview; }
+  function leaveCatalog() { mapSel = null; delete document.body.dataset.aview; }
 
   // ---------- lesson ----------
   async function openLesson(id) {
@@ -191,7 +207,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     } else if (L.globe) {
       const f = L.globe.place && placeById(L.globe.place);
       if (f) globe.showFeature(f, { dist: L.globe.dist }); else if (L.globe.lat != null) globe.flyTo(L.globe.lat, L.globe.lon, L.globe.dist || 3.6);
-    }
+    } else if (LESSON_PLACE[L.id]) { const at = LESSON_PLACE[L.id]; globe.flyTo(at.lat, at.lon, 2.6); }
     render();
     const beat = (LESSON_STORY[L.id] || {}).beat || "";
     say(`${CAPCOM.lessonHello(callSign.spoken("cadet"), beat)} ${L.brief} ${L.steps[0].prompt}`, { situation: "lesson_brief" });
@@ -203,6 +219,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
     setLayout(L.ride ? "ride" : "lesson");
+    if (!waitingNext && (acc.type === "tap" || acc.type === "intent")) globe.setDecor(true);   // the place dots help a tap
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
@@ -217,29 +234,32 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.innerHTML = `
       <header class="a-head m-head">
         <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
-        <span class="eyebrow">${esc(L.ride ? UI.ride : UI.lesson(k + 1, lessons().length))}</span>
+        <span class="eyebrow sr-only">${esc(L.ride ? UI.ride : UI.lesson(k + 1, lessons().length))}</span>
         <span class="a-steps" role="img" aria-label="${esc(UI.step(i + 1, L.steps.length))}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span>
       </header>
       <div class="a-body">
-        <div class="a-title"><span class="patch is-sm">${patch(L.id, { size: 36 })}</span><h2 class="m-title">${esc(L.title)}</h2></div>
-        ${L.ride && !firstLook ? "" : `<details class="a-brief"${firstLook ? " open" : ""}><summary>${esc(UI.brief)}</summary>
+        <div class="a-title"><span class="a-patch">${patch(L.id, { earned: has(L.badge.id), size: 44 })}</span><h2 class="m-title">${esc(L.title)}</h2>
+          ${L.ride && !firstLook ? "" : `<button type="button" class="btn-quiet a-brief-btn" id="aBriefBtn" aria-expanded="false" aria-controls="aBrief">${icon("info", { size: 16 })}${esc(UI.brief)}</button>`}</div>
+        ${L.ride && !firstLook ? "" : `<div class="a-brief" id="aBrief" hidden>
           <p>${esc(L.brief)}</p>
-          <div class="a-row"><button type="button" class="btn-quiet" id="aReplay">${icon("volume", { size: 16 })}${esc(UI.replay)}</button>
-            ${L.library ? `<button type="button" class="btn-quiet" id="aLib">${icon("book", { size: 16 })}${esc(L.library.label)}</button>` : ""}
-            ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></details>`}
+          <div class="a-row"><button type="button" class="btn-quiet" id="aReplay">${icon("speaker", { size: 16 })}${esc(UI.replay)}</button>
+            ${L.library ? `<button type="button" class="btn-quiet" id="aLib">${icon("library", { size: 16 })}${esc(L.library.label)}</button>` : ""}
+            ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></div>`}
         <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
-          ${st.alert ? `<p class="a-alert">${icon("alert", { size: 16 })}<span>Alert</span></p>` : ""}
+          ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           <p class="a-prompt">${esc(st.prompt)}</p>
           ${how && !waitingNext ? `<p class="a-how">${esc(how)}</p>` : ""}
           ${clip ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
           <div class="a-input" id="aInput">${waitingNext ? "" : R.html(st, ctx)}</div>
           ${fb}
-          ${feedback && feedback.hint ? `<p class="a-hint">${icon("lightbulb", { size: 16 })}<span>${esc(feedback.hint)}</span></p>` : ""}
+          ${feedback && feedback.hint ? `<p class="a-hint">${icon("info", { size: 16 })}<span>${esc(feedback.hint)}</span></p>` : ""}
         </section>
         ${ride ? `<div id="aRideSlot"></div>` : ""}
       </div>
       <footer class="a-foot">${waitingNext ? `<button type="button" class="btn-primary" id="aNext">${esc(UI.next)}${icon("chevron-right")}</button>` : ""}</footer>`;
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
+    const bb = panel.querySelector("#aBriefBtn");
+    if (bb) bb.onclick = () => { const b = panel.querySelector("#aBrief"), open = b.hidden; b.hidden = !open; bb.setAttribute("aria-expanded", open); };
     const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief);
     const lib = panel.querySelector("#aLib"); if (lib) lib.onclick = () => openLibrary(L.library.place);
     const cb = panel.querySelector("#aClip");
@@ -310,7 +330,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       feedback = { kind: r.passed ? "ok" : "retry", text: r.say };
       if (r.passed && r.badge) { award(r.badge, true); waitingNext = true; render(); speakLine(r.say, r); setTimeout(() => showBadge(r.badge, true), 1200); return true; }
       waitingNext = false; render(); speakLine(r.say, r);
-      const inp = panel.querySelector("#aInput"); inp.innerHTML = `<button type="button" class="btn-primary" id="aRetry">${icon("repeat")}${esc(UI.retry)}</button>`;
+      const inp = panel.querySelector("#aInput"); inp.innerHTML = `<button type="button" class="btn-primary" id="aRetry">${icon("retry")}${esc(UI.retry)}</button>`;
       panel.querySelector("#aRetry").onclick = () => openLesson(L.id);
       return true;
     }
@@ -331,7 +351,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const nx = nextLesson(), cs = callSign.shown();
     panel.innerHTML = `
       <div class="a-badge" role="status">
-        <span class="patch is-earned is-big">${patch(L.id, { size: 144 })}</span>
+        <span class="a-bigpatch">${patch(L.id, { earned: true, size: 168 })}</span>
         <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
         <p class="a-badge-sub">${commander ? esc(cs) : esc(L.title)}</p>

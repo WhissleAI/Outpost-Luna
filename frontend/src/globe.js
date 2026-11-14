@@ -173,6 +173,49 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     });
   }
 
+  // ---------- Route: the Flight School course map as pins on the Moon (academy/ui.js) ----------
+  // Each stop is an HTML button the caller builds (patch art, label); the globe places it every frame at its real
+  // lat/lon (plus an optional pixel nudge so close polar stops don't overlap), with a dot at the true spot and a dotted
+  // line linking the stops in order. Stops round the back of the Moon fade out.
+  const rlayer = document.createElement("div"); rlayer.className = "route"; rlayer.hidden = true; stage.append(rlayer);
+  const rsvg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); rsvg.setAttribute("class", "route-lines"); rsvg.setAttribute("aria-hidden", "true");
+  rlayer.append(rsvg);
+  let rstops = [], rdone = 0;
+  const route = {
+    /** stops: [{id, lat, lon, el, nudge:[dx,dy]}]; done = how many stops (from the start) are complete */
+    set(stops, done = 0) {
+      rlayer.querySelectorAll(".route-stop, .route-dot").forEach(e => e.remove());
+      rstops = stops.map(s => {
+        const dot = document.createElement("i"); dot.className = "route-dot"; rlayer.append(dot);
+        s.el.classList.add("route-stop"); rlayer.append(s.el);
+        return { ...s, dot, p: ll2v(s.lat, s.lon, R * 1.003), x: 0, y: 0, on: false };
+      });
+      rdone = done; rlayer.hidden = !rstops.length;
+    },
+    clear() { route.set([]); },
+  };
+  function tickRoute() {
+    if (rlayer.hidden) return;
+    const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+    rstops.forEach(s => {
+      const f = s.p.clone().normalize().dot(cam);
+      s.on = f > 0.12; tmp.copy(s.p).project(camera);
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h;
+      const [dx, dy] = s.nudge || [0, 0], op = Math.max(0, Math.min(1, (f - 0.05) / 0.2)).toFixed(2);
+      s.dot.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px)`; s.dot.style.opacity = op;
+      s.el.style.transform = `translate(${(s.x + dx).toFixed(1)}px,${(s.y + dy).toFixed(1)}px)`; s.el.style.opacity = op;
+      s.el.style.visibility = s.on ? "" : "hidden"; s.el.tabIndex = s.on ? 0 : -1;
+    });
+    let d = "", dd = "";
+    for (let i = 1; i < rstops.length; i++) {
+      const a = rstops[i - 1], b = rstops[i]; if (!a.on || !b.on) continue;
+      const seg = `M${a.x.toFixed(1)},${a.y.toFixed(1)}L${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+      if (i < rdone + 1) dd += seg; else d += seg;
+    }
+    rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
+  }
+
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
   let band = null, paused = false;
@@ -213,7 +256,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
       label.style.opacity = facing ? 1 : 0;
     }
-    tickMission();
+    tickMission(); tickRoute();
     if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -240,6 +283,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     showFeature, highlight, flyTo, nearest, mission, setViewport,
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
+    route,
+    /** Place dots + hardware markers on/off (off on Flight School screens, where the route pins are the map). */
+    setDecor(on) { if (mi.on) return; pins.visible = !!on; layer.style.display = on ? "" : "none"; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },
