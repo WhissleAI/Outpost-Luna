@@ -85,6 +85,7 @@ export const LESSON_STORY = {
   radiation: { patch: "🛡️", beat: "Alarm drill! The Sun can throw storms at the Moon." },
   life: { patch: "🧊", beat: "No air, no water on the Moon… or is there ice?" },
   history: { patch: "📜", beat: "Every crew learns from the crews before them." },
+  words: { patch: "📖", beat: "New words for a new world. CAPCOM deals out the flash cards." },
   checkride: { patch: "🚀", beat: "Solo shift! You're in the Outpost Luna cockpit. CAPCOM is only watching." },
 };
 

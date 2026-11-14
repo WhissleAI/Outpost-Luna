@@ -100,7 +100,10 @@ export function createCabin(root, o = {}) {
           <button type="button" class="cb-db" id="cbDb">Debrief</button></div>
         </section>
       </div>
-      <p class="cb-caption" id="cbCap" aria-live="polite"><b>CAPCOM ▸</b> <span id="cbCapTxt">Standing by.</span></p>
+      <div class="cb-commrow">
+        <div class="cb-capwrap"><p class="cb-caption" id="cbCap" aria-live="polite"><b>CAPCOM ▸</b> <span id="cbCapTxt">Standing by.</span></p><div class="cb-capslot" id="cbCapSlot"></div></div>
+        <div class="cb-askslot" id="cbAskSlot" aria-label="Talk to CAPCOM" role="group"></div>
+      </div>
     </section>
   </div>`;
   const q = s => root.querySelector(s);

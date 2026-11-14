@@ -76,7 +76,19 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (state && !state.over) { showHud(); return; }
     briefing();
   }
+  // In the cabin the ask dock and the caption line live in the panel's bottom comm row (never over the window or a
+  // display unit); outside it they go back where index.html put them. Same nodes, so #q / #mic / Ask keep working.
+  const docked = [];
+  function dockIn() {
+    [["askbar", "cbAskSlot"], ["captionBar", "cbCapSlot"]].forEach(([id, slot]) => {
+      const el = $(id), to = $(slot); if (!el || !to) return;
+      if (!docked.some(d => d.el === el)) docked.push({ el, parent: el.parentNode, next: el.nextSibling });
+      to.append(el);
+    });
+  }
+  function dockOut() { while (docked.length) { const d = docked.pop(); d.parent.insertBefore(d.el, d.next && d.next.parentNode === d.parent ? d.next : null); } }
   const hideCabin = () => {
+    dockOut();
     cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false);
     clearTimeout(surfT); if (tv) tv.hide(); curView = null;
   };
@@ -165,6 +177,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
     screen = "hud"; debriefEl.hidden = true; panel.hidden = true; cabinEl.hidden = false; document.body.dataset.cabin = "1";
+    dockOut();   // createCabin rewrites the cabin's HTML: lift the docked nodes out first
     cockpit = createCabin(cabinEl, {
       badges,
       onCommand: c => run(c),
@@ -173,6 +186,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       onEndShift: () => endShift(),
       onDebrief: () => showDebrief(),
     });
+    dockIn();
     if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
     requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });

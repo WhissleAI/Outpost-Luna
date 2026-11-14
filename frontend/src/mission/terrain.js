@@ -143,6 +143,10 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   csm.lights.forEach((l, i) => { l.color.set(0xfff4e6); l.shadow.normalBias = [0.4, 2, 8][i]; });
   const sun = { set intensity(v) { csm.lights.forEach(l => { l.intensity = v; }); }, get intensity() { return csm.lights[0].intensity; } };
   const earthshine = new THREE.HemisphereLight(0x9fb8e0, 0x000000, .06); scene.add(earthshine);
+  // Earthshine / camera fill: a soft directional light from the Earth's side (no shadows). With the Earth up it is
+  // real earthshine; otherwise it stands for the camera's exposure, so relief in the shadows still reads, as it does
+  // in LRO's low-Sun oblique frames. Strength is set in aimSky().
+  const fill = new THREE.DirectionalLight(0xb8cbe8, .3); scene.add(fill, fill.target);
 
   // ---- sky: stars, the Sun's disc (HDR, so bloom makes the glare), the Earth (NASA Blue Marble), all at "infinity" ----
   const sky = new THREE.Group(); scene.add(sky);
@@ -261,11 +265,14 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     sunDisc.position.copy(sd).multiplyScalar(SKY); earth.position.copy(ed).multiplyScalar(SKY);
     // The Sun stays on a little below the site's horizon: peaks and far rims that still see it stay lit, and the
     // shadow map (with the Moon's curvature in the mesh) keeps the site itself dark. That is the real polar look.
-    sun.intensity = 3.2 * smooth(-3, .4, S.sunEl); sunDisc.visible = S.sunEl > -3;
+    sun.intensity = 5.6 * smooth(-3, .4, S.sunEl); sunDisc.visible = S.sunEl > -3;   // exposed for the lit regolith
     // In the dark the window is a low-light camera (said on the glass), so the terrain stays readable.
     S.lowLight = S.sunEl < .3;
-    earthshine.intensity = S.lowLight ? .55 : S.earthEl > 0 ? .2 : .03;   // earthshine is real: a near-full Earth lights the ground
-    earthshine.color.set(S.lowLight ? 0x9fc2b4 : 0x9fb8e0);
+    earthshine.intensity = S.lowLight ? .7 : S.earthEl > 0 ? .3 : .16;
+    earthshine.color.set(S.lowLight ? 0xa9c9bb : 0x9fb8e0);
+    fill.position.copy(skyDir(Math.max(S.earthEl, 0) + 14, 25)).multiplyScalar(1000); fill.target.position.set(0, 0, 0);
+    fill.intensity = S.lowLight ? 1.5 : S.earthEl > 0 ? .75 : .45;
+    fill.color.set(S.lowLight ? 0xbfe3cf : 0xb8cbe8);
     tag.textContent = S.lowLight ? "LOW-LIGHT CAMERA · SUN BELOW HORIZON" : "";
     hab.userData.wing.rotation.y = Math.atan2(sd.x, sd.z);                         // arrays track the Sun
     hab.userData.dish.lookAt(hab.userData.dish.getWorldPosition(new THREE.Vector3()).add(ed.clone().multiplyScalar(100)));
@@ -307,17 +314,17 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   const pose = (pos, look, fov) => ({ pos, look, fov });
   function sitePose(t) {
     // hovering ~190 m out and 60 m up, looking past the outpost toward the Earth side, drifting slowly round it
-    const base = Math.PI + .45, a = base + (reduced() ? 0 : t * .01), r = 190;
-    const pos = new THREE.Vector3(Math.sin(a) * r, 0, -Math.cos(a) * r);
-    pos.y = Math.max(heightAt(pos.x, pos.z) + 25, hab.position.y + 60);
-    return pose(pos, new THREE.Vector3(Math.sin(a) * -60, hab.position.y + 4, Math.cos(a) * 60), 50);
+    const base = Math.PI + .45, a = base + (reduced() ? 0 : t * .012), r = 64;
+    const pos = new THREE.Vector3(Math.sin(a) * r + 10, 0, -Math.cos(a) * r + 6);
+    pos.y = Math.max(heightAt(pos.x, pos.z) + 8, hab.position.y + 17);
+    return pose(pos, new THREE.Vector3(Math.sin(a) * -18 + 10, hab.position.y + 5, Math.cos(a) * 18 + 6), 44);
   }
   function roverPose() {
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rv.quaternion); fwd.y = 0; fwd.normalize();
     // chase camera: low, just above the mast, the rover in the lower third and the route ahead
-    const pos = rv.position.clone().addScaledVector(fwd, -8.5); pos.y = Math.max(heightAt(pos.x, pos.z) + 1.6, rv.position.y + 3.2);
-    const look = rv.position.clone().addScaledVector(fwd, 32); look.y = rv.position.y + (heightAt(look.x, look.z) - rv.position.y) * .35 - .2;
-    return pose(pos, look, 42);
+    const pos = rv.position.clone().addScaledVector(fwd, -6.2); pos.y = Math.max(heightAt(pos.x, pos.z) + 1.4, rv.position.y + 2.5);
+    const look = rv.position.clone().addScaledVector(fwd, 26); look.y = rv.position.y + (heightAt(look.x, look.z) - rv.position.y) * .35 + .2;
+    return pose(pos, look, 38);
   }
   function earthPose() {
     // a long lens from the hab: Earth above the lunar skyline when it is up, the skyline where it hides when not

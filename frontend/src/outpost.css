@@ -10,6 +10,14 @@
   display:flex;justify-content:center}
 .caption-bar:empty{display:none}
 body[data-mode="mission"] .caption-bar,body[data-mode="academy"] .caption-bar{right:calc(var(--panel-w) + 2*var(--s4))}
+/* a caption line and the guide/CAPCOM card share the space above the dock: while a caption shows, the card sits
+   above it (the caption is at most two lines, --cap-h) instead of on top of it */
+html:not([data-captions="off"]) body:not([data-cabin="1"]) .stage:has(> .caption-bar:not([hidden])) .card{--cap-h:78px;bottom:calc(var(--s4) + var(--dock-h) + var(--s3) + var(--cap-h));
+  max-height:calc(100% - var(--dock-h) - 136px - var(--cap-h))}
+body:not([data-cabin="1"]) .caption-bar .cap-line{max-height:2.9em;overflow:hidden}
+/* Academy map: the catalog fills the stage (no dock), so the caption gets its own strip under it */
+body[data-aview="map"] .caption-bar{left:var(--s4);right:var(--s4);bottom:var(--s4);z-index:5}
+html:not([data-captions="off"]) .stage:has(> .caption-bar:not([hidden])) .apanel.is-catalog{bottom:calc(var(--s4) + 74px)}
 .cs-tag{flex:none;font-family:var(--f-display);font-weight:700;font-size:12.5px;padding:3px 9px;border-radius:999px;
   background:var(--accent-2);color:var(--accent-2-ink);white-space:nowrap;max-width:14ch;overflow:hidden;text-overflow:ellipsis}
 .cs-tag::before{content:"🧑‍🚀 "}
