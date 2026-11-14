@@ -117,17 +117,18 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     btn = mk("button", "icon-btn a11y-btn", { id: "a11yBtn", type: "button" });
     (document.querySelector(".topnav") || document.querySelector(".topbar") || document.body).append(btn);
   }
-  if (!btn.innerHTML.trim()) btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="2" fill="currentColor"/><path fill="currentColor" d="M4 8.5 12 10l8-1.5.4 2L15 11.6V14l2 7-2 .6-2.4-6.2h-1.2L9 21.6 7 21l2-7v-2.4l-5.4-1.1.4-2Z"/></svg>`;
+  if (!btn.innerHTML.trim()) btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5 12 10l7-1.5M12 10v4l-3 7M12 14l3 7"/></svg>`;
   ariaControl(btn, "Accessibility settings", { expanded: false });
   btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Accessibility: speed, captions, contrast, text size";
-  (document.querySelector(".topnav") || btn.parentElement).append(noAudio);
+  // "No audio needed" lives in the settings panel (the top bar stays quiet).
 
   const panel = mk("div", "a11y-panel", { role: "dialog", "aria-modal": "true", "aria-labelledby": "a11yTitle", hidden: "" });
   document.body.append(panel);
   function renderPanel() {
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
     panel.innerHTML = `
-      <header><h2 id="a11yTitle">Accessibility</h2><button type="button" class="x" data-close aria-label="Close accessibility settings">&times;</button></header>
+      <header><h2 id="a11yTitle">Access</h2><button type="button" class="x" data-close aria-label="Close accessibility settings">&times;</button></header>
+      <p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
       <fieldset class="a11y-speed"><legend>Voice speed</legend>
         ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""}><span>${v}×</span></label>`).join("")}</fieldset>
       <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>

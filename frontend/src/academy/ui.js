@@ -1,38 +1,48 @@
-// Flight School (the Academy) UI: call sign → mission-patch path → lesson (story beat, CAPCOM brief, 2–4 steps with
-// voice/type/tap answers, hints after 2 misses) → patch stamped. Lesson 7, the check ride, is the cadet's first solo
-// shift in a simplified Outpost Luna cockpit (mission/cockpit.js, mode "mini") on the real mission simulator; passing
-// it qualifies the cadet for Mission mode. Grading is server-side (POST /api/academy/attempt); progress and the call
-// sign stay on this device. Story copy lives in ../story.js.
+// Flight School (the Academy) UI: home (call sign + Start) → course map (a flight path of patches + one "Next up" card)
+// → lesson (CAPCOM's brief, 2–4 steps with voice/type/tap answers, hints after 2 misses) → patch earned. Lesson 8, the
+// check ride, is the cadet's first solo shift in a simplified Outpost Luna cockpit (mission/cockpit.js, mode "mini") on
+// the real mission simulator; passing it qualifies the cadet for Mission mode. Grading is server-side
+// (POST /api/academy/attempt); progress and the call sign stay on this device. Story copy lives in ../story.js; the few
+// UI labels below (UI) are listed in docs/UX_ROUNDS.md for the copy owner.
 //
 // Steps render through a registry, STEP_RENDERERS[accept.type] = {html(step, ctx) → string, wire?(el, ctx)}, exported
 // and attached to window.__outpost.stepRenderers so other modules can register new step types without editing this file.
+import "../school.css";
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCockpit } from "../mission/cockpit.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB, WHY, MENTOR } from "../story.js";
+import { icon, patch } from "../ui-icons.js";
+import { APP_TAGLINE } from "../brand.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
 const NEXT_WORDS = /^(next|next one|continue|go on|ok|okay|ready|let s go|lets go|start|yes)\b/;
-const HOW = { intent: "Say it, type it below, or tap the Moon", tap: "Tap the Moon", command: "Tap an order, or say it",
-  keywords: "Say your readback, or type it below", choice: "Tap an answer, or say it" };
+/** UI labels (not story copy). Copy requests: docs/UX_ROUNDS.md. */
+const UI = {
+  start: "Start", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "CAPCOM's brief",
+  nextUp: "Next up", lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: m => `${m} min`,
+  patches: (n, of) => `${n} of ${of} patches`, qualified: "Qualified", retry: "Fly it again", shuffle: "New call signs",
+  callsign: "Call sign", ride: "Check ride", patchEarned: "Patch earned", commander: "Take command",
+};
+/** How to answer, per step type: one short line under the question (the dock shows the voice state). */
+const HOW = { intent: "Say it, or tap the Moon", tap: "Tap the Moon, or say it", command: "Tap an order, or say it",
+  keywords: "Say it back, or type it", choice: "" };
 /** Cockpit orders a kid can tap on a command step (each is sent as the words, so voice and tap grade the same way). */
-const ORDERS = [["🔥", "Heaters up", "more power to the heaters"], ["🛡️", "Shields up", "more power to the shields"],
-  ["🏠", "Into the shelter", "everyone into the shelter"], ["🚪", "Leave the shelter", "leave the shelter"], ["🧊", "Rover: get ice", "send the rover for ice"]];
+const ORDERS = [["sun", "Heaters up", "more power to the heaters"], ["shield", "Shields up", "more power to the shields"],
+  ["lock", "Into the shelter", "everyone into the shelter"], ["chevron-right", "Leave the shelter", "leave the shelter"], ["droplet", "Rover: get ice", "send the rover for ice"]];
 
 /** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done} */
 export const STEP_RENDERERS = {
   choice: {
-    html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${"ABCD"[k]}</span>${esc(o.label)}</button>`).join("")}</div>`,
+    html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${"ABCD"[k]}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-choice").forEach(b => b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)),
   },
-  keywords: {
-    html: () => `<p class="a-tapme"><span aria-hidden="true">🎙️</span> Hold Space and read it back, or type it below</p>`,
-  },
-  tap: { html: () => `<p class="a-tapme"><span aria-hidden="true">👆</span> Tap the Moon</p>` },
+  keywords: { html: () => "" },
+  tap: { html: () => "" },
   intent: { html: () => "" },
   command: {
-    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}"><span aria-hidden="true">${ico}</span>${esc(label)}</button>`).join("")}</div>`,
+    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}">${icon(ico, { size: 18 })}<span>${esc(label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-order").forEach(b => b.onclick = () => ctx.answer({ text: b.dataset.say }, b)),
   },
 };
@@ -59,8 +69,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
-    /** Earned patches, for the Mission cockpit: [{id, name, patch, lesson}] */
-    badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: (LESSON_STORY[l.id] || {}).patch || l.badge.glyph })),
+    /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
+    badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 20 }) })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
   };
 
@@ -68,90 +78,107 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const has = id => prog.badges.includes(id);
   const nextLesson = () => lessons().find(l => !has(l.badge.id)) || null;
   const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
-  const patchOf = l => (LESSON_STORY[l.id] || {}).patch || l.badge.glyph;
-  const todo = t => `<p class="a-todo" aria-live="polite"><span aria-hidden="true">👉</span> ${t}</p>`;
+  /** Panel layout for this view: home + map fill the stage; lesson / patch / ride are the side panel. */
+  function setLayout(kind) {
+    panel.className = "apanel is-" + kind;
+    if (kind === "home" || kind === "map") document.body.dataset.aview = kind; else delete document.body.dataset.aview;
+  }
 
   async function enter() {
     ui.active = true; panel.hidden = false;
     if (!course) {
-      panel.innerHTML = `<p class="m-wait">Loading Flight School…</p>`;
+      setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading Flight School…</p>`;
       try { course = await academyApi.course(); }
-      catch (e) { panel.innerHTML = `<p class="m-wait">Can't reach Flight School. Start everything with <code>make dev</code>.</p>`; return; }
+      catch (e) { panel.innerHTML = `<p class="a-wait">Can't reach Flight School. Start everything with <code>make dev</code>.</p>`; return; }
     }
     if (!ui.active) return;
     showMap();
   }
   function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); leaveCatalog(); }
 
-  // ---------- call sign ----------
-  function showCallSign(back) {
-    view = "callsign"; leaveCatalog();
-    const cur = callSign.get();
+  // ---------- home: what this is, a call sign, one Start ----------
+  const shuffled = () => [...CALLSIGNS].sort(() => Math.random() - .5);
+  let csDeck = shuffled();
+  function showCallSign(back, reshuffled) {
+    view = "callsign"; setLayout("home"); if (!reshuffled) globe.flyTo(-20, 10, 3.2);
+    const cur = callSign.get(), pick = (!reshuffled && cur) || csDeck[0];
     panel.innerHTML = `
-      <header class="m-head"><span class="eyebrow">${esc(SCHOOL.eyebrow)}</span></header>
-      <div class="a-cs-hero" aria-hidden="true">🧑‍🚀</div>
-      <h2 class="m-title">${esc(CALLSIGN_COPY.title)}</h2>
-      <p class="m-sub">${esc(CALLSIGN_COPY.sub)}</p>
-      <div class="a-cs" role="group" aria-label="Call signs">${CALLSIGNS.map(c => `<button type="button" class="a-csb" aria-pressed="${c === cur}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
-      <form class="a-csform" id="aCsForm"><label class="sr-only" for="aCsIn">${esc(CALLSIGN_COPY.type)}</label>
-        <input id="aCsIn" maxlength="18" autocomplete="off" placeholder="${esc(CALLSIGN_COPY.type)}" value="${CALLSIGNS.includes(cur) ? "" : esc(cur)}">
-        <button type="submit" class="pill">${esc(CALLSIGN_COPY.save)}</button></form>
-      <button type="button" class="pill" id="aCsRand">🎲 ${esc(CALLSIGN_COPY.random)}</button>
-      ${todo("Tap a call sign, or say one, like “call me Nova”.")}`;
-    const done = v => { if (!callSign.set(v)) return; const cs = callSign.spoken("Cadet"); say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }); back ? back() : showMap(true); };
-    panel.querySelectorAll(".a-csb").forEach(b => b.onclick = () => done(b.dataset.cs));
-    panel.querySelector("#aCsForm").onsubmit = e => { e.preventDefault(); done(panel.querySelector("#aCsIn").value); };
-    panel.querySelector("#aCsRand").onclick = () => done(CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]);
-    if (!back) say("Every astronaut has a call sign. Pick yours!", { situation: "lesson_brief" });
+      <div class="h-wrap">
+        <div class="h-copy">
+          <p class="eyebrow">${esc(APP_TAGLINE)}</p>
+          <h1 class="h-title">${esc(SCHOOL.hero)}<br>${esc(SCHOOL.hero2)}</h1>
+        </div>
+        <form class="h-form" id="aCsForm">
+          <label class="h-label" for="aCsIn">${esc(CALLSIGN_COPY.title)}</label>
+          <div class="h-field">
+            <input id="aCsIn" maxlength="18" autocomplete="off" value="${esc(pick)}" aria-describedby="aCsHelp">
+            <button type="button" class="btn-icon" id="aCsRand" aria-label="${esc(UI.shuffle)}" title="${esc(UI.shuffle)}">${icon("shuffle")}</button>
+          </div>
+          <div class="h-chips" role="group" aria-label="${esc(CALLSIGN_COPY.title)}">${csDeck.slice(0, 5).map(c => `<button type="button" class="chip a-csb" aria-pressed="${c === pick}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+          <p class="sr-only" id="aCsHelp">${esc(CALLSIGN_COPY.sub)}</p>
+          <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.start)}${icon("chevron-right")}</button>
+        </form>
+        <p class="h-credit">${esc(CREDIT)}</p>
+      </div>`;
+    const input = panel.querySelector("#aCsIn");
+    const done = v => { if (!callSign.set(v)) { input.focus(); return; } const cs = callSign.spoken("Cadet"); say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }); back ? back() : showMap(true); };
+    const select = v => { input.value = v; panel.querySelectorAll(".a-csb").forEach(b => b.setAttribute("aria-pressed", b.dataset.cs === v)); };
+    panel.querySelectorAll(".a-csb").forEach(b => b.onclick = () => select(b.dataset.cs));
+    input.addEventListener("input", () => select(input.value));
+    panel.querySelector("#aCsForm").onsubmit = e => { e.preventDefault(); done(input.value); };
+    // Shuffle deals six new call signs and suggests the first ("surprise me" by voice picks one and goes: handleText).
+    panel.querySelector("#aCsRand").onclick = () => { csDeck = shuffled(); showCallSign(back, true); panel.querySelector("#aCsRand").focus(); };
+    if (!back && !reshuffled) say("Every astronaut has a call sign. Pick yours!", { situation: "lesson_brief" });
   }
 
-  // ---------- course map: a catalog of tracks (full stage), CAPCOM mentor card, patch shelf ----------
+  // ---------- course map: one flight path of patches + the next lesson ----------
   function trackOf(id) { const t = TRACKS.find(t => t.lessons.includes(id)); return t ? t.id : "foundations"; }
-  /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… down the page. */
+  /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the path. */
   const shownOrder = () => { const ls = lessons(); return TRACKS.flatMap(t => ls.filter(l => trackOf(l.id) === t.id)).concat(ls.filter(l => !TRACKS.some(t => trackOf(l.id) === t.id))); };
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); globe.flyTo(0, 0, 3.6);
-    const ls = lessons(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
-    panel.classList.add("is-catalog"); panel.classList.remove("is-ride"); document.body.dataset.aview = "map";
-    const mentor = prog.qualified ? MENTOR.done(cs) : !n ? MENTOR.first(cs) : nx && nx.ride ? MENTOR.ride(cs) : MENTOR.more(cs, n, nx ? nx.title : "");
-    const card = (l) => {
-      const k = shownOrder().indexOf(l), done = has(l.badge.id), next = nx && nx.id === l.id;
-      return `<button type="button" class="a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${l.ride ? " is-ride" : ""}" data-l="${esc(l.id)}">
-        <span class="a-lhead"><span class="a-patch" aria-hidden="true"><span>${patchOf(l)}</span>${done ? `<i class="a-stamp">✓</i>` : ""}</span>
-          <span class="a-nt"><b>${k + 1} · ${esc(l.title)}</b><small>${l.minutes} min${l.ride ? " · solo shift" : ""}</small></span></span>
-        <span class="a-blurb">${esc(LESSON_BLURB[l.id] || l.brief)}</span>
-        ${done ? `<span class="a-tag is-done">✓ ${esc(l.badge.name)} patch</span>` : next ? `<span class="a-tag is-next">Next up</span>` : ""}
-      </button>`;
+    const ls = shownOrder(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
+    setLayout("map");
+    const stop = (l, k) => {
+      const done = has(l.badge.id), next = nx && nx.id === l.id;
+      const state = done ? "is-done" : next ? "is-next" : "";
+      return `<li class="p-stop ${state}${l.ride ? " is-ride" : ""}">
+        <button type="button" class="a-lcard" data-l="${esc(l.id)}" aria-label="${esc(`${k + 1}. ${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}`)}">
+          <span class="patch ${done ? "is-earned" : next ? "is-next" : ""}">${patch(l.id, { size: 56 })}${done ? `<i class="p-check">${icon("check", { size: 12 })}</i>` : ""}</span>
+          <span class="p-num">${k + 1}</span>
+          <span class="p-name">${esc(l.title)}</span>
+        </button></li>`;
     };
-    const tracks = TRACKS.map(t => ({ ...t, items: ls.filter(l => trackOf(l.id) === t.id) })).filter(t => t.items.length);
+    const k = nx ? ls.indexOf(nx) : -1;
+    const hero = prog.qualified
+      ? `<div class="m-hero is-qualified"><span class="patch is-earned">${patch("checkride", { size: 88 })}</span>
+          <div class="m-hero-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2><p class="m-hero-sub">${esc(SCHOOL.subDone)}</p></div>
+          <button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button></div>`
+      : nx ? `<div class="m-hero"><span class="patch is-next">${patch(nx.id, { size: 88 })}</span>
+          <div class="m-hero-copy"><p class="eyebrow">${esc(UI.nextUp)} · ${esc(nx.ride ? UI.ride : UI.lesson(k + 1, ls.length))} · ${esc(UI.min(nx.minutes))}</p>
+            <h2>${esc(nx.title)}</h2><p class="m-hero-sub">${esc(LESSON_BLURB[nx.id] || nx.brief)}</p></div>
+          <button type="button" class="btn-primary" id="aStart">${esc(UI.start)}${icon("chevron-right")}</button></div>` : "";
     panel.innerHTML = `
-      <div class="a-cat">
-        <div class="a-main">
-          <p class="eyebrow">${esc(SCHOOL.eyebrow)} · Cadet ${esc(cs)}</p>
-          <h2 class="a-hero">${esc(SCHOOL.hero)}<br>${esc(SCHOOL.hero2)}</h2>
-          <p class="m-sub">${esc(prog.qualified ? SCHOOL.subDone : SCHOOL.sub)}</p>
-          <div class="a-prog"><span class="a-bar"><i style="width:${ls.length ? n / ls.length * 100 : 0}%"></i></span><span>${n} of ${ls.length} patches</span></div>
-          <div class="a-tracks">${tracks.map((t, k) => `<section class="a-track${t.items.length < 2 ? " is-half" : ""}"><h3>${t.id === "qual" ? "" : `Track ${k + 1} · `}${esc(t.title)}</h3><div class="a-cards">${t.items.map(card).join("")}</div></section>`).join("")}</div>
-        </div>
-        <aside class="a-side">
-          <section class="a-mentor"><header><span class="a-avatar" aria-hidden="true">CC</span><span><b>CAPCOM</b><small>${esc(MENTOR.role)}</small></span>
-            <button type="button" class="a-csedit" id="aCsEdit" title="Change your call sign">🧑‍🚀 ${esc(cs)}</button></header>
-            <p>“${esc(mentor)}”</p>
-            ${prog.qualified ? `<button type="button" class="m-go" id="aGoMission">🛰️ ${esc(SCHOOL.go)}</button>`
-              : nx ? `<button type="button" class="m-go" id="aStart">${nx.ride ? "🚀 Fly your check ride" : `${n ? "Continue" : "Start"}: ${esc(nx.title)}`}</button>` : ""}
-            <small class="a-voice">${esc(MENTOR.voice)}</small></section>
-          <section class="a-shelf"><h3>Your patches</h3><div>${ls.map(l => `<span class="a-patch${has(l.badge.id) ? " is-earned" : ""}" title="${esc(l.badge.name)}${has(l.badge.id) ? "" : " (not yet)"}"><span>${has(l.badge.id) ? patchOf(l) : ""}</span></span>`).join("")}</div></section>
-          <section class="a-why"><h3>Why this matters</h3><p>${esc(WHY)}</p><p class="a-credit">${esc(CREDIT)}</p></section>
-        </aside>
+      <div class="m-wrap">
+        <header class="m-top">
+          <div><p class="eyebrow">${esc(SCHOOL.eyebrow)}</p><h1 class="m-h1">${esc(SCHOOL.title(cs))}</h1></div>
+          <div class="m-meta">
+            <span class="m-count" aria-label="${esc(UI.patches(n, ls.length))}"><b>${n}</b>/${ls.length}<small>patches</small></span>
+            <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${esc(cs)}</button>
+          </div>
+        </header>
+        <ol class="p-path" style="--done:${ls.length > 1 ? Math.max(0, (Math.min(n, ls.length - 1)) / (ls.length - 1)) : 0}">${ls.map(stop).join("")}</ol>
+        ${hero}
+        <p class="m-credit">${esc(CREDIT)}</p>
       </div>`;
     panel.querySelectorAll(".a-lcard").forEach(b => b.onclick = () => openLesson(b.dataset.l));
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(nx.id);
-    if (!quiet && view === "map") { /* the mentor line is read on the button press; the map stays quiet */ }
+    void quiet;   // the map stays quiet; the Director speaks the offer
   }
-  function leaveCatalog() { panel.classList.remove("is-catalog"); delete document.body.dataset.aview; }
+  function leaveCatalog() { delete document.body.dataset.aview; }
 
   // ---------- lesson ----------
   async function openLesson(id) {
@@ -175,7 +202,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
-    panel.classList.toggle("is-ride", !!L.ride);
+    setLayout(L.ride ? "ride" : "lesson");
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
@@ -184,28 +211,34 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const R = typeof E === "function"
       ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el) }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true }))
       : (E || { html: () => "" });
-    const story = LESSON_STORY[L.id] || {};
+    const firstLook = i === 0 && !waitingNext && !feedback;
+    const how = HOW[acc.type];
+    const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${feedback.kind === "ok" ? icon("check", { size: 18 }) : ""}<p>${esc(feedback.text)}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
     panel.innerHTML = `
-      <header class="m-head"><button type="button" class="a-back" id="aBack" aria-label="Back to the patch map">‹ Map</button>
-        <span class="eyebrow">${L.ride ? "Check ride · solo shift" : `Lesson ${k + 1} of ${lessons().length}`}</span>
-        <span class="a-dots" role="img" aria-label="Step ${i + 1} of ${L.steps.length}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span></header>
-      <div class="a-title"><span class="a-patch is-sm" aria-hidden="true"><span>${patchOf(L)}</span></span><h2 class="m-title">${esc(L.title)}</h2></div>
-      ${L.ride && (i > 0 || waitingNext || feedback) ? "" : `<section class="a-brief"><p class="a-beat">${esc(story.beat || "")}</p>
-        <div class="a-bubble"><span class="a-who">CAPCOM</span><p>${esc(L.brief)}</p></div>
-        <span class="a-row"><button type="button" class="pill" id="aReplay">🔊 Hear it again</button>
-        ${L.library ? `<button type="button" class="pill" id="aLib">${esc(L.library.label)}</button>` : ""}
-        <details class="a-facts"><summary>NASA facts (${L.facts.length})</summary>
-        <ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details></span></section>`}
-      <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
-        <p class="a-prompt">${st.alert ? `<span class="a-alarm" aria-hidden="true">🚨</span> ` : ""}${esc(st.prompt)}</p>
-        ${clip ? `<button type="button" class="pill hot a-clip" id="aClip">▶ Hear ${esc(clip.who)}</button>` : ""}
-        <div class="a-input" id="aInput">${waitingNext ? "" : R.html(st, ctx)}</div>
-        <p class="a-feedback${feedback ? " is-" + feedback.kind : ""}" id="aFeedback">${feedback ? (feedback.kind === "ok" ? "✅ " : "") + esc(feedback.text) : ""}</p>
-        ${feedback && feedback.hint ? `<p class="a-hint"><b>Hint</b> ${esc(feedback.hint)}</p>` : ""}
-        ${waitingNext ? `<button type="button" class="m-go" id="aNext">Next ›</button>` : ""}
-      </section>
-      ${ride ? `<div id="aRideSlot"></div>` : ""}
-      ${todo(waitingNext ? "Tap Next, or say “next”." : esc(HOW[acc.type] || "Answer CAPCOM: say it, or type it below."))}`;
+      <header class="a-head m-head">
+        <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
+        <span class="eyebrow">${esc(L.ride ? UI.ride : UI.lesson(k + 1, lessons().length))}</span>
+        <span class="a-steps" role="img" aria-label="${esc(UI.step(i + 1, L.steps.length))}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span>
+      </header>
+      <div class="a-body">
+        <div class="a-title"><span class="patch is-sm">${patch(L.id, { size: 36 })}</span><h2 class="m-title">${esc(L.title)}</h2></div>
+        ${L.ride && !firstLook ? "" : `<details class="a-brief"${firstLook ? " open" : ""}><summary>${esc(UI.brief)}</summary>
+          <p>${esc(L.brief)}</p>
+          <div class="a-row"><button type="button" class="btn-quiet" id="aReplay">${icon("volume", { size: 16 })}${esc(UI.replay)}</button>
+            ${L.library ? `<button type="button" class="btn-quiet" id="aLib">${icon("book", { size: 16 })}${esc(L.library.label)}</button>` : ""}
+            ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></details>`}
+        <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
+          ${st.alert ? `<p class="a-alert">${icon("alert", { size: 16 })}<span>Alert</span></p>` : ""}
+          <p class="a-prompt">${esc(st.prompt)}</p>
+          ${how && !waitingNext ? `<p class="a-how">${esc(how)}</p>` : ""}
+          ${clip ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
+          <div class="a-input" id="aInput">${waitingNext ? "" : R.html(st, ctx)}</div>
+          ${fb}
+          ${feedback && feedback.hint ? `<p class="a-hint">${icon("lightbulb", { size: 16 })}<span>${esc(feedback.hint)}</span></p>` : ""}
+        </section>
+        ${ride ? `<div id="aRideSlot"></div>` : ""}
+      </div>
+      <footer class="a-foot">${waitingNext ? `<button type="button" class="btn-primary" id="aNext">${esc(UI.next)}${icon("chevron-right")}</button>` : ""}</footer>`;
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
     const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief);
     const lib = panel.querySelector("#aLib"); if (lib) lib.onclick = () => openLibrary(L.library.place);
@@ -257,7 +290,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       try { const s = await (await fetch("/api/mission/sites")).json(); rideSite = s.sites.find(x => x.id === L.ride.site); } catch (e) { rideSite = null; }
     }
     rideEl = document.createElement("section"); rideEl.className = "a-ride"; rideEl.setAttribute("aria-label", "Check ride cockpit");
-    rideCk = createCockpit(rideEl, { mode: "mini" });
+    rideCk = createCockpit(rideEl, { mode: "mini", badges: ui.badges });
     if (ride && ride.state) rideCk.update(ride.state);
     if (!rideSite) return;
     globe.mission.enter();
@@ -277,7 +310,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       feedback = { kind: r.passed ? "ok" : "retry", text: r.say };
       if (r.passed && r.badge) { award(r.badge, true); waitingNext = true; render(); speakLine(r.say, r); setTimeout(() => showBadge(r.badge, true), 1200); return true; }
       waitingNext = false; render(); speakLine(r.say, r);
-      const inp = panel.querySelector("#aInput"); inp.innerHTML = `<button type="button" class="m-go" id="aRetry">🔁 Fly the check ride again</button>`;
+      const inp = panel.querySelector("#aInput"); inp.innerHTML = `<button type="button" class="btn-primary" id="aRetry">${icon("repeat")}${esc(UI.retry)}</button>`;
       panel.querySelector("#aRetry").onclick = () => openLesson(L.id);
       return true;
     }
@@ -294,21 +327,19 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
   function showBadge(badge, commander) {
     if (view !== "lesson") return;
-    view = "badge";
+    view = "badge"; setLayout("badge");
     const nx = nextLesson(), cs = callSign.shown();
     panel.innerHTML = `
       <div class="a-badge" role="status">
-        <div class="a-burst" aria-hidden="true">${Array.from({ length: 12 }, (_, k) => `<i style="--k:${k}"></i>`).join("")}</div>
-        <div class="a-patch is-big" aria-hidden="true"><span>${patchOf(L)}</span><i class="a-stamp">✓</i></div>
-        <p class="eyebrow">${commander ? "Qualified" : "Patch earned"}</p>
+        <span class="patch is-earned is-big">${patch(L.id, { size: 144 })}</span>
+        <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
-        <p class="m-sub">${commander ? `You flew your first solo shift, ${esc(cs)}. Outpost Luna is ready for its commander.` : `Nice work, ${esc(cs)}. You finished “${esc(L.title)}”.`}</p>
+        <p class="a-badge-sub">${commander ? esc(cs) : esc(L.title)}</p>
         <div class="a-actions">
-          ${commander ? `<button type="button" class="m-go" id="aGoMission">🛰️ ${esc(SCHOOL.go)}</button>`
-            : nx ? `<button type="button" class="m-go" id="aNextLesson">${nx.ride ? "🚀 Fly your check ride" : `Next: ${esc(nx.title)}`}</button>` : ""}
-          <button type="button" class="pill" id="aMap">Patch map</button>
+          ${commander ? `<button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>`
+            : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}
+          <button type="button" class="btn-quiet" id="aMap">${icon("map", { size: 16 })}${esc(UI.map)}</button>
         </div>
-        ${todo("Say “next”, or tap the button.")}
       </div>`;
     // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
     const offer = commander ? " Ready to take command of Outpost Luna? Say yes." : nx ? ` Next up: ${nx.ride ? "your check ride" : nx.title}. Say next when you're ready.` : "";
@@ -362,7 +393,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") {
       const hit = CALLSIGNS.find(c => t.includes(c.toLowerCase()));
       if (hit) { callSign.set(hit); say(`Copy that, ${hit}. Welcome to Flight School.`, { situation: "badge" }); showMap(true); return true; }
-      if (/surprise|random|any|you pick|pick for me/.test(t)) { panel.querySelector("#aCsRand").click(); return true; }
+      if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); say(`Copy that, ${c}. Welcome to Flight School.`, { situation: "badge" }); showMap(true); return true; }
       say("Pick one from the list, like Nova or Comet."); return true;
     }
     if (view === "badge" || view === "map") {
