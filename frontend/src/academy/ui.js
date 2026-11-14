@@ -9,7 +9,7 @@
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCockpit } from "../mission/cockpit.js";
-import { SCHOOL, BEATS, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB, WHY, MENTOR } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
@@ -76,11 +76,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!ui.active) return;
     showMap();
   }
-  function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); }
+  function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); leaveCatalog(); }
 
   // ---------- call sign ----------
   function showCallSign(back) {
-    view = "callsign";
+    view = "callsign"; leaveCatalog();
     const cur = callSign.get();
     panel.innerHTML = `
       <header class="m-head"><span class="eyebrow">${esc(SCHOOL.eyebrow)}</span></header>
@@ -100,43 +100,56 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!back) say("Every astronaut has a call sign. Pick yours!", { situation: "lesson_brief" });
   }
 
-  // ---------- course map: a mission-patch path ----------
+  // ---------- course map: a catalog of tracks (full stage), CAPCOM mentor card, patch shelf ----------
+  function trackOf(id) { const t = TRACKS.find(t => t.lessons.includes(id)); return t ? t.id : "foundations"; }
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); globe.flyTo(0, 0, 3.6);
-    const nx = nextLesson(), n = prog.badges.filter(b => lessons().some(l => l.badge.id === b)).length, cs = callSign.shown();
-    const stage = prog.qualified ? 2 : nx && nx.ride ? 1 : 0;
+    const ls = lessons(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
+    panel.classList.add("is-catalog"); document.body.dataset.aview = "map";
+    const mentor = prog.qualified ? MENTOR.done(cs) : !n ? MENTOR.first(cs) : nx && nx.ride ? MENTOR.ride(cs) : MENTOR.more(cs, n, nx ? nx.title : "");
+    const card = (l) => {
+      const k = ls.indexOf(l), done = has(l.badge.id), next = nx && nx.id === l.id;
+      return `<button type="button" class="a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${l.ride ? " is-ride" : ""}" data-l="${esc(l.id)}">
+        <span class="a-lhead"><span class="a-patch" aria-hidden="true"><span>${patchOf(l)}</span>${done ? `<i class="a-stamp">✓</i>` : ""}</span>
+          <span class="a-nt"><b>${k + 1} · ${esc(l.title)}</b><small>${l.minutes} min${l.ride ? " · solo shift" : ""}</small></span></span>
+        <span class="a-blurb">${esc(LESSON_BLURB[l.id] || l.brief)}</span>
+        ${done ? `<span class="a-tag is-done">✓ ${esc(l.badge.name)} patch</span>` : next ? `<span class="a-tag is-next">Next up</span>` : ""}
+      </button>`;
+    };
+    const tracks = TRACKS.map(t => ({ ...t, items: ls.filter(l => trackOf(l.id) === t.id) })).filter(t => t.items.length);
     panel.innerHTML = `
-      <header class="m-head"><span class="eyebrow">${esc(SCHOOL.eyebrow)}</span>
-        <button type="button" class="a-csedit" id="aCsEdit" title="Change your call sign">🧑‍🚀 ${esc(cs)}</button>
-        <span class="a-count">${n}/${lessons().length} patches</span></header>
-      <ol class="a-beats" aria-label="Your story">${BEATS.map((b, k) => `<li class="${k < stage ? "is-done" : k === stage ? "is-now" : ""}"><span aria-hidden="true">${b.icon}</span>${esc(b.title)}</li>`).join("")}</ol>
-      <h2 class="m-title">${esc(prog.qualified ? SCHOOL.titleDone(cs) : SCHOOL.title(cs))}</h2>
-      <p class="m-sub">${esc(prog.qualified ? SCHOOL.subDone : SCHOOL.sub)}</p>
-      <ol class="a-path">${lessons().map((l, k) => {
-        const done = has(l.badge.id), next = nx && nx.id === l.id;
-        return `<li class="${k % 2 ? "is-r" : ""}"><button type="button" class="a-node${done ? " is-done" : ""}${next ? " is-next" : ""}${l.ride ? " is-ride" : ""}" data-l="${esc(l.id)}"
-            aria-label="Lesson ${k + 1}: ${esc(l.title)}${done ? ", patch earned" : next ? ", next up" : ""}">
-          <span class="a-patch" aria-hidden="true"><span>${done || next ? patchOf(l) : k + 1}</span>${done ? `<i class="a-stamp">✓</i>` : ""}</span>
-          <span class="a-nt"><b>${esc(l.title)}</b><small>${done ? esc(l.badge.name) : next ? "Next up · " + l.minutes + " min" : l.ride ? "Solo shift" : l.minutes + " min"}</small></span>
-        </button></li>`;
-      }).join("")}</ol>
-      ${prog.qualified ? `<button type="button" class="m-go" id="aGoMission">🛰️ ${esc(SCHOOL.go)}</button>`
-        : nx ? `<button type="button" class="m-go" id="aStart">${nx.ride ? "🚀 Fly your check ride" : `${esc(SCHOOL.start)} ${lessons().indexOf(nx) + 1}: ${esc(nx.title)}`}</button>` : ""}
-      ${todo(prog.qualified ? "Tap the button, or say “next”, to take command." : "Tap the glowing patch, or say “next”.")}
-      <p class="a-credit">${esc(CREDIT)}</p>`;
-    panel.querySelectorAll(".a-node").forEach(b => b.onclick = () => openLesson(b.dataset.l));
+      <div class="a-cat">
+        <div class="a-main">
+          <p class="eyebrow">${esc(SCHOOL.eyebrow)} · Cadet ${esc(cs)}</p>
+          <h2 class="a-hero">${esc(SCHOOL.hero)}<br>${esc(SCHOOL.hero2)}</h2>
+          <p class="m-sub">${esc(prog.qualified ? SCHOOL.subDone : SCHOOL.sub)}</p>
+          <div class="a-prog"><span class="a-bar"><i style="width:${ls.length ? n / ls.length * 100 : 0}%"></i></span><span>${n} of ${ls.length} patches</span></div>
+          <div class="a-tracks">${tracks.map((t, k) => `<section class="a-track${t.items.length < 2 ? " is-half" : ""}"><h3>${t.id === "qual" ? "" : `Track ${k + 1} · `}${esc(t.title)}</h3><div class="a-cards">${t.items.map(card).join("")}</div></section>`).join("")}</div>
+        </div>
+        <aside class="a-side">
+          <section class="a-mentor"><header><span class="a-avatar" aria-hidden="true">CC</span><span><b>CAPCOM</b><small>${esc(MENTOR.role)}</small></span>
+            <button type="button" class="a-csedit" id="aCsEdit" title="Change your call sign">🧑‍🚀 ${esc(cs)}</button></header>
+            <p>“${esc(mentor)}”</p>
+            ${prog.qualified ? `<button type="button" class="m-go" id="aGoMission">🛰️ ${esc(SCHOOL.go)}</button>`
+              : nx ? `<button type="button" class="m-go" id="aStart">${nx.ride ? "🚀 Fly your check ride" : `${n ? "Continue" : "Start"}: ${esc(nx.title)}`}</button>` : ""}
+            <small class="a-voice">${esc(MENTOR.voice)}</small></section>
+          <section class="a-shelf"><h3>Your patches</h3><div>${ls.map(l => `<span class="a-patch${has(l.badge.id) ? " is-earned" : ""}" title="${esc(l.badge.name)}${has(l.badge.id) ? "" : " (not yet)"}"><span>${has(l.badge.id) ? patchOf(l) : ""}</span></span>`).join("")}</div></section>
+          <section class="a-why"><h3>Why this matters</h3><p>${esc(WHY)}</p><p class="a-credit">${esc(CREDIT)}</p></section>
+        </aside>
+      </div>`;
+    panel.querySelectorAll(".a-lcard").forEach(b => b.onclick = () => openLesson(b.dataset.l));
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(nx.id);
-    const nn = panel.querySelector(".a-node.is-next"); if (nn) nn.scrollIntoView({ block: "nearest" });
-    void quiet;
+    if (!quiet && view === "map") { /* the mentor line is read on the button press; the map stays quiet */ }
   }
+  function leaveCatalog() { panel.classList.remove("is-catalog"); delete document.body.dataset.aview; }
 
   // ---------- lesson ----------
   async function openLesson(id) {
     L = lessons().find(l => l.id === id); if (!L) return;
-    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null;
+    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; leaveCatalog();
     endRide();
     if (L.ride) {
       try { ride = await academyApi.ride(); } catch (e) { ride = null; }

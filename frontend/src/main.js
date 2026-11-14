@@ -1,5 +1,6 @@
 // Wiring only: load places, build the modules, route asks / taps / voice turns between them.
 import "./styles.css";
+import "./outpost.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";

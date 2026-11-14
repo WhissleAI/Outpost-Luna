@@ -38,12 +38,40 @@ export const CALLSIGN_COPY = {
   random: "Surprise me",
 };
 
-// ---------- Academy (Flight School) ----------
+// ---------- Academy (Flight School): a course catalog in tracks ----------
+/** Tracks group course.json lesson ids. A lesson id not listed here (e.g. a new vocabulary lesson) joins Foundations. */
+export const TRACKS = [
+  { id: "foundations", title: "Foundations", lessons: ["moon", "comms", "vocab", "words"] },
+  { id: "systems", title: "Outpost systems", lessons: ["power", "radiation", "life"] },
+  { id: "field", title: "Field skills", lessons: ["rover", "history"] },
+  { id: "qual", title: "Qualification", lessons: ["checkride"] },
+];
+/** One line per lesson for its catalog card (keyed by course.json id). */
+export const LESSON_BLURB = {
+  moon: "Near side, far side, the south pole and Shackleton crater.",
+  comms: "Copy, roger, say again. Read back an order like the Artemis II crew.",
+  power: "Why crater rims beat crater floors. Malapert's long polar night.",
+  radiation: "What an mSv is. Ride out the real May 2024 solar storm.",
+  life: "Life support, and how LCROSS found water near the pole.",
+  history: "What Apollo and Surveyor teach the crews who come next.",
+  checkride: "Two days at Shackleton Rim, on the real simulator. Your first solo shift.",
+};
+export const WHY = "Artemis II flew its crew around the Moon in April 2026. The next crews will land near the south pole. Everything you learn here uses real NASA data.";
+export const MENTOR = {
+  role: "Your Flight School mentor",
+  first: cs => `Welcome, ${cs}. Artemis III hasn't landed yet, so you're training for the crew that will. Let's start with the Moon itself.`,
+  more: (cs, n, next) => `Good to see you, ${cs}. ${n} patch${n === 1 ? "" : "es"} down. Next up: ${next}.`,
+  ride: cs => `${cs}, every lesson is done. Time for your check ride: your first solo shift in the cockpit.`,
+  done: cs => `Commander ${cs}, you're qualified. Outpost Luna is waiting for you.`,
+  voice: "Or hold Space and say “next”.",
+};
 export const SCHOOL = {
   eyebrow: "Flight School",
+  hero: "Artemis III hasn't landed yet.",
+  hero2: "Train for the crew that will.",
   title: c => `Welcome to Flight School, ${c}`,
   titleDone: c => `You're qualified, Commander ${c}!`,
-  sub: "Earn a patch in each lesson. Then fly your check ride: your first solo shift at Outpost Luna.",
+  sub: "Short lessons with CAPCOM. Earn a patch for each one, then fly your first solo shift and take command of Outpost Luna at the lunar south pole.",
   subDone: "Replay any lesson, or take command of Outpost Luna.",
   start: "Start lesson",
   go: "Take command of Outpost Luna",
