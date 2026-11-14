@@ -32,8 +32,8 @@ an utterance is an order. A question works on every screen.
 - Every app voice (guide, CAPCOM, story, Houston, crew clips) reports `playback` with its text (`floor.js`). The session
   keeps the last 10 lines with when each played (`turn_router.Spoken`). Times are compared with the kid's turn
   **start**:
-  - Lines playing then, or ended < 0.8 s before: ≥ 60 % word overlap is an echo.
-  - Lines that ended 0.8–12 s before: only a near-verbatim repeat (≥ 85 %, ≥ 3 words). This catches an example
+  - Lines playing then, or ended < 0.3 s before (the ear reports a turn start ~0.3 s after the sound): ≥ 60 % word overlap is an echo. A navigation word ("next") only counts as an echo when a line was playing as the turn started, so the kid can answer an offer right away.
+  - Lines that ended 0.3–12 s before: only a near-verbatim repeat (≥ 85 %, ≥ 3 words). This catches an example
     command heard back a few seconds later. A kid answering with the prompt's words ("more power to the heaters")
     still gets through, and in lessons older lines are not used at all.
 - While we speak (and for 600 ms after), only barge-in-worthy turns get through: a navigation or control word, or

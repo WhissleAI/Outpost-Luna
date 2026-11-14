@@ -118,6 +118,7 @@ class Ctx:
     source: str = "typed"              # typed (keyboard, button) | voice (client mic) | listen (server relay)
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
     speaking: bool = False             # an app voice is playing now, or ended < TAIL_S ago
+    playing: bool = False              # a line of ours was playing when this turn started (Spoken.playing_at)
     recent: list[str] = field(default_factory=list)   # lines playing when the turn started (or just ended): Spoken.fresh
     older: list[str] = field(default_factory=list)    # lines that ended before that, within ECHO_WINDOW_S
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
@@ -152,6 +153,8 @@ def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
 def echo(text: str, ctx: "Ctx") -> bool:
     """Our own voice coming back: the current / fresh lines at 60% overlap; older lines only near-verbatim. On a
     readback step (the kid repeats CAPCOM's order on purpose) only what is playing right now counts."""
+    if not ctx.playing and nav_intent(text, ctx):
+        return False          # "Say next when you're ready." -> "next": the kid answering the offer, not its echo
     if ctx.step_type in ("keywords", "vocab_say") and ctx.screen in ("lesson", "ride"):
         return ctx.speaking and echo_of(text, ctx.recent, 0.85)
     if echo_of(text, ctx.recent):
@@ -328,7 +331,7 @@ class Spoken:
     the kid's turn START (t0): our acoustic echo can only start while a line plays (or within LAG_S of its end, the
     mic + ear latency). A kid repeating words of a prompt that already ended is an answer, not an echo."""
 
-    LAG_S = 0.8
+    LAG_S = 0.3        # the ear reports a turn start ~0.3 s after the sound: echo starts WHILE we play
 
     def __init__(self, clock=time.monotonic, n: int = 10):
         self.clock = clock
@@ -350,6 +353,12 @@ class Spoken:
             if ln["end"] is None and (not pid or ln["id"] == pid):
                 ln["end"] = now
         self.ended = now
+
+    def playing_at(self, t0: float | None = None) -> bool:
+        """A line of ours was playing when the turn started (the hallmark of an acoustic echo)."""
+        t0 = self._t0(t0)
+        return any(ln["start"] <= t0 and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S) for ln in self.lines
+                   if ln["id"])
 
     def _t0(self, t0):
         return self.clock() if t0 is None else t0

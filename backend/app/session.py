@@ -344,7 +344,7 @@ class Session:
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
             source=source if heard else "typed",
             dd=k.get("device_directed") if heard else None,
-            speaking=heard and self.spoken.speaking(t0), recent=self.spoken.fresh(t0) if heard else [],
+            speaking=heard and self.spoken.speaking(t0), playing=heard and self.spoken.playing_at(t0), recent=self.spoken.fresh(t0) if heard else [],
             older=self.spoken.older(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
