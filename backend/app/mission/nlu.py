@@ -480,7 +480,7 @@ async def _bank_vecs():
         from .. import models_client
         from ..config import settings
         texts = [e["text"] for e in _bank()]
-        f = settings.data_dir / "cache" / f"command_vectors_{hashlib.sha1(json.dumps(texts).encode()).hexdigest()[:16]}.npy"
+        f = settings.vector_cache() / f"command_vectors_{hashlib.sha1(json.dumps(texts).encode()).hexdigest()[:16]}.npy"
         if f.exists():
             _BANK["vecs"] = np.load(f)
         else:

@@ -26,13 +26,24 @@ CC = "discourse.assistant.command_complete"
 DD = "discourse.assistant.device_directed"
 
 
+ARC_REPO, ARC_REVISION = "WhissleAI/arc-v1.1", "6f637153ea4953d81811e68168cd29572316d32b"
+
+
+def weights_dir() -> Path | None:
+    """Where Arc v1.1 Mini loads from. Never a repo id: Arc.from_pretrained would then download."""
+    if meta_settings.arc_meta_weights is not None:
+        return meta_settings.arc_meta_weights
+    from .config import hf_snapshot
+    return hf_snapshot(ARC_REPO, "mini/config.json", prefer=ARC_REVISION)
+
+
 class MetaSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
     arc_meta: str = "mini"   # mini | off
-    # Arc v1.1 snapshot with mini/ and full/ (the one Head Start's ARC_T_WEIGHTS points at)
-    arc_meta_weights: Path = Path.home() / (".cache/huggingface/hub/models--WhissleAI--arc-v1.1/snapshots/"
-                                            "6f637153ea4953d81811e68168cd29572316d32b")
+    # A folder with mini/ (config.json, tags.json, *.safetensors, moonshine-streaming-tiny/). Default: the Arc v1.1
+    # snapshot in the local HF cache (the one Head Start's ARC_T_WEIGHTS points at). The desktop app sets its bundled copy.
+    arc_meta_weights: Path | None = None
     arc_meta_threads: int = 4
     meta_max_sessions: int = 4
     emotion: str = "off"     # on | off (on is not possible yet: see module docstring)
@@ -61,7 +72,11 @@ def load() -> None:
 
         from .arc_ear import ear_settings
         dec = ear_settings.arc_ear.strip().lower() == "on"
-        STATE["arc"] = Arc.from_pretrained(str(meta_settings.arc_meta_weights), backbone="mini", device="cpu",
+        wdir = weights_dir()
+        if wdir is None or not (wdir / "mini/config.json").exists():
+            raise FileNotFoundError(f"Arc v1.1 Mini weights not found ({wdir or ARC_REPO + ' not in the HF cache'}); "
+                                    "set ARC_META_WEIGHTS to a folder with mini/")
+        STATE["arc"] = Arc.from_pretrained(str(wdir), backbone="mini", device="cpu",
                                            threads=meta_settings.arc_meta_threads, load_decoder=dec)
         STATE["decoder"] = dec
         warm = np.zeros(SR, np.float32)

@@ -51,7 +51,7 @@ CACHE_DIR: Path | None = None     # tests point this elsewhere; default data_dir
 
 
 def cache_dir() -> Path:
-    return CACHE_DIR or settings.data_dir / "tts_cache"
+    return CACHE_DIR or settings.tts_cache()
 
 
 def cache_path(model: str, text: str, style: dict | None = None, engine: str = "deepgram") -> Path:

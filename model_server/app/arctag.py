@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import ctypes
 import json
+import os
 import queue
+import sys
 import threading
 from contextlib import contextmanager
 from pathlib import Path
@@ -18,6 +20,16 @@ class _Opts(ctypes.Structure):
                 ("model_file", ctypes.c_char_p), ("backend", ctypes.c_int)]
 
 
+def load_library(lib_path: Path) -> ctypes.CDLL:
+    """libarctag.dylib (macOS), libarctag.so (Linux) or arctag.dll (Windows; built by desktop/vendor/arctag/CMakeLists.txt
+    with ARCTAG_BUILD_SHARED so the API is exported). On Windows the DLL's folder joins the DLL search path, so a
+    dependency next to it (none today beyond the C runtime) resolves without touching PATH."""
+    if sys.platform == "win32":  # untested on Windows (docs/DESKTOP.md)
+        os.add_dll_directory(str(lib_path.resolve().parent))
+        return ctypes.CDLL(str(lib_path), winmode=0)
+    return ctypes.CDLL(str(lib_path))
+
+
 class ArcTagger:
     EMIT = "entity,number,pii,events,intent,act,safety,state"
 
@@ -26,7 +38,7 @@ class ArcTagger:
             raise FileNotFoundError(f"Arc Tagger library not found: {lib_path} (set ARCTAG_LIB)")
         if not (model_dir / "arctag_int8.onnx").exists():
             raise FileNotFoundError(f"Arc Tagger model not found in {model_dir} (set ARCTAG_MODEL_DIR)")
-        L = ctypes.CDLL(str(lib_path))
+        L = load_library(lib_path)
         L.arctag_options_init.argtypes = [ctypes.POINTER(_Opts)]
         L.arctag_create_ex.argtypes = [ctypes.c_char_p, ctypes.POINTER(_Opts), ctypes.c_char_p, ctypes.c_size_t]
         L.arctag_create_ex.restype = ctypes.c_void_p

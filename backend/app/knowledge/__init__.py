@@ -14,5 +14,5 @@ def get(gaz: Gazetteer, facts: dict) -> Brain:
     """One Brain per gazetteer (built from the same data files; cheap, no model calls)."""
     b = _BRAIN.get(id(gaz))
     if b is None:
-        b = _BRAIN[id(gaz)] = Brain(build(gaz, facts, settings.data_dir), settings.data_dir / "cache")
+        b = _BRAIN[id(gaz)] = Brain(build(gaz, facts, settings.data_dir), settings.vector_cache())
     return b
