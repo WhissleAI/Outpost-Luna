@@ -180,7 +180,7 @@ def place_card(p: Place, f: dict) -> dict:
 def artifact_card(p: Place) -> dict:
     t = p.name.split(" (")[0]
     who = (f"{short_names(p.crew)} {'drove' if p.type == 'rover' else 'landed' if p.type == 'lander' else 'left'} it, on {p.mission}."
-           if p.crew else f"No one! {t} was a robot spacecraft, sent by {p.agency}. No people rode on it.")
+           if p.crew else f"No one. {t} was a robot, sent by {p.agency}.")
     attrs = {"mission": p.mission, "agency": p.agency, "landed": p.landed, "crew": p.crew, "status": p.status, "type": p.type}
     answers = {
         "story": _uniq([p.story, " ".join(_sentences(p.story)[:2])]),
