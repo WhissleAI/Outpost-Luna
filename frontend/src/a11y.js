@@ -48,6 +48,8 @@ export function parseCommand(text) {
   if (!t) return null;
   if (/^(where am i|what screen is this|what s on (the )?screen|describe (the )?screen)$/.test(t)) return { cmd: "where" };
   if (/^(what can i do|what can i say|help me|options|what are my options)$/.test(t)) return { cmd: "options" };
+  // "what do I do?": the screen's current hint (window.__outpost.help: academy/ui.js, main.js), docs/PLAYTEST.md
+  if (/^(help|help please|hint|give me a hint|i need (a hint|help)|what do i do( now| here)?|what should i do|what am i supposed to do|i m stuck|i don t get it|i don t know what to do|i don t know|how do i do this|what do i do next|what should i do (now|next)|i m lost|i am lost|what s my job|whats my job|what do i have to do)$/.test(t)) return { cmd: "help" };
   if (/^(speak |talk )?(faster|speed up)( please)?$/.test(t)) return { cmd: "speed", arg: 1 };
   if (/^(speak |talk )?(slower|slow down)( please)?$/.test(t)) return { cmd: "speed", arg: -1 };
   if (/^(normal speed|regular speed)$/.test(t)) return { cmd: "speed", arg: 0 };
@@ -364,6 +366,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     return scope.flatMap(s => [...s.querySelectorAll("button, a[href], [role=button]")]).filter(isVisible).filter(b => !b.closest(".a11y-panel"));
   }
   function options() {
+    const h = O.help && O.help();   // a screen that knows what the kid should do says that, not a list of buttons
+    if (h) return h;
     const names = controls().map(b => (b.getAttribute("aria-label") || b.textContent).replace(/\s+/g, " ").trim()).filter(Boolean);
     const uniq = [...new Set(names)].slice(0, 8);
     const g = O.gestures && O.gestures.summary ? O.gestures.summary() : "";   // [gestures] only while the camera is on
@@ -381,6 +385,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     switch (c.cmd) {
       case "where": reply(where()); break;
       case "options": reply(options()); break;
+      case "help": reply((O.help && O.help()) || options()); break;
       case "speed": set({ speed: c.arg === 0 ? 1 : stepSpeed(S.speed, c.arg) }); reply(`Voice speed ${S.speed} times.`); break;
       case "text": set({ textScale: Math.max(1, Math.min(1.5, S.textScale + 0.25 * c.arg)) }); reply(`Text size ${Math.round(S.textScale * 100)} percent.`); break;
       case "contrast": set({ contrast: c.arg }); reply(`High contrast ${c.arg ? "on" : "off"}.`); break;

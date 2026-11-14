@@ -150,6 +150,7 @@ class Session:
         # Hands-free (turn_router.py): what we said lately (echo check + hard mute), the client's screen, the fallback.
         self.spoken = router_.Spoken(clock)
         self.screen: dict = {}                 # {screen, step_type, step_options, offer} from the client (ui:screen)
+        self.step_since: float | None = None   # when the current screen / step opened
         self.last_unknown = -1e9
         self.routes: list[dict] = []           # every routed turn (tests and /api/session/{id}/routes read it; capped)
         # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
@@ -278,8 +279,11 @@ class Session:
         ev = m.get("event")
         self.history.append({"in": "ui", "event": ev, "ts": self.clock()})
         if ev == "screen":         # the client's screen frame (hands-free routing context)
-            self.screen = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer", "lesson_id", "step")
-                           if k in m}
+            new = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer", "lesson_id", "step") if k in m}
+            key = lambda s: (s.get("screen"), s.get("lesson_id"), s.get("step"))  # noqa: E731
+            if key(new) != key(self.screen):
+                self.step_since = self.clock()      # when this step opened (turn_router.yesno_counts)
+            self.screen = new
             return
         if ev in ("tap_place", "tap_artifact") and m.get("id"):
             self.belief["last_place"] = m["id"]
@@ -459,6 +463,7 @@ class Session:
             screen=self.screen_name(), step_type=self.screen.get("step_type"),
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
             step=self.open_step(),
+            step_age=(t0 - self.step_since) if self.step_since is not None else None,
             source=source if heard else "typed",
             dd=k.get("device_directed") if heard else None,
             speaking=heard and self.spoken.speaking(t0), playing=heard and self.spoken.playing_at(t0),

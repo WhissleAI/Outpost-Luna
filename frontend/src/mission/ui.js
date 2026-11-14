@@ -204,13 +204,15 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     firstPick = !firstDone();
     if (!site) site = (firstPick && sites.find(s => s.id === PICKER.recommended)) || sites[0];
     // the transition beat: where you are (Command), why the choice matters; spoken once per visit
-    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say(CAPCOM.missionBrief(callSign.spoken()))).catch(() => {}).then(() => screen === "brief" && say(PICKER.why)).then(() => screen === "brief" && firstPick && say(PICKER.recLine)); }
+    // one say through the line queue: no async chain to outlive the screen (rc-polish's screen generations)
+    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say([CAPCOM.missionBrief(callSign.spoken()), PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {}); }
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
       <h2 class="mx-title">${esc(PICKER.title)}</h2>
       <p class="mx-sub">${esc(PICKER.why)}</p>
+      <p class="mx-do">Tap a site to compare. Then tap Take command.</p>
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
         <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
         ${sites.map(s => `
@@ -309,13 +311,16 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
     const first = !firstDone(), touring = !tourDone(callSign.get());
     // never wait on the voice for the next step: a slow or silent TTS must not leave the kid in a cabin with no guide
-    const spoke = Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {});
-    Promise.race([spoke, new Promise(r => setTimeout(r, 5000))]).then(() => {
-      if (screen !== "hud") return;
-      if (touring) { tour.start(level); return; }            // first mission: CAPCOM shows the cabin first
-      const ob = nowObjective(state); if (ob) say(ob.text);   // then the objective strip, spoken once
+    // One say through the floor's line queue (rc-polish): the hello and the first tour beat (or the objective) play as
+    // one on-air span, so the ear's hard mute covers the whole run. The card shows at once; it never waits on the voice.
+    const hello = CAPCOM.missionStart(callSign.spoken(), site.name);
+    if (touring) tour.start(level, { lead: hello });         // first mission: CAPCOM shows the cabin first
+    else {
+      const ob = nowObjective(state);
+      if (ob) capcom({ say: ob.text });                       // the objective on the strip too
+      Promise.resolve(say(ob ? [hello, ob.text] : hello)).catch(() => {});
       if (first) nudge.arm();
-    });
+    }
     if (first) markFirstDone();
     briefSpoken = false;
   }
@@ -666,9 +671,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const spoken = cs => (head === "Mission over" && saidOver && !paused) ? line(cs).replace(/^Mission over\.\s*/, "") : line(cs);
     // three short lines: the result, the story's turning point, then what to try and the one offer
     radio("capcom", line(callSign.shown()));
-    Promise.resolve(say(spoken(callSign.spoken()))).catch(() => {})
-      .then(() => screen === "debrief" && !paused && say(story.beats[1]))
-      .then(() => screen === "debrief" && say(paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`));
+    Promise.resolve(say([spoken(callSign.spoken()), ...(paused ? [] : [story.beats[1]]),
+      paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`])).catch(() => {});   // one on-air span
   }
 
   /** QA-26: a paused mission is never wiped by accident. Fly again / a new site from a paused debrief asks first. */

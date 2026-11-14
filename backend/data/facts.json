@@ -19,7 +19,7 @@
       ]
     },
     "orientale": {
-      "name": "Mare Orientale", "type": "basin", "diameter_km": 930, "lat": -19.87, "lon": -94.67, "side": "limb",
+      "name": "Orientale Basin", "type": "basin", "diameter_km": 930, "lat": -19.87, "lon": -94.67, "side": "limb",
       "facts": [
         {"text": "Orientale is a bullseye of rings about 930 km wide, made by a giant impact.", "source": "NASA GRAIL / LRO", "numbers": [930]},
         {"text": "It has three main rings, like ripples in a pond that froze.", "source": "NASA LRO / LROC", "numbers": [3]},

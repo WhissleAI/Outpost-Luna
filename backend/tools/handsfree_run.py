@@ -203,7 +203,7 @@ class Client:
             self.tour = []
             await self.push()
             return
-        if self.mscreen == "cabin" and intent == "help":
+        if self.mscreen == "cabin" and (intent == "help" or (intent == "a11y" and "what do i do" in text.lower())):
             await self.speak("Here's your next job. Set power, then End shift.")   # mission/objective.js nowSpoken
             return
         if intent == "pick_site" and self.mscreen in ("brief", "debrief"):

@@ -51,7 +51,7 @@ Owners:
 | Vocab: listen / match / say / fill | Space words | `vocab_listen`, `vocab_match`, `vocab_say`, `vocab_fill` |
 | Lesson brief open | the "Brief" button | (todo shot) |
 | Patch earned | the last step of a lesson | `patch` |
-| Check ride (mini cockpit) | lesson 8 | `ride` |
+| Check ride (mini cockpit) | the last stop after the 6 lessons; shown as "Check ride", never "Lesson 7" (patches count n/7) | `ride` |
 | Check ride failed | the ride ends without passing | (todo shot) |
 | Qualified | the ride passed: patch, then Take command | (todo shot) |
 | Future step types: find / rotate / compare on the globe | the learning designer (feat/learning-v3) | the card stays small; a step may have no panel answers |

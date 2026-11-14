@@ -165,7 +165,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
-      else if (m.t === "error") note("Voice paused. Reconnecting…");
+      else if (m.t === "error") { console.warn("ear error:", m.message); note("Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
     },
     level,
     close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); earLost(); } },

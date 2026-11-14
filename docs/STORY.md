@@ -99,10 +99,11 @@ dimmed). Most urgent first:
 | ice goal not met, in sunlight | No storm due. Send the rover for ice. | Rover: Ice |
 | otherwise | All steady. End shift to move on. | End shift |
 
-"What do I do?", "help", "I'm lost", "what should I do", "what's my job" (router `help`) speak "Here's your next job."
-plus the line. The a11y "what can I do" also answers with the job first in the cabin. Outside the cabin, `help` speaks
-`HELP.<screen>` (map, patch, picker, debrief, library, call sign). In a lesson or the ride the router does not take
-`help`: the guidance ladder (`fix/guidance`) owns hints there.
+"What do I do?", "help", "I'm lost", "what should I do", "what's my job" take one path on every screen (rc/2): the
+router's `a11y` intent → the client's a11y `help` command → `window.__outpost.help` (main.js). In the cabin that is
+`missionUI.whatNow()`: "Here's your next job." plus the strip's line; the picker and debrief have their own lines. In
+Flight School it is guidance's `help()` (the hint ladder in a lesson or the ride, the map and patch lines). The a11y
+"what can I do" also answers with the job first in the cabin. A gesture `help` intent reaches the same lines.
 
 ## 5. The seat view, less noisy
 
@@ -121,7 +122,7 @@ Before → after: `docs/img/story/before-cabin-1280-dark.jpg` → `docs/img/stor
 ## 6. Verify
 
 - `frontend/tests/story.test.js`: copy budgets, tour beats, every objective, the debrief story.
-- `backend/tests/test_story_router.py`: `help`, `cabin_tour`, `skip_tour` per screen, never in lessons, echo-safe "next".
+- `backend/tests/test_story_router.py`: help on one path everywhere (lessons included), `cabin_tour`, `skip_tour` cabin-only, echo-safe "next".
 - `backend/tools/handsfree_run.py`: the scripted run now takes the cadet tour by voice ("next" × 12, with noise
   mid-way) and asks "what do I do?" in the cabin. It FAILs if the tour isn't finished by voice.
 - Screenshots: `docs/img/story/` (each tour beat, the objective strip, the picker, the debrief).

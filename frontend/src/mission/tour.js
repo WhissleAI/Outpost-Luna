@@ -37,7 +37,7 @@ export function createTour({ host, cockpit, say, callsign = () => "", onEnd = ()
     el = document.createElement("section"); el.className = "m-tour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", TOUR.title);
     host.append(el); return el;
   }
-  function show() {
+  function show(lead) {
     const b = beats[i], ck = cockpit(), last = i === beats.length - 1;
     const c = card(); c.hidden = false;
     c.className = "m-tour " + (b.show === "window" ? "is-low" : "is-high");
@@ -55,16 +55,17 @@ export function createTour({ host, cockpit, say, callsign = () => "", onEnd = ()
       const lk = LOOK[b.show] || [0, 0]; if (ck.look) ck.look(lk[0], lk[1]);
     }
     requestAnimationFrame(() => { const n = c.querySelector(".t-next"); if (n) n.focus({ preventScroll: true }); });
-    Promise.resolve(say(b.text)).catch(() => {});
+    // a list goes through the floor's line queue as one on-air span (the hello + the first beat)
+    Promise.resolve(say(lead ? [lead, b.text] : b.text)).catch(() => {});
   }
-  function start(level) {
+  function start(level, { lead = null } = {}) {
     beats = tourBeats(level); i = 0;
     if (!keyOff) { const k = e => { if (!active() || e.key !== "Enter" || e.altKey || e.ctrlKey || e.metaKey) return;
         const t = e.target; if (t && t.closest && t.closest("input, textarea, select, [contenteditable=true]")) return;
         if (t && t.closest && t.closest("button") && !t.closest(".m-tour")) return;   // Enter on another control presses it
         e.preventDefault(); next(); };
       addEventListener("keydown", k, true); keyOff = () => removeEventListener("keydown", k, true); }
-    show();
+    show(lead);
   }
   function next() { if (!active()) return false; if (i + 1 >= beats.length) { end(true); return true; } i++; show(); return true; }
   function end(done) {
