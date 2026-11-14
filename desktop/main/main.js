@@ -5,12 +5,13 @@
 //   4. offline by construction: the renderer may only talk to our two loopback ports; children get no API keys
 //   5. quitting kills both process trees (process group on macOS / Linux, taskkill /T on Windows)
 "use strict";
-const { app, BrowserWindow, session, shell, dialog, systemPreferences } = require("electron");
+const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const S = require("./supervisor");
 const P = require("./permissions");
+const K = require("./keys");   // [keys] the app menu + no accidental reload (docs/KEYBOARD.md §Desktop)
 
 const RES = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..", "resources");
 const USER = app.getPath("userData");                   // ~/Library/Application Support/Outpost Luna, %APPDATA%\Outpost Luna
@@ -144,6 +145,7 @@ function createSplash() {
 function createMain(origin) {
   win = new BrowserWindow({ width: 1440, height: 900, minWidth: 960, minHeight: 640, show: false, backgroundColor: "#05070d",
     title: "Outpost Luna", webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+  K.installKeys({ Menu, win, packaged: app.isPackaged, appName: "Outpost Luna" });   // [keys]
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url) && !url.startsWith(origin)) shell.openExternal(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (e, url) => { if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); } });
   win.once("ready-to-show", () => {

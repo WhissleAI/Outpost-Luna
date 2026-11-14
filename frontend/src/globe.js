@@ -205,6 +205,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       rstops = stops.map(s => {
         const dot = document.createElement("i"); dot.className = "route-dot"; rlayer.append(dot);
         s.el.classList.add("route-stop"); rlayer.append(s.el);
+        s.el.dataset.lat = s.lat; s.el.dataset.lon = s.lon;   // [keys] focusing a pin flies the globe there (input/spatial.js)
         return { ...s, dot, p: ll2v(s.lat, s.lon, R * 1.003), x: 0, y: 0, on: false };
       });
       rdone = done; rlayer.hidden = !rstops.length;
@@ -380,6 +381,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       fly = null; const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
       camera.position.multiplyScalar(n / d);
     },
+    // [keys] the keyboard / gamepad Moon reticle (input/spatial.js): where the camera is, and a tap without a pointer
+    get distance() { return (fly ? fly.r1 : camera.position.length()); },
+    tap(lat, lon) { onTap({ lat, lon }); },
+    tapArtifact(id) { const g = ghosts.find(x => x.a.id === id); if (g) onArtifact(g.a); },
     /** Stop any flight in progress where it is. */
     halt() { fly = null; },
     route, guide,
