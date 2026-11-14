@@ -12,13 +12,13 @@ status says otherwise).
 
 | | P0 | P1 | P2 | total |
 |---|---|---|---|---|
-| qa: fixed here | 0 | 10 | 34 | 44 |
+| qa: fixed here | 0 | 10 | 35 | 45 |
 | qa: open (logged, not fixed) | 0 | 0 | 8 | 8 |
 | routed to `fix/rc-polish` | 1 | 2 | 4 | 7 |
 | routed to `fix/story-onboarding` | 0 | 1 | 7 | 8 |
 | routed to `fix/guidance` | 0 | 0 | 6 | 6 |
 | routed to `feat/keys` | 0 | 0 | 0 | 0 |
-| **total** | **1** | **13** | **59** | **73** |
+| **total** | **1** | **13** | **60** | **74** |
 
 The owner's six reports map to QA-01 (lesson card over Mission), and to the in-flight work: the voice bar shake and the
 double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Trace it: Orientale, then up to Ohm"
@@ -88,15 +88,15 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 | QA-46 | P2 | Data | Sample mode storms | Real DONKI events | The 2003 Halloween storms (before DONKI) and 2024-05-10 (the data says 05-09) | | qa | fixed 9edaefa |
 | QA-47 | P2 | Data | Tap Aristarchus Plateau | Accurate | "The brightest crater…" (it's a plateau) | | qa | fixed 9edaefa |
 | QA-48 | P2 | Data | Surveyor 1 | Accurate | "one of America's first safe Moon landings". Now "America's first soft landing there" | | qa | fixed 9edaefa |
-| QA-49 | P2 | About | Open About | Short, scannable; no over-claim | One 170-word paragraph, with "Every fact shows its source" | | qa | fixed (this commit) |
+| QA-49 | P2 | About | Open About | Short, scannable; no over-claim | One 170-word paragraph, with "Every fact shows its source" | | qa | fixed 42821f3 |
 | QA-50 | P2 | Library | Idle 8 s in Library, then switch modes while the moments fetch runs | The nudge stays in the Library | "Hear the crew at …?" could appear in Flight School or Mission | | qa | fixed 2a6b494 |
 | QA-51 | P2 | Library | Press Library while in the Library | Goes back (as the code comment says) | Re-flies to Orientale and stops speech | | qa | fixed 2a6b494 |
 | QA-52 | P2 | Copy | grep | No emoji or stand-in glyphs | ★ ⌖ ⚠ ▶ › in UI strings. Now guarded by `frontend/tests/qa_copy.test.js` | | qa | fixed 2a6b494, 1353ce7 |
-| QA-53 | P2 | Voice bar | Model warming | No Space hint until voice works | "Space · Hold to talk" next to "Starting voice…" | | qa | fixed (this commit) |
-| QA-54 | P1 | Picker | Double-click Take command, or click while saying "take command" | One mission | Two missions start, the greeting is spoken twice and the cabin is built twice. No error if the server fails | | qa | fixed (this commit) |
-| QA-55 | P2 | Picker | Hover a site row | Its pin lights (FLOWS picker-hover) | Only the label pill lights; `.mx-dot.is-hot` never applies | | qa | fixed (this commit) |
-| QA-56 | P2 | Settings: Text size | Text size 150% | Library surfaces scale too | Find it, the Library toolbar, the globe label and About stay at 100% | | qa | fixed (this commit) |
-| QA-57 | P2 | Performance | Model server never ready | Back off | `/api/health` polled every 2 s forever after "Voice off" | | qa | fixed (this commit) |
+| QA-53 | P2 | Voice bar | Model warming | No Space hint until voice works | "Space · Hold to talk" next to "Starting voice…" | | qa | fixed 42821f3 |
+| QA-54 | P1 | Picker | Double-click Take command, or click while saying "take command" | One mission | Two missions start, the greeting is spoken twice and the cabin is built twice. No error if the server fails | | qa | fixed 42821f3 |
+| QA-55 | P2 | Picker | Hover a site row | Its pin lights (FLOWS picker-hover) | Only the label pill lights; `.mx-dot.is-hot` never applies | | qa | fixed 42821f3 |
+| QA-56 | P2 | Settings: Text size | Text size 150% | Library surfaces scale too | Find it, the Library toolbar, the globe label and About stay at 100% | | qa | fixed 42821f3 |
+| QA-57 | P2 | Performance | Model server never ready | Back off | `/api/health` polled every 2 s forever after "Voice off" | | qa | fixed 42821f3 |
 | QA-58 | P2 | Flight School map | 1440 wide | The lesson blurb fits | "Near side, far side, and Shackleton crater at the pol…" is cut off | `img/qa/qa-58-map-blurb-truncated.jpg` | fix/guidance | routed |
 | QA-59 | P2 | Course data | The radiation lesson | Units on every number | "inside the ISS (523)", no unit. The debrief side (sim.py) is fixed here | | fix/guidance | routed (course.json) |
 | QA-60 | P2 | Places data | Ask "Mare Orientale" | The name matches the size | "Mare Orientale … 930 km": 930 km is the basin, the mare is about 300 km. The lessons use the name | | fix/guidance | routed |
@@ -113,6 +113,7 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 | QA-71 | P2 | Flight School | Know your Moon: tap a place | One voice | The same fact is played twice in two voices (owner report) | | fix/rc-polish | routed (owner report: double speech) |
 | QA-72 | P2 | Flight School | "Trace it: Orientale, then up to Ohm" | A newcomer can do it | Impossible without knowing where Ohm is (owner report) | | fix/guidance | routed (owner report) |
 | QA-73 | P2 | Cabin | First mission | Direction | The cabin gives no direction (owner report) | | fix/story-onboarding | routed (owner report) |
+| QA-74 | P2 | Errors | The session socket fails to connect (backend busy) | Falls back to /api/ask quietly | Forwarding floor events to the null session threw "Cannot read properties of null (reading 'ui' / 'playback')" on every playback event (seen in ux_flow) | | qa | fixed (final commit) |
 
 ## Checked and fine
 
@@ -147,4 +148,5 @@ picker's per-frame pin redraw, QA-61). No console errors.
 - `pytest` (backend): 624 pass, 2 skipped. The new `tests/test_qa_mission.py` covers storm_active and the picker fields.
 - Live `tools/handsfree_run.py --base http://127.0.0.1:8403 --models http://127.0.0.1:8200`: **PASS** (replies to
   noise: 0, qualified: True).
-- `frontend/tools/ux_flow.py` and `npm run build`: see the final report.
+- `frontend/tools/ux_flow.py --base http://localhost:5303`: 22 checks, 0 console errors (after QA-74).
+- `npm run build`: builds (dist deleted afterwards).
