@@ -5,7 +5,7 @@
 //   4. offline by construction: the renderer may only talk to our two loopback ports; children get no API keys
 //   5. quitting kills both process trees (process group on macOS / Linux, taskkill /T on Windows)
 "use strict";
-const { app, BrowserWindow, session, shell, dialog } = require("electron");
+const { app, BrowserWindow, session, shell, dialog, systemPreferences } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
@@ -139,9 +139,16 @@ function lockDownSession(origin) {
     if (!ok) log("blocked", u.slice(0, 160));
     cb({ cancel: !ok });
   });
-  // Microphone for our own origin only; nothing else (camera, geolocation, notifications) for anyone.
+  // Microphone, and the camera for gestures (off until the kid turns it on in Settings; docs/GESTURES.md), for our own
+  // origin only; nothing else (screen capture, geolocation, notifications) for anyone. Camera frames never leave the
+  // renderer: the vision models are bundled and the request filter above blocks every other host.
   ses.setPermissionRequestHandler((wc, perm, cb, d) => {
-    const okMedia = perm === "media" && ours(d.requestingUrl || wc.getURL()) && (d.mediaTypes || ["audio"]).every((t) => t === "audio");
+    const okMedia = perm === "media" && ours(d.requestingUrl || wc.getURL()) && (d.mediaTypes || ["audio"]).every((t) => t === "audio" || t === "video");
+    // macOS: the system camera prompt (NSCameraUsageDescription) comes from here, the first time only
+    if (okMedia && process.platform === "darwin" && (d.mediaTypes || []).includes("video") && systemPreferences.getMediaAccessStatus("camera") !== "granted") {
+      systemPreferences.askForMediaAccess("camera").then((granted) => cb(granted), () => cb(false));
+      return;
+    }
     cb(okMedia || (perm === "fullscreen" && ours(wc.getURL())) || (perm === "clipboard-sanitized-write" && ours(wc.getURL())));
   });
   ses.setPermissionCheckHandler((wc, perm, reqOrigin) => (perm === "media" || perm === "fullscreen") && reqOrigin === origin);

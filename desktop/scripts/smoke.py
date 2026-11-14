@@ -114,6 +114,18 @@ async def main():
         ok(r.status_code == 200, "shift advanced")
         r = await c.get(f"/api/mission/{mid}/debrief")
         ok(r.status_code == 200, f"debrief: {r.text[:120]}")
+
+        # 4. Camera gestures: the vision runtime and models are in the bundle and served from the app's own origin
+        #    (never a CDN). The camera itself stays off until Settings turns it on, so nothing here opens it.
+        man = await c.get("/vision/manifest.json")
+        ok(man.status_code == 200, f"gesture bundle manifest: {man.text[:100]}")
+        for f in man.json().get("files", []):
+            r = await c.head(f"/vision/{f['file']}")
+            size = int(r.headers.get("content-length") or 0)
+            ok(r.status_code == 200 and size == f["bytes"] and size > 0, f"gesture asset {f['file']}: {size} B ({r.headers.get('content-type')})")
+        app_dir = Path(sys.executable).resolve().parents[2] / "app" / "frontend" / "vision"   # resources/python/bin/python3 → resources/app
+        if app_dir.exists():
+            ok(all((app_dir / f["file"]).is_file() for f in man.json()["files"]), f"gesture models on disk in the bundle: {app_dir}")
     print("ALL PASS")
 
 

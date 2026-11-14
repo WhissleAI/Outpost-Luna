@@ -240,6 +240,19 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     showFeature, highlight, flyTo, nearest, mission, setViewport,
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
+    // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
+    // follows the hand, as a mouse drag does.
+    rotateBy(dx, dy) {
+      fly = null; const s = new THREE.Spherical().setFromVector3(camera.position);
+      s.theta -= dx * Math.PI; s.phi = Math.max(0.15, Math.min(Math.PI - 0.15, s.phi - dy * Math.PI));
+      camera.position.setFromSpherical(s); camera.lookAt(0, 0, 0);
+    },
+    zoomBy(f) {
+      fly = null; const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
+      camera.position.multiplyScalar(n / d);
+    },
+    /** Stop any flight in progress where it is. */
+    halt() { fly = null; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },

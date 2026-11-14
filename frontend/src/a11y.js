@@ -153,8 +153,10 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       ${places.length ? `<label class="a11y-place"><b>Pick a place on the Moon</b><small>Same as tapping it on the globe</small>
         <span><select id="a11yPlace">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
         <button type="button" class="pill" id="a11yPlaceGo">Tap it</button></span></label>` : ""}
+      <div id="a11yGestures"></div>
       <p class="a11y-note">Saved on this device only. Never sent anywhere.</p>`;
     fillTranscript();
+    dispatchEvent(new CustomEvent("outpost:settings-render", { detail: panel }));   // [gestures] Camera & gestures mounts here
   }
   function open(v = panel.hidden) {
     if (v) { renderPanel(); panel.hidden = false; btn.setAttribute("aria-expanded", "true"); (panel.querySelector("input:checked") || panel.querySelector("input")).focus(); }
@@ -281,7 +283,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function options() {
     const names = controls().map(b => (b.getAttribute("aria-label") || b.textContent).replace(/\s+/g, " ").trim()).filter(Boolean);
     const uniq = [...new Set(names)].slice(0, 8);
-    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.`;
+    const g = O.gestures && O.gestures.summary ? O.gestures.summary() : "";   // [gestures] only while the camera is on
+    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.${g ? " " + g : ""}`;
   }
   function pickPlace(id) {
     const p = places.find(x => x.id === id); if (!p || !tap) return;

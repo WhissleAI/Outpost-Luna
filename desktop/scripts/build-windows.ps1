@@ -68,7 +68,7 @@ else { Run uv run --no-project --with pillow==11.3.0 python backend\pipeline\fet
 if (-not (Test-Path backend\data\media\img\moon4k.jpg)) { Die "backend\data\media is incomplete (re-run; fetch_media.py resumes)" }
 
 Step "3/8 frontend dependencies"
-Push-Location frontend; Run npm ci --no-audit --no-fund; Pop-Location
+Push-Location frontend; Run npm ci --no-audit --no-fund; Run node tools/fetch_vision.mjs; Pop-Location   # + camera-gesture runtime/models (sha256-pinned)
 
 Step "4/8 embedded Python + backend/model-server deps + app code (frontend build included)"
 Run uv run --no-project python desktop\scripts\build_python.py

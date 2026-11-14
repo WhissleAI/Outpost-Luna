@@ -25,6 +25,11 @@ import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
 import "./academy/vocab.js";
 // ---- end [a11y] ----
+// ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
+import { emitIntent } from "./input/intents.js";
+import { installDefaultIntents, installKeyboardIntents } from "./input/defaults.js";
+import { initGestures } from "./gesture/ui.js";
+// ---- end [input] ----
 
 // [session] The session Director (docs/SESSION_CONTRACT.md) is ON unless ?session=0 or localStorage atm-session=0.
 // If its socket fails, mission turns fall back to POST /api/ask exactly as before.
@@ -382,8 +387,11 @@ async function boot() {
     },
   };
 
+  // [input] A router decision is a voice intent on the bus: screens (onIntent, priority 10) get it first, then the
+  // shell's defaults, then shellNav below (input/defaults.js). Gestures and keys emit the same intents.
+  const runNav = (intent, arg, text) => emitIntent(intent, { arg, text }, "voice");
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
-  async function runNav(intent, arg, text) {
+  async function shellNav(intent, arg, text) {
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
     if (intent === "a11y") { if (a11y) await a11y.handleText(text); return; }
@@ -418,6 +426,22 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
+
+  // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
+  const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";
+  installDefaultIntents({
+    nav: shellNav, globe, inCabin, a11y, ask: t => ask(t),
+    stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
+  });
+  installKeyboardIntents();
+  const gestures = initGestures({
+    screen: screenFrame, inCabin, isSpeaking,
+    cabinPanel: () => { const h = document.querySelector("[data-panel]"); return h ? h.dataset.panel : null; },
+    announce: t => { if (a11y) a11y.describe(t, { quiet: true }); },
+  });
+  // Settings re-renders on open; the Camera & gestures section mounts into its slot each time.
+  addEventListener("outpost:settings-render", e => { const slot = e.detail && e.detail.querySelector("#a11yGestures"); if (slot) gestures.mountSettings(slot); });
+  // ---- end [input] ----
   if (SESSION_ON) {
     session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
