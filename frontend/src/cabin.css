@@ -471,9 +471,9 @@ html[data-motion="reduce"] .is-point{animation:none}
 /* Cadet: one panel in focus, the rest dim (alarms are never dimmed) */
 .cb.is-focus .c3-panel:not(.is-focus):not([data-alarm]):not(.is-open){opacity:.42;filter:saturate(.5)}
 /* seat view: big numbers and the controls only; the detail rows, routes, timelines and tags wait for an open panel */
-.c3[data-panel="seat"] .cb-info,.c3[data-panel="seat"] .cb-route,.c3[data-panel="seat"] .cb-tl,.c3[data-panel="seat"] .cb-fc,
-.c3[data-panel="seat"] .cb-obj,.c3[data-panel="seat"] .du-row,.c3[data-panel="seat"] .du-loads,.c3[data-panel="seat"] .cb-keys,
-.c3[data-panel="seat"] .cb-pretend,.c3[data-panel="seat"] .cb-swst,.c3[data-panel="seat"] .cb-cw>h3,.c3[data-panel="seat"] .cb-db{display:none!important}
+/* (the panel the tour or the objective points at keeps its detail: that is the one to read now) */
+.c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-pretend,.cb-swst,.cb-db),
+.c3[data-panel="seat"] .cb-cw>h3{display:none!important}
 .c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.35}
 .c3[data-panel="seat"] .cb-screen{display:flex;flex-direction:column;justify-content:center;gap:var(--space-3)}
 .c3[data-panel="seat"] .du-head b{font-size:64px}

@@ -499,7 +499,7 @@ async function boot() {
   if (SESSION_ON) {
     session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
-    if (floor) { floor.on("playback", e => session.playback(e)); floor.on("floor", e => { if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }
+    if (floor) { floor.on("playback", e => session && session.playback(e)); floor.on("floor", e => { if (!session) return; if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }   // the socket may close (session = null)
     let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
     session.hello({ mode: m0 });
     session.connect().then(ok => {

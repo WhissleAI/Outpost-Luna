@@ -56,7 +56,7 @@ const base = () => ({ mission_time_h: 0, over: false, shelter: false, power_save
 
 test("objective: the first shift says set power, then End shift", () => {
   const o = nowObjective(base());
-  assert.equal(o.key, "first_shift"); assert.equal(o.text, S.NOW.firstShift); assert.equal(o.target, "end_shift"); assert.equal(o.panel, "power");
+  assert.equal(o.key, "first_shift"); assert.equal(o.text, S.NOW.firstShift); assert.equal(o.target, "start"); assert.deepEqual(o.panel, ["power", "pedestal"]);
   assert.equal(nowSpoken(base()), `${S.NOW.ask} ${S.NOW.firstShift}`);
 });
 

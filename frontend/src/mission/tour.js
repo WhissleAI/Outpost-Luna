@@ -13,7 +13,7 @@ const LOOK = { "panel:habitat": [-0.32, 0.02], "panel:rover": [-0.36, 0.2], "pan
   "du:0": [-0.12, 0.1], "du:2": [0.12, 0.1], lamps: [0, 0.26], start: [0, 0.18], goals: [-0.32, 0.02], "panel:power": [-0.12, 0.1] };
 /** The panel a beat is about (Cadet keeps the others dim). */
 const PANEL = { "du:0": "displays", "du:1": "displays", "du:2": "displays", "panel:power": "displays", "panel:habitat": "habitat",
-  "panel:rover": "rover", "panel:radiation": "radiation", "panel:comm": "comm", lamps: "pedestal", goals: "habitat", start: "pedestal" };
+  "panel:rover": "rover", "panel:radiation": "radiation", "panel:comm": "comm", lamps: "pedestal", goals: "habitat", start: ["displays", "pedestal"] };
 
 const KEY = cs => "outpost-tour-done:" + (cs || "cadet");
 export const tourDone = cs => { try { return localStorage.getItem(KEY(cs)) === "1"; } catch (e) { return false; } };

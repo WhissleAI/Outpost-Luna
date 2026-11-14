@@ -445,9 +445,9 @@ export function createCabin(root, o = {}) {
     /** Progressive disclosure (Cadet): the panel the tour or the objective is about stays bright, the rest dim. A panel
      *  with an alarm is never dimmed. null: everything bright. */
     focus(panelId) {
-      const home = panelId === "power" ? "displays" : panelId;
-      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", !!home);
-      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", !!home && n.dataset.panel === home));
+      const ids = (Array.isArray(panelId) ? panelId : [panelId]).filter(Boolean).map(id => (id === "power" ? "displays" : id));
+      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", ids.length > 0);
+      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", ids.includes(n.dataset.panel)));
     },
     /** The "what now" strip on the window: {text, level} or null. */
     objective(o) {

@@ -42,7 +42,7 @@ export function nowObjective(s) {
   }
   if (e.in_sun && sunH != null && sunH <= 6 && !s.power_save) return o("sunset", NOW.sunset(sunH), "night", "power", "caution");
   if (e.in_sun === false && !s.power_save) return o("dark", NOW.dark, "night", "power");
-  if ((s.mission_time_h || 0) === 0) return o("first_shift", NOW.firstShift, "end_shift", "power");
+  if ((s.mission_time_h || 0) === 0) return o("first_shift", NOW.firstShift, "start", ["power", "pedestal"]);
   if (ice.goal != null && !ice.met && e.in_sun) return o("ice", NOW.ice, "rover:collect_ice", "rover");
   return o("steady", NOW.steady, "end_shift", "pedestal");
 }
@@ -59,8 +59,8 @@ export function debriefStory(d = {}, st = {}) {
   const outcome = d.outcome || st.outcome || (st.over ? "" : "in_progress");
   const paused = outcome === "in_progress" || !outcome, won = outcome === "survived" || outcome === "success";
   const site = (((st.site && st.site.name) || (d.site && d.site.name) || "the outpost") + "").split(" (")[0];
-  const days = Math.max(1, Math.min(10, Math.ceil(((st.mission_time_h || 0) + 1) / 24)));
-  const tl = d.timeline || [];
+  const tl = d.timeline || [], lastH = Math.max(st.mission_time_h || 0, ...tl.map(t => +t.t_h || 0));
+  const days = Math.max(1, Math.min(10, Math.ceil(lastH / 24) || 1));
   const stormShifts = tl.filter(t => (t.events || []).includes("solar_storm")).length;
   const storms = tl.reduce((n, t, i) => n + ((t.events || []).includes("solar_storm") && !(i && (tl[i - 1].events || []).includes("solar_storm")) ? 1 : 0), 0);
   const lim = (st.resources && st.resources.dose_limit_msv) || 50, dose = (st.resources && st.resources.dose_msv) || 0;
