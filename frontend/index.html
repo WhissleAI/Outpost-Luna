@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Moonbase Cadet: Junior Astronaut Mission Trainer</title>
+<title>Outpost Luna: Junior Astronaut Mission Trainer</title>
 <!-- Theme before first paint: a saved choice wins, else prefers-color-scheme (handled in CSS). -->
 <script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,16 +15,18 @@
 <header class="topbar">
   <div class="brandline">
     <span class="sa-badge">SpaceApps 2026</span>
-    <span class="appname">Ask the Moon</span>
+    <span class="appname">Outpost Luna</span>
   </div>
   <div class="modes" role="group" aria-label="Mode">
     <!-- Two modes: Academy (training, the default for a new cadet) → Mission. The explorer is the "Moon library" button. -->
-    <button type="button" id="modeAcademy" aria-pressed="false">Academy</button>
-    <button type="button" id="modeMission" aria-pressed="true">Mission</button>
+    <button type="button" id="modeAcademy" aria-pressed="false"><span aria-hidden="true">🎓 </span>Academy</button>
+    <button type="button" id="modeMission" aria-pressed="true"><span aria-hidden="true">🛰️ </span>Mission</button>
   </div>
   <nav class="topnav">
     <button class="nav-btn" id="libraryBtn" type="button" aria-pressed="false" title="Explore the Moon, its hardware and the Artemis II crew audio">Moon library</button>
     <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Find it</button>
+    <!-- Accessibility settings entry point (reserved for the a11y module, src/a11y.js) -->
+    <button class="nav-btn" id="a11yBtn" type="button" aria-haspopup="dialog" aria-expanded="false" title="Accessibility settings"><span aria-hidden="true">♿</span> Access</button>
     <button class="nav-btn" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false">About</button>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
       <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
@@ -107,18 +109,22 @@
       <div class="tag-src" id="cardArc" hidden></div>
     </article>
 
+    <!-- Caption region (reserved for src/caption.js): spans the stage, above the ask dock. Empty = invisible. -->
+    <div class="caption-bar" id="captionBar" aria-live="polite"></div>
+
     <!-- Ask dock. State classes on .askbar (set by voice.js): is-idle | is-listening | is-hearing | is-thinking | is-speaking -->
     <div class="askbar is-idle" id="askbar">
       <div class="chips" id="chips"><button class="nudge" id="nudge" type="button" hidden></button></div>
       <div class="dock">
         <div class="listen" id="listen" aria-live="polite">
+          <span class="cs-tag" id="csTag" title="Your call sign (stays on this device)" hidden></span>
           <span class="orb" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <span class="listen-state" id="listenState"></span>
           <span class="live-words" id="liveWords"></span>
           <span class="hint" id="spaceHint"><kbd>Space</kbd><span>Hold to ask</span></span>
         </div>
         <form class="ask" id="askForm">
-          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Ask the Moon">
+          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Talk to CAPCOM">
           <button class="send" type="submit">Ask</button>
           <button class="mic" id="mic" type="button" aria-label="Turn the mic on" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
