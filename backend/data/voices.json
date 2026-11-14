@@ -14,7 +14,7 @@
   {
    "id": "voice_1085",
    "name": "Aurora",
-   "desc": "Crisp, clear voice; the default.",
+   "desc": "Crisp, clear default voice; cuts noise.",
    "profile": {
     "gender": "female",
     "register": "low",
@@ -54,7 +54,7 @@
   {
    "id": "voice_0644",
    "name": "Beacon",
-   "desc": "Warm, clear guide voice.",
+   "desc": "Warm, clear voice for a guide.",
    "profile": {
     "gender": "female",
     "register": "mid",

@@ -858,7 +858,7 @@ def debrief(m: Mission) -> dict:
                     f"radiation {mult:g}x for {st.dur_h} hours, and your crew took {got:.1f} game-mSv. The Moon has "
                     "no magnetic field or thick air. Mass blocks particles: Orion crews hide behind packed supplies.")
         else:
-            text = (f"On {ev['date']} Earth had a real {ev['class']} magnetic storm, but few particles came with it "
+            text = (f"On {ev['date']} Earth had a real magnetic storm, but few particles came with it "   # [qa] no G-scale
                     f"(DONKI). At the Moon that is a near miss: radiation only {mult:g}x. Not every warning is a big "
                     "storm, which is why forecasters say likely or possible.")
         lessons.append({"text": text, "source": ev["source"]})
