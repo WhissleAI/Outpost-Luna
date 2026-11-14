@@ -513,10 +513,16 @@ def globe_answer(rng: random.Random, L: dict, i: int, kind: str) -> str:
     return "hmm"
 
 
+def cls_split(root: str) -> str:
+    """The class pools are small (a dozen phrases): a third of each is held out, so a class set is not one phrase."""
+    x = h(root) % 100
+    return "test" if x < 34 else "val" if x < 44 else "train"
+
+
 def cls_item(cls: str, rng: random.Random, split: str) -> dict:
     """One item of a round-6 class. `root` is the split key (the phrase / step), so test phrases never train."""
     def pick(pool, tag):
-        ps = [p for p in pool if split_of(f"{tag}:{p}") == split] or pool
+        ps = [p for p in pool if cls_split(f"{tag}:{p}") == split] or pool
         return rng.choice(ps)
     if cls == "chatter":                    # room chatter during a lesson step: never an answer, never a miss
         L, i = rng.choice(lesson_steps())
