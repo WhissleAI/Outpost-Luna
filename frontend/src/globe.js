@@ -65,13 +65,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     return { a, el, p: ll2v(a.lat, a.lon, R * 1.003) };
   });
 
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffc35a, side: THREE.DoubleSide, transparent: true, opacity: .95 });
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xf3f5f8, side: THREE.DoubleSide, transparent: true, opacity: .8 });
   let ring = null, sel = null, fly = null;
 
   function highlight(f) {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); }
     const ang = Math.max((f.km / 2) / MOON_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
-    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.8 : 0.92), r, 96), ringMat);
+    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.86 : 0.965), r, 96), ringMat);
     const n = ll2v(f.lat, f.lon).normalize();
     ring.position.copy(n.clone().multiplyScalar(h * R + 0.004)); ring.lookAt(n.clone().multiplyScalar(5));
     scene.add(ring); sel = f;

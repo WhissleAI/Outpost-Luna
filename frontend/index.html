@@ -38,18 +38,23 @@
     <div class="label" id="label" hidden></div>
 
     <!-- Moon library controls (body[data-mode=cadet] only) -->
-    <div class="hud">
+    <div class="hud" role="toolbar" aria-label="Moon library">
       <div class="legend" role="group" aria-label="Show on the Moon">
         <button id="pinsBtn" type="button" aria-pressed="true"><i class="lg-place" aria-hidden="true"></i>Places</button>
         <button id="hwBtn" type="button" aria-pressed="true"><i class="lg-hw" aria-hidden="true"></i>Hardware</button>
       </div>
-      <div class="hud-row" role="group" aria-label="Moon controls">
+      <span class="hud-sep" aria-hidden="true"></span>
+      <div class="hud-row" role="group" aria-label="Turn the Moon">
         <button id="nearBtn" type="button">Near side</button>
         <button id="farBtn" type="button">Far side</button>
+      </div>
+      <span class="hud-sep" aria-hidden="true"></span>
+      <div class="hud-row" role="group" aria-label="Play">
         <button id="tourBtn" type="button" class="lg-tour" aria-pressed="false">Tour</button>
         <button id="missionsBtn" type="button" aria-pressed="false">Find it</button>
       </div>
-      <div class="hw-key" id="hwKey" aria-hidden="true">
+      <!-- the hardware colour key: hover or focus a marker for its name (kept for globe.js / a11y; not shown) -->
+      <div class="hw-key" id="hwKey" aria-hidden="true" hidden>
         <span class="k-lander">lander</span><span class="k-rover">rover</span><span class="k-impact">impact</span><span class="k-instrument">instrument</span><span class="k-memorial">memorial</span>
       </div>
     </div>
