@@ -25,6 +25,7 @@ import "./a11y.css";
 import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
+import { initVoiceBar } from "./voicebar.js";
 import "./academy/vocab.js";
 // ---- end [a11y] ----
 
@@ -53,7 +54,7 @@ async function boot() {
   paintCs(); addEventListener("outpost:callsign", paintCs);
   let places;
   try { places = await api.places(); }
-  catch (e) { $("loading").textContent = "Can't reach the backend. Start everything with `make dev`."; return; }
+  catch (e) { $("loading").innerHTML = "<b>Can&rsquo;t reach Outpost Luna</b><span>Close the app and open it again.</span>"; $("loading").classList.add("is-error"); return; }
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
   const sample = !places.some(p => p.kind === "artifact");
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
@@ -105,6 +106,7 @@ async function boot() {
   const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), places, playCrew: m => player.play(m) });
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
+  const vbar = initVoiceBar({ announce: t => { if (a11y) a11y.describe(t); } });   // the floating voice bar
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
@@ -132,6 +134,7 @@ async function boot() {
 
   async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
+    if (vbar && vbar.handleText(text)) { $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }   // "move the voice bar to the top"
     const heard = source === "voice";
     // [hands-free] One router for every turn (backend/app/turn_router.py): with a live session, every turn (spoken or
     // typed, in every screen) goes up the socket with the current screen; the Director answers with nav / answer /
@@ -393,11 +396,22 @@ async function boot() {
   }
   new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
     .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
+  // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
+  new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
+  // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
+  // caption stays in #captionBar for screen readers and the transcript, but folds out of the voice strip (.is-dup).
+  const norm = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .m-title, #card:not([hidden]) .card-say")]
+    .filter(e => e.getClientRects().length).map(e => e.textContent).join(" | "));
+  const dupCheck = () => { const bar = $("captionBar"), line = norm((bar.querySelector(".cap-line") || bar).textContent);
+    bar.classList.toggle("is-dup", !!line && line.length > 3 && onScreen().includes(line)); };
+  new MutationObserver(dupCheck).observe($("captionBar"), { childList: true, subtree: true });
+  new MutationObserver(dupCheck).observe($("aPanel"), { childList: true, subtree: true });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function runNav(intent, arg, text) {
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
-    if (intent === "a11y") { if (a11y) await a11y.handleText(text); return; }
+    if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }
     if (intent === "answer") {
       if (academyUI.active) await academyUI.answerText(text);
       return;
@@ -467,6 +481,7 @@ async function boot() {
     $("libraryBtn").setAttribute("aria-pressed", m === "cadet");
     if (m !== "cadet") lastMode = m;
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
+    globe.setDecor(m === "cadet");   // place dots + hardware belong to the Library; Flight School draws its own route
     cancelTour(); cancelNudge(); stopSpeaking();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m !== "academy") academyUI.exit();
