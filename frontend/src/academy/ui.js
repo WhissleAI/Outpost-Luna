@@ -107,6 +107,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   // ---------- course map: a catalog of tracks (full stage), CAPCOM mentor card, patch shelf ----------
   function trackOf(id) { const t = TRACKS.find(t => t.lessons.includes(id)); return t ? t.id : "foundations"; }
+  /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… down the page. */
+  const shownOrder = () => { const ls = lessons(); return TRACKS.flatMap(t => ls.filter(l => trackOf(l.id) === t.id)).concat(ls.filter(l => !TRACKS.some(t => trackOf(l.id) === t.id))); };
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); globe.flyTo(0, 0, 3.6);
@@ -114,7 +116,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.classList.add("is-catalog"); panel.classList.remove("is-ride"); document.body.dataset.aview = "map";
     const mentor = prog.qualified ? MENTOR.done(cs) : !n ? MENTOR.first(cs) : nx && nx.ride ? MENTOR.ride(cs) : MENTOR.more(cs, n, nx ? nx.title : "");
     const card = (l) => {
-      const k = ls.indexOf(l), done = has(l.badge.id), next = nx && nx.id === l.id;
+      const k = shownOrder().indexOf(l), done = has(l.badge.id), next = nx && nx.id === l.id;
       return `<button type="button" class="a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${l.ride ? " is-ride" : ""}" data-l="${esc(l.id)}">
         <span class="a-lhead"><span class="a-patch" aria-hidden="true"><span>${patchOf(l)}</span>${done ? `<i class="a-stamp">✓</i>` : ""}</span>
           <span class="a-nt"><b>${k + 1} · ${esc(l.title)}</b><small>${l.minutes} min${l.ride ? " · solo shift" : ""}</small></span></span>
@@ -171,7 +173,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   function render() {
     if (view !== "lesson" || !L) return;
-    const st = L.steps[i], k = lessons().indexOf(L), acc = st.accept;
+    const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
     panel.classList.toggle("is-ride", !!L.ride);
     const ctx = { L, i, answer, esc, clip, done: waitingNext };

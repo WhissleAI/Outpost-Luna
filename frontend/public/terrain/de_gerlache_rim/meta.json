@@ -1,0 +1,56 @@
+{
+ "id": "de_gerlache_rim",
+ "name": "de Gerlache Crater Rim",
+ "lat": -88.71,
+ "lon": -68.7,
+ "levels": {
+  "context": {
+   "product": "LDEM_75S_120M",
+   "m_per_px": 240,
+   "px": 512,
+   "center_x_m": -36480.0,
+   "center_y_m": 14280.0,
+   "site_x_m": -36446.619080727985,
+   "site_y_m": 14209.942989335195,
+   "src_line0": 3181,
+   "src_sample0": 2996,
+   "dn_min": -8751,
+   "dn_max": 3910,
+   "dn_scale_m": 0.5,
+   "bytes": 353202,
+   "site_h_m": 1742.78125
+  },
+  "site": {
+   "product": "LDEM_80S_40M",
+   "m_per_px": 40,
+   "px": 512,
+   "center_x_m": -36480.0,
+   "center_y_m": 14240.0,
+   "site_x_m": -36446.619080727985,
+   "site_y_m": 14209.942989335195,
+   "src_line0": 6988,
+   "src_sample0": 6432,
+   "dn_min": -2308,
+   "dn_max": 3630,
+   "dn_scale_m": 0.5,
+   "bytes": 227073,
+   "site_h_m": 1767.8125
+  },
+  "rover": {
+   "product": "LDEM_85S_10M",
+   "m_per_px": 10,
+   "px": 512,
+   "center_x_m": -36450.0,
+   "center_y_m": 14210.0,
+   "site_x_m": -36446.619080727985,
+   "site_y_m": 14209.942989335195,
+   "src_line0": 13491,
+   "src_sample0": 11267,
+   "dn_min": 1007,
+   "dn_max": 3643,
+   "dn_scale_m": 0.5,
+   "bytes": 147996,
+   "site_h_m": 1765.0
+  }
+ }
+}

@@ -1,0 +1,56 @@
+{
+ "id": "connecting_ridge",
+ "name": "Connecting Ridge",
+ "lat": -89.44,
+ "lon": -141.8,
+ "levels": {
+  "context": {
+   "product": "LDEM_75S_120M",
+   "m_per_px": 240,
+   "px": 512,
+   "center_x_m": -10560.0,
+   "center_y_m": -13320.0,
+   "site_x_m": -10501.323705182058,
+   "site_y_m": -13344.80204851049,
+   "src_line0": 3411,
+   "src_sample0": 3212,
+   "dn_min": -8488,
+   "dn_max": 3910,
+   "dn_scale_m": 0.5,
+   "bytes": 350865,
+   "site_h_m": 1802.34375
+  },
+  "site": {
+   "product": "LDEM_80S_40M",
+   "m_per_px": 40,
+   "px": 512,
+   "center_x_m": -10520.0,
+   "center_y_m": -13320.0,
+   "site_x_m": -10501.323705182058,
+   "site_y_m": -13344.80204851049,
+   "src_line0": 7677,
+   "src_sample0": 7081,
+   "dn_min": -2581,
+   "dn_max": 3916,
+   "dn_scale_m": 0.5,
+   "bytes": 224047,
+   "site_h_m": 1799.25
+  },
+  "rover": {
+   "product": "LDEM_85S_10M",
+   "m_per_px": 10,
+   "px": 512,
+   "center_x_m": -10510.0,
+   "center_y_m": -13340.0,
+   "site_x_m": -10501.323705182058,
+   "site_y_m": -13344.80204851049,
+   "src_line0": 16246,
+   "src_sample0": 13861,
+   "dn_min": 2727,
+   "dn_max": 3996,
+   "dn_scale_m": 0.5,
+   "bytes": 135725,
+   "site_h_m": 1798.0625
+  }
+ }
+}

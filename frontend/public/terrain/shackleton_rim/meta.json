@@ -1,0 +1,56 @@
+{
+ "id": "shackleton_rim",
+ "name": "Shackleton Crater Rim",
+ "lat": -89.68,
+ "lon": -166.0,
+ "levels": {
+  "context": {
+   "product": "LDEM_75S_120M",
+   "m_per_px": 240,
+   "px": 512,
+   "center_x_m": -2400.0,
+   "center_y_m": -9360.0,
+   "site_x_m": -2347.488475043149,
+   "site_y_m": -9415.262017398196,
+   "src_line0": 3378,
+   "src_sample0": 3280,
+   "dn_min": -8751,
+   "dn_max": 3908,
+   "dn_scale_m": 0.5,
+   "bytes": 352199,
+   "site_h_m": 1590.75
+  },
+  "site": {
+   "product": "LDEM_80S_40M",
+   "m_per_px": 40,
+   "px": 512,
+   "center_x_m": -2360.0,
+   "center_y_m": -9400.0,
+   "site_x_m": -2347.488475043149,
+   "site_y_m": -9415.262017398196,
+   "src_line0": 7579,
+   "src_sample0": 7285,
+   "dn_min": -5691,
+   "dn_max": 3916,
+   "dn_scale_m": 0.5,
+   "bytes": 245682,
+   "site_h_m": 1593.625
+  },
+  "rover": {
+   "product": "LDEM_85S_10M",
+   "m_per_px": 10,
+   "px": 512,
+   "center_x_m": -2350.0,
+   "center_y_m": -9410.0,
+   "site_x_m": -2347.488475043149,
+   "site_y_m": -9415.262017398196,
+   "src_line0": 15853,
+   "src_sample0": 14677,
+   "dn_min": -33,
+   "dn_max": 3460,
+   "dn_scale_m": 0.5,
+   "bytes": 169155,
+   "site_h_m": 1592.84375
+  }
+ }
+}
