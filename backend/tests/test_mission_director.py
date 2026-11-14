@@ -70,22 +70,22 @@ def ask(world, text, **ctx):
 def test_command_readback_and_tradeoff(sim, world):
     r = ask(world, "move 20% to the shields")
     assert r["action"] == "command" and r["command"]["to"] == "shields"
-    assert r["say"].startswith("Copy, commander. Moving 20 percent of power to the radiation shields.")
-    assert "leaves less for the life support" in r["say"]
+    assert r["say"].startswith("Copy.") and "radiation shields up 20 percent" in r["say"].lower()
+    assert "less for the life support" in r["say"].lower()   # the trade-off is named
     assert sim.m.applied == [r["command"]]
 
 
 def test_compound_applies_both(sim, world):
     r = ask(world, "move 20% to shields and send the rover for ice")
     assert [c["type"] for c in sim.m.applied] == ["allocate", "dispatch"]
-    assert len(r["commands"]) == 2 and "rover" in r["say"] and r["say"].count("Copy, commander.") == 1
+    assert len(r["commands"]) == 2 and "rover" in r["say"].lower() and r["say"].count("Copy.") == 1
 
 
 def test_status_answer_explains_units_once(sim, world):
     r = ask(world, "how much radiation did we get?")
-    assert r["action"] == "status" and "14.2 mSv" in r["say"] and "a unit for radiation dose" in r["say"] and r["state"]
+    assert r["action"] == "status" and "14.2" in r["say"] and "mSv" in r["say"] and "radiation dose" in r["say"] and r["state"]
     r2 = ask(world, "how much radiation did we get?")
-    assert "a unit for radiation dose" not in r2["say"] and "14.2 mSv" in r2["say"]
+    assert "radiation dose" not in r2["say"] and "14.2" in r2["say"]
 
 
 def test_houston_delay(sim, world):
@@ -97,7 +97,7 @@ def test_houston_delay(sim, world):
 def test_houston_out_of_contact(sim, world):
     sim.m.s["env"]["earth_visible"] = False
     r = ask(world, "call Houston")
-    assert r["action"] == "houston" and r["delay_ms"] == 0 and "can't reach Houston" in r["say"]
+    assert r["action"] == "houston" and r["delay_ms"] == 0 and "can't hear us" in r["say"]
 
 
 def test_needs_confirm_then_yes(sim, world):
@@ -140,7 +140,7 @@ def test_standing_order_fires_on_storm(sim, world):
 
 def test_emotion_shapes_line(sim, world):
     calm = ask(world, "move 20% to the shields", emotion="confused")
-    assert calm["say"] == "Copy. Moving 20 percent of power to the radiation shields."
+    assert calm["say"] == "Copy. Radiation shields up 20 percent."   # first sentence only, no trade-off
     hype = ask(world, "everyone into the shelter", emotion="excited")
     assert hype["say"].endswith("!")
 
@@ -163,9 +163,9 @@ def test_privacy_guard_still_first(sim, world):
 def test_no_sim_says_not_started(monkeypatch, world):
     monkeypatch.setattr(director, "_sim", lambda: None)
     r = ask(world, "send the rover for ice")
-    assert r["action"] == "say" and "hasn't started" in r["say"]
+    assert r["action"] == "say" and r["say"] == director.NOT_STARTED and "landing site" in r["say"]
     r = ask(world, "how much oxygen do we have")
-    assert r["action"] == "status" and "hasn't started" in r["say"]
+    assert r["action"] == "status" and "No mission yet" in r["say"]
 
 
 def test_api_ask_passes_mission_context(sim):

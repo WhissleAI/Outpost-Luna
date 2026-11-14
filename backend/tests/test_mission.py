@@ -164,7 +164,7 @@ def test_houston_blocked_when_earth_down():
     m = sim.new_mission("h", "shackleton_rim", 1)  # Earth is below the horizon early in the April 2026 window
     assert not sim.env_at(m, 0)["earth_visible"]
     r = sim.apply_command(m, {"type": "call_houston", "text": "hi"})
-    assert not r["ok"] and "horizon" in r["say"]
+    assert not r["ok"] and "Houston can't hear us" in r["say"]
 
 
 def test_telemetry_interpolates():

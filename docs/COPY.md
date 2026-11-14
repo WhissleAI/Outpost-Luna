@@ -1,0 +1,176 @@
+# Outpost Luna copy deck
+
+Every word on screen and every word spoken. Short, clear, warm, and there for a reason.
+
+**Where copy lives**
+- On screen: `frontend/src/story.js`. Templates read from it and never hardcode story text.
+- Lessons: `backend/data/academy/course.json`.
+- CAPCOM radio: `backend/app/mission/capcom.py`.
+- Guide: `backend/app/director.py`.
+- Sim events: `backend/app/mission/sim.py`.
+- Session alerts: `backend/app/session.py`.
+
+**Tests**
+- `backend/tests/test_copy.py`: no emoji; every spoken line is 20 words or fewer; course still valid.
+- `frontend/tests/copy.test.js`: story.js budgets; a typed call sign is never spoken.
+
+## 1. Voice
+
+| We are | We are not |
+|---|---|
+| A calm mission controller who likes you | A cheerleader |
+| Plain words with real NASA facts | A lecture |
+| Wonder: "Behind the Moon, the crew watched Earth rise." | Hype: "Amazing!!! Great job!!!" |
+| One idea, then stop | Instructions repeated on every screen |
+
+**CAPCOM speaks in radio rhythm.** Lead with the confirmation, then say the thing in as few words as you can, then say what it costs. Each sentence carries one idea.
+
+> Copy. Radiation shields up 20 percent. Less for the life support.
+
+**Houston** opens with "Houston here." It speaks only when Earth is up. When Earth is down, Houston says nothing, and CAPCOM tells the kid it is their call.
+
+**The guide** is the Moon explorer voice. It gives one fact and an invitation, such as "Tap one to hear its story."
+
+## 2. Rules and word budgets
+
+### On screen
+
+| Element | Budget |
+|---|---|
+| Headline | 2 to 6 words |
+| Supporting line | 1 line of 12 words or fewer. No paragraphs. |
+| Button | 1 to 3 words, starting with a verb: "Take command", "Fly again", "Use it" |
+| Lesson card blurb | 12 words or fewer |
+| Hint shown under a step | 10 words or fewer. Example phrases are allowed on screen. |
+
+Also on screen:
+- No emoji anywhere, including inside strings. Icons and patches come from the art set.
+- No "what to do next" chatter. A screen that already shows a button does not also explain the button.
+
+### Spoken
+
+| Element | Budget |
+|---|---|
+| Any spoken line | 20 words or fewer. Most lines are under 12. |
+| Step success | 8 words or fewer |
+| Step fail | 6 words or fewer, because the hint is added after the second miss |
+| Fail + "Hint:" + hint | 20 words or fewer |
+| Lesson brief | 1 or 2 sentences, 15 words or fewer |
+
+Also when speaking:
+- Give one idea per sentence.
+- **No example commands in spoken fallbacks** ("I don't know that one yet", "Say again?"). The open mic hears our speakers, so a spoken example would come back as a new turn. Example commands go on the card (`director.TRY`).
+- **Say an offer once, as a question:** "Ready for the next lesson?" "Fly again?" Don't add "Say yes" or "Say next". The router already accepts yes and next for any pending offer.
+- **Speak numbers with their unit:** "40 percent", "14.2 of 50 mSv".
+
+### Kids 7 to 12
+
+- Use plain words and short sentences.
+- The real space words stay: albedo, regolith, terminator, mare, mSv. The first time one appears, gloss it in about 6 words:
+  - Regolith is the Moon's dusty soil.
+  - A mare is a dark plain of old lava.
+  - The terminator is where day meets night.
+  - An mSv measures radiation dose.
+- Use real NASA and Artemis grounding. Every fact in `course.json` keeps its source, and its numbers match the cited data. `content.check()` enforces this.
+
+### Accuracy
+
+- Artemis II flew around the Moon in April 2026.
+- Artemis III has not landed. Never write "when we landed", and never imply that it has.
+- Never imply NASA endorsement. The credit line is exact and must not change:
+  **"Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA."**
+
+### Call sign
+
+- **Never speak a typed call sign.** It might be a real name.
+  - Speak `callSign.spoken()`, which returns a preset or "Commander".
+  - Show `callSign.shown()`.
+- Only the 12 presets in `CALLSIGNS` are ever said aloud.
+
+## 3. Glossary: one word for one thing
+
+| Term | Use it for | Don't say |
+|---|---|---|
+| **Outpost Luna** | The south-pole base the kid runs | base camp, station, colony |
+| **Flight School** | The Academy, made of 8 lessons | academy, course, training center |
+| **Lesson** | One Flight School unit | module, level, mission |
+| **Patch** | What a lesson earns, the cloth mission patch | badge, trophy, medal, star |
+| **Check ride** | The final solo test, 2 days at Shackleton Rim | final exam, boss level |
+| **Cadet** / **Commander** | The kid, before and after qualifying | player, user, astronaut |
+| **Call sign** | The kid's radio name | nickname, username |
+| **CAPCOM** | The kid's mentor and radio voice (capsule communicator) | AI, assistant, bot, coach |
+| **Houston** | Mission Control on Earth, which answers after the radio delay | NASA (as a speaker), base |
+| **Shift** | 6 hours of mission time ("end shift") | turn, round, tick |
+| **Day** | Mission day, from 1 to 10 | sol (that is Mars) |
+| **Comm window** | When Earth is up and the radio works | signal, connection |
+| **Shelter** | The regolith-covered storm shelter | bunker, safe room |
+| **Shields** | The radiation shields (a power load) | force field |
+| **Life support** | Air and water. On screen it can be shortened to "air". | oxygen (only when it means O2) |
+| **Readback** | Repeating an order so both sides know it is right | echo, repeat-after-me |
+| **Debrief** | The end-of-mission review | results, score screen |
+| **Standing order** | A rule the kid sets: "if a storm comes, shelter" | automation, macro |
+
+Radio words are taught in Lesson 2 and used everywhere after it:
+
+| Word | Meaning |
+|---|---|
+| **Copy** | I heard you |
+| **Roger** | Received |
+| **Say again** | Repeat that |
+| **Negative** | No, not that |
+| **Confirmed** | Done as asked |
+
+## 4. Before → after: the worst 30
+
+| # | Where | Before | After |
+|---|---|---|---|
+| 1 | CAPCOM readback | Copy, commander. Moving 20 percent of power to the radiation shields. That leaves less for the life support. Shields now gets 40% of the power. | Copy. Radiation shields up 20 percent. Less for the life support. Shields now at 40%. |
+| 2 | Check-ride result | …Check ride complete. Power 62%, life support 71%, dose 3.4 of 50 mSv. 4 of 4 orders right. On Mars, Houston would answer 6–44 minutes later. You are qualified, Commander! | Copy. Rover rolling out for ice. Check ride done. 4 of 4 orders right. You're qualified, Commander. |
+| 3 | Mission start (spoken) | Outpost Luna is online at Malapert Massif, Nova. Day 1. Check your power levers, then say "end shift". | Outpost Luna is online at Malapert Massif. Day one, Nova. |
+| 4 | Academy patch offer | Patch earned, Nova: Sun Tracker! Next up: Radiation and solar storms. Say next when you're ready. | Patch earned: Sun Tracker. Nice work, Nova. Ready for the next lesson? |
+| 5 | Debrief offer | …Your grade is B, with 812 points. Want to fly again? Say fly again. | Nice flying, Nova. Grade B, 812 points. Fly again? |
+| 6 | Flight School sub | Short lessons with CAPCOM. Earn a patch for each one, then fly your first solo shift and take command of Outpost Luna at the lunar south pole. | Earn a patch for each lesson. Then take command. |
+| 7 | Mission brief | Welcome to Outpost Luna, Commander Nova. Pick a site, then keep power, life support and radiation safe for ten days. | Pick a site, Commander Nova. Keep the crew safe for ten days. |
+| 8 | Lesson 1 brief | Welcome, cadet. Artemis III, the first landing near the Moon's south pole, hasn't happened yet. You're training to help run Outpost Luna, a base next to a crater called Shackleton. | The next crews will land near the south pole, by a crater called Shackleton. |
+| 9 | Check-ride brief | This is your check ride: your first solo shift at Outpost Luna, two days at Shackleton Rim on the real mission simulator. A real solar storm is on its way. Give good orders and you earn the Mission Commander badge. | Your check ride: two days at Shackleton Rim. A real solar storm is coming. |
+| 10 | Rover dispatch (sim) | Rover rolling out to collect ice. Back in about 10 hours. Charging it used 10% battery, and the drivers get extra radiation while outside. | Rover back in about 10 hours. It used 10% battery. |
+| 11 | Storm event | SOLAR STORM! This is a real event: the X5.8 flare of 2024-05-10 (severity 3 of 3), replayed in your mission. Radiation is 4x normal. | Solar storm! The real 2024-05-10 flare. Radiation 4x normal. |
+| 12 | Houston, out of contact | No answer. Earth is below the horizon, so the radio can't reach Houston right now. We have to decide on our own! | No answer. Earth has set, so Houston can't hear us. Your call, Commander. |
+| 13 | Confirm prompt | That puts 95% of all power into shields and almost nothing else. Are you sure? Say yes to confirm or no to cancel. | That puts 95% into shields, almost nothing else. Are you sure? |
+| 14 | Shelter (sim) | Crew is in the shelter under the regolith. Much less radiation, but no science and the outpost idles. | Crew in the shelter. Much less radiation, but science stops. |
+| 15 | Status: dose | The crew has had 14.2 mSv of radiation so far, out of a safe limit of 50. An mSv is a unit for radiation dose. Right now it goes up by 0.35 every hour. | Crew dose: 14.2 of 50 mSv. An mSv measures radiation dose. Rising 0.35 an hour. |
+| 16 | Status: all | (five systems, about 45 words) | Battery at 54 percent. Air and water at 22 percent. Crew dose: 14.2 of 50 mSv. |
+| 17 | Hint (spoken) | Not quite. The south pole is at the very bottom of the Moon. Hint: Try saying: show me the south pole. | Not quite. Look lower. Hint: The south pole is at the very bottom. |
+| 18 | Lesson 1 step 1 | The near side always faces Earth. Now show me the south pole: say it, or tap the very bottom of the Moon. | The near side always faces Earth. Now find the south pole. |
+| 19 | Guide: far side | This is the far side. It always faces away from Earth, so nobody saw it until spacecraft flew around. | The far side. It always faces away from Earth. |
+| 20 | Guide: privacy | Let's keep names and addresses private! Ask me about a place on the Moon instead. | Let's keep names and addresses private. Ask me about the Moon. |
+| 21 | Guide: say again | Sorry, I didn't catch that. Can you say it again? | Say again? I missed that. |
+| 22 | Guide: misconception | Not cheese! The Moon is made of rock and dust. But the crew did say one place looked yellow, like a snowy mountain. | Not cheese. The Moon is rock and dust. But the crew saw one spot look yellow. |
+| 23 | Tour: hardware | People have left lots of hardware on the Moon: landers, rovers, science tools and crash sites. Tap one to hear its story! | Landers, rovers, science tools and crash sites. Tap one to hear its story. |
+| 24 | Callback: low power | Remember Lesson 3? Batteries are low. Remember Lesson 3: no Sun means batteries only. Turn down what you don't need. | Remember Lesson 3? Battery's low. Turn down what you don't need. |
+| 25 | Callback: life support | Flight School Lesson 5 covers this. Life support is low. Lesson 5: send the rover for ice. | Lesson 5 covers this. Life support is low. The rover can fetch ice. |
+| 26 | Lesson-card patches | Emoji patches: moon, radio, sun, shield, ice cube, scroll, book, rocket | (none; the art set draws patches, with the letter glyph as fallback) |
+| 27 | Call-sign picker | Every astronaut has a radio name. CAPCOM will use yours. It stays on this device. / That's me / Surprise me | Your radio name. It stays on this device. / Use it / Pick for me |
+| 28 | Low battery alert | It's dark and the battery is low. Let's save power together. | Dark, and the battery's low. Let's save power. |
+| 29 | Sim: sunset | The Sun just slipped below the horizon. Batteries only until it comes back. | Sunset. Batteries only until the Sun returns. |
+| 30 | Shift report | Day 3, shift 2. (two events) Power 62%, life support 71%, dose 3.4 of 50 mSv. | Day 3, shift 2. (latest event) Power 62%, air 71%, dose 3.4 mSv. |
+
+## 5. Keys for UX templates (`story.js`)
+
+Templates should import these keys and not hardcode the words.
+
+| Key | Text |
+|---|---|
+| `CALLSIGN_COPY.say` | Spoken when the picker opens. Replaces "Every astronaut has a call sign. Pick yours!". |
+| `CALLSIGN_COPY.edit` | "Change call sign" |
+| `SCHOOL.continue`, `.ride`, `.next`, `.solo`, `.shelf`, `.notYet`, `.progress(n,total)`, `.minutes(m)`, `.track(k,title)`, `.earned(name)` | Lesson catalog labels |
+| `WHY_TITLE`, `WHY` | The "Why this matters" box |
+| `OFFER.nextLesson`, `.ride`, `.mission`, `.flyAgain`, `.nextStep` | Spoken offers, said once each |
+| `DEBRIEF.grade(cs, grade, points)` | Spoken and shown. Speak it with `callSign.spoken()`. |
+| `DEBRIEF.close` | "Back" |
+
+Two places currently speak with `callSign.shown()` where they should speak with `callSign.spoken()`:
+- `CAPCOM.missionBrief`
+- `CAPCOM.missionStart`
+
+If the mission UI's `say` reads the brief card aloud, it must pass `callSign.spoken()`.

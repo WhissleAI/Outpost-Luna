@@ -1,5 +1,6 @@
 // Outpost Luna: the story, in ONE file. Every line of story copy (beats, CAPCOM lines that use the call sign, lesson
-// callbacks during the Mission, debrief copy) lives here so it is easy to edit. No logic beyond tiny templating.
+// callbacks during the Mission, debrief copy, spoken offers) lives here so it is easy to edit. No logic beyond tiny
+// templating. Voice, tone and word budgets: docs/COPY.md. Tests: backend/tests/test_copy.py (no emoji, spoken <= 20 words).
 //
 // Framing (keep it true): Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near
 // the south pole, has NOT happened yet. The kid trains at Flight School to help run Outpost Luna, a south-pole base for
@@ -7,15 +8,15 @@
 
 export const CREDIT = "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.";
 
-export const FRAMING = "Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near the south pole, hasn't happened yet. "
-  + "You're training to help run Outpost Luna, a base at the south pole for the crews who come after.";
+/** Three short sentences. mission/ui.js shows everything after the first ". " as a sub line. */
+export const FRAMING = "Artemis II flew around the Moon in April 2026. Artemis III hasn't landed yet. Train now for the crews who will.";
 
 /** The four beats of the one story, shown on the Academy map and in About. */
 export const BEATS = [
-  { id: "school", icon: "🎓", title: "Flight School", text: "Learn the Moon with CAPCOM, your mentor." },
-  { id: "ride", icon: "🧭", title: "Check ride", text: "Your first solo shift in the cockpit." },
-  { id: "mission", icon: "🛰️", title: "Command", text: "Run Outpost Luna for 10 days." },
-  { id: "debrief", icon: "📋", title: "Debrief", text: "See what you learned, with real NASA data." },
+  { id: "school", title: "Flight School", text: "Learn the Moon with CAPCOM." },
+  { id: "ride", title: "Check ride", text: "Fly your first solo shift." },
+  { id: "mission", title: "Command", text: "Run Outpost Luna for 10 days." },
+  { id: "debrief", title: "Debrief", text: "See what you learned." },
 ];
 
 // ---------- call sign (stored on this device only; never sent to the server) ----------
@@ -32,10 +33,13 @@ export const callSign = {
 };
 export const CALLSIGN_COPY = {
   title: "Pick your call sign",
-  sub: "Every astronaut has a radio name. CAPCOM will use yours. It stays on this device.",
+  sub: "Your radio name. It stays on this device.",
   type: "Or make one up",
-  save: "That's me",
-  random: "Surprise me",
+  save: "Use it",
+  random: "Pick for me",
+  edit: "Change call sign",
+  /** Spoken once when the picker opens. */
+  say: "Every crew member has a radio name. Pick yours.",
 };
 
 // ---------- Academy (Flight School): a course catalog in tracks ----------
@@ -46,79 +50,104 @@ export const TRACKS = [
   { id: "field", title: "Field skills", lessons: ["rover", "history"] },
   { id: "qual", title: "Qualification", lessons: ["checkride"] },
 ];
-/** One line per lesson for its catalog card (keyed by course.json id). */
+/** One line per lesson for its catalog card (keyed by course.json id). 12 words or fewer. */
 export const LESSON_BLURB = {
-  moon: "Near side, far side, the south pole and Shackleton crater.",
-  comms: "Copy, roger, say again. Read back an order like the Artemis II crew.",
-  power: "Why crater rims beat crater floors. Malapert's long polar night.",
-  radiation: "What an mSv is. Ride out the real May 2024 solar storm.",
-  life: "Life support, and how LCROSS found water near the pole.",
-  history: "What Apollo and Surveyor teach the crews who come next.",
-  checkride: "Two days at Shackleton Rim, on the real simulator. Your first solo shift.",
+  moon: "Near side, far side, and Shackleton crater at the pole.",
+  comms: "Copy, roger, say again. Talk like the Artemis II crew.",
+  power: "Sunlight, batteries, and Malapert's long polar night.",
+  radiation: "Measure radiation. Ride out the real May 2024 storm.",
+  life: "Air, water, and the ice LCROSS found.",
+  history: "What Apollo left behind for the next crews.",
+  words: "Albedo, regolith, terminator: words the crew really used.",
+  checkride: "Two days at Shackleton Rim. Your first solo shift.",
 };
-export const WHY = "Artemis II flew its crew around the Moon in April 2026. The next crews will land near the south pole. Everything you learn here uses real NASA data.";
+export const WHY_TITLE = "Why this matters";
+export const WHY = "Artemis crews will land near the south pole. Train on NASA data.";
 export const MENTOR = {
-  role: "Your Flight School mentor",
-  first: cs => `Welcome, ${cs}. Artemis III hasn't landed yet, so you're training for the crew that will. Let's start with the Moon itself.`,
-  more: (cs, n, next) => `Good to see you, ${cs}. ${n} patch${n === 1 ? "" : "es"} down. Next up: ${next}.`,
-  ride: cs => `${cs}, every lesson is done. Time for your check ride: your first solo shift in the cockpit.`,
-  done: cs => `Commander ${cs}, you're qualified. Outpost Luna is waiting for you.`,
+  role: "Your mentor",
+  first: cs => `Welcome, ${cs}. Let's start with the Moon itself.`,
+  more: (cs, n, next) => `${n} patch${n === 1 ? "" : "es"} earned, ${cs}. Next: ${next}.`,
+  ride: cs => `Every lesson done, ${cs}. Time for your check ride.`,
+  done: cs => `You're qualified, Commander ${cs}. Outpost Luna is yours.`,
   voice: "Or hold Space and say “next”.",
 };
 export const SCHOOL = {
   eyebrow: "Flight School",
   hero: "Artemis III hasn't landed yet.",
   hero2: "Train for the crew that will.",
-  title: c => `Welcome to Flight School, ${c}`,
-  titleDone: c => `You're qualified, Commander ${c}!`,
-  sub: "Short lessons with CAPCOM. Earn a patch for each one, then fly your first solo shift and take command of Outpost Luna at the lunar south pole.",
-  subDone: "Replay any lesson, or take command of Outpost Luna.",
+  title: c => `Welcome, ${c}`,
+  titleDone: c => `Qualified, Commander ${c}`,
+  sub: "Earn a patch for each lesson. Then take command.",
+  subDone: "Replay a lesson, or take command.",
   start: "Start lesson",
-  go: "Take command of Outpost Luna",
+  continue: "Continue",
+  ride: "Fly check ride",
+  go: "Take command",
+  next: "Next up",
+  solo: "Solo shift",
+  shelf: "Your patches",
+  notYet: "Not earned yet",
+  progress: (n, total) => `${n} of ${total} patches`,
+  minutes: m => `${m} min`,
+  track: (k, title) => `Track ${k} · ${title}`,
+  earned: name => `${name} patch`,
 };
 
-/** One short story beat per lesson (shown above CAPCOM's brief) and the patch emoji. Keyed by course.json lesson id. */
+/** One short story beat per lesson (shown above CAPCOM's brief, and spoken before it). Keyed by course.json lesson id.
+ *  Patches are drawn by the art set (no emoji here). */
 export const LESSON_STORY = {
-  moon: { patch: "🌙", beat: "Day 1 at Flight School. CAPCOM pulls up a map of the Moon." },
-  comms: { patch: "📻", beat: "Radio check! Outpost Luna is 384,000 km from Houston." },
-  power: { patch: "☀️", beat: "The outpost lives on sunlight. Let's see where it comes from." },
-  radiation: { patch: "🛡️", beat: "Alarm drill! The Sun can throw storms at the Moon." },
-  life: { patch: "🧊", beat: "No air, no water on the Moon… or is there ice?" },
-  history: { patch: "📜", beat: "Every crew learns from the crews before them." },
-  words: { patch: "📖", beat: "New words for a new world. CAPCOM deals out the flash cards." },
-  checkride: { patch: "🚀", beat: "Solo shift! You're in the Outpost Luna cockpit. CAPCOM is only watching." },
+  moon: { beat: "Day one. CAPCOM pulls up a map of the Moon." },
+  comms: { beat: "Radio check. Houston is 384,000 km away." },
+  power: { beat: "The outpost runs on sunlight." },
+  radiation: { beat: "Storm drill. The Sun can throw storms at the Moon." },
+  life: { beat: "No air, no rivers. But is there ice?" },
+  history: { beat: "Every crew learns from the crews before." },
+  words: { beat: "A new world needs new words." },
+  checkride: { beat: "Solo shift. CAPCOM is only watching." },
 };
 
 /** CAPCOM's lines that use the call sign (the spoken form is passed in, so a typed name is never read aloud). */
 export const CAPCOM = {
   lessonHello: (cs, beat) => `${beat} Ready, ${cs}?`,
-  patch: (cs, name) => `Patch earned, ${cs}: ${name}!`,
-  qualified: (cs, name) => `Congratulations, Commander ${cs}! You earned the ${name} patch. Outpost Luna is yours.`,
-  missionBrief: cs => `Welcome to Outpost Luna, Commander ${cs}. Pick a site, then keep power, life support and radiation safe for ten days.`,
-  missionStart: (cs, site) => `Outpost Luna is online at ${site}, ${cs}. Day 1. Check your power levers, then say "end shift".`,
+  patch: (cs, name) => `Patch earned: ${name}. Nice work, ${cs}.`,
+  qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
+  missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
+  missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
   houstonCalling: "Calling Houston…",
+};
+
+/** Spoken offers: said once, as a question. "yes" / "next" takes them (the router's accept_offer). */
+export const OFFER = {
+  nextLesson: "Ready for the next lesson?",
+  ride: "Ready for your check ride?",
+  mission: "Ready to take command?",
+  flyAgain: "Fly again?",
+  nextStep: "Ready for the next one?",
 };
 
 // ---------- Mission: lessons come back as events ----------
 /** Mission event kind / alert → the Flight School lesson that taught it (course.json id), and CAPCOM's reminder. */
 export const CALLBACKS = {
-  solar_storm: { lesson: "radiation", n: 4, text: "That's a solar storm, like in Lesson 4. Shields up, or everyone into the shelter." },
-  low_power: { lesson: "power", n: 3, text: "Batteries are low. Remember Lesson 3: no Sun means batteries only. Turn down what you don't need." },
-  sunset: { lesson: "power", n: 3, text: "The Sun is setting. Remember Lesson 3: give the heaters a little more." },
-  life_support_low: { lesson: "life", n: 5, text: "Life support is low. Lesson 5: send the rover for ice." },
-  comm_closed: { lesson: "comms", n: 2, text: "Earth just set, so the radio is quiet. Lesson 2: keep your orders short when it's back." },
-  dose_alert: { lesson: "radiation", n: 4, text: "Dose is climbing. Lesson 4: shields, or the shelter." },
+  solar_storm: { lesson: "radiation", n: 4, text: "Solar storm. Shields up, or crew to the shelter." },
+  low_power: { lesson: "power", n: 3, text: "Battery's low. Turn down what you don't need." },
+  sunset: { lesson: "power", n: 3, text: "Sunset. Give the heaters a little more." },
+  life_support_low: { lesson: "life", n: 5, text: "Life support is low. The rover can fetch ice." },
+  comm_closed: { lesson: "comms", n: 2, text: "Earth has set. No radio until it rises." },
+  dose_alert: { lesson: "radiation", n: 4, text: "Dose is climbing. Shields, or the shelter." },
 };
 export const callbackLine = (kind, earned) => {
   const c = CALLBACKS[kind]; if (!c) return null;
-  return (earned ? `Remember Lesson ${c.n}? ` : `Flight School Lesson ${c.n} covers this. `) + c.text;
+  return (earned ? `Remember Lesson ${c.n}? ` : `Lesson ${c.n} covers this. `) + c.text;
 };
 
 // ---------- Debrief ----------
 export const DEBRIEF = {
-  learned: "Flight School in action",
-  learnedEmpty: "Play more shifts to see your lessons come back as real events.",
-  replay: "Fly it again",
-  another: "Try another site",
+  learned: "Lessons in action",
+  learnedEmpty: "Fly more shifts to see your lessons in action.",
+  replay: "Fly again",
+  another: "New site",
+  close: "Back",
   mars: "On Mars, Houston would answer 6 to 44 minutes later.",
+  /** On screen and spoken (pass callSign.spoken() when speaking). */
+  grade: (cs, g, pts) => `Nice flying, ${cs}. Grade ${g}, ${pts} points.`,
 };

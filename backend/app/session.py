@@ -559,8 +559,8 @@ class Session:
             warning = bool(st and e.get("t_h", 0) < st.start_h)
             crit = sev >= 3 and not warning
             pri = P_CRITICAL if crit else P_NARRATION
-            line = ("Storm coming. Get ready: shields up or go to the shelter." if warning else
-                    "Storm is here! Into the shelter, and shields up.")
+            line = ("Storm coming. Shields up, or get to the shelter." if warning else
+                    "Storm's here! Shelter, and shields up.")
             if calm:
                 line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
@@ -575,20 +575,20 @@ class Session:
             return [al, card, say]
         if kind == "comm_open":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Comm window open."),
-                    decision("say", P_NARRATION, text="Houston can hear us. Comm window open.", voice="capcom",
+                    decision("say", P_NARRATION, text="Comm window open. Houston can hear us.", voice="capcom",
                              proactive=True, situation="comm_open", emotion=self._emotion())]
         if kind == "storm_end":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "The storm is over.", source=src),
-                    decision("say", P_NARRATION, text="The storm is over. All clear, Commander!", voice="capcom",
+                    decision("say", P_NARRATION, text="Storm's over. All clear, Commander.", voice="capcom",
                              proactive=True, situation="all_clear", emotion=self._emotion())]
         if kind == "dose_alert":
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Radiation is high.", source=src)]
         if kind in ("low_power",) or (kind == "sunset" and ((s.get("resources") or {}).get("power_pct") or 100) < 35):
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Battery is low."),
-                    decision("say", P_NARRATION, text="It's dark and the battery is low. Let's save power together.",
+                    decision("say", P_NARRATION, text="Dark, and the battery's low. Let's save power.",
                              voice="capcom", proactive=True, situation="night_low_power", emotion=self._emotion()),
                     decision("card", P_NUDGE, title="Coach", nudge=True,
-                             body="Dark and low battery: turn science and the rover down, keep heaters and life support on.",
+                             body="Turn down science and the rover. Keep heaters and life support on.",
                              actions=[{"label": "Science to 5", "send": {"t": "typed", "text": "science to 5"}}])]
         if kind in ("failure", "mission_complete"):
             return [decision("alert", P_CRITICAL if kind == "failure" else P_NARRATION,
