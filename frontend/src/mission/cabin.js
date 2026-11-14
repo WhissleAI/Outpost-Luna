@@ -10,6 +10,7 @@
 import "../cabin.css";
 import { callSign } from "../story.js";
 import { LOADS } from "./cockpit.js";
+import { icon } from "../assets/icons.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, +v || 0));
@@ -36,11 +37,9 @@ const SWITCHES = [
   ["heaters", "Heaters", false, s => (s.loads.heaters || 0) >= 8, on => ({ type: "allocate", to: "heaters", amount: { kind: "percent", value: on ? 15 : 0 }, from: null })],
   ["science", "Science", false, s => (s.loads.science || 0) > 0, on => ({ type: "allocate", to: "science", amount: { kind: "percent", value: on ? 15 : 0 }, from: null })],
 ];
-const ROVER = [["collect_ice", "Ice"], ["explore", "Explore"], ["return", "Home"]];
-const ICON = {
-  alert: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v5M12 18v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-  info: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
-};
+const ROVER = [["collect_ice", "Ice", "ice"], ["explore", "Explore", "explore"], ["return", "Home", "outpost"]];
+const ic = (n, size = 18) => icon(n, { size });
+const VIEW_ICON = { orbit: "orbit", site: "site", rover: "rover", earth: "earth" };
 
 export function createCabin(root, o = {}) {
   const cb = { onCommand() {}, onHouston() {}, onEndShift() {}, onDebrief() {}, onView() {}, badges: () => [], ...o };
@@ -56,7 +55,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
         <div class="cb-top">
           <div class="cb-clock" id="cbClock"></div>
-          <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${n}</button>`).join("")}</div>
+          <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
         </div>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
@@ -83,7 +82,7 @@ export function createCabin(root, o = {}) {
           </div>`).join("")}</div>
       </div>
       <div class="cb-plate cb-rv" role="group" aria-labelledby="cbRvH"><h3 id="cbRvH">Rover</h3>
-        <div class="cb-seg">${ROVER.map(([t, n]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${n}</button>`).join("")}</div>
+        <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
         <span class="cb-rvst" id="cbRvSt"></span>
       </div>
       <div class="cb-plate cb-shield" role="group" aria-labelledby="cbShH"><h3 id="cbShH">Shields</h3>
@@ -101,7 +100,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-lamps" role="list">${LAMPS.map(([id, t, lvl]) => `<span class="cb-lamp is-${lvl}" id="cbl-${id}" role="listitem">${t}<span class="cb-vh">: off</span></span>`).join("")}</div>
       </div>
       <div class="cb-plate cb-comm" role="group" aria-label="Houston and shift">
-        <button type="button" class="cb-ptt" id="cbPtt" aria-label="Call Houston"><span class="cb-ptt-t">Call Houston</span><small id="cbPttSub"></small><i class="cb-trip" aria-hidden="true"></i></button>
+        <button type="button" class="cb-ptt" id="cbPtt" aria-label="Call Houston"><span class="cb-ptt-t">${ic("houston", 18)}<span>Call Houston</span></span><small id="cbPttSub"></small><i class="cb-trip" aria-hidden="true"></i></button>
         <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
         <button type="button" class="cb-db" id="cbDb">Finish mission</button>
       </div>
@@ -244,12 +243,12 @@ export function createCabin(root, o = {}) {
   function alert(a) { clearTimeout(flashT); flash = a; paintAlert(); if (a) flashT = setTimeout(() => { flash = null; paintAlert(); }, 7000); }
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
-    const a = stm ? { level: "warn", title: "Solar storm", text: [stm.real_date ? `Real event, ${stm.real_date}` : stm.name, "NASA " + (stm.source || "DONKI")].filter(Boolean).join(" · "),
+    const a = stm ? { level: "warn", icon: "storm", title: "Solar storm", text: [stm.real_date ? `Real event, ${stm.real_date}` : stm.name, "NASA " + (stm.source || "DONKI")].filter(Boolean).join(" · "),
       actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] } : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
-    el.innerHTML = `<span class="cb-al-i">${a.level === "info" ? ICON.info : ICON.alert}</span><b>${esc(a.title)}</b><span class="cb-al-t">${esc(a.text || "")}</span>
+    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b><span class="cb-al-t">${esc(a.text || "")}</span>
       ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${n}</button>`).join("")}</span>` : ""}`;
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
       : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
@@ -271,7 +270,7 @@ export function createCabin(root, o = {}) {
   function calling(on, ms = 2600) {
     const b = q("#cbPtt"); b.classList.toggle("is-calling", !!on); b.disabled = !!on;
     b.style.setProperty("--trip", ms + "ms");
-    q(".cb-ptt-t").textContent = on ? "Signal travelling" : "Call Houston";
+    q(".cb-ptt-t span").textContent = on ? "Signal travelling" : "Call Houston";
     if (on) q("#cbPttSub").textContent = `${(ms / 2000).toFixed(1)} s each way`;
     else if (st) q("#cbPttSub").textContent = st.env.earth_visible ? "Earth in view" : "No signal";
   }

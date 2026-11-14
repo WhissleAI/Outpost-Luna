@@ -165,11 +165,27 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     });
     panel.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
     $("mStart").onclick = () => start();
-    previewSite();
+    previewSite(); pins();
+  }
+  /** The five sites as pins on the real south pole (the globe is the backdrop; the list is the keyboard path). */
+  let pinEl = null, pinRaf = 0;
+  function pins() {
+    if (!globe.project) return;
+    if (!pinEl) { pinEl = document.createElement("div"); pinEl.className = "mx-pins"; pinEl.setAttribute("aria-hidden", "true"); panel.parentNode.insertBefore(pinEl, panel); }
+    pinEl.innerHTML = sites.map(s => `<button type="button" tabindex="-1" class="mx-pin${s === site ? " is-sel" : ""}" data-site="${esc(s.id)}"><i></i><span>${esc(s.name.split(" (")[0])}</span></button>`).join("");
+    pinEl.querySelectorAll(".mx-pin").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); });
+    pinEl.hidden = false; cancelAnimationFrame(pinRaf);
+    const tick = () => {
+      if (screen !== "brief") { pinEl.hidden = true; return; }
+      pinEl.querySelectorAll(".mx-pin").forEach(b => { const s = sites.find(x => x.id === b.dataset.site), p = globe.project(s.lat, s.lon);
+        b.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)`; b.style.visibility = p.facing ? "" : "hidden"; });
+      pinRaf = requestAnimationFrame(tick);
+    };
+    tick();
   }
   function previewSite() {
     if (!site) return;
-    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.5 });
+    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 1.55 });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
   }
 

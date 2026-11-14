@@ -304,3 +304,10 @@ html[data-contrast="high"] .cb-screen{box-shadow:0 0 0 1px var(--color-on-space)
 html[data-contrast="high"] .cb-lamp.is-lit{text-decoration:underline}
 html[data-contrast="high"] .tv-mark,html[data-contrast="high"] .cb-sky,html[data-contrast="high"] .cb-clock{background:var(--color-space);color:var(--color-on-space)}
 html[data-contrast="high"] .cb-glass::after{display:none}
+
+/* icons (assets/icons.js): drawn in currentColor */
+.m-cabin .ic{flex:none;stroke-width:2}
+.cb-view,.cb-rvb,.cb-ptt-t{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.cb-al-i .ic{width:20px;height:20px}
+@media (min-width:860px) and (max-height:780px){.cb-view .ic,.cb-rvb .ic,.cb-ptt-t .ic{display:none}.cb-view{min-width:56px}}
+@media (max-width:1366px){.cb-rvb .ic,.cb-ptt-t .ic{display:none}}
