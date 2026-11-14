@@ -6,6 +6,8 @@ import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
 import { createTerrainView } from "./terrain.js";
 import "./mission.css";
+import { icon } from "../assets/icons.js";
+const ic = (n, size = 14) => icon(n, { size });
 import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
@@ -62,6 +64,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       comm(open) { if (!state) return; renderBanner({ level: "info", title: open ? "Earth in view" : "Earth set", text: open ? "You can call Houston." : "No radio until Earth rises." }); },
       confirm(text) { capcom({ say: text || "Send the rover out during a solar storm? Say yes or no.", confirm: true }); },
       busy(on) { if (cockpit) cockpit.busy(!!on); },
+      cadet(on) { try { localStorage.setItem("outpost-tier", on ? "cadet" : "commander"); } catch (e) { /* blocked */ } },
+      offer() { showCard({ title: "CAPCOM", body: "A solar storm is coming. Shelter now, or wait a shift?", actions: [{ label: "Shelter now", send: "shelter" }, { label: "Wait a shift", send: "end shift" }] }, () => {}); },
+      quality(q) { if (cockpit) cockpit.setQuality(q); },
+      panel(id) { if (!cockpit) return; if (id) cockpit.openPanel(id); else cockpit.seat(); cockpit.offer && cockpit.offer(null); },
       calling() { if (cockpit) cockpit.calling(true, 2600); },
       debrief(outcome, extra = {}) { if (!state) return; fakeDebrief = fakeDb(outcome, extra); if (outcome !== "in_progress") { state.over = true; state.outcome = outcome; } showDebrief(); },
     };
@@ -153,7 +159,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     [/\b(zoom in|outpost view|site view|(back|go) to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
   /** Spoken or typed panel words ("open the power panel", "habitat panel", "comm panel", "back to my seat"). */
   const PANEL_WORDS = [[/\b(power|display|displays|main) (panel|displays?)\b|\bopen (the )?power\b/, "power"], [/\b(habitat|hab|shelter) panel\b|\bopen (the )?(habitat|hab)\b/, "habitat"],
-    [/\b(comm|comms|radio|houston) panel\b|\bopen (the )?comms?\b/, "comm"], [/\b(back to (my |the )?seat|close (the )?panel|seat view)\b|^back$/, "seat"]];
+    [/\b(comm|comms|radio|houston) panel\b|\bopen (the )?comms?\b/, "comm"], [/\brover panel\b/, "rover"], [/\b(radiation|shield|shields|storm) panel\b/, "radiation"], [/\b(back to (my |the )?seat|close (the )?panel|seat view)\b|^back$/, "seat"]];
   function panelWord(text) {
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
@@ -164,6 +170,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
    *  of time in view during the mission's own 10-day window (JPL Horizons), the same numbers the sim and debrief use. */
   const sunPct = s => Math.round(s.window_sunlit_pct ?? s.sunlight_pct);
+  /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
+  const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
+  const earthDays = s => s.window_earth_days ?? Math.round(s.earth_visible_pct / 10);
   function briefing() {
     screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide();
     if (!site) site = sites[0];
@@ -174,17 +183,17 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <h2 class="mx-title">Pick your outpost site</h2>
       <p class="mx-sub">Sun for power. Ice for water. Earth for radio.</p>
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
-        <div class="mx-cols" aria-hidden="true"><span></span><span>Sun</span><span>Earth</span><span>Ice</span></div>
+        <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
-          aria-label="${esc(s.name)}: sun ${sunPct(s)} percent, Earth in view ${Math.round(s.earth_visible_pct)} percent, ${s.ice ? "ice nearby" : "no ice nearby"}">
-          <b>${esc(s.name)}</b>
-          <span class="mx-v${sunPct(s) >= 80 ? " is-best" : ""}">${sunPct(s)}%</span>
-          <span class="mx-v${s.earth_visible_pct >= 80 ? " is-best" : ""}">${Math.round(s.earth_visible_pct)}%</span>
+          aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${s.ice ? "ice nearby" : "no ice nearby"}">
+          <b>${esc(s.name)}${s === site && s.sunlight_pct != null ? `<small>Year average: ${Math.round(s.sunlight_pct)}% sun</small>` : ""}</b>
+          <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
+          <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
         </button>`).join("")}
       </div>
-      <p class="mx-srcline">% of your 10 days in view · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
+      <p class="mx-srcline">Days of your 10-day mission · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
       <button type="button" class="mx-go" id="mStart">Take command</button>`;
     const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
     panel.querySelectorAll(".mx-site").forEach(b => {
@@ -300,7 +309,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     syncSurface();
   }
   /** Radio log lines survive re-renders of the cockpit. */
-  function radio(who, text) { if (!text) return; if (who === "kid") { nudge.heard(); panelWord(text); } logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
+  function radio(who, text) { if (!text) return; if (who === "kid") nudge.heard(); logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
   /** The Call Houston push button: the real Director in a live mission, the local practice line otherwise. */
   async function callHouston() {
     if (!state) return;
@@ -333,6 +342,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const actions = confirm ? [
       { label: "Yes", hot: true, once: true, onClick: () => answer(true) },
       { label: "No", once: true, onClick: () => answer(false) }] : [];
+    if (confirm) cadetOffer({}, line || readback, [{ label: "Yes", onClick: () => answer(true) }, { label: "No", onClick: () => answer(false) }]);
     card.show({ title: "CAPCOM", eyebrow: eyebrow || [s ? `Day ${s.day} · shift ${s.shift}` : "Mission", client && client.sample ? "Sample data" : ""].filter(Boolean).join(" · "),
       say: line || readback || "", actions });
     if (screen === "hud" && !/^Houston/.test(eyebrow || "")) radio("capcom", line || readback);
@@ -452,16 +462,28 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     renderBanner({ level: d.level === "critical" ? "warn" : d.level === "warn" ? "caution" : "info", title: d.level === "critical" ? "Alert" : d.level === "warn" ? "Caution" : "Update", text: d.text });
   }
   /** A CAPCOM card from a decision: body, chips, and actions whose clicks go back through `send`. */
+  /** Cadet (7–9) or Commander (10–12): Settings / the learning design's difficulty band. Commander is the default. */
+  const tier = () => { try { return localStorage.getItem("outpost-tier") === "cadet" ? "cadet" : "commander"; } catch (e) { return "commander"; } };
+  /** Which panel an offer belongs to (the Director may name it: d.panel). */
+  const PANEL_OF = [[/shelter|storm|shield|radiation|dose/i, "radiation"], [/rover|ice|explore|repair/i, "rover"], [/houston|radio|comm|earth/i, "comm"],
+    [/heater|greenhouse|life support|air/i, "habitat"], [/power|battery|science|sunset|night/i, "power"]];
+  const panelFor = (d, text) => d.panel || (PANEL_OF.find(([re]) => re.test(text || "")) || [])[1] || null;
+  function cadetOffer(d, text, actions) {
+    if (tier() !== "cadet" || !cockpit || !cockpit.offer || screen !== "hud") return;
+    const pid = panelFor(d, text); if (pid) cockpit.offer(pid, actions);
+  }
   function showCard(d, send) {
     const s = state;
     card.show({ title: d.title || "CAPCOM", asked: d.asked || "", say: d.body || "", arc: d.arc || "",
       eyebrow: [d.hint ? "Heads up" : d.nudge ? "Coach" : "", s ? `Day ${s.day} · shift ${s.shift}` : "Mission"].filter(Boolean).join(" · "),
       actions: (d.actions || []).map(a => ({ label: a.label, hot: true, once: true, onClick: () => send(a.send) })) });
+    if ((d.actions || []).length) cadetOffer(d, [d.title, d.body, d.asked].join(" "), d.actions.map(a => ({ label: a.label, onClick: () => send(a.send) })));
   }
   function askConfirm(d, send) {
     pending = { type: "confirm" };
     card.show({ title: "CAPCOM", say: d.text || "Are you sure?", eyebrow: "Confirm",
       actions: [{ label: "Yes", hot: true, once: true, onClick: () => send(d.yes) }, { label: "No", once: true, onClick: () => send(d.no) }] });
+    cadetOffer(d, d.text, [{ label: "Yes", onClick: () => send(d.yes) }, { label: "No", onClick: () => send(d.no) }]);
   }
 
   function context() { return state ? { id: state.id, role: roles.size === 1 ? [...roles][0] : null } : null; }
@@ -572,7 +594,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** A navigation intent. True when Mission ran it. */
   function nav(intent, arg) {
     if (screen === "off") return false;
-    const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_back: "seat" }[intent];
+    const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_rover: "rover", panel_radiation: "radiation", panel_back: "seat" }[intent];
     if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
     if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }

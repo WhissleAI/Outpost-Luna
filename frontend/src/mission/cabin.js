@@ -135,7 +135,7 @@ export function createCabin(root, o = {}) {
   const glassEl = q(".cb-glass");
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
-  let c3 = null;
+  let c3 = null, qualityOff = () => {};
   const reducedMo = () => document.documentElement.dataset.motion === "reduce" || !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
@@ -148,6 +148,9 @@ export function createCabin(root, o = {}) {
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
     if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
+      // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
+      try { c3.setQuality(localStorage.getItem("outpost-quality") === "low" ? "low" : "high"); } catch (e) { /* storage blocked */ }
+      const onQ = e => c3 && c3.setQuality(e.detail); addEventListener("outpost:quality", onQ); qualityOff = () => removeEventListener("outpost:quality", onQ);
       backEl.onclick = () => c3.back();
       root.addEventListener("keydown", e => { if (e.key === "Escape" && c3.panel) { e.preventDefault(); c3.back(); } });
       Object.entries(panelEls).forEach(([id, el]) => {
@@ -286,6 +289,8 @@ export function createCabin(root, o = {}) {
       const el = q(`[data-panel="${pid}"]`); if (!el) return;
       const ids = [...lit].filter(id => ALARM_PANEL[id] === pid), lv = ids.some(id => lvlOf(id) === "warn") ? "warn" : ids.length ? "caution" : "";
       if (lv) el.dataset.alarm = lv; else delete el.dataset.alarm;
+      // never colour alone: the panel's label chip says it too
+      const base = (PANELS.find(x => x[0] === pid) || [])[1] || ""; if (base) el.dataset.label = lv ? `${base} · ${lv === "warn" ? "Alert" : "Check"}` : base;
     });
     const storm = e.storm && e.storm.active;
     glassEl.classList.toggle("is-storm", !!storm);
@@ -340,5 +345,18 @@ export function createCabin(root, o = {}) {
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
     openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { if (c3) c3.dispose(); } };
+    dispose() { if (c3) c3.dispose(); qualityOff(); },
+    setQuality: q => c3 && c3.setQuality(q),
+    /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
+    offer(panelId, actions) {
+      root.querySelectorAll(".cb-offer").forEach(n => n.remove());
+      if (!panelId || !actions || !actions.length) return;
+      const host = q(`[data-panel="${panelId === "power" ? "displays" : panelId}"]`); if (!host) return;
+      const box = document.createElement("div"); box.className = "cb-offer"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "CAPCOM offers");
+      actions.slice(0, 2).forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "cb-offer-b" + (i ? "" : " is-hot"); b.textContent = a.label;
+        b.onclick = () => { box.remove(); a.onClick(); }; box.append(b); });
+      host.append(box);
+      if (c3) c3.open(panelId);
+      requestAnimationFrame(() => { const f = box.querySelector("button"); if (f) f.focus({ preventScroll: true }); });
+    } };
 }

@@ -134,7 +134,7 @@
 .cb-sk.is-act{min-width:40px;color:var(--color-on-space)}
 
 /* ---------------- 3. controls ---------------- */
-.cb-controls{display:grid;grid-template-columns:1.3fr 1.1fr .8fr 1.55fr 1.45fr;gap:var(--cb-gap);min-height:0}
+.cb-controls{display:grid;grid-template-columns:1fr 1.1fr 1.25fr 1.6fr 1fr 1fr;gap:var(--cb-gap);min-height:0}
 .cb-plate{position:relative;display:flex;flex-direction:column;gap:var(--space-2);min-width:0;padding:var(--space-2) var(--space-3) var(--space-3);border-radius:var(--radius-lg);
   background:var(--cb-plate);box-shadow:inset 0 1px 0 var(--cb-line)}
 .cb-plate h3{margin:0;font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--cb-text-2)}
@@ -204,7 +204,10 @@
 .cb-lamp.is-lit.is-info{background:var(--color-lamp-info)}
 
 /* Houston + END SHIFT (the primary action) */
-.cb-comm{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;gap:var(--space-2);padding-top:var(--space-3)}
+.cb-comm,.cb-ped{display:flex;flex-direction:column;gap:var(--space-2)}
+.cb-comm .cb-ptt,.cb-ped .cb-end{flex:1}
+.cb-ped{padding-top:var(--space-3)}
+.cb-radrow{flex:1;display:flex;align-items:center;justify-content:space-around;gap:var(--space-3)}
 .cb-ptt,.cb-end{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:var(--control-lg);border-radius:var(--radius-md);overflow:hidden;line-height:var(--leading-tight)}
 .cb-ptt{border:1px solid var(--cb-line);background:var(--cb-key);color:var(--color-on-space)}
 .cb-ptt:hover:not(:disabled){border-color:var(--color-on-space-2)}
@@ -328,26 +331,46 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 .c3-css>div{pointer-events:none}
 .c3-panel{pointer-events:auto;box-sizing:border-box;border-radius:var(--radius-lg);background:var(--cb-plate);box-shadow:inset 0 0 0 1px var(--cb-line);
   transition:opacity var(--dur-base) var(--ease-out),filter var(--dur-base)}
-.c3-panel::before{content:attr(data-label);position:absolute;left:var(--space-4);top:calc(var(--space-2) * -1 - 22px);padding:2px var(--space-3);border-radius:var(--radius-full);
+.c3-panel::before{content:attr(data-label);position:absolute;left:var(--space-4);top:-34px;padding:4px var(--space-3);font-size:var(--text-md)!important;border-radius:var(--radius-full);
   background:var(--color-glass);color:var(--color-on-space-2);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase}
 .c3[data-panel="seat"] .c3-panel{cursor:zoom-in}
-.c3[data-panel="seat"] .c3-panel:hover{filter:brightness(1.15)}
 .c3-panel.is-open::before{color:var(--color-on-space);background:var(--color-panel)}
 .c3-panel.is-dim{opacity:.55}
 .cb-dus.c3-panel{width:1200px;height:330px;padding:var(--space-3);gap:var(--space-3);display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
-.cb-grp.c3-panel{width:640px;height:470px;padding:var(--space-4);gap:var(--space-3);display:grid;grid-template-columns:1fr 1fr;align-content:stretch}
-.cb-grp.c3-panel[data-panel="habitat"]>.cb-hab{grid-column:1/-1}
-.cb-grp.c3-panel[data-panel="comm"]>.cb-cw,.cb-grp.c3-panel[data-panel="comm"]>.cb-comm{grid-column:1/-1}
+.cb-grp.c3-panel{width:560px;height:300px;padding:var(--space-3);gap:var(--space-3);display:grid;grid-template-columns:1fr;align-content:stretch}
+.cb-grp.c3-panel[data-panel="rover"],.cb-grp.c3-panel[data-panel="comm"]{height:250px}
+.cb-grp.c3-panel[data-panel="pedestal"]{width:800px;height:300px;grid-template-columns:1.6fr 1fr}
+/* seat view: the three big numbers must read from the seat */
+.c3[data-panel="seat"] .du-head b{font-size:40px}
+.c3[data-panel="seat"] .du-head span{font-size:var(--text-sm)}
+/* an alarm lights the panel it belongs to */
+.c3-panel[data-alarm]{box-shadow:inset 0 0 0 2px var(--color-lamp-caution),0 0 40px color-mix(in srgb,var(--color-lamp-caution) 40%,transparent)}
+.c3-panel[data-alarm="warn"]{box-shadow:inset 0 0 0 2px var(--color-lamp-warning),0 0 48px color-mix(in srgb,var(--color-lamp-warning) 45%,transparent)}
+.c3-panel[data-alarm]::before{background:var(--color-lamp-caution);color:var(--color-space)}
+.c3-panel[data-alarm="warn"]::before{background:var(--color-lamp-warning)}
+/* seat view: hover / focus says "this opens" */
+.c3[data-panel="seat"] .c3-panel:hover,.c3[data-panel="seat"] .c3-panel:focus-within{box-shadow:inset 0 0 0 2px var(--color-on-space-2),0 0 36px color-mix(in srgb,var(--color-on-space) 18%,transparent)}
+.c3[data-panel="seat"] .c3-panel:hover::before{background:var(--color-on-space);color:var(--color-space)}
 .c3-panel .cb-plate{background:var(--color-panel);box-shadow:inset 0 1px 0 var(--cb-line),0 1px 0 var(--color-space)}
-.cb-hole{position:absolute;z-index:2;pointer-events:none}
+.cb-hole{position:absolute;z-index:2;pointer-events:none;--inset:clamp(18px,4%,40px)}
+.cb-hole>.cb-top{left:var(--inset);right:var(--inset);top:var(--inset)}
+.cb-hole>.cb-alert{left:var(--inset);right:var(--inset);top:calc(var(--inset) * .5);border-radius:var(--radius-md)}
+.cb-hole:has(>.cb-alert:not([hidden]))>.cb-top{top:calc(var(--inset) * .5 + var(--control-md) + var(--space-2))}
 .cb-hole>*{position:absolute;pointer-events:auto}
-.cb-hole>.cb-sky{pointer-events:none;top:calc(var(--space-4) + 52px);bottom:auto}
-.cb-hole>.cb-rover{bottom:auto;top:calc(var(--space-4) + 52px)}
+.cb-hole>.cb-sky{pointer-events:none;left:var(--inset);top:calc(var(--inset) + 56px);bottom:auto}
+.cb-hole>.cb-rover{bottom:auto;top:calc(var(--inset) + 56px)}
 .c3-back{position:absolute;z-index:4;left:var(--space-4);top:var(--space-4);display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--control-md);padding:0 var(--space-4);
   border-radius:var(--radius-full);border:1px solid var(--cb-line);background:var(--color-glass);color:var(--color-on-space);font-size:var(--text-sm);font-weight:var(--weight-semibold);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .c3-back[hidden]{display:none}
 .cb.is-3d>.cb-commrow{position:absolute;z-index:3;left:var(--space-3);right:var(--space-3);bottom:var(--space-3)}
+
+/* Cadet: CAPCOM's offer as two big buttons on the panel it is about */
+.cb-offer{position:absolute;left:var(--space-3);right:var(--space-3);bottom:var(--space-3);z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);
+  padding:var(--space-2);border-radius:var(--radius-md);background:var(--color-panel);box-shadow:0 0 0 2px var(--color-accent-strong),0 8px 30px color-mix(in srgb,var(--color-space) 70%,transparent)}
+.cb-grp,.cb-dus{position:relative}
+.cb-offer-b{min-height:var(--control-lg);border-radius:var(--radius-md);border:1px solid var(--cb-line);background:var(--cb-key);color:var(--color-on-space);font-size:var(--text-lg);font-weight:var(--weight-semibold)}
+.cb-offer-b.is-hot{background:var(--color-accent-strong);border-color:transparent;color:var(--color-on-accent-strong)}
 
 /* icons (assets/icons.js): drawn in currentColor */
 .m-cabin .ic{flex:none;stroke-width:2}
