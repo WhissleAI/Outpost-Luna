@@ -4,7 +4,8 @@ session event, numpy only (no torch).
 DIRECTOR_MODEL=off|shadow|on (env; default shadow):
   off     the model never runs.
   shadow  the model runs on every step and logs what it would do next to what the rules did; it never acts.
-  on      the model decides at a kid's turn end, with the rules as guardrails: the privacy guard always wins; a model
+  on      the model decides at a kid's turn end where the rules read no command, with the rules as guardrails: the
+          privacy guard always wins; the model never overrides a rules command; a model
           command must pass nlu.valid(); below CONF the rules decide; style tags outside the allowed set are never
           produced (the space only has allowed tags; steering re-checks FORBIDDEN anyway).
 GET /api/director/stats: shadow agreement counts (main.py).
@@ -291,6 +292,11 @@ class Shadow:
             return None
         act, p = self.model_act(out)
         if p < CONF:
+            return None
+        # `on_fill` (director_model/evaluate.py): the model never overrides a turn where the rules read a command
+        # (incl. yes/no); it fills the turns the rules would answer, ignore or ask about.
+        from ..mission import nlu
+        if [c for c in map(nlu.valid, nlu.parse(text).get("commands") or []) if c]:
             return None
         if act == "ignore":
             return {"act": "ignore"}

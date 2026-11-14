@@ -86,3 +86,59 @@ attribute on q80 ~ rules (0.77 vs 0.76) but card+attr below rules (the rules' br
 
 Next: more mission-mode explorer questions; 59 more train-only gold paraphrases (`data/gold_more.json`: metaphors per
 load, rover home/explore, science/who/size); 3,000 train sessions.
+
+## Round 3 — 2026-11-13 ~19:00 (more data, mission-mode questions, gold paraphrases) — SHIPPED (shadow)
+
+Changes: 3,000 train sessions (290,839 steps); explorer questions in mission mode 6% -> 9% of turns; 59 more
+train-only gold paraphrases (`data/gold_more.json`); runtime `on` now = `on_fill` (the model never overrides a turn
+where the rules read a command). Ablation on ds_r2: a false-execution penalty in the act loss (`--fp-exec 2`) did not
+lower wrong actions (guarded test_asr 15.7 vs 15.2 without it) -> not used.
+
+Train turns by source (ds_r3): mission commands 9,798 (templates, bank, compound, negation, rules, risky), explorer
+questions 7,128, Academy answers 3,374, barge-in 1,850, gold paraphrases 1,610, chatter 1,610, echo 1,330,
+yes/no 1,201, PII 728. Sessions: mission 1,531, cadet 909, academy 560; half ASR-noised. Labels: gold 14,736 turns,
+rules teacher 10,519, Academy grader 3,374.
+
+Model m: 77,637 params, 5,000 steps (best 4,400), ~7 min on CPU. Export: 137 KB, int8 vs float max |dp| 0.042,
+numpy stream vs torch parallel max |dp| 2e-6, 0.33 ms/step p50 (0.82 p99).
+
+| set | turns | act acc M / R | cmd exact M / R | wrong/50 cmd M / R | attr M / R | card+attr M / R | eot premature, mean gain | barge P/R M ; R |
+|---|---|---|---|---|---|---|---|---|
+| test_clean | 1366 | 0.982 / 0.879 | 0.813 / 0.871 | 8.8 / 6.5 | 0.934 / 0.760 | – | 0.000, 198 ms | 0.99/0.97 ; 0.86/0.17 |
+| test_asr | 1366 | 0.963 / 0.819 | 0.718 / 0.804 | 13.7 / 11.1 | 0.909 / 0.742 | – | 0.006, 203 ms | 0.98/0.99 ; 0.88/0.16 |
+| test_ear (real) | 200 | 0.640 / 0.720 | 0.603 / 0.828 | 48.3 / 17.2 | 0.683 / 1.0 | – | 0, 216 ms | – |
+| test_h40 | 40 | 0.90 / 0.45 | – | 15.0 / 3.8 | – | – | – | – |
+| test_h40_asr | 40 | 0.80 / 0.375 | – | 16.3 / 3.8 | – | – | – | – |
+| test_q80 | 80 | 0.938 / 0.863 | – | – | 0.857 / 0.757 | 0.475 / 0.488 | – | – |
+| test_q80_asr | 80 | 0.950 / 0.813 | – | – | 0.814 / 0.743 | 0.425 / 0.475 | – | – |
+| test_gold | 19 | 0.947 / 0.737 | 0.64 / 0.45 | 13.6 / 13.6 | 0.83 / 1.0 | – | – | – |
+
+h40 (`expect`): M 24/40 ok, 12 wrong, 4 none; R 15/40 ok, 3 wrong, 22 none (ASR: M 20 / 13 / 7, R 13 / 3 / 24).
+Size s (~30 K): acts as good (test_clean 0.984, test_asr 0.955), commands worse (wrong/50 13.8 / 17.8) -> m ships.
+
+Guarded `on` (= on_fill, as shipped) vs rules, wrong/50: test_clean 7.4 vs 6.5, test_asr 12.8 vs 11.1, test_ear
+29.3 vs 17.2, h40 9 wrong / 24 ok vs 3 wrong / 15 ok, test_gold 18.2 vs 13.6.
+
+Shadow agreement (model act == rules act on steps where either acts): test_clean 0.890, test_asr 0.841,
+test_ear 0.660.
+
+Top errors: (1) **real Arc decodes of questions in mission mode fire commands** (40 of 200 test_ear turns, e.g.
+"how deep is vav love crater", "fly to digo lockheed") — the generated ASR noise does not look like the real ear's
+garbled names, and the ear sessions are all mission mode; (2) multi-word place names mangled by the ear ("digo laki")
+in a command -> ask_clarify instead of explore; (3) metaphors with ASR noise ("we're tur ning into snowmen") ->
+ask/answer; (4) slot conventions: the bank says "more" = +5, the rules say +10, and both are in the labels, so exact
+slots on paraphrases are noisy.
+
+## Where it stands (after 3 rounds)
+
+The model is clearly better than the rules at **reading the kid**: act accuracy on every held-out set where gold is
+independent of the rules (test_asr 0.96 vs 0.82, h40 0.90 vs 0.45, test_gold 0.95 vs 0.74), card attribute (0.86 vs
+0.76 on the 80 kid questions), barge-in recall 0.99 vs 0.17 at precision 0.98, chatter / echo ignored, Academy
+answers (grader feature), and it can answer ~200 ms earlier at the eager end of turn with < 1% premature answers.
+
+It is **not** better at **acting**: wrong actions per 50 commands stay above the rules on every set (and far above on
+the real ear decodes), because it fires more commands, including on paraphrases the rules leave alone (h40: 24 right
+fires but 12 wrong vs 3). **Recommendation: ship `DIRECTOR_MODEL=shadow` (default); do not turn `on`.** Revisit when
+(a) the real-ear set is larger and in the training mix (record real Arc decodes of generated sessions instead of the
+fitted error model), (b) the slot conventions are unified (bank vs rules), and (c) guarded wrong/50 is at or below
+the rules on test_asr, test_ear and h40 with the guard/PII rows unchanged.

@@ -1,0 +1,26 @@
+train 2000 sessions 192589 steps; val 150
+params 77,637 (m)
+/Users/karan/Desktop/work/whissle/live_assist/wt-moon-director-model/director_model/train.py:267: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:837.)
+  print(f"step {step} train {float(loss):.3f} val {tot:.3f} act {v['act']:.3f} cmd {v['cmd_type']:.3f} "
+step 200 train 2.109 val 2.275 act 0.095 cmd 0.155 attr 1.143 when 0.327 barge 0.135 (12 s)
+step 400 train 1.121 val 1.680 act 0.058 cmd 0.094 attr 0.594 when 0.307 barge 0.145 (28 s)
+step 600 train 0.812 val 1.321 act 0.041 cmd 0.076 attr 0.364 when 0.291 barge 0.086 (42 s)
+step 800 train 0.604 val 1.226 act 0.040 cmd 0.055 attr 0.267 when 0.296 barge 0.048 (57 s)
+step 1000 train 0.643 val 1.033 act 0.038 cmd 0.054 attr 0.350 when 0.245 barge 0.057 (69 s)
+step 1200 train 0.417 val 0.991 act 0.028 cmd 0.047 attr 0.235 when 0.280 barge 0.043 (83 s)
+step 1400 train 0.487 val 1.024 act 0.026 cmd 0.045 attr 0.211 when 0.295 barge 0.047 (96 s)
+step 1600 train 0.371 val 0.890 act 0.033 cmd 0.071 attr 0.207 when 0.263 barge 0.036 (109 s)
+step 1800 train 0.364 val 0.870 act 0.026 cmd 0.040 attr 0.182 when 0.245 barge 0.030 (123 s)
+step 2000 train 0.250 val 0.835 act 0.023 cmd 0.039 attr 0.187 when 0.255 barge 0.044 (137 s)
+step 2200 train 0.309 val 0.752 act 0.023 cmd 0.047 attr 0.153 when 0.273 barge 0.030 (150 s)
+step 2400 train 0.205 val 0.714 act 0.022 cmd 0.043 attr 0.192 when 0.261 barge 0.022 (163 s)
+step 2600 train 0.280 val 0.783 act 0.020 cmd 0.040 attr 0.144 when 0.259 barge 0.028 (176 s)
+step 2800 train 0.272 val 0.763 act 0.025 cmd 0.054 attr 0.137 when 0.257 barge 0.031 (190 s)
+step 3000 train 0.171 val 0.744 act 0.019 cmd 0.046 attr 0.156 when 0.263 barge 0.025 (204 s)
+step 3200 train 0.171 val 0.713 act 0.018 cmd 0.040 attr 0.134 when 0.261 barge 0.025 (218 s)
+step 3400 train 0.224 val 0.713 act 0.019 cmd 0.040 attr 0.151 when 0.259 barge 0.028 (232 s)
+step 3600 train 0.154 val 0.709 act 0.020 cmd 0.045 attr 0.152 when 0.256 barge 0.024 (245 s)
+step 3800 train 0.194 val 0.714 act 0.023 cmd 0.048 attr 0.146 when 0.257 barge 0.025 (258 s)
+step 4000 train 0.172 val 0.715 act 0.023 cmd 0.048 attr 0.146 when 0.256 barge 0.025 (272 s)
+saved runs/r2_m_fp2 best step 3600

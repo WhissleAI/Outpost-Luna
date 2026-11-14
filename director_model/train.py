@@ -39,8 +39,10 @@ HEADS = list(FX.HEADS.items())
 NH = sum(n for _, n in HEADS)
 W_LOSS = {"act": 1.0, "when": 0.5, "cmd_type": 0.6, "sub_type": 0.3, "amount": 0.5, "load_to": 0.5, "load_from": 0.3,
           "task": 0.4, "query": 0.4, "rule_when": 0.3, "card_attr": 0.5, "style": 0.2, "s_rate": 0.1, "s_loud": 0.1,
-          "s_f0_iqr": 0.1, "barge": 0.5, "w_load": 0.2, "w_num": 0.3, "w_task": 0.2}
-ACT_END_W = 3.0           # act loss weight on decision steps (turn ends, rules acted) vs. waiting steps
+          "s_f0_iqr": 0.1, "barge": 0.5, "w_load": 0.2, "w_num": 0.3, "w_task": 0.2, "fp_exec": 1.0}
+ACT_END_W = 3.0
+EXEC_IDX = tuple(FX.ACTS.index(a) for a in ("command", "confirm_yes", "confirm_no"))
+FP_EXEC = 0.0             # --fp-exec: weight of the false-execution penalty           # act loss weight on decision steps (turn ends, rules acted) vs. waiting steps
 
 
 class Director(nn.Module):
@@ -160,6 +162,11 @@ def losses(o, lab):
         elif k == "act":
             w = torch.where(y[m] > 0, ACT_END_W, 1.0)
             L[k] = (Fn.cross_entropy(o[k][m], y[m], reduction="none") * w).sum() / w.sum()
+            if FP_EXEC > 0:   # cost-sensitive: probability of executing (command / confirm) where the kid meant otherwise
+                dec = m & (y > 0) & ~((y == EXEC_IDX[0]) | (y == EXEC_IDX[1]) | (y == EXEC_IDX[2]))
+                if dec.any():
+                    pe = torch.softmax(o[k][dec], -1)[:, list(EXEC_IDX)].sum(-1)
+                    L["fp_exec"] = -torch.log1p(-pe.clamp(max=0.999)).mean()
         else:
             L[k] = Fn.cross_entropy(o[k][m], y[m])
     for k in FX.WORD_HEADS:
@@ -203,7 +210,11 @@ def main():
     ap.add_argument("--drop", type=float, default=0.1)
     ap.add_argument("--feat-noise", type=float, default=0.03)
     ap.add_argument("--patience", type=int, default=8, help="evals (every 200 steps) without val improvement")
+    ap.add_argument("--fp-exec", type=float, default=0.0, help="weight of the false-execution penalty")
     a = ap.parse_args()
+    global FP_EXEC
+    FP_EXEC = a.fp_exec
+    W_LOSS["fp_exec"] = a.fp_exec
     torch.set_num_threads(a.threads)
     torch.manual_seed(a.seed)
     rng = random.Random(a.seed)

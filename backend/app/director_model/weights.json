@@ -82,13 +82,13 @@
   "w_task"
  ],
  "thr": {
-  "when": 0.9800000000000004
+  "when": 0.9600000000000004
  },
- "run": "r2_m",
- "data": "ds_r2",
+ "run": "r3_m",
+ "data": "ds_r3",
  "trained": {
-  "n_train_sessions": 2000,
-  "n_train_steps": 192589,
-  "best_step": 3200
+  "n_train_sessions": 3000,
+  "n_train_steps": 290839,
+  "best_step": 4400
  }
 }
