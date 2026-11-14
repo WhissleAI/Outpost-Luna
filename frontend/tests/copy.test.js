@@ -46,7 +46,13 @@ test("on-screen budgets: headlines 2-6 words, one line <= 12, buttons 1-3", () =
 test("credit line is exact; Artemis framing stays true", () => {
   assert.equal(S.CREDIT, "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.");
   assert.match(S.FRAMING, /April 2026/);
-  assert.match(S.FRAMING, /Artemis III hasn't landed/);
+  assert.match(S.FRAMING, /No crew has landed at the south pole/);
+  for (const t of [S.FRAMING, S.WHY, S.SCHOOL.hero, S.SCHOOL.hero2, S.LESSON_BLURB.radiation])
+    assert.doesNotMatch(t, /Artemis III|real NASA data|\bG5\b/, t);
+  assert.match(S.WHY, /planned/);
+  for (const k of ["hero", "hero2"]) assert.ok(S.SCHOOL[k].length <= 32, S.SCHOOL[k]);   // 2 lines at 40px
+  assert.equal(S.PRETEND_TECH, "Pretend tech");
+  assert.equal(words(S.PRETEND_TECH_TIP), 10);
 });
 
 test("a typed call sign is shown, never spoken", () => {

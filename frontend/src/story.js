@@ -2,14 +2,28 @@
 // callbacks during the Mission, debrief copy, spoken offers) lives here so it is easy to edit. No logic beyond tiny
 // templating. Voice, tone and word budgets: docs/COPY.md. Tests: backend/tests/test_copy.py (no emoji, spoken <= 20 words).
 //
-// Framing (keep it true): Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near
-// the south pole, has NOT happened yet. The kid trains at Flight School to help run Outpost Luna, a south-pole base for
-// the crews who will come after.
+// Framing (keep it true; docs/ACCURACY_AUDIT.md #1): Artemis II flew its crew around the Moon in April 2026. Since
+// NASA's 2026-02-27 restructure, Artemis III (2027) is a crewed test flight in Earth orbit, with no landing. The first
+// crewed landing is planned for Artemis IV (2028), and NASA has not confirmed its site. No crew has landed at the
+// south pole. The kid trains at Flight School to help run Outpost Luna, a south-pole base for the crews who will come.
 
 export const CREDIT = "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.";
 
+/** Honest sourcing line (About, Debrief). Never claim that everything comes from NASA (docs/COPY.md, Accuracy). */
+export const SOURCES_LINE = "Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it.";
+
+/** Tag for game-only hardware (powered radiation shields, greenhouse, rim-to-floor cable, rim relay). Tooltip: 10 words. */
+export const PRETEND_TECH = "Pretend tech";
+export const PRETEND_TECH_TIP = "Made up for the game. Real crews don't have this.";
+
+/** The May 2024 storm, told truthfully: Earth saw a magnetic storm (auroras); the Moon's hazard is the particles. */
+export const STORM = {
+  name: "Solar particle storm",
+  may2024: "Based on the real May 2024 storm. It gave Earth huge auroras.",
+};
+
 /** Three short sentences. mission/ui.js shows everything after the first ". " as a sub line. */
-export const FRAMING = "Artemis II flew around the Moon in April 2026. Artemis III hasn't landed yet. Train now for the crews who will.";
+export const FRAMING = "Artemis II flew around the Moon in April 2026. No crew has landed at the south pole yet. Train now for the crews who will.";
 
 /** The four beats of the one story, shown on the Academy map and in About. */
 export const BEATS = [
@@ -54,15 +68,15 @@ export const TRACKS = [
 export const LESSON_BLURB = {
   moon: "Near side, far side, and Shackleton crater at the pole.",
   comms: "Copy, roger, say again. Talk like the Artemis II crew.",
-  power: "Sunlight, batteries, and Malapert's long polar night.",
-  radiation: "Measure radiation. Ride out the real May 2024 storm.",
+  power: "Sunlight, batteries, and Malapert's long dark spell.",
+  radiation: "Measure radiation. Ride out a solar particle storm.",
   life: "Air, water, and the ice LCROSS found.",
   history: "What Apollo left behind for the next crews.",
   words: "Albedo, regolith, terminator: words the crew really used.",
   checkride: "Two days at Shackleton Rim. Your first solo shift.",
 };
 export const WHY_TITLE = "Why this matters";
-export const WHY = "Artemis crews will land near the south pole. Train on NASA data.";
+export const WHY = "The first crew landing is planned for Artemis IV, in 2028.";
 export const MENTOR = {
   role: "Your mentor",
   first: cs => `Welcome, ${cs}. Let's start with the Moon itself.`,
@@ -73,8 +87,8 @@ export const MENTOR = {
 };
 export const SCHOOL = {
   eyebrow: "Flight School",
-  hero: "Artemis III hasn't landed yet.",
-  hero2: "Train for the crew that will.",
+  hero: "Nobody's landed at the pole yet.",
+  hero2: "Train for the crews who will.",
   title: c => `Welcome, ${c}`,
   titleDone: c => `Qualified, Commander ${c}`,
   sub: "Earn a patch for each lesson. Then take command.",
@@ -135,7 +149,7 @@ export const OFFER = {
 // ---------- Mission: lessons come back as events ----------
 /** Mission event kind / alert → the Flight School lesson that taught it (course.json id), and CAPCOM's reminder. */
 export const CALLBACKS = {
-  solar_storm: { lesson: "radiation", n: 4, text: "Solar storm. Shields up, or crew to the shelter." },
+  solar_storm: { lesson: "radiation", n: 4, text: "Solar particle storm. Shields up, or crew to the shelter." },
   low_power: { lesson: "power", n: 3, text: "Battery's low. Turn down what you don't need." },
   sunset: { lesson: "power", n: 3, text: "Sunset. Give the heaters a little more." },
   life_support_low: { lesson: "life", n: 5, text: "Life support is low. The rover can fetch ice." },
