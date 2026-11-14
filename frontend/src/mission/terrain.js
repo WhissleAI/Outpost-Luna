@@ -268,11 +268,11 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     sun.intensity = 5.6 * smooth(-3, .4, S.sunEl); sunDisc.visible = S.sunEl > -3;   // exposed for the lit regolith
     // In the dark the window is a low-light camera (said on the glass), so the terrain stays readable.
     S.lowLight = S.sunEl < .3;
-    earthshine.intensity = S.lowLight ? .7 : S.earthEl > 0 ? .3 : .16;
-    earthshine.color.set(S.lowLight ? 0xa9c9bb : 0x9fb8e0);
+    earthshine.intensity = S.lowLight ? .95 : S.earthEl > 0 ? .3 : .16;
+    earthshine.color.set(S.lowLight ? 0xc3ccd6 : 0x9fb8e0);   // neutral grey-blue: night vision without the green cast
     fill.position.copy(skyDir(Math.max(S.earthEl, 0) + 14, 25)).multiplyScalar(1000); fill.target.position.set(0, 0, 0);
-    fill.intensity = S.lowLight ? 1.5 : S.earthEl > 0 ? .75 : .45;
-    fill.color.set(S.lowLight ? 0xbfe3cf : 0xb8cbe8);
+    fill.intensity = S.lowLight ? 2.1 : S.earthEl > 0 ? .75 : .45;
+    fill.color.set(S.lowLight ? 0xd2d9e2 : 0xb8cbe8);
     tag.textContent = S.lowLight ? "LOW-LIGHT CAMERA" : "";
     hab.userData.wing.rotation.y = Math.atan2(sd.x, sd.z);                         // arrays track the Sun
     hab.userData.dish.lookAt(hab.userData.dish.getWorldPosition(new THREE.Vector3()).add(ed.clone().multiplyScalar(100)));

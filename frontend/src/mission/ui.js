@@ -12,7 +12,6 @@ const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["green
   ["rover", "Rover"], ["comms", "Comms"], ["heaters", "Heaters"]];
 const LOAD_HELP = { shields: "Blocks radiation", life_support: "Makes air and water", greenhouse: "Plants make oxygen", science: "Earns points",
   rover: "Drives the rover", comms: "Talks to Earth", heaters: "Keeps things warm at night" };
-const ROLES = [["power", "Power"], ["life", "Life support"], ["comms", "Comms"]];
 const TASK = { collect_ice: "collecting ice", explore: "exploring", repair_array: "fixing a solar panel", return: "driving home" };
 // Ice and explore targets near the south pole (real places: Shackleton crater, Cabeus where LCROSS found water).
 const TARGETS = { collect_ice: { lat: -89.67, lon: 129.78, name: "Shackleton" }, explore: { lat: -84.68, lon: -48.7, name: "Cabeus" }, repair_array: null, return: null };
@@ -57,8 +56,26 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         state.alerts = on ? ["dose_rate_high"] : []; render(); },
       sky(sun, earth) { if (!state) return; Object.assign(state.env, { sun_elev_deg: sun, in_sun: sun > 0, earth_elev_deg: earth, earth_visible: earth > 0 }); testSky = true; render(); },
       rover(task, eta) { if (!state) return; state.rover = { ...(state.rover || {}), busy: !!task, task, eta_h: eta }; render(); },
+      shelter(on) { if (!state) return; state.shelter = !!on; render(); },
+      power(pct) { if (!state) return; state.resources.power_pct = pct; state.alerts = pct < 25 ? ["low_power"] : []; render(); if (pct < 25) renderBanner({ level: "caution", title: "Low power", text: `Battery at ${pct}%. Turn down what you don't need.` }); },
+      warning(lead, conf) { if (!state) return; state.env.storm = { active: false }; state.env.storm_warning = lead == null ? null : { lead_h: lead, confidence: conf, real_date: "10 May 2024", source: "DONKI" }; render(); },
+      comm(open) { if (!state) return; renderBanner({ level: "info", title: open ? "Earth in view" : "Earth set", text: open ? "You can call Houston." : "No radio until Earth rises." }); },
+      confirm(text) { capcom({ say: text || "Send the rover out during a solar storm? Say yes or no.", confirm: true }); },
+      busy(on) { if (cockpit) cockpit.busy(!!on); },
+      calling() { if (cockpit) cockpit.calling(true, 2600); },
+      debrief(outcome, extra = {}) { if (!state) return; fakeDebrief = fakeDb(outcome, extra); if (outcome !== "in_progress") { state.over = true; state.outcome = outcome; } showDebrief(); },
     };
     return tv;
+  }
+  let fakeDebrief = null;   // dev-only: a debrief payload for screenshots of every outcome
+  function fakeDb(outcome, extra) {
+    const tl = []; for (let i = 1; i <= 40; i++) { const st = i >= 14 && i <= 16;
+      tl.push({ t_h: i * 6, power: Math.max(5, 100 - (outcome === "failed" ? i * 2.4 : i * .4) - (st ? 8 : 0)), life_support: Math.max(4, 80 - (outcome === "failed" ? i * 1.9 : i * .3)),
+        dose_msv: i * (outcome === "failed" ? 1.1 : .5) + (st ? 6 : 0), events: st ? ["solar_storm"] : [] }); }
+    return { outcome, grade: outcome === "survived" ? "A" : "D", score: outcome === "survived" ? 412 : 96, why: outcome === "survived" ? "The crew made it through all 10 days." : "Life support ran out on day 7.",
+      timeline: outcome === "survived" ? tl : tl.slice(0, 28), lessons: [{ text: "On 2017-09-07 the Sun really produced a G4 storm.", source: { title: "DONKI 2017-09-07", url: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/" } },
+        { text: "Chang'e 4 measured 1369 microsieverts per day on the Moon's surface: about 2.6 times the dose inside the Space Station.", source: { title: "Zhang et al. 2020", url: "https://doi.org/10.1126/sciadv.aaz1334" } }],
+      data_used: [{ name: "JPL Horizons", url: "https://ssd.jpl.nasa.gov/horizons/" }], ...extra };
   }
   const badges = () => (academy ? academy.badges() : []);
   const learned = lessonId => !!(academy && academy.has(lessonId));
@@ -69,6 +86,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** Visual + screen-reader alert through the a11y module (screen-edge flash, vibration, assertive live region). */
   const a11yAlert = text => { try { const a = window.__outpost && window.__outpost.a11y; if (a && a.visualAlert) a.visualAlert(text); } catch (e) { /* a11y not loaded */ } };
   const srcLink = (s, label) => s && s.url ? `<a class="mx-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(label || s.title || new URL(s.url).hostname)}</a>` : "";
+  /** A takeaway: one sentence, at most 20 words (cut at a clause if longer; the source link carries the detail). */
+  const takeaway = t => { let x = firstSentence(t).replace(/\s*\([^)]*\)/g, ""); const w = x.split(/\s+/); if (w.length <= 20) return x;
+    const cut = x.slice(0, x.split(/\s+/).slice(0, 20).join(" ").length), m = cut.match(/^(.{30,}?)[:;,](?=\s)(?!.*[:;,]\s)/) || cut.match(/^(.{30,})[:;,—](?=\s)/);
+    return (m ? m[1] : w.slice(0, 18).join(" ")).replace(/[,;:]$/, "") + (m ? "." : "…"); };
   const firstSentence = t => { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return (m ? m[0] : String(t || "")).trim(); };
 
   // ---------- briefing ----------
@@ -96,6 +117,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     dockOut();
     cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false);
     clearTimeout(surfT); if (tv) tv.hide(); curView = null;
+    if (cockpit && cockpit.dispose) { cockpit.dispose(); cockpit = null; }   // stop the 3D cabin's render loop
   };
   /** The window: ORBIT is the NASA globe (LROC colour); SITE / ROVER / EARTH are the LOLA terrain views. Going down
    *  from orbit, the globe dives toward the site first, then the surface view takes over the glass mid-descent. */
@@ -129,12 +151,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover|rover cam(era)?)\b/, "rover"],
     [/\b(earth view|show (me )?(the )?earth|where is (the )?earth|look at (the )?earth)\b/, "earth"],
     [/\b(zoom in|outpost view|site view|(back|go) to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
+  /** Spoken or typed panel words ("open the power panel", "habitat panel", "comm panel", "back to my seat"). */
+  const PANEL_WORDS = [[/\b(power|display|displays|main) (panel|displays?)\b|\bopen (the )?power\b/, "power"], [/\b(habitat|hab|shelter) panel\b|\bopen (the )?(habitat|hab)\b/, "habitat"],
+    [/\b(comm|comms|radio|houston) panel\b|\bopen (the )?comms?\b/, "comm"], [/\b(back to (my |the )?seat|close (the )?panel|seat view)\b|^back$/, "seat"]];
+  function panelWord(text) {
+    const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
+    if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
+  }
   function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
-  /** The site picker: five real south-pole sites, three numbers each, one primary action. */
+  /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
+   *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
+   *  of time in view during the mission's own 10-day window (JPL Horizons), the same numbers the sim and debrief use. */
+  const sunPct = s => Math.round(s.window_sunlit_pct ?? s.sunlight_pct);
   function briefing() {
     screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide();
-    globe.setViewport(.68);   // lift the south pole off the comm strip: the pins sit in the open sky-side of the stage
     if (!site) site = sites[0];
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
@@ -145,41 +176,62 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
         <div class="mx-cols" aria-hidden="true"><span></span><span>Sun</span><span>Earth</span><span>Ice</span></div>
         ${sites.map(s => `
-        <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}"
-          aria-label="${esc(s.name)}: sun ${Math.round(s.sunlight_pct)} percent, Earth in view ${Math.round(s.earth_visible_pct)} percent, ${s.ice ? "ice nearby" : "no ice nearby"}">
+        <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
+          aria-label="${esc(s.name)}: sun ${sunPct(s)} percent, Earth in view ${Math.round(s.earth_visible_pct)} percent, ${s.ice ? "ice nearby" : "no ice nearby"}">
           <b>${esc(s.name)}</b>
-          <span class="mx-v${s.sunlight_pct >= 80 ? " is-best" : s.sunlight_pct < 20 ? " is-low" : ""}">${Math.round(s.sunlight_pct)}%</span>
+          <span class="mx-v${sunPct(s) >= 80 ? " is-best" : ""}">${sunPct(s)}%</span>
           <span class="mx-v${s.earth_visible_pct >= 80 ? " is-best" : ""}">${Math.round(s.earth_visible_pct)}%</span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
         </button>`).join("")}
       </div>
-      <p class="mx-srcline">${src0 ? `Source: ${srcLink(src0, src0.title.split(":")[0].split(",")[0])}` : ""}</p>
-      <div class="mx-foot">
-        <button type="button" class="mx-go" id="mStart">Take command</button>
-        <details class="mx-roles"><summary>Team roles</summary>
-          <div>${ROLES.map(([id, n]) => `<button type="button" class="mx-chip" data-role="${id}" aria-pressed="${roles.has(id)}">${n}</button>`).join("")}</div></details>
-      </div>`;
-    panel.querySelectorAll(".mx-site").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); });
+      <p class="mx-srcline">% of your 10 days in view · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
+      <button type="button" class="mx-go" id="mStart">Take command</button>`;
+    const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
+    panel.querySelectorAll(".mx-site").forEach(b => {
+      b.onclick = () => pick(b.dataset.site);
+      b.onpointerenter = () => hot(b.dataset.site, true); b.onpointerleave = () => hot(b.dataset.site, false);
+    });
     panel.querySelector(".mx-sites").addEventListener("keydown", e => {
       const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return; e.preventDefault(); e.stopPropagation();
-      const i = (sites.indexOf(site) + d + sites.length) % sites.length; site = sites[i]; previewSite(); briefing(); panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`).focus();
+      pick(sites[(sites.indexOf(site) + d + sites.length) % sites.length].id);
     });
-    panel.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
     $("mStart").onclick = () => start();
-    previewSite(); pins();
+    previewSite(); pins(pick);
   }
-  /** The five sites as pins on the real south pole (the globe is the backdrop; the list is the keyboard path). */
+  /** Row and pin: hovering either lights both. */
+  function hot(id, on) {
+    document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
+  }
+  /** Pins on the pole + their labels in a column beside the cluster, joined by leader lines (four of the five sites are
+   *  within 2° of the pole, so labels next to the dots would overlap at any distance the camera allows). */
   let pinEl = null, pinRaf = 0;
-  function pins() {
+  function pins(pick) {
     if (!globe.project) return;
     if (!pinEl) { pinEl = document.createElement("div"); pinEl.className = "mx-pins"; pinEl.setAttribute("aria-hidden", "true"); panel.parentNode.insertBefore(pinEl, panel); }
-    pinEl.innerHTML = sites.map(s => `<button type="button" tabindex="-1" class="mx-pin${s === site ? " is-sel" : ""}" data-site="${esc(s.id)}"><i></i><span>${esc(s.name.split(" (")[0])}</span></button>`).join("");
-    pinEl.querySelectorAll(".mx-pin").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); });
+    pinEl.innerHTML = `<svg class="mx-leads"></svg>` + sites.map(s => `<i class="mx-dot${s === site ? " is-sel" : ""}" data-site="${esc(s.id)}"></i>
+      <button type="button" tabindex="-1" class="mx-pin${s === site ? " is-sel" : ""}" data-site="${esc(s.id)}">${esc(s.name.split(" (")[0])}</button>`).join("");
+    pinEl.querySelectorAll(".mx-pin").forEach(b => {
+      b.onclick = () => pick(b.dataset.site);
+      b.onpointerenter = () => hot(b.dataset.site, true); b.onpointerleave = () => hot(b.dataset.site, false);
+    });
     pinEl.hidden = false; cancelAnimationFrame(pinRaf);
+    const svg = pinEl.querySelector(".mx-leads");
     const tick = () => {
       if (screen !== "brief") { pinEl.hidden = true; return; }
-      pinEl.querySelectorAll(".mx-pin").forEach(b => { const s = sites.find(x => x.id === b.dataset.site), p = globe.project(s.lat, s.lon);
-        b.style.transform = `translate(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px)`; b.style.visibility = p.facing ? "" : "hidden"; });
+      const P = sites.map(s => ({ s, p: globe.project(s.lat, s.lon) })).filter(o => o.p.facing);
+      const minX = Math.min(...P.map(o => o.p.x)), LH = 34;
+      const col = P.slice().sort((a, b) => a.p.y - b.p.y);
+      // label column left of the cluster, centred on it vertically, one row per site
+      const cy = col.reduce((t, o) => t + o.p.y, 0) / (col.length || 1), y0 = cy - (col.length - 1) * LH / 2, lx = minX - 64;
+      let lines = "";
+      col.forEach((o, k) => {
+        const id = CSS.escape(o.s.id), dot = pinEl.querySelector(`.mx-dot[data-site="${id}"]`), lab = pinEl.querySelector(`.mx-pin[data-site="${id}"]`);
+        const ly = y0 + k * LH;
+        dot.style.transform = `translate(${o.p.x.toFixed(1)}px,${o.p.y.toFixed(1)}px)`;
+        lab.style.transform = `translate(calc(${lx.toFixed(1)}px - 100%),${ly.toFixed(1)}px)`;
+        lines += `<path d="M${(lx + 4).toFixed(1)} ${ly.toFixed(1)}H${(lx + 24).toFixed(1)}L${o.p.x.toFixed(1)} ${o.p.y.toFixed(1)}" class="${o.s === site ? "is-sel" : ""}" data-site="${esc(o.s.id)}"/>`;
+      });
+      svg.innerHTML = lines;
       pinRaf = requestAnimationFrame(tick);
     };
     tick();
@@ -188,6 +240,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (!site) return;
     globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.0 });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
+    // frame the whole south-pole region (all five sites), not just the picked one; the band lifts the pole off the strip
+    globe.setViewport(.62); globe.flyTo(-88.6, -40, 1.62);
   }
 
   async function start(seed) {
@@ -218,6 +272,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   function showHud() {
     screen = "hud"; debriefEl.hidden = true; panel.hidden = true; cabinEl.hidden = false; document.body.dataset.cabin = "1";
     dockOut();   // createCabin rewrites the cabin's HTML: lift the docked nodes out first
+    if (cockpit && cockpit.dispose) cockpit.dispose();
     cockpit = createCabin(cabinEl, {
       badges,
       onCommand: c => run(c),
@@ -228,7 +283,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     });
     dockIn();
     if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
-    requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
+    requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-hole") || cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
     render();
@@ -245,7 +300,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     syncSurface();
   }
   /** Radio log lines survive re-renders of the cockpit. */
-  function radio(who, text) { if (!text) return; if (who === "kid") nudge.heard(); logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
+  function radio(who, text) { if (!text) return; if (who === "kid") { nudge.heard(); panelWord(text); } logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
   /** The Call Houston push button: the real Director in a live mission, the local practice line otherwise. */
   async function callHouston() {
     if (!state) return;
@@ -358,6 +413,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function handleText(text) {
     if (!state || screen !== "hud") return false;
     radio("kid", text);
+    if (panelWord(text)) return true;
     const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
     if (vw && cockpit) { cockpit.setView(vw[1]); return true; }
     if (!client.sample) return false;          // the real Director parses commands
@@ -423,7 +479,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function showDebrief() {
     if (!state) return;
     screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin(); card.hide();
-    let d; try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
+    let d; if (fakeDebrief) { d = fakeDebrief; fakeDebrief = null; } else try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");
     const paused = outcome === "in_progress" || !outcome;
     const won = outcome === "survived" || outcome === "success";
@@ -431,9 +487,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : firstSentence(d.why);
     (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
-    const tks = (d.lessons || []).filter(l => l && l.text).map(l => ({ text: firstSentence(l.text), source: l.source }));
-    [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: firstSentence(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
-    if (!tks.length) lessons().forEach(l => tks.push({ text: firstSentence(l.text), source: { ...l.source, title: l.name } }));
+    const tks = (d.lessons || []).filter(l => l && l.text).map(l => ({ text: takeaway(l.text), source: l.source }));
+    [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
+    if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
     const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `
@@ -442,6 +498,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <div class="mx-db-top">
         <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
         <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div></dl>
+        ${breakdown(d)}
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
       <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : ""}</li>`).join("")}</ul>
@@ -455,11 +512,18 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
-    const line = cs => `${head}. ${DEBRIEF.grade(cs, d.grade, Math.round(d.score || 0))}`;
+    const line = cs => paused ? `${head}.` : `${head}. ${DEBRIEF.grade(cs, d.grade, Math.round(d.score || 0))}`;
     // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer). A typed name is never spoken.
     radio("capcom", line(callSign.shown())); say(`${line(callSign.spoken())} ${OFFER.flyAgain}`);
   }
 
+  /** Score breakdown, when the debrief sends one (the game redesign): [{label, points}] or {label: points}. */
+  function breakdown(d) {
+    const b = d.score_breakdown || d.breakdown; if (!b) return "";
+    const rows = Array.isArray(b) ? b.map(r => [r.label || r.name, r.points ?? r.value]) : Object.entries(b);
+    if (!rows.length) return "";
+    return `<ul class="mx-break" aria-label="How you scored">${rows.map(([n, v]) => `<li><span>${esc(n)}</span><b>${+v > 0 ? "+" : ""}${Math.round(+v || 0)}</b></li>`).join("")}</ul>`;
+  }
   /** Shift-by-shift lines: power %, life support %, dose as % of the limit (one 0-100 axis); storm shifts shaded. */
   function chart(tl, lim) {
     if (tl.length < 2) return `<p class="mx-empty">Fly a few shifts to see your chart.</p>`;
@@ -468,7 +532,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const series = [["power", "Power", d => d.power], ["life", "Life support", d => d.life_support], ["dose", "Dose", d => d.dose_msv / lim * 100]];
     const grid = [0, 50, 100].map(v => `<line class="c-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="c-ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`).join("");
     const step = (W - L - R) / (n - 1);
-    const storms = tl.map((d, i) => (d.events || []).includes("solar_storm") || (d.events || []).includes("dose_alert") ? `<rect class="c-storm" x="${(x(i) - step / 2).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${H - T - B}"/>` : "").join("");
+    // storm shifts: a band per shift, clipped to the plot (never past the first or last point)
+    const storms = tl.map((d, i) => { if (!((d.events || []).includes("solar_storm") || (d.events || []).includes("dose_alert"))) return "";
+      const x0 = Math.max(L, x(i) - step / 2), x1 = Math.min(W - R, x(i) + step / 2);
+      return `<rect class="c-storm" x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${H - T - B}"/>`; }).join("");
     const days = []; tl.forEach((d, i) => { if (i === 0 || Math.floor((d.t_h - 1) / 24) !== Math.floor((tl[i - 1].t_h - 1) / 24)) days.push(`<text class="c-ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">Day ${Math.floor((d.t_h - 1) / 24) + 1}</text>`); });
     const lines = series.map(([k, , f]) => `<polyline class="c-${k}" points="${tl.map((d, i) => x(i).toFixed(1) + "," + y(f(d)).toFixed(1)).join(" ")}"/>`).join("");
     const last = tl[n - 1];
@@ -480,7 +547,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     return `<figure class="mx-chart"><figcaption class="sr-only">Power, life support and radiation dose, shift by shift${hasStorm ? ". Shaded shifts had a solar storm or a dose alert" : ""}.</figcaption>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Power, life support and dose, shift by shift">${storms}${grid}${days.join("")}${lines}${labels}
       <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="0" x2="0" visibility="hidden"/></svg>
-      ${hasStorm ? `<span class="mx-key"><i></i>Storm</span>` : ""}<div class="c-tip" id="cTip" hidden></div></figure>`;
+      ${hasStorm ? `<p class="mx-key"><i></i>Storm or high dose</p>` : ""}<div class="c-tip" id="cTip" hidden></div></figure>`;
   }
   function wireChart() {
     const svg = debriefEl.querySelector(".mx-chart svg"), tip = $("cTip"), cross = $("cCross"), c = window.__mChart; if (!svg || !c) return;
@@ -505,6 +572,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** A navigation intent. True when Mission ran it. */
   function nav(intent, arg) {
     if (screen === "off") return false;
+    const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_back: "seat" }[intent];
+    if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
     if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }
     if (intent === "pick_site" && (screen === "brief" || screen === "debrief")) {
