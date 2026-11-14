@@ -868,7 +868,7 @@ def debrief(m: Mission) -> dict:
     iss = rad["iss_comparison"]["gcr_usv_per_day"]
     lessons.append({"text": (f"China's Chang'e 4 measured {base['dose_equivalent_usv_per_day']} microsieverts per day on "
                              f"the Moon's surface, about {base['dose_equivalent_usv_per_day'] / iss:.1f} times the "
-                             f"cosmic-ray dose inside the Space Station ({iss}). Your crew's "
+                             f"cosmic-ray dose inside the Space Station ({iss} microsieverts a day). Your crew's "   # [qa] a number keeps its unit
                              f"{m.dose:.1f} game-mSv is about {m.dose / rad['game']['dose_scale_factor']:.1f} real mSv "
                              f"(the game doubles doses). NASA's career limit is {rad['limits']['career_msv']} mSv."),
                     "source": base["source"]})

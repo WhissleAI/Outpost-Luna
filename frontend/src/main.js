@@ -438,7 +438,7 @@ async function boot() {
       const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
       bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
       bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);
-      if (!ready) setTimeout(() => warm(t0), 2000);
+      if (!ready) setTimeout(() => warm(t0), performance.now() - t0 < 180000 ? 2000 : 30000);   // [qa] QA-57: back off once "Voice off"
     }).catch(() => { bar.classList.add("is-warming"); if (performance.now() - t0 < 180000) setTimeout(() => warm(t0), 2000); else { bar.classList.remove("is-warming"); bar.classList.add("is-voiceoff"); } });
   })();
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).

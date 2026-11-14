@@ -376,3 +376,6 @@ body:not([data-mode="cadet"]) .mcard{display:none}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .askbar.is-hearing .orb i,.askbar.is-speaking .orb i{height:12px}
 }
+
+/* [qa] QA-53: no "Hold to talk" while the voice is starting or off */
+.askbar.is-warming .hint,.askbar.is-voiceoff .hint{visibility:hidden}

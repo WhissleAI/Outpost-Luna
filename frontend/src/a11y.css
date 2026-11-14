@@ -111,7 +111,8 @@ mark.hl,.cap-w.hl{background:none;color:inherit;padding:0}
 /* ---- settings applied ---- */
 html[data-text-scale="big"] .apanel,html[data-text-scale="big"] .mpanel,html[data-text-scale="big"] .card,html[data-text-scale="big"] .askbar,
 html[data-text-scale="big"] .caption-bar,html[data-text-scale="big"] .topbar,html[data-text-scale="big"] .hl-card,html[data-text-scale="big"] .a11y-panel,
-html[data-text-scale="big"] .nowplaying,html[data-text-scale="big"] .a11y-vbanner{zoom:var(--a11y-zoom,1)}
+html[data-text-scale="big"] .nowplaying,html[data-text-scale="big"] .a11y-vbanner,
+html[data-text-scale="big"] .mcard,html[data-text-scale="big"] .hud,html[data-text-scale="big"] .label,html[data-text-scale="big"] .about{zoom:var(--a11y-zoom,1)}   /* [qa] QA-56 Library + About */
 html[data-text-scale="big"] .topbar{height:auto;min-height:var(--topbar-h)}
 
 html[data-dyslexia="1"] body,html[data-dyslexia="1"] button,html[data-dyslexia="1"] input{font-family:"Atkinson Hyperlegible",var(--font-ui)!important;letter-spacing:.02em;word-spacing:.08em}

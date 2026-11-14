@@ -219,7 +219,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
   /** Row and pin: hovering either lights both. */
   function hot(id, on) {
-    document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
+    document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-dot[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
   }
   /** Pins on the pole + their labels in a column beside the cluster, joined by leader lines (four of the five sites are
    *  within 2° of the pole, so labels next to the dots would overlap at any distance the camera allows). */
@@ -265,11 +265,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     globe.setViewport(window.__pickBand || .3); globe.flyTo(-88.6, -40, window.__pickDist || 1.45);
   }
 
+  let starting = false;
   async function start(seed) {
+    // [qa] QA-54: one mission per press (a double click, or a click while saying "take command"); a failed start says so
+    if (starting) return; starting = true;
+    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = true; });
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
     const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
-    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); prev = null; logHistory = []; reminded.clear(); seen.clear();
+    let st = null;
+    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
+    starting = false;
+    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
+    if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
+    if (screen === "off") return;   // left Mission while it started
+    state = st; prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
