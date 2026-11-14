@@ -193,11 +193,11 @@ def cmd_score(a):
             r["empty"] += not hyp
             r["rescored"] += bool(d.get("rescored"))
             rt, ht = " " + " ".join(ref) + " ", " " + " ".join(hyp) + " "
-            hot = [p for p in (j["hot"]["step"] + j["hot"]["screen"]) if norm(p)]
+            hot = [p for p in (j["hot"]["step"] + j["hot"].get("names", []) + j["hot"]["screen"]) if norm(p)]
             kws = {" ".join(norm(p)) for p in hot if f" {' '.join(norm(p))} " in rt and len(" ".join(norm(p))) >= 3}
             # keep the longest keyword when one is inside another ("far side" over "far")
             kws = {k for k in kws if not any(k != o and f" {k} " in f" {o} " for o in kws)}
-            fixed = " " + " ".join(norm(SA.repair(d["hyp"], j["hot"]["step"])[0])) + " "
+            fixed = " " + " ".join(norm(SA.repair(d["hyp"].replace("%", " percent "), j["hot"]["step"])[0])) + " "
             for k in kws:
                 r["kw"] += 1
                 r["kw_hit"] += f" {k} " in ht

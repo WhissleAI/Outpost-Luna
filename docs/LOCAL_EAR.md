@@ -70,6 +70,37 @@ Results are in `results_arc_final.json` (no-context row), `results_arc_ctx_bias.
   - Loading the decoder takes the process from about 300 MB to about 790 MB RSS, and the load takes 5–23 s (cold cache).
   - Live CPU RTF is about 0.3 on 4 threads.
 
+## Contextual biasing (round 7): the screen's hot lists
+
+We know the vocabulary of every screen. The ear gets rich lists of it, weighted by context:
+
+- **Building the lists.** `backend/app/hotlist.py` builds them from the app's JSON (places, artifacts, glossary, the
+  course, the sites, the call signs and the router's nav / offer / help phrases). The result is versioned as data in
+  `backend/data/ear_vocab.json`: run `python -m app.hotlist build` in `backend/`, and `tests/test_hotlist.py` fails if
+  the file is out of date. `build_python.py` bundles the file in the Mac and Windows apps.
+- **The tiers**, sent per screen (`Session.hot_words`):
+  - `step`, the strongest boost: what the open step, offer or screen action expects. That is the step's options and
+    say words, keywords, places, side / day-night words, the base parts of a command step and the space word; the
+    offer's takers; the cabin's orders and panels; the site names on the picker; the call signs.
+  - `names`, a strong boost on the Moon screens (map, patch, library, lesson done) and the picker: every place, crew
+    member and piece of hardware.
+  - `screen`, a light boost: the rest of the screen's vocabulary (glossary, the lesson's words, nav and help).
+  - Function words, fillers and gazetteer misspelling aliases are never in a bias list.
+- **Delivery.** `/ws/listen` checks the session's screen every 0.25 s and sends `{"t":"context","hot":{...}}` when the
+  lists change (`EAR_HOT=1`).
+- **In the ear** (`model_server/app/hotbias.py`, pure Python, no native code):
+  1. The step list goes first in the decoder prompt.
+  2. A token prefix-tree boost per tier (shallow fusion; phrases that start with a function word get no start bonus).
+  3. The final 4 beams are rescored: + per hot phrase. An alternative must be within 0.6 of the top beam and the same
+     length ±1 word, so a hot word replaces heard words and never rides in on an extra tail.
+  - Weights: `EAR_HOT_STEP_START/CONT` 1.0 / 2.0, `EAR_HOT_NAMES_*` 1.0 / 2.0, `EAR_HOT_SCREEN_*` 0.3 / 1.2,
+    `EAR_NBEST_*`.
+- **On the final `words` message.** `alts` (the other beams), `conf` (mean token probability) and `hot` (the matched
+  tier and its hits) ride along. The Director reads them as the `ear_*` / `hot_*` features.
+
+Eval: `director_model/ear_hot_eval.py`. Every clip is rendered in memory with held-out kid-style Steer voices (half with
+babble) and decoded twice (Tier A only vs + the hot lists). Results are in `director_model/RESULTS.md`, round 7.
+
 ## Gaps
 
 - **Synthetic voices.** All voices are synthetic TTS, high-pitched but not real children. No real kid recordings were used, and nothing was spoken into the browser mic.
