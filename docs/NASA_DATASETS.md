@@ -137,3 +137,27 @@ Tag key: **SPK** speaker/diarization · **ROLE** role (CAPCOM, FLIGHT, EECOM, PA
 5. **Time-aligned event tags**: Horizons and AiRT give event times, but nothing pre-aligns them to audio frames. Build them by joining GET/UTC timelines to the IA reels (each reel's filename has wall-clock start/end).
 6. **Offline Orion/ISS cabin acoustics**: there are no public cabin noise impulse responses or noise beds. Approximate them with launch-feed and onboard-recorder audio (DSE onboard in AFJ/AiRT), then augment.
 7. **Word-level alignments**: none of the sources have word timestamps. FS ASR labels are segment-level (UNVERIFIED), and AiRT/AFJ are utterance-level GET at 1 s resolution. Force-align.
+
+## Outpost Luna cabin window: bundled terrain and Earth (app visuals, offline)
+
+The mission cabin's SITE, ROVER and EARTH window views (`frontend/src/mission/terrain.js`) draw real lunar terrain around each south-pole site. Everything ships inside the app (`frontend/public/terrain/` → `dist/terrain/`); nothing is fetched at runtime, so the desktop installer works with no network. ORBIT keeps the globe's LROC colour map (`/media/img/moon4k.jpg`, CGI Moon Kit row above).
+
+Rebuild (build time only, needs network once): `uv run --no-project --with numpy==2.1.3 --with pillow==11.0.0 python frontend/tools/build_terrain.py [site_id …]`. The script range-requests only the rows each tile needs, keeps them in memory, and writes nothing else to disk.
+
+| Asset | Source (opened 2026-11-13) | Product | Tile written | Size |
+|---|---|---|---|---|
+| `terrain/<site>/context.png` | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_75S_120M.IMG (+ `.LBL`) | LRO LOLA gridded DEM, south polar stereographic, 120 m/px, 75°S–90°S (PDS LRO-L-LOLA-4-GDR-V1.0) | 512² at 240 m/px (2×2 mean), 123 km across, centred on the site | ~355 kB each |
+| `terrain/<site>/site.png` | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_80S_40M.IMG | same, 40 m/px, 80°S–90°S | 512² at 40 m/px, 20.5 km across | ~240 kB each |
+| `terrain/<site>/rover.png` | https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDEM_85S_10M.IMG | same, 10 m/px, 85°S–90°S | 512² at 10 m/px, 5.1 km across | ~145 kB each |
+| `terrain/earth.jpg` | https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png | NASA SVS 2915, Blue Marble (NASA Goddard / Visible Earth) | 1024×512 JPEG | 76 kB |
+| `terrain/<site>/meta.json`, `terrain/index.json` | written by the script | tile centre (polar-stereographic metres), m/px, DN offset, site height | | <1 kB |
+
+Sites: shackleton_rim, shackleton_floor, connecting_ridge, de_gerlache_rim, malapert_massif (lat/lon from `backend/data/mission/sites.json`). **Total added: 3.7 MB** (15 tiles + Earth + metadata), plus ~110 kB of bundled cabin fonts (Barlow Condensed 600/700, Share Tech Mono; SIL OFL via @fontsource) and ~75 kB minified / 18 kB gzipped of `postprocessing` (pmndrs, zlib).
+
+Format: each PNG is lossless 8-bit RGB with the LOLA height packed as `DN − dn_min = R·256 + G` (DN = 16-bit LSB integer, height = DN × 0.5 m above the 1,737.4 km sphere). Browsers would quantise a 16-bit PNG to 8 bits through `<canvas>`, so the packing keeps the full 0.5 m precision. Projection (PDS label): x = 2R·tan(45° + lat/2)·sin(lon), y = 2R·tan(45° + lat/2)·cos(lon); sample = SAMPLE_PROJECTION_OFFSET + x/scale, line = LINE_PROJECTION_OFFSET − y/scale (0-based). The client applies the Moon's curvature (−d²/2R) and feathers each finer tile into its parent so the nested meshes meet.
+
+How the window uses the sim's numbers: Sun and Earth elevations are the sim's (JPL Horizons, `backend/data/mission/ephemeris_*.json`), so the window matches the SUN EL / EARTH EL readouts. Horizons gives elevation only; azimuths follow the globe's convention (Earth toward longitude 0; the Sun 140° from it, turning once per 708.7 h lunar day). Real terrain may hide a body the sim calls "up" (the sim models terrain as one effective horizon angle). When the Sun is below the horizon the window says LOW-LIGHT CAMERA and raises a fill light so the ground stays readable.
+
+Credit line shown on the window: "Terrain: NASA LRO LOLA elevation · Earth: NASA Blue Marble · Uses NASA open data; not endorsed by NASA." App-wide credit: "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA." Licence: NASA/PDS data is a US-government work, generally not under US copyright; acknowledge NASA (LRO LOLA team, NASA GSFC/MIT; NASA Goddard Blue Marble). No NASA endorsement is implied.
+
+Not used, and why: PGDA's high-resolution south-pole site DEMs (5 m/px GeoTIFFs, https://pgda.gsfc.nasa.gov/) are hundreds of MB per region and not range-readable as raw rows; the PDS polar LDEMs give the same LOLA heights at 10–120 m/px with one Range request per tile. Possible later: an LROC NAC frame of each site, an Artemis II Earth image for the EARTH view (credited "NASA, Artemis II").
