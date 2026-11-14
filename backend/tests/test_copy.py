@@ -123,6 +123,7 @@ def _commands():
     for task in capcom.TASK_SAY:
         yield {"type": "dispatch", "task": task, "target": "shackleton_floor"}
     yield from ({"type": "shelter", "on": True}, {"type": "shelter", "on": False}, {"type": "end_shift"},
+                {"type": "power_save", "on": True}, {"type": "power_save", "on": False},
                 {"type": "confirm"}, {"type": "cancel"}, {"type": "call_houston"})
     for when in capcom.WHEN_SAY:
         yield {"type": "rule", "when": when, "then": {"type": "allocate", "to": "life_support", "amount": {"kind": "percent", "value": 40}}}

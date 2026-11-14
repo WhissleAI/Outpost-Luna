@@ -28,8 +28,11 @@ BACKUP_GEN = 1.0          # %/h from a small always-on backup generator (game st
 BASE_DRAW = 4.0           # %/h battery draw at the default split
 LOAD_WEIGHT = {"shields": 1.4, "life_support": 1.0, "greenhouse": 1.2, "science": 0.8, "rover": 1.0, "comms": 0.6,
                "heaters": 1.0}
-SHELTER_DRAW = 0.3        # in the shelter the outpost hibernates: only life support and heat really run
-LS_USE = 1.0              # crew uses 0.8 %/h of life support
+SHELTER_DRAW = 0.8        # in the shelter the lights, lab and rover chargers are off; life support and heat still run
+POWER_SAVE_DRAW = 0.35    # night mode: the lab and greenhouse lights sleep (landers hibernate through the lunar night)
+SHELTER_MAX_H = 24        # Orion's storm shelter is built for up to about a day; after that the crew must come out
+SHELTER_REST_H = 12       # ...and rest before packing in again (unless a storm is on)
+LS_USE = 1.0              # crew uses 1.0 %/h of life support
 LS_FROM_RECYCLER = 0.6    # at a 30% share
 LS_FROM_GREENHOUSE = 0.3  # at a 15% share
 FREEZE_LOSS = 0.6         # %/h lost when heaters < 5% in darkness (water lines freeze)
@@ -40,6 +43,12 @@ EXPLORE_SCIENCE = 25.0
 HOUSTON_POWER = 2.0
 HOUSTON_SCIENCE = 2.0     # crew time on the call
 DOSE_LIMIT = 50.0
+DIFFICULTIES = ("cadet", "commander")
+WARN_LEAD_H = {"cadet": 12, "commander": 6}   # Houston's warning: hours before the particles arrive
+SCIENCE_GOAL = 120.0      # mission objective: science sent home
+ICE_GOAL = 1              # mission objective: ice runs finished
+QUIET_DOSE = 15.0         # game-mSv a well-run 10 days costs anyway; only dose above this lowers the score
+STORM_SLOTS = [(18, 80), (100, 150), (170, 216)]   # one storm per slot: readable, never stacked
 
 
 @lru_cache(maxsize=None)
@@ -70,11 +79,35 @@ def radiation() -> dict:
     return _load("radiation.json")
 
 
+def _half_days(pct) -> float | None:
+    """A window % as days of the 10-day mission, to the half day (docs/LEARNING_DESIGN.md §7.4)."""
+    return None if pct is None else round(pct / 100 * MISSION_H / 24 * 2) / 2
+
+
 def public_site(s: dict) -> dict:
     keys = ("id", "name", "lat", "lon", "sunlight_pct", "ice", "earth_visible_pct", "notes", "sources")
     out = {k: s.get(k) for k in keys}
     out["window_sunlit_pct"] = s.get("window_sunlit_pct")
+    comm = site(s["comm_from"]["site"]) if s.get("comm_from") else s
+    # The one meaning of "sun" and "radio" in the UI: days of THIS mission (Horizons window); the year figure is
+    # sunlight_pct (Bussey 2010), shown only as a second, labelled line.
+    out["window_sun_days"] = _half_days(s.get("window_sunlit_pct"))
+    out["window_earth_days"] = _half_days(comm.get("earth_visible_pct"))
     return out
+
+
+def storm_multiplier(ev: dict) -> float:
+    """Dose multiplier at the Moon: from solar particles (SEP), not Earth's storm scale (donki_events.json mapping)."""
+    return float(ev["dose_multiplier"])
+
+
+def storm_duration_h(ev: dict) -> int:
+    return int(ev.get("duration_h") or {1: 12, 2: 18, 3: 24}[ev["severity"]])
+
+
+def storm_confidence(ev: dict) -> str:
+    """How sure the forecast is: particles were measured (SEP) -> likely; only a CME / storm at Earth -> possible."""
+    return "likely" if ev.get("sep") else "possible"
 
 
 @dataclass
@@ -116,6 +149,14 @@ class Mission:
     ice_runs: int = 0
     houston_calls: int = 0
     shifts: list = field(default_factory=list)    # per-shift snapshots for the debrief timeline
+    difficulty: str = "commander"
+    power_save: bool = False
+    shelter_h: int = 0                            # hours in the shelter without a break
+    shelter_rest_until: int = 0                   # mission hour the crew may pack into the shelter again
+    warned: dict = field(default_factory=dict)    # storm id -> {"by": "houston|sensor|relay", "t_h": ...}
+    forecast_heard: set = field(default_factory=set)   # storm ids Houston mentioned on a call
+    good_calls: list = field(default_factory=list)     # [{t_h, kind, text}] decisions that read the data
+    rover_left_h: int = 0
 
     # Convenience API for the Director / registry (contract: State and command result shapes).
     def state(self) -> dict:
@@ -131,21 +172,26 @@ class Mission:
 
 # ---------------------------------------------------------------- setup
 
-def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None) -> Mission:
+def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None,
+                difficulty: str = "commander") -> Mission:
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
+    if difficulty not in DIFFICULTIES:
+        raise ValueError(f"difficulty must be one of {DIFFICULTIES}")
     rng = random.Random(f"{site_id}:{seed}")
-    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []))
+    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), difficulty=difficulty)
     cat = storms_catalog()["events"]
-    n = 2 + (rng.random() < 0.5)
-    picks = rng.sample(cat, n)
-    # One storm in each part of the mission so the kid meets one early-ish and one late.
-    slots = [(18, 90), (96, 170), (150, 216)][:n]
+    if difficulty == "cadet":   # two real particle events, no false alarms, no array failure
+        picks = rng.sample([e for e in cat if e.get("sep")], 2)
+        slots = [STORM_SLOTS[0], STORM_SLOTS[2]]
+    else:                       # 2-3 real events; storms without particles are the honest false alarms
+        n = 2 + (rng.random() < 0.5)
+        picks = rng.sample(cat, n)
+        slots = STORM_SLOTS if n == 3 else [STORM_SLOTS[0], STORM_SLOTS[2]]
     for ev, (lo, hi) in zip(picks, slots):
         start = rng.randrange(lo, hi) // 6 * 6 + rng.choice([0, 2, 4])
-        dur = {1: 12, 2: 24, 3: 36}[ev["severity"]]
-        m.storms.append(Storm(start, dur, ev))
-    m.failure_h = rng.randrange(60, 180)
+        m.storms.append(Storm(start, storm_duration_h(ev), ev))
+    m.failure_h = rng.randrange(60, 180) if difficulty == "commander" else 10 ** 6
     m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
     return m
 
@@ -187,6 +233,18 @@ def env_at(m: Mission, t: float) -> dict:
             "earth_elev_deg": round(earth, 3), "earth_visible": earth_visible, "storm": storm}
 
 
+def next_sun_change_h(m: Mission, t: float) -> int | None:
+    """Hours until the Sun next rises or sets at the outpost (Horizons), or None if it doesn't in this mission.
+    The Sun Tracker strip on the Power panel; also what a planner reads before night mode."""
+    if site(m.site_id).get("power_from"):
+        return None
+    now = env_at(m, t)["in_sun"]
+    for k in range(1, MISSION_H - int(t) + 1):
+        if env_at(m, t + k)["in_sun"] != now:
+            return k
+    return None
+
+
 def next_comm_window_h(m: Mission, t: float) -> int | None:
     for k in range(0, MISSION_H - int(t) + 1):
         if env_at(m, t + k)["earth_visible"]:
@@ -199,7 +257,7 @@ def next_comm_window_h(m: Mission, t: float) -> int | None:
 def draw_per_h(m: Mission) -> float:
     w = sum(m.loads[k] * LOAD_WEIGHT[k] for k in LOADS) / sum(DEFAULT_LOADS[k] * LOAD_WEIGHT[k] for k in LOADS)
     d = BASE_DRAW * w
-    return d * (SHELTER_DRAW if m.shelter else 1.0)
+    return d * (SHELTER_DRAW if m.shelter else 1.0) * (POWER_SAVE_DRAW if m.power_save else 1.0)
 
 
 def dose_rate(m: Mission, t: float, env: dict | None = None) -> float:
@@ -207,7 +265,7 @@ def dose_rate(m: Mission, t: float, env: dict | None = None) -> float:
     g = radiation()["game"]
     base = g["game_baseline_msv_per_h"]
     storm = env["storm"]
-    mult = storm.event["dose_multiplier"] if storm else 1.0
+    mult = storm_multiplier(storm.event) if storm else 1.0
     shield = g["shields_max_effect"] * min(1.0, m.loads["shields"] / 30.0)
     if m.shelter:
         shelter = g["shelter_factor_storm"] if storm else g["shelter_factor_quiet"]
@@ -228,13 +286,14 @@ def _step_hour(m: Mission, out_events: list):
         p = max(0.0, min(1.0, (m.power + gen) / draw)) if draw > 0 else 1.0
     m.power = max(0.0, min(100.0, m.power + gen - draw * p))
     L = m.loads
-    gain = LS_FROM_RECYCLER * (L["life_support"] / 30.0) * p + LS_FROM_GREENHOUSE * (L["greenhouse"] / 15.0) * p
+    tend = 0.5 if (m.power_save or m.shelter) else 1.0   # grow lights dimmed at night; untended from the shelter
+    gain = LS_FROM_RECYCLER * (L["life_support"] / 30.0) * p + LS_FROM_GREENHOUSE * (L["greenhouse"] / 15.0) * p * tend
     if L["heaters"] < 5 and not env["in_sun"]:
         gain -= FREEZE_LOSS
     if L["heaters"] * p < 3 and env["sun_frac"] == 0:
         gain -= FREEZE_LOSS / 2
     m.life = max(0.0, min(100.0, m.life + gain - LS_USE))
-    if not m.shelter:
+    if not m.shelter and not m.power_save:
         m.science += SCIENCE_RATE * (L["science"] / 15.0) * p
     # downlink: unsent science goes home when Earth is up and comms are on
     if env["earth_visible"] and L["comms"] > 0 and p > 0:
@@ -247,6 +306,7 @@ def _step_hour(m: Mission, out_events: list):
         sid = env["storm"].event["id"]
         m.storm_dose[sid] = m.storm_dose.get(sid, 0.0) + r
     m.t_h += 1
+    m.shelter_h = m.shelter_h + 1 if m.shelter else 0
     _rover_tick(m, out_events)
     _hour_events(m, t, env, out_events)
 
@@ -263,6 +323,9 @@ def _rover_tick(m: Mission, out: list):
     if task == "collect_ice":
         m.life = min(100.0, m.life + ICE_GAIN)
         m.ice_runs += 1
+        if not any(st.start_h < m.t_h and st.start_h + st.dur_h > m.rover_left_h for st in m.storms
+                   if st.event.get("sep")):
+            _good(m, "ice_safe", "Ice run with no storm on the way.")
         text = f"Rover's back with ice. Life support up {ICE_GAIN:.0f}%."
     elif task == "repair_array":
         m.array_eff = 1.0
@@ -274,8 +337,13 @@ def _rover_tick(m: Mission, out: list):
     _emit(m, out, "rover_back", text)
 
 
-def _emit(m: Mission, out: list, kind: str, text: str, source=None, real_date=None):
-    ev = {"t_h": m.t_h, "kind": kind, "text": text, "source": source, "real_date": real_date}
+def _good(m: Mission, kind: str, text: str):
+    """A decision that read the data: scored, and listed in the debrief."""
+    m.good_calls.append({"t_h": m.t_h, "kind": kind, "text": text})
+
+
+def _emit(m: Mission, out: list, kind: str, text: str, source=None, real_date=None, extra: dict | None = None):
+    ev = {"t_h": m.t_h, "kind": kind, "text": text, "source": source, "real_date": real_date, **(extra or {})}
     out.append(ev)
     m.events.append(ev)
     m.log.append({"t_h": m.t_h, "text": text, "kind": "event"})
@@ -294,15 +362,26 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
               "Earth is up. You can call Houston." if env["earth_visible"] else
               "Earth has set. No radio until it rises.",
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
+    if not env["in_sun"] and env_before["in_sun"] and m.power_save and not s.get("power_from"):
+        _good(m, "night_ready", "Night mode on before sunset.")
+    lead = WARN_LEAD_H[m.difficulty]
     for st in m.storms:
         ev = st.event
-        if m.t_h == st.start_h - 6 and env["earth_visible"]:
-            _emit(m, out, "solar_storm", f"Houston: solar flare. Storm in about "
-                  f"6 hours.", ev["source"], ev["date"])
+        if m.t_h == st.start_h - lead and ev["id"] not in m.warned:
+            relay = m.difficulty == "cadet" and not env["earth_visible"]
+            if env["earth_visible"] or relay:
+                m.warned[ev["id"]] = {"by": "relay" if relay else "houston", "t_h": m.t_h}
+                _emit(m, out, "storm_warning", f"Houston: solar flare. Storm {storm_confidence(ev)} "
+                      f"in about {lead} hours.", ev["source"], ev["date"],
+                      extra={"confidence": storm_confidence(ev), "lead_h": lead, "by": m.warned[ev["id"]]["by"]})
+        if m.t_h == st.start_h and ev.get("sep") and m.shelter:
+            _good(m, "sheltered_early", f"In the shelter before the {ev['date']} storm hit.")
         if m.t_h == st.start_h:
-            _emit(m, out, "solar_storm", f"Solar storm! The real {ev['date']} "
-                  f"{'flare' if ev['type'] == 'flare' else 'storm'}. "
-                  f"Radiation {ev['dose_multiplier']}x normal.", ev["source"], ev["date"])
+            text = (f"Solar storm! Real {ev['date']} particle storm. Radiation {storm_multiplier(ev):g}x normal."
+                    if ev.get("sep") else
+                    f"Storm from {ev['date']}. Few particles here: radiation {storm_multiplier(ev):g}x.")
+            _emit(m, out, "solar_storm", text, ev["source"], ev["date"],
+                  extra={"sep": bool(ev.get("sep"))})
         if m.t_h == st.start_h + st.dur_h:
             _emit(m, out, "storm_end", f"The storm has passed. Radiation is back to normal.",
                   ev["source"], ev["date"])
@@ -310,6 +389,24 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
         m.array_eff = 0.5
         _emit(m, out, "failure", "Micrometeorite! Arrays at half power. "
               "Rover can fix them.", None, None)
+
+
+def _shelter_clock(m: Mission, out: list):
+    """Orion's storm shelter is built for up to about a day. After that the crew comes out to rest (not mid-storm)."""
+    if m.shelter and m.shelter_h >= SHELTER_MAX_H and not env_at(m, m.t_h)["storm"]:
+        m.shelter, m.shelter_h, m.shelter_rest_until = False, 0, m.t_h + SHELTER_REST_H
+        _emit(m, out, "shelter_limit", "A day in the shelter is the limit. Crew out to rest.")
+
+
+def _sensor_watch(m: Mission, out: list):
+    """The outpost's own particle sensor sees a particle storm building, a few hours ahead, when no forecast came."""
+    for st in m.storms:
+        ev = st.event
+        if ev.get("sep") and ev["id"] not in m.warned and m.t_h < st.start_h <= m.t_h + SHIFT_H:
+            m.warned[ev["id"]] = {"by": "sensor", "t_h": m.t_h}
+            _emit(m, out, "storm_warning", f"Particle sensor alarm! Storm likely within {st.start_h - m.t_h} hours.",
+                  ev["source"], ev["date"],
+                  extra={"confidence": "likely", "lead_h": st.start_h - m.t_h, "by": "sensor"})
 
 
 def _check_end(m: Mission, out: list):
@@ -340,8 +437,10 @@ def advance(m: Mission, shifts: int = 1) -> list:
             if m.life <= 0 or m.dose > DOSE_LIMIT:
                 break
         m.zero_power_shifts = m.zero_power_shifts + 1 if m.power <= 0.01 else 0
+        _shelter_clock(m, out)
+        _sensor_watch(m, out)
         if m.power < 20 and not was_low and not m.over:
-            _emit(m, out, "low_power", f"Battery low: {m.power:.0f}%. Cut some loads.")
+            _emit(m, out, "low_power", f"Battery low: {m.power:.0f}%. Try night mode.")
         if dose_rate(m, m.t_h) > 0.3 and not any(e["kind"] == "dose_alert" and e["t_h"] == m.t_h for e in out):
             _emit(m, out, "dose_alert", f"Radiation high: {dose_rate(m, m.t_h):.2f} mSv an hour.")
         m.pending = None
@@ -428,6 +527,8 @@ def readback(cmd: dict) -> str:
         return "Crew into the storm shelter" if cmd.get("on") else "Crew out of the shelter"
     if t == "call_houston":
         return "Calling Houston"
+    if t == "power_save":
+        return "Night mode on" if cmd.get("on", True) else "Night mode off"
     return t or ""
 
 
@@ -453,7 +554,7 @@ def apply_command(m: Mission, cmd: dict) -> dict:
         return {"ok": True, "say": "", "readback": "", "events": []}
     if t == "query":
         return {"ok": True, "say": status_say(m, cmd.get("what", "all")), "readback": "", "events": []}
-    if t not in ("allocate", "dispatch", "shelter", "call_houston"):
+    if t not in ("allocate", "dispatch", "shelter", "call_houston", "power_save"):
         return {"ok": False, "say": f"I don't know that order: {t!r}.", "readback": "", "events": []}
     try:
         warn = _risky(m, cmd)
@@ -504,12 +605,23 @@ def _execute(m: Mission, cmd: dict) -> dict:
         m.power -= ROVER_POWER
         m.science = max(0.0, m.science - 1.0)  # crew time driving instead of experiments
         rv.update(busy=True, task=task, eta_h=eta)
+        m.rover_left_h = m.t_h
         say = (f"Rover back in about {eta} hours. "
                f"It used {ROVER_POWER:.0f}% battery.")
         m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": []}
+    if t == "power_save":
+        on = bool(cmd.get("on", True))
+        m.power_save = on
+        say = ("Night mode on. Lab and greenhouse sleep to save power." if on
+               else "Night mode off. Lab and greenhouse back on.")
+        m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
+        return {"ok": True, "say": say, "readback": rb, "events": []}
     if t == "shelter":
         on = bool(cmd.get("on", True))
+        if on and not m.shelter and m.t_h < m.shelter_rest_until and not env_at(m, m.t_h)["storm"]:
+            return {"ok": False, "say": f"The crew needs rest first. Shelter ready in {m.shelter_rest_until - m.t_h} hours.",
+                    "readback": rb, "events": []}
         if on and m.rover["busy"]:
             return {"ok": False, "say": "The rover crew is still outside. Call them home first.", "readback": rb,
                     "events": []}
@@ -531,8 +643,13 @@ def _execute(m: Mission, cmd: dict) -> dict:
         m.science = max(0.0, m.science - HOUSTON_SCIENCE)
         m.houston_calls += 1
         nxt = next((st for st in m.storms if st.start_h > m.t_h), None)
-        tip = (f"Active region on the Sun. Storm likely in about {nxt.start_h - m.t_h} hours."
-               if nxt and nxt.start_h - m.t_h <= 48 else "Space weather looks quiet for two days.")
+        if nxt and nxt.start_h - m.t_h <= 48:
+            tip = f"Active region on the Sun. A storm is {storm_confidence(nxt.event)} in the next two days."
+            if nxt.event["id"] not in m.forecast_heard:
+                m.forecast_heard.add(nxt.event["id"])
+                _good(m, "asked_forecast", "Asked Houston for space weather before a storm.")
+        else:
+            tip = "Space weather looks quiet for two days."
         say = f"Houston here. Your words took {COMM_DELAY_S/2:.1f} seconds to reach us. {tip}"
         m.log.append({"t_h": m.t_h, "kind": "houston", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": [], "delay_ms": int(COMM_DELAY_S * 1000)}
@@ -582,13 +699,40 @@ def alerts(m: Mission, t: float | None = None) -> list[str]:
         a.append("solar_storm")
     if m.array_eff < 1:
         a.append("array_damaged")
+    if any(w["t_h"] <= t and st.event["id"] == k and t < st.start_h for st in m.storms for k, w in m.warned.items()):
+        a.append("storm_warning")
     return a
 
 
+def objectives(m: Mission) -> dict:
+    """Mission goals (docs/LEARNING_DESIGN.md T5): science sent home and an ice run. Bonus stars for Cadet;
+    part of the grade for Commander."""
+    sci = {"goal": SCIENCE_GOAL, "got": round(m.science_sent, 1), "met": m.science_sent >= SCIENCE_GOAL}
+    ice = {"goal": ICE_GOAL, "got": m.ice_runs, "met": m.ice_runs >= ICE_GOAL}
+    return {"science": sci, "ice": ice, "met": sci["met"] + ice["met"]}
+
+
 def score(m: Mission) -> int:
-    survival = 500 if m.outcome == "survived" else int(400 * m.t_h / MISSION_H)
-    sci = 1.5 * m.science_sent + 0.5 * (m.science - m.science_sent)
-    return max(0, int(round(survival + sci - 8 * m.dose)))
+    """300 for bringing the crew through, up to 300 for the goals, 40 per good call, minus extra dose."""
+    survival = 300 if m.outcome == "survived" else int(240 * m.t_h / MISSION_H)
+    goals = min(m.science_sent, 200.0) + 50 * min(m.ice_runs, 2)
+    calls = 40 * min(len(m.good_calls), 6)
+    return max(0, int(round(survival + goals + calls - 6 * max(0.0, m.dose - QUIET_DOSE))))
+
+
+def grade_of(m: Mission) -> str:
+    sc, obj = score(m), objectives(m)
+    if m.difficulty == "cadet" and m.outcome == "survived":   # Cadet: surviving is the success; goals add stars
+        return "A" if obj["met"] == 2 else "B"
+    g = "A" if sc >= 700 else "B" if sc >= 560 else "C" if sc >= 420 else "D" if sc >= 280 else "F"
+    if m.outcome == "survived" and obj["met"] < 2 and g in "AB":
+        g = "C"   # a safe crew that skipped the mission's goals
+    return g
+
+
+def stars(m: Mission) -> int:
+    """0-3: one per goal met, one for 2+ good calls."""
+    return objectives(m)["met"] + (len(m.good_calls) >= 2)
 
 
 def to_state(m: Mission) -> dict:
@@ -605,14 +749,31 @@ def to_state(m: Mission) -> dict:
         "env": {"sun_elev_deg": env["sun_elev_deg"], "in_sun": env["in_sun"], "earth_elev_deg": env["earth_elev_deg"],
                 "earth_visible": env["earth_visible"], "next_comm_window_h": next_comm_window_h(m, m.t_h),
                 "comm_delay_s": COMM_DELAY_S,
+                "next_sun_change_h": next_sun_change_h(m, m.t_h),
+                "relay": m.difficulty == "cadet",
                 "storm": ({"active": True, "name": st.event["name"], "source": st.event["source"]["title"],
-                           "url": st.event["link"], "severity": st.event["severity"], "real_date": st.event["date"]}
-                          if st else {"active": False})},
-        "rover": dict(m.rover), "shelter": m.shelter,
+                           "url": st.event["link"], "severity": st.event["severity"], "real_date": st.event["date"],
+                           "sep": bool(st.event.get("sep"))}
+                          if st else {"active": False}),
+                "warning": _warning(m)},
+        "rover": dict(m.rover), "shelter": m.shelter, "power_save": m.power_save,
+        "shelter_hours": m.shelter_h, "shelter_ready_in_h": max(0, m.shelter_rest_until - m.t_h),
+        "difficulty": m.difficulty,
         "science": {"collected": round(m.science, 1), "sent_home": round(m.science_sent, 1)},
+        "objectives": objectives(m), "good_calls": len(m.good_calls),
         "pending": m.pending,
         "alerts": alerts(m), "log": m.log[-30:], "score": score(m),
     }
+
+
+def _warning(m: Mission) -> dict | None:
+    """The newest storm warning the crew has heard that hasn't hit yet: {confidence, eta_h, by, real_date}."""
+    for st in m.storms:
+        w = m.warned.get(st.event["id"])
+        if w and m.t_h < st.start_h:
+            return {"confidence": storm_confidence(st.event) if w["by"] != "sensor" else "likely",
+                    "eta_h": st.start_h - m.t_h, "by": w["by"], "real_date": st.event["date"]}
+    return None
 
 
 def telemetry(m: Mission, offset_h: float) -> dict:
@@ -654,25 +815,30 @@ def debrief(m: Mission) -> dict:
     s = site(m.site_id)
     eph = ephemeris(s["id"])
     sc = score(m)
-    grade = "A" if sc >= 650 else "B" if sc >= 550 else "C" if sc >= 450 else "D" if sc >= 300 else "F"
+    grade = grade_of(m)
     lessons = []
     for st in m.storms:
         if st.start_h > m.t_h:
             continue
         ev = st.event
         got = m.storm_dose.get(ev["id"], 0.0)
-        mult = ev["dose_multiplier"]
-        lessons.append({"text": (f"On {ev['date']} the Sun really produced an {ev['class']} "
-                                 f"{'flare' if ev['type'] == 'flare' else 'storm'}. In your mission it raised radiation "
-                                 f"{mult}x for {st.dur_h} hours, and your crew took {got:.1f} mSv during it. "
-                                 "On the Moon there is no magnetic field or thick air to stop solar particles, so a "
-                                 "regolith shelter is the plan."),
-                        "source": ev["source"]})
+        mult = storm_multiplier(ev)
+        if ev.get("sep"):
+            text = (f"On {ev['date']} the Sun really sent out fast particles (DONKI). In your mission they raised "
+                    f"radiation {mult:g}x for {st.dur_h} hours, and your crew took {got:.1f} game-mSv. The Moon has "
+                    "no magnetic field or thick air, so a shelter under soil is the plan.")
+        else:
+            text = (f"On {ev['date']} Earth had a real {ev['class']} magnetic storm, but few particles came with it "
+                    f"(DONKI). At the Moon that is a near miss: radiation only {mult:g}x. Not every warning is a big "
+                    "storm, which is why forecasters say likely or possible.")
+        lessons.append({"text": text, "source": ev["source"]})
         if len(lessons) >= 2:
             break
     base = rad["baseline"]
+    iss = rad["iss_comparison"]["dose_equivalent_usv_per_day"]
     lessons.append({"text": (f"Chang'e 4 measured {base['dose_equivalent_usv_per_day']} microsieverts per day on the "
-                             f"Moon's surface: about 2.6 times the cosmic-ray dose inside the Space Station. Your crew's "
+                             f"Moon's surface, about {base['dose_equivalent_usv_per_day'] / iss:.0f} times the "
+                             f"{iss} measured inside the Space Station then. Your crew's "
                              f"{m.dose:.1f} game-mSv is about {m.dose / rad['game']['dose_scale_factor']:.1f} real mSv "
                              f"(the game doubles doses). NASA's career limit is {rad['limits']['career_msv']} mSv."),
                     "source": base["source"]})
@@ -681,14 +847,20 @@ def debrief(m: Mission) -> dict:
         sun_text = (f"The floor of {s['name'].replace(' Floor', '')} never sees the Sun, which is why ice can survive "
                     "there, and why your power had to come down a cable from the rim.")
     else:
-        sun_text = (f"At {s['name']} the Sun was up {lit}% of these 10 days (JPL Horizons, April 2026) but it never "
-                    f"climbed more than a few degrees: at the pole the Sun skims the horizon. Earth was above the "
-                    f"horizon {s['earth_visible_pct']}% of the time, so radio contact came and went. (Horizons treats "
-                    "the ground as smooth; real mountains and craters change this.)")
+        ps = public_site(s)
+        sun_text = (f"At {s['name']} the Sun was up {ps['window_sun_days']:g} of your 10 days (JPL Horizons, April "
+                    f"2026), never more than a degree or so above the horizon: at the pole the Sun skims the edge. "
+                    f"Radio with Earth: {ps['window_earth_days']:g} of 10 days. Over a whole year this spot gets sun "
+                    f"about {s['sunlight_pct']}% of the time (Bussey 2010). Our sim treats the ground as smooth, so "
+                    "real mountain shadows are missing.")
     lessons.append({"text": sun_text, "source": {"title": "JPL Horizons API", "url": eph["source"]["url"]}})
     timeline = list(m.shifts)
+    obj = objectives(m)
     why = {
-        "survived": f"Your crew made it through all 10 days at {s['name']} with {m.dose:.0f} of {DOSE_LIMIT:.0f} mSv.",
+        "survived": (f"Your crew made it through all 10 days at {s['name']} with {m.dose:.0f} of {DOSE_LIMIT:.0f} mSv."
+                     if obj["met"] == 2 else
+                     f"Your crew was safe for 10 days, but sent home {obj['science']['got']:.0f} of "
+                     f"{SCIENCE_GOAL:.0f} science and made {m.ice_runs} ice runs."),
         "life_support_out": "Life support ran out: the crew needed more power for recycling, the greenhouse, or ice.",
         "power_out": "The batteries stayed empty for two shifts, so nothing could run.",
         "dose_limit": "The crew got too much radiation: a solar storm hit while they were not sheltered enough.",
@@ -711,11 +883,24 @@ def debrief(m: Mission) -> dict:
         {"name": "NASA career radiation limit (NTRS 20230012405)", "url": rad["limits"]["source"]["url"],
          "how": "Context for the 50 mSv game mission limit (1/12 of 600 mSv)."},
         {"name": "Regolith shielding (NASA NTRS 19890004839)", "url": rad["shielding"]["sources"][0]["url"],
-         "how": "Why the shelter cuts storm dose much more than cosmic-ray dose (factors are game assumptions)."},
+         "how": "Why the shelter cuts storm dose much more than cosmic-ray dose (factors are game assumptions). "
+                "Like Orion's storm shelter, ours is for up to about a day, and the particle sensor gives a few "
+                "hours' warning at most. The powered shields are a game idea, not a NASA design."},
     ]
     return {"score": sc, "grade": grade, "outcome": m.outcome, "why": why, "lose_reason": m.lose_reason,
             "log": [e for e in m.log if e["kind"] in ("event", "command", "houston")],
             "site": public_site(s), "seed": m.seed, "mission_time_h": m.t_h,
             "final": {"power_pct": round(m.power, 1), "life_support_pct": round(m.life, 1), "dose_msv": round(m.dose, 2),
                       "science": round(m.science, 1), "science_sent": round(m.science_sent, 1)},
-            "timeline": timeline, "lessons": lessons[:4], "data_used": data_used}
+            "timeline": timeline, "lessons": lessons[:4], "data_used": data_used,
+            "difficulty": m.difficulty, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
+            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else "goals")}
+
+
+TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md §6.7)
+    "dose_limit": "Shelter when the warning comes, not when the storm hits.",
+    "power_out": "Turn on night mode before sunset. Check the Sun strip.",
+    "life_support_out": "Send the rover for ice when no storm is due.",
+    "goals": "Leave the shelter when the storm ends, and send science home when Earth is up.",
+    "survived": "Try a harder site: Malapert has the longest night.",
+}

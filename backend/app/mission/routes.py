@@ -19,6 +19,7 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
+    difficulty: str = Field("commander", pattern="^(cadet|commander)$")   # ages 7-9 / 10-12 (LEARNING_DESIGN §6.5)
 
 
 class CommandReq(BaseModel):
@@ -44,7 +45,7 @@ def mission_sites():
 @router.post("/api/mission/start")
 def mission_start(req: StartReq):
     try:
-        m = registry.create(req.site, req.seed, req.roles)
+        m = registry.create(req.site, req.seed, req.roles, req.difficulty)
     except KeyError:
         raise HTTPException(404, f"unknown site {req.site!r}")
     return sim.to_state(m)

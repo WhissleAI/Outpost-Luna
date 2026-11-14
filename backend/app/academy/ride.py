@@ -16,8 +16,12 @@ def start(cfg: dict) -> dict:
         RIDES.pop(next(iter(RIDES)))
     rid = "r-" + secrets.token_hex(4)
     m = sim.new_mission(rid, cfg["site"], cfg.get("seed", 0))
+    # The ride starts `start_h` into the April 2026 window, when Earth is up at the site (Horizons), so Houston can
+    # really warn the cadet. At hour 0 Earth is below Shackleton Rim's horizon: no radio without a relay.
+    t0 = int(cfg.get("start_h", 0))
+    m.t_h = t0
     ev = next(e for e in sim.storms_catalog()["events"] if e["id"] == cfg["storm_event"])
-    m.storms = [sim.Storm(cfg["storm_start_h"], {1: 12, 2: 24, 3: 36}[ev["severity"]], ev)]
+    m.storms = [sim.Storm(t0 + cfg["storm_start_h"], sim.storm_duration_h(ev), ev)]
     m.failure_h = 10 ** 6   # no array failure inside a 2-day ride
     RIDES[rid] = {"m": m, "cfg": cfg, "step": 0, "misses": 0, "missed": [], "done": False}
     return RIDES[rid]
@@ -35,7 +39,7 @@ def advance(ride: dict, how) -> list:
         st = m.storms[0]
         n = math.ceil(max(0, st.start_h + st.dur_h - m.t_h) / sim.SHIFT_H)
     elif how == "end":
-        n = math.ceil(max(0, cfg["mission_h"] - m.t_h) / sim.SHIFT_H)
+        n = math.ceil(max(0, int(cfg.get("start_h", 0)) + cfg["mission_h"] - m.t_h) / sim.SHIFT_H)
     else:
         n = int(how)
     return sim.advance(m, n) if n > 0 else []

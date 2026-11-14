@@ -6,11 +6,16 @@
  "path": "donki",
  "mapping": {
   "severity_to_dose_multiplier": {
-   "1": 1.5,
-   "2": 3.0,
-   "3": 6.0
+   "1": 1.25,
+   "2": 4.0,
+   "3": 8.0
   },
-  "rule": "3 = SEP + Kp>=8 storm or CME >= 2000 km/s; 2 = SEP, or Kp 7, or CME >= 1200 km/s; 1 = otherwise. On the Moon there is no magnetic field, so solar energetic particles (SEP) matter most; Kp and CME speed stand in for event size."
+  "severity_to_duration_h": {
+   "1": 12,
+   "2": 18,
+   "3": 24
+  },
+  "rule": "3 = solar particles (SEP) with a CME >= 1500 km/s; 2 = SEP; 1 = no SEP (a storm at Earth, few particles at the Moon). The G-scale and Kp measure Earth's magnetic field; the Moon has none, so only the particles matter."
  },
  "events": [
   {
@@ -24,12 +29,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/13054/-1",
    "cme_speed_kms": 1636,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2017-09-07 (with solar particles (SEP), CME 1636 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2017-09-07 (G4 storm at Earth, CME 1636 km/s)",
    "source": {
     "title": "DONKI 2017-09-07T21:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/13054/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2017-09-08T12:00:00-GST-001",
@@ -42,12 +48,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/13066/-1",
    "cme_speed_kms": 1636,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2017-09-08 (with solar particles (SEP), CME 1636 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2017-09-08 (G4 storm at Earth, CME 1636 km/s)",
    "source": {
     "title": "DONKI 2017-09-08T12:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/13066/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2023-03-23T12:00:00-GST-001",
@@ -59,13 +66,14 @@
    "sep_id": null,
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/24366/-1",
    "cme_speed_kms": 779,
-   "severity": 2,
-   "dose_multiplier": 3.0,
-   "name": "Real G4 solar storm, 2023-03-23 (CME 779 km/s)",
+   "severity": 1,
+   "dose_multiplier": 1.25,
+   "name": "Real solar storm, 2023-03-23 (G4 at Earth, few particles at the Moon, CME 779 km/s)",
    "source": {
     "title": "DONKI 2023-03-23T12:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/24366/-1"
-   }
+   },
+   "duration_h": 12
   },
   {
    "id": "2023-04-23T18:00:00-GST-001",
@@ -77,13 +85,14 @@
    "sep_id": "2023-04-23T18:29:00-SEP-002",
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/24772/-1",
    "cme_speed_kms": 1204,
-   "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2023-04-23 (with solar particles (SEP), CME 1204 km/s)",
+   "severity": 2,
+   "dose_multiplier": 4.0,
+   "name": "Real solar particle event, 2023-04-23 (G4 storm at Earth, CME 1204 km/s)",
    "source": {
     "title": "DONKI 2023-04-23T18:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/24772/-1"
-   }
+   },
+   "duration_h": 18
   },
   {
    "id": "2024-03-24T12:00:00-GST-001",
@@ -96,12 +105,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/29769/-1",
    "cme_speed_kms": 1613,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2024-03-24 (with solar particles (SEP), CME 1613 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2024-03-24 (G4 storm at Earth, CME 1613 km/s)",
    "source": {
     "title": "DONKI 2024-03-24T12:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/29769/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2024-05-10T15:00:00-GST-001",
@@ -114,12 +124,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/30693/-1",
    "cme_speed_kms": 1561,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G5 solar storm, 2024-05-10 (with solar particles (SEP), CME 1561 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2024-05-10 (G5 storm at Earth, CME 1561 km/s)",
    "source": {
     "title": "DONKI 2024-05-10T15:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/30693/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2024-06-28T09:00:00-GST-001",
@@ -131,13 +142,14 @@
    "sep_id": null,
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/31728/-1",
    "cme_speed_kms": 640,
-   "severity": 2,
-   "dose_multiplier": 3.0,
-   "name": "Real G3 solar storm, 2024-06-28 (CME 640 km/s)",
+   "severity": 1,
+   "dose_multiplier": 1.25,
+   "name": "Real solar storm, 2024-06-28 (G3 at Earth, few particles at the Moon, CME 640 km/s)",
    "source": {
     "title": "DONKI 2024-06-28T09:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/31728/-1"
-   }
+   },
+   "duration_h": 12
   },
   {
    "id": "2024-08-12T00:00:00-GST-001",
@@ -149,13 +161,14 @@
    "sep_id": null,
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/32722/-1",
    "cme_speed_kms": 887,
-   "severity": 2,
-   "dose_multiplier": 3.0,
-   "name": "Real G4 solar storm, 2024-08-12 (CME 887 km/s)",
+   "severity": 1,
+   "dose_multiplier": 1.25,
+   "name": "Real solar storm, 2024-08-12 (G4 at Earth, few particles at the Moon, CME 887 km/s)",
    "source": {
     "title": "DONKI 2024-08-12T00:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/32722/-1"
-   }
+   },
+   "duration_h": 12
   },
   {
    "id": "2024-09-17T00:00:00-GST-001",
@@ -168,12 +181,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33465/-1",
    "cme_speed_kms": 2040,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G3 solar storm, 2024-09-17 (with solar particles (SEP), CME 2040 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2024-09-17 (G3 storm at Earth, CME 2040 km/s)",
    "source": {
     "title": "DONKI 2024-09-17T00:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33465/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2024-10-07T12:00:00-GST-001",
@@ -186,12 +200,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33817/-1",
    "cme_speed_kms": 1345,
    "severity": 2,
-   "dose_multiplier": 3.0,
-   "name": "Real G3 solar storm, 2024-10-07 (with solar particles (SEP), CME 1345 km/s)",
+   "dose_multiplier": 4.0,
+   "name": "Real solar particle event, 2024-10-07 (G3 storm at Earth, CME 1345 km/s)",
    "source": {
     "title": "DONKI 2024-10-07T12:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33817/-1"
-   }
+   },
+   "duration_h": 18
   },
   {
    "id": "2024-10-10T15:00:00-GST-001",
@@ -204,12 +219,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33913/-1",
    "cme_speed_kms": 2112,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2024-10-10 (with solar particles (SEP), CME 2112 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2024-10-10 (G4 storm at Earth, CME 2112 km/s)",
    "source": {
     "title": "DONKI 2024-10-10T15:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/33913/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2025-01-01T09:00:00-GST-001",
@@ -221,13 +237,14 @@
    "sep_id": "2025-01-04T22:23:00-SEP-001",
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/36159/-1",
    "cme_speed_kms": 1114,
-   "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2025-01-01 (with solar particles (SEP), CME 1114 km/s)",
+   "severity": 2,
+   "dose_multiplier": 4.0,
+   "name": "Real solar particle event, 2025-01-01 (G4 storm at Earth, CME 1114 km/s)",
    "source": {
     "title": "DONKI 2025-01-01T09:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/36159/-1"
-   }
+   },
+   "duration_h": 18
   },
   {
    "id": "2025-04-15T18:00:00-GST-001",
@@ -239,13 +256,14 @@
    "sep_id": null,
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/38417/-1",
    "cme_speed_kms": 1121,
-   "severity": 2,
-   "dose_multiplier": 3.0,
-   "name": "Real G3 solar storm, 2025-04-15 (CME 1121 km/s)",
+   "severity": 1,
+   "dose_multiplier": 1.25,
+   "name": "Real solar storm, 2025-04-15 (G3 at Earth, few particles at the Moon, CME 1121 km/s)",
    "source": {
     "title": "DONKI 2025-04-15T18:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/38417/-1"
-   }
+   },
+   "duration_h": 12
   },
   {
    "id": "2025-06-01T06:00:00-GST-001",
@@ -258,12 +276,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/39234/-1",
    "cme_speed_kms": 2371,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2025-06-01 (with solar particles (SEP), CME 2371 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2025-06-01 (G4 storm at Earth, CME 2371 km/s)",
    "source": {
     "title": "DONKI 2025-06-01T06:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/39234/-1"
-   }
+   },
+   "duration_h": 24
   },
   {
    "id": "2025-11-12T00:00:00-GST-001",
@@ -276,12 +295,13 @@
    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/42642/-1",
    "cme_speed_kms": 1856,
    "severity": 3,
-   "dose_multiplier": 6.0,
-   "name": "Real G4 solar storm, 2025-11-12 (with solar particles (SEP), CME 1856 km/s)",
+   "dose_multiplier": 8.0,
+   "name": "Real solar particle event, 2025-11-12 (G4 storm at Earth, CME 1856 km/s)",
    "source": {
     "title": "DONKI 2025-11-12T00:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/42642/-1"
-   }
+   },
+   "duration_h": 24
   }
  ]
 }

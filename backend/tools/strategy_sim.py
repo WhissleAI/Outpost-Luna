@@ -127,7 +127,8 @@ class Reactive(Policy):
 def _housekeeping(m, st, ice_at: float = 45, science_bias: bool = False):
     """Rover for ice/repairs when free and safe; heaters on in the dark; trim loads when the battery is low."""
     env = st["env"]
-    if not m.shelter and not m.rover["busy"] and not env["storm"]["active"]:
+    calm = not env["storm"]["active"] and not (env.get("warning") or {}).get("eta_h", 99) <= 24
+    if not m.shelter and not m.rover["busy"] and calm:
         if "array_damaged" in st["alerts"] and m.power > 15:
             cmd(m, {"type": "dispatch", "vehicle": "rover", "task": "repair_array"})
         elif m.life < ice_at and m.power > 15:
@@ -141,36 +142,58 @@ def _housekeeping(m, st, ice_at: float = 45, science_bias: bool = False):
 
 
 class Planner(Policy):
-    """Reads the data: calls Houston when Earth is up, shelters on a warning (before the hit), keeps shields
-    moderate, sends science home in comm windows, runs ice when it's safe."""
+    """Reads the data, like the lessons teach: asks Houston for space weather when Earth is up, shelters on a
+    'likely' warning before the hit (ignores 'possible' ones), turns night mode on before sunset, keeps the radio up
+    in comm windows so science goes home, and runs for ice when no storm is due."""
     name = "planner"
-    blurb = "listens for warnings, calls Houston in comm windows, shelters early, banks science home"
+    blurb = "acts on likely warnings early, night mode before sunset, Houston in comm windows, safe ice runs"
 
     def act(self, m, st):
         env = st["env"]
-        if env["earth_visible"] and m.power > 30 and (self.heard_eta is None or self.heard_eta < m.t_h) \
-                and m.t_h % 24 == 0:
-            r = cmd(m, {"type": "call_houston", "text": "space weather?"})
-            self.observe(m, [], [r.get("say", "")])
-        storm = env["storm"]["active"]
-        soon = (self.warned_at is not None and m.t_h - self.warned_at <= 12) or \
-               (self.heard_eta is not None and 0 <= self.heard_eta - m.t_h <= 6)
+        if env["earth_visible"] and m.power > 30 and m.t_h % 24 == 0:
+            cmd(m, {"type": "call_houston", "text": "space weather?"})
+        w = env.get("warning") or {}
+        storm = env["storm"]["active"] and env["storm"].get("sep", True)
+        soon = w.get("confidence") == "likely" and w.get("eta_h", 99) <= 6
         if (storm or soon) and not m.shelter:
             if m.rover["busy"]:
                 cmd(m, {"type": "dispatch", "vehicle": "rover", "task": "return"})
             cmd(m, {"type": "shelter", "on": True})
         elif not storm and not soon and m.shelter:
             cmd(m, {"type": "shelter", "on": False})
+        nxt = env.get("next_sun_change_h")
+        dark_soon = (env["in_sun"] and nxt is not None and nxt <= 6) or not env["in_sun"]
+        if dark_soon != m.power_save and not st["site"].get("window_sun_days") == 0:
+            cmd(m, {"type": "power_save", "on": dark_soon})
         alloc(m, "comms", 10 if env["earth_visible"] else 2)
-        _housekeeping(m, st, ice_at=50, science_bias=True)
+        if m.power_save:                       # in the long night, the recycler gets the spare power
+            alloc(m, "life_support", 45)
+        _housekeeping(m, st, ice_at=55, science_bias=not m.power_save)
         return []
 
 
-POLICIES = [Policy, ShieldsMax, AlwaysShelter, ScienceMax, CommsMax, RoverSpam, Reactive, Planner]
+class Cautious(Planner):
+    name = "cautious"
+    blurb = "like the planner, but shelters on every warning, even 'possible' ones"
+
+    def act(self, m, st):
+        w = st["env"].get("warning") or {}
+        if w.get("eta_h", 99) <= 6 and not m.shelter and not m.rover["busy"]:
+            cmd(m, {"type": "shelter", "on": True})
+        if st["env"]["storm"]["active"] and not m.shelter:
+            cmd(m, {"type": "shelter", "on": True})
+        if m.shelter and (st["env"]["storm"]["active"] or w.get("eta_h", 99) <= 6):
+            _housekeeping(m, st, ice_at=55, science_bias=True)
+            return []
+        return super().act(m, st)
 
 
-def play(policy_cls, site: str, seed: int) -> dict:
-    m = sim.new_mission(f"s-{policy_cls.name}", site, seed)
+POLICIES = [Policy, ShieldsMax, AlwaysShelter, ScienceMax, CommsMax, RoverSpam, Reactive, Cautious, Planner]
+FIXED = ("idle", "shields_max", "always_shelter", "science_max", "comms_max", "rover_spam")
+
+
+def play(policy_cls, site: str, seed: int, difficulty: str = "commander") -> dict:
+    m = sim.new_mission(f"s-{policy_cls.name}", site, seed, difficulty=difficulty)
     p = policy_cls()
     while not m.over:
         st = sim.to_state(m)
@@ -179,7 +202,11 @@ def play(policy_cls, site: str, seed: int) -> dict:
         p.observe(m, evs, [])
     return {"policy": p.name, "site": site, "seed": seed, "outcome": m.outcome, "score": sim.score(m),
             "dose": round(m.dose, 1), "science_sent": round(m.science_sent, 1), "hours": m.t_h,
-            "grade": sim.debrief(m)["grade"]}
+            "grade": sim.debrief(m)["grade"], "goals": sim.objectives(m)["met"], "good_calls": len(m.good_calls)}
+
+
+def run(seeds: int, difficulty: str = "commander") -> list[dict]:
+    return [play(P, s["id"], k, difficulty) for P in POLICIES for s in sim.sites() for k in range(seeds)]
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -196,6 +223,8 @@ def summarize(rows: list[dict]) -> dict:
             if r["outcome"] != "survived":
                 fails[r["outcome"]] = fails.get(r["outcome"], 0) + 1
         out[name] = {"survived": round(sum(r["outcome"] == "survived" for r in rs) / len(rs), 2),
+                     "goals_met": round(sum(r["goals"] == 2 for r in rs) / len(rs), 2),
+                     "grades": {g: sum(r["grade"] == g for r in rs) for g in "ABCDF"},
                      "score_mean": round(statistics.mean(r["score"] for r in rs)),
                      "score_min": min(r["score"] for r in rs),
                      "dose_mean": round(statistics.mean(r["dose"] for r in rs), 1),
@@ -208,17 +237,18 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=30)
     ap.add_argument("--json")
+    ap.add_argument("--difficulty", default="commander", choices=sim.DIFFICULTIES)
     a = ap.parse_args(argv)
-    rows = [play(P, s["id"], k) for P in POLICIES for s in sim.sites() for k in range(a.seeds)]
+    rows = run(a.seeds, a.difficulty)
     summ = summarize(rows)
     sites = [s["id"] for s in sim.sites()]
-    print(f"{'policy':16} {'surv':>5} {'score':>6} {'min':>5} {'dose':>6} {'sci':>6}  " +
+    print(f"{'policy':16} {'surv':>5} {'goals':>5} {'score':>6} {'min':>5} {'dose':>6} {'sci':>6}  " +
           " ".join(f"{s[:10]:>10}" for s in sites) + "  fails")
     for name, v in sorted(summ.items(), key=lambda kv: -kv[1]["score_mean"]):
-        print(f"{name:16} {v['survived']:5.2f} {v['score_mean']:6d} {v['score_min']:5d} {v['dose_mean']:6.1f} "
+        print(f"{name:16} {v['survived']:5.2f} {v['goals_met']:5.2f} {v['score_mean']:6d} {v['score_min']:5d} {v['dose_mean']:6.1f} "
               f"{v['science_sent_mean']:6.1f}  " +
               " ".join(f"{v['by_site'][s]['survived']:4.2f}/{v['by_site'][s]['score']:<5d}" for s in sites) +
-              f"  {v['fails']}")
+              f"  {v['fails']} {v['grades']}")
     if a.json:
         Path(a.json).write_text(json.dumps({"summary": summ, "rows": rows}, indent=1))
     return summ

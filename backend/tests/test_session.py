@@ -10,7 +10,7 @@ from app.gazetteer import Gazetteer
 from app.mission import capcom, registry, sim
 from app.moments import MomentIndex
 
-SITE, SEED = "shackleton_rim", 7      # seed 7: storms at 78 h (severity 3) and 112 h
+SITE, SEED = "shackleton_rim", 51     # seed 51: storms at 78 h (severity 3) and 168 h
 
 
 class Clock:
