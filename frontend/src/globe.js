@@ -18,7 +18,7 @@ export const angDist = (a, b) => Math.acos(Math.min(1, ll2v(a.lat, a.lon).normal
 /** A feature's angular radius in degrees. */
 export const angRadius = f => (f.km / 2) / MOON_KM * 180 / Math.PI;
 
-export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {} }) {
+export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {}, onMiss = () => {} }) {
   const features = places.filter(f => f.kind !== "artifact"), artifacts = places.filter(f => f.kind === "artifact");
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -360,6 +360,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
     ray.setFromCamera(ndc, camera); const hit = ray.intersectObject(moon)[0];
     if (hit) onTap(v2ll(hit.point));
+    else onMiss();   // [audit2] a tap on space used to do nothing at all
   });
 
   return {

@@ -87,7 +87,14 @@ async function boot() {
 
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
-  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
+  // [audit2] a tap on empty space, where a tap on the Moon is the answer (a Moon step, the Library, Find it): one quiet
+  // chip on the voice bar instead of nothing
+  const TAP_STEPS = ["tap", "intent", "route", "terminator", "compare", "globe_side"];
+  const onMiss = () => {
+    const m = document.body.dataset.mode, f = m === "academy" ? academyUI.screen() : null;
+    if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice("Tap on the Moon");
+  };
+  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss });
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
@@ -133,7 +140,9 @@ async function boot() {
     : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true,
       repeat: true /* "say that again", a word's "hear it" button: asked for on purpose */, source: "a11y" });
   const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => {   // [qa] Help → "Pick a place": a globe tap (Flight School tap steps included); in Mission, shown in the Library
-    if (document.body.dataset.mode === "mission") { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
+    // [audit2] Flight School outside a tap step (the map, a choice step) swallowed the pick: show it in the Library too
+    const af = document.body.dataset.mode === "academy" ? academyUI.screen() : null, tapStep = af && af.screen === "lesson" && ["tap", "intent"].includes(af.step_type);
+    if (document.body.dataset.mode === "mission" || (af && !tapStep)) { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
     return p.kind === "artifact" ? onArtifact(p) : onTap(p); }, places, playCrew: m => player.play(m) });
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
@@ -435,7 +444,10 @@ async function boot() {
         showHeard(shownText);
         if (missionUI.running) missionUI.radioKid(shownText);
       }
-      cancelNudge(); cancelTour();
+      cancelNudge();
+      // [audit2] "next" during the Library tour stopped the tour (this ran before the nav it decided): a tour step
+      // intent keeps it
+      if (!(d.outcome === "navigate" && ["next", "prev", "accept_offer"].includes(d.intent))) cancelTour();
     },
     nav: d => runNav(d.intent, d.arg, d.text),
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)

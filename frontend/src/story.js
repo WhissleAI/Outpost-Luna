@@ -176,6 +176,13 @@ export const CALLSIGN_COPY = {
   edit: "Change call sign",
   /** Spoken once when the picker opens. */
   say: "Every crew member has a radio name. Pick yours.",
+  /** [audit2] Start with an empty field (on screen, under the field). */
+  empty: "Type a call sign, or tap one.",
+  /** [audit2] a name typed in the voice bar went into the field. */
+  typed: "Got it. Tap Start to use it.",
+  pick: "Pick one from the list, like Nova or Comet.",
+  /** [audit2] after changing the call sign from the map (was "Welcome to Flight School." again). */
+  saved: cs => `Copy that, ${cs}. Call sign saved.`,
 };
 
 // ---------- Academy (Flight School): a course catalog in tracks ----------
@@ -227,6 +234,12 @@ export const SCHOOL = {
   minutes: m => `${m} min`,
   track: (k, title) => `Track ${k} · ${title}`,
   earned: name => `${name} patch`,
+  /** [audit2] "next" said before the step is answered (spoken before the step's hint). */
+  answerFirst: "Answer this one first.",
+  /** [audit2] the map's beat after the first patch (was blank: a returning cadet saw no "where am I"). */
+  progressLine: (n, of, next) => `${n} of ${of} lessons done. Next: ${next}.`,
+  /** [audit2] "What do I do?" on the map names the button the card really shows. */
+  mapHelp: (cta, title) => `Tap ${cta} to begin ${title}.`,
 };
 
 /** One short story beat per lesson (shown above CAPCOM's brief, and spoken before it). Keyed by course.json lesson id.

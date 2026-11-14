@@ -31,6 +31,18 @@ export const INTRO = {
 };
 export const doLine = st => (st && (st.do || DO[(st.accept || {}).type])) || "";
 
+/** [audit2] "What do I do?" in a step: the do-line, then the hint, unless the hint says the same thing (then the hint
+ *  alone). Before, "Drag the Moon to turn it, or tap a side. Tap Far, or drag the Moon around." said it twice. */
+export function helpLine(doL, hint) {
+  const ws = t => new Set(String(t || "").toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 2));
+  const a = ws(doL), b = ws(hint);
+  if (!hint) return doL;
+  if (!doL) return hint;
+  const shared = [...a].filter(w => b.has(w)).length;
+  const end = s => String(s).trim().replace(/[.!?]*$/, ".");
+  return shared / Math.max(1, Math.min(a.size, b.size)) >= 0.4 ? end(hint) : `${end(doL)} ${end(hint)}`;
+}
+
 /** First use of a step type on this device? (localStorage; private mode: always "seen" after the first call) */
 const SEEN_KEY = "outpost-seen-steps";
 let seenMem = null;

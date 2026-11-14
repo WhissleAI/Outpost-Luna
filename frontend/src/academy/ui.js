@@ -14,7 +14,7 @@ import { createCabin } from "../mission/cabin.js";   // [ride] the check ride si
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
-import { marks, doLine, INTRO, firstUse, needsTurn } from "./guide.js";
+import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -112,8 +112,16 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     ui.active = true; panel.hidden = false;
     if (!course) {
       setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading Flight School…</p>`;
-      try { course = await academyApi.course(); }
-      catch (e) { panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Close the app and open it again.</span></p>`; return; }
+      // [audit2] the course failing once was a dead end ("Close the app and open it again"): keep trying, like the Moon does
+      for (let tries = 0; !course; tries++) {
+        try { course = await academyApi.course(); }
+        catch (e) {
+          if (!ui.active) return;
+          if (!tries) panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Trying again. If this stays, close the app and open it again.</span></p>`;
+          await new Promise(res => setTimeout(res, 3000));
+          if (!ui.active) return;
+        }
+      }
     }
     if (!ui.active) return;
     if (resume()) return;
@@ -142,7 +150,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   // ---------- home: what this is, a call sign, one Start ----------
   const shuffled = () => [...CALLSIGNS].sort(() => Math.random() - .5);
-  let csDeck = shuffled();
+  let csDeck = shuffled(), csTyped = null;
   function showCallSign(back, reshuffled) {
     view = "callsign"; setLayout("home"); if (!reshuffled) globe.flyTo(-20, 10, 3.2);
     const cur = callSign.get(), pick = (!reshuffled && cur) || csDeck[0];
@@ -160,15 +168,19 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           </div>
           <div class="h-chips" role="group" aria-label="${esc(CALLSIGN_COPY.title)}">${csDeck.slice(0, 3).map(c => `<button type="button" class="chip a-csb" aria-pressed="${c === pick}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
           <p class="sr-only" id="aCsHelp">${esc(CALLSIGN_COPY.sub)}</p>
+          <p class="h-err" id="aCsErr" role="status" hidden></p>
           <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.begin)}${icon("chevron-right")}</button>
         </form>
         <p class="h-credit">${esc(CREDIT)}</p>
       </div>`;
     const input = panel.querySelector("#aCsIn");
-    const done = v => { if (!callSign.set(v)) { input.focus(); return; } const cs = callSign.spoken("Cadet"); if (back) { say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }); back(); } else welcome(cs); };
-    const select = v => { input.value = v; panel.querySelectorAll(".a-csb").forEach(b => b.setAttribute("aria-pressed", b.dataset.cs === v)); };
+    const err = panel.querySelector("#aCsErr");
+    // [audit2] an empty Start used to do nothing at all: say what's missing, on the card
+    const done = v => { if (!callSign.set(v)) { err.textContent = CALLSIGN_COPY.empty; err.hidden = false; input.focus(); return; } const cs = callSign.spoken("Cadet"); if (back) { say(CALLSIGN_COPY.saved(cs), { situation: "badge" }); back(); } else welcome(cs); };
+    const select = v => { input.value = v; err.hidden = true; panel.querySelectorAll(".a-csb").forEach(b => b.setAttribute("aria-pressed", b.dataset.cs === v)); };
     panel.querySelectorAll(".a-csb").forEach(b => b.onclick = () => select(b.dataset.cs));
     input.addEventListener("input", () => select(input.value));
+    csTyped = t => { select(t.slice(0, 18)); input.focus(); };   // [audit2] a name typed in the voice bar lands in the field
     panel.querySelector("#aCsForm").onsubmit = e => { e.preventDefault(); done(input.value); };
     // Shuffle deals six new call signs and suggests the first ("surprise me" by voice picks one and goes: handleText).
     panel.querySelector("#aCsRand").onclick = () => { csDeck = shuffled(); showCallSign(back, true); panel.querySelector("#aCsRand").focus(); };
@@ -184,7 +196,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function whatNow() {
     if (!ui.active) return null;
     if (view === "callsign") return HELP.callsign;
-    if (view === "map") return prog.qualified ? HELP.mapQualified : HELP.map;
+    if (view === "map") return help();   // [audit2] names the button the card really shows
     if (view === "badge") return prog.qualified ? HELP.mapQualified : HELP.patch;
     return null;
   }
@@ -224,7 +236,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     });
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
-    const cta = !sel ? "" : selDone ? UI.replay2 : sel === nx && n > 0 ? UI.cont : UI.start;
+    const cta = ctaFor(sel, nx, n);
     const card = prog.qualified && (!mapSel || !sel)
       ? `<div class="mp-card"><span class="mp-patch">${patch("checkride", { earned: true, size: 64 })}</span>
           <div class="mp-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2></div>
@@ -239,7 +251,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="mp-count" aria-label="${esc(UI.patches(n, ls.length))}">${n}<small>/${ls.length}</small></span>
         <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
       </header>
-      ${!prog.qualified && (n === 0 || (nx && nx.ride)) ? `<p class="mp-beat"><b>${esc(ARC_STEP(nx && nx.ride ? 1 : 0))} · ${esc(nx && nx.ride ? TRANSITION.toRide.where : TRANSITION.firstMap.where)}</b>${esc(nx && nx.ride ? TRANSITION.toRide.line : TRANSITION.firstMap.line)}</p>` : ""}
+      ${!prog.qualified && nx ? `<p class="mp-beat"><b>${esc(ARC_STEP(nx.ride ? 1 : 0))} · ${esc(nx.ride ? TRANSITION.toRide.where : TRANSITION.firstMap.where)}</b>${esc(nx.ride ? TRANSITION.toRide.line : n === 0 ? TRANSITION.firstMap.line : SCHOOL.progressLine(n, lessonNo(nx).of, nx.title))}</p>` : ""}
       ${card}
       <p class="mp-credit">${esc(CREDIT)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
@@ -247,6 +259,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);
   }
   function leaveCatalog() { mapSel = null; delete document.body.dataset.aview; }
+  /** The card's button for a lesson: Replay (done), Fly check ride, Continue (the next one, after the first patch),
+   *  or Start lesson. One place, so "what do I do?" names the button the card really shows. */
+  function ctaFor(sel, nx, n) { return !sel ? "" : has(sel.badge.id) ? UI.replay2 : sel.ride ? SCHOOL.ride : sel === nx && n > 0 ? UI.cont : UI.start; }
 
   // ---------- lesson ----------
   async function openLesson(id) {
@@ -385,7 +400,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function help() {
     if (!ui.active) return "";
     if (view === "callsign") return "Pick a call sign, then tap Start.";
-    if (view === "map") { const nx = nextLesson(); return prog.qualified ? "Tap Take command to run the outpost." : nx ? `Tap ${UI.start} to begin ${nx.title}.` : "Tap a patch to fly a lesson again."; }
+    if (view === "map") {
+      const nx = nextLesson(), n = lessons().filter(l => has(l.badge.id)).length, sel = (mapSel && lessons().find(l => l.id === mapSel)) || nx;
+      if (prog.qualified && (!mapSel || !sel)) return "Tap Take command to run the outpost.";
+      return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title) : "Tap a patch to fly a lesson again.";
+    }
     if (view === "badge") return "Tap Next for the next lesson, or Map.";
     if (view !== "lesson" || !L) return "";
     if (waitingNext) return "Tap Next, or say next.";
@@ -393,8 +412,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (gs.rung >= 1 && feedback && feedback.text) return feedback.text;
     // nothing tried yet: the hint, on the card too, and the same visual as a first miss (no miss is counted)
     const focus = acc.type === "route" ? [acc.stops[stepState.taps.length] || acc.stops[0]] : acc.place ? [acc.place] : [];
-    const line = `${doLine(st)}. ${st.hint}`;
-    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: line }; render(); turnToFocus(focus); }
+    // [audit2] the do-line is already on the card: the card adds only the hint, and a hint that repeats the do-line
+    // ("Guess first. Any guess is fine." + "Guess first. Then we'll see.") is not said twice
+    const line = helpLine(doLine(st), st.hint);
+    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: st.hint || doLine(st) }; render(); turnToFocus(focus); }
     return line;
   }
   try { (window.__outpost = window.__outpost || {}).help = help; } catch (e) { /* tests */ }
@@ -611,6 +632,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (["next", "start", "accept_offer"].includes(intent)) {
       if (view === "lesson" && waitingNext) { next(); return true; }
       if (view === "lesson" && intent === "start") return true;          // already in a lesson: nothing to start
+      // [audit2] "next" before the step is answered did nothing at all: say why, and how (the hint shows on the card)
+      if (view === "lesson" && intent === "next") { const t = help(); if (t) say(`${SCHOOL.answerFirst} ${t}`); return true; }
       if (view === "badge" || view === "map") {
         if (prog.qualified && (view === "badge" || !nx || arg === "mission")) { goMission(); return true; }
         if (nx) { openLesson(nx.id); return true; }
@@ -632,7 +655,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const hit = CALLSIGNS.find(c => t.includes(c.toLowerCase()));
       if (hit) { callSign.set(hit); welcome(hit); return true; }
       if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); welcome(c); return true; }
-      say("Pick one from the list, like Nova or Comet."); return true;
+      // [audit2] a short name typed in the voice bar: put it in the field, so the screen shows what happens next
+      const typed = String(text || "").replace(/[^\p{L}\p{N} '-]/gu, "").trim();
+      if (csTyped && typed && typed.length <= 18 && typed.split(/\s+/).length <= 3) { csTyped(typed); say(CALLSIGN_COPY.typed); return true; }
+      say(CALLSIGN_COPY.pick); return true;
     }
     if (view === "badge" || view === "map") {
       if (NEXT_WORDS.test(t)) { const nx = nextLesson(); if (prog.qualified && (view === "badge" || !nx)) goMission(); else if (nx) openLesson(nx.id); return true; }
