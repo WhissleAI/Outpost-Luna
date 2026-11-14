@@ -78,6 +78,8 @@ try {   // share one registry: keep anything registered before this module loade
 export function createAcademyUI({ globe, placeById, say, player, alertSound = () => {}, stop = () => {}, goMission = () => {}, openLibrary = () => {}, onProgress = () => {} }) {
   const panel = document.getElementById("aPanel");
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
+  let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
+  const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
   let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
@@ -108,9 +110,28 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       catch (e) { panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Close the app and open it again.</span></p>`; return; }
     }
     if (!ui.active) return;
+    if (resume()) return;
     showMap();
   }
-  function exit() { ui.active = false; view = "off"; panel.hidden = true; endRide(); leaveCatalog(); globe.route.clear(); globe.setViewport(null); }
+  // Switching mode (Mission, Library) suspends the lesson; coming back to Flight School resumes it at the same step,
+  // with the same answer state. The check ride lives in the cabin and is not suspended (it restarts from the map).
+  let suspended = null;
+  function exit() {
+    if (!ui.active) { panel.hidden = true; return; }   // already suspended (Mission → Library): keep the lesson
+    suspended =view === "lesson" && L && !L.ride ? { L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt } : null;
+    ui.active = false; view = "off"; panel.hidden = true; busy = false;
+    endRide(); leaveCatalog(); globe.route.clear(); globe.setViewport(null);
+  }
+  function resume() {
+    const s = suspended; suspended = null;
+    if (!s || !lessons().includes(s.L)) return false;
+    ({ L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt } = s);
+    view = "lesson";
+    const st = L.steps[i], f = st && st.accept && (st.accept.place ? placeById(st.accept.place) : null);
+    if (f) globe.showFeature(f); else { const at = placeOf(L); globe.flyTo(at.lat, at.lon, 2.6); }
+    render();
+    return true;
+  }
 
   // ---------- home: what this is, a call sign, one Start ----------
   const shuffled = () => [...CALLSIGNS].sort(() => Math.random() - .5);
@@ -207,7 +228,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // ---------- lesson ----------
   async function openLesson(id) {
     L = lessons().find(l => l.id === id); if (!L) return;
-    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; nagged = false; leaveCatalog();
+    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; nagged = false; stepKey = ""; leaveCatalog();
     endRide();
     if (L.ride) {
       try { ride = await academyApi.ride(); } catch (e) { ride = null; }
@@ -219,10 +240,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     render();
     const beat = (LESSON_STORY[L.id] || {}).beat || "";
     // Three short lines, not one long one (the spoken limit is about 20 words a line): hello, the brief, the question.
-    const id0 = L.id, still = () => view === "lesson" && L && L.id === id0 && i === 0;
-    Promise.resolve(say(CAPCOM.lessonHello(callSign.spoken("cadet"), beat), { situation: "lesson_brief" }))
-      .then(() => still() && say(L.brief, { situation: "lesson_brief" }))
-      .then(() => still() && !waitingNext && say(L.steps[0].prompt, { situation: "lesson_brief" }));
+    // They are ONE say (a list of lines): one on-air span, so the ear's hard mute has no gap between them (a gap let
+    // room chatter and our own echo in as "answers"; docs/HANDSFREE.md). Leaving the lesson stops it (stop()).
+    say([CAPCOM.lessonHello(callSign.spoken("cadet"), beat), L.brief, L.steps[0].prompt], { situation: "lesson_brief" });
     if (L.steps[0].alert) alertSound();
   }
 
@@ -236,6 +256,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function render() {
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
+    if (stepKey !== L.id + ":" + i) { stepKey = L.id + ":" + i; stepAt = now(); }
     const clip = st.clip || (i === 0 ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
     setLayout(L.ride ? "ride" : "lesson");
     if (!waitingNext && (acc.type === "tap" || acc.type === "intent" || acc.type === "route")) globe.setDecor(true);   // the place dots help a tap
@@ -245,7 +266,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
     const E = STEP_RENDERERS[acc.type];
     const R = typeof E === "function"
-      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext }))
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext }))
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
@@ -282,7 +303,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
     const bb = panel.querySelector("#aBriefBtn");
     if (bb) bb.onclick = () => { const b = panel.querySelector("#aBrief"), open = b.hidden; b.hidden = !open; bb.setAttribute("aria-expanded", open); };
-    const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief);
+    const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief, undefined, { repeat: true });
     const lib = panel.querySelector("#aLib"); if (lib) lib.onclick = () => openLibrary(L.library.place);
     const cb = panel.querySelector("#aClip");
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
@@ -325,11 +346,15 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (busy || view !== "lesson" || waitingNext) return false;
     busy = true; if (btn) btn.classList.add("is-busy");
     let r;
-    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, ride_id: ride && ride.ride_id }); }
+    const step_s = Math.max(0, Math.round((now() - stepAt) / 100) / 10);   // the reveal needs ~20 s (grade.reveal_due)
+    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id }); }
     catch (e) { busy = false; feedback = { kind: "retry", text: "I can't reach CAPCOM right now. Try again." }; render(); return true; }
     busy = false;
     // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
     try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type } })); } catch (e) { /* no window */ }
+    if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
+    // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
+    if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }
     if (r.state && ride) { ride.state = r.state; syncRideGlobe(); }
     if (ride && r.events && r.events.length) ride.events = r.events;
     if (r.status === "passed" || r.status === "missed" || r.status === "done") {
@@ -442,8 +467,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       </div>`;
     // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
     const offer = commander ? OFFER.mission : nx ? (nx.ride ? OFFER.ride : OFFER.nextLesson) : "";
-    Promise.resolve(say(commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name), { situation: "badge" }))
-      .then(() => { if (offer && view === "badge") say(offer, { situation: "badge" }); });
+    // the patch line and the offer: one say, one on-air span (no gap for the ear between them)
+    const patchLine = commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name);
+    say(offer ? [patchLine, offer] : patchLine, { situation: "badge" });
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
@@ -460,7 +486,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "lesson" || !L) return { screen: "map" };
     if (waitingNext) return { screen: "lesson_done", offer: "next_step" };
     const acc = L.steps[i].accept;
-    return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || []).map(o => o.label) };
+    // lesson_id + step: the router looks up the step to tell a real try from room talk (grade.plausible)
+    return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || []).map(o => o.label), lesson_id: L.id, step: i };
   }
   /** A navigation intent. True when the Academy ran it. */
   function nav(intent, arg) {
@@ -469,7 +496,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const nx = nextLesson();
     if (intent === "lesson") { if (lessons().some(l => l.id === arg)) { stop(); openLesson(arg); return true; } return false; }
     if (intent === "map" || (intent === "back" && view !== "map")) { stop(); showMap(); return true; }
-    if (intent === "repeat_step" && view === "lesson" && L) { speakLine(L.steps[i].prompt); return true; }
+    if (intent === "repeat_step" && view === "lesson" && L) { say(L.steps[i].prompt, undefined, { repeat: true }); return true; }
     if (["next", "start", "accept_offer"].includes(intent)) {
       if (view === "lesson" && waitingNext) { next(); return true; }
       if (view === "lesson" && intent === "start") return true;          // already in a lesson: nothing to start

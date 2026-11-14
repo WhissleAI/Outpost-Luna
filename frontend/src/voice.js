@@ -4,10 +4,10 @@
 // Barge-in follows docs/SESSION_CONTRACT.md §3 rule 2: Space always wins; open-mic speech while the guide or the crew
 // is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
-import { createListener } from "./listen.js";
-import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
+// (floor.css is imported by main.js, so this module loads under `node --test`: tests/voice_gate.test.js)
+import { createListener as defaultListener } from "./listen.js";
+import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
 export { spaceAction, micErrorText };
-import "./floor.css";
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking"];
 const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", hearing: "is-hearing", thinking: "is-thinking", speaking: "is-speaking" };
@@ -22,8 +22,11 @@ const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo referen
  * @param {(label:string)=>void} o.onEmotion
  * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
  * @param {()=>object|null} [o.screen]        the screen frame the router gets ({screen, step_type, offer}, main.js)
+ * @param {object} [o.floor]                  the floor manager (default: the app's one floor; tests pass their own)
+ * @param {Function} [o.createListener]       the mic socket factory (default: listen.js; tests pass a fake ear)
  */
-export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null }) {
+export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null,
+  floor = defaultFloor, createListener = defaultListener }) {
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
   let mode = "off", wsBroken = false, starting = false, srOn = false;
@@ -101,12 +104,14 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   });
   if (floor) floor.on("sentence", () => { recent.refs = liveRefs(); });
   // On air: a line of ours is playing right now (no tail). A turn keeps the value it had at its start.
-  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!isOutputBusy(); };
+  // floor.onAir also covers a queued multi-line say between its lines (the next line's audio still loading): the
+  // whole CAPCOM sequence is one on-air span, so the ear never slips into the gap (the server's Spoken `more` hold).
+  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!(floor && floor.onAir) || !!isOutputBusy(); };
   const frameNow = () => { try { return screen() || null; } catch (e) { return null; } };
   let turnAir = false;
   const outputBusy = () => {
     const h = floor ? floor.holder : "none";
-    return h === "guide" || h === "crew" || isOutputBusy() || performance.now() < recent.until;
+    return h === "guide" || h === "crew" || !!(floor && floor.onAir) || isOutputBusy() || performance.now() < recent.until;
   };
   const said = [];   // [{text, at}] the last few lines any app voice spoke
   const remember = t => { if (!t) return; said.push({ text: t, at: performance.now() }); if (said.length > 8) said.shift(); };

@@ -288,7 +288,8 @@ class Session:
         ev = m.get("event")
         self.history.append({"in": "ui", "event": ev, "ts": self.clock()})
         if ev == "screen":         # the client's screen frame (hands-free routing context)
-            self.screen = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer") if k in m}
+            self.screen = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer", "lesson_id", "step")
+                           if k in m}
             return
         if ev == "lesson_result":  # the Academy's grade of a step answer (turn log outcome signal only)
             self.tlog.lesson(m.get("status"), m.get("step_type") or self.screen.get("step_type"))
@@ -317,7 +318,7 @@ class Session:
             if self.belief["floor"] != "kid":
                 self.belief["floor"] = kind
         else:  # end | interrupted
-            self.spoken.end(did)
+            self.spoken.end(did, more=bool(m.get("more")) and st == "end")   # `more`: the next line is queued
             if did:
                 self.pending.pop(did, None)
             self.belief["playing"] = None
@@ -450,6 +451,16 @@ class Session:
             return "cabin" if b["mission_id"] else "brief"
         return "library" if b["mode"] == "cadet" else "map"
 
+    def open_step(self) -> dict | None:
+        """The course step the client's screen frame has open (lesson_id + step), for grade.plausible."""
+        lid, i = self.screen.get("lesson_id"), self.screen.get("step")
+        if not lid or not isinstance(i, int) or self.screen.get("screen") not in ("lesson", "ride"):
+            return None
+        from .academy import content
+        les = content.lesson(lid)
+        steps = (les or {}).get("steps") or []
+        return steps[i] if 0 <= i < len(steps) else None
+
     def route_ctx(self, source: str) -> router_.Ctx:
         k = self.belief["kid"]
         heard = source in ("listen", "voice", "ptt")
@@ -461,6 +472,7 @@ class Session:
             dd_min=dd_min, dd_strong=dd_strong,
             screen=self.screen_name(), step_type=self.screen.get("step_type"),
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
+            step=self.open_step(),
             source=source if heard else "typed",
             dd=k.get("device_directed") if heard else None,
             speaking=heard and self.spoken.speaking(t0), playing=heard and self.spoken.playing_at(t0),

@@ -12,13 +12,13 @@ from pydantic import BaseModel, Field
 
 from .. import steering
 from . import content, ride as rides
-from .grade import grade, references, similar
+from .grade import REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
 
 router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
 router.include_router(_vocab_router)
 HINT_AFTER = 2   # misses before the hint
-SHOW_AFTER = 3   # misses before CAPCOM shows the answer and moves on (no dead ends; docs/LEARNING_DESIGN.md §5)
+SHOW_AFTER = REVEAL_AFTER   # real misses (and >= 20 s open: grade.reveal_due) before CAPCOM shows the answer (§5)
 SHOWN = "Here it is. "
 # The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
 MARS_FACT = "On Mars, Houston would answer 6 to 44 minutes later."
@@ -38,6 +38,7 @@ class AttemptReq(BaseModel):
     input: AttemptInput
     misses: int = Field(0, ge=0, le=50)   # misses so far on this step (client-side progress)
     ride_id: str | None = None
+    step_s: float | None = Field(None, ge=0)   # seconds the step has been open (client): no reveal in the first 20 s
     level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): for the learning design; no effect yet
 
 
@@ -87,8 +88,10 @@ async def academy_attempt(req: AttemptReq):
     ok, extra = grade(st, req.input.model_dump(exclude_none=True))
     if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
         ok = await similar(st, req.input.text)
+    if not ok and text_only(req.input.model_dump(exclude_none=True)) and not plausible(st, req.input.text):
+        return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
     last = req.step == len(steps) - 1
-    shown = not ok and req.misses + 1 >= SHOW_AFTER
+    shown = not ok and reveal_due(req.misses + 1, req.step_s)
     if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed
         return _vocab_out(les, req, st, ok, last, extra, shown)
     if ok or shown:
@@ -105,6 +108,12 @@ async def academy_attempt(req: AttemptReq):
     return _out(les["id"], req.step, "retry", st["fail"])
 
 
+def _ignored(lesson_id: str, step: int, **extra) -> dict:
+    """Not a try (grade.plausible): no miss, no line, the step stays open. The client counts nothing."""
+    return {"status": "ignored", "say": "", "lesson_id": lesson_id, "step": step, "decisions": [],
+            **{k: v for k, v in extra.items() if v is not None}}
+
+
 def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     r = rides.get(req.ride_id)
     if r is None:
@@ -113,7 +122,10 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
         raise HTTPException(409, f"the ride is on step {r['step']}")
     steps, m = les["steps"], r["m"]
     st = steps[r["step"]]
-    ok, extra = grade(st, req.input.model_dump(exclude_none=True), loads=m.loads)
+    inp = req.input.model_dump(exclude_none=True)
+    ok, extra = grade(st, inp, loads=m.loads)
+    if not ok and text_only(inp) and not plausible(st, req.input.text):
+        return _ignored(les["id"], r["step"], state=rides.hud(r))   # not a try: the miss counter doesn't move
     sim_say = ""
     if ok:
         res = m.apply(extra["command"])["result"] if extra.get("command") else {"say": ""}

@@ -19,12 +19,29 @@ turn ──► route(text, screen ctx) ──► ignore | navigate | answer | or
 |---|---|---|
 | **ignore** | empty; filler or non-lexical ("oh", "um", "mm-mm", "uh-huh"); echo of our own voice; heard while we speak (or < 600 ms after) and not barge-in-worthy; Arc `device_directed` < 0.5; one word that is not an intent; a tap step's unrelated words; a long ramble in a lesson | silence. Our own speech is never cancelled. The mic chip shows "Didn't catch that" only when the turn was clearly device-directed (`notice`). |
 | **navigate** | start, next, go back, patch map, lesson N or a title ("space words"), go to mission, take command, pick \<site>, debrief, fly again, another site, academy, library, zoom out / show the rover / back to the outpost, settings, slower / faster, say that again, the a11y commands (where am I, press X, option 2); the voice bar ("move the voice bar to the top right", "reset the voice bar": intent `a11y`, `text` = the canonical command `voicebar.js` parses), on every screen; in the cabin, the 3D panels ("open the comm / power / habitat panel", "go to the hab", "open the rover / radiation panel" → `panel_comm`, `panel_power`, `panel_habitat`, `panel_rover`, `panel_radiation`; "back", "back to my seat", "close the panel", "seat" → `panel_back`). Panel phrases never reach the mission NLU ("open the comm panel" once turned the radio off); without the word "panel" only open / go to / take me to count, so "check the power" stays a status order; yes / no to the screen's offer | a `nav` decision; the client runs it (`main.js runNav` → `academyUI.nav` / `missionUI.nav` / `setMode` / `a11y`) |
-| **answer** | lesson or check-ride step: the utterance is the step's answer (choice, keywords readback, command, intent, tap by naming the place, vocab); the call-sign screen | a `nav` with intent `answer`; the client grades it (`POST /api/academy/attempt`) |
+| **answer** | lesson or check-ride step: the utterance is a **plausible** answer (below); the call-sign screen | a `nav` with intent `answer`; the client grades it (`POST /api/academy/attempt`) |
 | **order** | the mission cabin | the mission NLU + the learned Director (`director._mission_turn`); risky orders ask to confirm |
 | **question** | anywhere: a wh-question or "tell me / show me / explain" (yes/no starts only when Arc says device-directed); the library; a clearly directed ≥ 3-word turn elsewhere | the Moon knowledge brain. "I don't know that one yet" (and the brain's "Did you mean…?") is spoken for a heard turn **only** for a clear question, and the fallback **at most once per 30 s**. It is spoken without examples; the examples are on the card only. |
 
 Context first: in a lesson step an utterance is an answer, on the patch screen "next" and "yes" advance, in the cabin
 an utterance is an order. A question works on every screen.
+
+## Only plausible answers count
+
+On a lesson or check-ride step, a heard (or typed) turn is a try, and so a miss when wrong, only when it is plausible
+(`academy/grade.plausible`, used by both the router and the attempt API):
+
+- it names an option: a word of it, or its number or letter ("one", "the second one", "b"; a bare "A" is option A,
+  not filler);
+- it overlaps what the step expects: the keywords, a place name, a mission order (not a bare "okay" = confirm), the
+  space word;
+- or it has 3+ content words and Arc `device_directed` ≥ the kid's filter (unknown counts).
+
+Anything else ("Oh, it's.", "okay", "alright", "um", "what") routes to `ignore` (`not_an_answer`), silently. If one
+reaches the grader anyway, it answers `status: "ignored"` and the client counts nothing. The screen frame carries
+`lesson_id` and `step`, so the router knows the step. CAPCOM's after-3-misses reveal needs 3 real misses **and** about
+20 s since the step opened (`grade.reveal_due(misses, step_s)`, the client sends `step_s`); before that the third miss
+gets the hint again.
 
 ## Never hear ourselves
 
@@ -41,6 +58,13 @@ an utterance is an order. A question works on every screen.
   - Lines that ended 0.3–12 s before: only a near-verbatim repeat (≥ 85 %, ≥ 3 words). This catches an example
     command heard back a few seconds later. A kid answering with the prompt's words ("more power to the heaters")
     still gets through, and in lessons older lines are not used at all.
+- A CAPCOM sequence (hello → brief → question, the patch line → the offer) is ONE say, a list of lines
+  (`floor.say([...])`): one playback span, the floor held between lines. When a line ends with another say queued, its
+  `playback` end carries `more: true` and the session holds the hard mute through the gap (`Spoken.end(more)`, at most
+  4 s); the client's `floor.onAir` does the same, so the ear never slips in between lines.
+- One utterance per user action: the floor drops a line that is the same (or ≥ 85 % the same) as one queued, playing or
+  said in the last 3 s, in any voice (`{repeat: true}` for "Hear it again"). A sentence whose audio errors after it was
+  heard is over, never re-said in the browser voice.
 - While we speak (and for 600 ms after), only barge-in-worthy turns get through: a navigation or control word, or
   ≥ 3 words with `device_directed` ≥ 0.7. Space (push-to-talk) is always the kid's turn.
 - The client does the same check before it sends anything (`voice.js`: `isFiller`, `turnIsEcho` over the last few

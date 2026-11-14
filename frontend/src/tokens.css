@@ -3,6 +3,10 @@
    Two type families, both self-hosted (the desktop app runs offline): Inter (UI) and JetBrains Mono (telemetry).
    Contrast: every text token is >= 4.5:1 on --color-bg, --color-surface and --color-surface-2 in its theme. */
 
+/* `hidden` always wins. A layout rule like `.apanel.is-lesson{display:flex}` has the same specificity as
+   `.apanel[hidden]{display:none}` and came later, so a hidden lesson card stayed on top of the Mission site picker. */
+[hidden]{display:none!important}
+
 @import "@fontsource-variable/inter/index.css";
 @import "@fontsource/jetbrains-mono/latin-400.css";
 @import "@fontsource/jetbrains-mono/latin-600.css";
