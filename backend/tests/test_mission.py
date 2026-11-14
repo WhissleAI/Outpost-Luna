@@ -133,15 +133,19 @@ def test_lose_path_dose_when_storm_and_no_shields():
 
 
 def careful(m):
+    """Shelter for storms; night mode (not the shelter) for the dark, with the spare power on the recycler."""
     env = sim.env_at(m, m.t_h)
-    storm_soon = any(st.start_h - 6 <= m.t_h < st.start_h + st.dur_h for st in m.storms)
-    dark = env["sun_frac"] < 0.5 and m.power < 60
-    want = storm_soon or dark
-    if want and not m.shelter and not m.rover["busy"]:
+    storm_soon = any(st.start_h - 6 <= m.t_h < st.start_h + st.dur_h for st in m.storms if st.event.get("sep"))
+    if storm_soon and not m.shelter and not m.rover["busy"]:
         sim.apply_command(m, {"type": "shelter", "on": True})
-    elif not want and m.shelter:
+    elif not storm_soon and m.shelter:
         sim.apply_command(m, {"type": "shelter", "on": False})
-    if not m.shelter and not m.rover["busy"]:
+    dark = env["sun_frac"] < 0.5 and not sim.site(m.site_id).get("power_from")
+    if dark != m.power_save:
+        sim.apply_command(m, {"type": "power_save", "on": dark})
+        if dark:
+            sim.apply_command(m, {"type": "allocate", "to": "life_support", "amount": {"kind": "percent", "value": 45}})
+    if not m.shelter and not m.rover["busy"] and not storm_soon:
         if m.array_eff < 1:
             sim.apply_command(m, {"type": "dispatch", "vehicle": "rover", "task": "repair_array"})
         elif m.life < 60:

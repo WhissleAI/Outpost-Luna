@@ -54,11 +54,11 @@ def run(base):
         step("voice: 'next' on the patch → lesson 2")
 
         # ---- lesson 2 by click where the step has buttons, typing where it asks for a read-back ----
-        L = next(l for l in COURSE["lessons"] if l["id"] == "comms")
+        L = COURSE["lessons"][1]   # the second stop on the route (course.json is in map order)
         for k, st in enumerate(L["steps"]):
             pg.wait_for_timeout(700)
             a = st["accept"]
-            if a["type"] == "choice":
+            if a["type"] in ("choice", "predict"):
                 pg.click(f'.a-choice[data-c="{a["answer"]}"]')
             else:
                 say(answer_for(st))

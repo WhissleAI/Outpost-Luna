@@ -197,22 +197,49 @@ def donki(kind: str, start: str, end: str) -> list:
     return out
 
 
-# The curated storms (DONKI activity IDs are looked up from the fetched lists). severity/multiplier mapping:
-#   severity 3 = SEP event with a G4-G5 storm (Kp >= 8) or a fast (>=2000 km/s) CME   -> dose x 6
-#   severity 2 = SEP event or Kp 7 storm or CME >= 1200 km/s                            -> dose x 3
-#   severity 1 = Kp 5-6 storm or CME < 1200 km/s                                         -> dose x 1.5
-# Why: geomagnetic Kp measures Earth's response, not the Moon's; on the Moon (no magnetosphere) what matters is the
-# energetic particles (SEP). We use SEP presence first, then storm/CME strength as a proxy for how big the event was.
-SEVERITY_MULT = {1: 1.5, 2: 3.0, 3: 6.0}
+# The curated storms (DONKI activity IDs are looked up from the fetched lists). severity/multiplier mapping
+# (docs/LEARNING_DESIGN.md T1):
+#   severity 3 = solar energetic particles (SEP) with a fast CME (>= 1500 km/s)   -> dose x 8, 24 h
+#   severity 2 = SEP event                                                        -> dose x 4, 18 h
+#   severity 1 = no SEP: Earth had a geomagnetic storm, but few particles reach the Moon -> dose x 1.25, 12 h
+# Why: the G-scale and Kp measure Earth's magnetic field. The Moon has none, so on the Moon only the energetic
+# particles matter. A storm without SEP is the game's honest false alarm.
+SEVERITY_MULT = {1: 1.25, 2: 4.0, 3: 8.0}
+SEVERITY_DUR_H = {1: 12, 2: 18, 3: 24}
 
 
 def severity(ev: dict) -> int:
-    kp, speed, sep = ev.get("kp_max") or 0, ev.get("cme_speed_kms") or 0, ev.get("sep")
-    if (sep and kp >= 8) or speed >= 2000:
+    speed, sep = ev.get("cme_speed_kms") or 0, ev.get("sep")
+    if sep and speed >= 1500:
         return 3
-    if sep or kp >= 7 or speed >= 1200:
+    if sep:
         return 2
     return 1
+
+
+def event_name(ev: dict) -> str:
+    speed = f", CME {ev['cme_speed_kms']} km/s" if ev.get("cme_speed_kms") else ""
+    if ev.get("sep"):
+        return f"Real solar particle event, {ev['date']} ({ev['class']} storm at Earth{speed})"
+    return f"Real solar storm, {ev['date']} ({ev['class']} at Earth, few particles at the Moon{speed})"
+
+
+def rekey_on_sep(events: list[dict], sep: list[dict]) -> list[dict]:
+    """Key each event on its DONKI SEP record when it has one (that is what reaches the Moon); the Earth storm (GST)
+    stays as context. Two Earth storms from one particle event become one event (the stronger)."""
+    by = {s["sepID"]: s for s in sep}
+    best: dict[str, dict] = {}
+    for ev in events:
+        ev.setdefault("gst_id", ev["id"]); ev.setdefault("gst_link", ev["link"]); ev.setdefault("gst_date", ev["date"])
+        s = by.get(ev.get("sep_id") or "")
+        if s:
+            ev.update(id=s["sepID"], link=s["link"], date=s["eventTime"][:10], type="solar particle event",
+                      source={"title": f"DONKI {s['sepID']} (NASA CCMC)", "url": s["link"]})
+            ev["name"] = f"Real solar particle storm, {ev['date']}" + (
+                f" (huge auroras on Earth, {ev['class']})" if ev["class"] in ("G4", "G5") else "")
+        if ev["id"] not in best or ev["severity"] > best[ev["id"]]["severity"]:
+            best[ev["id"]] = ev
+    return list(best.values())
 
 
 def build_donki():
@@ -252,10 +279,8 @@ def build_donki():
     for ev in events:
         ev["severity"] = severity(ev)
         ev["dose_multiplier"] = SEVERITY_MULT[ev["severity"]]
-        parts = ["with solar particles (SEP)" if ev["sep"] else None,
-                 f"CME {ev['cme_speed_kms']} km/s" if ev["cme_speed_kms"] else None]
-        extra = ", ".join(p for p in parts if p)
-        ev["name"] = f"Real {ev['class']} solar storm, {ev['date']}" + (f" ({extra})" if extra else "")
+        ev["duration_h"] = SEVERITY_DUR_H[ev["severity"]]
+        ev["name"] = event_name(ev)
         ev["source"] = {"title": f"DONKI {ev['id']} (NASA CCMC)", "url": ev["link"]}
     # Curate: every Kp>=8 storm plus the strongest Kp 7s, 15 max, newest first among ties.
     events.sort(key=lambda e: (-e["kp_max"], -e["sep"], e["date"]), reverse=False)
@@ -267,10 +292,10 @@ def write_donki(events: list[dict]):
     doc = {"source": {"title": "DONKI: Space Weather Database Of Notifications, Knowledge, Information (NASA CCMC), "
                                "via api.nasa.gov", "url": "https://api.nasa.gov/#DONKI"},
            "path": "donki",
-           "mapping": {"severity_to_dose_multiplier": SEVERITY_MULT,
-                       "rule": "3 = SEP + Kp>=8 storm or CME >= 2000 km/s; 2 = SEP, or Kp 7, or CME >= 1200 km/s; "
-                               "1 = otherwise. On the Moon there is no magnetic field, so solar energetic particles "
-                               "(SEP) matter most; Kp and CME speed stand in for event size."},
+           "mapping": {"severity_to_dose_multiplier": SEVERITY_MULT, "severity_to_duration_h": SEVERITY_DUR_H,
+                       "rule": "3 = solar particles (SEP) with a CME >= 1500 km/s; 2 = SEP; 1 = no SEP (a storm at Earth, few "
+                               "particles at the Moon). The G-scale and Kp measure Earth's magnetic field; the Moon has "
+                               "none, so only the particles matter."},
            "events": events}
     (OUT / "donki_events.json").write_text(json.dumps(doc, indent=1))
 

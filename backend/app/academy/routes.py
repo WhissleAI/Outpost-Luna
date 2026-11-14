@@ -12,12 +12,14 @@ from pydantic import BaseModel, Field
 
 from .. import steering
 from . import content, ride as rides
-from .grade import grade, similar
+from .grade import grade, references, similar
 
 router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
 router.include_router(_vocab_router)
 HINT_AFTER = 2   # misses before the hint
+SHOW_AFTER = 3   # misses before CAPCOM shows the answer and moves on (no dead ends; docs/LEARNING_DESIGN.md §5)
+SHOWN = "Here it is. "
 # The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
 MARS_FACT = "On Mars, Houston would answer 6 to 44 minutes later."
 
@@ -26,6 +28,8 @@ class AttemptInput(BaseModel):
     text: str | None = Field(None, max_length=300)
     tap: str | dict | None = None
     choice: str | None = Field(None, max_length=60)
+    view: dict | None = None                       # globe_side: the camera's centre {lat, lon}
+    taps: list[str | dict] | None = Field(None, max_length=12)   # route: the stops tapped so far, in order
 
 
 class AttemptReq(BaseModel):
@@ -84,11 +88,18 @@ async def academy_attempt(req: AttemptReq):
     if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
         ok = await similar(st, req.input.text)
     last = req.step == len(steps) - 1
+    shown = not ok and req.misses + 1 >= SHOW_AFTER
     if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed
-        return _vocab_out(les, req, st, ok, last, extra)
-    if ok:
-        return _out(les["id"], req.step, "passed", st["success"], next_step=None if last else req.step + 1,
-                    badge=les["badge"] if last else None, **extra)
+        return _vocab_out(les, req, st, ok, last, extra, shown)
+    if ok or shown:
+        say = st["success"]
+        if st["accept"]["type"] == "predict" and not extra.get("correct"):
+            say = st["reveal"]                          # a guess is never wrong: "your guess" vs "the data"
+        if shown:
+            say = SHOWN + say
+        return _out(les["id"], req.step, "passed", say, next_step=None if last else req.step + 1,
+                    badge=les["badge"] if last else None, shown=True if shown else None,
+                    shown_answer=_answer_of(st) if shown else None, **extra)
     if req.misses + 1 >= HINT_AFTER:
         return _out(les["id"], req.step, "hint", st["fail"] + " Hint: " + st["hint"], hint=st["hint"])
     return _out(les["id"], req.step, "retry", st["fail"])
@@ -142,12 +153,34 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
                 passed=False, score=score, state=rides.hud(r), events=events, fact=MARS_FACT)
 
 
-def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra: dict) -> dict:
+def _answer_of(st: dict) -> dict:
+    """What the client highlights when CAPCOM shows the answer: an option id, a place, or the route."""
+    a = st["accept"]
+    if a["type"] in ("choice", "predict", "compare"):
+        return {"choice": a["answer"]}
+    if a["type"] in ("tap", "intent"):
+        return {"place": a["place"]}
+    if a["type"] == "route":
+        return {"stops": a["stops"]}
+    if a["type"] == "globe_side":
+        return {"side": a["want"]}
+    if a["type"] == "earth_view":
+        from .grade import earth_answer
+        return {"choice": earth_answer(a["place"])}
+    if a["type"] == "terminator":
+        return {"sun_lon": a["sun_lon"]}
+    if a["type"] == "keywords":
+        return {"say": (references(st) or [""])[0]}
+    return {}
+
+
+def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra: dict, shown: bool = False) -> dict:
     """A vocab step's reply: the same shape, steered with the `vocab` situation and per-word emphasis (§4b)."""
     from .vocab import term
     t = term(st["accept"]["term"]) or {}
-    if ok:
-        out = _out(les["id"], req.step, "passed", st["success"], next_step=None if last else req.step + 1,
+    if ok or shown:
+        out = _out(les["id"], req.step, "passed", (SHOWN if shown else "") + st["success"],
+                   next_step=None if last else req.step + 1, shown=True if shown else None,
                    badge=les["badge"] if last else None, term=t or None, **{k: v for k, v in extra.items() if k != "term"})
     elif req.misses + 1 >= HINT_AFTER:
         out = _out(les["id"], req.step, "hint", st["fail"] + " Hint: " + st["hint"], hint=st["hint"])

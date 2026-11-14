@@ -194,11 +194,15 @@ class Session:
             d["style"] = new
 
     def _pass_level(self):
-        """The level onto the mission sim object (the sim reads it if it wants; no behaviour here)."""
+        """Settings prefs.level onto the mission: it picks the difficulty band (sim.set_level)."""
         m = self._mission()
         if m is not None:
             with contextlib.suppress(Exception):
-                m.level = self.level
+                from .mission import sim as _sim   # the level is the difficulty band (docs/LEARNING_DESIGN.md §6.5)
+                if isinstance(m, _sim.Mission):
+                    _sim.set_level(m, self.level)
+                else:
+                    m.level = self.level
 
     async def on_prefs(self, m: dict):
         self.prefs = clean_prefs(m, self.prefs)
@@ -648,15 +652,20 @@ class Session:
         kind, s = e.get("kind"), self.belief["state"] or {}
         calm = (self.belief["kid"].get("emotion") or "").lower() in ALARM_EMOTIONS
         src = (e.get("source") or {}).get("title") if isinstance(e.get("source"), dict) else None
-        if kind == "solar_storm":
+        if kind in ("solar_storm", "storm_warning"):
             st = self._storm_of(e)
             sev = int((st.event or {}).get("severity") or 2) if st else \
                 (((s.get("env") or {}).get("storm") or {}).get("severity") or 2)
-            warning = bool(st and e.get("t_h", 0) < st.start_h)
+            warning = kind == "storm_warning" or bool(st and e.get("t_h", 0) < st.start_h)
             crit = sev >= 3 and not warning
             pri = P_CRITICAL if crit else P_NARRATION
-            line = ("Storm coming. Shields up, or get to the shelter." if warning else
-                    "Storm's here! Shelter, and shields up.")
+            if kind == "solar_storm" and e.get("sep") is False:   # few particles reach the Moon: a near miss
+                line = "Storm at Earth, but few particles here. Keep working."
+            elif warning and e.get("confidence") == "possible":
+                line = "A storm is possible. Shelter now, or wait and watch?"
+            else:
+                line = ("Storm coming. Shelter now, or wait?" if warning else
+                        "Storm's here! Shelter, and shields up.")
             if calm:
                 line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
@@ -669,6 +678,10 @@ class Session:
             if st:
                 self.warned.add(st.start_h)   # the sim warned already: no second lookahead alert
             return [al, card, say]
+        if kind == "shelter_limit":
+            return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Crew out of the shelter."),
+                    decision("say", P_NARRATION, text="A day in the shelter is the limit. Crew out to rest.",
+                             voice="capcom", proactive=True, situation="all_clear", emotion=self._emotion())]
         if kind == "comm_open":
             return [decision("alert", P_NARRATION, level="info", text=e.get("text") or "Comm window open."),
                     decision("say", P_NARRATION, text="Comm window open. Houston can hear us.", voice="capcom",
@@ -681,11 +694,11 @@ class Session:
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Radiation is high.", source=src)]
         if kind in ("low_power",) or (kind == "sunset" and ((s.get("resources") or {}).get("power_pct") or 100) < 35):
             return [decision("alert", P_NARRATION, level="warn", text=e.get("text") or "Battery is low."),
-                    decision("say", P_NARRATION, text="Dark, and the battery's low. Let's save power.",
+                    decision("say", P_NARRATION, text="Dark, and the battery's low. Night mode?",
                              voice="capcom", proactive=True, situation="night_low_power", emotion=self._emotion()),
                     decision("card", P_NUDGE, title="Coach", nudge=True,
-                             body="Turn down science and the rover. Keep heaters and life support on.",
-                             actions=[{"label": "Science to 5", "send": {"t": "typed", "text": "science to 5"}}])]
+                             body="Night mode saves power. Keep heaters and life support on.",
+                             actions=[{"label": "Night mode on", "send": {"t": "typed", "text": "night mode on"}}])]
         if kind in ("failure", "mission_complete"):
             return [decision("alert", P_CRITICAL if kind == "failure" else P_NARRATION,
                              level="critical" if kind == "failure" else "info", text=e.get("text") or kind),

@@ -10,7 +10,7 @@ from app.gazetteer import Gazetteer
 from app.mission import capcom, registry, sim
 from app.moments import MomentIndex
 
-SITE, SEED = "shackleton_rim", 7      # seed 7: storms at 78 h (severity 3) and 112 h
+SITE, SEED = "shackleton_rim", 37     # seed 37: storms at 78 h (severity 3) and 184 h
 
 
 class Clock:
@@ -39,9 +39,9 @@ def offline(monkeypatch):
 @pytest.fixture
 def sess(world):
     clock = Clock()
-    m = registry.create(SITE, SEED)
+    m = registry.create(SITE, SEED, level="commander")
     s = sessions.Session("t-1", world[0], world[1], clock=clock, registry=registry)
-    run(s.handle({"t": "hello", "mode": "mission", "mission_id": m.id, "role": None}))
+    run(s.handle({"t": "hello", "mode": "mission", "mission_id": m.id, "role": None, "prefs": {"level": "commander"}}))
     s.clock_obj, s.m = clock, m
     return s
 

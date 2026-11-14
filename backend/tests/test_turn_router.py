@@ -76,8 +76,8 @@ def test_per_screen_preferences():
     assert route("yeah", ctx("lesson_done", **SCREENS["lesson_done"]))["intent"] == "accept_offer"
     # map: start, by title
     assert route("start", ctx("map"))["intent"] == "start"
-    assert route("space words", ctx("map")) == {"outcome": "navigate", "reason": "intent", "intent": "lesson",
-                                                 "arg": "words"}
+    assert route("lessons from apollo", ctx("map")) == {"outcome": "navigate", "reason": "intent", "intent": "lesson",
+                                                         "arg": "history"}
     assert route("lesson three", ctx("map"))["arg"] == LESSONS[2][0]
     # brief: pick a site, take command
     r = route("pick Malapert", ctx("brief"))

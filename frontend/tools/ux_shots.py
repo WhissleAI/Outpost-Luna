@@ -19,7 +19,7 @@ from playwright.sync_api import sync_playwright
 ALL = ["home", "map", "map_mid", "lesson_choice", "lesson_tap", "lesson_keywords", "lesson_command", "lesson_feedback",
        "vocab_listen", "vocab_match", "vocab_say", "vocab_fill", "patch", "ride", "brief", "cabin", "storm", "cabin_orbit",
        "houston", "debrief", "library", "access", "mic_denied"]
-ALL_BADGES = ["scout", "radio", "sun", "storm", "ice", "history", "words"]
+ALL_BADGES = ["scout", "history", "radio", "sun", "storm", "ice"]   # course.json badge ids (learning-v3)
 
 
 def seed(page, cs="Nova", badges=(), qualified=False, theme="dark"):
@@ -37,6 +37,7 @@ def settle(page, ms=900):
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "backend", "tools"))
+sys.path.insert(0, os.path.join(ROOT, "backend"))   # answer_for imports app.* for the globe steps
 from handsfree_run import answer_for  # noqa: E402  (the scripted kid's answers; one source of truth)
 
 COURSE = json.load(open(os.path.join(ROOT, "backend", "data", "academy", "course.json")))
@@ -153,15 +154,50 @@ def s_pin_selected(page, base, theme):
     settle(page, 2200)
 
 
-def lesson_state(lid, step, theme, page, base, feedback=False):
-    seed(page, badges=["scout", "radio", "sun", "storm", "ice", "history", "words"], theme=theme)
+def lesson_state(lid, step, theme, page, base, feedback=False, wrong=None, misses=0):
+    """Open lesson `lid` at step `step`. feedback: answer it right. wrong: click this option id (a predict guess,
+    or `misses` wrong answers so CAPCOM shows the answer)."""
+    seed(page, badges=ALL_BADGES, theme=theme)
     page.goto(base)
     settle(page, 1500)
     L = open_lesson(page, lid, step)
-    if feedback:
+    if wrong:
+        for _ in range(max(1, misses)):
+            page.click(f'#aInput [data-c="{wrong}"]')
+            page.wait_for_timeout(1600)
+        page.wait_for_selector("#aNext", timeout=25000)
+        settle(page, 1200)
+    elif feedback:
         answer_step(page, L["steps"][step])
         page.wait_for_selector("#aNext", timeout=25000)
-        settle(page, 600)
+        settle(page, 1200)
+
+
+# the six globe step types (learning-v3), each open and answered; plus CAPCOM's shown answer after 3 misses
+@state
+def s_g_earth(page, base, theme): lesson_state("moon", 1, theme, page, base)
+@state
+def s_g_earth_done(page, base, theme): lesson_state("moon", 1, theme, page, base, feedback=True)
+@state
+def s_g_predict(page, base, theme): lesson_state("moon", 2, theme, page, base)
+@state
+def s_g_predict_reveal(page, base, theme): lesson_state("moon", 2, theme, page, base, wrong="full")
+@state
+def s_g_side(page, base, theme): lesson_state("moon", 3, theme, page, base)
+@state
+def s_g_side_done(page, base, theme): lesson_state("moon", 3, theme, page, base, feedback=True)
+@state
+def s_g_terminator(page, base, theme): lesson_state("power", 0, theme, page, base)
+@state
+def s_g_compare(page, base, theme): lesson_state("power", 2, theme, page, base)
+@state
+def s_g_compare_done(page, base, theme): lesson_state("power", 2, theme, page, base, feedback=True)
+@state
+def s_g_shown(page, base, theme): lesson_state("power", 2, theme, page, base, wrong="malapert_massif", misses=3)
+@state
+def s_g_route(page, base, theme): lesson_state("history", 3, theme, page, base)
+@state
+def s_g_route_done(page, base, theme): lesson_state("history", 3, theme, page, base, feedback=True)
 
 
 @state
