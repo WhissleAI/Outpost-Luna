@@ -30,7 +30,7 @@
    "cme_speed_kms": 1636,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2017-09-04 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2017-09-04 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2017-09-04T23:52:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/13000/-1"
@@ -52,7 +52,7 @@
    "cme_speed_kms": 779,
    "severity": 1,
    "dose_multiplier": 1.25,
-   "name": "Real solar storm, 2023-03-23 (G4 at Earth, few particles at the Moon)",
+   "name": "Real solar storm, 2023-03-23 (storm at Earth, few particles at the Moon)",
    "source": {
     "title": "DONKI 2023-03-23T12:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/24366/-1"
@@ -74,7 +74,7 @@
    "cme_speed_kms": 1204,
    "severity": 2,
    "dose_multiplier": 4.0,
-   "name": "Real solar particle storm, 2023-04-23 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2023-04-23 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2023-04-23T18:29:00-SEP-002 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/24770/-1"
@@ -96,7 +96,7 @@
    "cme_speed_kms": 1613,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2024-03-23 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2024-03-23 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2024-03-23T09:55:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/29713/-1"
@@ -118,7 +118,7 @@
    "cme_speed_kms": 1561,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2024-05-09 (huge auroras on Earth, G5)",
+   "name": "Real solar particle storm, 2024-05-09 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2024-05-09T14:25:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/30610/-1"
@@ -140,7 +140,7 @@
    "cme_speed_kms": 640,
    "severity": 1,
    "dose_multiplier": 1.25,
-   "name": "Real solar storm, 2024-06-28 (G3 at Earth, few particles at the Moon)",
+   "name": "Real solar storm, 2024-06-28 (storm at Earth, few particles at the Moon)",
    "source": {
     "title": "DONKI 2024-06-28T09:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/31728/-1"
@@ -162,7 +162,7 @@
    "cme_speed_kms": 887,
    "severity": 1,
    "dose_multiplier": 1.25,
-   "name": "Real solar storm, 2024-08-12 (G4 at Earth, few particles at the Moon)",
+   "name": "Real solar storm, 2024-08-12 (storm at Earth, few particles at the Moon)",
    "source": {
     "title": "DONKI 2024-08-12T00:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/32722/-1"
@@ -206,7 +206,7 @@
    "cme_speed_kms": 2112,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2024-10-09 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2024-10-09 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2024-10-09T08:55:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/33870/-1"
@@ -228,7 +228,7 @@
    "cme_speed_kms": 1114,
    "severity": 2,
    "dose_multiplier": 4.0,
-   "name": "Real solar particle storm, 2025-01-04 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2025-01-04 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2025-01-04T22:23:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/36267/-1"
@@ -250,7 +250,7 @@
    "cme_speed_kms": 1121,
    "severity": 1,
    "dose_multiplier": 1.25,
-   "name": "Real solar storm, 2025-04-15 (G3 at Earth, few particles at the Moon)",
+   "name": "Real solar storm, 2025-04-15 (storm at Earth, few particles at the Moon)",
    "source": {
     "title": "DONKI 2025-04-15T18:00:00-GST-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/GST/38417/-1"
@@ -272,7 +272,7 @@
    "cme_speed_kms": 2371,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2025-05-31 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2025-05-31 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2025-05-31T19:47:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/39206/-1"
@@ -294,7 +294,7 @@
    "cme_speed_kms": 1856,
    "severity": 3,
    "dose_multiplier": 8.0,
-   "name": "Real solar particle storm, 2025-11-10 (huge auroras on Earth, G4)",
+   "name": "Real solar particle storm, 2025-11-10 (huge auroras on Earth)",
    "source": {
     "title": "DONKI 2025-11-10T15:04:00-SEP-001 (NASA CCMC)",
     "url": "https://ccmc.gsfc.nasa.gov/DONKI/view/SEP/42591/-1"

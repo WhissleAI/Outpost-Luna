@@ -47,7 +47,7 @@ O.stepRenderers.vocab_match = ctx => {
   return {
     html: `<div class="v-word"><span class="v-label">Space word</span><b lang="en">${escD(acc.term)}</b>
         <button type="button" class="btn-quiet" data-hear="${escD(acc.term)}" aria-label="Hear the word ${escD(acc.term)}">${icon("speaker", { size: 16 })}Hear it</button></div>
-      <p class="a-how">Tap the meaning, or say it</p>${optionsHtml(acc, "is-meanings")}${sourceHtml(acc)}`,
+${optionsHtml(acc, "is-meanings")}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
@@ -57,7 +57,7 @@ O.stepRenderers.vocab_listen = ctx => {
   return {
     html: `<div class="v-listen"><button type="button" class="btn" data-hear="${escD(acc.explain || "")}">${icon("speaker", { size: 16 })}Hear the meaning</button>
         <details class="v-reveal" ${showText ? "open" : ""}><summary>Show the words</summary><p>${escD(acc.explain || "")}</p></details></div>
-      <p class="a-how">Which word is it? Tap it, or say it</p>${optionsHtml(acc)}${sourceHtml(acc)}`,
+${optionsHtml(acc)}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
@@ -67,7 +67,7 @@ O.stepRenderers.vocab_fill = ctx => {
   const sent = escD(acc.sentence || "").replace("____", `<span class="v-blank" aria-label="blank">______</span>`);
   return {
     html: `<p class="v-sentence">${sent}</p><button type="button" class="btn-quiet v-read" data-hear="${escD((acc.sentence || "").replace("____", "blank"))}">${icon("speaker", { size: 16 })}Read it to me</button>
-      <p class="a-how">Tap the missing word, or say it</p>${optionsHtml(acc)}${sourceHtml(acc)}`,
+${optionsHtml(acc)}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
@@ -79,7 +79,7 @@ O.stepRenderers.vocab_say = ctx => {
         <span class="v-syl" aria-hidden="true">${escD(syllabify(acc.term))}</span>
         <button type="button" class="btn" data-hear="${escD(acc.term)}. ${escD(acc.term)}." aria-label="Hear ${escD(acc.term)} slowly">${icon("speaker", { size: 16 })}Hear it slowly</button></div>
       <p class="v-mean">${escD(acc.explain || "")}</p>
-      <p class="a-how">Say the word, or type it</p>${sourceHtml(acc)}`,
+${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };

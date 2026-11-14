@@ -80,6 +80,10 @@ NAV: list[tuple[str, re.Pattern]] = [
     # frontend/src/a11y.js parseCommand (the client runs them): where am I, options, text size, contrast, press X, option N
     ("a11y", re.compile(r"^(?:where am i|what screen is this|what s on (?:the )?screen|describe (?:the )?screen|"
                         r"what can i do|what can i say|help me|options|what are my options|normal speed|regular speed|"
+                        # "what do I do?": the screen's current hint (window.__outpost.help, docs/PLAYTEST.md)
+                        r"help|help please|hint|give me a hint|i need (?:a hint|help)|what do i do(?: now| here)?|"
+                        r"what should i do|what am i supposed to do|i m stuck|i don t get it|i don t know what to do|"
+                        r"i don t know|how do i do this|"
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
@@ -172,6 +176,8 @@ class Ctx:
     screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library
     step_type: str | None = None       # the lesson step's accept.type (choice, keywords, command, tap, intent, vocab_*)
     step_options: list[str] = field(default_factory=list)   # choice labels (an answer that names one is an answer)
+    step: dict | None = None           # the open course step (content.lesson(lesson_id).steps[i]): what a try sounds like
+    step_age: float | None = None      # seconds since that step opened (the session stamps the screen frame); None unknown
     offer: str | None = None           # a pending spoken offer ("next_lesson", "mission", "fly_again"): yes/next goes
     source: str = "typed"              # typed (keyboard, button) | voice (client mic) | listen (server relay)
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
@@ -356,7 +362,7 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     # 1. Silence first: nothing, filler, our own voice.
     if not ws:
         return out("ignore", "empty")
-    if heard and is_filler(raw):
+    if heard and is_filler(raw) and not _option_key(raw, ctx):
         return out("ignore", "filler")
     if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
@@ -393,6 +399,11 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
             return out("ignore", "too_short", notice=bool(dd is not None and dd >= ctx.dd_strong))
         if heard and len(ws) > 14 and not _names_option(raw, ctx) and (dd is None or dd < ctx.dd_strong):
             return out("ignore", "chatter")      # a long ramble with no answer in it, not clearly to us
+        if not _plausible(raw, ctx, dd):
+            # "Oh, it's", "okay", "alright": not a try. Silent, and never a miss (the grader agrees: grade.plausible).
+            return out("ignore", "not_an_answer", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
+        if heard and not explicit and not yesno_counts(raw, ctx, dd):
+            return out("ignore", "room_yes_no")   # a room "yes" / "no" while the question is still being asked
         return out("answer", "step")
     if s == "cabin":
         if clear_question(raw, dd, act, ctx.dd_strong) and not re.search(r"\b(power|shields?|rover|shelter|heaters?|science|"
@@ -412,6 +423,40 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     return out("ignore", "unclear", notice=bool(dd is not None and dd >= ctx.dd_strong))
 
 
+YESNO_STEPS = ("predict", "earth_view")
+YESNO_MIN_AGE_S = 1.5   # a bare yes / no on a yes-no step counts only once the step has been open this long ...
+BARE_YESNO = re.compile(r"^(?:(?:yes|yeah|yep|yup|no|nope|nah|sure|always|never|sometimes)(?: (?:please|i think|it does|"
+                        r"it did|they did|you can|i can|it can t|they didn t|never))?)$")
+
+
+def yesno_counts(text: str, ctx: Ctx, dd: float | None) -> bool:
+    """On a predict / earth_view step a bare "yes" / "no" names an option, so room talk answered the step. It counts
+    when Arc says it was for us (dd >= the strong threshold), or when it came after the question finished playing
+    (not speaking / on air) and the step had been open >= YESNO_MIN_AGE_S. Anything longer is graded as usual."""
+    if ctx.step_type not in YESNO_STEPS or not BARE_YESNO.match(norm(text)):
+        return True
+    if dd is not None and dd >= ctx.dd_strong:
+        return True
+    quiet = not ctx.speaking and not (ctx.on_air if ctx.on_air is not None else ctx.playing)
+    return quiet and (ctx.step_age is None or ctx.step_age >= YESNO_MIN_AGE_S)
+
+
+def _option_key(text: str, ctx: Ctx) -> bool:
+    """On a step with lettered / numbered options, a bare "A" is option A, not filler."""
+    if ctx.screen not in ("lesson", "ride") or not ctx.step_type:
+        return False
+    from .academy.grade import option_index, step_options
+    n = len(step_options(ctx.step["accept"])) if ctx.step else len(ctx.step_options)
+    return n > 0 and option_index(text, n) is not None
+
+
+def _plausible(text: str, ctx: Ctx, dd: float | None) -> bool:
+    """A real try at the open step (academy/grade.plausible: an option, the expected content, or >= 3 content words
+    that Arc says were for us). Everything else on a step screen is ignored and never counts as a miss."""
+    from .academy.grade import plausible
+    return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options)
+
+
 def _names_option(text: str, ctx: Ctx) -> bool:
     q = norm(text)
     if re.search(r"\b(?:a|b|c|d|option|answer|number)\b", q) and len(q.split()) <= 3:
@@ -427,10 +472,13 @@ class Spoken:
 
     LAG_S = 0.3        # the ear reports a turn start ~0.3 s after the sound: echo starts WHILE we play
 
+    HOLD_S = 4.0       # a line ended with another one queued (`more`): on air until the next starts, at most this long
+
     def __init__(self, clock=time.monotonic, n: int = 10):
         self.clock = clock
         self.lines: deque = deque(maxlen=n)       # {"id", "text", "start", "end" (None while playing)}
         self.ended = -1e9
+        self.gaps: list[tuple[float, float]] = []   # (from, until): the gaps inside a queued multi-line sequence
 
     def said(self, text: str):
         """A say decision we emitted (not yet reported as played): a reference for LAG_S from now."""
@@ -439,33 +487,48 @@ class Spoken:
             self.lines.append({"id": None, "text": text, "start": now, "end": now})
 
     def start(self, pid: str, text: str):
-        self.lines.append({"id": pid or "-", "text": text or "", "start": self.clock(), "end": None})
+        now = self.clock()
+        self.gaps = [(a, min(b, now)) for a, b in self.gaps[-8:]]     # the next line is on air: the gap closes here
+        self.lines.append({"id": pid or "-", "text": text or "", "start": now, "end": None})
 
-    def end(self, pid: str):
+    def end(self, pid: str, more: bool = False):
+        """A line ended. `more`: the client has the next line of the same sequence queued (CAPCOM's brief → beat →
+        prompt): the whole sequence is one on-air span, so the gap until the next line starts is on air too."""
         now = self.clock()
         for ln in self.lines:
             if ln["end"] is None and (not pid or ln["id"] == pid):
                 ln["end"] = now
         self.ended = now
+        if more:
+            self.gaps.append((now, now + self.HOLD_S))
+
+    def held(self, t0: float | None = None) -> bool:
+        """t0 falls inside a queued sequence's gap (one line ended, the next one is coming)."""
+        t0 = self._t0(t0)
+        return any(a <= t0 <= b for a, b in self.gaps)
 
     def playing_at(self, t0: float | None = None) -> bool:
         """A line of ours was playing when the turn started (the hallmark of an acoustic echo)."""
         t0 = self._t0(t0)
-        return any(ln["start"] <= t0 and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S) for ln in self.lines
-                   if ln["id"])
+        return self.held(t0) or any(ln["start"] <= t0 and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S)
+                                    for ln in self.lines if ln["id"])
 
     def on_air(self, t0: float | None = None) -> bool:
         """A line of ours was on air at or after t0 (still playing, or started during the turn): no ear-lag tail. An
-        offer's or a step's answer that starts right after the line ended is the kid, not the echo (Ctx.on_air)."""
+        offer's or a step's answer that starts right after the line ended is the kid, not the echo (Ctx.on_air). A gap
+        inside a queued sequence is on air."""
         t0 = self._t0(t0)
-        return any(ln["end"] is None or ln["end"] > t0 for ln in self.lines if ln["id"])
+        return self.held(t0) or any(ln["end"] is None or ln["end"] > t0 for ln in self.lines if ln["id"])
 
     def _t0(self, t0):
         return self.clock() if t0 is None else t0
 
     def speaking(self, t0: float | None = None) -> bool:
+        """The hard mute: a line playing, a queued sequence between its lines, or < TAIL_S after the last line."""
         t0 = self._t0(t0)
-        return any(ln["end"] is None for ln in self.lines if ln["id"]) or t0 - self.ended < TAIL_S
+        now = self.clock()
+        return any(ln["end"] is None for ln in self.lines if ln["id"]) or self.held(t0) or self.held(now) or \
+            t0 - self.ended < TAIL_S
 
     def recent(self, window: float = ECHO_WINDOW_S) -> list[str]:
         now = self.clock()

@@ -93,7 +93,7 @@ WER at the faster delivery, over the 0.25 bar, so it was replaced by the closest
 
 | name | id | desc | profile (catalog) | f0 median | f0 IQR (st) |
 | --- | --- | --- | --- | --- | --- |
-| Beacon | `voice_0644` | Warm, clear guide; the default voice. | female, mid, average | 188 Hz | 4.11 |
+| Beacon | `voice_0644` | Warm, clear voice for a guide. | female, mid, average | 188 Hz | 4.11 |
 | Meteor | `voice_1439` | Lively, bouncy voice with big melody. | male, mid, average | 108 Hz | **6.29** |
 | Crater | `voice_1207` | Deep, steady voice, calm and low. | male, low, average | **87 Hz** | 5.16 |
 | Thruster | `voice_1059` | Quick, bright voice that keeps moving. | male, mid, fast | 113 Hz | 4.97 |
@@ -102,7 +102,7 @@ WER at the faster delivery, over the 0.25 bar, so it was replaced by the closest
 | Twinkle | `voice_0840` | High, light voice, soft and clear. | female, high, slow | **212 Hz** | 4.78 |
 | Drifter | `voice_1442` | Relaxed voice that takes its time. | male, mid, slow | 126 Hz | 4.78 |
 | Lander | `voice_0762` | Friendly, upbeat voice, clear and even. | male, mid, average | 121 Hz | 5.57 |
-| Aurora | `voice_1085` | Crisp, clear voice that cuts noise. | female, low, fast | 162 Hz | 4.87 |
+| Aurora | `voice_1085` | Crisp, clear default voice; cuts noise. | female, low, fast | 162 Hz | 4.87 |
 
 ### Before / after the louder, faster calibration
 

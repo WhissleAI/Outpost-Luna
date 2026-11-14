@@ -79,7 +79,29 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     const p = spot(got); place(p.x, p.y, animate);
     if (remember) { saved[klass()] = want; save(saved); }
     if (say) announce(`Voice bar moved to ${NAME[got]}.`);
+    fitCaption();
     dispatchEvent(new CustomEvent("outpost:voicebar", { detail: { anchor: got, rect: bar.getBoundingClientRect() } }));   // e.g. the self-view picks another anchor
+  }
+  /** The caption floats out of the bar's box (above a bottom bar, below a top one), so it is an obstacle too: it is
+   *  narrowed to the free span beside a lesson card or any panel in its zone (the vocab card's third answer sat under
+   *  it at 1280x720). Run with every placement (drag, screen change, resize), never as the caption changes: no jitter. */
+  const CAP_ZONE = 96;   // px: a two-line caption plus its gap
+  function fitCaption() {
+    if (docked()) { bar.style.removeProperty("--cap-l"); bar.style.removeProperty("--cap-r"); return; }
+    const b = bar.getBoundingClientRect(), up = (bar.dataset.anchor || "b")[0] !== "t";
+    const zone = { top: up ? b.top - CAP_ZONE : b.bottom, bottom: up ? b.top : b.bottom + CAP_ZONE };
+    const column = new Set([...document.querySelectorAll("#aPanel.is-lesson, #aPanel.is-ride")]);   // full-height cards
+    const sel = ["#aPanel.is-lesson", "#aPanel.is-ride", "#aPanel.is-badge", ".mp-card", "#mPanel:not([hidden])", "#card:not([hidden])", ...extra];
+    let l = b.left, r = b.right;
+    sel.flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).forEach(e => {
+      const o = e.getBoundingClientRect();
+      if (o.right <= l || o.left >= r) return;
+      if (!column.has(e) && (o.bottom <= zone.top || o.top >= zone.bottom)) return;
+      if (o.left + o.width / 2 >= b.left + b.width / 2) r = Math.min(r, o.left - 8); else l = Math.max(l, o.right + 8);
+    });
+    const z = zoom(), ok = r - l >= 220;
+    bar.style.setProperty("--cap-l", (ok ? Math.max(0, l - b.left) / z : 0) + "px");
+    bar.style.setProperty("--cap-r", (ok ? Math.max(0, b.right - r) / z : 0) + "px");
   }
   function nearest(x, y) {
     const cx = x + bw() / 2, cy = y + bh() / 2;
@@ -137,12 +159,44 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     return true;
   }
 
-  // re-clamp on resize, re-check obstacles when the screen changes, follow the cabin in and out
-  // the stage resizing, or the bar itself growing (the caption comes and goes): keep the anchor's edge where it was
-  const ro = new ResizeObserver(() => { if (!drag && !docked() && !free && anchor) { const p = spot(anchor); place(p.x, p.y, false); } });
-  ro.observe(stage); ro.observe(bar);
-  let raf = 0; const recheck = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (!drag && !free && !docked()) apply(saved[klass()] || anchor || "bc"); }); };
-  ["aPanel", "mPanel", "mDebrief", "card"].forEach(id => { const el = document.getElementById(id); if (el) new MutationObserver(recheck).observe(el, { attributes: true, attributeFilter: ["hidden", "class"], childList: true }); });
+  // The bar moves ONLY on a drag / command, a screen change, or a window (stage) resize. It never follows its own
+  // content: the caption floats above it (styles.css, out of flow) and the width is fixed, so captions, the state
+  // word and the listening dots can't change its box. The old loop: the caption grew → the ResizeObserver re-placed
+  // the bar (bottom edge kept, so it jumped up) → --strip-live grew → the lesson card re-flowed → every re-render of
+  // #aPanel (childList) re-ran the obstacle check against a taller bar → it hopped to another anchor → the caption
+  // shrank → back again: the "shake".
+  let stageSize = "";
+  const ro = new ResizeObserver(() => {
+    const k = Math.round(stage.clientWidth) + "x" + Math.round(stage.clientHeight);
+    if (k === stageSize) return;                      // only a real stage resize, never the bar's own content
+    stageSize = k; recheck(true);
+  });
+  ro.observe(stage);
+  // A screen change: which panels / cards are up (not their content, which re-renders all the time).
+  const screenKey = () => [document.body.dataset.mode || "", klass(), ...["aPanel", "mPanel", "mDebrief", "card"].map(id => {
+    const e = document.getElementById(id);
+    return e ? `${id}:${e.hidden ? 0 : 1}:${[...e.classList].filter(c => /^is-(lesson|ride|badge|map|home|catalog)$/.test(c)).join(".")}` : "";
+  }), ...[...extra]].join("|");
+  let lastKey = "", timer = 0;
+  const HYST = 24;                                    // px: a smaller shift is not worth a move
+  /** Re-place after a screen change / resize, debounced, with hysteresis: stay unless the bar would overlap
+   *  something or the needed shift is more than HYST px. */
+  function recheck(force) {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (drag || free || docked()) return;
+      const k = screenKey();
+      if (!force && k === lastKey) return;            // same screen: content changes never move the bar
+      lastKey = k;
+      const want = saved[klass()] || anchor || "bc", got = free_(want);
+      if (anchor && got !== anchor) { apply(want); return; }
+      const p = spot(got), r = bar.getBoundingClientRect(), s = stage.getBoundingClientRect();
+      const dx = p.x - (r.left - s.left), dy = p.y - (r.top - s.top);
+      if (!anchor || Math.hypot(dx, dy) > HYST || covers(got)) apply(want); else fitCaption();
+    }, 120);
+  }
+  ["aPanel", "mPanel", "mDebrief", "card"].forEach(id => { const el = document.getElementById(id); if (el) new MutationObserver(() => recheck(false)).observe(el, { attributes: true, attributeFilter: ["hidden", "class"] }); });
+  new MutationObserver(() => recheck(false)).observe(document.body, { attributes: true, attributeFilter: ["data-mode"] });
   new MutationObserver(() => setTimeout(sync, 60)).observe(document.body, { attributes: true, attributeFilter: ["data-cabin"] });
   requestAnimationFrame(sync);
 

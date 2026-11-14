@@ -4,10 +4,10 @@
 // Barge-in follows docs/SESSION_CONTRACT.md §3 rule 2: Space always wins; open-mic speech while the guide or the crew
 // is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
-import { createListener } from "./listen.js";
-import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
+// (floor.css is imported by main.js, so this module loads under `node --test`: tests/voice_gate.test.js)
+import { createListener as defaultListener } from "./listen.js";
+import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
 export { spaceAction, micErrorText };
-import "./floor.css";
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking"];
 const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", hearing: "is-hearing", thinking: "is-thinking", speaking: "is-speaking" };
@@ -22,8 +22,11 @@ const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo referen
  * @param {(label:string)=>void} o.onEmotion
  * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
  * @param {()=>object|null} [o.screen]        the screen frame the router gets ({screen, step_type, offer}, main.js)
+ * @param {object} [o.floor]                  the floor manager (default: the app's one floor; tests pass their own)
+ * @param {Function} [o.createListener]       the mic socket factory (default: listen.js; tests pass a fake ear)
  */
-export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null }) {
+export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null,
+  floor = defaultFloor, createListener = defaultListener }) {
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
   let mode = "off", wsBroken = false, starting = false, srOn = false;
@@ -56,7 +59,17 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   }
   const idle = () => { if (!kidTalking) set(mode === "ws" ? "listening" : "off"); };
   const showWords = () => { wordsEl.textContent = turnText(); };
+  const HOLD = hintEl.lastElementChild.textContent || "Hold to talk";
   const note = text => { hintEl.lastElementChild.textContent = text; };
+  // [qa] The ear can drop (model server restarted, too many sessions): never show the server's words to a kid; reconnect
+  // on our own with a back-off, and put "Hold to talk" back once the mic is live again.
+  let retryT = 0, retries = 0, userOff = false;
+  function earLost() {
+    if (userOff || retryT) return;
+    note("Voice paused. Reconnecting…");
+    const wait = Math.min(30000, 2000 * 2 ** retries++);
+    retryT = setTimeout(async () => { retryT = 0; wsBroken = false; if (!(await startAlwaysOn()) && !userOff && mode !== "ws") earLost(); }, wait);
+  }
   function micBlocked(e) {
     set("error", "Mic blocked");
     const msg = micErrorText(e);
@@ -101,12 +114,14 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   });
   if (floor) floor.on("sentence", () => { recent.refs = liveRefs(); });
   // On air: a line of ours is playing right now (no tail). A turn keeps the value it had at its start.
-  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!isOutputBusy(); };
+  // floor.onAir also covers a queued multi-line say between its lines (the next line's audio still loading): the
+  // whole CAPCOM sequence is one on-air span, so the ear never slips into the gap (the server's Spoken `more` hold).
+  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!(floor && floor.onAir) || !!isOutputBusy(); };
   const frameNow = () => { try { return screen() || null; } catch (e) { return null; } };
   let turnAir = false;
   const outputBusy = () => {
     const h = floor ? floor.holder : "none";
-    return h === "guide" || h === "crew" || isOutputBusy() || performance.now() < recent.until;
+    return h === "guide" || h === "crew" || !!(floor && floor.onAir) || isOutputBusy() || performance.now() < recent.until;
   };
   const said = [];   // [{text, at}] the last few lines any app voice spoke
   const remember = t => { if (!t) return; said.push({ text: t, at: performance.now() }); if (said.length > 8) said.shift(); };
@@ -150,10 +165,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
-      else if (m.t === "error") note("Voice hiccup: " + (m.message || "try again"));
+      else if (m.t === "error") { console.warn("ear error:", m.message); note("Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
     },
     level,
-    close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); } },
+    close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); earLost(); } },
     micError: micBlocked,
   });
 
@@ -177,11 +192,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (mode === "ws" || starting || wsBroken || !canWS) return mode === "ws";
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
-    if (ok === true) { mode = "ws"; idle(); return true; }
-    if (ok !== "mic") { wsBroken = true; set("off"); }       // "mic": micBlocked already showed why
+    if (ok === true) { mode = "ws"; retries = 0; userOff = false; note(HOLD); idle(); return true; }
+    if (ok !== "mic") { wsBroken = true; set("off"); earLost(); }   // [qa] retry with a back-off (the ear may be warming up)       // "mic": micBlocked already showed why
     return false;
   }
-  function stopAlwaysOn() { listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
+  function stopAlwaysOn() { userOff = true; clearTimeout(retryT); retryT = 0; listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
   function srStart() { if (!rec || srOn) return; finalBuf = ""; interim = ""; turnAsked = false; try { rec.start(); } catch (e) { /* already running */ } }
 
   // First gesture anywhere opens the mic (browsers need a gesture for audio + mic).
@@ -191,6 +206,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   micBtn.onclick = async () => {
     if (mode === "ws") { stopAlwaysOn(); return; }
     if (srOn) { rec.stop(); return; }
+    userOff = false; wsBroken = false;   // [qa] a tap always tries the local ear again (it may have been warming up)
     if (await startAlwaysOn()) return;
     if (!starting) srStart();
   };

@@ -67,3 +67,8 @@ test("syllabify", () => {
   assert.equal(syllabify("regolith"), "re·go·lith");
   assert.equal(syllabify("Moon"), "Moon");
 });
+
+test("'what do I do?' and friends are the help command (the screen's current hint, docs/PLAYTEST.md)", () => {
+  for (const t of ["help", "What do I do?", "hint", "I'm stuck", "I don't know", "what should I do"]) assert.deepEqual(parseCommand(t), { cmd: "help" }, t);
+  assert.equal(parseCommand("help the crew"), null);
+});
