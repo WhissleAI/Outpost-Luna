@@ -14,7 +14,7 @@ setup:           ## Install all dependencies (uv + npm)
 	cd frontend && npm install
 
 data:            ## Download NASA media (Moon map + crew clips)
-	bash backend/pipeline/fetch_media.sh
+	uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py
 
 transcribe:      ## Word-timed transcripts for any new clips (mlx-whisper)
 	bash backend/pipeline/transcribe.sh
@@ -83,8 +83,8 @@ director-retrain: director-real-ear ## Rebuild the learned Director: real Arc de
 desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
 	uv run --no-project python desktop/scripts/build_python.py
 
-desktop-models:  ## Desktop: gather every model file into desktop/resources/models (DESKTOP_MODELS_FROM=hf in CI)
-	python3 desktop/scripts/gather_models.py --from $(or $(DESKTOP_MODELS_FROM),local)
+desktop-models:  ## Desktop: every model file -> desktop/resources/models (local HF cache, else the public package; sha256-checked)
+	python3 desktop/scripts/gather_models.py --from $(or $(DESKTOP_MODELS_FROM),auto)
 
 desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/arctag -> desktop/resources/native
 	cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release
@@ -92,10 +92,8 @@ desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/
 	mkdir -p desktop/resources/native
 	cp desktop/build/arctag/libarctag.* desktop/resources/native/ 2>/dev/null || cp desktop/build/arctag/Release/arctag.dll desktop/resources/native/
 
-desktop-mac:     ## Desktop: build the macOS arm64 .dmg (unsigned / ad-hoc) -> desktop/dist
-	test -d backend/data/media || { echo "backend/data/media missing: make data"; exit 1; }
-	$(MAKE) desktop-python desktop-models desktop-arctag
-	cd desktop && npm ci --no-audit --no-fund && npx electron-builder --mac dmg --arm64
+desktop-mac:     ## Desktop: fresh clone -> macOS arm64 .dmg in desktop/dist (desktop/scripts/build-mac.sh; Windows: build-windows.ps1)
+	bash desktop/scripts/build-mac.sh
 
 desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev)
 	cd desktop && node node_modules/electron/install.js && npx electron .

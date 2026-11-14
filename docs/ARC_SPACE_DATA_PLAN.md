@@ -95,7 +95,7 @@ All NASA media: free to use, no implied NASA endorsement
 | Dataset | What it gives | Size | Download |
 | --- | --- | --- | --- |
 | [IAU Gazetteer of Planetary Nomenclature, Moon](https://planetarynames.wr.usgs.gov/GIS_Downloads) (USGS) | 9,087 named lunar features: name, type, diameter, center lat/lon, extent, origin of the name and its language/ethnicity, approval date, link | 24 MB zip (shapefile; `.dbf` holds the attributes) | `curl -LO https://asc-planetarynames-data.s3.us-west-2.amazonaws.com/MOON_nomenclature_center_pts.zip && unzip MOON_nomenclature_center_pts.zip` |
-| [NASA Artemis Audio Library](https://www.nasa.gov/artemisaudio/) | ~113 clips (MP3 + WAV): 59 Artemis II lunar-flyby crew observations (13 shorter + 46 extended), launch/in-flight/splashdown loops, Apollo astronaut messages to the crew (Charlie Duke, Jim Lovell), crew interviews, 24 briefing/podcast WAVs (96 kHz/24-bit; note `3-hour-lunar-surface-observation.wav` is a 26 s clip, not 3 hours) | 60 flyby MP3s ≈ 250 MB; WAVs 0.3–110 MB each | `cd backend && uv run python -m pipeline.scrape_manifest && bash pipeline/fetch_media.sh` (manifest-driven; send a browser User-Agent) |
+| [NASA Artemis Audio Library](https://www.nasa.gov/artemisaudio/) | ~113 clips (MP3 + WAV): 59 Artemis II lunar-flyby crew observations (13 shorter + 46 extended), launch/in-flight/splashdown loops, Apollo astronaut messages to the crew (Charlie Duke, Jim Lovell), crew interviews, 24 briefing/podcast WAVs (96 kHz/24-bit; note `3-hour-lunar-surface-observation.wav` is a 26 s clip, not 3 hours) | 60 flyby MP3s ≈ 250 MB; WAVs 0.3–110 MB each | `cd backend && uv run python -m pipeline.scrape_manifest && cd .. && make data` (manifest-driven; send a browser User-Agent) |
 | Shared Drive folder "original" (collaborator) | 50 files, all also on the NASA page above (the non-flyby half) | ~700 MB | Fetch from NASA directly |
 | [NASA SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/) | LRO LROC color maps (1k–27k), LOLA elevation | 2–100s of MB | `curl -LO https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_poles_4k.tif` |
 
@@ -560,7 +560,7 @@ uses it in draft PR WhissleAI/headstart#1, at ~1 ms extra per tagger call.
 **Scripts in this repo:**
 - Existing:
   - `backend/pipeline/scrape_manifest.py`: NASA Artemis audio manifest
-  - `fetch_media.sh`: download
+  - `fetch_media.py`: download
   - `transcribe_deepgram.py`: words with keyterms
   - `build_index.py`: Arc Tagger + gazetteer linking → index
   - `build_audio_meta.py`: Arc v1.1 audio metadata
