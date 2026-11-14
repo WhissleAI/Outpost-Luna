@@ -170,16 +170,13 @@ as artifacts. It creates no secrets and is not triggered by pushes to branches. 
 
 | | |
 |---|---|
-| `secrets.HF_TOKEN` | read token for the private WhissleAI model repos |
-| `vars.DESKTOP_MODELS_REPO` (recommended) | a private HF model repo holding `desktop/resources/models` exactly as gathered here: `HF_TOKEN=<write token> python desktop/scripts/gather_models.py --upload WhissleAI/outpost-luna-desktop-models` (run by a person, once per model change) |
-| `desktop/vendor/wheels/*.whl` | `arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB), built by `build_python.py --build-wheels`; not committed yet |
+| `env.MODELS_URL` + `env.MODELS_SHA256` | the public model package (`desktop/resources/models` as one tar, 114 MB, on Dropbox: `/outpost-luna/v1/outpost-luna-models-v1.tar`). Checked by sha256, then each file against `models.lock.json`. No secrets needed. To change models: re-gather, tar, upload as `v2`, update both values. |
+| `desktop/vendor/wheels/*.whl` | `arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB), committed (CC-BY-NC-4.0, NOTICE inside) |
+| NASA media | not hosted by us: `backend/pipeline/fetch_media.sh` downloads the 74 crew clips and the Moon map from NASA |
 
-Why a bundle repo: the upstream HF repos do not have the versions the app runs. `WhissleAI/arc-v1.1@6f63715` is
-identical to the local cache, but `WhissleAI/arc-tagger` only has v0.4.0 / v0.4.1 (the app ships v0.3 from Head Start,
-and its `arctag_int8.onnx` differs), and `WhissleAI/steer-tts-edge`'s history was squashed to v2.x (the local v1
-snapshot `a888162` no longer exists on the Hub, and steertts-edge 1.3.0 needs the v1 graphs). Without
-`DESKTOP_MODELS_REPO` the workflow fetches upstream with `DESKTOP_MODELS_STRICT=0` and the installer would carry
-different Arc Tagger and Steer weights (and no MiniLM).
+Why a package and not the upstream HF repos: they do not have the versions the app runs. `WhissleAI/arc-tagger` only has
+v0.4.x (the app ships v0.3 from Head Start), and `WhissleAI/steer-tts-edge`'s history was squashed to v2.x (the v1 graphs
+steertts-edge 1.3.0 needs are gone from the Hub). `gather_models.py --from hf` remains for local experiments.
 
 ## Follow-ups
 
