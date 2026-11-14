@@ -120,14 +120,15 @@ from .session import router as session_router; app.include_router(session_router
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 
-# NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
-app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
-if settings.frontend_dist.exists():
-    app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
-
-
 @app.get("/api/director/stats")
 def director_stats():
     """The learned Director (DIRECTOR_MODEL=off|shadow|on): mode, model, and shadow agreement with the rules."""
     from .director_model import runtime as dmodel
     return dmodel.stats()
+
+
+# NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
+app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
+if settings.frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
+
