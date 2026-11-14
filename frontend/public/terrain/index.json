@@ -1,0 +1,15 @@
+{
+ "credit": "LRO LOLA polar DEMs (NASA/GSFC/MIT, PDS Geosciences). Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.",
+ "levels": [
+  "context",
+  "site",
+  "rover"
+ ],
+ "sites": {
+  "shackleton_rim": "shackleton_rim/meta.json",
+  "shackleton_floor": "shackleton_floor/meta.json",
+  "connecting_ridge": "connecting_ridge/meta.json",
+  "de_gerlache_rim": "de_gerlache_rim/meta.json",
+  "malapert_massif": "malapert_massif/meta.json"
+ }
+}

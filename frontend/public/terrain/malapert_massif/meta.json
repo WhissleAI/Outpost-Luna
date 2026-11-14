@@ -1,0 +1,56 @@
+{
+ "id": "malapert_massif",
+ "name": "Malapert Massif",
+ "lat": -85.98,
+ "lon": -1.67,
+ "levels": {
+  "context": {
+   "product": "LDEM_75S_120M",
+   "m_per_px": 240,
+   "px": 512,
+   "center_x_m": -3600.0,
+   "center_y_m": 121920.0,
+   "site_x_m": -3553.9702955394455,
+   "site_y_m": 121898.1026572211,
+   "src_line0": 2284,
+   "src_sample0": 3270,
+   "dn_min": -8038,
+   "dn_max": 10340,
+   "dn_scale_m": 0.5,
+   "bytes": 362347,
+   "site_h_m": 4902.28125
+  },
+  "site": {
+   "product": "LDEM_80S_40M",
+   "m_per_px": 40,
+   "px": 512,
+   "center_x_m": -3560.0,
+   "center_y_m": 121920.0,
+   "site_x_m": -3553.9702955394455,
+   "site_y_m": 121898.1026572211,
+   "src_line0": 4296,
+   "src_sample0": 7255,
+   "dn_min": 1693,
+   "dn_max": 10347,
+   "dn_scale_m": 0.5,
+   "bytes": 232721,
+   "site_h_m": 4919.09375
+  },
+  "rover": {
+   "product": "LDEM_85S_10M",
+   "m_per_px": 10,
+   "px": 512,
+   "center_x_m": -3560.0,
+   "center_y_m": 121900.0,
+   "site_x_m": -3553.9702955394455,
+   "site_y_m": 121898.1026572211,
+   "src_line0": 2722,
+   "src_sample0": 14556,
+   "dn_min": 8315,
+   "dn_max": 9987,
+   "dn_scale_m": 0.5,
+   "bytes": 143431,
+   "site_h_m": 4916.65625
+  }
+ }
+}
