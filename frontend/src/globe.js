@@ -206,10 +206,19 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       s.el.style.transform = `translate(${(s.x + dx).toFixed(1)}px,${(s.y + dy).toFixed(1)}px)`; s.el.style.opacity = op;
       s.el.style.visibility = s.on ? "" : "hidden"; s.el.tabIndex = s.on ? 0 : -1;
     });
+    // the route follows the surface: each leg is a great-circle arc, drawn only where it faces the camera
     let d = "", dd = "";
+    const q = new THREE.Vector3();
     for (let i = 1; i < rstops.length; i++) {
-      const a = rstops[i - 1], b = rstops[i]; if (!a.on || !b.on) continue;
-      const seg = `M${a.x.toFixed(1)},${a.y.toFixed(1)}L${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+      const a = rstops[i - 1].p.clone().normalize(), b = rstops[i].p.clone().normalize();
+      const om = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))), n = Math.max(2, Math.ceil(om * 40)); let pen = false, seg = "";
+      for (let k = 0; k <= n; k++) {
+        const t = k / n, s0 = Math.sin(om) || 1;
+        q.copy(a).multiplyScalar(Math.sin((1 - t) * om) / s0).add(b.clone().multiplyScalar(Math.sin(t * om) / s0)).normalize().multiplyScalar(R * 1.003);
+        if (q.clone().normalize().dot(cam) < 0.08) { pen = false; continue; }
+        tmp.copy(q).project(camera);
+        seg += `${pen ? "L" : "M"}${((tmp.x + 1) / 2 * w).toFixed(1)},${((1 - tmp.y) / 2 * h).toFixed(1)}`; pen = true;
+      }
       if (i < rdone + 1) dd += seg; else d += seg;
     }
     rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);

@@ -13,17 +13,17 @@ import { sayStyle } from "../floor.js";
 import { createCockpit } from "../mission/cockpit.js";
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
 const NEXT_WORDS = /^(next|next one|continue|go on|ok|okay|ready|let s go|lets go|start|yes)\b/;
 /** UI labels (not story copy). Copy requests: docs/UX_ROUNDS.md. */
 const UI = {
-  start: "Start", cont: "Continue", replay2: "Replay", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "Brief",
-  nextUp: "Next up", lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: m => `${m} min`,
-  patches: (n, of) => `${n} of ${of} patches`, qualified: "Qualified", retry: "Fly it again", shuffle: "New call signs",
-  callsign: "Call sign", ride: "Check ride", patchEarned: "Patch earned", commander: "Take command",
+  begin: "Start", start: SCHOOL.start, cont: SCHOOL.continue, replay2: "Replay", next: "Next", map: "Map", replay: "Hear it again", facts: "NASA facts", brief: "Brief",
+  nextUp: SCHOOL.next, lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: SCHOOL.minutes,
+  patches: SCHOOL.progress, qualified: "Qualified", retry: "Fly it again", shuffle: CALLSIGN_COPY.random,
+  callsign: CALLSIGN_COPY.edit, ride: "Check ride", patchEarned: "Patch earned", commander: SCHOOL.go,
 };
 /** Where each lesson sits on the Moon (course.json lesson id → a real place). The route runs from the near side down
  *  to the south-pole outpost, where the check ride (and then the Mission) happens. nudge = pixel offset of the pin
@@ -105,7 +105,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!course) {
       setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading Flight School…</p>`;
       try { course = await academyApi.course(); }
-      catch (e) { panel.innerHTML = `<p class="a-wait">Can't reach Flight School. Start everything with <code>make dev</code>.</p>`; return; }
+      catch (e) { panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Close the app and open it again.</span></p>`; return; }
     }
     if (!ui.active) return;
     showMap();
@@ -132,7 +132,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           </div>
           <div class="h-chips" role="group" aria-label="${esc(CALLSIGN_COPY.title)}">${csDeck.slice(0, 3).map(c => `<button type="button" class="chip a-csb" aria-pressed="${c === pick}" data-cs="${esc(c)}">${esc(c)}</button>`).join("")}</div>
           <p class="sr-only" id="aCsHelp">${esc(CALLSIGN_COPY.sub)}</p>
-          <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.start)}${icon("chevron-right")}</button>
+          <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.begin)}${icon("chevron-right")}</button>
         </form>
         <p class="h-credit">${esc(CREDIT)}</p>
       </div>`;
@@ -144,7 +144,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.querySelector("#aCsForm").onsubmit = e => { e.preventDefault(); done(input.value); };
     // Shuffle deals six new call signs and suggests the first ("surprise me" by voice picks one and goes: handleText).
     panel.querySelector("#aCsRand").onclick = () => { csDeck = shuffled(); showCallSign(back, true); panel.querySelector("#aCsRand").focus(); };
-    if (!back && !reshuffled) say("Every astronaut has a call sign. Pick yours!", { situation: "lesson_brief" });
+    if (!back && !reshuffled) say(CALLSIGN_COPY.say, { situation: "lesson_brief" });
   }
 
   // ---------- course map = the Moon: each lesson is a pin on a real place, the route ends at the south-pole outpost ----------
@@ -158,8 +158,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const ls = shownOrder(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
     const sel = (mapSel && ls.find(l => l.id === mapSel)) || nx;
     // the whole route in view, the Moon lifted above the Next-up card and the voice strip
-    const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 230) / H));
-    if (!quiet || !mapSel) globe.flyTo(-38, -14, 3.25);
+    const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 250) / H));
+    if (!quiet || !mapSel) globe.flyTo(-50, -18, 4.6);
     // pins: earned patch art for done lessons, a grey outline for the rest; the next one is bigger and labelled
     const stops = ls.map((l, k) => {
       const done = has(l.badge.id), next = nx && nx.id === l.id, at = LESSON_PLACE[l.id] || LESSON_PLACE.moon;
@@ -210,7 +210,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     } else if (LESSON_PLACE[L.id]) { const at = LESSON_PLACE[L.id]; globe.flyTo(at.lat, at.lon, 2.6); }
     render();
     const beat = (LESSON_STORY[L.id] || {}).beat || "";
-    say(`${CAPCOM.lessonHello(callSign.spoken("cadet"), beat)} ${L.brief} ${L.steps[0].prompt}`, { situation: "lesson_brief" });
+    // Three short lines, not one long one (the spoken limit is about 20 words a line): hello, the brief, the question.
+    const id0 = L.id, still = () => view === "lesson" && L && L.id === id0 && i === 0;
+    Promise.resolve(say(CAPCOM.lessonHello(callSign.spoken("cadet"), beat), { situation: "lesson_brief" }))
+      .then(() => still() && say(L.brief, { situation: "lesson_brief" }))
+      .then(() => still() && !waitingNext && say(L.steps[0].prompt, { situation: "lesson_brief" }));
     if (L.steps[0].alert) alertSound();
   }
 
@@ -362,8 +366,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         </div>
       </div>`;
     // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
-    const offer = commander ? " Ready to take command of Outpost Luna? Say yes." : nx ? ` Next up: ${nx.ride ? "your check ride" : nx.title}. Say next when you're ready.` : "";
-    say((commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name)) + offer, { situation: "badge" });
+    const offer = commander ? OFFER.mission : nx ? (nx.ride ? OFFER.ride : OFFER.nextLesson) : "";
+    Promise.resolve(say(commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name), { situation: "badge" }))
+      .then(() => { if (offer && view === "badge") say(offer, { situation: "badge" }); });
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
@@ -421,7 +426,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       return false;
     }
     if (view !== "lesson") return false;
-    if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine("Say next, or tap Next."); } return true; }
+    if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine(OFFER.nextStep); } return true; }
     // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }

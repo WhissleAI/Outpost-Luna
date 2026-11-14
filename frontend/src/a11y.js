@@ -118,43 +118,44 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     (document.querySelector(".topnav") || document.querySelector(".topbar") || document.body).append(btn);
   }
   if (!btn.innerHTML.trim()) btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5 12 10l7-1.5M12 10v4l-3 7M12 14l3 7"/></svg>`;
-  ariaControl(btn, "Accessibility settings", { expanded: false });
-  btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Accessibility: speed, captions, contrast, text size";
+  ariaControl(btn, "Settings", { expanded: false });
+  btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Settings";
   // "No audio needed" lives in the settings panel (the top bar stays quiet).
 
   const panel = mk("div", "a11y-panel", { role: "dialog", "aria-modal": "true", "aria-labelledby": "a11yTitle", hidden: "" });
   document.body.append(panel);
   function renderPanel() {
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
+    // Settings (folds in Access). Sections follow the planned IA (docs/FLOWS.md → Settings): Voice · Reading & captions ·
+    // Display · Alerts · Help. Every control here works today; new sections join as they ship.
+    const sec = (id, title, body) => `<section class="set-sec" aria-labelledby="set-${id}"><h3 id="set-${id}">${title}</h3>${body}</section>`;
     panel.innerHTML = `
-      <header><h2 id="a11yTitle">Access</h2><button type="button" class="x" data-close aria-label="Close accessibility settings">&times;</button></header>
-      <p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
-      <fieldset class="a11y-speed"><legend>Voice speed</legend>
-        ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""}><span>${v}×</span></label>`).join("")}</fieldset>
-      <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>
-        <input type="range" min="1" max="1.5" step="0.25" value="${S.textScale}" data-k="textScale" aria-valuetext="${Math.round(S.textScale * 100)} percent"></label>
-      <div class="a11y-group" role="group" aria-label="Seeing">
-        ${sw("contrast", "High contrast", "Stronger colours and borders")}
-        ${sw("describe", "Describe what happens", "Says out loud when the Moon moves, a card opens or an alert shows")}
-        ${sw("reducedMotion", "Less motion", "No spinning or flying animations")}
-        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}
-      </div>
-      <div class="a11y-group" role="group" aria-label="Hearing">
-        ${sw("captions", "Captions", "Show every voice as text, word by word")}
-        ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alert sound")}
-        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets that can")}
-      </div>
-      <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
-        <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
-      <details class="a11y-transcript"><summary>Transcript (everything said)</summary><ol id="a11yTranscript"></ol></details>
-      <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
-        <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
-        <li>“Faster” · “Slower” · “Say that again” · “Bigger text” · “High contrast”</li>
-        <li>Keys: <kbd>Tab</kbd> move · <kbd>Enter</kbd> press · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>A</kbd> this panel · <kbd>Alt</kbd>+<kbd>W</kbd> where am I · <kbd>Alt</kbd>+<kbd>P</kbd> pick a place</li></ul></details>
-      ${places.length ? `<label class="a11y-place"><b>Pick a place on the Moon</b><small>Same as tapping it on the globe</small>
-        <span><select id="a11yPlace">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
-        <button type="button" class="pill" id="a11yPlaceGo">Tap it</button></span></label>` : ""}
-      <p class="a11y-note">Saved on this device only. Never sent anywhere.</p>`;
+      <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
+      ${sec("voice", "Voice", `<fieldset class="a11y-speed"><legend class="sr-only">Voice speed</legend>
+        ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""} aria-label="Voice speed ${v} times"><span>${v}×</span></label>`).join("")}</fieldset>
+        ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`)}
+      ${sec("read", "Reading &amp; captions", `${sw("captions", "Captions", "Every voice as text, word by word")}
+        <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
+          <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
+        <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>
+          <input type="range" min="1" max="1.5" step="0.25" value="${S.textScale}" data-k="textScale" aria-valuetext="${Math.round(S.textScale * 100)} percent"></label>
+        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}`)}
+      ${sec("display", "Display", `${sw("contrast", "High contrast", "Black, white and yellow")}
+        ${sw("reducedMotion", "Less motion", "No flying or spinning")}
+        <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`)}
+      ${sec("alerts", "Alerts", `${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
+        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}`)}
+      ${sec("help", "Help", `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
+        <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
+        <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
+          <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
+          <li>“Faster” · “Slower” · “Say that again” · “Bigger text” · “High contrast”</li>
+          <li>“Move the voice bar to the top” · “Reset the voice bar”</li>
+          <li>Keys: <kbd>Tab</kbd> move · <kbd>Enter</kbd> press · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>A</kbd> settings · <kbd>Alt</kbd>+<kbd>W</kbd> where am I · <kbd>Alt</kbd>+<kbd>P</kbd> pick a place</li></ul></details>
+        ${places.length ? `<details class="a11y-place"><summary>Pick a place on the Moon</summary>
+          <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
+          <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}`)}
+      <p class="a11y-note">Saved on this device only.</p>`;
     fillTranscript();
   }
   function open(v = panel.hidden) {
@@ -164,6 +165,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   btn.addEventListener("click", () => open());
   panel.addEventListener("click", e => {
     if (e.target.closest("[data-close]")) open(false);
+    if (e.target.closest("[data-vbar-reset]") && O.voiceBar) O.voiceBar.reset();
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
   });
   panel.addEventListener("change", e => {
@@ -314,7 +316,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const k = e.key.toLowerCase();
     if (k === "a" || e.code === "KeyA") { e.preventDefault(); open(); }
     else if (k === "w" || e.code === "KeyW") { e.preventDefault(); const t = where(); describe(t, { quiet: true }); if (say) say(t, {}); }
-    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); open(true); const s = panel.querySelector("#a11yPlace"); if (s) s.focus(); }
+    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); open(true); const s = panel.querySelector("#a11yPlace"); if (s) { s.closest("details").open = true; s.focus(); } }
   });
   // Every icon-only control gets a name (title → aria-label), and focusable marks show focus (CSS :focus-visible).
   const nameControls = () => document.querySelectorAll("button:not([aria-label]), [role=button]:not([aria-label])").forEach(b => {

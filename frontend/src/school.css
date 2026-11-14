@@ -7,6 +7,10 @@
 @keyframes fade{from{opacity:0}}
 .a-wait{position:absolute;left:50%;top:40%;transform:translateX(-50%);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);
   background:var(--color-overlay);-webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay)}
+.a-wait.is-error,.loading.is-error{display:flex;flex-direction:column;align-items:center;gap:var(--space-1);text-align:center;color:var(--color-text-2)}
+.a-wait.is-error b{color:var(--color-text);font-size:var(--text-md)}
+.loading.is-error{place-content:center}
+.loading.is-error b{color:var(--color-on-space);font-size:var(--text-lg)}
 body[data-mode="academy"] .card{top:var(--gut);left:var(--gut)}
 body[data-aview="home"] .card,body[data-aview="map"] .card,body[data-aview="home"] .nowplaying,body[data-aview="map"] .nowplaying{display:none}
 /* the glass material shared by every Flight School card */
@@ -33,7 +37,7 @@ body[data-aview="home"] .card,body[data-aview="map"] .card,body[data-aview="home
 .apanel.is-home .chip:hover{border-color:var(--color-on-space-2);color:var(--color-on-space)}
 .apanel.is-home .chip[aria-pressed="true"]{background:rgba(255,255,255,.14);border-color:var(--color-on-space);color:var(--color-on-space)}
 .h-start{margin-top:var(--space-3);min-width:200px}
-.h-credit{position:absolute;left:var(--space-6);top:var(--space-4);font-size:var(--text-xs);color:var(--color-on-space-2)}
+.h-credit{font-size:var(--text-xs);color:var(--color-on-space-2);max-width:42ch}
 html[data-contrast="high"] .apanel.is-home{background:#000}
 
 /* ---------- the Moon map: pins on real places, one Next-up card ---------- */
@@ -53,31 +57,32 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-copy h2{font-size:var(--text-lg);font-weight:var(--weight-bold)}
 .mp-sub{color:var(--color-text-2);font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mp-card .btn-primary{min-width:148px}
-.mp-credit{position:absolute;right:var(--gut);top:var(--gut);max-width:300px;text-align:right;font-size:var(--text-xs);color:var(--color-on-space-2);pointer-events:none!important}
+.mp-credit{position:absolute;left:var(--gut);bottom:var(--gut);max-width:280px;text-align:left;font-size:var(--text-xs);color:var(--color-on-space-2);pointer-events:none!important}
 
 /* route layer (globe.js): dotted line between stops, a dot on the true spot, the pin badge (maybe nudged) */
 .route{position:absolute;inset:0;z-index:var(--z-overlay);pointer-events:none;overflow:hidden}
 .route[hidden]{display:none}
 .route-lines{position:absolute;inset:0;width:100%;height:100%}
-.route-todo{fill:none;stroke:rgba(243,245,248,.55);stroke-width:1.5;stroke-dasharray:1 6;stroke-linecap:round}
-.route-done{fill:none;stroke:#8DB2FF;stroke-width:2.5;stroke-linecap:round}
+.route-todo{fill:none;stroke:rgba(243,245,248,.6);stroke-width:1.75;stroke-dasharray:.5 7;stroke-linecap:round}
+.route-done{fill:none;stroke:rgba(141,178,255,.75);stroke-width:1.75;stroke-linecap:round}
 .route-dot{position:absolute;left:0;top:0;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#F3F5F8;box-shadow:0 0 0 2px rgba(5,7,11,.6)}
-.pin{position:absolute;left:0;top:0;width:0;height:0;padding:0;border:0;background:none;pointer-events:auto;cursor:pointer;color:var(--color-on-space)}
-.pin-badge{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:grid;place-items:center;border-radius:50%;
+.pin{--s:44px;position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);padding:0;border:0;border-radius:50%;
+  background:none;pointer-events:auto;cursor:pointer;color:var(--color-on-space)}
+.pin.is-next{--s:64px}
+.pin-badge{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;
   background:rgba(5,7,11,.62);box-shadow:0 0 0 1px rgba(243,245,248,.18),0 6px 18px rgba(0,0,0,.45);transition:transform var(--dur-base) var(--ease-out)}
 .pin .patch.is-locked{color:#C3CAD5!important}
-.pin:hover .pin-badge,.pin:focus-visible .pin-badge{transform:translate(-50%,-50%) scale(1.08)}
+.pin:hover .pin-badge,.pin:focus-visible .pin-badge{transform:scale(1.08)}
 .pin:focus-visible{outline:none}
 .pin:focus-visible .pin-badge{box-shadow:0 0 0 3px #8DB2FF,0 6px 18px rgba(0,0,0,.45)}
 .pin.is-next .pin-badge{box-shadow:0 0 0 3px #8DB2FF,0 0 0 9px rgba(141,178,255,.22),0 8px 24px rgba(0,0,0,.5);animation:halo 2.4s ease-in-out infinite}
 .pin.is-sel:not(.is-next) .pin-badge{box-shadow:0 0 0 3px #F3F5F8,0 6px 18px rgba(0,0,0,.45)}
 @keyframes halo{50%{box-shadow:0 0 0 3px #8DB2FF,0 0 0 14px rgba(141,178,255,.08),0 8px 24px rgba(0,0,0,.5)}}
-.pin-label{position:absolute;left:0;top:30px;transform:translateX(-50%);display:none;align-items:center;gap:6px;white-space:nowrap;
+.pin-label{position:absolute;left:50%;top:calc(100% + 6px);transform:translateX(-50%);display:none;align-items:center;gap:6px;white-space:nowrap;
   padding:3px var(--space-3) 3px var(--space-2);border-radius:var(--radius-full);background:rgba(5,7,11,.78);color:var(--color-on-space);
   font-size:var(--text-sm);font-weight:var(--weight-semibold);box-shadow:0 4px 12px rgba(0,0,0,.4)}
 .pin-label b{font-family:var(--font-mono);font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--color-on-space-2)}
-.pin.is-next .pin-label{top:42px}
-.pin.is-next .pin-label,.pin.is-sel .pin-label,.pin:hover .pin-label,.pin:focus-visible .pin-label{display:inline-flex}
+.pin:hover .pin-label,.pin:focus-visible .pin-label{display:inline-flex}
 .pin:hover,.pin:focus-visible,.pin.is-sel{z-index:2}
 
 /* ---------- lesson card (glass, hugs its content, never under the strip) ---------- */

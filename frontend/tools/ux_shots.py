@@ -54,8 +54,13 @@ class _Vocab:
 
 def open_lesson(page, lid, step=0):
     """Open lesson `lid` and advance to step `step` by answering each step correctly (typed = the voice path)."""
-    page.wait_for_selector(f'[data-l="{lid}"]', timeout=15000)
-    page.click(f'[data-l="{lid}"]')
+    page.wait_for_selector(f'[data-l="{lid}"]', state="attached", timeout=15000)
+    page.wait_for_timeout(300)
+    # the Moon map: a pin selects its lesson, the card's Start opens it (pins round the back can't be clicked)
+    if not page.query_selector(f'#aStart[data-l="{lid}"]'):
+        page.evaluate("id => document.querySelector('.pin[data-l=\"' + id + '\"]').click()", lid)
+        page.wait_for_selector(f'#aStart[data-l="{lid}"]', timeout=15000)
+    page.click("#aStart")
     page.wait_for_selector("#aInput", state="attached", timeout=15000)
     L = next(l for l in COURSE["lessons"] if l["id"] == lid)
     for k in range(step):
@@ -106,6 +111,46 @@ def s_map_mid(page, base, theme):
     seed(page, badges=["scout", "radio", "sun"], theme=theme)
     page.goto(base)
     settle(page, 2500)
+
+
+@state
+def s_vbar_moved(page, base, theme):
+    """The voice bar moved by the typed command (same path as speech) to the top right."""
+    seed(page, badges=["scout", "radio", "sun"], theme=theme)
+    page.add_init_script("try{localStorage.removeItem('outpost-voicebar')}catch(e){}")
+    page.goto(base)
+    settle(page, 2000)
+    page.evaluate("t => window.__ux_answer(t)", "move the voice bar to the top right")
+    settle(page, 1200)
+
+
+@state
+def s_vbar_dragged(page, base, theme):
+    """The voice bar dragged by its grip (pointer) to the top right, in a lesson: it must avoid the lesson card."""
+    seed(page, badges=["scout", "radio", "sun"], theme=theme)
+    page.add_init_script("try{localStorage.removeItem('outpost-voicebar')}catch(e){}")
+    page.goto(base)
+    settle(page, 1500)
+    open_lesson(page, "moon", 2)
+    g = page.query_selector("#vsGrip").bounding_box()
+    vw = page.viewport_size
+    page.mouse.move(g["x"] + 8, g["y"] + 20)
+    page.mouse.down()
+    page.mouse.move(vw["width"] - 200, 140, steps=12)
+    page.mouse.up()
+    settle(page, 900)
+    a = page.evaluate("document.getElementById('askbar').dataset.anchor")
+    print(f"  vbar anchor after drag: {a}")
+
+
+@state
+def s_pin_selected(page, base, theme):
+    """A done pin tapped on the Moon map: the globe flies there and the card offers Replay."""
+    seed(page, badges=["scout", "radio", "sun"], theme=theme)
+    page.goto(base)
+    settle(page, 2000)
+    page.evaluate("() => document.querySelector('.pin[data-l=\"comms\"]').click()")
+    settle(page, 2200)
 
 
 def lesson_state(lid, step, theme, page, base, feedback=False):
@@ -228,8 +273,32 @@ def s_access(page, base, theme):
 
 @state
 def s_mic_denied(page, base, theme):
-    mission_page(page, base, theme)
-    settle(page, 500)
+    """The browser refuses the mic: the strip says so, typing still works."""
+    page.add_init_script("""navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
+      try { delete window.SpeechRecognition; delete window.webkitSpeechRecognition; } catch (e) {}""")
+    seed(page, badges=["scout"], theme=theme)
+    page.goto(base)
+    settle(page, 1800)
+    page.mouse.click(700, 400)
+    settle(page, 1800)
+
+
+@state
+def s_offline(page, base, theme):
+    """The backend is down: the Moon still loads, the app says what's wrong."""
+    seed(page, badges=["scout"], theme=theme)
+    page.route("**/api/**", lambda r: r.abort())
+    page.goto(base)
+    settle(page, 2500)
+
+
+@state
+def s_loading(page, base, theme):
+    """First paint, before the Moon map and the course arrive."""
+    seed(page, badges=["scout"], theme=theme)
+    page.route("**/api/academy/course", lambda r: None)   # never answers
+    page.goto(base)
+    settle(page, 1500)
 
 
 def main():
