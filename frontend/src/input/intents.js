@@ -28,7 +28,11 @@ export const INTENTS = Object.freeze({
   new_site: "another site", view_orbit: "window: ORBIT", view_site: "window: SITE", view_rover: "window: ROVER", view_earth: "window: EARTH",
   panel_power: "cabin: power panel", panel_comm: "cabin: comm panel", panel_habitat: "cabin: habitat panel",
   panel_rover: "cabin: rover panel", panel_radiation: "cabin: radiation panel", panel_back: "cabin: back to the seat",
-  answer: "the current step's answer (text)", end_shift: "end the shift",
+  answer: "the current step's answer (text)", end_shift: "end the shift (early, on the live clock)",
+  // the live mission clock and the Now task card (docs/GAMEPLAY.md)
+  skip_event: "skip to the next event (E)", time_pause: "pause the mission clock", time_resume: "run the mission clock",
+  time_warp: "time warp {warp?: 1|2|4}; none = the next speed (W)", time_toggle: "pause / run the mission clock (K)",
+  task_step: "do the Now card's step (T)", task_choice: "pick a choice on the Now card (arg: its label)",
   skip_tour: "end the cabin tour", cabin_tour: "replay the cabin tour ('show me around')",
   // device-neutral intents that gestures (and keys) make
   stop: "stop / pause: interrupts speech and motion (open palm)",

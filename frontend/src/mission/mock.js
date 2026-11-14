@@ -207,6 +207,15 @@ export const mock = {
     const say = m.over ? m.why : events.length ? events.map(e => e.text).join(" ") : `Day ${s.day}, shift ${s.shift}. ` + statusLine(s);
     return { state: s, events, say };
   },
+  /** The live clock on the sample model: whole shifts only, so the hours pile up until a shift's worth has passed. */
+  async step(id, dtH) {
+    const m = missions.get(id); m.owed = (m.owed || 0) + Math.max(0, +dtH || 0);
+    let events = [];
+    while (m.owed >= SHIFT_H && !m.over) { m.owed -= SHIFT_H; events = events.concat((await mock.advance(id, 1)).events); }
+    const s = view(m); s.clock = { mission_time_h: m.t + (m.owed || 0), frac: (m.owed || 0) % 1, hours_total: SHIFTS * SHIFT_H, shift_ends_in_h: SHIFT_H - (m.owed || 0) };
+    return { state: s, events, live: null };
+  },
+  async skip(id) { const m = missions.get(id); m.owed = 0; return mock.advance(id, 1); },
   async debrief(id) {
     const m = missions.get(id), s = view(m);
     const grade = m.outcome === "fail" ? (m.t > 120 ? "C" : "D") : s.resources.dose_msv < 20 && m.score > 300 ? "A" : "B";
@@ -229,6 +238,7 @@ export function parseCommand(text) {
   if (/^(yes|yeah|yep|confirm|do it|affirmative)\b/.test(t)) return { type: "confirm" };
   if (/^(no|nope|cancel|never mind|stop)\b/.test(t)) return { type: "cancel" };
   if (/\b(end|next|finish)( the)? shift\b|^next$/.test(t)) return { type: "end_shift" };
+  if (/\b(skip|jump)( ahead| to (the )?next( event)?)\b|^fast forward$/.test(t)) return { type: "skip" };
   if (/\b(call|talk to|ask) (houston|earth|mission control)\b/.test(t)) return { type: "call_houston", text };
   if (/\b(shelter|hide)\b/.test(t)) return { type: "shelter", on: !/\b(leave|out of|exit|off)\b/.test(t) };
   if (/\brover\b/.test(t) && /\b(ice|water)\b/.test(t)) return { type: "dispatch", vehicle: "rover", task: "collect_ice", target: null };

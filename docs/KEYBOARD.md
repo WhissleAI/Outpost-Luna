@@ -36,6 +36,10 @@ Code:
 | <kbd>C</kbd> | `captions` | Turns captions on or off, with a toast. While lettered answers are up, C is answer C. |
 | <kbd>V</kbd> | `view_next` | Cycles the cabin window view: Orbit → Site → Rover → Earth. |
 | <kbd>O</kbd> | `panel_open` | Opens the lit cabin panel. |
+| <kbd>T</kbd> | `task_step` | Cabin: does the Now card's step (its first button). <kbd>Y</kbd> does too when no yes/no waits. |
+| <kbd>K</kbd> | `time_toggle` | Cabin: pauses or runs the mission clock (docs/GAMEPLAY.md). |
+| <kbd>W</kbd> | `time_warp` | Cabin: time warp 1x → 2x → 4x. |
+| <kbd>E</kbd> | `skip_event` | Cabin: skip to the next event. |
 | <kbd>/</kbd> | `focus_input` | Focuses the text box: the call-sign field on Home, the voice bar's field everywhere else. |
 | <kbd>Shift</kbd>+arrows, <kbd>+</kbd> <kbd>−</kbd> | rotate / zoom | On the Moon: turn it, and zoom. |
 | <kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd>, <kbd>Alt</kbd>+<kbd>Y</kbd>/<kbd>N</kbd>, <kbd>Alt</kbd>+<kbd>.</kbd>, <kbd>Alt</kbd>+<kbd>A</kbd>/<kbd>W</kbd>/<kbd>P</kbd> | (unchanged) | The existing shortcuts: next / prev, yes / no, stop, settings, "where am I", pick a place. The new keys never use a modifier, so the two sets can't collide. |

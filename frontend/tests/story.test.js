@@ -21,7 +21,7 @@ test("tour: every beat 12 words or fewer, Cadet full and Commander two beats", (
   assert.deepEqual(cadet.filter(b => b.show.startsWith("panel:")).map(b => b.show.slice(6)).sort(), ["comm", "habitat", "power", "radiation", "rover"]);
   assert.ok(order.indexOf("lamps") > order.lastIndexOf("panel"));
   assert.equal(cadet[cadet.length - 1].show, "start");
-  assert.match(cadet[cadet.length - 1].text, /power.*End shift/i);
+  assert.match(cadet[cadet.length - 1].text, /shields.*Play/i);   // the live clock: set power, then start time
   assert.match(cadet.find(b => b.show === "goals").text, /ten safe days.*science.*ice/i);
   for (const k of ["next", "done", "skip", "replay"]) assert.ok(words(S.TOUR[k]) <= 3);
 });
@@ -54,16 +54,20 @@ const base = () => ({ mission_time_h: 0, over: false, shelter: false, power_save
   env: { in_sun: true, next_sun_change_h: 100, storm: { active: false }, warning: null }, rover: { busy: false }, alerts: [],
   objectives: { science: { goal: 120, got: 0, met: false }, ice: { goal: 1, got: 0, met: false } } });
 
-test("objective: the first shift says set power, then End shift", () => {
+test("objective: the first job is set power; any power change moves it on to start the clock (owner's bug)", () => {
   const o = nowObjective(base());
-  assert.equal(o.key, "first_shift"); assert.equal(o.text, S.NOW.firstShift); assert.equal(o.target, "start"); assert.deepEqual(o.panel, ["power", "pedestal"]);
+  assert.equal(o.key, "first_shift"); assert.equal(o.text, S.NOW.firstShift); assert.equal(o.target, "shields"); assert.equal(o.panel, "radiation");
   assert.equal(nowSpoken(base()), `${S.NOW.ask} ${S.NOW.firstShift}`);
+  const acted = { ...base(), acted: { allocate: 1 } };   // any allocate counts (the sim's `acted`)
+  const clock = { started: false, running: false, warp: 1 };
+  assert.equal(nowObjective(acted, clock).key, "start_clock"); assert.equal(nowObjective(acted, clock).target, "play");
+  assert.equal(nowObjective(acted, { started: true, running: true, warp: 1 }).key, "ice");   // the clock runs: the next job
 });
 
 test("objective: storms, warnings, power, air, rover and the night, most urgent first", () => {
   const s = base(); s.mission_time_h = 30;
   s.env.storm = { active: true }; assert.equal(nowObjective(s).key, "storm_hit"); assert.equal(nowObjective(s).target, "shelter");
-  s.shelter = true; assert.equal(nowObjective(s).key, "sheltered");
+  s.shelter = true; assert.equal(nowObjective(s).key, "sheltered"); assert.equal(nowObjective(s).target, "skip");
   const weak = base(); weak.mission_time_h = 30; weak.env.storm = { active: true, sep: false };
   assert.equal(nowObjective(weak).key, "weak_storm");   // QA-27: few particles, no shelter rush
   const w = base(); w.mission_time_h = 30; w.env.warning = { confidence: "likely", eta_h: 6 };
@@ -77,7 +81,8 @@ test("objective: storms, warnings, power, air, rover and the night, most urgent 
   const n = base(); n.mission_time_h = 30; n.env.next_sun_change_h = 5; assert.equal(nowObjective(n).key, "sunset");
   const d = base(); d.mission_time_h = 30; d.env.in_sun = false; assert.equal(nowObjective(d).key, "dark");
   const i = base(); i.mission_time_h = 30; assert.equal(nowObjective(i).key, "ice");
-  i.objectives.ice.met = true; assert.equal(nowObjective(i).key, "steady");
+  i.objectives.ice.met = true; assert.equal(nowObjective(i).key, "steady"); assert.equal(nowObjective(i).target, "warp");
+  assert.match(nowObjective(i).text, /Time warp/);   // "when nothing is urgent it says so"
   assert.equal(nowObjective({ ...base(), over: true }), null);
 });
 

@@ -104,3 +104,16 @@ The offers are `OFFER` in `frontend/src/story.js` (copy v3), each spoken as its 
   ear gets no reply; a kid's order in another voice does.
 - `uv run python tools/handsfree_run.py --base http://127.0.0.1:8330 --audio`: the scripted run with real speech
   through the ear.
+
+## The live mission clock (feat/mission-gameplay)
+
+In the cabin, the router adds `skip_event` ("skip to next event", "skip ahead", "fast forward"), `time_pause` ("pause
+the clock"), `time_resume` ("start the clock", "resume") and `time_warp` ("time warp four", "normal time"). These are
+cabin only, and never during the tour. A bare "skip" stays a tour word.
+
+The screen frame carries `offer: "task"` while the Now card has a job to do, so a "yes" does the job instead of being
+heard as an echo or sent to the sim as a confirm. For a choice, `step_options` holds its labels, so naming one
+("left", "ridge") is `task_choice`.
+
+`tools/handsfree_run.py` does all of this by voice. It counts skips, jobs and clock commands and FAILs without them.
+See docs/GAMEPLAY.md.

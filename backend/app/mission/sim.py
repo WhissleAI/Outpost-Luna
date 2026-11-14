@@ -1,6 +1,8 @@
-"""Mission Trainer simulation: a lunar south-pole outpost over 10 days, in 6-hour shifts.
+"""Mission Trainer simulation: a lunar south-pole outpost over 10 days, in 6-hour shifts, on a live mission clock.
 
-Pure and deterministic per (site, seed): no clock, no network, no global RNG. All inputs come from
+Pure and deterministic per (site, seed): no wall clock, no network, no global RNG. Time moves by `step(m, dt_h)` (any
+fraction of an hour; the physics ticks once per whole mission hour, so a shift stepped in small pieces is bit-identical
+to `advance(m, 1)`), `skip_to_event(m)` (on to the next thing that happens) or `advance(m)` (end the shift early). All inputs come from
 backend/data/mission/*.json (built by pipeline/mission_data.py from JPL Horizons, NASA and NOAA sources).
 Schema: docs/MISSION_CONTRACT.md.
 """
@@ -40,6 +42,9 @@ SCIENCE_RATE = 1.0        # points/h at a 15% share
 ICE_GAIN = 18.0           # life support % per ice delivery
 ROVER_POWER = 6.0         # % battery to charge the rover per trip
 EXPLORE_SCIENCE = 25.0
+# Ice-run routes, picked on the LOLA slope map (rovers really plan drives on LOLA slopes, e.g. NASA's VIPER): the
+# ridge is flat but long, the crater slope short but steep (the motors work harder). Hours and % battery vs the default.
+ROUTES = {"ridge": {"eta_h": 2, "power": -2.0}, "slope": {"eta_h": -2, "power": 3.0}}
 HOUSTON_POWER = 2.0
 HOUSTON_SCIENCE = 2.0     # crew time on the call
 DOSE_LIMIT = 50.0
@@ -49,6 +54,11 @@ SCIENCE_GOAL = 120.0      # mission objective: science sent home
 ICE_GOAL = 1              # mission objective: ice runs finished
 QUIET_DOSE = 15.0         # game-mSv a well-run 10 days costs anyway; only dose above this lowers the score
 STORM_SLOTS = [(18, 80), (100, 150), (170, 216)]   # one storm per slot: readable, never stacked
+SUNSET_NOTICE_H = 6       # the sunset_soon event: hours of notice before the Sun sets (Horizons)
+SKIP_MAX_H = 24           # "skip to next event" stops after a quiet day at most
+# What "skip to next event" stops on: the things a commander must see (dose_alert repeats every storm shift: not a stop)
+SKIP_STOPS = {"solar_storm", "storm_end", "storm_warning", "sunset", "sunrise", "sunset_soon", "comm_open", "comm_closed",
+              "low_power", "rover_back", "failure", "shelter_limit", "mission_complete", "task", "beat"}
 
 
 @lru_cache(maxsize=None)
@@ -163,6 +173,10 @@ class Mission:
     forecast_heard: set = field(default_factory=set)   # storm ids Houston mentioned on a call
     good_calls: list = field(default_factory=list)     # [{t_h, kind, text}] decisions that read the data
     rover_left_h: int = 0
+    frac: float = 0.0                             # live clock: hours into the current mission hour (0..1)
+    shift_was_low: bool = False                   # battery under 20% when this shift began (the low_power event)
+    acted: dict = field(default_factory=dict)     # order type -> count (the objective reacts to what the kid did)
+    gp: dict = field(default_factory=dict)        # gameplay.py: tasks, story beats, the mission log
 
     @property
     def difficulty(self) -> str:
@@ -192,6 +206,7 @@ def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str
     m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=difficulty)
     _schedule(m)
     m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
+    gameplay.update(m, [])   # the arrival beat and the first job
     return m
 
 
@@ -219,7 +234,7 @@ def set_level(m: Mission, level: str) -> None:
     if level not in DIFFICULTIES or level == m.level:
         return
     m.level = level
-    if m.t_h == 0 and not m.events:
+    if m.t_h == 0 and not any(e["kind"] in EVENT_KINDS for e in m.events):
         _schedule(m)
 
 
@@ -260,22 +275,70 @@ def env_at(m: Mission, t: float) -> dict:
             "earth_elev_deg": round(earth, 3), "earth_visible": earth_visible, "storm": storm}
 
 
+@lru_cache(maxsize=None)
+def sky_table(site_id: str) -> tuple[tuple[bool, ...], tuple[bool, ...]]:
+    """(in_sun, earth_visible) for every whole mission hour 0..MISSION_H at a site: env_at's own rule, computed once.
+    Sun and Earth depend only on the site (Horizons), never on the mission, so the table is exact."""
+    probe = Mission(id="sky", site_id=site_id, seed=0)
+    rows = [env_at(probe, t) for t in range(MISSION_H + 1)]
+    return tuple(r["in_sun"] for r in rows), tuple(r["earth_visible"] for r in rows)
+
+
+def _sky(m: Mission, key: int, t: float) -> bool:
+    tbl = sky_table(m.site_id)[key]
+    return tbl[max(0, min(int(t), len(tbl) - 1))] if float(t).is_integer() else env_at(m, t)[("in_sun", "earth_visible")[key]]
+
+
+@lru_cache(maxsize=None)
+def _change_tables(site_id: str) -> dict:
+    """Per whole hour: hours to the next Sun change, to the next Earth-up hour, and to Earth setting (None = never in
+    this mission). The same answers as scanning env_at hour by hour, computed once per site."""
+    sun, earth = sky_table(site_id)
+    H = MISSION_H
+
+    def scan(tbl, t, start, want):
+        for k in range(start, H - t + 1):
+            if tbl[min(t + k, H)] == want(t):
+                return k
+        return None
+    return {"sun": [scan(sun, t, 1, lambda t: not sun[t]) for t in range(H + 1)],
+            "comm": [scan(earth, t, 0, lambda t: True) for t in range(H + 1)],
+            "close": [None if not earth[t] else scan(earth, t, 1, lambda t: False) for t in range(H + 1)]}
+
+
+def _table_at(m: Mission, key: str, t: float):
+    if not float(t).is_integer() or not 0 <= t <= MISSION_H:
+        return None
+    return _change_tables(m.site_id)[key][int(t)]
+
+
 def next_sun_change_h(m: Mission, t: float) -> int | None:
     """Hours until the Sun next rises or sets at the outpost (Horizons), or None if it doesn't in this mission.
     The Sun Tracker strip on the Power panel; also what a planner reads before night mode."""
     if site(m.site_id).get("power_from"):
         return None
-    now = env_at(m, t)["in_sun"]
+    if float(t).is_integer() and 0 <= t <= MISSION_H:
+        return _table_at(m, "sun", t)
+    now = _sky(m, 0, t)
     for k in range(1, MISSION_H - int(t) + 1):
-        if env_at(m, t + k)["in_sun"] != now:
+        if _sky(m, 0, t + k) != now:
             return k
     return None
 
 
 def next_comm_window_h(m: Mission, t: float) -> int | None:
+    if float(t).is_integer() and 0 <= t <= MISSION_H:
+        return _table_at(m, "comm", t)
     for k in range(0, MISSION_H - int(t) + 1):
-        if env_at(m, t + k)["earth_visible"]:
+        if _sky(m, 1, t + k):
             return k
+    return None
+
+
+def comm_closes_in_h(m: Mission, t: float) -> int | None:
+    """Hours until Earth sets (the comm window's countdown), or None when Earth is down or stays up to the end."""
+    if float(t).is_integer() and 0 <= t <= MISSION_H:
+        return _table_at(m, "close", t)
     return None
 
 
@@ -369,6 +432,11 @@ def _good(m: Mission, kind: str, text: str):
     m.good_calls.append({"t_h": m.t_h, "kind": kind, "text": text})
 
 
+# The sim's own event kinds (gameplay.py adds "task" and "beat" events, which never reach the log or the timeline)
+EVENT_KINDS = {"solar_storm", "storm_end", "storm_warning", "sunset", "sunrise", "sunset_soon", "comm_open",
+               "comm_closed", "low_power", "dose_alert", "rover_back", "failure", "shelter_limit", "mission_complete"}
+
+
 def _emit(m: Mission, out: list, kind: str, text: str, source=None, real_date=None, extra: dict | None = None):
     ev = {"t_h": m.t_h, "kind": kind, "text": text, "source": source, "real_date": real_date, **(extra or {})}
     out.append(ev)
@@ -391,6 +459,12 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
     if not env["in_sun"] and env_before["in_sun"] and m.power_save and not s.get("power_from"):
         _good(m, "night_ready", "Night mode on before sunset.")
+    # six hours' notice of a sunset (Horizons): the night power-down checklist starts here
+    if env["in_sun"] and not s.get("power_from") and m.t_h + SUNSET_NOTICE_H <= MISSION_H and \
+            not _sky(m, 0, m.t_h + SUNSET_NOTICE_H) and _sky(m, 0, m.t_h + SUNSET_NOTICE_H - 1):
+        _emit(m, out, "sunset_soon", f"Sunset in {SUNSET_NOTICE_H} hours. Plan for the dark.",
+              {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"},
+              extra={"in_h": SUNSET_NOTICE_H})
     lead = WARN_LEAD_H[m.difficulty]
     for st in m.storms:
         ev = st.event
@@ -454,29 +528,78 @@ def _check_end(m: Mission, out: list):
         _emit(m, out, "mission_complete", "Day 10 done. The outpost made it. Welcome home, Commander.")
 
 
+def _shift_books(m: Mission, out: list):
+    """The end of a shift (or the hour the crew is lost): the checks that run once per shift, then the timeline point."""
+    m.zero_power_shifts = m.zero_power_shifts + 1 if m.power <= 0.01 else 0
+    _shelter_clock(m, out)
+    _sensor_watch(m, out)
+    if m.power < 20 and not m.shift_was_low and not m.over:
+        _emit(m, out, "low_power", f"Battery low: {m.power:.0f}%. Try night mode.")
+    if dose_rate(m, m.t_h) > 0.3 and not any(e["kind"] == "dose_alert" and e["t_h"] == m.t_h for e in out):
+        _emit(m, out, "dose_alert", f"Radiation high: {dose_rate(m, m.t_h):.2f} mSv an hour.")
+    m.pending = None
+    _check_end(m, out)
+    m.shifts.append({"t_h": m.t_h, "power": round(m.power, 1), "life_support": round(m.life, 1),
+                     "dose_msv": round(m.dose, 2),
+                     "events": [e["kind"] for e in m.events if e["t_h"] > m.t_h - SHIFT_H and e["kind"] in EVENT_KINDS],
+                     # [qa] any hour of this shift inside a storm: the debrief shades every storm shift, not just its start
+                     "storm_active": any(st.active(h) for st in m.storms for h in range(int(m.t_h) - SHIFT_H, int(m.t_h)))})
+
+
+def _tick(m: Mission, out: list):
+    """One mission hour on the clock: the physics, then (at a shift boundary, or when the crew is lost) the shift's
+    books, then the gameplay layer (tasks, story beats). The only place mission time moves."""
+    if m.over:
+        return
+    if m.t_h % SHIFT_H == 0:
+        m.shift_was_low = m.power < 20
+    _step_hour(m, out)
+    if m.t_h % SHIFT_H == 0 or m.life <= 0 or m.dose > DOSE_LIMIT:
+        _shift_books(m, out)
+    gameplay.update(m, out)
+
+
+def step(m: Mission, dt_h: float) -> list:
+    """The live mission clock: move `dt_h` hours (any fraction; at most a day per call). The physics ticks at each
+    whole hour, so the result never depends on how the time was sliced. Returns the events that happened."""
+    out: list = []
+    if m.over:
+        return out
+    m.frac += max(0.0, min(float(dt_h or 0.0), 24.0))
+    while m.frac >= 1.0 - 1e-9 and not m.over:
+        m.frac = max(0.0, m.frac - 1.0)
+        _tick(m, out)
+    if m.over:
+        m.frac = 0.0
+    return out
+
+
+def skip_to_event(m: Mission, max_h: int = SKIP_MAX_H) -> list:
+    """Skip to next event: run the clock until something the commander must see happens (a SKIP_STOPS event), at
+    most `max_h` hours. It never reads the hidden schedule: it runs the hours and stops when an event fires."""
+    out: list = []
+    m.frac = 0.0
+    for _ in range(max(1, int(max_h))):
+        if m.over:
+            break
+        n = len(out)
+        _tick(m, out)
+        if any(e["kind"] in SKIP_STOPS for e in out[n:]):
+            break
+    return out
+
+
 def advance(m: Mission, shifts: int = 1) -> list:
+    """End the shift (early, when the clock is mid-shift): run to the next shift boundary, `shifts` times."""
     out: list = []
     for _ in range(max(1, int(shifts))):
         if m.over:
             break
-        was_low = m.power < 20
-        for _h in range(SHIFT_H):
-            _step_hour(m, out)
-            if m.life <= 0 or m.dose > DOSE_LIMIT:
+        m.frac = 0.0
+        for _h in range(SHIFT_H - m.t_h % SHIFT_H):
+            _tick(m, out)
+            if m.over:
                 break
-        m.zero_power_shifts = m.zero_power_shifts + 1 if m.power <= 0.01 else 0
-        _shelter_clock(m, out)
-        _sensor_watch(m, out)
-        if m.power < 20 and not was_low and not m.over:
-            _emit(m, out, "low_power", f"Battery low: {m.power:.0f}%. Try night mode.")
-        if dose_rate(m, m.t_h) > 0.3 and not any(e["kind"] == "dose_alert" and e["t_h"] == m.t_h for e in out):
-            _emit(m, out, "dose_alert", f"Radiation high: {dose_rate(m, m.t_h):.2f} mSv an hour.")
-        m.pending = None
-        _check_end(m, out)
-        m.shifts.append({"t_h": m.t_h, "power": round(m.power, 1), "life_support": round(m.life, 1),
-                         "dose_msv": round(m.dose, 2), "events": [e["kind"] for e in out if e["t_h"] > m.t_h - SHIFT_H],
-                         # [qa] any hour of this shift inside a storm: the debrief shades every storm shift, not just its start
-                         "storm_active": any(st.active(h) for st in m.storms for h in range(int(m.t_h) - SHIFT_H, int(m.t_h)))})
     return out
 
 
@@ -559,6 +682,8 @@ def readback(cmd: dict) -> str:
         return "Calling Houston"
     if t == "power_save":
         return "Night mode on" if cmd.get("on", True) else "Night mode off"
+    if t == "skip":
+        return "Skip to next event"
     return t or ""
 
 
@@ -571,7 +696,7 @@ def apply_command(m: Mission, cmd: dict) -> dict:
         if not m.pending:
             return {"ok": False, "say": "Nothing to confirm.", "readback": "", "events": []}
         pend, m.pending = m.pending, None
-        return _execute(m, pend)
+        return _after(m, pend, _execute(m, pend))
     if t == "cancel":
         had = m.pending is not None
         m.pending = None
@@ -580,6 +705,11 @@ def apply_command(m: Mission, cmd: dict) -> dict:
     if t == "end_shift":
         evs = advance(m, 1)
         return {"ok": True, "say": _shift_say(m, evs), "readback": "End shift", "events": evs}
+    if t == "skip":
+        evs = skip_to_event(m, int(cmd.get("max_h") or SKIP_MAX_H))
+        return {"ok": True, "say": _skip_say(m, evs), "readback": "Skip to next event", "events": evs}
+    if t == "task":
+        return gameplay.task_command(m, cmd)
     if t == "rule":  # standing rules live in the voice layer; never reach the sim
         return {"ok": True, "say": "", "readback": "", "events": []}
     if t == "query":
@@ -594,7 +724,29 @@ def apply_command(m: Mission, cmd: dict) -> dict:
         m.pending = cmd
         return {"ok": True, "needs_confirm": True, "say": warn,
                 "readback": readback(cmd), "events": []}
-    return _execute(m, cmd)
+    return _after(m, cmd, _execute(m, cmd))
+
+
+def _after(m: Mission, cmd: dict, r: dict) -> dict:
+    """An order that went through: count it (the objective reacts to what the kid did) and let the gameplay layer tick
+    off task steps and say "Shields up. Good." (result `ack`)."""
+    if r.get("ok"):
+        t = cmd.get("type")
+        m.acted[t] = m.acted.get(t, 0) + 1
+        ack = gameplay.after_command(m, cmd, r)
+        if ack:
+            r["ack"] = ack
+    return r
+
+
+def _skip_say(m: Mission, evs: list) -> str:
+    """The line after "skip to next event": the clock, then what stopped it (or that the day was quiet)."""
+    if m.over:
+        news = [e for e in evs if e["kind"] in EVENT_KINDS]
+        return news[-1]["text"] if news else "Mission over."
+    stop = next((e for e in reversed(evs) if e["kind"] in SKIP_STOPS and e["kind"] not in ("task", "beat")), None)
+    clock = f"Day {m.t_h // 24 + 1}, hour {m.t_h % 24}."
+    return f"{clock} {stop['text']}" if stop else f"{clock} A quiet day. All steady."
 
 
 def _execute(m: Mission, cmd: dict) -> dict:
@@ -630,14 +782,20 @@ def _execute(m: Mission, cmd: dict) -> dict:
             return {"ok": False, "say": f"The rover can't do {task!r}.", "readback": rb, "events": []}
         s = site(m.site_id)
         eta = {"collect_ice": max(4, 2 * s.get("rover_to_ice_h", 8) + 2), "repair_array": 6, "explore": 12}[task]
-        if m.power < ROVER_POWER:
+        charge = ROVER_POWER
+        route = ROUTES.get(cmd.get("route")) if task == "collect_ice" else None
+        if route:   # a route picked on the LOLA slope map: time against battery (gameplay.py rover task)
+            eta, charge = max(4, eta + route["eta_h"]), charge + route["power"]
+        if m.power < charge:
             return {"ok": False, "say": "Not enough battery to charge the rover.", "readback": rb, "events": []}
-        m.power -= ROVER_POWER
+        m.power -= charge
         m.science = max(0.0, m.science - 1.0)  # crew time driving instead of experiments
         rv.update(busy=True, task=task, eta_h=eta)
+        if route:
+            rv["route"] = cmd.get("route")
         m.rover_left_h = m.t_h
         say = (f"Rover back in about {eta} hours. "
-               f"It used {ROVER_POWER:.0f}% battery.")
+               f"It used {charge:.0f}% battery.")
         m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
         return {"ok": True, "say": say, "readback": rb, "events": []}
     if t == "power_save":
@@ -688,9 +846,11 @@ def _execute(m: Mission, cmd: dict) -> dict:
 
 def _shift_say(m: Mission, evs: list) -> str:
     if m.over:
-        return evs[-1]["text"] if evs else "Mission over."
+        news = [e for e in evs if e["kind"] in EVENT_KINDS]
+        return news[-1]["text"] if news else "Mission over."
     bits = [f"Day {m.t_h // 24 + 1}, shift {(m.t_h % 24) // SHIFT_H + 1}."]
-    bits += [e["text"] for e in evs[-1:]]   # the latest news only: the spoken line stays a breath long
+    news = [e for e in evs if e["kind"] in EVENT_KINDS]   # the sim's own news (story beats and tasks speak elsewhere)
+    bits += [e["text"] for e in news[-1:]]   # the latest news only: the spoken line stays a breath long
     bits.append(f"Power {m.power:.0f}%, air {m.life:.0f}%, dose {m.dose:.1f} mSv.")
     return " ".join(bits)
 
@@ -780,6 +940,7 @@ def to_state(m: Mission) -> dict:
                 "earth_visible": env["earth_visible"], "next_comm_window_h": next_comm_window_h(m, m.t_h),
                 "comm_delay_s": COMM_DELAY_S,
                 "next_sun_change_h": next_sun_change_h(m, m.t_h),
+                "comm_closes_in_h": comm_closes_in_h(m, m.t_h),
                 "relay": m.difficulty == "cadet",
                 "storm": ({"active": True, "name": st.event["name"], "source": st.event["source"]["title"],
                            "url": st.event["link"], "severity": st.event["severity"], "real_date": st.event["date"],
@@ -794,6 +955,11 @@ def to_state(m: Mission) -> dict:
         "pretend_tech": radiation()["game"]["pretend_tech"],   # label these in the UI ("pretend tech")
         "pending": m.pending,
         "alerts": alerts(m), "log": m.log[-30:], "score": score(m),
+        # the live clock (docs/GAMEPLAY.md): fractional mission time, and the hours left in this shift
+        "clock": {"mission_time_h": round(m.t_h + m.frac, 3), "frac": round(m.frac, 3), "hours_total": MISSION_H,
+                  "shift_ends_in_h": SHIFT_H - m.t_h % SHIFT_H},
+        "acted": dict(m.acted),
+        **gameplay.view(m),
     }
 
 
@@ -807,8 +973,9 @@ def _warning(m: Mission) -> dict | None:
     return None
 
 
-def telemetry(m: Mission, offset_h: float) -> dict:
-    """A live frame `offset_h` hours into the current shift (0..6), from a forecast of the shift."""
+def telemetry(m: Mission, offset_h: float, live: bool = False) -> dict:
+    """A frame `offset_h` hours ahead of the mission's whole hour (0..6), from a forecast of the hours. `live`: the
+    live clock's own position (offset = m.frac), not a preview."""
     offset_h = max(0.0, min(float(SHIFT_H), offset_h))
     f = copy.deepcopy(m)
     lo = copy.deepcopy(m)
@@ -831,7 +998,7 @@ def telemetry(m: Mission, offset_h: float) -> dict:
         return a + (b - a) * frac
     t = base.t_h + frac
     env = env_at(m, t)
-    return {"t": "telemetry", "mission_time_h": round(t, 2), "forecast": offset_h > 0,
+    return {"t": "telemetry", "mission_time_h": round(t, 2), "forecast": offset_h > 0 and not live, "live": live,
             "power": round(lerp(base.power, nxt.power), 1), "life_support": round(lerp(base.life, nxt.life), 1),
             "dose_msv": round(lerp(base.dose, nxt.dose), 3), "dose_rate": round(dose_rate(m, t, env), 3),
             "sun_elev_deg": round(env["sun_elev_deg"], 3), "earth_elev_deg": round(env["earth_elev_deg"], 3),
@@ -936,3 +1103,6 @@ TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md 
     "goals": "Leave the shelter when the storm ends, and send science home when Earth is up.",
     "survived": "Try a harder site: Malapert has the longest night.",
 }
+
+
+from . import gameplay  # noqa: E402  (the gameplay layer reads this module's API at call time)
