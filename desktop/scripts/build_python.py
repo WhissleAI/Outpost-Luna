@@ -229,6 +229,33 @@ SITE_DROP_DIRS = {"tests", "__pycache__"}
 SITE_DROP_PATHS = ["torch/include", "torch/share", "torch/_inductor/codegen/cuda", "torch/utils/benchmark",
                    "caffe2", "functorch/csrc", "torchgen/packaged", "scipy/datasets"]
 SITE_DROP_GLOBS = ["**/*.pyi", "**/*.a", "**/*.lib", "**/*.pdb", "torch/lib/*.lib"]
+# Installers and dev tools nothing imports at run time (checked with `python -X importtime` on both children through
+# desktop/scripts/smoke.py, plus a grep of the app, arc_audio and steertts_edge; docs/DESKTOP.md "What the build drops").
+#   pip / setuptools / pkg_resources / _distutils_hack / wheel: install-time only (the bundle never installs anything);
+#     the interpreter's own copies too, with distutils-precedence.pth, which imported _distutils_hack at every start.
+#   pygments: optional for rich (pretty tracebacks of the CLIs typer and huggingface_hub ship; unused under uvicorn).
+#   networkx: only torch._inductor / functorch partitioners (torch.compile), which the app never calls.
+#   hf_xet: huggingface_hub's optional Xet download backend; the app runs with HF_HUB_OFFLINE=1 and local models.
+#   torch/bin/protoc*: the protobuf compiler (8 MB, a build tool). torch/bin/torch_shm_manager stays: `import torch`
+#     refuses to start without it on macOS / Linux (torch/__init__.py _manager_path), though the app never shares tensors.
+#   numpy/f2py (Fortran wrapper generator) and each site folder's bin/ (console scripts with a build-machine shebang).
+#   onnxruntime/{transformers,quantization,tools}: ONNX model optimizer / quantizer / converter CLIs; `import
+#     onnxruntime` never loads them. onnxruntime/capi/libonnxruntime.*.dylib (34 MB, macOS): the C-API library for C
+#     callers; the Python binding (onnxruntime_pybind11_state.so) is self-contained (`otool -L` lists no link to it)
+#     and lsof shows it unmapped while a session runs. The Windows onnxruntime.dll is left alone.
+UNUSED_PACKAGES = ["pip", "setuptools", "pkg_resources", "_distutils_hack", "wheel", "pygments", "networkx", "hf_xet"]
+UNUSED_FILES = ["distutils-precedence.pth", "torch/bin/protoc*", "numpy/f2py", "bin", "onnxruntime/transformers",
+                "onnxruntime/quantization", "onnxruntime/tools", "onnxruntime/capi/libonnxruntime.*.dylib"]
+HEADERS = {".h", ".hpp", ".hxx", ".cuh", ".inl", ".tcc"}
+
+
+def _unused(site: Path) -> list[Path]:
+    """The UNUSED_PACKAGES (+ their dist-info), UNUSED_FILES and header-only include/ dirs in one site folder."""
+    out = [p for f in UNUSED_FILES for p in site.glob(f)]
+    for name in UNUSED_PACKAGES:
+        out += [site / name, *site.glob(f"{name}-*.dist-info")]
+    out += [d for d in site.rglob("include") if d.is_dir() and all(f.suffix in HEADERS for f in d.rglob("*") if f.is_file())]
+    return out
 
 
 def _rm(p: Path) -> int:
@@ -251,7 +278,14 @@ def trim(py_dir: Path, sites: list[Path]) -> None:
         freed += _rm(py_dir / d)
     for f in list(py_dir.glob("lib/libtcl*")) + list(py_dir.glob("lib/libtk*")):
         freed += _rm(f)
+    # The interpreter's own site-packages (pip, setuptools) and pip's launchers.
+    for p in _unused(lib / "site-packages"):
+        freed += _rm(p)
+    for f in [*py_dir.glob("bin/pip*"), *py_dir.glob("Scripts/pip*")]:
+        freed += _rm(f)
     for site in sites:
+        for p in _unused(site):
+            freed += _rm(p)
         for d in SITE_DROP_PATHS:
             freed += _rm(site / d)
         for pat in SITE_DROP_GLOBS:
@@ -273,7 +307,7 @@ def stage_app(skip_frontend: bool):
     app = RES / "app"
     shutil.rmtree(app, ignore_errors=True)
     shutil.copytree(ROOT / "backend/app", app / "backend/app", ignore=APP_IGNORE)
-    # data: read-only in the bundle. media (~0.5 GB) is mapped by electron-builder straight from backend/data/media;
+    # data: read-only in the bundle. media is mapped by electron-builder (Moon map + the trimmed clips, trim_media.py);
     # cache/ and tts_cache/ are rebuilt in the per-user folder (CACHE_DIR).
     shutil.copytree(ROOT / "backend/data", app / "backend/data",
                     ignore=shutil.ignore_patterns("media", "cache", "tts_cache", ".DS_Store", ".env"))

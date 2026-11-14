@@ -92,8 +92,23 @@ def clip(clip_id: str):
     c = next((c for c in S["index"].clips if c["id"] == clip_id), None)
     if not c:
         raise HTTPException(404, "no such clip")
-    return {**{k: c.get(k) for k in ("id", "title", "file", "dur", "words", "tags", "utterances")},
-            "gain_db": clip_gain_db(c.get("file"))}
+    out = {**{k: c.get(k) for k in ("id", "title", "file", "dur", "words", "tags", "utterances")},
+           "gain_db": clip_gain_db(c.get("file"))}
+    segs = clip_segs(c.get("file"))
+    if segs:
+        out["segs"] = segs
+    return out
+
+
+def clip_segs(file: str | None) -> list | None:
+    """The desktop build ships trimmed crew audio (backend/pipeline/trim_media.py): [[clip_t0, file_t0, len], ...] maps
+    clip time to file time (the player converts at the <audio> element). None with the original audio (dev)."""
+    if "clip_segs" not in S:
+        import json
+        p = settings.data_dir / "media" / "trim.json"
+        S["clip_segs"] = ({k: v["segs"] for k, v in json.loads(p.read_text(encoding="utf-8"))["clips"].items()}
+                          if p.exists() else {})
+    return S["clip_segs"].get((file or "").rsplit("/", 1)[-1])
 
 
 @app.get("/api/moments")

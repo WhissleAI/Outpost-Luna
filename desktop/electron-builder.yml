@@ -1,5 +1,6 @@
 # Outpost Luna desktop: electron-builder config. Inputs come from `make desktop-python desktop-models desktop-arctag`
-# (desktop/resources/) plus the NASA media straight from backend/data/media. docs/DESKTOP.md has the full layout.
+# (desktop/resources/) plus the NASA media: the Moon map from backend/data/media/img and the trimmed crew clips + their
+# time map from backend/data/media/desktop (backend/pipeline/trim_media.py). docs/DESKTOP.md has the full layout.
 appId: ai.whissle.outpostluna
 productName: Outpost Luna
 copyright: Copyright © 2026 Whissle Inc.
@@ -23,9 +24,12 @@ extraResources:
     to: models
   - from: resources/native
     to: native
-  - from: ../backend/data/media
-    to: app/backend/data/media
+  - from: ../backend/data/media/img
+    to: app/backend/data/media/img
     filter: ["**/*", "!.DS_Store"]
+  - from: ../backend/data/media/desktop
+    to: app/backend/data/media
+    filter: ["audio/*.mp3", "trim.json"]
 compression: normal
 afterPack: scripts/sign-resources.js
 mac:

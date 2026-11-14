@@ -16,6 +16,9 @@ setup:           ## Install all dependencies (uv + npm)
 data:            ## Download NASA media (Moon map + crew clips)
 	uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py
 
+media-desktop:   ## Trimmed mono crew clips for the desktop installer -> backend/data/media/desktop (after `make data`)
+	cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media
+
 transcribe:      ## Word-timed transcripts for any new clips (mlx-whisper)
 	bash backend/pipeline/transcribe.sh
 

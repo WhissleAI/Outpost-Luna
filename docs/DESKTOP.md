@@ -23,8 +23,8 @@ Builds run locally (no CI). One command per OS, from a fresh clone, with no acco
 | Windows x64 (not yet run on Windows) | `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` | `desktop\dist\Outpost Luna Setup <version>.exe`; step-by-step in [BUILD_WINDOWS.md](BUILD_WINDOWS.md) |
 | Windows x64, cross-built on a Mac | `bash desktop/scripts/cross-build-windows.sh` | the same installer, checked structurally only ([BUILD_WINDOWS.md §8](BUILD_WINDOWS.md)) |
 
-Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov)
--> frontend deps -> embedded Python + app code (`build_python.py`) -> models (`gather_models.py`) -> Arc Tagger native
+Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov,
+then the installer's trimmed copy of the crew clips, `backend/pipeline/trim_media.py`) -> frontend deps -> embedded Python + app code (`build_python.py`) -> models (`gather_models.py`) -> Arc Tagger native
 library (CMake) -> Electron + electron-builder -> print the installer path. Caches stay in `desktop/build/`.
 
 **Models: one public package for every build.** `gather_models.py` (default `--from auto`) copies from this machine's
@@ -39,14 +39,16 @@ The pieces, also runnable on their own:
 
 | target | what it does |
 |---|---|
-| `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` and `steertts-edge` wheels; trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
+| `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` and `steertts-edge` wheels; trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
+| `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 48 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
 | `make desktop-models` | `desktop/scripts/gather_models.py`: every weight into `desktop/resources/models/` (local, else the public package), checked against `desktop/models.lock.json` |
 | `make desktop-arctag` | CMake build of `desktop/vendor/arctag` (arc-tagger-c sources, native backend only) -> `libarctag.dylib` / `arctag.dll` |
 | `make desktop-run` | run the shell against `desktop/resources` without packaging |
 | `make desktop-clean` | delete `desktop/resources`, `desktop/build`, `desktop/dist` |
 
-A full build needs about 6 GB free (media 0.5 GB, resources 1.1 GB, unpacked app 1.9 GB, dmg 1.0 GB, caches);
+A full build needs about 6 GB free (media 0.5 GB + its trimmed copy 0.18 GB, resources 1.0 GB, unpacked app 1.5 GB,
+dmg 0.65 GB, caches);
 `build-mac.sh` deletes the unpacked app once the dmg is made. The vendored wheels `desktop/vendor/wheels/
 arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB) are committed (CC-BY-NC-4.0, NOTICE inside).
 
@@ -55,16 +57,17 @@ a plain relocatable interpreter plus `--target` folders; nothing is frozen, so t
 
 ## What is in the bundle (macOS arm64, 0.1.0)
 
-`Contents/Resources/` (unpacked app 1.9 GB; dmg 1.00 GB, since mp3 and weights barely compress):
+`Contents/Resources/` (unpacked app 1.5 GB; dmg 646 MB, since mp3 and weights barely compress; before the trims
+below: 1.9 GB and ~1.0 GB):
 
 | path | size | contents |
 |---|---|---|
-| `python/` | 60 MB | CPython 3.11 (python-build-standalone), trimmed |
-| `site/models/` | 817 MB | torch 2.11 CPU (333), transformers 5.19 (115), onnxruntime (85), scipy (68), numpy 1.26, sympy, fastapi/uvicorn, arc-transcriber 1.2.1, steertts-edge 1.3.0, … |
-| `site/backend/` | 50 MB | fastapi, uvicorn, httpx, websockets, rapidfuzz, numpy 2.x |
+| `python/` | 39 MB | CPython 3.11 (python-build-standalone), trimmed (no pip / setuptools) |
+| `site/models/` | 728 MB | torch 2.11 CPU (333), transformers 5.19 (115), onnxruntime (42), scipy (68), numpy 1.26, sympy, fastapi/uvicorn, arc-transcriber 1.2.1, steertts-edge 1.3.0, … |
+| `site/backend/` | 47 MB | fastapi, uvicorn, httpx, websockets, rapidfuzz, numpy 2.x |
 | `app/backend/app` | 1.1 MB | backend code, incl. `director_model/weights.json` + `weights.npz` (learned Director, numpy only) |
 | `app/backend/data` | 9 MB | places, facts, glossary, index (clips + moments), transcripts, mission and academy data (read-only) |
-| `app/backend/data/media` | 525 MB | 74 Artemis II crew clips (522 MB mp3) + Moon colour map (2.5 MB); mapped straight from `backend/data/media` |
+| `app/backend/data/media` | 178 MB | 74 Artemis II crew clips, trimmed to what plays, mono 48 kbps (175 MB mp3, from `backend/data/media/desktop`) + `trim.json` + Moon colour map (2.5 MB, from `backend/data/media/img`) |
 | `app/model_server` | 0.2 MB | model-server code |
 | `app/frontend` | 0.7 MB | `frontend/dist` |
 | `app/launch.py` | 4 KB | child entry point |
@@ -78,6 +81,47 @@ a plain relocatable interpreter plus `--target` folders; nothing is frozen, so t
 Arc v1.1 `backbone="mini"` pulls **no other Hugging Face snapshot**: `mini/` carries its own Moonshine Streaming tiny
 encoder, decoder and tokenizer, and `Arc.from_pretrained` only downloads when given a repo id (we always pass a folder).
 `full/` (74 MB) is not shipped.
+
+### Crew audio in the installer
+
+NASA's originals (`backend/data/media/audio`, 547 MB, 9.3 h) are 96-192 kbps stereo whose two channels are identical.
+`backend/pipeline/trim_media.py` (build step 2; `make media-desktop`) writes the installer's copy to
+`backend/data/media/desktop`: **175 MB, 8.1 h**.
+
+- **What is kept.** Everything the app can ask the player to play, each span padded by 1 s and merged across gaps
+  under 3 s: every moment `moments.cut_clip` makes (they tile all of a clip's words, kid-safe or not), every artifact
+  `voices` span (`artifacts.json`), every lesson clip (`academy/course.json`), and the "Hear the crew say it" window
+  (t - 2 .. t + 4 s) of every vocab term (`academy.vocab.terms()`). What goes is the silence between moments (a moment
+  stops at its `t1`, then fades for 200 ms), so the head and tail of a clip and the long gaps in the 20-minute
+  recordings. `backend/tests/test_trim_media.py` checks that every playable span fits inside one kept stretch.
+- **Encoding.** Mono (the L+R average; the channels are identical, so the level is unchanged), 24 kHz, 48 kbps CBR
+  MP3 (CBR seeks exactly in every browser), via the ffmpeg 7.1 + LAME in the pinned `imageio-ffmpeg==0.6.0` wheel.
+  Measured against the originals: 0-1 sample offset at every checked moment, waveform correlation 0.97-1.00, RMS
+  level -0.4 dB (the encoder's low-pass). ID3 tags: title, "NASA", and the nasa.gov source URL; the attribution in
+  `clips.json` / `clips_manifest.json` and the app's credit line are untouched.
+- **Clip time vs file time.** All data stays in the original clip's time. `trim.json` maps it:
+  `segs = [[clip_t0, file_t0, len], ...]` per file; the backend adds a clip's `segs` to `GET /api/clips/<id>`, and the
+  player converts only at the `<audio>` element (`frontend/src/cliptime.js`: seek, the karaoke clock, the pause at a
+  sentence end, `context.playing.t`). No `trim.json` (the dev app, which serves the originals) means no `segs`.
+- **Deterministic and incremental.** Same originals + data + pinned ffmpeg gives the same bytes; a clip whose source
+  sha256 and kept ranges are unchanged is skipped (a re-run takes seconds). Change the index, artifacts, course or
+  glossary and the next build re-cuts what moved.
+
+### What the build drops from the Python tree
+
+On top of the earlier trims, `build_python.py` removes, for both macOS and `--target win-x64`: pip, setuptools,
+pkg_resources, `_distutils_hack` + `distutils-precedence.pth` and wheel (from the interpreter and the site folders);
+pygments; networkx; hf_xet; `torch/bin/protoc*`; numpy's `f2py`; `onnxruntime/{transformers,quantization,tools}`;
+each site folder's `bin/` console scripts; header-only `include/` dirs; and on macOS
+`onnxruntime/capi/libonnxruntime.*.dylib` (34 MB). The reasons are in the comment above `UNUSED_PACKAGES`.
+
+How it was checked: both children run from the trimmed tree with `python -X importtime`, through
+`desktop/scripts/smoke.py` and a fresh TTS line: none of these modules is imported (the backend tries `pygments` from
+`httpx._main` and falls back, as it always did: `site/backend` never had pygments). `otool -L` shows the onnxruntime
+binding does not link the C-API dylib, and `lsof` shows it unmapped during inference. `torch/bin/torch_shm_manager`
+stays: `import torch` refuses to start without it on macOS / Linux. Not dropped: sympy, scipy, `torch._inductor`,
+`torch._dynamo`, `torch.distributed`, `torch.testing` (all imported by `import torch` itself) and `transformers/models`.
+Result: `python/` 57 -> 39 MB, `site/models/` 812 -> 728 MB, `site/backend/` 48 -> 47 MB.
 
 ## Where things go at run time
 
@@ -143,8 +187,8 @@ so this test run used `--no-sandbox`; a normal launch keeps it), no keys in the 
 
 | | |
 |---|---|
-| installer (`Outpost Luna-0.1.0-arm64.dmg`) | **1.00 GB** |
-| unpacked `.app` | **1.9 GB** |
+| installer (`Outpost Luna-0.1.0-arm64.dmg`) | **1.00 GB** (0.65 GB since the audio and Python trims) |
+| unpacked `.app` | **1.9 GB** (1.5 GB since) |
 | cold start to window (launch -> models healthy -> UI shown) | **15.9 s** (models healthy at 13.7 s); the first run straight after a build was ~24 s to models healthy |
 | RAM, steady after a voice turn | **~1.23 GB** total: model server 578 MB, backend 101 MB, Electron main + helpers ~550 MB |
 | voice ask (`say "show me the giant bullseye"`, 16 kHz) | Arc ear heard *"show me the giant bull's eye."*; turn end 0.56 s after speech end |
@@ -220,7 +264,9 @@ parsed and dry-run in PowerShell 7, and a cross-built installer has been unpacke
   Windows reports (`windows privacy camera: denied`), and the page says "blocked" (`gesture/guide.js cameraErrorText`).
 - Servers bind 127.0.0.1 only, so Windows Defender Firewall never prompts.
 - PyPI's Windows torch wheels are CPU-only already. `soundfile` ships its own libsndfile DLL.
-- `fetch_media.py` is plain Python (urllib) plus Pillow for the Moon map: no bash, curl or sips.
+- `fetch_media.py` is plain Python (urllib) plus Pillow for the Moon map: no bash, curl or sips. `trim_media.py` is
+  plain Python plus the ffmpeg binary inside the pinned `imageio-ffmpeg==0.6.0` wheel (`uv run --with`), which has
+  builds for Windows x64, macOS and Linux: nothing to install by hand.
 - Clone to a short path (`C:\src\atm`) or enable long paths: torch's deepest files pass 260 characters otherwise.
 - NSIS per-user install, unsigned: SmartScreen warns. Authenticode needs an OV/EV code-signing certificate
   (`WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`, or Azure Trusted Signing).
@@ -230,5 +276,4 @@ parsed and dry-run in PowerShell 7, and a cross-built installer has been unpacke
 - Arc ear without torch: an ONNX export of Arc v1.1 Mini (trunk + Moonshine tiny) would drop torch, transformers and
   sympy (~490 MB unpacked) and cut model-server RAM.
 - Trim `transformers/models/*` to the few the app imports (~90 MB).
-- Re-encode the crew clips (522 MB of mp3) at a speech bitrate (e.g. 48 kbps mono): about 4x smaller.
 - Self-hosted fonts (frontend owner), an app icon (`build-resources/icon.icns` / `.ico`), auto-update (out of scope offline).

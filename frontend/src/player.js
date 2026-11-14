@@ -4,6 +4,7 @@
 import { chime, fadeTo } from "./sound.js";
 import { floor, speak } from "./floor.js";
 import { normMoment } from "./api.js";
+import { toClipTime, toFileTime } from "./cliptime.js";   // trimmed desktop audio: clip time <-> <audio> time
 
 const MAX_LINE = 14;   // words per karaoke line when the transcript has no punctuation
 
@@ -29,17 +30,18 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   const audio = new Audio(); audio.preload = "none";
   let P = null;          // {m, clip, a, b, lines, ends, li, wi, j, pending, lastPause, explaining, follow, spans}
   let seq = 0;
+  const clipTime = (p = P) => toClipTime(p && p.clip.segs, audio.currentTime);
 
   // The floor owns this element as the crew channel: it reads the moment text (echo check), pauses the crew at a
   // sentence end so the guide can speak (§3.1), and resumes it after.
   const momentText = () => P ? P.clip.words.slice(P.a, P.b + 1).map(w => w[1]).join(" ") : "";
   function pauseAtSentenceEnd() {
     if (!P || audio.paused) return Promise.resolve();
-    const my = P, t = audio.currentTime, at = Math.min(P.ends.find(e => e >= t) ?? P.t1, t + 8);
+    const my = P, t = clipTime(my), at = Math.min(P.ends.find(e => e >= t) ?? P.t1, t + 8);
     return new Promise(res => {
       const iv = setInterval(async () => {
         if (P !== my || audio.paused) { clearInterval(iv); res(); return; }
-        if (audio.currentTime >= at - 0.08) { clearInterval(iv); my.held = true; await fadeTo(audio, 0, 120); audio.pause(); res(); }
+        if (clipTime(my) >= at - 0.08) { clearInterval(iv); my.held = true; await fadeTo(audio, 0, 120); audio.pause(); res(); }
       }, 40);
     });
   }
@@ -77,9 +79,9 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     bar.classList.remove("is-blocked"); audio.play().catch(() => bar.classList.add("is-blocked"));
   });
 
-  function seek(t) {
+  function seek(t, segs) {
     return new Promise(res => {
-      const go = () => { audio.currentTime = t; res(); };
+      const go = () => { audio.currentTime = toFileTime(segs, t); res(); };
       if (audio.readyState >= 1) return go();
       audio.addEventListener("loadedmetadata", go, { once: true }); audio.preload = "auto"; audio.load(); setTimeout(res, 4000);
     });
@@ -104,7 +106,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     const first = m.places.find(id => placeById(id));
     if (first) follow(first, false);
     chime();
-    await seek(m.t0); if (my !== seq) return false;
+    await seek(m.t0, clip.segs); if (my !== seq) return false;
     audio.volume = 1; clipGain(clip);
     try { await audio.play(); } catch (e) { bar.classList.add("is-blocked"); }   // autoplay blocked: tap the bar
     if (floor && P && P.m === m) floor.crewPlayback("start", m.clip_id);
@@ -126,7 +128,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
 
   function onTime() {
     if (!P || P.explaining) return;
-    const t = audio.currentTime, W = P.clip.words;
+    const t = clipTime(), W = P.clip.words;
     if (t >= P.t1) { stop(false, true); return; }
     // karaoke: current word i, current line li
     let i = P.a; while (i < P.b && W[i + 1][0] <= t) i++;
@@ -185,7 +187,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     play, stop,
     get active() { return !!P; },
     /** context.playing for /api/ask */
-    get playing() { return P && !audio.paused ? { clip_id: P.m.clip_id, t: +audio.currentTime.toFixed(2) } : null; },
+    get playing() { return P && !audio.paused ? { clip_id: P.m.clip_id, t: +clipTime().toFixed(2) } : null; },
     /** Barge-in: crew to 15% (the floor tracks it, so unduck after a no-request turn restores it). */
     duck() { if (floor) floor.duck(0.15); else if (P && !audio.paused) fadeTo(audio, 0.15, 150); },
     unduck() { if (P && P.explaining) return; if (floor) floor.unduck(); else if (P && !audio.paused) fadeTo(audio, 1, 250); },

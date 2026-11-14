@@ -61,7 +61,7 @@ if [ "${SKIP_PREP:-0}" = 1 ]; then
   for f in desktop/resources/python/bin/python3 desktop/resources/native/libarctag.dylib desktop/resources/models/arctag; do
     [ -e "$f" ] || die "SKIP_PREP=1 but $f is missing; run without it"; done
 else
-step "2/8 NASA media (backend/data/media: 74 crew clips + Moon map, ~0.5 GB)"
+step "2/8 NASA media (backend/data/media: 74 crew clips + Moon map, ~0.5 GB; trimmed copy for the app, ~175 MB)"
 if [ "${SKIP_MEDIA:-0}" = 1 ]; then echo "skipped (SKIP_MEDIA=1)"
 else uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py; fi
 [ -s backend/data/media/img/moon4k.jpg ] || die "backend/data/media is incomplete (re-run; fetch_media.py resumes)"
@@ -82,6 +82,9 @@ mkdir -p desktop/resources/native
 cp desktop/build/arctag/libarctag.dylib desktop/resources/native/
 
 fi
+
+# Always (also with SKIP_MEDIA / SKIP_PREP; incremental, seconds when current). The installer ships only the playable stretches of each clip, mono 48 kbps (~175 MB, not ~550): ffmpeg from a pinned wheel
+(cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media)
 
 step "7/8 Electron + electron-builder (dmg)"
 cd desktop

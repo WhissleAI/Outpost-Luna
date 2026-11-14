@@ -9,6 +9,9 @@
 
 Files that already exist (non-empty) are kept, so a re-run only fetches what is missing. Downloads go to <name>.part
 first and are renamed when complete. Exit 1 if anything failed.
+
+The originals stay as downloaded (the dev app and the pipelines use them). The desktop builds then run
+pipeline/trim_media.py (`make media-desktop`) for the installer's copy: only the playable stretches, mono 48 kbps.
 """
 from __future__ import annotations
 
