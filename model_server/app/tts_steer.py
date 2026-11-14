@@ -35,6 +35,7 @@ STATE: dict = {"tts": None, "director": None, "error": None, "director_error": N
                "rss_added_mb": None, "lock": threading.Lock()}
 SR = 24000
 CONTROL_RANGE = 3.0                  # the well-tested range (docs/request.md); the model accepts ±5
+HOP_S = 256 / 24000                  # one mel frame (steertts_edge.config.HOP / SR)
 MAX_PAUSE_MS = 700                   # cap the director's paragraph pause between floor sentences
 _SENT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"“*<\[])")
 
@@ -93,6 +94,8 @@ class TTSRequest(BaseModel):
     guidance: float | None = Field(None, ge=0.5, le=3)
     markup: bool = False
     perform: Perform | None = None
+    # ---- a11y / captions (docs/ACCESSIBILITY.md) ----
+    pace: float = Field(1.0, ge=0.6, le=1.6, description="Steer's global tempo divisor (>1 faster): the kid's speed")
 
 
 def split_sentences(text: str) -> list[str]:
@@ -136,6 +139,108 @@ def plans(req: TTSRequest, sentences: list[str]) -> list[tuple[dict, int]]:
     return [(d.ctrl(x, p.strength), d.pause_ms(x)) for x in out]
 
 
+
+# ---- word timings for word-synchronous captions (docs/ACCESSIBILITY.md) -------------------------------------------
+# steertts_edge has no aligner, but its duration predictor *is* the alignment: OnnxTTS.mel() expands each phone to
+# `dur` mel frames (HOP=256 samples at 24 kHz) via `tok = repeat(arange(N), dur)` and hands `tok` to the decoder.
+# We capture `tok` per render (a wrapper on the instance's `_dec`), recover per-phone frame counts, and fold phones
+# into words with to_phonemes()' word index. These are the model's own timings, not an estimate.
+_MARK = re.compile(r"</?[a-zA-Z]+[^>]*>|\*")
+
+
+def _install_capture(tts) -> None:
+    """Wrap the instance's _dec and _render once so each render records (text, phone→frame tok, samples)."""
+    if getattr(tts, "_timing_cap", None) is not None:
+        return
+    cap: list = []
+    tts._timing_cap = cap
+    dec, rend = tts._dec, tts._render
+
+    def _dec(h, pitch, energy, tok, g):
+        if cap and cap[-1].get("tok") is None:
+            cap[-1]["tok"] = np.asarray(tok)[0].copy()
+        return dec(h, pitch, energy, tok, g)
+
+    def _render(text, *a, **kw):
+        cap.append({"text": text, "tok": None})
+        y = rend(text, *a, **kw)
+        cap[-1]["n"] = len(y)
+        return y
+
+    tts._dec, tts._render = _dec, _render
+
+
+def _word_frames(text: str, tok) -> list[tuple[str, int, int]]:
+    """(word, start frame, end frame) for each spoken (normalised) word of one render."""
+    from steertts_edge.text import to_phonemes
+    ids, widx, words = to_phonemes(text)
+    if tok is None or not len(tok):
+        return []
+    dur = np.bincount(tok, minlength=len(ids))
+    if len(dur) != len(ids):          # the model dropped unknown symbols: give up on this one (fallback estimates)
+        return []
+    out, f, cur = [], 0, None
+    for k, w in enumerate(widx):
+        d = int(dur[k])
+        if w >= 0:
+            if cur is None or cur[0] != w:
+                cur = [w, f, f + d]
+                out.append(cur)
+            else:
+                cur[2] = f + d
+        f += d
+    return [((words[w] if w < len(words) else ""), s, e) for w, s, e in out]
+
+
+def _n_spoken(token: str) -> int:
+    """How many normalised words one display token expands to ("40" → "forty" = 1, "2.5" → 3)."""
+    from steertts_edge.text import to_phonemes
+    try:
+        _, widx, _ = to_phonemes(token)
+    except Exception:  # noqa: BLE001
+        return 1
+    return max([w for w in widx if w >= 0], default=-1) + 1
+
+
+def display_words(text: str) -> list[str]:
+    """The words a caption shows: the sentence without Steer markup, split on whitespace."""
+    return _MARK.sub("", text).split()
+
+
+def align_display(display: list[str], spoken: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Map spoken-word times onto display tokens. Each token takes as many spoken words as it normalises to; tokens
+    that say nothing (a lone dash) borrow the previous end. On any count mismatch, fall back to spreading the spoken
+    span proportionally to token length (still anchored on the model's real start and end)."""
+    if not display:
+        return []
+    if not spoken:
+        return []
+    counts = [_n_spoken(t) for t in display]
+    if sum(counts) == len(spoken):
+        out, k = [], 0
+        for c in counts:
+            if c == 0:
+                t = out[-1][1] if out else spoken[0][0]
+                out.append((t, t))
+            else:
+                out.append((spoken[k][0], spoken[k + c - 1][1]))
+                k += c
+        return out
+    t0, t1 = spoken[0][0], spoken[-1][1]
+    L = [max(1, len(re.sub(r"\W", "", t))) for t in display]
+    tot, acc, out = sum(L), 0, []
+    for n in L:
+        a = t0 + (t1 - t0) * acc / tot
+        acc += n
+        out.append((a, t0 + (t1 - t0) * acc / tot))
+    return out
+
+
+def words_header(times: list[tuple[float, float]]) -> str:
+    """Compact ASCII header: 'start-end' in ms per display word, comma separated."""
+    return ",".join(f"{round(a * 1000)}-{round(b * 1000)}" for a, b in times)
+
+
 def render(req: TTSRequest) -> tuple[np.ndarray, dict]:
     tts = STATE["tts"]
     voice = req.voice or tts.default_voice
@@ -148,6 +253,8 @@ def render(req: TTSRequest) -> tuple[np.ndarray, dict]:
     sentences = split_sentences(text) or [text]
     pl = plans(req, sentences)
     chunks, used, pause_ms = [], [], 0
+    _install_capture(tts)
+    spoken: list[tuple[float, float]] = []
     with STATE["lock"]:   # one render at a time: ONNX sessions are shared and the CPU is the bottleneck anyway
         for i, (s, (dc, gap)) in enumerate(zip(sentences, pl)):
             c = {**{k: v for k, v in dc.items() if k not in ctrl}, **ctrl}   # explicit controls win per key
@@ -155,7 +262,15 @@ def render(req: TTSRequest) -> tuple[np.ndarray, dict]:
             kw = {"voice": voice, "tag": req.tag, "ctrl": c or None, "markup": req.markup}
             if req.guidance is not None:
                 kw["guidance"] = req.guidance
+            if req.pace != 1.0:
+                kw["pace"] = req.pace
+            off = sum(len(x) for x in chunks) / SR
+            tts._timing_cap.clear()
             chunks.append(np.asarray(tts(s, **kw), np.float32))
+            for seg in list(tts._timing_cap):          # one entry per markup segment, in order
+                for _, a, b in _word_frames(seg["text"], seg.get("tok")):
+                    spoken.append((off + a * HOP_S, off + b * HOP_S))
+                off += seg.get("n", 0) / SR
             last = i == len(sentences) - 1
             pause_ms = min(gap, MAX_PAUSE_MS) if (not last or (req.perform and req.perform.next)) else 0
             if pause_ms and not last:
@@ -163,8 +278,9 @@ def render(req: TTSRequest) -> tuple[np.ndarray, dict]:
     audio = np.concatenate(chunks)
     if req.perform and req.perform.next and pause_ms:     # the floor plays sentence by sentence: leave the gap here
         audio = np.concatenate([audio, np.zeros(int(SR * pause_ms / 1000), np.float32)])
+    words = align_display(display_words(text), spoken)
     return audio, {"voice": voice, "tag": req.tag, "ctrl": used[0] if len(used) == 1 else used, "pause_ms": pause_ms,
-                   "sentences": len(sentences)}
+                   "sentences": len(sentences), "words": words}
 
 
 @router.post("/v1/tts")
@@ -185,7 +301,9 @@ async def tts_route(req: TTSRequest):
         "X-Steer-Voice": info["voice"], "X-Steer-Tag": info["tag"],
         "X-Steer-Ctrl": ",".join(f"{k}={v:.2f}" for k, v in ctrl.items()),
         "X-Steer-Ms": f"{ms:.0f}", "X-Steer-RTF": f"{ms / 1000 / max(dur, 1e-3):.3f}",
-        "X-Steer-Pause-Ms": str(info["pause_ms"]), "X-Steer-Sentences": str(info["sentences"])})
+        "X-Steer-Pause-Ms": str(info["pause_ms"]), "X-Steer-Sentences": str(info["sentences"]),
+        "X-Steer-Pace": f"{req.pace:.2f}", "X-Steer-Words": words_header(info["words"]),
+        "Access-Control-Expose-Headers": "X-Steer-Words"})
 
 
 @router.get("/v1/tts/voices")
