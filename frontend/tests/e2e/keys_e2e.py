@@ -49,6 +49,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:5297")
     ap.add_argument("--shots", default="", help="save focus-state screenshots (small JPEGs) here")
+    ap.add_argument("--start", choices=["home", "mission"], default="home", help="mission: a qualified cadet, from the site picker (quick runs)")
     a = ap.parse_args()
     base = a.base.rstrip("/")
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
@@ -60,6 +61,8 @@ def main():
         # a fresh cadet; count trusted pointer events (there must be none)
         ctx.add_init_script("""try { if (!sessionStorage.getItem('keys-e2e')) { localStorage.clear(); sessionStorage.setItem('keys-e2e', '1'); } } catch (e) {}
           window.__ptr = 0; ['pointerdown', 'mousedown', 'click'].forEach(t => addEventListener(t, e => { if (e.isTrusted && e.detail !== 0 && e.pointerId !== 77) window.__ptr++; }, true));""")
+        if a.start == "mission":
+            ctx.add_init_script("""try { localStorage.setItem('outpost-callsign', 'Nova'); localStorage.setItem('atm-academy', JSON.stringify({badges: ['scout','history','radio','sun','storm','ice','commander'], qualified: true})); } catch (e) {}""")
         pg = ctx.new_page()
         pg.on("console", lambda m: m.type == "error" and not any(x in m.text for x in IGNORE) and errs.append(m.text))
         pg.on("pageerror", lambda e: errs.append(str(e)))
@@ -73,12 +76,17 @@ def main():
         js = pg.evaluate
 
         def until(expr, timeout=20000, what=""):
-            try:
-                pg.wait_for_function(expr, timeout=timeout)
-                return True
-            except Exception:
-                print("  timeout:", what or expr, act())
-                return False
+            # polled from Python: wait_for_function starves while two WebGL scenes render (the check ride)
+            end = time.time() + timeout / 1000
+            while time.time() < end:
+                try:
+                    if js(expr):
+                        return True
+                except Exception:
+                    pass
+                pg.wait_for_timeout(250)
+            print("  timeout:", what or expr, act())
+            return False
 
         def shot(name):
             if a.shots:
@@ -95,131 +103,143 @@ def main():
                         return True
             return js(cond)
 
-        # ---------------- home: call sign ----------------
-        pg.goto(base + "/")
-        until("() => !!document.getElementById('aCsForm')", 25000, "home")
-        pg.wait_for_timeout(1200)
-        press("ArrowDown")
-        ok(act()["id"] == "aCsGo", "home: the first arrow lands on Start (the screen's primary action)")
-        ok(js("() => document.documentElement.dataset.input") == "keys", "home: keyboard mode (TV focus ring, key hints)")
-        shot("01-home-start")
-        press("ArrowUp")
-        ok("a-csb" in act()["cls"], "home: Up reaches the call-sign chips")
-        press("2")
-        ok(js("() => document.querySelector('.a-csb[aria-pressed=true]') === document.querySelectorAll('.a-csb')[1]"), "home: 2 picks the second call sign")
-        press("/")
-        ok(act()["id"] == "aCsIn", "home: / focuses the call-sign field")
-        kb.type("Nova")
-        press("m", 100)   # a letter types while typing
-        press("Backspace", 100)
-        ok(js("() => document.getElementById('aCsIn').value") == "Nova", "home: letters and Backspace type in the field (M, Backspace aren't shortcuts there)")
-        press("Enter", 1500)
-        ok(until("() => !!document.querySelector('.mp-card')", 20000), "home: Enter in the field saves the call sign → Moon map")
+        if a.start == "home":
+            # ---------------- home: call sign ----------------
+            pg.goto(base + "/")
+            until("() => !!document.getElementById('aCsForm')", 25000, "home")
+            pg.wait_for_timeout(1200)
+            press("ArrowDown")
+            ok(act()["id"] == "aCsGo", "home: the first arrow lands on Start (the screen's primary action)")
+            ok(js("() => document.documentElement.dataset.input") == "keys", "home: keyboard mode (TV focus ring, key hints)")
+            shot("01-home-start")
+            press("ArrowUp")
+            ok("a-csb" in act()["cls"], "home: Up reaches the call-sign chips")
+            press("2")
+            ok(js("() => document.querySelector('.a-csb[aria-pressed=true]') === document.querySelectorAll('.a-csb')[1]"), "home: 2 picks the second call sign")
+            press("/")
+            ok(act()["id"] == "aCsIn", "home: / focuses the call-sign field")
+            kb.type("Nova")
+            press("m", 100)   # a letter types while typing
+            press("Backspace", 100)
+            ok(js("() => document.getElementById('aCsIn').value") == "Nova", "home: letters and Backspace type in the field (M, Backspace aren't shortcuts there)")
+            press("Enter", 1500)
+            ok(until("() => !!document.querySelector('.mp-card')", 20000), "home: Enter in the field saves the call sign → Moon map")
 
-        # ---------------- the Moon map: pins ----------------
-        until("() => document.activeElement && document.activeElement.id === 'aStart'", 6000, "map primary")
-        ok(act()["id"] == "aStart", "map: focus lands on Start (Next up)")
-        press("ArrowUp", 900)
-        pin = act()
-        ok("pin" in pin["cls"], f"map: Up moves onto a lesson pin ({pin['label'][:30]})")
-        press_until(["ArrowDown", "ArrowLeft"], "() => document.activeElement.classList.contains('pin') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=3)
-        pin2 = act()
-        ok("pin" in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically")
-        shot("02-map-pin")
-        press("Enter", 1200)
-        ok(until("() => document.querySelector('#aStart') && document.querySelector('#aStart').dataset.l === %s" % json.dumps(pin2["l"]), 8000), "map: Enter on a pin selects it (the card shows that lesson)")
-        until("() => document.activeElement && document.activeElement.dataset && document.activeElement.dataset.l", 4000, "pin refocus")
-        ok(act()["l"] == pin2["l"], "map: focus stays on the same pin after the map re-renders")
+            # ---------------- the Moon map: pins ----------------
+            until("() => document.activeElement && document.activeElement.id === 'aStart'", 6000, "map primary")
+            ok(act()["id"] == "aStart", "map: focus lands on Start (Next up)")
+            press("ArrowUp", 900)
+            pin = act()
+            ok("pin" in pin["cls"], f"map: Up moves onto a lesson pin ({pin['label'][:30]})")
+            press_until(["ArrowDown", "ArrowLeft"], "() => document.activeElement.classList.contains('pin') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=3)
+            pin2 = act()
+            ok("pin" in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically")
+            shot("02-map-pin")
+            press("Enter", 1200)
+            ok(until("() => document.querySelector('#aStart') && document.querySelector('#aStart').dataset.l === %s" % json.dumps(pin2["l"]), 8000), "map: Enter on a pin selects it (the card shows that lesson)")
+            until("() => document.activeElement && document.activeElement.dataset && document.activeElement.dataset.l", 4000, "pin refocus")
+            ok(act()["l"] == pin2["l"], "map: focus stays on the same pin after the map re-renders")
 
-        # ---------------- every lesson, keyboard only ----------------
-        def visible_q(sel):
-            return js("s => { const e = document.querySelector(s); return !!(e && !e.hidden && e.getClientRects().length && !e.closest('[hidden]')); }", sel)
+            # ---------------- every lesson, keyboard only ----------------
+            def visible_q(sel):
+                return js("s => { const e = document.querySelector(s); return !!(e && !e.hidden && e.getClientRects().length && !e.closest('[hidden]')); }", sel)
 
-        def done_q():
-            return js("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge') || document.querySelector('#aRetry'))")
+            def done_q():
+                return js("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge') || document.querySelector('#aRetry'))")
 
-        def answer(L, k, st):
-            acc = st["accept"]
-            t = acc["type"]
-            opts = [o["id"] for o in acc.get("options", [])]
-            want = acc.get("answer") or acc.get("want")
-            if t == "choice":
-                press("abcd"[opts.index(want)], 200)
-                return "letter"
-            if t in ("predict", "earth_view", "compare") and opts:
-                press(str((opts.index(want) if want in opts else 0) + 1), 200)
-                return "digit"
-            if t == "globe_side":
-                press("2" if want == "far" else "1", 200)
-                return "digit"
-            if t in ("intent", "tap", "terminator", "route"):
-                ok(act()["id"] == "moonFocus", f"{L['id']} step {k + 1} ({t}): focus is on the Moon reticle")
-                taps = len(acc.get("stops") or []) or 1
-                for attempt in range(5):
-                    press(["ArrowRight", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"][attempt], 1500)
-                    if attempt == 1 and t == "terminator":
-                        press("Shift+ArrowLeft", 300)
-                        press("Shift+ArrowLeft", 600)
-                    for _ in range(taps):
+            def answer(L, k, st):
+                acc = st["accept"]
+                t = acc["type"]
+                opts = [o["id"] for o in acc.get("options", [])]
+                want = acc.get("answer") or acc.get("want")
+                if t == "choice":
+                    press("abcd"[opts.index(want)], 200)
+                    return "letter"
+                if t in ("predict", "earth_view", "compare") and opts:
+                    press(str((opts.index(want) if want in opts else 0) + 1), 200)
+                    return "digit"
+                if t == "globe_side":
+                    press("2" if want == "far" else "1", 200)
+                    return "digit"
+                if t in ("intent", "tap", "terminator", "route"):
+                    ok(act()["id"] == "moonFocus", f"{L['id']} step {k + 1} ({t}): focus is on the Moon reticle")
+                    taps = len(acc.get("stops") or []) or 1
+                    for attempt in range(5):
+                        press(["ArrowRight", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"][attempt], 1500)
+                        if attempt == 1 and t == "terminator":
+                            press("Shift+ArrowLeft", 300)
+                            press("Shift+ArrowLeft", 600)
+                        for _ in range(taps):
+                            if done_q():
+                                break
+                            press("Enter", 1200)
+                        pg.wait_for_timeout(1800)
                         if done_q():
                             break
-                        press("Enter", 1200)
-                    pg.wait_for_timeout(1800)
-                    if done_q():
-                        break
-                return "moon"
-            if t == "command" and answer_for(st, vocab=_Vocab()) in ORDERS and visible_q(".a-order"):
-                press(str(ORDERS.index(answer_for(st, vocab=_Vocab())) + 1), 200)
-                return "order"
-            press("/", 200)
-            ok(act()["id"] == "q", f"{L['id']} step {k + 1} ({t}): / opens the text box")
-            kb.type(answer_for(st, vocab=_Vocab()))
-            press("Enter", 300)
-            return "typed"
+                    return "moon"
+                if t == "command" and answer_for(st, vocab=_Vocab()) in ORDERS and visible_q(".a-order"):
+                    press(str(ORDERS.index(answer_for(st, vocab=_Vocab())) + 1), 200)
+                    return "order"
+                press("/", 200)
+                ok(until("() => document.activeElement && document.activeElement.id === 'q'", 6000, "q focus"), f"{L['id']} step {k + 1} ({t}): / opens the text box")
+                kb.type(answer_for(st, vocab=_Vocab()))
+                press("Enter", 300)
+                return "typed"
 
-        lesson_shots = set()
-        for li, L in enumerate(COURSE["lessons"]):
-            if li == 0:
-                press("n", 1500)   # N on the map: start the next lesson
-            ok(until("() => !!document.querySelector('#aInput')", 20000), f"{L['id']}: lesson opens")
-            for k, st in enumerate(L["steps"]):
-                pg.wait_for_timeout(900)
-                t = st["accept"]["type"]
-                for tries in range(3):
-                    how = answer(L, k, st)
-                    if until("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge') || document.querySelector('#aRetry'))", 25000, f"{L['id']} {k + 1} {t}"):
-                        break
-                    pg.wait_for_timeout(800)
-                if js("() => !!document.querySelector('#aRetry')"):   # the check ride ended without passing: fly it again
-                    ok(False, f"{L['id']}: the check ride failed by keyboard")
-                ok(done_q(), f"{L['id']} step {k + 1} ({t}) answered by keyboard ({how})")
-                if t not in lesson_shots and a.shots and js("() => !!document.querySelector('#aNext')"):
-                    lesson_shots.add(t)
-                    if t in ("choice", "route", "command", "keywords"):
-                        shot(f"03-lesson-{t}-next")
-                if js("() => !!document.querySelector('#aNext')"):
-                    until("() => document.activeElement && document.activeElement.id === 'aNext'", 4000, "next focus")
-                    ok(act()["id"] in ("aNext", "q"), f"{L['id']} step {k + 1}: focus is on Next")
-                    press("Enter" if act()["id"] == "aNext" else "Escape", 300)
-                    if act()["id"] != "aNext" and js("() => !!document.querySelector('#aNext')"):
-                        press("Enter", 300)
+            lesson_shots = set()
+            for li, L in enumerate(COURSE["lessons"]):
+                if li == 0:
+                    press("n", 1500)   # N on the map: start the next lesson
+                ok(until("() => !!document.querySelector('#aInput')", 20000), f"{L['id']}: lesson opens")
+                for k, st in enumerate(L["steps"]):
                     pg.wait_for_timeout(900)
-            ok(until("() => !!document.querySelector('.a-badge')", 20000), f"{L['id']}: patch earned")
-            if li == 0:
-                shot("04-patch")
-                press("Escape", 1500)
-                ok(until("() => !!document.querySelector('.mp-card')", 10000), "patch: Esc goes back to the map")
-                press("n", 1500)
-                continue
-            if li < len(COURSE["lessons"]) - 1:
-                ok(act()["id"] in ("aNextLesson", "aMap"), "patch: focus is on Next lesson")
-                press("y" if li % 2 else "n", 1500)   # Y takes the offer; N is next
-            if li == 1:   # a Moon step screenshot on lesson 3's compare step comes later; here: the ride below
-                pass
+                    t = st["accept"]["type"]
+                    ride = bool(L.get("ride"))
+                    for tries in range(3):
+                        how = answer(L, k, st)
+                        if until("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge') || document.querySelector('#aRetry'))", 60000 if ride else 25000, f"{L['id']} {k + 1} {t}"):
+                            break
+                        # the ride moves on by itself after misses: never answer a step twice once it has moved
+                        if ride and js("() => [...document.querySelectorAll('.a-steps i')].findIndex(e => e.classList.contains('is-now'))") != k:
+                            break
+                        pg.wait_for_timeout(800)
+                    if js("() => !!document.querySelector('#aRetry')"):   # the check ride ended without passing: fly it again
+                        ok(False, f"{L['id']}: the check ride failed by keyboard")
+                    ok(done_q(), f"{L['id']} step {k + 1} ({t}) answered by keyboard ({how})")
+                    if t not in lesson_shots and a.shots and js("() => !!document.querySelector('#aNext')"):
+                        lesson_shots.add(t)
+                        if t in ("choice", "route", "command", "keywords"):
+                            shot(f"03-lesson-{t}-next")
+                    last = k == len(L["steps"]) - 1
+                    if last:
+                        until("() => !!document.querySelector('.a-badge')", 8000, "badge")
+                    if not last and js("() => !!document.querySelector('#aNext')"):
+                        until("() => document.activeElement && document.activeElement.id === 'aNext'", 4000, "next focus")
+                        ok(act()["id"] in ("aNext", "q"), f"{L['id']} step {k + 1}: focus is on Next")
+                        press("Enter" if act()["id"] == "aNext" else "Escape", 300)
+                        if act()["id"] != "aNext" and js("() => !!document.querySelector('#aNext')"):
+                            press("Enter", 300)
+                        pg.wait_for_timeout(900)
+                ok(until("() => !!document.querySelector('.a-badge')", 20000), f"{L['id']}: patch earned")
+                if li == 0:
+                    shot("04-patch")
+                    press("Escape", 1500)
+                    ok(until("() => !!document.querySelector('.mp-card')", 10000), "patch: Esc goes back to the map")
+                    press("n", 1500)
+                    continue
+                if li < len(COURSE["lessons"]) - 1:
+                    ok(act()["id"] in ("aNextLesson", "aMap"), "patch: focus is on Next lesson")
+                    press("y" if li % 2 else "n", 1500)   # Y takes the offer; N is next
+                if li == 1:   # a Moon step screenshot on lesson 3's compare step comes later; here: the ride below
+                    pass
 
-        # ---------------- qualified → Mission ----------------
-        ok(until("() => document.activeElement && document.activeElement.id === 'aGoMission'", 8000), "qualified: focus is on Take command")
-        press("Enter", 2500)
+            # ---------------- qualified → Mission ----------------
+            ok(until("() => document.activeElement && document.activeElement.id === 'aGoMission'", 8000), "qualified: focus is on Take command")
+            press("Enter", 2500)
+        else:
+            pg.goto(base + "/")
+            pg.wait_for_timeout(2500)
+            press("ArrowDown", 600)
         ok(until("() => document.body.dataset.mode === 'mission' && !!document.getElementById('mStart')", 20000), "qualified: Enter → the site picker")
         until("() => document.activeElement && document.activeElement.id === 'mStart'", 5000, "picker primary")
         ok(act()["id"] == "mStart", "picker: focus lands on Take command")
@@ -229,8 +249,10 @@ def main():
         press("p", 900)
         ok(js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site") == site0, "picker: P picks the previous site")
         ok(press_until(["ArrowUp"], "() => document.activeElement.classList.contains('mx-site')", n=4), "picker: Up reaches the site rows")
-        press("ArrowUp", 900)
-        ok(js("() => document.activeElement.classList.contains('mx-site') && document.activeElement.getAttribute('aria-checked') === 'true'"), "picker: Up / Down walk the rows (the focused row is picked)")
+        r0 = js("() => [...document.querySelectorAll('.mx-site')].indexOf(document.activeElement)")
+        press("ArrowUp" if r0 > 0 else "ArrowDown", 900)
+        ok(js("() => document.activeElement.classList.contains('mx-site') && document.activeElement.getAttribute('aria-checked') === 'true'")
+           and js("() => [...document.querySelectorAll('.mx-site')].indexOf(document.activeElement)") != r0, "picker: Up / Down walk the rows (the focused row is picked)")
         shot("05-picker")
         press("y", 3000)
         ok(until("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000), "picker: Y takes command → the 3D cabin")
@@ -238,13 +260,6 @@ def main():
         # ---------------- the cabin ----------------
         until("() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000, "seat focus")
         ok(act()["id"] == "seatFocus", "seat: focus is on a console panel")
-        seen = {act()["panel"]}
-        for k in ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowDown"]:
-            press(k, 400)
-            if act()["id"] == "seatFocus":
-                seen.add(act()["panel"])
-        ok(len(seen) >= 4, f"seat: arrows light the panels ({', '.join(sorted(seen))})")
-        ok(js("() => !!document.querySelector('#mCabin .c3-panel.is-hl')"), "seat: the focused panel is lit (.is-hl)")
 
         def seat_to(panel):
             for k in ["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"] * 4:
@@ -276,6 +291,12 @@ def main():
         def in_panel_to(cond, n=10):
             return press_until(["ArrowDown", "ArrowRight"], cond, n=n, ms=350) or press_until(["ArrowUp", "ArrowLeft"], cond, n=n, ms=350)
 
+        seen = {act()["panel"]}
+        for target in ["radiation", "comm", "rover", "pedestal"]:
+            if seat_to(target):
+                seen.add(target)
+        ok(len(seen) >= 5, f"seat: arrows light the panels ({', '.join(sorted(seen))})")
+        ok(js("() => !!document.querySelector('#mCabin .c3-panel.is-hl')"), "seat: the focused panel is lit (.is-hl)")
         ok(seat_to("habitat"), "seat: reach the Habitat panel")
         shot("06-cabin-seat")
         press("Enter", 1300)
@@ -298,10 +319,10 @@ def main():
         ok(in_panel_to("() => document.activeElement.id === 'cbKnob'"), "panel: arrows reach the shield knob")
         k0 = js("() => +document.getElementById('cbKnob').getAttribute('aria-valuenow')")
         press("ArrowRight", 2500)
-        ok(until("() => +document.getElementById('cbKnob').getAttribute('aria-valuenow') > %d" % k0, 10000), "panel: Right turns the shield knob up (Left / Right adjust)")
+        ok(until("() => +document.getElementById('cbKnob').getAttribute('aria-valuenow') !== %d" % k0, 10000), "panel: Right turns the shield knob (Left / Right adjust)")
         shot("07-cabin-knob")
-        press("ArrowDown", 400)
-        ok(act()["id"] != "cbKnob", "panel: Down leaves the knob")
+        press("ArrowUp", 400)
+        ok(act()["id"] != "cbKnob", "panel: Up leaves the knob (Up / Down never turn it)")
         press("Backspace", 1300)
         ok(act()["cabin"] == "seat", "panel: Backspace also goes back to the seat")
 

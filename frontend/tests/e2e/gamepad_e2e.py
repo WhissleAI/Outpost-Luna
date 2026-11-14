@@ -131,8 +131,8 @@ def main():
         ok(js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site") != s0, "picker: RB picks the next site")
         tap(LB, 900)
         tap(A, 4000)
-        pg.wait_for_function("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", timeout=30000)
-        pg.wait_for_function("() => document.activeElement && document.activeElement.id === 'seatFocus'", timeout=8000)
+        pg.wait_for_function("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", timeout=30000, polling=250)
+        pg.wait_for_function("() => document.activeElement && document.activeElement.id === 'seatFocus'", timeout=8000, polling=250)
         ok(act()["id"] == "seatFocus", "cabin: A took command; focus on a console panel")
         p0 = act()["panel"]
         tap(LEFT, 600)
