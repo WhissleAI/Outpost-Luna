@@ -1,6 +1,6 @@
 {
  "generated_by": "backend/tools/voice_curate.py (docs/VOICES.md)",
- "default": "voice_0644",
+ "default": "voice_1085",
  "score_lines": [
   "Good morning, Commander! The rover found ice near the south pole crater.",
   "Set the shields to forty percent, then check the battery before the storm."
@@ -11,6 +11,46 @@
  "candidates": 38,
  "clear": 33,
  "voices": [
+  {
+   "id": "voice_1085",
+   "name": "Aurora",
+   "desc": "Crisp, clear voice that cuts noise.",
+   "profile": {
+    "gender": "female",
+    "register": "low",
+    "pace": "fast",
+    "catalog_f0_hz": 136.2
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.0,
+    "rms_dbfs": -24.25,
+    "peak_dbfs": -10.1,
+    "clip_pct": 0.0,
+    "dur_s": 8.68,
+    "words_per_s": 2.88,
+    "f0_med_hz": 161.8,
+    "f0_iqr_st": 4.87,
+    "f0_range_st": 9.44
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.39,
+     "tp_dbtp": -10.09,
+     "wps": 2.94,
+     "wer": 0.0,
+     "wer_noisy": 0.0
+    },
+    "after": {
+     "lufs": -14.1,
+     "tp_dbtp": -1.37,
+     "wps": 3.58,
+     "wer": 0.0,
+     "wer_noisy": 0.12
+    }
+   }
+  },
   {
    "id": "voice_0644",
    "name": "Beacon",
@@ -374,50 +414,10 @@
      "wer_noisy": 0.2
     }
    }
-  },
-  {
-   "id": "voice_1085",
-   "name": "Aurora",
-   "desc": "Crisp, clear voice that cuts noise.",
-   "profile": {
-    "gender": "female",
-    "register": "low",
-    "pace": "fast",
-    "catalog_f0_hz": 136.2
-   },
-   "scores": {
-    "wer": 0.0,
-    "wer_noisy": 0.0,
-    "rms_dbfs": -24.25,
-    "peak_dbfs": -10.1,
-    "clip_pct": 0.0,
-    "dur_s": 8.68,
-    "words_per_s": 2.88,
-    "f0_med_hz": 161.8,
-    "f0_iqr_st": 4.87,
-    "f0_range_st": 9.44
-   },
-   "clear": true,
-   "calibration": {
-    "before": {
-     "lufs": -25.39,
-     "tp_dbtp": -10.09,
-     "wps": 2.94,
-     "wer": 0.0,
-     "wer_noisy": 0.0
-    },
-    "after": {
-     "lufs": -14.1,
-     "tp_dbtp": -1.37,
-     "wps": 3.58,
-     "wer": 0.0,
-     "wer_noisy": 0.12
-    }
-   }
   }
  ],
  "calibration": {
-  "pipeline": "/api/tts: delivery baseline (rate +1.0, pause -1.5, loud +0.4 z) + gap cap 0.25 s + -14 LUFS master, -1 dBTP limiter (docs/VOICE_STEERING.md \u00a74d)",
+  "pipeline": "/api/tts: delivery baseline (rate +1.0, pause -1.5, loud +0.4 z) + gap cap 0.25 s + -14 LUFS master, -1 dBTP limiter (docs/VOICE_STEERING.md §4d)",
   "tool": "backend/tools/voice_calibrate.py"
  }
 }

@@ -19,7 +19,7 @@ import re
 
 # Persona -> Steer voice (voices.json of WhissleAI/steer-tts-edge; why each, in docs/VOICE_STEERING.md).
 VOICES: dict[str, str] = {
-    "guide": "voice_0644",     # female, mid register, average pace (195 Hz): warm, clear explainer
+    "guide": "voice_1085",     # Aurora: crisp, clearest in noise (Arc-ear WER 0.00 clean / 0.12 noisy); owner choice 2026-11-13. Beacon (voice_0644) stays selectable.
     "capcom": "voice_0213",    # male, mid register, fast pace (118 Hz): crisp mission control
     "story": "voice_0602",     # male, high register, slow pace (196 Hz): distinct first-person hardware voice
     "houston": "voice_0272",   # male, low register, average pace (109 Hz): Earth on the radio, "Houston here"
