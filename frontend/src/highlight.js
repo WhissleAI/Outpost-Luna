@@ -8,6 +8,7 @@
 //   resource  mission resources (power, life support, dose, shields, …)   double underline
 // Sources: the glossary and places from the backend, plus the Arc Tagger read-out spans (`readout.mentions`,
 // `readout.numbers`) of the latest answer.
+import { icon } from "./assets/icons.js";
 
 // ---------- pure helpers (tests/a11y.test.js) ----------
 
@@ -88,9 +89,11 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
 
   function markEl(el) {
     const text = el.textContent;
-    if (!text || el.dataset.hlText === text) return;
+    // [qa] the card re-renders the same text (a late "Hear the crew" button): mark it again if the marks were wiped
+    if (!text || (el.dataset.hlText === text && (el.querySelector(".hl") || el.dataset.hlNone === "1"))) return;
     const parts = tokenize(text, m);
-    if (!parts.some(p => p.kind)) { el.dataset.hlText = text; return; }
+    if (!parts.some(p => p.kind)) { el.dataset.hlText = text; el.dataset.hlNone = "1"; if (el.id === "cardSay") chips(el, parts); return; }   // [qa] no stale chips
+    el.dataset.hlNone = "";
     if (el.children.length && !el.querySelector(".hl")) {       // has structure (links, buttons): only mark text nodes
       markTextNodes(el); el.dataset.hlText = el.textContent; return;
     }
@@ -127,7 +130,7 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
     box.innerHTML = ""; box.hidden = !items.length;
     items.forEach(p => {
       const b = document.createElement("button"); b.type = "button"; b.className = `hl-chip hl-chip-${p.kind}`;
-      b.textContent = p.kind === "term" ? `? ${p.ref}` : `⌖ ${p.text}`; b.dataset.kind = p.kind; b.dataset.ref = p.ref;
+      b.innerHTML = icon(p.kind === "term" ? "info" : "place", { size: 14 }) + " "; b.append(p.kind === "term" ? p.ref : p.text);   // [qa] icons, not glyphs b.dataset.kind = p.kind; b.dataset.ref = p.ref;
       b.setAttribute("aria-label", p.kind === "term" ? `What does ${p.ref} mean?` : `Fly to ${p.text}`);
       box.append(b);
     });
@@ -164,7 +167,7 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
       <h3 id="hlCardTitle">${escH(t.term)}</h3><p>${escH(t.explain)}</p>
       ${src.url ? `<p class="hl-src">Heard in: <a href="${escH(src.url)}" target="_blank" rel="noopener">${escH(src.title)}</a></p>` : ""}
       <div class="hl-acts"><button type="button" class="pill hot" data-hear>Hear it</button>
-      ${src.clip_id ? `<button type="button" class="pill" data-crew>▶ Hear the crew say it</button>` : ""}</div>`;
+      ${src.clip_id ? `<button type="button" class="pill" data-crew>Hear the crew</button>` : ""}</div>`;
     cardEl.hidden = false;
     cardEl.querySelector("[data-x]").onclick = closeCard;
     cardEl.querySelector("[data-hear]").onclick = () => say && say(`${t.term}. ${t.explain}`, { situation: "vocab", vocab: [t.term] });

@@ -23,11 +23,12 @@ export const SITES = [
     notes: "", sources: [{ title: "NASA: candidate landing regions", url: ARTEMIS }, { title: "JPL Horizons", url: HORIZONS }] },
 ];
 
+// [qa] the same real DONKI events as backend/data/mission/donki_events.json (names and dates; no G-scale)
 const STORMS = [
-  { name: "Gannon solar storm, May 2024", real_date: "2024-05-10", severity: 3 },
-  { name: "X9 solar flare, October 2024", real_date: "2024-10-03", severity: 2 },
-  { name: "Halloween storms, October 2003", real_date: "2003-10-28", severity: 3 },
-  { name: "Solar storm, September 2017", real_date: "2017-09-10", severity: 2 },
+  { name: "Real solar particle storm, 2024-05-09 (huge auroras on Earth)", real_date: "2024-05-09", severity: 3 },
+  { name: "Real solar particle storm, 2024-10-09 (huge auroras on Earth)", real_date: "2024-10-09", severity: 2 },
+  { name: "Real solar particle storm, 2017-09-04 (huge auroras on Earth)", real_date: "2017-09-04", severity: 3 },
+  { name: "Real solar particle storm, 2024-09-17", real_date: "2024-09-17", severity: 2 },
 ];
 
 const LOADS = ["shields", "life_support", "greenhouse", "science", "rover", "comms", "heaters"];
