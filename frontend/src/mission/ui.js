@@ -6,7 +6,7 @@ import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
 import { createTerrainView } from "./terrain.js";
 import "./mission.css";
-import { callSign, CAPCOM, callbackLine, CALLBACKS, LESSON_STORY, DEBRIEF, FRAMING } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
   ["rover", "Rover"], ["comms", "Comms"], ["heaters", "Heaters"]];
@@ -134,6 +134,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** The site picker: five real south-pole sites, three numbers each, one primary action. */
   function briefing() {
     screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide();
+    globe.setViewport(.68);   // lift the south pole off the comm strip: the pins sit in the open sky-side of the stage
     if (!site) site = sites[0];
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
@@ -185,7 +186,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
   function previewSite() {
     if (!site) return;
-    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 1.55 });
+    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.0 });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
   }
 
@@ -420,7 +421,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}
-        <button class="mx-x" id="mDbClose" type="button" aria-label="${paused ? "Back to the mission" : "Close"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
+        <button class="mx-x" id="mDbClose" type="button" aria-label="${esc(DEBRIEF.close)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
       <div class="mx-db-top">
         <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
         <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div></dl>
@@ -437,9 +438,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
-    const line = cs => `${head}. Nice flying, ${cs}.${paused ? "" : ` Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`}`;
-    // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer).
-    radio("capcom", line(callSign.shown())); say(line(callSign.spoken()) + " Want to fly again? Say fly again.");
+    const line = cs => `${head}. ${DEBRIEF.grade(cs, d.grade, Math.round(d.score || 0))}`;
+    // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer). A typed name is never spoken.
+    radio("capcom", line(callSign.shown())); say(`${line(callSign.spoken())} ${OFFER.flyAgain}`);
   }
 
   /** Shift-by-shift lines: power %, life support %, dose as % of the limit (one 0-100 axis); storm shifts shaded. */

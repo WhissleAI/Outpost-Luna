@@ -103,7 +103,8 @@ body:has(.mpanel.mx-brief:not([hidden])) .m-shade,body:has(.m-debrief.mx-debrief
 body:has(.mpanel.mx-brief:not([hidden])) .mmark.is-earth{display:none}
 /* debrief: the sheet sits above the comm strip and its caption line, which then span the stage */
 body:has(.m-debrief.mx-debrief:not([hidden])) .stage{--panel-w:0px}
-.m-debrief.mx-debrief{top:calc((100% - var(--dock-h) - 72px) / 2 + var(--space-4));max-height:calc(100% - var(--dock-h) - 72px)}
+/* reserve: the comm strip (60px) + a two-line caption block + gutters */
+.m-debrief.mx-debrief{--mx-reserve:168px;top:calc((100% - var(--mx-reserve)) / 2 + var(--space-4));max-height:calc(100% - var(--mx-reserve))}
 
 /* ---------- Moon-first: glass panels over the globe; the five sites are pins on the south pole ---------- */
 .mpanel.mx-brief,.m-debrief.mx-debrief{background:var(--color-glass);color:var(--color-on-space);border-color:var(--color-glass-line);

@@ -225,7 +225,7 @@
 .cb-caption b,.cb-capslot .caption-bar .cap-who{flex:none;font-family:var(--font-ui);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-phosphor-dim);padding-top:0;min-width:0}
 html:not([data-captions="off"]) .cb-capwrap:has(.caption-bar:not([hidden])) .cb-caption{display:none}
 .cb-capslot{display:contents}
-.cb-capslot .caption-bar{position:static;border:0;pointer-events:auto;line-height:var(--leading-snug)}
+.cb-capslot .caption-bar{position:static;transform:none;left:auto;bottom:auto;width:auto;max-width:none;border:0;pointer-events:auto;line-height:var(--leading-snug);align-items:center}
 .cb-capslot .caption-bar[hidden]{display:none}
 .cb-capslot .caption-bar .cap-line{max-height:2.7em;overflow:hidden;color:var(--color-phosphor);font-size:var(--text-sm)}
 .cb-capslot .caption-bar .cap-speed{color:var(--color-phosphor-dim);padding-top:0}
