@@ -86,12 +86,12 @@ function bargeThresholds() {
   return BARGE[f] || BARGE.normal;
 }
 /** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen Steer voice
- *  (for the guide / CAPCOM, or every voice when "use for everyone" is on), the speed and the liveliness. */
+ *  (for the guide, or every voice when "use for everyone" is on), the speed and the liveliness. */
 export function prefStyle(style, voice, speed) {
   const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
   if (!P) return style;
   const out = { ...(style && typeof style === "object" ? style : {}) };
-  if (P.voice && (P.voice_all || voice === "guide" || voice === "capcom")) out.steer_voice = P.voice;
+  if (P.voice && (P.voice_all || voice === "guide")) out.steer_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
   return Object.keys(out).length ? out : style;

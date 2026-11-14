@@ -403,6 +403,47 @@ vocab_listen, vocab_say, patch.
 - patch
 - ride
 
+## Round 5: Library details, qualified map, high contrast + 150%, Settings on the backend
+
+### Critique (own)
+
+- **High contrast + 150% text:**
+  - The voice bar vanished off screen, because its left/top were multiplied by the CSS zoom.
+  - The lesson card was shrunk back to 400px, so the title wrapped onto 3 lines.
+- **Library:** the card, tour and Find-it were never shot. They read fine, but the answer card is long (the story
+  plus More plus sources).
+- **Settings → Voice:**
+  - It showed a made-up "CAPCOM" entry on top of the server's own default.
+  - The server's echo of the applied prefs was dropped by `session.js`, because "prefs" was not in its VISUAL set.
+- **Voice choice:** the chosen voice also changed CAPCOM. The contract says only the guide changes, unless
+  `voice_all` is on.
+
+### What changed
+
+- **Voice bar:** zoom-aware. It uses its on-screen size, and left/top are divided by the zoom.
+- **Lesson card at 150%:** grows with the text instead of being shrunk.
+- **Settings → Voice:**
+  - The server's 10 voices, with the first as the default, and ▶ previews.
+  - A "Use this voice for everyone" toggle.
+  - The server's `applied` echo shows as "In use: …".
+- **Client-spoken lines:** they carry `steer_voice` (guide only, unless `voice_all`), `speed` and `expr`.
+- **Barge-in:** the client thresholds follow the filter level, with a test.
+- **New states:** `library_card`, `library_find`, `library_tour`, `map_done`, `hc_lesson`.
+
+### Pending
+
+- **Steer recalibration** (feat/settings-be: −14 LUFS, faster baseline): re-check the speed labels, the
+  master-volume mapping and the crew gain against the numbers in `docs/VOICES.md` when it lands.
+- **Check ride:** the Mission ride API.
+
+### Screenshots
+
+`docs/img/ux/r5-*.jpg` (1280 light):
+- library_card, library_find, library_tour
+- map_done
+- hc_lesson (high contrast, 150%)
+- access (Settings · Voice with the server's voices)
+
 ## Router requests (for the hands-free owner)
 
 - **Done** (feat/router-v2): "move the voice bar to the top / bottom / left / right / top left / bottom right …",

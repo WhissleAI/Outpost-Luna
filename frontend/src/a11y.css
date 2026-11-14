@@ -113,7 +113,6 @@ html[data-text-scale="big"] .apanel,html[data-text-scale="big"] .mpanel,html[dat
 html[data-text-scale="big"] .caption-bar,html[data-text-scale="big"] .topbar,html[data-text-scale="big"] .hl-card,html[data-text-scale="big"] .a11y-panel,
 html[data-text-scale="big"] .nowplaying,html[data-text-scale="big"] .a11y-vbanner{zoom:var(--a11y-zoom,1)}
 html[data-text-scale="big"] .topbar{height:auto;min-height:var(--topbar-h)}
-html[data-text-scale="big"] .apanel.is-lesson,html[data-text-scale="big"] .apanel.is-badge{width:calc(var(--panel-w) / var(--a11y-zoom,1))}
 
 html[data-dyslexia="1"] body,html[data-dyslexia="1"] button,html[data-dyslexia="1"] input{font-family:"Atkinson Hyperlegible",var(--font-ui)!important;letter-spacing:.02em;word-spacing:.08em}
 html[data-dyslexia="1"] .cap-line,html[data-dyslexia="1"] .a-prompt,html[data-dyslexia="1"] .card-say{line-height:1.65}

@@ -40,14 +40,17 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   const docked = () => !!bar.closest("#cbAskSlot");
 
   /** Top-left (px, stage coordinates) of an anchor for the bar's current size. */
+  // real (on-screen) size, and the CSS zoom of Settings → Text size (left/top on a zoomed element are zoomed too)
+  const bw = () => bar.getBoundingClientRect().width, bh = () => bar.getBoundingClientRect().height;
+  const zoom = () => { const z = parseFloat(getComputedStyle(bar).zoom); return z > 0 ? z : 1; };
   function spot(a) {
-    const W = stage.clientWidth, H = stage.clientHeight, w = bar.offsetWidth, h = bar.offsetHeight;
+    const W = stage.clientWidth, H = stage.clientHeight, w = bw(), h = bh();
     const x = a[1] === "l" ? M : a[1] === "r" ? W - w - M : (W - w) / 2, y = a[0] === "t" ? M : H - h - M;
     return { x: Math.max(M, Math.min(W - w - M, x)), y: Math.max(M, Math.min(H - h - M, y)) };
   }
   function place(x, y, animate) {
     bar.classList.toggle("is-snapping", !!animate && !reduced());
-    bar.style.left = Math.round(x) + "px"; bar.style.top = Math.round(y) + "px";
+    const z = zoom(); bar.style.left = Math.round(x / z) + "px"; bar.style.top = Math.round(y / z) + "px";
   }
   /** What the bar must not cover on this screen. */
   function obstacles(a) {
@@ -59,7 +62,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   }
   const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
   function covers(a) {
-    const s = stage.getBoundingClientRect(), p = spot(a), r = { left: s.left + p.x, top: s.top + p.y, right: s.left + p.x + bar.offsetWidth, bottom: s.top + p.y + bar.offsetHeight };
+    const s = stage.getBoundingClientRect(), p = spot(a), r = { left: s.left + p.x, top: s.top + p.y, right: s.left + p.x + bw(), bottom: s.top + p.y + bh() };
     return obstacles(a).some(o => overlaps(r, o));
   }
   /** The anchor nearest to `want` that covers nothing (or `want` itself when everything is covered). */
@@ -79,8 +82,8 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     dispatchEvent(new CustomEvent("outpost:voicebar", { detail: { anchor: got, rect: bar.getBoundingClientRect() } }));   // e.g. the self-view picks another anchor
   }
   function nearest(x, y) {
-    const cx = x + bar.offsetWidth / 2, cy = y + bar.offsetHeight / 2;
-    return ANCHORS.map(a => { const p = spot(a); return [a, Math.hypot(p.x + bar.offsetWidth / 2 - cx, p.y + bar.offsetHeight / 2 - cy)]; }).sort((p, q) => p[1] - q[1])[0][0];
+    const cx = x + bw() / 2, cy = y + bh() / 2;
+    return ANCHORS.map(a => { const p = spot(a); return [a, Math.hypot(p.x + bw() / 2 - cx, p.y + bh() / 2 - cy)]; }).sort((p, q) => p[1] - q[1])[0][0];
   }
   // ---- cabin: docked in the comm row by default; moving it lifts it out onto the stage ----
   function undock() { if (docked()) stage.append(bar); }
@@ -102,7 +105,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   grip.addEventListener("pointermove", e => {
     if (!drag) return;
     const W = stage.clientWidth, H = stage.clientHeight;
-    const x = Math.max(M, Math.min(W - bar.offsetWidth - M, e.clientX - drag.s.left - drag.dx)), y = Math.max(M, Math.min(H - bar.offsetHeight - M, e.clientY - drag.s.top - drag.dy));
+    const x = Math.max(M, Math.min(W - bw() - M, e.clientX - drag.s.left - drag.dx)), y = Math.max(M, Math.min(H - bh() - M, e.clientY - drag.s.top - drag.dy));
     free = { x, y }; place(x, y, false);
   });
   const end = () => { if (!drag) return; drag = null; bar.classList.remove("is-dragging"); if (free) apply(nearest(free.x, free.y), { animate: true, say: true, remember: true }); };
@@ -114,7 +117,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     if (d) {
       e.preventDefault(); e.stopPropagation(); undock();
       const step = e.shiftKey ? 48 : 12, cur = free || spot(anchor || "bc"), W = stage.clientWidth, H = stage.clientHeight;
-      free = { x: Math.max(M, Math.min(W - bar.offsetWidth - M, cur.x + d[0] * step)), y: Math.max(M, Math.min(H - bar.offsetHeight - M, cur.y + d[1] * step)) };
+      free = { x: Math.max(M, Math.min(W - bw() - M, cur.x + d[0] * step)), y: Math.max(M, Math.min(H - bh() - M, cur.y + d[1] * step)) };
       bar.classList.add("is-floating"); place(free.x, free.y, false); return;
     }
     if ((e.key === "Enter" || e.key === "Escape") && free) { e.preventDefault(); apply(nearest(free.x, free.y), { animate: true, say: true, remember: true }); }

@@ -296,6 +296,55 @@ def s_lesson_retry(page, base, theme):
     settle(page, 600)
 
 
+def library_page(page, base, theme):
+    seed(page, badges=["scout"], theme=theme)
+    page.goto(base)
+    settle(page, 1500)
+    page.click("#libraryBtn")
+    settle(page, 1500)
+
+
+@state
+def s_library_card(page, base, theme):
+    """A question in the Library: the globe flies there and the answer card opens (the voice path)."""
+    library_page(page, base, theme)
+    page.evaluate("t => window.__ux_answer(t)", "where did Apollo 11 land?")
+    page.wait_for_selector("#card:not([hidden])", timeout=25000)
+    settle(page, 2500)
+
+
+@state
+def s_library_find(page, base, theme):
+    library_page(page, base, theme)
+    page.click("#missionsBtn")
+    settle(page, 1500)
+
+
+@state
+def s_library_tour(page, base, theme):
+    library_page(page, base, theme)
+    page.click("#tourBtn")
+    settle(page, 4000)
+
+
+@state
+def s_map_done(page, base, theme):
+    """Qualified: every patch earned; the card offers Take command."""
+    seed(page, badges=ALL_BADGES + ["commander"], qualified=True, theme=theme)
+    page.add_init_script("try{localStorage.setItem('atm-mode','academy')}catch(e){}")
+    page.goto(base)
+    settle(page, 1500)
+    page.click("#modeAcademy")
+    settle(page, 3500)
+
+
+@state
+def s_hc_lesson(page, base, theme):
+    """High contrast + 150% text in a lesson."""
+    page.add_init_script("try{localStorage.setItem('outpost-a11y', JSON.stringify({contrast:true,textScale:1.5}))}catch(e){}")
+    lesson_state("moon", 2, theme, page, base)
+
+
 def settings_section(page, base, theme, sec):
     seed(page, badges=["scout", "radio", "sun"], theme=theme)
     page.goto(base)
