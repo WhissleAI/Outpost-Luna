@@ -27,14 +27,20 @@ extraResources:
     to: app/backend/data/media
     filter: ["**/*", "!.DS_Store"]
 compression: normal
+afterPack: scripts/sign-resources.js
 mac:
   target:
     - target: dmg
       arch: [arm64]
   category: public.app-category.education
-  # Ad-hoc signature only (identity "-"). Developer ID signing + notarization: docs/DESKTOP.md.
+  # Default: ad-hoc signature (identity "-"). build-mac.sh with MAC_SIGN_IDENTITY overrides identity and turns
+  # hardenedRuntime on; NOTARY_PROFILE adds notarization + stapling (docs/DESKTOP.md "Signing and notarization").
   identity: "-"
   hardenedRuntime: false
+  # The Python / model / media trees: scripts/sign-resources.js (afterPack) signs exactly their Mach-O files;
+  # osx-sign would otherwise "sign" every model, image and .pyc through xattrs.
+  signIgnore:
+    - "/Contents/Resources/(python|site|native|app|models)/"
   gatekeeperAssess: false
   entitlements: build-resources/entitlements.mac.plist
   entitlementsInherit: build-resources/entitlements.mac.plist

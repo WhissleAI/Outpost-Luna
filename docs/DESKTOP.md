@@ -156,19 +156,42 @@ so this test run used `--no-sandbox`; a normal launch keeps it), no keys in the 
 
 Re-run: `PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/python3 desktop/scripts/smoke.py --base http://127.0.0.1:47310`.
 
-## Signing and notarization (macOS, later)
+## Signing and notarization (macOS)
 
-Now: ad-hoc signature (`identity: "-"`), no hardened runtime. Gatekeeper blocks a downloaded copy until the user
-right-clicks > Open (or `xattr -dr com.apple.quarantine "/Applications/Outpost Luna.app"`). To ship:
+`build-mac.sh` has three modes, chosen by two env vars:
 
-1. An Apple Developer Program membership and a **Developer ID Application** certificate (.p12) -> env vars
-   `CSC_LINK` (path or base64 p12) and `CSC_KEY_PASSWORD` for electron-builder; drop `identity: "-"` and `CSC_IDENTITY_AUTO_DISCOVERY=false`.
-2. `hardenedRuntime: true` with `build-resources/entitlements.mac.plist` (audio input, JIT, unsigned executable memory,
-   disable library validation: needed by the embedded CPython, torch and the ctypes-loaded `libarctag`).
-3. electron-builder signs every Mach-O under `Resources/` (the Python tree has hundreds of `.so`/`.dylib`); expect the
-   first signed build to surface a few that need `--deep`-style handling, and keep `.pyc` precompiled so nothing is written.
-4. Notarization: an App Store Connect API key (`APPLE_API_KEY` .p8, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`) or
-   `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`; set `mac.notarize: true`. Stapling is automatic.
+| env | result |
+|---|---|
+| (none) | ad-hoc signature. Gatekeeper blocks a downloaded copy until right-click > Open |
+| `MAC_SIGN_IDENTITY="Developer ID Application: Whissle LLC (XXK95K57U5)"` | Developer ID signature with the hardened runtime and a secure timestamp. Not notarized: Gatekeeper still warns on a downloaded copy |
+| `MAC_SIGN_IDENTITY=...` and `NOTARY_PROFILE=outpost-notary` | signed, notarized and stapled: the `.app` first (so a copy in /Applications opens offline), then the dmg. Ends with `spctl` checks |
+
+```bash
+# once per Mac: the Developer ID Application certificate + private key in the login keychain
+security find-identity -v -p codesigning
+# once per Mac: notary credentials in the keychain (app-specific password from appleid.apple.com;
+# or --key AuthKey_XXXX.p8 --key-id ... --issuer ... for an App Store Connect API key)
+xcrun notarytool store-credentials outpost-notary --apple-id <apple-id> --team-id XXK95K57U5
+# release build (SKIP_PREP=1 reuses desktop/resources/ from a previous run)
+MAC_SIGN_IDENTITY="Developer ID Application: Whissle LLC (XXK95K57U5)" NOTARY_PROFILE=outpost-notary \
+  bash desktop/scripts/build-mac.sh
+```
+
+How it signs:
+- `desktop/scripts/sign-resources.js` (electron-builder `afterPack`) finds every Mach-O file under
+  `Contents/Resources/{python,site,native,app,models}` (about 210: the CPython binary, torch / onnxruntime / numpy
+  extension modules, `libarctag.dylib`) and signs each with `--options runtime --timestamp`. Executables also get
+  `build-resources/entitlements.mac.plist`.
+- `electron-builder.yml` `signIgnore`s those trees, because `@electron/osx-sign` would otherwise "sign" every model
+  file, image and `.pyc` through extended attributes.
+- osx-sign then signs the Electron framework, helpers and the app with the hardened runtime and the same
+  entitlements: microphone, camera, JIT, unsigned executable memory, and disable library validation (needed by the
+  embedded CPython and the torch wheels).
+- If notarization fails, the script saves Apple's log to `desktop/dist/notary-log.json`. That log lists each binary
+  that is unsigned or missing the hardened runtime.
+
+Windows: Authenticode needs an OV/EV certificate (see the Windows section). Until then, the Windows installer is
+unsigned.
 
 ## Windows (built and checked structurally; not yet run on Windows)
 
