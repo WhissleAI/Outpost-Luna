@@ -71,7 +71,10 @@ class Audit:
 
     def shot(self, name):
         from PIL import Image
-        im = Image.open(io.BytesIO(self.page.screenshot())).convert("RGB")
+        try:   # the 3D cabin on a loaded machine can stall a capture: skip the picture, keep the row
+            im = Image.open(io.BytesIO(self.page.screenshot(timeout=20000, animations="disabled"))).convert("RGB")
+        except Exception:
+            return ""
         im.thumbnail((640, 640))
         p = os.path.join(self.out, name + ".jpg"); im.save(p, quality=50)
         return os.path.basename(p)
