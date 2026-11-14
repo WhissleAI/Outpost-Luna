@@ -112,7 +112,7 @@ async function boot() {
   const prefs = createPrefs({ globe });
   (window.__outpost = window.__outpost || {}).prefsApi = prefs;
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
-  prefs.on(() => sendPrefs());
+  prefs.on(() => sendPrefs()); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
@@ -376,6 +376,7 @@ async function boot() {
     highlight: () => {},
     floor: d => { document.body.dataset.floor = d.holder; },
     lesson: d => dispatchEvent(new CustomEvent("atm:lesson", { detail: d })),   // the Academy UI listens
+    prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
       if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }

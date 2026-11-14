@@ -5,7 +5,7 @@
 // voice at a time, in priority order (0 first), then arrival. A decision with `after` waits until that id is done.
 // `cancel` drops unplayed decisions and stops the one playing if it is listed (barge-in, newer turn).
 
-const VISUAL = new Set(["card", "hud", "alert", "fly", "highlight", "floor", "lesson", "ask_confirm", "nav", "answer", "heard"]);
+const VISUAL = new Set(["card", "hud", "alert", "fly", "highlight", "floor", "lesson", "ask_confirm", "nav", "answer", "heard", "prefs"]);   // prefs: the Settings echo
 const SPEECH = new Set(["say", "play"]);
 
 function sessionId() {
