@@ -5,6 +5,7 @@ Starts the backend on port 8111. Skipped when DEEPGRAM_API_KEY is not configured
 import asyncio
 import json
 import socket
+import os
 import subprocess
 import sys
 import time
@@ -24,7 +25,10 @@ pytestmark = pytest.mark.skipif(not settings.deepgram_api_key, reason="no DEEPGR
 
 @pytest.fixture(scope="module")
 def server():
-    p = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT)],
+    # EAR=deepgram: this is the Flux test (the Arc ear has its own live test in model_server/tests/test_arc_ear.py).
+    # MODEL_SERVER_URL: never the default :8200 (a running demo); metadata is optional and fails open.
+    env = dict(os.environ, EAR="deepgram", MODEL_SERVER_URL=os.environ.get("TEST_MODEL_SERVER_URL", "http://127.0.0.1:8280"))
+    p = subprocess.Popen([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(PORT)], env=env,
                          cwd=Path(__file__).parent.parent, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(100):
         with socket.socket() as s:

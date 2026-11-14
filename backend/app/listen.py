@@ -1,4 +1,11 @@
-"""Live kid speech: browser mic -> Deepgram Flux (words + turns) and the model server (Arc metadata + emotion).
+"""Live kid speech: browser mic -> the ear (words + turns) and Arc metadata + emotion.
+
+EAR=arc (default, local): one model-server stream, ws://.../v1/stream?ear=arc, gives words, turns and metadata from Arc
+    v1.1 Mini's own decoder (model_server/app/arc_ear.py). Its messages are relayed unchanged. The lunar Tier A list
+    (keyterms.tier_a) is sent as context first; a client context frame's names/terms go in front of it.
+EAR=deepgram: Deepgram Flux (cloud) for words + turns, the model-server stream for metadata only (the original path).
+If the Arc ear isn't available (model server down / full / decoder off), the session falls back to Deepgram when a
+DEEPGRAM_API_KEY is set, else sends `error` so the browser falls back to Web Speech push-to-talk.
 
 WebSocket /ws/listen
   client -> server: binary PCM16 mono 16 kHz frames (~80 ms each); text {"t":"stop"} ends the session.
@@ -11,7 +18,8 @@ WebSocket /ws/listen
                     {"t":"arc",...} / {"t":"emotion","label":str,"p":float}   relayed from the model server stream
                     {"t":"context_ack",...}                                   the model server took the context
                     {"t":"error","message":str}
-The model server stream (ws://.../v1/stream) is optional: if it doesn't connect, metadata is skipped (fail open).
+                    {"t":"ear","ear":"arc"|"deepgram",...}                     which ear serves this session (info)
+With EAR=deepgram the model server stream (ws://.../v1/stream) is optional: if it doesn't connect, metadata is skipped (fail open).
 Flux protocol: developers.deepgram.com/reference/speech-to-text/listen-flux.
 """
 from __future__ import annotations
@@ -25,11 +33,12 @@ from urllib.parse import urlencode
 
 import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from . import session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
-from .keyterms import base_keyterms
+from .keyterms import base_keyterms, tier_a
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,6 +49,22 @@ TURN_STATE = {"StartOfTurn": "start", "EagerEndOfTurn": "eager", "EndOfTurn": "e
 FORCE_END = json.dumps({"type": "ForceEndTurn"})
 CLOSE_STREAM = json.dumps({"type": "CloseStream"})
 STOP_WAIT_S = 2.0
+
+
+class EarSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
+
+    ear: str = "arc"               # arc | deepgram
+    ear_connect_s: float = 2.0     # model server connect + {"t":"ear"} handshake
+    ear_tier_a: bool = True        # send the lunar Tier A list as Arc context at session start
+
+
+ear_settings = EarSettings()
+
+
+@lru_cache(maxsize=1)
+def tier_a_names() -> tuple[str, ...]:
+    return tuple(tier_a(Gazetteer(settings.data_dir / "places.json"), settings.data_dir / "glossary.json"))
 
 
 @lru_cache(maxsize=1)
@@ -56,6 +81,11 @@ def model_stream_url() -> str:
     if settings.model_stream_url:
         return settings.model_stream_url
     return settings.model_server_url.replace("https://", "wss://").replace("http://", "ws://").rstrip("/") + "/v1/stream"
+
+
+def arc_ear_url() -> str:
+    u = model_stream_url()
+    return u + ("&" if "?" in u else "?") + "ear=arc&domain=assistant"
 
 
 def flux_messages(d: dict) -> list[dict]:
@@ -90,6 +120,36 @@ def context_message(d: dict) -> dict:
     return out
 
 
+def arc_context(d: dict, base: tuple[str, ...] = ()) -> dict:
+    """context_message() for the Arc ear: the client's names/terms first (what's on screen now), then the Tier A list."""
+    out = context_message(d)
+    if base and ("names" in out or "terms" in out):
+        seen = {str(x.get("name") if isinstance(x, dict) else x).lower() for x in out.get("names", []) + out.get("terms", [])}
+        out["names"] = (out.get("names", []) + [n for n in base if n.lower() not in seen])[:200]
+    return out
+
+
+async def open_arc_ear():
+    """(connection, None) once the model server says {"t":"ear","available":true}; else (None, reason)."""
+    try:
+        conn = await asyncio.wait_for(websockets.connect(arc_ear_url(), max_size=2 ** 22), ear_settings.ear_connect_s)
+    except Exception as e:  # noqa: BLE001
+        return None, f"model server unreachable: {type(e).__name__}"
+    try:
+        while True:
+            d = json.loads(await asyncio.wait_for(conn.recv(), ear_settings.ear_connect_s))
+            if d.get("t") == "ear":
+                if d.get("available"):
+                    return conn, None
+                break
+        reason = d.get("reason") or "arc ear unavailable"
+    except Exception as e:  # noqa: BLE001 (old model server: no ear handshake, or it closed)
+        reason = f"no arc ear handshake: {type(e).__name__}"
+    with contextlib.suppress(Exception):
+        await conn.close()
+    return None, reason
+
+
 @router.websocket("/ws/listen")
 async def listen(ws: WebSocket):
     await ws.accept()
@@ -105,6 +165,74 @@ async def listen(ws: WebSocket):
         if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion"):
             await sessions.post(sid["id"], m)
 
+    want = ear_settings.ear.strip().lower()
+    fallback_from = None
+    if want != "deepgram":
+        arc, why = await open_arc_ear()
+        if arc is not None:
+            return await run_arc(ws, send, sid, arc)
+        log.warning("arc ear unavailable (%s)%s", why, "; falling back to Deepgram" if settings.deepgram_api_key else "")
+        fallback_from = {"from": "arc", "reason": why}
+        if not settings.deepgram_api_key:
+            await send({"t": "error", "message": f"local ear unavailable ({why}) and no DEEPGRAM_API_KEY"[:200]})
+            await ws.close()
+            return
+    await run_deepgram(ws, send, sid, fallback_from)
+
+
+async def run_arc(ws: WebSocket, send, sid: dict, arc):
+    """EAR=arc: audio + context to the model server's Arc ear; its words / turn / arc / emotion / context_ack back."""
+    base = tier_a_names() if ear_settings.ear_tier_a else ()
+    if base:
+        await arc.send(json.dumps({"t": "context", "names": list(base)}))
+    relay = ("words", "turn", "arc", "emotion", "context_ack")
+
+    async def from_arc():
+        async for raw in arc:
+            with contextlib.suppress(ValueError):
+                d = json.loads(raw)
+                if isinstance(d, dict) and d.get("t") in relay:
+                    await send(d)
+
+    task = asyncio.create_task(from_arc())
+    await send({"t": "ready"})
+    await send({"t": "ear", "ear": "arc", "model": "arc-v1.1 mini"})
+    try:
+        while True:
+            msg = await ws.receive()
+            if msg["type"] == "websocket.disconnect":
+                break
+            if task.done():
+                await send({"t": "error", "message": "local ear closed"})
+                break
+            if msg.get("bytes") is not None:
+                await arc.send(msg["bytes"])
+            elif msg.get("text"):
+                with contextlib.suppress(ValueError, AttributeError):
+                    d = json.loads(msg["text"])
+                    if d.get("t") == "context":
+                        if d.get("session"):
+                            sid["id"] = str(d["session"])
+                        await arc.send(json.dumps(arc_context(d, base)))
+                    elif d.get("t") == "stop":
+                        await arc.send(json.dumps({"t": "stop"}))
+                        with contextlib.suppress(asyncio.TimeoutError, Exception):
+                            await asyncio.wait_for(asyncio.shield(task), STOP_WAIT_S)
+                        break
+    except WebSocketDisconnect:
+        pass
+    except websockets.ConnectionClosed as e:
+        await send({"t": "error", "message": f"local ear closed: {e}"[:200]})
+    finally:
+        task.cancel()
+        with contextlib.suppress(Exception):
+            await arc.close()
+        with contextlib.suppress(Exception):
+            await ws.close()
+
+
+async def run_deepgram(ws: WebSocket, send, sid: dict, fallback_from: dict | None = None):
+    """EAR=deepgram (or the Arc ear's fallback): Flux for words + turns, the model server stream for metadata only."""
     if not settings.deepgram_api_key:
         await send({"t": "error", "message": "DEEPGRAM_API_KEY is not set on the backend"})
         await ws.close()
@@ -164,6 +292,8 @@ async def listen(ws: WebSocket):
     if meta is not None:
         tasks.append(asyncio.create_task(from_meta()))
     await send({"t": "ready"})
+    if fallback_from:   # tell the client the local ear wasn't there (info; the browser ignores unknown types)
+        await send({"t": "ear", "ear": "deepgram", "model": FLUX["model"], "fallback": fallback_from})
     try:
         while True:
             msg = await ws.receive()

@@ -1,0 +1,615 @@
+{
+ "tts": "steer-tts-edge (OnnxTTS)",
+ "voices": [
+  "voice_2423",
+  "voice_1326",
+  "voice_0476",
+  "voice_1535",
+  "voice_2111",
+  "voice_2342",
+  "voice_1386",
+  "voice_1091"
+ ],
+ "clips": [
+  {
+   "clip": "c01_0",
+   "id": "c01",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.34
+  },
+  {
+   "clip": "c01_1",
+   "id": "c01",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.32,
+   "snr_db": 12.6
+  },
+  {
+   "clip": "c02_0",
+   "id": "c02",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 2.3
+  },
+  {
+   "clip": "c02_1",
+   "id": "c02",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.37,
+   "snr_db": 13.6
+  },
+  {
+   "clip": "c03_0",
+   "id": "c03",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.77
+  },
+  {
+   "clip": "c03_1",
+   "id": "c03",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.73,
+   "snr_db": 10.2
+  },
+  {
+   "clip": "c04_0",
+   "id": "c04",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 1.6
+  },
+  {
+   "clip": "c04_1",
+   "id": "c04",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 1.64,
+   "snr_db": 13.0
+  },
+  {
+   "clip": "c05_0",
+   "id": "c05",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 2.48
+  },
+  {
+   "clip": "c05_1",
+   "id": "c05",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 2.34,
+   "snr_db": 10.8
+  },
+  {
+   "clip": "c06_0",
+   "id": "c06",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 1.79
+  },
+  {
+   "clip": "c06_1",
+   "id": "c06",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 1.79,
+   "snr_db": 13.9
+  },
+  {
+   "clip": "c07_0",
+   "id": "c07",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.64
+  },
+  {
+   "clip": "c07_1",
+   "id": "c07",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.63,
+   "snr_db": 13.2
+  },
+  {
+   "clip": "c08_0",
+   "id": "c08",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 1.01
+  },
+  {
+   "clip": "c08_1",
+   "id": "c08",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 1.03,
+   "snr_db": 11.3
+  },
+  {
+   "clip": "c09_0",
+   "id": "c09",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.66
+  },
+  {
+   "clip": "c09_1",
+   "id": "c09",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.58,
+   "snr_db": 13.4
+  },
+  {
+   "clip": "c10_0",
+   "id": "c10",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 1.6
+  },
+  {
+   "clip": "c10_1",
+   "id": "c10",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 1.57,
+   "snr_db": 12.6
+  },
+  {
+   "clip": "c11_0",
+   "id": "c11",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 2.06
+  },
+  {
+   "clip": "c11_1",
+   "id": "c11",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 2.01,
+   "snr_db": 10.6
+  },
+  {
+   "clip": "c12_0",
+   "id": "c12",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 2.06
+  },
+  {
+   "clip": "c12_1",
+   "id": "c12",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 2.07,
+   "snr_db": 12.8
+  },
+  {
+   "clip": "c13_0",
+   "id": "c13",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.48
+  },
+  {
+   "clip": "c13_1",
+   "id": "c13",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.43,
+   "snr_db": 12.1
+  },
+  {
+   "clip": "c14_0",
+   "id": "c14",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 2.09
+  },
+  {
+   "clip": "c14_1",
+   "id": "c14",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.1,
+   "snr_db": 12.8
+  },
+  {
+   "clip": "c15_0",
+   "id": "c15",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.94
+  },
+  {
+   "clip": "c15_1",
+   "id": "c15",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.9,
+   "snr_db": 10.0
+  },
+  {
+   "clip": "c16_0",
+   "id": "c16",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 1.41
+  },
+  {
+   "clip": "c16_1",
+   "id": "c16",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 1.5,
+   "snr_db": 10.0
+  },
+  {
+   "clip": "c17_0",
+   "id": "c17",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.73
+  },
+  {
+   "clip": "c17_1",
+   "id": "c17",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.71,
+   "snr_db": 11.7
+  },
+  {
+   "clip": "c18_0",
+   "id": "c18",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 1.76
+  },
+  {
+   "clip": "c18_1",
+   "id": "c18",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 1.78,
+   "snr_db": 12.9
+  },
+  {
+   "clip": "c19_0",
+   "id": "c19",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.73
+  },
+  {
+   "clip": "c19_1",
+   "id": "c19",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.7,
+   "snr_db": 11.4
+  },
+  {
+   "clip": "c20_0",
+   "id": "c20",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 2.78
+  },
+  {
+   "clip": "c20_1",
+   "id": "c20",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 2.88,
+   "snr_db": 12.4
+  },
+  {
+   "clip": "c21_0",
+   "id": "c21",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 0.74
+  },
+  {
+   "clip": "c21_1",
+   "id": "c21",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 0.75,
+   "snr_db": 11.1
+  },
+  {
+   "clip": "c22_0",
+   "id": "c22",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 1.07
+  },
+  {
+   "clip": "c22_1",
+   "id": "c22",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 1.05,
+   "snr_db": 13.1
+  },
+  {
+   "clip": "c23_0",
+   "id": "c23",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.06
+  },
+  {
+   "clip": "c23_1",
+   "id": "c23",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.06,
+   "snr_db": 13.1
+  },
+  {
+   "clip": "c24_0",
+   "id": "c24",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 1.15
+  },
+  {
+   "clip": "c24_1",
+   "id": "c24",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 1.2,
+   "snr_db": 11.9
+  },
+  {
+   "clip": "c25_0",
+   "id": "c25",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 2.08
+  },
+  {
+   "clip": "c25_1",
+   "id": "c25",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 2.03,
+   "snr_db": 13.6
+  },
+  {
+   "clip": "c26_0",
+   "id": "c26",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 2.34
+  },
+  {
+   "clip": "c26_1",
+   "id": "c26",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.33,
+   "snr_db": 10.1
+  },
+  {
+   "clip": "c27_0",
+   "id": "c27",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 1.7
+  },
+  {
+   "clip": "c27_1",
+   "id": "c27",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 1.66,
+   "snr_db": 11.9
+  },
+  {
+   "clip": "c28_0",
+   "id": "c28",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 2.33
+  },
+  {
+   "clip": "c28_1",
+   "id": "c28",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 2.39,
+   "snr_db": 13.0
+  },
+  {
+   "clip": "c29_0",
+   "id": "c29",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 2.08
+  },
+  {
+   "clip": "c29_1",
+   "id": "c29",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 2.02,
+   "snr_db": 13.8
+  },
+  {
+   "clip": "c30_0",
+   "id": "c30",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 1.94
+  },
+  {
+   "clip": "c30_1",
+   "id": "c30",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.0,
+   "snr_db": 12.7
+  },
+  {
+   "clip": "c31_0",
+   "id": "c31",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 2.1
+  },
+  {
+   "clip": "c31_1",
+   "id": "c31",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 2.07,
+   "snr_db": 11.8
+  },
+  {
+   "clip": "c32_0",
+   "id": "c32",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 1.3
+  },
+  {
+   "clip": "c32_1",
+   "id": "c32",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 1.32,
+   "snr_db": 10.8
+  },
+  {
+   "clip": "c33_0",
+   "id": "c33",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.67
+  },
+  {
+   "clip": "c33_1",
+   "id": "c33",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.59,
+   "snr_db": 10.8
+  },
+  {
+   "clip": "c34_0",
+   "id": "c34",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 2.16
+  },
+  {
+   "clip": "c34_1",
+   "id": "c34",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.12,
+   "snr_db": 10.1
+  },
+  {
+   "clip": "c35_0",
+   "id": "c35",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 2.72
+  },
+  {
+   "clip": "c35_1",
+   "id": "c35",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 2.64,
+   "snr_db": 13.4
+  },
+  {
+   "clip": "c36_0",
+   "id": "c36",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 2.44
+  },
+  {
+   "clip": "c36_1",
+   "id": "c36",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 2.49,
+   "snr_db": 13.5
+  },
+  {
+   "clip": "c37_0",
+   "id": "c37",
+   "voice": "voice_2423",
+   "noisy": false,
+   "speech_end_s": 1.91
+  },
+  {
+   "clip": "c37_1",
+   "id": "c37",
+   "voice": "voice_1326",
+   "noisy": true,
+   "speech_end_s": 1.88,
+   "snr_db": 11.7
+  },
+  {
+   "clip": "c38_0",
+   "id": "c38",
+   "voice": "voice_0476",
+   "noisy": false,
+   "speech_end_s": 2.48
+  },
+  {
+   "clip": "c38_1",
+   "id": "c38",
+   "voice": "voice_1535",
+   "noisy": true,
+   "speech_end_s": 2.38,
+   "snr_db": 13.9
+  },
+  {
+   "clip": "c39_0",
+   "id": "c39",
+   "voice": "voice_2111",
+   "noisy": false,
+   "speech_end_s": 2.29
+  },
+  {
+   "clip": "c39_1",
+   "id": "c39",
+   "voice": "voice_2342",
+   "noisy": true,
+   "speech_end_s": 2.26,
+   "snr_db": 14.0
+  },
+  {
+   "clip": "c40_0",
+   "id": "c40",
+   "voice": "voice_1386",
+   "noisy": false,
+   "speech_end_s": 2.14
+  },
+  {
+   "clip": "c40_1",
+   "id": "c40",
+   "voice": "voice_1091",
+   "noisy": true,
+   "speech_end_s": 2.26,
+   "snr_db": 12.8
+  }
+ ]
+}

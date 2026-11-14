@@ -47,6 +47,7 @@ def fakes(monkeypatch):
     threading.Thread(target=loop.run_forever, daemon=True).start()
     pf, pm = asyncio.run_coroutine_threadsafe(start(), loop).result(5)
     monkeypatch.setattr(settings, "deepgram_api_key", "test")
+    monkeypatch.setattr(listen.ear_settings, "ear", "deepgram")
     monkeypatch.setattr(settings, "flux_url", f"ws://127.0.0.1:{pf}")
     monkeypatch.setattr(settings, "model_stream_url", f"ws://127.0.0.1:{pm}")
     yield got
