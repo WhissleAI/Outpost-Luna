@@ -26,7 +26,7 @@ import { initHighlight } from "./highlight.js";
 import "./academy/vocab.js";
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
-import { emitIntent } from "./input/intents.js";
+import { emitIntent, onIntent } from "./input/intents.js";
 import { installDefaultIntents, installKeyboardIntents } from "./input/defaults.js";
 import { initGestures } from "./gesture/ui.js";
 // ---- end [input] ----
@@ -434,6 +434,10 @@ async function boot() {
     stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
   });
   installKeyboardIntents();
+  // Library tour: next / previous stop (swipe, Alt+arrows, or "next" by voice) while a tour runs.
+  const tourStepBy = d => { if (!tour.active) return false; stopSpeaking(); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
+  onIntent("next", () => tourStepBy(1), { priority: 10 });
+  onIntent("prev", () => tourStepBy(-1), { priority: 10 });
   const gestures = initGestures({
     screen: screenFrame, inCabin, isSpeaking,
     cabinPanel: () => { const h = document.querySelector("[data-panel]"); return h ? h.dataset.panel : null; },
