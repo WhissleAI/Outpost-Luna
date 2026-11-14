@@ -143,13 +143,15 @@ so the echo set hears what the ear really makes of our speech. No WAV is ever wr
 The candidate is trained with thresholds fit on val. The shipped weights run exactly as they run in the app: the
 numpy runtime with their own policy (`evaluate.py --weights`). Both are scored on the same freshly generated sets.
 
-The new weights ship only if all four hold on **every** held-out set (`test_clean`, `test_asr`, `test_real`,
-`test_ear`, `test_h40`(+asr), `test_q80`(+asr), `test_gold`, every `cls_*` and `test_log`):
+The new weights ship only if criteria 1–4 hold on **every** held-out set and criterion 5 holds overall. The sets are `test_clean`, `test_asr`, `test_real`,
+`test_ear`, `test_h40`(+asr), `test_q80`(+asr), `test_gold`, every `cls_*` and `test_log`.
 
 1. Guarded `on` wrong actions ≤ the rules (the `RETRAIN.md` switch-on criterion).
 2. Guarded `on` act accuracy ≥ the rules.
 3. The privacy-guard rows are unchanged.
 4. No class regresses: on `cls_*` and `test_log`, act accuracy ≥ the shipped weights' and wrong actions ≤ theirs.
+5. Worth shipping: summed over all sets, no more wrong actions and no fewer right acts than the shipped weights. This
+   stops a retrain that is only "as good as the rules" from replacing a better model.
 
 On a PASS, the old weights are copied to `runs/<date>/weights_before/` for rollback, and `export.py` writes the new
 `weights.*` and the parity fixture. On a FAIL nothing changes. The report says why.

@@ -12,6 +12,7 @@ the candidate only if, on EVERY held-out set:
   3. the privacy guard: `on` takes every guard turn the rules take (guard rows unchanged)
   4. no class regresses: on the round-6 class sets (cls_*, test_log) `on` act accuracy >= the shipped weights' and
      wrong actions <= theirs
+  5. worth shipping: summed over every set, no more wrong actions and no fewer right acts than the shipped weights
 Otherwise the shipped weights stay. Either way <run>/report.md has the before / after table and the reasons.
 """
 from __future__ import annotations
@@ -93,6 +94,15 @@ def check(cand: dict, ship: dict) -> tuple[bool, list[str], list[dict]]:
     if not any(r["set"] in HELD_OUT for r in rows):
         ok = False
         why.append("no held-out set evaluated")
+    # 5. worth shipping: over all sets together, no more wrong actions and no fewer right acts than the shipped weights
+    both = [r for r in rows if r["ship_act"] is not None]
+    if both:
+        cw, sw = sum(r["cand_wrong"] for r in both), sum(r["ship_wrong"] for r in both)
+        ca = sum(r["cand_act"] * r["turns"] for r in both)
+        sa = sum(r["ship_act"] * r["turns"] for r in both)
+        if cw > sw or ca + 1e-6 < sa:
+            ok = False
+            why.append(f"not better than the shipped weights overall: wrong {cw} vs {sw}, right acts {ca:.0f} vs {sa:.0f}")
     return ok, why, rows
 
 
