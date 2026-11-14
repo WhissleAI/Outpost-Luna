@@ -1,0 +1,99 @@
+# Outpost Luna desktop installers: macOS arm64 .dmg and Windows x64 NSIS .exe, uploaded as workflow artifacts.
+# docs/DESKTOP.md explains every input. Secrets / variables it needs (none are created by this file):
+#   secrets.HF_TOKEN               read token for the private Whissle model repos on Hugging Face
+#   vars.DESKTOP_MODELS_REPO       optional: private HF repo holding desktop/resources/models exactly as `make desktop-models`
+#                                  gathers it (upload once with gather_models.py --upload). Without it, each model comes
+#                                  from its upstream repo and the lock check (models.lock.json) fails for Arc Tagger and
+#                                  Steer TTS Edge, whose app versions are not on HF; set DESKTOP_MODELS_STRICT=0 to build anyway.
+# Wheels: desktop/vendor/wheels/arc_transcriber-*.whl and steertts_edge-*.whl must be committed (pending sign-off), or
+# arc-transcriber falls back to the public GitHub repo pinned below.
+# NASA media (backend/data/media, ~0.5 GB, gitignored) is fetched by `make data` (backend/pipeline/fetch_media.sh).
+name: desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: --mac dmg --arm64
+            artifact: outpost-luna-mac-arm64
+            files: desktop/dist/*.dmg
+          - os: windows-latest
+            target: --win nsis --x64
+            artifact: outpost-luna-win-x64
+            files: desktop/dist/*.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      DESKTOP_MODELS_REPO: ${{ vars.DESKTOP_MODELS_REPO }}
+      DESKTOP_MODELS_STRICT: ${{ vars.DESKTOP_MODELS_REPO && '1' || '0' }}
+      ARC_TRANSCRIBER_GIT: git+https://github.com/WhissleAI/arc_transcriber@5077152f3371   # arc_audio identical to the dev copy
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"   # unsigned until the certificates exist (docs/DESKTOP.md)
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.5"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Vendored wheels
+        run: |
+          mkdir -p desktop/vendor/wheels
+          ls desktop/vendor/wheels/*.whl 2>/dev/null || true
+          if ! ls desktop/vendor/wheels/arc_transcriber-*.whl >/dev/null 2>&1; then
+            python -m pip wheel --no-deps -w desktop/vendor/wheels "arc-transcriber @ ${ARC_TRANSCRIBER_GIT}"
+          fi
+          ls desktop/vendor/wheels/steertts_edge-*.whl || { echo "::error::commit desktop/vendor/wheels/steertts_edge-1.3.0-py3-none-any.whl (docs/DESKTOP.md)"; exit 1; }
+
+      - name: NASA media
+        run: bash backend/pipeline/fetch_media.sh
+
+      - name: Frontend
+        run: cd frontend && npm ci --no-audit --no-fund
+
+      - name: Embedded Python (python-build-standalone + locked deps)
+        run: uv run --no-project python desktop/scripts/build_python.py
+
+      - name: Models (by HF repo id, sha256-checked against desktop/models.lock.json)
+        run: |
+          uv run --no-project --with "huggingface_hub>=0.34" python desktop/scripts/gather_models.py --from hf
+
+      - name: Arc Tagger native library
+        run: |
+          cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release
+          cmake --build desktop/build/arctag --config Release
+          mkdir -p desktop/resources/native
+          if [ "$RUNNER_OS" = "Windows" ]; then cp desktop/build/arctag/Release/arctag.dll desktop/resources/native/;
+          else cp desktop/build/arctag/libarctag.dylib desktop/resources/native/; fi
+
+      - name: Installer
+        run: |
+          cd desktop
+          npm ci --no-audit --no-fund
+          npx electron-builder ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+          retention-days: 14

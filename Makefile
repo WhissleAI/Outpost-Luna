@@ -79,4 +79,28 @@ director-retrain: director-real-ear ## Rebuild the learned Director: real Arc de
 	python3 director_model/export.py --run $(DM_RUN) --data $(DM_DATA) --eval $(DM_RUN)/eval.json
 	cd backend && uv run pytest -q tests/test_director_model.py
 
+# ---- Desktop app (docs/DESKTOP.md): one offline installer, Electron + embedded Python + every model ----
+desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
+	uv run --no-project python desktop/scripts/build_python.py
+
+desktop-models:  ## Desktop: gather every model file into desktop/resources/models (DESKTOP_MODELS_FROM=hf in CI)
+	python3 desktop/scripts/gather_models.py --from $(or $(DESKTOP_MODELS_FROM),local)
+
+desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/arctag -> desktop/resources/native
+	cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release
+	cmake --build desktop/build/arctag --config Release
+	mkdir -p desktop/resources/native
+	cp desktop/build/arctag/libarctag.* desktop/resources/native/ 2>/dev/null || cp desktop/build/arctag/Release/arctag.dll desktop/resources/native/
+
+desktop-mac:     ## Desktop: build the macOS arm64 .dmg (unsigned / ad-hoc) -> desktop/dist
+	test -d backend/data/media || { echo "backend/data/media missing: make data"; exit 1; }
+	$(MAKE) desktop-python desktop-models desktop-arctag
+	cd desktop && npm ci --no-audit --no-fund && npx electron-builder --mac dmg --arm64
+
+desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev)
+	cd desktop && npx electron .
+
+desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
+	rm -rf desktop/resources desktop/build desktop/dist
+
 .PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain
