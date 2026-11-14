@@ -11,3 +11,5 @@ cache/
 data/real_turns.json
 data/review/
 turnlog/
+data/smoke/
+data/*.log
