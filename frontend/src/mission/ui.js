@@ -8,7 +8,9 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP } from "../story.js";
+import { nowObjective, nowSpoken, debriefStory } from "./objective.js";
+import { createTour, tourDone } from "./tour.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
   ["rover", "Rover"], ["comms", "Comms"], ["heaters", "Heaters"]];
@@ -168,7 +170,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { if (tour.active) tour.end(false); screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
@@ -181,21 +183,27 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
   const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
   const earthDays = s => s.window_earth_days ?? Math.round(s.earth_visible_pct / 10);
+  /** A first-timer (no mission flown yet on this cadet) sees the recommended pick. */
+  let firstPick = false, briefSpoken = false;
   function briefing() {
-    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide();
-    if (!site) site = sites[0];
+    const fresh = screen !== "brief";
+    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
+    firstPick = !firstDone();
+    if (!site) site = (firstPick && sites.find(s => s.id === PICKER.recommended)) || sites[0];
+    // the transition beat: where you are (Command), why the choice matters; spoken once per visit
+    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say(CAPCOM.missionBrief(callSign.spoken()))).catch(() => {}).then(() => screen === "brief" && say(PICKER.why)).then(() => screen === "brief" && firstPick && say(PICKER.recLine)); }
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
-      <h2 class="mx-title">Pick your outpost site</h2>
-      <p class="mx-sub">Sun for power. Ice for water. Earth for radio.</p>
+      <h2 class="mx-title">${esc(PICKER.title)}</h2>
+      <p class="mx-sub">${esc(PICKER.why)}</p>
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
         <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
           aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${s.ice ? "ice nearby" : "no ice nearby"}">
-          <b>${esc(s.name)}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)</small>` : ""}</b>
+          <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)</small>` : ""}</b>
           <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
           <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
@@ -275,9 +283,17 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
     windows = null; if (client.windows) client.windows(state.id).then(w => { windows = w; if (cockpit && cockpit.setWindows) cockpit.setWindows(w); }).catch(() => {});
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
-    const first = !firstDone();
-    Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {}).then(() => { if (first && screen === "hud") { say(CAPCOM.firstShift); nudge.arm(); } });
+    const first = !firstDone(), touring = !tourDone(callSign.get());
+    // never wait on the voice for the next step: a slow or silent TTS must not leave the kid in a cabin with no guide
+    const spoke = Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {});
+    Promise.race([spoke, new Promise(r => setTimeout(r, 5000))]).then(() => {
+      if (screen !== "hud") return;
+      if (touring) { tour.start(level); return; }            // first mission: CAPCOM shows the cabin first
+      const ob = nowObjective(state); if (ob) say(ob.text);   // then the objective strip, spoken once
+      if (first) nudge.arm();
+    });
     if (first) markFirstDone();
+    briefSpoken = false;
   }
 
   // ---------- first mission: one "how to play" line, repeated only after ~20 s of silence with no order (max twice) ----------
@@ -289,6 +305,33 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => { if (screen !== "hud" || !state) return; this.left--; say(CAPCOM.firstShift); this.wait(); }, 20000); },
     heard() { if (this.left > 0) this.wait(); },   // the kid spoke: the silence starts again
     stop() { clearTimeout(this.t); this.left = 0; } };
+
+  // ---------- first-mission cabin tour (tour.js) ----------
+  const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), callsign: () => callSign.get(),
+    onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowObjective(state); if (ob) say(ob.text); nudge.arm(); } });
+  /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
+  function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(levelNow()); return true; }
+  addEventListener("outpost:tour", () => { if (!replayTour()) { try { localStorage.removeItem("outpost-tour-done:" + (callSign.get() || "cadet")); } catch (e) { /* blocked */ } } });
+  const levelNow = () => (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
+  /** "What do I do?": one spoken line for this screen (the cabin's comes from the objective). */
+  function whatNow() {
+    if (screen === "hud") return state ? nowSpoken(state) : null;
+    if (screen === "brief") return HELP.picker;
+    if (screen === "debrief") return HELP.debrief;
+    return null;
+  }
+  /** The objective strip, the glow on its control and (Cadet) the one bright panel. Quiet while the tour runs. */
+  let lastObj = "";
+  function paintObjective() {
+    if (!cockpit || !cockpit.objective) return;
+    const ob = nowObjective(state);
+    cockpit.objective(ob);
+    if (tour.active) return;
+    const key = ob ? ob.key + ":" + ob.target : "";
+    cockpit.point(ob ? ob.target : null);
+    cockpit.focus(ob && levelNow() === "cadet" ? ob.panel : null);
+    lastObj = key;
+  }
 
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
@@ -315,6 +358,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (screen !== "hud" || !state || !cockpit) return;
     const s = state, e = s.env || {}, rv = s.rover || {};
     cockpit.update(s);
+    paintObjective();
     (s.alerts || []).forEach(a => { if (CALLBACKS[a]) { seen.add(a); remind(a); } });
     renderBanner();
     globe.mission.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); globe.mission.setEarth(+e.earth_elev_deg || 0);
@@ -436,6 +480,12 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** Text the kid said in mission mode. Returns true if handled here (mock command layer). */
   async function handleText(text) {
     if (!state || screen !== "hud") return false;
+    // no session (the /api/ask fallback): the tour and "what do I do?" still work by voice and typing
+    const w = String(text).toLowerCase().replace(/[^a-z ]/g, "").trim();
+    if (tour.active && /^(next|yes|ok|okay|go on|got it)$/.test(w)) { tour.next(); return true; }
+    if (tour.active && /^(skip|skip (the )?tour|no)$/.test(w)) { tour.end(false); return true; }
+    if (/^(show me around|give me the tour)$/.test(w)) return replayTour();
+    if (/^(help|what do i do( now| next)?|what should i do|im lost|i am lost)$/.test(w)) return nav("help");
     radio("kid", text);
     if (panelWord(text)) return true;
     const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
@@ -525,7 +575,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
     const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).map(l => ({ text: takeaway(l.text), source: l.source }));
     [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
-    if (d.try && tks.length < 3) tks.push({ text: takeaway(d.try), source: null, lesson: null, next: true });
+    const story = debriefStory(d, state);   // the mission as a story: three beats, what to try next, one clear choice
     if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
     const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
@@ -537,21 +587,28 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div>${d.stars != null ? `<div><dt>Stars</dt><dd class="mx-stars" aria-label="${d.stars} of 3 stars">${[0, 1, 2].map(k => `<span class="${k < d.stars ? "is-on" : ""}">${ic("star", 20)}</span>`).join("")}</dd></div>` : ""}</dl>
         ${breakdown(d)}
       </div>
+      <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
+        <ol>${story.beats.map(b => `<li>${esc(b)}</li>`).join("")}</ol>
+        <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
       <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>
       <div class="mx-foot">
-        <button type="button" class="mx-go" id="mAgain">${esc(DEBRIEF.replay)}</button>
-        <button type="button" class="mx-btn" id="mNewSite">${esc(DEBRIEF.another)}</button>
+        <button type="button" class="mx-go" id="mAgain">${esc(paused ? DEBRIEF.resume : DEBRIEF.choiceAgain)}</button>
+        <button type="button" class="mx-link" id="mNewSite">${esc(DEBRIEF.choiceNew)}</button>
         ${(d.data_used || []).length ? `<details class="mx-data"><summary>NASA data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
       </div>`;
-    $("mAgain").onclick = () => { if (unsub) unsub(); state = null; start(); };
+    $("mAgain").onclick = () => { if (paused && state && !state.over) { showHud(); return; } if (unsub) unsub(); state = null; start(); };
     $("mNewSite").onclick = () => { if (unsub) unsub(); state = null; briefing(); };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
     const line = cs => paused ? `${head}.` : `${head}. ${DEBRIEF.grade(cs, d.grade, Math.round(d.score || 0))}`;
     // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer). A typed name is never spoken.
-    radio("capcom", line(callSign.shown())); say(`${line(callSign.spoken())} ${OFFER.flyAgain}`);
+    // three short lines: the result, the story's turning point, then what to try and the one offer
+    radio("capcom", line(callSign.shown()));
+    Promise.resolve(say(line(callSign.spoken()))).catch(() => {})
+      .then(() => screen === "debrief" && !paused && say(story.beats[1]))
+      .then(() => screen === "debrief" && say(paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`));
   }
 
   /** Score breakdown, when the debrief sends one (the game redesign): [{label, points}] or {label: points}. */
@@ -602,13 +659,18 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- hands-free (the session's router decides; these run what it decided) ----------
   function screenFrame() {
     if (screen === "off") return null;
-    if (screen === "hud") return { screen: "cabin" };
+    if (screen === "hud") return tour.active ? { screen: "cabin", offer: "tour" } : { screen: "cabin" };
     if (screen === "debrief") return { screen: "debrief", offer: "fly_again" };
     return { screen: "brief", offer: "take_command" };
   }
   /** A navigation intent. True when Mission ran it. */
   function nav(intent, arg) {
     if (screen === "off") return false;
+    // the tour: next / yes moves on, skip ends it, "show me around" replays it
+    if (tour.active && ["next", "accept_offer", "yes", "start"].includes(intent)) { tour.next(); return true; }
+    if (tour.active && (intent === "skip_tour" || intent === "decline_offer")) { tour.end(false); return true; }
+    if (intent === "cabin_tour") return replayTour();
+    if (intent === "help") { const t = whatNow(); if (!t) return false; if (screen === "hud") radio("capcom", t); say(t); return true; }
     const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_rover: "rover", panel_radiation: "radiation", panel_back: "seat" }[intent];
     if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
@@ -619,6 +681,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       site = s; previewSite(); briefing(); say(`${s.name.split(" (")[0]}. Good choice. Say take command when you're ready.`); return true;
     }
     if (screen === "brief" && ["take_command", "start", "next", "accept_offer"].includes(intent)) { start(); return true; }
+    if (screen === "debrief" && intent === "accept_offer" && state && !state.over) { showHud(); return true; }   // paused: the offer is "back to the cabin"
     if (screen === "debrief" && ["fly_again", "accept_offer", "start"].includes(intent)) { if (unsub) unsub(); state = null; start(); return true; }
     if (screen === "debrief" && intent === "new_site") { if (unsub) unsub(); state = null; briefing(); return true; }
     if (screen === "debrief" && intent === "back") { if (state && !state.over) showHud(); else briefing(); return true; }
@@ -657,12 +720,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,
     end_shift: () => screen === "hud" && !(state && state.over) ? (endShift(), true) : false,
   };
+  // the tour beats every other handler while it runs (a swipe, a thumbs up or "next" never changes the view mid-tour)
+  const onTour = { next: () => tour.next(), yes: () => tour.next(), accept_offer: () => tour.next(), skip_tour: () => tour.end(false), decline_offer: () => tour.end(false) };
   const loadBus = busMods["../input/intents.js"];
-  if (loadBus) loadBus().then(m => Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, a => fn(a) === true, { priority: 10 }))).catch(() => {});
+  if (loadBus) loadBus().then(m => {
+    Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, a => fn(a) === true, { priority: 10 }));
+    Object.entries(onTour).forEach(([n, fn]) => m.onIntent(n, () => (tour.active ? fn() === true : false), { priority: 20 }));
+    ["skip_tour", "cabin_tour", "help"].forEach(n => m.onIntent(n, a => nav(n, a && a.arg) === true, { priority: 10 }));
+    // "what can I do" (the a11y path) in the cabin answers with the job first
+    m.onIntent("a11y", a => { const t = String((a && a.text) || "").toLowerCase().replace(/[^a-z ]/g, "").trim();
+      if (screen !== "hud" || !/^(what can i (do|say)|help me|what are my options|options)$/.test(t)) return false; return nav("help") === true; }, { priority: 10 });
+  }).catch(() => {});
   function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing(); }
 
   return {
-    screen: screenFrame, nav, intent, radioKid: t => radio("kid", t),
+    screen: screenFrame, nav, intent, radioKid: t => radio("kid", t), whatNow, get touring() { return tour.active; },
     enter, exit, handleText, handleDirector, context,
     applyRemote, alert, showCard, askConfirm, houston,   // [session hook]
     get active() { return screen !== "off"; },

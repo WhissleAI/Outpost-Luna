@@ -13,7 +13,7 @@ import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
@@ -158,7 +158,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <p class="h-credit">${esc(CREDIT)}</p>
       </div>`;
     const input = panel.querySelector("#aCsIn");
-    const done = v => { if (!callSign.set(v)) { input.focus(); return; } const cs = callSign.spoken("Cadet"); say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }); back ? back() : showMap(true); };
+    const done = v => { if (!callSign.set(v)) { input.focus(); return; } const cs = callSign.spoken("Cadet"); if (back) { say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }); back(); } else welcome(cs); };
     const select = v => { input.value = v; panel.querySelectorAll(".a-csb").forEach(b => b.setAttribute("aria-pressed", b.dataset.cs === v)); };
     panel.querySelectorAll(".a-csb").forEach(b => b.onclick = () => select(b.dataset.cs));
     input.addEventListener("input", () => select(input.value));
@@ -166,6 +166,22 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // Shuffle deals six new call signs and suggests the first ("surprise me" by voice picks one and goes: handleText).
     panel.querySelector("#aCsRand").onclick = () => { csDeck = shuffled(); showCallSign(back, true); panel.querySelector("#aCsRand").focus(); };
     if (!back && !reshuffled) say(CALLSIGN_COPY.say, { situation: "lesson_brief" });
+  }
+
+  /** First launch -> map: the welcome, where you are on the story, and the first offer (each its own short line). */
+  function welcome(cs) {
+    showMap(true);
+    Promise.resolve(say(`Copy that, ${cs}. Welcome to Flight School.`, { situation: "badge" }))
+      .then(() => view === "map" && say(TRANSITION.firstMap.say, { situation: "lesson_brief" }))
+      .then(() => view === "map" && say(OFFER.firstLesson, { situation: "badge" }));
+  }
+  /** "What do I do?" outside a lesson (the router's help; lessons keep their own hint ladder). */
+  function whatNow() {
+    if (!ui.active) return null;
+    if (view === "callsign") return HELP.callsign;
+    if (view === "map") return prog.qualified ? HELP.mapQualified : HELP.map;
+    if (view === "badge") return prog.qualified ? HELP.mapQualified : HELP.patch;
+    return null;
   }
 
   // ---------- course map = the Moon: each lesson is a pin on a real place, the route ends at the south-pole outpost ----------
@@ -217,6 +233,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="mp-count" aria-label="${esc(UI.patches(n, ls.length))}">${n}<small>/${ls.length}</small></span>
         <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
       </header>
+      ${!prog.qualified && (n === 0 || (nx && nx.ride)) ? `<p class="mp-beat"><b>${esc(ARC_STEP(nx && nx.ride ? 1 : 0))} · ${esc(nx && nx.ride ? TRANSITION.toRide.where : TRANSITION.firstMap.where)}</b>${esc(nx && nx.ride ? TRANSITION.toRide.line : TRANSITION.firstMap.line)}</p>` : ""}
       ${card}
       <p class="mp-credit">${esc(CREDIT)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
@@ -458,7 +475,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="a-bigpatch">${patch(L.id, { earned: true, size: 168 })}</span>
         <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
-        <p class="a-badge-sub">${commander ? esc(cs) : esc(L.title)}</p>
+        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : esc(TRANSITION.patchProgress(prog.badges.filter(b => lessons().some(l => l.badge.id === b)).length, lessons().length))}</p>
         <div class="a-actions">
           ${commander ? `<button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>`
             : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}
@@ -467,9 +484,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       </div>`;
     // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
     const offer = commander ? OFFER.mission : nx ? (nx.ride ? OFFER.ride : OFFER.nextLesson) : "";
-    // the patch line and the offer: one say, one on-air span (no gap for the ear between them)
+    // the patch line, the ride transition (last lesson) and the offer: one say, one on-air span (no gap for the ear)
     const patchLine = commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name);
-    say(offer ? [patchLine, offer] : patchLine, { situation: "badge" });
+    const lines = [patchLine, ...(!commander && nx && nx.ride ? [TRANSITION.toRide.say] : []), ...(offer ? [offer] : [])];
+    say(lines.length > 1 ? lines : patchLine, { situation: "badge" });
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
@@ -519,8 +537,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const t = text.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
     if (view === "callsign") {
       const hit = CALLSIGNS.find(c => t.includes(c.toLowerCase()));
-      if (hit) { callSign.set(hit); say(`Copy that, ${hit}. Welcome to Flight School.`, { situation: "badge" }); showMap(true); return true; }
-      if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); say(`Copy that, ${c}. Welcome to Flight School.`, { situation: "badge" }); showMap(true); return true; }
+      if (hit) { callSign.set(hit); welcome(hit); return true; }
+      if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); welcome(c); return true; }
       say("Pick one from the list, like Nova or Comet."); return true;
     }
     if (view === "badge" || view === "map") {
@@ -547,5 +565,6 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     return true;
   }
 
+  ui.whatNow = whatNow;
   return ui;
 }
