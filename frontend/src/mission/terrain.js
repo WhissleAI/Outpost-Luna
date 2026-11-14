@@ -98,7 +98,9 @@ function outpost() {
   const array = new THREE.Group(); array.position.set(34, 0, 18); g.add(array);
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(.25, .35, 22, 10), grey); mast.position.y = 11; array.add(mast);
   const wing = new THREE.Group(); wing.position.y = 13; array.add(wing);
-  [-4.4, 4.4].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 14, .12), cell); p.position.x = x; wing.add(p); });
+  // cells on the sun side, a light substrate on the back and edges (a back-lit array read as a black box in the sky)
+  const back = new THREE.MeshStandardMaterial({ color: 0x9aa1a9, roughness: .7, metalness: .2 }), cellLit = cell.clone(); cellLit.emissive = new THREE.Color(0x10234a); cellLit.emissiveIntensity = .5;
+  [-4.4, 4.4].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 14, .12), [back, back, back, back, cellLit, back]); p.position.x = x; wing.add(p); });
   // comm dish aimed at Earth
   const dishM = new THREE.Group(); dishM.position.set(-12, 0, -6); g.add(dishM);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.15, .2, 4, 8), grey); post.position.y = 2; dishM.add(post);

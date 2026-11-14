@@ -18,13 +18,20 @@ import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLigh
 /** Panel placement in metres. px = the DOM panel's CSS width; the scale maps it onto `w` metres of console face. */
 const LAYOUT = {
   window: { cx: 0, cy: 1.66, w: 2.3, h: 0.98, r: 0.16, z: -1.7 },
-  power: { pos: [0, 0.98, -1.5], rot: [-0.42, 0, 0], w: 2.0, px: 1200, pxh: 330 },
-  habitat: { pos: [-1.22, 0.92, -1.18], rot: [-0.34, 0.6, 0], w: 0.86, px: 640, pxh: 470 },
-  comm: { pos: [1.22, 0.92, -1.18], rot: [-0.34, -0.6, 0], w: 0.86, px: 640, pxh: 470 },
+  // the three display units, side by side under the window (DU1 commander-side power, DU2 shared, DU3 radiation)
+  displays: { pos: [0, 0.98, -1.5], rot: [-0.42, 0, 0], w: 2.0, px: 1200, pxh: 330, pedestal: true },
+  // switch panels round the displays: habitat + rover on the left, radiation + comm on the right, C&W + End shift below
+  habitat: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 300 },
+  rover: { pos: [-1.12, 0.66, -1.02], rot: [-0.62, 0.6, 0], w: 0.8, px: 560, pxh: 250 },
+  radiation: { pos: [1.25, 1.14, -1.2], rot: [-0.22, -0.6, 0], w: 0.8, px: 560, pxh: 300 },
+  comm: { pos: [1.12, 0.66, -1.02], rot: [-0.62, -0.6, 0], w: 0.8, px: 560, pxh: 250 },
+  pedestal: { pos: [0, 0.6, -1.12], rot: [-1.0, 0, 0], w: 1.15, px: 800, pxh: 300 },
 };
+/** Zoom targets that are part of a bigger console: [object, left fraction, right fraction]. */
+const SUB = { power: ["displays", 0, 1 / 3] };
 const SEAT = { pos: new THREE.Vector3(0, 1.32, 0.78), look: new THREE.Vector3(0, 1.2, -1.6) };
 const STRIP_PX = 84;   // the comm strip under the cabin (captions + voice), kept clear when a panel is open
-export const PANELS = [["power", "Power displays"], ["habitat", "Habitat panel"], ["comm", "Comm panel"]];
+export const PANELS = [["displays", "Displays"], ["power", "Power"], ["habitat", "Habitat"], ["rover", "Rover"], ["radiation", "Radiation"], ["comm", "Comm"], ["pedestal", "Shift"]];
 
 const css = (el, name, fb) => (getComputedStyle(el).getPropertyValue(name).trim() || fb);
 
@@ -45,7 +52,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   const camera = new THREE.PerspectiveCamera(58, 1, 0.05, 50);
   camera.position.copy(SEAT.pos); camera.lookAt(SEAT.look);
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+  const envTex = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture; scene.environment = envTex;
 
   // ---------- materials (colours from the design tokens) ----------
   const col = n => new THREE.Color(css(host, n, "#1A1D22"));
@@ -101,7 +108,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     const body = new THREE.Mesh(new RoundedBoxGeometry(L.w + 0.12, h + 0.12, 0.42, 4, 0.04), metal); body.position.z = -0.215; g.add(body);
     const bezel = new THREE.Mesh(new THREE.BoxGeometry(L.w + 0.04, h + 0.04, 0.01), dark); bezel.position.z = -0.002; g.add(bezel);
     // a pedestal to the floor for the main console
-    if (id === "power") { const ped = new THREE.Mesh(new RoundedBoxGeometry(L.w * 0.7, 1.0, 0.5, 3, 0.04), metal); ped.position.set(0, -0.6, -0.42); g.add(ped); }
+    if (L.pedestal) { const ped = new THREE.Mesh(new RoundedBoxGeometry(L.w * 0.7, 1.0, 0.5, 3, 0.04), metal); ped.position.set(0, -0.6, -0.42); g.add(ped); }
     const o = new CSS3DObject(el); o.position.copy(g.position); o.rotation.copy(g.rotation); o.scale.setScalar(s);
     o.position.add(new THREE.Vector3(0, 0, 0.004).applyEuler(g.rotation));
     cssScene.add(o); objs[id] = { o, g, w: L.w, h, el };
@@ -113,19 +120,30 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   scene.add(new THREE.HemisphereLight(0xb9c6d8, 0x101216, 0.35));
   const win = new THREE.RectAreaLight(0xe8eef8, 4.2, W.w, W.h); win.position.set(W.cx, W.cy, W.z); win.lookAt(W.cx, W.cy - 0.6, 1); scene.add(win);
   const fill = new THREE.PointLight(0xc8d4e6, 0.8, 5, 2); fill.position.set(0, 2.3, 0.2); scene.add(fill);
+  /** Graphics quality: "low" drops the display glows and the environment reflections and renders at 1× pixels. */
+  let quality = "high";
+  function setQuality(q) {
+    quality = q === "low" ? "low" : "high";
+    renderer.setPixelRatio(quality === "low" ? 1 : Math.min(devicePixelRatio || 1, 1.5));
+    scene.environment = quality === "low" ? null : envTex;
+    scene.traverse(o => { if (o.isPointLight && o !== fill) o.visible = quality !== "low"; });
+    resize();
+  }
 
   // ---------- camera: seat, parallax, dolly ----------
   let open = null, tween = null, pointer = { x: 0, y: 0 }, size = { w: 1, h: 1 };
   const target = { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
   const cur = { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
   function poseFor(id) {
-    const P = objs[id]; if (!P) return { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
+    const sub = SUB[id], P = objs[sub ? sub[0] : id]; if (!P) return { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
     const n = new THREE.Vector3(0, 0, 1).applyEuler(P.g.rotation), c = P.g.position.clone();
-    const L = LAYOUT[id], vfov = camera.fov * Math.PI / 180, tv = Math.tan(vfov / 2), th = tv * camera.aspect;
+    let pw = P.w, ppx = LAYOUT[sub ? sub[0] : id].px;
+    if (sub) { const right = new THREE.Vector3(1, 0, 0).applyEuler(P.g.rotation); c.addScaledVector(right, ((sub[1] + sub[2]) / 2 - .5) * P.w); pw = P.w * (sub[2] - sub[1]); ppx = ppx * (sub[2] - sub[1]); }
+    const L = { ...LAYOUT[sub ? sub[0] : id], px: ppx }, vfov = camera.fov * Math.PI / 180, tv = Math.tan(vfov / 2), th = tv * camera.aspect;
     // On-screen size: about 1.15× the panel's CSS pixels (crisp text), never wider than 86% of the stage or taller than
     // the space above the comm strip.
     const free = size.h - STRIP_PX, tw = Math.min(L.px * 1.15, size.w * 0.86), thh = Math.min(L.pxh * 1.15, free * 0.9);
-    const d = Math.max(P.w * size.w / (2 * th * tw), P.h * size.h / (2 * tv * thh));
+    const d = Math.max(pw * size.w / (2 * th * tw), P.h * size.h / (2 * tv * thh));
     // centre the panel in the space above the comm strip: aim a little below it
     const up = new THREE.Vector3(0, 1, 0).applyEuler(P.g.rotation), shift = (STRIP_PX / 2) * (2 * d * tv / size.h);
     const look = c.clone().addScaledVector(up, -shift);
@@ -134,7 +152,8 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   function go(id) {
     open = id || null; const p = open ? poseFor(open) : { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
     host.dataset.panel = open || "seat";
-    Object.entries(objs).forEach(([k, P]) => { P.el.classList.toggle("is-open", k === open); P.el.classList.toggle("is-dim", !!open && k !== open); });
+    const home = open && SUB[open] ? SUB[open][0] : open;
+    Object.entries(objs).forEach(([k, P]) => { P.el.classList.toggle("is-open", k === home); P.el.classList.toggle("is-dim", !!open && k !== home); });
     if (reduced()) { target.pos.copy(p.pos); target.look.copy(p.look); cur.pos.copy(p.pos); cur.look.copy(p.look); tween = null; }
     else { tween = { t0: performance.now(), d: 750, fromP: cur.pos.clone(), fromL: cur.look.clone(), toP: p.pos, toL: p.look }; target.pos.copy(p.pos); target.look.copy(p.look); }
     onPanel(open);
@@ -193,7 +212,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   raf = requestAnimationFrame(frame);
 
   return {
-    open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; },
+    open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
     resize, dispose() { running = false; cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); pmrem.dispose(); renderer.domElement.remove(); cssR.domElement.remove(); },
   };
 }
