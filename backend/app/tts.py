@@ -19,6 +19,7 @@ The browser plays this as in-page audio, so Chrome's echo canceller can subtract
 from __future__ import annotations
 
 import hashlib
+import re
 import json
 import os
 from pathlib import Path
@@ -68,7 +69,8 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
         sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
         persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
-        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"))
+        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"),
+                                   vocab=style.get("vocab") if isinstance(style.get("vocab"), list) else None)
     persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
     tag = str(style.get("tag") or "none")
     if tag in steering.FORBIDDEN:
@@ -83,6 +85,9 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     emph = [str(w)[:40] for w in (style.get("emph") or []) if str(w).strip()][:4]
     if emph:
         out["emph"] = emph
+    vocab = [str(w)[:40] for w in (style.get("vocab") or []) if str(w).strip()][:3]   # a11y: vocab words (§4b)
+    if vocab:
+        out["vocab"] = vocab
     if style.get("guidance"):
         out["guidance"] = max(1.0, min(2.0, float(style["guidance"])))
     perf = style.get("perform")
@@ -102,11 +107,15 @@ async def _synth(model: str, text: str) -> bytes:
     return r.content
 
 
-async def _steer(text: str, style: dict, place: dict) -> bytes:
-    """One Steer TTS Edge render on the model server. Raises on any failure (the caller falls back)."""
-    body = {"text": steering.apply_emphasis(text, style.get("emph")) if style.get("emph") else text,
+async def _steer(text: str, style: dict, place: dict) -> tuple[bytes, str]:
+    """One Steer TTS Edge render on the model server → (wav, word timings header). Raises on any failure (the caller
+    falls back)."""
+    marked = bool(style.get("emph") or style.get("vocab"))
+    body = {"text": steering.apply_markup(text, style.get("emph"), style.get("vocab")) if marked else text,
             "voice": style["steer_voice"], "tag": style["tag"], "controls": style["controls"] or None,
-            "markup": bool(style.get("emph"))}
+            "markup": marked}
+    if style.get("pace", 1.0) != 1.0:
+        body["pace"] = style["pace"]
     if style.get("guidance"):
         body["guidance"] = style["guidance"]
     if style.get("perform"):
@@ -115,7 +124,22 @@ async def _steer(text: str, style: dict, place: dict) -> bytes:
         r = await c.post("/v1/tts", json=body)
     if r.status_code != 200 or not r.content:
         raise RuntimeError(f"steer tts {r.status_code}: {r.text[:160]}")
-    return r.content
+    return r.content, r.headers.get("X-Steer-Words", "")
+
+
+# ---- a11y: word timings for captions (docs/ACCESSIBILITY.md) -----------------------------------------------------------
+WORDS_RE = re.compile(r"^(\d+-\d+)(,\d+-\d+)*$")
+
+
+def words_path(p: Path) -> Path:
+    """The word-timing sidecar next to a cached rendering."""
+    return p.with_suffix(".words")
+
+
+def clean_words(raw: str | None) -> str:
+    """Only a well-formed 'start-end,…' (ms) list passes through to the client."""
+    raw = (raw or "").strip()
+    return raw if raw and len(raw) < 8000 and WORDS_RE.match(raw) else ""
 
 
 def _store(p: Path, audio: bytes) -> None:
@@ -126,7 +150,7 @@ def _store(p: Path, audio: bytes) -> None:
 
 
 async def speak(text: str, voice: str = "guide", style: dict | None = None, i: int | None = None,
-                n: int | None = None, next_text: str | None = None):
+                n: int | None = None, next_text: str | None = None, speed: float | None = None):
     text = " ".join(text.split())
     if not text:
         return JSONResponse({"error": "empty text"}, status_code=422)
@@ -135,6 +159,8 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
     for engine in engines:
         if engine == "steer":
             st = clean_style(voice, text, style)
+            if speed and abs(float(speed) - 1.0) > 1e-3:             # a11y: the kid's speed, on top of the style
+                st["controls"], st["pace"] = steering.with_speed(st["controls"], speed)
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}
             model, key = st["steer_voice"], {**st, **{k: v for k, v in place.items() if v is not None}}
         else:
@@ -144,20 +170,34 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             st, model, key = None, VOICES[voice], None
         p = cache_path(model, text, key, engine)
         media = MEDIA[engine][0]
-        headers = {"Cache-Control": "public, max-age=604800", "X-TTS-Voice": model, "X-TTS-Engine": engine}
+        headers = {"Cache-Control": "public, max-age=604800", "X-TTS-Voice": model, "X-TTS-Engine": engine,
+                   "Access-Control-Expose-Headers": "X-TTS-Words, X-TTS-Engine, X-TTS-Style, X-TTS-Speed"}
+        if st and st.get("pace"):
+            headers["X-TTS-Speed"] = f"{speed} pace={st['pace']} rate={st['controls'].get('rate', 0)}"
         if st:
             headers["X-TTS-Style"] = f"{st['tag']} " + ",".join(f"{k}={v}" for k, v in st["controls"].items())
         if reasons:
             headers["X-TTS-Fallback"] = "; ".join(reasons)[:200]
         if p.exists():
-            return Response(p.read_bytes(), media_type=media, headers={**headers, "X-TTS-Cache": "hit"})
+            wp = words_path(p)
+            w = clean_words(wp.read_text()) if wp.exists() else ""
+            return Response(p.read_bytes(), media_type=media,
+                            headers={**headers, "X-TTS-Cache": "hit", **({"X-TTS-Words": w} if w else {})})
         try:
-            audio = await (_steer(text, st, place) if engine == "steer" else _synth(model, text))
+            if engine == "steer":
+                res = await _steer(text, st, place)
+                audio, words = res if isinstance(res, tuple) else (res, "")
+            else:
+                audio, words = await _synth(model, text), ""
         except Exception as e:  # noqa: BLE001 - any upstream failure means "next engine"
             reasons.append(f"{engine}: {str(e)[:160]}")
             continue
         _store(p, audio)
-        return Response(audio, media_type=media, headers={**headers, "X-TTS-Cache": "miss"})
+        words = clean_words(words)
+        if words:
+            words_path(p).write_text(words)
+        return Response(audio, media_type=media,
+                        headers={**headers, "X-TTS-Cache": "miss", **({"X-TTS-Words": words} if words else {})})
     no_engine = all(r.startswith("deepgram: DEEPGRAM_API_KEY") for r in reasons)
     return JSONResponse({"error": "tts unavailable" if no_engine else "tts failed", "reason": "; ".join(reasons)[:300],
                          "fallback": "browser"}, status_code=503 if no_engine else 502)
@@ -176,8 +216,9 @@ def _parse_style(raw: str | None) -> dict | None:
 @router.get("/api/tts")
 async def tts(text: str = Query(..., min_length=1, max_length=MAX_CHARS), voice: Persona = "guide",
               style: str | None = Query(None, max_length=2000), i: int | None = Query(None, ge=0, le=200),
-              n: int | None = Query(None, ge=1, le=200), next: str | None = Query(None, max_length=MAX_CHARS)):  # noqa: A002
-    return await speak(text, voice, _parse_style(style), i, n, next)
+              n: int | None = Query(None, ge=1, le=200), next: str | None = Query(None, max_length=MAX_CHARS),  # noqa: A002
+              speed: float | None = Query(None, ge=0.5, le=2.0)):
+    return await speak(text, voice, _parse_style(style), i, n, next, speed)
 
 
 class TTSBody(BaseModel):
@@ -187,8 +228,9 @@ class TTSBody(BaseModel):
     i: int | None = Field(None, ge=0, le=200)
     n: int | None = Field(None, ge=1, le=200)
     next: str | None = Field(None, max_length=MAX_CHARS)
+    speed: float | None = Field(None, ge=0.5, le=2.0)
 
 
 @router.post("/api/tts")
 async def tts_post(b: TTSBody):
-    return await speak(b.text, b.voice, b.style, b.i, b.n, b.next)
+    return await speak(b.text, b.voice, b.style, b.i, b.n, b.next, b.speed)

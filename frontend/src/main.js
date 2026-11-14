@@ -18,6 +18,13 @@ import { chime } from "./sound.js";
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
 // ---- end audio floor ----
 import { createSession } from "./session.js";
+// ---- [a11y] accessibility, captions, key-span highlighting, Space words (docs/ACCESSIBILITY.md) ----
+import "./a11y.css";
+import { initA11y } from "./a11y.js";
+import { initCaptions } from "./caption.js";
+import { initHighlight } from "./highlight.js";
+import "./academy/vocab.js";
+// ---- end [a11y] ----
 
 // [session] The session Director (docs/SESSION_CONTRACT.md) is ON unless ?session=0 or localStorage atm-session=0.
 // If its socket fails, mission turns fall back to POST /api/ask exactly as before.
@@ -85,6 +92,16 @@ async function boot() {
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
+  // ---- [a11y] settings + voice commands + audio description, captions, highlights ----
+  const a11ySay = (t, o = {}) => o.describe
+    ? (floor ? floor.say(t, { voice: "guide", priority: 5, style: { situation: "explain" } }) : speak(t))
+    : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true });
+  const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), places, playCrew: m => player.play(m) });
+  if (a11y) a11y.wrapGlobe(globe, placeById);
+  initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
+  initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
+  // ---- end [a11y] ----
+
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
   async function guideSay(text, { keepCrew, voice: v, style } = {}) {
     if (!text) return false;
@@ -111,6 +128,8 @@ async function boot() {
     const text = (raw || "").trim(); if (!text) return;
     const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
+    if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text);   // [a11y] transcript
+    if (a11y && await a11y.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // [a11y] "where am I?", "faster", "press next"
     if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
     if (academyUI.active && await academyUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // Academy
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.

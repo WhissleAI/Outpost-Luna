@@ -36,7 +36,11 @@ export const STEP_RENDERERS = {
     wire: (el, ctx) => el.querySelectorAll(".a-order").forEach(b => b.onclick = () => ctx.answer({ text: b.dataset.say }, b)),
   },
 };
-try { (window.__outpost = window.__outpost || {}).stepRenderers = STEP_RENDERERS; } catch (e) { /* no window (tests) */ }
+try {   // share one registry: keep anything registered before this module loaded (e.g. academy/vocab.js)
+  const O = (window.__outpost = window.__outpost || {});
+  Object.keys(O.stepRenderers || {}).forEach(k => { if (!(k in STEP_RENDERERS)) STEP_RENDERERS[k] = O.stepRenderers[k]; });
+  O.stepRenderers = STEP_RENDERERS;
+} catch (e) { /* no window (tests) */ }
 
 /**
  * @param {object} o
@@ -169,8 +173,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const st = L.steps[i], k = lessons().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
     panel.classList.toggle("is-ride", !!L.ride);
-    const R = STEP_RENDERERS[acc.type] || { html: () => "" };
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
+    // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
+    // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
+    const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
+    const E = STEP_RENDERERS[acc.type];
+    const R = typeof E === "function"
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el) }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true }))
+      : (E || { html: () => "" });
     const story = LESSON_STORY[L.id] || {};
     panel.innerHTML = `
       <header class="m-head"><button type="button" class="a-back" id="aBack" aria-label="Back to the patch map">‹ Map</button>

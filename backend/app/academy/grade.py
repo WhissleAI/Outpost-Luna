@@ -7,6 +7,7 @@ accept types:
                                     `more: true` means an allocate that raises the load's share
   keywords  {all?:[[syn,...],...], any?:[[syn,...]]}   every `all` group has a word heard; at least one `any` group
   choice    {answer, options:[{id,label,say:[...]}]}   a tapped option id, or words that name exactly one option
+  vocab_match / vocab_say / vocab_fill / vocab_listen   Space words (app/academy/vocab.py, docs/VOCABULARY.md)
 """
 from __future__ import annotations
 
@@ -111,6 +112,10 @@ def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]
     if kind == "choice":
         c = choice_of(inp, acc)
         return c == acc["answer"], {"choice": c}
+    # ---- vocab steps (a11y / learning design) ----
+    if kind.startswith("vocab_"):
+        from . import vocab
+        return vocab.grade(acc, inp)
     return False, {}
 
 

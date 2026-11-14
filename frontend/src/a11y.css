@@ -1,0 +1,124 @@
+/* Accessibility, captions, key-span highlights, Space words (a11y.js, caption.js, highlight.js, academy/vocab.js).
+   Uses the app tokens only; every mark has a shape (underline / box / glyph), never colour alone. */
+
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip-link{position:absolute;left:8px;top:-60px;z-index:100;background:var(--accent);color:var(--accent-ink);padding:8px 14px;border-radius:10px;font-weight:600;text-decoration:none}
+.skip-link:focus{top:8px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.stage :focus-visible,.hl:focus-visible{outline:3px solid var(--accent-2);outline-offset:2px}
+
+/* ---- top bar: settings button + "no audio needed" ---- */
+.a11y-btn svg,#a11yBtn svg{width:20px;height:20px}
+.a11y-noaudio{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--mute);border:1px solid var(--line);border-radius:999px;padding:2px 8px 2px 6px;white-space:nowrap}
+.a11y-noaudio svg{width:14px;height:14px}
+@media (max-width:820px){.a11y-noaudio span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}}
+
+/* ---- settings panel ---- */
+.a11y-panel{position:fixed;z-index:60;right:16px;top:calc(var(--topbar,52px) + 8px);width:min(380px,calc(100% - 32px));max-height:calc(100dvh - var(--topbar,52px) - 24px);overflow:auto;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius,14px);box-shadow:0 12px 40px rgba(0,0,0,.25);padding:14px 16px;font-size:14px}
+.a11y-panel header{display:flex;align-items:center;justify-content:space-between}
+.a11y-panel h2{font:700 18px/1.2 var(--f-display);margin:0}
+.a11y-panel fieldset{border:0;padding:0;margin:12px 0}
+.a11y-panel legend,.a11y-range b,.a11y-place b{font-weight:600;display:block;margin-bottom:6px}
+.a11y-speed{display:flex;gap:6px;flex-wrap:wrap}
+.a11y-speed label{flex:1}
+.a11y-speed input{position:absolute;opacity:0}
+.a11y-speed span{display:block;text-align:center;padding:8px 0;border:2px solid var(--line);border-radius:10px;font-weight:600;cursor:pointer}
+.a11y-speed input:checked+span{border-color:var(--accent);background:var(--soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.a11y-speed input:checked+span::before{content:"✓ "}
+.a11y-speed input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.a11y-range{display:block;margin:10px 0}.a11y-range input{width:100%}
+.a11y-group{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.a11y-sw{display:flex;gap:10px;align-items:flex-start;padding:6px 0;cursor:pointer}
+.a11y-sw input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+.a11y-sw small,.a11y-place small{display:block;color:var(--mute);font-size:12.5px}
+.a11y-panel details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.a11y-panel summary{cursor:pointer;font-weight:600}
+.a11y-transcript ol{max-height:200px;overflow:auto;padding-left:18px;font-size:13px}
+.a11y-help{padding-left:18px;font-size:13px;line-height:1.6}
+.a11y-place{display:block;margin-top:10px}.a11y-place span{display:flex;gap:6px}.a11y-place select{flex:1;min-width:0;font:inherit;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.a11y-note{font-size:12px;color:var(--mute);margin:10px 0 0}
+
+/* ---- visual alerts ---- */
+.a11y-flash{position:fixed;inset:0;pointer-events:none;z-index:80;border:0 solid var(--danger);opacity:0}
+.a11y-flash.is-on{animation:a11yFlash 1.6s ease-out 1}
+@keyframes a11yFlash{0%,40%,80%{opacity:1;border-width:10px}20%,60%,100%{opacity:0;border-width:10px}}
+.a11y-vbanner{position:fixed;z-index:81;left:50%;top:calc(var(--topbar,52px) + 10px);transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));
+  display:flex;gap:10px;align-items:center;background:var(--surface);color:var(--ink);border:3px solid var(--danger);border-radius:12px;padding:10px 14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.a11y-vb-icon{font-size:22px;line-height:1}
+
+/* ---- caption bar ---- */
+.caption-bar{display:flex;align-items:flex-start;gap:10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--accent);
+  border-radius:12px;padding:8px 12px;box-shadow:var(--shadow);font:500 16px/1.45 var(--f-body)}
+.caption-bar[hidden],html[data-captions="off"] .caption-bar{display:none}
+.caption-bar[data-who="crew"]{border-left-color:var(--accent-2)}
+.cap-who{flex:none;font:700 11px/1 var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--mute);padding-top:5px;min-width:56px}
+.cap-line{margin:0;flex:1;min-width:0}
+.cap-row{display:block}
+.cap-w{border-radius:4px;padding:0 1px;transition:background .08s}
+.cap-w.past{color:var(--mute)}
+.cap-w.now{background:var(--accent);color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent);text-decoration:underline;text-underline-offset:3px}
+.cap-speed{flex:none;font:600 11px/1 var(--f-mono);color:var(--mute);padding-top:5px}
+
+/* ---- key-span marks: shape + colour ---- */
+mark.hl,.cap-w.hl{background:none;color:inherit;padding:0}
+.hl-place{text-decoration:underline 2px solid var(--t-geo);text-underline-offset:3px;cursor:pointer}
+mark.hl-place::before{content:"⌖";font-size:.85em;margin-right:1px;color:var(--t-geo)}
+.hl-term{text-decoration:underline 2px dotted var(--t-color);text-underline-offset:3px;cursor:help}
+mark.hl-term::after{content:"?";display:inline-grid;place-items:center;width:1.05em;height:1.05em;margin-left:2px;border-radius:50%;font:700 .62em/1 var(--f-body);vertical-align:super;background:var(--t-color);color:#fff}
+.hl-number{border:1.5px solid var(--t-feature);border-radius:4px;padding:0 3px!important;font-variant-numeric:tabular-nums}
+.hl-resource{text-decoration:underline 3px double var(--t-dir);text-underline-offset:3px}
+.cap-w.now.hl{color:var(--accent-ink)}
+.hl-chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+.hl-chips[hidden]{display:none}
+.hl-chip{font:600 12.5px/1 var(--f-body);border:1px solid var(--line);background:var(--surface-2);color:var(--ink);border-radius:999px;padding:6px 10px;cursor:pointer}
+.hl-chip-term{border-style:dotted;border-color:var(--t-color)}.hl-chip-place{border-color:var(--t-geo)}
+
+/* mini glossary card */
+.hl-card{position:fixed;z-index:70;left:50%;top:50%;transform:translate(-50%,-50%);width:min(360px,calc(100% - 32px));background:var(--surface);color:var(--ink);
+  border:2px solid var(--t-color);border-radius:var(--radius,14px);box-shadow:0 16px 50px rgba(0,0,0,.35);padding:12px 16px 14px}
+.hl-card[hidden]{display:none}
+.hl-card header{display:flex;justify-content:space-between;align-items:center}
+.hl-card h3{font:700 24px/1.2 var(--f-display);margin:2px 0 6px}
+.hl-card p{margin:0 0 8px;font-size:15px}
+.hl-src{font-size:12.5px!important;color:var(--mute)}
+.hl-acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---- Space words (academy/vocab.js) ---- */
+.v-word{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+.v-word b{font:800 28px/1.1 var(--f-display);letter-spacing:.01em}
+.v-label{flex-basis:100%;font:700 11px/1 var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--mute)}
+.v-syl{font:600 15px/1 var(--f-mono);color:var(--mute)}
+.v-mean{color:var(--mute);margin:4px 0}
+.v-opts.is-meanings .v-opt{text-align:left}
+.v-opt{display:flex;align-items:center;gap:8px}
+.v-n{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;border:1.5px solid currentColor;font:700 12px/1 var(--f-mono);opacity:.75}
+.v-sentence{font:500 18px/1.5 var(--f-body);margin:6px 0}
+.v-blank{display:inline-block;min-width:4.5em;border-bottom:3px solid var(--accent);color:transparent}
+.v-listen{display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin:6px 0}
+.v-reveal summary{cursor:pointer;font-size:13px;color:var(--mute)}
+.v-reveal p{margin:4px 0 0;font-size:15px}
+.v-src{font-size:12.5px;color:var(--mute);display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 0}
+
+/* ---- settings applied ---- */
+html[data-text-scale="big"] .mpanel,html[data-text-scale="big"] .card,html[data-text-scale="big"] .askbar,
+html[data-text-scale="big"] .topbar,html[data-text-scale="big"] .hl-card,html[data-text-scale="big"] .a11y-panel,
+html[data-text-scale="big"] .nowplaying,html[data-text-scale="big"] .a11y-vbanner{zoom:var(--a11y-zoom,1)}
+html[data-text-scale="big"] .topbar{height:auto;min-height:var(--topbar)}
+
+html[data-dyslexia="1"] body,html[data-dyslexia="1"] button,html[data-dyslexia="1"] input{font-family:"Atkinson Hyperlegible",var(--f-body)!important;letter-spacing:.02em;word-spacing:.08em}
+html[data-dyslexia="1"] .cap-line,html[data-dyslexia="1"] .a-prompt,html[data-dyslexia="1"] .card-say{line-height:1.65}
+
+html[data-motion="reduce"] *,html[data-motion="reduce"] *::before,html[data-motion="reduce"] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+html[data-motion="reduce"] .a11y-flash.is-on{animation:none;opacity:1;border-width:10px;transition:opacity 1.5s}
+
+html[data-contrast="high"]{
+  --bg:#000;--surface:#000;--surface-2:#111;--line:#fff;--ink:#fff;--mute:#f0f0f0;--dim:#e0e0e0;
+  --accent:#FFE14D;--accent-ink:#000;--accent-2:#FFE14D;--soft:#222;--ok:#7CFF9B;--warn:#FFE14D;--danger:#FF8A8A;
+  --t-feature:#FFE14D;--t-color:#FF9EE8;--t-geo:#7FD3FF;--t-dir:#7CFF9B;--shadow:none;--glass:#000;--glass-line:#fff}
+html[data-contrast="high"] body{background:#000;color:#fff}
+html[data-contrast="high"] button,html[data-contrast="high"] .pill,html[data-contrast="high"] .a-choice{border:2px solid #fff!important}
+html[data-contrast="high"] a{color:#7FD3FF;text-decoration:underline}
+html[data-contrast="high"] .mpanel,html[data-contrast="high"] .card,html[data-contrast="high"] .dock,html[data-contrast="high"] .caption-bar{border:2px solid #fff;background:#000}
+html[data-contrast="high"] :focus-visible{outline:4px solid #FFE14D!important;outline-offset:2px}
+.a11y-vbanner[hidden],.a11y-panel[hidden],.hl-card[hidden]{display:none!important}

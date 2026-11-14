@@ -122,6 +122,42 @@ pairs its tag with controls that carry the effect):
 | Academy `/api/academy/attempt` | passed / retry / hint / missed / done, badge → `badge` |
 | Client-written lines (`floor.js` callers) | lesson brief, badge award, hardware story send `{situation}` only; the backend resolves it through the same table |
 
+## 4b. Accessibility steering: speed, the `vocab` situation, vocabulary emphasis, word timings
+
+**Speaking pace preference.** The kid's caption-bar speed (0.75× / 1× / 1.25× / 1.5×, `a11y.js`, stored on the device
+only) goes to `/api/tts?speed=`. `steering.speed_steer(speed)` maps it to two things:
+
+| speed | `rate` offset (z, added on top of the Director's style, then clamped ±2.5) | Steer `pace` (global duration divisor) |
+| --- | --- | --- |
+| 0.75× | −0.83 | 0.85 |
+| 1× | 0 | 1 |
+| 1.25× | +0.64 | 1.13 |
+| 1.5× | +1.17 | 1.25 |
+
+`rate` keeps it an articulation change in the voice's own style (a storm alert stays faster than a calm line at every
+speed); `pace` carries the rest, since rate z-scores saturate. The model server accepts `pace` (0.6–1.6) on `/v1/tts`
+and reports it in `X-Steer-Pace`. Crew audio is a recording: it gets `playbackRate` (pitch preserved) instead.
+Measured in Chrome: the same 10-word line took 3.86 s of caption time at 1× and 2.69 s at 1.5×.
+
+**`vocab` situation** — `enunciated`, rate −1.0, pause +0.6, f0_iqr +0.3: slower, clear gaps, a little more melody,
+for new words and younger kids. Used by every Space-words attempt reply that isn't a pass, by "Hear it" on a glossary
+card, and by the vocab step buttons.
+
+**Per-word vocabulary emphasis.** `style_for(..., vocab=[terms])` keeps the lesson's terms that occur in the line
+(`style.vocab`, ≤ 3); `/api/tts` wraps each in `<slow><emph>term</emph></slow>` (×1.4 × 1.2 duration, +2.5 st, +4 dB on
+just that word) before rendering (`steering.apply_markup`: vocab first, then the usual number/place emphasis). The
+Academy attempt route adds the step's term to every vocab step reply.
+
+**Word timings (real, not estimated).** `steertts_edge` has no aligner, but its duration predictor is the alignment:
+`OnnxTTS.mel()` expands each phone into `dur` mel frames (`tok = repeat(arange(N), dur)`, HOP 256 @ 24 kHz) before the
+decoder. `tts_steer.py` wraps the instance's `_dec`/`_render` to capture `tok` per segment (markup renders one segment
+per style span), recovers per-phone frames with `bincount`, folds phones into words with `to_phonemes()`' word index,
+and maps spoken words onto the display words (each display token takes as many spoken words as it normalises to:
+"40" → "forty"; on a mismatch, proportional over the real start/end). The reply carries
+`X-Steer-Words: startMs-endMs,…` per display word; `/api/tts` validates it, caches it next to the WAV (`.words`) and
+returns it as `X-TTS-Words` (exposed for CORS). Deepgram and the browser voice have no timings: the caption bar
+estimates from the audio length and syllables, or follows `speechSynthesis` boundary events.
+
 ## 5. Measured (M-series Mac, CPU, 2 threads, warm)
 
 | | |

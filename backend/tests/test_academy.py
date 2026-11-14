@@ -15,7 +15,7 @@ def client():
 def test_course_validates():
     assert content.check() == []
     c = content.course()
-    assert 6 <= len(c["lessons"]) <= 7
+    assert 6 <= len(c["lessons"]) <= 8          # 8 with Space words (docs/VOCABULARY.md)
     assert c["lessons"][-1]["id"] == "checkride" and c["lessons"][-1]["badge"]["id"] == c["pass_badge"]
     for l in c["lessons"]:
         assert l["facts"] and all(f["source"]["url"].startswith("http") for f in l["facts"])
@@ -97,6 +97,10 @@ def test_attempt_api_retry_hint_pass_badge(client):
     r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 1, "input": {"tap": "shackleton"}}).json()
     assert r["status"] == "passed"
     r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 2, "input": {"choice": "ice"}}).json()
+    assert r["status"] == "passed" and r["next_step"] == 3
+    # step 3 is the sprinkled Space word (mare): answering its meaning by voice earns the badge
+    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 3,
+                                                  "input": {"text": "a dark flat sea of cooled lava"}}).json()
     assert r["status"] == "passed" and r["badge"]["id"] == "scout" and "next_step" not in r
     assert client.post("/api/academy/attempt", json={"lesson_id": "nope", "step": 0, "input": {}}).status_code == 404
 
