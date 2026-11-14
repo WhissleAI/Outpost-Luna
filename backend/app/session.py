@@ -50,7 +50,7 @@ ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
 
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
-                 "filter": "normal", "level": "cadet", "listen": "handsfree"}
+                 "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0}
 LEVELS = ("cadet", "commander")
 LISTEN = ("handsfree", "ptt")
 OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
@@ -81,6 +81,13 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
         p["filter"] = m["filter"]
     if m.get("level") in LEVELS:
         p["level"] = m["level"]
+    if "volume" in m:     # master volume: 1 = 100% = the -14 LUFS target; up to 2 (+6 dB into the limiter)
+        try:
+            v = float(m["volume"])
+            if v == v:
+                p["volume"] = round(max(0.0, min(2.0, v)), 2)
+        except (TypeError, ValueError):
+            pass
     if m.get("listen") in LISTEN:
         p["listen"] = m["listen"]
     return p
