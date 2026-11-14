@@ -1,0 +1,81 @@
+{
+ "_note": "fitted by ear_errors.py build on the odd ear-eval ids",
+ "rates": {
+  "clean": {
+   "sub": 0.06741573033707865,
+   "del": 0.0,
+   "ins": 0.0
+  },
+  "noisy": {
+   "sub": 0.11797752808988764,
+   "del": 0.0,
+   "ins": 0.0
+  }
+ },
+ "tail_rate_noisy": 0.4625,
+ "tails": [
+  "meet me at 8 am",
+  "work work work work work",
+  "it s a long run",
+  "mm mm mm mm mm mm mm mm mm mm",
+  "any emails you know okay okay okay okay okay",
+  "please tell me",
+  "for the weather lucia can t",
+  "okay okay okay okay okay okay okay",
+  "to you",
+  "launches alarm",
+  "play all emails",
+  "as well",
+  "on 1 8 4",
+  "no no no",
+  "any emails you know from",
+  "please",
+  "for the weather",
+  "it s huge isn t it",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 1 8 4",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 14",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails"
+ ],
+ "subs": {
+  "put": {
+   "with": 4
+  },
+  "orientale": {
+   "oriental": 4,
+   "oriental numbers": 3
+  },
+  "malapert": {
+   "malipart": 2,
+   "malapart": 2
+  },
+  "near malapert": {
+   "the amal apart": 4
+  },
+  "ice in cabeus": {
+   "icing cabins": 7
+  },
+  "3": {
+   "three": 4,
+   "three again": 4
+  },
+  "ejecta": {
+   "a jackson": 4
+  }
+ }
+}

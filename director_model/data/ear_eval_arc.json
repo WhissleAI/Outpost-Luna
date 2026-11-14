@@ -1,0 +1,5489 @@
+{
+ "settings": {
+  "arc_ear": "on",
+  "ear_eager_silence_s": 0.25,
+  "ear_eager_cc_p": 0.5,
+  "ear_end_silence_s": 0.6,
+  "ear_pause_s": 0.5,
+  "ear_short_pause_s": 0.6,
+  "ear_partial_every_s": 0.3,
+  "ear_vad_margin_db": 6.0,
+  "ear_auto_prev": false
+ },
+ "load": {
+  "available": true,
+  "decoder_loaded": true,
+  "load_s": 4.62,
+  "rss_after_load_mb": 948.0,
+  "rss_load_delta_mb": 889.5,
+  "rss_now_mb": 948.0
+ },
+ "conditions": {
+  "none": {
+   "summary": {
+    "all": {
+     "clips": 80,
+     "wer": 0.279,
+     "names": "24/46",
+     "name_acc": 0.522,
+     "numbers": "23/24",
+     "number_acc": 0.958
+    },
+    "clean": {
+     "clips": 40,
+     "wer": 0.109,
+     "names": "13/23",
+     "name_acc": 0.565,
+     "numbers": "11/12",
+     "number_acc": 0.917
+    },
+    "noisy": {
+     "clips": 40,
+     "wer": 0.448,
+     "names": "11/23",
+     "name_acc": 0.478,
+     "numbers": "12/12",
+     "number_acc": 1.0
+    },
+    "endpoint_ms_p50": 958.0,
+    "endpoint_ms_p90": 1699,
+    "turn_end_missing": 0,
+    "eager_rate": 0.24,
+    "rtf_mean": 0.326
+   },
+   "rows": [
+    {
+     "clip": "c01_0",
+     "id": "c01",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.34,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 953,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.275
+    },
+    {
+     "clip": "c01_1",
+     "id": "c01",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 12.6,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 1504,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.369
+    },
+    {
+     "clip": "c02_0",
+     "id": "c02",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.3,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 858,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.262
+    },
+    {
+     "clip": "c02_1",
+     "id": "c02",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.37,
+     "snr_db": 13.6,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 1505,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.347
+    },
+    {
+     "clip": "c03_0",
+     "id": "c03",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.77,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for ice.",
+     "ref": "send the rover for ice",
+     "end_ms": 860,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.402
+    },
+    {
+     "clip": "c03_1",
+     "id": "c03",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.73,
+     "snr_db": 10.2,
+     "err": 2,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for ICE as well.",
+     "ref": "send the rover for ice",
+     "end_ms": 1521,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.344
+    },
+    {
+     "clip": "c04_0",
+     "id": "c04",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 821,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.263
+    },
+    {
+     "clip": "c04_1",
+     "id": "c04",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.64,
+     "snr_db": 13.0,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 1512,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.318
+    },
+    {
+     "clip": "c05_0",
+     "id": "c05",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "put 30% on life support",
+     "ref": "put 30 percent on life support",
+     "end_ms": 860,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.26
+    },
+    {
+     "clip": "c05_1",
+     "id": "c05",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.34,
+     "snr_db": 10.8,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "with 30% on life support.",
+     "ref": "put 30 percent on life support",
+     "end_ms": 1644,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.29
+    },
+    {
+     "clip": "c06_0",
+     "id": "c06",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.79,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 15 to science.",
+     "ref": "move 15 to science",
+     "end_ms": 892,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.278
+    },
+    {
+     "clip": "c06_1",
+     "id": "c06",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.79,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "move 15 to science",
+     "ref": "move 15 to science",
+     "end_ms": 1746,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.36
+    },
+    {
+     "clip": "c07_0",
+     "id": "c07",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.64,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "heaters to 25",
+     "ref": "heaters to 25",
+     "end_ms": 907,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.248
+    },
+    {
+     "clip": "c07_1",
+     "id": "c07",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.63,
+     "snr_db": 13.2,
+     "err": 4,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Heaters to 25 on 1-8-4.",
+     "ref": "heaters to 25",
+     "end_ms": 1975,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.357
+    },
+    {
+     "clip": "c08_0",
+     "id": "c08",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.01,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and shift.",
+     "ref": "end shift",
+     "end_ms": 766,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.23
+    },
+    {
+     "clip": "c08_1",
+     "id": "c08",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.03,
+     "snr_db": 11.3,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and Chet. Chet.",
+     "ref": "end shift",
+     "end_ms": 1506,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.311
+    },
+    {
+     "clip": "c09_0",
+     "id": "c09",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.66,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now",
+     "ref": "go to the shelter now",
+     "end_ms": 820,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.244
+    },
+    {
+     "clip": "c09_1",
+     "id": "c09",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.58,
+     "snr_db": 13.4,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now No, no, no.",
+     "ref": "go to the shelter now",
+     "end_ms": 874,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.333
+    },
+    {
+     "clip": "c10_0",
+     "id": "c10",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 856,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.274
+    },
+    {
+     "clip": "c10_1",
+     "id": "c10",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.57,
+     "snr_db": 12.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 1707,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.375
+    },
+    {
+     "clip": "c11_0",
+     "id": "c11",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Send the rover to Shackleton.",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 921,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.273
+    },
+    {
+     "clip": "c11_1",
+     "id": "c11",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.01,
+     "snr_db": 10.6,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "send the rover to shackleton",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 907,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.326
+    },
+    {
+     "clip": "c12_0",
+     "id": "c12",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 900,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.286
+    },
+    {
+     "clip": "c12_1",
+     "id": "c12",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 1745,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.319
+    },
+    {
+     "clip": "c13_0",
+     "id": "c13",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.48,
+     "err": 1,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental.",
+     "ref": "show me Orientale",
+     "end_ms": 843,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.331
+    },
+    {
+     "clip": "c13_1",
+     "id": "c13",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.43,
+     "snr_db": 12.1,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental numbers.",
+     "ref": "show me Orientale",
+     "end_ms": 1522,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.336
+    },
+    {
+     "clip": "c14_0",
+     "id": "c14",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.09,
+     "err": 2,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "How deep is Vav love crater?",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 940,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.272
+    },
+    {
+     "clip": "c14_1",
+     "id": "c14",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.1,
+     "snr_db": 12.8,
+     "err": 7,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "How deep is Bradley of Croatia in Lancashire, Lancashire, Lancashire.",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 1864,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.394
+    },
+    {
+     "clip": "c15_0",
+     "id": "c15",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land near Malipart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 902,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.287
+    },
+    {
+     "clip": "c15_1",
+     "id": "c15",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.9,
+     "snr_db": 10.0,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land the Amal apart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 1500,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.357
+    },
+    {
+     "clip": "c16_0",
+     "id": "c16",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.41,
+     "err": 2,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Fly to Digo Lockheed.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1035,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.411
+    },
+    {
+     "clip": "c16_1",
+     "id": "c16",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.5,
+     "snr_db": 10.0,
+     "err": 5,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "reply to D'Girl asking D'Girl. D'Girl.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1516,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.412
+    },
+    {
+     "clip": "c17_0",
+     "id": "c17",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 903,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.28
+    },
+    {
+     "clip": "c17_1",
+     "id": "c17",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.71,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.373
+    },
+    {
+     "clip": "c18_0",
+     "id": "c18",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.76,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is tiger so bright?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 832,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.263
+    },
+    {
+     "clip": "c18_1",
+     "id": "c18",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.78,
+     "snr_db": 12.9,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is Typho so bright in the world?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 1355,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.317
+    },
+    {
+     "clip": "c19_0",
+     "id": "c19",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Take me to Copernicus.",
+     "ref": "take me to Copernicus",
+     "end_ms": 844,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.281
+    },
+    {
+     "clip": "c19_1",
+     "id": "c19",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.7,
+     "snr_db": 11.4,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Take me to Copernicus.",
+     "ref": "take me to Copernicus",
+     "end_ms": 1745,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.344
+    },
+    {
+     "clip": "c20_0",
+     "id": "c20",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.78,
+     "err": 2,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Digo Laki.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1109,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.504
+    },
+    {
+     "clip": "c20_1",
+     "id": "c20",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.88,
+     "snr_db": 12.4,
+     "err": 3,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Degor Lockheed Monk.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1620,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.342
+    },
+    {
+     "clip": "c21_0",
+     "id": "c21",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 0.74,
+     "err": 0,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "copy",
+     "ref": "copy",
+     "end_ms": 868,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.246
+    },
+    {
+     "clip": "c21_1",
+     "id": "c21",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 0.75,
+     "snr_db": 11.1,
+     "err": 5,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "copy any emails you know from",
+     "ref": "copy",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.349
+    },
+    {
+     "clip": "c22_0",
+     "id": "c22",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.07,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roger that.",
+     "ref": "roger that",
+     "end_ms": 887,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.292
+    },
+    {
+     "clip": "c22_1",
+     "id": "c22",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.05,
+     "snr_db": 13.1,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roderick, that's easy.",
+     "ref": "roger that",
+     "end_ms": 1220,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.529
+    },
+    {
+     "clip": "c23_0",
+     "id": "c23",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.06,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again.",
+     "ref": "say again",
+     "end_ms": 847,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.319
+    },
+    {
+     "clip": "c23_1",
+     "id": "c23",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.06,
+     "snr_db": 13.1,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again, please.",
+     "ref": "say again",
+     "end_ms": 1508,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.315
+    },
+    {
+     "clip": "c24_0",
+     "id": "c24",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.15,
+     "err": 1,
+     "n": 2,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "copy captain",
+     "ref": "copy CAPCOM",
+     "end_ms": 862,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.251
+    },
+    {
+     "clip": "c24_1",
+     "id": "c24",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.2,
+     "snr_db": 11.9,
+     "err": 2,
+     "n": 2,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Coffee Capital.",
+     "ref": "copy CAPCOM",
+     "end_ms": 1699,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.322
+    },
+    {
+     "clip": "c25_0",
+     "id": "c25",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 866,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.276
+    },
+    {
+     "clip": "c25_1",
+     "id": "c25",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.03,
+     "snr_db": 13.6,
+     "err": 3,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready for the weather.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.421
+    },
+    {
+     "clip": "c26_0",
+     "id": "c26",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.34,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 rover?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 1005,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.304
+    },
+    {
+     "clip": "c26_1",
+     "id": "c26",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.33,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 logo?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 1081,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.306
+    },
+    {
+     "clip": "c27_0",
+     "id": "c27",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.7,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three",
+     "ref": "show me Surveyor 3",
+     "end_ms": 929,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.333
+    },
+    {
+     "clip": "c27_1",
+     "id": "c27",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.66,
+     "snr_db": 11.9,
+     "err": 1,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three again.",
+     "ref": "show me Surveyor 3",
+     "end_ms": 1424,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.393
+    },
+    {
+     "clip": "c28_0",
+     "id": "c28",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.33,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Who drove the lunar roving vehicle?",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 963,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.323
+    },
+    {
+     "clip": "c28_1",
+     "id": "c28",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.39,
+     "snr_db": 13.0,
+     "err": 2,
+     "n": 6,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Who drove the lunar roaming vehicles?",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 1511,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.578
+    },
+    {
+     "clip": "c29_0",
+     "id": "c29",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 1103,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.519
+    },
+    {
+     "clip": "c29_1",
+     "id": "c29",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.02,
+     "snr_db": 13.8,
+     "err": 4,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land? It's huge, isn't it?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 1937,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.427
+    },
+    {
+     "clip": "c30_0",
+     "id": "c30",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina Coggie do?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 1015,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.339
+    },
+    {
+     "clip": "c30_1",
+     "id": "c30",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.0,
+     "snr_db": 12.7,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina coach do when you're five?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 1507,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.331
+    },
+    {
+     "clip": "c31_0",
+     "id": "c31",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.1,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Is Victor Glover the pilot?",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 916,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.287
+    },
+    {
+     "clip": "c31_1",
+     "id": "c31",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 11.8,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "is Victor Glover the pilot.",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 869,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.309
+    },
+    {
+     "clip": "c32_0",
+     "id": "c32",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.3,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is regular life?",
+     "ref": "what is regolith",
+     "end_ms": 842,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.261
+    },
+    {
+     "clip": "c32_1",
+     "id": "c32",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 10.8,
+     "err": 1,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is regulated?",
+     "ref": "what is regolith",
+     "end_ms": 1559,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.317
+    },
+    {
+     "clip": "c33_0",
+     "id": "c33",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.67,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What does Ejecta mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 849,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.357
+    },
+    {
+     "clip": "c33_1",
+     "id": "c33",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.59,
+     "snr_db": 10.8,
+     "err": 7,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does a Jackson mean? You know what I mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 1748,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.354
+    },
+    {
+     "clip": "c34_0",
+     "id": "c34",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.16,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from Earth?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 931,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.294
+    },
+    {
+     "clip": "c34_1",
+     "id": "c34",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.12,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from outside?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 793,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.313
+    },
+    {
+     "clip": "c35_0",
+     "id": "c35",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.72,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 947,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.28
+    },
+    {
+     "clip": "c35_1",
+     "id": "c35",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.64,
+     "snr_db": 13.4,
+     "err": 2,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm brought together?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 1687,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.32
+    },
+    {
+     "clip": "c36_0",
+     "id": "c36",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.44,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 886,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.283
+    },
+    {
+     "clip": "c36_1",
+     "id": "c36",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.49,
+     "snr_db": 13.5,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 803,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.289
+    },
+    {
+     "clip": "c37_0",
+     "id": "c37",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.91,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose?",
+     "ref": "what is the radiation dose",
+     "end_ms": 871,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.293
+    },
+    {
+     "clip": "c37_1",
+     "id": "c37",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.88,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose? play all emails",
+     "ref": "what is the radiation dose",
+     "end_ms": 737,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.333
+    },
+    {
+     "clip": "c38_0",
+     "id": "c38",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      false
+     ],
+     "hyp": "send the rover to kilometers north",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 935,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.309
+    },
+    {
+     "clip": "c38_1",
+     "id": "c38",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.38,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "send the rover 2 kilometers north",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 1618,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.302
+    },
+    {
+     "clip": "c39_0",
+     "id": "c39",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.29,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 911,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.27
+    },
+    {
+     "clip": "c39_1",
+     "id": "c39",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 14.0,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 1267,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.302
+    },
+    {
+     "clip": "c40_0",
+     "id": "c40",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.14,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "zoom in on the Orion capsule",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 907,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.302
+    },
+    {
+     "clip": "c40_1",
+     "id": "c40",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Zoom in on the Orion capsule.",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 1037,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.305
+    }
+   ]
+  },
+  "tier_a": {
+   "summary": {
+    "all": {
+     "clips": 80,
+     "wer": 0.301,
+     "names": "26/46",
+     "name_acc": 0.565,
+     "numbers": "23/24",
+     "number_acc": 0.958
+    },
+    "clean": {
+     "clips": 40,
+     "wer": 0.098,
+     "names": "14/23",
+     "name_acc": 0.609,
+     "numbers": "11/12",
+     "number_acc": 0.917
+    },
+    "noisy": {
+     "clips": 40,
+     "wer": 0.503,
+     "names": "12/23",
+     "name_acc": 0.522,
+     "numbers": "12/12",
+     "number_acc": 1.0
+    },
+    "endpoint_ms_p50": 1117.0,
+    "endpoint_ms_p90": 1852,
+    "turn_end_missing": 0,
+    "eager_rate": 0.24,
+    "rtf_mean": 0.505
+   },
+   "rows": [
+    {
+     "clip": "c01_0",
+     "id": "c01",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.34,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 918,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.343
+    },
+    {
+     "clip": "c01_1",
+     "id": "c01",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 12.6,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 1504,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.601
+    },
+    {
+     "clip": "c02_0",
+     "id": "c02",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.3,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 958,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.308
+    },
+    {
+     "clip": "c02_1",
+     "id": "c02",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.37,
+     "snr_db": 13.6,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 1373,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.358
+    },
+    {
+     "clip": "c03_0",
+     "id": "c03",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.77,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for ice.",
+     "ref": "send the rover for ice",
+     "end_ms": 890,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.276
+    },
+    {
+     "clip": "c03_1",
+     "id": "c03",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.73,
+     "snr_db": 10.2,
+     "err": 5,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for Icy file. We've got two",
+     "ref": "send the rover for ice",
+     "end_ms": 1521,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.476
+    },
+    {
+     "clip": "c04_0",
+     "id": "c04",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 885,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.398
+    },
+    {
+     "clip": "c04_1",
+     "id": "c04",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.64,
+     "snr_db": 13.0,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 1514,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.41
+    },
+    {
+     "clip": "c05_0",
+     "id": "c05",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "put 30% on life support",
+     "ref": "put 30 percent on life support",
+     "end_ms": 932,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.366
+    },
+    {
+     "clip": "c05_1",
+     "id": "c05",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.34,
+     "snr_db": 10.8,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "with 30% on life support.",
+     "ref": "put 30 percent on life support",
+     "end_ms": 1830,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.357
+    },
+    {
+     "clip": "c06_0",
+     "id": "c06",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.79,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 15 to science.",
+     "ref": "move 15 to science",
+     "end_ms": 926,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.294
+    },
+    {
+     "clip": "c06_1",
+     "id": "c06",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.79,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "move 15 to science",
+     "ref": "move 15 to science",
+     "end_ms": 1786,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.428
+    },
+    {
+     "clip": "c07_0",
+     "id": "c07",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.64,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "heaters to 25",
+     "ref": "heaters to 25",
+     "end_ms": 940,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.337
+    },
+    {
+     "clip": "c07_1",
+     "id": "c07",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.63,
+     "snr_db": 13.2,
+     "err": 4,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Heaters to 25 on 1-8-4.",
+     "ref": "heaters to 25",
+     "end_ms": 1981,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.509
+    },
+    {
+     "clip": "c08_0",
+     "id": "c08",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.01,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and shift.",
+     "ref": "end shift",
+     "end_ms": 819,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.277
+    },
+    {
+     "clip": "c08_1",
+     "id": "c08",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.03,
+     "snr_db": 11.3,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and Schiff. Smith",
+     "ref": "end shift",
+     "end_ms": 1506,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.649
+    },
+    {
+     "clip": "c09_0",
+     "id": "c09",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.66,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now",
+     "ref": "go to the shelter now",
+     "end_ms": 880,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.359
+    },
+    {
+     "clip": "c09_1",
+     "id": "c09",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.58,
+     "snr_db": 13.4,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now No, no, no.",
+     "ref": "go to the shelter now",
+     "end_ms": 900,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.407
+    },
+    {
+     "clip": "c10_0",
+     "id": "c10",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 877,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.302
+    },
+    {
+     "clip": "c10_1",
+     "id": "c10",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.57,
+     "snr_db": 12.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 1866,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.402
+    },
+    {
+     "clip": "c11_0",
+     "id": "c11",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Send the rover to Shackleton.",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 1055,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.457
+    },
+    {
+     "clip": "c11_1",
+     "id": "c11",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.01,
+     "snr_db": 10.6,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "send the rover to shackleton",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 1214,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.709
+    },
+    {
+     "clip": "c12_0",
+     "id": "c12",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 1001,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.836
+    },
+    {
+     "clip": "c12_1",
+     "id": "c12",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 1870,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 1.219
+    },
+    {
+     "clip": "c13_0",
+     "id": "c13",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.48,
+     "err": 1,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental.",
+     "ref": "show me Orientale",
+     "end_ms": 903,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.363
+    },
+    {
+     "clip": "c13_1",
+     "id": "c13",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.43,
+     "snr_db": 12.1,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental numbers.",
+     "ref": "show me Orientale",
+     "end_ms": 1522,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.605
+    },
+    {
+     "clip": "c14_0",
+     "id": "c14",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.09,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "How deep is Vavilov crater?",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 1675,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.802
+    },
+    {
+     "clip": "c14_1",
+     "id": "c14",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.1,
+     "snr_db": 12.8,
+     "err": 2,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "How deep is Vavilov's station?",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 1958,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.8
+    },
+    {
+     "clip": "c15_0",
+     "id": "c15",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land near Malapart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 1031,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.56
+    },
+    {
+     "clip": "c15_1",
+     "id": "c15",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.9,
+     "snr_db": 10.0,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land the Amal apart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 1500,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.962
+    },
+    {
+     "clip": "c16_0",
+     "id": "c16",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.41,
+     "err": 2,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Fly to Digo Loki.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1047,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.592
+    },
+    {
+     "clip": "c16_1",
+     "id": "c16",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.5,
+     "snr_db": 10.0,
+     "err": 7,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "reply to D'Gurlache, that's an email from Daniel.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1516,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.961
+    },
+    {
+     "clip": "c17_0",
+     "id": "c17",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 1007,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.509
+    },
+    {
+     "clip": "c17_1",
+     "id": "c17",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.71,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.498
+    },
+    {
+     "clip": "c18_0",
+     "id": "c18",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.76,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is tiger so bright?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 932,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.397
+    },
+    {
+     "clip": "c18_1",
+     "id": "c18",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.78,
+     "snr_db": 12.9,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is Typhoon so bright in the world?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 1602,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.622
+    },
+    {
+     "clip": "c19_0",
+     "id": "c19",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "take me to Copernicus",
+     "ref": "take me to Copernicus",
+     "end_ms": 1309,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.687
+    },
+    {
+     "clip": "c19_1",
+     "id": "c19",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.7,
+     "snr_db": 11.4,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "take me to Copernicus",
+     "ref": "take me to Copernicus",
+     "end_ms": 1995,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.702
+    },
+    {
+     "clip": "c20_0",
+     "id": "c20",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.78,
+     "err": 2,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Digo Laki.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1602,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.84
+    },
+    {
+     "clip": "c20_1",
+     "id": "c20",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.88,
+     "snr_db": 12.4,
+     "err": 3,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Degorlach in Monk.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1739,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.716
+    },
+    {
+     "clip": "c21_0",
+     "id": "c21",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 0.74,
+     "err": 0,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "copy",
+     "ref": "copy",
+     "end_ms": 1001,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.447
+    },
+    {
+     "clip": "c21_1",
+     "id": "c21",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 0.75,
+     "snr_db": 11.1,
+     "err": 8,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "Coffee, I need you to help me out.",
+     "ref": "copy",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.808
+    },
+    {
+     "clip": "c22_0",
+     "id": "c22",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.07,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roger that.",
+     "ref": "roger that",
+     "end_ms": 872,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.412
+    },
+    {
+     "clip": "c22_1",
+     "id": "c22",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.05,
+     "snr_db": 13.1,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roger Vasilev.",
+     "ref": "roger that",
+     "end_ms": 1280,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.562
+    },
+    {
+     "clip": "c23_0",
+     "id": "c23",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.06,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again.",
+     "ref": "say again",
+     "end_ms": 856,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.29
+    },
+    {
+     "clip": "c23_1",
+     "id": "c23",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.06,
+     "snr_db": 13.1,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again, please tell me.",
+     "ref": "say again",
+     "end_ms": 1508,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.404
+    },
+    {
+     "clip": "c24_0",
+     "id": "c24",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.15,
+     "err": 1,
+     "n": 2,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "copy captain",
+     "ref": "copy CAPCOM",
+     "end_ms": 1021,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.531
+    },
+    {
+     "clip": "c24_1",
+     "id": "c24",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.2,
+     "snr_db": 11.9,
+     "err": 2,
+     "n": 2,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Coffey, Capcom. Capcom.",
+     "ref": "copy CAPCOM",
+     "end_ms": 2051,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.703
+    },
+    {
+     "clip": "c25_0",
+     "id": "c25",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 1033,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.619
+    },
+    {
+     "clip": "c25_1",
+     "id": "c25",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.03,
+     "snr_db": 13.6,
+     "err": 2,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready for work.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.857
+    },
+    {
+     "clip": "c26_0",
+     "id": "c26",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.34,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 rover?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 1002,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.303
+    },
+    {
+     "clip": "c26_1",
+     "id": "c26",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.33,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 logo?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 1135,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.419
+    },
+    {
+     "clip": "c27_0",
+     "id": "c27",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.7,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three.",
+     "ref": "show me Surveyor 3",
+     "end_ms": 1015,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.346
+    },
+    {
+     "clip": "c27_1",
+     "id": "c27",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.66,
+     "snr_db": 11.9,
+     "err": 1,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three again.",
+     "ref": "show me Surveyor 3",
+     "end_ms": 1366,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.55
+    },
+    {
+     "clip": "c28_0",
+     "id": "c28",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.33,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Who drove the lunar roving vehicle?",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 1029,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.305
+    },
+    {
+     "clip": "c28_1",
+     "id": "c28",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.39,
+     "snr_db": 13.0,
+     "err": 7,
+     "n": 6,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "who drove the lunar roaming vehicles? We hope you kept it.",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 1511,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.36
+    },
+    {
+     "clip": "c29_0",
+     "id": "c29",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 981,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.368
+    },
+    {
+     "clip": "c29_1",
+     "id": "c29",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.02,
+     "snr_db": 13.8,
+     "err": 4,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land? Is she in Houston?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 2030,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.536
+    },
+    {
+     "clip": "c30_0",
+     "id": "c30",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina Coggie do?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 1047,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.582
+    },
+    {
+     "clip": "c30_1",
+     "id": "c30",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.0,
+     "snr_db": 12.7,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina coach do when you're five?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 1507,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.54
+    },
+    {
+     "clip": "c31_0",
+     "id": "c31",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.1,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "is Victor Glover, the pilot.",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 984,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.476
+    },
+    {
+     "clip": "c31_1",
+     "id": "c31",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 11.8,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "is Victor Glover the pilot.",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 900,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.564
+    },
+    {
+     "clip": "c32_0",
+     "id": "c32",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.3,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is regular life?",
+     "ref": "what is regolith",
+     "end_ms": 858,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.252
+    },
+    {
+     "clip": "c32_1",
+     "id": "c32",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 10.8,
+     "err": 4,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is Regalife? I don't know.",
+     "ref": "what is regolith",
+     "end_ms": 1709,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.479
+    },
+    {
+     "clip": "c33_0",
+     "id": "c33",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.67,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What does Ejecta mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 988,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.408
+    },
+    {
+     "clip": "c33_1",
+     "id": "c33",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.59,
+     "snr_db": 10.8,
+     "err": 7,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does a Jackson mean? You know what I mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 2081,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.763
+    },
+    {
+     "clip": "c34_0",
+     "id": "c34",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.16,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from Earth?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 1093,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.47
+    },
+    {
+     "clip": "c34_1",
+     "id": "c34",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.12,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from outside?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 816,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.409
+    },
+    {
+     "clip": "c35_0",
+     "id": "c35",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.72,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 1186,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.413
+    },
+    {
+     "clip": "c35_1",
+     "id": "c35",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.64,
+     "snr_db": 13.4,
+     "err": 2,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm brought together?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 1711,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.247
+    },
+    {
+     "clip": "c36_0",
+     "id": "c36",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.44,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 873,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.213
+    },
+    {
+     "clip": "c36_1",
+     "id": "c36",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.49,
+     "snr_db": 13.5,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 897,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.296
+    },
+    {
+     "clip": "c37_0",
+     "id": "c37",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.91,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose?",
+     "ref": "what is the radiation dose",
+     "end_ms": 946,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.324
+    },
+    {
+     "clip": "c37_1",
+     "id": "c37",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.88,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose? play all emails",
+     "ref": "what is the radiation dose",
+     "end_ms": 772,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.488
+    },
+    {
+     "clip": "c38_0",
+     "id": "c38",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      false
+     ],
+     "hyp": "Send the rover to kilometers north.",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 1234,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.577
+    },
+    {
+     "clip": "c38_1",
+     "id": "c38",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.38,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "send the rover 2 kilometers north",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 1852,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.506
+    },
+    {
+     "clip": "c39_0",
+     "id": "c39",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.29,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 1003,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.392
+    },
+    {
+     "clip": "c39_1",
+     "id": "c39",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 14.0,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 1375,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.347
+    },
+    {
+     "clip": "c40_0",
+     "id": "c40",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.14,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "zoom in on the Orion capsule.",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 1103,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.587
+    },
+    {
+     "clip": "c40_1",
+     "id": "c40",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Zoom in on the Orion capsule.",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 1131,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.572
+    }
+   ]
+  },
+  "mission": {
+   "summary": {
+    "all": {
+     "clips": 80,
+     "wer": 0.284,
+     "names": "26/46",
+     "name_acc": 0.565,
+     "numbers": "23/24",
+     "number_acc": 0.958
+    },
+    "clean": {
+     "clips": 40,
+     "wer": 0.104,
+     "names": "14/23",
+     "name_acc": 0.609,
+     "numbers": "11/12",
+     "number_acc": 0.917
+    },
+    "noisy": {
+     "clips": 40,
+     "wer": 0.464,
+     "names": "12/23",
+     "name_acc": 0.522,
+     "numbers": "12/12",
+     "number_acc": 1.0
+    },
+    "endpoint_ms_p50": 1075.0,
+    "endpoint_ms_p90": 1769,
+    "turn_end_missing": 0,
+    "eager_rate": 0.24,
+    "rtf_mean": 0.464
+   },
+   "rows": [
+    {
+     "clip": "c01_0",
+     "id": "c01",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.34,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 1029,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.402
+    },
+    {
+     "clip": "c01_1",
+     "id": "c01",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 12.6,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Shields to 40.",
+     "ref": "shields to 40",
+     "end_ms": 1504,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.837
+    },
+    {
+     "clip": "c02_0",
+     "id": "c02",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.3,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 1010,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.387
+    },
+    {
+     "clip": "c02_1",
+     "id": "c02",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.37,
+     "snr_db": 13.6,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 20% to the greenhouse.",
+     "ref": "move twenty percent to the greenhouse",
+     "end_ms": 1498,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.412
+    },
+    {
+     "clip": "c03_0",
+     "id": "c03",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.77,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for ice.",
+     "ref": "send the rover for ice",
+     "end_ms": 913,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.284
+    },
+    {
+     "clip": "c03_1",
+     "id": "c03",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.73,
+     "snr_db": 10.2,
+     "err": 5,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "Send the rover for Icy file. We've got two",
+     "ref": "send the rover for ice",
+     "end_ms": 1521,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.427
+    },
+    {
+     "clip": "c04_0",
+     "id": "c04",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 926,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.331
+    },
+    {
+     "clip": "c04_1",
+     "id": "c04",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.64,
+     "snr_db": 13.0,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Make the shield 60.",
+     "ref": "make the shields 60",
+     "end_ms": 1845,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.848
+    },
+    {
+     "clip": "c05_0",
+     "id": "c05",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "put 30% on life support",
+     "ref": "put 30 percent on life support",
+     "end_ms": 885,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.351
+    },
+    {
+     "clip": "c05_1",
+     "id": "c05",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.34,
+     "snr_db": 10.8,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "with 30% on life support.",
+     "ref": "put 30 percent on life support",
+     "end_ms": 1693,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.3
+    },
+    {
+     "clip": "c06_0",
+     "id": "c06",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.79,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Move 15 to science.",
+     "ref": "move 15 to science",
+     "end_ms": 881,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.271
+    },
+    {
+     "clip": "c06_1",
+     "id": "c06",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.79,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "move 15 to science",
+     "ref": "move 15 to science",
+     "end_ms": 1693,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.384
+    },
+    {
+     "clip": "c07_0",
+     "id": "c07",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.64,
+     "err": 0,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "heaters to 25",
+     "ref": "heaters to 25",
+     "end_ms": 1058,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.447
+    },
+    {
+     "clip": "c07_1",
+     "id": "c07",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.63,
+     "snr_db": 13.2,
+     "err": 2,
+     "n": 3,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Heaters to 25 on 14.",
+     "ref": "heaters to 25",
+     "end_ms": 1984,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.501
+    },
+    {
+     "clip": "c08_0",
+     "id": "c08",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.01,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and shift.",
+     "ref": "end shift",
+     "end_ms": 801,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.267
+    },
+    {
+     "clip": "c08_1",
+     "id": "c08",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.03,
+     "snr_db": 11.3,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "and Chet. Chet,",
+     "ref": "end shift",
+     "end_ms": 1506,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.581
+    },
+    {
+     "clip": "c09_0",
+     "id": "c09",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.66,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now",
+     "ref": "go to the shelter now",
+     "end_ms": 870,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.281
+    },
+    {
+     "clip": "c09_1",
+     "id": "c09",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.58,
+     "snr_db": 13.4,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "go to the shelter now No, no, no.",
+     "ref": "go to the shelter now",
+     "end_ms": 986,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.448
+    },
+    {
+     "clip": "c10_0",
+     "id": "c10",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 906,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.308
+    },
+    {
+     "clip": "c10_1",
+     "id": "c10",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.57,
+     "snr_db": 12.6,
+     "err": 1,
+     "n": 4,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "Comes to 10%.",
+     "ref": "comms to 10 percent",
+     "end_ms": 1876,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.416
+    },
+    {
+     "clip": "c11_0",
+     "id": "c11",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Send the rover to Shackleton.",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 1031,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.455
+    },
+    {
+     "clip": "c11_1",
+     "id": "c11",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.01,
+     "snr_db": 10.6,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "send the rover to shackleton",
+     "ref": "send the rover to Shackleton",
+     "end_ms": 1130,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.674
+    },
+    {
+     "clip": "c12_0",
+     "id": "c12",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.06,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 1131,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.925
+    },
+    {
+     "clip": "c12_1",
+     "id": "c12",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What is inside Aristarchus?",
+     "ref": "what is inside Aristarchus",
+     "end_ms": 1805,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.605
+    },
+    {
+     "clip": "c13_0",
+     "id": "c13",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.48,
+     "err": 1,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental.",
+     "ref": "show me Orientale",
+     "end_ms": 925,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.361
+    },
+    {
+     "clip": "c13_1",
+     "id": "c13",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.43,
+     "snr_db": 12.1,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Show me oriental numbers.",
+     "ref": "show me Orientale",
+     "end_ms": 1522,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.534
+    },
+    {
+     "clip": "c14_0",
+     "id": "c14",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.09,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "How deep is Vavilov crater?",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 1103,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.421
+    },
+    {
+     "clip": "c14_1",
+     "id": "c14",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.1,
+     "snr_db": 12.8,
+     "err": 2,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "How deep is Vavilov's station?",
+     "ref": "how deep is Vavilov crater",
+     "end_ms": 1640,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.453
+    },
+    {
+     "clip": "c15_0",
+     "id": "c15",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land near Malapart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 1077,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.447
+    },
+    {
+     "clip": "c15_1",
+     "id": "c15",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.9,
+     "snr_db": 10.0,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Can we land the Amal apart?",
+     "ref": "can we land near Malapert",
+     "end_ms": 1500,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.73
+    },
+    {
+     "clip": "c16_0",
+     "id": "c16",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.41,
+     "err": 2,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Fly to Digo Loki.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1073,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.577
+    },
+    {
+     "clip": "c16_1",
+     "id": "c16",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.5,
+     "snr_db": 10.0,
+     "err": 4,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "reply to Degorlake asking Degor.",
+     "ref": "fly to de Gerlache",
+     "end_ms": 1516,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.634
+    },
+    {
+     "clip": "c17_0",
+     "id": "c17",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 905,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.321
+    },
+    {
+     "clip": "c17_1",
+     "id": "c17",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.71,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Is there icing cabins?",
+     "ref": "is there ice in Cabeus",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.351
+    },
+    {
+     "clip": "c18_0",
+     "id": "c18",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.76,
+     "err": 1,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is tiger so bright?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 961,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.398
+    },
+    {
+     "clip": "c18_1",
+     "id": "c18",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.78,
+     "snr_db": 12.9,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Why is Typhoon so bright in the world?",
+     "ref": "why is Tycho so bright",
+     "end_ms": 1539,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.619
+    },
+    {
+     "clip": "c19_0",
+     "id": "c19",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.73,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Take me to Copernicus.",
+     "ref": "take me to Copernicus",
+     "end_ms": 906,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.414
+    },
+    {
+     "clip": "c19_1",
+     "id": "c19",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.7,
+     "snr_db": 11.4,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "take me to Copernicus",
+     "ref": "take me to Copernicus",
+     "end_ms": 1847,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.49
+    },
+    {
+     "clip": "c20_0",
+     "id": "c20",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.78,
+     "err": 2,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Digo Laki.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1239,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.589
+    },
+    {
+     "clip": "c20_1",
+     "id": "c20",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.88,
+     "snr_db": 12.4,
+     "err": 2,
+     "n": 8,
+     "names": [
+      true,
+      false
+     ],
+     "numbers": [],
+     "hyp": "Drive the rover from Shackleton to Degorlake.",
+     "ref": "drive the rover from Shackleton to de Gerlache",
+     "end_ms": 1769,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.695
+    },
+    {
+     "clip": "c21_0",
+     "id": "c21",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 0.74,
+     "err": 0,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "copy",
+     "ref": "copy",
+     "end_ms": 953,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.42
+    },
+    {
+     "clip": "c21_1",
+     "id": "c21",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 0.75,
+     "snr_db": 11.1,
+     "err": 8,
+     "n": 1,
+     "names": [],
+     "numbers": [],
+     "hyp": "Coffee, I need you to help me out.",
+     "ref": "copy",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.799
+    },
+    {
+     "clip": "c22_0",
+     "id": "c22",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.07,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roger that.",
+     "ref": "roger that",
+     "end_ms": 918,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.439
+    },
+    {
+     "clip": "c22_1",
+     "id": "c22",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 1.05,
+     "snr_db": 13.1,
+     "err": 1,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Roger Vasilev.",
+     "ref": "roger that",
+     "end_ms": 1316,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.659
+    },
+    {
+     "clip": "c23_0",
+     "id": "c23",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.06,
+     "err": 0,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again.",
+     "ref": "say again",
+     "end_ms": 825,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.263
+    },
+    {
+     "clip": "c23_1",
+     "id": "c23",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.06,
+     "snr_db": 13.1,
+     "err": 3,
+     "n": 2,
+     "names": [],
+     "numbers": [],
+     "hyp": "Say again, please tell me.",
+     "ref": "say again",
+     "end_ms": 1508,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.377
+    },
+    {
+     "clip": "c24_0",
+     "id": "c24",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.15,
+     "err": 1,
+     "n": 2,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "copy captain",
+     "ref": "copy CAPCOM",
+     "end_ms": 990,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.635
+    },
+    {
+     "clip": "c24_1",
+     "id": "c24",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.2,
+     "snr_db": 11.9,
+     "err": 1,
+     "n": 2,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Coffey, Capcom.",
+     "ref": "copy CAPCOM",
+     "end_ms": 1970,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.754
+    },
+    {
+     "clip": "c25_0",
+     "id": "c25",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 949,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.767
+    },
+    {
+     "clip": "c25_1",
+     "id": "c25",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.03,
+     "snr_db": 13.6,
+     "err": 2,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Roger Houston, we are ready for work.",
+     "ref": "roger Houston we are ready",
+     "end_ms": 1509,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.579
+    },
+    {
+     "clip": "c26_0",
+     "id": "c26",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.34,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 rover?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 996,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.325
+    },
+    {
+     "clip": "c26_1",
+     "id": "c26",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.33,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where is the Apollo 16 logo?",
+     "ref": "where is the Apollo 16 rover",
+     "end_ms": 1154,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.441
+    },
+    {
+     "clip": "c27_0",
+     "id": "c27",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 1.7,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three",
+     "ref": "show me Surveyor 3",
+     "end_ms": 904,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.289
+    },
+    {
+     "clip": "c27_1",
+     "id": "c27",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 1.66,
+     "snr_db": 11.9,
+     "err": 1,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Show me surveyor three again.",
+     "ref": "show me Surveyor 3",
+     "end_ms": 1358,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.38
+    },
+    {
+     "clip": "c28_0",
+     "id": "c28",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.33,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Who drove the lunar roving vehicle?",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 1015,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.324
+    },
+    {
+     "clip": "c28_1",
+     "id": "c28",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.39,
+     "snr_db": 13.0,
+     "err": 7,
+     "n": 6,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "Who drove the lunar roaming vehicles? We hope you kept it.",
+     "ref": "who drove the Lunar Roving Vehicle",
+     "end_ms": 1511,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.382
+    },
+    {
+     "clip": "c29_0",
+     "id": "c29",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 2.08,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 1114,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.459
+    },
+    {
+     "clip": "c29_1",
+     "id": "c29",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 2.02,
+     "snr_db": 13.8,
+     "err": 4,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [
+      true
+     ],
+     "hyp": "Where did Apollo 11 land? Is she in Houston?",
+     "ref": "where did Apollo 11 land",
+     "end_ms": 1861,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.585
+    },
+    {
+     "clip": "c30_0",
+     "id": "c30",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 1.94,
+     "err": 2,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina Cajdew?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 986,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.596
+    },
+    {
+     "clip": "c30_1",
+     "id": "c30",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.0,
+     "snr_db": 12.7,
+     "err": 4,
+     "n": 5,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does Christina coach do when you're five?",
+     "ref": "what does Christina Koch do",
+     "end_ms": 1507,
+     "end_reason": "arc_pause",
+     "states": [
+      "start"
+     ],
+     "rtf": 0.497
+    },
+    {
+     "clip": "c31_0",
+     "id": "c31",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.1,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "is Victor Glover, the pilot.",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 1021,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.523
+    },
+    {
+     "clip": "c31_1",
+     "id": "c31",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.07,
+     "snr_db": 11.8,
+     "err": 0,
+     "n": 5,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "is Victor Glover the pilot.",
+     "ref": "is Victor Glover the pilot",
+     "end_ms": 942,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.529
+    },
+    {
+     "clip": "c32_0",
+     "id": "c32",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 1.3,
+     "err": 2,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is regular life?",
+     "ref": "what is regolith",
+     "end_ms": 887,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.29
+    },
+    {
+     "clip": "c32_1",
+     "id": "c32",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 1.32,
+     "snr_db": 10.8,
+     "err": 4,
+     "n": 3,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What is regulate? I don't know.",
+     "ref": "what is regolith",
+     "end_ms": 1707,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.381
+    },
+    {
+     "clip": "c33_0",
+     "id": "c33",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.67,
+     "err": 0,
+     "n": 4,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "What does Ejecta mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 937,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.415
+    },
+    {
+     "clip": "c33_1",
+     "id": "c33",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.59,
+     "snr_db": 10.8,
+     "err": 7,
+     "n": 4,
+     "names": [
+      false
+     ],
+     "numbers": [],
+     "hyp": "What does a Jackson mean? You know what I mean?",
+     "ref": "what does ejecta mean",
+     "end_ms": 1885,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.55
+    },
+    {
+     "clip": "c34_0",
+     "id": "c34",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.16,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from Earth?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 1064,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.512
+    },
+    {
+     "clip": "c34_1",
+     "id": "c34",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.12,
+     "snr_db": 10.1,
+     "err": 1,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How far is the moon from outside?",
+     "ref": "how far is the Moon from Earth",
+     "end_ms": 938,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.37
+    },
+    {
+     "clip": "c35_0",
+     "id": "c35",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.72,
+     "err": 0,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 951,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.29
+    },
+    {
+     "clip": "c35_1",
+     "id": "c35",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.64,
+     "snr_db": 13.4,
+     "err": 2,
+     "n": 7,
+     "names": [],
+     "numbers": [],
+     "hyp": "How many days until the solar storm brought together?",
+     "ref": "how many days until the solar storm",
+     "end_ms": 1738,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.317
+    },
+    {
+     "clip": "c36_0",
+     "id": "c36",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.44,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 903,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.273
+    },
+    {
+     "clip": "c36_1",
+     "id": "c36",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.49,
+     "snr_db": 13.5,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "set power to 75%",
+     "ref": "set power to 75 percent",
+     "end_ms": 865,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.311
+    },
+    {
+     "clip": "c37_0",
+     "id": "c37",
+     "voice": "voice_2423",
+     "noisy": false,
+     "speech_end_s": 1.91,
+     "err": 0,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose?",
+     "ref": "what is the radiation dose",
+     "end_ms": 876,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.278
+    },
+    {
+     "clip": "c37_1",
+     "id": "c37",
+     "voice": "voice_1326",
+     "noisy": true,
+     "speech_end_s": 1.88,
+     "snr_db": 11.7,
+     "err": 3,
+     "n": 5,
+     "names": [],
+     "numbers": [],
+     "hyp": "What is the radiation dose? play all emails",
+     "ref": "what is the radiation dose",
+     "end_ms": 778,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end",
+      "start"
+     ],
+     "rtf": 0.457
+    },
+    {
+     "clip": "c38_0",
+     "id": "c38",
+     "voice": "voice_0476",
+     "noisy": false,
+     "speech_end_s": 2.48,
+     "err": 1,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      false
+     ],
+     "hyp": "Send the rover to kilometers north.",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 1046,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.451
+    },
+    {
+     "clip": "c38_1",
+     "id": "c38",
+     "voice": "voice_1535",
+     "noisy": true,
+     "speech_end_s": 2.38,
+     "snr_db": 13.9,
+     "err": 0,
+     "n": 6,
+     "names": [],
+     "numbers": [
+      true
+     ],
+     "hyp": "send the rover 2 kilometers north",
+     "ref": "send the rover 2 kilometers north",
+     "end_ms": 1666,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.404
+    },
+    {
+     "clip": "c39_0",
+     "id": "c39",
+     "voice": "voice_2111",
+     "noisy": false,
+     "speech_end_s": 2.29,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 1013,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.335
+    },
+    {
+     "clip": "c39_1",
+     "id": "c39",
+     "voice": "voice_2342",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 14.0,
+     "err": 0,
+     "n": 7,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Can I see the sea of tranquility?",
+     "ref": "can I see the Sea of Tranquility",
+     "end_ms": 1386,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.379
+    },
+    {
+     "clip": "c40_0",
+     "id": "c40",
+     "voice": "voice_1386",
+     "noisy": false,
+     "speech_end_s": 2.14,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "zoom in on the Orion capsule.",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 1065,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "eager",
+      "end"
+     ],
+     "rtf": 0.461
+    },
+    {
+     "clip": "c40_1",
+     "id": "c40",
+     "voice": "voice_1091",
+     "noisy": true,
+     "speech_end_s": 2.26,
+     "snr_db": 12.8,
+     "err": 0,
+     "n": 6,
+     "names": [
+      true
+     ],
+     "numbers": [],
+     "hyp": "Zoom in on the Orion capsule.",
+     "ref": "zoom in on the Orion capsule",
+     "end_ms": 1119,
+     "end_reason": "silence",
+     "states": [
+      "start",
+      "end"
+     ],
+     "rtf": 0.411
+    }
+   ]
+  }
+ }
+}

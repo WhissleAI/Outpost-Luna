@@ -145,6 +145,7 @@ ACCEPT, ASK_LO, ASK_MARGIN = 89.0, 82.0, 5.0
 FAR = "This is the far side. It always faces away from Earth, so nobody saw it until spacecraft flew around."
 NEAR = "This is the near side, the face we always see from Earth. The dark patches are old lava seas."
 EARTHRISE = "When Orion went behind the Moon, Earth came up over the edge. Listen to how the crew reacted!"
+SAY_AGAIN = "Sorry, I didn't catch that. Can you say it again?"
 UNKNOWN = "I don't know that one yet. Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
 GUARD = "Let's keep names and addresses private! Ask me about a place on the Moon instead."
 MISSION = "Want a mission? Find the giant bullseye on the far side, then ask what the crew said about it!"
@@ -442,12 +443,16 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     state = await _sim_state(reg, mid)
     base = {**out, "source": "mission", "mission": mid}
 
-    if DEFINE.search(norm(text)):
+    if DEFINE.search(norm(text)) and not ctx.get("commands"):
         g = capcom.glossary_line(text, None)   # mission words; Moon words fall through to the app glossary
         if g:
             return {**base, "action": "say", "say": _tone(g, emotion), "source": "mission+glossary"}
 
-    nl = await nlu.understand(text, read, state)
+    if ctx.get("commands"):   # the learned Director (DIRECTOR_MODEL=on) read the command; it passed nlu.valid()
+        nl = {"commands": [c for c in map(nlu.valid, ctx["commands"]) if c], "confidence": 0.8, "needs_clarify": None,
+              "source": "model"}
+    else:
+        nl = await nlu.understand(text, read, state)
     cmds, dd = nl["commands"], ctx.get("device_directed")
     if not cmds and not nl["needs_clarify"]:
         if dd is not None and float(dd) < CHATTER_DD:
