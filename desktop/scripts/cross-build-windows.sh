@@ -73,7 +73,7 @@ cmake -S desktop/vendor/arctag -B desktop/build/arctag-win -DCMAKE_SYSTEM_NAME=W
   -DCMAKE_C_COMPILER="$CC" "${CMAKE_RC[@]+"${CMAKE_RC[@]}"}" -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build desktop/build/arctag-win --config Release
 mkdir -p desktop/resources/native
-DLL=$(ls desktop/build/arctag-win/arctag.dll desktop/build/arctag-win/libarctag.dll 2>/dev/null | head -1)
+DLL=$(ls desktop/build/arctag-win/arctag.dll desktop/build/arctag-win/libarctag.dll 2>/dev/null | head -1 || true)
 [ -n "$DLL" ] || die "arctag.dll was not produced (see the CMake output above)"
 cp "$DLL" desktop/resources/native/arctag.dll
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/resources/native >/dev/null \
