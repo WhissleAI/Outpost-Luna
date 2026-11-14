@@ -57,6 +57,8 @@ class EarSettings(BaseSettings):
     ear: str = "arc"               # arc | deepgram
     ear_connect_s: float = 2.0     # model server connect + {"t":"ear"} handshake
     ear_tier_a: bool = True        # send the lunar Tier A list as Arc context at session start
+    ear_hot: bool = True           # round 7: send the session screen's hot lists ({"t":"context","hot"}) on every change
+    ear_hot_every_s: float = 0.25  # how often the relay checks the session's screen for new hot lists
 
 
 ear_settings = EarSettings()
@@ -195,6 +197,20 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
                     await send(d)
 
     task = asyncio.create_task(from_arc())
+
+    async def hot_loop():
+        """Round 7: the session's screen -> the ear's tiered hot lists (hotlist.py), sent whenever they change."""
+        last = None
+        while True:
+            with contextlib.suppress(Exception):
+                s = sessions.get(sid["id"], create=False) if sid["id"] else None
+                hot = s.hot_words() if s is not None else None
+                if hot is not None and hot != last:
+                    await arc.send(json.dumps({"t": "context", "hot": hot}))
+                    last = hot
+            await asyncio.sleep(ear_settings.ear_hot_every_s)
+
+    hot_task = asyncio.create_task(hot_loop()) if ear_settings.ear_hot else None
     await send({"t": "ready"})
     await send({"t": "ear", "ear": "arc", "model": "arc-v1.1 mini"})
     try:
@@ -225,6 +241,8 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
         await send({"t": "error", "message": f"local ear closed: {e}"[:200]})
     finally:
         task.cancel()
+        if hot_task is not None:
+            hot_task.cancel()
         with contextlib.suppress(Exception):
             await arc.close()
         with contextlib.suppress(Exception):

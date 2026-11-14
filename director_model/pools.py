@@ -595,7 +595,24 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
             if it["gold"] is None:
                 it.pop("gold")
         return it
+    if cls == "roomtalk":                   # room talk Arc rates device-directed: never a turn for us
+        t = pick(ROOM_TALK, "rt")
+        sc = rng.choice(["lesson", "cabin", "map", "library", "patch"])
+        fr = {"screen": sc, "step_type": None, "step_options": [], "offer": None}
+        it = {"text": t, "cat": "cls_roomtalk", "root": "rt:" + t, "gold": {"act": "ignore"}, "dd": (0.75, 0.98)}
+        if sc == "lesson":
+            L, i = rng.choice(lesson_steps())
+            fr = step_frame(L, i)
+        return {**it, "frame": fr}
     raise ValueError(cls)
 
 
-CLASSES = ("chatter", "echo", "offer", "panel", "help", "mode", "globe", "mishear")
+# Round 7: real room talk that Arc Tagger rates highly device-directed ("shit shit oh": dd 0.91, docs/ARC_FEEDBACK.md):
+# exclamations, swearing, sibling talk, on any screen. gold ignore, with device_directed drawn HIGH (0.75-0.98).
+ROOM_TALK = ["shit shit oh", "oh shit", "oh my god", "oh my gosh", "what the heck", "damn it", "come on", "no way",
+             "ugh this is so hard", "stop it", "give it back", "that's mine", "mom", "mom can i have a snack",
+             "dude look at that", "that's so cool", "whoa cool", "crap", "oh no no no", "are you kidding me",
+             "leave me alone", "i'm so bored", "what the hell", "yay", "awesome", "oh man", "jeez", "seriously",
+             "shut up", "ha ha ha", "you're so annoying", "can i go outside", "where's my cup", "it's my turn",
+             "nooo", "oh crap", "this is boring", "wow wow wow", "hey give me that", "be quiet"]
+CLASSES = ("chatter", "echo", "offer", "panel", "help", "mode", "globe", "mishear", "roomtalk")

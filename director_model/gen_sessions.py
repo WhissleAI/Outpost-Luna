@@ -162,7 +162,8 @@ def kind_script(rng, split, seed, hf_p: float = 0.0):
         academy_script(rng, split, seed)
 
 
-CLASS_W = {"chatter": 3, "echo": 3, "offer": 2, "panel": 2, "help": 2, "mode": 1, "globe": 3, "mishear": 2}
+CLASS_W = {"chatter": 3, "echo": 3, "offer": 2, "panel": 2, "help": 2, "mode": 1, "globe": 3, "mishear": 2,
+           "roomtalk": 2}
 
 
 def logged_items(split: str) -> list[dict]:
@@ -227,7 +228,8 @@ async def play_pending(sess, clock, rng, leave_playing=False):
 
 
 def real_stream(d: dict):
-    """A cached real Arc decode -> (final words, partial word lists, eager?, dd, cc)."""
+    """A cached real Arc decode -> (final words, partial word lists, eager?, dd, cc, ear extras of the final words:
+    n-best alts / confidence / hot-list match, round 7)."""
     hw = FX.words_of(d["hyp"])
     ps, last = [], None
     for e in d["events"]:
@@ -242,12 +244,18 @@ def real_stream(d: dict):
     arcs = [e for e in d["events"] if e["t"] == "arc" and e.get("dd") is not None]
     dd = arcs[-1]["dd"] if arcs else None
     cc = arcs[-1]["cc"] if arcs else None
-    return hw, ps, "eager" in states, dd, cc
+    fin = [e for e in d["events"] if e["t"] == "words" and e["final"]]
+    extra = {k: fin[-1][k] for k in ("alts", "conf", "hot", "rescored") if fin and fin[-1].get(k) is not None}
+    return hw, ps, "eager" in states, dd, cc, extra
 
 
-async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12, real=None) -> tuple[list, dict]:
+async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12, real=None,
+              repeat_p: float = 0.0) -> tuple[list, dict]:
     """-> (sink steps, turn annotations by turn id). real = (RealEar, group, p): replay real Arc decodes of the turn
-    texts (with probability p, when the cache has the text) instead of the fitted error model."""
+    texts (with probability p, when the cache has the text) instead of the fitted error model.
+    repeat_p (round 7, outcome signals as weak labels): when the router IGNORED a turn whose gold is not ignore (the
+    system got it wrong), the kid says it again with probability repeat_p, a few seconds later, through the ear again;
+    the repeat carries the same gold (DIRECTOR_LOOP.md §2: "ignored, then repeated" -> the repeat's act)."""
     clock = Clock()
     sink: list = []
     sid = f"g-{script['seed']}-{rng.randrange(1 << 30)}"
@@ -264,7 +272,11 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
     anns: dict = {}
     lesson_step = None
     frame = None
-    for tid, it in enumerate(script["items"]):
+    queue = list(enumerate(script["items"]))
+    rrng = random.Random(script["seed"] * 31 + 7)       # its own stream: the repeat draws never shift the others
+    from real_ear import frame_key, MODE_SCREEN
+    while queue:
+        tid, it = queue.pop(0)
         clock.t += rng.uniform(1.5, 9.0)
         if mode == "mission" and rng.random() < 0.7:
             await sess.poll()
@@ -335,7 +347,9 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         rd = None
         if real is not None and noise is not None and op not in ("echo", "echo2") and "heard" not in it and \
                 rng.random() < real[2]:
-            d = real[0].get(real[1], it["text"], rng)
+            fk = frame_key(it.get("frame") or {"screen": MODE_SCREEN.get(mode, "map")}) if it.get("frame") or \
+                mode != "academy" else None
+            d = real[0].get(real[1], it["text"], rng, fk)
             rd = real_stream(d) if d else None
         if op == "echo2" and noise is not None and real is not None:
             d = real[0].get("app", it["lines"][0], rng)     # the line in the app's own voice, through the real ear
@@ -382,7 +396,10 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                                        "text": pend_line[2]})
                     pend_line = None
                 ann["words"].append((sess.dm.n, p))
-                await sess.handle({"t": "words", "text": " ".join(p)})
+                wm = {"t": "words", "text": " ".join(p)}
+                if j == len(ps) - 1 and rd is not None and rd[5]:
+                    wm.update(final=True, **rd[5])      # the ear's n-best / confidence / hot match (round 7)
+                await sess.handle(wm)
                 if j == min(1, len(ps) - 1) and arc_on:
                     ann["words"].append((sess.dm.n, p))
                     await sess.handle({"t": "arc", "device_directed": round(dd, 3),
@@ -393,8 +410,14 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 await sess.handle({"t": "turn", "state": "eager", "text": " ".join(hw)})
             clock.t += rng.uniform(0.3, 0.6)
             i0 = sess.dm.n
+            n_routes = len(sess.routes)
             await sess.handle({"t": "turn", "state": "end", "text": " ".join(hw)})
             ann["end"] = i0 if sess.dm.n > i0 else None
+            g_act = (it.get("gold") or {}).get("act") or ("answer" if it.get("lesson") else None)
+            if repeat_p and tid < 1000 and len(sess.routes) > n_routes and sess.routes[-1]["outcome"] == "ignore" and \
+                    g_act not in (None, "ignore") and op not in ("echo", "echo2") and rrng.random() < repeat_p:
+                queue.insert(0, (1000 + tid, {**it, "op": None, "cat": f"{it.get('cat')}_repeat",
+                                              "gold": it.get("gold") or None, "repeat_of": tid}))
         ann["t_end"] = clock.t
         if op == "echo2":
             if pend_line is not None:
@@ -480,9 +503,15 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
         i = ann["end"]
         if i is None or i >= T:
             continue
-        clean = turn_info(clean_sink, clean_anns.get(tid, ann)) if clean_sink is not sink else turn_info(sink, ann)
+        cann = clean_anns.get(tid) or clean_anns.get(it.get("repeat_of"))      # a repeat: its original's clean run
+        clean = (turn_info(clean_sink, cann) if cann else {}) if clean_sink is not sink else turn_info(sink, ann)
         g = gold_turn(ann, clean, meta_base["mode"])
         y["act"][i] = FX.ACTS.index(g["act"])
+        fr_it = it.get("frame")
+        gold_nav = FX.nav_label(" ".join(ann["clean"]), fr_it) if g["act"] == "navigate" else "none"
+        if g["act"] == "navigate" and gold_nav == "none":
+            gold_nav = "other"
+        y["nav"][i] = FX.NAV_INTENTS.index(gold_nav)
         y["when"][i] = 1
         if g["act"] in ("command", "confirm_yes", "confirm_no"):
             c = g["cmd"] or ({"type": "confirm"} if g["act"] == "confirm_yes" else {"type": "cancel"}
@@ -520,15 +549,28 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
                         rules_card=(r.get("brain") or {}).get("card"), t_end=ann.get("t_end"),
                         expect=it.get("expect"), ok=it.get("ok"),
                         route=(st["rec"].get("route") or {}).get("outcome"), hf=bool(it.get("frame")),
-                        gold_conf=it.get("conf"))
+                        gold_conf=it.get("conf"), gold_nav=gold_nav, offer=(fr_it or {}).get("offer"),
+                        rules_nav=_rules_nav(st["rec"].get("route"), fr_it), repeat_of=it.get("repeat_of"))
     for m in metas:
         m.update(meta_base)
     return {"feats": feats, "toks": toks, "wtok": wtok, "wfeat": wfeat, **{f"y_{k}": v for k, v in y.items()},
             **{f"y_{k}": v for k, v in yw.items()}}, metas
 
 
+def _rules_nav(route: dict | None, frame: dict | None) -> str | None:
+    """The router's navigation as a nav-head class (taking the offer folded into accept_offer)."""
+    if not route or route.get("outcome") != "navigate":
+        return None
+    from app import turn_router as R
+    it = route.get("intent")
+    ctx = R.Ctx(screen=(frame or {}).get("screen") or "map", offer=(frame or {}).get("offer"))
+    if R.answers_offer((it, None), ctx):
+        return "accept_offer"
+    return it if it in FX.NAV_INTENTS else "other"
+
+
 # ------------------------------------------------------------------------------------------------- driver
-async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split, real=None):
+async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split, real=None, repeat_p=0.0):
     TAG["on"] = tag_on
     director.RULES.clear(); director.PENDING.clear(); capcom._explained.clear()
     rng = random.Random(rng_seed)
@@ -538,7 +580,7 @@ async def make(script, rng_seed, noise, arc_on, tag_on, set_name, split, real=No
     else:
         csink, canns = await run(script, random.Random(rng_seed), None, arc_on)
         director.RULES.clear(); director.PENDING.clear()
-        sink, anns = await run(script, random.Random(rng_seed), noise, arc_on, real=real)
+        sink, anns = await run(script, random.Random(rng_seed), noise, arc_on, real=real, repeat_p=repeat_p)
     base = {"set": set_name, "split": split, "mode": script["mode"], "seed": script["seed"], "noise": noise is not None,
             "arc": arc_on, "tag": tag_on}
     for a in anns.values():
@@ -596,6 +638,8 @@ async def main():
     ap.add_argument("--hf-p", type=float, default=0.3, help="share of train/val sessions that are hands-free round-6 "
                     "scripts (screen frames, today's failure classes, imported real turns); 0 = rounds 1-5")
     ap.add_argument("--cls-n", type=int, default=160, help="turns per round-6 class set (cls_*)")
+    ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
+                    "in train / val (outcome signals as weak labels)")
     a = ap.parse_args()
     if a.merge:
         merge(Path(a.out), a.merge)
@@ -631,7 +675,8 @@ async def main():
                 if any(RE.get(group, t, random.Random(0)) is None for t in txt):
                     continue        # the real set keeps only sessions whose every turn has a real decode
                 nz, real = (em, False, 0.0), (RE, group, 1.0)
-            ss.append(await make(sc, seed0 + k, nz, rng.random() < 0.8, rng.random() < 0.85, name, split, real))
+            rp = a.repeat_p if split in ("train", "val") else 0.0
+            ss.append(await make(sc, seed0 + k, nz, rng.random() < 0.8, rng.random() < 0.85, name, split, real, rp))
             if k % 100 == 99:
                 print(f"  {name} {k + 1}/{n} ({time.time() - t0:.0f} s)", flush=True)
         save(out, name, ss)

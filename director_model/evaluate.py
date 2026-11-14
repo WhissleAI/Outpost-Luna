@@ -19,6 +19,9 @@ Definitions
                    turn end (gain 0, premature 0).
   barge            steps where guide/crew audio was playing and the kid spoke: p(barge) >= .5 vs gold; rules = the
                    Session's own barge-in at that step.
+  navigate (r7)    a navigate act is right only with the right intent (gold = the router on the CLEAN words in the
+                   screen frame; taking the offer is one class); a navigation the kid did not mean is a wrong action
+                   (counted in wrong_actions, like an executed command), for the rules and the model alike.
 """
 from __future__ import annotations
 
@@ -55,7 +58,7 @@ SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40
         "test_gold"]
 # round 6: today's real failure classes (gen_sessions.py cls_set; pools.CLASSES) and the imported real turns
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
-              "test_log"]
+              "cls_roomtalk", "test_log"]
 
 
 class NumpyModel:
@@ -146,12 +149,24 @@ def turn_rows(model, data_dir: Path, name: str):
     return out
 
 
-def on_outcome(m: dict, o: dict, thr: dict):
-    """The shipped `on` policy at one turn, exactly as runtime.decide_turn + session run it -> (act, Command)."""
+def rules_out(m: dict):
     ra = m["rules_act"]
-    rc = m.get("rules_cmd") if ra == "command" else None
+    if ra == "navigate":
+        return ra, {"nav": m.get("rules_nav")}
+    return ra, (m.get("rules_cmd") if ra == "command" else None)
+
+
+def on_outcome(m: dict, o: dict, thr: dict):
+    """The shipped `on` policy at one turn, exactly as runtime.decide_turn / decide_nav + session run it -> (act, Command
+    or {"nav": intent})."""
+    ra, rc = rules_out(m)
     route = m.get("route")
-    if route in ("ignore", "navigate"):      # the router decided; the model is never asked (session._routed)
+    if route == "navigate":                  # the router navigated; the model is never asked (session._routed)
+        return ra, rc
+    nv = RT.nav_policy(o, thr, offer=bool(m.get("offer"))) if route is not None else None
+    if nv:                                   # round 7: the model navigates where the router did not (fitted, guarded)
+        return "navigate", {"nav": nv}
+    if route == "ignore":
         return ra, rc
     if route == "answer":                    # a lesson step's answer: the model may only silence it
         return ("ignore", None) if RT.answer_policy(o, thr) else (ra, rc)
@@ -164,8 +179,19 @@ def on_outcome(m: dict, o: dict, thr: dict):
     return ov["act"], ov.get("command")
 
 
+def nav_right(m, c) -> bool:
+    gn = m.get("gold_nav")
+    return gn in (None, "other", "none") or (c or {}).get("nav") == gn
+
+
+def act_ok(m, a, c) -> bool:
+    return a == m["gold_act"] and (a != "navigate" or nav_right(m, c))
+
+
 def is_wrong(m, a, c) -> bool:
     g, gc = m["gold_act"], m.get("gold_cmd")
+    if a == "navigate":                     # round 7: a navigation the kid did not mean moves the app: a wrong action
+        return g != "navigate" or not nav_right(m, c)
     if m.get("expect"):
         return a in EXEC and not (a == "command" and h40_ok(c, m["expect"]))
     return a in EXEC and not (a == g and (a != "command" or (gc and FX.same_command(c, gc))))
@@ -175,12 +201,11 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
     """Per-act thresholds on val: no more wrong actions than the rules on val (the hard constraint), then the best
     act accuracy; ties -> the more conservative (higher) thresholds."""
     rows = [r for s_ in sets for r in turn_rows(model, data_dir, s_)]
-    r_wrong = sum(is_wrong(m, m["rules_act"], m.get("rules_cmd") if m["rules_act"] == "command" else None)
-                  for m, _ in rows)
+    r_wrong = sum(is_wrong(m, *rules_out(m)) for m, _ in rows)
     for m, o in rows:          # memo for the grid: the decode and its confidence do not depend on the thresholds
         o["_conf"] = RT.cmd_conf(o)
         o["_cmd"] = FX.decode_command(o, FX.words_of(m["heard"]))
-    rw = [is_wrong(m, m["rules_act"], m.get("rules_cmd") if m["rules_act"] == "command" else None) for m, _ in rows]
+    rw = [is_wrong(m, *rules_out(m)) for m, _ in rows]
     grid = [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 1.01]
     best = None
     cands = []
@@ -195,7 +220,7 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
                         wr = is_wrong(m, a, c)
                         w += wr
                         extra += wr and not r_
-                        ok += a == m["gold_act"]
+                        ok += act_ok(m, a, c)
                     # zero EXTRA wrong actions vs the rules (turns where the rules were right and `on` acts wrongly),
                     # then the fewest wrong actions, then act accuracy, then the more conservative thresholds
                     key = (-extra, -w, ok, cmd, veto or 2, ign, ask)
@@ -212,10 +237,37 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
     safe = [c for c in cands if c[3] == 0 and c[1] <= w and c[2] >= ok - slack]
     thr, w, ok, extra = max(safe, key=lambda c: (c[0]["cmd"] + (c[0]["veto"] or 1.01) + c[0]["ignore"] + c[0]["ask"],
                                                  c[2]))
+    thr = {**thr, **fit_nav(rows, thr, rw)}
+    w = sum(is_wrong(m, *on_outcome(m, o, thr)) for m, o in rows)
+    ok = sum(act_ok(m, *on_outcome(m, o, thr)) for m, o in rows)
     print(f"policy fit on {sets}: {thr} -> wrong {w} (extra {extra}) vs rules {r_wrong}, act ok {ok}/{len(rows)}",
           flush=True)
     return {**thr, "fit": {"sets": list(sets), "wrong": w, "extra_wrong": extra, "rules_wrong": r_wrong, "act_ok": ok,
                            "turns": len(rows)}}
+
+
+def fit_nav(rows, thr: dict, rw: list) -> dict:
+    """Round 7: the navigate fill alone (nav = p(act navigate) and p(nav intent) floor), on top of the fitted policy:
+    zero turns the rules got right that `on` gets wrong, zero extra wrong actions, then the most turns right; off
+    (None) unless it gains."""
+    def score(v):
+        t = {**thr, "nav": v}
+        ok = extra = 0
+        for (m, o), r_ in zip(rows, rw):
+            a, c = on_outcome(m, o, t)
+            good = act_ok(m, a, c)
+            ok += good
+            ra, rc = rules_out(m)
+            extra += (not good and act_ok(m, ra, rc)) or (is_wrong(m, a, c) and not r_)
+        return ok, extra
+    base, _ = score(None)
+    best = (base, None)
+    for v in (0.7, 0.8, 0.9, 0.95, 0.98, 0.99):
+        ok, extra = score(v)
+        if extra == 0 and ok > best[0]:
+            best = (ok, v)
+    print(f"nav fit: {best[1]} -> {best[0]}/{len(rows)} vs {base} without", flush=True)
+    return {"nav": best[1]}
 
 
 def fit_answer_ignore(rows) -> float | None:
@@ -229,7 +281,7 @@ def fit_answer_ignore(rows) -> float | None:
     for v in (0.7, 0.8, 0.9, 0.95, 0.98, 0.99):
         ok = extra = 0
         for m, o in ans:
-            a, _ = on_outcome(m, o, {"answer_ignore": v})
+            a, _ = on_outcome(m, o, {"answer_ignore": v, "nav": None})
             ok += a == m["gold_act"]
             extra += a != m["gold_act"] and m["rules_act"] == m["gold_act"]
         if extra == 0 and ok > best[0]:
@@ -289,7 +341,9 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
             words = FX.words_of(m["heard"])
             o = {k: p[k][t] for k in p}
             mc = FX.decode_command(o, words) if ma == "command" else None
-            rc = m.get("rules_cmd") if ra == "command" else None
+            if ma == "navigate" and "nav" in o:
+                mc = {"nav": FX.NAV_INTENTS[int(np.argmax(o["nav"]))]}
+            _, rc = rules_out(m)
             gc = m.get("gold_cmd")
             cat = m.get("cat") or "?"
             # `on` = the shipped policy (runtime.policy with the fitted thresholds, exactly as decide_turn runs it);
@@ -299,9 +353,9 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
             for who, a, c in (("model", ma, mc), ("rules", ra, rc), ("on", oa, oc), ("on_fill", fa, fc)):
                 Rw = R[who]
                 Rw["turns"] += 1
-                Rw["act_ok"] += int(a == g)
+                Rw["act_ok"] += int(act_ok(m, a, c))
                 cats[(cat, who)]["n"] += 1
-                cats[(cat, who)]["ok"] += int(a == g)
+                cats[(cat, who)]["ok"] += int(act_ok(m, a, c))
                 if g == "command" and gc:
                     Rw["cmds"] += 1
                     Rw["cmd_exact"] += int(a == "command" and FX.same_command(c, gc))
@@ -337,6 +391,9 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
                             Rw["ca_ok"] += int(a == "answer" and not card)
                         else:
                             Rw["ca_ok"] += int(f"{card}|{pa}" in m["ok"])
+                if a == "navigate" and g == "navigate":
+                    Rw["nav_n"] += 1
+                    Rw["nav_intent_ok"] += int(nav_right(m, c))
                 if who == "model" and a != g:
                     errs[(cat, g, a)] += 1
                     if len(examples[(cat, g, a)]) < 3:
@@ -355,6 +412,7 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
             "attr_acc": round(Rw["attr_ok"] / Rw["attr_n"], 4) if Rw["attr_n"] else None,
             "card_attr_acc": round(Rw["ca_ok"] / Rw["ca_n"], 4) if Rw["ca_n"] else None,
             "h40": f"{Rw['h40_ok']}/{Rw['h40_n']} ok, {Rw['h40_wrong']} wrong, {Rw['h40_none']} none" if Rw["h40_n"] else None,
+            "nav_intent": f"{Rw['nav_intent_ok']}/{Rw['nav_n']}" if Rw["nav_n"] else None,
         }
         if who not in barge:
             continue

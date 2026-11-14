@@ -12,6 +12,11 @@ what is decoded; after a new Arc model, delete dec/ (`make director-retrain NEW_
   2. decode  (model_server env: it has steertts-edge + Arc)  render in memory + decode with the real Arc ear
                              cd model_server && uv run python ../director_model/real_ear.py decode --procs 6
 
+Round 7: every job carries the screen frame its turn is heard in and that screen's hot lists (backend/app/hotlist.py);
+the decoder gets them as the app sends them ({"t":"context","hot"} after the Tier A names), so the decodes are what the
+biased ear hears, and the final words carry the ear's n-best / confidence / hot match (replayed by gen_sessions).
+The cache moved to cache/real_ear_r7 (REAL_EAR_CACHE overrides): round-6 decodes had no hot lists.
+
 Voices: the 200 Steer voices ranked by median f0; rank % 5 == 0 -> test voices, rank % 5 == 1 -> val voices, others
 train (the held-out sets never hear a training voice). Groups: train / val / test (key = group + text + variant).
 """
@@ -27,7 +32,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-CACHE = Path(os.environ.get("REAL_EAR_CACHE", HERE / "cache" / "real_ear"))
+CACHE = Path(os.environ.get("REAL_EAR_CACHE", HERE / "cache" / "real_ear_r7"))
 JOBS = CACHE / "jobs.jsonl"
 SR = 16000
 
@@ -40,14 +45,41 @@ def key_of(group: str, text: str, var: int = 0) -> str:
 APP_VOICES = ["voice_1085", "voice_0213", "voice_0644"]   # the app's own: Aurora (guide), CAPCOM, Beacon (steering.py)
 
 
-def items_of(script: dict) -> list[str]:
+MODE_SCREEN = {"mission": "cabin", "cadet": "library", "academy": "lesson"}
+
+
+def frame_key(fr: dict | None) -> str:
+    fr = fr or {}
+    return f"{fr.get('screen')}|{fr.get('lesson_id')}|{fr.get('step')}|{fr.get('offer')}"
+
+
+def items_of(script: dict) -> list[tuple[str, dict]]:
+    """(text, screen frame) of each kid turn; a turn without a frame is heard on its mode's screen."""
     out = []
+    lesson = None
     for it in script["items"]:
+        if it.get("op") == "lesson":
+            lesson = (it["lesson_id"], it["step"])
         if it.get("op") in ("end_shift", "emotion", "tap", "lesson", "echo", "echo2") or "heard" in it or \
                 not it.get("text"):
             continue
-        out.append(it["text"])
+        fr = it.get("frame")
+        if fr is None:
+            fr = {"screen": MODE_SCREEN.get(script["mode"], "map")}
+            if script["mode"] == "academy" and lesson:
+                fr.update(lesson_id=lesson[0], step=lesson[1])
+        out.append((it["text"], fr))
     return out
+
+
+def hot_for(fr: dict) -> dict:
+    from app import hotlist as H
+    from app.academy import content as AC
+    st = None
+    if fr.get("lesson_id") and fr.get("screen") in ("lesson", "ride"):
+        L = AC.lesson(fr["lesson_id"])
+        st = L["steps"][fr["step"]] if L and fr.get("step") is not None else None
+    return H.hot_lists(fr, st)
 
 
 def cmd_jobs(a):
@@ -61,12 +93,15 @@ def cmd_jobs(a):
             have[j["key"]] = j
     new = []
 
-    def add(group, text, var=0, voice=None):
-        k = key_of(group, text, var)
+    def add(group, text, var=0, voice=None, frame=None):
+        fk = frame_key(frame) if frame else ""
+        k = key_of(group, text + ("#" + fk if fk else ""), var)
         if k in have:
             return
         rng = random.Random(k)
         j = {"key": k, "group": group, "text": text, "var": var, "seed": rng.randrange(1 << 30)}
+        if frame:
+            j["frame"], j["fk"], j["hot"] = frame, fk, hot_for(frame)
         if voice:
             j["voice"] = voice
         have[k] = j
@@ -89,10 +124,10 @@ def cmd_jobs(a):
         for _, sc in sessions(split, n, seed0, mode):
             if len(texts) >= budget[group]:
                 break
-            for t in items_of(sc):
-                if t not in texts:
-                    texts.add(t)
-                    add(group, t)
+            for t, fr in items_of(sc):
+                if (t, frame_key(fr)) not in texts:
+                    texts.add((t, frame_key(fr)))
+                    add(group, t, frame=fr)
         # a second voice for the most frequent train texts (variety of decodes for the same words)
         print(f"{group}: {len([j for j in have.values() if j['group'] == group]) - n0} new jobs", flush=True)
     # round 6: the class sets' kid turns (test voices) and the app's own lines in the app's voices (the echo; Aurora
@@ -102,10 +137,10 @@ def cmd_jobs(a):
     for ci, cls in enumerate(P.CLASSES):
         for it in G.class_set_items(cls, a.cls_n, 990_000 + 1000 * ci):
             if it.get("op") != "echo2" and it.get("text"):
-                add("test", it["text"])
+                add("test", it["text"], frame=it.get("frame") or {"screen": "cabin"})
     for i, line in enumerate(P.CAPCOM_LINES + [x[0] for x in P.OFFERS.values()]):
         for v in APP_VOICES:
-            add("app", line, var=APP_VOICES.index(v), voice=v)
+            add("app", line, var=APP_VOICES.index(v), voice=v, frame={"screen": "cabin"})
     print(f"round 6 class + app-voice jobs: {len(new) - n0}", flush=True)
     with open(JOBS, "a") as f:
         for j in new:
@@ -207,7 +242,10 @@ def _decode_worker(args):
     for j, x, rmeta in iter_audio([j for j in jobs[wid::nproc] if not (CACHE / "dec" / f"{j['key']}.json").exists()]):
         out = CACHE / "dec" / f"{j['key']}.json"
         es = arc_ear.EarStream("assistant")
-        StreamContext().update({"t": "context", "names": tier}, es)
+        ctx = StreamContext()
+        ctx.update({"t": "context", "names": tier}, es)
+        if j.get("hot"):
+            ctx.update({"t": "context", "hot": j["hot"]}, es)
         msgs = []
         for i in range(0, len(x), 2560):
             msgs += es.feed_all(x[i:i + 2560])
@@ -216,13 +254,15 @@ def _decode_worker(args):
         ev = []
         for m in msgs:
             if m["t"] == "words":
-                ev.append({"t": "words", "text": m["text"], "final": bool(m.get("final"))})
+                ev.append({"t": "words", "text": m["text"], "final": bool(m.get("final")),
+                           **{k: m[k] for k in ("alts", "conf", "hot", "rescored") if m.get(k) is not None}})
             elif m["t"] == "turn":
                 ev.append({"t": "turn", "state": m["state"], "text": m.get("text") or ""})
             elif m["t"] == "arc":
                 ev.append({"t": "arc", "dd": m.get("device_directed"), "cc": m.get("command_complete")})
         finals = [e["text"] for e in ev if e["t"] == "words" and e["final"] and e["text"].strip()]
-        out.write_text(json.dumps({"key": j["key"], "text": j["text"], "group": j["group"], "hyp": " ".join(finals),
+        out.write_text(json.dumps({"key": j["key"], "text": j["text"], "group": j["group"], "fk": j.get("fk", ""),
+                                   "hyp": " ".join(finals),
                                    "events": ev, "render": rmeta, "rtf": round(es.compute_s / max(es.audio_s, 1e-6), 3)}))
         done += 1
         if done % 100 == 0:
@@ -256,9 +296,13 @@ class RealEar:
             r = json.loads(f.read_text())
             self.by.setdefault(r["group"], {}).setdefault(r["text"], []).append(r)
 
-    def get(self, group: str, text: str, rng: random.Random):
+    def get(self, group: str, text: str, rng: random.Random, fk: str | None = None):
+        """A decode of `text` (heard on the screen `fk` when one was decoded there: the hot lists differ by screen)."""
         xs = self.by.get(group, {}).get(text)
-        return rng.choice(xs) if xs else None
+        if not xs:
+            return None
+        same = [x for x in xs if fk and x.get("fk") == fk]
+        return rng.choice(same or xs)
 
     def n(self, group=None):
         return sum(len(v) for g, t in self.by.items() if group in (None, g) for v in t.values())

@@ -171,6 +171,7 @@ def stage_app(skip_frontend: bool):
     # Camera gestures: the vision runtime + models ship inside the app (frontend/tools/fetch_vision.mjs; docs/GESTURES.md)
     for must in ("backend/app/director_model/weights.json", "backend/app/director_model/weights.npz",
                  "backend/data/places.json", "backend/data/index/clips.json", "backend/data/voices.json",
+                 "backend/data/ear_vocab.json",
                  "frontend/vision/vision_wasm_module_internal.js", "frontend/vision/vision_wasm_module_internal.wasm",
                  "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"):
         if not (app / must).exists():

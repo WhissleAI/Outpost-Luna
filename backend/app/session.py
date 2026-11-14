@@ -345,6 +345,8 @@ class Session:
         ptt = self.ptt_only()
         if t == "words":
             k["words"] = m.get("text") or ""
+            if m.get("final"):     # round 7: the ear's n-best / confidence / hot-list match ride on the final words
+                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored") if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -355,6 +357,7 @@ class Session:
                 k.update(open=True, start=self.clock(), end=None, words=m.get("text") or "")
                 if st == "start":
                     k["device_directed"], k["act"] = None, None   # Arc's read is per turn: never carry the last one
+                    k["ear"] = None
                 if self.belief["floor"] == "none":
                     await self.set_floor("kid")
             elif st == "end":
@@ -465,6 +468,12 @@ class Session:
         steps = (les or {}).get("steps") or []
         return steps[i] if 0 <= i < len(steps) else None
 
+    def hot_words(self) -> dict:
+        """The ear's tiered hot lists for the screen the kid is on (round 7, hotlist.py; /ws/listen sends them to the
+        Arc ear): {"step": strongest boost, "screen": lighter, "v": data version}."""
+        from .hotlist import hot_lists
+        return hot_lists({**self.screen, "screen": self.screen_name()}, self.open_step())
+
     def route_ctx(self, source: str) -> router_.Ctx:
         k = self.belief["kid"]
         heard = source in ("listen", "voice", "ptt")
@@ -526,7 +535,10 @@ class Session:
             # (runtime.answer_policy; off unless the shipped weights carry a fitted threshold).
             with contextlib.suppress(Exception):
                 out = self.dm.step(self._end_event(text, source, rt), {"available": False})
-            if rt["outcome"] == "answer" and out is not None and self.dm.decide_answer(out):
+            nv = self._model_nav(out, rt)
+            if nv is not None:
+                rt = nv
+            elif rt["outcome"] == "answer" and out is not None and self.dm.decide_answer(out):
                 rt = {"outcome": "ignore", "reason": "model_chatter"}
                 dmodel.STATS["model_overrides"] += 1
                 if self._tl is not None:
@@ -562,6 +574,22 @@ class Session:
             return
         await self._direct_turn(text, source, rt, ctx_r)
 
+    def _model_nav(self, out, rt: dict) -> dict | None:
+        """Round 7, `on` mode: the model navigates a turn the router did not (runtime.nav_policy: the `nav` head, a
+        fitted threshold, intents it can run without an argument). -> a router-shaped navigate decision, or None."""
+        if self.dm is None or out is None or rt.get("outcome") == "navigate":
+            return None
+        nv = None
+        with contextlib.suppress(Exception):
+            nv = self.dm.decide_nav(out, self.screen.get("offer"))
+        if not nv:
+            return None
+        dmodel.STATS["model_overrides"] += 1
+        if self._tl is not None:
+            self._tl["router"]["model"] = "navigate:" + nv
+        arg = self.screen.get("offer") if nv in ("accept_offer", "decline_offer") else None
+        return {"outcome": "navigate", "reason": "model_nav", "intent": nv, "arg": arg}
+
     async def _direct_turn(self, text: str, source: str, rt: dict, ctx_r: router_.Ctx):
         b, k = self.belief, self.belief["kid"]
         self.history.append({"in": source, "text": text, "ts": self.clock()})
@@ -580,6 +608,12 @@ class Session:
         if self.dm is not None:
             with contextlib.suppress(Exception):
                 out = self.dm.step(self._end_event(text, source, rt), read)
+        nv = self._model_nav(out, rt)
+        if nv is not None:          # round 7: the model's navigation of a question / order turn (fitted, guarded)
+            with contextlib.suppress(Exception):
+                self.dm.turn_result({"action": "navigate", "source": "director_model+" + nv["intent"]})
+            await self.emit(pre + [decision("nav", P_ANSWER, intent=nv["intent"], arg=nv["arg"], text=text)])
+            return
         emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         ctx["level"] = self.level          # Settings: cadet | commander (passed through; docs/VOICES.md)

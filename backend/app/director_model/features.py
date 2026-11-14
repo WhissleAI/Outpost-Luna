@@ -59,6 +59,13 @@ STEP_TYPES = ["intent", "command", "tap", "keywords", "choice", "predict", "glob
               "earth_view", "vocab"]
 ROUTES = ["ignore", "navigate", "answer", "order", "question"]
 ROUTE_WHY = ["echo", "filler", "speaking", "not_directed", "too_short", "chatter"]
+# Round 7: which navigation (the `nav` head: the guarded policy may now navigate on the classes where the model beats
+# the rules). Index 0 = not navigation. Taking the screen's offer is one class whatever words took it ("next", "yes").
+NAV_INTENTS = ["none", "accept_offer", "decline_offer", "back", "map", "academy", "library", "go_mission",
+               "take_command", "panel_power", "panel_comm", "panel_habitat", "panel_rover", "panel_radiation",
+               "panel_back", "a11y", "cabin_tour", "skip_tour", "repeat", "slower", "faster", "settings", "debrief",
+               "fly_again", "new_site", "view_orbit", "view_rover", "view_site", "start", "other"]
+NAV_ACTIONABLE = set(NAV_INTENTS[1:-1])      # what the model may run on its own (no arg it cannot know: lesson, site)
 K, W = 8, 16                       # hashed newest K words (bag); last W words for the span pointer heads
 WF = 6                             # per-word features (step_tokens)
 
@@ -66,7 +73,7 @@ WF = 6                             # per-word features (step_tokens)
 HEADS = {"act": len(ACTS), "when": 1, "cmd_type": len(CMD_TYPES), "sub_type": len(CMD_TYPES), "amount": len(AMOUNTS),
          "load_to": len(LOADS), "load_from": len(LOADS), "task": len(TASKS), "query": len(QUERIES),
          "rule_when": len(TRIGGERS), "card_attr": len(ATTRS), "style": len(STYLE_TAGS), "s_rate": 3, "s_loud": 3,
-         "s_f0_iqr": 3, "barge": 1}
+         "s_f0_iqr": 3, "barge": 1, "nav": len(NAV_INTENTS)}     # nav: round 7, appended (older weights lack it)
 WORD_HEADS = ("w_load", "w_num", "w_task")
 
 # ---------------------------------------------------------------------------------------------------- lexicon
@@ -214,7 +221,34 @@ def _handsfree(sess, ev: dict, text: str, now: float) -> dict:
             recent = sp.recent()
     return {"frame": {"screen": screen, "step_type": scr.get("step_type"), "offer": scr.get("offer"),
                       "options": list(scr.get("step_options") or [])},
-            "route": ev.get("route"), "on_air": on_air, "speaking": speaking, "line_gap": gap, "recent": recent[-4:]}
+            "route": ev.get("route"), "on_air": on_air, "speaking": speaking, "line_gap": gap, "recent": recent[-4:],
+            **_round7(sess, ev, text, now)}
+
+
+def _round7(sess, ev: dict, text: str, now: float) -> dict:
+    """Round 7, at a turn end only: the screen's hot-list match, the ear's n-best / confidence, the previous turn."""
+    kind = ev.get("t")
+    if not (kind == "typed" or (kind == "turn" and ev.get("state") == "end")) or not text.strip():
+        return {}
+    out: dict = {}
+    with _suppress():
+        from ..hotlist import hot_match
+        hw = sess.hot_words() if hasattr(sess, "hot_words") else None
+        if hw:
+            out["hot"] = hot_match(text, hw)
+            alts = ((sess.belief["kid"].get("ear") or {}).get("alts") or [])
+            if alts:
+                top = hot_match(text, {"step": hw.get("step")})["step"]
+                out["alt_hot"] = any(hot_match(a, {"step": hw.get("step")})["step"] > top for a in alts[:3])
+    ear = sess.belief["kid"].get("ear") if kind == "turn" else None
+    if ear:
+        out["ear"] = {k: ear.get(k) for k in ("conf", "rescored")} | {"n_alts": len(ear.get("alts") or []),
+                                                                      "tier": (ear.get("hot") or {}).get("tier")}
+    prev = getattr(sess, "_r7_prev", None)
+    if prev:
+        out["prev"] = {"text": prev["text"], "dt": now - prev["t"], "route": prev.get("route")}
+    sess._r7_prev = {"text": text, "t": now, "route": (ev.get("route") or {}).get("outcome")}
+    return out
 
 
 class _suppress:
@@ -291,9 +325,21 @@ FEATS: list[str] = (
     + [f"rt_{x}" for x in ROUTES] + [f"rw_{x}" for x in ROUTE_WHY]
     + ["nav_any", "nav_offer", "nav_panel", "nav_a11y", "nav_mode", "on_air", "speaking", "line_gap", "echo_recent",
        "lx_chatter", "lx_filler"]
+    # ---- round 7: appended after the round-6 block (F_R6 = 216); older weights read their prefix ----
+    # the screen's hot lists (hotlist.hot_match): exact hits per tier and the best sound-alike score per tier
+    + ["hot_avail", "hot_step", "hot_screen", "hot_step_sa", "hot_screen_sa"]
+    # the ear's own evidence on the final words: confidence, n-best size, an alternative holding a hot phrase the top
+    # beam lacks, the hot rescoring picked a lower beam, the tier the final words matched
+    + ["ear_avail", "ear_conf", "ear_alts", "ear_alt_hot", "ear_rescored", "ear_tier_step", "ear_tier_screen"]
+    # the sound-alike layer: the grader passes only on the repaired words; the router's navigation inside a longer turn
+    + ["lesson_pass_sa", "nav_fuzzy", "nav_fuzzy_offer"]
+    # outcome signals (DIRECTOR_LOOP.md §2, now as features): this turn repeats the last one, the last one was ignored /
+    # navigated / acted, it came within 10 s
+    + ["rep_prev", "prev_ignored", "prev_acted", "prev_recent", "neg_now"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
+F_R6 = FEATS.index("lx_filler") + 1       # the round-6 width (216)
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -496,6 +542,86 @@ def _handsfree_feats(rec: dict, ws: list[str], s):
     s("on_air", bool(rec.get("on_air")))
     s("speaking", bool(rec.get("speaking")))
     s("line_gap", _clip_log(rec.get("line_gap"), 30.0) if rec.get("line_gap") is not None else 1.0)
+    _round7_feats(rec, ws, s)
+
+
+NEG = re.compile(r"^(?:no|nope|stop|not that|no no|wait no|go back|back|cancel|wrong|that s wrong|undo)\b")
+
+
+def _round7_feats(rec: dict, ws: list[str], s):
+    h = rec.get("hot")
+    if h:
+        s("hot_avail", 1)
+        s("hot_step", min(h.get("step", 0), 3) / 3)
+        s("hot_screen", min(h.get("screen", 0), 3) / 3)
+        s("hot_step_sa", h.get("step_sa", 0.0))
+        s("hot_screen_sa", h.get("screen_sa", 0.0))
+    s("ear_alt_hot", bool(rec.get("alt_hot")))
+    e = rec.get("ear")
+    if e:
+        s("ear_avail", 1)
+        if e.get("conf") is not None:
+            s("ear_conf", e["conf"])
+        s("ear_alts", min(e.get("n_alts") or 0, 3) / 3)
+        s("ear_rescored", bool(e.get("rescored")))
+        s("ear_tier_step", e.get("tier") == "step")
+        s("ear_tier_screen", e.get("tier") == "screen")
+    fr = rec.get("frame")
+    t = " ".join(ws)
+    if fr and t and rec["kind"] in ("turn_end", "typed"):
+        with _suppress():
+            from .. import turn_router as R
+            ctx = R.Ctx(screen=fr.get("screen") or "map", step_type=fr.get("step_type"), offer=fr.get("offer"),
+                        step_options=fr.get("options") or [])
+            fz = R.nav_fuzzy(t, ctx)
+            if fz:
+                s("nav_fuzzy", 1)
+                s("nav_fuzzy_offer", R.answers_offer(fz[:2], ctx))
+    ls = rec.get("lesson")
+    if ls and ls.get("active") and t and rec["kind"] in ("turn_end", "typed"):
+        g = lesson_grade_sa(ls, rec.get("text") or "")
+        if g:
+            s("lesson_pass_sa", 1)
+    pv = rec.get("prev")
+    if pv and t:
+        from difflib import SequenceMatcher
+        s("rep_prev", SequenceMatcher(None, norm(pv["text"]), t).ratio() if pv["dt"] < 10 else 0.0)
+        s("prev_ignored", pv.get("route") == "ignore")
+        s("prev_acted", pv.get("route") in ("navigate", "answer", "order"))
+        s("prev_recent", pv["dt"] < 10)
+        s("neg_now", bool(NEG.match(t)) and pv["dt"] < 6)
+
+
+def lesson_grade_sa(ls: dict, text: str) -> bool:
+    """The grader passes this answer only on its sound-alike repair (grade extra["heard_as"])."""
+    try:
+        from ..academy import content, grade
+        L = content.lesson(ls["id"])
+        st = L["steps"][int(ls.get("step") or 0)] if L else None
+        if not st or st["accept"]["type"] == "tap":
+            return False
+        ok, extra = grade.grade(st, {"text": text})
+        return bool(ok and extra.get("heard_as"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def nav_label(text: str, frame: dict | None) -> str:
+    """The nav head's class for a turn's (clean) words in its screen frame: the router's intent, offers folded."""
+    if not frame or not text:
+        return "none"
+    from .. import turn_router as R
+    ctx = R.Ctx(screen=frame.get("screen") or "map", step_type=frame.get("step_type"), offer=frame.get("offer"),
+                step_options=frame.get("step_options") or frame.get("options") or [])
+    nv = R.nav_intent(text, ctx)
+    if not nv:
+        fz = R.nav_fuzzy(text, ctx)
+        nv = fz[:2] if fz else None
+    if not nv:
+        return "none"
+    if R.answers_offer(nv, ctx):
+        return "accept_offer"
+    return nv[0] if nv[0] in NAV_INTENTS else "other"
 
 
 def lesson_grade(ls: dict, text: str) -> bool | None:

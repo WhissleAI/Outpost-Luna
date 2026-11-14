@@ -28,6 +28,7 @@ import re
 from functools import lru_cache
 
 from ..gazetteer import Gazetteer
+from .. import soundalike
 from ..mission import nlu, sim
 from .content import DATA
 
@@ -102,7 +103,52 @@ def choice_of(inp: dict, acc: dict) -> str | None:
 
 
 def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]:
-    """(passed, extra). extra may hold the matched `command` or the `choice`."""
+    """(passed, extra). extra may hold the matched `command` or the `choice`.
+
+    A spoken / typed answer that fails on the heard words is graded once more on the words it SOUNDS like, against the
+    step's own short vocabulary (round 7, app/soundalike.py: "rover go get eyes" -> ice, "four side" -> far side,
+    "malapart" -> Malapert). extra["heard_as"] then says what it was read as."""
+    ok, extra = _grade(step, inp, loads)
+    if ok or not text_only(inp or {}):
+        return ok, extra
+    fixed, edits = soundalike.repair(inp["text"], step_vocab(step))
+    if not edits:
+        return ok, extra
+    ok2, extra2 = _grade(step, {**inp, "text": fixed}, loads)
+    return (True, {**extra2, "heard_as": fixed}) if ok2 else (ok, extra)
+
+
+COMMAND_VOCAB = ["shields", "life support", "greenhouse", "science", "rover", "comms", "radio", "heaters", "ice",
+                 "water", "shelter", "houston", "solar panels", "power"]
+
+
+def step_vocab(step: dict | None, options: list[str] | None = None) -> list[str]:
+    """What this step expects to hear (the sound-alike targets): its options and their say words, its keywords, the
+    places it names, the side / day-night words, the base parts of a command step, the space word."""
+    if not step:
+        return [o for o in options or [] if o]
+    acc = step.get("accept") or {}
+    kind = acc.get("type") or ""
+    out: list[str] = []
+    for _, say in step_options(acc):
+        out += [w for w in say if w]
+    for grp in [*acc.get("all", []), *acc.get("any", [])]:
+        out += list(grp)
+    for pid in [acc.get("place"), *acc.get("also", []), *acc.get("stops", []),
+                *(o.get("id") for o in acc.get("options", []) or [])]:
+        p = gaz().places.get(pid) if pid else None
+        if p:
+            out += [p.name, *p.aliases]
+    if kind == "terminator":
+        out += ["terminator", "shadow line", "day", "night"]
+    if kind == "command":
+        out += COMMAND_VOCAB
+    if kind.startswith("vocab_") and acc.get("term"):
+        out.append(acc["term"])
+    return [re.sub(r"\s*\(.*?\)", "", str(w)).strip() for w in out if w]
+
+
+def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]:
     acc, inp = step["accept"], inp or {}
     kind, text = acc["type"], inp.get("text") or ""
     if text and not inp.get("choice") and kind in INDEXED:   # "one", "the second one", "b": the option by its key
@@ -427,7 +473,7 @@ def _stem(ws) -> set[str]:
 
 
 def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: float = DD_MIN, *,
-              step_type: str | None = None, options: list[str] | None = None) -> bool:
+              step_type: str | None = None, options: list[str] | None = None, strict: bool = False) -> bool:
     """Is this turn a real try at the step (a miss when wrong), or room talk / filler (ignored, never a miss)?
 
     A try: it names an option (a word of it, or its number / letter); it overlaps what the step expects (the keywords,
@@ -470,7 +516,23 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
         if kind in ("vocab_fill", "vocab_listen") and \
                 any(vocab.said_score(text, o["term"]) >= 0.6 for o in vocab.options(acc)):
             return True
+    if sounds_like_answer(step, text, options):
+        return True       # a mishear of what the step expects ("rover go get eyes", "four side"): a real try
+    if strict:
+        return False      # strict: the step's own words only (the router's fuzzy navigation check)
     return len(cw) >= 3 and (dd is None or float(dd) >= dd_min)
+
+
+def sounds_like_answer(step: dict | None, text: str, options: list[str] | None = None) -> bool:
+    """The turn is mostly a sound-alike of the step's vocabulary: after the repair, more than half of its content words
+    are the step's own words. "rover go get eyes" yes (rover, ice); "my eyes hurt today" no (1 of 3)."""
+    voc = step_vocab(step, options)
+    fixed, edits = soundalike.repair(text, voc)
+    if not edits:
+        return False
+    vw = {w for v in voc for w in _gnorm(v).split()}
+    cw = content_words(fixed)
+    return bool(cw) and 2 * sum(w in vw for w in cw) > len(cw)
 
 
 def text_only(inp: dict) -> bool:
