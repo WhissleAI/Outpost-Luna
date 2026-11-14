@@ -359,7 +359,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     const line = cs => `${head} Nice flying, ${cs}. Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`;
-    capcom({ say: line(callSign.shown()), eyebrow: "Debrief" }); say(line(callSign.spoken()));
+    // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer).
+    capcom({ say: line(callSign.shown()), eyebrow: "Debrief" }); say(line(callSign.spoken()) + " Want to fly again? Say fly again.");
   }
 
   /** Line chart: power %, life support %, dose as % of the limit (one 0–100 axis), with event markers. */
@@ -397,7 +398,34 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }
 
+  // ---------- hands-free (the session's router decides; these run what it decided) ----------
+  function screenFrame() {
+    if (screen === "off") return null;
+    if (screen === "hud") return { screen: "cabin" };
+    if (screen === "debrief") return { screen: "debrief", offer: "fly_again" };
+    return { screen: "brief", offer: "take_command" };
+  }
+  /** A navigation intent. True when Mission ran it. */
+  function nav(intent, arg) {
+    if (screen === "off") return false;
+    const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
+    if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }
+    if (intent === "pick_site" && (screen === "brief" || screen === "debrief")) {
+      const s = sites.find(x => x.id === arg); if (!s) return false;
+      if (unsub && screen === "debrief") { unsub(); unsub = null; state = null; }
+      site = s; previewSite(); briefing(); say(`${s.name.split(" (")[0]}. Good choice. Say take command when you're ready.`); return true;
+    }
+    if (screen === "brief" && ["take_command", "start", "next", "accept_offer"].includes(intent)) { start(); return true; }
+    if (screen === "debrief" && ["fly_again", "accept_offer", "start"].includes(intent)) { if (unsub) unsub(); state = null; start(); return true; }
+    if (screen === "debrief" && intent === "new_site") { if (unsub) unsub(); state = null; briefing(); return true; }
+    if (screen === "debrief" && intent === "back") { if (state && !state.over) showHud(); else briefing(); return true; }
+    if (screen === "hud" && (intent === "debrief" || intent === "fly_again")) { showDebrief(); return true; }
+    if (intent === "decline_offer") return true;
+    return false;
+  }
+
   return {
+    screen: screenFrame, nav, radioKid: t => radio("kid", t),
     enter, exit, handleText, handleDirector, context,
     applyRemote, alert, showCard, askConfirm, houston,   // [session hook]
     get active() { return screen !== "off"; },

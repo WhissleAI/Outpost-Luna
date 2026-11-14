@@ -23,6 +23,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import director, models_client, steering
+from . import turn_router as router_
 from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
 from .gazetteer import norm
@@ -45,6 +46,31 @@ PRONOUN = re.compile(r"\b(it|that|this one|that one)\b", re.I)
 NAMED = re.compile(r"\b(power|battery|oxygen|air|life support|dose|radiation|shields?|greenhouse|science|rover|comms?|"
                    r"radio|heaters?)\b", re.I)
 ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
+
+
+CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
+             "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
+_CACHE: dict = {}
+
+
+def _lessons() -> list[tuple[str, str]]:
+    if "lessons" not in _CACHE:
+        try:
+            from .academy import content
+            _CACHE["lessons"] = [(l["id"], l["title"]) for l in content.course()["lessons"]]
+        except Exception:  # noqa: BLE001
+            _CACHE["lessons"] = []
+    return _CACHE["lessons"]
+
+
+def _sites() -> list[tuple[str, str]]:
+    if "sites" not in _CACHE:
+        try:
+            from .mission import sim
+            _CACHE["sites"] = [(s["id"], s["name"]) for s in sim.sites()]
+        except Exception:  # noqa: BLE001
+            _CACHE["sites"] = []
+    return _CACHE["sites"]
 
 
 def _words(t: str) -> list[str]:
@@ -75,6 +101,11 @@ class Session:
         self.poll_task: asyncio.Task | None = None
         self.lock = asyncio.Lock()
         self.dm = dmodel.attach(self)          # the learned Director (DIRECTOR_MODEL=off|shadow|on), None when off
+        # Hands-free (turn_router.py): what we said lately (echo check + hard mute), the client's screen, the fallback.
+        self.spoken = router_.Spoken(clock)
+        self.screen: dict = {}                 # {screen, step_type, step_options, offer} from the client (ui:screen)
+        self.last_unknown = -1e9
+        self.routes: list[dict] = []           # every routed turn (tests and /api/session/{id}/routes read it; capped)
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -88,6 +119,8 @@ class Session:
         for d in ds:
             if d["t"] in ("say", "play"):
                 self.pending[d["id"]] = d
+            if d["t"] == "say":
+                self.spoken.said(d.get("text") or "")
             self.outbox.append(d)
             self.history.append({"out": d["t"], "id": d["id"], "text": d.get("text") or d.get("title"), "ts": self.clock()})
         del self.outbox[:-400]
@@ -150,6 +183,9 @@ class Session:
     async def on_ui(self, m: dict):
         ev = m.get("event")
         self.history.append({"in": "ui", "event": ev, "ts": self.clock()})
+        if ev == "screen":         # the client's screen frame (hands-free routing context)
+            self.screen = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer") if k in m}
+            return
         if ev in ("tap_place", "tap_artifact") and m.get("id"):
             self.belief["last_place"] = m["id"]
         elif ev == "barge_in":     # the client accepted a barge-in (Space, or its echo check passed)
@@ -169,9 +205,11 @@ class Session:
         if st == "start":
             self.belief["playing"] = {"kind": kind, "id": did, "text": (self.pending.get(did) or {}).get("text") or m.get("text"),
                                       "t": m.get("t"), "since": self.clock()}
+            self.spoken.start(did, self.belief["playing"]["text"] or "")
             if self.belief["floor"] != "kid":
                 self.belief["floor"] = kind
         else:  # end | interrupted
+            self.spoken.end(did)
             if did:
                 self.pending.pop(did, None)
             self.belief["playing"] = None
@@ -199,6 +237,8 @@ class Session:
             st = m.get("state")
             if st in ("start", "resumed"):
                 k.update(open=True, start=self.clock(), end=None, words=m.get("text") or "")
+                if st == "start":
+                    k["device_directed"], k["act"] = None, None   # Arc's read is per turn: never carry the last one
                 if self.belief["floor"] == "none":
                     await self.set_floor("kid")
             elif st == "end":
@@ -209,16 +249,20 @@ class Session:
                 k["command_complete"] = m["command_complete"]
             if m.get("device_directed") is not None:
                 k["device_directed"] = m["device_directed"]
+            if m.get("act"):
+                k["act"] = m["act"] if isinstance(m["act"], list) else [m["act"]]
         elif t == "emotion" and m.get("label"):
             k["emotion"] = m["label"]
 
     def _is_barge(self, words: str) -> bool:
         """§3 rule 2, server side: ≥ 2 words, not an echo of what's playing, device-directed when Arc says so."""
         ws = _words(words)
-        if len(ws) < 2:
+        if len(ws) < 2 or router_.is_filler(words):
             return False
         playing = set(_words((self.belief["playing"] or {}).get("text") or ""))
         if playing and sum(w in playing for w in ws) / len(ws) >= ECHO_SHARE:
+            return False
+        if router_.echo_of(words, self.spoken.recent()):   # any of our last few lines, not only the one playing
             return False
         dd = self.belief["kid"]["device_directed"]
         return dd is None or float(dd) >= 0.5
@@ -276,7 +320,64 @@ class Session:
         async with self.lock:
             await self._turn(text, source)
 
+    # ---- hands-free routing (turn_router.py) ------------------------------------------------------------------------
+    def screen_name(self) -> str:
+        s = self.screen.get("screen")
+        if s:
+            return s
+        b = self.belief
+        if b["mode"] == "mission":
+            return "cabin" if b["mission_id"] else "brief"
+        return "library" if b["mode"] == "cadet" else "map"
+
+    def route_ctx(self, source: str) -> router_.Ctx:
+        k = self.belief["kid"]
+        heard = source in ("listen", "voice", "ptt")
+        return router_.Ctx(
+            screen=self.screen_name(), step_type=self.screen.get("step_type"),
+            step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
+            source=source if heard else "typed",
+            dd=k.get("device_directed") if heard else None,
+            speaking=heard and self.spoken.speaking(), recent=self.spoken.recent() if heard else [],
+            lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
+
+    async def _note(self, rt: dict, text: str):
+        rec = {"text": text, **rt, "screen": self.screen_name(), "ts": self.clock()}
+        self.routes.append(rec)
+        del self.routes[:-200]
+        self.history.append({"route": rt["outcome"], "reason": rt.get("reason"), "text": text, "ts": self.clock()})
+        if self.screen:   # a hands-free client: tell it what we heard (the mic chip shows "didn't catch that")
+            await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"),
+                                      notice=bool(rt.get("notice")) or None, text=text)])
+
     async def _turn(self, text: str, source: str):
+        b, k = self.belief, self.belief["kid"]
+        ctx_r = self.route_ctx(source)
+        rt = router_.route(text, ctx_r, act=k.get("act"))
+        if rt["outcome"] == "ignore":
+            # Stay silent. Never cancel what we are saying for something we didn't mean to hear (our own echo).
+            if self.dm is not None:
+                with contextlib.suppress(Exception):
+                    self.dm.step({"t": "turn", "state": "end", "text": text} if source == "listen" else
+                                 {"t": "typed", "text": text, "source": source}, {"available": False})
+                    self.dm.turn_result({"action": "none", "source": "router+" + rt["reason"]})
+            k["open"] = False
+            if b["floor"] == "kid":
+                b["floor"] = "none"
+            await self._note(rt, text)
+            return
+        await self._note(rt, text)
+        if rt["outcome"] in ("navigate", "answer"):
+            # The client owns the screens: it runs the navigation / grades the step answer (one decision, visual).
+            k["open"] = False
+            if b["floor"] == "kid":
+                b["floor"] = "none"
+            await self.emit([decision("nav", P_ANSWER, intent=rt.get("intent") or "answer", arg=rt.get("arg"),
+                                      text=text)])
+            return
+        await self._direct_turn(text, source, rt, ctx_r)
+
+    async def _direct_turn(self, text: str, source: str, rt: dict, ctx_r: router_.Ctx):
         b, k = self.belief, self.belief["kid"]
         self.history.append({"in": source, "text": text, "ts": self.clock()})
         # §3 rule 3: a newer turn cancels older, unplayed decisions.
@@ -326,8 +427,17 @@ class Session:
             r = await director.direct(resolved, read, self.gaz, self.index, ctx)
         if override:
             dmodel.STATS["model_overrides"] += 1
+        r = self._gate_fallback(r, text, ctx_r, k.get("act"))
         if self.dm is not None:
             self.dm.turn_result(r)
+        if r.get("action") == "none":
+            await self.emit(pre)
+            return
+        if self.screen and self.screen_name() != "cabin" and rt["outcome"] == "question":
+            # A hands-free client outside the cabin renders the explorer answer itself (artifacts, tours, crew audio).
+            slim = {k_: v for k_, v in r.items() if k_ not in ("decisions", "readout")}
+            await self.emit(pre + [decision("answer", P_ANSWER, r=slim, asked=text)])
+            return
         ds = list(r.get("decisions") or [])
         if r.get("place"):
             b["last_place"] = r["place"]
@@ -351,6 +461,25 @@ class Session:
         await self.emit(pre + ds)
         if evs:   # sim events this turn caused (an "end shift" said aloud): proactive, under the floor rules
             await self.offer(evs)
+
+    def _gate_fallback(self, r: dict, text: str, ctx_r: router_.Ctx, act) -> dict:
+        """The brain's "I don't know that one yet" (and its "Did you mean…?" guesses) are spoken for a heard turn only
+        when it was clearly a device-directed question, and the fallback at most once per UNKNOWN_EVERY_S."""
+        heard = ctx_r.source in ("listen", "voice")   # a Space (ptt) or typed question may always get the fallback
+        brain = (r.get("readout") or {}).get("brain") or {}
+        unknown = r.get("source") == "none" or (r.get("say") or "").startswith(director.UNKNOWN)
+        guess = r.get("action") == "ask" and brain.get("status") in ("ask", "unknown")
+        if not (unknown or guess):
+            return r
+        none = {**r, "action": "none", "say": "", "decisions": [], "source": "router+quiet"}
+        if heard and not router_.clear_question(text, ctx_r.dd, act):
+            return none
+        if unknown:
+            now = self.clock()
+            if heard and now - self.last_unknown < router_.UNKNOWN_EVERY_S:
+                return none
+            self.last_unknown = now
+        return r
 
     # ---- mission: polling, deltas, proactive ------------------------------------------------------------------------
     def _observe_state(self, s: dict):

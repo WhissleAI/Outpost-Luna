@@ -35,6 +35,11 @@ const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?
   "Who drove the Apollo 16 rover?", "What did the astronauts see?", "Play the launch"];
 const HW_LABEL = { lander: "Lander", rover: "Rover", impact: "Impact site", instrument: "Instrument", memorial: "Memorial" };
 const TOUR_MS = 3000;   // minimum time at each tour stop
+// Shown on the card with "I don't know that one yet", never spoken (a spoken example is heard back by the open mic).
+const TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”";
+/** Mirrors turn_router.clear_question: a wh- / "tell me" / "can you" question of ≥ 3 words. */
+const clearQuestion = t => { const q = String(t || "").toLowerCase().replace(/[^a-z0-9 ?]/g, " ").replace(/\s+/g, " ").trim();
+  return q.split(" ").length >= 3 && (/^(what|where|when|why|who|whose|which|how)\b/.test(q) || /^(tell me|show me|can you|could you|do you|does|did|is|are|was|were|will|explain)\b/.test(q) || q.endsWith("?")); };
 /** First two sentences: a tour stop's short story. */
 const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0, 2).join(" ").trim();
 
@@ -54,7 +59,7 @@ async function boot() {
   const byId = Object.fromEntries(places.map(f => [f.id, f]));
   const placeById = id => byId[id] || null;
 
-  const turn = { lastPlace: null, emotion: null, seq: 0 };
+  const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
   const player = createPlayer({
@@ -62,7 +67,7 @@ async function boot() {
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
   });
   const voice = createVoice({
-    onTurn: text => ask(text, "voice"),
+    onTurn: (text, o = {}) => ask(text, "voice", o),
     onBargeIn: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); player.duck(); if (useSession()) { session.dropAll(); session.ui("barge_in"); } },
     onKidDone: () => { player.unduck(); if (useSession()) session.ui("kid_done"); },
     onEmotion: label => { turn.emotion = label; },
@@ -124,8 +129,17 @@ async function boot() {
   /** The hardware tells its own story, in its own voice. */
   const storySay = text => guideSay(text, { voice: STORY_VOICE, style: { situation: "story" } });
 
-  async function ask(raw, source) {
+  async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
+    const heard = source === "voice";
+    // [hands-free] One router for every turn (backend/app/turn_router.py): with a live session, every turn (spoken or
+    // typed, in every screen) goes up the socket with the current screen; the Director answers with nav / answer /
+    // say decisions, or stays silent. Echo, filler and chatter never reach the screens.
+    if (useSession()) {
+      if (!heard && a11y && await a11y.handleText(text)) { $("q").value = ""; return; }   // typed a11y commands stay local
+      $("q").value = ""; pushScreen(true);
+      session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed"); voice.clearWords(); voice.show("idle"); return;
+    }
     const my = ++turn.seq; cancelNudge(); cancelTour();
     $("q").value = ""; voice.show("thinking");
     if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text);   // [a11y] transcript
@@ -144,6 +158,11 @@ async function boot() {
     }
     for (let w = 0; voice.kidTalking && w < 100; w++) await new Promise(res => setTimeout(res, 100));   // WAIT
     if (my !== turn.seq) return;
+    // [hands-free] no session: the "I don't know" fallback only for a clear spoken question, at most once per 30 s.
+    if (heard && (r.source === "none" || (r.action === "ask" && r.readout && r.readout.brain && /ask|unknown/.test(r.readout.brain.status)))) {
+      if (!clearQuestion(text) || (r.source === "none" && performance.now() - turn.lastUnknown < 30000)) { voice.clearWords(); voice.show("idle"); return; }
+      if (r.source === "none") turn.lastUnknown = performance.now();
+    }
     voice.clearWords();
     if (missionUI.active) {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
@@ -164,7 +183,7 @@ async function boot() {
     if (r.view && !f) globe.flyTo(r.view.lat, r.view.lon, 3.6);
     if (f) { if (f.id !== turn.lastPlace) chime(); globe.showFeature(f); if (r.view) globe.flyTo(r.view.lat, r.view.lon); turn.lastPlace = f.id; }
     const token = card.show({
-      title: f ? f.name : "Guide", place: !!f, asked, say, arc, claims: r.claims,
+      title: f ? f.name : "Guide", place: !!f, asked, say: r.source === "none" ? `${say} ${TRY}` : say, arc, claims: r.claims,
       note: f && f.est ? "Location estimated from the crew's own directions." : "",
     });
     if (r.action !== "play") offerCrew(token, f, moment);
@@ -347,14 +366,69 @@ async function boot() {
     highlight: () => {},
     floor: d => { document.body.dataset.floor = d.holder; },
     lesson: d => dispatchEvent(new CustomEvent("atm:lesson", { detail: d })),   // the Academy UI listens
+    // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
+    heard: d => {
+      if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }
+      if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", d.text);
+      if (missionUI.running) missionUI.radioKid(d.text);
+      cancelNudge(); cancelTour();
+    },
+    nav: d => runNav(d.intent, d.arg, d.text),
+    answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
+      const r = d.r || {}, my = ++turn.seq;
+      if (missionUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      if (academyUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      act(r, d.asked, my);
+    },
   };
+
+  /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
+  async function runNav(intent, arg, text) {
+    const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
+    if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
+    if (intent === "a11y") { if (a11y) await a11y.handleText(text); return; }
+    if (intent === "answer") {
+      if (academyUI.active) await academyUI.answerText(text);
+      return;
+    }
+    if (intent === "academy") { setMode("academy"); return; }
+    if (intent === "library") { setMode("cadet"); return; }
+    if (intent === "go_mission") { setMode("mission"); return; }
+    if (academyUI.active && academyUI.nav(intent, arg)) return;
+    if (missionUI.active && missionUI.nav(intent, arg)) return;
+    const mode = document.body.dataset.mode;
+    if (intent === "lesson" || intent === "map") { setMode("academy"); setTimeout(() => academyUI.nav(intent, arg), 400); return; }
+    if (intent === "accept_offer" && arg === "mission") { setMode("mission"); return; }
+    if (["take_command", "pick_site", "debrief", "fly_again"].includes(intent) && mode !== "mission") {
+      setMode("mission"); setTimeout(() => missionUI.nav(intent, arg), 600); return;
+    }
+    if (intent === "back" && mode === "cadet") { setMode(lastMode); return; }
+  }
+  // [hands-free] The router needs the screen the kid is looking at (server-relayed ear turns arrive before the client's).
+  let lastScreen = "";
+  function screenFrame() {
+    const m = document.body.dataset.mode;
+    if (m === "cadet") return { screen: "library" };
+    const f = m === "academy" ? academyUI.screen() : missionUI.screen();
+    return f || { screen: m === "academy" ? "map" : "brief" };
+  }
+  function pushScreen(force) {
+    if (!useSession()) return;
+    const f = screenFrame(), k = JSON.stringify(f);
+    if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
+  }
+  setInterval(() => pushScreen(false), 400);
   if (SESSION_ON) {
     session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
     if (floor) { floor.on("playback", e => session.playback(e)); floor.on("floor", e => { if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }
     let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
     session.hello({ mode: m0 });
-    session.connect().then(ok => { if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); } });
+    session.connect().then(ok => {
+      if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
+      voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
+      pushScreen(true);
+    });
   }
 
   $("askForm").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });

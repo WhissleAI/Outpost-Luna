@@ -5,13 +5,14 @@
 // is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 import { createListener } from "./listen.js";
-import { floor, shouldBargeIn, spaceAction, micErrorText } from "./floor.js";
+import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, isEcho } from "./floor.js";
 export { spaceAction, micErrorText };
 import "./floor.css";
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking"];
 const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", hearing: "is-hearing", thinking: "is-thinking", speaking: "is-speaking" };
-const ECHO_TAIL_MS = 2000;   // after output stops, the mic can still deliver its echo for a moment
+const ECHO_TAIL_MS = 2000;   // after output stops, the mic can still deliver its echo for a moment (hard mute ≥ 600 ms)
+const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo reference too (the last few lines, not only this one)
 
 /**
  * @param {object} o
@@ -74,8 +75,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     turnAsked = true; finalBuf = ""; interim = ""; kidTalking = false; wordsEl.textContent = text || "";
     if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
+    // Never answer ourselves or a hum: filler ("oh", "mm-mm") and echoes of our last few lines are dropped silently.
+    if (!ptt.held && !pttTurn && (isFiller(text) || isEcho(text, refsNow()))) { wordsEl.textContent = ""; kidDone(); return; }
+    const viaPtt = pttTurn; pttTurn = false;
     set("thinking");
-    onTurn(text).finally(() => {
+    onTurn(text, { ptt: viaPtt }).finally(() => {
       if (state === "thinking") idle();
       if (floor && !floor.guideBusy && !kidTalking) floor.unduck();   // the answer didn't take the floor: un-duck the crew
     });
@@ -93,10 +97,15 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     const h = floor ? floor.holder : "none";
     return h === "guide" || h === "crew" || isOutputBusy() || performance.now() < recent.until;
   };
-  const refsNow = () => [...liveRefs(), ...recent.refs];
+  const said = [];   // [{text, at}] the last few lines any app voice spoke
+  const remember = t => { if (!t) return; said.push({ text: t, at: performance.now() }); if (said.length > 8) said.shift(); };
+  if (floor) floor.on("playback", e => { if (e && e.text) remember(e.text); });
+  if (floor) floor.on("sentence", e => { if (e && e.text) remember(e.text); });
+  const saidRefs = () => { const now = performance.now(); return said.filter(x => now - x.at < ECHO_LINES_MS).map(x => x.text); };
+  const refsNow = () => [...liveRefs(), ...recent.refs, ...saidRefs()];
 
   // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
-  let gated = null, turnDD = null;
+  let gated = null, turnDD = null, pttTurn = false;
   function gate(m) {
     if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "" }; return; }
     if (!gated) return;                                     // words of a turn whose start we didn't see while busy
@@ -177,7 +186,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     e.preventDefault();
     if (act === "blur" && document.activeElement && document.activeElement.blur) document.activeElement.blur();
     if (e.repeat || ptt.held) return;
-    ptt.held = true; if (ptt.tail) { clearTimeout(ptt.tail); ptt.tail = null; }
+    ptt.held = true; pttTurn = true; if (ptt.tail) { clearTimeout(ptt.tail); ptt.tail = null; }
     gated = null;
     bargeIn(); turnAsked = false; finalBuf = ""; interim = ""; wordsEl.textContent = "";
     if (mode !== "ws" && !wsBroken) await startAlwaysOn();
@@ -200,6 +209,12 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     /** Show the guide speaking / thinking / back to listening. Never overrides the kid's own turn. */
     show(s) { if (kidTalking || ptt.held) return; if (s === "idle") idle(); else set(s); },
     clearWords() { wordsEl.textContent = ""; },
+    /** A tiny, silent "didn't catch that" on the mic chip (hands-free: a device-directed turn we could not use). */
+    notice(text = "Didn't catch that") {
+      if (kidTalking || ptt.held) return;
+      stateEl.textContent = text; bar.classList.add("is-notice");
+      clearTimeout(this._nt); this._nt = setTimeout(() => { bar.classList.remove("is-notice"); if (stateEl.textContent === text) stateEl.textContent = ""; }, 1800);
+    },
     /** Forward a context frame on the listen socket (kept and re-sent when the socket becomes ready). */
     sendContext(frame) { lastContext = frame; listener.send(frame); },
     get kidTalking() { return kidTalking || ptt.held; },

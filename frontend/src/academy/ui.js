@@ -55,9 +55,10 @@ try {   // share one registry: keep anything registered before this module loade
 export function createAcademyUI({ globe, placeById, say, player, alertSound = () => {}, stop = () => {}, goMission = () => {}, openLibrary = () => {}, onProgress = () => {} }) {
   const panel = document.getElementById("aPanel");
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
-  let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null;
+  let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false;
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
+    screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
     /** Earned patches, for the Mission cockpit: [{id, name, patch, lesson}] */
     badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: (LESSON_STORY[l.id] || {}).patch || l.badge.glyph })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
@@ -153,7 +154,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // ---------- lesson ----------
   async function openLesson(id) {
     L = lessons().find(l => l.id === id); if (!L) return;
-    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; leaveCatalog();
+    view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; nagged = false; leaveCatalog();
     endRide();
     if (L.ride) {
       try { ride = await academyApi.ride(); } catch (e) { ride = null; }
@@ -243,7 +244,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function next() {
     if (!waitingNext) return;
     if (i + 1 >= L.steps.length) { showMap(); return; }   // never a dead end
-    waitingNext = false; feedback = null; misses = 0; i++;
+    waitingNext = false; feedback = null; misses = 0; nagged = false; i++;
     render(); speakLine(L.steps[i].prompt);
     if (L.steps[i].alert) alertSound();
   }
@@ -307,12 +308,49 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         </div>
         ${todo("Say “next”, or tap the button.")}
       </div>`;
-    say(commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name), { situation: "badge" });
+    // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
+    const offer = commander ? " Ready to take command of Outpost Luna? Say yes." : nx ? ` Next up: ${nx.ride ? "your check ride" : nx.title}. Say next when you're ready.` : "";
+    say((commander ? CAPCOM.qualified(callSign.spoken(), badge.name) : CAPCOM.patch(callSign.spoken("cadet"), badge.name)) + offer, { situation: "badge" });
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
     (g || n || panel.querySelector("#aMap")).focus({ preventScroll: true });
   }
+
+  // ---------- hands-free (the session's router decides; these run what it decided) ----------
+  /** What the router needs to know about this screen. */
+  function screen() {
+    if (!ui.active) return null;
+    if (view === "callsign") return { screen: "callsign" };
+    if (view === "map") { const nx = nextLesson(); return { screen: "map", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
+    if (view === "badge") { const nx = nextLesson(); return { screen: "patch", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
+    if (view !== "lesson" || !L) return { screen: "map" };
+    if (waitingNext) return { screen: "lesson_done", offer: "next_step" };
+    const acc = L.steps[i].accept;
+    return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || []).map(o => o.label) };
+  }
+  /** A navigation intent. True when the Academy ran it. */
+  function nav(intent, arg) {
+    if (!ui.active) return false;
+    if (view === "callsign") return false;
+    const nx = nextLesson();
+    if (intent === "lesson") { if (lessons().some(l => l.id === arg)) { stop(); openLesson(arg); return true; } return false; }
+    if (intent === "map" || (intent === "back" && view !== "map")) { stop(); showMap(); return true; }
+    if (intent === "repeat_step" && view === "lesson" && L) { speakLine(L.steps[i].prompt); return true; }
+    if (["next", "start", "accept_offer"].includes(intent)) {
+      if (view === "lesson" && waitingNext) { next(); return true; }
+      if (view === "lesson" && intent === "start") return true;          // already in a lesson: nothing to start
+      if (view === "badge" || view === "map") {
+        if (prog.qualified && (view === "badge" || !nx || arg === "mission")) { goMission(); return true; }
+        if (nx) { openLesson(nx.id); return true; }
+      }
+      return false;
+    }
+    if (intent === "decline_offer") return true;    // stay here, quietly
+    return false;
+  }
+  /** The router's "answer": the current step's answer (or a call sign). */
+  function answerText(text) { return handleText(text); }
 
   // ---------- inputs from the rest of the app ----------
   /** A typed or spoken turn. True when the Academy used it. */
@@ -330,7 +368,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       return false;
     }
     if (view !== "lesson") return false;
-    if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else speakLine("Say next, or tap Next."); return true; }
+    if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine("Say next, or tap Next."); } return true; }
     if (L.steps[i].accept.type === "tap") { feedback = { kind: "retry", text: "For this one, tap the Moon." }; render(); return true; }
     return answer({ text });
   }

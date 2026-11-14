@@ -161,7 +161,10 @@ FAR = "This is the far side. It always faces away from Earth, so nobody saw it u
 NEAR = "This is the near side, the face we always see from Earth. The dark patches are old lava seas."
 EARTHRISE = "When Orion went behind the Moon, Earth came up over the edge. Listen to how the crew reacted!"
 SAY_AGAIN = "Sorry, I didn't catch that. Can you say it again?"
-UNKNOWN = "I don't know that one yet. Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
+# Spoken: the short line only. The examples are shown on the card (TRY), never spoken: a spoken example command
+# ("show me the giant bullseye") heard back through the speakers by the open mic would be answered as a new turn.
+UNKNOWN = "I don't know that one yet."
+TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
 GUARD = "Let's keep names and addresses private! Ask me about a place on the Moon instead."
 MISSION = "Want a mission? Find the giant bullseye on the far side, then ask what the crew said about it!"
 NO_MOMENT = "The crew didn't talk about that place in our recordings, but here it is!"
@@ -238,6 +241,7 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
         ctx["place_name"] = p.name
     out["decisions"] = decisions_for(out, text, ctx)
     out.pop("style_hint", None)            # carried on the say decision (the Steer TTS policy reads it), not the contract
+    out.pop("hint", None)                  # on the card decision only (the client shows TRY when source is "none")
     brain = out.pop("brain", None)
     if brain and out.get("readout") is not None:
         out["readout"] = {**out["readout"], "brain": brain}
@@ -362,7 +366,7 @@ async def _brain_turn(text: str, out: dict, gaz: Gazetteer, index: MomentIndex, 
         return {**base, "action": "ask", "say": ans["say"], "ask": {"question": ans["say"], "options": sends, "labels": sends},
                 "source": ans["source"]}
     if ans["status"] != "answer":
-        return {**base, "action": "say", "say": UNKNOWN, "source": "none"}
+        return {**base, "action": "say", "say": UNKNOWN, "hint": TRY, "source": "none"}
     say = _short(ans["say"]) if short else ans["say"]
     card = brain.cards[ans["card"]]
     p = gaz.places.get(ans["place"] or "")
@@ -641,7 +645,8 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     actions = []
     if a == "ask" and r.get("ask"):
         actions = [{"label": o, "send": {"t": "typed", "text": o}} for o in (r["ask"].get("labels") or r["ask"].get("options") or [])]
-    card = decision("card", P_ANSWER, title=title, body=say, asked=asked or None, chips=[], actions=actions,
+    body = f"{say} {r['hint']}".strip() if r.get("hint") else say   # examples are shown, never spoken
+    card = decision("card", P_ANSWER, title=title, body=body, asked=asked or None, chips=[], actions=actions,
                     place=r.get("place"), claims=r.get("claims") or None, readout=r.get("readout"),
                     source=r.get("source"), action=a)
     out.append(card)

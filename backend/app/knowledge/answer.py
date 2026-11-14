@@ -182,4 +182,4 @@ class Brain:
         return self.result("unknown", None, None, UNKNOWN, round(s1, 3), "none")
 
 
-UNKNOWN = "I don't know that one yet. Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
+UNKNOWN = "I don't know that one yet."   # spoken; the examples are on the card (director.TRY), never spoken

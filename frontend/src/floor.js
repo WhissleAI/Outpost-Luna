@@ -81,10 +81,23 @@ export function isEcho(heard, refs, threshold = 0.6) {
  */
 export function shouldBargeIn({ started, text, refs, dd }) {
   if (!started) return false;
-  if (normWords(text).length < 2) return false;
+  const w = normWords(text);
+  if (w.length < 2 || isFiller(text)) return false;
   if (isEcho(text, refs)) return false;
   if (dd != null && dd < 0.5) return false;
+  if (w.length === 2 && !CONTROL.test(w.join(" ")) && !(dd != null && dd >= 0.7)) return false;   // 2 words: a control word or clearly to us
   return true;
+}
+
+// Mirrors backend/app/turn_router.py FILLER / NONLEX: a turn made only of these is never for us ("Oh.", "Mm-mm.").
+const FILLER = new Set(("oh ohh ooh oo o ah ahh aah a uh uhh um umm hm hmm hmmm mm mmm mhm mmhm mmhmm er erm eh huh ha haha hah " +
+  "heh hehe wow whoa oops ugh aw aww yay la na shh psst tsk pfft boo ow ouch hey hi hello so well like and but the i you it").split(" "));
+const NONLEX = /^(?:[aeiou]*h+[aeiou]*h*|u+[mh]+|h+m+|m+[mh]*|a+[hw]+|o+[ho]*|e+[rh]+m*|h+u+h+|h+a+(?:h+a+)*|[mn]+|s+h+|p+s+t+|z+)$/;
+const CONTROL = /^(stop|wait|stop please|wait please|hold on|go back|say again|next please|stop talking|be quiet)$/;
+/** Only non-lexical sounds and fillers. */
+export function isFiller(text) {
+  const w = normWords(text);
+  return !w.length || w.every(x => FILLER.has(x) || NONLEX.test(x));
 }
 
 /**
@@ -163,7 +176,8 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       const iv = setInterval(check, 250); waiters.add(check);
     });
   }
-  const playback = (kind, state, id) => emit("playback", { kind, state, id, t: Date.now() });
+  // `text`: what we are saying (the session's echo check covers every app voice: guide, CAPCOM, story, Houston, crew)
+  const playback = (kind, state, id, text) => emit("playback", { kind, state, id, t: Date.now(), ...(text ? { text } : {}) });
 
   // ----- guide: server audio -----
   function el() {
@@ -256,7 +270,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       next = i + 1 < n ? get(i + 1) : null;   // prefetch while this one plays
       if (tok.cancelled) { if (url) URL.revokeObjectURL(url); break; }
       tok.sentence = sentences[i]; tok.speaking = true;
-      if (!started) { started = true; playback("guide", "start", tok.id); }
+      if (!started) { started = true; playback("guide", "start", tok.id, tok.text); }
       recompute();
       emit("sentence", { id: tok.id, index: i, text: sentences[i], voice, words: got ? got.words : "", engine: got ? got.engine : "browser", audio: url ? el() : null, speed });
       let r = url ? await playUrl(url, tok) : "error";
@@ -292,7 +306,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     crew = { el: audioEl, text: hooks.text || (() => ""), pauseAtSentenceEnd: hooks.pauseAtSentenceEnd || null, resume: hooks.resume || null };
     ["play", "playing", "pause", "ended", "emptied"].forEach(ev => audioEl.addEventListener(ev, recompute));
   }
-  function crewPlayback(state, id) { if (state !== "start") ducked = false; playback("crew", state, id); recompute(); }
+  function crewPlayback(state, id) { if (state !== "start") ducked = false; let tx = ""; try { tx = state === "start" ? crew.text() || "" : ""; } catch (e) { /* */ } playback("crew", state, id, tx); recompute(); }
   function duck(level = 0.15) { ducked = true; if (crewPlaying()) fadeTo(crew.el, level, 150); }
   function unduck() { if (!ducked) return; ducked = false; if (crewPlaying()) fadeTo(crew.el, 1, 250); }
 
