@@ -173,6 +173,7 @@ class Ctx:
     step_type: str | None = None       # the lesson step's accept.type (choice, keywords, command, tap, intent, vocab_*)
     step_options: list[str] = field(default_factory=list)   # choice labels (an answer that names one is an answer)
     step: dict | None = None           # the open course step (content.lesson(lesson_id).steps[i]): what a try sounds like
+    step_age: float | None = None      # seconds since that step opened (the session stamps the screen frame); None unknown
     offer: str | None = None           # a pending spoken offer ("next_lesson", "mission", "fly_again"): yes/next goes
     source: str = "typed"              # typed (keyboard, button) | voice (client mic) | listen (server relay)
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
@@ -397,6 +398,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         if not _plausible(raw, ctx, dd):
             # "Oh, it's", "okay", "alright": not a try. Silent, and never a miss (the grader agrees: grade.plausible).
             return out("ignore", "not_an_answer", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
+        if heard and not explicit and not yesno_counts(raw, ctx, dd):
+            return out("ignore", "room_yes_no")   # a room "yes" / "no" while the question is still being asked
         return out("answer", "step")
     if s == "cabin":
         if clear_question(raw, dd, act, ctx.dd_strong) and not re.search(r"\b(power|shields?|rover|shelter|heaters?|science|"
@@ -414,6 +417,24 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     if heard and len(ws) >= 3 and (dd is not None and dd >= ctx.dd_strong):
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
     return out("ignore", "unclear", notice=bool(dd is not None and dd >= ctx.dd_strong))
+
+
+YESNO_STEPS = ("predict", "earth_view")
+YESNO_MIN_AGE_S = 1.5   # a bare yes / no on a yes-no step counts only once the step has been open this long ...
+BARE_YESNO = re.compile(r"^(?:(?:yes|yeah|yep|yup|no|nope|nah|sure|always|never|sometimes)(?: (?:please|i think|it does|"
+                        r"it did|they did|you can|i can|it can t|they didn t|never))?)$")
+
+
+def yesno_counts(text: str, ctx: Ctx, dd: float | None) -> bool:
+    """On a predict / earth_view step a bare "yes" / "no" names an option, so room talk answered the step. It counts
+    when Arc says it was for us (dd >= the strong threshold), or when it came after the question finished playing
+    (not speaking / on air) and the step had been open >= YESNO_MIN_AGE_S. Anything longer is graded as usual."""
+    if ctx.step_type not in YESNO_STEPS or not BARE_YESNO.match(norm(text)):
+        return True
+    if dd is not None and dd >= ctx.dd_strong:
+        return True
+    quiet = not ctx.speaking and not (ctx.on_air if ctx.on_air is not None else ctx.playing)
+    return quiet and (ctx.step_age is None or ctx.step_age >= YESNO_MIN_AGE_S)
 
 
 def _option_key(text: str, ctx: Ctx) -> bool:

@@ -425,7 +425,7 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
         return True
     mine = _stem(cw)
     for _, say in opts:
-        if any(_has(t, w) for w in say[1:] if w) or mine & _stem(content_words(say[0])):
+        if any(_has(t, w) for w in say if w) or mine & _stem(content_words(say[0])):   # the whole label, a say word
             return True
     if kind == "keywords":
         if any(_has(t, w) for grp in [*acc.get("all", []), *acc.get("any", [])] for w in grp):

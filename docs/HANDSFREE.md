@@ -37,7 +37,11 @@ On a lesson or check-ride step, a heard (or typed) turn is a try, and so a miss 
   space word;
 - or it has 3+ content words and Arc `device_directed` ≥ the kid's filter (unknown counts).
 
-Anything else ("Oh, it's.", "okay", "alright", "um", "what") routes to `ignore` (`not_an_answer`), silently. If one
+Anything else ("Oh, it's.", "okay", "alright", "um", "what") routes to `ignore` (`not_an_answer`), silently.
+On a `predict` or `earth_view` step a bare "yes" / "no" names an option, so it counts only when Arc
+`device_directed` ≥ the strong threshold (0.7 at normal), or when it comes after the question finished playing and the
+step has been open ≥ 1.5 s (`turn_router.yesno_counts`; the session stamps when each step opened). Otherwise it is room
+talk (`room_yes_no`). If one
 reaches the grader anyway, it answers `status: "ignored"` and the client counts nothing. The screen frame carries
 `lesson_id` and `step`, so the router knows the step. CAPCOM's after-3-misses reveal needs 3 real misses **and** about
 20 s since the step opened (`grade.reveal_due(misses, step_s)`, the client sends `step_s`); before that the third miss
