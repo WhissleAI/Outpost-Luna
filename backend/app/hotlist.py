@@ -26,9 +26,9 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 MAX_STEP = 48
-SCHEMA = 3                   # bump when the way the lists are built changes (it is part of the version)
+SCHEMA = 4                   # bump when the way the lists are built changes (it is part of the version)
 MAX_SCREEN = 260
-MAX_NAMES_STEP = 320           # the Moon screens and the picker: every name in the strong tier
+MAX_NAMES = 320               # the Moon screens and the picker: every place, crew member and piece of hardware
 
 OFFER_WORDS = {"next_lesson": ["next", "yes", "next lesson"], "next_step": ["next", "yes", "next one"],
                "mission": ["take command", "yes", "go to mission"], "take_command": ["take command", "yes"],
@@ -159,6 +159,7 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
     fr = frame or {}
     screen = fr.get("screen") or "map"
     st: list[str] = []
+    names: list[str] = []
     wide: list[str] = []
     if fr.get("offer"):
         st += OFFER_WORDS.get(fr["offer"], ["next", "yes"])
@@ -171,8 +172,9 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += V["orders"] + V["panels"] + V["sites"]
         wide += ORDER_WORDS + V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]
     elif screen == "brief":
-        st += V["sites"] + ["take command", "start the mission"] + V["places"]
-        wide += V["orders"] + V["crew"]
+        st += V["sites"] + ["take command", "start the mission"]
+        names += V["places"] + V["crew"]
+        wide += V["orders"]
     elif screen == "callsign":
         st += V["callsigns"] + ["call me", "surprise me", "you pick"]
         wide += V["crew"]
@@ -180,15 +182,19 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += ["fly again", "another site"] + V["sites"]
         wide += V["orders"] + V["places"]
     else:          # the Moon screens: map, patch, lesson_done, library -> the whole gazetteer and the hardware
-        # Names ARE what these screens are about: places, crew and hardware ride the strong tier here (round-7 ear
-        # eval: name recall 0.47 -> 0.60 with the strong weights vs 0.49 with the light ones, no false names).
+        # Names ARE what these screens are about: places, crew and hardware get their own strong tier here (round-7
+        # ear eval: name recall 0.47 -> 0.60 with the strong weights vs 0.49 with the light screen ones)
         st += (["next", "start"] if screen != "library" else []) + \
-            [t for t in (_lesson_titles() if screen != "library" else [])] + V["places"] + V["crew"] + V["hardware"]
+            [t for t in (_lesson_titles() if screen != "library" else [])]
+        names += V["places"] + V["crew"] + V["hardware"]
         wide += V["glossary"] + V["course"][:80]
     wide += V["nav"] + V["help"]
-    st = _dedupe(st, MAX_NAMES_STEP if screen in MOON_SCREENS + ("brief",) else MAX_STEP)
+    st = _dedupe(st, MAX_STEP)
     sk = {w.lower() for w in st}
-    return {"v": V["v"], "step": st, "screen": [w for w in _dedupe(wide, MAX_SCREEN) if w.lower() not in sk]}
+    names = [w for w in _dedupe(names, MAX_NAMES) if w.lower() not in sk]
+    nk = sk | {w.lower() for w in names}
+    return {"v": V["v"], "step": st, "names": names,
+            "screen": [w for w in _dedupe(wide, MAX_SCREEN) if w.lower() not in nk]}
 
 
 def _bias_words(ws: list[str]) -> list[str]:
@@ -213,6 +219,7 @@ def hot_match(text: str, lists: dict | None) -> dict:
         "screen_sa": the same vs the screen list}. Exact = a whole phrase on word boundaries."""
     from . import soundalike as SA
     out = {"step": 0, "screen": 0, "step_sa": 0.0, "screen_sa": 0.0}
+    lists = {**lists, "screen": (lists.get("names") or []) + (lists.get("screen") or [])} if lists else lists
     if not lists or not (text or "").strip():
         return out
     t = " " + SA.norm(text) + " "

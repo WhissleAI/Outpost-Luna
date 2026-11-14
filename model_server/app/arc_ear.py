@@ -14,7 +14,7 @@ Messages (the shapes the browser already takes from the Deepgram Flux relay, doc
       end      Arc closed the utterance (its own pause rule), or silence >= EAR_END_SILENCE_S (0.5 s) -> Stream.end_turn()
   {"t":"arc",...}                metadata summary, as in metadata-only mode (arcmeta.MetaStream._summary)
 
-Round 7 (app/hotbias.py): a context message with `hot` ({"step":[...],"screen":[...]}, the backend's per-screen lists)
+Round 7 (app/hotbias.py): a context message with `hot` ({"step","names","screen"}, the backend's per-screen lists)
 biases the decoder toward those words and rescores the final n-best; the final `words` message then also carries
 `alts` (the other beams, written form), `conf` (mean token probability of the chosen beam) and `hot` ({"tier", "hits"}:
 which list the words matched).
@@ -192,7 +192,7 @@ class EarStream(arcmeta.MetaStream):
         self.turns = TurnTracker(s)
         self.turns.annotate = self._annotate
         self.names, self.terms, self.topic = list(names or []), None, None
-        self.hot = {"step": [], "screen": [], "v": None}
+        self.hot = {"step": [], "names": [], "screen": [], "v": None}
         self.s = self._open(names)
 
     def _open(self, names=None):
@@ -208,7 +208,7 @@ class EarStream(arcmeta.MetaStream):
         `names` in Arc.stream(), so they are rebuilt here too (that is what turns "Malapart" into "Malapert" in the
         written final). The backend sends its Tier A list before any audio, so the worker is idle when the trie swaps."""
         self.names, self.terms, self.topic = list(names or []), terms or None, topic or None
-        if self.hot["step"] or self.hot["screen"]:
+        if any(self.hot[t] for t in hotbias.TIERS):
             names = self._prompt_names()
         self.s.set_context(names=names or None, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
         if names and self.audio_s == 0 and hasattr(self, "domain"):
@@ -246,11 +246,11 @@ class EarStream(arcmeta.MetaStream):
         self._apply_hot()
         self.s.set_context(names=self._prompt_names() or None, terms=self.terms, topic=self.topic,
                            auto_prev=self.turns.cfg.ear_auto_prev)
-        return len(self.hot["step"]) + len(self.hot["screen"])
+        return sum(len(self.hot[t]) for t in hotbias.TIERS)
 
     def _apply_hot(self):
         tr = getattr(self.s, "tr", None)
-        if tr is None or not (self.hot["step"] or self.hot["screen"]):
+        if tr is None or not any(self.hot[t] for t in hotbias.TIERS):
             return
         from arc_audio.api import Arc, bias_forms
         hotbias.install(tr, arcmeta.STATE["arc"].tok, bias_forms(Arc._kb(self.names)) if self.names else [], self.hot)
@@ -269,7 +269,7 @@ class EarStream(arcmeta.MetaStream):
             w["alts"] = alts[:3]
             w["conf"] = rec["conf"]
             w["rescored"] = rec["pick"] != 0
-        if self.hot["step"] or self.hot["screen"]:
+        if any(self.hot[t] for t in hotbias.TIERS):
             w["hot"] = hotbias.match_info(w.get("text") or "", self.hot)
 
     def add_words(self, words) -> None:   # no external words in ear mode

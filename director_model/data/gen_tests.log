@@ -1,0 +1,5 @@
+real Arc decodes: {'train': 2649, 'val': 27, 'test': 329}
+  test_clean 100/200 (707 s)
+  test_clean 200/200 (1269 s)
+  test_clean: 200 sessions, 18110 steps
+  test_asr 100/200 (1801 s)

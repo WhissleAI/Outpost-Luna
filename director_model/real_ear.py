@@ -278,11 +278,12 @@ def cmd_decode(a):
         todo.sort(key=lambda j: {"app": 0, "test": 0, "val": 1, "train": 2}[j["group"]])
     elif a.order == "mix":     # round 7: held-out first, but every 3rd job a train / val one (a cut-short run still
         held = [j for j in todo if j["group"] in ("app", "test")]   # leaves train decodes with the ear's extras)
-        rest = sorted([j for j in todo if j["group"] in ("val", "train")], key=lambda j: j["group"] != "val")
+        va = [j for j in todo if j["group"] == "val"]
+        tr = [j for j in todo if j["group"] == "train"]
         todo = []
-        while held or rest:
-            todo += held[:2] + rest[:1]
-            held, rest = held[2:], rest[1:]
+        while held or va or tr:
+            todo += held[:2] + va[:1] + tr[:1]
+            held, va, tr = held[2:], va[1:], tr[1:]
     print(f"decode {len(todo)} of {len(jobs)}", flush=True)
     t0 = time.time()
     with get_context("spawn").Pool(a.procs) as p:

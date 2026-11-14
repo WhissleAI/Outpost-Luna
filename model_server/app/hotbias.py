@@ -1,8 +1,9 @@
 """Contextual biasing of the Arc ear toward the screen's hot lists (round 7, docs/LOCAL_EAR.md).
 
-The backend sends tiered lists ({"t":"context","hot":{"v","step":[...],"screen":[...]}}, backend/app/hotlist.py):
-`step` = what the open step / offer / screen action expects (strongest), `screen` = the screen-wide vocabulary
-(lighter). The ear uses them three ways, on top of Arc's own Tier A name bias:
+The backend sends tiered lists ({"t":"context","hot":{"v","step":[...],"names":[...],"screen":[...]}},
+backend/app/hotlist.py): `step` = what the open step / offer / screen action expects (strongest, and first in the
+decoder prompt), `names` = the names a Moon screen is about (places, crew, hardware: a strong boost, light rescoring,
+not in the prompt), `screen` = the screen-wide vocabulary (lighter). The ear uses them three ways, on top of Arc's own Tier A name bias:
 
   1. decoder prompt   the step list goes first in the decoder's context-list slot (~40 tokens), then the names
   2. shallow fusion   a prefix-tree boost (HotBias, a LogitsProcessor like arc_audio.bias.BiasProcessor) with a bonus
@@ -31,10 +32,12 @@ class HotSettings(BaseSettings):
     ear_hot: str = "on"                 # on | off: use the hot lists the backend sends
     ear_hot_step_start: float = 1.0     # bonus (log-prob units) on the first token of a step-list phrase
     ear_hot_step_cont: float = 2.0      # ... on each token that continues a step-list phrase
+    ear_hot_names_start: float = 1.0    # the Moon screens' names (ear eval: name recall 0.47 -> 0.60)
+    ear_hot_names_cont: float = 2.0
     ear_hot_screen_start: float = 0.3   # screen-wide list: lighter
     ear_hot_screen_cont: float = 1.2
     ear_nbest_step: float = 0.35        # n-best rescoring: + per step-list phrase in a hypothesis (seq score units)
-    ear_nbest_screen: float = 0.12
+    ear_nbest_screen: float = 0.12      # (names and screen alike)
     ear_nbest_margin: float = 0.6       # only an alternative within this of the top beam may replace it
     ear_hot_prompt: int = 12            # step-list phrases put first in the decoder prompt
 
@@ -50,14 +53,17 @@ def norm(t: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]+", " ", (t or "").lower().replace("'", " "))).strip()
 
 
+TIERS = ("step", "names", "screen")
+
+
 def clean_lists(hot) -> dict:
-    """{"step": [...], "screen": [...], "v"} from the context message (a bare list = the step list)."""
+    """{"step": [...], "names": [...], "screen": [...], "v"} from the context message (a bare list = the step list)."""
     if isinstance(hot, list):
         hot = {"step": hot}
     if not isinstance(hot, dict):
-        return {"step": [], "screen": [], "v": None}
+        return {"step": [], "names": [], "screen": [], "v": None}
     out = {"v": hot.get("v")}
-    for k, cap in (("step", 64), ("screen", 400)):
+    for k, cap in (("step", 400), ("names", 400), ("screen", 400)):
         xs = hot.get(k) if isinstance(hot.get(k), list) else []
         out[k] = [str(x).strip()[:60] for x in xs if isinstance(x, (str, int, float)) and str(x).strip()][:cap]
     return out
@@ -70,7 +76,8 @@ def forms(phrase: str) -> set[str]:
 
 
 class HotTrie:
-    """Token prefix tree over the hot phrases, per tier ("step" | "screen" | "names"), like arc_audio.bias.Trie."""
+    """Token prefix tree over the hot phrases, per tier ("tier_a" | "step" | "names" | "screen"), like
+    arc_audio.bias.Trie."""
 
     def __init__(self, tok, tiers: dict[str, list[str]]):
         self.prefix: dict = {}
@@ -145,7 +152,8 @@ def rescore(nbest: list[dict], lists: dict, s=hot_settings) -> int:
     if len(nbest) < 2:
         return 0
     top = nbest[0]
-    th = set(hits(top["text"], lists.get("step") or [])), set(hits(top["text"], lists.get("screen") or []))
+    wide = (lists.get("names") or []) + (lists.get("screen") or [])
+    th = set(hits(top["text"], lists.get("step") or [])), set(hits(top["text"], wide))
 
     nt = len(norm(top["text"]).split())
 
@@ -153,7 +161,7 @@ def rescore(nbest: list[dict], lists: dict, s=hot_settings) -> int:
         if abs(len(norm(h["text"]).split()) - nt) > 1:
             return -1e9          # a hot word must REPLACE heard words, never ride in on an extra tail
         st = set(hits(h["text"], lists.get("step") or [])) - th[0]
-        sc = set(hits(h["text"], lists.get("screen") or [])) - th[1]
+        sc = set(hits(h["text"], wide)) - th[1]
         return h["score"] + s.ear_nbest_step * len(st) + s.ear_nbest_screen * len(sc)
     best = max(range(len(nbest)), key=lambda i: (val(nbest[i]), -i))
     return best if top["score"] - nbest[best]["score"] <= s.ear_nbest_margin else 0
@@ -161,17 +169,20 @@ def rescore(nbest: list[dict], lists: dict, s=hot_settings) -> int:
 
 def match_info(text: str, lists: dict) -> dict:
     """Which hot list the final words matched: {"tier": step|screen|None, "hits": [...]}."""
-    a, b = hits(text, lists.get("step") or []), hits(text, lists.get("screen") or [])
-    return {"tier": "step" if a else "screen" if b else None, "hits": (a or b)[:4]}
+    a, n, b = (hits(text, lists.get(t) or []) for t in TIERS)
+    return {"tier": "step" if a else "names" if n else "screen" if b else None, "hits": (a or n or b)[:4]}
 
 
 def install(tr, tok, names_forms: list[str], lists: dict, s=hot_settings) -> None:
     """Put the tiered bias (names = Arc's Tier A, at its usual weight) and the n-best capture on one Transcriber."""
     from transformers import LogitsProcessorList
     from arc_audio.bias import DEFAULT
-    trie = HotTrie(tok, {"names": names_forms, "step": lists.get("step") or [], "screen": lists.get("screen") or []})
-    start = {"names": DEFAULT["start_bonus"], "step": s.ear_hot_step_start, "screen": s.ear_hot_screen_start}
-    cont = {"names": DEFAULT["cont_bonus"], "step": s.ear_hot_step_cont, "screen": s.ear_hot_screen_cont}
+    trie = HotTrie(tok, {"tier_a": names_forms, "step": lists.get("step") or [], "names": lists.get("names") or [],
+                         "screen": lists.get("screen") or []})
+    start = {"tier_a": DEFAULT["start_bonus"], "step": s.ear_hot_step_start, "names": s.ear_hot_names_start,
+             "screen": s.ear_hot_screen_start}
+    cont = {"tier_a": DEFAULT["cont_bonus"], "step": s.ear_hot_step_cont, "names": s.ear_hot_names_cont,
+            "screen": s.ear_hot_screen_cont}
     tr.trie = trie
     tr._procs = lambda span_types: LogitsProcessorList([make_processor(trie, start, cont)])
     tr.hot_lists = lists
@@ -206,7 +217,7 @@ def _gen_nbest(tr, kw, n_samples, span_types, prefix=None, return_ids=False, fin
     nbest = [{"text": tr.tok.decode(ids, skip_special_tokens=True).strip(), "score": round(sc, 4), "ids": ids}
              for ids, sc in zip(seqs, scores)]
     lists = getattr(tr, "hot_lists", None) or {}
-    k = rescore(nbest, lists) if (lists.get("step") or lists.get("screen")) else 0
+    k = rescore(nbest, lists) if any(lists.get(t) for t in TIERS) else 0
     conf = None
     try:
         ts = tr.m.compute_transition_scores(out.sequences, out.scores, out.beam_indices, normalize_logits=False)

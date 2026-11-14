@@ -19,15 +19,15 @@ def test_lesson_step_words_are_the_strong_tier():
     for i, st in enumerate(L["steps"]):
         h = H.hot_lists({"screen": "lesson", "lesson_id": L["id"], "step": i, "step_type": st["accept"]["type"]}, st)
         assert len(h["step"]) <= H.MAX_STEP and len(h["screen"]) <= H.MAX_SCREEN
-        assert not {w.lower() for w in h["step"]} & {w.lower() for w in h["screen"]}
+        assert not {w.lower() for w in h["step"]} & {w.lower() for w in h["screen"] + h["names"]}
         for o in st["accept"].get("options") or []:
             assert o["label"] in h["step"]
 
 
 def test_screens_are_rich():
     lib = H.hot_lists({"screen": "library"})
-    # the Moon screens are about names: places, crew and hardware are the strong tier there
-    assert len(lib["step"]) > 150 and "Shackleton" in lib["step"] and "Buzz Aldrin" in lib["step"]
+    # the Moon screens are about names: places, crew and hardware get their own strong tier there
+    assert len(lib["names"]) > 150 and "Shackleton" in lib["names"] and "Buzz Aldrin" in lib["names"]
     assert "regolith" in lib["screen"]
     cab = H.hot_lists({"screen": "cabin"})
     assert "heaters" in cab["step"] and "comm panel" in cab["step"] and "Malapert Massif" in cab["step"]
@@ -40,7 +40,7 @@ def test_hot_match_tiers():
     lists = H.hot_lists({"screen": "cabin"})
     m = H.hot_match("more power to the heaters", lists)
     assert m["step"] >= 1
-    assert H.hot_match("i think malapart", H.hot_lists({"screen": "library"}))["step_sa"] >= 0.8
+    assert H.hot_match("i think malapart", H.hot_lists({"screen": "library"}))["screen_sa"] >= 0.8
     assert H.hot_match("", lists) == {"step": 0, "screen": 0, "step_sa": 0.0, "screen_sa": 0.0}
 
 

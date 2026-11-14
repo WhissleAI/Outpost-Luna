@@ -20,7 +20,7 @@ class Tok:
 
 
 def test_clean_lists():
-    assert HB.clean_lists(["ice", "rover"]) == {"v": None, "step": ["ice", "rover"], "screen": []}
+    assert HB.clean_lists(["ice", "rover"]) == {"v": None, "step": ["ice", "rover"], "names": [], "screen": []}
     c = HB.clean_lists({"v": "x", "step": ["a b", 3, None, ""], "screen": "nope"})
     assert c["step"] == ["a b", "3"] and c["screen"] == []
     assert HB.clean_lists(None)["step"] == []
