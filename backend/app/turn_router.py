@@ -58,6 +58,16 @@ FILLER = {
     "whoa", "oops", "ugh", "aw", "aww", "yay", "la", "na", "shh", "psst", "tsk", "pfft", "boo", "ow", "ouch", "hey",
     "hi", "hello", "so", "well", "like", "and", "but", "the", "i", "you", "it", "okay so", "oh no", "oh my",
 }
+# Room exclamations and swearing (round 7): Arc Tagger rates "shit shit oh" device_directed 0.91, so device_directed
+# alone never makes these a turn for us. A turn made only of these words (or one of the phrases) is filler.
+EXCLAIM = {"shit", "damn", "dammit", "damnit", "crap", "heck", "frick", "fudge", "gosh", "omg", "god", "jeez", "geez",
+           "ugh", "argh", "yikes", "whoops", "cool", "nice", "awesome", "yay", "woah", "wow", "bruh", "dude", "man",
+           "aw", "oof", "phew", "eww", "ew", "hey", "ha", "lol", "nooo", "noo", "yesss", "ouch", "hell", "sucks",
+           "stupid", "dumb", "seriously", "really", "what", "huh", "oh", "no", "yes", "yeah", "okay", "ok"}
+EXCLAIM_PHRASE = re.compile(r"^(?:oh (?:my )?(?:god|gosh|no|man|wow|shit|crap|dear)|what the (?:heck|hell|heck is that)|"
+                            r"come on|no way|you re kidding|are you kidding(?: me)?|that s (?:so )?(?:cool|awesome|"
+                            r"weird|gross|funny)|so cool|stop it|give it back|leave me alone|that s mine|"
+                            r"i m (?:so )?bored|this is (?:so )?(?:hard|boring|easy))(?: \w+)?$")
 NONLEX = re.compile(r"^(?:[aeiou]*h+[aeiou]*h*|u+[mh]+|h+m+|m+[mh]*|a+[hw]+|o+[ho]*|e+[rh]+m*|h+u+h+|h+a+(?:h+a+)*|"
                     r"[mn]+|s+h+|p+s+t+|z+)$")
 YES = re.compile(r"^(?:yes|yeah|yep|yup|sure|ok|okay|alright|all right|let s do it|let s go|lets go|do it|go|go for it|"
@@ -115,9 +125,9 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("faster", re.compile(r"^(?:speak |talk )?(?:faster|speed up|quicker)(?: please)?$")),
     ("settings", re.compile(r"^(?:access |open |show )?(?:the )?(?:accessibility|settings)(?: settings| panel)?$")),
     ("lesson", re.compile(r"^(?:start |open |go to |play |do |begin )?lesson (?:number )?(\w+)$")),
-    ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:patch|course|lesson|academy) ?map$|^(?:show (?:me )?)?"
+    ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:(?:patch|course|lesson|academy) ?)?map$|^(?:show (?:me )?)?"
                        r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:go |take me |let s go )?(?:back )?(?:to )?(?:the )?map$|"
-                       r"^(?:show (?:me )?|open )(?:the )?map$")),   # [audit2] "back to the map", "go to the map"
+                       r"^(?:show (?:me )?|open )(?:the )?map$")),   # [audit2] "back to the map", "go to the map"; [r7] bare "map"
     ("academy", re.compile(r"^(?:go (?:back )?to |take me (?:back )?to |open |back to )?(?:the )?(?:academy|flight school|lessons)$")),
     ("library", re.compile(r"^(?:go to |open )?(?:the )?(?:moon )?(?:library|explorer)$|^explore the moon$")),
     ("go_mission", re.compile(r"^(?:go to |open |start |begin )?(?:the )?(?:mission|missions|outpost|outpost luna)"
@@ -149,8 +159,8 @@ PANELS = {"power": "power", "energy": "power", "battery": "power", "comm": "comm
           "rover": "rover", "radiation": "radiation", "rad": "radiation", "shield": "radiation", "shields": "radiation"}
 _PANEL_NAME = "|".join(sorted(PANELS, key=len, reverse=True))
 PANEL_OPEN = re.compile(rf"^(?:open|show|show me|go to|take me to|look at|switch to|bring up|pull up|let s see|"
-                        rf"let me see|check)(?: up)? (?:the |my )?({_PANEL_NAME})(?: (panel|station|console|screen|"
-                        rf"desk|board))?$|^(?:the )?({_PANEL_NAME}) (?:panel|station|console)(?: please)?$")
+                        rf"let me see|check)(?: up)? (?:the |my )?({_PANEL_NAME})(?: (panels?|station|console|screen|"
+                        rf"desk|board))?$|^(?:the )?({_PANEL_NAME}) (?:panels?|station|console)(?: please)?$")
 PANEL_BACK = re.compile(r"^(?:go )?back(?: to (?:my|the) (?:seat|chair|cockpit|window))?$|^(?:close|leave|exit|shut) "
                         r"(?:the |this )?(?:panel|station|console)$|^(?:my )?seat$|^(?:sit|go) (?:back )?(?:down|to (?:my|the) "
                         r"seat)$|^back to (?:my|the) (?:seat|chair)$")
@@ -248,11 +258,24 @@ def words(text: str) -> list[str]:
 
 
 def is_filler(text: str) -> bool:
-    """Only non-lexical sounds and fillers ("Oh.", "Mm-mm.", "um, uh", "hmm okay so")."""
+    """Only non-lexical sounds and fillers ("Oh.", "Mm-mm.", "um, uh", "hmm okay so"), or room exclamations
+    ("shit shit oh", "oh my god", "what the heck", "come on"): never a turn for us, however device-directed."""
     ws = words(text)
     if not ws:
         return True
-    return all(w in FILLER or NONLEX.match(w) for w in ws) or norm(text) in FILLER
+    return all(w in FILLER or NONLEX.match(w) for w in ws) or norm(text) in FILLER or is_exclaim(text)
+
+
+def is_exclaim(text: str) -> bool:
+    ws = words(text)
+    if not ws:
+        return False
+    q = norm(text)
+    if all(w in EXCLAIM or w in FILLER or NONLEX.match(w) for w in ws) and any(w in EXCLAIM - {"no", "yes", "yeah",
+                                                                                                  "okay", "ok", "what"}
+                                                                                for w in ws):
+        return True
+    return bool(EXCLAIM_PHRASE.match(q))
 
 
 def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
@@ -415,6 +438,64 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     return None
 
 
+# ---- round 7: navigation heard with extra words or a sound-alike ------------------------------------------------------
+# The real ear adds words around a short command ("next liz liz", "tuesday next week", "give me a tour lance", "back to
+# the map the other one", "i go back to my seat") and mishears panel names ("the comp panel"). nav_fuzzy() finds a
+# navigation phrase INSIDE the turn: a contiguous span that nav_intent() reads, with at most max(2, span length) other
+# words around it (at most one before it). One-word spans count only for taking the pending offer ("next", "yes"). It runs after the echo check
+# and keeps every gate (device-directed, the hard mute), and a lesson step's own answer always wins over it.
+PANEL_WORD = re.compile(r"\b(panels?|station|console)\b")
+
+
+def _panel_soundalike(q: str) -> str:
+    """"show me the comp panel" -> "show me the comm panel": the word before "panel" read as the closest panel name
+    (a clear winner only)."""
+    from . import soundalike
+    ws = q.split()
+    for i, w in enumerate(ws):
+        if i and PANEL_WORD.fullmatch(w) and ws[i - 1] not in PANELS and soundalike.content(ws[i - 1]):
+            sc = sorted(((soundalike.similar(ws[i - 1], p), p) for p in PANELS if len(p) >= 3), reverse=True)
+            if sc and sc[0][0] >= 0.5 and sc[0][0] - sc[1][0] >= 0.08:
+                return " ".join(ws[:i - 1] + [sc[0][1]] + ws[i:])
+    return q
+
+
+def nav_fuzzy(text: str, ctx: Ctx) -> tuple[str, str | None, int] | None:
+    """(intent, arg, span words) for a navigation phrase inside a longer / misheard turn; None if nav_intent already
+    reads the whole turn (that is the exact path) or nothing is close enough."""
+    q = norm(text)
+    if not q or nav_intent(q, ctx):
+        return None
+    if ctx.screen == "cabin" and PANEL_WORD.search(q):
+        q2 = _panel_soundalike(q)
+        if q2 != q:
+            nv = nav_intent(q2, ctx)
+            if nv:
+                return nv[0], nv[1], len(q2.split())
+            q = q2
+    ws = q.split()
+    best = None
+    for n in range(len(ws) - 1, 0, -1):
+        extra = len(ws) - n
+        if extra > max(2, n):
+            continue
+        for i in range(0, min(1, len(ws) - n) + 1):       # at most one word before the phrase, the rest after it
+            nv = nav_intent(" ".join(ws[i:i + n]), ctx)
+            if not nv:
+                continue
+            if nv[0] == "a11y" and extra > 2:
+                continue     # "i don't know that one yet" (our own fallback line) is not a call for help
+            if n == 1 and not answers_offer(nv, ctx):
+                continue     # one word inside chatter is navigation only when it takes the offer on screen
+            if nv[0] in ("back", "decline_offer", "lesson", "pick_site"):
+                continue     # never from a fragment: "it s back" is a globe answer, "no i don t" is not a decline
+            best = (nv[0], nv[1], n)
+            break
+        if best:
+            break
+    return best
+
+
 def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     """-> {"outcome": ignore|navigate|answer|order|question, "reason", "intent"?, "arg"?, "notice"?}."""
     raw = (text or "").strip()
@@ -436,9 +517,12 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None
     nav = nav_intent(raw, ctx)
+    fz = nav_fuzzy(raw, ctx) if heard and not nav else None
+    air = ctx.on_air if ctx.on_air is not None else bool(ctx.recent)
+    fz_offer = fz is not None and answers_offer(fz[:2], ctx) and not air
     # 2. While the app is speaking (and for TAIL_S after), only barge-in-worthy turns get through: a navigation /
     #    control word, or >= 3 words that are clearly device-directed.
-    if heard and not explicit and ctx.speaking and not nav:
+    if heard and not explicit and ctx.speaking and not nav and not fz_offer:
         strong = len(ws) >= 3 and (dd is None or dd >= ctx.dd_strong)
         if not strong:
             return out("ignore", "speaking")
@@ -447,6 +531,13 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("ignore", "not_directed")
     if nav:
         return out("navigate", "intent", intent=nav[0], arg=nav[1])
+    if fz is not None:
+        if ctx.speaking and not explicit and not fz_offer:
+            fz = None        # a fragment is never barge-in-worthy, except taking the offer once its line is over
+        elif ctx.screen in ("lesson", "ride") and ctx.step_type and _plausible(raw, ctx, dd, strict=True):
+            fz = None        # the step's own answer wins ("is it the far side": an answer, not navigation)
+    if fz is not None:
+        return out("navigate", "intent_fuzzy", intent=fz[0], arg=fz[1])
     # 4. One word that is not an intent, heard from the room: too thin to act on.
     single = len(ws) == 1 and heard
     s = ctx.screen
@@ -521,11 +612,12 @@ def _option_key(text: str, ctx: Ctx) -> bool:
     return n > 0 and option_index(text, n) is not None
 
 
-def _plausible(text: str, ctx: Ctx, dd: float | None) -> bool:
+def _plausible(text: str, ctx: Ctx, dd: float | None, strict: bool = False) -> bool:
     """A real try at the open step (academy/grade.plausible: an option, the expected content, or >= 3 content words
-    that Arc says were for us). Everything else on a step screen is ignored and never counts as a miss."""
+    that Arc says were for us). Everything else on a step screen is ignored and never counts as a miss. strict: only
+    the step's own words count (not the >= 3 content words fallback)."""
     from .academy.grade import plausible
-    return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options)
+    return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options, strict=strict)
 
 
 def _names_option(text: str, ctx: Ctx) -> bool:

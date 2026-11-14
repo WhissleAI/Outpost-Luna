@@ -31,7 +31,7 @@ WEIGHTS = ROOT / "backend" / "app" / "director_model"
 HELD_OUT = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr",
             "test_gold"]
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
-              "test_log"]
+              "cls_roomtalk", "test_log"]
 CACHE_DIRS = [HERE / "data", HERE / "cache", HERE / "runs"]
 
 

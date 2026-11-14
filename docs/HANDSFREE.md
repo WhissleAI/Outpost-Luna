@@ -47,6 +47,36 @@ reaches the grader anyway, it answers `status: "ignored"` and the client counts 
 20 s since the step opened (`grade.reveal_due(misses, step_s)`, the client sends `step_s`); before that the third miss
 gets the hint again.
 
+## Mishears, extra words and room exclamations (round 7)
+
+Most wrong turns are mishears before the router sees anything. Three rules handle them, all against the screen's own
+short vocabulary, never against the whole language:
+
+- **Sound-alikes** (`app/soundalike.py`): a Double-Metaphone-style key per word plus normalised edit distance, blended
+  with spelling similarity. Offline, no dependencies.
+  - The grader grades a failed spoken answer once more on what it sounds like, against the step's vocabulary
+    (`grade.step_vocab`: options, keywords, places, side and day-night words, base parts, the space word). "four side"
+    is the far side, "Malapart must be" is Malapert Massif, "rover go get eyes" asks for ice, "okay haters 40" is the
+    heaters. The result carries `heard_as`.
+  - `grade.plausible` counts a turn as a try when, after the repair, more than half of its content words are the step's
+    own words ("rover go get eyes" yes; "my eyes hurt so much today" no).
+  - Never rewritten: function words and fillers ("i see" is never "ice", "i know" is never "no"), numbers, words already
+    heard as a vocab phrase. Short words ("ice", "radio") need the same consonants, the same number of syllables and
+    the same first vowel ("eyes" ~ "ice"; "issue", "road", "ready" are not).
+- **Navigation inside a longer turn** (`turn_router.nav_fuzzy`): the real ear adds words around a short command ("next
+  liz liz", "tuesday next week", "give me a tour lance", "back to the map the other one", "i go back to my seat"). A
+  navigation phrase inside the turn counts with at most one word before it and at most max(2, its length) after it.
+  - One-word phrases only take the pending offer; "back", a decline, a lesson or a site never come from a fragment.
+  - Every gate stays: device-directed, the hard mute (a fragment passes it only to take the offer once its line is off
+    the air), and a lesson step's own answer wins ("is it the back": the far side, not navigation).
+  - In the cabin, the word before "panel" is read as the closest panel name ("the comp panel" is the comm panel).
+- **Room exclamations** (`turn_router.is_exclaim`): swearing and exclamations ("shit shit oh", "oh my god", "what the
+  heck", "come on") are filler however device-directed Arc Tagger says they are (it gave "shit shit oh" 0.91;
+  `docs/ARC_FEEDBACK.md`).
+
+Router fixes found on the way: "go to the map" / "back to the map" were not map intents, and "panels" (plural) was not
+a panel.
+
 ## Never hear ourselves
 
 - `getUserMedia` uses `echoCancellation`, `noiseSuppression` and `autoGainControl` (`frontend/src/listen.js`).

@@ -63,6 +63,13 @@ class StreamContext:
             self.terms = [str(x) for x in msg["terms"]][:MAX_NAMES]
         if isinstance(msg.get("topic"), str):
             self.topic = msg["topic"][:80] or None
+        hot_n = None
+        sh = getattr(ms, "set_hot", None)                 # ear mode, round 7: the screen's tiered hot lists
+        if callable(sh) and msg.get("hot") is not None:
+            try:
+                hot_n = sh(msg["hot"])
+            except Exception:  # noqa: BLE001
+                hot_n = 0
         dec = getattr(ms, "set_decoder_context", None)   # ear mode only: the decoder is loaded
         if callable(dec) and any(k in msg for k in ("names", "terms", "topic")):
             try:
@@ -71,7 +78,8 @@ class StreamContext:
                 self.terms_to_arc = False
         return {"t": "context_ack", "v": self.v, "names": len(self.names), "terms": len(self.terms),
                 "names_to_arc": self.names_to_arc, "terms_to_arc": self.terms_to_arc,
-                "topic_to_arc": self.terms_to_arc and bool(self.topic), "at_audio_s": at}
+                "topic_to_arc": self.terms_to_arc and bool(self.topic), "at_audio_s": at,
+                **({"hot": hot_n} if hot_n is not None else {})}
 
     def decorate(self, out: dict | None) -> dict | None:
         if out and out.get("t") == "arc" and self.v:

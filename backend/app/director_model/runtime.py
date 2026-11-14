@@ -10,7 +10,9 @@ weights fail to load):
           privacy guard always wins; the model never overrides a rules command; a model
           command must pass nlu.valid(); below CONF the rules decide; style tags outside the allowed set are never
           produced (the space only has allowed tags; steering re-checks FORBIDDEN anyway).
-GET /api/director/stats: shadow agreement counts (main.py).
+GET /api/director/stats: shadow agreement counts (main.py), and `latency` (round 7): the loaded weights' numpy step time
+(p50 / p95 ms, measured at load; the bigger xl size must stay under ~5 ms per step on CPU).
+Round 7 also adds `nav_policy` (the `nav` head: the model may navigate a turn the router did not, fitted and guarded).
 
 The forward pass mirrors director_model/train.py `Director` (verified by director_model/export.py and
 backend/tests/test_director_model.py: numpy streaming == torch parallel).
@@ -37,7 +39,16 @@ def mode() -> str:
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward
-_ERF = np.vectorize(math.erf)
+def _ERF(x):
+    """Vectorised erf (Abramowitz & Stegun 7.1.26, |error| < 1.5e-7): np.vectorize(math.erf) was a Python call per
+    unit, the slowest part of a step once the model grew (round 7 xl)."""
+    x = np.asarray(x, np.float64)
+    s = np.sign(x)
+    a = np.abs(x)
+    t = 1.0 / (1.0 + 0.3275911 * a)
+    y = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * \
+        np.exp(-a * a)
+    return (s * y).astype(np.float32)
 
 
 def _gelu(x):
@@ -166,6 +177,22 @@ class Model:
 
 _model: Model | None = None
 _failed: str | None = None
+LATENCY: dict = {}            # step latency of the loaded weights (ms p50 / p95 over a short warm-up, CPU, numpy)
+
+
+def measure_latency(m: "Model", n: int = 60) -> dict:
+    """Step the model n times on zero features: the per-event cost the session pays (round 7 reports it for xl)."""
+    import time
+    st = None
+    x = np.zeros(m.F, np.float32)
+    toks, wtok, wf = np.zeros(FX.K, np.int64), np.zeros(FX.W, np.int64), np.zeros((FX.W, FX.WF), np.float32)
+    ts = []
+    for _ in range(n):
+        t0 = time.perf_counter()
+        _, st = m.step(st, x, toks, wtok, wf)
+        ts.append((time.perf_counter() - t0) * 1000)
+    ts.sort()
+    return {"p50_ms": round(ts[len(ts) // 2], 3), "p95_ms": round(ts[int(len(ts) * 0.95) - 1], 3), "n": n}
 
 
 def model() -> Model | None:
@@ -173,6 +200,7 @@ def model() -> Model | None:
     if _model is None and _failed is None:
         try:
             _model = Model()
+            LATENCY.update(measure_latency(_model))
         except Exception as e:  # noqa: BLE001 (no weights shipped / stale features: shadow logs nothing, rules decide)
             _failed = f"{type(e).__name__}: {e}"
     return _model
@@ -187,6 +215,7 @@ def stats() -> dict:
     s = {k: v for k, v in STATS.items() if k not in ("pairs", "recent")}
     s["mode"] = mode()
     s["model"] = None if model() is None else {k: _model.meta.get(k) for k in ("size_name", "params", "trained")}
+    s["latency"] = dict(LATENCY) or None
     s["model_error"] = _failed
     s["act_agreement"] = round(s["act_agree"] / s["decisions"], 4) if s["decisions"] else None
     s["turn_agreement"] = round(s["turn_agree"] / s["turns"], 4) if s["turns"] else None
@@ -301,6 +330,14 @@ class Shadow:
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
         return answer_policy(out, thr)
 
+    def decide_nav(self, out: dict | None, offer: str | None) -> str | None:
+        """`on` mode, a routed turn the router did not navigate: the model's navigation intent, or None."""
+        if mode() != "on" or not out:
+            return None
+        m = model()
+        thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        return nav_policy(out, thr, offer=bool(offer))
+
     def decide_turn(self, out: dict | None, text: str, rules_guard: bool) -> dict | None:
         """At a turn end, `on` mode: the model's decision if it may override the rules, else None (rules decide).
         -> {"act": "ignore"|"ask_clarify"|"command", "command"?: Command}."""
@@ -315,7 +352,30 @@ class Shadow:
                       mission=bool(b.get("mission_id")) and b.get("mode") == "mission")
 
 
-DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None, "answer_ignore": None}
+DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None, "answer_ignore": None,
+                  "nav": None}
+
+
+def nav_policy(out: dict | None, thr: dict, offer: bool = False) -> str | None:
+    """Round 7: the model navigates where the router did not (it ignored, answered or sent the turn to the brain /
+    the mission NLU): only with the `nav` head (weights from round 7 on), only when p(act = navigate) and p(intent) are
+    both >= thr["nav"] (fit on val to add no wrong actions; None = off), only for intents it can run without an
+    argument it cannot know (features.NAV_ACTIONABLE), and taking an offer only while one is on screen.
+    -> the nav intent, or None."""
+    v = thr.get("nav")
+    if v is None or not out or "nav" not in out:
+        return None
+    i = int(np.argmax(out["act"]))
+    if FX.ACTS[i] != "navigate" or float(out["act"][i]) < v:
+        return None
+    nv = np.asarray(out["nav"])
+    j = int(np.argmax(nv))
+    intent = FX.NAV_INTENTS[j]
+    if intent not in FX.NAV_ACTIONABLE or float(nv[j]) < v:
+        return None
+    if intent in ("accept_offer", "decline_offer") and not offer:
+        return None
+    return intent
 
 
 def answer_policy(out: dict, thr: dict) -> bool:

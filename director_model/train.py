@@ -9,7 +9,8 @@ Model (Head Start search-director family):
 Every head is masked per step (-1 = unlabeled), so each data source labels only what it knows.
 
   python3 train.py --data data/ds --out runs/m --size m [--steps 4000] [--device cpu|mps]
-Sizes: s ~30 K (d32, 1 block, 1024x8), m ~80 K (d48, 2 blocks, 2048x8), l ~250 K (d96, 3 blocks, 4096x8).
+Sizes: s ~30 K (d32, 1 block, 1024x8), m ~80 K (d48, 2 blocks, 2048x8), l ~250 K (d96, 3 blocks, 4096x8),
+xl (round 7) d128, 4 blocks, 8192x16.
 """
 from __future__ import annotations
 
@@ -34,12 +35,14 @@ from app.director_model import features as FX  # noqa: E402
 
 SIZES = {"s": dict(d=32, layers=1, d_state=16, head_dim=16, buckets=1024, emb=8),
          "m": dict(d=48, layers=2, d_state=16, head_dim=16, buckets=2048, emb=8),
-         "l": dict(d=96, layers=3, d_state=16, head_dim=32, buckets=4096, emb=8)}
+         "l": dict(d=96, layers=3, d_state=16, head_dim=32, buckets=4096, emb=8),
+         # round 7: ~5-10x m, still < 1 M params, numpy int8 runtime (runtime.py reports its step latency)
+         "xl": dict(d=128, layers=4, d_state=16, head_dim=32, buckets=8192, emb=16)}
 HEADS = list(FX.HEADS.items())
 NH = sum(n for _, n in HEADS)
 W_LOSS = {"act": 1.0, "when": 0.5, "cmd_type": 0.6, "sub_type": 0.3, "amount": 0.5, "load_to": 0.5, "load_from": 0.3,
           "task": 0.4, "query": 0.4, "rule_when": 0.3, "card_attr": 0.5, "style": 0.2, "s_rate": 0.1, "s_loud": 0.1,
-          "s_f0_iqr": 0.1, "barge": 0.5, "w_load": 0.2, "w_num": 0.3, "w_task": 0.2, "fp_exec": 1.0}
+          "s_f0_iqr": 0.1, "barge": 0.5, "nav": 0.6, "w_load": 0.2, "w_num": 0.3, "w_task": 0.2, "fp_exec": 1.0}
 ACT_END_W = 3.0
 EXEC_IDX = tuple(FX.ACTS.index(a) for a in ("command", "confirm_yes", "confirm_no"))
 FP_EXEC = 0.0             # --fp-exec: weight of the false-execution penalty           # act loss weight on decision steps (turn ends, rules acted) vs. waiting steps
