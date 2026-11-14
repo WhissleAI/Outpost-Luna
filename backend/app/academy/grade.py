@@ -61,8 +61,8 @@ def _tap_ok(tap, acc: dict) -> bool:
         if tap.get("lat") is not None and tap.get("lon") is not None:
             r = acc.get("radius_deg", 6)
             for pid in ids:
-                p = gaz().places.get(pid)
-                if p and _ang((tap["lat"], tap["lon"]), (p.lat, p.lon)) <= r:
+                p = gaz().places.get(pid)   # a tap anywhere on a big place counts (a kid taps the patch, not its centre)
+                if p and _ang((tap["lat"], tap["lon"]), (p.lat, p.lon)) <= max(r, (p.diameter_km or 0) / 2 / 30.3 * 0.9):
                     return True
     return False
 
@@ -251,10 +251,10 @@ def _route(acc, inp, text):
             want = stops[len(got)]
             if _tap_ok(tp, {"place": want, "radius_deg": r}):
                 got.append(want)
-    elif text:
+    if text and len(got) < len(stops):   # the words name the rest, in order (after any stops already tapped)
         t = f" {gaz_norm(text)} "
         pos = 0
-        for sid in stops:
+        for sid in stops[len(got):]:
             p = gaz().places[sid]
             hits = [m.start() for a in {p.name, *p.aliases} if len(gaz_norm(a)) > 2
                     for m in re.finditer(rf"(?<![a-z0-9]){re.escape(gaz_norm(a))}(?![a-z0-9])", t) if m.start() >= pos]

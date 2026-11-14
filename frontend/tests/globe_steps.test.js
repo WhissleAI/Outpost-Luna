@@ -18,14 +18,15 @@ test("every globe step type is registered", () => {
   for (const t of m.GLOBE_STEP_TYPES) assert.equal(typeof R[t], "function", t);
 });
 
-test("route sends the taps once every stop is tapped", () => {
-  const sent = [], calls = [];
-  const r = R.route(ctx("route", { stops: ["orientale", "ohm"] }, { do: "route" }, sent, calls));
+test("route sends each tap as it lands (a right stop is progress, not a miss); taps live in ctx.state", () => {
+  const sent = [], calls = [], state = { taps: [] };
+  const r = R.route({ ...ctx("route", { stops: ["orientale", "ohm"] }, { do: "route" }, sent, calls), state });
   r.bind({ querySelector: () => null });
   r.onTap({ lat: 1, lon: 2 });
-  assert.equal(sent.length, 0);
+  assert.deepEqual(sent, [{ taps: [{ lat: 1, lon: 2 }] }]);
   r.onTap({ lat: 3, lon: 4 });
-  assert.deepEqual(sent, [{ taps: [{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }] }]);
+  assert.deepEqual(sent[1], { taps: [{ lat: 1, lon: 2 }, { lat: 3, lon: 4 }] });
+  assert.equal(state.taps.length, 2, "the taps survive a re-render");
   assert.deepEqual(calls[0], ["pole", "south", 2.4]);
 });
 

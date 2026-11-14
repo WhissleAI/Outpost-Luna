@@ -83,6 +83,7 @@ async function boot() {
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
+  window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
@@ -574,6 +575,21 @@ async function boot() {
     }
     screenInvariant();
     pushScreen(true);          // the router hears about the new screen now, not on the next 400 ms tick
+  }
+  // A lesson starts clean: an answer card left open from the map or the patch screen would sit over the step.
+  addEventListener("outpost:lesson", () => card.hide());
+  // "What do I do?" (a11y.js help): the Academy answers for its own screens (academy/ui.js); here, the rest.
+  {
+    const O = window.__outpost, academyHelp = O.help || (() => "");
+    O.help = () => {
+      const m = document.body.dataset.mode;
+      if (m === "academy") return academyHelp();
+      if (m === "cadet") return "Tap a place on the Moon to hear about it, or ask a question.";
+      const sc = (missionUI.screen && missionUI.screen()) || {};
+      if (sc.screen === "debrief") return "Tap Fly again, or pick a new site.";
+      if (sc.screen === "cabin") return "Set your power, then tap End shift.";
+      return "Pick a site from the list, then tap Take command.";
+    };
   }
   // The screen manager's one rule: only the current mode's cards may show. A stray card from another mode (a late
   // render, an answer graded after the switch) is hidden on sight; styles.css enforces the same by body[data-mode].

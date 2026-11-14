@@ -202,6 +202,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       <header class="mx-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
       <h2 class="mx-title">Pick your outpost site</h2>
       <p class="mx-sub">Sun for power. Ice for water. Earth for radio.</p>
+      <p class="mx-do">Tap a site to compare. Then tap Take command.</p>
       <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
         <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
         ${sites.map(s => `
@@ -299,7 +300,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     windows = null; if (client.windows) client.windows(state.id).then(w => { windows = w; if (cockpit && cockpit.setWindows) cockpit.setWindows(w); }).catch(() => {});
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
     const first = !firstDone();
-    Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {}).then(() => { if (first && screen === "hud") { say(CAPCOM.firstShift); nudge.arm(); } });
+    Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {}).then(() => { if (first && screen === "hud") { capcom({ say: CAPCOM.firstShift }); say(CAPCOM.firstShift); nudge.arm(); } });   // on the strip too: what to do stays on screen
     if (first) markFirstDone();
   }
 

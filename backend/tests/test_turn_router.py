@@ -129,3 +129,18 @@ def test_helpers():
     assert clear_question("what is the biggest crater") and clear_question("tell me about the far side")
     assert not clear_question("oh") and not clear_question("the cat is on the sofa")
     assert not clear_question("what is the biggest crater", dd=0.3)
+
+
+# ---- "what do I do?": the screen's current hint, on every screen (docs/PLAYTEST.md) ------------------------------------
+@pytest.mark.parametrize("text", ["help", "what do I do", "what do I do now", "hint", "give me a hint", "I'm stuck",
+                                  "I don't know", "what should I do", "I don't get it"])
+@pytest.mark.parametrize("screen", ["lesson", "map", "cabin", "brief", "patch"])
+def test_help_routes_to_the_hint(text, screen):
+    r = route(text, ctx(screen, **SCREENS.get(screen, {})))
+    assert r["outcome"] == "navigate" and r.get("intent") == "a11y", (text, screen, r)
+
+
+def test_help_never_eats_an_answer():
+    for text in ["say again", "help the crew", "orientale then ohm", "I don't know that one yet"]:
+        r = route(text, ctx("lesson", step_type="keywords"))
+        assert r.get("intent") != "a11y", (text, r)
