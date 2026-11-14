@@ -68,7 +68,7 @@
 .cb-view{min-height:28px;padding:0 10px;border:0;border-radius:4px;background:none;color:#BFC7CC;font-family:"Barlow Condensed",var(--f-body);font-weight:700;font-size:13px;letter-spacing:.1em}
 .cb-view[aria-pressed="true"]{background:linear-gradient(#9DFFC6,#5FD98F);color:#04120C;box-shadow:0 0 10px rgba(124,255,176,.45),inset 0 1px 0 rgba(255,255,255,.5)}
 .cb-rover{position:absolute;left:50%;top:30px;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translateX(-50%)}
-.cb-rover[hidden]{display:none}
+.cb-rover[hidden],.cb-glass[data-view="earth"] .cb-rover{display:none}
 .cb-rover span{font-family:"Share Tech Mono",var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--phos);background:rgba(0,0,0,.6);padding:2px 6px;border-radius:3px;white-space:nowrap}
 .cb-storm{display:none}
 .cb-read{position:absolute;right:22px;bottom:12px;pointer-events:none;text-align:right;font-family:"Share Tech Mono",var(--f-mono);font-size:11.5px;line-height:1.5;color:#D3DADF;text-shadow:0 1px 2px #000}

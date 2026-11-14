@@ -108,6 +108,8 @@ export function createCabin(root, o = {}) {
   // ---- window view switcher + breadcrumb (always a way back up to orbit) ----
   function setView(v, quiet) {
     view = v; root.querySelectorAll(".cb-view").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
+    q(".cb-glass").dataset.view = v;
+    if (!reduceMo()) { glassEl.style.setProperty("--px", (v === "orbit" ? 8 : -8) + "px"); setTimeout(() => glassEl.style.setProperty("--px", "0px"), 650); }   // the well's edge swings as the view moves
     const site = st && st.site ? st.site.name.split(" (")[0] : "Outpost";
     const trail = [["orbit", "Moon"], ["site", "South pole · " + site], ...(v === "rover" ? [["rover", "Rover route"]] : v === "earth" ? [["earth", "Earth from the site"]] : [])]
       .slice(0, v === "orbit" ? 1 : 3);

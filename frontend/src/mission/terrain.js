@@ -264,7 +264,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     sun.intensity = 3.2 * smooth(-3, .4, S.sunEl); sunDisc.visible = S.sunEl > -3;
     // In the dark the window is a low-light camera (said on the glass), so the terrain stays readable.
     S.lowLight = S.sunEl < .3;
-    earthshine.intensity = S.lowLight ? .55 : S.earthEl > 0 ? .08 : .03;
+    earthshine.intensity = S.lowLight ? .55 : S.earthEl > 0 ? .2 : .03;   // earthshine is real: a near-full Earth lights the ground
     earthshine.color.set(S.lowLight ? 0x9fc2b4 : 0x9fb8e0);
     tag.textContent = S.lowLight ? "LOW-LIGHT CAMERA · SUN BELOW HORIZON" : "";
     hab.userData.wing.rotation.y = Math.atan2(sd.x, sd.z);                         // arrays track the Sun
