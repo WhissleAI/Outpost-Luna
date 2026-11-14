@@ -6,11 +6,19 @@
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 // (floor.css is imported by main.js, so this module loads under `node --test`: tests/voice_gate.test.js)
 import { createListener as defaultListener } from "./listen.js";
-import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
+import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen, BARGE } from "./floor.js";
+import { maskProfanity, hasProfanity } from "./profanity.js";
 export { spaceAction, micErrorText };
 
-const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking"];
-const CLASS_OF = { off: "is-idle", error: "is-idle", listening: "is-listening", hearing: "is-hearing", thinking: "is-thinking", speaking: "is-speaking" };
+const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
+const CLASS_OF = { off: ["is-idle"], error: ["is-idle"], listening: ["is-listening"], hearing: ["is-hearing"], thinking: ["is-thinking"],
+  speaking: ["is-speaking"], notice: ["is-listening", "is-notice"] };
+/** The displayed state (P0, the owner's "keeps flickering badly"): every state the bar shows stays up at least DWELL ms,
+ *  and a request superseded inside that window never paints. "Thinking" shows only for a turn the router took (or one
+ *  still undecided THINK_AFTER ms after it ended); an open-mic turn shows no words and no "Hearing you" until the
+ *  router accepts it (room talk leaves no trace). Space / push-to-talk and the Web Speech fallback are explicit: the
+ *  kid meant us, so their words and "Hearing you" show at once. */
+export const DISPLAY = { DWELL: 600, THINK_AFTER: 450, THINK_MAX: 3000, NOTICE_MS: 1800, DECIDED_MS: 4000 };
 const ECHO_TAIL_MS = 2000;   // after output stops, the mic can still deliver its echo for a moment (hard mute ≥ 600 ms)
 const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo reference too (the last few lines, not only this one)
 
@@ -42,34 +50,61 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   meter.id = "micLevel"; meter.className = "mic-level"; meter.setAttribute("aria-hidden", "true"); meter.hidden = true;
   meter.innerHTML = "<i></i>";
   const listenRow = $("listen"); if (listenRow) listenRow.insertBefore(meter, stateEl);
-  let lvl = 0;
+  // Smoothed, and silent below the room's noise floor (a hum never moves it); "hot" has hysteresis so it can't blink.
+  let lvl = 0, hot = false;
+  const NOISE_FLOOR = 0.12;
   function level(rms) {
-    const v = Math.min(1, Math.sqrt(rms) * 2.2);          // perceptual-ish: quiet speech still moves the bar
-    lvl = v > lvl ? v : lvl * 0.7 + v * 0.3;
+    let v = Math.min(1, Math.sqrt(Math.max(0, rms)) * 2.2);   // perceptual-ish: quiet speech still moves the bar
+    v = v < NOISE_FLOOR ? 0 : (v - NOISE_FLOOR) / (1 - NOISE_FLOOR);
+    lvl = lvl * 0.75 + v * 0.25;
+    if (lvl < 0.01) lvl = 0;
     meter.style.setProperty("--lvl", lvl.toFixed(3));
-    meter.classList.toggle("is-hot", lvl > 0.25);
+    hot = hot ? lvl > 0.18 : lvl > 0.3;
+    meter.classList.toggle("is-hot", hot && shown === "hearing");
   }
 
-  // The ear opens a turn on any blip of room sound; showing every one made the bar flicker Listening ⇄ Hearing you.
-  // The logical state changes at once; the shown state is smoothed: "hearing" shows only after it has lasted
-  // HEAR_ON ms (or words arrived), and once shown it holds for HEAR_HOLD ms before falling back to "listening".
-  const HEAR_ON = 350, HEAR_HOLD = 900;
-  let shown = null, shownAt = 0, showT = 0;
-  function paint(s, label) { shown = s; shownAt = Date.now(); bar.classList.remove(...CLASSES); bar.classList.add(CLASS_OF[s]); stateEl.textContent = label; }
+  // ----- the displayed state: one state machine with a minimum dwell (DISPLAY) -----
+  // `state` is the logical state (what the voice module is doing); `shown` is what the bar paints. The bar's classes
+  // (border glow, the orb's animation, the label) come only from paint(), so they follow the displayed state.
+  const explicit = () => ptt.held || pttTurn || srOn;
+  let shown = null, shownLabel = "", shownAt = 0, showT = 0, want = null, wantLabel = "", noticeT = 0;
+  function paint(s, label) {
+    shown = s; shownLabel = label; shownAt = Date.now();
+    bar.classList.remove(...CLASSES); bar.classList.add(...CLASS_OF[s]); stateEl.textContent = label;
+  }
+  function request(s, label = "") {
+    want = s; wantLabel = label; clearTimeout(showT);
+    if (s === shown && label === shownLabel) return;
+    const wait = shownAt + DISPLAY.DWELL - Date.now();
+    if (wait > 0) showT = setTimeout(() => request(want, wantLabel), wait);
+    else paint(s, label);
+  }
+  const displayOf = s => (s === "hearing" && !explicit() ? "listening" : s);   // room talk never shows "Hearing you"
   function set(s, label = "") {
-    state = s; clearTimeout(showT);
-    const now = Date.now(), hasWords = !!(turnText && turnText().trim());
-    if (s === "hearing" && shown === "listening" && !hasWords) {
-      showT = setTimeout(() => { if (state === "hearing") paint("hearing", label); }, HEAR_ON);
-    } else if (s === "listening" && shown === "hearing" && now - shownAt < HEAR_HOLD) {
-      showT = setTimeout(() => { if (state === "listening") paint("listening", label); }, HEAR_HOLD - (now - shownAt));
-    } else paint(s, label);
+    state = s;
+    if (!noticeT || s !== "listening") { clearTimeout(noticeT); noticeT = 0; request(displayOf(s), label); }
     micBtn.classList.toggle("on", mode === "ws" || srOn);
     micBtn.setAttribute("aria-label", mode === "ws" ? "Turn the mic off" : "Turn the mic on");
-    meter.hidden = mode !== "ws"; if (meter.hidden) meter.style.setProperty("--lvl", "0");
+    meter.hidden = mode !== "ws"; if (meter.hidden) { lvl = 0; meter.style.setProperty("--lvl", "0"); }
   }
   const idle = () => { if (!kidTalking) set(mode === "ws" ? "listening" : "off"); };
-  const showWords = () => { wordsEl.textContent = turnText(); };
+  /** The kid's words show live only for an explicit turn (Space held, the Web Speech fallback). An open-mic turn shows
+   *  its words only once the router took it (main.js showHeard), so overheard room talk is never on screen. */
+  const showWords = () => { if (explicit()) wordsEl.textContent = maskProfanity(turnText()); };
+
+  // ----- the router's decision for a finished turn (main.js forwards every `heard` decision: decided()) -----
+  let pending = null, thinkT = 0;
+  const decisions = [];   // [{q, outcome, at}] recent decisions: the ear relay's can arrive before the client's own turn ends
+  const keyOf = t => normWords(t || "").join(" ");
+  function thinking() {
+    set("thinking"); clearTimeout(thinkT);
+    thinkT = setTimeout(() => { if (state === "thinking") idle(); }, DISPLAY.THINK_MAX);   // a nav with nothing to say
+  }
+  function resolve(outcome) {
+    if (pending) { clearTimeout(pending.timer); pending = null; }
+    if (outcome === "ignore") { if (state === "thinking") idle(); return; }
+    if (state !== "speaking") thinking();
+  }
   const HOLD = hintEl.lastElementChild.textContent || "Hold to talk";
   const note = text => { hintEl.lastElementChild.textContent = text; };
   // [qa] The ear can drop (model server restarted, too many sessions): never show the server's words to a kid; reconnect
@@ -99,7 +134,9 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     onKidDone(); idle();
   }
   function askTurn(text) {
-    turnAsked = true; finalBuf = ""; interim = ""; kidTalking = false; wordsEl.textContent = text || "";
+    const exp = explicit();
+    turnAsked = true; finalBuf = ""; interim = ""; kidTalking = false;
+    if (exp) wordsEl.textContent = maskProfanity(text || "");
     if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
     // Never answer ourselves or a hum: filler ("oh", "mm-mm") and echoes of our last few lines are dropped silently.
@@ -107,11 +144,29 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     // lines was on air at the turn start (turnIsEcho: the same rule as backend turn_router.echo()).
     const onAir = turnAir || airNow(); turnAir = false;
     if (!ptt.held && !pttTurn && (isFiller(text) || turnIsEcho({ text, frame: frameNow(), onAir, refs: refsNow(),
-      oldRefs: saidRefs(3000, ECHO_LINES_MS) }))) { wordsEl.textContent = ""; kidDone(); return; }
+      oldRefs: saidRefs(3000, ECHO_LINES_MS) }))) { if (exp) wordsEl.textContent = ""; kidDone(); return; }   // filler / echo: no state change at all
     const viaPtt = pttTurn; pttTurn = false;
-    set("thinking");
-    onTurn(text, { ptt: viaPtt }).finally(() => {
+    // "Thinking" waits for the router (decided()): an ignored turn goes back to "Listening" with no flash. A decision
+    // that already arrived (the server's ear relay can beat the client's own turn end) is used at once.
+    const q = keyOf(text), now = Date.now(), early = decisions.find(d => d.q === q && now - d.at < DISPLAY.DECIDED_MS);
+    if (pending) clearTimeout(pending.timer);
+    pending = null;
+    // The client already knows most room talk: Arc says it was for someone else (the router's not_directed rule), or
+    // it is rude. Those never start the "Thinking" clock; a late "yes, it's for us" from the router still shows it.
+    const lo = (BARGE[(window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter) || "normal"] || BARGE.normal)[0];
+    const roomTalk = !exp && ((turnDD != null && turnDD < lo) || hasProfanity(text));
+    if (early) { if (early.outcome === "ignore") idle(); else thinking(); }
+    else if (roomTalk) { idle(); pending = { q, timer: 0 }; }
+    else {
+      idle();
+      const p = pending = { q, timer: setTimeout(() => { if (pending === p) { pending = null; thinking(); } }, DISPLAY.THINK_AFTER) };
+    }
+    const done = r => {   // no session (POST /api/ask): no decision will come; the answer is over, so the turn is too
+      if (r === "session") return;
+      if (pending) { clearTimeout(pending.timer); pending = null; }
       if (state === "thinking") idle();
+    };
+    Promise.resolve(onTurn(text, { ptt: viaPtt, dd: turnDD, safety: turnSafety })).then(done, () => done()).finally(() => {
       if (floor && !floor.guideBusy && !kidTalking) floor.unduck();   // the answer didn't take the floor: un-duck the crew
     });
   }
@@ -143,7 +198,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   // Lines older than 3 s (turnIsEcho's oldRefs): only a near-verbatim repeat of ≥ 3 words is an echo.
 
   // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
-  let gated = null, turnDD = null, pttTurn = false;
+  let gated = null, turnDD = null, turnSafety = null, pttTurn = false;
   function gate(m) {
     if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "", air: airNow() }; return; }
     if (!gated) return;                                     // words of a turn whose start we didn't see while busy
@@ -164,10 +219,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const listener = createListener({
     message(m) {
       if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
-      else if (m.t === "arc") { if (typeof m.device_directed === "number") turnDD = m.device_directed; }
+      else if (m.t === "arc") { if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
       else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
       else if (m.t === "words" || m.t === "turn") {
-        if (m.t === "turn" && m.state === "start") turnDD = null;
+        if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; }
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
         if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
         if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
@@ -254,12 +309,23 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     /** Show the guide speaking / thinking / back to listening. Never overrides the kid's own turn. */
     show(s) { if (kidTalking || ptt.held) return; if (s === "idle") idle(); else set(s); },
     clearWords() { wordsEl.textContent = ""; },
+    /** The router's decision for a turn (main.js forwards every `heard` decision): "ignore" ends it quietly (no
+     *  "Thinking", no words); anything else shows "Thinking" until the reply speaks. */
+    decided(outcome, text) {
+      const q = keyOf(text), now = Date.now();
+      decisions.push({ q, outcome, at: now });
+      while (decisions.length > 8 || (decisions[0] && now - decisions[0].at > DISPLAY.DECIDED_MS)) decisions.shift();
+      if (pending && (!q || pending.q === q || pending.q.includes(q) || q.includes(pending.q))) resolve(outcome);
+      else if (outcome !== "ignore" && !pending && state !== "speaking" && !kidTalking && !ptt.held) thinking();   // e.g. a typed turn it took
+    },
     /** A tiny, silent "didn't catch that" on the mic chip (hands-free: a device-directed turn we could not use). */
     notice(text = "Didn't catch that") {
       if (kidTalking || ptt.held) return;
-      stateEl.textContent = text; bar.classList.add("is-notice");
-      clearTimeout(this._nt); this._nt = setTimeout(() => { bar.classList.remove("is-notice"); if (stateEl.textContent === text) stateEl.textContent = ""; }, 1800);
+      clearTimeout(noticeT); request("notice", text);
+      noticeT = setTimeout(() => { noticeT = 0; request(displayOf(state), ""); }, DISPLAY.NOTICE_MS);
     },
+    /** What the bar shows right now (tests, tools/chatter_steady.py). */
+    get displayed() { return shown; },
     /** Forward a context frame on the listen socket (kept and re-sent when the socket becomes ready). */
     sendContext(frame) { lastContext = frame; listener.send(frame); },
     get kidTalking() { return kidTalking || ptt.held; },

@@ -23,6 +23,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import director, models_client, steering, turnlog
+from . import safety as safety_
 from . import turn_router as router_
 from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
@@ -141,7 +142,7 @@ class Session:
         self.belief: dict = {
             "mode": "mission", "role": None, "mission_id": None, "state": None, "lesson": None,
             "floor": "none", "kid": {"open": False, "words": "", "start": None, "end": None, "command_complete": None,
-                                     "device_directed": None, "emotion": None},
+                                     "device_directed": None, "emotion": None, "safety": None},
             "last_place": None, "playing": None, "referent": None,
         }
         self.pending: dict[str, dict] = {}     # unplayed say/play decisions by id
@@ -160,6 +161,8 @@ class Session:
         self.step_since: float | None = None   # when the current screen / step opened
         self.last_unknown = -1e9
         self.routes: list[dict] = []           # every routed turn (tests and /api/session/{id}/routes read it; capped)
+        # [P0] safety flags for the parent / teacher side (GET /api/safety/flags): kind, tags, screen, time; no words
+        self.flags: list[dict] = []
         # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
         self.prefs: dict = dict(PREF_DEFAULTS)
         # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
@@ -255,7 +258,7 @@ class Session:
         if t == "hello":
             await self.on_hello(m)
         elif t == "typed":
-            await self.on_turn(str(m.get("text") or ""), source=m.get("source") or "typed")
+            await self.on_turn(str(m.get("text") or ""), source=m.get("source") or "typed", arc=m)
         elif t == "ui":
             await self.on_ui(m)
         elif t == "playback":
@@ -354,7 +357,7 @@ class Session:
             if st in ("start", "resumed"):
                 k.update(open=True, start=self.clock(), end=None, words=m.get("text") or "")
                 if st == "start":
-                    k["device_directed"], k["act"] = None, None   # Arc's read is per turn: never carry the last one
+                    k["device_directed"], k["act"], k["safety"] = None, None, None   # Arc's read is per turn: never carry the last one
                 if self.belief["floor"] == "none":
                     await self.set_floor("kid")
             elif st == "end":
@@ -367,6 +370,8 @@ class Session:
                 k["device_directed"] = m["device_directed"]
             if m.get("act"):
                 k["act"] = m["act"] if isinstance(m["act"], list) else [m["act"]]
+            if isinstance(m.get("safety"), list):   # [P0] Arc Tagger's safety tags for this turn (safety.py)
+                k["safety"] = m["safety"]
         elif t == "emotion" and m.get("label"):
             k["emotion"] = m["label"]
 
@@ -432,10 +437,18 @@ class Session:
         s = self.belief["state"] or {}
         return bool(s.get("alerts")) or bool(((s.get("env") or {}).get("storm") or {}).get("active"))
 
-    async def on_turn(self, text: str, source: str = "typed"):
+    async def on_turn(self, text: str, source: str = "typed", arc: dict | None = None):
         text = text.strip()
         if not text:
             return
+        if arc and source in OPEN_MIC:
+            # the client's copy of an ear turn carries the ear's Arc read for THIS turn (the relay's copy of the same
+            # turn is a duplicate and dropped below); without it a stale read from an older turn would be used
+            k = self.belief["kid"]
+            if isinstance(arc.get("dd"), (int, float)):
+                k["device_directed"] = float(arc["dd"])
+            if "safety" in arc:
+                k["safety"] = arc["safety"] if isinstance(arc.get("safety"), list) else None
         if self.ptt_only() and source in OPEN_MIC:
             # Settings listen="ptt": open-mic turns are not for us; only push-to-talk (source "ptt") and typed count.
             self.history.append({"route": "ignore", "reason": "ptt_only", "text": text, "ts": self.clock()})
@@ -485,14 +498,19 @@ class Session:
             older=self.spoken.older(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
-    async def _note(self, rt: dict, text: str):
-        rec = {"text": text, **rt, "screen": self.screen_name(), "ts": self.clock()}
+    async def _note(self, rt: dict, text: str, safety: bool = False):
+        # [P0] a safety turn (Arc's tags or the word list): the logs keep that it happened, never the words, and the
+        # client gets the decision without them (it shows nothing for it either way)
+        safety = safety or rt.get("reason") == "safety"
+        shown = "[safety]" if safety else text
+        rec = {"text": shown, **rt, "screen": self.screen_name(), "ts": self.clock()}
         self.routes.append(rec)
         del self.routes[:-200]
-        self.history.append({"route": rt["outcome"], "reason": rt.get("reason"), "text": text, "ts": self.clock()})
+        self.history.append({"route": rt["outcome"], "reason": rt.get("reason"), "text": shown, "ts": self.clock()})
         if self.screen:   # a hands-free client: tell it what we heard (the mic chip shows "didn't catch that")
             await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"),
-                                      notice=bool(rt.get("notice")) or None, text=text)])
+                                      notice=bool(rt.get("notice")) or None, text="" if safety else text,
+                                      safety=True if safety else None)])
 
     def _end_event(self, text: str, source: str, rt: dict | None = None) -> dict:
         ev = {"t": "turn", "state": "end", "text": text} if source == "listen" else \
@@ -504,8 +522,27 @@ class Session:
     async def _turn(self, text: str, source: str):
         k = self.belief["kid"]
         ctx_r = self.route_ctx(source)
+        # [P0] safety first (safety.py): Arc's tags, then the word list. A crisis or grooming cue gets one gentle line
+        # and a flag for the grown-ups; a rude / toxic turn is ignored (never graded, never a question).
+        tags = k.get("safety") if source in OPEN_MIC or source == "ptt" else None
+        if tags is None:   # no read from the ear: ask Arc Tagger on the words (~20 ms on the local model server)
+            tags = await safety_.tagger_read(text)
+        sf = safety_.classify(text, tags)
+        ctx_r.unsafe = sf["mask"]
+        if sf["care"]:
+            self.flags.append({"kind": "care", "tags": [t for t in sf["tags"] if t.startswith(safety_.CARE_TAGS)],
+                               "screen": self.screen_name(), "ts": self.clock()})   # never the words themselves
+            del self.flags[:-50]
+            k["open"] = False
+            await self._note({"outcome": "care", "reason": "safety"}, text, safety=True)
+            await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
+            return
         rt = router_.route(text, ctx_r, act=k.get("act"))
+        # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
+        # guard path), so a false PII flag costs only the text in the log, never the turn on screen
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
+        if self._tl is not None and (sf["pii"] or sf["mask"]):
+            self._tl["_guard"] = True
         try:
             await self._routed(text, source, ctx_r, rt)
         finally:

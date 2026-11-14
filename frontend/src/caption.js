@@ -1,5 +1,6 @@
 // Caption bar: every spoken line (guide, CAPCOM, story, Houston, and the crew audio) as text, with the word being
 // spoken highlighted in sync with playback (docs/ACCESSIBILITY.md).
+import { maskProfanity } from "./profanity.js";
 //
 // Timing sources, best first:
 //   1. Steer TTS word timings: /api/tts returns X-TTS-Words ("startMs-endMs,…" per display word), taken from Steer's
@@ -83,7 +84,7 @@ export function initCaptions({ floor, settings = () => ({}) } = {}) {
   let raf = 0, hideT = 0;
 
   function log(who, text) {
-    const e = { who, text, t: Date.now() };
+    const e = { who, text: who === "kid" ? maskProfanity(text) : text, t: Date.now() };   // [P0] kid text is stored masked
     O.transcript.push(e); if (O.transcript.length > 200) O.transcript.shift();
     window.dispatchEvent(new CustomEvent("outpost:transcript", { detail: e }));
   }
