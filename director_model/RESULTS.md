@@ -272,3 +272,113 @@ Gaps: only 1,082 of 4,647 rendered train turns had real decodes (decoding shared
 disk filled up mid-run: audio is now never written); the raw model still acts wrongly more often than the rules
 (slot exactness 0.6-0.75), so the win is the cost-aware layer, not the model acting alone; `test_real` voices are TTS
 (no real children); the veto almost never fires at 0.99 (val is too small to trust a lower one).
+
+## Round 6 — 2026-11-14 (hands-free classes, turn-log loop, first `make director-loop` round) — NOT SHIPPED (gate FAIL)
+
+### What changed
+
+- **Opt-in turn log.** Settings → "Help improve the voice guide" (off by default), plus the
+  `make director-import` path. See `docs/DIRECTOR_LOOP.md`.
+- **Merged first.** `fix/rc-polish` (grade.plausible: chatter is never a try; one on-air span for queued lines),
+  `fix/story-onboarding` (help / tour intents) and `feat/keys` were merged before generating. The rules column
+  includes their fixes.
+- **Hands-free generation.** The client's screen frames are now part of generation:
+  - every Academy session sends the lesson frame (lesson id + step);
+  - 30 % of train/val sessions are hands-free scripts built from 8 failure classes (`pools.cls_item`).
+- **New held-out class sets.** Each `cls_*` set has 160 turns, a third of every phrase pool is held out, and turns are
+  heard through the real Arc ear where a decode exists:
+  - `cls_chatter`, `cls_echo` (back-to-back CAPCOM lines in the app's own voices: Aurora `voice_1085`, CAPCOM
+    `voice_0213`, Beacon `voice_0644`), `cls_offer`, `cls_panel`, `cls_help`, `cls_mode`;
+  - `cls_globe` (the 6 globe step types by voice);
+  - `cls_mishear` (kid-style mishears from the real ear, e.g. "rover go get eyes").
+- **Features are append-only.** F goes from 169 to 216 (screen, step type, offer, router outcome / reason, navigation
+  intent, on-air / speaking / line gap, echo of recent lines, chatter). Older weights read their 169-feature prefix
+  (`features.F_R5`).
+- **New act.** `navigate` is the 11th act. The model learns it but never navigates on its own; it can only veto a
+  rules command into a clarifying question.
+- **`answer_policy`.** The model may silence a lesson-step answer. It is off unless fitted; it fit to off this round,
+  because the rules now silence the chatter (cls_chatter rules 0.969).
+- **Fair before / after.** `evaluate.py --weights` steps the shipped weights with the numpy runtime and their own
+  policy, so the before column is what the app runs. The gate (`loop.py`) compares candidate vs rules vs shipped on
+  the same data.
+
+### Data and models
+
+- Data `ds_r6`: train 2,400 sessions / 222,815 steps; val 200; test_clean / asr 200; test_real 108 sessions /
+  1,081 turns; class sets 160 turns each.
+- Real Arc decodes: 3,550 rendered in memory (no WAV written), 14 MB cache. The train shards replayed 1,396 train,
+  342 val and 715 test decodes.
+- Models (CPU shared with 5 agents, load ~50):
+  - s: 28,985 params, best step 3,200;
+  - m: 77.7 K params, best step 1,200.
+
+### Before / after (guarded `on` policy, act accuracy / wrong actions; the same regenerated sets for every column)
+
+| set | turns | rules | **shipped (r4 s, before)** | new s | new m (gated candidate) | raw act: shipped / s / m |
+|---|---|---|---|---|---|---|
+| test_clean | 1979 | 0.803 / 87 | **0.807 / 87** | 0.804 / 87 | 0.805 / 89 | 0.926 / 0.945 / 0.933 |
+| test_asr | 1977 | 0.714 / 134 | **0.719 / 133** | 0.719 / 132 | 0.719 / 133 | 0.892 / 0.890 / 0.877 |
+| test_real | 1081 | 0.618 / 46 | **0.618 / 46** | 0.621 / 46 | 0.619 / 47 | 0.849 / 0.845 / 0.840 |
+| test_ear | 200 | 0.715 / 20 | **0.715 / 19** | 0.715 / 19 | 0.720 / 19 | 0.715 / 0.765 / 0.740 |
+| test_h40 | 40 | 0.450 / 3 | **0.450 / 1** | 0.450 / 3 | 0.525 / 3 | 0.950 / 0.900 / 0.925 |
+| test_h40_asr | 40 | 0.400 / 4 | **0.400 / 3** | 0.400 / 4 | 0.450 / 3 | 0.900 / 0.825 / 0.800 |
+| test_q80 | 80 | 0.850 / 0 | **0.850 / 0** | 0.850 / 0 | 0.850 / 0 | 0.887 / 0.925 / 0.950 |
+| test_q80_asr | 80 | 0.825 / 0 | **0.825 / 0** | 0.825 / 0 | 0.825 / 0 | 0.812 / 0.950 / 0.975 |
+| test_gold | 19 | 0.789 / 3 | **0.789 / 3** | 0.789 / 3 | 0.789 / 3 | 0.842 / 0.947 / 0.842 |
+| cls_chatter | 160 | 0.969 / 0 | **0.969 / 0** | 0.969 / 0 | 0.969 / 0 | 0.444 / 0.900 / 0.819 |
+| cls_echo | 160 | 0.844 / 5 | **0.863 / 4** | 0.856 / 4 | **0.975 / 3** | 0.156 / 0.912 / 0.994 |
+| cls_offer | 160 | 0.600 / 9 | **0.600 / 9** | 0.600 / 9 | 0.600 / 9 | 0.000 / 1.000 / 1.000 |
+| cls_panel | 160 | 0.731 / 7 | **0.731 / 7** | 0.731 / 7 | 0.731 / 11 | 0.450 / 0.769 / 0.731 |
+| cls_help | 160 | 0.487 / 0 | **0.487 / 0** | 0.487 / 0 | 0.487 / 0 | 0.000 / 0.762 / 0.794 |
+| cls_mode | 160 | 0.463 / 0 | **0.463 / 0** | 0.463 / 0 | 0.463 / 0 | 0.000 / 0.994 / 0.963 |
+| cls_globe | 160 | 0.631 / 0 | **0.631 / 0** | 0.631 / 0 | 0.631 / 0 | 0.600 / 0.787 / 0.775 |
+| cls_mishear | 160 | 0.738 / 1 | **0.637 / 1** | 0.738 / 1 | 0.694 / 1 | 0.562 / 0.719 / 0.581 |
+
+The numbers are lower than rounds 4-5 on the same set names because the sets are new. Academy turns now go through
+the hands-free router with the lesson frame, and router-navigated turns are scored. Compare columns within this table
+only.
+
+Fitted policies (val):
+
+| model | cmd | veto | ignore | ask | answer_ignore |
+|---|---|---|---|---|---|
+| s | 0.995 | 0.9 | 0.95 | 0.9 | off |
+| m | 0.9 | 0.95 | 0.7 | off | off |
+| shipped weights refit on this val | 0.85 | off | 0.9 | off | off |
+
+The refit shipped weights also FAIL: test_clean, test_real, cls_echo, cls_panel and cls_mishear.
+
+### Gate: FAIL — the shipped weights stay (`director_model/runs/2026-11-14/report.md`)
+
+- **m**: more wrong actions than the rules on test_clean (89 vs 87), test_real (47 vs 46) and cls_panel (11 vs 7);
+  below the rules on cls_mishear (0.694 vs 0.738); and not better than the shipped weights overall (321 vs 313
+  wrong).
+- **s**: cls_echo below the shipped weights by one turn (0.856 vs 0.863); overall 315 vs 313 wrong.
+
+### What the round shows
+
+1. **The model learned the new classes.** Raw act on the classes where the rules fail:
+   - offer answers within 0.3 s of the line: 1.000 vs 0.600 for the rules ("next" heard as "tuesday next week");
+   - mode switches mid-lesson: 0.96–0.99 vs 0.46;
+   - help / voice bar / tour: 0.79 vs 0.49;
+   - echo: 0.99 vs 0.84;
+   - globe steps: 0.78 vs 0.63.
+
+   **The policy cannot use most of this.** `navigate` has no intent head: the model knows a turn is navigation, but
+   not which navigation (accept or decline the offer, which screen), so it may only veto. The one place it can act
+   is echo. There m silences 21 more of our own lines than the rules (0.975 vs 0.844).
+2. **The shipped weights regress on a new class.** On cls_mishear the r4 s weights in `on` score 0.637 vs 0.738 for
+   the rules. The ignore fill (≥ 0.8) silences misheard but real answers ("four side", "mallow pert mountain").
+   - Every candidate that fixes it (s) gives back an echo turn.
+   - This is the first real-ear class set. It needs a decision now, and the gate cannot make it.
+3. **Lesson chatter is now a rules win.** rc-polish's `grade.plausible` routes "oh, it's" / "okay" to ignore
+   (0.969). `answer_policy` fit to off: there is nothing left for the model there.
+
+### Next round
+
+- A navigation-intent head (accept / decline / screen) and a fitted `navigate` fill for offers and mode switches.
+  This is the biggest gap between the raw model and what ships.
+- An ignore fill gated on the lesson frame and on real-ear evidence, so the mishear class stops regressing.
+- More train real decodes: 1,396 of 2,649 train jobs were decoded at generation time, and the rest decode on the
+  next `make director-loop`.
+- `test_log` from the first opted-in playtest.

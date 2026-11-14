@@ -1,0 +1,391 @@
+{
+ "date": "2026-11-14T03:01",
+ "run": "director_model/runs/2026-11-14",
+ "data": "director_model/data/ds_r6",
+ "pass": false,
+ "reasons": [
+  "test_clean: wrong actions 89 > rules 87",
+  "test_real: wrong actions 47 > rules 46",
+  "cls_panel: wrong actions 11 > rules 7",
+  "cls_panel: class regresses: wrong 11 > shipped 7",
+  "cls_mishear: act acc 0.6937 < rules 0.7375",
+  "not better than the shipped weights overall: wrong 321 vs 313, right acts 4903 vs 4874"
+ ],
+ "policy": {
+  "cmd": 0.9,
+  "veto": 0.95,
+  "ignore": 0.7,
+  "ask": 1.01,
+  "answer_ignore": null,
+  "fit": {
+   "sets": [
+    "val"
+   ],
+   "wrong": 83,
+   "extra_wrong": 0,
+   "rules_wrong": 91,
+   "act_ok": 1661,
+   "turns": 2015
+  }
+ },
+ "shipped_policy": {
+  "conf": 0.7,
+  "cmd": 0.95,
+  "ignore": 0.8,
+  "ask": 1.01,
+  "veto": 0.99,
+  "answer_ignore": null
+ },
+ "rows": [
+  {
+   "set": "test_clean",
+   "turns": 1979,
+   "rules_act": 0.8029,
+   "ship_act": 0.807,
+   "cand_act": 0.805,
+   "rules_wrong": 87,
+   "ship_wrong": 87,
+   "cand_wrong": 89,
+   "rules_w50": 6.54,
+   "ship_w50": 6.54,
+   "cand_w50": 6.69,
+   "model_act": 0.9333,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": [
+    "wrong actions 89 > rules 87"
+   ]
+  },
+  {
+   "set": "test_asr",
+   "turns": 1977,
+   "rules_act": 0.7142,
+   "ship_act": 0.7193,
+   "cand_act": 0.7188,
+   "rules_wrong": 134,
+   "ship_wrong": 133,
+   "cand_wrong": 133,
+   "rules_w50": 11.19,
+   "ship_w50": 11.1,
+   "cand_w50": 11.1,
+   "model_act": 0.8766,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_real",
+   "turns": 1081,
+   "rules_act": 0.6179,
+   "ship_act": 0.6179,
+   "cand_act": 0.6189,
+   "rules_wrong": 46,
+   "ship_wrong": 46,
+   "cand_wrong": 47,
+   "rules_w50": 7.72,
+   "ship_w50": 7.72,
+   "cand_w50": 7.89,
+   "model_act": 0.84,
+   "chatter_graded": [
+    1,
+    1,
+    1
+   ],
+   "fail": [
+    "wrong actions 47 > rules 46"
+   ]
+  },
+  {
+   "set": "test_ear",
+   "turns": 200,
+   "rules_act": 0.715,
+   "ship_act": 0.715,
+   "cand_act": 0.72,
+   "rules_wrong": 20,
+   "ship_wrong": 19,
+   "cand_wrong": 19,
+   "rules_w50": 17.24,
+   "ship_w50": 16.38,
+   "cand_w50": 16.38,
+   "model_act": 0.74,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_h40",
+   "turns": 40,
+   "rules_act": 0.45,
+   "ship_act": 0.45,
+   "cand_act": 0.525,
+   "rules_wrong": 3,
+   "ship_wrong": 1,
+   "cand_wrong": 3,
+   "rules_w50": 3.75,
+   "ship_w50": 1.25,
+   "cand_w50": 3.75,
+   "model_act": 0.925,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_h40_asr",
+   "turns": 40,
+   "rules_act": 0.4,
+   "ship_act": 0.4,
+   "cand_act": 0.45,
+   "rules_wrong": 4,
+   "ship_wrong": 3,
+   "cand_wrong": 3,
+   "rules_w50": 5.0,
+   "ship_w50": 3.75,
+   "cand_w50": 3.75,
+   "model_act": 0.8,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_q80",
+   "turns": 80,
+   "rules_act": 0.85,
+   "ship_act": 0.85,
+   "cand_act": 0.85,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.95,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_q80_asr",
+   "turns": 80,
+   "rules_act": 0.825,
+   "ship_act": 0.825,
+   "cand_act": 0.825,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.975,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "test_gold",
+   "turns": 19,
+   "rules_act": 0.7895,
+   "ship_act": 0.7895,
+   "cand_act": 0.7895,
+   "rules_wrong": 3,
+   "ship_wrong": 3,
+   "cand_wrong": 3,
+   "rules_w50": 13.64,
+   "ship_w50": 13.64,
+   "cand_w50": 13.64,
+   "model_act": 0.8421,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_chatter",
+   "turns": 160,
+   "rules_act": 0.9688,
+   "ship_act": 0.9688,
+   "cand_act": 0.9688,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.8187,
+   "chatter_graded": [
+    5,
+    5,
+    5
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_echo",
+   "turns": 160,
+   "rules_act": 0.8438,
+   "ship_act": 0.8625,
+   "cand_act": 0.975,
+   "rules_wrong": 5,
+   "ship_wrong": 4,
+   "cand_wrong": 3,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.9938,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_offer",
+   "turns": 160,
+   "rules_act": 0.6,
+   "ship_act": 0.6,
+   "cand_act": 0.6,
+   "rules_wrong": 9,
+   "ship_wrong": 9,
+   "cand_wrong": 9,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 1.0,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_panel",
+   "turns": 160,
+   "rules_act": 0.7312,
+   "ship_act": 0.7312,
+   "cand_act": 0.7312,
+   "rules_wrong": 7,
+   "ship_wrong": 7,
+   "cand_wrong": 11,
+   "rules_w50": 9.46,
+   "ship_w50": 9.46,
+   "cand_w50": 14.86,
+   "model_act": 0.7312,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": [
+    "wrong actions 11 > rules 7",
+    "class regresses: wrong 11 > shipped 7"
+   ]
+  },
+  {
+   "set": "cls_help",
+   "turns": 160,
+   "rules_act": 0.4875,
+   "ship_act": 0.4875,
+   "cand_act": 0.4875,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.7937,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_mode",
+   "turns": 160,
+   "rules_act": 0.4625,
+   "ship_act": 0.4625,
+   "cand_act": 0.4625,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.9625,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_globe",
+   "turns": 160,
+   "rules_act": 0.6312,
+   "ship_act": 0.6312,
+   "cand_act": 0.6312,
+   "rules_wrong": 0,
+   "ship_wrong": 0,
+   "cand_wrong": 0,
+   "rules_w50": null,
+   "ship_w50": null,
+   "cand_w50": null,
+   "model_act": 0.775,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": []
+  },
+  {
+   "set": "cls_mishear",
+   "turns": 160,
+   "rules_act": 0.7375,
+   "ship_act": 0.6375,
+   "cand_act": 0.6937,
+   "rules_wrong": 1,
+   "ship_wrong": 1,
+   "cand_wrong": 1,
+   "rules_w50": 1.16,
+   "ship_w50": 1.16,
+   "cand_w50": 1.16,
+   "model_act": 0.5813,
+   "chatter_graded": [
+    0,
+    0,
+    0
+   ],
+   "fail": [
+    "act acc 0.6937 < rules 0.7375"
+   ]
+  }
+ ],
+ "exported": false
+}

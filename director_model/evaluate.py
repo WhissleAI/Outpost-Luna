@@ -380,6 +380,8 @@ def main():
     ap.add_argument("--run", default="", help="a trained run (torch): thresholds are fit on val")
     ap.add_argument("--weights", default="", help="exported weights dir (numpy runtime, e.g. the shipped "
                     "backend/app/director_model): its own policy, as it runs in the app")
+    ap.add_argument("--refit", action="store_true", help="with --weights: refit the policy thresholds on this val "
+                    "(a policy-only update of the shipped weights)")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     d = Path(a.data)
@@ -387,7 +389,7 @@ def main():
         model = NumpyModel(Path(a.weights))
         meta = model.meta
         thr = float((meta.get("thr") or {}).get("when", 0.9))
-        pol = {**RT.DEFAULT_POLICY, **(meta.get("policy") or {})}
+        pol = fit_policy(model, d) if a.refit else {**RT.DEFAULT_POLICY, **(meta.get("policy") or {})}
         res = {"weights": a.weights, "params": meta.get("params"), "size": meta.get("size_name"), "F": meta.get("F"),
                "thr_when": thr, "policy": pol, "sets": {}}
     else:
