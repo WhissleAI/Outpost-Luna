@@ -21,8 +21,9 @@ test("grid: each arrow goes to the neighbour, and nothing past the edge", () => 
 });
 
 test("the straight neighbour beats a closer diagonal; a gap row is skipped to the next aligned tile", () => {
-  assert.equal(go("d", "right", "dfbh"), "f", "f is in the row; b and h are diagonal");
-  assert.equal(go("b", "down", "bhdf"), "h", "past the empty e, straight down is h");
+  assert.equal(go("d", "right", "dfc"), "f", "f is in the row; c is a far diagonal");
+  assert.equal(go("d", "right", "dfb"), "b", "Android rule: the adjacent diagonal b ends before f begins");
+  assert.equal(go("b", "down", "bhgi"), "h", "past the empty e, straight down is h (not the far diagonals)");
 });
 
 test("beam: overlap on the other axis", () => {

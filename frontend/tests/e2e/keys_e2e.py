@@ -348,9 +348,12 @@ def main():
         # storm (forced by the dev hook: a state, not an input) → Shelter from the alert strip by keyboard
         js("() => window.__cabinTest && window.__cabinTest.storm(true)")
         pg.wait_for_timeout(1200)
-        ok(press_until(["ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=3) or
-           press_until(["ArrowUp", "ArrowLeft", "ArrowRight"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=4),
-           "storm: arrows reach Shelter on the alert strip")
+        got = press_until(["ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=3) or \
+            press_until(["ArrowLeft", "ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=4) or \
+            press_until(["ArrowRight", "ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=4)
+        if not got:
+            print("  at:", act(), js("() => [...document.querySelectorAll('.cb-al-b')].map(b => b.dataset.act).join(',')"))
+        ok(got, "storm: arrows reach Shelter on the alert strip")
         shot("08-cabin-storm")
         press("Enter", 3000)
         ok(until("() => document.getElementById('cbl-shelter').classList.contains('is-on') || !document.querySelector('.cb-al-b[data-act=shelter]')", 12000), "storm: Enter sends the crew to the shelter")
