@@ -293,3 +293,15 @@ def test_session_drops_storm_news_the_clock_overtook():
     card = {"t": "card", "chips": ["Solar storm", "DONKI"]}
     calm = {"t": "say", "text": "Comm window open."}
     assert s._overtaken(say) and s._overtaken(card) and not s._overtaken(calm)
+
+
+def test_commander_life_check_always_offers_a_real_change():
+    """Picking the recycler raises it every time (never "to 40" when it is already 40), and past the cap only ice."""
+    m = sim.new_mission("m", "shackleton_rim", 1, level="commander")
+    for share, expect in ((30, 40), (40, 50), (55, 60)):
+        m.loads = sim.reallocate(m.loads, "life_support", share)
+        spec = gameplay._life_check(m)
+        opt = spec["steps"][0]["options"][0]
+        assert opt["id"] == "recycler" and opt["label"] == f"Recycler to {expect}%", (share, opt)
+    m.loads = sim.reallocate(m.loads, "life_support", 60)
+    assert [o["id"] for o in gameplay._life_check(m)["steps"][0]["options"]] == ["ice"]

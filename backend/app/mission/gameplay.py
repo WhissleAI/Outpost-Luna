@@ -31,6 +31,7 @@ SCIENCE_EVERY_H = 8
 STEER_AFTER_H = 2          # the boulder field comes up this far into an ice drive
 STEER_WAIT_H = 2           # ...and the rover picks its own way if nobody steers in time
 SHELTER_LEAD_H = 6         # storm prep: the shelter step opens this many hours before a likely storm
+RECYCLER_MAX = 60          # the life check never offers the recycler past this (ice is the answer then)
 LIFE_CHECK = 55            # air under this: the life support check (ice, or more recycler power)
 QUIET_RATE = 0.1           # mSv/h: under this the sensor reads "normal" (the quiet-Sun baseline is ~0.06 game)
 
@@ -231,9 +232,14 @@ def _life_check(m):
         steps = [_order("ice", "Send the rover for ice", "rover:collect_ice", ROVER("collect_ice"),
                         lambda m, t: m.rover["task"] == "collect_ice", "Rover off for ice. Good.")]
     else:
-        steps = [_choice("air", "Air is dropping. Recycler up, or an ice run?",
-                         [{"id": "recycler", "label": "Recycler up", "hint": "Costs power"},
-                          {"id": "ice", "label": "Ice run", "hint": "Rover, crew outside"}])]
+        # a real raise every time (a "recycler up" to where it already is did nothing, and the check came back)
+        up = min(RECYCLER_MAX, max(40, m.loads["life_support"] + 10))
+        opts = [{"id": "ice", "label": "Ice run", "hint": "Rover, crew outside"}]
+        if m.loads["life_support"] < RECYCLER_MAX:
+            opts.insert(0, {"id": "recycler", "label": f"Recycler to {up}%", "hint": "Costs power"})
+        steps = [_choice("air", "Air is dropping. Recycler up, or an ice run?" if len(opts) > 1 else
+                         "Air is dropping. The recycler is maxed: ice run?", opts)]
+        steps[0]["up"] = up
     return dict(title="Life support check", lesson="life", panel="habitat", level="caution", priority=70, cool_h=12,
                 say="Life support check. The air is dropping.", steps=steps)
 
@@ -616,7 +622,7 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
         return "Okay, we wait and watch the sensor.", {}
     if k == "life_check" and sid == "air":
         if choice == "recycler":
-            return order(ALLOC("life_support", 40), "Recycler up. Air will climb.")
+            return order(ALLOC("life_support", s.get("up", 40)), f"Recycler at {s.get('up', 40)}%. Air will climb.")
         return order(ROVER("collect_ice"), "Rover off for ice.")
     if k == "ice_run" and sid == "route":
         return order({**ROVER("collect_ice"), "route": choice},
