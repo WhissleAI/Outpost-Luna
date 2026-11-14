@@ -4,7 +4,8 @@
 //   2. three display units (POWER / LIFE / RADIATION by default; any of PWR LIFE RAD COMM per unit);
 //   3. the controls: hab switches, rover, shield knob, caution & warning, Houston + END SHIFT (the one primary action);
 //   4. the comm strip (captions + the ask dock, moved in by ui.js).
-// Pure view: update(state), telemetry(frame), log(who, text), calling(on, ms), busy(on), alert(a), setView(v).
+// Pure view: update(state), telemetry(frame), log(who, text), calling(on, ms), busy(on), alert(a), setView(v),
+// clock(c) (the live clock's controls), card(c) (the Now task card), moment(beat), missionLog(entries).
 // Every control is a <button> (or role=slider) whose aria-label states its state. An order that changes a control
 // (by voice or by click) animates that control (.is-moved). Colours and sizes come from tokens.css only.
 import "../cabin.css";
@@ -59,7 +60,7 @@ const ic = (n, size = 18) => icon(n, { size });
 const VIEW_ICON = { orbit: "orbit", site: "site", rover: "rover", earth: "earth" };
 
 export function createCabin(root, o = {}) {
-  const cb = { onCommand() {}, onHouston() {}, onEndShift() {}, onDebrief() {}, onView() {}, badges: () => [], ...o };
+  const cb = { onCommand() {}, onHouston() {}, onEndShift() {}, onDebrief() {}, onView() {}, onClock() {}, onTask() {}, badges: () => [], ...o };
   let view = "site", st = null, prev = null, pages = ["PWR", "LIFE", "RAD"], sel = 0, logLines = [], litBefore = new Set(), masterOn = false;
   let flash = null, flashT = null;
   const guards = { shelter: false };
@@ -80,11 +81,20 @@ export function createCabin(root, o = {}) {
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
         <div class="cb-top">
           <div class="cb-clock" id="cbClock"></div>
+          ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock">
+            <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
+            <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}x</button>`).join("")}</span>
+            <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
+            <span class="cb-held" id="cbHeld" aria-live="polite"></span>
+          </div>`}
           <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
         </div>
+        <div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>
+        <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
+        <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
-        <p class="cb-now" id="cbNow" hidden role="status" aria-live="polite"><b>${esc((story.NOW || {}).label || "Now")}</b><span id="cbNowT"></span></p>
+        <section class="cb-now" id="cbNow" hidden aria-label="Now"><p class="cb-now-row"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span><span id="cbNowT" role="status" aria-live="polite"></span></p><div class="cb-now-more" id="cbNowMore"></div></section>
       </div>
     </section>
 
@@ -127,7 +137,7 @@ export function createCabin(root, o = {}) {
           <div class="cb-lamps" role="list">${LAMPS.map(([id, t, lvl]) => `<span class="cb-lamp is-${lvl}" id="cbl-${id}" role="listitem">${t}<span class="cb-vh">: off</span></span>`).join("")}</div>
         </div>
         <div class="cb-plate cb-ped">
-          <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
+          <button type="button" class="cb-end" id="cbEnd"><span>${o.mode === "ride" ? "End shift" : "End shift early"}</span><small id="cbEndSub"></small></button>
           <button type="button" class="cb-db" id="cbDb">See debrief</button>
         </div>
       </div>
@@ -145,6 +155,7 @@ export function createCabin(root, o = {}) {
   </div>`;
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
+  const HUD = [".cb-alert", ".cb-top", ".cb-prog", ".cb-rover", ".cb-sky", ".cb-moment", ".cb-mlog", ".cb-now"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -157,7 +168,7 @@ export function createCabin(root, o = {}) {
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
     const holeEl = document.createElement("div"); holeEl.className = "cb-hole";
-    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => holeEl.append(q(sel)));
+    HUD.forEach(sel => holeEl.append(q(sel)));
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
@@ -167,7 +178,7 @@ export function createCabin(root, o = {}) {
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
     if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
-    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
+    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); HUD.forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
       // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live
@@ -221,6 +232,13 @@ export function createCabin(root, o = {}) {
   q("#cbMaster").onclick = () => { masterOn = false; paintMaster(); };
   q("#cbPtt").onclick = () => cb.onHouston();
   q("#cbEnd").onclick = () => cb.onEndShift();
+  // ---- the live clock: play / pause, time warp, skip to next event (mission/clock.js owns the timing) ----
+  if (q("#cbPlay")) {
+    q("#cbPlay").onclick = () => cb.onClock("toggle");
+    root.querySelectorAll(".cb-warp").forEach(b => b.onclick = () => cb.onClock("warp:" + b.dataset.warp));
+    q("#cbSkip").onclick = () => cb.onClock("skip");
+  }
+  q("#cbProg").addEventListener("click", e => { if (e.target.closest(".cb-logbtn")) toggleLog(); });
   q("#cbDb").onclick = () => cb.onDebrief();
 
   function paintMaster() {
@@ -334,7 +352,7 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
     sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible, e.in_sun);
-    q("#cbClock").innerHTML = `<b>Day ${s.day} <span>· Shift ${s.shift}</span></b><small>${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
+    paintClock(s, null);
     paintDus(); paintSwitches(); paintRover();
     const sh = Math.round(s.loads.shields || 0), kn = q("#cbKnob");
     q("#cbKval").style.strokeDasharray = `${(clamp(sh, 0, 60) / 60 * 75).toFixed(1)} 100`;
@@ -369,7 +387,8 @@ export function createCabin(root, o = {}) {
     paintAlert();
     q("#cbPttSub").textContent = e.earth_visible ? "Earth in view" : "No signal";
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
-    q("#cbEndSub").textContent = s.over ? "Mission over" : `Shift ${s.shift} of 4`;
+    q("#cbEndSub").textContent = s.over ? "Mission over" : o.mode === "ride" ? `Shift ${s.shift} of 4` : `Jump to shift ${s.shift % 4 + 1}`;
+    paintProg(s);
     applyCue(false); paintInfo(s);
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
@@ -422,7 +441,79 @@ export function createCabin(root, o = {}) {
     if (on) q("#cbPttSub").textContent = `${(ms / 2000).toFixed(1)} s each way`;
     else if (st) q("#cbPttSub").textContent = st.env.earth_visible ? "Earth in view" : "No signal";
   }
-  function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); }
+  function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); const sk = q("#cbSkip"); if (sk) sk.disabled = !!on; }
+
+  // ---- the live clock, the task card, progress, story moments, the mission log (docs/GAMEPLAY.md) ----
+  const hh = h => String(Math.floor(h % 24)).padStart(2, "0") + ":" + String(Math.floor((h % 1) * 60 / 15) * 15).padStart(2, "0");
+  function paintClock(s, tH) {
+    const t = tH != null ? tH : (s.clock && s.clock.mission_time_h != null ? s.clock.mission_time_h : s.mission_time_h || 0);
+    const day = Math.min(10, Math.floor(t / 24) + 1), shift = Math.floor((t % 24) / 6) + 1;
+    q("#cbClock").innerHTML = `<b>Day ${day} <span>· ${hh(t)}</span></b><small>Shift ${shift} · ${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
+  }
+  let clockSt = null;
+  const HELD = { tour: "Paused for the tour", confirm: "Paused: yes or no?", decision: "Paused: your call", choice: "Paused: your call",
+    hidden: "Paused", start: "", over: "", away: "" };
+  function paintTime(c) {
+    clockSt = c; const p = q("#cbPlay"); if (!p || !c) return;
+    const on = c.running, waiting = c.started && !c.paused && c.held;
+    p.innerHTML = `${ic(on || waiting ? "pause" : "play", 16)}<span>${on || waiting ? "Pause" : c.started ? "Resume" : "Play"}</span>`;
+    p.setAttribute("aria-label", on || waiting ? "Pause the clock" : c.started ? "Resume the clock" : "Start the clock");
+    p.classList.toggle("is-on", !!on);
+    root.querySelectorAll(".cb-warp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.warp === c.warp)));
+    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "" : c.paused ? "Paused" : `${c.warp}x`;
+    q("#cbTime").dataset.state = on ? "run" : waiting ? "held" : "paused";
+  }
+  function paintProg(s) {
+    const P = s.progress, el = q("#cbProg"); if (!el) return;
+    if (!P) { el.innerHTML = ""; el.hidden = true; return; }
+    el.hidden = false;
+    const sci = Math.min(1, P.science_sent / (P.science_goal || 120)), ice = Math.min(1, P.ice / (P.ice_goal || 1));
+    el.innerHTML = `<span class="pg" title="Days survived"><em>Days</em><b>${P.days_done.toFixed(1)}<small>/${P.days_total}</small></b><i style="--p:${(P.days_done / P.days_total * 100).toFixed(1)}%"></i></span>
+      <span class="pg${sci >= 1 ? " is-met" : ""}" title="Science sent home"><em>Science</em><b>${Math.round(P.science_sent)}<small>/${P.science_goal}</small></b><i style="--p:${(sci * 100).toFixed(1)}%"></i></span>
+      <span class="pg${ice >= 1 ? " is-met" : ""}" title="Ice runs"><em>Ice</em><b>${P.ice}<small>/${P.ice_goal}</small></b><i style="--p:${(ice * 100).toFixed(1)}%"></i></span>
+      <button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog">${ic("todo", 14)}<span>Log ${logEntries.length ? `<small>${logEntries.length}</small>` : ""}</span></button>`;
+  }
+  let logEntries = [];
+  function toggleLog(force) { const el = q("#cbMlog"); el.hidden = force != null ? !force : !el.hidden; paintLog(); if (st) paintProg(st); }
+  function paintLog() {
+    const el = q("#cbMlog"); if (!el || el.hidden) return;
+    el.innerHTML = `<header><b>Mission log</b><button type="button" class="cb-mlog-x" aria-label="Close the mission log">${ic("close", 14)}</button></header>
+      <ol>${logEntries.slice().reverse().map(e => `<li class="is-${esc(e.kind)}"><span class="ml-d">Day ${e.day}</span><b>${esc(e.title)}</b><span>${esc(e.text)}</span></li>`).join("") || "<li>Nothing yet.</li>"}</ol>`;
+    el.querySelector(".cb-mlog-x").onclick = () => toggleLog(false);
+  }
+  let momentT = null;
+  /** A story beat's moment in the window: the title over the glass, and the sky's mood (storm glow, dusk, Earthrise). */
+  function moment(b) {
+    const el = q("#cbMoment"); if (!el) return;
+    clearTimeout(momentT);
+    if (!b) { el.hidden = true; return; }
+    glassEl.dataset.moment = b.visual || "";
+    el.className = "cb-moment is-" + (b.visual || "site");
+    el.innerHTML = `<small>Day ${Math.floor((b.t_h || 0) / 24) + 1}</small><b>${esc(b.title)}</b>${b.objective ? `<span>${esc(b.objective)}</span>` : ""}`;
+    el.hidden = false;
+    momentT = setTimeout(() => { el.hidden = true; delete glassEl.dataset.moment; }, 5200);
+  }
+  let cardKey = "";
+  /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
+  function card(c, { ack = null, cadet = false } = {}) {
+    const el = q("#cbNow"); if (!el) return;
+    el.hidden = !c; if (!c) { cardKey = ""; return; }
+    el.className = `cb-now is-${c.level || "info"}${c.progress ? " is-task" : ""}${cadet ? " is-cadet" : ""}${c.choice ? " is-choice" : ""}`;
+    q("#cbNowTitle").textContent = c.progress ? c.title : "";
+    q("#cbNowT").textContent = c.text;
+    const left = c.left_h != null ? (c.left_h >= 1 ? `${Math.round(c.left_h)} h left` : `${Math.max(1, Math.round(c.left_h * 60))} min left`) : "";
+    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), left, ack, (c.readouts || []).map(r => r.v), c.progress]);
+    if (key === cardKey) return; cardKey = key;
+    const steps = c.progress ? `<span class="cb-now-steps" aria-label="Step ${Math.min(c.progress.done + 1, c.progress.total)} of ${c.progress.total}">${Array.from({ length: c.progress.total }, (_, i) => `<i class="${i < c.progress.done ? "is-done" : ""}"></i>`).join("")}<em>${c.progress.done} of ${c.progress.total}</em></span>` : "";
+    const lesson = c.lesson && c.lesson.n ? `<span class="cb-now-lesson" title="${esc(c.lesson.title || "")}">${esc((story.NOW.lessonHelps || (n => `Lesson ${n}`))(c.lesson.n))}</span>` : "";
+    const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em> ${esc(r.v)}</span>`).join("");
+    const btns = (c.buttons || []).map((b, i) => `<button type="button" class="cb-now-b${i ? "" : " is-hot"}" data-b="${i}" ${i === 0 ? 'data-intent="yes"' : ""}>${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</button>`).join("");
+    q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
+      <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}${esc(left)}</span>` : ""}${lesson}</div>
+      ${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
+      ${btns ? `<div class="cb-now-btns" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}`;
+    q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));
+  }
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
     openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
@@ -445,7 +536,8 @@ export function createCabin(root, o = {}) {
       const [k, v] = String(target).split(":");
       const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
         goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
-        night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]' }[k];
+        night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]',
+        play: "#cbPlay", skip: "#cbSkip", warp: ".cb-warps", task: ".cb-now-btns" }[k];
       const nodes = sel ? [...root.querySelectorAll(sel)] : [];
       if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
       nodes.forEach(n => n.classList.add("is-point"));
@@ -458,12 +550,14 @@ export function createCabin(root, o = {}) {
       const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", ids.length > 0);
       root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", ids.includes(n.dataset.panel)));
     },
-    /** The "what now" strip on the window: {text, level} or null. */
-    objective(o) {
-      const el = q("#cbNow"); if (!el) return;
-      el.hidden = !o; if (!o) return;
-      el.className = "cb-now is-" + (o.level || "info"); q("#cbNowT").textContent = o.text;
-    },
+    /** The "what now" strip on the window: {text, level} or null (the full task card: card()). */
+    objective(o) { card(o); },
+    card: (c, opts) => card(c, opts),
+    clock: c => paintTime(c),
+    /** The window's frame between whole hours (the live clock's `live` telemetry): the clock reads smoothly. */
+    frame: f => { if (st && f && f.mission_time_h != null) paintClock(st, f.mission_time_h); },
+    moment: b => moment(b),
+    missionLog: entries => { logEntries = entries || []; paintLog(); },
     /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
     offer(panelId, actions) {
       root.querySelectorAll(".cb-offer").forEach(n => n.remove());

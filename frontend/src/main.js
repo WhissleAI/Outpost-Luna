@@ -111,6 +111,7 @@ async function boot() {
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),
+      live: () => useSession(),   // the session Director speaks story beats; without it the cabin does
     },
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
@@ -497,7 +498,7 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
-  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe });   // what tests read (tools/*.py)
+  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe, missionUI });   // what tests read (tools/*.py)
 
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";

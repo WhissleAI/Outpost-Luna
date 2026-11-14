@@ -9,8 +9,17 @@ import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
 import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
-import { nowObjective, nowSpoken, debriefStory } from "./objective.js";
+import { nowCard, nowSpoken, nudgeLine, debriefStory } from "./objective.js";
 import { createTour, tourDone } from "./tour.js";
+import { createMissionClock } from "./clock.js";
+
+/** Story beats CAPCOM says from the client when no session Director is connected (the session says them otherwise). */
+const SPOKEN_BEATS = new Set(["settle", "comm_gap", "first_dark", "ice_return", "final_downlink"]);
+/** Events that end a time warp (like a console game: something happened, back to 1x). */
+const WARP_STOPS = new Set(["solar_storm", "storm_warning", "storm_end", "sunset", "sunset_soon", "sunrise", "comm_open", "comm_closed",
+  "low_power", "rover_back", "failure", "shelter_limit", "beat"]);
+/** A story beat's window moment: the view that shows it best, for a few seconds (only from the seat's site view). */
+const MOMENT_VIEW = { earthrise: "earth", rover_lights: "rover", earthset: "earth" };
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
   ["rover", "Rover"], ["comms", "Comms"], ["heaters", "Heaters"]];
@@ -137,7 +146,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const hideCabin = () => {
     dockOut();
     cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false);
-    clearTimeout(surfT); if (tv) tv.hide(); curView = null;
+    clearTimeout(surfT); if (tv) tv.hide(); curView = null; mclock.detach(); nudge.stop();
     if (cockpit && cockpit.dispose) { cockpit.dispose(); cockpit = null; }   // stop the 3D cabin's render loop
   };
   /** The window: ORBIT is the NASA globe (LROC colour); SITE / ROVER / EARTH are the LOLA terrain views. Going down
@@ -310,6 +319,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (!alive(g)) return;   // left Mission while it started (even if the kid is back on a new screen generation)
     if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
     state = st; prev = null; logHistory = []; reminded.clear(); seen.clear();
+    mclock.detach(); mclock = newClock(); lastTask = st.task ? st.task.id : null; lastAck = st.ack ? st.ack.n : 0; beatsSeen = new Set((st.story && st.story.reached) || []);
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
@@ -324,10 +334,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const hello = CAPCOM.missionStart(callSign.spoken(), site.name);
     if (touring) tour.start(level, { lead: hello });         // first mission: CAPCOM shows the cabin first
     else {
-      const ob = nowObjective(state);
+      const ob = nowCard(state, mclock.state);
       if (ob) capcom({ say: ob.text });                       // the objective on the strip too
       Promise.resolve(say(ob ? [hello, ob.text] : hello)).catch(() => {});
-      if (first) nudge.arm();
+      nudge.arm();
     }
     if (first) markFirstDone();
     briefSpoken = false;
@@ -337,38 +347,152 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const firstKey = () => "outpost-first-mission:" + (callSign.get() || "cadet");
   const firstDone = () => { try { return localStorage.getItem(firstKey()) === "1"; } catch (e) { return false; } };
   const markFirstDone = () => { try { localStorage.setItem(firstKey(), "1"); } catch (e) { /* private mode */ } };
-  const nudge = { t: null, left: 0,
-    arm() { this.left = 2; this.wait(); },
-    wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => { if (screen !== "hud" || !state) return; this.left--; say(CAPCOM.firstShift, null, { priority: 4 }); this.wait(); }, 20000); },
-    heard() { if (this.left > 0) this.wait(); },   // the kid spoke: the silence starts again
+  // No dead air (docs/GAMEPLAY.md §4): ~20 s with nothing done while a job waits -> CAPCOM names the job, at most
+  // twice per job. Any order, tap, clock control or word from the kid restarts the silence.
+  const NUDGE_MS = 20000;
+  const nudge = { t: null, left: 0, key: "",
+    arm(key = "") { this.key = key; this.left = 2; this.wait(); },
+    wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => {
+      if (screen !== "hud" || !state || tour.active || pending) { this.wait(); return; }
+      const c = nowCard(state, mclock.state); if (!c || !(c.buttons || []).length || c.key === "steady") return;
+      this.left--; const line = nudgeLine(state, mclock.state); if (line) { radio("capcom", line); say(line, null, { priority: 4 }); }
+      this.wait(); }, NUDGE_MS); },
+    heard() { if (this.left > 0) this.wait(); },   // the kid spoke or acted: the silence starts again
     stop() { clearTimeout(this.t); this.left = 0; } };
+
+  // ---------- the live mission clock (mission/clock.js) ----------
+  let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = false;
+  /** Why time must wait right now (docs/GAMEPLAY.md §2), or null. */
+  function held() {
+    if (screen !== "hud" || !state) return "away";
+    if (state.over) return "over";
+    if (tour.active) return "tour";
+    if (pending) return "confirm";
+    if (state.task && state.task.decision) return "choice";
+    const cardEl = document.getElementById("card");
+    if (decisionAt && Date.now() - decisionAt < 30000 && cardEl && !cardEl.hidden && cardEl.querySelector("button:not([disabled]).pill")) return "decision";
+    if (document.querySelector(".cb-offer")) return "decision";
+    if (document.hidden) return "hidden";
+    return null;
+  }
+  // dev-only: tools/play_mission.py may run the clock faster (window.__hourMs); the shipped app always uses HOUR_MS
+  const hourMs = () => (import.meta.env && import.meta.env.DEV && +window.__hourMs) || 0;
+  const newClock = () => createMissionClock({
+    post: dt => stepClock(dt), held, hourMs,
+    onChange: c => { if (cockpit && cockpit.clock) cockpit.clock(c); if (c.running || c.held) renderCard(); },
+  });
+  let mclock = newClock();
+  async function stepClock(dt) {
+    if (!state || !client || screen !== "hud" || !client.step) return;
+    const g = gen, id = state.id;
+    stepping = true;
+    let r; try { r = await client.step(id, dt); } finally { stepping = false; }
+    if (!alive(g) || !state || state.id !== id) return;
+    applyLive(r);
+  }
+  /** A clock step, a skip or an end-shift came back: the new state, its events, the frame between whole hours. */
+  function applyLive(r) {
+    if (!r || !r.state) return;
+    prev = state; applyState(r.state, true);
+    const evs = r.events || [];
+    if (evs.some(e => WARP_STOPS.has(e.kind))) mclock.dropWarp();
+    handleEvents(evs); story(evs);
+    if (r.live && cockpit) { cockpit.frame(r.live); cockpit.telemetry(r.live); onTelemetry(r.live); }
+    if (state.over) { mclock.pause(); showDebrief(); }
+  }
+  /** Story beats: the window's moment, the mission log, and (with no session Director) CAPCOM's line. */
+  function story(evs) {
+    evs.filter(e => e.kind === "beat" && !beatsSeen.has(e.beat)).forEach(e => {
+      beatsSeen.add(e.beat);
+      if (cockpit && cockpit.moment) cockpit.moment({ title: e.title, visual: e.visual, objective: e.objective, t_h: e.t_h });
+      const v = MOMENT_VIEW[e.visual];
+      if (v && cockpit && cockpit.view === "site" && !(cockpit.panel)) { cockpit.setView(v); setTimeout(() => { if (cockpit && cockpit.view === v) cockpit.setView("site"); }, 6500); }
+      if (e.beat !== "arrival") radio("capcom", e.text);
+      if (SPOKEN_BEATS.has(e.beat) && !(session && session.live && session.live())) say(e.text, null, { priority: 4 });
+    });
+  }
+  /** The clock's controls (the cabin's buttons, keys, voice, gestures): play / pause, warp, skip. */
+  function clockAction(a, arg) {
+    if (screen !== "hud" || !state || state.over) return false;
+    nudge.heard();
+    if (a === "toggle") { mclock.toggle(); if (mclock.started && !mclock.paused) say(mclock.warp > 1 ? `Clock running, ${mclock.warp} times.` : "Clock running.", null, { priority: 4 }); }
+    else if (a === "play") mclock.play();
+    else if (a === "pause") mclock.pause();
+    else if (a === "warp") { const w = mclock.setWarp(arg); if (!mclock.started || mclock.paused) mclock.play(); say(`Time warp, ${w} times.`, null, { priority: 4 }); }
+    else if (a === "skip") { skipEvent(); return true; }
+    if (cockpit && cockpit.clock) cockpit.clock(mclock.state);
+    renderCard();
+    return true;
+  }
+  /** Skip to next event: the sim runs until something happens (at most a day), then the clock carries on. */
+  async function skipEvent() {
+    if (!state || state.over || stepping) return;
+    nudge.stop();
+    if (cockpit) cockpit.busy(true);
+    const g = gen; let r;
+    try { await mclock.flush(); r = client.skip ? await client.skip(state.id) : await client.advance(state.id, 1); }
+    catch (e) { if (alive(g)) capcom({ say: "CAPCOM can't reach the mission server." }); if (cockpit) cockpit.busy(false); return; }
+    if (cockpit) cockpit.busy(false);
+    if (!alive(g)) return;
+    mclock.reset(); if (!mclock.started) mclock.play();
+    applyLive(r);
+    if (r.say && !state.over) { capcom({ say: r.say }); say(r.say); }
+  }
+  /** A button on the Now card: an order, a task press / choice, or a clock action. */
+  function taskButton(b) {
+    if (!b) return false;
+    nudge.heard();
+    if (b.clock) return clockAction(b.clock === "warp" ? "warp" : b.clock, b.clock === "warp" ? 4 : undefined);
+    if (b.cmd) { run(b.cmd); return true; }
+    if (b.task) { run(b.task); return true; }
+    return false;
+  }
+  /** "Do it" (Y, T, thumbs up, "yes" to the card's offer): the card's first button. */
+  function doTaskStep() { const c = state && nowCard(state, mclock.state); if (!c || !(c.buttons || []).length || c.choice) return false; return taskButton(c.buttons[0]); }
+  /** "left", "the ridge", "shelter now": the card's choice that names it. */
+  function pickChoice(label) {
+    const c = state && nowCard(state, mclock.state); if (!c || !c.choice) return false;
+    const l = String(label || "").toLowerCase(), b = c.buttons.find(x => x.label.toLowerCase() === l) || c.buttons.find(x => l && x.label.toLowerCase().includes(l));
+    return b ? taskButton(b) : false;
+  }
+  /** The Now card + the glow on its control + (Cadet) the one bright panel + the ack and the new-task line. */
+  function renderCard() {
+    if (!cockpit || !state || screen !== "hud") return;
+    const c = tour.active ? null : nowCard(state, mclock.state);
+    if (state.ack && state.ack.n !== lastAck) {   // "Shields up. Good.": shown on the card, said once
+      lastAck = state.ack.n; ackShown = state.ack.text; ackUntil = Date.now() + 4500;
+      if (!tour.active) { radio("capcom", ackShown); say(ackShown, null, { priority: 4 }); }
+    }
+    const ack = Date.now() < ackUntil ? ackShown : null;
+    if (cockpit.card) cockpit.card(c, { ack, cadet: levelNow() === "cadet" }); else if (cockpit.objective) cockpit.objective(c);
+    if (tour.active) return;
+    cockpit.point(c ? c.target : null);
+    cockpit.focus(c && levelNow() === "cadet" ? c.panel : null);
+    const t = state.task;
+    if (t && t.id !== lastTask) {   // a new job: its line once (the sim event's own line covers storms and windows)
+      lastTask = t.id; if (t.say) { radio("capcom", t.say); say(t.say, null, { priority: 4 }); }
+      nudge.arm(t.id);
+    } else if (!t) lastTask = null;
+    if (c && c.key !== lastObj) { lastObj = c.key; if ((c.buttons || []).length) nudge.arm(c.key); }
+  }
 
   // ---------- first-mission cabin tour (tour.js) ----------
   const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking(), callsign: () => callSign.get(),
-    onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowObjective(state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
+    onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowCard(state, mclock.state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
   function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(levelNow()); return true; }
   addEventListener("outpost:tour", () => { if (!replayTour()) { try { localStorage.removeItem("outpost-tour-done:" + (callSign.get() || "cadet")); } catch (e) { /* blocked */ } } });
   const levelNow = () => (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
   /** "What do I do?": one spoken line for this screen (the cabin's comes from the objective). */
   function whatNow() {
-    if (screen === "hud") return state ? nowSpoken(state) : null;
+    if (screen === "hud") return state ? nowSpoken(state, mclock.state) : null;
     if (screen === "brief") return HELP.picker;
     if (screen === "debrief") return HELP.debrief;
     return null;
   }
   /** The objective strip, the glow on its control and (Cadet) the one bright panel. Quiet while the tour runs. */
   let lastObj = "";
-  function paintObjective() {
-    if (!cockpit || !cockpit.objective) return;
-    const ob = nowObjective(state);
-    cockpit.objective(tour.active ? null : ob);
-    if (tour.active) return;
-    const key = ob ? ob.key + ":" + ob.target : "";
-    cockpit.point(ob ? ob.target : null);
-    cockpit.focus(ob && levelNow() === "cadet" ? ob.panel : null);
-    lastObj = key;
-  }
+  function paintObjective() { renderCard(); }
 
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
@@ -382,12 +506,16 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       onView: v => windowView(v),
       onEndShift: () => endShift(),
       onDebrief: () => showDebrief(),
+      onClock: a => { const [k, v] = String(a).split(":"); clockAction(k, v); },
+      onTask: b => taskButton(b),
     });
+    mclock.attach(); cockpit.clock(mclock.state);
     dockIn();
     if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
     requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-hole") || cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
+    if (cockpit.missionLog) cockpit.missionLog(state && state.mission_log);
     if (windows && cockpit.setWindows) cockpit.setWindows(windows);
     render();
   }
@@ -395,6 +523,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (screen !== "hud" || !state || !cockpit) return;
     const s = state, e = s.env || {}, rv = s.rover || {};
     cockpit.update(s);
+    if (cockpit.missionLog) cockpit.missionLog(s.mission_log);
     paintObjective();
     (s.alerts || []).forEach(a => { if (CALLBACKS[a]) { seen.add(a); remind(a); } });
     renderBanner();
@@ -438,7 +567,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const actions = confirm ? [
       { label: "Yes", hot: true, once: true, onClick: () => answer(true) },
       { label: "No", once: true, onClick: () => answer(false) }] : [];
-    if (confirm) cadetOffer({}, line || readback, [{ label: "Yes", onClick: () => answer(true) }, { label: "No", onClick: () => answer(false) }]);
+    if (confirm) { decisionAt = Date.now(); cadetOffer({}, line || readback, [{ label: "Yes", onClick: () => answer(true) }, { label: "No", onClick: () => answer(false) }]); }
     card.show({ title: "CAPCOM", eyebrow: eyebrow || [s ? `Day ${s.day} · shift ${s.shift}` : "Mission", client && client.sample ? "Sample data" : ""].filter(Boolean).join(" · "),
       say: line || readback || "", actions });
     if (screen === "hud" && !/^Houston/.test(eyebrow || "")) radio("capcom", line || readback);
@@ -446,8 +575,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
 
   async function run(command, { spoken } = {}) {
     if (!state) return;
-    nudge.stop();
+    nudge.heard(); decisionAt = 0;
     if (command.type === "end_shift") return endShift();
+    if (command.type === "skip") return skipEvent();
     let r;
     const g = gen;
     try { r = await client.command(state.id, command); } catch (e) { if (alive(g)) capcom({ say: "CAPCOM can't reach the mission server." }); return; }
@@ -472,8 +602,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (!alive(g)) { if (r && r.state) { prev = state; state = r.state; } return; }   // QA-20: the shift ended while away
     prev = state; applyState(r.state, true);
     const evs = r.events || [];
+    mclock.reset(); if (!mclock.started) mclock.play();
     capcom({ say: r.say });
-    handleEvents(evs);
+    handleEvents(evs); story(evs);
     if (cockpit) cockpit.busy(false);
     if (state.over) { showDebrief(); return; }
     say(r.say);
@@ -531,6 +662,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tour.active && /^(skip|skip (the )?tour|no)$/.test(w)) { tour.end(false); return true; }
     if (/^(show me around|give me the tour)$/.test(w)) return replayTour();
     if (/^(help|what do i do( now| next)?|what should i do|im lost|i am lost)$/.test(w)) return nav("help");
+    if (/^(skip|jump)( ahead| forward| to (the )?next( event| thing| job)?)$|^fast forward$|^next event$/.test(w)) { radio("kid", text); await skipEvent(); return true; }
+    if (/^(pause|stop|freeze|hold)( the)?( clock| time| game)?$|^pause it$|^time out$/.test(w) && w !== "stop") { radio("kid", text); return clockAction("pause"); }
+    if (/^((start|resume|run|unpause)( the)? (clock|time)|resume|unpause|play)$/.test(w)) { radio("kid", text); return clockAction("play"); }
+    { const m = w.match(/^(time ?warp|warp)( speed)?( (one|two|four|1|2|4))?( x| times)?$/); if (m) { radio("kid", text); return clockAction("warp", { one: 1, two: 2, four: 4 }[m[4]] || (m[4] ? +m[4] : undefined)); } }
+    if (/^(do it|go|ok do it|lets do it)$/.test(w) && doTaskStep()) { radio("kid", text); return true; }
     radio("kid", text);
     if (panelWord(text)) return true;
     const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
@@ -558,10 +694,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // ---------- [session hook] decisions from the session Director (frontend/src/session.js) ----------
   function applyRemote(s) {
     if (!s) return;
-    if (state && s.mission_time_h !== state.mission_time_h) nudge.stop();   // a shift ended through the session Director
+    if (state && s.mission_time_h !== state.mission_time_h) nudge.heard();   // a shift ended through the session Director
     // any order applied through the session Director (loads, shelter, rover, night mode) stops the first-shift nudge
     if (state && (JSON.stringify(s.loads) !== JSON.stringify(state.loads) || s.shelter !== state.shelter || s.power_save !== state.power_save
-      || JSON.stringify(s.rover) !== JSON.stringify(state.rover))) nudge.stop();
+      || JSON.stringify(s.rover) !== JSON.stringify(state.rover))) { nudge.heard(); decisionAt = 0; }
     const st0 = state;
     if (st0 && s.env && s.env.storm && s.env.storm.active && !(st0.env.storm && st0.env.storm.active)) handleEvents([{ kind: "solar_storm" }]);
     (s.alerts || []).forEach(a => { if (a === "low_power" || a === "life_support_low") seen.add(a); });
@@ -586,13 +722,14 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
   function showCard(d, send) {
     const s = state;
+    if ((d.actions || []).length) decisionAt = Date.now();   // an offer is a decision: the clock waits (up to 30 s)
     card.show({ title: d.title || "CAPCOM", asked: d.asked || "", say: d.body || "", arc: d.arc || "",
       eyebrow: [d.hint ? "Heads up" : d.nudge ? "Coach" : "", s ? `Day ${s.day} · shift ${s.shift}` : "Mission"].filter(Boolean).join(" · "),
       actions: (d.actions || []).map(a => ({ label: a.label, hot: true, once: true, onClick: () => send(a.send) })) });
     if ((d.actions || []).length) cadetOffer(d, [d.title, d.body, d.asked].join(" "), d.actions.map(a => ({ label: a.label, onClick: () => send(a.send) })));
   }
   function askConfirm(d, send) {
-    pending = { type: "confirm" };
+    pending = { type: "confirm" }; decisionAt = Date.now();
     card.show({ title: "CAPCOM", say: d.text || "Are you sure?", eyebrow: "Confirm",
       actions: [{ label: "Yes", hot: true, once: true, onClick: () => send(d.yes) }, { label: "No", once: true, onClick: () => send(d.no) }] });
     cadetOffer(d, d.text, [{ label: "Yes", onClick: () => send(d.yes) }, { label: "No", onClick: () => send(d.no) }]);
@@ -754,7 +891,13 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // ---------- hands-free (the session's router decides; these run what it decided) ----------
   function screenFrame() {
     if (screen === "off") return null;
-    if (screen === "hud") return tour.active ? { screen: "cabin", offer: "tour" } : { screen: "cabin" };
+    if (screen === "hud") {
+      if (tour.active) return { screen: "cabin", offer: "tour" };
+      const c = state && !pending ? nowCard(state, mclock.state) : null;
+      // a job on the Now card is an offer: "yes" / "do it" presses its button; a choice's words pick it
+      if (c && (c.buttons || []).length && c.progress) return { screen: "cabin", offer: "task", step_options: c.choice ? c.buttons.map(b => b.label) : [] };
+      return { screen: "cabin" };
+    }
     if (screen === "debrief") return { screen: "debrief", offer: pendingWipe ? "confirm_wipe" : "fly_again" };
     return { screen: "brief", offer: "take_command" };
   }
@@ -765,6 +908,14 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tour.active && ["next", "accept_offer", "yes", "start"].includes(intent)) { tour.next(); return true; }
     if (tour.active && (intent === "skip_tour" || intent === "decline_offer")) { tour.end(false); return true; }
     if (intent === "cabin_tour") return replayTour();
+    if (screen === "hud" && !tour.active) {
+      if (intent === "skip_event") { skipEvent(); return true; }
+      if (intent === "time_pause") return clockAction("pause");
+      if (intent === "time_resume") return clockAction("play");
+      if (intent === "time_warp") return clockAction("warp", arg || undefined);
+      if (intent === "task_choice") return pickChoice(arg);
+      if (["accept_offer", "yes"].includes(intent) && !pending && doTaskStep()) return true;
+    }
     if (intent === "help") { const t = whatNow(); if (!t) return false; if (screen === "hud") radio("capcom", t); say(t); return true; }
     const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_rover: "rover", panel_radiation: "radiation", panel_back: "seat" }[intent];
     if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
@@ -800,6 +951,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       case "view_next": case "view_prev": { const order = ["orbit", "site", "rover", "earth"], i = order.indexOf(cockpit.view);
         cockpit.setView(order[(i + (name === "view_next" ? 1 : -1) + order.length) % order.length]); return true; }
       case "confirm": case "cancel": if (pending) { run({ type: name }); return true; } return false;
+      case "task_step": return doTaskStep();
+      case "time_toggle": return clockAction("toggle");
+      case "time_warp": return clockAction("warp", arg && arg.warp);
+      case "skip_event": skipEvent(); return true;
       default: return nav(name, arg);
     }
   }
@@ -816,6 +971,12 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     yes: () => screen === "brief" ? (start(), true) : screen === "debrief" ? nav("fly_again") : false,
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,
     end_shift: () => screen === "hud" && !(state && state.over) ? (endShift(), true) : false,
+    task_step: () => screen === "hud" ? intent("task_step") === true : false,
+    time_toggle: () => screen === "hud" ? clockAction("toggle") : false,
+    time_warp: a => screen === "hud" ? clockAction("warp", a && a.warp) : false,
+    skip_event: () => screen === "hud" && !(state && state.over) ? (skipEvent(), true) : false,
+    // an open palm (stop) also holds the clock; it never consumes the intent (speech still stops)
+    stop: () => { if (screen === "hud" && mclock.running) clockAction("pause"); return false; },
   };
   // the tour beats every other handler while it runs (a swipe, a thumbs up or "next" never changes the view mid-tour)
   const onTour = { next: () => tour.next(), yes: () => tour.next(), accept_offer: () => tour.next(), skip_tour: () => tour.end(false), decline_offer: () => tour.end(false) };
@@ -841,5 +1002,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     get sample() { return !!(client && client.sample); },
     get pending() { return !!pending; },   // [keys] N is "no" while an order waits for a yes / no
     get highlighted() { return cockpit && cockpit.highlighted || null; },   // [keys] O opens the lit panel
+    /** The live clock and the Now card (tools/*.py read these: what the kid sees, never the sim's hidden schedule). */
+    get clock() { return mclock.state; },
+    get card() { return state && screen === "hud" ? nowCard(state, mclock.state) : null; },
+    clockAction, skipEvent,
   };
 }

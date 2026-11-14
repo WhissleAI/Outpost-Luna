@@ -508,3 +508,96 @@ html[data-motion="reduce"] .is-point{animation:none}
 .m-tour .t-skip{min-height:var(--control-md);padding:0 var(--space-3);border:0;border-radius:var(--radius-md);background:none;color:var(--color-on-space-2);font-size:var(--text-sm)}
 .m-tour .t-skip:hover{color:var(--color-on-space)}
 .m-tour .t-hint{margin:var(--space-2) 0 0;font-size:var(--text-xs);color:var(--color-on-space-2)}
+
+/* ---------- mission gameplay (docs/GAMEPLAY.md): the live clock, the Now task card, progress, story moments, the
+   mission log. Tokens only; every state also says itself in words (never colour alone). ---------- */
+.cb-time{pointer-events:auto;display:flex;align-items:center;gap:4px;padding:3px;border-radius:var(--radius-md);background:var(--color-glass);
+  border:1px solid var(--cb-line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);margin-right:auto;margin-left:var(--space-3)}
+.cb-tbtn{display:inline-flex;align-items:center;gap:4px;min-height:var(--control-sm);min-width:var(--control-sm);padding:0 var(--space-2);border:0;
+  border-radius:calc(var(--radius-md) - 3px);background:none;color:var(--color-on-space);font-size:var(--text-sm);font-weight:var(--weight-semibold);cursor:pointer}
+.cb-tbtn:hover{background:color-mix(in srgb,var(--color-on-space) 12%,transparent)}
+.cb-tbtn:disabled{opacity:.45;cursor:default}
+.cb-play.is-on{color:var(--color-phosphor)}
+.cb-time[data-state="paused"] .cb-play{background:var(--color-accent-strong);color:#fff}
+.cb-warps{display:inline-flex;gap:1px;padding:0 2px;border-left:1px solid var(--cb-line);border-right:1px solid var(--cb-line)}
+.cb-warp{min-width:36px;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--cb-text-2)}
+.cb-warp[aria-pressed="true"]{background:var(--color-on-space);color:var(--color-space)}
+.cb-held{min-width:3.5em;font-family:var(--font-mono);font-size:var(--text-xs);color:var(--cb-text-2);padding:0 var(--space-1);white-space:nowrap}
+.cb-time[data-state="held"] .cb-held{color:var(--color-lamp-caution)}
+.cb-time[data-state="run"] .cb-held{color:var(--color-phosphor)}
+
+/* progress toward the goals, always on: days survived, science sent home, ice; and the mission log button */
+.cb-prog{display:flex;gap:var(--space-2);align-items:center;pointer-events:auto;font-family:var(--font-mono);font-size:var(--text-xs)}
+.cb-prog[hidden]{display:none}
+.cb-prog .pg{display:grid;grid-template-columns:auto auto;column-gap:4px;align-items:baseline;padding:3px var(--space-2);border-radius:var(--radius-sm);
+  background:var(--color-glass);border:1px solid var(--cb-line);color:var(--color-on-space)}
+.cb-prog .pg em{font-style:normal;color:var(--cb-text-2)} .cb-prog .pg small{color:var(--cb-text-2)}
+.cb-prog .pg i{grid-column:1/-1;height:3px;border-radius:2px;background:var(--cb-line);position:relative;overflow:hidden;margin-top:2px}
+.cb-prog .pg i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--color-phosphor);transition:width var(--dur-slow) var(--ease-out)}
+.cb-prog .pg.is-met{border-color:var(--color-phosphor)}
+.cb-logbtn{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 var(--space-2);border-radius:var(--radius-sm);border:1px solid var(--cb-line);
+  background:var(--color-glass);color:var(--color-on-space);font-size:var(--text-xs);font-weight:var(--weight-semibold);cursor:pointer}
+.cb-logbtn small{font-family:var(--font-mono);color:var(--color-phosphor)}
+.cb-glass>.cb-prog,.cb-glass>.cb-mlog,.cb-glass>.cb-moment{position:absolute;z-index:4}
+.cb-glass>.cb-prog{right:var(--space-4);top:calc(var(--space-4) + 48px)}
+.cb-hole>.cb-prog{right:var(--inset);left:auto;top:calc(var(--inset) + 52px)}
+.cb-hole.has-alert>.cb-prog{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2) + 52px)}
+.cb-mlog{right:var(--inset,16px);top:calc(var(--inset,16px) + 96px);width:min(340px,80%);max-height:46%;overflow:auto;padding:var(--space-2) var(--space-3);
+  border-radius:var(--radius-lg);background:var(--color-glass);border:1px solid var(--cb-line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  color:var(--color-on-space);font-size:var(--text-sm);z-index:6}
+.cb-hole>.cb-mlog{left:auto}
+.cb-mlog[hidden]{display:none}
+.cb-mlog header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-1)}
+.cb-mlog-x{border:0;background:none;color:var(--color-on-space);min-width:30px;min-height:30px;cursor:pointer}
+.cb-mlog ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.cb-mlog li{display:grid;grid-template-columns:auto 1fr;column-gap:var(--space-2)}
+.cb-mlog li span:last-child{grid-column:2;color:var(--cb-text-2);font-size:var(--text-xs)}
+.cb-mlog .ml-d{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--cb-text-2);grid-row:span 2}
+.cb-mlog li.is-beat b{color:var(--color-phosphor)} .cb-mlog li.is-good_call b{color:var(--color-lamp-caution)} .cb-mlog li.is-missed b{color:var(--cb-text-2)}
+
+/* the Now card: the task, its step, progress, countdown, the button that does it (big for Cadet) */
+.cb-now.is-task,.cb-now:has(.cb-now-btns){flex-direction:column;align-items:stretch;border-radius:var(--radius-lg);padding:var(--space-2) var(--space-3);
+  white-space:normal;pointer-events:auto;min-width:min(320px,90%);gap:6px}
+.cb-hole>.cb-now{white-space:normal}
+.cb-now-row{display:flex;align-items:baseline;gap:var(--space-2);margin:0;flex-wrap:wrap}
+.cb-now-title{font-weight:var(--weight-semibold);color:var(--color-on-space)} .cb-now-title:empty{display:none}
+.cb-now-title:not(:empty)::after{content:" ·";color:var(--cb-text-2)}
+.cb-now-more:empty{display:none}
+.cb-now-more{display:flex;flex-direction:column;gap:6px}
+.cb-now-meta{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;font-size:var(--text-xs);color:var(--cb-text-2)}
+.cb-now-meta:empty{display:none}
+.cb-now-steps{display:inline-flex;align-items:center;gap:3px}
+.cb-now-steps i{width:14px;height:4px;border-radius:2px;background:var(--cb-line)} .cb-now-steps i.is-done{background:var(--color-phosphor)}
+.cb-now-steps em{font-style:normal;margin-left:4px;font-family:var(--font-mono)}
+.cb-now-left{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono)} .cb-now-left.is-low{color:var(--color-lamp-caution);font-weight:var(--weight-semibold)}
+.cb-now-lesson{padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--cb-line);color:var(--color-on-space)}
+.cb-now-hint{margin:0;font-size:var(--text-xs);color:var(--color-phosphor)}
+.cb-now-ros{display:flex;gap:var(--space-3);flex-wrap:wrap;font-family:var(--font-mono);font-size:var(--text-xs)} .cb-now-ro em{font-style:normal;color:var(--cb-text-2)}
+.cb-now-ack{margin:0;display:inline-flex;align-items:center;gap:4px;color:var(--color-phosphor);font-weight:var(--weight-semibold);animation:cbAck .4s var(--ease-out)}
+@keyframes cbAck{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.cb-now-btns{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.cb-now-b{flex:1 1 auto;min-height:var(--control-md);padding:4px var(--space-3);border-radius:var(--radius-md);border:1px solid var(--cb-line);background:color-mix(in srgb,var(--color-on-space) 8%,transparent);
+  color:var(--color-on-space);font-size:var(--text-sm);font-weight:var(--weight-semibold);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2}
+.cb-now-b small{font-weight:var(--weight-regular);font-size:var(--text-xs);color:var(--cb-text-2)}
+.cb-now-b.is-hot{background:var(--color-accent-strong);border-color:var(--color-accent-strong);color:#fff} .cb-now-b.is-hot small{color:rgba(255,255,255,.82)}
+.cb-now.is-choice .cb-now-b.is-hot{background:color-mix(in srgb,var(--color-on-space) 8%,transparent);border-color:var(--cb-line);color:var(--color-on-space)}
+.cb-now.is-choice .cb-now-b.is-hot small{color:var(--cb-text-2)}
+.cb-now.is-cadet .cb-now-b{min-height:var(--control-lg);font-size:var(--text-md)}
+.cb-now-b:focus-visible{outline:3px solid var(--color-accent-strong);outline-offset:2px}
+
+/* a story beat's moment: its title over the glass for a few seconds, and the sky's mood */
+.cb-moment{left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;pointer-events:none!important;display:flex;flex-direction:column;gap:2px;
+  text-shadow:0 2px 12px var(--color-space);animation:cbMoment 5.2s var(--ease-out) both;z-index:5}
+.cb-moment[hidden]{display:none}
+.cb-moment small{font-family:var(--font-mono);font-size:var(--text-xs);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--cb-text-2)}
+.cb-moment b{font-size:var(--text-2xl);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);color:var(--color-on-space)}
+.cb-moment span{font-size:var(--text-md);color:var(--color-phosphor)}
+.cb-moment.is-storm_glow b{color:var(--color-lamp-caution)}
+@keyframes cbMoment{0%{opacity:0;transform:translate(-50%,-40%)}10%,80%{opacity:1;transform:translate(-50%,-50%)}100%{opacity:0;transform:translate(-50%,-55%)}}
+.cb-glass[data-moment="storm_glow"] .cb-tint{opacity:1;background:radial-gradient(90% 120% at 50% 0%,color-mix(in srgb,var(--color-lamp-caution) 30%,transparent),transparent 70%)}
+.cb-glass[data-moment="sunset"] .cb-tint{opacity:1;background:linear-gradient(to top,color-mix(in srgb,#ff9a4d 26%,transparent),transparent 60%)}
+.cb-glass[data-moment="earthrise"] .cb-tint{opacity:1;background:radial-gradient(60% 80% at 50% 100%,color-mix(in srgb,#5aa9ff 26%,transparent),transparent 70%)}
+.cb-glass[data-moment="rover_lights"] .cb-tint{opacity:1;background:radial-gradient(40% 50% at 50% 70%,color-mix(in srgb,#ffd7a0 22%,transparent),transparent 70%)}
+html[data-motion="reduce"] .cb-moment,html[data-motion="reduce"] .cb-now-ack{animation:none}
+@media (prefers-reduced-motion:reduce){.cb-moment,.cb-now-ack{animation:none}}
+@media (max-width:900px){.cb-held{display:none}.cb-tbtn span{display:none}.cb-prog .pg em{display:none}}

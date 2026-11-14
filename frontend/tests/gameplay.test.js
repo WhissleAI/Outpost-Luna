@@ -1,0 +1,99 @@
+// The live mission clock (mission/clock.js) and the Now task card (mission/objective.js nowCard): docs/GAMEPLAY.md.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { createMissionClock, HOUR_MS, WARPS } from "../src/mission/clock.js";
+import { nowCard, nudgeLine, leftLabel } from "../src/mission/objective.js";
+import { keyAction } from "../src/input/keys.js";
+import { readPad, createPadReader, BTN } from "../src/input/gamepad.js";
+import { ROUTER_INTENTS } from "../src/input/defaults.js";
+import * as S from "../src/story.js";
+
+const words = s => String(s).trim().split(/\s+/).filter(Boolean).length;
+
+/** A fake timer: tick(ms) moves the clock and fires the interval. */
+function fake() {
+  let t = 0, fn = null;
+  return { now: () => t, timers: { setInterval: f => { fn = f; return 1; }, clearInterval: () => { fn = null; } },
+    async run(ms, step = 250) { for (let k = 0; k < ms; k += step) { t += step; if (fn) fn(); await Promise.resolve(); await Promise.resolve(); } } };
+}
+
+test("clock: waits for play, runs about one sim hour per HOUR_MS at 1x, and posts about once a second", async () => {
+  const f = fake(), posts = [];
+  const c = createMissionClock({ post: async dt => { posts.push(dt); }, now: f.now, timers: f.timers });
+  c.attach();
+  await f.run(5000);
+  assert.equal(posts.length, 0, "no time before Play");
+  c.play();
+  await f.run(HOUR_MS);
+  const sum = posts.reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(sum - 1) < 0.1, `one hour at 1x, got ${sum}`);
+  assert.ok(posts.length >= 8 && posts.length <= 14, `about one post a second, got ${posts.length}`);
+  assert.ok(HOUR_MS >= 8000 && HOUR_MS <= 15000, "8-15 s per sim hour (the brief)");
+  assert.ok(6 * HOUR_MS / 1000 >= 60 && 6 * HOUR_MS / 1000 <= 120, "a shift is 1-2 min of clock (2-4 min with its tasks)");
+});
+
+test("clock: warp 1x / 2x / 4x, drop to 1x on an event, pause, and hold during a decision or when hidden", async () => {
+  const f = fake(), posts = []; let why = null;
+  const c = createMissionClock({ post: async dt => { posts.push(dt); }, held: () => why, now: f.now, timers: f.timers });
+  c.attach(); c.play();
+  assert.deepEqual(WARPS, [1, 2, 4]);
+  assert.equal(c.setWarp(4), 4);
+  await f.run(HOUR_MS);
+  assert.ok(Math.abs(posts.reduce((a, b) => a + b, 0) - 4) < 0.3, "4 hours at 4x");
+  c.dropWarp(); assert.equal(c.warp, 1);
+  assert.equal(c.setWarp(), 2, "no argument: the next speed"); c.setWarp(1);
+  posts.length = 0; why = "decision";
+  await f.run(5000);
+  assert.equal(posts.length, 0, "a decision holds time"); assert.equal(c.held, "decision"); assert.equal(c.running, false);
+  why = "hidden"; await f.run(3000); assert.equal(posts.length, 0, "a hidden app holds time");
+  why = null; await f.run(3000); assert.ok(posts.length > 0, "time runs again by itself");
+  c.pause(); posts.length = 0; await f.run(3000); assert.equal(posts.length, 0, "the kid's pause");
+  assert.equal(c.toggle(), true); assert.equal(c.running, true);
+});
+
+const st = over => ({ mission_time_h: 10, over: false, shelter: false, power_save: false, loads: { shields: 30 }, acted: { allocate: 1 },
+  resources: { power_pct: 80, life_support_pct: 80, dose_msv: 1, dose_limit_msv: 50 }, rover: { busy: false }, alerts: [],
+  env: { in_sun: true, next_sun_change_h: 80, storm: { active: false }, warning: null }, objectives: { ice: { goal: 1, met: true } }, ...over });
+
+test("task card: the step, its progress, the countdown, the lesson and the button that does it", () => {
+  const task = { id: "storm_prep-3", kind: "storm_prep", title: "Storm prep", panel: "radiation", level: "caution",
+    lesson: { id: "radiation", n: 5, title: "Radiation and storms" }, done_count: 1, total: 3, time_left_h: 5.5, readouts: [{ k: "Battery", v: "70%" }],
+    steps: [], step: { id: "shields", kind: "order", label: "Shields to 40", ready: true, target: "shields",
+      cmd: { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 } } } };
+  const c = nowCard(st({ task }));
+  assert.equal(c.title, "Storm prep"); assert.equal(c.text, "Shields to 40"); assert.equal(c.target, "shields"); assert.equal(c.panel, "radiation");
+  assert.deepEqual(c.progress, { done: 1, total: 3 }); assert.equal(c.left_h, 5.5); assert.equal(c.lesson.n, 5);
+  assert.deepEqual(c.buttons[0].cmd, task.step.cmd); assert.equal(c.choice, false);
+  assert.equal(leftLabel(5.5), "6 h"); assert.equal(leftLabel(0.5), "30 min");
+  assert.ok(words(nudgeLine(st({ task }))) <= 20);
+  // a choice: one button per option; the clock holds for it (state.task.decision from the sim)
+  const ch = { ...task, kind: "ice_run", step: { id: "route", kind: "choice", label: "Pick a route on the slope map", ready: true, target: "task",
+    options: [{ id: "ridge", label: "Ridge route", hint: "Flat. 2 h longer" }, { id: "slope", label: "Crater slope" }], hint: "LOLA slope map" } };
+  const cc = nowCard(st({ task: ch }));
+  assert.equal(cc.choice, true); assert.equal(cc.buttons.length, 2); assert.deepEqual(cc.buttons[1].task, { type: "task", task: "storm_prep-3", step: "route", choice: "slope" });
+  // waiting (the rover is still driving): the job is the clock, Skip ahead glows
+  const w = nowCard(st({ task: { ...task, step: { id: "back", kind: "wait", label: "Rover back with ice", ready: false } }, rover: { busy: true, eta_h: 7 } }));
+  assert.equal(w.target, "skip"); assert.match(w.text, /7 hours/); assert.equal(w.buttons[0].clock, "skip");
+});
+
+test("task card: always reflects reality, and says so when nothing is urgent", () => {
+  const steady = nowCard(st(), { started: true, running: true, warp: 1 });
+  assert.equal(steady.key, "steady"); assert.equal(steady.text, S.NOW.steady); assert.equal(steady.target, "warp");
+  assert.deepEqual(steady.buttons.map(b => b.clock), ["warp", "skip"]);
+  const paused = nowCard(st(), { started: true, running: false, paused: true, warp: 1 });
+  assert.equal(paused.key, "paused"); assert.equal(paused.target, "play");
+  assert.equal(nowCard(st({ over: true })), null);
+  for (const v of Object.values(S.NOW)) { const t = typeof v === "function" ? v(12, "Storm prep") : v; assert.ok(words(t) <= 12, t); }
+});
+
+test("inputs: keys, controller and the router's intents all reach the clock and the card", () => {
+  const k = key => keyAction({ key }, {});
+  assert.equal(k("t").intent, "task_step"); assert.equal(k("k").intent, "time_toggle"); assert.equal(k("w").intent, "time_warp"); assert.equal(k("e").intent, "skip_event");
+  const pad = pressed => ({ buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: pressed.includes(i) ? 1 : 0 })), axes: [0, 0, 0, 0] });
+  const r = createPadReader();
+  r.step(readPad(pad([])), 0);
+  assert.deepEqual(r.step(readPad(pad([BTN.rt])), 16).map(a => a.intent), ["skip_event"]);
+  assert.deepEqual(r.step(readPad(pad([BTN.back])), 32).map(a => a.intent), ["time_toggle"]);
+  assert.deepEqual(r.step(readPad(pad([BTN.lt])), 48).map(a => a.intent), ["time_warp"]);
+  for (const n of ["skip_event", "time_pause", "time_resume", "time_warp", "task_choice"]) assert.ok(ROUTER_INTENTS.has(n), n);
+});

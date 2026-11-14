@@ -492,7 +492,7 @@ class Session:
     async def _note(self, rt: dict, text: str):
         rec = {"text": text, **rt, "screen": self.screen_name(), "ts": self.clock()}
         self.routes.append(rec)
-        del self.routes[:-200]
+        del self.routes[:-400]
         self.history.append({"route": rt["outcome"], "reason": rt.get("reason"), "text": text, "ts": self.clock()})
         if self.screen:   # a hands-free client: tell it what we heard (the mic chip shows "didn't catch that")
             await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"),

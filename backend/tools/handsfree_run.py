@@ -1,7 +1,9 @@
 """A scripted hands-free run with no clicks (docs/HANDSFREE.md): a simulated client that only talks.
 
     call sign -> start -> lesson 1 by voice -> patch -> next -> ... -> check ride -> yes (mission) -> pick Malapert ->
-    take command -> orders -> end shift x N -> debrief -> fly again
+    take command -> tour -> first job ("shields to 40") -> "start the clock" -> the live clock runs (POST /step) and the
+    kid does the Now card's jobs by voice ("yes" / "do it", a choice by its name) -> "skip to next event" x N ->
+    "time warp four" -> "pause the clock" -> "end shift" (early) -> debrief -> fly again
 
 Every kid turn goes in exactly as the ear posts it (turn start / arc / turn end on the session), and room noise is mixed
 in at every screen: "Oh.", "Mm-mm.", "um", an echo of the last line we spoke, two adults chatting. The simulated client
@@ -100,6 +102,11 @@ class Client:
         self.tour: list[str] = []            # cabin tour beats still to show (first mission: mission/tour.js)
         self.toured = 0                      # beats the kid moved through by voice
         self.replies_to_noise = 0
+        self.clock = {"started": False, "paused": True, "warp": 1}   # the live mission clock (mission/clock.js)
+        self.task: dict | None = None        # the Now card's job (State.task), as the client shows it
+        self.task_steps_by_voice = 0         # job steps done by "yes" / "do it" / a choice's name
+        self.skips = 0                       # "skip to next event" by voice that moved the clock
+        self.clock_cmds: list[str] = []      # time_pause / time_resume / time_warp heard
         self.bad_unknowns = 0                # "I don't know" spoken for anything but a real question (once)
         self.n_say = 0
 
@@ -112,9 +119,12 @@ class Client:
 
     def frame(self) -> dict:
         if self.mode == "mission":
+            t, st = self.task, (self.task or {}).get("step") or {}
+            job = {"offer": "task", "step_options": [o["label"] for o in st.get("options") or []]} \
+                if t and st.get("ready") and self.mscreen == "cabin" else {}
             return {"screen": {"brief": "brief", "cabin": "cabin", "debrief": "debrief"}[self.mscreen],
                     **({"offer": "fly_again"} if self.mscreen == "debrief" else {"offer": "take_command"}
-                       if self.mscreen == "brief" else {"offer": "tour"} if self.tour else {})}
+                       if self.mscreen == "brief" else {"offer": "tour"} if self.tour else job)}
         if self.view == "callsign":
             return {"screen": "callsign"}
         if self.view in ("map", "patch"):
@@ -159,8 +169,10 @@ class Client:
             elif t == "say":
                 acted = True
                 await self.speak(d.get("text") or "", d.get("id"))
-            elif t == "hud" and d.get("state", {}).get("over"):
-                self.mscreen = "debrief"
+            elif t == "hud":
+                self.task = (d.get("state") or {}).get("task")
+                if d.get("state", {}).get("over"):
+                    self.mscreen = "debrief"
         await self.push()
         return acted
 
@@ -197,14 +209,34 @@ class Client:
             self.tour.pop(0)
             self.toured += 1
             await self.push()
-            await self.speak(self.tour[0] if self.tour else "Set power, then End shift.")
+            await self.speak(self.tour[0] if self.tour else "Set power: raise the shields.")
             return
         if self.mscreen == "cabin" and self.tour and intent in ("skip_tour", "decline_offer"):
             self.tour = []
             await self.push()
             return
         if self.mscreen == "cabin" and (intent == "help" or (intent == "a11y" and "what do i do" in text.lower())):
-            await self.speak("Here's your next job. Set power, then End shift.")   # mission/objective.js nowSpoken
+            await self.speak("Here's your next job. " + self.job_line())   # mission/objective.js nowSpoken
+            return
+        # the live clock and the Now card (mission/ui.js nav): what the client does with these decisions
+        if self.mscreen == "cabin" and intent == "skip_event":
+            before = (await self.state())["mission_time_h"]
+            r = await self.t.post(f"/api/mission/{self.mid}/skip", {})
+            self.task = r["state"].get("task")
+            if r["state"]["mission_time_h"] > before:
+                self.skips += 1
+            await self.speak(r.get("say") or "")
+            return
+        if self.mscreen == "cabin" and intent in ("time_pause", "time_resume", "time_warp"):
+            self.clock_cmds.append(intent)
+            if intent == "time_warp":
+                self.clock["warp"] = arg or 2
+            self.clock["started"] = self.clock["started"] or intent != "time_pause"
+            self.clock["paused"] = intent == "time_pause"
+            await self.speak("Clock paused." if intent == "time_pause" else f"Clock running, {self.clock['warp']} times.")
+            return
+        if self.mscreen == "cabin" and (intent == "task_choice" or (intent == "accept_offer" and arg == "task")):
+            await self.do_job(arg if intent == "task_choice" else None)
             return
         if intent == "pick_site" and self.mscreen in ("brief", "debrief"):
             self.site, self.mscreen = arg, "brief"
@@ -215,6 +247,47 @@ class Client:
             await self.start_mission()
         elif self.mscreen == "cabin" and intent in ("debrief", "fly_again"):
             await self.debrief()
+
+    # -- the mission's live clock and its jobs (what mission/ui.js does) --
+    async def state(self) -> dict:
+        s = await self.t.get(f"/api/mission/{self.mid}")
+        self.task = s.get("task")
+        return s
+
+    def job_line(self) -> str:
+        st = (self.task or {}).get("step") or {}
+        return st.get("label") or "All steady. Time warp?"
+
+    async def run_clock(self, hours: float):
+        """The clock runs while the kid is quiet (the client posts the hours that passed)."""
+        if not self.mid or not self.clock["started"] or self.clock["paused"] or self.mscreen != "cabin":
+            return
+        r = await self.t.post(f"/api/mission/{self.mid}/step", {"dt_h": hours * self.clock["warp"]})
+        self.task = r["state"].get("task")
+        if r["state"].get("over"):
+            self.mscreen = "debrief"
+        await self.push()
+
+    async def do_job(self, choice_label: str | None):
+        """The Now card's button: its order, its press, or the named choice."""
+        t = self.task or {}
+        st = t.get("step") or {}
+        if not st.get("ready"):
+            return
+        if st["kind"] == "order":
+            r = await self.t.post(f"/api/mission/{self.mid}/command", {"command": st["cmd"]})
+        else:
+            opt = next((o for o in st.get("options") or [] if o["label"] == choice_label), None) or \
+                (st.get("options") or [None])[0]
+            cmd = {"type": "task", "task": t["id"], "step": st["id"], **({"choice": opt["id"]} if opt else {})}
+            r = await self.t.post(f"/api/mission/{self.mid}/command", {"command": cmd})
+        if r["result"].get("needs_confirm"):
+            r = await self.t.post(f"/api/mission/{self.mid}/command", {"command": {"type": "confirm"}})
+        if r["result"].get("ok"):
+            self.task_steps_by_voice += 1
+        self.task = r["state"].get("task")
+        await self.speak(r["result"].get("ack") or r["result"].get("say") or "")
+        await self.push()
 
     async def open(self, L: dict):
         self.L, self.i, self.misses, self.waiting, self.view = L, 0, 0, False, "lesson"
@@ -358,11 +431,29 @@ async def script(c: Client, shifts: int = 3):
     await c.noise()
     for panel in ["open the comm panel", "back to my seat", "move the voice bar to the top right"]:   # 3D cabin + a11y
         await c.say(panel)
-    for order in ["shields to 40", "send the rover for ice", "what's the power level"]:
-        await c.say(order)
-    for _ in range(shifts):
-        await c.say("end shift")
+    await c.state()
+    await c.say("shields to 40")            # the first job: any power change counts ("Power set. Good.")
+    await c.say("start the clock")          # the live clock (time_resume)
+    for _ in range(6):                      # the clock runs; whatever the Now card asks, the kid says yes / names a choice
+        await c.run_clock(1.5)
+        await c.state()
+        st = (c.task or {}).get("step") or {}
+        if st.get("ready"):
+            await c.say(st["options"][0]["label"] if st.get("options") else "yes")
         await c.noise()
+    for order in ["what's the power level"]:
+        await c.say(order)
+    await c.say("time warp four")
+    await c.run_clock(1.0)
+    for _ in range(shifts):                 # skip to next event replaces end shift as the forward action
+        await c.say("skip to next event")
+        await c.state()
+        st = (c.task or {}).get("step") or {}
+        if st.get("ready"):
+            await c.say(st["options"][0]["label"] if st.get("options") else "yes")
+        await c.noise()
+    await c.say("pause the clock")
+    await c.say("end shift")                # still there: end the shift early
     await c.say("what is the weirdest thing about moon dust", question=True)   # answered, or one "I don't know"
     await c.say("debrief")
     await c.noise()
@@ -515,7 +606,12 @@ async def main_live(a):
     # (once), the whole flow reached
     fails = [k for k, bad in (("replies to noise", c.replies_to_noise), ("fallback for a non-question", c.bad_unknowns),
                               ("not qualified", not c.qualified), ("no mission", not c.mid),
-                              ("tour not finished by voice", c.toured < len(tour_beats("cadet")))) if bad]
+                              ("tour not finished by voice", c.toured < len(tour_beats("cadet"))),
+                              ("no skip to next event by voice", c.skips < 1),
+                              ("no Now-card job done by voice", c.task_steps_by_voice < 1),
+                              ("clock voice commands not routed", not {"time_resume", "time_warp", "time_pause"} <= set(c.clock_cmds)))
+             if bad]
+    print(f"live clock: {c.skips} skips by voice, {c.task_steps_by_voice} job steps by voice, clock commands {c.clock_cmds}")
     print(f"cabin tour: {c.toured} of {len(tour_beats('cadet'))} beats by voice")
     print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
     if fails:

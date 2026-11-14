@@ -101,11 +101,11 @@ export const TOUR = {
     { show: "panel:comm", text: "Comm: call Houston when Earth is in view." },
     { show: "lamps", text: "Warning lights. Red means act now. Amber means get ready." },
     { show: "goals", text: "Your goal: ten safe days. Send science home. Bring back ice." },
-    { show: "start", text: "First job: set power, then press End shift." },
+    { show: "start", text: "First job: raise the shields. Then press Play to start time." },
   ],
   commander: [
     { show: "window", text: "Window up top. Three screens below. Five panels around you." },
-    { show: "start", text: "Ten safe days, science home, ice back. First: set power, End shift." },
+    { show: "start", text: "Ten safe days, science home, ice back. Set power, then Play." },
   ],
 };
 
@@ -113,19 +113,33 @@ export const TOUR = {
 /** Each line: on screen after "Now:" (12 words or fewer) and spoken for "what do I do?". */
 export const NOW = {
   label: "Now",
-  firstShift: "Set power, then End shift.",
+  firstShift: "Set power: raise the shields.",
+  startClock: "Power set. Now press Play to start the clock.",
   stormHit: "Storm hitting. Get the crew into the shelter.",
   weakStorm: "Storm at Earth, few particles here. Keep working.",
-  sheltered: "Crew sheltered. End shift to ride out the storm.",
+  sheltered: "Crew sheltered. Skip ahead to ride out the storm.",
   warning: h => (h != null ? `Storm forecast: about ${h} hours to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
   lowPower: "Battery low. Turn on night mode, or cut a load.",
   lowAir: "Air is low. Send the rover for ice.",
   roverDark: "Rover out. Bring it home before dark.",
-  roverOut: h => `Rover out, back in ${h} hours. End shift to wait.`,
+  roverOut: h => `Rover out, back in ${h} hours. Skip ahead to wait.`,
   sunset: h => `Sunset in ${h} hours. Turn on night mode before dark.`,
   dark: "Dark outside. Night mode saves power.",
   ice: "No storm due. Send the rover for ice.",
-  steady: "All steady. End shift to move on.",
+  steady: "All steady. Time warp?",
+  paused: "Clock paused. Press Play when you're ready.",
+  driving: h => `Rover driving. Back in ${h} hours.`,
+  repairing: "Rover fixing the array. Skip ahead to wait.",
+  waiting: "Not yet. Skip ahead, or watch the clock.",
+  taskDone: t => `${t}: done.`,
+  /** the ~20 s nudge (spoken; 20 words or fewer with the task's step) */
+  nudge: (task, step) => `${task}. Next: ${step}`,
+  /** the card's clock buttons (QA-69: a verb first) */
+  playBtn: "Start the clock",
+  skipBtn: "Skip ahead",
+  warpBtn: "Time warp 4x",
+  /** "Lesson 5 helps here" (the lesson's patch title is the tooltip) */
+  lessonHelps: n => `Lesson ${n} helps here`,
   /** said before the line when the kid asks "what do I do?" */
   ask: "Here's your next job.",
 };
@@ -237,7 +251,7 @@ export const CAPCOM = {
   missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
   missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
   /** First mission only: said once after missionStart, then again only after a silence (no order yet). */
-  firstShift: "Set your power, then end the shift.",
+  firstShift: "Raise the shields, then start the clock.",
   houstonCalling: "Calling Houston…",
 };
 
