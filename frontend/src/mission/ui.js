@@ -155,6 +155,11 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (st && st.active) {
       banner.className = "m-banner is-storm"; banner.hidden = false;
       banner.innerHTML = `<b>☀ Solar storm</b><span>${esc(st.name)}${st.real_date ? ` · real event, ${esc(st.real_date)}` : ""}</span>${src({ title: "Source: NASA " + (st.source || "DONKI"), url: st.url || "https://kauai.ccmc.gsfc.nasa.gov/DONKI/" })}`;
+      if (!state.shelter) {
+        banner.insertAdjacentHTML("beforeend", `<span class="m-bact"><button type="button" class="m-bbtn is-hot" data-act="shelter">🏠 Everyone to shelter</button><button type="button" class="m-bbtn" data-act="shields">🛡️ Shields to 40</button></span>`);
+        banner.querySelector('[data-act="shelter"]').onclick = () => run({ type: "shelter", on: true });
+        banner.querySelector('[data-act="shields"]').onclick = () => run({ type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null });
+      }
     } else banner.hidden = true;
   }
 

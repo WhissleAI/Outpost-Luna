@@ -45,6 +45,7 @@ const CW = [
   ["array", "Array damage", "amber", s => (s.alerts || []).includes("array_damaged")],
   ["shelter", "In shelter", "green", s => !!s.shelter],
 ];
+const MASTER = ["storm", "dose", "power", "life"];   // the master alarm lights when any of these is lit
 
 /**
  * @param {HTMLElement} root  where the console renders
@@ -67,10 +68,11 @@ export function createCockpit(root, o = {}) {
       ${full ? `<div class="ck-patches" id="ckPatches" aria-label="Flight School patches"></div><div class="ck-score"><span class="ck-lbl">Score</span><b id="ckScore">0</b></div>` : ""}
     </section>
     <section class="ck-gauges" aria-label="Gauges">
-      ${gauge("power", "Power", { red: [0, .2], amber: [.2, .3] })}${gauge("life", "Life support", { red: [0, .2], amber: [.2, .3] })}${gauge("dose", "Radiation dose", { amber: [.6, .8], red: [.8, 1] })}
+      ${gauge("power", "Power", { red: [0, .2], amber: [.2, .3] })}${gauge("life", "Air & water", { red: [0, .2], amber: [.2, .3] })}${gauge("dose", "Radiation dose", { amber: [.6, .8], red: [.8, 1] })}
     </section>
     <section class="ck-cw" aria-label="Caution and warning lights" aria-live="polite">
       ${CW.map(([id, label, lvl]) => `<span class="ck-ann is-${lvl}" id="cka-${id}"><span>${esc(label)}</span></span>`).join("")}
+      <span class="ck-ann is-master" id="cka-master"><span>Master alarm</span></span>
     </section>
     <section class="ck-levers" aria-label="Power split. Use the arrow keys on a lever.">
       <header><span class="ck-lbl">Power split</span><small id="ckSum"></small></header>
@@ -166,6 +168,7 @@ export function createCockpit(root, o = {}) {
     CW.forEach(([id, , , f]) => { let on = false; try { on = f(s); } catch (x) { /* partial state */ } const el = q("#cka-" + id); el.classList.toggle("is-lit", on);
       if (on) { lit.add(id); if (!lastLit.has(id)) { el.classList.remove("is-new"); void el.offsetWidth; el.classList.add("is-new"); } } });
     lastLit = lit;
+    const m = MASTER.some(id => lit.has(id)), me = q("#cka-master"); if (me) { me.classList.toggle("is-lit", m); }
     // levers: the one the order moved animates to its new spot
     let sum = 0;
     root.querySelectorAll(".ck-lever").forEach(lv => {
@@ -182,6 +185,7 @@ export function createCockpit(root, o = {}) {
     // comms
     const up = !!e.earth_visible;
     q("#ckEarthLamp").classList.toggle("is-on", up); q("#ckEarthLamp span").textContent = up ? "Earth in view" : "Earth hidden";
+    q("#ckCall").classList.toggle("is-nosignal", !up);
     q("#ckWindow").innerHTML = up ? `Window open · radio takes <b>${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s</b> each way`
       : `Next window in <b>${e.next_comm_window_h ?? "?"} h</b>`;
     // rover + shelter

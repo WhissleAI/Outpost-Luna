@@ -332,3 +332,15 @@ body[data-aview="map"] .askbar,body[data-aview="map"] .hud,body[data-aview="map"
 .ck-mini .ck-ann{min-height:20px;font-size:9.5px}
 .ck-mini .ck-levers header,.ck-mini .ck-ico{display:none}
 .apanel.is-ride .a-step:has(#aNext)~.a-todo{display:none}
+.ck-cw{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ck-mini .ck-cw{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ck-ann.is-master{border-color:var(--ck-red);color:var(--ck-red)}
+.ck-ann.is-master.is-lit{background:var(--ck-red);color:var(--ck-on-lit);animation:annFlash 1s steps(2,end) infinite}
+.ck-call.is-nosignal{background:linear-gradient(#2A3A47,#1E2B35);box-shadow:0 3px 0 #0C1318}
+.ck-call.is-nosignal span:last-of-type::after{content:" · no signal"}
+.ck-call.is-calling.is-nosignal span:last-of-type::after{content:" · signal travelling…"}
+.ck-full{--lv-h:96px}
+.m-bact{display:flex;gap:6px;flex-wrap:wrap}
+.m-bbtn{min-height:36px;padding:4px 12px;border-radius:9px;border:1px solid var(--c-dose);background:transparent;color:inherit;font-weight:700;font-size:13.5px}
+.m-bbtn.is-hot{background:var(--c-dose);color:#fff}
+@media (prefers-reduced-motion:reduce){.ck-ann.is-master.is-lit{animation:none}}
