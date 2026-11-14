@@ -51,3 +51,26 @@ def test_desktop_env_paths_win_over_dev_defaults(monkeypatch, tmp_path):
     assert s.arctag_model_dir == models / "arctag"
     assert s.steer_model_dir() == models / "steer-tts-edge"
     assert s.steer_director_path() == models / "steer-tts-edge" / "director.bin"
+
+
+def test_health_memory_probe_works_without_posix_resource_module(monkeypatch):
+    """Windows has no `resource` module; /health (the desktop readiness probe) must still answer."""
+    import builtins
+
+    import psutil  # noqa: F401  (imported for real before sys.platform is faked)
+
+    import app.main as main
+    real_import = builtins.__import__
+
+    def no_resource(name, *a, **kw):
+        if name == "resource":
+            raise ModuleNotFoundError("No module named 'resource'")
+        return real_import(name, *a, **kw)
+
+    monkeypatch.setattr(builtins, "__import__", no_resource)
+    monkeypatch.setattr(sys, "platform", "win32")
+    out = main._rss_mb()
+    assert out["now"] and out["now"] > 0 and out["peak"] and out["peak"] > 0
+
+    monkeypatch.setattr(sys, "platform", "linux")   # any failure is swallowed, never raised
+    assert main._rss_mb()["now"] > 0
