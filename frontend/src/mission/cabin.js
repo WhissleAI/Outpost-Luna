@@ -132,7 +132,7 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50, pr = prev && prev.resources;
     const tr = (a, b) => b == null ? "" : a > b + .4 ? " ▲" : a < b - .4 ? " ▼" : " —";
     if (p === "PWR") return `<header><span>DU${d + 1} · POWER</span><span>${Math.round(r.power_pct)} %${tr(r.power_pct, pr && pr.power_pct)}</span></header>
-      ${bar(r.power_pct)}${row("SOLAR IN", e.in_sun ? `SUN +${(+e.sun_elev_deg).toFixed(1)}°` : "NONE · NIGHT")}
+      ${bar(r.power_pct)}${row("SOLAR IN", e.in_sun ? `SUN ${(+e.sun_elev_deg) >= 0 ? "+" : ""}${(+e.sun_elev_deg).toFixed(1)}°` : "NONE · NIGHT")}
       <div class="du-loads">${LOADS.map(([k, n], i) => `<div class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}"><span>${n.toUpperCase()}</span><i style="width:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></div>`).join("")}</div>`;
     if (p === "LIFE") return `<header><span>DU${d + 1} · LIFE</span><span>${Math.round(r.life_support_pct)} %${tr(r.life_support_pct, pr && pr.life_support_pct)}</span></header>
       ${row("O2 / H2O", Math.round(r.life_support_pct) + " %")}${bar(r.life_support_pct)}
@@ -201,7 +201,7 @@ export function createCabin(root, o = {}) {
       LOADS.forEach(([k]) => { if (Math.round(prev.loads[k] || 0) !== Math.round(s.loads[k] || 0)) root.querySelectorAll(`.du-load[data-k="${k}"]`).forEach(x => x.classList.add("is-moved")); });
     }
     const lit = new Set();
-    LAMPS.forEach(([id, , lvl, f]) => { let on = false; try { on = f(s); } catch (x) { /* partial */ } q("#cbl-" + id).classList.toggle("is-lit", on); if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id)) masterOn = true; } });
+    LAMPS.forEach(([id, , lvl, f]) => { let on = false; try { on = f(s); } catch (x) { /* partial */ } q("#cbl-" + id).classList.toggle("is-lit", on); if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id) && prev) masterOn = true; } });
     litBefore = lit; paintMaster();
     q("#cbPttSub").textContent = e.earth_visible ? "EARTH IN VIEW" : `NO SIGNAL · WINDOW IN ${e.next_comm_window_h ?? "?"} H`;
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);

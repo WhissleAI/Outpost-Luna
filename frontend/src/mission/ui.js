@@ -65,7 +65,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const s = state.site, rv = state.rover || {}, t = rv.busy ? TARGETS[rv.task] : null;
     if (v === "orbit") globe.flyTo(-35, s.lon, 3.8);
     else if (v === "rover") globe.flyTo(t ? (s.lat + t.lat) / 2 : s.lat, t ? (s.lon + t.lon) / 2 : s.lon, 1.5);
-    else globe.flyTo(s.lat, s.lon, 1.75);
+    else globe.flyTo(s.lat, s.lon, 2.3);
   }
   /** Spoken or typed view changes ("zoom out", "show me the rover", "back to the outpost"). */
   const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover)\b/, "rover"],

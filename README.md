@@ -1,17 +1,24 @@
-# Moonbase Cadet: Junior Astronaut Mission Trainer
+# Outpost Luna: Junior Astronaut Mission Trainer
 
 A voice-first trainer for kids 7–12, built for NASA Space Apps 2026 (Nov 14–15) on the challenge **"Build a Junior
 Astronaut Mission Trainer"**. Inspired by NASA's Artemis program and built on NASA open data. Not affiliated with or
 endorsed by NASA. (Repo name `ask-the-moon` is the project's earlier name.)
 
-**One story, three steps:**
-1. **Academy.** Seven short voice lessons: the Moon, Mission Control radio talk, power from the Sun, radiation and
-   solar storms, air/water/ice, lessons from past missions, and a check ride. Taught with real Artemis II crew audio
-   and the hardware left on the Moon. Passing earns the Mission Commander badge.
-2. **Mission.** Command an outpost near the lunar south pole, the region where Artemis III plans to land, for 10 days.
-   Balance power, life support and radiation dose against real Sun and Earth positions (JPL Horizons) and real solar
-   storms (NASA DONKI). Every choice costs something.
-3. **Debrief, then replay.** See what happened, the real data behind each event, and try another strategy or site.
+**One story.** Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near the south
+pole, hasn't happened yet. The kid trains to help run **Outpost Luna**, a south-pole base for the crews who come after.
+1. **Flight School (Academy).** The kid picks a call sign (kept on the device, never sent). Short lessons in tracks
+   (Foundations, Outpost systems, Field skills) with CAPCOM as mentor: a story beat, 2–4 voice/tap steps, a patch.
+   Taught with real Artemis II crew audio and the hardware left on the Moon.
+2. **Check ride.** The first solo shift, in a simplified cockpit on the real simulator with the real May 2024 storm.
+   Passing earns the Mission Commander patch.
+3. **Mission.** Command Outpost Luna for 10 days from inside the cabin: the NASA Moon globe through the window
+   (ORBIT / SITE / ROVER views), an instrument panel below (display units, guarded hab levers, shield knob, caution &
+   warning with master alarm, PTT Houston, END SHIFT). Real Sun and Earth positions (JPL Horizons) and real solar
+   storms (NASA DONKI). Flight School lessons come back as events ("Remember Lesson 4? That's a solar storm").
+4. **Debrief, then replay.** What happened, which lessons came back, the real data behind each event; fly it again or
+   try another site.
+
+Story copy lives in `frontend/src/story.js`. Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.
 
 The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with sources, Artemis II crew moments) is a
 small button inside the app, used by the lessons.
