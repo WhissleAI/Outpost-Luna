@@ -159,53 +159,66 @@ export function initGestures(ctx = {}) {
   // ---------- on / off ----------
   async function setEnabled(on) {
     set({ enabled: !!on });
-    if (on) { engine.configure(classifierOpts()); const ok = await engine.start({ deviceId: S.deviceId || undefined }); if (!ok) set({ enabled: false }); else if (ctx.announce) ctx.announce("Camera on. Gestures ready."); }
+    if (on) { engine.configure(classifierOpts()); const ok = await engine.start({ deviceId: S.deviceId || undefined }); if (!ok) set({ enabled: false }); else { refreshCams(); if (ctx.announce) ctx.announce("Camera on. Gestures ready."); } }
     else { await engine.stop(); if (ctx.announce) ctx.announce("Camera off."); }
     paintStatus();
   }
 
-  // ---------- Settings → Camera & gestures (mounted into the Settings sheet's slot) ----------
-  let host = null;
-  function mountSettings(el) { host = el; paintSettings(true); }
-  async function paintSettings(full) {
-    if (!host || !host.isConnected) return;
+  // ---------- Settings → Camera & gestures: a section of the Settings sheet (window.__outpost.settingsSections) ----------
+  let cams = [];
+  const refreshCams = () => engine.listDevices().then(c => { const was = cams.length; cams = c; if (c.length > 1 && was <= 1) paintSettings(true); });
+  refreshCams();
+  const sensName = v => (v < 0.9 ? "Careful" : v > 1.1 ? "Quick" : "Normal");
+  function sectionHtml() {
     const on = status.state === "on" || status.state === "starting";
-    if (!full && host.querySelector("#gxEnabled")) {   // light refresh: keep focus where it is
-      host.querySelector("#gxEnabled").checked = on || status.state === "starting";
-      host.querySelector(".gx-state").textContent = stateText();
-      host.querySelectorAll("[data-needs-on]").forEach(e => { e.disabled = !on; });
-      return;
-    }
-    const cams = await engine.listDevices();
     const sheet = rows => rows.map(r => `<li>${icon(r.icon)}<span><b>${esc(r.name)}</b><small>${esc(r.does)}</small></span></li>`).join("");
-    host.innerHTML = `
-      <section class="gx-settings" aria-labelledby="gxTitle">
-        <h3 id="gxTitle">${icon("camera")} Camera &amp; gestures</h3>
+    return `<div class="gx-settings">
         <label class="a11y-sw"><input type="checkbox" id="gxEnabled" ${on ? "checked" : ""}><span><b>Use the camera for gestures</b>
           <small>Off until you turn it on. The picture stays on this computer and is never saved or sent.</small></span></label>
         <p class="gx-state" aria-live="polite">${esc(stateText())}</p>
         ${cams.length > 1 ? `<label class="gx-row"><b>Camera</b><select id="gxCam">${cams.map(c => `<option value="${esc(c.id)}" ${c.id === S.deviceId ? "selected" : ""}>${esc(c.label)}</option>`).join("")}</select></label>` : ""}
         <label class="a11y-sw"><input type="checkbox" id="gxPreviewSw" ${S.preview ? "checked" : ""}><span><b>Show me on screen</b><small>A small self-view with your hand's skeleton</small></span></label>
         <label class="a11y-sw"><input type="checkbox" id="gxHead" ${S.headLook ? "checked" : ""}><span><b>Look around with your head</b><small>In the cabin: turn to look, lean in to open a panel</small></span></label>
-        <label class="a11y-range"><b>Sensitivity <span class="gx-out">${S.sensitivity < 0.9 ? "Careful" : S.sensitivity > 1.1 ? "Quick" : "Normal"}</span></b>
-          <input type="range" id="gxSens" min="0.6" max="1.4" step="0.2" value="${S.sensitivity}" aria-valuetext="${S.sensitivity < 0.9 ? "Careful" : S.sensitivity > 1.1 ? "Quick" : "Normal"}"></label>
-        <fieldset class="gx-hand"><legend>I use my</legend>
+        <label class="a11y-range"><b>Sensitivity <span class="gx-out">${sensName(S.sensitivity)}</span></b>
+          <input type="range" id="gxSens" min="0.6" max="1.4" step="0.2" value="${S.sensitivity}" aria-valuetext="${sensName(S.sensitivity)}"></label>
+        <fieldset class="set-seg gx-hand"><legend>I use my</legend>
           <label><input type="radio" name="gxHanded" value="right" ${S.handed === "right" ? "checked" : ""}><span>Right hand</span></label>
           <label><input type="radio" name="gxHanded" value="left" ${S.handed === "left" ? "checked" : ""}><span>Left hand</span></label></fieldset>
         <label class="a11y-sw"><input type="checkbox" id="gxPhase2" ${S.phase2 ? "checked" : ""}><span><b>Extra gestures (try-out)</b><small>Two-hand pinch to zoom; raise your hand to call Houston</small></span></label>
-        <button type="button" class="pill" id="gxCalib" data-needs-on ${on ? "" : "disabled"}>Show me your hand (10 seconds)</button>
+        <button type="button" class="btn" id="gxCalib" data-needs-on ${on ? "" : "disabled"}>Show me your hand (10 seconds)</button>
         <details class="gx-sheet"><summary>Gesture cheat-sheet</summary><ul>${sheet(CHEATSHEET)}${S.phase2 ? sheet(CHEATSHEET_PHASE2) : ""}</ul>
           <p class="gx-note">Everything also works with voice, touch and keys. Keys: <kbd>Alt</kbd>+<kbd>→</kbd> next, <kbd>Alt</kbd>+<kbd>←</kbd> back, <kbd>Alt</kbd>+<kbd>Y</kbd> yes, <kbd>Alt</kbd>+<kbd>N</kbd> no, <kbd>Alt</kbd>+<kbd>.</kbd> stop.</p></details>
-      </section>`;
-    host.querySelector("#gxEnabled").onchange = e => setEnabled(e.target.checked);
-    const cam = host.querySelector("#gxCam"); if (cam) cam.onchange = e => { set({ deviceId: e.target.value }); if (engine.running) setEnabled(true); };
-    host.querySelector("#gxPreviewSw").onchange = e => { set({ preview: e.target.checked }); paintStatus(); };
-    host.querySelector("#gxHead").onchange = e => { set({ headLook: e.target.checked }); engine.configure({ headLook: S.headLook }); };
-    host.querySelector("#gxSens").oninput = e => { set({ sensitivity: +e.target.value }); engine.configure({ sensitivity: S.sensitivity }); const o = e.target.closest("label").querySelector(".gx-out"); o.textContent = S.sensitivity < 0.9 ? "Careful" : S.sensitivity > 1.1 ? "Quick" : "Normal"; e.target.setAttribute("aria-valuetext", o.textContent); };
-    host.querySelectorAll("[name=gxHanded]").forEach(r => { r.onchange = e => { set({ handed: e.target.value }); engine.configure({ handed: S.handed }); }; });
-    host.querySelector("#gxPhase2").onchange = e => { set({ phase2: e.target.checked }); engine.configure({ phase2: S.phase2 }); paintSettings(true); };
-    host.querySelector("#gxCalib").onclick = () => calibrate();
+      </div>`;
   }
+  let host = null;
+  function bindSection(el) {
+    host = el;
+    const $h = s => el.querySelector(s);
+    $h("#gxEnabled").onchange = e => setEnabled(e.target.checked);
+    const cam = $h("#gxCam"); if (cam) cam.onchange = e => { set({ deviceId: e.target.value }); if (engine.running) setEnabled(true); };
+    $h("#gxPreviewSw").onchange = e => { set({ preview: e.target.checked }); paintStatus(); };
+    $h("#gxHead").onchange = e => { set({ headLook: e.target.checked }); engine.configure({ headLook: S.headLook }); };
+    $h("#gxSens").oninput = e => { set({ sensitivity: +e.target.value }); engine.configure({ sensitivity: S.sensitivity }); const o = $h(".gx-out"); o.textContent = sensName(S.sensitivity); e.target.setAttribute("aria-valuetext", o.textContent); };
+    el.querySelectorAll("[name=gxHanded]").forEach(r => { r.onchange = e => { set({ handed: e.target.value }); engine.configure({ handed: S.handed }); }; });
+    $h("#gxPhase2").onchange = e => { set({ phase2: e.target.checked }); engine.configure({ phase2: S.phase2 }); paintSettings(true); };
+    $h("#gxCalib").onclick = () => calibrate();
+  }
+  /** Repaint the section if it is showing: light (state line, enabled flags) or full (re-render, keep focus by id). */
+  function paintSettings(full) {
+    const box = host && host.isConnected && host.querySelector(".gx-settings"); if (!box) return;
+    const on = status.state === "on" || status.state === "starting";
+    if (!full) {
+      box.querySelector("#gxEnabled").checked = on;
+      box.querySelector(".gx-state").textContent = stateText();
+      box.querySelectorAll("[data-needs-on]").forEach(e => { e.disabled = !on; });
+      return;
+    }
+    const focusId = document.activeElement && box.contains(document.activeElement) ? document.activeElement.id : null;
+    const wrap = document.createElement("div"); wrap.innerHTML = sectionHtml(); box.replaceWith(wrap.firstElementChild);
+    bindSection(host);
+    if (focusId) { const f = host.querySelector("#" + focusId); if (f) f.focus(); }
+  }
+  const section = { id: "camera", title: "Camera & gestures", after: "display", html: sectionHtml, bind: bindSection };
   function stateText() {
     const st = engine.stats;
     if (status.state === "on") return `On. ${st.fps || "…"} frames a second${st.delegate ? `, ${st.delegate === "GPU" ? "graphics chip" : "processor"}` : ""}.`;
@@ -255,12 +268,20 @@ export function initGestures(ctx = {}) {
     dlg.querySelector("[data-close]").focus();
   }
 
+  // The camera-on chip lives in the top bar (next to the Settings gear) when the shell gives it a spot.
+  if (ctx.indicatorBefore) { ind.classList.add("is-docked", "gx-ui-vars"); ctx.indicatorBefore.before(ind); }
+  // The floating voice bar keeps clear of the self-view (and the chip when it floats).
+  if (ctx.addObstacle) { ctx.addObstacle(".gx-preview:not([hidden])"); if (!ctx.indicatorBefore) ctx.addObstacle(".gx-indicator:not([hidden])"); }
+  // Settings → Camera & gestures (ux-v3's extension point; the sheet renders it after Display)
+  window.__outpost = window.__outpost || {};
+  (window.__outpost.settingsSections = window.__outpost.settingsSections || []).push(section);
+
   // start where the kid left it (the indicator shows at once); never on a first run
   if (S.enabled) setEnabled(true);
   paintStatus();
 
   const api = {
-    enable: () => setEnabled(true), disable: () => setEnabled(false), mountSettings, calibrate,
+    enable: () => setEnabled(true), disable: () => setEnabled(false), section, calibrate,
     get active() { return engine.running; }, get settings() { return { ...S }; }, get stats() { return engine.stats; },
     /** Tests: push landmark frames as if the camera saw them (works with the camera off). */
     inject: frames => engine.inject(frames),

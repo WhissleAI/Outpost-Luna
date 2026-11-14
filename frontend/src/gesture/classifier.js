@@ -12,7 +12,7 @@
 //   palm_hold · thumbs_up · thumbs_down · swipe_left · swipe_right
 //   point {x, y, progress} (cursor 0..1 in screen space, dwell progress 0..1) · point_end · select {x, y}
 //   grab_start {x, y} · grab_move {dx, dy} · grab_end
-//   head {x, y, lean} (look -1..1, lean = face size / neutral) · lean_in {x} · lean_back
+//   head {x, y, lean} (look -1..1, lean = face size / neutral) · lean_in {x, y} · lean_back
 //   phase 2 (opts.phase2): raise_hand · zoom {factor} · zoom_end
 //
 // Robustness (docs/GESTURES.md §Robustness): only the largest (nearest) hand and face count; a hand must be stable for
@@ -108,7 +108,7 @@ export function createGestureClassifier(opts = {}) {
       swipeCool: -1e9, lastSwipe: null, lastSwipeT: -1e9,
       pointing: false, cursor: null, dwellAt: null, dwellT: 0, dwellLocked: false,
       grabbing: false, grabFrom: null, grabLostT: null,
-      face: null, neutral: null, look: [0, 0], leaning: false, leanT: null, leanedIn: false, backT: null,
+      face: null, neutral: null, faceT: -1e9, look: [0, 0], leaning: false, leanT: null, leanedIn: false, backT: null,
       raiseT: null, raiseFired: false, zoom0: null,
     });
   }
@@ -274,6 +274,9 @@ export function createGestureClassifier(opts = {}) {
     const eyeMid = [(eyeR[0] + eyeL[0]) / 2, (eyeR[1] + eyeL[1]) / 2], eyeD = Math.hypot(eyeL[0] - eyeR[0], eyeL[1] - eyeR[1]) || 1e-3;
     const yaw = (nose[0] - eyeMid[0]) / eyeD;                       // ≈ 0 facing the screen, ± when turning
     const cx = f.box.x + f.box.w / 2, cy = f.box.y + f.box.h / 2;
+    // a face back after 2 s away (or someone new in the seat) re-anchors the neutral pose instead of reading as a lean
+    if (S.neutral && Math.abs(t - S.faceT) > 2000) { S.neutral = null; S.leaning = false; S.leanedIn = false; S.leanT = S.backT = null; }
+    S.faceT = t;
     if (!S.neutral) S.neutral = { x: cx, y: cy, w: f.box.w, yaw };
     const N = S.neutral, lean = f.box.w / (N.w || 1e-3);
     // look: head position (parallax) plus a share of the turn, dead zone in the middle
@@ -283,7 +286,7 @@ export function createGestureClassifier(opts = {}) {
     if (Math.abs(look[0] - S.look[0]) + Math.abs(look[1] - S.look[1]) > 0.01) { S.look = look; emit("head", { x: look[0], y: look[1], lean }); }
     // lean in (held) → open the looked-at panel; lean back to neutral (held) → back to the seat
     const inT = cfg.leanIn / Math.sqrt(k()), exitT = cfg.leanInExit;
-    if (!S.leaning && lean > inT) { if (S.leanT == null) S.leanT = t; if (t - S.leanT >= cfg.leanHoldMs * holdMul()) { S.leaning = true; S.leanedIn = true; S.backT = null; emit("lean_in", { x: look[0] }); } }
+    if (!S.leaning && lean > inT) { if (S.leanT == null) S.leanT = t; if (t - S.leanT >= cfg.leanHoldMs * holdMul()) { S.leaning = true; S.leanedIn = true; S.backT = null; emit("lean_in", { x: look[0], y: look[1] }); } }
     else if (!S.leaning) S.leanT = null;
     if (S.leaning && lean < exitT) { S.leaning = false; S.leanT = null; }
     if (S.leanedIn && !S.leaning && lean < cfg.leanBack) {

@@ -31,7 +31,8 @@ import "./academy/vocab.js";
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
 import { emitIntent, onIntent } from "./input/intents.js";
-import { installDefaultIntents, installKeyboardIntents } from "./input/defaults.js";
+import { installDefaultIntents, installKeyboardIntents, cabinPanel } from "./input/defaults.js";
+import { lookTarget } from "./gesture/bind.js";
 import { initGestures } from "./gesture/ui.js";
 // ---- end [input] ----
 
@@ -474,7 +475,7 @@ async function boot() {
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";
   installDefaultIntents({
-    nav: shellNav, globe, inCabin, a11y, ask: t => ask(t),
+    nav: shellNav, globe, inCabin, a11y, ask: t => ask(t), mission: missionUI, lookTarget,   // the cabin: missionUI.intent()
     stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
   });
   installKeyboardIntents();
@@ -482,13 +483,12 @@ async function boot() {
   const tourStepBy = d => { if (!tour.active) return false; stopSpeaking(); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
   onIntent("next", () => tourStepBy(1), { priority: 10 });
   onIntent("prev", () => tourStepBy(-1), { priority: 10 });
-  const gestures = initGestures({
-    screen: screenFrame, inCabin, isSpeaking,
-    cabinPanel: () => { const h = document.querySelector("[data-panel]"); return h ? h.dataset.panel : null; },
+  // [gestures] Settings → Camera & gestures registers itself (settingsSections); the camera chip sits next to the gear.
+  initGestures({
+    screen: screenFrame, inCabin, isSpeaking, cabinPanel,
+    indicatorBefore: $("a11yBtn"), addObstacle: sel => vbar && vbar.addObstacle && vbar.addObstacle(sel),
     announce: t => { if (a11y) a11y.describe(t, { quiet: true }); },
   });
-  // Settings re-renders on open; the Camera & gestures section mounts into its slot each time.
-  addEventListener("outpost:settings-render", e => { const slot = e.detail && e.detail.querySelector("#a11yGestures"); if (slot) gestures.mountSettings(slot); });
   // ---- end [input] ----
   if (SESSION_ON) {
     session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });

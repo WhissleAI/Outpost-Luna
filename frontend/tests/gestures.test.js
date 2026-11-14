@@ -107,6 +107,11 @@ test("head: look follows the head; lean in / back; only the largest face counts"
   const two = seq(800, (i, t, k) => ({ faces: [face({ w: 0.2 }), face({ cx: 0.2 + 0.6 * k, w: 0.07 })] }));
   assert.ok(!run(two).some(e => e.type === "head" && Math.abs(e.x) > 0.05));
   assert.deepEqual(discrete(run(sequences().lean_in_back.frames, { headLook: false })), [], "head-look off: nothing");
+  // someone sits down closer after the seat was empty for 3 s: that is a new neutral pose, not a lean
+  const away = chain(seq(600, () => ({ faces: [face({ w: 0.15 })] })), seq(3000, () => ({})), seq(900, () => ({ faces: [face({ w: 0.24 })] })));
+  assert.deepEqual(discrete(run(away)), []);
+  // but leaning in after the re-anchor still works
+  assert.deepEqual(discrete(run(chain(away, seq(700, () => ({ faces: [face({ w: 0.31 })] }))))), ["lean_in"]);
 });
 
 test("phase 2 is off by default; when on, raise hand and two-hand pinch work", () => {
@@ -142,7 +147,10 @@ test("gesture → intent table", () => {
   assert.deepEqual(gestureIntents({ type: "lean_back" }, { cabin: true, panel: "power" }), [["panel_back", {}]]);
   assert.deepEqual(gestureIntents({ type: "lean_back" }, { cabin: true, panel: "seat" }), []);
   assert.deepEqual(gestureIntents({ type: "raise_hand" }, { phase2: false }), []);
-  assert.deepEqual([lookTarget(-0.5), lookTarget(0), lookTarget(0.5)], ["habitat", "power", "comm"]);
+  // the 3D cabin: habitat (upper) + rover (lower) left, power (DU1) centre, radiation (upper) + comm (lower) right
+  assert.deepEqual([lookTarget(-0.5, -0.2), lookTarget(-0.5, 0.4), lookTarget(0, 0.5), lookTarget(0.5, 0), lookTarget(0.5, 0.4)],
+    ["habitat", "rover", "power", "radiation", "comm"]);
+  assert.deepEqual(gestureIntents({ type: "lean_in", x: 0.6, y: 0.5 }, { cabin: true, panel: "seat" }), [["panel_open", { panel: "comm" }]]);
 });
 
 test("hints: one short, emoji-free line per screen; a confirm wins", () => {

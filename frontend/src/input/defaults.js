@@ -37,55 +37,57 @@ export function cycleGroup(buttons, dir) {
   n.click(); return true;
 }
 
-// The 3D cabin (feat/ux-mission cockpit3d.js) parallaxes on pointermove over its host; until it exposes look(x, y),
-// head-look drives it the same way: a synthetic pointermove at the matching spot.
-function cabinHost() { return document.querySelector("[data-panel] .c3-css")?.parentElement || document.querySelector("[data-panel]"); }
-function lookAt(x, y) {
-  const h = cabinHost(); if (!h) return false;
-  const r = h.getBoundingClientRect();
-  h.dispatchEvent(new PointerEvent("pointermove", { clientX: r.left + (x * 0.5 + 0.5) * r.width, clientY: r.top + (y * 0.5 + 0.5) * r.height, bubbles: true }));
-  return true;
-}
-const CABIN_PANELS = ["habitat", "power", "comm"];
+/** The 3D cabin's camera state: cockpit3d.js sets data-panel ("seat" or a panel id) on its host (the .c3-gl parent). */
+export function cabinPanel() { const gl = document.querySelector(".c3-gl"); return gl && gl.parentElement ? gl.parentElement.dataset.panel || null : null; }
 
 /**
  * deps: { nav(intent, arg, text) – the shell's own navigation (main.js shellNav), stopAll(), globe, inCabin(),
- *         a11y – the a11y module (help), ask(text) – a turn through the normal path }
+ *         mission – missionUI (its intent(name, arg) is the cabin's one path: look, highlight_panel, panel_open /
+ *         panel_next / panel_prev, view_next / view_prev, confirm / cancel, and the router's nav intents),
+ *         lookTarget(x, y) – the panel a head aim points at, a11y – the a11y module (help), ask(text) }
  */
-export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => false, a11y = null, ask = null } = {}) {
+export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => false, mission = null, lookTarget = null, a11y = null, ask = null } = {}) {
   const offs = [];
   const on = (n, h) => offs.push(onIntent(n, h, { priority: 0 }));
-  const panel = () => (cabinHost() && cabinHost().dataset.panel) || (document.querySelector("[data-panel]") || {}).dataset?.panel || null;
+  const cabin = (name, arg) => !!(inCabin() && mission && mission.intent && mission.intent(name, arg));
+  const atSeat = () => { const p = cabinPanel(); return !p || p === "seat"; };
 
   on("stop", () => { stopAll(); if (globe && globe.halt) globe.halt(); return true; });
 
-  // yes / no: a visible confirm (data-intent="yes|no", or the mission confirm card) first, then the current offer
+  // yes / no: the cabin's pending confirm, then a visible confirm (data-intent="yes|no", or a Yes / No card), then the offer
   const confirmBtn = kind => [...document.querySelectorAll(`[data-intent="${kind}"]`)].find(visible)
-    // the mission's confirm card (askConfirm) is the answer card with "Yes" / "No" actions
     || [...document.querySelectorAll("#card button, dialog[open] button, [role=dialog]:not([hidden]) button")]
       .find(b => visible(b) && b.textContent.trim().toLowerCase() === kind && !b.closest(".a11y-panel"));
-  on("yes", () => { const b = confirmBtn("yes"); if (b) { b.click(); return true; } nav("accept_offer"); return true; });
-  on("no", () => { const b = confirmBtn("no"); if (b) { b.click(); return true; } nav("decline_offer"); return true; });
+  on("yes", () => { if (cabin("confirm")) return true; const b = confirmBtn("yes"); if (b) { b.click(); return true; } nav("accept_offer"); return true; });
+  on("no", () => { if (cabin("cancel")) return true; const b = confirmBtn("no"); if (b) { b.click(); return true; } nav("decline_offer"); return true; });
 
   // next / prev in the cabin: an open panel steps to the neighbouring panel; at the seat, the window view steps
-  const cabinStep = dir => {
-    if (!inCabin()) return false;
-    const p = panel();
-    if (p && p !== "seat" && CABIN_PANELS.includes(p)) { const i = CABIN_PANELS.indexOf(p); nav("panel_" + CABIN_PANELS[(i + dir + 3) % 3]); return true; }
-    return cycleGroup(document.querySelectorAll(".cb-view, [data-view-btn]"), dir);
-  };
-  on("next", () => cabinStep(1));        // not handled → the shell's nav("next") (wildcard, below)
-  on("prev", () => cabinStep(-1));       // elsewhere a screen handler decides (lesson step back, map pin, …)
+  on("next", () => (inCabin() ? cabin(atSeat() ? "view_next" : "panel_next") : false));   // not handled → shellNav("next")
+  on("prev", () => (inCabin() ? cabin(atSeat() ? "view_prev" : "panel_prev") : false));   // elsewhere a screen decides
 
   on("select", a => tapAt(a.x, a.y));
+  // fist + drag: the Moon turns; in the cabin it looks around (springs back to centre on release)
+  const rot = { x: 0, y: 0 };
   on("rotate", a => {
-    if (inCabin()) { if (a.phase === "move") { rot.x = Math.max(-1, Math.min(1, rot.x + a.dx * 4)); rot.y = Math.max(-1, Math.min(1, rot.y + a.dy * 4)); lookAt(rot.x, rot.y); } if (a.phase === "end") { rot.x = rot.y = 0; } return true; }
+    if (inCabin()) {
+      if (a.phase === "move") { rot.x = Math.max(-1, Math.min(1, rot.x + a.dx * 4)); rot.y = Math.max(-1, Math.min(1, rot.y + a.dy * 4)); }
+      if (a.phase === "end") rot.x = rot.y = 0;
+      return cabin("look", { dx: rot.x, dy: rot.y });
+    }
     if (globe && a.phase === "move") globe.rotateBy(a.dx, a.dy);
     return !!globe;
   });
-  const rot = { x: 0, y: 0 };
-  on("look", a => inCabin() && lookAt(a.x, a.y));
-  on("panel_open", a => { if (!inCabin()) return false; nav("panel_" + (a.panel || "power")); return true; });
+  // head: look around, and light up the panel the head is aimed at (the one a lean opens)
+  let lit = null;
+  on("look", a => {
+    if (!inCabin()) return false;
+    cabin("look", { dx: a.x, dy: a.y });
+    const t = atSeat() && lookTarget ? lookTarget(a.x, a.y) : null;
+    if (t !== lit) { lit = t; cabin("highlight_panel", t); }
+    return true;
+  });
+  on("panel_open", a => (inCabin() ? cabin("panel_open", a.panel || lit || "power") : false));
+  on("panel_back", () => (inCabin() ? cabin("panel_back") : false));
   on("zoom", a => { if (globe && globe.zoomBy) { globe.zoomBy(a.factor); return true; } return false; });
   on("call_houston", () => { if (inCabin() && ask) { ask("call Houston"); return true; } return false; });
   on("help", () => { if (a11y) { a11y.handleText("what can I do"); return true; } return false; });

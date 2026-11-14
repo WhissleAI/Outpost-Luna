@@ -1,8 +1,13 @@
 // Camera gestures → intents. One table, so the gesture layer never reaches into a screen: it only emits intents on the
 // bus (input/intents.js), and screens decide what an intent means for them. docs/GESTURES.md §"Gesture → intent".
 
-/** Which cabin panel a head turn is aimed at: left = habitat, centre = power, right = comm (the 3D cabin's layout). */
-export function lookTarget(x) { return x < -0.33 ? "habitat" : x > 0.33 ? "comm" : "power"; }
+/** Which cabin panel the head is aimed at, in the 3D cabin's layout (mission/cockpit3d.js LAYOUT): power (DU1) in the
+ *  middle; habitat (upper) and rover (lower) on the left; radiation (upper) and comm (lower) on the right.
+ *  x, y: look, -1..1 (y > 0 = head lowered). */
+export function lookTarget(x, y = 0) {
+  if (Math.abs(x) <= 0.33) return "power";
+  return x < 0 ? (y > 0.15 ? "rover" : "habitat") : (y > 0.15 ? "comm" : "radiation");
+}
 
 /**
  * One classifier event → the intents it makes, as [name, args] pairs.
@@ -26,7 +31,7 @@ export function gestureIntents(ev, ctx = {}) {
     case "grab_move": return [["rotate", { phase: "move", dx: ev.dx, dy: ev.dy }]];
     case "grab_end": return [["rotate", { phase: "end", dx: 0, dy: 0 }]];
     case "head": return ctx.cabin ? [["look", { x: ev.x, y: ev.y }]] : [];
-    case "lean_in": return ctx.cabin && atSeat ? [["panel_open", { panel: lookTarget(ev.x) }]] : [];
+    case "lean_in": return ctx.cabin && atSeat ? [["panel_open", { panel: lookTarget(ev.x, ev.y) }]] : [];
     case "lean_back": return ctx.cabin && !atSeat ? [["panel_back", {}]] : [];
     case "raise_hand": return ctx.phase2 ? [["call_houston", {}]] : [];
     case "zoom": return ctx.phase2 ? [["zoom", { factor: ev.factor }]] : [];

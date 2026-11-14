@@ -52,7 +52,7 @@ def spied(page, clear=True):
 def inject(page, name, shift=0):
     frames = fixture(name)
     # re-time so a fixture can be injected more than once (the classifier needs increasing time)
-    page.evaluate("([fs, dt]) => window.__outpost.gestures.inject(fs.map(f => ({...f, t: f.t + dt})))", [frames, shift])
+    return page.evaluate("([fs, dt]) => window.__outpost.gestures.inject(fs.map(f => ({...f, t: f.t + dt}))).map(e => e.type)", [frames, shift])
 
 
 def screen(page):
@@ -93,7 +93,9 @@ def main():
 
         # ---- 2. Settings -> Camera & gestures -> on ----
         page.click("#a11yBtn")
+        page.click('[data-sec="camera"]')   # Settings → Camera & gestures (settingsSections)
         page.wait_for_selector("#gxEnabled", timeout=5000)
+        ok(page.evaluate("() => !!document.querySelector('.topbar #gxIndicator, .topnav #gxIndicator')"), "camera chip lives in the top bar")
         if a.shots:
             page.screenshot(path=f"{a.shots}/gestures-settings-off.png")
         page.check("#gxEnabled")
@@ -180,10 +182,20 @@ def main():
             v1 = page.evaluate("() => (document.querySelector('.cb-view[aria-pressed=true]') || {}).dataset?.view")
             ok(v0 and v1 and v0 != v1, f"cabin: swipe left -> next window view ({v0} -> {v1})")
             spied(page)
-            inject(page, "lean_in_back", 110_000_000)
-            page.wait_for_timeout(300)
+            is3d = page.evaluate("() => !!document.querySelector('.c3-gl')")
+            panels = []
+            page.expose_function("__panelSeen", lambda p: panels.append(p))
+            page.evaluate("""() => { const h = document.querySelector('.c3-gl') && document.querySelector('.c3-gl').parentElement; if (!h) return;
+                new MutationObserver(rs => rs.forEach(r => { window.__panelSeen(r.oldValue); window.__panelSeen(h.dataset.panel); })).observe(h, {attributes: true, attributeOldValue: true, attributeFilter: ['data-panel']}); }""")
+            evs = inject(page, "lean_in_back", 110_000_000)
+            print("   lean events:", sorted(set(evs)), "panel:", page.evaluate("() => (document.querySelector('.c3-gl') || {}).parentElement?.dataset.panel"))
+            page.wait_for_timeout(1500)
             names = [e["name"] for e in spied(page)]
-            ok("look" in names or "panel_open" in names, f"cabin: head pose -> look / lean ({sorted(set(names))})")
+            if is3d:
+                ok("panel_open" in names and "panel_back" in names, f"cabin: lean in -> panel_open, sit back -> panel_back ({sorted(set(names))})")
+                ok(any(p not in (None, "seat") for p in panels) and panels and panels[-1] == "seat", f"3D cabin: a panel opened, then back to the seat ({panels})")
+            else:
+                ok("look" in names, f"cabin (2D fallback): head pose -> look ({sorted(set(names))})")
         else:
             print("   (mission did not reach the cabin in this environment; cabin checks skipped)", sc)
 
