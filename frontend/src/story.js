@@ -113,7 +113,14 @@ export const CAPCOM = {
   qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
   missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
   missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
+  /** First mission only: said once after missionStart, then again only after a silence (no order yet). */
+  firstShift: "Set your power, then end the shift.",
   houstonCalling: "Calling Houston…",
+};
+
+/** Check-ride result card (on screen, not spoken). The backend sends the same line as `fact`. */
+export const RIDE = {
+  mars: "On Mars, Houston would answer 6 to 44 minutes later.",
 };
 
 /** Spoken offers: said once, as a question. "yes" / "next" takes them (the router's accept_offer). */

@@ -16,6 +16,8 @@ router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
 router.include_router(_vocab_router)
 HINT_AFTER = 2   # misses before the hint
+# The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
+MARS_FACT = "On Mars, Houston would answer 6 to 44 minutes later."
 
 
 class AttemptInput(BaseModel):
@@ -127,13 +129,14 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     missed = sum(r["missed"])
     score = len(r["missed"]) - missed
     passed = missed <= les["ride"]["max_missed"] and not m.over
-    # Spoken: the score only. The HUD in `state` shows power, life support and dose.
+    # Spoken: the score only. The HUD in `state` shows power, life support and dose; `fact` is on screen, never spoken.
     summary = f"Check ride done. {score} of {len(steps)} orders right."
     if passed:
         return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " You're qualified, Commander.",
-                    badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events)
+                    badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events,
+                    fact=MARS_FACT)
     return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " Not qualified yet. Fly it again.",
-                passed=False, score=score, state=rides.hud(r), events=events)
+                passed=False, score=score, state=rides.hud(r), events=events, fact=MARS_FACT)
 
 
 def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra: dict) -> dict:
