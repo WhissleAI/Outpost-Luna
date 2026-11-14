@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include "u8file.h"
 #include "unicode_tables.h"
 #include "cJSON.h"
 #include <stdio.h>
@@ -111,7 +112,7 @@ static void seterr(char *err, size_t errlen, const char *msg, const char *x) {
 }
 
 static char *read_file(const char *path, size_t *len) {
-    FILE *f = fopen(path, "rb"); if (!f) return NULL;
+    FILE *f = u8_fopen(path, "rb"); if (!f) return NULL;
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
     char *b = (char *)malloc((size_t)n + 1);
     if (b && fread(b, 1, (size_t)n, f) != (size_t)n) { free(b); b = NULL; }

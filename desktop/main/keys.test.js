@@ -2,7 +2,7 @@
 "use strict";
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { blockedInput, menuTemplate } = require("./keys");
+const { blockedInput, menuTemplate, installKeys, shellAction } = require("./keys");
 
 const kd = (o) => ({ type: "keyDown", key: "", code: "", meta: false, control: false, shift: false, alt: false, ...o });
 const roles = (t) => JSON.stringify(t).match(/"role":"(\w+)"/g).map((s) => s.slice(8, -1));
@@ -38,4 +38,33 @@ test("menus: macOS keeps quit + edit, never reload or close; Windows packaged ha
   assert.equal(menuTemplate({ packaged: true, platform: "win32" }), null);
   const dev = roles(menuTemplate({ packaged: false, platform: "win32" }));
   assert.ok(dev.includes("reload") && dev.includes("toggleDevTools"));
+});
+
+test("Windows packaged (no menu): Ctrl+= / Ctrl+- / Ctrl+0 zoom and F11 full screen, like the macOS View menu", () => {
+  const w = { platform: "win32" };
+  assert.equal(shellAction(kd({ control: true, key: "=", code: "Equal" }), w), "in");
+  assert.equal(shellAction(kd({ control: true, shift: true, key: "+", code: "Equal" }), w), "in");
+  assert.equal(shellAction(kd({ control: true, key: "-", code: "Minus" }), w), "out");
+  assert.equal(shellAction(kd({ control: true, key: "0", code: "Digit0" }), w), "reset");
+  assert.equal(shellAction(kd({ key: "F11", code: "F11" }), w), "fullscreen");
+  // never the page's keys, never macOS (its menu does it), never a dev build (its View menu does it)
+  for (const k of [{ key: "=", code: "Equal" }, { key: "0", code: "Digit0" }, { key: "y", code: "KeyY", alt: true }, { key: "c", code: "KeyC", control: true }])
+    assert.equal(shellAction(kd(k), w), null, JSON.stringify(k));
+  assert.equal(shellAction(kd({ meta: true, key: "=", code: "Equal" }), { platform: "darwin" }), null);
+  assert.equal(shellAction(kd({ control: true, key: "=", code: "Equal" }), { platform: "win32", packaged: false }), null);
+  assert.equal(shellAction({ type: "keyUp", key: "F11", code: "F11" }, w), null);
+});
+
+test("installKeys on Windows: no menu bar, blocked keys stop, Ctrl+= zooms the window", () => {
+  let handler = null, menu = "unset", zoom = 0, full = false, hidden = false;
+  const win = { webContents: { on: (ev, h) => { if (ev === "before-input-event") handler = h; }, getZoomLevel: () => zoom, setZoomLevel: (z) => { zoom = z; } },
+    setMenuBarVisibility: (v) => { hidden = !v; }, isFullScreen: () => full, setFullScreen: (v) => { full = v; } };
+  installKeys({ Menu: { setApplicationMenu: (m) => { menu = m; }, buildFromTemplate: (t) => t }, win, packaged: true, platform: "win32" });
+  assert.equal(menu, null); assert.ok(hidden);
+  const press = (o) => { let stopped = false; handler({ preventDefault: () => { stopped = true; } }, kd(o)); return stopped; };
+  assert.ok(press({ key: "F5", code: "F5" }), "reload blocked");
+  assert.ok(press({ control: true, key: "=", code: "Equal" })); assert.equal(zoom, 0.5);
+  assert.ok(press({ control: true, key: "0", code: "Digit0" })); assert.equal(zoom, 0);
+  assert.ok(press({ key: "F11", code: "F11" })); assert.ok(full);
+  assert.equal(press({ key: "ArrowLeft", code: "ArrowLeft", alt: true }), false, "the page's Alt shortcuts pass");
 });

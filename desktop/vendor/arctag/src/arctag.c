@@ -2,6 +2,7 @@
  * ARCTAG_WITH_ORT). Features, streaming, decoding and JSON are shared. */
 #include "arctag.h"
 #include "tokenizer.h"
+#include "u8file.h"
 #include "native.h"
 #include "cJSON.h"
 #ifdef ARCTAG_WITH_ORT
@@ -106,7 +107,7 @@ static void set_err(arctag_t *h, const char *fmt, ...) {
 }
 
 static char *read_file(const char *path) {
-    FILE *f = fopen(path, "rb"); if (!f) return NULL;
+    FILE *f = u8_fopen(path, "rb"); if (!f) return NULL;
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);
     char *b = (char *)malloc((size_t)n + 1);
     if (b && fread(b, 1, (size_t)n, f) != (size_t)n) { free(b); b = NULL; }

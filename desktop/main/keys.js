@@ -22,6 +22,29 @@ function blockedInput(input, { packaged = true, platform = process.platform } = 
   return false;
 }
 
+/** Zoom and full screen without a menu (Windows / Linux, packaged): the keys the macOS View menu gives (Cmd+= / Cmd+-
+ * / Cmd+0, full screen), as Ctrl+= / Ctrl++ / Ctrl+- / Ctrl+0 and F11. "in" | "out" | "reset" | "fullscreen" | null.
+ * Only when there is no menu: with one, the menu's accelerators already do it. */
+function shellAction(input, { packaged = true, platform = process.platform } = {}) {
+  if (platform === "darwin" || !packaged || !input || input.type !== "keyDown" || input.alt || input.meta) return null;
+  const k = String(input.key || ""), code = String(input.code || "");
+  if (k === "F11" || code === "F11") return input.control || input.shift ? null : "fullscreen";
+  if (!input.control) return null;
+  if (k === "=" || k === "+" || code === "Equal" || code === "NumpadAdd") return "in";
+  if (k === "-" || k === "_" || code === "Minus" || code === "NumpadSubtract") return "out";
+  if ((k === "0" || code === "Digit0" || code === "Numpad0") && !input.shift) return "reset";
+  return null;
+}
+
+/** Apply a shellAction to a BrowserWindow (zoom in half steps, like Chromium's, within -3..+3). */
+function applyShellAction(win, action) {
+  const wc = win.webContents;
+  if (action === "fullscreen") return win.setFullScreen(!win.isFullScreen());
+  if (action === "reset") return wc.setZoomLevel(0);
+  const z = wc.getZoomLevel() + (action === "in" ? 0.5 : -0.5);
+  wc.setZoomLevel(Math.max(-3, Math.min(3, z)));
+}
+
 /** The application menu template (Menu.buildFromTemplate). null = no menu (Windows / Linux, packaged). */
 function menuTemplate({ packaged = true, platform = process.platform, appName = "Outpost Luna" } = {}) {
   const dev = packaged ? [] : [{ type: "separator" }, { role: "reload" }, { role: "forceReload" }, { role: "toggleDevTools" }];
@@ -39,8 +62,12 @@ function menuTemplate({ packaged = true, platform = process.platform, appName = 
 function installKeys({ Menu, win, packaged, platform = process.platform, appName }) {
   const t = menuTemplate({ packaged, platform, appName });
   Menu.setApplicationMenu(t ? Menu.buildFromTemplate(t) : null);
-  if (win && win.webContents) win.webContents.on("before-input-event", (e, input) => { if (blockedInput(input, { packaged, platform })) e.preventDefault(); });
+  if (win && win.webContents) win.webContents.on("before-input-event", (e, input) => {
+    if (blockedInput(input, { packaged, platform })) return e.preventDefault();
+    const act = !t ? shellAction(input, { packaged, platform }) : null;   // no menu: zoom / full screen here instead
+    if (act) { e.preventDefault(); applyShellAction(win, act); }
+  });
   if (win && !t && win.setMenuBarVisibility) win.setMenuBarVisibility(false);
 }
 
-module.exports = { blockedInput, menuTemplate, installKeys };
+module.exports = { blockedInput, menuTemplate, installKeys, shellAction, applyShellAction };

@@ -174,3 +174,11 @@ test("speed: the classifier keeps up (≤ 0.1 ms a frame)", () => {
   const per = (performance.now() - t0) / (frames.length * 20);
   assert.ok(per < 0.1, `${per.toFixed(4)} ms/frame`);
 });
+
+test("cameraErrorText: blocked, missing and busy cameras each get their own line (Windows privacy switch included)", async () => {
+  const { cameraErrorText } = await import("../src/gesture/guide.js");
+  assert.match(cameraErrorText({ name: "NotAllowedError" }), /blocked.*privacy settings/);
+  assert.match(cameraErrorText({ name: "NotFoundError" }), /No camera/);
+  assert.match(cameraErrorText({ name: "NotReadableError" }), /other apps.*privacy settings/);
+  assert.equal(cameraErrorText(null), "The camera didn't start.");
+});

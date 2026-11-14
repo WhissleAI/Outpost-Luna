@@ -123,7 +123,9 @@ async def main():
             r = await c.head(f"/vision/{f['file']}")
             size = int(r.headers.get("content-length") or 0)
             ok(r.status_code == 200 and size == f["bytes"] and size > 0, f"gesture asset {f['file']}: {size} B ({r.headers.get('content-type')})")
-        app_dir = Path(sys.executable).resolve().parents[2] / "app" / "frontend" / "vision"   # resources/python/bin/python3 → resources/app
+        # resources/python/bin/python3 (macOS) or resources\python\python.exe (Windows) → resources/app
+        res = Path(sys.executable).resolve().parents[1 if sys.platform == "win32" else 2]
+        app_dir = res / "app" / "frontend" / "vision"
         if app_dir.exists():
             ok(all((app_dir / f["file"]).is_file() for f in man.json()["files"]), f"gesture models on disk in the bundle: {app_dir}")
     print("ALL PASS")
