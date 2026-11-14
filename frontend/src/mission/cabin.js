@@ -81,14 +81,14 @@ export function createCabin(root, o = {}) {
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
         <div class="cb-top">
           <div class="cb-clock" id="cbClock"></div>
-          ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock">
+          <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
+        </div>
+        ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock">
             <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
             <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}x</button>`).join("")}</span>
             <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
             <span class="cb-held" id="cbHeld" aria-live="polite"></span>
           </div>`}
-          <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
-        </div>
         <div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
         <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
@@ -155,7 +155,7 @@ export function createCabin(root, o = {}) {
   </div>`;
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
-  const HUD = [".cb-alert", ".cb-top", ".cb-prog", ".cb-rover", ".cb-sky", ".cb-moment", ".cb-mlog", ".cb-now"];
+  const HUD = [".cb-alert", ".cb-top", ".cb-time", ".cb-prog", ".cb-rover", ".cb-sky", ".cb-moment", ".cb-mlog", ".cb-now"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -168,7 +168,7 @@ export function createCabin(root, o = {}) {
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
     const holeEl = document.createElement("div"); holeEl.className = "cb-hole";
-    HUD.forEach(sel => holeEl.append(q(sel)));
+    HUD.forEach(sel => { const n = q(sel); if (n) holeEl.append(n); });
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
@@ -178,7 +178,7 @@ export function createCabin(root, o = {}) {
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
     if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
-    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); HUD.forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
+    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); HUD.forEach(sel => { const n = holeEl.querySelector(sel); if (n) glassEl.append(n); }); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
       // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live

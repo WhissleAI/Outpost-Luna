@@ -82,3 +82,17 @@ Nothing above was removed. Added:
 - **Alerts**: `storm_warning` (a warning heard, storm not yet here).
 - **Score/grade**: 300 survival + up to 300 goals (science sent home ≤ 200, 50 per ice run ≤ 2) + 40 per good call (≤ 6) − 6 per game-mSv above 15. A ≥ 700, B ≥ 560, C ≥ 420, D ≥ 280. Commander: a survivor who missed a goal is capped at C. Cadet: survived = B, both goals = A.
 - **Debrief**: `difficulty`, `objectives`, `stars` (0–3), `good_calls [{t_h, kind, text}]`, `try` (one line for next time).
+
+## Additive fields (live mission clock, feat/mission-gameplay; docs/GAMEPLAY.md)
+Nothing above was removed. "end shift" now means: run to the next shift boundary (end the shift early).
+- **Routes**: `POST /api/mission/{mid}/step {dt_h}` → `{state, events, live}` (the client's live clock; `live` is the
+  telemetry frame at the fractional hour). `POST /api/mission/{mid}/skip` → `{state, events, say}`. The WS telemetry
+  follows the live clock (`live: true`).
+- **Commands**: `{"type": "skip"}`; `{"type": "task", "task", "step", "choice?"}`; `dispatch` takes
+  `route: "ridge" | "slope"` for `collect_ice`.
+- **Events**: `sunset_soon {in_h: 6}`; gameplay events `task {phase: start|done|missed|cancelled, task, task_kind}` and
+  `beat {beat, title, visual, objective}`. These reach `events` and the session's poll, but never the radio log or the
+  debrief timeline.
+- **State**: `clock`, `acted`, `ack`, `task`, `tasks_waiting`, `story`, `mission_log`, `progress`,
+  `env.comm_closes_in_h`; `rover.route`.
+- **Command result**: `ack` when the order completed a task step ("Shields up. Good.").

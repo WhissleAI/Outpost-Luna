@@ -230,3 +230,11 @@ A full dmg (`build-mac.sh`) was not built for this check: it needs at least 6 GB
 1. **Site picker:** `onIntent("next" | "prev")` to cycle the sites, and `yes` to take command (today `yes` takes command on the brief).
 2. **Houston:** phase 2 `call_houston` now asks "call Houston" through the normal turn path. If the cabin gets a direct Houston action, expose it as `missionUI.intent("call_houston")`.
 3. **Optional:** a short "Lean in to open" label on the highlighted panel (`.is-hl`), so kids learn the lean.
+
+## Live mission clock (feat/mission-gameplay)
+
+In the cabin, an **open palm** also pauses the mission clock; it still stops speech too, because the mission's `stop`
+handler never consumes the intent. A **thumbs up** does the Now card's step: its first button carries
+`data-intent="yes"`, so the shell's `yes` default presses it when no confirm is pending. **Point + dwell** picks a
+choice. Controller: View/Share pauses or runs the clock, RT/R2 skips to the next event, LT/L2 warps time.
+See docs/GAMEPLAY.md §6.
