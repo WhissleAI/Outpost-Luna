@@ -177,6 +177,8 @@ class Ctx:
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
     speaking: bool = False             # an app voice is playing now, or ended < TAIL_S ago
     playing: bool = False              # a line of ours was playing when this turn started (Spoken.playing_at)
+    on_air: bool | None = None         # a line still playing at the turn start, no ear-lag tail (Spoken.on_air);
+                                       # None: timing unknown, the lines in `recent` count as on air
     recent: list[str] = field(default_factory=list)   # lines playing when the turn started (or just ended): Spoken.fresh
     older: list[str] = field(default_factory=list)    # lines that ended before that, within ECHO_WINDOW_S
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
@@ -212,16 +214,40 @@ def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
 
 def echo(text: str, ctx: "Ctx") -> bool:
     """Our own voice coming back: the current / fresh lines at 60% overlap; older lines only near-verbatim. On a
-    readback step (the kid repeats CAPCOM's order on purpose) only what is playing right now counts."""
-    if not ctx.playing and nav_intent(text, ctx):
-        return False          # "Say next when you're ready." -> "next": the kid answering the offer, not its echo
+    readback step (the kid repeats CAPCOM's order on purpose) only what is playing right now counts.
+
+    The ear-lag tail (a line that ended < LAG_S before the turn start, Spoken.fresh) is an echo reference for room
+    talk, but never for the reply the screen is waiting for: the kid taking an offer ("Ready for the next lesson?" ->
+    "next") or answering a lesson step (which often repeats the prompt's words) a moment after our line ended. Only a
+    line still on air at the turn start makes those an echo."""
+    air = ctx.on_air if ctx.on_air is not None else bool(ctx.recent)   # timing unknown: `recent` is on air
+    nav = nav_intent(text, ctx)
+    if nav and not air and answers_offer(nav, ctx):
+        return False          # the kid taking the offer, even inside the tail of the offer line (or of its echo)
+    if nav and not ctx.playing:
+        return False          # any other navigation word once our line is over (beyond the ear lag)
     if ctx.step_type in ("keywords", "vocab_say") and ctx.screen in ("lesson", "ride"):
         return ctx.speaking and echo_of(text, ctx.recent, 0.85)
+    if ctx.screen in ("lesson", "ride"):
+        # a step answer often repeats the prompt's words ("I heard you", "where day meets night"): only a line still
+        # playing makes it an echo; older lines are never used here
+        return air and echo_of(text, ctx.recent)
     if echo_of(text, ctx.recent):
         return True
-    if ctx.screen in ("lesson", "ride"):
-        return False          # a step answer often repeats the prompt's words ("more power to the heaters")
     return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)
+
+
+# The navigation intents that take each spoken offer (Ctx.offer). "next" / "start" / "yes" take any of them.
+OFFER_TAKERS = {"next_lesson": set(), "next_step": set(), "mission": {"go_mission", "take_command"},
+                "take_command": {"take_command"}, "fly_again": {"fly_again"}}
+
+
+def answers_offer(nav: tuple[str, str | None] | None, ctx: "Ctx") -> bool:
+    """The turn is the kid's yes to the pending offer (not a decline, not some other navigation)."""
+    if not nav or not ctx.offer:
+        return False
+    intent = nav[0]
+    return intent in ("accept_offer", "next", "start") or intent in OFFER_TAKERS.get(ctx.offer, set())
 
 
 def clear_question(text: str, dd: float | None = None, act: list[str] | None = None,
@@ -427,6 +453,12 @@ class Spoken:
         t0 = self._t0(t0)
         return any(ln["start"] <= t0 and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S) for ln in self.lines
                    if ln["id"])
+
+    def on_air(self, t0: float | None = None) -> bool:
+        """A line of ours was on air at or after t0 (still playing, or started during the turn): no ear-lag tail. An
+        offer's or a step's answer that starts right after the line ended is the kid, not the echo (Ctx.on_air)."""
+        t0 = self._t0(t0)
+        return any(ln["end"] is None or ln["end"] > t0 for ln in self.lines if ln["id"])
 
     def _t0(self, t0):
         return self.clock() if t0 is None else t0

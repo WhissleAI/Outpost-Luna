@@ -184,3 +184,72 @@ def test_a_quick_answer_repeating_the_prompt_is_heard(world):
     play(s, "q", "Now tap Shackleton crater, inside the gold ring at the pole.")
     hear(s, "Shackleton", dd=0.9, advance=0.9)   # after the 600 ms hard-mute tail
     assert s.routes[-1]["outcome"] == "answer"
+
+
+def live_turn(s, text, dd=0.9, gap=0.02):
+    """A turn exactly as the live path posts it (tools/handsfree_run.py Live.turn over WS /ws/session): it starts
+    `gap` s after the last event we sent (one WS hop), with no idle time before it."""
+    s.clock_obj.t += gap
+    run(s.handle({"t": "turn", "state": "start", "text": ""}))
+    run(s.handle({"t": "arc", "device_directed": dd}))
+    s.clock_obj.t += 0.3 * max(1, len(text.split()))
+    run(s.handle({"t": "turn", "state": "end", "text": text}))
+
+
+@pytest.mark.parametrize("screen,offer,lines,word", [
+    ("patch", "next_lesson", ["Roger. Shackleton crater. Our outpost goes here.",
+                              "Patch earned: Moon Scout. Nice work, Nova.", "Ready for the next lesson?"], "next"),
+    ("patch", "next_lesson", ["Roger. Shackleton crater. Our outpost goes here. Next up: Lessons from Apollo. "
+                              "Say next when you're ready."], "next"),            # the RC's exact line
+    ("patch", "next_lesson", ["Patch earned: Moon Scout. Nice work, Nova.", "Ready for the next lesson?"], "yes"),
+    ("patch", "mission", ["Check Ride patch earned. You're qualified, Commander Nova.", "Ready to take command?"],
+     "take command"),
+    ("debrief", "fly_again", ["Mission paused. Fly again?"], "fly again"),
+])
+def test_the_offers_answer_right_after_its_echo_navigates(world, screen, offer, lines, word):
+    """The live RC loop: our offer plays (playback start / end, as floor.js reports them), the mic hears it back
+    (echo, ignored), and the kid's "next" arrives a few ms after the echo's playback ended, inside the 0.3 s ear-lag
+    tail. It was routed `ignore (echo)` on every retry and the kid never left the patch screen."""
+    s = make(world, screen=screen, mode="academy")
+    run(s.handle({"t": "ui", "event": "screen", "screen": screen, "offer": offer}))
+    for i, line in enumerate(lines):                       # the app's lines, each reported start .. end
+        play(s, f"o{i}", line, dur=min(2.0, 0.25 * len(line.split())))
+    run(s.handle({"t": "playback", "kind": "guide", "state": "start", "id": "echo", "text": lines[-1]}))
+    live_turn(s, lines[-1])                                # our own line heard back while it plays
+    assert s.routes[-1]["reason"] == "echo"
+    run(s.handle({"t": "playback", "kind": "guide", "state": "end", "id": "echo"}))
+    live_turn(s, word)                                     # the kid, right away
+    r = s.routes[-1]
+    assert r["outcome"] == "navigate", r
+    assert r["intent"] in ("next", "accept_offer", "take_command", "fly_again"), r
+    assert says(s) == []
+
+
+def test_an_offer_word_while_the_offer_is_still_on_air_is_its_echo(world):
+    """The other side of the same rule: our line is still playing at the turn start -> its echo, not a yes."""
+    s = make(world, screen="patch", mode="academy")
+    run(s.handle({"t": "ui", "event": "screen", "screen": "patch", "offer": "next_lesson"}))
+    run(s.handle({"t": "playback", "kind": "guide", "state": "start", "id": "o", "text": "Ready for the next lesson?"}))
+    live_turn(s, "next lesson", gap=0.4)
+    assert s.routes[-1]["reason"] == "echo"
+    live_turn(s, "next", gap=0.1)
+    assert s.routes[-1]["reason"] == "echo"
+
+
+def test_a_step_answer_right_after_the_prompts_echo_is_graded(world):
+    """Same tail on a lesson step: the prompt says the answer ("Copy means I heard you") and the kid says it right
+    after the echo. While the echo still plays it stays an echo."""
+    s = make(world, screen="lesson", mode="academy")
+    run(s.handle({"t": "ui", "event": "screen", "screen": "lesson", "step_type": "choice",
+                  "step_options": ["I heard you", "Write it down", "Say it again"]}))
+    line = "Radio is noisy, so crews keep it short. Copy means I heard you. What does \"copy\" mean on the radio?"
+    play(s, "p", line)
+    run(s.handle({"t": "playback", "kind": "guide", "state": "start", "id": "echo", "text": line}))
+    live_turn(s, line)
+    assert s.routes[-1]["reason"] == "echo"
+    live_turn(s, "I heard you")
+    assert s.routes[-1]["reason"] == "echo"
+    s.clock_obj.t += 1.0                                   # (not the same turn twice within 1 s: Session._dup)
+    run(s.handle({"t": "playback", "kind": "guide", "state": "end", "id": "echo"}))
+    live_turn(s, "I heard you")
+    assert s.routes[-1]["outcome"] == "answer", s.routes[-1]

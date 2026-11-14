@@ -63,3 +63,27 @@ def test_scripted_handsfree_run(capsys):
     assert [r.get("intent") for r in panel] == ["panel_comm", "panel_back"], panel
     routes = [r for r in s.routes if r["outcome"] != "ignore"]
     assert {r["outcome"] for r in routes} >= {"navigate", "answer", "order", "question"}
+    # The live echo path ran: on every patch screen our offer was heard back (echo) and the kid's "next", a few ms
+    # after that echo's playback ended, still navigated on the first try (the RC looped here forever).
+    patch = [r for r in s.routes if r["screen"] == "patch"]
+    offers = [i for i, r in enumerate(patch) if r["reason"] == "echo" and r["text"] in hf.OFFER.values()]
+    assert len(offers) == len(content.course()["lessons"]) - 1, patch
+    assert all(patch[i + 1]["text"] == "next" and patch[i + 1]["outcome"] == "navigate" for i in offers), patch
+
+
+def test_live_course_is_matched_by_lesson_id():
+    """main_live joins the server's public course with the local answer keys by id, not by position."""
+    full = content.course()
+    public = {"lessons": [{k: v for k, v in L.items() if k != "steps"} for L in reversed(full["lessons"])]}
+    joined = hf.with_course(public, full)
+    keys = {L["id"]: L["steps"] for L in full["lessons"]}
+    assert [L["id"] for L in joined["lessons"]] == [L["id"] for L in reversed(full["lessons"])]
+    assert all(L["steps"] is keys[L["id"]] for L in joined["lessons"])
+    with pytest.raises(SystemExit):
+        hf.with_course({"lessons": [{"id": "no_such_lesson"}]}, full)
+
+
+def test_course_order_is_the_current_one():
+    """The script walks the course in its own order (next_lesson); this is the order the UI and the docs use."""
+    assert [L["id"] for L in content.course()["lessons"]] == \
+        ["moon", "history", "comms", "power", "radiation", "life", "checkride"]

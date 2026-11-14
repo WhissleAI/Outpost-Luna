@@ -32,7 +32,12 @@ an utterance is an order. A question works on every screen.
 - Every app voice (guide, CAPCOM, story, Houston, crew clips) reports `playback` with its text (`floor.js`). The session
   keeps the last 10 lines with when each played (`turn_router.Spoken`). Times are compared with the kid's turn
   **start**:
-  - Lines playing then, or ended < 0.3 s before (the ear reports a turn start ~0.3 s after the sound): ≥ 60 % word overlap is an echo. A navigation word ("next") only counts as an echo when a line was playing as the turn started, so the kid can answer an offer right away.
+  - Lines playing then, or ended < 0.3 s before (the ear reports a turn start ~0.3 s after the sound): ≥ 60 % word
+    overlap is an echo. The reply the screen is waiting for is the exception: a word that takes the pending offer
+    ("next", "yes", "take command", "fly again") or a lesson step's answer is an echo only when a line was still on
+    air at the turn start (`Spoken.on_air`, no 0.3 s tail). Our offer heard back, then the kid's "next" a few ms
+    after it ended, is the kid. Other navigation words count as an echo when a line was playing (or ended < 0.3 s
+    before) as the turn started.
   - Lines that ended 0.3–12 s before: only a near-verbatim repeat (≥ 85 %, ≥ 3 words). This catches an example
     command heard back a few seconds later. A kid answering with the prompt's words ("more power to the heaters")
     still gets through, and in lessons older lines are not used at all.
@@ -44,17 +49,20 @@ an utterance is an order. A question works on every screen.
 ## The Director drives the flow
 
 Each offer is one short line, spoken once, and the screen frame carries it (`offer`):
-- After a lesson: "Next up: Space words. Say next when you're ready." "next" or "yes" opens it.
-- After the check ride: "Ready to take command of Outpost Luna? Say yes."
-- In the briefing: "Say take command when you're ready."
-- After the debrief: "Want to fly again? Say fly again."
+The offers are `OFFER` in `frontend/src/story.js` (copy v3), each spoken as its own short question:
+- After a lesson: "Ready for the next lesson?" (before the check ride: "Ready for your check ride?"). "next" or "yes"
+  opens it.
+- After the check ride: "Ready to take command?"
+- In the briefing (after picking a site): "Say take command when you're ready."
+- After the debrief: "… Fly again?"
 
 ## Tests
 
 - `backend/tests/test_turn_router.py`: every screen × every outcome, with noise, echo and adult chatter.
 - `backend/tests/test_handsfree_loop.py`: the loop. Our own lines fed back as ear turns, hums, and ten feedback
   cycles. The fallback is limited to questions and to once per 30 s.
-- `backend/tests/test_handsfree_run.py`: the whole app with no clicks (`tools/handsfree_run.py`), noise at every
+- `backend/tests/test_handsfree_run.py`: the whole app with no clicks (`tools/handsfree_run.py`, with the same turn
+  timing as the live run: each turn starts right after the last event, so the offer's echo tail is exercised), noise at every
   screen.
 - `backend/tests/test_handsfree_live.py` (`HANDSFREE_LIVE=http://…`): the app's own Steer TTS streamed into the Arc
   ear gets no reply; a kid's order in another voice does.

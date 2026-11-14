@@ -23,6 +23,12 @@ import re
 import time
 
 UNKNOWN = "I don't know that one yet"
+CS = "Nova"
+# What the UI speaks (frontend/src/story.js, copy v3): the offers are short questions, said once, as their own line.
+OFFER = {"next_lesson": "Ready for the next lesson?", "ride": "Ready for your check ride?",
+         "mission": "Ready to take command?", "fly_again": "Fly again?", "next_step": "Ready for the next one?"}
+CAPCOM = {"patch": lambda name: f"Patch earned: {name}. Nice work, {CS}.",
+          "qualified": lambda name: f"{name} patch earned. You're qualified, Commander {CS}."}
 NOISE = [("Oh.", 0.9), ("Mm-mm.", 0.8), ("um", 0.6), ("did you remember to buy the milk", 0.2)]
 
 
@@ -151,7 +157,7 @@ class Client:
         if intent == "answer":
             if self.view == "callsign":
                 self.view = "map"
-                await self.speak("Copy that, Nova. Welcome to Flight School.")
+                await self.speak(f"Copy that, {CS}. Welcome to Flight School.")
             elif self.L is not None:
                 await self.grade(text)
             return
@@ -215,10 +221,14 @@ class Client:
                     self.qualified = True
                 self.view, self.L, self.waiting = "patch", None, False
                 nx = self.next_lesson()
-                offer = " Ready to take command of Outpost Luna? Say yes." if self.qualified else \
-                    f" Next up: {nx['title']}. Say next when you're ready." if nx else ""
+                # academy/ui.js: the grader's line, then showBadge's patch line and the offer, each its own line
+                offer = OFFER["mission"] if self.qualified else \
+                    (OFFER["ride"] if nx.get("ride") else OFFER["next_lesson"]) if nx else ""
                 await self.push()
-                await self.speak(r.get("say", "") + offer)
+                await self.speak(r.get("say", ""))
+                name = r["badge"].get("name") or r["badge"]["id"]
+                await self.speak(CAPCOM["qualified" if self.qualified else "patch"](name))
+                await self.speak(offer)
                 return
             if st == "done":            # check ride not passed: fly it again
                 await self.open(L)
@@ -240,13 +250,20 @@ class Client:
         self.mid, self.mscreen = st["id"], "cabin"
         await self.t.send({"t": "hello", "mode": "mission", "mission_id": self.mid, "role": None})
         await self.push()
-        await self.speak(f"Outpost Luna is go at {self.site.replace('_', ' ')}. You have command.")
+        name = self.site.replace("_", " ").title()
+        await self.speak(f"Outpost Luna is online at {name}. Day one, {CS}.")
 
     async def debrief(self):
         d = await self.t.get(f"/api/mission/{self.mid}/debrief")
         self.mscreen = "debrief"
         await self.push()
-        await self.speak(f"Nice flying, Nova. Your grade is {d.get('grade')}. Want to fly again? Say fly again.")
+        # mission/ui.js showDebrief: "<head>. Nice flying, <cs>. Grade G, N points. Fly again?"
+        outcome = d.get("outcome") or "in_progress"
+        head = "Mission complete" if outcome in ("survived", "success") else \
+            "Mission paused" if outcome == "in_progress" else "Mission over"
+        line = f"{head}." if outcome == "in_progress" else \
+            f"{head}. Nice flying, {CS}. Grade {d.get('grade')}, {round(d.get('score') or 0)} points."
+        await self.speak(f"{line} {OFFER['fly_again']}")
 
     # -- the kid --
     async def say(self, text: str, dd: float = 0.9, expect_reply: bool = True) -> list[dict]:
@@ -324,7 +341,7 @@ class InProc:
         await self.s.handle(m)
 
     async def wait(self, sec: float):
-        self.clock.t += sec
+        self.clock.t += min(sec, 2.0)         # Live.wait: a line "plays" for at most 2 s
 
     def _since(self, last) -> list[dict]:
         ob = self.s.outbox                    # capped at 400: find where we were by identity, not by length
@@ -336,12 +353,17 @@ class InProc:
     async def turn(self, text: str, dd: float) -> list[dict]:
         last = self.s.outbox[-1] if self.s.outbox else None
         self.trace.append({"text": text, "dd": dd, "screen": self.s.screen_name(), "mode": self.s.belief["mode"]})
-        self.clock.t += 1.2
+        # Exactly Live.turn's timing: the turn starts right after the previous event (e.g. the end of our echo's
+        # playback, still inside the ear-lag tail), and the drain comes AFTER the turn. Advancing the clock before
+        # the turn start hid the live-only bug where the kid's "next" was taken for the offer's echo.
+        self.clock.t += Live.GAP_S
         await self.s.handle({"t": "turn", "state": "start", "text": ""})
         await self.s.handle({"t": "arc", "device_directed": dd})
         self.clock.t += 0.3 * max(1, len(text.split()))
         await self.s.handle({"t": "turn", "state": "end", "text": text})
-        return self._since(last)
+        out = self._since(last)
+        self.clock.t += Live.DRAIN_S
+        return out
 
     async def post(self, path, body):
         return self.http.post(path, json=body).json()
@@ -352,6 +374,8 @@ class InProc:
 
 class Live:
     """A running backend: /ws/session (and /ws/listen with --audio)."""
+    GAP_S = 0.02          # from the last event we sent to the turn start (one WS hop; InProc uses the same)
+    DRAIN_S = 1.2         # quiet time we wait for the decisions after a turn ends
 
     def __init__(self, base: str, audio: bool = False, models: str | None = None):
         import httpx
@@ -389,7 +413,7 @@ class Live:
         await self.ws.send(json.dumps({"t": "turn", "state": "start", "text": ""}))
         await self.ws.send(json.dumps({"t": "arc", "device_directed": dd}))
         await self.ws.send(json.dumps({"t": "turn", "state": "end", "text": text}))
-        return await self.drain(1.2)
+        return await self.drain(self.DRAIN_S)
 
     async def turn_audio(self, text: str) -> list[dict]:
         await asyncio.sleep(0.6)                 # a kid's reaction time after our line
@@ -422,13 +446,24 @@ class Live:
         return (await self.http.get(path)).json()
 
 
+def with_course(course: dict, full: dict) -> dict:
+    """The server's public course (its order: course.json) with the local answer keys, matched by lesson id, never by
+    position: a reordered course must not grade one lesson with another's keys."""
+    keys = {fl["id"]: fl for fl in full["lessons"]}
+    missing = [pl["id"] for pl in course["lessons"] if pl["id"] not in keys]
+    if missing:
+        raise SystemExit(f"server lessons with no local answer keys (backend out of date?): {missing}")
+    for pl in course["lessons"]:
+        pl["steps"] = keys[pl["id"]]["steps"]
+    return course
+
+
 async def main_live(a):
     t = Live(a.base, a.audio, a.models)
     await t.open()
     course = (await t.http.get("/api/academy/course")).json()
     full = __import__("app.academy.content", fromlist=["course"]).course()   # the answer keys (local data)
-    for pl, fl in zip(course["lessons"], full["lessons"]):
-        pl["steps"] = fl["steps"]
+    with_course(course, full)
     from app.academy import vocab
     from app.config import settings
     from app.gazetteer import Gazetteer
