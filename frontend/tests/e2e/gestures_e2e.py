@@ -71,7 +71,8 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=exe, args=["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--enable-unsafe-swiftshader"])
         ctx = b.new_context(viewport={"width": 1440, "height": 900})
-        ctx.add_init_script("try { localStorage.setItem('outpost-callsign', 'Nova'); } catch (e) {}")
+        # the first-mission cabin tour (story) owns next / yes while it runs: these checks are about the cabin itself
+        ctx.add_init_script("try { localStorage.setItem('outpost-callsign', 'Nova'); localStorage.setItem('outpost-tour-done:Nova', '1'); } catch (e) {}")
         page = ctx.new_page()
         foreign, cam_requests = [], []
         page.on("request", lambda r: foreign.append(r.url) if not (r.url.startswith(base) or r.url.startswith(base.replace("http", "ws")) or r.url.startswith(("data:", "blob:"))) else None)

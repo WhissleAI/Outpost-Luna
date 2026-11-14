@@ -153,7 +153,8 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   }
   const screen = () => screenName(screenState());
   const lettered = () => [...doc.querySelectorAll("#aPanel .a-choice:not([disabled]) .a-key")].some(k => vis(k) && /^[A-D]$/.test(k.textContent.trim()));
-  const confirmWaiting = () => !!(mission && mission.pending) || [...doc.querySelectorAll('[data-intent="no"], #card .card-actions button, .cb-offer-b')].some(b => vis(b) && /^no$/i.test(b.textContent.trim()));
+  const wipeBtn = k => { const b = doc.querySelector(`.mx-wipe [data-w="${k}"]`); return vis(b) ? b : null; };   // QA-26: "start over?" on a paused debrief
+  const confirmWaiting = () => !!(mission && mission.pending) || !!wipeBtn("no") || [...doc.querySelectorAll('[data-intent="no"], #card .card-actions button, .cb-offer-b')].some(b => vis(b) && /^no$/i.test(b.textContent.trim()));
   const PICK_LISTS = ["#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", ".a-csb", ".mx-site", ".cb-offer-b", "#card .card-actions button"];
   function pickList() { for (const s of PICK_LISTS) { const l = [...doc.querySelectorAll(s)].filter(b => vis(b) && !b.disabled); if (l.length) return l; } return []; }
 
@@ -272,6 +273,9 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
     const on = !A.settings.captions; A.set({ captions: on }); toast(on ? "Captions on" : "Captions off"); return true;
   }, { priority: 0 });
   onIntent("pick", a => { const l = pickList(), b = l[(a.n | 0) - 1]; if (!b) return false; b.focus({ preventScroll: true }); b.click(); return true; }, { priority: 0 });
+  // yes / no answer an on-screen confirm that has its own buttons (the debrief's "start over?"), from any device
+  onIntent("yes", () => { const b = wipeBtn("yes"); if (!b) return false; b.click(); return true; }, { priority: 15 });
+  onIntent("no", () => { const b = wipeBtn("no"); if (!b) return false; b.click(); return true; }, { priority: 15 });
   const cabin = (n, arg) => !!(inCabin() && mission && mission.intent && mission.intent(n, arg));
   onIntent("view_next", () => cabin("view_next"), { priority: 0 });
   onIntent("view_prev", () => cabin("view_prev"), { priority: 0 });

@@ -433,7 +433,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (!keysMode()) return;
     const sc = scope(), a = doc.activeElement;
     // the cabin camera moved (a panel opened by voice, a click, Esc): follow it
-    if (in3d()) {
+    if (in3d() && !(sc.seat || sc.id.startsWith("panel:"))) { was3d = true; lastPanel = cabinPanel() || "seat"; }   // a sheet or the tour is up: leave its focus alone
+    else if (in3d()) {
       if (!was3d) { was3d = true; lastPanel = cabinPanel() || "seat"; if (lastPanel === "seat") { focusSeat(); return; } }   // the cabin just appeared: the seat
       const p = cabinPanel() || "seat";
       if (p !== lastPanel) { const was = lastPanel; lastPanel = p; if (p === "seat") { focusSeat(was !== "seat" ? (was === "power" ? "displays" : was) : null); return; } restore(); return; }

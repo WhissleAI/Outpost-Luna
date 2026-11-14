@@ -389,7 +389,16 @@ def main():
         press("ArrowDown", 600)
         ok(act()["id"] in ("mAgain", "mNewSite", "mDbClose") or "mx" in act()["cls"] or act()["tag"] in ("SUMMARY", "A"), f"debrief: arrows move in the debrief ({act()['id'] or act()['cls']})")
         shot("09-debrief")
-        press("y", 3500)
+        press("y", 1500)
+        wipe = "() => { const w = document.querySelector('.mx-wipe'); return !!(w && w.getClientRects().length); }"
+        if js(wipe):   # a paused mission asks first (QA-26): N keeps it, Y starts over
+            ok(True, "debrief: Y on a paused mission asks 'start over?'")
+            shot("09a-debrief-wipe")
+            press("n", 900)
+            ok(not js(wipe) and js("() => !document.getElementById('mDebrief').hidden"), "debrief: N keeps the mission (N is no while it asks)")
+            press("y", 1500)
+            ok(js(wipe), "debrief: Y asks again")
+            press("y", 3500)
         ok(until("() => document.body.dataset.cabin === '1'", 20000), "debrief: Y flies again (a new shift in the cabin)")
 
         # ---------------- the top bar from the seat, Settings ----------------
