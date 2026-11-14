@@ -244,11 +244,12 @@
     "ice",
     "water",
     "next landing",
-    "artemis 3",
-    "artemis three",
-    "artemis iii",
     "land next",
-    "pole"
+    "pole",
+    "artemis iv",
+    "artemis 4",
+    "artemis four",
+    "first south pole landing"
    ],
    "kind": "feature"
   },
@@ -273,7 +274,7 @@
    "lon": -169,
    "diameter_km": 2500,
    "estimated": false,
-   "fact": "One of the biggest impact craters in the solar system: about 2,500 km across, almost as wide as the USA.",
+   "fact": "One of the biggest impact craters in the solar system: about 2,500 km across, more than half as wide as the USA.",
    "aliases": [
     "aitken",
     "biggest",

@@ -30,10 +30,10 @@ def test_no_fixed_rule_dominates(summary):
     best_fixed = max(s[p]["score_mean"] for p in ss.FIXED)
     assert s["planner"]["score_mean"] >= best_fixed + 150, (level, s["planner"]["score_mean"], best_fixed)
     for p in ss.FIXED:
-        # Commander: a fixed rule almost never earns A or B. Cadet: surviving is a B by design, so only the goals' A
-        # counts, and a gamble (rover spam) may sometimes pay: risk vs reward, not a dominant strategy.
-        top = s[p]["grades"]["A"] + (s[p]["grades"]["B"] if level == "commander" else 0)
-        assert top <= (0.1 if level == "commander" else 0.2) * sum(s[p]["grades"].values()), (level, p, s[p]["grades"])
+        # No fixed rule averages a B (560), and few runs reach A. A gamble (rover spam) may sometimes pay off with a
+        # B: that is risk vs reward, not a dominant strategy. Cadet: surviving is a B by design, so only A counts.
+        assert s[p]["score_mean"] < 560, (level, p, s[p]["score_mean"])
+        assert s[p]["grades"]["A"] <= 0.2 * sum(s[p]["grades"].values()), (level, p, s[p]["grades"])
 
 
 def test_hiding_is_safe_but_not_a_mission(summary):

@@ -43,6 +43,23 @@ def answer_for(step: dict, gaz=None, vocab=None) -> str:
             return "everyone into the shelter" if e["on"] else "everyone out of the shelter"
         if e["type"] == "dispatch":
             return "send the rover for ice"
+        if e["type"] == "call_houston":
+            return "Houston, any space weather?"
+        if e["type"] == "power_save":
+            return "night mode on"
+    # globe steps (docs/LEARNING_DESIGN.md §3): what a kid says with no hands
+    if k in ("predict", "compare"):
+        return next(o["label"] for o in acc["options"] if o["id"] == acc["answer"])
+    if k == "globe_side":
+        return "show me the far side" if acc["want"] == "far" else "show me the near side"
+    if k == "terminator":
+        return "the terminator, where day meets night"
+    if k == "route":
+        names = [gaz.places[x].name if gaz and x in gaz.places else x for x in acc["stops"]]
+        return " then ".join(re.sub(r"\s*\(.*?\)", "", n) for n in names)
+    if k == "earth_view":
+        from app.academy.grade import earth_answer
+        return {"yes": "yes, Earth is up there", "no": "no, never", "sometimes": "sometimes"}[earth_answer(acc["place"])]
     if k == "keywords":
         q = re.findall(r'"([^"]+)"', step.get("prompt", ""))
         groups = acc.get("all") or acc.get("any") or []

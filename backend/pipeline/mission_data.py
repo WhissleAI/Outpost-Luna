@@ -224,6 +224,24 @@ def event_name(ev: dict) -> str:
     return f"Real solar storm, {ev['date']} ({ev['class']} at Earth, few particles at the Moon{speed})"
 
 
+def rekey_on_sep(events: list[dict], sep: list[dict]) -> list[dict]:
+    """Key each event on its DONKI SEP record when it has one (that is what reaches the Moon); the Earth storm (GST)
+    stays as context. Two Earth storms from one particle event become one event (the stronger)."""
+    by = {s["sepID"]: s for s in sep}
+    best: dict[str, dict] = {}
+    for ev in events:
+        ev.setdefault("gst_id", ev["id"]); ev.setdefault("gst_link", ev["link"]); ev.setdefault("gst_date", ev["date"])
+        s = by.get(ev.get("sep_id") or "")
+        if s:
+            ev.update(id=s["sepID"], link=s["link"], date=s["eventTime"][:10], type="solar particle event",
+                      source={"title": f"DONKI {s['sepID']} (NASA CCMC)", "url": s["link"]})
+            ev["name"] = f"Real solar particle storm, {ev['date']}" + (
+                f" (huge auroras on Earth, {ev['class']})" if ev["class"] in ("G4", "G5") else "")
+        if ev["id"] not in best or ev["severity"] > best[ev["id"]]["severity"]:
+            best[ev["id"]] = ev
+    return list(best.values())
+
+
 def build_donki():
     # Sept 2017 (the last big solar-cycle-24 storms) + solar cycle 25's active years.
     ranges = [("2017-09-01", "2017-10-15"), ("2021-10-01", "2025-12-31")]

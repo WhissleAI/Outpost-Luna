@@ -3,24 +3,44 @@
   "dose_equivalent_usv_per_day": 1369,
   "dose_rate_msv_per_h": 0.057,
   "what": "Average dose equivalent measured on the lunar surface by the Lunar Lander Neutrons and Dosimetry (LND) experiment on China's Chang'e 4 lander (Jan-Feb 2019, solar minimum). About 2.6x the galactic-cosmic-ray dose inside the ISS.",
-  "source": {"title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances 6:eaaz1334", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"}
+  "source": {
+   "title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface, Science Advances 6:eaaz1334",
+   "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"
+  }
  },
  "iss_comparison": {
+  "gcr_usv_per_day": 523,
   "dose_equivalent_usv_per_day": 731,
-  "source": {"title": "Zhang et al. 2020 (DOSIS 3D DOSTEL on the ISS, same period)", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"}
+  "what": "Inside the ISS in the same weeks: 523 microsieverts a day from cosmic rays alone (the figure Zhang 2020 compares with, 1369/523 = about 2.6), or 731 including the South Atlantic Anomaly.",
+  "source": {
+   "title": "Zhang et al. 2020 (DOSIS 3D DOSTEL on the ISS, same period)",
+   "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"
+  }
  },
  "limits": {
   "career_msv": 600,
   "what": "NASA's career radiation limit for astronauts is 600 mSv.",
-  "source": {"title": "NASA NTRS 20230012405, Biological Space Radiation Countermeasures to Enable Long Duration Exploration Missions", "url": "https://ntrs.nasa.gov/citations/20230012405"},
+  "source": {
+   "title": "NASA NTRS 20230012405, Biological Space Radiation Countermeasures to Enable Long Duration Exploration Missions",
+   "url": "https://ntrs.nasa.gov/citations/20230012405"
+  },
   "context": "Astronauts are exposed to effective doses from 50 to 2,000 mSv; 1 mSv is about 10 chest x-rays.",
-  "context_source": {"title": "NASA: Why Space Radiation Matters", "url": "https://www.nasa.gov/missions/analog-field-testing/why-space-radiation-matters/"}
+  "context_source": {
+   "title": "NASA: Why Space Radiation Matters",
+   "url": "https://www.nasa.gov/missions/analog-field-testing/why-space-radiation-matters/"
+  }
  },
  "shielding": {
-  "what": "Solar-flare protons are stopped well by regolith: dose behind lunar soil drops steeply with thickness, which is why a regolith-covered storm shelter is the standard plan. Galactic cosmic rays are much harder to stop.",
+  "what": "Solar-flare protons are stopped well by mass: regolith, water, or packed supplies. Covering a base with Moon soil is an idea NASA has studied, not a current plan. Galactic cosmic rays are much harder to stop.",
   "sources": [
-   {"title": "NASA NTRS 19890004839, Solar-flare shielding with regolith at a lunar-base site", "url": "https://ntrs.nasa.gov/citations/19890004839"},
-   {"title": "NASA NTRS 20110012713, Radiation shielding of lunar regolith/polyethylene composites and regolith/water mixtures", "url": "https://ntrs.nasa.gov/citations/20110012713"}
+   {
+    "title": "NASA NTRS 19890004839, Solar-flare shielding with regolith at a lunar-base site",
+    "url": "https://ntrs.nasa.gov/citations/19890004839"
+   },
+   {
+    "title": "NASA NTRS 20110012713, Radiation shielding of lunar regolith/polyethylene composites and regolith/water mixtures",
+    "url": "https://ntrs.nasa.gov/citations/20110012713"
+   }
   ]
  },
  "game": {
@@ -30,9 +50,29 @@
   "mission_dose_limit_msv": 50,
   "mission_limit_note": "Game limit for this one 10-day mission: 1/12 of NASA's 600 mSv career limit. Doing nothing for 10 days costs ~27 game-mSv; one big storm without shelter pushes you over.",
   "shields_max_effect": 0.5,
-  "shields_note": "Game assumption: powered shields (water walls pumped around the crew area, plus monitoring) cut the dose rate by up to 50% at a 30% power share; effect scales linearly with share. Not a published number.",
+  "shields_note": "PRETEND TECH: no NASA design uses powered radiation shields; mass, not electricity, blocks radiation. In the game, power to 'shields' stands for pumping water walls around the crew area; it cuts the dose rate by up to 50% at a 30% share.",
   "shelter_factor_storm": 0.25,
   "shelter_factor_quiet": 0.7,
-  "shelter_note": "Game assumption: in the regolith-covered shelter, storm (solar particle) dose x0.25 and the steady cosmic-ray dose x0.7, reflecting that regolith stops solar protons far better than cosmic rays (NTRS 19890004839). No science or rover work happens in the shelter."
+  "shelter_note": "Modelled on Orion's shelter: up to 24 h inside, then the crew must rest 12 h; storm dose x0.25 (Artemis I measured about 4x less in the best-shielded spot), cosmic-ray dose x0.7 (game assumption). No science or rover work in the shelter.",
+  "pretend_tech": {
+   "shields": "powered water-wall pumps (mass blocks radiation, not electricity)",
+   "greenhouse": "a working greenhouse at the outpost (a future idea)",
+   "power_cable": "the rim-to-floor power cable",
+   "relay": "the relay satellite (NASA plans a lunar relay network; none is working yet)"
+  },
+  "dose_scale_note": "Game doses are doubled so storms matter in 10 days."
+ },
+ "shelter_real": {
+  "what": "Orion's real storm shelter: the HERA sensor gives up to 1 h of warning; the crew pack into the floor bays behind stowage bags and can stay up to 24 h. On Artemis I the best-shielded spot got about 4x less dose.",
+  "sources": [
+   {
+    "title": "NASA: Orion crew systems",
+    "url": "https://www.nasa.gov/reference/crew-systems/"
+   },
+   {
+    "title": "DLR: Orion radiation protection tested, Artemis I findings (2024)",
+    "url": "https://www.dlr.de/en/latest/news/2024/orion-spacecraft-radiation-protection-tested-initial-findings-from-artemis-i-moon-mission"
+   }
+  ]
  }
 }

@@ -371,8 +371,8 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
             relay = m.difficulty == "cadet" and not env["earth_visible"]
             if env["earth_visible"] or relay:
                 m.warned[ev["id"]] = {"by": "relay" if relay else "houston", "t_h": m.t_h}
-                _emit(m, out, "storm_warning", f"Houston: solar flare. Storm {storm_confidence(ev)} "
-                      f"in about {lead} hours.", ev["source"], ev["date"],
+                _emit(m, out, "storm_warning", f"Houston: big flare. Particle storm {storm_confidence(ev)} "
+                      f"within {lead} hours.", ev["source"], ev["date"],
                       extra={"confidence": storm_confidence(ev), "lead_h": lead, "by": m.warned[ev["id"]]["by"]})
         if m.t_h == st.start_h and ev.get("sep") and m.shelter:
             _good(m, "sheltered_early", f"In the shelter before the {ev['date']} storm hit.")
@@ -404,7 +404,7 @@ def _sensor_watch(m: Mission, out: list):
         ev = st.event
         if ev.get("sep") and ev["id"] not in m.warned and m.t_h < st.start_h <= m.t_h + SHIFT_H:
             m.warned[ev["id"]] = {"by": "sensor", "t_h": m.t_h}
-            _emit(m, out, "storm_warning", f"Particle sensor alarm! Storm likely within {st.start_h - m.t_h} hours.",
+            _emit(m, out, "storm_warning", "Particle sensor alarm! Levels rising. Storm likely soon.",
                   ev["source"], ev["date"],
                   extra={"confidence": "likely", "lead_h": st.start_h - m.t_h, "by": "sensor"})
 
@@ -761,6 +761,7 @@ def to_state(m: Mission) -> dict:
         "difficulty": m.difficulty,
         "science": {"collected": round(m.science, 1), "sent_home": round(m.science_sent, 1)},
         "objectives": objectives(m), "good_calls": len(m.good_calls),
+        "pretend_tech": radiation()["game"]["pretend_tech"],   # label these in the UI ("pretend tech")
         "pending": m.pending,
         "alerts": alerts(m), "log": m.log[-30:], "score": score(m),
     }
@@ -826,7 +827,7 @@ def debrief(m: Mission) -> dict:
         if ev.get("sep"):
             text = (f"On {ev['date']} the Sun really sent out fast particles (DONKI). In your mission they raised "
                     f"radiation {mult:g}x for {st.dur_h} hours, and your crew took {got:.1f} game-mSv. The Moon has "
-                    "no magnetic field or thick air, so a shelter under soil is the plan.")
+                    "no magnetic field or thick air. Mass blocks particles: Orion crews hide behind packed supplies.")
         else:
             text = (f"On {ev['date']} Earth had a real {ev['class']} magnetic storm, but few particles came with it "
                     f"(DONKI). At the Moon that is a near miss: radiation only {mult:g}x. Not every warning is a big "
@@ -835,10 +836,10 @@ def debrief(m: Mission) -> dict:
         if len(lessons) >= 2:
             break
     base = rad["baseline"]
-    iss = rad["iss_comparison"]["dose_equivalent_usv_per_day"]
-    lessons.append({"text": (f"Chang'e 4 measured {base['dose_equivalent_usv_per_day']} microsieverts per day on the "
-                             f"Moon's surface, about {base['dose_equivalent_usv_per_day'] / iss:.0f} times the "
-                             f"{iss} measured inside the Space Station then. Your crew's "
+    iss = rad["iss_comparison"]["gcr_usv_per_day"]
+    lessons.append({"text": (f"China's Chang'e 4 measured {base['dose_equivalent_usv_per_day']} microsieverts per day on "
+                             f"the Moon's surface, about {base['dose_equivalent_usv_per_day'] / iss:.1f} times the "
+                             f"cosmic-ray dose inside the Space Station ({iss}). Your crew's "
                              f"{m.dose:.1f} game-mSv is about {m.dose / rad['game']['dose_scale_factor']:.1f} real mSv "
                              f"(the game doubles doses). NASA's career limit is {rad['limits']['career_msv']} mSv."),
                     "source": base["source"]})
@@ -870,16 +871,17 @@ def debrief(m: Mission) -> dict:
          "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
          "how": "Sun elevation sets solar power and day/night; Earth elevation sets comm windows. Topocentric "
                 "observer at the site; terrain ignored except for one calibrated horizon angle per site."},
-        {"name": "Outpost sites (IAU Gazetteer + NASA Artemis III candidate regions + illumination studies)",
-         "url": "https://planetarynames.wr.usgs.gov/",
-         "how": "Site coordinates, ice, and the long-term sunlight % that calibrates each site's horizon."},
-        {"name": "Real solar events (NASA Solar Cycle 25 blog, NASA Science, NOAA SWPC)",
+        {"name": "Outpost sites (IAU Gazetteer; NASA's 2024 list of candidate landing regions; illumination studies)",
+         "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/",
+         "how": "Malapert Massif and de Gerlache Rim 2 are on NASA's 2024 list of 9 candidate regions; the other sites "
+                "are studied by scientists. Coordinates, ice, and the yearly sunlight % that calibrates each horizon."},
+        {"name": "Real solar particle events (NASA CCMC DONKI SEP records)",
          "url": storms_catalog()["source"]["url"],
-         "how": "Each mission replays 2-3 real events, moved into the mission. Severity and dose multiplier from "
-                "flare class / storm level: " + storms_catalog()["mapping"]["rule"]},
-        {"name": "Lunar surface radiation (Chang'e 4 LND, Zhang et al. 2020)", "url": base["source"]["url"],
+         "how": "Each mission replays 2-3 real events, moved into the mission and scaled for the game. "
+                + storms_catalog()["mapping"]["rule"]},
+        {"name": "Lunar surface radiation (China's Chang'e 4 LND, Zhang et al. 2020)", "url": base["source"]["url"],
          "how": f"Baseline dose rate {base['dose_rate_msv_per_h']} mSv/h, x{rad['game']['dose_scale_factor']} for "
-                "gameplay."},
+                "gameplay: game doses are doubled so storms matter in 10 days."},
         {"name": "NASA career radiation limit (NTRS 20230012405)", "url": rad["limits"]["source"]["url"],
          "how": "Context for the 50 mSv game mission limit (1/12 of 600 mSv)."},
         {"name": "Regolith shielding (NASA NTRS 19890004839)", "url": rad["shielding"]["sources"][0]["url"],

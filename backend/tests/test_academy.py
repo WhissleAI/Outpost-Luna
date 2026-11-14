@@ -86,26 +86,29 @@ def test_grading(step, inp, ok):
 
 def test_attempt_api_retry_hint_pass_badge(client):
     pub = client.get("/api/academy/course").json()
-    assert [l["id"] for l in pub["lessons"]][:2] == ["moon", "comms"]
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 0, "input": {"text": "show me tycho"}}).json()
+    assert [l["id"] for l in pub["lessons"]][:2] == ["moon", "history"]   # map order (LEARNING_DESIGN §5)
+    A = lambda step, inp, misses=0: client.post("/api/academy/attempt", json={  # noqa: E731
+        "lesson_id": "moon", "step": step, "input": inp, "misses": misses}).json()
+    r = A(0, {"text": "show me tycho"})
     assert r["status"] == "retry" and "hint" not in r
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 0, "input": {"text": "tycho"}, "misses": 1}).json()
-    assert r["status"] == "hint" and "south pole" in r["hint"]
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 0, "input": {"text": "show me the south pole"}}).json()
+    r = A(0, {"text": "tycho"}, 1)
+    assert r["status"] == "hint" and "dark patch" in r["hint"]
+    r = A(0, {"text": "where neil armstrong landed"})
     assert r["status"] == "passed" and r["next_step"] == 1 and "badge" not in r
     assert r["decisions"][0]["t"] == "lesson" and r["decisions"][1]["t"] == "say"
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 1, "input": {"tap": "shackleton"}}).json()
+    r = A(1, {"text": "yes, always"})                                   # earth_view: near side
+    assert r["status"] == "passed" and r["answer"] == "yes"
+    r = A(2, {"choice": "month"})                                       # predict: a guess is never wrong
+    assert r["status"] == "passed" and r["correct"] is False and r["say"].startswith("Never.")
+    r = A(3, {"view": {"lat": 0, "lon": 175}})                          # globe_side: camera on the far side
     assert r["status"] == "passed"
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 2, "input": {"choice": "ice"}}).json()
-    assert r["status"] == "passed" and r["next_step"] == 3
-    # step 3 is the sprinkled Space word (mare): answering its meaning by voice earns the badge
-    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 3,
-                                                  "input": {"text": "a dark flat sea of cooled lava"}}).json()
-    assert r["status"] == "passed" and r["badge"]["id"] == "scout" and "next_step" not in r
+    r = A(4, {"text": "tycho"}, 2)                                      # third miss: CAPCOM shows it and moves on
+    assert r["status"] == "passed" and r["shown"] and r["shown_answer"] == {"place": "shackleton"}
+    assert r["say"].startswith("Here it is.") and r["badge"]["id"] == "scout" and "next_step" not in r
     assert client.post("/api/academy/attempt", json={"lesson_id": "nope", "step": 0, "input": {}}).status_code == 404
 
 
-GOOD = ["more power to the shields", "everyone to the shelter", "come out of the shelter", "send the rover for ice"]
+GOOD = ["yes", "Houston, any space weather?", "everyone to the shelter", "come out of the shelter", "send the rover for ice"]
 
 
 def _ride(client, answers):
@@ -122,11 +125,11 @@ def test_check_ride_pass(client):
     out = _ride(client, GOOD)
     assert out["status"] == "done" and out["passed"] and out["badge"]["id"] == "commander" and out["unlocks"] == "mission"
     assert "Mars" in out["fact"] and "Mars" not in out["say"]   # the Mars delay is on the result card, not spoken
-    assert out["state"]["mission_time_h"] == 48 and out["state"]["resources"]["dose_msv"] < 50
+    assert out["state"]["mission_time_h"] == 138 + 48 and out["state"]["resources"]["dose_msv"] < 50
 
 
 def test_check_ride_storm_without_shelter_fails(client):
-    wrong = ["more power to the shields", "end shift", "end shift", "end shift",   # 3 misses: no shelter, storm hits
+    wrong = ["yes", "Houston, any space weather?", "end shift", "end shift", "end shift",   # 3 misses: storm hits
              "come out of the shelter", "send the rover for ice"]
     out = _ride(client, wrong)
     assert out["status"] == "done" and out["passed"] is False and "badge" not in out
@@ -134,7 +137,8 @@ def test_check_ride_storm_without_shelter_fails(client):
 
 def test_shelter_cuts_storm_dose(client):
     good = _ride(client, GOOD)["state"]["resources"]["dose_msv"]
-    bad = _ride(client, ["more power to the shields", "x", "x", "x", "come out of the shelter", "send the rover for ice"])
+    bad = _ride(client, ["yes", "Houston, any space weather?", "x", "x", "x", "come out of the shelter",
+                         "send the rover for ice"])
     assert bad["state"]["resources"]["dose_msv"] > good * 2
 
 
@@ -153,9 +157,9 @@ def test_readback_paraphrase_passes_on_the_same_command():
     from app.config import settings as _s
     c = _json.loads((_s.data_dir / "academy/course.json").read_text())
     steps = [s for les in c["lessons"] for s in les["steps"] if s["accept"]["type"] == "keywords"]
-    shields, rover = steps[0], steps[1]
-    assert not g.grade(shields, {"text": "okay I'll make the radiation protection forty percent"})[0]
-    assert asyncio.run(g.similar(shields, "okay I'll make the radiation protection forty percent"))
-    assert not asyncio.run(g.similar(shields, "shields to 14 percent"))           # numbers are never paraphrased
-    assert asyncio.run(g.similar(rover, "roger, the buggy is going to fetch some frozen water"))
-    assert not asyncio.run(g.similar(rover, "the buggy is going to fetch some frozen water"))  # must say roger
+    heaters, again = steps[0], steps[1]
+    assert not g.grade(heaters, {"text": "okay I'll make the heating forty percent"})[0]
+    assert asyncio.run(g.similar(heaters, "okay I'll make the heating forty percent"))
+    assert not asyncio.run(g.similar(heaters, "heaters to 14 percent"))           # numbers are never paraphrased
+    assert g.grade(again, {"text": "could you repeat that"})[0]
+    assert not g.grade(again, {"text": "roger"})[0]

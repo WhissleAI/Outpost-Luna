@@ -36,7 +36,7 @@
    "sunlight_pct": 86,
    "ice": false,
    "rover_to_ice_h": 6,
-   "notes": "One of the sunniest spots on the Moon, on the rim of Shackleton crater (a 'Peak Near Shackleton' was an Artemis III candidate region in 2022). Ice is a short drive down into the crater.",
+   "notes": "One of the sunniest spots on the Moon, on the rim of Shackleton crater. 'Peak near Shackleton' was a NASA candidate landing region in 2022 but is not on the 2024 list; scientists have studied this rim for years. Ice is a short drive down into the crater.",
    "sources": [
     {
      "title": "IAU Gazetteer of Planetary Nomenclature: Shackleton",
@@ -53,7 +53,11 @@
    ],
    "horizon_deg": -1.312,
    "earth_visible_pct": 45,
-   "window_sunlit_pct": 100
+   "window_sunlit_pct": 100,
+   "status": "studied",
+   "status_label": "Studied by scientists",
+   "sunlight_basis": "yearly average, published studies",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
   },
   {
    "id": "shackleton_floor",
@@ -67,13 +71,15 @@
    "power_from": {
     "site": "shackleton_rim",
     "efficiency": 0.5,
-    "why": "Game assumption: solar arrays up on the sunny rim, power sent down a long cable (half lost)."
+    "why": "Game assumption: solar arrays up on the sunny rim, power sent down a long cable (half lost).",
+    "pretend_tech": true
    },
    "comm_from": {
     "site": "shackleton_rim",
-    "why": "Game assumption: the crater walls hide Earth, so radio goes through a relay on the rim."
+    "why": "Game assumption: the crater walls hide Earth, so radio goes through a relay on the rim.",
+    "pretend_tech": true
    },
-   "notes": "Permanently shadowed: the Sun never reaches the floor, so it is colder than -170 C and can hold ice. Great for water, terrible for solar power.",
+   "notes": "Permanently shadowed: the Sun never reaches the floor, so it is one of the coldest places measured (about -235 C) and can hold ice. Great for water, terrible for solar power. Studied by scientists; not a NASA landing region.",
    "sources": [
     {
      "title": "IAU Gazetteer of Planetary Nomenclature: Shackleton",
@@ -90,7 +96,11 @@
    ],
    "horizon_deg": 90.0,
    "earth_visible_pct": 37,
-   "window_sunlit_pct": 0
+   "window_sunlit_pct": 0,
+   "status": "studied",
+   "status_label": "Studied by scientists",
+   "sunlight_basis": "yearly average, published studies",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
   },
   {
    "id": "connecting_ridge",
@@ -101,7 +111,7 @@
    "sunlight_pct": 82,
    "ice": false,
    "rover_to_ice_h": 12,
-   "notes": "The ridge between Shackleton and de Gerlache craters; an Artemis III candidate region in 2022. Long sunlit stretches and views toward Earth.",
+   "notes": "The ridge between Shackleton and de Gerlache craters. It was a NASA candidate landing region in 2022 but is not on the 2024 list. Long sunlit stretches.",
    "sources": [
     {
      "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
@@ -114,7 +124,11 @@
    ],
    "horizon_deg": -1.23,
    "earth_visible_pct": 44,
-   "window_sunlit_pct": 100
+   "window_sunlit_pct": 100,
+   "status": "studied",
+   "status_label": "Studied by scientists",
+   "sunlight_basis": "yearly average, published studies",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
   },
   {
    "id": "de_gerlache_rim",
@@ -125,7 +139,7 @@
    "sunlight_pct": 81,
    "ice": false,
    "rover_to_ice_h": 10,
-   "notes": "Rim of de Gerlache crater ('de Gerlache Rim 2' is an Artemis III candidate region). Sunny rim next to a shadowed crater floor.",
+   "notes": "Rim of de Gerlache crater. 'de Gerlache Rim 2' is on NASA's 2024 list of 9 candidate landing regions. Sunny rim next to a shadowed crater floor.",
    "sources": [
     {
      "title": "IAU Gazetteer of Planetary Nomenclature: de Gerlache",
@@ -142,7 +156,11 @@
    ],
    "horizon_deg": -1.334,
    "earth_visible_pct": 51,
-   "window_sunlit_pct": 81
+   "window_sunlit_pct": 81,
+   "status": "nasa_2024",
+   "status_label": "NASA candidate landing region (2024 list)",
+   "sunlight_basis": "yearly average, published studies",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
   },
   {
    "id": "malapert_massif",
@@ -153,7 +171,7 @@
    "sunlight_pct": 73,
    "ice": false,
    "rover_to_ice_h": 18,
-   "notes": "A 5 km-tall mountain (Mons Malapert) on the Earth-facing side of the pole, so Earth is above the horizon much more often: best for talking to Houston, farther from ice. Artemis III candidate region.",
+   "notes": "A 5 km-tall mountain (Mons Malapert) on the Earth-facing side of the pole, so Earth is above the horizon much more often: best for talking to Houston, farther from ice. On NASA's 2024 list of 9 candidate landing regions.",
    "sources": [
     {
      "title": "IAU Gazetteer of Planetary Nomenclature: Mons Malapert",
@@ -170,7 +188,15 @@
    ],
    "horizon_deg": -2.363,
    "earth_visible_pct": 93,
-   "window_sunlit_pct": 35
+   "window_sunlit_pct": 35,
+   "status": "nasa_2024",
+   "status_label": "NASA candidate landing region (2024 list)",
+   "sunlight_basis": "yearly average, published studies",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
   }
- ]
+ ],
+ "status_source": {
+  "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+  "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+ }
 }

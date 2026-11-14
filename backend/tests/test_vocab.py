@@ -20,25 +20,30 @@ def test_every_glossary_term_has_a_real_source():
         assert t["source"]["clip_id"] and t["source"]["t"] >= 0
 
 
-def test_course_has_space_words_lesson_and_sprinkled_steps():
+def test_space_words_are_woven_into_the_lessons():
+    """v3: no separate words lesson (docs/LEARNING_DESIGN.md §5); each word comes with a place or a clip."""
     assert content.check() == []
-    les = content.lesson("words")
-    assert les["badge"]["name"] == "Word Explorer"
-    assert {s["accept"]["type"] for s in les["steps"]} == set(vocab.VOCAB_TYPES)
-    for lid in ("moon", "history", "power"):
-        assert any(s["accept"]["type"].startswith("vocab_") for s in content.lesson(lid)["steps"])
+    assert content.lesson("words") is None and "words" in content.course()["retired_badges"]
+    vocab_lessons = {l["id"] for l in content.course()["lessons"]
+                     if any(s["accept"]["type"].startswith("vocab_") for s in l["steps"])}
+    assert {"history", "life"} <= vocab_lessons
     assert content.course()["lessons"][-1]["id"] == "checkride"      # the check ride stays last
 
 
+def _vocab_steps(pub=False):
+    les = content.public()["lessons"] if pub else content.course()["lessons"]
+    return [(l["id"], i, s) for l in les for i, s in enumerate(l["steps"]) if s["accept"]["type"].startswith("vocab_")]
+
+
 def test_public_vocab_steps_hide_the_answer():
-    pub = next(l for l in content.public()["lessons"] if l["id"] == "words")
-    for s in pub["steps"]:
+    steps = [s for _, _, s in _vocab_steps(pub=True)]
+    for s in steps:
         a = s["accept"]
         assert "distractors" not in a and a["source"]["url"]
         for o in a.get("options", []):
             assert set(o) == {"id", "label"} and o["id"].startswith("o")
-    match = next(s["accept"] for s in pub["steps"] if s["accept"]["type"] == "vocab_match")
-    assert any("bright" in o["label"] for o in match["options"])   # meanings are the labels
+    match = next(s["accept"] for s in steps if s["accept"]["type"] == "vocab_match")
+    assert any("lava" in o["label"] for o in match["options"])   # meanings are the labels
 
 
 M = {"type": "vocab_match", "term": "albedo", "distractors": ["regolith", "terminator"]}
@@ -78,13 +83,12 @@ def test_glossary_endpoint_and_attempt_route():
         assert any(t["term"] == "albedo" for t in g["terms"])
         assert c.get("/api/glossary/regolith").json()["source"]["clip_id"]
         assert c.get("/api/glossary/nope").status_code == 404
-        les = content.lesson("words")
-        k = next(i for i, s in enumerate(les["steps"]) if s["accept"]["type"] == "vocab_say")
-        r = c.post("/api/academy/attempt", json={"lesson_id": "words", "step": k, "input": {"text": "rocks"}}).json()
+        lid, k, _ = next(x for x in _vocab_steps() if x[2]["accept"]["term"] == "regolith")
+        r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"text": "rocks"}}).json()
         assert r["status"] == "retry"
         say = next(d for d in r["decisions"] if d["t"] == "say")
         assert say["style"]["situation"] == "vocab" and say["style"]["controls"]["rate"] < 0
-        r = c.post("/api/academy/attempt", json={"lesson_id": "words", "step": k, "input": {"text": "regolith"}}).json()
+        r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"text": "regolith"}}).json()
         assert r["status"] == "passed" and r["term"]["term"] == "regolith"
         say = next(d for d in r["decisions"] if d["t"] == "say")
-        assert say["style"]["vocab"] == ["regolith"]
+        assert r.get("badge") or say["style"]["vocab"] == ["regolith"]   # a patch line keeps its proud style
