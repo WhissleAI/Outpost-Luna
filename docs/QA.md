@@ -113,7 +113,7 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 | QA-71 | P2 | Flight School | Know your Moon: tap a place | One voice | The same fact is played twice in two voices (owner report) | | fix/rc-polish | routed (owner report: double speech) |
 | QA-72 | P2 | Flight School | "Trace it: Orientale, then up to Ohm" | A newcomer can do it | Impossible without knowing where Ohm is (owner report) | | fix/guidance | routed (owner report) |
 | QA-73 | P2 | Cabin | First mission | Direction | The cabin gives no direction (owner report) | | fix/story-onboarding | routed (owner report) |
-| QA-74 | P2 | Errors | The session socket fails to connect (backend busy) | Falls back to /api/ask quietly | Forwarding floor events to the null session threw "Cannot read properties of null (reading 'ui' / 'playback')" on every playback event (seen in ux_flow) | | qa | fixed (final commit) |
+| QA-74 | P2 | Errors | The session socket fails to connect (backend busy) | Falls back to /api/ask quietly | Forwarding floor events to the null session threw "Cannot read properties of null (reading 'ui' / 'playback')" on every playback event (seen in ux_flow) | | qa | fixed 21ce6a3 |
 
 ## Checked and fine
 
