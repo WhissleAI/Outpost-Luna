@@ -16,8 +16,9 @@ request at a time. Steps:
    The same audio again with pink noise at 5 dB SNR (clean speech scores near the ceiling for every voice; noise
                is what separates them).
 4. pick        clear = WER <= 0.10 clean and <= 0.25 noisy, no clipping, loudness within 6 dB of the median. Farthest-point
-               selection over (f0 median st, f0 IQR st, words/s), z-scored, seeded with the guide voice (the default);
-               near-ties go to the lower clean + noisy WER.
+               selection over (f0 median st, f0 IQR st, words/s), z-scored, seeded with the guide voice (the default,
+               always offered, even if it misses the noisy bar); CAPCOM's, Houston's and the story's voices are never
+               offered. Near-ties go to the lower clean + noisy WER.
 5. previews    PREVIEW_LINE rendered per pick, trimmed, 16 kHz mono PCM16 -> data/voice_previews/<id>.wav.
 """
 from __future__ import annotations
@@ -193,23 +194,26 @@ def candidates(voices: list[dict], n: int) -> list[dict]:
 
 
 def pick(rows: list[dict], k: int) -> list[dict]:
+    """The default guide voice first (always offered: it is what the kid hears before choosing, so "keep the default"
+    must be on the list even if it doesn't pass the noisy bar), then k-1 clear voices by farthest-point selection.
+    CAPCOM's, Houston's and the story's own voices are never offered: choosing one would make the guide sound like them."""
     ok = [r for r in rows if r.get("wer") is not None]
     med = float(np.median([r["rms_dbfs"] for r in ok]))
     clear = [r for r in ok if r["wer"] <= 0.10 and r.get("wer_noisy", 0) <= 0.25 and r["clip_pct"] == 0
              and abs(r["rms_dbfs"] - med) <= 6]
     for r in rows:
         r["clear"] = r in clear
-    feats = np.array([[st(r["f0_med_hz"] or 100), r["f0_iqr_st"], r["words_per_s"]] for r in clear])
+    others = set(PERSONA_VOICES) - {DEFAULT}
+    pool = [r for r in ok if r["id"] == DEFAULT] + [r for r in clear if r["id"] != DEFAULT and r["id"] not in others]
+    feats = np.array([[st(r["f0_med_hz"] or 100), r["f0_iqr_st"], r["words_per_s"]] for r in pool])
     z = (feats - feats.mean(0)) / (feats.std(0) + 1e-9)
-    chosen = [next(i for i, r in enumerate(clear) if r["id"] == DEFAULT)] if any(r["id"] == DEFAULT for r in clear) \
-        else [int(np.argmin([r["wer"] for r in clear]))]
-    while len(chosen) < min(k, len(clear)):
+    chosen = [0] if pool and pool[0]["id"] == DEFAULT else [int(np.argmin([r["wer"] for r in pool]))]
+    while len(chosen) < min(k, len(pool)):
         d = np.min(np.linalg.norm(z[:, None, :] - z[None, chosen, :], axis=2), axis=1)
         d[chosen] = -1
-        # ties broken toward the clearer voice
-        d = d - 0.05 * np.array([r["wer"] + r.get("wer_noisy", 0) for r in clear])
+        d = d - 0.05 * np.array([r["wer"] + r.get("wer_noisy", 0) for r in pool])   # near-ties: the clearer voice
         chosen.append(int(np.argmax(d)))
-    return [clear[i] for i in chosen]
+    return [pool[i] for i in chosen]
 
 
 async def main(a):
@@ -218,10 +222,9 @@ async def main(a):
     prev_dir.mkdir(parents=True, exist_ok=True)
     ws_url = a.models.replace("http", "ws", 1) + "/v1/stream?ear=arc"
     async with httpx.AsyncClient(base_url=a.models, timeout=60) as c:
-        voices = (await c.get("/v1/tts/voices")).json()["voices"]
-        cands = candidates(voices, a.n)
-        print(f"{len(cands)} candidates", file=sys.stderr)
-        rows = []
+        rows = json.loads(Path(a.from_scores).read_text()) if a.from_scores else []
+        cands = [] if a.from_scores else candidates((await c.get("/v1/tts/voices")).json()["voices"], a.n)
+        print(f"{len(cands) or len(rows)} candidates", file=sys.stderr)
         for v in cands:
             row = {"id": v["name"], "gender": v["gender"], "register": v["pitch_register"], "pace": v["pace"],
                    "catalog_f0_hz": v["f0_median_hz"]}
@@ -276,4 +279,5 @@ if __name__ == "__main__":
     ap.add_argument("--raw", default="voice_scores.json", help="all candidates' scores (not committed)")
     ap.add_argument("--n", type=int, default=40)
     ap.add_argument("--pick", type=int, default=10)
+    ap.add_argument("--from-scores", help="re-pick and re-render previews from a saved --raw file (no ear pass)")
     asyncio.run(main(ap.parse_args()))
