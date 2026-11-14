@@ -243,3 +243,17 @@ def test_beats_and_tasks_reach_the_event_stream_but_not_the_radio_log():
     kinds = {e["kind"] for e in m.events}
     assert {"beat", "task"} <= kinds
     assert not any("New task" in e["text"] for e in m.log)
+
+
+def test_an_open_ice_run_waits_out_a_storm():
+    """An ice run started in calm weather never says "send the rover" while a storm or warning is on."""
+    for seed in range(30):
+        m = sim.new_mission("m", "shackleton_rim", seed, level="cadet")
+        sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+        while not m.over and m.t_h < 120:
+            sim.step(m, 1)
+            for t in gameplay._active(m):
+                if t["kind"] == "ice_run":
+                    v = gameplay.task_view(m, t)
+                    if not gameplay._calm(m) or m.shelter:
+                        assert not (v["step"]["id"] in ("send", "route") and v["step"]["ready"]), (seed, m.t_h)

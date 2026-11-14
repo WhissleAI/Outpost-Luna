@@ -258,6 +258,9 @@ def _ice_run(m):
         first = _order("send", "Send the rover for ice", "rover:collect_ice", ROVER("collect_ice"),
                        lambda m, t: m.rover["busy"] and m.rover["task"] == "collect_ice", "Rover rolling. Good.")
         first["latch"] = True
+    # the drive waits out a storm or a warning (and the crew must be out of the shelter): never "send it" mid-storm
+    first["ready_if"] = lambda m, t: _calm(m) and not m.shelter and not m.rover["busy"]
+    first["wait_text"] = "Ice run waits until the storm passes."
     out_for = lambda m: m.t_h - m.rover_left_h if m.rover["busy"] and m.rover["task"] == "collect_ice" else -1  # noqa: E731
     steer = _choice("steer", "Boulders ahead. Steer left or right?",
                     [{"id": "left", "label": "Steer left"}, {"id": "right", "label": "Steer right"}],

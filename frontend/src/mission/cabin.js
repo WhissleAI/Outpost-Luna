@@ -565,8 +565,9 @@ export function createCabin(root, o = {}) {
       const host = q(`[data-panel="${panelId === "power" ? "displays" : panelId}"]`); if (!host) return;
       const box = document.createElement("div"); box.className = "cb-offer"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "CAPCOM offers");
       actions.slice(0, 2).forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "cb-offer-b" + (i ? "" : " is-hot"); b.textContent = a.label;
-        b.onclick = () => { box.remove(); a.onClick(); }; box.append(b); });
+        b.onclick = () => { box.remove(); if (opened && c3 && c3.panel) c3.back(); a.onClick(); }; box.append(b); });   // decided: back to the seat (the window and the Now card)
       host.append(box);
+      const opened = !!(c3 && c3.panel !== (panelId === "power" ? "power" : panelId));
       if (c3) c3.open(panelId);
       requestAnimationFrame(() => { const f = box.querySelector("button"); if (f) f.focus({ preventScroll: true }); });
     } };
