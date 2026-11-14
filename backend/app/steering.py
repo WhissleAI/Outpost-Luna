@@ -257,3 +257,70 @@ def apply_markup(text: str, emph: list[str] | None = None, vocab: list[str] | No
     """Vocabulary markup first, then emphasis on anything not already inside a vocab span."""
     vs = {v.lower() for v in vocab or []}
     return apply_emphasis(apply_vocab(text, vocab), [e for e in (emph or []) if e.lower() not in vs])
+
+
+# ---- Settings: the kid's voice, rate and expressiveness (docs/VOICES.md, docs/VOICE_STEERING.md §4c) ------------------
+EXPR_DEFAULT = 0.5                    # today's delivery: expressiveness 0.5 changes nothing
+EXPR_F0_IQR = 0.8                     # f0_iqr offset at the ends (0 → −0.8 flatter melody, 1 → +0.8 livelier)
+EXPR_STRENGTH = (0.4, 1.0)            # the performance director's strength at 0 and 1 (0.7 at 0.5, as today)
+# Calm end (< 0.25): the bounciest tags soften to their calm sibling. Alarm tags are never touched.
+EXPR_CALM_TAGS = {"excited": "interest", "amazement": "interest", "happiness": "contentment", "pride": "contentment",
+                  "ecstasy": "contentment"}
+
+
+def clamp_expr(e) -> float:
+    try:
+        v = float(e)
+    except (TypeError, ValueError):
+        return EXPR_DEFAULT
+    return EXPR_DEFAULT if v != v else max(0.0, min(1.0, v))
+
+
+def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, expr) -> tuple[str, dict, dict | None]:
+    """Expressiveness 0–1 → (tag, controls, perform). k = 2·(e − 0.5) ∈ [−1, 1]:
+    f0_iqr += 0.8·k (melody range; clamped ±2.5), performance-director strength = 0.4 + 0.6·e (0.7 at 0.5: how much
+    each sentence is shaped, its pitch, range, endings and pauses), and below 0.25 the liveliest tags soften (excited →
+    interest, pride → contentment …). Rate, pace and loudness stay with the situation and the rate setting, so an alert
+    is still urgent at every level."""
+    e = clamp_expr(expr)
+    c = dict(controls or {})
+    if abs(e - EXPR_DEFAULT) < 1e-3:
+        return tag, c, perform
+    k = 2 * (e - EXPR_DEFAULT)
+    c["f0_iqr"] = round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(c.get("f0_iqr", 0.0)) + EXPR_F0_IQR * k)), 2)
+    if perform is not None:
+        lo, hi = EXPR_STRENGTH
+        perform = {**perform, "strength": round(lo + (hi - lo) * e, 2)}
+    if e < 0.25:
+        tag = EXPR_CALM_TAGS.get(tag, tag)
+    return tag, c, perform
+
+
+def pref_voice(persona: str, prefs: dict | None) -> str | None:
+    """The Steer voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice
+    is the guide's; CAPCOM, Houston and the story voice stay distinct unless the kid picked one voice for all."""
+    p = prefs or {}
+    v = p.get("voice")
+    if not v:
+        return None
+    if persona == "guide" or p.get("voice_all"):
+        return v
+    return None
+
+
+def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | None:
+    """A say's style with the Settings attached declaratively (`steer_voice`, `speed`, `expr`). /api/tts resolves them
+    (tts.clean_style + speed_steer), so one place applies them, for session lines and client-written lines alike."""
+    if not prefs or style is None:
+        return style
+    out = dict(style)
+    v = pref_voice(persona, prefs)
+    if v:
+        out["steer_voice"] = v
+    rate = prefs.get("rate")
+    if rate is not None and abs(float(rate) - 1.0) > 1e-3:
+        out["speed"] = float(rate)
+    e = prefs.get("expressiveness")
+    if e is not None and abs(clamp_expr(e) - EXPR_DEFAULT) > 1e-3:
+        out["expr"] = clamp_expr(e)
+    return out

@@ -158,6 +158,10 @@ and maps spoken words onto the display words (each display token takes as many s
 returns it as `X-TTS-Words` (exposed for CORS). Deepgram and the browser voice have no timings: the caption bar
 estimates from the audio length and syllables, or follows `speechSynthesis` boundary events.
 
+## 4c. Settings: the kid's voice, rate and expressiveness
+
+See `VOICES.md`: say styles carry `steer_voice`, `speed` and `expr`, and `/api/tts` applies them (`steering.apply_prefs`, `with_expressiveness`).
+
 ## 5. Measured (M-series Mac, CPU, 2 threads, warm)
 
 | | |
