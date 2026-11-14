@@ -207,3 +207,15 @@ def test_a_directed_turn_in_the_gap_between_queued_lines_is_muted(world):
     line(s, "a1", "Every crew learns from the crews before.", more=True, gap=0.0)
     hear(s, "every crew learns from crews", dd=0.6, advance=0.8)
     assert s.routes[-1]["outcome"] == "ignore" and answers(s) == []
+
+
+def test_a_misheard_option_name_is_still_a_try():
+    """The live run through the real Arc ear: "Malapert Massif" is heard "Malapart must be". Not plausible meant an
+    endless silent ignore on the compare step; a near-miss of an option name is a try, and grades as that option."""
+    from app.academy import content, grade
+    st = content.lesson("comms")["steps"][3]
+    assert st["accept"]["type"] == "compare"
+    assert grade.plausible(st, "Malapart must be", 0.9)
+    assert grade.grade(st, {"text": "Malapart must be"})[1].get("choice") == "malapert_massif"
+    for chatter in ("oh it s", "okay", "alright so", "rocks"):
+        assert not grade.plausible(st, chatter, 0.9)

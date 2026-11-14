@@ -151,7 +151,27 @@ def _option_of(inp: dict, options: list[dict]) -> str | None:
     if m and 1 <= int(m.group(1)) <= len(options):
         return options[int(m.group(1)) - 1]["id"]
     hits = [o["id"] for o in options if any(_has(t, w) for w in [o["label"], *o.get("say", [])])]
+    if not hits:            # the ear's near-miss of a name ("malapart" for "malapert"): one option, clearly closest
+        hits = [o["id"] for o in options if near_name(t, [o["label"], *o.get("say", [])])]
     return hits[0] if len(hits) == 1 else None
+
+
+NEAR = 0.8          # difflib ratio for a heard word to count as a misheard option name (>= 5 letters)
+
+
+def near_name(text: str, names: list[str]) -> bool:
+    """A heard word is a near-miss of a long word of one of `names` (Arc hears "Malapart must be" for "Malapert
+    Massif", "Shackle ton" for "Shackleton"). Only words of >= 5 letters, so "rock" never matches "rocks"."""
+    from difflib import SequenceMatcher
+    hw = [w for w in _gnorm(text).split() if len(w) >= 4]
+    joined = "".join(_gnorm(text).split())
+    for n in names:
+        for w in _gnorm(n).split():
+            if len(w) < 5:
+                continue
+            if any(SequenceMatcher(None, w, h).ratio() >= NEAR for h in hw) or w in joined:
+                return True
+    return False
 
 
 def _predict(acc, inp, text):
@@ -427,6 +447,8 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
     for _, say in opts:
         if any(_has(t, w) for w in say[1:] if w) or mine & _stem(content_words(say[0])):
             return True
+    if opts and kind != "globe_side" and any(near_name(text, [w for w in say if w]) for _, say in opts):
+        return True       # a misheard option name is still a try (never an endless silent ignore)
     if kind == "keywords":
         if any(_has(t, w) for grp in [*acc.get("all", []), *acc.get("any", [])] for w in grp):
             return True
