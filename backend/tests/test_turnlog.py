@@ -86,7 +86,7 @@ def test_a_turn_is_text_features_only(logdir):
     (r,) = lines(logdir)
     assert r["k"] == "turn" and r["text"] == "never" and r["src"] == "listen"
     assert r["frame"] == {"screen": "lesson", "step_type": "choice", "offer": None,
-                          "options": ["never", "only at full moon"]}
+                          "options": ["never", "only at full moon"], "lesson_id": None, "step": None}
     assert r["router"]["outcome"] == "answer" and r["director"]["final"] == "answer"
     assert r["arc"]["dd"] == 0.82
     assert "tl" not in json.dumps(r).replace('"tl"', "")  # never the session id

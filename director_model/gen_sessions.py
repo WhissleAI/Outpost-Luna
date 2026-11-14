@@ -148,9 +148,9 @@ def academy_script(rng, split, seed) -> dict:
             if st["accept"]["type"] == "tap":
                 items.append({"op": "tap", "id": st["accept"]["place"]})
                 break
-            items.append(P.academy_items(rng, L, si))
+            items.append({**P.academy_items(rng, L, si), "frame": P.step_frame(L, si)})   # round 6: the lesson frame
         if rng.random() < 0.1:
-            items.append(P.chatter(rng))
+            items.append({**P.chatter(rng), "frame": P.step_frame(L, si), "lesson": L["id"], "step": si})
     return {"mode": "academy", "lesson": L["id"], "seed": seed, "items": items}
 
 
@@ -299,7 +299,10 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             ln = it["lines"]
             await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": f"L{tid}a", "text": ln[0]})
             clock.t += max(1.0, len(ln[0].split()) / 2.6)
-            await sess.handle({"t": "playback", "kind": "guide", "state": "end", "id": f"L{tid}a"})
+            # back-to-back lines: half are one queued sequence (the client says `more`: one on-air span), half are
+            # two separate decisions that happen to follow each other
+            more = op == "echo2" and rng.random() < 0.5
+            await sess.handle({"t": "playback", "kind": "guide", "state": "end", "id": f"L{tid}a", "more": more})
             if op == "offer":
                 clock.t += it.get("gap", 0.15)
             else:

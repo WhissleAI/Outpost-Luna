@@ -472,7 +472,8 @@ def lesson_steps(types=None) -> list[tuple[dict, int]]:
 def step_frame(L: dict, i: int) -> dict:
     a = L["steps"][i]["accept"]
     opts = [o["label"] for o in a.get("options") or []]
-    return {"screen": "lesson", "step_type": a["type"], "step_options": opts, "offer": None}
+    return {"screen": "lesson", "step_type": a["type"], "step_options": opts, "offer": None, "lesson_id": L["id"],
+            "step": i}
 
 
 def globe_answer(rng: random.Random, L: dict, i: int, kind: str) -> str:

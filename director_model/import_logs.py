@@ -144,7 +144,8 @@ def to_item(t: dict, act: str, conf: float, why: str) -> dict:
     it = {"text": t["text"], "heard": t["text"], "cat": "log_" + act, "root": "log:" + t["text"],
           "gold": {"act": act}, "conf": round(conf, 2), "why": why, "id": t["id"], "split": split_of(t["text"]),
           "frame": {"screen": fr.get("screen") or "map", "step_type": fr.get("step_type"),
-                    "step_options": fr.get("options") or [], "offer": fr.get("offer")}}
+                    "step_options": fr.get("options") or [], "offer": fr.get("offer"),
+                    "lesson_id": fr.get("lesson_id"), "step": fr.get("step")}}
     if dd is not None:
         it["dd"] = (max(0.0, dd - 0.02), min(1.0, dd + 0.02))
     if act == "command":
