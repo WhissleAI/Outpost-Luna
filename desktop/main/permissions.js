@@ -26,6 +26,16 @@ function lockDownSession(ses, origin, { log = () => {}, platform = process.platf
       systemPreferences.askForMediaAccess("camera").then((granted) => { log("camera access", granted ? "granted" : "denied"); cb(granted); }, () => cb(false));
       return;
     }
+    // Windows: no per-app prompt. Settings → Privacy & security → Camera / Microphone can switch access off for every
+    // desktop app; getUserMedia then fails in the page, which says "blocked". Log what Windows reports, so a log from a
+    // tester shows the switch was off (main.log "windows privacy camera: denied"). The grant itself stays Chromium's:
+    // the status Windows reports for desktop apps is not reliable enough to refuse on (it can follow the Store-apps switch).
+    if (okMedia && platform === "win32" && systemPreferences && systemPreferences.getMediaAccessStatus) {
+      for (const t of d.mediaTypes || ["audio"]) {
+        const kind = t === "video" ? "camera" : "microphone";
+        try { log(`windows privacy ${kind}:`, systemPreferences.getMediaAccessStatus(kind)); } catch { /* older Windows */ }
+      }
+    }
     cb(okMedia || (perm === "fullscreen" && ours(wc.getURL())) || (perm === "clipboard-sanitized-write" && ours(wc.getURL())));
   });
   ses.setPermissionCheckHandler((wc, perm, reqOrigin) => (perm === "media" || perm === "fullscreen") && reqOrigin === origin);
