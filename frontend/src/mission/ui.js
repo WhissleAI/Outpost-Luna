@@ -3,6 +3,8 @@
 import { createMissionClient } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { parseCommand } from "./mock.js";
+import { createCabin } from "./cabin.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, LESSON_STORY, DEBRIEF, FRAMING } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
   ["rover", "Rover"], ["comms", "Comms"], ["heaters", "Heaters"]];
@@ -32,12 +34,15 @@ const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="
  * @param {()=>void} o.alertSound
  * @param {(frame:object)=>void} o.onContext  forward a context frame to the listen socket
  */
-export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null, session = null }) {
+export function createMissionUI({ globe, card, placeById, say, alertSound, onContext = () => {}, askDirector = null, session = null, academy = null }) {
+  // `academy` (optional): {badges() → [{id,name,patch,lesson}], has(lessonId) → bool}: Flight School patches carry over.
   // [session hook] `session` (optional): {onStart(state), endShift(state) → true when the session Director handles it}.
   const $ = id => document.getElementById(id);
-  const panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
+  const cabinEl = $("mCabin"), panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
-  let screen = "off", pending = null, bannerT = null, siteSeed = null;
+  let screen = "off", pending = null, bannerT = null, siteSeed = null, cockpit = null, logHistory = [];
+  const badges = () => (academy ? academy.badges() : []);
+  const learned = lessonId => !!(academy && academy.has(lessonId));
 
   const shortName = n => n.split(" (")[0].replace(/ rocket impact site| impact site/, "");
   const lessons = () => LESSONS.map(([id, text]) => { const a = placeById(id); return a ? { text, name: shortName(a.name), source: (a.sources || [])[0] } : null; }).filter(Boolean);
@@ -53,15 +58,27 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (state && !state.over) { showHud(); return; }
     briefing();
   }
-  function exit() { screen = "off"; globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  const hideCabin = () => { cabinEl.hidden = true; delete document.body.dataset.cabin; globe.setViewport(null); };
+  /** The window's zoom level on the real globe: orbit (whole Moon), site approach, or along the rover's route. */
+  function windowView(v) {
+    if (!state) return;
+    const s = state.site, rv = state.rover || {}, t = rv.busy ? TARGETS[rv.task] : null;
+    if (v === "orbit") globe.flyTo(-35, s.lon, 3.8);
+    else if (v === "rover") globe.flyTo(t ? (s.lat + t.lat) / 2 : s.lat, t ? (s.lon + t.lon) / 2 : s.lon, 1.5);
+    else globe.flyTo(s.lat, s.lon, 2.3);
+  }
+  /** Spoken or typed view changes ("zoom out", "show me the rover", "back to the outpost"). */
+  const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover)\b/, "rover"],
+    [/\b(zoom in|outpost view|site view|back to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
+  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   function briefing() {
-    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false;
+    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin();
     if (!site) site = sites[0];
     panel.innerHTML = `
-      <header class="m-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
-      <h2 class="m-title">Pick your outpost</h2>
-      <p class="m-sub">Sun charges batteries. Ice makes water. You can call home only when Earth is up.</p>
+      <header class="m-head"><span class="eyebrow">Outpost Luna · Briefing</span>${sampleTag()}</header>
+      <h2 class="m-title">Where will you build Outpost Luna, ${esc(callSign.shown())}?</h2>
+      <p class="m-sub">${esc(FRAMING.split(". ").slice(1).join(". "))} Sun charges batteries. Ice makes water. You can call home only when Earth is up.</p>
       <div class="m-sites" role="radiogroup" aria-label="Outpost site">${sites.map(s => `
         <button type="button" class="m-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}">
           <b>${esc(s.name)}</b>
@@ -73,7 +90,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <div class="m-srcrow">${(site && site.sources || []).map(src).join("")}</div>
       <section class="m-roles"><span class="eyebrow">Team roles (optional)</span>
         <div>${ROLES.map(([id, n]) => `<button type="button" class="m-role" data-role="${id}" aria-pressed="${roles.has(id)}">${n}</button>`).join("")}</div></section>
-      <button type="button" class="m-go" id="mStart">Start mission</button>`;
+      <button type="button" class="m-go" id="mStart">Take command</button>`;
     panel.querySelectorAll(".m-site").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); });
     panel.querySelectorAll(".m-role").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
     $("mStart").onclick = () => start();
@@ -83,7 +100,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** CAPCOM's welcome + lessons from hardware already on the Moon (real artifacts from /api/places). */
   function briefCard() {
     card.show({ title: "CAPCOM", eyebrow: "Briefing" + (client.sample ? " · Sample data" : ""),
-      say: "Welcome, Commander. Pick a site, then keep power, life support and radiation safe for ten days.",
+      say: CAPCOM.missionBrief(callSign.shown()),
       lessons: lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })) });
   }
   function previewSite() {
@@ -94,100 +111,51 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function start(seed) {
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
-    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles] }); prev = null;
+    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles] }); prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
     showHud();
     if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
-    const line = `Mission started at ${site.name}. Day 1. Check your power split, then say "end shift".`;
-    capcom({ say: line }); say(line);
+    capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) }); say(CAPCOM.missionStart(callSign.spoken(), site.name));
   }
 
-  // ---------- HUD ----------
-  function estimate(s) {   // client-side "next shift" preview of the current choices (a rough model; the server decides)
-    const r = s.resources, L = s.loads, e = s.env, sun = s.site && s.site.sunlight_pct || 75;
-    const solar = e.in_sun ? 3.2 * sun / 80 : 0, draw = 1.5 + (e.in_sun ? 0 : Math.max(0, .8 - L.heaters / 25)) + (s.shelter ? .3 : 0) + (s.rover && s.rover.busy ? .35 : 0);
-    const base = e.storm && e.storm.active ? .25 * (e.storm.severity || 2) : .012;
-    const rate = base * Math.max(.15, 1 - L.shields / 60) * (s.shelter ? .12 : 1);
-    return { power: pct(r.power_pct + 6 * (solar - draw)), life: pct(r.life_support_pct + 6 * ((L.life_support - 28) * .03 + L.greenhouse * .012 - .18)), dose: r.dose_msv + 6 * rate };
-  }
-  const arrow = (now, before) => before == null ? "" : now > before + .4 ? "↑" : now < before - .4 ? "↓" : "→";
-
+  // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
-    screen = "hud"; debriefEl.hidden = true; panel.hidden = false;
-    panel.innerHTML = `
-      <header class="m-head"><span class="eyebrow" id="mClock"></span>${sampleTag()}<span class="m-score" id="mScore"></span></header>
-      <div class="m-bars">
-        ${bar("power", "Power", "Battery charge")}
-        ${bar("life", "Life support", "Air and water left")}
-        ${bar("dose", "Dose", "Radiation")}
-        <p class="m-unit"><b>mSv</b>: how we measure radiation dose. Stay under the limit. <span id="mRate"></span></p>
-      </div>
-      <section class="m-loads" aria-label="Power split"><header><span class="eyebrow">Power split</span><small id="mSum"></small></header>
-        ${LOADS.map(([k, n]) => `<div class="m-load" data-k="${k}"><span class="m-ln" title="${esc(LOAD_HELP[k])}">${n}</span>
-          <button type="button" class="m-pm" data-d="-5" aria-label="Less ${n}">−</button>
-          <span class="m-lv"><i></i><b></b></span>
-          <button type="button" class="m-pm" data-d="5" aria-label="More ${n}">+</button></div>`).join("")}
-      </section>
-      <section class="m-env" id="mEnv" aria-live="polite"></section>
-      <section class="m-rover"><span id="mRover"></span>
-        <div class="m-rbtns"><button type="button" class="pill" data-task="collect_ice">Get ice</button><button type="button" class="pill" data-task="explore">Explore</button>
-        <button type="button" class="pill" id="mShelter" aria-pressed="false">Shelter</button></div></section>
-      <div class="m-foot"><button type="button" class="m-go" id="mEnd">End shift</button><button type="button" class="pill" id="mStop">Debrief</button></div>`;
-    panel.querySelectorAll(".m-pm").forEach(b => b.onclick = () => {
-      const k = b.closest(".m-load").dataset.k; run({ type: "allocate", to: k, amount: { kind: "delta", value: +b.dataset.d }, from: null });
+    screen = "hud"; debriefEl.hidden = true; panel.hidden = true; cabinEl.hidden = false; document.body.dataset.cabin = "1";
+    cockpit = createCabin(cabinEl, {
+      badges,
+      onCommand: c => run(c),
+      onHouston: () => callHouston(),
+      onView: v => windowView(v),
+      onEndShift: () => endShift(),
+      onDebrief: () => showDebrief(),
     });
-    panel.querySelectorAll("[data-task]").forEach(b => b.onclick = () => run({ type: "dispatch", vehicle: "rover", task: b.dataset.task, target: null }));
-    $("mShelter").onclick = () => run({ type: "shelter", on: !state.shelter });
-    $("mEnd").onclick = () => endShift();
-    $("mStop").onclick = () => showDebrief();
+    if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
+    requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
+      if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
+    logHistory.forEach(l => cockpit.log(l.who, l.text));
     render();
   }
-  function bar(id, name, help) {
-    return `<div class="m-bar" id="mb-${id}"><div class="m-bl"><b>${name}</b><span class="m-help">${help}</span><span class="m-tr" aria-hidden="true"></span><span class="m-val"></span><small class="m-nx"></small></div>
-      <div class="m-track"><i class="m-fill"></i><i class="m-next" title="Next shift (estimate)"></i></div></div>`;
-  }
-  function setBar(id, value, max, before, next, fmt) {
-    const el = $("mb-" + id); if (!el) return;
-    const w = pct(value / max * 100);
-    el.querySelector(".m-fill").style.width = w + "%";
-    el.querySelector(".m-next").style.left = pct(next / max * 100) + "%";
-    el.querySelector(".m-val").textContent = fmt(value);
-    const a = arrow(value, before); el.querySelector(".m-tr").textContent = a;
-    el.querySelector(".m-nx").textContent = `next ≈ ${fmt(next).replace(/ \/.*/, "")}`;
-    const bad = id === "dose" ? value / max > .7 : value < 25; el.classList.toggle("is-alert", bad);
-  }
-  function renderBars(r, live) {
-    const s = state, nx = estimate(s), p = prev && prev.resources;
-    const lim = r.dose_limit_msv || s.resources.dose_limit_msv || 50;
-    setBar("power", r.power_pct, 100, p && p.power_pct, nx.power, v => Math.round(v) + "%");
-    setBar("life", r.life_support_pct, 100, p && p.life_support_pct, nx.life, v => Math.round(v) + "%");
-    setBar("dose", r.dose_msv, lim, p && p.dose_msv, nx.dose, v => `${(+v).toFixed(1)} / ${lim} mSv`);
-    const rt = $("mRate"); if (rt) rt.textContent = `Now +${(+(live ? live.dose_rate : r.dose_rate_msv_h) || 0).toFixed(2)} mSv each hour.`;
-  }
   function render() {
-    if (screen !== "hud" || !state) return;
-    const s = state;
-    $("mClock").textContent = `Day ${s.day}/10 · Shift ${s.shift}/4`;
-    $("mScore").textContent = `★ ${s.score || 0}`;
-    renderBars(s.resources);
-    let sum = 0;
-    LOADS.forEach(([k]) => { const v = Math.round(s.loads[k] || 0); sum += v; const row = panel.querySelector(`.m-load[data-k="${k}"]`); row.querySelector("i").style.width = v + "%"; row.querySelector("b").textContent = v + "%"; });
-    $("mSum").textContent = sum + "% of power used";
-    const e = s.env || {};
-    $("mEnv").innerHTML = `
-      <span class="m-chip ${e.in_sun ? "is-on" : ""}">${e.in_sun ? "☀ Sun up" : "☾ Sun down"} <small>${(+e.sun_elev_deg || 0).toFixed(1)}°</small></span>
-      <span class="m-chip ${e.earth_visible ? "is-on" : ""}" title="Radio takes ${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way">${e.earth_visible ? "🌍 Earth up · comms open" : `🌍 Earth hidden · comms in ${e.next_comm_window_h ?? "?"} h`}</span>`;
-    const rv = s.rover || {};
-    $("mRover").innerHTML = `<b>Rover</b> ${rv.busy ? `${TASK[rv.task] || rv.task}, back in ${rv.eta_h} h` : "parked at the outpost"}`;
-    panel.querySelectorAll("[data-task]").forEach(b => { b.disabled = !!rv.busy; });
-    $("mShelter").setAttribute("aria-pressed", !!s.shelter); $("mShelter").textContent = s.shelter ? "Leave shelter" : "Shelter";
+    if (screen !== "hud" || !state || !cockpit) return;
+    const s = state, e = s.env || {}, rv = s.rover || {};
+    cockpit.update(s);
+    (s.alerts || []).forEach(a => { if (CALLBACKS[a]) { seen.add(a); remind(a); } });
     renderBanner();
-    // globe
     globe.mission.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); globe.mission.setEarth(+e.earth_elev_deg || 0);
     const tgt = rv.busy ? TARGETS[rv.task] : null, total = rv.task === "collect_ice" ? 10 : rv.task === "explore" ? 8 : 5;
-    globe.mission.setRover(tgt, tgt ? Math.sin(Math.PI * (1 - (rv.eta_h || 0) / total) / 1) * 1 : 0);
+    globe.mission.setRover(tgt, tgt ? Math.sin(Math.PI * (1 - (rv.eta_h || 0) / total)) : 0);
+  }
+  /** Radio log lines survive re-renders of the cockpit. */
+  function radio(who, text) { if (!text) return; logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
+  /** The Call Houston push button: the real Director in a live mission, the local practice line otherwise. */
+  async function callHouston() {
+    if (!state) return;
+    radio("kid", "Houston, Outpost Luna. Radio check.");
+    if (client.sample || !askDirector) { await houston("Houston here. We copy you, Commander. Keep the crew safe and the lights on.", 2600); return; }
+    if (cockpit) cockpit.calling(true);
+    await askDirector("Call Houston");
   }
   function renderBanner(transient) {
     const st = state && state.env && state.env.storm;
@@ -199,13 +167,18 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (st && st.active) {
       banner.className = "m-banner is-storm"; banner.hidden = false;
       banner.innerHTML = `<b>☀ Solar storm</b><span>${esc(st.name)}${st.real_date ? ` · real event, ${esc(st.real_date)}` : ""}</span>${src({ title: "Source: NASA " + (st.source || "DONKI"), url: st.url || "https://kauai.ccmc.gsfc.nasa.gov/DONKI/" })}`;
+      if (!state.shelter) {
+        banner.insertAdjacentHTML("beforeend", `<span class="m-bact"><button type="button" class="m-bbtn is-hot" data-act="shelter">🏠 Everyone to shelter</button><button type="button" class="m-bbtn" data-act="shields">🛡️ Shields to 40</button></span>`);
+        banner.querySelector('[data-act="shelter"]').onclick = () => run({ type: "shelter", on: true });
+        banner.querySelector('[data-act="shields"]').onclick = () => run({ type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null });
+      }
     } else banner.hidden = true;
   }
 
   // ---------- telemetry: bars move between shifts ----------
   function onTelemetry(f) {
     live = f; if (screen !== "hud" || !state) return;
-    renderBars({ power_pct: f.power, life_support_pct: f.life_support, dose_msv: f.dose_msv, dose_limit_msv: state.resources.dose_limit_msv }, f);
+    if (cockpit) cockpit.telemetry(f);
     if (f.sun_elev_deg != null) globe.mission.setSun(f.sun_elev_deg, f.mission_time_h || 0);
     if (f.earth_elev_deg != null) globe.mission.setEarth(f.earth_elev_deg);
   }
@@ -221,6 +194,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       { label: "No", once: true, onClick: () => answer(false) }] : [];
     card.show({ title: "CAPCOM", eyebrow: eyebrow || [s ? `Day ${s.day} · shift ${s.shift}` : "Mission", client && client.sample ? "Sample data" : ""].filter(Boolean).join(" · "),
       say: line || readback || "", actions });
+    if (screen === "hud" && !/^Houston/.test(eyebrow || "")) radio("capcom", line || readback);
   }
 
   async function run(command, { spoken } = {}) {
@@ -240,22 +214,33 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function endShift() {
     if (!state || state.over) return;
     if (session && !client.sample && session.endShift && session.endShift(state)) return;   // [session hook]
-    const btn = $("mEnd"); if (btn) btn.disabled = true;
+    if (cockpit) cockpit.busy(true);
     let r;
-    try { r = await client.advance(state.id, 1); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); if (btn) btn.disabled = false; return; }
+    try { r = await client.advance(state.id, 1); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); if (cockpit) cockpit.busy(false); return; }
     prev = state; applyState(r.state, true);
     const evs = r.events || [];
     capcom({ say: r.say });
     handleEvents(evs);
-    const b2 = $("mEnd"); if (b2) b2.disabled = false;
+    if (cockpit) cockpit.busy(false);
     if (state.over) { showDebrief(); return; }
     say(r.say);
   }
 
   function applyState(s, keepPrev) { if (!s) return; if (!keepPrev && state) prev = prev || state; state = s; render(); pushContext(); }
 
+  /** A Flight School lesson coming back as a real event: CAPCOM reminds the kid (once per kind per mission). */
+  const reminded = new Set();
+  function remind(kind) {
+    if (reminded.has(kind) || !CALLBACKS[kind]) return null;
+    reminded.add(kind); seen.add(kind);
+    const line = callbackLine(kind, learned(CALLBACKS[kind].lesson)); radio("capcom", line); return line;
+  }
+  const seen = new Set();   // lesson concepts that happened this mission (for the debrief)
   function handleEvents(evs) {
     if (!evs.length) return;
+    evs.forEach(e => { if (CALLBACKS[e.kind]) seen.add(e.kind); });
+    const cbk = evs.map(e => e.kind).find(k => CALLBACKS[k] && !reminded.has(k));
+    if (cbk) { const line = remind(cbk); if (line) setTimeout(() => { if (screen === "hud") say(line, { situation: "coach" }); }, 2500); }
     const storm = evs.find(e => e.kind === "solar_storm");
     if (storm) { alertSound(); renderBanner(); return; }
     const alarm = evs.find(e => e.kind === "low_power" || e.kind === "dose_alert");
@@ -269,10 +254,11 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const oneWay = (delayMs / 2000).toFixed(1);
     signal.hidden = false; signal.style.setProperty("--trip", delayMs + "ms");
     signal.innerHTML = `<span class="m-sig-moon">Moon</span><span class="m-sig-track"><i></i></span><span class="m-sig-earth">Earth</span><small>Signal travelling to Earth… ${oneWay} s each way</small>`;
-    capcom({ say: "Calling Houston…", eyebrow: "Houston · radio delay" });
+    capcom({ say: CAPCOM.houstonCalling, eyebrow: "Houston · radio delay" });
+    if (cockpit) cockpit.calling(true);
     await new Promise(r => setTimeout(r, delayMs));
-    signal.hidden = true;
-    capcom({ say: line, eyebrow: "Houston" });
+    signal.hidden = true; if (cockpit) cockpit.calling(false);
+    capcom({ say: line, eyebrow: "Houston" }); radio("houston", line);
     await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
   }
 
@@ -280,6 +266,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** Text the kid said in mission mode. Returns true if handled here (mock command layer). */
   async function handleText(text) {
     if (!state || screen !== "hud") return false;
+    radio("kid", text);
+    const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
+    if (vw && cockpit) { cockpit.setView(vw[1]); return true; }
     if (!client.sample) return false;          // the real Director parses commands
     const c = parseCommand(text); if (!c) return false;
     if (c.type === "call_houston") { await houston("Houston here. We copy you, Commander. Keep the crew safe and the lights on.", 2600); return true; }
@@ -302,6 +291,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- [session hook] decisions from the session Director (frontend/src/session.js) ----------
   function applyRemote(s) {
     if (!s) return;
+    const st0 = state;
+    if (st0 && s.env && s.env.storm && s.env.storm.active && !(st0.env.storm && st0.env.storm.active)) handleEvents([{ kind: "solar_storm" }]);
+    (s.alerts || []).forEach(a => { if (a === "low_power" || a === "life_support_low") seen.add(a); });
     if (state && s.mission_time_h !== state.mission_time_h) { prev = state; applyState(s, true); } else applyState(s);
     if (s.over) showDebrief();
   }
@@ -336,11 +328,17 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- debrief ----------
   async function showDebrief() {
     if (!state) return;
-    screen = "debrief"; panel.hidden = true; banner.hidden = true;
+    screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin();
     let d; try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
     const ls = (d.lessons && d.lessons.length ? d.lessons.map(l => ({ text: l.text, source: l.source })) : lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })));
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");
-    const head = outcome === "success" ? "Mission complete!" : outcome === "fail" ? "Mission over" : "Mission paused";
+    const head = outcome === "survived" || outcome === "success" ? "Mission complete!" : outcome === "in_progress" || !outcome ? "Mission paused" : "Mission over";
+    (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
+    const lessonsSeen = [...new Set([...seen].map(k => CALLBACKS[k].lesson))];
+    const learnedHtml = `<section class="m-learned"><span class="eyebrow">${esc(DEBRIEF.learned)}</span>${lessonsSeen.length
+      ? `<ul>${lessonsSeen.map(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id), c = CALLBACKS[k];
+          return `<li><span class="m-lpatch${learned(id) ? " is-earned" : ""}" aria-hidden="true">${(LESSON_STORY[id] || {}).patch || "★"}</span><span><b>Lesson ${c.n}</b> ${esc(c.text)}</span></li>`; }).join("")}</ul>`
+      : `<p class="m-sub">${esc(DEBRIEF.learnedEmpty)}</p>`}</section>`;
     debriefEl.hidden = false;
     debriefEl.innerHTML = `
       <header class="m-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}<button class="x" id="mDbClose" type="button" aria-label="Back to the mission">&times;</button></header>
@@ -349,18 +347,19 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         <div class="m-grade" aria-label="Grade ${esc(d.grade)}"><b>${esc(d.grade)}</b><span>★ ${Math.round(d.score || 0)}</span></div>
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
-      <p class="m-mars">On Mars, Houston would answer 6–44 minutes later.</p>
+      ${learnedHtml}
+      <p class="m-mars">${esc(DEBRIEF.mars)}</p>
       <div class="m-db-cols">
         <section><span class="eyebrow">Lessons</span><ul>${ls.map(l => `<li>${esc(l.text)} ${src(l.source)}</li>`).join("")}</ul></section>
         <section><span class="eyebrow">Data we used</span><ul>${(d.data_used || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a> ${esc(x.how || "")}</li>`).join("")}</ul></section>
       </div>
-      <div class="m-foot"><button type="button" class="m-go" id="mAgain">Try a different strategy</button><button type="button" class="pill" id="mNewSite">Pick another site</button></div>`;
+      <div class="m-foot"><button type="button" class="m-go" id="mAgain">${esc(DEBRIEF.replay)}</button><button type="button" class="pill" id="mNewSite">${esc(DEBRIEF.another)}</button></div>`;
     $("mAgain").onclick = () => { if (unsub) unsub(); state = null; start(); };
     $("mNewSite").onclick = () => { if (unsub) unsub(); state = null; briefing(); };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
-    const line = `${head} Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`;
-    capcom({ say: line, eyebrow: "Debrief" }); say(line);
+    const line = cs => `${head} Nice flying, ${cs}. Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`;
+    capcom({ say: line(callSign.shown()), eyebrow: "Debrief" }); say(line(callSign.spoken()));
   }
 
   /** Line chart: power %, life support %, dose as % of the limit (one 0–100 axis), with event markers. */

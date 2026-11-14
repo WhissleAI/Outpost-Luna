@@ -19,7 +19,7 @@ it streams: where, who, what happened, what they want, how it feels, when to ans
 - the synthetic data to generate;
 - how to fine-tune with name lists as context, so any list works at runtime.
 
-The product using it is **Moonbase Cadet** (this repo; formerly Ask the Moon), a voice-first Junior Astronaut Mission
+The product using it is **Outpost Luna** (this repo; formerly Moonbase Cadet and Ask the Moon), a voice-first Junior Astronaut Mission
 Trainer for kids 7–12 built for NASA Space Apps 2026 on the challenge *Build a Junior Astronaut Mission Trainer*: an
 Academy of voice lessons, then commanding an Artemis-era south-pole outpost by voice against real NASA data.
 

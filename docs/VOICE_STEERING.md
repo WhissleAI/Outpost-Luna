@@ -1,6 +1,6 @@
 # Voice steering: Steer TTS Edge, steered by the Director
 
-Every spoken line in Moonbase Cadet (Academy, Mission and the Moon library) is rendered by **Steer TTS Edge**,
+Every spoken line in Outpost Luna (Academy, Mission and the Moon library) is rendered by **Steer TTS Edge**,
 Whissle's own on-device TTS. The Director picks *how* each line is said, not only *what* is said: a style tag, numeric
 prosody controls, emphasis on key words, and Steer's performance director for multi-sentence lines.
 

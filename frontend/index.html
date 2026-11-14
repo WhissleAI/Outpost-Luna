@@ -3,28 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Moonbase Cadet: Junior Astronaut Mission Trainer</title>
+<title>Outpost Luna: Junior Astronaut Mission Trainer</title>
 <!-- Theme before first paint: a saved choice wins, else prefers-color-scheme (handled in CSS). -->
 <script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap">
 </head>
 <body>
 
 <header class="topbar">
   <div class="brandline">
     <span class="sa-badge">SpaceApps 2026</span>
-    <span class="appname">Ask the Moon</span>
+    <span class="appname">Outpost Luna</span>
   </div>
   <div class="modes" role="group" aria-label="Mode">
     <!-- Two modes: Academy (training, the default for a new cadet) → Mission. The explorer is the "Moon library" button. -->
-    <button type="button" id="modeAcademy" aria-pressed="false">Academy</button>
-    <button type="button" id="modeMission" aria-pressed="true">Mission</button>
+    <button type="button" id="modeAcademy" aria-pressed="false"><span aria-hidden="true">🎓 </span>Academy</button>
+    <button type="button" id="modeMission" aria-pressed="true"><span aria-hidden="true">🛰️ </span>Mission</button>
   </div>
   <nav class="topnav">
     <button class="nav-btn" id="libraryBtn" type="button" aria-pressed="false" title="Explore the Moon, its hardware and the Artemis II crew audio">Moon library</button>
     <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Find it</button>
+    <!-- Accessibility settings entry point (reserved for the a11y module, src/a11y.js) -->
+    <button class="nav-btn" id="a11yBtn" type="button" aria-haspopup="dialog" aria-expanded="false" title="Accessibility settings"><span aria-hidden="true">♿</span> Access</button>
     <button class="nav-btn" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false">About</button>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
       <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
@@ -67,6 +69,8 @@
 
     <!-- Mission Trainer (mission/ui.js): side panel (briefing / HUD), event banner, Houston signal, debrief -->
     <aside class="mpanel" id="mPanel" hidden aria-label="Mission control"></aside>
+    <!-- Outpost Luna cabin (mission/cabin.js): the window + instrument panel; replaces the globe while a mission runs -->
+    <section class="m-cabin" id="mCabin" hidden aria-label="Outpost Luna cockpit"></section>
     <!-- Junior Astronaut Academy (academy/ui.js): course map, lesson, badge -->
     <aside class="mpanel apanel" id="aPanel" hidden aria-label="Junior Astronaut Academy"></aside>
     <div class="m-banner" id="mBanner" hidden role="status"></div>
@@ -107,18 +111,22 @@
       <div class="tag-src" id="cardArc" hidden></div>
     </article>
 
+    <!-- Caption region (reserved for src/caption.js): spans the stage, above the ask dock. Empty = invisible. -->
+    <div class="caption-bar" id="captionBar" aria-live="polite"></div>
+
     <!-- Ask dock. State classes on .askbar (set by voice.js): is-idle | is-listening | is-hearing | is-thinking | is-speaking -->
     <div class="askbar is-idle" id="askbar">
       <div class="chips" id="chips"><button class="nudge" id="nudge" type="button" hidden></button></div>
       <div class="dock">
         <div class="listen" id="listen" aria-live="polite">
+          <span class="cs-tag" id="csTag" title="Your call sign (stays on this device)" hidden></span>
           <span class="orb" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <span class="listen-state" id="listenState"></span>
           <span class="live-words" id="liveWords"></span>
           <span class="hint" id="spaceHint"><kbd>Space</kbd><span>Hold to ask</span></span>
         </div>
         <form class="ask" id="askForm">
-          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Ask the Moon">
+          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Talk to CAPCOM">
           <button class="send" type="submit">Ask</button>
           <button class="mic" id="mic" type="button" aria-label="Turn the mic on" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
@@ -133,7 +141,7 @@
   <div class="about-bar"><span class="eyebrow">About</span><button class="x" id="aboutClose" type="button" aria-label="Close">&times;</button></div>
   <div class="about-body">
 
-  <header class="about-head"><h1 id="aboutTitle">Ask the Moon: Mission Trainer</h1><p>A voice game for kids 7 to 12. You command a small base near the Moon's south pole, and real NASA data decides what happens.</p></header>
+  <header class="about-head"><h1 id="aboutTitle">Outpost Luna: Junior Astronaut Mission Trainer</h1><p>A voice game for kids 7 to 12. Artemis III hasn't landed yet: train at Flight School, then run Outpost Luna, a base at the Moon's south pole, where real NASA data decides what happens.</p></header>
   <div class="brief">
     <section>
       <span class="eyebrow">The challenge</span>
@@ -157,7 +165,7 @@
     <section>
       <span class="eyebrow">How the Academy works</span>
       <h2>Train first, then command</h2>
-      <p>The Academy is seven short lessons with CAPCOM: the Moon's south pole, radio talk, solar power, radiation and solar storms, air and ice, and lessons from Apollo. Each step takes a spoken, typed or tapped answer, and gives a hint after two misses. Every fact shows its NASA source. The last lesson is a check ride: two days on the real mission simulator with the real May 2024 solar storm. Pass it to earn the Mission Commander badge. Badges are saved only on this device, with no names. The story is inspired by NASA's Artemis program: Artemis I flew uncrewed in 2022, Artemis II flew its crew around the Moon in April 2026, and Artemis III plans a landing near the south pole, where you train. It uses NASA open data and is not endorsed by NASA.</p>
+      <p>Flight School is short lessons with CAPCOM: the Moon's south pole, radio talk, solar power, radiation and solar storms, air and ice, and lessons from Apollo. Each step takes a spoken, typed or tapped answer, and gives a hint after two misses. Every fact shows its NASA source. The last lesson is a check ride: two days on the real mission simulator with the real May 2024 solar storm. Pass it to earn the Mission Commander badge. Patches and your call sign are saved only on this device and never sent. The story is inspired by NASA's Artemis program: Artemis I flew uncrewed in 2022, Artemis II flew its crew around the Moon in April 2026, and Artemis III, the first landing near the south pole, has not happened yet. You train to help run Outpost Luna for the crews who come after. It uses NASA open data and is not endorsed by NASA.</p>
     </section>
 
     <section>

@@ -1,6 +1,6 @@
 # The local brain: no cloud LLM
 
-Moonbase Cadet speaks **limited content from structured knowledge**. There is no Claude/Anthropic (or other cloud LLM)
+Outpost Luna speaks **limited content from structured knowledge**. There is no Claude/Anthropic (or other cloud LLM)
 call at runtime; the only external API is NASA's. Two parts replace the LLM:
 
 | Part | Where | Job |

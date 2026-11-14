@@ -1,5 +1,6 @@
 // Wiring only: load places, build the modules, route asks / taps / voice turns between them.
 import "./styles.css";
+import "./outpost.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
@@ -11,6 +12,7 @@ import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
+import { callSign } from "./story.js";
 import { chime } from "./sound.js";
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
@@ -33,6 +35,9 @@ async function boot() {
   initAbout();
   const nameEl = document.querySelector(".appname");
   if (nameEl) { nameEl.textContent = APP_NAME; nameEl.title = APP_TAGLINE; }
+  // The askbar shows the kid's call sign (local only).
+  const csTag = $("csTag"), paintCs = () => { const c = callSign.get(); csTag.textContent = c; csTag.hidden = !c; };
+  paintCs(); addEventListener("outpost:callsign", paintCs);
   let places;
   try { places = await api.places(); }
   catch (e) { $("loading").textContent = "Can't reach the backend. Start everything with `make dev`."; return; }
@@ -63,6 +68,7 @@ async function boot() {
     globe, card, placeById, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* audio floor: CAPCOM voice, Director style */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+    academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id) },   // Flight School patches carry over
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),
@@ -348,8 +354,8 @@ async function boot() {
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
   let lastMode = "academy";
-  const PH = { mission: "Or type: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon",
-    academy: "Or type your answer: show me the south pole" };
+  const PH = { mission: "Or type an order: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon",
+    academy: "Or type your answer to CAPCOM" };
   function setMode(mode) {
     const m = ["cadet", "academy"].includes(mode) ? mode : "mission";
     document.body.dataset.mode = m;
