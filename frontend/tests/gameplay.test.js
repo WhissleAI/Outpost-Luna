@@ -97,3 +97,15 @@ test("inputs: keys, controller and the router's intents all reach the clock and 
   assert.deepEqual(r.step(readPad(pad([BTN.lt])), 48).map(a => a.intent), ["time_warp"]);
   for (const n of ["skip_event", "time_pause", "time_resume", "time_warp", "task_choice"]) assert.ok(ROUTER_INTENTS.has(n), n);
 });
+
+test("Mission before the check ride: a Cadet, the path, and a practice shift (never 'Commander')", () => {
+  assert.equal(S.CAPCOM.missionBrief("Nova", "Cadet"), "Pick a site, Cadet Nova. Keep the crew safe for ten days.");
+  assert.match(S.CAPCOM.missionBrief("Nova"), /Commander Nova/);
+  const G = S.GATE;
+  assert.equal(G.title, "Pass your check ride to take command.");
+  assert.match(G.say("Nova"), /^Nova, pass your check ride to take command\. Want to try a practice shift\?$/);
+  assert.doesNotMatch(G.say("Nova") + G.doneSay("Nova") + G.title + G.sub + G.doneSub, /Commander/);
+  for (const t of [G.title, G.sub, G.doneSub, G.doneTitle]) assert.ok(words(t) <= 12, t);
+  for (const t of [G.say("Nova"), G.doneSay("Nova")]) assert.ok(words(t) <= 20, t);
+  for (const t of [G.practice, G.ride, G.again]) assert.match(t, /^(Try|Fly|Practice)/);   // QA-69: a verb first
+});

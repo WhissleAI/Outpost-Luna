@@ -248,7 +248,7 @@ export const CAPCOM = {
   lessonHello: (cs, beat) => `${beat} Here we go, ${cs}.`,
   patch: (cs, name) => `Patch earned: ${name}. Nice work, ${cs}.`,
   qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
-  missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
+  missionBrief: (cs, rank = "Commander") => `Pick a site, ${rank} ${cs}. Keep the crew safe for ten days.`,
   missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
   /** First mission only: said once after missionStart, then again only after a silence (no order yet). */
   firstShift: "Raise the shields, then start the clock.",
@@ -258,6 +258,22 @@ export const CAPCOM = {
 /** Check-ride result card (on screen, not spoken). The backend sends the same line as `fact`. */
 export const RIDE = {
   mars: "On Mars, Houston would answer 6 to 44 minutes later.",
+};
+
+/** The Mission tab before the check ride (state-driven: Flight School's `qualified`). A cadet isn't a commander yet: the
+ *  tab explains the path and offers one practice shift at Shackleton Rim (real sim, Cadet band, doesn't count). */
+export const GATE = {
+  eyebrow: "Command · Cadet",
+  title: "Pass your check ride to take command.",
+  sub: "Try one practice shift first. It doesn't count.",
+  practice: "Try a practice shift",
+  ride: "Fly the check ride",
+  say: cs => `${cs}, pass your check ride to take command. Want to try a practice shift?`,
+  tag: "Practice",
+  doneTitle: "Practice shift done",
+  doneSub: "Nice work. Pass your check ride to take command.",
+  doneSay: cs => `Practice shift done, ${cs}. Pass your check ride to take command.`,
+  again: "Practice again",
 };
 
 /** Spoken offers: said once, as a question. "yes" / "next" takes them (the router's accept_offer). */

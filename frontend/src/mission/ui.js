@@ -8,7 +8,7 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE } from "../story.js";
 import { nowCard, nowSpoken, nudgeLine, debriefStory } from "./objective.js";
 import { createTour, tourDone } from "./tour.js";
 import { createMissionClock } from "./clock.js";
@@ -104,6 +104,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       data_used: [{ name: "JPL Horizons", url: "https://ssd.jpl.nasa.gov/horizons/" }], ...extra };
   }
   const badges = () => (academy ? academy.badges() : []);
+  /** Qualified (the check ride passed) -> Commander; before that the kid is a Cadet, and Mission offers a practice shift. */
+  const qualified = () => !academy || !academy.qualified || !!academy.qualified();
+  const rank = () => (qualified() ? "Commander" : "Cadet");
+  let practice = false;   // this mission is the unqualified cadet's practice shift (one shift, Shackleton Rim, Cadet band)
+  const PRACTICE_H = 6;
   const learned = lessonId => !!(academy && academy.has(lessonId));
 
   const shortName = n => n.split(" (")[0].replace(/ rocket impact site| impact site/, "");
@@ -207,14 +212,47 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const earthDays = s => s.window_earth_days ?? Math.round(s.earth_visible_pct / 10);
   /** A first-timer (no mission flown yet on this cadet) sees the recommended pick. */
   let firstPick = false, briefSpoken = false;
+  /** Before the check ride: the path, and one practice shift (never the site picker or "Commander"). */
+  function gate() {
+    const fresh = screen !== "gate";
+    screen = "gate"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
+    panel.classList.add("mx-brief");
+    panel.innerHTML = `
+      <header class="mx-head"><span class="eyebrow">${esc(GATE.eyebrow)}</span>${sampleTag()}</header>
+      <h2 class="mx-title">${esc(GATE.title)}</h2>
+      <p class="mx-sub">${esc(GATE.sub)}</p>
+      <button type="button" class="mx-go" id="mPractice">${esc(GATE.practice)}</button>
+      <button type="button" class="mx-link" id="mRide">${esc(GATE.ride)}</button>`;
+    $("mPractice").onclick = () => startPractice();
+    $("mRide").onclick = () => academy && academy.goRide && academy.goRide();
+    site = sites.find(s => s.id === PICKER.recommended) || sites[0]; previewSite();
+    if (fresh) Promise.resolve(say(GATE.say(callSign.spoken("Cadet")))).catch(() => {});
+    requestAnimationFrame(() => { const b = $("mPractice"); if (b) b.focus({ preventScroll: true }); });
+  }
+  function startPractice() { practice = true; site = sites.find(s => s.id === PICKER.recommended) || sites[0]; start(undefined, { practice: true }); }
+  /** The practice shift is over: a short end card (not a graded debrief), the check ride first. */
+  function practiceDone() {
+    if (!practice || screen !== "hud") return;
+    const where = (state && state.site && state.site.name) || "";
+    practice = false; mclock.pause(); screen = "practice_done"; hideCabin(); card.hide();
+    if (unsub) { unsub(); unsub = null; } state = null;   // a practice never continues as a real mission
+    debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
+    debriefEl.innerHTML = `<header class="mx-head"><span class="eyebrow">${esc(GATE.tag)} · ${esc(where)}</span></header>
+      <div class="mx-db-top"><div><h2 class="mx-title">${esc(GATE.doneTitle)}</h2><p class="mx-sub">${esc(GATE.doneSub)}</p></div></div>
+      <div class="mx-foot"><button type="button" class="mx-go" id="mRide2">${esc(GATE.ride)}</button><button type="button" class="mx-link" id="mPracticeAgain">${esc(GATE.again)}</button></div>`;
+    $("mRide2").onclick = () => academy && academy.goRide && academy.goRide();
+    $("mPracticeAgain").onclick = () => startPractice();
+    Promise.resolve(say(GATE.doneSay(callSign.spoken("Cadet")))).catch(() => {});
+  }
   function briefing() {
+    if (!qualified()) { gate(); return; }
     const fresh = screen !== "brief";
     screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
     firstPick = !firstDone();
     if (!site) site = (firstPick && sites.find(s => s.id === PICKER.recommended)) || sites[0];
     // the transition beat: where you are (Command), why the choice matters; spoken once per visit
     // one say through the line queue: no async chain to outlive the screen (rc-polish's screen generations)
-    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say([CAPCOM.missionBrief(callSign.spoken()), PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {}); }
+    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say([CAPCOM.missionBrief(callSign.spoken(), rank()), PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {}); }
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
     panel.innerHTML = `
@@ -299,18 +337,19 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
 
   let starting = false;
-  async function start(seed) {
+  async function start(seed, { practice: isPractice = false } = {}) {
+    if (!isPractice) practice = false;
     // [qa] QA-54: one mission per press (a double click, or a click while saying "take command"); a failed start says so
     if (starting) return; starting = true;
     document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = true; });
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
-    const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
+    const level = isPractice ? "cadet" : (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
     let st = null;
     const g = gen;
     // the row the kid sees selected is the one that flies (QA rc/2: "take command" started another site): the picker's
     // checked row wins over any stale `site`; hover only highlights (hot()), it never selects
-    const checked = screen === "brief" && panel.querySelector('.mx-site[aria-checked="true"]');
+    const checked = !isPractice && screen === "brief" && panel.querySelector('.mx-site[aria-checked="true"]');
     if (checked) site = sites.find(s => s.id === checked.dataset.site) || site;
     window.__outpost && (window.__outpost.missionSite = site && site.id);   // tools/picker_select.py reads it
     try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
@@ -399,6 +438,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     handleEvents(evs); story(evs);
     if (r.live && cockpit) { cockpit.frame(r.live); cockpit.telemetry(r.live); onTelemetry(r.live); }
     if (state.over) { mclock.pause(); showDebrief(); }
+    else if (practice && (state.mission_time_h || 0) >= PRACTICE_H) practiceDone();
   }
   /** Story beats: the window's moment, the mission log, and (with no session Director) CAPCOM's line. */
   function story(evs) {
@@ -436,7 +476,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (!alive(g)) return;
     mclock.reset(); if (!mclock.started) mclock.play();
     applyLive(r);
-    if (r.say && !state.over) { capcom({ say: r.say }); say(r.say); }
+    if (r.say && state && !state.over) { capcom({ say: r.say }); say(r.say); }
   }
   /** A button on the Now card: an order, a task press / choice, or a clock action. */
   function taskButton(b) {
@@ -487,6 +527,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function whatNow() {
     if (screen === "hud") return state ? nowSpoken(state, mclock.state) : null;
     if (screen === "brief") return HELP.picker;
+    if (screen === "gate") return GATE.say(callSign.spoken("Cadet"));
+    if (screen === "practice_done") return GATE.doneSub;
     if (screen === "debrief") return HELP.debrief;
     return null;
   }
@@ -512,6 +554,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     mclock.attach(); cockpit.clock(mclock.state);
     dockIn();
     if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
+    if (practice) cabinEl.insertAdjacentHTML("afterbegin", `<span class="m-sample m-practice" title="${esc(GATE.sub)}">${esc(GATE.tag)}</span>`);
     requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-hole") || cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
@@ -538,7 +581,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   async function callHouston() {
     if (!state) return;
     radio("kid", "Houston, Outpost Luna. Radio check.");
-    if (client.sample || !askDirector) { await houston("Houston here. We copy you, Commander. Keep the crew safe and the lights on.", 2600); return; }
+    if (client.sample || !askDirector) { await houston(`Houston here. We copy you, ${rank()}. Keep the crew safe and the lights on.`, 2600); return; }
     if (cockpit) cockpit.calling(true);
     await askDirector("Call Houston");
   }
@@ -606,6 +649,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     capcom({ say: r.say });
     handleEvents(evs); story(evs);
     if (cockpit) cockpit.busy(false);
+    if (practice && !state.over && (state.mission_time_h || 0) >= PRACTICE_H) { practiceDone(); return; }
     if (state.over) { showDebrief(); return; }
     say(r.say);
   }
@@ -673,7 +717,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (vw && cockpit) { cockpit.setView(vw[1]); return true; }
     if (!client.sample) return false;          // the real Director parses commands
     const c = parseCommand(text); if (!c) return false;
-    if (c.type === "call_houston") { await houston("Houston here. We copy you, Commander. Keep the crew safe and the lights on.", 2600); return true; }
+    if (c.type === "call_houston") { await houston(`Houston here. We copy you, ${rank()}. Keep the crew safe and the lights on.`, 2600); return true; }
     if (c.type === "end_shift") { await endShift(); return true; }
     await run(c, { spoken: true }); return true;
   }
@@ -899,6 +943,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       return { screen: "cabin" };
     }
     if (screen === "debrief") return { screen: "debrief", offer: pendingWipe ? "confirm_wipe" : "fly_again" };
+    if (screen === "gate") return { screen: "brief", offer: "practice" };
+    if (screen === "practice_done") return { screen: "debrief", offer: "practice_done" };
     return { screen: "brief", offer: "take_command" };
   }
   /** A navigation intent. True when Mission ran it. */
@@ -927,6 +973,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       site = s; previewSite(); briefing(); say(`${s.name.split(" (")[0]}. Good choice. Say take command when you're ready.`); return true;
     }
     if (screen === "brief" && ["take_command", "start", "next", "accept_offer"].includes(intent)) { start(); return true; }
+    if (screen === "gate" && ["start", "next", "accept_offer", "yes"].includes(intent)) { startPractice(); return true; }
+    if (screen === "gate" && intent === "take_command") { say(GATE.say(callSign.spoken("Cadet"))); return true; }   // not yet: the path, again
+    if (screen === "practice_done" && ["accept_offer", "yes", "start", "next"].includes(intent)) { if (academy && academy.goRide) academy.goRide(); return true; }
+    if (screen === "practice_done" && intent === "fly_again") { startPractice(); return true; }
     if (screen === "debrief" && pendingWipe && ["accept_offer", "yes"].includes(intent)) { const g = pendingWipe; pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); g(); return true; }
     if (screen === "debrief" && pendingWipe && intent === "decline_offer") { pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); return true; }
     if (screen === "debrief" && intent === "accept_offer" && state && !state.over) { showHud(); return true; }   // paused: the offer is "resume"
@@ -968,7 +1018,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const onBus = {
     next: () => screen === "brief" ? (stepSite(1), true) : false,
     prev: () => screen === "brief" ? (stepSite(-1), true) : false,
-    yes: () => screen === "brief" ? (start(), true) : screen === "debrief" ? nav("fly_again") : false,
+    yes: () => screen === "brief" ? (start(), true) : screen === "gate" ? (startPractice(), true) : screen === "debrief" ? nav("fly_again") : false,
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,
     end_shift: () => screen === "hud" && !(state && state.over) ? (endShift(), true) : false,
     task_step: () => screen === "hud" ? intent("task_step") === true : false,
