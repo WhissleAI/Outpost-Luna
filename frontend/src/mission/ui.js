@@ -238,7 +238,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       const minX = Math.min(...P.map(o => o.p.x)), LH = 34;
       const col = P.slice().sort((a, b) => a.p.y - b.p.y);
       // label column left of the cluster, centred on it vertically, one row per site
-      const cy = col.reduce((t, o) => t + o.p.y, 0) / (col.length || 1), y0 = cy - (col.length - 1) * LH / 2, lx = minX - 64;
+      const H = pinEl.clientHeight || innerHeight, cy = col.reduce((t, o) => t + o.p.y, 0) / (col.length || 1);
+      // keep the label column clear of the voice bar (bottom ~150px of the stage)
+      const y0 = Math.max(24, Math.min(cy - (col.length - 1) * LH / 2, H - 150 - (col.length - 1) * LH)), lx = minX - 64;
       let lines = "";
       col.forEach((o, k) => {
         const id = CSS.escape(o.s.id), dot = pinEl.querySelector(`.mx-dot[data-site="${id}"]`), lab = pinEl.querySelector(`.mx-pin[data-site="${id}"]`);
@@ -257,7 +259,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.0 });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
     // frame the whole south-pole region (all five sites), not just the picked one; the band lifts the pole off the strip
-    globe.setViewport(.62); globe.flyTo(-88.6, -40, 1.62);
+    globe.setViewport(window.__pickBand || .3); globe.flyTo(-88.6, -40, window.__pickDist || 1.45);
   }
 
   async function start(seed) {
