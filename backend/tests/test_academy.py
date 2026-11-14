@@ -121,6 +121,7 @@ def _ride(client, answers):
 def test_check_ride_pass(client):
     out = _ride(client, GOOD)
     assert out["status"] == "done" and out["passed"] and out["badge"]["id"] == "commander" and out["unlocks"] == "mission"
+    assert "Mars" in out["fact"] and "Mars" not in out["say"]   # the Mars delay is on the result card, not spoken
     assert out["state"]["mission_time_h"] == 48 and out["state"]["resources"]["dose_msv"] < 50
 
 

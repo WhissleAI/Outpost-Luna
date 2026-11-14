@@ -1,8 +1,8 @@
 """CAPCOM: the voice of Mission Control in the Junior Astronaut Mission Trainer (docs/MISSION_CONTRACT.md).
 
-Turns Commands and State into short kid-friendly lines:
-  readback(cmd, state)     "Copy, commander. Moving 20 percent of power to the shields. That leaves less for the greenhouse."
-  status(what, state)      answers from State, real units explained the first time ("mSv, a unit for radiation dose")
+Turns Commands and State into short radio lines (docs/COPY.md: one idea per sentence, 20 words max):
+  readback(cmd, state)     "Copy. Radiation shields up 20 percent. Less for the greenhouse."
+  status(what, state)      answers from State, real units explained the first time ("An mSv measures radiation dose.")
   houston(text, state)     a call to Houston -> (say, delay_ms). The reply waits for the real radio round trip.
 Hard words use the app's glossary (data/glossary.json via MomentIndex.glossary) plus the mission terms below.
 """
@@ -17,18 +17,19 @@ MOON_ROUND_TRIP_MS = 2600
 
 NAMES = {"shields": "radiation shields", "life_support": "life support", "greenhouse": "greenhouse",
          "science": "science lab", "rover": "rover", "comms": "radio", "heaters": "heaters"}
-TASK_SAY = {"collect_ice": "to dig up ice. Ice can become water and oxygen",
-            "repair_array": "to fix the solar panels", "explore": "to explore", "return": "back to base"}
+TASK_SAY = {"collect_ice": "for ice", "repair_array": "to fix the solar panels", "explore": "to explore",
+            "return": "back to base"}
 ROLE_OF = {"allocate": "power", "shelter": "life", "dispatch": "life", "call_houston": "comms"}
 ROLE_NAME = {"power": "power officer", "life": "life support officer", "comms": "communications officer"}
+COPY = "Copy."          # every readback opens with it; the Director keeps only the first one per turn
 
-# Mission words a 7-year-old won't know. Explained once per mission, then used plainly.
+# Mission words a 7-year-old won't know. Explained once per mission (a short gloss), then used plainly.
 TERMS = {
-    "msv": "an mSv is a unit for radiation dose",
-    "solar storm": "a solar storm, a burst of fast particles from the Sun",
-    "battery": "the battery, which stores the solar panels' power for the dark",
-    "life support": "life support, the machines that make air and clean water",
-    "comm window": "a comm window, when Earth is above our horizon so the radio can reach it",
+    "msv": "an mSv measures radiation dose",
+    "solar storm": "a solar storm is a burst of fast particles from the Sun",
+    "battery": "the battery stores solar power for the dark",
+    "life support": "life support is the machines that make air and water",
+    "comm window": "a comm window is when Earth is up and the radio works",
 }
 _explained: dict[str, set[str]] = {}
 
@@ -62,33 +63,37 @@ def _pct(v) -> str:
     return f"{round(float(v))} percent"
 
 
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
 def _biggest_other(state: dict | None, *skip: str) -> str | None:
     loads = {k: v for k, v in ((state or {}).get("loads") or {}).items() if k not in skip and v}
     return max(loads, key=loads.get) if loads else None
 
 
 def readback(cmd: dict, state: dict | None = None, mid: str | None = None) -> str:
+    """CAPCOM's readback: "Copy." then the order in a few words, then its cost. Radio rhythm, one idea per sentence."""
     ty = cmd.get("type")
     if ty == "allocate":
         to, a, src = NAMES.get(cmd["to"], cmd["to"]), cmd["amount"], cmd.get("from")
         kind, v = a["kind"], a.get("value")
         if kind == "none":
-            line = f"Turning off power to the {to}."
+            line = f"{_cap(to)} off."
             if cmd["to"] in ("heaters", "life_support"):
-                line += " Careful, the crew needs that one!"
-            return f"Copy, commander. {line}"
+                line += " Careful, the crew needs those."
+            return f"{COPY} {line}"
         if kind == "all":
-            return f"Copy, commander. All the power goes to the {to}. Everything else goes dark!"
+            return f"{COPY} All power to the {to}. Everything else goes dark."
         if kind == "half":
-            line = f"Giving half of our power to the {to}."
+            line = f"Half our power to the {to}."
         elif kind == "percent":
-            line = f"Setting the {to} to {_pct(v)} of our power."
+            line = f"{_cap(to)} at {_pct(v)}."
         elif kind == "little":
-            line = f"A little {'more' if (v or 0) > 0 else 'less'} power for the {to}."
+            line = f"A little {'more' if (v or 0) > 0 else 'less'} for the {to}."
         else:
             n = abs(v or 0)
-            line = (f"Moving {_pct(n)} of power to the {to}." if (v or 0) > 0
-                    else f"Taking {_pct(n)} of power away from the {to}.")
+            line = f"{_cap(to)} {'up' if (v or 0) > 0 else 'down'} {_pct(n)}."
         if src:
             line = line.rstrip(".") + f", from the {NAMES.get(src, src)}."
             cost = NAMES.get(src, src)
@@ -96,21 +101,21 @@ def readback(cmd: dict, state: dict | None = None, mid: str | None = None) -> st
             other = _biggest_other(state, cmd["to"])
             cost = NAMES.get(other, other) if other else None
         if cost and (kind in ("half", "percent") or (v or 0) > 0):
-            line += f" That leaves less for the {cost}."
+            line += f" Less for the {cost}."
         elif (v or 0) < 0:
-            line += " That saves power for everything else."
-        return f"Copy, commander. {line}"
+            line += " More for everything else."
+        return f"{COPY} {line}"
     if ty == "dispatch":
         tgt = f" toward {cmd['target'].replace('_', ' ')}" if cmd.get("target") else ""
         if cmd["task"] == "return":
-            return "Copy, commander. Calling the rover back to base."
-        return f"Copy, commander. Sending the rover{tgt} {TASK_SAY[cmd['task']]}."
+            return f"{COPY} Calling the rover home."
+        return f"{COPY} Rover rolling out{tgt} {TASK_SAY[cmd['task']]}."
     if ty == "shelter":
         if cmd["on"]:
-            return "Copy! Everyone into the shelter. Its thick walls block most of the radiation."
-        return "Copy. The crew is leaving the shelter and getting back to work."
+            return f"{COPY} Everyone into the shelter."
+        return f"{COPY} Crew leaving the shelter."
     if ty == "end_shift":
-        return "Copy. Ending this shift. Six hours pass on the Moon."
+        return COPY      # the shift report that follows says the rest ("Day 1, shift 4. …")
     if ty == "confirm":
         return "Confirmed. Doing it now."
     if ty == "cancel":
@@ -118,64 +123,78 @@ def readback(cmd: dict, state: dict | None = None, mid: str | None = None) -> st
     if ty == "rule":
         return f"Standing order set: {rule_text(cmd)}"
     if ty == "call_houston":
-        return "Calling Houston..."
-    return "Copy, commander."
+        return "Calling Houston…"
+    return COPY
 
 
 WHEN_SAY = {"storm": "if a solar storm comes", "low_power": "if power gets low", "dark": "when it gets dark",
-            "comm_closed": "when we lose the radio link", "dose_high": "if the radiation dose gets high",
+            "comm_closed": "when we lose the radio", "dose_high": "if the dose gets high",
             "low_oxygen": "if the air gets low"}
 
 
+def _strip_copy(line: str) -> str:
+    """The readback without its opening "Copy." (older forms too)."""
+    return re.sub(r"^(Copy, commander\.|Copy[.!]|Confirmed\.)\s*", "", line.strip())
+
+
 def rule_text(rule: dict) -> str:
-    then = readback(rule["then"]).replace("Copy, commander. ", "").replace("Copy! ", "").replace("Copy. ", "")
+    then = _strip_copy(readback(rule["then"]))
     then = then.split(". ")[0].rstrip(".!")
     return f"{WHEN_SAY.get(rule['when'], 'when that happens')}, {then[0].lower() + then[1:]}."
 
 
 def status(what: str, state: dict | None, mid: str | None = None) -> str:
+    """One short line per system. `all` gives the numbers only, so the whole report stays a breath long."""
     if not state:
-        return "The mission hasn't started yet. Pick a landing site to begin!"
+        return "No mission yet. Pick a landing site first."
     r, env = _r(state), state.get("env") or {}
+    full = what != "all"
     parts = []
     if what in ("power", "all"):
         p = r.get("power_pct")
         if p is not None:
-            sun = "The Sun is up, so the solar panels are charging." if env.get("in_sun") else \
-                "It's dark, so we're living on the battery."
-            parts.append(f"The battery is at {_pct(p)}. {sun}")
+            line = f"Battery at {_pct(p)}."
+            if full:
+                line += " Sun's up, panels charging." if env.get("in_sun") else " It's dark. We're on battery."
+            parts.append(line)
     if what in ("oxygen", "life_support", "all"):
         o = r.get("life_support_pct")
         if o is not None:
-            mood = "Plenty to breathe." if o >= 60 else "We should watch it." if o >= 30 else "That's low, commander!"
-            parts.append(f"Air and water are at {_pct(o)} of what the mission needs. {mood}")
+            line = f"Air and water at {_pct(o)}."
+            if full:
+                line += " Plenty to breathe." if o >= 60 else " Keep an eye on it." if o >= 30 else " That's low, Commander."
+            parts.append(line)
     if what in ("dose", "all"):
         d, lim = r.get("dose_msv"), r.get("dose_limit_msv")
         if d is not None:
-            explain = term(mid, "msv", "") != ""
-            line = f"The crew has had {d:g} mSv of radiation so far"
-            line += f", out of a safe limit of {lim:g}." if lim else "."
+            explain = full and term(mid, "msv", "") != ""
+            line = f"Crew dose: {d:g} of {lim:g} mSv." if lim else f"Crew dose: {d:g} mSv."
             if explain:
-                line += " An mSv is a unit for radiation dose."
+                line += " An mSv measures radiation dose."
             rate = r.get("dose_rate_msv_h")
-            if rate:
-                line += f" Right now it goes up by {rate:g} every hour."
+            if rate and full:
+                line += f" Rising {rate:g} an hour."
             parts.append(line)
     if what in ("storm", "all"):
         st = env.get("storm") or {}
         if st.get("active"):
-            src = f" This is based on the {st['name']}." if st.get("name") else ""
-            parts.append(f"A solar storm is hitting us now!{src} The shelter or the shields keep the crew safe.")
+            line = "Solar storm hitting now."
+            if full:
+                line += f" It's the {st['name']}." if st.get("name") else ""
+                line += " Shelter or shields."
+            parts.append(line)
         elif what == "storm":
-            parts.append("No solar storm right now. The Sun is calm.")
+            parts.append("No storm. The Sun is calm.")
     if what in ("comms", "all"):
         if env.get("earth_visible"):
-            parts.append("Earth is in the sky, so the radio can reach Houston.")
+            if full:
+                parts.append("Earth is up. Houston can hear us.")
         else:
             nxt = env.get("next_comm_window_h")
-            when = f" in about {nxt:g} hours" if isinstance(nxt, (int, float)) else " later"
-            parts.append(f"Earth is below our horizon, so the radio can't reach Houston. Next chance{when}.")
-    return " ".join(parts) or "All systems are steady, commander."
+            when = f"Next window in about {nxt:g} hours." if isinstance(nxt, (int, float)) else "Next window later."
+            if full:
+                parts.append(f"Earth has set. {when}")
+    return " ".join(parts) or "All systems steady, Commander."
 
 
 def houston(text: str, state: dict | None, mid: str | None = None) -> tuple[str, int]:
@@ -183,25 +202,24 @@ def houston(text: str, state: dict | None, mid: str | None = None) -> tuple[str,
     from .nlu import parse
     env = (state or {}).get("env") or {}
     if state and env.get("earth_visible") is False:
-        return ("No answer. Earth is below the horizon, so the radio can't reach Houston right now. "
-                "We have to decide on our own!"), 0
+        return "No answer. Earth has set, so Houston can't hear us. Your call, Commander.", 0
     q = parse(text)["commands"] if text else []
     qq = next((c for c in q if c["type"] == "query"), None)
     if qq:
         return f"Houston here. {status(qq['what'], state, mid)}", MOON_ROUND_TRIP_MS
     alerts = (state or {}).get("alerts") or []
     if (env.get("storm") or {}).get("active") or "dose_rate_high" in alerts:
-        tip = "We see the solar storm too. Get the crew into the shelter or boost the shields."
+        tip = "We see the storm too. Shelter or shields, now."
     elif (_r(state).get("power_pct") or 100) < 30:
-        tip = "Your battery is low. Turn down the science lab and save power for life support."
+        tip = "Battery's low. Turn down science. Save power for life support."
     else:
-        tip = "We hear you loud and clear, commander. You're doing great. Keep the crew safe."
+        tip = "Loud and clear, Commander. Keep the crew safe."
     return f"Houston here. {tip}", MOON_ROUND_TRIP_MS
 
 
 def short(line: str) -> str:
     """Confused / frustrated kid: the first sentence only, calm."""
-    body = re.sub(r"^(Copy, commander\.|Copy[.!]|Confirmed\.)\s*", "", line.strip())
+    body = _strip_copy(line)
     first = re.split(r"(?<=[.!?])\s+", body)[0].replace("!", ".") if body else ""
     return f"Copy. {first}".strip() if body != line.strip() else first
 
@@ -209,7 +227,7 @@ def short(line: str) -> str:
 def excited(line: str) -> str:
     if line.endswith("!"):
         return line
-    return line.rstrip(".") + "! Great call!" if line.startswith(("Copy", "Confirmed")) else line
+    return line + " Great call!" if line.startswith(("Copy", "Confirmed")) else line
 
 
 def role_check(cmd: dict, role: str | None) -> str | None:
