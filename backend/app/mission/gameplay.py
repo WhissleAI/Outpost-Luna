@@ -173,7 +173,11 @@ def _storm_prep(m):
         # shelter early, not too early: the shelter is good for about a day (Orion), and science stops inside
         sh = _shelter_step()
         sh["ready_if"] = lambda m, t: not m.rover["busy"] and (_warning(m) or {}).get("eta_h", 0) <= SHELTER_LEAD_H
-        sh["wait_text"] = f"Shelter {SHELTER_LEAD_H} hours before it hits. Keep working till then."
+        # a kid can't do "6 hours before" sums: the card counts down to the moment the shelter opens, and that moment
+        # stops a skip (a "task" event, phase "ready")
+        sh["wait_text"] = lambda m, t: ("Shelter opens when the rover crew is home." if m.rover["busy"] else
+                                        f"Shelter opens in {max(1, int((_warning(m) or {}).get('eta_h', SHELTER_LEAD_H)) - SHELTER_LEAD_H)} h. "
+                                        "Keep working, or skip ahead.")
         steps.append(sh)
     else:   # a "possible" storm: a real call to make, with no right answer known yet
         steps.append(_choice("decide", "Possible storm. Shelter now, or wait?",
@@ -375,6 +379,11 @@ def _check(m, out) -> list[dict]:
     done_now = []
     for t in _active(m):
         for s in t["steps"]:
+            if s.get("ready_if") and not s["done"]:   # a step that becomes doable is news: it stops a skip and the warp
+                r = bool(s["ready_if"](m, t))
+                if r and s.get("was_ready") is False:
+                    _ev(m, out, "task", f"{t['title']}: {s['label']}.", phase="ready", task=t["id"], task_kind=t["kind"], step=s["id"])
+                s["was_ready"] = r
             f = s.get("done_if")
             if f and not (s.get("latch") and s["done"]):
                 # an order step shows the truth: done while the state says so (the rover can leave again)
@@ -629,11 +638,16 @@ def _lesson(lid):
     return {"id": lid, "n": LESSON_NO.get(lid), "title": LESSON_TITLE.get(lid)} if lid else None
 
 
+def _wait_text(m, t, s):
+    w = s.get("wait_text")
+    return w(m, t) if callable(w) else w
+
+
 def _step_view(m, t, s) -> dict:
     ready = (not s.get("ready_if") or bool(s["ready_if"](m, t))) and s["kind"] != "wait"
     v = {"id": s["id"], "kind": s["kind"], "label": s["label"], "done": s["done"], "ready": ready and not s["done"],
          "target": s.get("target"), "result": s.get("result"),
-         "wait": s.get("wait_text") if not ready and not s["done"] else None}
+         "wait": _wait_text(m, t, s) if not ready and not s["done"] else None}
     if s["kind"] == "order":
         v["cmd"] = s["cmd"]
     if s["kind"] == "choice":

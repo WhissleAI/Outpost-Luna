@@ -17,7 +17,7 @@ import { createMissionClock } from "./clock.js";
 const SPOKEN_BEATS = new Set(["settle", "comm_gap", "first_dark", "ice_return", "final_downlink"]);
 /** Events that end a time warp (like a console game: something happened, back to 1x). */
 const WARP_STOPS = new Set(["solar_storm", "storm_warning", "storm_end", "sunset", "sunset_soon", "sunrise", "comm_open", "comm_closed",
-  "low_power", "rover_back", "failure", "shelter_limit", "beat"]);
+  "low_power", "rover_back", "failure", "shelter_limit", "beat", "task"]);
 /** A story beat's window moment: the view that shows it best, for a few seconds (only from the seat's site view). */
 const MOMENT_VIEW = { earthrise: "earth", rover_lights: "rover", earthset: "earth" };
 

@@ -257,3 +257,26 @@ def test_an_open_ice_run_waits_out_a_storm():
                     v = gameplay.task_view(m, t)
                     if not gameplay._calm(m) or m.shelter:
                         assert not (v["step"]["id"] in ("send", "route") and v["step"]["ready"]), (seed, m.t_h)
+
+
+def test_shelter_wait_counts_down_and_stops_a_skip():
+    """The kid never has to work out "6 hours before": the card counts down, and skip stops when the shelter opens."""
+    for seed in range(20):
+        m = sim.new_mission("m", "shackleton_rim", seed, level="cadet")
+        sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+        while not m.over and sim._warning(m) is None:
+            sim.step(m, 1)
+        if m.over or m.rover["busy"]:
+            continue
+        t = sim.to_state(m)["task"]
+        sh = next(s for s in t["steps"] if s["id"] == "shelter")
+        eta = sim._warning(m)["eta_h"]
+        if eta <= gameplay.SHELTER_LEAD_H:
+            continue
+        assert not sh["ready"] and sh["wait"].startswith(f"Shelter opens in {eta - gameplay.SHELTER_LEAD_H} h")
+        r = sim.apply_command(m, {"type": "skip"})
+        assert sim._warning(m)["eta_h"] == gameplay.SHELTER_LEAD_H, r["say"]
+        assert any(e["kind"] == "task" and e.get("phase") == "ready" for e in r["events"])
+        assert next(s for s in sim.to_state(m)["task"]["steps"] if s["id"] == "shelter")["ready"]
+        return
+    pytest.fail("no seed with a long enough warning")
