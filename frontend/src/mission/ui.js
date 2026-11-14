@@ -828,7 +828,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     m.onIntent("a11y", a => { const t = String((a && a.text) || "").toLowerCase().replace(/[^a-z ]/g, "").trim();
       if (screen !== "hud" || !/^(what can i (do|say)|help me|what are my options|options)$/.test(t)) return false; return nav("help") === true; }, { priority: 10 });
   }).catch(() => {});
-  function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing(); }
+  // next / prev on the picker moves the selection: say the new site so a hands-free kid knows what "take command" will fly
+  function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing();
+    Promise.resolve(say(site.name.split(" (")[0] + ".")).catch(() => {}); }
 
   return {
     screen: screenFrame, nav, intent, radioKid: t => radio("kid", t), whatNow, get touring() { return tour.active; },

@@ -164,11 +164,12 @@ def test_policy_is_cost_aware():
     assert a == {"act": "ask_clarify", "clarify": ["shields", "heaters"]}
 
 
-def test_default_mode_is_on_with_rules_fallback(monkeypatch):
-    """Switch-on criteria met (director_model/RESULTS.md, round 4): `on` by default; the shipped weights carry the fitted
-    cost-aware thresholds; with no weights the rules decide every turn."""
+def test_default_mode_is_shadow_with_rules_fallback(monkeypatch):
+    """Owner decision 2026-11-14 (RESULTS.md round 6): `shadow` by default until a loop round passes the gate (the r4
+    weights silence some real-ear mishears); the shipped weights still carry their fitted cost-aware thresholds, and
+    with no weights the rules decide every turn."""
     monkeypatch.delenv("DIRECTOR_MODEL", raising=False)
-    assert RT.mode() == "on"
+    assert RT.mode() == "shadow"
     pol = RT.model().meta.get("policy")
     assert pol and pol["cmd"] >= 0.9 and (pol["veto"] is None or pol["veto"] >= 0.95)
     sh = RT.Shadow.__new__(RT.Shadow)

@@ -50,9 +50,20 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     meter.classList.toggle("is-hot", lvl > 0.25);
   }
 
+  // The ear opens a turn on any blip of room sound; showing every one made the bar flicker Listening ⇄ Hearing you.
+  // The logical state changes at once; the shown state is smoothed: "hearing" shows only after it has lasted
+  // HEAR_ON ms (or words arrived), and once shown it holds for HEAR_HOLD ms before falling back to "listening".
+  const HEAR_ON = 350, HEAR_HOLD = 900;
+  let shown = null, shownAt = 0, showT = 0;
+  function paint(s, label) { shown = s; shownAt = Date.now(); bar.classList.remove(...CLASSES); bar.classList.add(CLASS_OF[s]); stateEl.textContent = label; }
   function set(s, label = "") {
-    state = s; bar.classList.remove(...CLASSES); bar.classList.add(CLASS_OF[s]);
-    stateEl.textContent = label;
+    state = s; clearTimeout(showT);
+    const now = Date.now(), hasWords = !!(turnText && turnText().trim());
+    if (s === "hearing" && shown === "listening" && !hasWords) {
+      showT = setTimeout(() => { if (state === "hearing") paint("hearing", label); }, HEAR_ON);
+    } else if (s === "listening" && shown === "hearing" && now - shownAt < HEAR_HOLD) {
+      showT = setTimeout(() => { if (state === "listening") paint("listening", label); }, HEAR_HOLD - (now - shownAt));
+    } else paint(s, label);
     micBtn.classList.toggle("on", mode === "ws" || srOn);
     micBtn.setAttribute("aria-label", mode === "ws" ? "Turn the mic off" : "Turn the mic on");
     meter.hidden = mode !== "ws"; if (meter.hidden) meter.style.setProperty("--lvl", "0");
