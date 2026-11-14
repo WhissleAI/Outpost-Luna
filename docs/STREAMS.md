@@ -2,7 +2,21 @@
 
 Short and factual. The long plan for using game telemetry as model input is written separately.
 
-## The streams
+## The ear: `EAR=arc` (default) or `EAR=deepgram`
+
+With **`EAR=arc`** (local; see `docs/LOCAL_EAR.md`) `/ws/listen` opens one model-server stream, `WS /v1/stream?ear=arc`,
+and nothing else: Arc v1.1 Mini's own decoder gives the words (`words`, written form, revisions), the turns
+(`turn start|eager|resumed|end`) and the metadata (`arc`, `emotion`). The backend sends the lunar Tier A list
+(`keyterms.tier_a`, ~74 names) as context first and puts a client context frame's names in front of it. If the Arc
+ear is down or full the session uses Deepgram Flux when a key is set (`{"t":"ear","ear":"deepgram","fallback":…}`), else
+sends `error` (the browser falls back to Web Speech push-to-talk). The table below is the **`EAR=deepgram`** path.
+
+In ear mode `names`, `terms` and `topic` reach Arc's **decoder context memory** (`Stream.set_context`, ack
+`terms_to_arc: true`) and `names` also its name linker (`set_names`). The decoder prompt keeps only ~40 tokens of
+names + terms (in order: ~10–12 names), so order matters; all names reach the linker, whose matches rewrite the final
+text to the list's spelling (`transcript_written`).
+
+## The streams (EAR=deepgram)
 
 | Stream | From | Path | Reaches |
 | --- | --- | --- | --- |

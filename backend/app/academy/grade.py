@@ -10,6 +10,7 @@ accept types:
 """
 from __future__ import annotations
 
+import json
 import math
 import re
 from functools import lru_cache
@@ -111,3 +112,41 @@ def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]
         c = choice_of(inp, acc)
         return c == acc["answer"], {"choice": c}
     return False, {}
+
+
+# ---- paraphrase fallback (local embedder) ------------------------------------------------------------------------------
+SIMILAR = 0.72   # cosine (all-MiniLM-L6-v2) between the answer and the step's reference line
+
+
+def references(step: dict) -> list[str]:
+    """What a right answer sounds like: the quoted order in the prompt (a readback), else the `any` synonyms."""
+    q = re.findall(r'"([^"]+)"', step.get("prompt", ""))
+    return q or [w for grp in step["accept"].get("any", []) for w in grp]
+
+
+PROTOCOL = {"roger", "copy", "wilco", "say again", "repeat"}   # radio words the lesson is teaching: never paraphrased away
+
+
+async def similar(step: dict, text: str) -> bool:
+    """Keyword steps only, after the keyword rules failed. A readback passes when the mission NLU (rules + the local
+    command bank) reads the same Command from it as from the quoted order; other steps pass on embedder similarity to
+    the reference. Groups holding a number or a radio protocol word must still be heard exactly."""
+    acc = step["accept"]
+    if acc["type"] != "keywords" or not (text or "").strip():
+        return False
+    t = _norm(text)
+    for grp in acc.get("all", []):
+        strict = any(re.search(r"\d", w) for w in grp) or any(w in PROTOCOL for w in grp)
+        if strict and not any(_has(t, w) for w in grp):
+            return False
+    refs = references(step)
+    if re.findall(r'"([^"]+)"', step.get("prompt", "")):
+        want = [nlu._shape(c) + (json.dumps(c.get("amount")),) for r in refs for c in nlu.parse(r)["commands"]]
+        if want:
+            got = (await nlu.understand(text))["commands"]
+            return any(nlu._shape(c) + (json.dumps(c.get("amount")),) in want for c in got)
+    from .. import models_client
+    v = await models_client.embed([text, *refs], "query")
+    if not v or len(v) < 2:
+        return False
+    return max(sum(a * b for a, b in zip(v[0], r)) for r in v[1:]) >= SIMILAR

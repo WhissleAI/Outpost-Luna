@@ -1,7 +1,9 @@
 """The Director (docs/REVAMP.md §3.5): one kid turn -> one action, as rules over Arc Tagger's read-out.
 
 Actions returned: guard | fly | play | say | ask | view | tour (a list of artifacts: "show me the rovers"). WAIT / NUDGE / PAUSE_EXPLAIN are client behaviours driven by
-the fields here (`readout.complete`, `moment.jargon`). Every spoken line goes through the claim check (claims.py).
+the fields here (`readout.complete`, `moment.jargon`). What to say comes from knowledge cards (app/knowledge, templates
+filled from the sourced data); what the kid means comes from rules + Arc Tagger, and the tiny local embedder when those
+don't settle it. No cloud LLM (docs/LOCAL_BRAIN.md). Every place line still goes through the claim check (claims.py).
 Response shape: docs/CONTRACT.md. Mission mode (`context.mission` set): the mission layer answers first, see
 _mission_turn and docs/MISSION_CONTRACT.md.
 """
@@ -10,7 +12,8 @@ from __future__ import annotations
 import inspect
 import re
 
-from . import claims, llm, steering
+from . import claims, knowledge, steering
+from .knowledge.answer import detect_attr
 from .mission import capcom, nlu
 from .gazetteer import Gazetteer, Place, norm
 from .moments import MomentIndex, public
@@ -99,7 +102,8 @@ def _sound_moment(clip_id: str, q: str, index: MomentIndex) -> dict | None:
     return hit[0] if hit else index.best_in_clip(clip_id)
 
 
-async def _artifact(p: Place, text: str, q: str, base: dict, gaz: Gazetteer, index: MomentIndex, short: bool) -> dict:
+async def _artifact(p: Place, text: str, q: str, base: dict, gaz: Gazetteer, index: MomentIndex, short: bool,
+                    sess: str = "") -> dict:
     """An artifact was named (or tapped, or is the last place and the kid asks who left it)."""
     voice = _voice(p, index)
     if WHO.search(q) or (HEAR_VOICE.search(q) and voice):
@@ -111,6 +115,17 @@ async def _artifact(p: Place, text: str, q: str, base: dict, gaz: Gazetteer, ind
         return {**base, "action": "say" if not p.crew else "fly", "say": line,
                 "claims": [{"text": line, "status": "verified", "source": "artifacts.json (crew)"}],
                 "source": base["source"] + "+crew"}
+    # "When did Eagle land?", "where is it now?", "what science did it do?" -> that attribute's card line.
+    attr = detect_attr(q)
+    if attr in ("when", "where", "science", "what"):
+        ans = knowledge.get(gaz, index.facts).for_card(f"artifact:{p.id}", text, sess)
+        if ans and ans["attr"] == attr:
+            cl = await claims.verify_draft(ans["say"], [p.id], gaz, index.facts)
+            say = " ".join(c["text"] for c in cl if c["status"] == "verified")
+            if not say:  # template lines are data fields verbatim: say it, sourced to the card
+                say, cl = ans["say"], cl + [{"text": ans["say"], "status": "verified", "source": "artifacts.json (card)"}]
+            return {**base, "action": "fly", "say": say, "claims": cl, "moment": public(voice), "style_hint": ans["style_hint"],
+                    "source": base["source"] + f"+card:{attr}"}
     # The first-person story, claim-checked sentence by sentence; the story verbatim if nothing survives.
     story = claims.SENT.split(p.story)[0] if short else p.story
     cl = await claims.verify_draft(story, [p.id], gaz, index.facts)
@@ -222,11 +237,16 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     if p is not None:
         ctx["place_name"] = p.name
     out["decisions"] = decisions_for(out, text, ctx)
+    out.pop("style_hint", None)            # carried on the say decision (the Steer TTS policy reads it), not the contract
+    brain = out.pop("brain", None)
+    if brain and out.get("readout") is not None:
+        out["readout"] = {**out["readout"], "brain": brain}
     return out
 
 
 async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, context: dict | None = None) -> dict:
     ctx = context or {}
+    sess = str(ctx.get("session") or "")
     q = norm(text)
     emotion = (ctx.get("emotion") or "").lower()
     short = emotion in ("confused", "frustrated")
@@ -309,7 +329,7 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
 
     if place is not None and place.kind == "artifact":
         return await _artifact(place, text, q, {**out, "place": place.id, "view": _view(place), "source": how},
-                               gaz, index, short)
+                               gaz, index, short, sess)
 
     if place is not None:
         moment = index.best_moment(place.id)
@@ -317,10 +337,10 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
         if wants_crew:  # crew request -> play the best moment, one bridge line
             if moment:
                 return {**base, "action": "play", "say": _bridge(moment), "moment": public(moment)}
-            say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=True)
+            say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=True, session=sess)
             return {**base, "action": "fly", "say": f"{NO_MOMENT} {say}".strip(), "claims": cl,
                     "source": f"{how}+{src}"}
-        say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=short)
+        say, cl, src = await claims.guide_line([place.id], text, gaz, index.facts, short=short, session=sess)
         return {**base, "action": "fly", "say": say, "claims": cl, "moment": public(moment),
                 "source": f"{how}+{src}"}
 
@@ -328,19 +348,34 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
     if emotion == "bored":
         return {**out, "action": "say", "say": MISSION, "source": "emotion"}
 
-    # 7. Nothing matched: ask the LLM to pick a place, then claim-check whatever it says.
-    ans = await llm.place_question(text, gaz) if llm.available() else None
-    if ans and ans["place"]:
-        p = gaz.places[ans["place"]]
-        say, cl, src = await claims.guide_line([p.id], text, gaz, index.facts, short=short)
-        return {**out, "action": "fly", "place": p.id, "view": _view(p), "say": say, "claims": cl,
-                "moment": public(index.best_moment(p.id)), "source": f"llm+{src}"}
-    if ans and ans["say"]:
-        cl = await claims.verify_draft(ans["say"], [], gaz, index.facts)
-        say = " ".join(c["text"] for c in cl if c["status"] == "verified")
-        if say:
-            return {**out, "action": "say", "say": _short(say) if short else say, "claims": cl, "source": "llm"}
-    return {**out, "action": "say", "say": UNKNOWN, "source": "none"}
+    # 7. Nothing matched: the local brain. Card alias + attribute rules, else the embedder's nearest card+attribute
+    #    (accept -> answer, ask band -> "Did you mean A or B?", below -> an honest "I don't know that one yet").
+    return await _brain_turn(text, out, gaz, index, sess, short)
+
+
+async def _brain_turn(text: str, out: dict, gaz: Gazetteer, index: MomentIndex, sess: str, short: bool) -> dict:
+    brain = knowledge.get(gaz, index.facts)
+    ans = await brain.answer(text, session=sess)
+    base = {**out, "style_hint": ans["style_hint"], "brain": {k: ans[k] for k in ("card", "attr", "score", "status")}}
+    if ans["status"] in ("ask", "unknown") and ans["options"]:
+        sends = [o["send"] for o in ans["options"]]
+        return {**base, "action": "ask", "say": ans["say"], "ask": {"question": ans["say"], "options": sends, "labels": sends},
+                "source": ans["source"]}
+    if ans["status"] != "answer":
+        return {**base, "action": "say", "say": UNKNOWN, "source": "none"}
+    say = _short(ans["say"]) if short else ans["say"]
+    card = brain.cards[ans["card"]]
+    p = gaz.places.get(ans["place"] or "")
+    if p:
+        cl = await claims.verify_draft(say, [p.id], gaz, index.facts)
+        ok = " ".join(c["text"] for c in cl if c["status"] == "verified")
+        if not ok:
+            ok, cl = say, cl + [{"text": say, "status": "verified", "source": f"{card['kind']} card (data fields)"}]
+        return {**base, "action": "fly", "place": p.id, "view": _view(p), "say": ok, "claims": cl,
+                "moment": public(index.best_moment(p.id)), "source": f"{ans['source']}+claimcheck"}
+    src = (card["sources"][0].get("title") if card["sources"] else "") or f"{card['kind']} card"
+    return {**base, "action": "say", "say": say, "claims": [{"text": say, "status": "verified", "source": src}],
+            "source": ans["source"]}
 
 
 # ---- mission mode (docs/MISSION_CONTRACT.md "/api/ask in mission mode") -----------------------------------------------
@@ -571,7 +606,13 @@ def decision(t: str, priority: int = P_ANSWER, after: str | None = None, situati
 
 
 YES = {"t": "typed", "text": "yes"}
+STYLE_HINT = {"ask": "question", "houston": "alert", "fly": "story", "play": "story", "tour": "story", "guard": "alert",
+              "command": "explain", "status": "explain"}  # default `style_hint` per action (cards set their own)
 NO = {"t": "typed", "text": "no"}
+
+
+# The local brain's template hints -> a Steer situation when the rules name none.
+_HINT_SITUATION = {"explain": "explain", "story": "story", "question": None, "alert": "storm_warning"}
 
 
 def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dict]:
@@ -581,7 +622,7 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     ctx = ctx or {}
     mission = r.get("source", "").startswith("mission") or a in ("command", "status", "houston")
     voice = "houston" if a == "houston" else "capcom" if mission else "guide"
-    steer = {"situation": steering.situation_for(r), "emotion": ctx.get("emotion"),
+    steer = {"situation": steering.situation_for(r) or _HINT_SITUATION.get(r.get("style_hint")), "emotion": ctx.get("emotion"),
              "places": [ctx["place_name"]] if ctx.get("place_name") else None}
     title = "CAPCOM" if mission else "Guide"
     out: list[dict] = []
@@ -606,7 +647,7 @@ def decisions_for(r: dict, asked: str = "", ctx: dict | None = None) -> list[dic
     out.append(card)
     if say:
         s = decision("say", P_ANSWER, text=say, voice=voice, delay_ms=r.get("delay_ms") if a == "houston" else None,
-                     **steer)
+                     style_hint=r.get("style_hint") or STYLE_HINT.get(a, "explain"), **steer)
         out.append(s)
     else:
         s = None

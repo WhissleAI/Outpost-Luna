@@ -1,12 +1,14 @@
 import pytest
 
-from app import claims, llm
-from app.config import settings
+from app import models_client
 
 
 @pytest.fixture(autouse=True)
-def no_network_llm(monkeypatch):
-    """Tests never call the real LLM; a test that wants one monkeypatches claims._complete itself."""
-    monkeypatch.setattr(settings, "anthropic_api_key", "")
-    claims._client = None
-    llm._client = None
+def no_embedder(monkeypatch, request):
+    """Tests run without the model server's embedder (rules + card aliases only) unless a test patches embed itself."""
+    if "real_embedder" in request.keywords:
+        return
+
+    async def off(texts, kind="query", timeout=None):
+        return None
+    monkeypatch.setattr(models_client, "embed", off)

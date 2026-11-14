@@ -138,3 +138,19 @@ def test_ride_is_deterministic():
     a, b = ride.start(lesson("checkride")["ride"]), ride.start(lesson("checkride")["ride"])
     ride.advance(a, "end"); ride.advance(b, "end")
     assert ride.hud(a)["resources"] == ride.hud(b)["resources"]
+
+
+def test_readback_paraphrase_passes_on_the_same_command():
+    import asyncio
+    import json as _json
+
+    from app.academy import grade as g
+    from app.config import settings as _s
+    c = _json.loads((_s.data_dir / "academy/course.json").read_text())
+    steps = [s for les in c["lessons"] for s in les["steps"] if s["accept"]["type"] == "keywords"]
+    shields, rover = steps[0], steps[1]
+    assert not g.grade(shields, {"text": "okay I'll make the radiation protection forty percent"})[0]
+    assert asyncio.run(g.similar(shields, "okay I'll make the radiation protection forty percent"))
+    assert not asyncio.run(g.similar(shields, "shields to 14 percent"))           # numbers are never paraphrased
+    assert asyncio.run(g.similar(rover, "roger, the buggy is going to fetch some frozen water"))
+    assert not asyncio.run(g.similar(rover, "the buggy is going to fetch some frozen water"))  # must say roger

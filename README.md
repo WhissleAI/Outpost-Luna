@@ -21,7 +21,7 @@ small button inside the app, used by the lessons.
 | Part | Stack | Port | Owns |
 |---|---|---|---|
 | `frontend/` | Vite 5, three.js 0.160 (npm) | 5173 (dev) | Globe, voice in/out (Web Speech), crew player, missions. No model or data logic |
-| `backend/` | FastAPI, pydantic-settings, httpx, rapidfuzz, Anthropic SDK; uv | 8100 | Places (gazetteer), crew index, `/api/ask` (the turn resolver, first version of the Director), NASA media, and the built frontend |
+| `backend/` | FastAPI, pydantic-settings, httpx, rapidfuzz, numpy; uv | 8100 | Places (gazetteer), crew index, `/api/ask` (the turn resolver, first version of the Director), NASA media, and the built frontend |
 | `model_server/` | FastAPI, pydantic-settings; uv | 8200 | **The only process that loads models.** Arc Tagger v0.3 (native int8, a pool of handles per domain) and Arc v1.1 Mini audio metadata (`ARC_META=mini|off`; `POST /v1/meta`, `WS /v1/stream`: act, intent, device_directed, command_complete, speaker, audio/bio events, awe). Measured on M3 Pro (machine under load avg ~13 from other jobs): Arc load 6-12 s, process RSS ~0.35 GB idle / 0.9 GB peak with both models; `/v1/meta` RTF 0.03-0.06 (a 344 s clip in 14 s); live stream RTF 0.25-0.4 in-process, 0.9-1.1 through the server with 1-4 real-time sessions, metadata lag p50 1.2-1.4 s (Head Start measured RTF 0.10 on an idle machine). Emotion: off (no local model, see docs/REVAMP.md §10). Embeddings next |
 
 ```
@@ -50,8 +50,9 @@ make models | backend | frontend   # run one part on its own
 ```
 
 Requirements: uv, Node 20+, macOS for the Arc Tagger build that is used now. By default it is Head Start's
-`libarctag.dylib` and `models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. Optional:
-`ANTHROPIC_API_KEY` in `.env` turns on the LLM fallback for questions the gazetteer can't place.
+`libarctag.dylib` and `models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. No cloud LLM:
+questions the rules can't place go to the local brain (knowledge cards + the model server's tiny embedder; one-time
+`cd model_server && uv run python tools/export_embedder.py --int8`). See [docs/LOCAL_BRAIN.md](docs/LOCAL_BRAIN.md).
 
 ## How a question is answered (`POST /api/ask`)
 
@@ -63,7 +64,8 @@ Requirements: uv, Node 20+, macOS for the Arc Tagger build that is used now. By 
 4. A place is found by alias in the gazetteer, or by fuzzy-linking a tagger mention (rapidfuzz: "Oriental" →
    Orientale).
 5. "What did the astronauts say…" → `play`: the crew clip that mentions the place most, from its first mention.
-6. Otherwise the LLM fallback (if configured), or "I don't know that one yet".
+6. Otherwise the local brain: the nearest knowledge card + attribute (embedder), "Did you mean A or B?", or an honest
+   "I don't know that one yet".
 
 The response carries the tagger read-out, which the UI shows under each answer.
 

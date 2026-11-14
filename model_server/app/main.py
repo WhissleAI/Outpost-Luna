@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
-from . import arcmeta, tts_steer
+from . import arcmeta, embed, tts_steer
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings
@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
     STATE["loaded_s"] = round(time.perf_counter() - t, 2)
     arcmeta.load()   # ARC_META=mini|off; fails open, reason in /health
     tts_steer.load()   # STEER_TTS=on|off; fails open, reason in /health
+    embed.load()     # EMBED=on|off; fails open, reason in /health
     yield
     if STATE["tagger"]:
         STATE["tagger"].close()
@@ -42,6 +43,7 @@ app.include_router(tag_stream.router)  # WS /v1/tag/stream
 from .routes_meta import router as meta_router  # noqa: E402
 app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream
 app.include_router(tts_steer.router)  # POST /v1/tts (Steer TTS Edge + director)
+app.include_router(embed.router)  # POST /v1/embed
 
 
 class TagRequest(BaseModel):
@@ -66,7 +68,7 @@ def health():
         "models": {"arc_tagger": {"loaded": tg is not None, "error": STATE["tagger_error"],
                                   "domains": sorted(tg.pools) if tg else [],
                                   "pool_size": settings.arctag_pool_size},
-                   **arcmeta.health(), **tts_steer.health()},
+                   **arcmeta.health(), **tts_steer.health(), **embed.health()},
         "load_s": STATE["loaded_s"],
         "rss_mb": _rss_mb(),
     }

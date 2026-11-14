@@ -6,7 +6,7 @@ import re
 import pytest
 from fastapi.testclient import TestClient
 
-from app import claims, models_client
+from app import claims, knowledge, models_client
 from app.config import settings
 from app.director import direct
 from app.gazetteer import Gazetteer, norm
@@ -86,7 +86,9 @@ def test_naming_an_artifact_flies_with_its_story(text, pid):
     r = ask(text)
     assert r["action"] == "fly" and r["place"] == pid and r["say"]
     assert r["view"] == {"lat": GAZ.places[pid].lat, "lon": GAZ.places[pid].lon}
-    assert r["say"] in GAZ.places[pid].story or GAZ.places[pid].story.startswith(r["say"].split(".")[0])
+    card_lines = [x for xs in knowledge.get(GAZ, IDX.facts).cards[f"artifact:{pid}"]["answers"].values() for x in xs]
+    assert (r["say"] in GAZ.places[pid].story or GAZ.places[pid].story.startswith(r["say"].split(".")[0])
+            or r["say"] in card_lines)  # "where did Apollo 11 land" -> the card's `where` line
 
 
 def test_tapping_an_artifact_uses_its_full_name():

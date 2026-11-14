@@ -297,7 +297,7 @@ class Session:
             with contextlib.suppress(Exception):
                 out = self.dm.step(ev, read)
         emotion = k.get("emotion")
-        ctx: dict = {}
+        ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         if b["last_place"]:
             ctx["last_place"] = b["last_place"]
         if emotion:

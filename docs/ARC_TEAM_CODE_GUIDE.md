@@ -77,9 +77,10 @@ Run: `make setup && make data && make dev`, then open http://localhost:5173. Tes
    5. tours (`_tour`);
    6. place/hardware linking (`_link`: alias, then a fuzzy link of Arc mentions; an ambiguous match returns `ask`);
    7. crew moments (`moments.MomentIndex.best_moment`);
-   8. claim-checked guide line (`claims.guide_line`: LLM draft → Arc Tagger re-reads it → numbers ±10% and places must
-      match `facts.json`);
-   9. the LLM fallback.
+   8. claim-checked guide line (`claims.guide_line`: a knowledge-card template picked by the question's attribute →
+      Arc Tagger re-reads it → numbers ±10% and places must match `facts.json`);
+   9. the local brain (`director._brain_turn` → `knowledge.Brain.answer`): card alias + attribute rules, else the
+      embedder's nearest card+attribute (answer / "Did you mean A or B?" / "I don't know that one yet"). See §9.
 6. **Response actions:** `fly`, `play`, `tour`, `ask`, `guard`, `say`, `view`, plus mission `command`, `status`,
    `houston` and `none`. The browser renders the card, speaks, and plays the moment with a hard-word pause.
 
@@ -87,7 +88,7 @@ Run: `make setup && make data && make dev`, then open http://localhost:5173. Tes
 
 | Piece | File | Notes |
 | --- | --- | --- |
-| Command understanding | `backend/app/mission/nlu.py` (`parse`, `understand`, `valid`) | Rules first (synonyms, amounts, compound, negation, conditionals, confirm/cancel, Arc number spans); LLM fallback must return schema-valid JSON |
+| Command understanding | `backend/app/mission/nlu.py` (`parse`, `understand`, `valid`) | Rules first (synonyms, amounts, compound, negation, conditionals, confirm/cancel, Arc number spans); then nearest example in `data/mission/command_bank.json` by the local embedder, slots re-read from the words, schema-checked |
 | CAPCOM lines | `backend/app/mission/capcom.py` (`readback`, `status`, `houston`, `role_check`) | Real 2.6 s Moon round trip; units explained once |
 | Simulation + API | `backend/app/mission/sim.py`, `routes.py`, `registry.py` | Deterministic per seed; real Sun/Earth (JPL Horizons) and solar events (DONKI / NOAA) cached in `backend/data/mission/` |
 | Game UI | `frontend/src/mission/ui.js`, `client.js`, `mock.js` | Falls back to a labelled mock when the API is missing |
@@ -168,3 +169,24 @@ retry, story, readback), the kid's emotion and whether the line asks a question.
 `say` that doesn't name one; the Academy routes add theirs. `floor.js` sends it to `/api/tts`, which renders with
 Steer TTS Edge on the model server (`POST /v1/tts`) and falls back to Deepgram, then the browser voice. The table,
 voices, measurements and fallback chain: `docs/VOICE_STEERING.md`.
+
+## 9. No cloud LLM: how understanding works now
+
+There is no Anthropic/Claude (or any cloud LLM) call at runtime; the only external API is NASA's. Full write-up, numbers
+and limits: [LOCAL_BRAIN.md](LOCAL_BRAIN.md).
+
+- **What to say** comes from knowledge cards (`backend/app/knowledge/cards.py`), built at startup from `places.json`,
+  `facts.json`, `artifacts.json`, `glossary.json`, `data/mission/*.json`, `data/academy/course.json` and capcom's
+  terms. Each card has 2–3 kid-phrased lines per attribute (size, where, when, who, why, what, story, science, ...),
+  filled only from data fields, so every sentence is true by construction. The claim check still re-reads place
+  lines with Arc Tagger as a safety net (a test asserts every place template passes it).
+- **What the kid means**, in order: Arc Tagger read-out + the gazetteer link pick the entity; keyword rules pick the
+  attribute ("how big" → size); only when those don't settle it, the model server's tiny embedder
+  (`POST /v1/embed`, all-MiniLM-L6-v2, ONNX int8, ~5 ms) finds the nearest canonical question
+  (`answer.py`: ≥0.62 answer, 0.48–0.62 "Did you mean A or B?", below: "I don't know that one yet. Want to hear about
+  X?"). Mission commands the rules miss go to the nearest example in `command_bank.json` (≥0.55, with a margin vote);
+  slots are re-read from the kid's own words and validated by `nlu.valid()`.
+- **What Arc will replace:** the Arc Tagger `space` domain and list context from
+  [ARC_SPACE_DATA_PLAN.md](ARC_SPACE_DATA_PLAN.md) (entity spans for features/hardware/loads, act + attribute tags)
+  should take over most embedding fallbacks: the entity and the attribute come straight from the read-out, and the
+  embedder is left for odd phrasings ("the veggies are hungry for electrons").

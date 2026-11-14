@@ -55,7 +55,6 @@ def test_hard_pii_is_guarded():
     assert r["action"] == "guard"
 
 
-def test_unknown_without_llm(monkeypatch):
-    monkeypatch.setattr(settings, "anthropic_api_key", "")
+def test_unknown_without_embedder(monkeypatch):
     monkeypatch.setattr(models_client, "tag", _no_arc)
     assert ask("tell me a joke")["action"] == "say"

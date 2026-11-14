@@ -1,0 +1,526 @@
+{
+ "_note": "80 kid questions for the local brain (docs/LOCAL_BRAIN.md). ok = acceptable card|attr labels; 'unknown' = off-topic, should get an honest I-don't-know.",
+ "questions": [
+  {
+   "q": "how big is tycho",
+   "ok": [
+    "place:tycho|size"
+   ]
+  },
+  {
+   "q": "how wide is that copernicus crater",
+   "ok": [
+    "place:copernicus|size"
+   ]
+  },
+  {
+   "q": "is orientale really huge",
+   "ok": [
+    "place:orientale|size",
+    "place:orientale|about"
+   ]
+  },
+  {
+   "q": "where's the bullseye crater",
+   "ok": [
+    "place:orientale|where"
+   ]
+  },
+  {
+   "q": "where do i find shackleton",
+   "ok": [
+    "place:shackleton|where",
+    "site:shackleton_rim|what"
+   ]
+  },
+  {
+   "q": "which side is hertzsprung on",
+   "ok": [
+    "place:hertzsprung|where"
+   ]
+  },
+  {
+   "q": "how old is tycho",
+   "ok": [
+    "place:tycho|when"
+   ]
+  },
+  {
+   "q": "who landed at the sea of tranquility",
+   "ok": [
+    "place:tranquillitatis|who",
+    "artifact:apollo11_lm_eagle|who"
+   ]
+  },
+  {
+   "q": "who is kepler crater named after",
+   "ok": [
+    "place:kepler|who"
+   ]
+  },
+  {
+   "q": "tell me about the south pole aitken basin",
+   "ok": [
+    "place:spa|about",
+    "place:spa|what"
+   ]
+  },
+  {
+   "q": "how deep is shackleton",
+   "ok": [
+    "place:shackleton|size"
+   ]
+  },
+  {
+   "q": "whats special about aristarchus",
+   "ok": [
+    "place:aristarchus|about",
+    "place:aristarchus|why",
+    "place:aristarchus|what"
+   ]
+  },
+  {
+   "q": "what is the sea of rains",
+   "ok": [
+    "place:imbrium|what",
+    "place:imbrium|about"
+   ]
+  },
+  {
+   "q": "how far across is mare crisium",
+   "ok": [
+    "place:crisium|size"
+   ]
+  },
+  {
+   "q": "who named integrity crater",
+   "ok": [
+    "place:integrity|who"
+   ]
+  },
+  {
+   "q": "how big is the integrity crater",
+   "ok": [
+    "place:integrity|size"
+   ]
+  },
+  {
+   "q": "when was tsiolkovskiy first seen",
+   "ok": [
+    "place:tsiolkovskiy|when"
+   ]
+  },
+  {
+   "q": "why is tycho so bright",
+   "ok": [
+    "place:tycho|why",
+    "place:tycho|about"
+   ]
+  },
+  {
+   "q": "tell me something cool about copernicus",
+   "ok": [
+    "place:copernicus|about"
+   ]
+  },
+  {
+   "q": "what's the biggest crater on the moon",
+   "ok": [
+    "place:spa|size",
+    "place:spa|about",
+    "place:spa|what"
+   ]
+  },
+  {
+   "q": "how big is the oldest basin",
+   "ok": [
+    "place:spa|size"
+   ]
+  },
+  {
+   "q": "where is the sea of crises",
+   "ok": [
+    "place:crisium|where"
+   ]
+  },
+  {
+   "q": "what is reiner gamma",
+   "ok": [
+    "place:reiner|what",
+    "place:reiner|about"
+   ]
+  },
+  {
+   "q": "who was grimaldi",
+   "ok": [
+    "place:grimaldi|who"
+   ]
+  },
+  {
+   "q": "who drove the first moon car",
+   "ok": [
+    "artifact:apollo15_lrv|who"
+   ]
+  },
+  {
+   "q": "when did eagle land",
+   "ok": [
+    "artifact:apollo11_lm_eagle|when"
+   ]
+  },
+  {
+   "q": "what did surveyor 3 do",
+   "ok": [
+    "artifact:surveyor3|what",
+    "artifact:surveyor3|story"
+   ]
+  },
+  {
+   "q": "is the apollo 11 mirror still there",
+   "ok": [
+    "artifact:apollo11_lrrr|where",
+    "artifact:apollo11_lrrr|story",
+    "artifact:apollo11_lrrr|what"
+   ]
+  },
+  {
+   "q": "what science did the apollo 12 experiments do",
+   "ok": [
+    "artifact:apollo12_alsep|science",
+    "artifact:apollo12_alsep|what"
+   ]
+  },
+  {
+   "q": "who flew challenger to the moon",
+   "ok": [
+    "artifact:apollo17_lm_challenger|who"
+   ]
+  },
+  {
+   "q": "what happened to lcross",
+   "ok": [
+    "artifact:lcross_impact|story",
+    "artifact:lcross_centaur_impact|story",
+    "artifact:lcross_impact|what",
+    "artifact:lcross_centaur_impact|what"
+   ]
+  },
+  {
+   "q": "when did the chinese rover yutu get there",
+   "ok": [
+    "artifact:yutu_rover|when"
+   ]
+  },
+  {
+   "q": "tell me the story of lunokhod",
+   "ok": [
+    "artifact:lunokhod1|story"
+   ]
+  },
+  {
+   "q": "who hit golf balls on the moon",
+   "ok": [
+    "artifact:apollo14_lm_antares|story",
+    "artifact:apollo14_lm_antares|who"
+   ]
+  },
+  {
+   "q": "what is the fallen astronaut",
+   "ok": [
+    "artifact:apollo15_fallen_astronaut|what",
+    "artifact:apollo15_fallen_astronaut|story"
+   ]
+  },
+  {
+   "q": "where did ranger 7 crash",
+   "ok": [
+    "artifact:ranger7_impact|where"
+   ]
+  },
+  {
+   "q": "what does regolith mean",
+   "ok": [
+    "term:regolith|what"
+   ]
+  },
+  {
+   "q": "whats albedo",
+   "ok": [
+    "term:albedo|what"
+   ]
+  },
+  {
+   "q": "what is ejecta",
+   "ok": [
+    "term:ejecta|what"
+   ]
+  },
+  {
+   "q": "what's a terminator on the moon",
+   "ok": [
+    "term:terminator|what"
+   ]
+  },
+  {
+   "q": "what does maria mean",
+   "ok": [
+    "term:mare|what"
+   ]
+  },
+  {
+   "q": "explain what a central peak is",
+   "ok": [
+    "term:central_peak|what"
+   ]
+  },
+  {
+   "q": "what is an earthrise",
+   "ok": [
+    "term:earthrise|what"
+   ]
+  },
+  {
+   "q": "what does pyroclastic mean",
+   "ok": [
+    "term:pyroclastic|what"
+   ]
+  },
+  {
+   "q": "why do we need sunlight on the base",
+   "ok": [
+    "concept:power|what",
+    "lesson:power|what"
+   ]
+  },
+  {
+   "q": "how do astronauts breathe up there",
+   "ok": [
+    "concept:life_support|what",
+    "lesson:life|what"
+   ]
+  },
+  {
+   "q": "what is a millisievert",
+   "ok": [
+    "concept:dose|what",
+    "lesson:radiation|what"
+   ]
+  },
+  {
+   "q": "why are solar storms dangerous",
+   "ok": [
+    "concept:storm|what",
+    "lesson:radiation|what"
+   ]
+  },
+  {
+   "q": "why do we hide in the shelter",
+   "ok": [
+    "concept:shelter|what",
+    "concept:storm|what"
+   ]
+  },
+  {
+   "q": "why can't we talk to earth sometimes",
+   "ok": [
+    "concept:comm_window|what",
+    "lesson:comms|what"
+   ]
+  },
+  {
+   "q": "is there ice at the south pole",
+   "ok": [
+    "concept:ice|what",
+    "site:shackleton_floor|ice",
+    "lesson:life|what",
+    "lesson:moon|what"
+   ]
+  },
+  {
+   "q": "how much sun does the shackleton rim get",
+   "ok": [
+    "site:shackleton_rim|sun"
+   ]
+  },
+  {
+   "q": "can you see earth from malapert",
+   "ok": [
+    "site:malapert_massif|earth"
+   ]
+  },
+  {
+   "q": "is malapert a good place for the base",
+   "ok": [
+    "site:malapert_massif|what"
+   ]
+  },
+  {
+   "q": "how far is the ice from de gerlache",
+   "ok": [
+    "site:de_gerlache_rim|ice"
+   ]
+  },
+  {
+   "q": "what's the radiation limit for astronauts",
+   "ok": [
+    "concept:dose|what",
+    "lesson:radiation|what"
+   ]
+  },
+  {
+   "q": "what did lcross find when it crashed",
+   "ok": [
+    "lesson:life|what",
+    "artifact:lcross_impact|science",
+    "artifact:lcross_centaur_impact|science",
+    "artifact:lcross_impact|what",
+    "artifact:lcross_centaur_impact|what"
+   ]
+  },
+  {
+   "q": "how much radiation is on the moon's surface",
+   "ok": [
+    "concept:dose|what",
+    "lesson:radiation|what"
+   ]
+  },
+  {
+   "q": "how long was the longest night at malapert",
+   "ok": [
+    "lesson:power|what"
+   ]
+  },
+  {
+   "q": "what happened in the big solar storm in 2024",
+   "ok": [
+    "lesson:radiation|what",
+    "lesson:checkride|what"
+   ]
+  },
+  {
+   "q": "how far did the apollo 16 rover drive",
+   "ok": [
+    "lesson:history|what",
+    "artifact:apollo16_lrv|what",
+    "artifact:apollo16_lrv|story"
+   ]
+  },
+  {
+   "q": "how many pictures did surveyor 3 take",
+   "ok": [
+    "lesson:history|what",
+    "artifact:surveyor3|what",
+    "artifact:surveyor3|story",
+    "artifact:surveyor3|science"
+   ]
+  },
+  {
+   "q": "where will artemis 3 land",
+   "ok": [
+    "lesson:moon|what"
+   ]
+  },
+  {
+   "q": "what does the battery do",
+   "ok": [
+    "concept:power|what"
+   ]
+  },
+  {
+   "q": "what makes the air on the base",
+   "ok": [
+    "concept:life_support|what"
+   ]
+  },
+  {
+   "q": "is the moon made of cheddar cheese",
+   "ok": [
+    "misconception:cheese|misconception"
+   ]
+  },
+  {
+   "q": "my brother says the dark side never gets any sun",
+   "ok": [
+    "misconception:dark_side|misconception"
+   ]
+  },
+  {
+   "q": "the moon is totally smooth right",
+   "ok": [
+    "misconception:no_craters|misconception"
+   ]
+  },
+  {
+   "q": "can you eat the moon",
+   "ok": [
+    "misconception:cheese|misconception"
+   ]
+  },
+  {
+   "q": "is the moon flat with no holes",
+   "ok": [
+    "misconception:no_craters|misconception"
+   ]
+  },
+  {
+   "q": "what's your favorite pizza",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "can you do my math homework",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "who won the football game",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "tell me a joke",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "how do i bake cookies",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "what's the capital of france",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "is minecraft better than roblox",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "how tall is mount everest",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "what time is it",
+   "ok": [
+    "unknown"
+   ]
+  },
+  {
+   "q": "sing me a song",
+   "ok": [
+    "unknown"
+   ]
+  }
+ ]
+}

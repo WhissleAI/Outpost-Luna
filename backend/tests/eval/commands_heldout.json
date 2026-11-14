@@ -1,0 +1,309 @@
+{
+ "_note": "40 mission command phrasings the rules miss today (checked when written). sign: +1 more power, -1 less.",
+ "commands": [
+  {
+   "text": "the veggies are hungry for electrons",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "our lettuce is wilting",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the tomatoes need a snack of power",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "I'm so chilly my teeth are chattering",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "my fingers are turning into icicles",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the astronauts are gasping",
+   "expect": {
+    "type": "allocate",
+    "to": "life_support",
+    "sign": 1
+   }
+  },
+  {
+   "text": "I feel dizzy, the air is thin",
+   "expect": {
+    "type": "allocate",
+    "to": "life_support",
+    "sign": 1
+   }
+  },
+  {
+   "text": "there's not enough fresh air in here",
+   "expect": {
+    "type": "allocate",
+    "to": "life_support",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the radiation meter is beeping like crazy",
+   "expect": {
+    "type": "allocate",
+    "to": "shields",
+    "sign": 1
+   }
+  },
+  {
+   "text": "make our protective bubble tougher",
+   "expect": {
+    "type": "allocate",
+    "to": "shields",
+    "sign": 1
+   }
+  },
+  {
+   "text": "strengthen the force field please",
+   "expect": {
+    "type": "allocate",
+    "to": "shields",
+    "sign": 1
+   }
+  },
+  {
+   "text": "pause the experiments for now",
+   "expect": {
+    "type": "allocate",
+    "to": "science",
+    "sign": -1
+   }
+  },
+  {
+   "text": "make the antenna louder",
+   "expect": {
+    "type": "allocate",
+    "to": "comms",
+    "sign": 1
+   }
+  },
+  {
+   "text": "we're thirsty, grab some ice from the crater",
+   "expect": {
+    "type": "dispatch",
+    "task": "collect_ice"
+   }
+  },
+  {
+   "text": "the sun catchers are busted",
+   "expect": {
+    "type": "dispatch",
+    "task": "repair_array"
+   }
+  },
+  {
+   "text": "our solar wings got hit by a rock, someone fix them",
+   "expect": {
+    "type": "dispatch",
+    "task": "repair_array"
+   }
+  },
+  {
+   "text": "let the rover wander and look for cool rocks",
+   "expect": {
+    "type": "dispatch",
+    "task": "explore"
+   }
+  },
+  {
+   "text": "park the buggy back in the garage",
+   "expect": {
+    "type": "dispatch",
+    "task": "return"
+   }
+  },
+  {
+   "text": "the storm's gone, everyone can go back out",
+   "expect": {
+    "type": "shelter",
+    "on": false
+   }
+  },
+  {
+   "text": "is the sun acting angry today",
+   "expect": {
+    "type": "query",
+    "what": "storm"
+   }
+  },
+  {
+   "text": "I'm sleepy, let's go to bed",
+   "expect": {
+    "type": "end_shift"
+   }
+  },
+  {
+   "text": "let's skip to the next day",
+   "expect": {
+    "type": "end_shift"
+   }
+  },
+  {
+   "text": "let's see what's at shackleton",
+   "expect": {
+    "type": "dispatch",
+    "task": "explore"
+   }
+  },
+  {
+   "text": "our garden is starving",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the sprouts look thirsty for sunshine",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "our carrots are sad",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the beans aren't growing",
+   "expect": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "sign": 1
+   }
+  },
+  {
+   "text": "it's like a freezer in the base",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "everyone is wearing three sweaters",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "I'm turning into a popsicle",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "my nose is frozen",
+   "expect": {
+    "type": "allocate",
+    "to": "heaters",
+    "sign": 1
+   }
+  },
+  {
+   "text": "we're puffing and panting",
+   "expect": {
+    "type": "allocate",
+    "to": "life_support",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the crew feels sleepy and stuffy",
+   "expect": {
+    "type": "allocate",
+    "to": "life_support",
+    "sign": 1
+   }
+  },
+  {
+   "text": "protect us better from space rays",
+   "expect": {
+    "type": "allocate",
+    "to": "shields",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the cosmic rays are getting through",
+   "expect": {
+    "type": "allocate",
+    "to": "shields",
+    "sign": 1
+   }
+  },
+  {
+   "text": "the experiments can take a nap",
+   "expect": {
+    "type": "allocate",
+    "to": "science",
+    "sign": -1
+   }
+  },
+  {
+   "text": "the solar thingies got smashed",
+   "expect": {
+    "type": "dispatch",
+    "task": "repair_array"
+   }
+  },
+  {
+   "text": "go poke around the crater rim",
+   "expect": {
+    "type": "dispatch",
+    "task": "explore"
+   }
+  },
+  {
+   "text": "the rover should drive somewhere new",
+   "expect": {
+    "type": "dispatch",
+    "task": "explore"
+   }
+  },
+  {
+   "text": "rover, home time",
+   "expect": {
+    "type": "dispatch",
+    "task": "return"
+   }
+  }
+ ]
+}

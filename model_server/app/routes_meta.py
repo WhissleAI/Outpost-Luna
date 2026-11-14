@@ -10,7 +10,7 @@ import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 
-from . import arcmeta
+from . import arc_ear, arcmeta
 from .stream_context import StreamContext
 
 router = APIRouter()
@@ -56,6 +56,8 @@ async def meta(audio: UploadFile = File(...), words: str | None = Form(None), do
 async def stream(ws: WebSocket):
     await ws.accept()
     domain = ws.query_params.get("domain", "assistant")
+    if ws.query_params.get("ear") == "arc":
+        return await ear_stream(ws, domain)
     await ws.send_json({"t": "emotion", "available": False, "reason": arcmeta.EMOTION_REASON})
     ctx = StreamContext()   # {"t":"context"} side channel (app/stream_context.py, docs/STREAMS.md)
     if not arcmeta.admit():
@@ -115,6 +117,75 @@ async def stream(ws: WebSocket):
     finally:
         if ms is not None:
             await loop.run_in_executor(pool, ms.close)
+        pool.shutdown(wait=False)
+        arcmeta.release()
+        try:
+            await ws.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _ear_unavailable() -> str | None:
+    if arcmeta.STATE["arc"] is None:
+        return f"Arc not loaded: {arcmeta.STATE['error']}"
+    if not arcmeta.STATE["decoder"]:
+        return "Arc decoder not loaded (ARC_EAR=off)"
+    return None
+
+
+async def ear_stream(ws: WebSocket, domain: str):
+    """WS /v1/stream?ear=arc: Arc's own words + turns + metadata (app/arc_ear.py). Unlike metadata mode this does not
+    fail open: when the ear can't be served the client is told at once ({"t":"ear","available":false}) and the socket
+    closes (1013), so it can pick another ear."""
+    why = _ear_unavailable()
+    if why is None and not arcmeta.admit():
+        why = "META_MAX_SESSIONS reached"
+    if why:
+        await ws.send_json({"t": "ear", "available": False, "ear": "arc", "reason": why})
+        await ws.close(code=1013)
+        return
+    ctx = StreamContext()
+    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="arcear-ws")
+    loop = asyncio.get_running_loop()
+    es = None
+
+    async def send_all(msgs):
+        for m in msgs:
+            await ws.send_json(ctx.decorate(m))
+
+    try:
+        es = await loop.run_in_executor(pool, arc_ear.EarStream, domain)
+        await ws.send_json({"t": "ear", "available": True, "ear": "arc", "model": "arc-v1.1 mini", "domain": domain})
+        await ws.send_json({"t": "emotion", "available": False, "reason": arcmeta.EMOTION_REASON})
+        buf = b""
+        while True:
+            m = await ws.receive()
+            if m["type"] == "websocket.disconnect":
+                break
+            if m.get("bytes"):
+                buf += m["bytes"]
+                if len(buf) >= 2560:          # >= 80 ms
+                    n = len(buf) // 2 * 2
+                    chunk, buf = buf[:n], buf[n:]
+                    await send_all(await loop.run_in_executor(pool, es.feed_all, chunk))
+            elif m.get("text"):
+                try:
+                    msg = json.loads(m["text"])
+                except ValueError:
+                    continue
+                t = msg.get("t")
+                if t == "context":
+                    await ws.send_json(await loop.run_in_executor(pool, ctx.update, msg, es))
+                elif t == "end_turn":
+                    await send_all(await loop.run_in_executor(pool, es.end_turn_all))
+                elif t == "stop":
+                    await send_all(await loop.run_in_executor(pool, es.flush_all))
+                    break
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if es is not None:
+            await loop.run_in_executor(pool, es.close)
         pool.shutdown(wait=False)
         arcmeta.release()
         try:
