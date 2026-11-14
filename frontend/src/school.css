@@ -51,7 +51,8 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-top .chip{min-height:32px;background:var(--color-surface-2);border-color:transparent}
 .mp-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--gut) + var(--strip-h, 62px) + var(--space-3));width:min(640px,calc(100% - 2 * var(--gut)));
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-4) var(--space-4);
-  border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:rise var(--dur-slow) var(--ease-out)}
+  border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:riseX var(--dur-slow) var(--ease-out)}
+@keyframes riseX{from{opacity:0;transform:translate(-50%,8px)}}
 .mp-patch{display:grid;place-items:center}
 .mp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mp-copy h2{font-size:var(--text-lg);font-weight:var(--weight-bold)}

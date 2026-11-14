@@ -135,3 +135,15 @@ Fonts are bundled with `@fontsource`, and there is no CDN. `@fontsource/barlow-c
 `@fontsource/share-tech-mono` stay installed only because `mission/cabin.js` still imports them. The Mission agent
 should switch the cabin to `--font-ui` and `--font-mono` and drop both packages. The easy-read option (Access) loads
 `@fontsource/atkinson-hyperlegible` on demand.
+
+## Extension points (shell)
+
+- **Settings sections:** other modules add a section by pushing to `window.__outpost.settingsSections`
+  (`[{id, title, after?, html() → string, bind?(sectionEl)}]`). `after` names the section it follows; the default is
+  `listen`. A section whose `html()` is empty is not listed. "Camera & gestures" (feat/gestures) plugs in here.
+- **Floating things vs the voice bar:** `window.__outpost.voiceBar` has `anchor`, `rect`, `ANCHORS`, `spot(anchor)`,
+  `moveTo(anchor)`, `addObstacle(selector)` and `removeObstacle(selector)`. Each move fires `outpost:voicebar`
+  (`{anchor, rect}`). A movable self-view preview or a gesture-hint chip should:
+  1. register itself with `addObstacle`, so the bar keeps clear of it;
+  2. snap to one of the same six anchors (`spot()` gives the top-left for its own size), avoiding the bar's.
+- **Glass:** any panel floating over the Moon uses `--color-overlay`, `--color-overlay-line` and `--blur-overlay`.

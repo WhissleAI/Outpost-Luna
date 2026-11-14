@@ -181,16 +181,22 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
         <p class="a11y-note">Saved on this device only.</p>`,
     };
-    const shown = SECTIONS.filter(([id]) => body[id]);
+    // Sections other modules add (e.g. "Camera & gestures" from the gestures agent): window.__outpost.settingsSections =
+    // [{id, title, after?, html() → string, bind?(el)}]. A section with nothing to show is not listed.
+    const extraSecs = (O.settingsSections || []).filter(x => x && x.id && x.title && typeof x.html === "function");
+    extraSecs.forEach(x => { try { body[x.id] = x.html(); } catch (e) { body[x.id] = ""; } });
+    const order = SECTIONS.slice(); extraSecs.forEach(x => { const k = order.findIndex(s => s[0] === (x.after || "listen")); order.splice(k < 0 ? order.length - 1 : k + 1, 0, [x.id, x.title]); });
+    const shown = order.filter(([id]) => body[id]);
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
       <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
       <div class="set-body">
         <nav class="set-nav" aria-label="Settings sections">${shown.map(([id, t]) => `<button type="button" data-sec="${id}" aria-current="${id === section ? "page" : "false"}">${escH(t)}</button>`).join("")}</nav>
         <section class="set-sec" aria-labelledby="set-h">
-          <h3 id="set-h">${escH(SECTIONS.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
+          <h3 id="set-h">${escH(order.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
       </div>`;
     fillTranscript();
+    const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
     if (section === "voice" && PA) PA.loadVoices().then(vs => {
       const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
       box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${[{ id: "", name: "CAPCOM", desc: "The default voice" }, ...vs].map(v => `

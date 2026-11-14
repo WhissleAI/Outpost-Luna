@@ -88,7 +88,7 @@ STATES = {}
 
 
 def state(fn):
-    STATES[fn.__name__.replace("s_", "")] = fn
+    STATES[fn.__name__[2:]] = fn
     return fn
 
 
@@ -281,6 +281,34 @@ def s_mic_denied(page, base, theme):
     settle(page, 1800)
     page.mouse.click(700, 400)
     settle(page, 1800)
+
+
+def settings_section(page, base, theme, sec):
+    seed(page, badges=["scout", "radio", "sun"], theme=theme)
+    page.goto(base)
+    settle(page, 1800)
+    page.click("#a11yBtn")
+    settle(page, 400)
+    page.click(f'.set-nav [data-sec="{sec}"]')
+    settle(page, 700)
+
+
+@state
+def s_settings_listen(page, base, theme): settings_section(page, base, theme, "listen")
+@state
+def s_settings_cadets(page, base, theme): settings_section(page, base, theme, "cadets")
+@state
+def s_settings_display(page, base, theme): settings_section(page, base, theme, "display")
+
+
+@state
+def s_warming(page, base, theme):
+    """The model server is still loading: the voice bar says so; typing works."""
+    seed(page, badges=["scout", "radio", "sun"], theme=theme)
+    page.route("**/api/health", lambda r: r.fulfill(status=200, content_type="application/json",
+               body='{"ok":true,"model_server":{"ok":false,"models":{}}}'))
+    page.goto(base)
+    settle(page, 2500)
 
 
 @state
