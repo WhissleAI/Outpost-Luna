@@ -11,7 +11,8 @@ function ac() {
 export function chime() {
   const a = ac(); if (!a) return;
   const t = a.currentTime + 0.01, out = a.createGain();
-  out.gain.value = 0.12; out.connect(a.destination);
+  const L = (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1, alarms: 1 };   // Settings → Sound
+  out.gain.value = 0.12 * L.master * L.alarms; out.connect(a.destination);
   [[783.99, 1], [1174.66, 0.55]].forEach(([hz, amp]) => {
     const o = a.createOscillator(), g = a.createGain();
     o.type = "sine"; o.frequency.value = hz;

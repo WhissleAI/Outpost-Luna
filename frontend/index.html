@@ -3,55 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Outpost Luna: Junior Astronaut Mission Trainer</title>
+<title>Outpost Luna</title>
 <!-- Theme before first paint: a saved choice wins, else prefers-color-scheme (handled in CSS). -->
 <script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap">
 </head>
 <body>
 
 <header class="topbar">
-  <div class="brandline">
-    <span class="sa-badge">SpaceApps 2026</span>
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2"/><path d="M23.5 9.5a10 10 0 1 0 0 13 8 8 0 1 1 0-13Z" fill="currentColor"/></svg>
     <span class="appname">Outpost Luna</span>
   </div>
-  <div class="modes" role="group" aria-label="Mode">
-    <!-- Two modes: Academy (training, the default for a new cadet) → Mission. The explorer is the "Moon library" button. -->
-    <button type="button" id="modeAcademy" aria-pressed="false"><span aria-hidden="true">🎓 </span>Academy</button>
-    <button type="button" id="modeMission" aria-pressed="true"><span aria-hidden="true">🛰️ </span>Mission</button>
-  </div>
-  <nav class="topnav">
-    <button class="nav-btn" id="libraryBtn" type="button" aria-pressed="false" title="Explore the Moon, its hardware and the Artemis II crew audio">Moon library</button>
-    <button class="nav-btn" id="missionsBtn" type="button" aria-pressed="false">Find it</button>
-    <!-- Accessibility settings entry point (reserved for the a11y module, src/a11y.js) -->
-    <button class="nav-btn" id="a11yBtn" type="button" aria-haspopup="dialog" aria-expanded="false" title="Accessibility settings"><span aria-hidden="true">♿</span> Access</button>
-    <button class="nav-btn" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false">About</button>
-    <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch theme">
-      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+  <nav class="modes" aria-label="Sections">
+    <button type="button" id="modeAcademy" aria-pressed="false">Flight School</button>
+    <button type="button" id="modeMission" aria-pressed="true">Mission</button>
+    <button type="button" id="libraryBtn" aria-pressed="false">Library</button>
+  </nav>
+  <div class="topnav">
+    <!-- Settings (a11y.js: voice, reading & captions, display, alerts, help); id kept for the a11y hooks -->
+    <button class="btn-icon" id="a11yBtn" type="button" aria-haspopup="dialog" aria-expanded="false" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <button class="btn-icon" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Theme">
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
       <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
     </button>
-  </nav>
+    <button class="btn-icon" id="aboutBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="About" title="About">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 16v-4.5M12 8h.01"/></svg>
+    </button>
+  </div>
 </header>
 
 <main class="app">
-  <section class="stage" id="stage" aria-label="Moon explorer. Tap the Moon to see what's there.">
-    <div class="loading" id="loading">Loading NASA LRO color map…</div>
+  <section class="stage" id="stage" aria-label="The Moon">
+    <div class="loading" id="loading">Loading the Moon…</div>
     <div class="label" id="label" hidden></div>
 
-    <div class="hud">
+    <!-- Moon library controls (body[data-mode=cadet] only) -->
+    <div class="hud" role="toolbar" aria-label="Moon library">
       <div class="legend" role="group" aria-label="Show on the Moon">
         <button id="pinsBtn" type="button" aria-pressed="true"><i class="lg-place" aria-hidden="true"></i>Places</button>
         <button id="hwBtn" type="button" aria-pressed="true"><i class="lg-hw" aria-hidden="true"></i>Hardware</button>
-        <button id="tourBtn" type="button" class="lg-tour">▶ Tour</button>
       </div>
-      <div class="hw-key" id="hwKey" aria-hidden="true">
-        <span class="k-lander">lander</span><span class="k-rover">rover</span><span class="k-impact">impact</span><span class="k-instrument">instrument</span><span class="k-memorial">memorial</span>
-      </div>
-      <div class="hud-row">
+      <span class="hud-sep" aria-hidden="true"></span>
+      <div class="hud-row" role="group" aria-label="Turn the Moon">
         <button id="nearBtn" type="button">Near side</button>
         <button id="farBtn" type="button">Far side</button>
+      </div>
+      <span class="hud-sep" aria-hidden="true"></span>
+      <div class="hud-row" role="group" aria-label="Play">
+        <button id="tourBtn" type="button" class="lg-tour" aria-pressed="false">Tour</button>
+        <button id="missionsBtn" type="button" aria-pressed="false">Find it</button>
+      </div>
+      <!-- the hardware colour key: hover or focus a marker for its name (kept for globe.js / a11y; not shown) -->
+      <div class="hw-key" id="hwKey" aria-hidden="true" hidden>
+        <span class="k-lander">lander</span><span class="k-rover">rover</span><span class="k-impact">impact</span><span class="k-instrument">instrument</span><span class="k-memorial">memorial</span>
       </div>
     </div>
 
@@ -67,25 +71,24 @@
       </button>
     </div>
 
-    <!-- Mission Trainer (mission/ui.js): side panel (briefing / HUD), event banner, Houston signal, debrief -->
-    <aside class="mpanel" id="mPanel" hidden aria-label="Mission control"></aside>
-    <!-- Outpost Luna cabin (mission/cabin.js): the window + instrument panel; replaces the globe while a mission runs -->
+    <!-- Mission (mission/ui.js): briefing panel, cabin, banners, Houston signal, debrief -->
+    <aside class="mpanel" id="mPanel" hidden aria-label="Mission briefing"></aside>
     <section class="m-cabin" id="mCabin" hidden aria-label="Outpost Luna cockpit"></section>
-    <!-- Junior Astronaut Academy (academy/ui.js): course map, lesson, badge -->
-    <aside class="mpanel apanel" id="aPanel" hidden aria-label="Junior Astronaut Academy"></aside>
+    <!-- Flight School (academy/ui.js): home, course map, lesson, patch -->
+    <aside class="apanel" id="aPanel" hidden aria-label="Flight School"></aside>
     <div class="m-banner" id="mBanner" hidden role="status"></div>
     <div class="m-signal" id="mSignal" hidden role="status"></div>
     <section class="m-debrief" id="mDebrief" hidden aria-label="Mission debrief"></section>
     <span class="m-shade" id="mShade" hidden>Day/night shading: approximate</span>
 
     <!-- Find-it clues: one at a time -->
-    <section class="mcard" id="missionCard" hidden aria-label="Mission">
+    <section class="mcard" id="missionCard" hidden aria-label="Find it">
       <header><span class="mstep" id="mStep"></span><span class="mstars" id="mStars"></span>
-        <button class="x" id="mClose" type="button" aria-label="Close missions">&times;</button></header>
+        <button class="x" id="mClose" type="button" aria-label="Close Find it">&times;</button></header>
       <h3 id="mTitle"></h3>
       <p id="mClue"></p>
       <div class="mrow"><span class="mresult" id="mResult" aria-live="polite"></span>
-        <button class="pill" id="mShow" type="button">Show me</button><button class="pill" id="mNext" type="button">Next</button></div>
+        <button class="pill" id="mShow" type="button">Show me</button><button class="pill hot" id="mNext" type="button">Next</button></div>
     </section>
 
     <!-- The guide's latest answer -->
@@ -111,27 +114,35 @@
       <div class="tag-src" id="cardArc" hidden></div>
     </article>
 
-    <!-- Caption region (reserved for src/caption.js): spans the stage, above the ask dock. Empty = invisible. -->
-    <div class="caption-bar" id="captionBar" aria-live="polite"></div>
-
-    <!-- Ask dock. State classes on .askbar (set by voice.js): is-idle | is-listening | is-hearing | is-thinking | is-speaking -->
+    <!-- Voice strip: the ONE place for CAPCOM: the caption, the voice state (voice.js sets is-idle | is-listening | is-hearing | is-thinking |
+         is-speaking | is-notice on .askbar), what was heard, and typing. -->
     <div class="askbar is-idle" id="askbar">
       <div class="chips" id="chips"><button class="nudge" id="nudge" type="button" hidden></button></div>
       <div class="dock">
+        <!-- Captions (caption.js): the spoken line, word by word, inside the strip; fades out when nothing is said. -->
+        <div class="caption-bar" id="captionBar" aria-live="polite"></div>
+        <div class="dock-row">
+        <button class="vs-grip" id="vsGrip" type="button" aria-label="Move voice bar" title="Drag to move. Double-click to reset">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>
+        </button>
+        <button class="mic" id="mic" type="button" aria-label="Turn the mic on" hidden>
+          <svg class="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5"/></svg>
+          <svg class="i-micoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 9v2a3 3 0 0 0 5.1 2.1M15 9.3V5.5a3 3 0 0 0-5.9-.7"/><path d="M5 11a7 7 0 0 0 11.9 5M19 11a7 7 0 0 1-.4 2.3M12 18v3.5M3 3l18 18"/></svg>
+        </button>
         <div class="listen" id="listen" aria-live="polite">
-          <span class="cs-tag" id="csTag" title="Your call sign (stays on this device)" hidden></span>
+          <span class="cs-tag" id="csTag" hidden></span>
           <span class="orb" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <span class="listen-state" id="listenState"></span>
-          <span class="live-words" id="liveWords"></span>
-          <span class="hint" id="spaceHint"><kbd>Space</kbd><span>Hold to ask</span></span>
         </div>
         <form class="ask" id="askForm">
-          <input id="q" autocomplete="off" placeholder="Or type: show me the rovers left on the Moon" aria-label="Talk to CAPCOM">
-          <button class="send" type="submit">Ask</button>
-          <button class="mic" id="mic" type="button" aria-label="Turn the mic on" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          <span class="live-words" id="liveWords" aria-live="polite"></span>
+          <input id="q" autocomplete="off" placeholder="Type instead" aria-label="Type to CAPCOM">
+          <span class="hint" id="spaceHint"><kbd>Space</kbd><span>Hold to talk</span></span>
+          <button class="send" type="submit" aria-label="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           </button>
         </form>
+        </div>
       </div>
     </div>
   </section>
@@ -141,58 +152,52 @@
   <div class="about-bar"><span class="eyebrow">About</span><button class="x" id="aboutClose" type="button" aria-label="Close">&times;</button></div>
   <div class="about-body">
 
-  <header class="about-head"><h1 id="aboutTitle">Outpost Luna: Junior Astronaut Mission Trainer</h1><p>A voice game for kids 7 to 12. Artemis III hasn't landed yet: train at Flight School, then run Outpost Luna, a base at the Moon's south pole, where real NASA data decides what happens.</p></header>
+  <header class="about-head"><h1 id="aboutTitle">Outpost Luna</h1><p>A voice game for kids 7 to 12. No crew has landed at the Moon's south pole yet. Train at Flight School, then run Outpost Luna, a base there.</p></header>
   <div class="brief">
-    <section>
-      <span class="eyebrow">The challenge</span>
-      <h2>Build a Junior Astronaut Mission Trainer</h2>
-      <p class="lede">NASA Space Apps 2026 asks for a way for young people to practise what astronauts do: make decisions, manage resources and handle surprises on a mission.</p>
-    </section>
-
     <section>
       <span class="eyebrow">How you play</span>
       <h2>Ten days on the Moon, one shift at a time</h2>
       <ul>
-        <li><b>Pick a site.</b> Each one trades sunlight, ice and how often you can see Earth.</li>
-        <li><b>Balance three things.</b> Power, life support and radiation dose. Every choice costs something: shields use power that the greenhouse needs.</li>
-        <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift." CAPCOM reads it back, and asks first before anything risky.</li>
-        <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer, just like real crews.</li>
-        <li><b>Debrief.</b> See your timeline, your grade, and what the past missions teach. Then try a different strategy.</li>
-        <li><b>Moon library</b>: explore the Moon, the hardware people left there, and the Artemis II crew's own words.</li>
+                <li><b>Pick a site.</b> Each one trades sunlight, ice and how often you can see Earth.</li>
+        <li><b>Balance three things.</b> Power, life support and radiation dose.</li>
+        <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift."</li>
+        <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer.</li>
+        <li><b>Debrief.</b> See your timeline and what worked. Then try another plan.</li>
+        <li><b>Library.</b> Explore the Moon, the hardware left there, and the Artemis II crew's own words.</li>
       </ul>
     </section>
 
     <section>
-      <span class="eyebrow">How the Academy works</span>
+      <span class="eyebrow">Flight School</span>
       <h2>Train first, then command</h2>
-      <p>Flight School is short lessons with CAPCOM: the Moon's south pole, radio talk, solar power, radiation and solar storms, air and ice, and lessons from Apollo. Each step takes a spoken, typed or tapped answer, and gives a hint after two misses. Every fact shows its NASA source. The last lesson is a check ride: two days on the real mission simulator with the real May 2024 solar storm. Pass it to earn the Mission Commander badge. Patches and your call sign are saved only on this device and never sent. The story is inspired by NASA's Artemis program: Artemis I flew uncrewed in 2022, Artemis II flew its crew around the Moon in April 2026, and Artemis III, the first landing near the south pole, has not happened yet. You train to help run Outpost Luna for the crews who come after. It uses NASA open data and is not endorsed by NASA.</p>
+      <p>Flight School is short lessons with CAPCOM: the south pole, radio talk, solar power, radiation, air and ice, and lessons from Apollo. Answer by voice, typing or tapping. A hint comes after two misses. Every fact shows its source. The last lesson is a check ride: two days on the mission simulator, with a solar particle storm based on the real May 2024 storm, the one that gave Earth huge auroras. Pass it to earn the Mission Commander patch. Patches and your call sign stay on this device. The story is inspired by NASA's Artemis program. Artemis I flew uncrewed in 2022. Artemis II flew its crew around the Moon in April 2026. Artemis III, planned for 2027, is a crewed test flight in Earth orbit. The first crew landing is planned for Artemis IV in 2028, and NASA hasn't picked the site yet. Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it. CAPCOM and Houston are played by the game.</p>
     </section>
 
     <section>
-      <span class="eyebrow">How it works</span>
-      <h2>Whissle's Arc models, running locally</h2>
-      <p>Arc Tagger turns what a kid says into a mission command, and catches names and addresses so they are never looked up. Arc audio metadata hears when a kid starts and stops talking. Both run on a local model server, not in the cloud.</p>
+      <span class="eyebrow">Privacy</span>
+      <h2>Stays on this computer</h2>
+      <p>Your settings stay on this device too. Speech is understood by Whissle's Arc models running locally, not in the cloud.</p>
     </section>
 
     <section>
       <span class="eyebrow">Data</span>
-      <h2>Public NASA data</h2>
+      <h2>Sources</h2>
       <div class="tbl"><table>
         <thead><tr><th>Source</th><th>Used for</th></tr></thead>
         <tbody>
-          <tr><td><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">NASA DONKI</a></td><td>Real solar storms (flares, CMEs, particle events) with their real dates</td></tr>
-          <tr><td><a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a></td><td>Where the Sun and Earth sit in the sky at each site, for day/night and comm windows</td></tr>
-          <tr><td><a href="https://pds-geosciences.wustl.edu/missions/lro/lola.htm" target="_blank" rel="noopener">LRO LOLA</a></td><td>How much sunlight each south-pole site gets, and the dark craters where ice hides</td></tr>
+          <tr><td><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">NASA DONKI</a></td><td>Real solar storms and particle events, with their real dates</td></tr>
+          <tr><td><a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a></td><td>Where the Sun and Earth sit in the sky at each site</td></tr>
+          <tr><td><a href="https://pds-geosciences.wustl.edu/missions/lro/lola.htm" target="_blank" rel="noopener">LRO LOLA</a></td><td>How much sunlight each site gets (LRO LOLA and Kaguya illumination studies)</td></tr>
           <tr><td><a href="https://nssdc.gsfc.nasa.gov/" target="_blank" rel="noopener">NSSDCA</a></td><td>The hardware on the Moon, and the lessons from past missions</td></tr>
-          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's color map</td></tr>
-          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings in Cadet mode</td></tr>
+          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's colour map</td></tr>
+          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings in the Library</td></tr>
+          <tr><td>Zhang et al. 2020 (Chang'e 4)</td><td>The radiation dose on the Moon's surface</td></tr>
         </tbody>
       </table></div>
-      <p class="muted">When the mission server is not running, the game uses a small practice model and says "Sample data". The storms in it are still real DONKI events.</p>
     </section>
   </div>
 
-  <p class="foot">NASA media is used under NASA's media guidelines and does not imply NASA endorsement. Space Apps 2026 is Nov 14–15.</p>
+  <p class="foot">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. NASA Space Apps Challenge 2026.</p>
   </div>
 </dialog>
 

@@ -1,7 +1,7 @@
 # Accessibility
 
 Outpost Luna is voice-first, which helps kids who can't use a mouse and hurts kids who can't hear. This page lists
-what we support, for whom, how to test it, and what is still missing. Settings open from the **accessibility button**
+what we support, for whom, how to test it, and what is still missing. Settings open from the **Settings button** (the gear)
 in the top bar (`#a11yBtn`, or <kbd>Alt</kbd>+<kbd>A</kbd>). They are saved in this browser's localStorage
 (`outpost-a11y`) and are never sent to the server.
 
@@ -10,6 +10,12 @@ Code: `frontend/src/a11y.js` (settings, commands, audio description, alerts), `c
 `backend/app/tts.py` (speed, word timings), `steering.py` (§4b of docs/VOICE_STEERING.md),
 `model_server/app/tts_steer.py` (word timings, pace).
 
+## The voice bar
+
+The voice bar (mic, state, caption, typing) can be moved: drag its grip, or focus the grip and use the arrow keys
+(Shift for bigger steps) and Enter; or say/type "move the voice bar to the top right". Each move is announced.
+"Reset the voice bar", a double-click on the grip, or Settings → Display → Reset voice bar position puts it back.
+
 ## Who gets what
 
 ### Blind and low-vision kids
@@ -17,7 +23,7 @@ Code: `frontend/src/a11y.js` (settings, commands, audio description, alerts), `c
 | Feature | How |
 | --- | --- |
 | **Voice-only operation** | Every turn goes through the same text path (voice or typing). Commands: "where am I?" (mode, lesson, the question, feedback, resources), "what can I do?" (the buttons on screen), "press *Next*" / "tap *Hear it again*" (any visible button by its name), "option 2", "faster" / "slower" / "normal speed", "say that again", "bigger text", "high contrast", "audio description on/off", "open settings". Lesson answers are never swallowed: commands are narrow full-phrase matches. |
-| **Pick a place without the globe** | Settings → "Pick a place on the Moon" (or <kbd>Alt</kbd>+<kbd>P</kbd>): a list of every place; "Tap it" does exactly what a globe tap does (Academy tap steps included). |
+| **Pick a place without the globe** | Settings → Help → "Pick a place on the Moon" (or <kbd>Alt</kbd>+<kbd>P</kbd>): a list of every place; "Tap it" does exactly what a globe tap does (Academy tap steps included). |
 | **Audio description** | "Describe what happens": the Director's visual moves are announced in an aria-live region (always) and spoken by the guide (when on), after the current line: the globe flying to a place or coordinates, a card opening, a mission alert banner, a resource bar going red, an alert step, a badge. |
 | **Screen readers** | Polite (`#a11yLive`) and assertive (`#a11yAlert`) live regions; every icon-only control is named (title → aria-label, automatic); highlighted places/words are buttons with labels ("Space word: albedo. Press for its meaning"). `ariaControl(el, label, {role, pressed, expanded, live})` is exported from `a11y.js` (and on `window.__outpost.a11y`) for the new cockpit controls. |
 | **Keyboard** | Skip link to the answer box (first <kbd>Tab</kbd>); visible 3 px focus ring everywhere; DOM order = reading order; the settings dialog traps focus and closes with <kbd>Esc</kbd> (focus returns to the button); glossary cards open on <kbd>Enter</kbd> and close on <kbd>Esc</kbd>; the Academy focuses **Next** after a right answer. <kbd>Alt</kbd>+<kbd>W</kbd> = "where am I?". |
@@ -35,7 +41,7 @@ Code: `frontend/src/a11y.js` (settings, commands, audio description, alerts), `c
 | **Visual alerts** | With every alert: a flashing red screen edge plus a banner with a ⚠ icon and the alert text (mission banners, alert steps). |
 | **Vibration** | `navigator.vibrate([180, 80, 180])` on alerts where supported (phones, tablets). |
 | **Typing everywhere** | The answer box answers every Academy step, mission order and question; vocab "say it back" also accepts typing. |
-| **"No audio needed"** | A badge in the top bar: nothing in the app requires hearing. The "listen" vocab step shows the meaning as text too. |
+| **"No audio needed"** | A note in Settings → Help: nothing in the app requires hearing. The "listen" vocab step shows the meaning as text too. |
 
 ### Reading support
 
@@ -50,8 +56,8 @@ with pitch preserved. The caption bar shows the speed.
 
 ### Highlighting
 
-Places/hardware (solid underline + ⌖; press to fly there), numbers with units (boxed), space words (dotted underline +
-"?" badge; press for the glossary card), mission resources (double underline). Shape, never colour alone. Marked in
+Places/hardware (solid underline; press to fly there) and space words (dotted underline; press for the glossary card).
+Shape, never colour alone. Numbers and mission resources are no longer marked (round 2 of docs/UX_ROUNDS.md: too noisy). Marked in
 cards, captions, lesson prompts/feedback and mission event/radio text; the card also gets chips for its words and places.
 Sources: `/api/glossary`, `/api/places`, and the Arc Tagger read-out `mentions` of the latest answer.
 

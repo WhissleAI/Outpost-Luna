@@ -79,13 +79,32 @@ export function isEcho(heard, refs, threshold = 0.6) {
  * Open-mic barge-in while audio plays (§3 rule 2): Flux StartOfTurn, ≥ 2 words, not an echo of the guide/crew
  * text, and Arc device_directed ≥ 0.5 when Arc sent one.
  */
+/** Settings → Listening → "Ignore other voices" (mirrors the server's filter levels): [ignore below, needed during speech]. */
+export const BARGE = { relaxed: [0.35, 0.55], normal: [0.5, 0.7], strict: [0.65, 0.85] };
+function bargeThresholds() {
+  const f = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter;
+  return BARGE[f] || BARGE.normal;
+}
+/** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen Steer voice
+ *  (for the guide, or every voice when "use for everyone" is on), the speed and the liveliness. */
+export function prefStyle(style, voice, speed) {
+  const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
+  if (!P) return style;
+  const out = { ...(style && typeof style === "object" ? style : {}) };
+  if (P.voice && (P.voice_all || voice === "guide")) out.steer_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
+  if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
+  if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
+  if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;
+  return Object.keys(out).length ? out : style;
+}
 export function shouldBargeIn({ started, text, refs, dd }) {
   if (!started) return false;
   const w = normWords(text);
   if (w.length < 2 || isFiller(text)) return false;
   if (isEcho(text, refs)) return false;
-  if (dd != null && dd < 0.5) return false;
-  if (w.length === 2 && !CONTROL.test(w.join(" ")) && !(dd != null && dd >= 0.7)) return false;   // 2 words: a control word or clearly to us
+  const [lo, hi] = bargeThresholds();
+  if (dd != null && dd < lo) return false;
+  if (w.length === 2 && !CONTROL.test(w.join(" ")) && !(dd != null && dd >= hi)) return false;   // 2 words: a control word or clearly to us
   return true;
 }
 
@@ -118,11 +137,12 @@ export function spaceAction(target) {
 
 /** A friendly line for a getUserMedia / Web Speech failure. */
 export function micErrorText(e) {
+  // short enough for the voice bar's field (one line at 1280); the state slot already says "Mic blocked"
   const n = e && (e.name || e.error || "");
-  if (/NotAllowed|Security|not-allowed|service-not-allowed/i.test(n)) return "Mic is blocked. Click the lock in the address bar and allow the microphone, or type your question.";
-  if (/NotFound|Overconstrained|audio-capture/i.test(n)) return "No microphone found. Plug one in, or type your question.";
-  if (/NotReadable|Abort/i.test(n)) return "Another app is using the mic. Close it, or type your question.";
-  return "The mic didn't start. Type your question, or tap the mic to try again.";
+  if (/NotAllowed|Security|not-allowed|service-not-allowed/i.test(n)) return "Mic is blocked. Type instead.";
+  if (/NotFound|Overconstrained|audio-capture/i.test(n)) return "No microphone found. Type instead.";
+  if (/NotReadable|Abort/i.test(n)) return "Another app is using the mic. Type instead.";
+  return "The mic didn't start. Type instead, or tap the mic.";
 }
 
 // ---------- the floor manager ----------
@@ -188,7 +208,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   async function fetchTTS(text, voice, style, i = 0, n = 1, next = "") {
     if (!server) return null;
     try {
-      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, style, i, n, next, speed));
+      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, prefStyle(style, voice, speed), i, n, next, speed));
       if (r.status === 503) { server = false; return null; }
       if (!r.ok) return null;
       // [a11y] word timings (X-TTS-Words, "startMs-endMs,…" per display word) for the caption bar (caption.js)

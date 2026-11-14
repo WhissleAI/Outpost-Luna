@@ -118,7 +118,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   const mHab = mk("is-hab", "OUTPOST"), mRover = mk("is-rover", "ROVER"), mEarth = mk("is-earth", "EARTH"), mSun = mk("is-sun", "SUN");
   const tag = document.createElement("span"); tag.className = "tv-tag"; marks.append(tag);
   const credit = document.createElement("span"); credit.className = "tv-credit";
-  credit.textContent = "Terrain: NASA LRO LOLA elevation · Earth: NASA Blue Marble · Uses NASA open data; not endorsed by NASA.";
+  credit.textContent = "NASA LRO LOLA · Blue Marble · not endorsed by NASA"; credit.title = "Terrain: NASA LRO LOLA elevation · Earth: NASA Blue Marble · Uses NASA open data; not endorsed by NASA.";
   marks.append(credit);
 
   let renderer;
@@ -273,7 +273,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     fill.position.copy(skyDir(Math.max(S.earthEl, 0) + 14, 25)).multiplyScalar(1000); fill.target.position.set(0, 0, 0);
     fill.intensity = S.lowLight ? 1.5 : S.earthEl > 0 ? .75 : .45;
     fill.color.set(S.lowLight ? 0xbfe3cf : 0xb8cbe8);
-    tag.textContent = S.lowLight ? "LOW-LIGHT CAMERA · SUN BELOW HORIZON" : "";
+    tag.textContent = S.lowLight ? "LOW-LIGHT CAMERA" : "";
     hab.userData.wing.rotation.y = Math.atan2(sd.x, sd.z);                         // arrays track the Sun
     hab.userData.dish.lookAt(hab.userData.dish.getWorldPosition(new THREE.Vector3()).add(ed.clone().multiplyScalar(100)));
     hab.userData.dish.rotateX(Math.PI / 2);

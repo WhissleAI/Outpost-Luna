@@ -49,6 +49,28 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   }
   if (floor) floor.attachCrew(audio, { text: momentText, pauseAtSentenceEnd, resume });
 
+  // Crew loudness (docs/VOICES.md): each clip's gain_db brings it to our voices' level, a limiter stops peaks, then the
+  // Settings master volume. Built on the first play (an AudioContext needs a gesture); without Web Audio it plays as is.
+  let graph = null;
+  function crewGraph() {
+    if (graph !== null) return graph;
+    try {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return (graph = false);
+      const ctx = new C(), src = ctx.createMediaElementSource(audio), gain = ctx.createGain(), lim = ctx.createDynamicsCompressor(), master = ctx.createGain();
+      lim.threshold.value = -1; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.05;
+      src.connect(gain).connect(lim).connect(master).connect(ctx.destination);
+      graph = { ctx, gain, master };
+      const setMaster = () => { const L = window.__outpost && window.__outpost.levels; master.gain.value = L && isFinite(L.master) ? L.master : 1; };
+      setMaster(); addEventListener("outpost:prefs", setMaster);
+    } catch (e) { graph = false; }
+    return graph;
+  }
+  function clipGain(clip) {
+    const g = crewGraph(); if (!g) return;
+    if (g.ctx.state === "suspended") g.ctx.resume().catch(() => {});
+    const db = +(clip && clip.gain_db); g.gain.gain.value = isFinite(db) ? Math.pow(10, db / 20) : 1;
+  }
+
   $("npStop").onclick = () => stop();
   bar.addEventListener("click", e => {
     if (!P || e.target.closest("#npStop") || !audio.paused || P.explaining) return;
@@ -83,7 +105,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     if (first) follow(first, false);
     chime();
     await seek(m.t0); if (my !== seq) return false;
-    audio.volume = 1;
+    audio.volume = 1; clipGain(clip);
     try { await audio.play(); } catch (e) { bar.classList.add("is-blocked"); }   // autoplay blocked: tap the bar
     if (floor && P && P.m === m) floor.crewPlayback("start", m.clip_id);
     return true;

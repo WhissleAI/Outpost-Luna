@@ -1,6 +1,8 @@
 // Wiring only: load places, build the modules, route asks / taps / voice turns between them.
+import "./tokens.css";
 import "./styles.css";
 import "./outpost.css";
+import "./mission.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
@@ -23,6 +25,8 @@ import "./a11y.css";
 import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
+import { initVoiceBar } from "./voicebar.js";
+import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
 // ---- end [a11y] ----
@@ -32,8 +36,7 @@ import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs
 const SESSION_ON = (() => { try { return new URLSearchParams(location.search).get("session") !== "0" && localStorage.getItem("atm-session") !== "0"; } catch (e) { return true; } })();
 
 const $ = id => document.getElementById(id);
-const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?", "What did Surveyor 3 do?",
-  "Who drove the Apollo 16 rover?", "What did the astronauts see?", "Play the launch"];
+const CHIPS = ["Where did Apollo 11 land?", "Show me the rovers", "Play the launch"];
 const HW_LABEL = { lander: "Lander", rover: "Rover", impact: "Impact site", instrument: "Instrument", memorial: "Memorial" };
 const TOUR_MS = 3000;   // minimum time at each tour stop
 // Shown on the card with "I don't know that one yet", never spoken (a spoken example is heard back by the open mic).
@@ -53,7 +56,7 @@ async function boot() {
   paintCs(); addEventListener("outpost:callsign", paintCs);
   let places;
   try { places = await api.places(); }
-  catch (e) { $("loading").textContent = "Can't reach the backend. Start everything with `make dev`."; return; }
+  catch (e) { $("loading").innerHTML = "<b>Can&rsquo;t reach Outpost Luna</b><span>Close the app and open it again.</span>"; $("loading").classList.add("is-error"); return; }
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
   const sample = !places.some(p => p.kind === "artifact");
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
@@ -106,6 +109,12 @@ async function boot() {
   const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), places, playCrew: m => player.play(m) });
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
+  const vbar = initVoiceBar({ announce: t => { if (a11y) a11y.describe(t); } });   // the floating voice bar
+  // Settings v1 (prefs.js): voice, sound, listening, display, level, cadet profiles. The session gets the steering bits.
+  const prefs = createPrefs({ globe });
+  (window.__outpost = window.__outpost || {}).prefsApi = prefs;
+  const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
+  prefs.on(() => sendPrefs()); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
@@ -133,6 +142,7 @@ async function boot() {
 
   async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
+    if (vbar && vbar.handleText(text)) { $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }   // "move the voice bar to the top"
     const heard = source === "voice";
     // [hands-free] One router for every turn (backend/app/turn_router.py): with a live session, every turn (spoken or
     // typed, in every screen) goes up the socket with the current screen; the Director answers with nav / answer /
@@ -198,7 +208,7 @@ async function boot() {
 
   /** "▶ Hear the crew" when the server has a kid-safe moment for this place. */
   function offerCrew(token, f, moment) {
-    const add = m => m && card.addAction(token, { label: "▶ Hear the crew", hot: true, onClick: () => { stopSpeaking(); player.play(m); } });
+    const add = m => m && card.addAction(token, { label: "Hear the crew", hot: true, onClick: () => { stopSpeaking(); player.play(m); } });
     if (moment) add(moment);
     else if (f) api.moments(f.id).then(ms => add(ms[0]));
   }
@@ -223,7 +233,7 @@ async function boot() {
   /** "▶ Hear Charlie Duke": the artifact's own audio segments, played through the crew player. */
   function voiceActions(a) {
     return (a.voices || []).filter(v => v && v.clip_id).map(v => ({
-      label: "▶ Hear " + (v.who || "the crew"), hot: true,
+      label: "Hear " + (v.who || "the crew"), hot: true,
       onClick: () => { cancelTour(); stopSpeaking(); player.play({ clip_id: v.clip_id, t0: v.t0, t1: v.t1, speaker: v.who || "crew", places: [a.id], jargon: [] }); },
     }));
   }
@@ -368,10 +378,12 @@ async function boot() {
     highlight: () => {},
     floor: d => { document.body.dataset.floor = d.holder; },
     lesson: d => dispatchEvent(new CustomEvent("atm:lesson", { detail: d })),   // the Academy UI listens
+    prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
       if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }
       if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", d.text);
+      showHeard(d.text);
       if (missionUI.running) missionUI.radioKid(d.text);
       cancelNudge(); cancelTour();
     },
@@ -384,11 +396,43 @@ async function boot() {
     },
   };
 
+  /** What was heard, shown briefly in the comm strip (never a transcript; the full log is in Access → Transcript). */
+  let heardT = 0;
+  function showHeard(text) {
+    const w = $("liveWords"); if (!text || voice.kidTalking) return;
+    w.textContent = text; w.classList.add("is-heard"); clearTimeout(heardT);
+    heardT = setTimeout(() => { if (w.classList.contains("is-heard")) { w.classList.remove("is-heard"); w.textContent = ""; } }, 2600);
+  }
+  new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
+    .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
+  // Model warming up: until the model server reports the ear and the voice loaded, the voice bar says so (typing works).
+  // After ~3 min without them it says voice is offline instead. /api/health is local; polled every 2 s while warming.
+  (function warm(t0 = performance.now()) {
+    const bar = $("askbar");
+    fetch("/api/health").then(r => r.json()).then(h => {
+      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.steer_tts || {};
+      const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
+      bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
+      bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);
+      if (!ready) setTimeout(() => warm(t0), 2000);
+    }).catch(() => { bar.classList.add("is-warming"); if (performance.now() - t0 < 180000) setTimeout(() => warm(t0), 2000); else { bar.classList.remove("is-warming"); bar.classList.add("is-voiceoff"); } });
+  })();
+  // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
+  new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
+  // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
+  // caption stays in #captionBar for screen readers and the transcript, but folds out of the voice strip (.is-dup).
+  const norm = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .m-title, #card:not([hidden]) .card-say")]
+    .filter(e => e.getClientRects().length).map(e => e.textContent).join(" | "));
+  const dupCheck = () => { const bar = $("captionBar"), line = norm((bar.querySelector(".cap-line") || bar).textContent);
+    bar.classList.toggle("is-dup", !!line && line.length > 3 && onScreen().includes(line)); };
+  new MutationObserver(dupCheck).observe($("captionBar"), { childList: true, subtree: true });
+  new MutationObserver(dupCheck).observe($("aPanel"), { childList: true, subtree: true });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function runNav(intent, arg, text) {
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
-    if (intent === "a11y") { if (a11y) await a11y.handleText(text); return; }
+    if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }
     if (intent === "answer") {
       if (academyUI.active) await academyUI.answerText(text);
       return;
@@ -429,7 +473,7 @@ async function boot() {
     session.connect().then(ok => {
       if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
       voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
-      pushScreen(true);
+      pushScreen(true); sendPrefs();
     });
   }
 
@@ -438,7 +482,7 @@ async function boot() {
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
   $("farBtn").onclick = () => globe.flyTo(0, 180, 3.6);
   $("pinsBtn").onclick = e => { e.currentTarget.setAttribute("aria-pressed", globe.togglePins()); };
-  $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); $("hwKey").hidden = !on; };
+  $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); };
   // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
   $("tourBtn").onclick = () => {
     if (tour.active) { stopSpeaking(); cancelTour(); return; }
@@ -449,8 +493,7 @@ async function boot() {
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
   let lastMode = "academy";
-  const PH = { mission: "Or type an order: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon",
-    academy: "Or type your answer to CAPCOM" };
+  const PH = { mission: "Type an order", cadet: "Ask about the Moon", academy: "Type instead" };
   function setMode(mode) {
     const m = ["cadet", "academy"].includes(mode) ? mode : "mission";
     document.body.dataset.mode = m;
@@ -459,6 +502,7 @@ async function boot() {
     $("libraryBtn").setAttribute("aria-pressed", m === "cadet");
     if (m !== "cadet") lastMode = m;
     $("q").placeholder = PH[m]; $("mShade").hidden = m !== "mission";
+    globe.setDecor(m === "cadet");   // place dots + hardware belong to the Library; Flight School draws its own route
     cancelTour(); cancelNudge(); stopSpeaking();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m !== "academy") academyUI.exit();
@@ -478,7 +522,7 @@ async function boot() {
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
-  $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");
+  $("libraryBtn").onclick = () => setMode("cadet");
   // A new cadet starts in the Academy; a qualified one in Mission.
   setMode(academyUI.progress.qualified ? "mission" : "academy");
 }

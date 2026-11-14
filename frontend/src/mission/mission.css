@@ -1,0 +1,162 @@
+/* Mission: the site picker (briefing) and the debrief. mission/ui.js. Tokens only (tokens.css). */
+
+/* ---------- shared ---------- */
+.mx-head{display:flex;align-items:center;gap:var(--space-2);min-height:var(--control-sm)}
+.mx-head .eyebrow{flex:1;font-family:var(--font-ui);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);color:var(--color-text-3)}
+.mx-title{margin:0;font-family:var(--font-ui);font-size:var(--text-xl);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);line-height:var(--leading-tight);color:var(--color-text)}
+.mx-title:focus{outline:none}
+.mx-sub{margin:var(--space-1) 0 0;font-size:var(--text-md);line-height:var(--leading-snug);color:var(--color-text-2)}
+.mx-go{min-height:var(--control-lg);padding:0 var(--space-5);border:0;border-radius:var(--radius-md);background:var(--color-accent);color:var(--color-on-accent);
+  font-family:var(--font-ui);font-size:var(--text-md);font-weight:var(--weight-semibold);cursor:pointer;transition:background var(--dur-fast)}
+.mx-go:hover{background:var(--color-accent-hover)}
+.mx-go:disabled{opacity:.55;cursor:progress}
+.mx-btn{min-height:var(--control-lg);padding:0 var(--space-5);border:1px solid var(--color-line-strong);border-radius:var(--radius-md);background:var(--color-surface-2);color:var(--color-text);
+  font-family:var(--font-ui);font-size:var(--text-md);font-weight:var(--weight-semibold);cursor:pointer}
+.mx-btn:hover{background:var(--color-surface-3)}
+.mx-go:focus-visible,.mx-btn:focus-visible,.mx-site:focus-visible,.mx-chip:focus-visible,.mx-x:focus-visible,.mx-src:focus-visible,.mx-roles summary:focus-visible,.mx-data summary:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mx-src{font-size:var(--text-xs);font-weight:var(--weight-medium);color:var(--color-accent);text-decoration:underline;text-underline-offset:2px;border-radius:var(--radius-sm);white-space:nowrap}
+.mx-src:hover{color:var(--color-accent-hover)}
+
+/* ---------- site picker: the side panel ---------- */
+.mpanel.mx-brief{bottom:auto;max-height:calc(100% - 2 * var(--space-4));width:var(--panel-w);padding:var(--space-5);gap:var(--space-4);background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-line);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-2);font-family:var(--font-ui)}
+.mx-brief .mx-head{margin-bottom:calc(var(--space-2) * -1)}
+.mx-sites{display:flex;flex-direction:column;gap:var(--space-1)}
+.mx-cols,.mx-site{display:grid;grid-template-columns:minmax(0,1fr) 44px 52px 32px;align-items:center;gap:var(--space-2)}
+.mx-cols{padding:0 var(--space-3);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-3)}
+.mx-cols span:not(:first-child){text-align:right}
+.mx-site{min-height:var(--control-lg);padding:0 var(--space-3);border:1px solid var(--color-line);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text);
+  font-family:var(--font-ui);text-align:left;cursor:pointer;transition:border-color var(--dur-fast),background var(--dur-fast)}
+.mx-site:hover{border-color:var(--color-line-strong);background:var(--color-surface-2)}
+.mx-site[aria-checked="true"]{border-color:var(--color-accent);background:var(--color-accent-soft);box-shadow:inset 0 0 0 1px var(--color-accent)}
+.mx-site b{padding:var(--space-1) 0;font-size:var(--text-md);font-weight:var(--weight-semibold);line-height:var(--leading-tight)}
+.mx-v{font-family:var(--font-mono);font-size:var(--text-sm);text-align:right;color:var(--color-text-2)}
+.mx-v.is-best{color:var(--color-text);font-weight:var(--weight-semibold)}
+.mx-v.is-low{color:var(--color-text-3)}
+.mx-srcline{margin:calc(var(--space-2) * -1) 0 0;font-size:var(--text-xs);color:var(--color-text-3)}
+.mx-brief .mx-foot{margin-top:var(--space-1);display:flex;flex-direction:column;gap:var(--space-3)}
+.mx-brief .mx-go{width:100%}
+.mx-roles summary{display:inline-flex;align-items:center;min-height:var(--control-sm);font-size:var(--text-sm);font-weight:var(--weight-medium);color:var(--color-text-2);cursor:pointer;border-radius:var(--radius-sm)}
+.mx-roles>div{display:flex;gap:var(--space-2);margin-top:var(--space-2)}
+.mx-chip{flex:1;min-height:var(--control-md);border-radius:var(--radius-full);border:1px solid var(--color-line-strong);background:var(--color-surface);color:var(--color-text-2);
+  font-family:var(--font-ui);font-size:var(--text-sm);font-weight:var(--weight-semibold);cursor:pointer}
+.mx-chip[aria-pressed="true"]{border-color:var(--color-accent);background:var(--color-accent-soft);color:var(--color-text)}
+
+/* ---------- debrief: a sheet over the Moon ---------- */
+.m-debrief.mx-debrief{width:min(840px,calc(100% - 2 * var(--space-4)));padding:var(--space-5) var(--space-6) var(--space-5);gap:var(--space-4);
+  background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-line);border-radius:var(--radius-xl);box-shadow:var(--shadow-3);font-family:var(--font-ui);
+  top:50%;bottom:auto;max-height:calc(100% - 2 * var(--space-4));transform:translate(-50%,-50%);animation:mxIn var(--dur-slow) var(--ease-out)}
+@keyframes mxIn{from{opacity:0}}
+.mx-debrief .mx-head{margin-bottom:calc(var(--space-3) * -1)}
+.mx-x{width:var(--control-sm);height:var(--control-sm);display:grid;place-items:center;border:0;border-radius:var(--radius-full);background:none;color:var(--color-text-2);cursor:pointer;padding:0}
+.mx-x:hover{background:var(--color-surface-2);color:var(--color-text)}
+.mx-x svg{width:20px;height:20px}
+.mx-db-top{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-5)}
+.mx-score{display:flex;gap:var(--space-5);margin:0}
+.mx-score div{display:flex;flex-direction:column;align-items:flex-end}
+.mx-score dt{font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-3)}
+.mx-score dd{margin:0;font-family:var(--font-mono);font-size:var(--text-xl);font-weight:var(--weight-semibold);line-height:1.1;color:var(--color-text)}
+.mx-empty{margin:0;padding:var(--space-5);border-radius:var(--radius-md);background:var(--color-surface-2);color:var(--color-text-2);text-align:center}
+.mx-chart{position:relative;margin:0}
+.mx-chart svg{display:block;width:100%;height:auto;max-height:24vh}
+.mx-chart polyline{fill:none;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.mx-chart polyline.c-power{stroke:var(--color-power)} .mx-chart polyline.c-life{stroke:var(--color-life)} .mx-chart polyline.c-dose{stroke:var(--color-dose)}
+.mx-chart .c-lab{font-family:var(--font-ui);font-size:12px;font-weight:var(--weight-semibold);stroke:none}
+.mx-chart .c-power-t{fill:var(--color-power)} .mx-chart .c-life-t{fill:var(--color-life)} .mx-chart .c-dose-t{fill:var(--color-dose)}
+.mx-chart .c-grid{stroke:var(--color-line)}
+.mx-chart .c-ax{font-family:var(--font-mono);font-size:11px;fill:var(--color-text-3)}
+.mx-chart .c-storm{fill:var(--color-warning-soft)}
+.mx-chart .c-cross{stroke:var(--color-text);opacity:.35}
+.mx-key{position:absolute;left:44px;top:4px;display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--text-xs);color:var(--color-text-3)}
+.mx-key i{width:12px;height:12px;border-radius:2px;background:var(--color-warning-soft);box-shadow:inset 0 0 0 1px var(--color-warning)}
+.mx-chart .c-tip{position:absolute;top:var(--space-2);transform:translateX(-50%);pointer-events:none;display:flex;flex-direction:column;gap:2px;padding:var(--space-2) var(--space-3);
+  background:var(--color-surface);border:1px solid var(--color-line);border-radius:var(--radius-md);box-shadow:var(--shadow-2);font-size:var(--text-xs);white-space:nowrap}
+.mx-chart .c-tip[hidden]{display:none}
+.mx-chart .c-tip span{display:inline-flex;align-items:center;gap:var(--space-2);color:var(--color-text-2)}
+.mx-chart .c-tip i{width:10px;height:3px;border-radius:2px}
+.mx-chart .c-tip i.c-power{background:var(--color-power)} .mx-chart .c-tip i.c-life{background:var(--color-life)} .mx-chart .c-tip i.c-dose{background:var(--color-dose)}
+.mx-tks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2);counter-reset:tk}
+.mx-tks li{display:flex;align-items:baseline;gap:var(--space-3);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);background:var(--color-surface-2);
+  font-size:var(--text-md);line-height:var(--leading-snug);color:var(--color-text)}
+.mx-tks li>span:first-child{flex:1}
+.mx-tag{font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--color-text-3);white-space:nowrap}
+.mx-debrief .mx-foot{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.mx-data{margin-left:auto;font-size:var(--text-sm);color:var(--color-text-2)}
+.mx-data summary{cursor:pointer;min-height:var(--control-sm);display:inline-flex;align-items:center;border-radius:var(--radius-sm)}
+.mx-data ul{margin:var(--space-2) 0 0;padding-left:var(--space-4);display:flex;flex-direction:column;gap:var(--space-1)}
+.mx-data a{color:var(--color-accent)}
+
+@media (min-width:860px) and (max-height:780px){
+  .mpanel.mx-brief{padding:var(--space-4);gap:var(--space-3)}
+  .mx-site{min-height:var(--control-md)}
+  .m-debrief.mx-debrief{padding:var(--space-4) var(--space-5);gap:var(--space-3)}
+  .mx-chart svg{max-height:26vh}
+  .mx-tks li{padding:var(--space-2) var(--space-3);font-size:var(--text-sm)}
+}
+@media (max-width:640px){
+  .m-debrief.mx-debrief{padding:var(--space-4)}
+  .mx-db-top{flex-direction:column;align-items:flex-start}
+}
+
+/* the globe's shading note is noise next to the picker and under the debrief */
+body:has(.mpanel.mx-brief:not([hidden])) .m-shade,body:has(.m-debrief.mx-debrief:not([hidden])) .m-shade{display:none}
+body:has(.mpanel.mx-brief:not([hidden])) .mmark.is-earth{display:none}
+/* debrief: the sheet sits above the comm strip and its caption line, which then span the stage */
+body:has(.m-debrief.mx-debrief:not([hidden])) .stage{--panel-w:0px}
+/* reserve: the comm strip (60px) + a two-line caption block + gutters */
+.m-debrief.mx-debrief{--mx-reserve:168px;top:calc((100% - var(--mx-reserve)) / 2 + var(--space-4));max-height:calc(100% - var(--mx-reserve))}
+
+/* ---------- Moon-first: glass panels over the globe; the five sites are pins on the south pole ---------- */
+.mpanel.mx-brief,.m-debrief.mx-debrief{background:var(--color-glass);color:var(--color-on-space);border-color:var(--color-glass-line);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2)}
+.mx-brief .mx-title,.mx-debrief .mx-title,.mx-debrief .mx-score dd{color:var(--color-on-space)}
+.mx-brief .mx-sub,.mx-brief .mx-head .eyebrow,.mx-brief .mx-cols,.mx-brief .mx-srcline,.mx-brief .mx-roles summary,
+.mx-debrief .mx-sub,.mx-debrief .mx-head .eyebrow,.mx-debrief .mx-score dt,.mx-debrief .mx-data,.mx-debrief .mx-tag,.mx-debrief .mx-x{color:var(--color-on-space-2)}
+.mx-brief .mx-site{background:transparent;border-color:var(--color-glass-line);color:var(--color-on-space)}
+.mx-brief .mx-site:hover{background:color-mix(in srgb,var(--color-on-space) 8%,transparent);border-color:var(--color-on-space-2)}
+.mx-brief .mx-site[aria-checked="true"]{background:color-mix(in srgb,var(--color-on-space) 14%,transparent);border-color:var(--color-on-space);box-shadow:inset 0 0 0 1px var(--color-on-space)}
+.mx-brief .mx-v,.mx-brief .mx-v.is-low{color:var(--color-on-space-2)}
+.mx-brief .mx-v.is-best{color:var(--color-on-space)}
+.mx-brief .mx-src,.mx-debrief .mx-src,.mx-debrief .mx-data a{color:var(--color-on-space)}
+.mx-brief .mx-chip{background:transparent;border-color:var(--color-glass-line);color:var(--color-on-space-2)}
+.mx-brief .mx-chip[aria-pressed="true"]{border-color:var(--color-on-space);color:var(--color-on-space);background:color-mix(in srgb,var(--color-on-space) 14%,transparent)}
+.mx-brief .mx-go,.mx-debrief .mx-go{background:var(--color-on-space);color:var(--color-space)}
+.mx-brief .mx-go:hover,.mx-debrief .mx-go:hover{background:var(--color-on-space-2)}
+.mx-debrief .mx-btn{background:transparent;border-color:var(--color-glass-line);color:var(--color-on-space)}
+.mx-debrief .mx-btn:hover{background:color-mix(in srgb,var(--color-on-space) 10%,transparent)}
+.mx-debrief .mx-x:hover{background:color-mix(in srgb,var(--color-on-space) 10%,transparent);color:var(--color-on-space)}
+.mx-debrief .mx-tks li{background:color-mix(in srgb,var(--color-on-space) 7%,transparent);color:var(--color-on-space)}
+.mx-debrief .mx-empty{background:color-mix(in srgb,var(--color-on-space) 7%,transparent);color:var(--color-on-space-2)}
+.mx-debrief .mx-chart .c-grid{stroke:var(--color-glass-line)}
+.mx-debrief .mx-chart .c-ax,.mx-debrief .mx-key{fill:var(--color-on-space-2);color:var(--color-on-space-2)}
+.mx-debrief .mx-chart .c-cross{stroke:var(--color-on-space)}
+.mx-debrief .mx-chart .c-storm,.mx-debrief .mx-key i{fill:color-mix(in srgb,var(--color-lamp-caution) 22%,transparent);background:color-mix(in srgb,var(--color-lamp-caution) 22%,transparent);box-shadow:inset 0 0 0 1px var(--color-lamp-caution)}
+.mx-debrief .mx-chart polyline.c-power,.mx-debrief .mx-chart .c-tip i.c-power{stroke:var(--color-lamp-caution);background:var(--color-lamp-caution)}
+.mx-debrief .mx-chart polyline.c-life,.mx-debrief .mx-chart .c-tip i.c-life{stroke:var(--color-lamp-info);background:var(--color-lamp-info)}
+.mx-debrief .mx-chart polyline.c-dose,.mx-debrief .mx-chart .c-tip i.c-dose{stroke:var(--color-phosphor);background:var(--color-phosphor)}
+.mx-debrief .mx-chart .c-power-t{fill:var(--color-lamp-caution)} .mx-debrief .mx-chart .c-life-t{fill:var(--color-lamp-info)} .mx-debrief .mx-chart .c-dose-t{fill:var(--color-phosphor)}
+.mx-debrief .mx-chart .c-tip{background:var(--color-space-2);border-color:var(--color-glass-line);color:var(--color-on-space)}
+.mx-debrief .mx-chart .c-tip span{color:var(--color-on-space-2)}
+.mx-brief :focus-visible,.mx-debrief :focus-visible,.mx-pin:focus-visible{box-shadow:0 0 0 var(--focus-offset) var(--color-space),0 0 0 calc(var(--focus-offset) + var(--focus-width)) var(--color-on-space)!important}
+.mx-pins{position:absolute;inset:0;z-index:calc(var(--z-stage) + 2);pointer-events:none;overflow:hidden}
+.mx-pins[hidden]{display:none}
+.mx-pin{position:absolute;left:0;top:0;display:flex;align-items:center;gap:var(--space-2);margin:-8px 0 0 -8px;padding:0;border:0;background:none;color:var(--color-on-space);
+  pointer-events:auto;cursor:pointer;font-family:var(--font-ui);white-space:nowrap}
+.mx-pin i{width:16px;height:16px;flex:none;border-radius:50%;background:var(--color-space);box-shadow:inset 0 0 0 3px var(--color-on-space-2);transition:box-shadow var(--dur-fast)}
+.mx-pin span{padding:2px var(--space-2);border-radius:var(--radius-sm);background:var(--color-glass);font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--color-on-space-2)}
+.mx-pin:hover i{box-shadow:inset 0 0 0 3px var(--color-on-space)}
+.mx-pin:hover span{color:var(--color-on-space)}
+.mx-pin:not(.is-sel):not(:hover) span{opacity:0;transform:translateX(-4px)}
+.mx-pin span{transition:opacity var(--dur-fast),transform var(--dur-fast)}
+.mx-pin.is-sel{z-index:1}
+.mx-pin.is-sel i{background:var(--color-on-space);box-shadow:0 0 0 4px color-mix(in srgb,var(--color-on-space) 30%,transparent)}
+.mx-pin.is-sel span{color:var(--color-space);background:var(--color-on-space);font-size:var(--text-sm)}
+body:has(.mpanel.mx-brief:not([hidden])) .mmark.is-outpost{display:none}
+/* short screens: chart and takeaways side by side, so the sheet never scrolls its buttons away */
+@media (min-width:860px) and (max-height:780px){
+  .m-debrief.mx-debrief{width:min(1040px,calc(100% - 2 * var(--space-4)));display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:var(--space-3) var(--space-5);align-content:start}
+  .mx-debrief .mx-head,.mx-debrief .mx-db-top,.mx-debrief .mx-foot{grid-column:1/-1}
+  .mx-debrief .mx-chart svg{max-height:none}
+  .mx-debrief .mx-tks{align-self:center}
+  .mx-debrief .mx-title{font-size:var(--text-lg)}
+}

@@ -6,9 +6,9 @@
 import { callSign } from "../story.js";
 
 export const LOADS = [
-  ["shields", "Shields", "🛡️", "Blocks radiation"], ["life_support", "Air", "💨", "Makes air and water"],
-  ["greenhouse", "Greenhouse", "🌱", "Plants make oxygen"], ["science", "Science", "🔬", "Earns points"],
-  ["rover", "Rover", "🚙", "Drives the rover"], ["comms", "Radio", "📡", "Talks to Earth"], ["heaters", "Heaters", "🔥", "Keeps pipes from freezing"],
+  ["shields", "Shields", "", "Blocks radiation"], ["life_support", "Air", "", "Makes air and water"],
+  ["greenhouse", "Greenhouse", "", "Plants make oxygen"], ["science", "Science", "", "Earns points"],
+  ["rover", "Rover", "", "Drives the rover"], ["comms", "Radio", "", "Talks to Earth"], ["heaters", "Heaters", "", "Keeps pipes from freezing"],
 ];
 const TASK = { collect_ice: "Getting ice", explore: "Exploring", repair_array: "Fixing a panel", return: "Driving home" };
 const TARGET = { collect_ice: "Shackleton ice", explore: "Cabeus", repair_array: "Solar array", return: "Outpost" };
@@ -81,14 +81,14 @@ export function createCockpit(root, o = {}) {
           <span class="ck-lv-val">0</span>
           <div class="ck-track" role="slider" tabindex="${full ? 0 : -1}" aria-orientation="vertical" aria-label="${esc(n)}: ${esc(help)}"
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"${full ? "" : ` aria-readonly="true"`}><i class="ck-fill"></i><b class="ck-knob"></b></div>
-          <span class="ck-ico" aria-hidden="true">${ico}</span><span class="ck-lname">${esc(n)}</span>
+          <span class="ck-lname">${esc(n)}</span>
         </div>`).join("")}</div>
     </section>
     ${full ? `
     <section class="ck-comms" aria-label="Comms">
       <header><span class="ck-lbl">Comms</span><span class="ck-earthlamp" id="ckEarthLamp"><i></i><span>Earth in view</span></span></header>
       <p class="ck-window" id="ckWindow"></p>
-      <button type="button" class="ck-call" id="ckCall"><span class="ck-call-ico" aria-hidden="true">📞</span><span>Call Houston</span><i class="ck-waves" aria-hidden="true"></i></button>
+      <button type="button" class="ck-call" id="ckCall"><span>Call Houston</span><i class="ck-waves" aria-hidden="true"></i></button>
       <ol class="ck-log" id="ckLog" aria-label="Radio log"></ol>
     </section>
     <section class="ck-rover" aria-label="Rover and crew">
@@ -96,7 +96,7 @@ export function createCockpit(root, o = {}) {
       <svg class="ck-path" viewBox="0 0 160 34" aria-hidden="true"><path class="p-line" d="M10 22 C 50 4, 100 34, 150 14"/>
         <circle class="p-base" cx="10" cy="22" r="5"/><circle class="p-goal" cx="150" cy="14" r="5"/><circle class="p-rover" id="ckRoverDot" cx="10" cy="22" r="4.5"/></svg>
       <p class="ck-rtgt" id="ckRoverTgt">At the outpost</p>
-      <div class="ck-rbtns"><button type="button" class="ck-btn" data-task="collect_ice">🧊 Get ice</button><button type="button" class="ck-btn" data-task="explore">🧭 Explore</button></div>
+      <div class="ck-rbtns"><button type="button" class="ck-btn" data-task="collect_ice">Get ice</button><button type="button" class="ck-btn" data-task="explore">Explore</button></div>
       <button type="button" class="ck-switch" id="ckShelter" role="switch" aria-checked="false"><i aria-hidden="true"></i><span>Crew shelter</span></button>
     </section>
     <div class="ck-foot"><button type="button" class="ck-end" id="ckEnd"><span>End shift</span><small id="ckEndSub">Shift 1 of 4</small></button>
@@ -180,7 +180,7 @@ export function createCockpit(root, o = {}) {
     lastLoads = { ...s.loads };
     q("#ckSum").textContent = `${sum}% of power in use`;
     if (!full) return;
-    q("#ckScore").textContent = `★ ${s.score || 0}`;
+    q("#ckScore").textContent = String(s.score || 0);
     q("#ckPatches").innerHTML = cb.badges().map(b => `<span class="ck-patch" title="${esc(b.name)}">${b.patch}</span>`).join("");
     // comms
     const up = !!e.earth_visible;

@@ -5,6 +5,8 @@
 //   renderer({step, acc, answer, say, playCrew, esc, captions}) → {html, bind(stepEl)}
 // and inserts `html` in the step body. Every option is a real <button> (keyboard + voice: "option 2", "press crater").
 
+import { icon } from "../assets/icons.js";
+
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 O.stepRenderers = O.stepRenderers || {};
 
@@ -24,8 +26,9 @@ export function syllabify(word) {
 function sourceHtml(acc) {
   const s = acc.source || {};
   if (!s.url) return "";
-  return `<p class="v-src">Heard in: <a class="chip-src" href="${escD(s.url)}" target="_blank" rel="noopener">${escD(s.title)}</a>
-    ${s.clip_id ? `<button type="button" class="pill v-crew" data-crew>▶ Hear the crew say it</button>` : ""}</p>`;
+  // one quiet row: hear the crew say it (when there's a clip) and the source link (its title as the tooltip)
+  return `<p class="v-src">${s.clip_id ? `<button type="button" class="btn-quiet v-crew" data-crew>${icon("play", { size: 16 })}Hear the crew say it</button>` : ""}
+    <a class="chip-src" href="${escD(s.url)}" target="_blank" rel="noopener" title="${escD(s.title)}">Source</a></p>`;
 }
 function optionsHtml(acc, cls = "") {
   return `<div class="a-choices v-opts ${cls}" role="group" aria-label="Answers">${(acc.options || []).map((o, k) =>
@@ -43,8 +46,8 @@ O.stepRenderers.vocab_match = ctx => {
   const { acc } = ctx;
   return {
     html: `<div class="v-word"><span class="v-label">Space word</span><b lang="en">${escD(acc.term)}</b>
-        <button type="button" class="pill" data-hear="${escD(acc.term)}" aria-label="Hear the word ${escD(acc.term)}">🔊 Hear it</button></div>
-      <p class="a-how">Tap the meaning, or say it in your own words</p>${optionsHtml(acc, "is-meanings")}${sourceHtml(acc)}`,
+        <button type="button" class="btn-quiet" data-hear="${escD(acc.term)}" aria-label="Hear the word ${escD(acc.term)}">${icon("speaker", { size: 16 })}Hear it</button></div>
+      <p class="a-how">Tap the meaning, or say it</p>${optionsHtml(acc, "is-meanings")}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
@@ -52,7 +55,7 @@ O.stepRenderers.vocab_match = ctx => {
 O.stepRenderers.vocab_listen = ctx => {
   const { acc } = ctx, showText = ctx.captions !== false;
   return {
-    html: `<div class="v-listen"><button type="button" class="pill hot" data-hear="${escD(acc.explain || "")}">🔊 Hear the meaning</button>
+    html: `<div class="v-listen"><button type="button" class="btn" data-hear="${escD(acc.explain || "")}">${icon("speaker", { size: 16 })}Hear the meaning</button>
         <details class="v-reveal" ${showText ? "open" : ""}><summary>Show the words</summary><p>${escD(acc.explain || "")}</p></details></div>
       <p class="a-how">Which word is it? Tap it, or say it</p>${optionsHtml(acc)}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
@@ -63,8 +66,8 @@ O.stepRenderers.vocab_fill = ctx => {
   const { acc } = ctx;
   const sent = escD(acc.sentence || "").replace("____", `<span class="v-blank" aria-label="blank">______</span>`);
   return {
-    html: `<p class="v-sentence">${sent}</p><button type="button" class="pill" data-hear="${escD((acc.sentence || "").replace("____", "blank"))}">🔊 Read it to me</button>
-      <p class="a-how">Fill the blank: tap a word, or say it</p>${optionsHtml(acc)}${sourceHtml(acc)}`,
+    html: `<p class="v-sentence">${sent}</p><button type="button" class="btn-quiet v-read" data-hear="${escD((acc.sentence || "").replace("____", "blank"))}">${icon("speaker", { size: 16 })}Read it to me</button>
+      <p class="a-how">Tap the missing word, or say it</p>${optionsHtml(acc)}${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
@@ -72,11 +75,11 @@ O.stepRenderers.vocab_fill = ctx => {
 O.stepRenderers.vocab_say = ctx => {
   const { acc } = ctx;
   return {
-    html: `<div class="v-word is-say"><span class="v-label">Say it back</span><b lang="en">${escD(acc.term)}</b>
+    html: `<div class="v-word is-say"><b lang="en">${escD(acc.term)}</b>
         <span class="v-syl" aria-hidden="true">${escD(syllabify(acc.term))}</span>
-        <button type="button" class="pill hot" data-hear="${escD(acc.term)}. ${escD(acc.term)}." aria-label="Hear ${escD(acc.term)} slowly">🔊 Hear it slowly</button></div>
+        <button type="button" class="btn" data-hear="${escD(acc.term)}. ${escD(acc.term)}." aria-label="Hear ${escD(acc.term)} slowly">${icon("speaker", { size: 16 })}Hear it slowly</button></div>
       <p class="v-mean">${escD(acc.explain || "")}</p>
-      <p class="a-how">Hold <kbd>Space</kbd> or the mic and say the word, or type it below</p>${sourceHtml(acc)}`,
+      <p class="a-how">Say the word, or type it</p>${sourceHtml(acc)}`,
     bind: root => bindCommon(root, ctx),
   };
 };
