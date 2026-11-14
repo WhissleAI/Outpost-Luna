@@ -590,6 +590,9 @@ async def main():
     ap.add_argument("--merge", type=int, default=0, help="merge train_s0..n-1 into train and exit")
     ap.add_argument("--real-p", type=float, default=0.9, help="P(use a cached real Arc decode) for a noised turn")
     ap.add_argument("--no-real", action="store_true", help="fitted error model only (rounds 1-3)")
+    ap.add_argument("--hf-p", type=float, default=0.3, help="share of train/val sessions that are hands-free round-6 "
+                    "scripts (screen frames, today's failure classes, imported real turns); 0 = rounds 1-5")
+    ap.add_argument("--cls-n", type=int, default=160, help="turns per round-6 class set (cls_*)")
     a = ap.parse_args()
     if a.merge:
         merge(Path(a.out), a.merge)
@@ -615,7 +618,7 @@ async def main():
             if k % sn != si:
                 continue
             rng = random.Random(seed0 + k)
-            sc = kind_script(rng, split, seed0 + k)
+            sc = kind_script(rng, split, seed0 + k, hf_p=a.hf_p if split in ("train", "val") else 0.0)
             nz = None
             if noise_mode == "half" and rng.random() < 0.5 or noise_mode == "all":
                 nz = (em, rng.random() < 0.5, rng.uniform(0.5, 1.5) if noise_mode == "half" else 1.0)
@@ -663,6 +666,27 @@ async def main():
     await set_sessions("test_q80_asr", P.kidq80(), lambda x: "cadet", noise=(em, True, 1.0))
     golds = [g for g in P.gold_items() if g["split"] == "test"]
     await set_sessions("test_gold", golds, lambda x: x.get("mode", "mission"), per=4)
+
+    # ---- round 6: today's real failure classes, each a held-out set with the client's screen frames; heard through
+    # the real Arc ear where a decode is cached (test voices; the echo lines in the app's own voices), else the fitted
+    # error model / kid-style mishears
+    async def cls_set(name, items, per=8):
+        if only and name not in only:
+            return
+        ss = []
+        for k in range(0, len(items), per):
+            sc = set_script([dict(x) for x in items[k:k + per]], "mission", 970_000 + k)
+            real = (RE, "test", 0.9) if RE is not None else None
+            ss.append(await make(sc, 970_000 + k, (em, False, 0.6), True, True, name, "test", real))
+        save(out, name, ss)
+
+    for ci, cls in enumerate(P.CLASSES):
+        await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 990_000 + 1000 * ci))
+    logged = logged_items("test")
+    if logged:
+        for x in logged:
+            x.pop("conf", None)
+        await cls_set("test_log", logged)
     print(f"done in {time.time() - t0:.0f} s")
 
 
