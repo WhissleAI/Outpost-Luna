@@ -379,8 +379,10 @@ class Session:
             k["open"] = False
             if b["floor"] == "kid":
                 b["floor"] = "none"
+            # a11y nav with a canonical command (the voice bar): the client runs `text`, so send the canonical form
+            run_text = rt["arg"] if rt.get("intent") == "a11y" and rt.get("arg") else text
             await self.emit([decision("nav", P_ANSWER, intent=rt.get("intent") or "answer", arg=rt.get("arg"),
-                                      text=text)])
+                                      text=run_text, heard=text if run_text != text else None)])
             return
         await self._direct_turn(text, source, rt, ctx_r)
 
