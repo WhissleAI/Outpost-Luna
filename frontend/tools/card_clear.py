@@ -101,13 +101,19 @@ def every_step(b, base, vw, vh):
                 print(f"  ok   {label}: no answer controls (the globe is the answer surface)")
             pg.evaluate("t => window.__ux_answer(t)", answer_for(st, vocab=_Vocab()))
             last = k == len(L["steps"]) - 1
+            # the step is passed: a Next button, the patch, or (the check ride moves on by itself) the next step
+            nxt = f"Step {k + 2} of"
             try:
-                pg.wait_for_selector(".a-badge" if last else "#aNext", timeout=30000)
+                pg.wait_for_function("""([last, nxt]) => last ? !!document.querySelector('.a-badge')
+                    : !!document.getElementById('aNext') || ((document.querySelector('#aPanel .a-where') || {}).textContent || '').includes(nxt)""",
+                                     arg=[last, nxt], timeout=30000)
             except Exception:
                 print(f"  note {label}: did not advance by voice (skipping the rest of {L['id']})")
                 break
-            if not last:
-                pg.click("#aNext")
+            if not last:   # a Next button can be replaced under the click (the ride's own advance): press it if it's there
+                pg.evaluate("() => { const b = document.getElementById('aNext'); if (b) b.click(); }")
+                pg.wait_for_function("nxt => ((document.querySelector('#aPanel .a-where') || {}).textContent || '').includes(nxt)",
+                                     arg=nxt, timeout=30000)
         badges.append(L["badge"]["id"])
         pg.close()
     ctx.close()
