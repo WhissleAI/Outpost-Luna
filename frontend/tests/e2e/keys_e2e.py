@@ -400,14 +400,20 @@ def main():
         ok(press_until(["ArrowDown"], "() => document.activeElement.dataset.sec === 'keys'", n=10), "settings: arrows walk the sections to Keyboard & controller")
         press("Enter", 600)
         ok(js("() => document.querySelector('.set-sec h3').textContent") == "Keyboard & controller", "settings: Enter opens the Keyboard & controller section")
-        ok(press_until(["ArrowRight", "ArrowDown"], "() => document.activeElement.matches('input[data-keys=sound]')", n=6), "settings: arrows reach the focus-sound switch")
+        press("ArrowRight", 400)
+        ok(press_until(["ArrowUp"], "() => document.activeElement.matches('input[data-keys=sound]')", n=5) or press_until(["ArrowDown"], "() => document.activeElement.matches('input[data-keys=sound]')", n=6), "settings: arrows reach the focus-sound switch")
         press("Space", 500)
         ok(js("() => JSON.parse(localStorage.getItem('outpost-keys') || '{}').sound") is True, "settings: a Space tap toggles the switch (focus sound on)")
         shot("10-settings-keys")
         press("Space", 300)
-        ok(press_until(["ArrowUp", "ArrowLeft"], "() => document.activeElement.dataset.sec === 'sound'", n=10), "settings: back to the section list")
+        cond = "() => document.activeElement.dataset.sec === 'sound'"
+        got = press_until(["ArrowUp"], cond, n=6) or press_until(["ArrowLeft", "ArrowDown"], cond, n=8)
+        if not got:
+            print("  at:", act())
+        ok(got, "settings: back to the section list")
         press("Enter", 600)
-        ok(press_until(["ArrowRight", "ArrowDown"], "() => document.activeElement.matches('input[type=range][data-p=volume]')", n=6), "settings: arrows reach the Volume slider")
+        press("ArrowRight", 400)
+        ok(press_until(["ArrowUp"], "() => document.activeElement.matches('input[type=range][data-p=volume]')", n=5) or press_until(["ArrowDown"], "() => document.activeElement.matches('input[type=range][data-p=volume]')", n=6), "settings: arrows reach the Volume slider")
         vol0 = js("() => +document.querySelector('input[data-p=volume]').value")
         press("ArrowRight", 500)
         ok(js("() => +document.querySelector('input[data-p=volume]').value") > vol0, "settings: Right raises the slider")
@@ -415,11 +421,21 @@ def main():
         ok(js("() => document.querySelector('.a11y-panel').hidden"), "settings: Esc closes")
 
         # ---------------- Library ----------------
-        ok(press_until(["ArrowUp", "ArrowRight"], "() => document.activeElement.id === 'libraryBtn'", n=6), "top bar: arrows reach Library")
+        cond = "() => document.activeElement.id === 'libraryBtn'"
+        got = press_until(["ArrowLeft"], cond, n=6) or press_until(["ArrowUp", "ArrowRight"], cond, n=6)
+        if not got:
+            print("  at:", act())
+        ok(got, "top bar: arrows reach Library (Esc returned focus to the gear)")
         press("Enter", 2500)
         ok(js("() => document.body.dataset.mode") == "cadet", "Library opens")
         ok(press_until(["ArrowDown"], "() => document.activeElement.id === 'moonFocus'", n=5), "library: Down reaches the Moon")
-        press("ArrowLeft", 1700)
+        moon = "() => document.activeElement.id === 'moonFocus'"
+        for k in ["ArrowUp", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"]:
+            press(k, 1700)
+            if js(moon) and js("() => document.querySelector('#moonFocus .mf-name').textContent"):
+                break
+            if not js(moon):   # that arrow left the Moon (no place near that way): come back
+                press_until(["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"], moon, n=2)
         name = js("() => document.querySelector('#moonFocus .mf-name').textContent")
         ok(bool(name), f"library: an arrow hops to a place and the globe flies there ({name})")
         shot("11-library-moon")
@@ -429,7 +445,12 @@ def main():
         ok(until("() => !document.getElementById('card').hidden", 15000), "library: Enter on the Moon picks the place (its card opens)")
         press("Escape", 700)
         ok(js("() => document.getElementById('card').hidden"), "library: Esc closes the card")
-        ok(press_until(["ArrowUp", "ArrowLeft"], "() => document.activeElement.id === 'tourBtn'", n=8) or press_until(["ArrowRight"], "() => document.activeElement.id === 'tourBtn'", n=6), "library: arrows reach Tour")
+        cond = "() => document.activeElement.id === 'tourBtn'"
+        press_until(["ArrowUp"], "() => !!document.activeElement.closest('.hud')", n=6)
+        got = press_until(["ArrowLeft"], cond, n=6) or press_until(["ArrowRight"], cond, n=6)
+        if not got:
+            print("  at:", act())
+        ok(got, "library: arrows leave the Moon for the toolbar and reach Tour")
         press("Enter", 3500)
         ok(js("() => document.getElementById('tourBtn').getAttribute('aria-pressed')") == "true", "library: Enter starts the tour")
         stop0 = js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''")

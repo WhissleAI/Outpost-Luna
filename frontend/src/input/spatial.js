@@ -230,7 +230,10 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   /** An arrow on the Moon: hop to the nearest place that way (true), or false at the edge (the arrow leaves the Moon). */
   function moonHop(dir) {
     const r = moonEl.getBoundingClientRect(), from = rect(cx(r) - 4, cy(r) - 4, 8, 8);
-    const pts = moonPoints().filter(o => !moon.target || o.p.id !== moon.target.id);
+    // only the neighbourhood (30 % of the stage's short side): past it the arrow leaves the Moon for the controls round
+    // it (the Library toolbar, the lesson card); Shift+arrows turn the Moon to bring far places near
+    const st = doc.getElementById("stage"), reach = 0.3 * Math.min(st ? st.clientWidth : innerWidth, st ? st.clientHeight : innerHeight);
+    const pts = moonPoints().filter(o => (!moon.target || o.p.id !== moon.target.id) && Math.hypot(cx(o.rect) - cx(from), cy(o.rect) - cy(from)) <= reach);
     // a place within ~50° of the arrow; else within ~75°; only with nothing that way does the arrow leave the Moon
     let k = pickBest(from, pts, dir, { cone: 0.8 }); if (k < 0) k = pickBest(from, pts, dir, { cone: 0.27 }); if (k < 0) return false;
     const f = pts[k].p; moon.target = f;
