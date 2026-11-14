@@ -62,8 +62,8 @@ The arrows never land on the two grips: Tab reaches them.
 
 - **Geometry.** The engine works like a TV focus engine:
   - Only controls whose centre lies that way count.
-  - Anything straight ahead wins: it overlaps the current control on the other axis (the "beam").
-  - Among the rest, the score is the main-axis gap + 2 × the off-axis gap + a small pull to the centre line.
+  - It uses the Android TV beam rule. A control straight ahead (overlapping the current one on the other axis) wins when its near edge is closer than the far edge of the nearest off-axis control.
+  - Otherwise the score decides: the main-axis gap + 2 × the off-axis gap + a small pull to the centre line.
 
   The tests cover a 3×3 grid, gaps, rows and the edges.
 - **Scopes.** A layer that is open traps the arrows. From the top:
@@ -76,7 +76,9 @@ The arrows never land on the two grips: Tab reaches them.
   7. the **cabin seat**: the panels, the window views, the alert strip, the comm row and the top bar;
   8. a **lesson card**: the card, the Moon reticle on a Moon step, the site pins of a compare step, and the answer card.
 
-  Otherwise the whole screen is one scope, and focus moves **inside the current region first** before it jumps to the nearest control in any region. The regions are the top bar, the Flight School panel, the map pins, the mission panel, the debrief, the answer card, the Library toolbar, the now-playing chip and the voice bar.
+  The **cabin tour** card (first mission, `mission/tour.js`) is a scope too. Next is its primary; Enter or N advances it; Esc skips it.
+
+  Otherwise the whole screen is one scope, and focus moves **inside the current region first** before it jumps to the nearest control in any region. A control in another region still wins when it is under half the distance. Sheets have regions too: the Settings section list, then the section body. **The top bar is the edge**: it is reached only when nothing on the stage (or in the cabin) lies that way. The regions are the top bar, the Flight School panel, the map pins, the mission panel, the debrief, the answer card, the Library toolbar, the now-playing chip and the voice bar.
 - **Memory and restore.** The last focused control is remembered per screen: mode + Academy view + mission screen + cabin panel + scope. It is restored when the kid comes back. When a re-render drops the focused control, focus goes to its twin, found by its id or an identifying data attribute (`data-l`, `data-c`, `data-site`, `data-sec`…). This happens when a pin is picked, after a wrong answer, or when Settings re-renders. On a new screen with nothing remembered, focus goes to the primary action: Next, the first answer, Start, Take command, Fly again, and so on. Restore runs only while the kid uses keys or a controller; a pointer never has its focus moved.
 - **Long sheets.** When nothing lies that way inside a scrolling sheet (About, Settings, the debrief), <kbd>↑</kbd> <kbd>↓</kbd> scroll it instead, so what was below comes into reach.
 - **Key repeat.** A held arrow moves at most once per 260 / 150 / 80 ms (Slow / Normal / Fast). A fresh press always moves.
@@ -89,7 +91,7 @@ active in the Library and on every lesson step whose answer is a tap on the Moon
 
 | On the reticle | Does |
 |---|---|
-| <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> | Hops to the nearest named place that way on screen, within about 50° of the arrow. The globe flies there, keeping its zoom; the place is ringed and named under the reticle, and is announced. Hardware markers count in the Library when the Hardware layer is on. With no place that way, the arrow **leaves the Moon** to the nearest control. |
+| <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> | Hops to the nearest named place that way on screen, within about 50° of the arrow (else about 75°), and within the neighbourhood (30 % of the stage's short side). The globe flies there, keeping its zoom; the place is ringed and named under the reticle, and is announced. Hardware markers count in the Library when the Hardware layer is on. With no place near that way, the arrow **leaves the Moon** to the nearest control (the Library toolbar, the lesson card). Shift+arrows bring far places near. |
 | <kbd>Shift</kbd>+arrows / right stick | Turns the Moon freely (about 7° a press), for the terminator, or to find the far side. |
 | <kbd>+</kbd> <kbd>−</kbd> | Zoom. |
 | <kbd>Enter</kbd> / Space tap / A | Picks what is under the ring: the hopped place (`globe.tap`, or `tapArtifact` for hardware), else the point at the centre of the view. It is graded exactly like a tap. After three misses CAPCOM shows the answer, so a Moon step is never a dead end. |
@@ -100,6 +102,7 @@ pin, so the card shows that lesson, and the second <kbd>Enter</kbd> starts it.
 
 ### The 3D cabin
 
+- **Entering the cabin.** The seat takes focus: the panel the **Now** objective points at (cabin.js `point()`, `.is-point`), else the lit panel, else Displays. Inside a panel opened to answer the objective, its glowing control is focused first.
 - **Seat view.** Focus sits on a proxy (`#seatFocus`) that stands over the lit panel and draws its ring. The arrows move across the six console faces (Habitat, Rover, Displays and power, Radiation, Comm, and the pedestal with Caution and warning and End shift). The focused face is lit (`missionUI.intent("highlight_panel")`, the head-look highlight), and the chip says "Enter · open". The arrows also reach the window views, the alert strip's Shelter and Shields buttons, the comm row and the top bar. **Enter** or **O** opens the lit panel.
 - **Inside a panel.** The arrows move between the panel's controls. The shield knob turns with <kbd>←</kbd> <kbd>→</kbd>. **N / P** go to the next / previous panel. **Esc** or **Backspace** goes back to the seat, and focus returns to the panel just left. A panel opened by voice, a gesture or a click also pulls focus inside it while keys are in use.
 

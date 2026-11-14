@@ -284,7 +284,6 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const clip = st.clip || (i === 0 ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
     setLayout(L.ride ? "ride" : "lesson");
     panel.dataset.step = acc.type;   // [keys] a Moon step gets the keyboard reticle (input/spatial.js)
-    if (!waitingNext && (acc.type === "tap" || acc.type === "intent" || acc.type === "route")) globe.setDecor(true);   // the place dots help a tap
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.

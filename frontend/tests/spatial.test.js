@@ -21,8 +21,9 @@ test("grid: each arrow goes to the neighbour, and nothing past the edge", () => 
 });
 
 test("the straight neighbour beats a closer diagonal; a gap row is skipped to the next aligned tile", () => {
-  assert.equal(go("d", "right", "dfbh"), "f", "f is in the row; b and h are diagonal");
-  assert.equal(go("b", "down", "bhdf"), "h", "past the empty e, straight down is h");
+  assert.equal(go("d", "right", "dfc"), "f", "f is in the row; c is a far diagonal");
+  assert.equal(go("d", "right", "dfb"), "b", "Android rule: the adjacent diagonal b ends before f begins");
+  assert.equal(go("b", "down", "bhgi"), "h", "past the empty e, straight down is h (not the far diagonals)");
 });
 
 test("beam: overlap on the other axis", () => {
@@ -59,7 +60,7 @@ test("Moon hops: tiny place rects pick the nearest place that way (the reticle a
   assert.equal(hop(pts, "up"), 2);
   assert.equal(hop(pts, "down"), 3, "the place just right of centre is not down");
   assert.equal(hop([at(700, 400)], "left"), -1, "no place that way: the arrow leaves the Moon");
-  assert.equal(hop([at(600, 560)], "right"), -1, "60° off is outside the cone");
+  assert.equal(pickBest(centre, [at(600, 560)], "right", { cone: 0.8 }), -1, "60° off is outside the narrow cone");
 });
 
 // ---------------------------------------------------------------- scopes + memory ---------------------------------
@@ -187,6 +188,7 @@ test("screenName", () => {
   assert.equal(screenName({ mode: "mission", cabin: true, panel: "comm" }), "cabin_panel");
   assert.equal(screenName({ mode: "mission", mission: "debrief" }), "debrief");
   assert.equal(screenName({ mode: "cadet" }), "library");
+  assert.equal(screenName({ mode: "mission", cabin: true, panel: "seat", tour: true }), "tour");
   assert.equal(screenName({ mode: "cadet", settings: true }), "settings");
 });
 

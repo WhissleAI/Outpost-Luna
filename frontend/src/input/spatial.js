@@ -62,13 +62,17 @@ export function pickBest(from, cands, dir, { cone = 0 } = {}) {
     if (cone) { const ax = cx(c.rect) - cx(from), ay = cy(c.rect) - cy(from), along = ax * dx + ay * dy, side = Math.abs(ax * dy - ay * dx); if (along < cone * side) return Infinity; }
     return s;
   });
-  const beam = cone ? [] : cands.map((c, i) => ok[i] < Infinity && inBeam(from, c.rect, dir) ? i : -1).filter(i => i >= 0);
-  let best = -1, bs = Infinity;
-  (beam.length ? beam : ok.map((_, i) => i)).forEach(i => { if (ok[i] < bs) { bs = ok[i]; best = i; } });
-  // ...unless the beam's best is far away (across the screen) and something off-beam is under a third of its distance
-  if (beam.length) ok.forEach((s, i) => { if (s * 3 < bs) { bs = s; best = i; } });
-  return best;
+  const bestOf = idx => idx.reduce((b, i) => (ok[i] < Infinity && (b < 0 || ok[i] < ok[b]) ? i : b), -1);
+  const all = ok.map((_, i) => i);
+  if (cone) return bestOf(all);
+  const beam = bestOf(all.filter(i => inBeam(from, cands[i].rect, dir))), off = bestOf(all.filter(i => !inBeam(from, cands[i].rect, dir)));
+  if (beam < 0 || off < 0) return beam < 0 ? off : beam;
+  // the Android TV rule: the straight-ahead one wins when it is nearer than the far edge of the nearest off-axis one
+  if (major(from, cands[beam].rect, dir) < majorFar(from, cands[off].rect, dir)) return beam;
+  return ok[beam] <= ok[off] ? beam : off;
 }
+const major = (f, t, dir) => Math.max(0, { right: t.left - f.right, left: f.left - t.right, down: t.top - f.bottom, up: f.top - t.bottom }[dir]);
+const majorFar = (f, t, dir) => Math.max(1, { right: t.right - f.right, left: f.left - t.left, down: t.bottom - f.bottom, up: f.top - t.top }[dir]);
 
 /** Same region first (the top bar, the card, the voice bar…); only when nothing is that way there, any region. */
 export function pickInRegion(from, fromRegion, cands, dir) {
@@ -151,7 +155,7 @@ const FOCUSABLE = "button, a[href], input:not([type=hidden]), select, textarea, 
 /** Never a spatial target (Tab still reaches them): the voice bar grip (its arrows move the bar), the skip link, the
  *  hardware ghosts and the picker's leader-line labels (the Moon reticle and the site rows cover them). */
 const SKIP = ".vs-grip, .skip-link, .ghost, .mx-pin, .gx-grip, .sr-only, .key-hint, .key-legend";
-const REGIONS = [".topbar", "#keysHelp", ".a11y-panel", "dialog", ".hl-card", "#card", "#missionCard", ".route", "#aPanel", "#mPanel", "#mDebrief",
+const REGIONS = [".topbar", "#keysHelp", ".set-nav", ".set-sec", ".a11y-panel", "dialog", ".hl-card", "#card", "#missionCard", ".route", "#aPanel", "#mPanel", "#mDebrief",
   ".hud", ".nowplaying", "#askbar", "#mCabin", ".moon-focus", ".gx-ui"];
 /** The cabin's console panels, in reading order (the head-look layout of docs/GESTURES.md). */
 export const SEAT_PANELS = ["habitat", "rover", "displays", "radiation", "comm", "pedestal"];
@@ -170,7 +174,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (!el || !el.isConnected || el.closest("[hidden], [inert]")) return false;
     const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false;
     if (r.right < 0 || r.bottom < 0 || r.left > innerWidth || r.top > innerHeight) return false;
-    const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity < 0.05) return false;
+    const cs = getComputedStyle(el); if (cs.visibility === "hidden" || cs.display === "none") return false;
+    if (+cs.opacity < 0.05 && !(el.tagName === "INPUT" && el.closest("label"))) return false;   // a styled radio / switch: its label shows it
     return true;
   }
   // text fields are not arrow targets: focus there means typing, and only Esc leaves (the / key, Tab or a click get in)
@@ -225,8 +230,12 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   /** An arrow on the Moon: hop to the nearest place that way (true), or false at the edge (the arrow leaves the Moon). */
   function moonHop(dir) {
     const r = moonEl.getBoundingClientRect(), from = rect(cx(r) - 4, cy(r) - 4, 8, 8);
-    const pts = moonPoints().filter(o => !moon.target || o.p.id !== moon.target.id);
-    const k = pickBest(from, pts, dir, { cone: 0.8 }); if (k < 0) return false;
+    // only the neighbourhood (30 % of the stage's short side): past it the arrow leaves the Moon for the controls round
+    // it (the Library toolbar, the lesson card); Shift+arrows turn the Moon to bring far places near
+    const st = doc.getElementById("stage"), reach = 0.3 * Math.min(st ? st.clientWidth : innerWidth, st ? st.clientHeight : innerHeight);
+    const pts = moonPoints().filter(o => (!moon.target || o.p.id !== moon.target.id) && Math.hypot(cx(o.rect) - cx(from), cy(o.rect) - cy(from)) <= reach);
+    // a place within ~50° of the arrow; else within ~75°; only with nothing that way does the arrow leave the Moon
+    let k = pickBest(from, pts, dir, { cone: 0.8 }); if (k < 0) k = pickBest(from, pts, dir, { cone: 0.27 }); if (k < 0) return false;
     const f = pts[k].p; moon.target = f;
     const dist = globe.distance || 3;
     globe.flyTo(f.lat, f.lon, Math.min(dist, f.kind === "artifact" ? 2.6 : dist), Math.abs(f.lat) > 74 ? { clamp: false } : 75);
@@ -263,7 +272,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     Object.assign(seatEl.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
   }
   function focusSeat(id) {
-    seatPanel = id || seatPanel || (mission && mission.highlighted) || "displays";
+    const pointed = doc.querySelector("#mCabin .c3-panel .is-point, #mCabin .c3-panel.is-point");
+    const nowPanel = pointed && pointed.closest(".c3-panel") ? pointed.closest(".c3-panel").dataset.panel : null;
+    seatPanel = id || seatPanel || nowPanel || (mission && mission.highlighted) || "displays";
     if (!panelEl(seatPanel)) seatPanel = (panelEls()[0] || {}).dataset ? panelEls()[0].dataset.panel : null;
     if (!seatPanel) return false;
     seatEl.hidden = false; seatEl.dataset.panel = seatPanel; placeSeat();
@@ -281,6 +292,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const dlg = [...doc.querySelectorAll("dialog[open]")].pop(); if (dlg) return { id: "dialog", roots: [dlg] };
     const modal = shown(".gx-calib, [role=dialog][aria-modal=true]"); if (modal) return { id: "modal", roots: [modal] };
     const gl = shown(".hl-card"); if (gl && gl.contains(doc.activeElement)) return { id: "glossary", roots: [gl] };
+    // the first-mission cabin tour (mission/tour.js): its card holds focus (Next, Skip tour) until it ends
+    const tour = shown(".m-tour"); if (tour) return { id: "tour", roots: [tour] };
     if (in3d()) {
       const p = cabinPanel() || "seat";
       if (p !== "seat") { const open = doc.querySelector("#mCabin .c3-panel.is-open"); if (open) return { id: "panel:" + p, roots: [open, shown(".c3-back")] }; }
@@ -299,11 +312,12 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
 
   // ---- what to focus when nothing is (a new screen, a re-render) ----
-  const PRIMARY = ["#keysHelp [data-close]", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
+  const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
     "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
   function primary(sc = scope()) {
     if (sc.seat) return null;
     const cands = candidates(sc.roots);
+    if (sc.id.startsWith("panel:")) { const pt = cands.find(c => c.matches(".is-point, .is-point *")); if (pt) return pt; }
     if (sc.id === "lesson") {
       const inp = doc.querySelector("#aInput");
       const own = inp && cands.find(c => inp.contains(c) && c.matches("button"));
@@ -333,7 +347,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (m && m.el && within(m.el, sc.roots.filter(Boolean)) && focusable(m.el)) return focusEl(m.el);
     if (m && m.key) { const twin = candidates(sc.roots).find(c => keyOf(c) === m.key); if (twin) return focusEl(twin); }
     if (lastKey) { const twin = candidates(sc.roots).find(c => keyOf(c) === lastKey); if (twin) return focusEl(twin); }
-    return focusEl(primary(sc));
+    const p = primary(sc); auto = { el: p, t: Date.now() };
+    return focusEl(p);
   }
 
   // ---- moving ----
@@ -359,7 +374,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
       const mine = regionOf(a), stage = items.map((it, i) => ({ ...it, i })).filter(it => it.region !== ".topbar" || mine === ".topbar");
       const j = pickInRegion(from, mine, stage, dir);
       k = j >= 0 ? stage[j].i : pickInRegion(from, mine, items, dir);
-    } else k = pickBest(from, items, dir);
+    } else k = pickInRegion(from, regionOf(a), items, dir);   // inside a sheet too: its section list, then its body
     if (k < 0) return scrollOn(a, roots, dir);
     focusEl(items[k].el); onMove();
     return true;
@@ -385,7 +400,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
       // the cabin's own controls (window views, the alert strip, the comm row) and the top bar (sections, Settings)
       ...candidates([cab, doc.querySelector(".topbar")]).filter(c => c !== a && !c.closest(".c3-panel")).map(el => ({ el, rect: el.getBoundingClientRect() })),
     ];
-    const k = pickBest(from, items, dir); if (k < 0) return false;
+    // the top bar is the edge here too: reached only when nothing in the cabin lies that way
+    const inCab = items.map((it, i) => ({ ...it, i })).filter(it => !(it.el && it.el.closest(".topbar")) || (a && a.closest && a.closest(".topbar")));
+    const j = pickBest(from, inCab, dir), k = j >= 0 ? inCab[j].i : pickBest(from, items, dir); if (k < 0) return false;
     if (items[k].panel) focusSeat(items[k].panel); else { seatEl.hidden = true; focusEl(items[k].el); }
     onMove();
     return true;
@@ -403,7 +420,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
 
   // ---- watching: remember focus per screen; refocus when a re-render or a new screen drops it ----
-  let lastKey = "", lastPanel = "seat", lastScope = "";
+  let lastKey = "", lastPanel = "seat", auto = { el: null, t: 0 }, was3d = false;
   doc.addEventListener("focusin", e => {
     const t = e.target; if (!t || t === doc.body) return;
     if (t !== moonEl && t !== seatEl) lastKey = keyOf(t);
@@ -417,14 +434,21 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const sc = scope(), a = doc.activeElement;
     // the cabin camera moved (a panel opened by voice, a click, Esc): follow it
     if (in3d()) {
+      if (!was3d) { was3d = true; lastPanel = cabinPanel() || "seat"; if (lastPanel === "seat") { focusSeat(); return; } }   // the cabin just appeared: the seat
       const p = cabinPanel() || "seat";
       if (p !== lastPanel) { const was = lastPanel; lastPanel = p; if (p === "seat") { focusSeat(was !== "seat" ? (was === "power" ? "displays" : was) : null); return; } restore(); return; }
-    } else lastPanel = "seat";
+    } else { lastPanel = "seat"; was3d = false; }
     const roots = sc.roots.filter(Boolean);
     const ok = a === seatEl ? atSeat() && !seatEl.hidden
       : !!(a && a !== doc.body && a.isConnected && visible(a) && (sc.id === "screen" || within(a, roots) || (isTextField(a) && !sc.id.match(/^(help|settings|dialog|modal)$/))));
-    if (!ok) restore();
-    lastScope = sc.id;
+    if (!ok) { restore(); return; }
+    // a screen that was still loading when focus was restored (the picker's "Loading…"): once its primary action
+    // appears, the auto-picked fallback moves to it (only within 4 s, and only if the kid hasn't moved since)
+    if (auto.el && a === auto.el && Date.now() - auto.t < 4000) {
+      if (sc.seat) { auto = { el: null, t: 0 }; focusSeat(); return; }   // the 3D cabin finished building after the restore
+      const p = primary(sc);
+      if (p && p !== a && PRIMARY.some(sel => p.matches(sel))) { auto = { el: p, t: auto.t }; focusEl(p); }
+    }
   }
   const timer = setInterval(watch, 160);
   addEventListener("resize", () => { placeMoon(); placeSeat(); });
