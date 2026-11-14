@@ -2,6 +2,7 @@
 import "./tokens.css";
 import "./styles.css";
 import "./outpost.css";
+import "./mission.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
@@ -32,8 +33,7 @@ import "./academy/vocab.js";
 const SESSION_ON = (() => { try { return new URLSearchParams(location.search).get("session") !== "0" && localStorage.getItem("atm-session") !== "0"; } catch (e) { return true; } })();
 
 const $ = id => document.getElementById(id);
-const CHIPS = ["Show me the rovers left on the Moon", "Where did Apollo 11 land?", "What did Surveyor 3 do?",
-  "Who drove the Apollo 16 rover?", "What did the astronauts see?", "Play the launch"];
+const CHIPS = ["Where did Apollo 11 land?", "Show me the rovers", "Play the launch"];
 const HW_LABEL = { lander: "Lander", rover: "Rover", impact: "Impact site", instrument: "Instrument", memorial: "Memorial" };
 const TOUR_MS = 3000;   // minimum time at each tour stop
 // Shown on the card with "I don't know that one yet", never spoken (a spoken example is heard back by the open mic).
@@ -197,7 +197,7 @@ async function boot() {
 
   /** "▶ Hear the crew" when the server has a kid-safe moment for this place. */
   function offerCrew(token, f, moment) {
-    const add = m => m && card.addAction(token, { label: "▶ Hear the crew", hot: true, onClick: () => { stopSpeaking(); player.play(m); } });
+    const add = m => m && card.addAction(token, { label: "Hear the crew", hot: true, onClick: () => { stopSpeaking(); player.play(m); } });
     if (moment) add(moment);
     else if (f) api.moments(f.id).then(ms => add(ms[0]));
   }
@@ -222,7 +222,7 @@ async function boot() {
   /** "▶ Hear Charlie Duke": the artifact's own audio segments, played through the crew player. */
   function voiceActions(a) {
     return (a.voices || []).filter(v => v && v.clip_id).map(v => ({
-      label: "▶ Hear " + (v.who || "the crew"), hot: true,
+      label: "Hear " + (v.who || "the crew"), hot: true,
       onClick: () => { cancelTour(); stopSpeaking(); player.play({ clip_id: v.clip_id, t0: v.t0, t1: v.t1, speaker: v.who || "crew", places: [a.id], jargon: [] }); },
     }));
   }
@@ -371,6 +371,7 @@ async function boot() {
     heard: d => {
       if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }
       if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", d.text);
+      showHeard(d.text);
       if (missionUI.running) missionUI.radioKid(d.text);
       cancelNudge(); cancelTour();
     },
@@ -383,6 +384,15 @@ async function boot() {
     },
   };
 
+  /** What was heard, shown briefly in the comm strip (never a transcript; the full log is in Access → Transcript). */
+  let heardT = 0;
+  function showHeard(text) {
+    const w = $("liveWords"); if (!text || voice.kidTalking) return;
+    w.textContent = text; w.classList.add("is-heard"); clearTimeout(heardT);
+    heardT = setTimeout(() => { if (w.classList.contains("is-heard")) { w.classList.remove("is-heard"); w.textContent = ""; } }, 2600);
+  }
+  new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
+    .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function runNav(intent, arg, text) {
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
@@ -448,8 +458,7 @@ async function boot() {
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
   let lastMode = "academy";
-  const PH = { mission: "Or type an order: shields to 40, send the rover for ice, end shift", cadet: "Or type: show me the rovers left on the Moon",
-    academy: "Or type your answer to CAPCOM" };
+  const PH = { mission: "Type an order", cadet: "Ask about the Moon", academy: "Type instead" };
   function setMode(mode) {
     const m = ["cadet", "academy"].includes(mode) ? mode : "mission";
     document.body.dataset.mode = m;
@@ -477,7 +486,7 @@ async function boot() {
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
-  $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");
+  $("libraryBtn").onclick = () => setMode("cadet");
   // A new cadet starts in the Academy; a qualified one in Mission.
   setMode(academyUI.progress.qualified ? "mission" : "academy");
 }
