@@ -28,6 +28,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from . import safety as safety_
 from .gazetteer import norm
 
 # ---- thresholds ------------------------------------------------------------------------------------------------------
@@ -100,6 +101,19 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
+    # The live mission clock (docs/GAMEPLAY.md), cabin only: skip to the next event, pause / run time, time warp.
+    # Before "start" (which takes "resume") and "skip_tour" (which takes a bare "skip").
+    ("skip_event", re.compile(r"^(?:skip|jump|fast forward|go|warp)(?: ahead| forward)?(?: to)?(?: the)? next "
+                              r"(?:event|thing|job|task)$|^(?:skip|jump) (?:ahead|forward)$|^fast forward$|"
+                              r"^next event$|^skip (?:the )?(?:wait|waiting)$")),
+    ("time_pause", re.compile(r"^(?:pause|stop|freeze|hold)(?: the)? (?:clock|time|game|mission)$|^pause(?: it)?$|"
+                              r"^time out$|^wait a (?:sec|second|minute)$")),
+    ("time_resume", re.compile(r"^(?:start|resume|run|unpause|restart)(?: the)? (?:clock|time|game|mission clock)$|"
+                               r"^(?:resume|unpause|play|let time run|go go go)$|^start the clock$")),
+    ("time_warp", re.compile(r"^(?:time ?warp|warp(?: speed)?|speed up (?:the )?(?:time|clock)|(?:double|quad) "
+                             r"(?:time|speed)|(?:normal|slow) (?:time|speed)|time (?:normal|slow)|"
+                             r"(?:time ?warp|warp|time|clock)(?: speed)? (?:one|two|four|1|2|4)(?: x| times)?|"
+                             r"(?:one|two|four|1|2|4)(?: x| times) (?:time|speed|warp))$")),
     # The cabin tour (mission/tour.js): replay it, or skip it.
     ("cabin_tour", re.compile(r"^(?:show me around|give me (?:a|the) tour|(?:start |replay |do )?(?:the )?(?:cabin )?tour|"
                               r"show me the cabin|what s in (?:the|this) cabin|teach me the cabin)$")),
@@ -111,9 +125,10 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("faster", re.compile(r"^(?:speak |talk )?(?:faster|speed up|quicker)(?: please)?$")),
     ("settings", re.compile(r"^(?:access |open |show )?(?:the )?(?:accessibility|settings)(?: settings| panel)?$")),
     ("lesson", re.compile(r"^(?:start |open |go to |play |do |begin )?lesson (?:number )?(\w+)$")),
-    ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:(?:patch|course|lesson|academy) ?)?map$|^(?:show (?:me )?)?"
-                       r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:the )?map$")),
-    ("academy", re.compile(r"^(?:go (?:back )?to |open |back to )?(?:the )?(?:academy|flight school|lessons)$")),
+    ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:patch|course|lesson|academy) ?map$|^(?:show (?:me )?)?"
+                       r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:go |take me |let s go )?(?:back )?(?:to )?(?:the )?map$|"
+                       r"^(?:show (?:me )?|open )(?:the )?map$")),   # [audit2] "back to the map", "go to the map"
+    ("academy", re.compile(r"^(?:go (?:back )?to |take me (?:back )?to |open |back to )?(?:the )?(?:academy|flight school|lessons)$")),
     ("library", re.compile(r"^(?:go to |open )?(?:the )?(?:moon )?(?:library|explorer)$|^explore the moon$")),
     ("go_mission", re.compile(r"^(?:go to |open |start |begin )?(?:the )?(?:mission|missions|outpost|outpost luna)"
                               r"(?: mode)?$|^(?:let s|lets) (?:go to|do) the mission$|^go on (?:a|the) mission$")),
@@ -154,6 +169,31 @@ VBAR_MOVE = re.compile(r"^(?:move|put|drag|send|place) (?:the |my )?(?:voice|mic
                        r"(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?"
                        r"(?: (?:side|corner|edge))?$")
 VBAR_RESET = re.compile(r"^(?:reset|restore) (?:the |my )?(?:voice|mic|microphone|talk) ?bar(?: position)?$")
+
+
+CLOCK_INTENTS = ("skip_event", "time_pause", "time_resume", "time_warp")
+_WARP_WORDS = {"one": 1, "1": 1, "normal": 1, "slow": 1, "two": 2, "2": 2, "double": 2, "four": 4, "4": 4, "quad": 4}
+
+
+def warp_of(q: str) -> int | None:
+    """The speed in a time-warp turn ("time warp four" -> 4, "normal speed" -> 1); None: the next speed up."""
+    for w in q.split():
+        if w in _WARP_WORDS:
+            return _WARP_WORDS[w]
+    return None
+
+
+def task_choice(q: str, options: list[str]) -> str | None:
+    """A spoken pick on the cabin's task card ("left", "the ridge", "shelter now"): the one option it names, or None."""
+    if not options or len(q.split()) > 5:
+        return None
+    stop = {"the", "a", "an", "go", "now", "please", "take", "pick", "choose", "route", "i", "want", "lets", "let", "s",
+            "steer", "to", "and", "or", "up", "it"}
+    qw = set(q.split()) - stop
+    if not qw:
+        return None
+    hits = [o for o in options if qw & (set(norm(o).split()) - stop)]
+    return hits[0] if len(hits) == 1 else None
 
 
 def voicebar_intent(q: str) -> str | None:
@@ -208,6 +248,7 @@ class Ctx:
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
+    unsafe: bool = False               # [P0] Arc Tagger's safety tags flagged the turn (profanity, toxicity, child.*): safety.py
     dd_min: float = DD_MIN             # the Settings filter (FILTERS): below this, talking to someone else
     dd_strong: float = DD_STRONG       # barge-in while we speak / a yes-no question / a notice needs this much
 
@@ -342,6 +383,10 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         pn = panel_intent(q)
         if pn:
             return pn
+        if ctx.offer == "task":   # a choice on the task card (route, steer, shelter or wait, normal or high)
+            tc = task_choice(q, ctx.step_options)
+            if tc:
+                return "task_choice", tc
     for intent, pat in NAV:
         m = pat.match(q)
         if not m:
@@ -361,6 +406,10 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue
+        if intent in CLOCK_INTENTS:
+            if ctx.screen != "cabin" or ctx.offer == "tour":
+                continue
+            return intent, (warp_of(q) if intent == "time_warp" else None)
         if intent == "skip_tour" and q in ("skip", "skip it", "i know it", "i know this", "i ve got it", "i have got it") and \
                 ctx.offer != "tour":
             continue                 # a bare "skip" is a tour word only while the tour runs
@@ -458,6 +507,10 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     # 1. Silence first: nothing, filler, our own voice.
     if not ws:
         return out("ignore", "empty")
+    # [P0] a rude or unsafe turn is never an answer, a question or an order (Arc's safety tags, then the word list):
+    # silent, no notice, and the client never shows it
+    if ctx.unsafe or safety_.has_profanity(raw):
+        return out("ignore", "safety")
     if heard and is_filler(raw) and not _option_key(raw, ctx):
         return out("ignore", "filler")
     if heard and not explicit and echo(raw, ctx):
@@ -494,6 +547,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
             return out("answer", "callsign")
         if clear_question(raw, dd, act, ctx.dd_strong):
             return out("question", "question")
+        if not heard:   # [audit2] typed on the call-sign screen: the kid typed a name; the screen says what to do with it
+            return out("answer", "callsign_typed")
         return out("ignore", "callsign_other", notice=bool(dd is not None and dd >= ctx.dd_strong))
     if s in ("lesson", "ride") and ctx.step_type:
         # A real question mid-lesson still works ("what is an mSv?"), but only on steps whose answer is not itself a
@@ -526,7 +581,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("question", "question")
     if heard and len(ws) >= 3 and (dd is not None and dd >= ctx.dd_strong):
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
-    return out("ignore", "unclear", notice=bool(dd is not None and dd >= ctx.dd_strong))
+    # [audit2] a typed turn was meant for us: never silent (the bar shows "Didn't catch that")
+    return out("ignore", "unclear", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
 
 
 YESNO_STEPS = ("predict", "earth_view")

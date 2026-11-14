@@ -101,11 +101,11 @@ export const TOUR = {
     { show: "panel:comm", text: "Comm: call Houston when Earth is in view." },
     { show: "lamps", text: "Warning lights. Red means act now. Amber means get ready." },
     { show: "goals", text: "Your goal: ten safe days. Send science home. Bring back ice." },
-    { show: "start", text: "First job: set power, then press End shift." },
+    { show: "start", text: "First job: raise the shields. Then press Play to start time." },
   ],
   commander: [
     { show: "window", text: "Window up top. Three screens below. Five panels around you." },
-    { show: "start", text: "Ten safe days, science home, ice back. First: set power, End shift." },
+    { show: "start", text: "Ten safe days, science home, ice back. Set power, then Play." },
   ],
 };
 
@@ -113,19 +113,35 @@ export const TOUR = {
 /** Each line: on screen after "Now:" (12 words or fewer) and spoken for "what do I do?". */
 export const NOW = {
   label: "Now",
-  firstShift: "Set power, then End shift.",
+  firstShift: "Set power: raise the shields.",
+  startClock: "Power set. Now press Play to start the clock.",
   stormHit: "Storm hitting. Get the crew into the shelter.",
   weakStorm: "Storm at Earth, few particles here. Keep working.",
-  sheltered: "Crew sheltered. End shift to ride out the storm.",
+  sheltered: "Crew sheltered. Skip ahead to ride out the storm.",
   warning: h => (h != null ? `Storm forecast: about ${h} hours to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
   lowPower: "Battery low. Turn on night mode, or cut a load.",
   lowAir: "Air is low. Send the rover for ice.",
   roverDark: "Rover out. Bring it home before dark.",
-  roverOut: h => `Rover out, back in ${h} hours. End shift to wait.`,
+  roverOut: h => `Rover out, back in ${h} hours. Skip ahead to wait.`,
   sunset: h => `Sunset in ${h} hours. Turn on night mode before dark.`,
   dark: "Dark outside. Night mode saves power.",
   ice: "No storm due. Send the rover for ice.",
-  steady: "All steady. End shift to move on.",
+  steady: "All steady. Time warp?",
+  confirmTitle: "CAPCOM asks",
+  confirm: "CAPCOM needs a yes or no.",
+  paused: "Clock paused. Press Play when you're ready.",
+  driving: h => `Rover driving. Back in ${h} hours.`,
+  repairing: "Rover fixing the array. Skip ahead to wait.",
+  waiting: "Not yet. Skip ahead, or watch the clock.",
+  taskDone: t => `${t}: done.`,
+  /** the ~20 s nudge (spoken; 20 words or fewer with the task's step) */
+  nudge: (task, step) => `${task}. Next: ${step}`,
+  /** the card's clock buttons (QA-69: a verb first) */
+  playBtn: "Start the clock",
+  skipBtn: "Skip ahead",
+  warpBtn: "Time warp 4x",
+  /** "Lesson 5 helps here" (the lesson's patch title is the tooltip) */
+  lessonHelps: n => `Lesson ${n} helps here`,
   /** said before the line when the kid asks "what do I do?" */
   ask: "Here's your next job.",
 };
@@ -162,6 +178,13 @@ export const CALLSIGN_COPY = {
   edit: "Change call sign",
   /** Spoken once when the picker opens. */
   say: "Every crew member has a radio name. Pick yours.",
+  /** [audit2] Start with an empty field (on screen, under the field). */
+  empty: "Type a call sign, or tap one.",
+  /** [audit2] a name typed in the voice bar went into the field. */
+  typed: "Got it. Tap Start to use it.",
+  pick: "Pick one from the list, like Nova or Comet.",
+  /** [audit2] after changing the call sign from the map (was "Welcome to Flight School." again). */
+  saved: cs => `Copy that, ${cs}. Call sign saved.`,
 };
 
 // ---------- Academy (Flight School): a course catalog in tracks ----------
@@ -213,6 +236,12 @@ export const SCHOOL = {
   minutes: m => `${m} min`,
   track: (k, title) => `Track ${k} · ${title}`,
   earned: name => `${name} patch`,
+  /** [audit2] "next" said before the step is answered (spoken before the step's hint). */
+  answerFirst: "Answer this one first.",
+  /** [audit2] the map's beat after the first patch (was blank: a returning cadet saw no "where am I"). */
+  progressLine: (n, of, next) => `${n} of ${of} lessons done. Next: ${next}.`,
+  /** [audit2] "What do I do?" on the map names the button the card really shows. */
+  mapHelp: (cta, title, ride) => (ride ? `Tap ${cta}. One solo shift, then you take command.` : `Tap ${cta} to begin ${title}.`),
 };
 
 /** One short story beat per lesson (shown above CAPCOM's brief, and spoken before it). Keyed by course.json lesson id.
@@ -234,16 +263,32 @@ export const CAPCOM = {
   lessonHello: (cs, beat) => `${beat} Here we go, ${cs}.`,
   patch: (cs, name) => `Patch earned: ${name}. Nice work, ${cs}.`,
   qualified: (cs, name) => `${name} patch earned. You're qualified, Commander ${cs}.`,
-  missionBrief: cs => `Pick a site, Commander ${cs}. Keep the crew safe for ten days.`,
+  missionBrief: (cs, rank = "Commander") => `Pick a site, ${rank} ${cs}. Keep the crew safe for ten days.`,
   missionStart: (cs, site) => `Outpost Luna is online at ${site}. Day one, ${cs}.`,
   /** First mission only: said once after missionStart, then again only after a silence (no order yet). */
-  firstShift: "Set your power, then end the shift.",
+  firstShift: "Raise the shields, then start the clock.",
   houstonCalling: "Calling Houston…",
 };
 
 /** Check-ride result card (on screen, not spoken). The backend sends the same line as `fact`. */
 export const RIDE = {
   mars: "On Mars, Houston would answer 6 to 44 minutes later.",
+};
+
+/** The Mission tab before the check ride (state-driven: Flight School's `qualified`). A cadet isn't a commander yet: the
+ *  tab explains the path and offers one practice shift at Shackleton Rim (real sim, Cadet band, doesn't count). */
+export const GATE = {
+  eyebrow: "Command · Cadet",
+  title: "Pass your check ride to take command.",
+  sub: "Try one practice shift first. It doesn't count.",
+  practice: "Try a practice shift",
+  ride: "Fly the check ride",
+  say: cs => `${cs}, pass your check ride to take command. Want to try a practice shift?`,
+  tag: "Practice",
+  doneTitle: "Practice shift done",
+  doneSub: "Nice work. Pass your check ride to take command.",
+  doneSay: cs => `Practice shift done, ${cs}. Pass your check ride to take command.`,
+  again: "Practice again",
 };
 
 /** Spoken offers: said once, as a question. "yes" / "next" takes them (the router's accept_offer). */

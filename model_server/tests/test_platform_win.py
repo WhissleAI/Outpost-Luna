@@ -1,0 +1,53 @@
+"""Windows branches of the model server, exercised on any OS with sys.platform mocked (docs/BUILD_WINDOWS.md)."""
+import importlib
+import sys
+from pathlib import Path
+
+import app.arctag as arctag
+import app.config as config
+
+
+def test_windows_loads_arctag_dll_with_its_folder_on_the_dll_path(monkeypatch, tmp_path):
+    lib = tmp_path / "Outpost Luna" / "resources" / "native" / "arctag.dll"
+    calls = {}
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(arctag.os, "add_dll_directory", lambda d: calls.setdefault("dll_dir", d), raising=False)
+    monkeypatch.setattr(arctag.ctypes, "CDLL", lambda p, **kw: calls.setdefault("cdll", (p, kw)))
+    arctag.load_library(lib)
+    assert calls["dll_dir"] == str(lib.resolve().parent)
+    assert calls["cdll"] == (str(lib), {"winmode": 0})
+
+
+def test_posix_loads_without_dll_directory(monkeypatch, tmp_path):
+    calls = {}
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(arctag.ctypes, "CDLL", lambda p, **kw: calls.setdefault("cdll", (p, kw)))
+    arctag.load_library(tmp_path / "libarctag.dylib")
+    assert calls["cdll"] == (str(tmp_path / "libarctag.dylib"), {})
+
+
+def test_library_name_per_os(monkeypatch):
+    try:
+        for plat, name in (("win32", "arctag.dll"), ("darwin", "libarctag.dylib"), ("linux", "libarctag.so")):
+            monkeypatch.setattr(sys, "platform", plat)
+            assert importlib.reload(config).ARCTAG_LIB_NAME == name
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
+
+
+def test_desktop_env_paths_win_over_dev_defaults(monkeypatch, tmp_path):
+    """The desktop app sets every weight path by env var (main.js envFor); nothing falls back to a home-folder default."""
+    models = tmp_path / "Outpost Luna" / "resources" / "models"
+    (models / "steer-tts-edge").mkdir(parents=True)
+    (models / "steer-tts-edge" / "config.json").write_text("{}")
+    (models / "steer-tts-edge" / "director.bin").write_bytes(b"\0")
+    monkeypatch.setenv("ARCTAG_LIB", str(tmp_path / "native" / "arctag.dll"))
+    monkeypatch.setenv("ARCTAG_MODEL_DIR", str(models / "arctag"))
+    monkeypatch.setenv("STEER_TTS_MODEL", str(models / "steer-tts-edge"))
+    monkeypatch.setenv("STEER_DIRECTOR", str(models / "steer-tts-edge" / "director.bin"))
+    s = config.Settings(_env_file=None)
+    assert s.arctag_lib == Path(tmp_path / "native" / "arctag.dll")
+    assert s.arctag_model_dir == models / "arctag"
+    assert s.steer_model_dir() == models / "steer-tts-edge"
+    assert s.steer_director_path() == models / "steer-tts-edge" / "director.bin"

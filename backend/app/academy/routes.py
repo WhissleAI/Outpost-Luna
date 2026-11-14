@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .. import steering
+from .. import safety as safety_, steering
 from . import content, guide, ride as rides
 from .grade import REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
 
@@ -85,6 +85,8 @@ async def academy_attempt(req: AttemptReq):
     if les.get("ride"):
         return _ride_attempt(les, req)
     st = steps[req.step]
+    if req.input.text and safety_.has_profanity(req.input.text):
+        return _ignored(les["id"], req.step)          # [P0] a rude turn is never graded (safety.py)
     ok, extra = grade(st, req.input.model_dump(exclude_none=True))
     if not ok and req.input.text:  # keyword rules first; a paraphrase of the expected line also passes
         ok = await similar(st, req.input.text)
@@ -138,6 +140,8 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     steps, m = les["steps"], r["m"]
     st = steps[r["step"]]
     inp = req.input.model_dump(exclude_none=True)
+    if req.input.text and safety_.has_profanity(req.input.text):
+        return _ignored(les["id"], r["step"], state=rides.hud(r))   # [P0] a rude turn is never graded
     ok, extra = grade(st, inp, loads=m.loads)
     if not ok and text_only(inp) and not plausible(st, req.input.text):
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # not a try: the miss counter doesn't move

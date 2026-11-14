@@ -21,6 +21,10 @@ export async function createMissionClient() {
     get: id => j("/api/mission/" + enc(id)),
     command: (id, command) => post(`/api/mission/${enc(id)}/command`, { command }),
     advance: (id, shifts = 1) => post(`/api/mission/${enc(id)}/advance`, { shifts }),
+    /** The live clock: mission hours that passed (docs/GAMEPLAY.md). -> {state, events, live} */
+    step: (id, dtH) => post(`/api/mission/${enc(id)}/step`, { dt_h: Math.max(0, Math.min(24, +dtH || 0)) }),
+    /** Skip to next event. -> {state, events, say} */
+    skip: id => post(`/api/mission/${enc(id)}/skip`, {}),
     debrief: id => j(`/api/mission/${enc(id)}/debrief`),
     /** Earth-up and Sun-up spans over the whole mission ([start_h, end_h]), by the sim's own rule. */
     windows: id => j(`/api/mission/${enc(id)}/windows`),

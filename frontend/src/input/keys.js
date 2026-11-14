@@ -51,6 +51,11 @@ export function keyAction(ev, c = {}) {
     case "y": return { intent: "yes", args: {} };
     case "n": return c.confirm ? { intent: "no", args: {} } : { intent: "next", args: {} };
     case "p": return { intent: "prev", args: {} };
+    // the live mission clock and the Now card (docs/GAMEPLAY.md); no other screen uses these letters
+    case "t": return { intent: "task_step", args: {} };
+    case "k": return { intent: "time_toggle", args: {} };
+    case "w": return { intent: "time_warp", args: {} };
+    case "e": return { intent: "skip_event", args: {} };
     default: return null;
   }
 }
@@ -81,15 +86,17 @@ const SCREEN_ROWS = {
   ride: [["1–5", "Pick an order"], ["N", "Next step"]],
   picker: [["↑ ↓", "Pick a site"], ["N or P", "Next or previous site"], ["Y", "Take command"]],
   tour: [["Enter or N", "Next"], ["Esc", "Skip tour"], ["← →", "Next or Skip tour button"]],
-  cabin_seat: [["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
-  cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"]],
+  cabin_seat: [["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["W", "Time warp 1x, 2x, 4x"], ["E", "Skip to next event"],
+    ["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
+  cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"], ["T", "Do the Now job"], ["K", "Pause or run the clock"], ["E", "Skip to next event"]],
   debrief: [["Y", "Fly again"], ["Enter", "Select"]],
   library: [["← → ↑ ↓", "On the Moon: hop to a place"], ["Shift with ← → ↑ ↓", "Turn the Moon"], ["N or P", "Next or previous tour stop"]],
   settings: [["↑ ↓", "Move"], ["← →", "Change a slider or choice"], ["Esc", "Close"]],
   app: [],
 };
 const PAD_ROWS = [["D-pad or Left-stick", "Move"], ["A or Cross", "Select"], ["B or Circle", "Back"], ["X or Square", "Mic"], ["Y or Triangle", "These keys"],
-  ["LB or RB", "Previous or next"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings"]];
+  ["LB or RB", "Previous or next"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings"],
+  ["View or Share", "Cabin: pause or run the clock"], ["RT or R2", "Cabin: skip to next event"], ["LT or L2", "Cabin: time warp"]];
 /** The help sheet's rows: [{title, rows}] for this screen, everywhere, and (when one is connected) the controller. */
 export function helpRows(screen, { pad = false } = {}) {
   const out = [];
@@ -155,7 +162,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   const lettered = () => [...doc.querySelectorAll("#aPanel .a-choice:not([disabled]) .a-key")].some(k => vis(k) && /^[A-D]$/.test(k.textContent.trim()));
   const wipeBtn = k => { const b = doc.querySelector(`.mx-wipe [data-w="${k}"]`); return vis(b) ? b : null; };   // QA-26: "start over?" on a paused debrief
   const confirmWaiting = () => !!(mission && mission.pending) || !!wipeBtn("no") || [...doc.querySelectorAll('[data-intent="no"], #card .card-actions button, .cb-offer-b')].some(b => vis(b) && /^no$/i.test(b.textContent.trim()));
-  const PICK_LISTS = ["#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", ".a-csb", ".mx-site", ".cb-offer-b", "#card .card-actions button"];
+  const PICK_LISTS = ["#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", ".a-csb", ".mx-site", ".cb-offer-b", ".cb-now-btns .cb-now-b", "#card .card-actions button"];
   function pickList() { for (const s of PICK_LISTS) { const l = [...doc.querySelectorAll(s)].filter(b => vis(b) && !b.disabled); if (l.length) return l; } return []; }
 
   // ---- the help sheet ----

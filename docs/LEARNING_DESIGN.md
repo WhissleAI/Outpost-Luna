@@ -359,6 +359,8 @@ Each patch unlocks one real tool in the cockpit (owned by the mission UX agent):
 - Offers a choice, never makes it: "Houston sees a flare. Shelter now, or wait?" Yes/no and both names work.
 - Callbacks fire once per mission per lesson; Cadet hears all of them, Commander only on alarms.
 - Never auto-ends a shift; "end shift" is always the kid's. Silence > 30 s on the first shift → one nudge (`CAPCOM.firstShift`).
+  *Live clock (docs/GAMEPLAY.md):* time now runs on its own, and the kid pauses, warps or skips it. Shifts still close
+  only at their boundary (or "end shift early"). The nudge is now per Now-card job: ~20 s of silence, at most twice.
 
 ### 6.10 The cabin: five panels
 The mission UX agent is building a 3D cabin with panels the kid can open. Every mechanic above lives on exactly one
@@ -579,3 +581,20 @@ Sim (`docs/MISSION_CONTRACT.md`, additive): `new_mission(..., difficulty="comman
 | Mission UX (`feat/ux-mission`) | Play the §4 mission clips on `comm_open`, `comm_closed`, mission start and survived. Power panel: night mode switch and `env.next_sun_change_h` strip. Radiation panel: `env.warning` chip (confidence, ETA, by). Habitat panel: `objectives`. Label every `pretend_tech` item "pretend tech". `shelter_ready_in_h` on the shelter control. Site picker: `window_sun_days`/`window_earth_days` ("of 10 days"), plus `status_label`. |
 | Copy agent (`feat/copy-v3`) | Polish the new prompt, reveal and success lines in `tools/build_course.py` (they meet the `docs/COPY.md` budgets: `test_copy.py` passes). Check the new sim lines: `storm_warning`, near miss, `shelter_limit`, night mode. |
 | Art agent | The `words` patch (Word Explorer, glyph V) is retired; `course.json` lists it in `retired_badges` for back-compat. 7 patches remain. |
+
+### 6.11 Under the live clock (feat/mission-gameplay)
+Mission time now runs (docs/GAMEPLAY.md). The sim ticks hourly in every mode, so a shift stepped in real-time frames is
+bit-identical to the old turn. `tools/strategy_sim.py --clock live|event` lets each policy act at any hour, or at
+each "skip to next event" stop. `tests/test_strategy.py` re-asserts every §6.4b guarantee under the shift, live and
+event clocks. At 10 seeds × 5 sites:
+
+| Clock | planner survived / score | best fixed rule score | always_shelter goals |
+|---|---|---|---|
+| live, Commander | 1.00 / 660 | 359 | 0.00 |
+| live, Cadet | 1.00 / 680 | 380 | 0.00 |
+| event, Commander | 1.00 / 627 | 370 | 0.00 |
+| event, Cadet | 1.00 / 589 | 380 | 0.00 |
+
+Tasks (storm prep, night power-down, ice run...) are guided checklists over the same orders. Their only extra rewards
+are small and need the kid's own press (+2 science for a sample or a correctly logged sensor reading). So no fixed
+policy gains from them, and the no-dominant-strategy result stands.

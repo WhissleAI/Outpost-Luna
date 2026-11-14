@@ -121,7 +121,8 @@ export function createSession({ handlers, reportsPlayback = false, onClose = () 
     get connected() { return connected; },
     get busy() { return !!current || queue.length > 0 || active.size > 0; },
     hello(o = {}) { lastHello = { t: "hello", session: id, ...o }; return send(lastHello); },
-    typed(text, source) { return send({ t: "typed", text, ...(source ? { source } : {}) }); },
+    /** extra: the ear's Arc read for the client's copy of a spoken turn ({dd, safety}); the relay's own read wins. */
+    typed(text, source, extra) { return send({ t: "typed", text, ...(source ? { source } : {}), ...(extra || {}) }); },
     ui(event, extra = {}) { return send({ t: "ui", event, ...extra }); },
     playback(e) { return send({ t: "playback", ...e }); },
     /** A card/confirm action's `send` payload ({t:"typed",text} or {t:"ui",…}). */

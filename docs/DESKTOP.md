@@ -1,8 +1,8 @@
 # Outpost Luna desktop app
 
 One installable app that runs with **no internet**: the Electron shell, an embedded CPython, the backend, the model
-server and every model weight ship inside the installer. macOS arm64 is built and tested. Windows x64 is written but
-**untested** (see below).
+server and every model weight ship inside the installer. macOS arm64 is built and tested. Windows x64 is built and
+checked file by file, but **not yet run on a Windows PC** (see below).
 
 ```
 Outpost Luna.app / Outpost Luna.exe
@@ -20,7 +20,8 @@ Builds run locally (no CI). One command per OS, from a fresh clone, with no acco
 | | command | output |
 |---|---|---|
 | macOS arm64 | `bash desktop/scripts/build-mac.sh` (or `make desktop-mac`) | `desktop/dist/Outpost Luna-<version>-arm64.dmg` |
-| Windows x64 (untested) | `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` | `desktop\dist\Outpost Luna Setup <version>.exe`; step-by-step in [BUILD_WINDOWS.md](BUILD_WINDOWS.md) |
+| Windows x64 (not yet run on Windows) | `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` | `desktop\dist\Outpost Luna Setup <version>.exe`; step-by-step in [BUILD_WINDOWS.md](BUILD_WINDOWS.md) |
+| Windows x64, cross-built on a Mac | `bash desktop/scripts/cross-build-windows.sh` | the same installer, checked structurally only ([BUILD_WINDOWS.md §8](BUILD_WINDOWS.md)) |
 
 Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov)
 -> frontend deps -> embedded Python + app code (`build_python.py`) -> models (`gather_models.py`) -> Arc Tagger native
@@ -169,17 +170,32 @@ right-clicks > Open (or `xattr -dr com.apple.quarantine "/Applications/Outpost L
 4. Notarization: an App Store Connect API key (`APPLE_API_KEY` .p8, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`) or
    `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID`; set `mac.notarize: true`. Stapling is automatic.
 
-## Windows (written, untested)
+## Windows (built and checked structurally; not yet run on Windows)
 
-Everything below is **untested**: no Windows machine was available.
+No Windows machine has run the app yet. The Windows branches are unit-tested with the platform mocked
+(`desktop/main/*.test.js`, `desktop/tests/`, `model_server/tests/test_platform_win.py`), `build-windows.ps1` is
+parsed and dry-run in PowerShell 7, and a cross-built installer has been unpacked and compared with the Mac app
+([BUILD_WINDOWS.md §8](BUILD_WINDOWS.md)).
 
-- `build_python.py`: `python.exe` at the install root, `Lib/` trimming, `npm run build` via `shell=True`.
+- `build_python.py`: `python.exe` at the install root, `Lib/` + `DLLs/` + `libs/` trimming, `npm run build` via
+  `shell=True` (on a Windows host). It puts the **Visual C++ runtime** (`msvcp140*.dll`, `vcruntime140*.dll`, pinned
+  `msvc-runtime` wheel) next to `python.exe`: torch, onnxruntime and rapidfuzz import `MSVCP140.dll`, which
+  python-build-standalone does not ship and a clean Windows lacks. Then every `.dll` / `.pyd` import is checked to
+  resolve in the bundle or in Windows (`desktop/scripts/win_bundle_check.py dlls`); the build fails otherwise.
+  `--target win-x64` lays out the same tree from a Mac (the cross-build).
 - `arctag.py`: loads `arctag.dll` with `os.add_dll_directory` + `winmode=0`. `desktop/vendor/arctag/CMakeLists.txt` builds it with
   `ARCTAG_BUILD_SHARED` (dllexport). With MSVC, `native.c` takes its scalar kernels (MSVC has no `__x86_64__`):
-  correct but slower than AVX2; `-T ClangCL` would get the AVX2 path. Model paths go to the C library as UTF-8, so an
-  install path with non-ASCII characters may fail to open the model.
-- Supervisor: `taskkill /T /F`, `tasklist` for stale-pid checks, `windowsHide`; the parent watchdog uses
-  `OpenProcess` + `WaitForSingleObject`.
+  correct but slower than AVX2; mingw-w64 (the cross-build) and clang get the AVX2 path, checked against the CPU at load.
+  The library opens model files through `u8_fopen` (`src/u8file.h`: UTF-8 → `_wfopen`), so an install under a user
+  folder with non-ASCII characters works.
+- Supervisor: `taskkill /T /F`; stale-pid checks read the command line through CIM (`Get-CimInstance Win32_Process`) so
+  a reused pid that is someone else's `python.exe` is left alone (tasklist's image name only as a fallback);
+  `windowsHide`, not detached (no console window); the parent watchdog uses `OpenProcess` + `WaitForSingleObject`.
+- Keys (`keys.js`): no menu bar in a packaged build; Ctrl+= / Ctrl+- / Ctrl+0 and F11 give the zoom and full screen
+  the macOS View menu has.
+- Camera / microphone: Windows has no per-app prompt; the system privacy switches decide. `permissions.js` logs what
+  Windows reports (`windows privacy camera: denied`), and the page says "blocked" (`gesture/guide.js cameraErrorText`).
+- Servers bind 127.0.0.1 only, so Windows Defender Firewall never prompts.
 - PyPI's Windows torch wheels are CPU-only already. `soundfile` ships its own libsndfile DLL.
 - `fetch_media.py` is plain Python (urllib) plus Pillow for the Moon map: no bash, curl or sips.
 - Clone to a short path (`C:\src\atm`) or enable long paths: torch's deepest files pass 260 characters otherwise.

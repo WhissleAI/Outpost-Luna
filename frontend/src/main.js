@@ -17,6 +17,7 @@ import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP } from "./story.js";
 import { chime } from "./sound.js";
+import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
 // ---- end audio floor ----
@@ -86,7 +87,14 @@ async function boot() {
 
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
-  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
+  // [audit2] a tap on empty space, where a tap on the Moon is the answer (a Moon step, the Library, Find it): one quiet
+  // chip on the voice bar instead of nothing
+  const TAP_STEPS = ["tap", "intent", "route", "terminator", "compare", "globe_side"];
+  const onMiss = () => {
+    const m = document.body.dataset.mode, f = m === "academy" ? academyUI.screen() : null;
+    if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice("Tap on the Moon");
+  };
+  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss });
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
@@ -107,10 +115,12 @@ async function boot() {
     globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
-    academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id) },   // Flight School patches carry over
+    academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id), qualified: () => !!academyUI.progress.qualified,
+      goRide: () => setMode("academy") },   // Flight School patches carry over; the check ride gates command (Cadet before)
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),
+      live: () => useSession(),   // the session Director speaks story beats; without it the cabin does
     },
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
@@ -130,7 +140,9 @@ async function boot() {
     : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true,
       repeat: true /* "say that again", a word's "hear it" button: asked for on purpose */, source: "a11y" });
   const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => {   // [qa] Help → "Pick a place": a globe tap (Flight School tap steps included); in Mission, shown in the Library
-    if (document.body.dataset.mode === "mission") { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
+    // [audit2] Flight School outside a tap step (the map, a choice step) swallowed the pick: show it in the Library too
+    const af = document.body.dataset.mode === "academy" ? academyUI.screen() : null, tapStep = af && af.screen === "lesson" && ["tap", "intent"].includes(af.step_type);
+    if (document.body.dataset.mode === "mission" || (af && !tapStep)) { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
     return p.kind === "artifact" ? onArtifact(p) : onTap(p); }, places, playCrew: m => player.play(m) });
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
@@ -177,14 +189,24 @@ async function boot() {
     if (useSession()) {
       if (!heard && a11y && await a11y.handleText(text)) { $("q").value = ""; return; }   // typed a11y commands stay local
       $("q").value = ""; pushScreen(true);
-      session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed"); voice.clearWords(); voice.show("idle"); return;
+      // [P0] a spoken turn waits for the router's `heard` decision (voice.decided): no words, no "Thinking" before it
+      session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed", heard ? { dd: opts.dd ?? null, safety: opts.safety || null } : null);
+      if (!heard) { voice.clearWords(); voice.show("idle"); }
+      return "session";
     }
+    // [P0] no session (the router is server-side): the client's own gate for open-mic turns. Arc says it was for
+    // someone else, or it is rude: dropped, silently, and never graded or shown.
+    if (heard && !opts.ptt && ((opts.dd != null && opts.dd < 0.5) || hasProfanity(text))) return;
     const my = ++turn.seq; cancelNudge(); cancelTour();
-    $("q").value = ""; voice.show("thinking");
-    if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text);   // [a11y] transcript
-    if (a11y && await a11y.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // [a11y] "where am I?", "faster", "press next"
-    if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
-    if (academyUI.active && await academyUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // Academy
+    $("q").value = "";
+    // [P0] a spoken turn shows "Thinking" only if it is still undecided after a moment (voice.js), and reaches the
+    // transcript only once something used it (logKid below); a typed one was meant for us
+    const logKid = () => { if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text); };
+    if (!heard) { voice.show("thinking"); logKid(); }
+    const used = () => { if (heard) logKid(); voice.clearWords(); voice.show("idle"); };
+    if (a11y && await a11y.handleText(text)) { used(); return; }   // [a11y] "where am I?", "faster", "press next"
+    if (missionUI.active && await missionUI.handleText(text)) { used(); return; }
+    if (academyUI.active && await academyUI.handleText(text)) { used(); return; }   // Academy
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -202,6 +224,7 @@ async function boot() {
       if (!clearQuestion(text) || (r.source === "none" && performance.now() - turn.lastUnknown < 30000)) { voice.clearWords(); voice.show("idle"); return; }
       if (r.source === "none") turn.lastUnknown = performance.now();
     }
+    if (heard) logKid();
     voice.clearWords();
     if (missionUI.active) {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
@@ -411,11 +434,20 @@ async function boot() {
     prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
+      voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
       if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }
-      if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", d.text);
-      showHeard(d.text);
-      if (missionUI.running) missionUI.radioKid(d.text);
-      cancelNudge(); cancelTour();
+      // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
+      // all; the offline word list catches what the tagger misses (profanity.js)
+      const shownText = d.safety ? "" : maskProfanity(d.text);
+      if (shownText) {
+        if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", shownText);
+        showHeard(shownText);
+        if (missionUI.running) missionUI.radioKid(shownText);
+      }
+      cancelNudge();
+      // [audit2] "next" during the Library tour stopped the tour (this ran before the nav it decided): a tour step
+      // intent keeps it
+      if (!(d.outcome === "navigate" && ["next", "prev", "accept_offer"].includes(d.intent))) cancelTour();
     },
     nav: d => runNav(d.intent, d.arg, d.text),
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
@@ -497,7 +529,7 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
-  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe });   // what tests read (tools/*.py)
+  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe, missionUI });   // what tests read (tools/*.py)
 
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";
@@ -526,16 +558,26 @@ async function boot() {
   });
   // ---- end [input] ----
   if (SESSION_ON) {
-    session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
+    let reconnect = () => {};
+    session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => { console.warn("session closed; /api/ask fallback (retrying)"); reconnect(); } });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
     // [qa] QA-74: the socket can fail (session = null below): forwarding then threw a TypeError on every playback event
     if (floor) { floor.on("playback", e => { if (session) session.playback(e); }); floor.on("floor", e => { if (!session) return; if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }
     let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
     session.hello({ mode: m0 });
-    session.connect().then(ok => {
-      if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
-      voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
-      pushScreen(true); sendPrefs();
+    // [P0] the router lives in the session: without it, open-mic turns had no gate but the client's. If the socket
+    // can't connect (the backend still starting), keep retrying with a back-off instead of staying on /api/ask for good.
+    const sess = session;
+    const up = () => { session = sess; voice.sendContext({ t: "context", session: sess.id }); pushScreen(true); sendPrefs(); };   // the ear posts its turns into this session
+    let retrying = false;
+    const retry = (n = 0) => { retrying = true; setTimeout(() => {
+      sess.hello({ mode: document.body.dataset.mode || "academy", mission_id: (missionUI.context() || {}).id || null });   // sent on open
+      sess.connect(5000).then(ok => { if (ok) { retrying = false; up(); } else retry(n + 1); });
+    }, Math.min(30000, 2000 * 2 ** n)); };
+    reconnect = () => { if (!retrying) retry(); };
+    sess.connect().then(ok => {
+      if (ok) { up(); return; }
+      session = null; console.info("session socket unavailable; using /api/ask (retrying)"); retry();
     });
   }
 

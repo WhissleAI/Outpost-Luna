@@ -9,6 +9,13 @@ Houston replies the sim emits. None of them read the hidden storm schedule.
 
     uv run python tools/strategy_sim.py                 # all sites x seeds 0..29
     uv run python tools/strategy_sim.py --seeds 60 --json out.json
+    uv run python tools/strategy_sim.py --clock live     # the live mission clock (policies act every sim hour)
+    uv run python tools/strategy_sim.py --clock event    # skip to next event, act, repeat (a kid who skips a lot)
+
+Clocks: "shift" is the old turn-based loop (act, end shift). "live" steps the real-time clock in quarter hours through
+sim.step() and lets the policy act at every whole hour, as a kid can at any moment. "event" uses sim.skip_to_event()
+("skip to next event") and acts at each stop. Policies never touch the gameplay tasks, so these runs test the sim's
+balance under each clock, not the task rewards.
 """
 from __future__ import annotations
 
@@ -192,21 +199,31 @@ POLICIES = [Policy, ShieldsMax, AlwaysShelter, ScienceMax, CommsMax, RoverSpam, 
 FIXED = ("idle", "shields_max", "always_shelter", "science_max", "comms_max", "rover_spam")
 
 
-def play(policy_cls, site: str, seed: int, difficulty: str = "commander") -> dict:
+CLOCKS = ("shift", "live", "event")
+
+
+def play(policy_cls, site: str, seed: int, difficulty: str = "commander", clock: str = "shift") -> dict:
     m = sim.new_mission(f"s-{policy_cls.name}", site, seed, level=difficulty)
     p = policy_cls()
     while not m.over:
         st = sim.to_state(m)
         p.act(m, st)
-        evs = sim.advance(m, 1)
+        if clock == "live":
+            evs = []
+            for _ in range(4):          # one sim hour on the real-time clock, in quarter-hour frames
+                evs += sim.step(m, 0.25)
+        elif clock == "event":
+            evs = sim.skip_to_event(m)
+        else:
+            evs = sim.advance(m, 1)
         p.observe(m, evs, [])
     return {"policy": p.name, "site": site, "seed": seed, "outcome": m.outcome, "score": sim.score(m),
             "dose": round(m.dose, 1), "science_sent": round(m.science_sent, 1), "hours": m.t_h,
             "grade": sim.debrief(m)["grade"], "goals": sim.objectives(m)["met"], "good_calls": len(m.good_calls)}
 
 
-def run(seeds: int, difficulty: str = "commander") -> list[dict]:
-    return [play(P, s["id"], k, difficulty) for P in POLICIES for s in sim.sites() for k in range(seeds)]
+def run(seeds: int, difficulty: str = "commander", clock: str = "shift") -> list[dict]:
+    return [play(P, s["id"], k, difficulty, clock) for P in POLICIES for s in sim.sites() for k in range(seeds)]
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -238,8 +255,9 @@ def main(argv=None):
     ap.add_argument("--seeds", type=int, default=30)
     ap.add_argument("--json")
     ap.add_argument("--difficulty", default="commander", choices=sim.DIFFICULTIES)
+    ap.add_argument("--clock", default="shift", choices=CLOCKS)
     a = ap.parse_args(argv)
-    rows = run(a.seeds, a.difficulty)
+    rows = run(a.seeds, a.difficulty, a.clock)
     summ = summarize(rows)
     sites = [s["id"] for s in sim.sites()]
     print(f"{'policy':16} {'surv':>5} {'goals':>5} {'score':>6} {'min':>5} {'dose':>6} {'sci':>6}  " +

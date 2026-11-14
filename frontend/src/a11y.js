@@ -3,6 +3,7 @@
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
 import { TOUR } from "./story.js";
 import { icon } from "./assets/icons.js";
+import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -232,7 +233,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
     const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); panel.querySelector(`[data-sec="${section}"]`).focus(); }
-    if (e.target.closest("[data-vbar-reset]") && O.voiceBar) O.voiceBar.reset();
+    const vb = e.target.closest("[data-vbar-reset]");
+    if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
+      setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }
     if (e.target.closest("[data-cabin-tour]")) { open(false); if (setMode && document.body.dataset.mode !== "mission") setMode("mission"); dispatchEvent(new CustomEvent("outpost:tour")); }
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
     const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);
@@ -290,7 +293,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // ---- transcript ----
   function fillTranscript() {
     const ol = panel.querySelector("#a11yTranscript"); if (!ol) return;
-    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.text)}</li>`).join("");
+    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
   }
   window.addEventListener("outpost:transcript", () => { if (!panel.hidden) fillTranscript(); });
 

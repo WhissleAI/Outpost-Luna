@@ -57,6 +57,10 @@ def test_scripted_handsfree_run(capsys):
     assert c.qualified, out[-3000:]
     assert len(c.badges) == len(content.course()["lessons"]), c.badges
     assert c.mid and c.mscreen == "cabin", "fly again started a new shift"
+    # the live clock by voice (docs/GAMEPLAY.md): skip to next event, the Now card's jobs, pause / run / warp
+    assert c.skips >= 1, out[-3000:]
+    assert c.task_steps_by_voice >= 1, out[-3000:]
+    assert {"time_resume", "time_warp", "time_pause"} <= set(c.clock_cmds), c.clock_cmds
     assert c.replies_to_noise == 0, out
     assert c.unknowns() <= 1, out           # only the one real question may get the honest fallback
     assert c.bad_unknowns == 0, out         # ... and it is attributed to that question (the live PASS rule)

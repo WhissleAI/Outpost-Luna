@@ -21,6 +21,14 @@ if(NOT WIN32)
   target_link_libraries(arctag PRIVATE m)
   target_compile_options(arctag PRIVATE -O3 -Wall -Wno-unused-function)
 endif()
+if(MINGW)
+  # mingw-w64 (desktop/scripts/cross-build-windows.sh from a Mac, or MSYS2): gcc, so native.c takes its AVX2 + FMA kernels
+  # (checked against the CPU at load). Static libgcc / winpthread, so arctag.dll needs only Windows' own DLLs, and no
+  # "lib" prefix, so the file is arctag.dll as the app expects.
+  target_compile_options(arctag PRIVATE -O3 -Wall -Wno-unused-function)
+  target_link_options(arctag PRIVATE -static-libgcc -static)
+  set_target_properties(arctag PROPERTIES PREFIX "")
+endif()
 if(MSVC)
   # MSVC has no __x86_64__, so native.c falls back to its portable scalar kernels (correct, slower than AVX2).
   # Building with clang-cl (-T ClangCL) gets the AVX2 kernels. Untested on Windows.
