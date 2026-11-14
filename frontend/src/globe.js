@@ -81,8 +81,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     label.hidden = false;
   }
 
-  function flyTo(lat, lon, dist) {
-    const d = ll2v(Math.max(-75, Math.min(75, lat)), lon).normalize();
+  function flyTo(lat, lon, dist, maxLat = 75) {   // maxLat: how close to a pole the camera may look (the map's polar view: 88)
+    const d = ll2v(Math.max(-maxLat, Math.min(maxLat, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
     fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: 1300 };
   }
@@ -202,7 +202,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     rstops.forEach(s => {
       const f = s.p.clone().normalize().dot(cam);
       s.f = f; s.on = f > 0.3; tmp.copy(s.p).project(camera);
-      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + 4;
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 30 : 6);   // the next pin keeps room for its label
     });
     const vis = rstops.filter(s => s.on);
     for (let it = 0; it < 6; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {

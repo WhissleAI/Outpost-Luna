@@ -50,15 +50,17 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     bar.style.left = Math.round(x) + "px"; bar.style.top = Math.round(y) + "px";
   }
   /** What the bar must not cover on this screen. */
-  function obstacles() {
+  function obstacles(a) {
     const sel = ["#aPanel.is-lesson", "#aPanel.is-ride", "#aPanel.is-badge", ".mp-card", "#mPanel:not([hidden])", "#mDebrief:not([hidden])",
-      "#card:not([hidden])", ".a11y-panel:not([hidden])", "dialog[open]", ".h-form", ".mp-credit", ".h-credit", ".mp-top", ".m-debrief:not([hidden])"];
-    return sel.concat([...extra]).flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).map(e => e.getBoundingClientRect());
+      "#card:not([hidden])", ".h-form", ".mp-credit", ".h-credit", ".mp-top", ".m-debrief:not([hidden])"];
+    // a lesson / ride card already keeps clear of a bar at the bottom (its max-height uses --strip-h): only a top anchor can collide
+    const list = a && a[0] === "b" ? sel.filter(s => !/is-lesson|is-ride|mp-card/.test(s)) : sel;
+    return list.concat([...extra]).flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).map(e => e.getBoundingClientRect());
   }
   const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
   function covers(a) {
     const s = stage.getBoundingClientRect(), p = spot(a), r = { left: s.left + p.x, top: s.top + p.y, right: s.left + p.x + bar.offsetWidth, bottom: s.top + p.y + bar.offsetHeight };
-    return obstacles().some(o => overlaps(r, o));
+    return obstacles(a).some(o => overlaps(r, o));
   }
   /** The anchor nearest to `want` that covers nothing (or `want` itself when everything is covered). */
   function free_(want) {
@@ -69,7 +71,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   function apply(a, { animate = false, say = false, remember = false } = {}) {
     if (docked()) return;
     const want = a || "bc", got = free_(want);
-    anchor = got; free = null;
+    anchor = got; free = null; stage.dataset.vbar = got;
     bar.dataset.anchor = got; stage.dataset.vbar = got; bar.classList.add("is-floating");
     const p = spot(got); place(p.x, p.y, animate);
     if (remember) { saved[klass()] = want; save(saved); }

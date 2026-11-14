@@ -26,8 +26,9 @@ export function syllabify(word) {
 function sourceHtml(acc) {
   const s = acc.source || {};
   if (!s.url) return "";
-  return `<p class="v-src">Heard in: <a class="chip-src" href="${escD(s.url)}" target="_blank" rel="noopener">${escD(s.title)}</a>
-    ${s.clip_id ? `<button type="button" class="btn-quiet v-crew" data-crew>${icon("play", { size: 16 })}Hear the crew say it</button>` : ""}</p>`;
+  // one quiet row: hear the crew say it (when there's a clip) and the source link (its title as the tooltip)
+  return `<p class="v-src">${s.clip_id ? `<button type="button" class="btn-quiet v-crew" data-crew>${icon("play", { size: 16 })}Hear the crew say it</button>` : ""}
+    <a class="chip-src" href="${escD(s.url)}" target="_blank" rel="noopener" title="${escD(s.title)}">Source</a></p>`;
 }
 function optionsHtml(acc, cls = "") {
   return `<div class="a-choices v-opts ${cls}" role="group" aria-label="Answers">${(acc.options || []).map((o, k) =>
@@ -74,7 +75,7 @@ O.stepRenderers.vocab_fill = ctx => {
 O.stepRenderers.vocab_say = ctx => {
   const { acc } = ctx;
   return {
-    html: `<div class="v-word is-say"><span class="v-label">Say it back</span><b lang="en">${escD(acc.term)}</b>
+    html: `<div class="v-word is-say"><b lang="en">${escD(acc.term)}</b>
         <span class="v-syl" aria-hidden="true">${escD(syllabify(acc.term))}</span>
         <button type="button" class="btn" data-hear="${escD(acc.term)}. ${escD(acc.term)}." aria-label="Hear ${escD(acc.term)} slowly">${icon("speaker", { size: 16 })}Hear it slowly</button></div>
       <p class="v-mean">${escD(acc.explain || "")}</p>

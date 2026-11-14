@@ -110,7 +110,7 @@ def s_map(page, base, theme):
 def s_map_mid(page, base, theme):
     seed(page, badges=["scout", "radio", "sun"], theme=theme)
     page.goto(base)
-    settle(page, 2500)
+    settle(page, 5500)   # the flight to a polar next stop takes a few seconds
 
 
 @state

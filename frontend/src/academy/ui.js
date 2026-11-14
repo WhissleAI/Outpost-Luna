@@ -167,7 +167,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // the whole route in view, the Moon lifted above the Next-up card and the voice strip
     const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 250) / H));
     // face the next stop (a polar one turns the south pole toward the cadet); the done legs stay in view
-    if (!quiet || !mapSel) { const c = placeOf(sel || ls[0]); globe.flyTo(c.lat, c.lon, 4.2); }
+    // a polar next stop zooms to a ~35° field round the pole so the polar pins spread out; anywhere else, the whole Moon
+    if (!quiet || !mapSel) { const c = placeOf(sel || ls[0]); const polar = Math.abs(c.lat) > 70; globe.flyTo(polar ? Math.sign(c.lat) * 89 : c.lat, c.lon, polar ? 1.8 : 4.2, polar ? 88 : 75); }
     // pins: earned patch art for done lessons, a grey outline for the rest; the next one is bigger and labelled
     const stops = ls.map((l, k) => {
       const done = has(l.badge.id), next = nx && nx.id === l.id, at = placeOf(l);
@@ -226,6 +227,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (L.steps[0].alert) alertSound();
   }
 
+  /** The question as shown. A fill-the-blank prompt that quotes its own sentence shows only its lead-in ("Fill the
+   *  blank"), because the step draws the sentence itself, with the blank (the full prompt is still spoken). */
+  function promptOf(st) {
+    const a = st.accept || {}, p = String(st.prompt || "");
+    if (a.type === "vocab_fill" && a.sentence && p.includes(a.sentence.slice(0, 16)) && p.includes(":")) return p.split(":")[0].trim();
+    return p;
+  }
   function render() {
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
@@ -259,7 +267,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
             ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></div>`}
         <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
-          <p class="a-prompt">${esc(st.prompt)}</p>
+          <p class="a-prompt">${esc(promptOf(st))}</p>
           ${how && !waitingNext ? `<p class="a-how">${esc(how)}</p>` : ""}
           ${clip ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
           <div class="a-input" id="aInput">${waitingNext ? "" : R.html(st, ctx)}</div>
