@@ -1,0 +1,821 @@
+{
+ "m": {
+  "date": "2026-11-14T13:35",
+  "run": "director_model/runs/2026-11-14-r7/m",
+  "data": "director_model/data/ds_r7",
+  "pass": false,
+  "reasons": [
+   "test_ear: wrong actions 22 > rules 20",
+   "test_ear: act acc 0.705 < rules 0.715",
+   "cls_panel: wrong actions 20 > rules 19",
+   "cls_roomtalk: class regresses: act acc 0.8 < shipped 0.8125"
+  ],
+  "policy": {
+   "cmd": 0.95,
+   "veto": 0.9,
+   "ignore": 0.8,
+   "ask": 0.9,
+   "answer_ignore": null,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 97,
+    "extra_wrong": 0,
+    "rules_wrong": 121,
+    "act_ok": 1561,
+    "turns": 2052
+   }
+  },
+  "shipped_policy": {
+   "conf": 0.7,
+   "cmd": 0.95,
+   "ignore": 0.8,
+   "ask": 1.01,
+   "veto": 0.99,
+   "answer_ignore": null,
+   "nav": null
+  },
+  "rows": [
+   {
+    "set": "test_clean",
+    "turns": 1979,
+    "rules_act": 0.8024,
+    "ship_act": 0.8065,
+    "cand_act": 0.8044,
+    "rules_wrong": 126,
+    "ship_wrong": 126,
+    "cand_wrong": 120,
+    "rules_w50": 9.47,
+    "ship_w50": 9.47,
+    "cand_w50": 9.02,
+    "model_act": 0.9348,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_asr",
+    "turns": 1977,
+    "rules_act": 0.7162,
+    "ship_act": 0.7213,
+    "cand_act": 0.7203,
+    "rules_wrong": 168,
+    "ship_wrong": 167,
+    "cand_wrong": 160,
+    "rules_w50": 14.05,
+    "ship_w50": 13.96,
+    "cand_w50": 13.38,
+    "model_act": 0.8781,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_real",
+    "turns": 878,
+    "rules_act": 0.5968,
+    "ship_act": 0.6014,
+    "cand_act": 0.5979,
+    "rules_wrong": 70,
+    "ship_wrong": 69,
+    "cand_wrong": 68,
+    "rules_w50": 15.09,
+    "ship_w50": 14.87,
+    "cand_w50": 14.66,
+    "model_act": 0.7995,
+    "chatter_graded": [
+     2,
+     2,
+     2
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_ear",
+    "turns": 200,
+    "rules_act": 0.715,
+    "ship_act": 0.715,
+    "cand_act": 0.705,
+    "rules_wrong": 20,
+    "ship_wrong": 19,
+    "cand_wrong": 22,
+    "rules_w50": 17.24,
+    "ship_w50": 16.38,
+    "cand_w50": 18.97,
+    "model_act": 0.715,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 22 > rules 20",
+     "act acc 0.705 < rules 0.715"
+    ]
+   },
+   {
+    "set": "test_h40",
+    "turns": 40,
+    "rules_act": 0.45,
+    "ship_act": 0.45,
+    "cand_act": 0.525,
+    "rules_wrong": 3,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": 3.75,
+    "ship_w50": 1.25,
+    "cand_w50": 1.25,
+    "model_act": 0.825,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_h40_asr",
+    "turns": 40,
+    "rules_act": 0.4,
+    "ship_act": 0.4,
+    "cand_act": 0.45,
+    "rules_wrong": 4,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": 5.0,
+    "ship_w50": 3.75,
+    "cand_w50": 3.75,
+    "model_act": 0.825,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80",
+    "turns": 80,
+    "rules_act": 0.85,
+    "ship_act": 0.85,
+    "cand_act": 0.85,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.875,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80_asr",
+    "turns": 80,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9125,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_gold",
+    "turns": 19,
+    "rules_act": 0.7895,
+    "ship_act": 0.7895,
+    "cand_act": 0.7895,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 2,
+    "rules_w50": 13.64,
+    "ship_w50": 13.64,
+    "cand_w50": 9.09,
+    "model_act": 0.8947,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_chatter",
+    "turns": 160,
+    "rules_act": 0.9125,
+    "ship_act": 0.9125,
+    "cand_act": 0.9125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8125,
+    "chatter_graded": [
+     13,
+     13,
+     13
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_echo",
+    "turns": 160,
+    "rules_act": 0.8438,
+    "ship_act": 0.8562,
+    "cand_act": 0.9062,
+    "rules_wrong": 9,
+    "ship_wrong": 9,
+    "cand_wrong": 5,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8688,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_offer",
+    "turns": 160,
+    "rules_act": 0.7188,
+    "ship_act": 0.7188,
+    "cand_act": 0.7188,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_panel",
+    "turns": 160,
+    "rules_act": 0.775,
+    "ship_act": 0.775,
+    "cand_act": 0.775,
+    "rules_wrong": 19,
+    "ship_wrong": 23,
+    "cand_wrong": 20,
+    "rules_w50": 13.19,
+    "ship_w50": 15.97,
+    "cand_w50": 13.89,
+    "model_act": 0.6813,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 20 > rules 19"
+    ]
+   },
+   {
+    "set": "cls_help",
+    "turns": 159,
+    "rules_act": 0.6289,
+    "ship_act": 0.6289,
+    "cand_act": 0.6289,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.5975,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mode",
+    "turns": 158,
+    "rules_act": 0.8861,
+    "ship_act": 0.8861,
+    "cand_act": 0.8861,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.4304,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_globe",
+    "turns": 160,
+    "rules_act": 0.675,
+    "ship_act": 0.675,
+    "cand_act": 0.675,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8688,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mishear",
+    "turns": 160,
+    "rules_act": 0.7375,
+    "ship_act": 0.725,
+    "cand_act": 0.7375,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": 0.94,
+    "ship_w50": 0.94,
+    "cand_w50": 0.94,
+    "model_act": 0.8,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_roomtalk",
+    "turns": 160,
+    "rules_act": 0.7562,
+    "ship_act": 0.8125,
+    "cand_act": 0.8,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7188,
+    "chatter_graded": [
+     2,
+     2,
+     2
+    ],
+    "fail": [
+     "class regresses: act acc 0.8 < shipped 0.8125"
+    ]
+   }
+  ],
+  "exported": false
+ },
+ "xl": {
+  "date": "2026-11-14T13:35",
+  "run": "director_model/runs/2026-11-14-r7/xl",
+  "data": "director_model/data/ds_r7",
+  "pass": false,
+  "reasons": [
+   "test_clean: wrong actions 129 > rules 126",
+   "test_h40: wrong actions 4 > rules 3",
+   "cls_panel: wrong actions 20 > rules 19",
+   "cls_roomtalk: class regresses: act acc 0.7812 < shipped 0.8125"
+  ],
+  "policy": {
+   "cmd": 0.98,
+   "veto": 0.98,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": 0.7,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 113,
+    "extra_wrong": 0,
+    "rules_wrong": 121,
+    "act_ok": 1575,
+    "turns": 2052
+   }
+  },
+  "shipped_policy": {
+   "conf": 0.7,
+   "cmd": 0.95,
+   "ignore": 0.8,
+   "ask": 1.01,
+   "veto": 0.99,
+   "answer_ignore": null,
+   "nav": null
+  },
+  "rows": [
+   {
+    "set": "test_clean",
+    "turns": 1979,
+    "rules_act": 0.8024,
+    "ship_act": 0.8065,
+    "cand_act": 0.808,
+    "rules_wrong": 126,
+    "ship_wrong": 126,
+    "cand_wrong": 129,
+    "rules_w50": 9.47,
+    "ship_w50": 9.47,
+    "cand_w50": 9.7,
+    "model_act": 0.9454,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 129 > rules 126"
+    ]
+   },
+   {
+    "set": "test_asr",
+    "turns": 1977,
+    "rules_act": 0.7162,
+    "ship_act": 0.7213,
+    "cand_act": 0.7213,
+    "rules_wrong": 168,
+    "ship_wrong": 167,
+    "cand_wrong": 166,
+    "rules_w50": 14.05,
+    "ship_w50": 13.96,
+    "cand_w50": 13.88,
+    "model_act": 0.8796,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_real",
+    "turns": 878,
+    "rules_act": 0.5968,
+    "ship_act": 0.6014,
+    "cand_act": 0.5979,
+    "rules_wrong": 70,
+    "ship_wrong": 69,
+    "cand_wrong": 67,
+    "rules_w50": 15.09,
+    "ship_w50": 14.87,
+    "cand_w50": 14.44,
+    "model_act": 0.8018,
+    "chatter_graded": [
+     2,
+     2,
+     2
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_ear",
+    "turns": 200,
+    "rules_act": 0.715,
+    "ship_act": 0.715,
+    "cand_act": 0.715,
+    "rules_wrong": 20,
+    "ship_wrong": 19,
+    "cand_wrong": 19,
+    "rules_w50": 17.24,
+    "ship_w50": 16.38,
+    "cand_w50": 16.38,
+    "model_act": 0.79,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_h40",
+    "turns": 40,
+    "rules_act": 0.45,
+    "ship_act": 0.45,
+    "cand_act": 0.525,
+    "rules_wrong": 3,
+    "ship_wrong": 1,
+    "cand_wrong": 4,
+    "rules_w50": 3.75,
+    "ship_w50": 1.25,
+    "cand_w50": 5.0,
+    "model_act": 0.775,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 4 > rules 3"
+    ]
+   },
+   {
+    "set": "test_h40_asr",
+    "turns": 40,
+    "rules_act": 0.4,
+    "ship_act": 0.4,
+    "cand_act": 0.475,
+    "rules_wrong": 4,
+    "ship_wrong": 3,
+    "cand_wrong": 4,
+    "rules_w50": 5.0,
+    "ship_w50": 3.75,
+    "cand_w50": 5.0,
+    "model_act": 0.75,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80",
+    "turns": 80,
+    "rules_act": 0.85,
+    "ship_act": 0.85,
+    "cand_act": 0.85,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9375,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80_asr",
+    "turns": 80,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9375,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_gold",
+    "turns": 19,
+    "rules_act": 0.7895,
+    "ship_act": 0.7895,
+    "cand_act": 0.7895,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": 13.64,
+    "ship_w50": 13.64,
+    "cand_w50": 13.64,
+    "model_act": 0.7895,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_chatter",
+    "turns": 160,
+    "rules_act": 0.9125,
+    "ship_act": 0.9125,
+    "cand_act": 0.975,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.95,
+    "chatter_graded": [
+     13,
+     13,
+     3
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_echo",
+    "turns": 160,
+    "rules_act": 0.8438,
+    "ship_act": 0.8562,
+    "cand_act": 0.9375,
+    "rules_wrong": 9,
+    "ship_wrong": 9,
+    "cand_wrong": 7,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9437,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_offer",
+    "turns": 160,
+    "rules_act": 0.7188,
+    "ship_act": 0.7188,
+    "cand_act": 0.7188,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7937,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_panel",
+    "turns": 160,
+    "rules_act": 0.775,
+    "ship_act": 0.775,
+    "cand_act": 0.775,
+    "rules_wrong": 19,
+    "ship_wrong": 23,
+    "cand_wrong": 20,
+    "rules_w50": 13.19,
+    "ship_w50": 15.97,
+    "cand_w50": 13.89,
+    "model_act": 0.6813,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 20 > rules 19"
+    ]
+   },
+   {
+    "set": "cls_help",
+    "turns": 159,
+    "rules_act": 0.6289,
+    "ship_act": 0.6289,
+    "cand_act": 0.6289,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.5031,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mode",
+    "turns": 158,
+    "rules_act": 0.8861,
+    "ship_act": 0.8861,
+    "cand_act": 0.8861,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.3924,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_globe",
+    "turns": 160,
+    "rules_act": 0.675,
+    "ship_act": 0.675,
+    "cand_act": 0.675,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8438,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mishear",
+    "turns": 160,
+    "rules_act": 0.7375,
+    "ship_act": 0.725,
+    "cand_act": 0.7375,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": 0.94,
+    "ship_w50": 0.94,
+    "cand_w50": 0.94,
+    "model_act": 0.7188,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_roomtalk",
+    "turns": 160,
+    "rules_act": 0.7562,
+    "ship_act": 0.8125,
+    "cand_act": 0.7812,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7125,
+    "chatter_graded": [
+     2,
+     2,
+     1
+    ],
+    "fail": [
+     "class regresses: act acc 0.7812 < shipped 0.8125"
+    ]
+   }
+  ],
+  "exported": false
+ }
+}
