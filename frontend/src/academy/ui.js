@@ -106,7 +106,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); globe.flyTo(0, 0, 3.6);
     const ls = lessons(), nx = nextLesson(), n = ls.filter(l => has(l.badge.id)).length, cs = callSign.shown();
-    panel.classList.add("is-catalog"); document.body.dataset.aview = "map";
+    panel.classList.add("is-catalog"); panel.classList.remove("is-ride"); document.body.dataset.aview = "map";
     const mentor = prog.qualified ? MENTOR.done(cs) : !n ? MENTOR.first(cs) : nx && nx.ride ? MENTOR.ride(cs) : MENTOR.more(cs, n, nx ? nx.title : "");
     const card = (l) => {
       const k = ls.indexOf(l), done = has(l.badge.id), next = nx && nx.id === l.id;
@@ -168,6 +168,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = lessons().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
+    panel.classList.toggle("is-ride", !!L.ride);
     const R = STEP_RENDERERS[acc.type] || { html: () => "" };
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     const story = LESSON_STORY[L.id] || {};
@@ -176,13 +177,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="eyebrow">${L.ride ? "Check ride · solo shift" : `Lesson ${k + 1} of ${lessons().length}`}</span>
         <span class="a-dots" role="img" aria-label="Step ${i + 1} of ${L.steps.length}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span></header>
       <div class="a-title"><span class="a-patch is-sm" aria-hidden="true"><span>${patchOf(L)}</span></span><h2 class="m-title">${esc(L.title)}</h2></div>
-      <section class="a-brief"><p class="a-beat">${esc(story.beat || "")}</p>
+      ${L.ride && (i > 0 || waitingNext || feedback) ? "" : `<section class="a-brief"><p class="a-beat">${esc(story.beat || "")}</p>
         <div class="a-bubble"><span class="a-who">CAPCOM</span><p>${esc(L.brief)}</p></div>
         <span class="a-row"><button type="button" class="pill" id="aReplay">🔊 Hear it again</button>
         ${L.library ? `<button type="button" class="pill" id="aLib">${esc(L.library.label)}</button>` : ""}
         <details class="a-facts"><summary>NASA facts (${L.facts.length})</summary>
-        <ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details></span></section>
-      ${ride ? `<div id="aRideSlot"></div>` : ""}
+        <ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details></span></section>`}
       <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
         <p class="a-prompt">${st.alert ? `<span class="a-alarm" aria-hidden="true">🚨</span> ` : ""}${esc(st.prompt)}</p>
         ${clip ? `<button type="button" class="pill hot a-clip" id="aClip">▶ Hear ${esc(clip.who)}</button>` : ""}
@@ -191,9 +191,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         ${feedback && feedback.hint ? `<p class="a-hint"><b>Hint</b> ${esc(feedback.hint)}</p>` : ""}
         ${waitingNext ? `<button type="button" class="m-go" id="aNext">Next ›</button>` : ""}
       </section>
+      ${ride ? `<div id="aRideSlot"></div>` : ""}
       ${todo(waitingNext ? "Tap Next, or say “next”." : esc(HOW[acc.type] || "Answer CAPCOM: say it, or type it below."))}`;
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
-    panel.querySelector("#aReplay").onclick = () => say(L.brief);
+    const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief);
     const lib = panel.querySelector("#aLib"); if (lib) lib.onclick = () => openLibrary(L.library.place);
     const cb = panel.querySelector("#aClip");
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });

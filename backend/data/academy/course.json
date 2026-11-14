@@ -17,7 +17,7 @@
     "lon": 0,
     "dist": 3.6
    },
-   "brief": "Welcome, cadet. Artemis III plans to land near the Moon's south pole, and that's where you'll train. Our outpost will sit next to a crater called Shackleton.",
+   "brief": "Welcome, cadet. Artemis III, the first landing near the Moon's south pole, hasn't happened yet. You're training to help run Outpost Luna, a base next to a crater called Shackleton.",
    "facts": [
     {
      "text": "NASA has named candidate landing regions near the south pole for Artemis III, including the rim of Shackleton crater.",
@@ -820,7 +820,7 @@
     "mission_h": 48,
     "max_missed": 0
    },
-   "brief": "This is your check ride: two days at Shackleton Rim, run by the real mission simulator. A real solar storm is on its way. Give good orders and you earn the Mission Commander badge.",
+   "brief": "This is your check ride: your first solo shift at Outpost Luna, two days at Shackleton Rim on the real mission simulator. A real solar storm is on its way. Give good orders and you earn the Mission Commander badge.",
    "facts": [
     {
      "text": "The storm in this ride is the real G5 storm of 2024-05-10, replayed at your outpost.",

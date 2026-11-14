@@ -319,3 +319,16 @@ body[data-aview="map"] .askbar,body[data-aview="map"] .hud,body[data-aview="map"
 .a-track:not(.is-half) .a-cards{grid-template-columns:repeat(3,minmax(0,1fr))}
 .a-track.is-half .a-cards{grid-template-columns:1fr}
 @media (max-width:700px){.a-tracks{grid-template-columns:1fr}.a-track:not(.is-half) .a-cards{grid-template-columns:1fr}}
+.apanel.is-ride{gap:8px}
+.apanel.is-ride .a-brief .a-row{display:none}
+.apanel.is-ride .a-todo{margin-top:0}
+.ck-mini .ck-gauge svg{max-height:46px}
+.ck-mini .ck-clock{padding:3px 8px}
+.ck-mini .ck-time b{font-size:15px}
+.a-orders{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.ck-mini{--lv-h:36px;gap:6px;padding:6px}
+.ck-mini>section{padding:4px 7px}
+.ck-mini .ck-gauge svg{max-height:38px}
+.ck-mini .ck-ann{min-height:20px;font-size:9.5px}
+.ck-mini .ck-levers header,.ck-mini .ck-ico{display:none}
+.apanel.is-ride .a-step:has(#aNext)~.a-todo{display:none}
