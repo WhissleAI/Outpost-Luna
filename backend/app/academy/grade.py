@@ -105,6 +105,11 @@ def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]
     """(passed, extra). extra may hold the matched `command` or the `choice`."""
     acc, inp = step["accept"], inp or {}
     kind, text = acc["type"], inp.get("text") or ""
+    if text and not inp.get("choice") and kind in INDEXED:   # "one", "the second one", "b": the option by its key
+        ids = [i for i, _ in step_options(acc)]
+        k = option_index(text, len(ids))
+        if k is not None:
+            inp = {**inp, "choice": ids[k]}
     if kind == "tap":
         if inp.get("tap") is None and text:   # hands-free (and for kids who can't tap): naming the place counts
             p = gaz().match_text(text)
@@ -330,3 +335,124 @@ async def similar(step: dict, text: str) -> bool:
     if not v or len(v) < 2:
         return False
     return max(sum(a * b for a, b in zip(v[0], r)) for r in v[1:]) >= SIMILAR
+
+
+# ---- what counts as a try (docs/HANDSFREE.md, "Only plausible answers count") ------------------------------------------
+# The mic is always open: "Oh, it's", "okay", "alright", a hum or the app's own voice must never cost the kid a try, and
+# CAPCOM must never show the answer before the kid had a real go. The router (turn_router.route) and the attempt API
+# (routes.py) share these rules: a turn the router passes as an answer is graded, one the grader would not count as a
+# try is never sent, and if one gets through anyway the grader answers "ignored" (no miss).
+REVEAL_AFTER = 3        # real misses before CAPCOM shows the answer and moves on
+REVEAL_MIN_S = 20.0     # ... and never in the first 20 s of a step
+DD_MIN = 0.5            # the normal listening filter (turn_router.DD_MIN); the router passes the kid's own level
+
+
+def reveal_due(misses: int, step_s: float | None = None) -> bool:
+    """CAPCOM shows the answer: `misses` real misses (this one included) AND the step has been open >= REVEAL_MIN_S.
+    `step_s` None: the caller doesn't track time (API tools); only the misses count. This is the one rule for the
+    reveal; hint stages hang off the same miss counter."""
+    return misses >= REVEAL_AFTER and (step_s is None or float(step_s) >= REVEAL_MIN_S)
+
+
+# Words that carry no answer: function words, fillers, acknowledgements, question words.
+NOT_CONTENT = frozenset("""
+a an the of and or but nor so if then than to too for from by with without in on at into onto off out up down over
+is are was were be been being am it its this that these those there here they them their we us our you your i me
+my mine he she him her his hers do does did done doing don dont doesn isn wasn can could would should will shall
+might must may have has had having not no yes yeah yep yup nope okay ok alright right well like just really very
+oh ohh ooh ah ahh uh uhh um umm hmm mm mmm huh wow whoa hey hi hello sure thing things stuff gonna wanna got get
+gets let lets what whats when where who whom why how which wait sorry please thanks thank maybe guess think mean know
+""".split())
+INDEXED = ("choice", "predict", "compare", "earth_view", "vocab_match", "vocab_fill", "vocab_listen")
+_KEYS = {"one": 0, "1": 0, "first": 0, "a": 0, "two": 1, "2": 1, "second": 1, "b": 1, "bee": 1, "three": 2, "3": 2,
+         "third": 2, "c": 2, "sea": 2, "see": 2, "four": 3, "4": 3, "fourth": 3, "d": 3}
+_KEY_RE = re.compile(r"^(?:(?:it s|its|it is|i think|i pick|i choose|i say|my answer is|the|option|answer|number|"
+                     r"choice|letter)\s+)*(\w+)(?:\s+one)?$")
+
+
+def _gnorm(text: str) -> str:
+    from ..gazetteer import norm as gnorm
+    return gnorm(text or "")
+
+
+def content_words(text: str) -> list[str]:
+    return [w for w in _gnorm(text).split() if len(w) > 2 and w not in NOT_CONTENT]
+
+
+def option_index(text: str, n: int) -> int | None:
+    """The option a kid names by its number or letter ("one", "the second one", "option 3", "b"), 0-based; else None.
+    The whole turn must be the key: "Oh, it's a" is not option A."""
+    m = _KEY_RE.match(_gnorm(text))
+    k = _KEYS.get(m.group(1)) if m else None
+    return k if k is not None and k < n else None
+
+
+def step_options(acc: dict) -> list[tuple[str, list[str]]]:
+    """[(option id, [label, *say words])] in the order the client shows them (its numbers / letters)."""
+    kind = acc["type"]
+    if kind in ("choice", "predict", "compare"):
+        return [(o["id"], [o["label"], *o.get("say", [])]) for o in acc.get("options", [])]
+    if kind == "earth_view":
+        return [(k, [k.capitalize(), *EARTH_WORDS[k]]) for k in ("yes", "no", "sometimes")]
+    if kind in ("vocab_match", "vocab_fill", "vocab_listen"):
+        from . import vocab
+        return [(o["id"], [o["label"]] + ([o["term"]] if kind != "vocab_match" else [])) for o in vocab.options(acc)]
+    if kind == "globe_side":
+        return [(k, ["", *SIDE_WORDS[k]]) for k in ("near", "far")]
+    return []
+
+
+def _stem(ws) -> set[str]:
+    return {w[:-1] if w.endswith("s") and len(w) > 3 else w for w in ws}
+
+
+def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: float = DD_MIN, *,
+              step_type: str | None = None, options: list[str] | None = None) -> bool:
+    """Is this turn a real try at the step (a miss when wrong), or room talk / filler (ignored, never a miss)?
+
+    A try: it names an option (a word of it, or its number / letter); it overlaps what the step expects (the keywords,
+    a place name, a mission order, the space word); or it has >= 3 content words and Arc says it was device-directed
+    (>= the kid's filter; unknown counts). `step` is the course step; without it (an old client's screen frame) the
+    option labels and the step type are all we know."""
+    acc = (step or {}).get("accept") or {"type": step_type or ""}
+    kind = acc.get("type") or ""
+    t = _norm(text)
+    if not t.strip():
+        return False
+    cw = content_words(text)
+    opts = step_options(acc) if step else [(str(k), [o]) for k, o in enumerate(options or [])]
+    if opts and kind != "globe_side" and option_index(text, len(opts)) is not None:
+        return True
+    mine = _stem(cw)
+    for _, say in opts:
+        if any(_has(t, w) for w in say[1:] if w) or mine & _stem(content_words(say[0])):
+            return True
+    if kind == "keywords":
+        if any(_has(t, w) for grp in [*acc.get("all", []), *acc.get("any", [])] for w in grp):
+            return True
+        if step and mine & _stem(content_words(" ".join(references(step)))):
+            return True
+    if kind == "command" and any(c.get("type") not in ("confirm", "cancel", "deny")
+                                 for c in nlu.parse(text).get("commands", [])):
+        return True
+    if kind in ("tap", "intent", "route", "terminator", "compare") and gaz().match_text(text):
+        return True
+    if kind == "terminator" and re.search(r"\b(terminator|day|night|line|shadow)\b", t):
+        return True
+    if kind in ("vocab_say", "vocab_fill", "vocab_listen") and len(cw) == 1 and len(_gnorm(text).split()) <= 3:
+        return True       # the answer is one word: one content word ("rocks" for the blank) is a real try
+    if kind.startswith("vocab_") and acc.get("term"):
+        from . import vocab
+        if kind == "vocab_say" and vocab.said_score(text, acc["term"]) >= 0.5:
+            return True
+        if kind in ("vocab_fill", "vocab_listen") and \
+                any(vocab.said_score(text, o["term"]) >= 0.6 for o in vocab.options(acc)):
+            return True
+    return len(cw) >= 3 and (dd is None or float(dd) >= dd_min)
+
+
+def text_only(inp: dict) -> bool:
+    """A spoken / typed attempt (no tap, choice, view or taps): the only kind that can be room talk."""
+    inp = inp or {}
+    return bool((inp.get("text") or "").strip()) and \
+        not any(inp.get(k) is not None for k in ("tap", "choice", "view", "taps"))
