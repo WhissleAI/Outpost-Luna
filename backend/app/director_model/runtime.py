@@ -1,7 +1,9 @@
 """The learned Director at runtime: a tiny streaming Mamba-3 (trained in director_model/, exported int8) stepped once per
 session event, numpy only (no torch).
 
-DIRECTOR_MODEL=off|shadow|on (env; default shadow):
+DIRECTOR_MODEL=off|shadow|on (env; default on since round 4: the guarded policy met the switch-on criteria in
+director_model/RESULTS.md; the rules remain the fallback on every turn the policy does not take, and whenever the
+weights fail to load):
   off     the model never runs.
   shadow  the model runs on every step and logs what it would do next to what the rules did; it never acts.
   on      the model decides at a kid's turn end where the rules read no command, with the rules as guardrails: the
@@ -30,8 +32,8 @@ CONF = 0.7                     # `on`: the model's act must be at least this sur
 
 
 def mode() -> str:
-    m = (os.environ.get("DIRECTOR_MODEL") or "shadow").strip().lower()
-    return m if m in ("off", "shadow", "on") else "shadow"
+    m = (os.environ.get("DIRECTOR_MODEL") or "on").strip().lower()
+    return m if m in ("off", "shadow", "on") else "on"
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward

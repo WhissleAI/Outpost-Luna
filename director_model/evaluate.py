@@ -146,6 +146,7 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
     rw = [is_wrong(m, m["rules_act"], m.get("rules_cmd") if m["rules_act"] == "command" else None) for m, _ in rows]
     grid = [0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 0.995, 1.01]
     best = None
+    cands = []
     for cmd in grid:
         for veto in [None, 0.9, 0.95, 0.98, 0.99, 0.995]:
             for ign in (0.7, 0.8, 0.9, 0.95, 1.01):
@@ -161,9 +162,16 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
                     # zero EXTRA wrong actions vs the rules (turns where the rules were right and `on` acts wrongly),
                     # then the fewest wrong actions, then act accuracy, then the more conservative thresholds
                     key = (-extra, -w, ok, cmd, veto or 2, ign, ask)
+                    cands.append((thr, w, ok, extra))
                     if best is None or key > best[0]:
                         best = (key, thr, w, ok, extra)
     _, thr, w, ok, extra = best
+    # robustness (val is small): the most conservative thresholds within 0.5 % act accuracy of the best, with no more
+    # wrong actions and still zero extra -> fewer turns ride on a single val example
+    slack = 0.005 * len(rows)
+    safe = [c for c in cands if c[3] == 0 and c[1] <= w and c[2] >= ok - slack]
+    thr, w, ok, extra = max(safe, key=lambda c: (c[0]["cmd"] + (c[0]["veto"] or 1.01) + c[0]["ignore"] + c[0]["ask"],
+                                                 c[2]))
     print(f"policy fit on {sets}: {thr} -> wrong {w} (extra {extra}) vs rules {r_wrong}, act ok {ok}/{len(rows)}",
           flush=True)
     return {**thr, "fit": {"sets": list(sets), "wrong": w, "extra_wrong": extra, "rules_wrong": r_wrong, "act_ok": ok,

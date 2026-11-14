@@ -78,7 +78,9 @@ cd backend && uv run pytest -q
 
 ## 5. Compare against the last RESULTS row
 
-Append a round to `RESULTS.md` with the same table. Ship only if, on `test_asr`, `test_ear` and `test_h40`, wrong
-actions per 50 commands did not go up, and `test_gold` and the guard/PII rows did not regress. Keep
-`DIRECTOR_MODEL=shadow` until then, and read `/api/director/stats` (shadow agreement) on real sessions before
-switching to `on`.
+Append a round to `RESULTS.md` with the same table. The default is `DIRECTOR_MODEL=on` (since round 4) with the rules
+as fallback. Ship new weights only if the guarded `on` rows (evaluate.py prints them; thresholds are refit on val by
+`fit_policy`) still meet the switch-on criteria in `RESULTS.md`: wrong/50 <= the rules on EVERY held-out set
+(test_clean, test_asr, test_real, test_ear, test_h40(+asr), test_gold), act accuracy >= the rules on every set, and
+the guard/PII rows unchanged. Otherwise keep the previous weights, or set `DIRECTOR_MODEL=shadow`, and read
+`/api/director/stats` on real sessions.

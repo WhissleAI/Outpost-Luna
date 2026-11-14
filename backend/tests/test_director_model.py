@@ -162,3 +162,14 @@ def test_policy_is_cost_aware():
     assert c["act"] == "command" and c["command"]["to"] == "shields"
     a = RT.policy(_out("ask_clarify", 0.9, "allocate", ["shields", "heaters"]), "more power to the".split(), [], False, thr)
     assert a == {"act": "ask_clarify", "clarify": ["shields", "heaters"]}
+
+
+def test_default_mode_is_on_with_rules_fallback(monkeypatch):
+    """Switch-on criteria met (director_model/RESULTS.md, round 4): `on` by default; the shipped weights carry the fitted
+    cost-aware thresholds; with no weights the rules decide every turn."""
+    monkeypatch.delenv("DIRECTOR_MODEL", raising=False)
+    assert RT.mode() == "on"
+    pol = RT.model().meta.get("policy")
+    assert pol and pol["cmd"] >= 0.9 and (pol["veto"] is None or pol["veto"] >= 0.95)
+    sh = RT.Shadow.__new__(RT.Shadow)
+    assert sh.decide_turn(None, "more power to the shields", False) is None

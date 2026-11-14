@@ -204,3 +204,71 @@ commands ("what is the crater" -> dispatch explore, "where does the power come f
 -> leave shelter).
 
 Next: train on the real decodes (1,082 train turns decoded so far), size m.
+
+## Round 5 — 2026-11-13 ~20:15 (train on real Arc decodes; robust threshold choice) — SHIPPED round 4's s as `on`
+
+Changes: train regenerated with the real decodes available (1,082 train turns decoded by Arc, replayed for 0.9 of
+the noised turns that have one; the rest still fitted noise); same val/test as round 4. Policy fit: among the
+zero-extra-wrong settings within 0.5 % act accuracy of the best on val, take the most conservative (val is small;
+round 4's `ask 0.95` cost a q80 turn on test). Data `ds_r5`: train 2,400 sessions; m 77,733 params (best step 2,000),
+s 28,985 (best 1,400); ~3 min each once the CPU was free.
+
+Raw model (M) vs rules (R), act acc and wrong/50:
+
+| set | m act | s act | R act | m wrong/50 | s wrong/50 | R wrong/50 |
+|---|---|---|---|---|---|---|
+| test_clean | 0.973 | 0.956 | 0.868 | 12.2 | 13.0 | 8.2 |
+| test_asr | 0.928 | 0.905 | 0.806 | 18.0 | 17.9 | 12.8 |
+| test_real | 0.873 | 0.851 | 0.740 | 18.6 | 16.1 | 9.5 |
+| test_ear | 0.810 | **0.865** | 0.720 | 39.7 | **20.7** | 17.2 |
+| test_h40 | 0.925 | 0.85 | 0.45 | 23.8 | 13.8 | 3.8 |
+| test_q80 | 0.913 | 0.95 | 0.863 | – | – | – |
+| test_gold | 0.895 | 0.789 | 0.737 | 27.3 | 13.6 | 13.6 |
+
+Training on real decodes is the biggest single gain on the real ear: raw s on test_ear act 0.70 -> **0.865** (rules
+0.72) and wrong/50 44.8 -> **20.7** (rules 17.2); test_real wrong/50 25.4 -> 16.1. Card attribute m 0.786 vs 0.757 on
+q80.
+
+Guarded `on` (fitted thresholds), act acc / wrong/50 vs rules:
+
+| set | r5 m on | r5 s on | **r4 s on (shipped)** | rules |
+|---|---|---|---|---|
+| test_clean | 0.963 / 8.0 | 0.952 / 7.6 | **0.951 / 7.6** | 0.868 / 8.2 |
+| test_asr | 0.899 / 12.7 | 0.889 / 12.1 | **0.886 / 12.2** | 0.806 / 12.8 |
+| test_real | 0.806 / 8.9 | 0.808 / 8.4 | **0.807 / 9.1** | 0.740 / 9.5 |
+| test_ear | 0.715 / 17.2 | 0.72 / 16.4 | **0.72 / 16.4** | 0.72 / 17.2 |
+| test_h40 | 0.525 / 2.5 | 0.45 / 3.8 | **0.45 / 1.3** | 0.45 / 3.8 |
+| test_h40_asr | 0.40 / 2.5 | 0.375 / 3.8 | **0.375 / 2.5** | 0.375 / 3.8 |
+| test_q80 | 0.863 / – | 0.85 / – | **0.863 / –** | 0.863 / – |
+| test_q80_asr | 0.813 / – | 0.813 / – | **0.813 / –** | 0.813 / – |
+| test_gold | 0.842 / **18.2** | 0.737 / 13.6 | **0.789 / 13.6** | 0.737 / 13.6 |
+
+r5 m fails test_gold (one metaphor, "we re turning into snowmen", filled as heaters +10 where gold is the +5 nudge)
+and test_ear act (0.715 < 0.72: "coffey capcom" -> ignore / ask); r5 s fails test_q80 by one turn ("is the moon flat
+with no holes" -> ignore). **r4 s with the robust thresholds (cmd 0.95, veto 0.99, ignore 0.8, ask off) meets every
+criterion** and is the shipped weights (`backend/app/director_model/weights.*`, policy in weights.json; int8 vs float
+max |dp| 0.021, 0.18 ms/step p50).
+
+Top remaining errors: wrong actions under `on` are the rules' own, on garbled real decodes the model is not >= 0.99 sure
+to veto ("what is the crater" -> dispatch explore, "where does the power come from" -> query power, "a little more
+raped on shiloh s knee pulling out of the shelter" -> leave shelter); "yes" decoded as junk; Academy correct answers
+the ear garbles ("rover go get eyes") -> nudge; metaphor slots (+5 vs +10).
+
+## Switch-on criteria (round 5) — MET by r4 s: default is now `DIRECTOR_MODEL=on`, rules as fallback
+
+| criterion | result |
+|---|---|
+| guarded `on` wrong/50 <= rules on EVERY held-out set | yes: clean 7.6 / 8.2, asr 12.2 / 12.8, real 9.1 / 9.5, ear 16.4 / 17.2, h40 1.3 / 3.8, h40_asr 2.5 / 3.8, gold 13.6 / 13.6 (tie) |
+| act accuracy >= rules on every set | yes: higher on clean / asr / real / gold, equal on ear / h40 / h40_asr / q80 / q80_asr |
+| privacy / safety | no regression: the guard always wins (policy returns None on a guard turn); the PII rows are identical; a model command must pass nlu.valid(); ask/ignore never execute anything |
+| policy scored exactly as it runs | yes: `runtime.policy` is the one definition used by `decide_turn` and evaluate.py |
+
+`DIRECTOR_MODEL` now defaults to `on` (runtime.mode); `shadow` / `off` remain one env var away. On every turn the
+policy does not take (no confident fill, no veto) the rules decide, and with no / stale weights the rules decide
+everything. The margins are thin on the small sets (h40 40 turns, gold 19, ear 200), so watch
+`/api/director/stats` (`model_overrides`) on the first real sessions.
+
+Gaps: only 1,082 of 4,647 rendered train turns had real decodes (decoding shared the CPU with other jobs, and the
+disk filled up mid-run: audio is now never written); the raw model still acts wrongly more often than the rules
+(slot exactness 0.6-0.75), so the win is the cost-aware layer, not the model acting alone; `test_real` voices are TTS
+(no real children); the veto almost never fires at 0.99 (val is too small to trust a lower one).

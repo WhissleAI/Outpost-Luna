@@ -87,8 +87,8 @@
  "policy": {
   "cmd": 0.95,
   "veto": 0.99,
-  "ignore": 0.7,
-  "ask": 0.95
+  "ignore": 0.8,
+  "ask": 1.01
  },
  "run": "r4_s",
  "data": "ds_r4",
