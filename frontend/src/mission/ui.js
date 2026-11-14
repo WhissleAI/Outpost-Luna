@@ -108,7 +108,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       panel.hidden = false; panel.innerHTML = `<p class="m-wait">Loading mission sites…</p>`;
       client = await createMissionClient(); sites = client.sites || [];
     }
-    if (state && !state.over) { showHud(); return; }
+    if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
     briefing();
   }
   // In the cabin the ask dock and the caption line live in the panel's bottom comm row (never over the window or a
@@ -168,7 +168,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
