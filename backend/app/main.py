@@ -124,3 +124,10 @@ from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E
 app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
+
+
+@app.get("/api/director/stats")
+def director_stats():
+    """The learned Director (DIRECTOR_MODEL=off|shadow|on): mode, model, and shadow agreement with the rules."""
+    from .director_model import runtime as dmodel
+    return dmodel.stats()

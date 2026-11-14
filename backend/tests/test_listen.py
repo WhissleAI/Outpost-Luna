@@ -88,5 +88,7 @@ def test_listen_relays_words_turns_and_emotion(fakes):
 
 def test_listen_without_key_reports_error(monkeypatch):
     monkeypatch.setattr(settings, "deepgram_api_key", "")
+    from app import listen as _listen
+    monkeypatch.setattr(_listen.ear_settings, "ear", "deepgram")   # EAR=arc (the default) needs no key
     with TestClient(app) as c, c.websocket_connect("/ws/listen") as ws:
         assert ws.receive_json()["t"] == "error"

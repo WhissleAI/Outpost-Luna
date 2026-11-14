@@ -1,0 +1,4 @@
+# Training only (the runtime in backend/app/director_model is numpy, no torch).
+# Data generation runs in the backend env (uv run --project backend); train / evaluate / export run with these.
+torch>=2.4
+numpy>=1.26

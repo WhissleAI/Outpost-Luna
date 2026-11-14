@@ -52,4 +52,22 @@ health:          ## Check that all three are up
 	@curl -s localhost:8100/api/health | python3 -m json.tool | head -20
 	@curl -s -o /dev/null -w "frontend :5173 -> %{http_code}\n" localhost:5173/
 
-.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health
+DM_PORT ?= 8290
+DM_DATA ?= director_model/data/ds
+DM_RUN ?= director_model/runs/latest
+DM_SIZE ?= m
+EMBED_MODEL_DIR ?= $(CURDIR)/model_server/models/minilm
+
+director-retrain: ## Rebuild the learned Director: refit ASR errors, regenerate sessions, train, evaluate, export (director_model/RETRAIN.md)
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
+	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
+	uv run --project backend python director_model/ear_errors.py build
+	MODEL_SERVER_URL=http://127.0.0.1:$(DM_PORT) uv run --project backend python director_model/gen_sessions.py \
+	  --out $(DM_DATA) $(DM_GEN_ARGS); st=$$?; kill $$(cat /tmp/director-ms.pid); test $$st = 0
+	python3 director_model/train.py --data $(DM_DATA) --out $(DM_RUN) --size $(DM_SIZE)
+	python3 director_model/evaluate.py --data $(DM_DATA) --run $(DM_RUN)
+	python3 director_model/export.py --run $(DM_RUN) --data $(DM_DATA) --eval $(DM_RUN)/eval.json
+	cd backend && uv run pytest -q tests/test_director_model.py
+
+.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-retrain

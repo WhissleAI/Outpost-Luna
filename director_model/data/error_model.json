@@ -1,0 +1,143 @@
+{
+ "_note": "fitted by ear_errors.py build on the odd ear-eval ids",
+ "rates": {
+  "clean": {
+   "sub": 0.06367041198501873,
+   "del": 0.0,
+   "ins": 0.0
+  },
+  "noisy": {
+   "sub": 0.1198501872659176,
+   "del": 0.0,
+   "ins": 0.0
+  }
+ },
+ "tail_rate_noisy": 0.45,
+ "tails": [
+  "as well",
+  "on 1 8 4",
+  "no no no",
+  "any emails you know from",
+  "please",
+  "for the weather",
+  "it s huge isn t it",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 1 8 4",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 14",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 34",
+  "no no no",
+  "please tell me",
+  "for work",
+  "again",
+  "is she in houston",
+  "to you",
+  "brought together",
+  "l a l a",
+  "on 34",
+  "no no no",
+  "please tell me",
+  "for work",
+  "again",
+  "is she in houston",
+  "to you",
+  "brought together",
+  "play alien",
+  "meet me at 8 am",
+  "work work work work work",
+  "it s a long run",
+  "mm mm mm mm mm mm mm mm mm mm",
+  "any emails you know okay okay okay okay okay",
+  "please tell me",
+  "for the weather lucia can t",
+  "okay okay okay okay okay okay okay",
+  "to you",
+  "launches alarm",
+  "play all emails",
+  "as well",
+  "on 1 8 4",
+  "no no no",
+  "any emails you know from",
+  "please",
+  "for the weather",
+  "it s huge isn t it",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 1 8 4",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails",
+  "on 14",
+  "no no no",
+  "please tell me",
+  "for work",
+  "is she in houston",
+  "you know what i mean",
+  "brought together",
+  "play all emails"
+ ],
+ "subs": {
+  "put": {
+   "with": 9
+  },
+  "orientale": {
+   "oriental": 9,
+   "oriental numbers": 6
+  },
+  "malapert": {
+   "malipart": 3,
+   "malapart": 6
+  },
+  "near malapert": {
+   "the amal apart": 9
+  },
+  "ice in cabeus": {
+   "icing cabins": 15
+  },
+  "3": {
+   "three": 7,
+   "three again": 7
+  },
+  "ejecta": {
+   "a jackson": 7,
+   "ejecting": 2
+  },
+  "ice": {
+   "icy vavilov": 2
+  },
+  "heaters": {
+   "haters": 2,
+   "cedars": 1,
+   "caiters": 1
+  },
+  "copy": {
+   "carby": 2
+  },
+  "cabeus": {
+   "cabbis": 1
+  },
+  "roger": {
+   "roderick": 1
+  }
+ }
+}

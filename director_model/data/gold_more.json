@@ -1,0 +1,774 @@
+{
+ "_note": "More train-only gold paraphrases (round 3, from the round-2 error analysis): metaphors -> loads, rover return/explore, science/who/size attributes.",
+ "items": [
+  {
+   "text": "i'm shivering",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "my hands are like ice",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "it's chilly in the base",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we're all freezing",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "i can see my breath it's so cold",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the crew is shivering",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "warm us up please",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "make it toasty in here",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "my nose is frozen",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "i can't breathe very well",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we need fresh air",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the air feels thin",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "everyone is yawning and stuffy",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we're running out of air",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the crew needs more oxygen to breathe",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "it's stuffy in here",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the plants are wilting",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "our lettuce looks sad",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the veggies need food",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the garden is dying",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the tomatoes are thirsty for power",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "help the plants grow",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the radiation is scary",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "protect the crew from the sun",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the sun is too strong",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "make our armor stronger",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we need more protection from the storm",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "keep the space rays out",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "earth can't hear us",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the radio is fuzzy",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we keep losing the signal",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "houston sounds crackly",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "make the radio louder",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we need more science",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "science",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the experiments are too slow",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "science",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "let's do more research",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "science",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the lab needs juice",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "science",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "park the rover",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "bring the moon buggy back home",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the rover should come home now",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "rover come back",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "get the buggy back in the garage",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "time for the rover to come home",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "let's go exploring with the rover",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "take the buggy on a trip",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the rover should see something new",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "drive the buggy around and look",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "go on an adventure with the moon buggy",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "explore somewhere new with the rover",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "what did the lcross crash find out",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did that crash discover",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what science did lcross do",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did the experiments learn",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did the apollo experiments find",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "who drove the moon car first",
+   "act": "answer",
+   "attr": "who",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "who was in the moon buggy",
+   "act": "answer",
+   "attr": "who",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "who parked that rover",
+   "act": "answer",
+   "attr": "who",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what's the biggest crater on the moon",
+   "act": "answer",
+   "attr": "size",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "how big is the largest crater",
+   "act": "answer",
+   "attr": "size",
+   "split": "train",
+   "mode": "cadet"
+  }
+ ]
+}

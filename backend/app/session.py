@@ -23,6 +23,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import director, models_client, steering
+from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
 from .gazetteer import norm
 from .mission import capcom
@@ -73,6 +74,7 @@ class Session:
         self.recent_turns: deque = deque(maxlen=6)  # (norm text, ts)
         self.poll_task: asyncio.Task | None = None
         self.lock = asyncio.Lock()
+        self.dm = dmodel.attach(self)          # the learned Director (DIRECTOR_MODEL=off|shadow|on), None when off
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -81,6 +83,8 @@ class Session:
         return director._sim()
 
     async def emit(self, ds: list[dict]):
+        if self.dm is not None:
+            self.dm.emitted(ds)
         for d in ds:
             if d["t"] in ("say", "play"):
                 self.pending[d["id"]] = d
@@ -109,6 +113,10 @@ class Session:
     # ---- streams in --------------------------------------------------------------------------------------------------
     async def handle(self, m: dict):
         t = m.get("t")
+        # The learned Director steps on every event (turn ends and typed turns step in _turn, after Arc Tagger).
+        if self.dm is not None and t != "typed" and not (t == "turn" and m.get("state") == "end"):
+            with contextlib.suppress(Exception):
+                self.dm.step(m)
         if t == "hello":
             await self.on_hello(m)
         elif t == "typed":
@@ -282,6 +290,12 @@ class Session:
 
         resolved = self.resolve_referent(text) if b["mission_id"] else text
         read = summarize(await models_client.tag(resolved, "assistant"))
+        out = None
+        if self.dm is not None:
+            ev = {"t": "turn", "state": "end", "text": text} if source == "listen" else \
+                {"t": "typed", "text": text, "source": source}
+            with contextlib.suppress(Exception):
+                out = self.dm.step(ev, read)
         emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         if b["last_place"]:
@@ -292,7 +306,27 @@ class Session:
             ctx["mission"] = {"id": b["mission_id"], "role": b["role"]}
         if k.get("device_directed") is not None and source == "listen":
             ctx["device_directed"] = k["device_directed"]
-        r = await director.direct(resolved, read, self.gaz, self.index, ctx)
+        override = None
+        if self.dm is not None and out is not None:
+            guard = bool(self.gaz is not None and director._hard_pii(read, self.gaz)) or bool(
+                director.NAME_GIVEN.search(norm(resolved)))
+            override = self.dm.decide_turn(out, resolved, guard)
+        if override and override["act"] == "command" and not (b["mission_id"] and b["mode"] == "mission"):
+            override = None
+        if override and override["act"] == "ignore":
+            r = {"action": "none", "say": "", "source": "director_model", "decisions": []}
+        elif override and override["act"] == "ask_clarify":
+            r = {"action": "ask", "say": director.SAY_AGAIN, "source": "director_model",
+                 "ask": {"question": director.SAY_AGAIN, "options": []}}
+            r["decisions"] = director.decisions_for(r, text, ctx)
+        else:
+            if override and override["act"] == "command":
+                ctx["commands"] = [override["command"]]
+            r = await director.direct(resolved, read, self.gaz, self.index, ctx)
+        if override:
+            dmodel.STATS["model_overrides"] += 1
+        if self.dm is not None:
+            self.dm.turn_result(r)
         ds = list(r.get("decisions") or [])
         if r.get("place"):
             b["last_place"] = r["place"]
@@ -356,6 +390,9 @@ class Session:
         if s is None:
             return
         self._observe_state(s)
+        if self.dm is not None:
+            with contextlib.suppress(Exception):
+                self.dm.step({"t": "poll"})
         ds = await self._new_events(spoken=True)
         if ds:
             await self.offer(ds)

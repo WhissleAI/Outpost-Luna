@@ -1,0 +1,94 @@
+{
+ "size": {
+  "d": 48,
+  "layers": 2,
+  "d_state": 16,
+  "head_dim": 16,
+  "buckets": 2048,
+  "emb": 8
+ },
+ "size_name": "m",
+ "params": 77637,
+ "F": 167,
+ "heads": [
+  [
+   "act",
+   10
+  ],
+  [
+   "when",
+   1
+  ],
+  [
+   "cmd_type",
+   11
+  ],
+  [
+   "sub_type",
+   11
+  ],
+  [
+   "amount",
+   9
+  ],
+  [
+   "load_to",
+   8
+  ],
+  [
+   "load_from",
+   8
+  ],
+  [
+   "task",
+   5
+  ],
+  [
+   "query",
+   8
+  ],
+  [
+   "rule_when",
+   7
+  ],
+  [
+   "card_attr",
+   14
+  ],
+  [
+   "style",
+   13
+  ],
+  [
+   "s_rate",
+   3
+  ],
+  [
+   "s_loud",
+   3
+  ],
+  [
+   "s_f0_iqr",
+   3
+  ],
+  [
+   "barge",
+   1
+  ]
+ ],
+ "word_heads": [
+  "w_load",
+  "w_num",
+  "w_task"
+ ],
+ "thr": {
+  "when": 0.9600000000000004
+ },
+ "run": "r3_m",
+ "data": "ds_r3",
+ "trained": {
+  "n_train_sessions": 3000,
+  "n_train_steps": 290839,
+  "best_step": 4400
+ }
+}
