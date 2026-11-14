@@ -142,3 +142,65 @@ fires but 12 wrong vs 3). **Recommendation: ship `DIRECTOR_MODEL=shadow` (defaul
 (a) the real-ear set is larger and in the training mix (record real Arc decodes of generated sessions instead of the
 fitted error model), (b) the slot conventions are unified (bank vs rules), and (c) guarded wrong/50 is at or below
 the rules on test_asr, test_ear and h40 with the guard/PII rows unchanged.
+
+## Round 4 — 2026-11-13 ~19:50 (real Arc decodes for test/val, one slot convention, mission questions, cost-aware policy)
+
+Changes:
+- **Real Arc decodes** (`real_ear.py`): every generated kid turn's text (same seeds as the generator) rendered with
+  Steer TTS Edge (200 voices ranked by f0: rank%5==0 test voices, ==1 val voices, others train; draws biased to the
+  higher-pitched voices; rate z U(-1, 1.2); half +0.5-2 st f0; 30 % room reverb RT60 0.2-0.6 s; 50 % classroom babble
+  + pink noise at 10-20 dB) and decoded by the **real Arc ear** (model_server `EarStream` = `/v1/stream?ear=arc`,
+  Tier A context). The generator replays Arc's words, partials, eager/end and device_directed (`--real-p 0.9`). Rough
+  WER of these decodes: test 0.41, val 0.46 (harder than the 40-line ear eval: rate jitter, reverb, held-out voices).
+  Audio is rendered in memory and never written (text decodes only, ~5 KB/turn, `cache/real_ear/dec`).
+- **New held-out set `test_real`**: 127 test sessions (1,157 scored turns: unseen templates / card questions, held-out
+  voices) heard only through real Arc decodes. The old 200-turn `test_ear` is kept.
+- **One slot convention** everywhere (`nlu.py` docstring + `tests/test_mission_nlu.py`): a little = ±5, more/less =
+  ±10, "to N" = set N (also "lower the shields to 20 percent"), "N more" = +N, implied need = +5. Fixed: the rules
+  ("lower ... to N" was a delta), the command bank (158 plain more/less examples were `little ±5`), the embed slot
+  fill, `gen_command_bank.py`, 7 `gold_more` labels.
+- **Mission-mode questions**: 54 explorer questions asked during missions ("how deep is {place}", "why do we need
+  shields", "what is a solar storm", ...; gold `answer`, split by question root) at ~4.5 % of mission turns; new
+  features `lx_whq` (wh-question after fillers) and `lx_explain` (why / how deep / what is ...), next to Arc Tagger's
+  question act (`tag_q`, already a feature). F 160 -> 162.
+- **Cost-aware acting** (`runtime.policy`, ONE definition for the runtime `on` mode and the evaluator): the guard
+  wins; a rules command stands unless a fitted **veto** fires (model >= thr sure the turn is not a command -> ask
+  "Did you mean X or Y?"; mission mode only, never on yes/no); the model fills a command only if
+  min(p act, p type, p main slots) >= thr; ignore / ask above their own thresholds; else the rules. Thresholds fit on
+  val to **zero extra wrong actions vs the rules** (turns the rules got right and `on` gets wrong), then fewest wrong,
+  then act accuracy. Fitted: cmd 0.95, veto 0.99, ignore 0.7, ask 0.95 (val: 61 wrong vs rules 79, 0 extra).
+- Live demo (`GET :8100/api/director/stats`, read-only): 37 steps, 0 turns logged -> no shadow disagreements to label.
+
+Data `ds_r4`: train 2,400 sessions / 232,430 steps (half noised; only 12 train turns had real decodes at generation
+time, so train noise is still the fitted model), val 150 (real decodes for 0.9 of noised turns), tests as listed.
+Size m was stopped (CPU shared with the decoders, ~2 min / 200 steps); **s** (28,985 params) trained to 2,200 steps,
+best 1,200 (early stop: val with real decodes diverges from fitted-noise train).
+
+| set | turns | act acc M / R / **on** | cmd exact M / R / on | wrong/50 M / R / **on** | attr M / R | eot premature, gain | barge P/R M ; R | shadow agree |
+|---|---|---|---|---|---|---|---|---|
+| test_clean | 1844 | 0.966 / 0.868 / **0.952** | 0.650 / 0.851 / 0.850 | 16.7 / 8.2 / **7.6** | 0.909 / 0.751 | 0.004, 191 ms | 0.97/0.98 ; 0.89/0.17 | 0.884 |
+| test_asr | 1843 | 0.934 / 0.806 / **0.887** | 0.586 / 0.787 / 0.785 | 19.7 / 12.8 / **12.2** | 0.883 / 0.738 | 0.013, 196 ms | 0.98/0.97 ; 0.88/0.16 | 0.835 |
+| **test_real** (new) | 1157 | 0.860 / 0.740 / **0.808** | 0.550 / 0.788 / 0.785 | 25.4 / 9.5 / **9.1** | 0.726 / 0.641 | 0.022, 122 ms | 0.92/0.98 ; 0.89/0.18 | 0.815 |
+| test_ear | 200 | 0.700 / 0.720 / **0.720** | 0.655 / 0.828 / 0.828 | 44.8 / 17.2 / **16.4** | 0.63 / 1.0 | 0, 215 ms | – | 0.685 |
+| test_h40 | 40 | 0.95 / 0.45 / **0.45** | – | 21.3 / 3.8 / **1.3** | – | – | – | 0.475 |
+| test_h40_asr | 40 | 0.90 / 0.375 / **0.375** | – | 25.0 / 3.8 / **2.5** | – | – | – | 0.425 |
+| test_q80 | 80 | 0.888 / 0.863 / **0.863** | – | – | 0.743 / 0.757 (card+attr 0.375 / 0.488) | – | – | 0.813 |
+| test_q80_asr | 80 | 0.838 / 0.813 / **0.813** | – | – | 0.743 / 0.743 | – | – | 0.738 |
+| test_gold | 19 | 0.842 / 0.737 / **0.789** | 0.55 / 0.45 / 0.45 | 13.6 / 13.6 / **13.6** | 0.83 / 1.0 | – | – | 0.895 |
+
+h40 (`expect`): `on` 17 ok / 1 wrong / 22 none vs rules 15 / 3 / 22 (ASR: 14 / 2 / 24 vs 13 / 3 / 24). Raw model 21 / 17 /
+2. Round 3's policy (CONF 0.7 fill) with this model: test_real 9.9, test_ear 20.7 wrong/50 (worse than the rules).
+
+**The guarded `on` policy has wrong/50 <= the rules on every held-out set** (gold ties) **and act accuracy >= the rules
+on every set** (q80 / ear / h40 tie). The raw model alone still acts wrongly far more than the rules (slot exactness
+0.55-0.65): every gain comes from it acting only where it is sure, and from ignoring chatter / echo (test_real chatter
+37/59 vs 6/59, echo 52/53 vs 2/53).
+
+Top errors (test_real, model): Academy correct answers heard badly -> nudge (30; "rover go get eyes"); chatter -> answer
+(13); "yes" decoded as junk ("is the mature amount of liquid") -> command; metaphors through the ear ("we re trying to
+eat a snowman") -> answer. Wrong actions left under `on` are the rules' own: mission questions the rules turn into
+commands ("what is the crater" -> dispatch explore, "where does the power come from" -> query) that the model is not
+>= 0.99 sure to veto; garbled noise the rules parse ("a little more raped on shiloh s knee pulling out of the shelter"
+-> leave shelter).
+
+Next: train on the real decodes (1,082 train turns decoded so far), size m.

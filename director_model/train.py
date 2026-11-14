@@ -219,7 +219,9 @@ def main():
     torch.manual_seed(a.seed)
     rng = random.Random(a.seed)
     d = Path(a.data)
-    tr = load_split(d / "train.npz")
+    # train.npz, or the generator's shards train_s*.npz (gen_sessions.py --shard; no merged copy on disk)
+    tr = load_split(d / "train.npz") if (d / "train.npz").exists() else \
+        [s for f in sorted(d.glob("train_s*.npz")) for s in load_split(f)]
     va = load_split(d / "val.npz")
     print(f"train {len(tr)} sessions {sum(len(s['feats']) for s in tr)} steps; val {len(va)}", flush=True)
     model = make(FX.F, a.size, a.drop)

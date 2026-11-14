@@ -127,3 +127,38 @@ def test_stats_route(monkeypatch):
     with TestClient(app) as c:
         r = c.get("/api/director/stats").json()
     assert r["mode"] == "shadow" and "act_agreement" in r and r["model"]["params"] > 0
+
+
+def _out(act, p, cmd_type="none", load=None):
+    o = {k: np.full(n, 0.01) for k, n in FX.HEADS.items() if n > 1}
+    o["act"] = np.full(len(FX.ACTS), (1 - p) / (len(FX.ACTS) - 1))
+    o["act"][FX.ACTS.index(act)] = p
+    o["cmd_type"][FX.CMD_TYPES.index(cmd_type)] = 0.9
+    o["amount"][FX.AMOUNTS.index("delta_up")] = 0.9
+    if load:
+        for j, ld in enumerate(load):
+            o["load_to"][FX.LOADS.index(ld)] = 0.95 if len(load) == 1 else 0.5 - 0.1 * j
+    for k in FX.WORD_HEADS:
+        o[k] = np.zeros(FX.W)
+    return o
+
+
+def test_policy_is_cost_aware():
+    """runtime.policy: guard wins; a rules command stands unless the fitted veto fires (never on yes/no); the model
+    fills only above its fitted per-act threshold; a torn allocate asks 'shields or heaters?'."""
+    thr = {"cmd": 0.9, "ignore": 0.8, "ask": 0.8, "veto": 0.95}
+    rc = [{"type": "allocate", "to": "shields", "amount": {"kind": "delta", "value": 10}}]
+    w = "more power to the shields".split()
+    assert RT.policy(_out("ignore", 0.99), w, [], True, thr) is None
+    assert RT.policy(_out("answer", 0.9), w, rc, False, thr) is None
+    assert RT.policy(_out("answer", 0.97), w, rc, False, thr)["act"] == "ask_clarify"
+    assert RT.policy(_out("answer", 0.99), ["yes"], [{"type": "confirm"}], False, thr) is None
+    assert RT.policy(_out("answer", 0.99), w, rc, False, {**thr, "veto": None}) is None
+    assert RT.policy(_out("command", 0.85, "allocate"), w, [], False, thr) is None
+    torn = _out("command", 0.97, "allocate", ["shields", "heaters"])      # sure it's a command, not of the load
+    assert RT.cmd_conf(torn) < 0.9 and RT.policy(torn, w, [], False, thr) is None
+    assert RT.policy(_out("answer", 0.99), w, rc, False, thr, mission=False) is None   # Academy: no veto
+    c = RT.policy(_out("command", 0.95, "allocate", ["shields"]), w, [], False, thr)
+    assert c["act"] == "command" and c["command"]["to"] == "shields"
+    a = RT.policy(_out("ask_clarify", 0.9, "allocate", ["shields", "heaters"]), "more power to the".split(), [], False, thr)
+    assert a == {"act": "ask_clarify", "clarify": ["shields", "heaters"]}

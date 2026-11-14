@@ -86,6 +86,12 @@ for _p, _l in nlu.LOAD_WORDS:
                 LOAD_WORD.add(_w)
 TASK_WORD = {"ice", "water", "dig", "mine", "collect", "fix", "repair", "mend", "solar", "panel", "panels", "array",
              "arrays", "return", "home", "back", "explore", "scout", "investigate", "adventure", "crater", "look"}
+# a wh-question / explanation question, after leading fillers ("um how deep is shackleton", "hey why do we need shields")
+FILLER = re.compile(r"^((um+|uh+|hey|so|okay|ok|guide|and|but|wait|like|well|oh|hmm+|moon|buddy|robot)\s+)+")
+WHQ = re.compile(r"^(what|whats|where|when|who|whose|why|how|which)\b")
+EXPLAIN = re.compile(r"^(why|how (do|does|did|deep|big|far|tall|high|hot|cold|long|old|wide|fast|heavy|many craters)|"
+                     r"what (is|are|s|was|were|does|do|makes|happens)|whats|who (is|was|named|discovered|found|made)|"
+                     r"where (is|are|did|does)|can (you|we) (tell|see|explain)|tell me (about|why|how|what))\b")
 QUERY_WORD = {"how", "what", "status", "report", "left", "much", "many", "level", "check"}
 
 
@@ -224,7 +230,7 @@ FEATS: list[str] = (
        "lx_confirm", "lx_cancel", "lx_negation", "lx_cond", "lx_more", "lx_less", "lx_little", "lx_all", "lx_half",
        "lx_off", "lx_on", "lx_shelter", "lx_houston", "lx_end_shift", "lx_cold", "lx_define", "lx_name_given",
        "lx_pronoun", "lx_correction", "lx_miscon", "lx_tour", "lx_sound", "lx_crew", "echo_share", "gaz_match",
-       "gaz_artifact", "last_stop"]
+       "gaz_artifact", "last_stop", "lx_whq", "lx_explain"]
     # the mission NLU rules on these words (the rules as evidence, not as the answer)
     + ["nlu_n", "nlu_clarify", "nlu_conf"] + [f"nlu_{c}" for c in CMD_TYPES[1:]]
     # Arc Tagger read-out (turn end only; tag_avail = 0 elsewhere or with no model server)
@@ -288,6 +294,9 @@ def lexical(ws: list[str], playing_text: str = "") -> dict:
     d["gaz_match"] = float(p is not None)
     d["gaz_artifact"] = float(p is not None and p.kind == "artifact")
     d["last_stop"] = float(bool(ws) and ws[-1] in STOP)
+    core = FILLER.sub("", t)
+    d["lx_whq"] = float(bool(WHQ.match(core)))
+    d["lx_explain"] = float(bool(EXPLAIN.match(core)))
     return d
 
 
