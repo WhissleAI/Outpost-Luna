@@ -193,7 +193,7 @@ FIXED = ("idle", "shields_max", "always_shelter", "science_max", "comms_max", "r
 
 
 def play(policy_cls, site: str, seed: int, difficulty: str = "commander") -> dict:
-    m = sim.new_mission(f"s-{policy_cls.name}", site, seed, difficulty=difficulty)
+    m = sim.new_mission(f"s-{policy_cls.name}", site, seed, level=difficulty)
     p = policy_cls()
     while not m.over:
         st = sim.to_state(m)

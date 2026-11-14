@@ -171,3 +171,25 @@ def test_spa_and_lcross_numbers():
     assert "more than half as wide as the USA" in places["spa"]["fact"]
     t = (DATA / "facts.json").read_text() + (DATA / "artifacts.json").read_text()
     assert "2000 kg" not in t and "350 metric tons" not in t and "2,300 kg" in t and "155 kg" in t
+
+
+# ---- one level: Settings prefs.level picks the difficulty band ---------------------------------------------------------
+def test_level_is_the_difficulty_band():
+    m = sim.new_mission("lv", "shackleton_rim", 4, level="commander")
+    sim.set_level(m, "cadet")                         # before the first shift: the whole band applies
+    assert m.level == "cadet" and all(st.event["sep"] for st in m.storms) and m.failure_h > sim.MISSION_H
+    assert sim.to_state(m)["env"]["relay"] is True
+    sim.advance(m, 1)
+    before = [(st.start_h, st.event["id"]) for st in m.storms]
+    sim.set_level(m, "commander")                     # mid-mission: the schedule stays; warnings and grading follow
+    assert m.level == "commander" and [(st.start_h, st.event["id"]) for st in m.storms] == before
+    assert sim.to_state(m)["env"]["relay"] is False
+
+
+def test_api_level_starts_the_band():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    with TestClient(app) as c:
+        st = c.post("/api/mission/start", json={"site": "malapert_massif", "seed": 2, "level": "cadet"}).json()
+    assert st["level"] == st["difficulty"] == "cadet" and st["env"]["relay"]

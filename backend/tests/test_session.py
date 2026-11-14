@@ -39,9 +39,9 @@ def offline(monkeypatch):
 @pytest.fixture
 def sess(world):
     clock = Clock()
-    m = registry.create(SITE, SEED)
+    m = registry.create(SITE, SEED, level="commander")
     s = sessions.Session("t-1", world[0], world[1], clock=clock, registry=registry)
-    run(s.handle({"t": "hello", "mode": "mission", "mission_id": m.id, "role": None}))
+    run(s.handle({"t": "hello", "mode": "mission", "mission_id": m.id, "role": None, "prefs": {"level": "commander"}}))
     s.clock_obj, s.m = clock, m
     return s
 

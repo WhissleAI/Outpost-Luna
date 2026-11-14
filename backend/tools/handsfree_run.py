@@ -299,6 +299,8 @@ async def script(c: Client, shifts: int = 3):
     await c.say("pick Malapert")
     await c.say("take command")
     await c.noise()
+    for panel in ["open the comm panel", "back to my seat", "move the voice bar to the top right"]:   # 3D cabin + a11y
+        await c.say(panel)
     for order in ["shields to 40", "send the rover for ice", "what's the power level"]:
         await c.say(order)
     for _ in range(shifts):

@@ -149,7 +149,9 @@ class Mission:
     ice_runs: int = 0
     houston_calls: int = 0
     shifts: list = field(default_factory=list)    # per-shift snapshots for the debrief timeline
-    difficulty: str = "commander"
+    level: str = "commander"                      # cadet | commander: the difficulty band (Settings prefs.level via the
+                                                  # session; the storm schedule is fixed at start, warnings, the relay
+                                                  # and grading follow the current level)
     power_save: bool = False
     shelter_h: int = 0                            # hours in the shelter without a break
     shelter_rest_until: int = 0                   # mission hour the crew may pack into the shelter again
@@ -157,6 +159,10 @@ class Mission:
     forecast_heard: set = field(default_factory=set)   # storm ids Houston mentioned on a call
     good_calls: list = field(default_factory=list)     # [{t_h, kind, text}] decisions that read the data
     rover_left_h: int = 0
+
+    @property
+    def difficulty(self) -> str:
+        return self.level if self.level in DIFFICULTIES else "commander"
 
     # Convenience API for the Director / registry (contract: State and command result shapes).
     def state(self) -> dict:
@@ -173,27 +179,44 @@ class Mission:
 # ---------------------------------------------------------------- setup
 
 def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None,
-                difficulty: str = "commander") -> Mission:
+                level: str = "commander", difficulty: str | None = None) -> Mission:
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
+    difficulty = difficulty or level or "commander"   # `difficulty` is the older name for `level`
     if difficulty not in DIFFICULTIES:
-        raise ValueError(f"difficulty must be one of {DIFFICULTIES}")
-    rng = random.Random(f"{site_id}:{seed}")
-    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), difficulty=difficulty)
+        raise ValueError(f"level must be one of {DIFFICULTIES}")
+    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=difficulty)
+    _schedule(m)
+    m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
+    return m
+
+
+def _schedule(m: Mission) -> None:
+    """The storm schedule and the array failure for this site, seed and level (deterministic)."""
+    rng = random.Random(f"{m.site_id}:{m.seed}")
     cat = storms_catalog()["events"]
-    if difficulty == "cadet":   # two real particle events, no false alarms, no array failure
+    m.storms = []
+    if m.difficulty == "cadet":   # two real particle events, no false alarms, no array failure
         picks = rng.sample([e for e in cat if e.get("sep")], 2)
         slots = [STORM_SLOTS[0], STORM_SLOTS[2]]
-    else:                       # 2-3 real events; storms without particles are the honest false alarms
+    else:                         # 2-3 real events; storms without particles are the honest false alarms
         n = 2 + (rng.random() < 0.5)
         picks = rng.sample(cat, n)
         slots = STORM_SLOTS if n == 3 else [STORM_SLOTS[0], STORM_SLOTS[2]]
     for ev, (lo, hi) in zip(picks, slots):
         start = rng.randrange(lo, hi) // 6 * 6 + rng.choice([0, 2, 4])
         m.storms.append(Storm(start, storm_duration_h(ev), ev))
-    m.failure_h = rng.randrange(60, 180) if difficulty == "commander" else 10 ** 6
-    m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
-    return m
+    m.failure_h = rng.randrange(60, 180) if m.difficulty == "commander" else 10 ** 6
+
+
+def set_level(m: Mission, level: str) -> None:
+    """Settings prefs.level -> the difficulty band. Before the first shift the whole band applies (storms re-picked);
+    after that the schedule stays and only warnings, the relay and grading follow the new level."""
+    if level not in DIFFICULTIES or level == m.level:
+        return
+    m.level = level
+    if m.t_h == 0 and not m.events:
+        _schedule(m)
 
 
 # ---------------------------------------------------------------- environment
@@ -758,7 +781,7 @@ def to_state(m: Mission) -> dict:
                 "warning": _warning(m)},
         "rover": dict(m.rover), "shelter": m.shelter, "power_save": m.power_save,
         "shelter_hours": m.shelter_h, "shelter_ready_in_h": max(0, m.shelter_rest_until - m.t_h),
-        "difficulty": m.difficulty,
+        "difficulty": m.difficulty, "level": m.level,
         "science": {"collected": round(m.science, 1), "sent_home": round(m.science_sent, 1)},
         "objectives": objectives(m), "good_calls": len(m.good_calls),
         "pretend_tech": radiation()["game"]["pretend_tech"],   # label these in the UI ("pretend tech")
@@ -895,7 +918,7 @@ def debrief(m: Mission) -> dict:
             "final": {"power_pct": round(m.power, 1), "life_support_pct": round(m.life, 1), "dose_msv": round(m.dose, 2),
                       "science": round(m.science, 1), "science_sent": round(m.science_sent, 1)},
             "timeline": timeline, "lessons": lessons[:4], "data_used": data_used,
-            "difficulty": m.difficulty, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
+            "difficulty": m.difficulty, "level": m.level, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
             "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else "goals")}
 
 

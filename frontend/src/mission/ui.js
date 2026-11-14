@@ -52,7 +52,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       window.__cabinViews = { get tv() { return tv; }, get view() { return curView; } };   // test hook (fps, view)
     }
     if (import.meta.env && import.meta.env.DEV && !window.__cabinTest) window.__cabinTest = {   // dev-only: force sim states for screenshots
-      storm(on) { if (!state) return; state.env.storm = on ? { active: true, name: "G5 geomagnetic storm", real_date: "10 May 2024", source: "DONKI", severity: 5 } : { active: false };
+      storm(on) { if (!state) return; state.env.storm = on ? { active: true, name: "Real solar particle storm, 2024-05-09 (huge auroras on Earth, G5)", real_date: "2024-05-09", source: "DONKI", severity: 3, sep: true } : { active: false };
         state.alerts = on ? ["dose_rate_high"] : []; render(); },
       sky(sun, earth) { if (!state) return; Object.assign(state.env, { sun_elev_deg: sun, in_sun: sun > 0, earth_elev_deg: earth, earth_visible: earth > 0 }); testSky = true; render(); },
       rover(task, eta) { if (!state) return; state.rover = { ...(state.rover || {}), busy: !!task, task, eta_h: eta }; render(); },

@@ -9,14 +9,14 @@ MISSIONS: dict[str, sim.Mission] = {}
 MAX_MISSIONS = 500
 
 
-def create(site: str, seed: int | None = None, roles: list[str] | None = None,
-           difficulty: str = "commander") -> sim.Mission:
+def create(site: str, seed: int | None = None, roles: list[str] | None = None, level: str = "cadet") -> sim.Mission:
+    """level (Settings / session prefs.level): cadet | commander, the difficulty band (docs/LEARNING_DESIGN.md §6.5)."""
     if len(MISSIONS) >= MAX_MISSIONS:  # drop the oldest
         MISSIONS.pop(next(iter(MISSIONS)))
     mid = "m-" + secrets.token_hex(4)
     if seed is None:
         seed = secrets.randbelow(1_000_000)
-    m = sim.new_mission(mid, site, seed, roles, difficulty)
+    m = sim.new_mission(mid, site, seed, roles, level=level)
     MISSIONS[mid] = m
     return m
 

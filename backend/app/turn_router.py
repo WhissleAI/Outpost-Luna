@@ -38,6 +38,17 @@ TAIL_S = 0.6              # hard mute after any app voice ends
 DD_MIN = 0.5              # Arc device_directed under this: talking to someone else
 DD_STRONG = 0.7           # a barge-in while we speak needs a clearly device-directed turn
 UNKNOWN_EVERY_S = 30.0    # the "I don't know" line at most once per 30 s
+# The kid's Settings "listening filter" (docs/VOICES.md): (DD_MIN, DD_STRONG) per level. Normal is today's 0.5 / 0.7.
+# Relaxed answers a turn Arc is less sure about (a shy or quiet kid); strict wants a clearly directed turn (a noisy room,
+# siblings). Only the device-directed gates move: echo, filler, the hard mute and the too-short rules are the same at
+# every level.
+FILTERS: dict[str, tuple[float, float]] = {"relaxed": (0.35, 0.55), "normal": (DD_MIN, DD_STRONG),
+                                           "strict": (0.65, 0.85)}
+
+
+def thresholds(level: str | None) -> tuple[float, float]:
+    return FILTERS.get(level or "normal", FILTERS["normal"])
+
 
 # Non-lexical sounds and fillers. A turn made only of these is never for us.
 FILLER = {
@@ -104,6 +115,53 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("back", re.compile(r"^(?:go back|back|previous|go back please|take me back)$")),
     ("end_shift", re.compile(r"^(?:end|finish|next) (?:the |my |this )?shift$")),
 ]
+# 3D cabin panels (frontend mission/ui.js nav: panel_power | panel_comm | panel_habitat | panel_back; rover and radiation
+# are routed too). Panel navigation must never reach the mission NLU: "open the comm panel" once turned the radio OFF.
+PANELS = {"power": "power", "energy": "power", "battery": "power", "comm": "comm", "comms": "comm",
+          "communications": "comm", "communication": "comm", "radio": "comm", "habitat": "habitat", "hab": "habitat",
+          "rover": "rover", "radiation": "radiation", "rad": "radiation", "shield": "radiation", "shields": "radiation"}
+_PANEL_NAME = "|".join(sorted(PANELS, key=len, reverse=True))
+PANEL_OPEN = re.compile(rf"^(?:open|show|show me|go to|take me to|look at|switch to|bring up|pull up|let s see|"
+                        rf"let me see|check)(?: up)? (?:the |my )?({_PANEL_NAME})(?: (panel|station|console|screen|"
+                        rf"desk|board))?$|^(?:the )?({_PANEL_NAME}) (?:panel|station|console)(?: please)?$")
+PANEL_BACK = re.compile(r"^(?:go )?back(?: to (?:my|the) (?:seat|chair|cockpit|window))?$|^(?:close|leave|exit|shut) "
+                        r"(?:the |this )?(?:panel|station|console)$|^(?:my )?seat$|^(?:sit|go) (?:back )?(?:down|to (?:my|the) "
+                        r"seat)$|^back to (?:my|the) (?:seat|chair)$")
+# The voice bar (frontend voicebar.js parseBarCommand): "move the voice bar to the top right", "reset the voice bar".
+VBAR_MOVE = re.compile(r"^(?:move|put|drag|send|place) (?:the |my )?(?:voice|mic|microphone|talk) ?bar (?:to |on |at )?"
+                       r"(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?"
+                       r"(?: (?:side|corner|edge))?$")
+VBAR_RESET = re.compile(r"^(?:reset|restore) (?:the |my )?(?:voice|mic|microphone|talk) ?bar(?: position)?$")
+
+
+def voicebar_intent(q: str) -> str | None:
+    """The canonical command voicebar.js parses ("move the voice bar to the top right" / "reset the voice bar")."""
+    if VBAR_RESET.match(q):
+        return "reset the voice bar"
+    m = VBAR_MOVE.match(q)
+    if not m:
+        return None
+    w = [x for x in m.groups() if x]
+    return "move the voice bar to the " + " ".join("centre" if x in ("middle", "center") else x for x in w)
+
+
+def panel_intent(q: str) -> tuple[str, str] | None:
+    m = PANEL_OPEN.match(q)
+    if m:
+        name = m.group(1) or m.group(3)
+        has_panel_word = bool(m.group(2)) or bool(m.group(3))
+        if not has_panel_word:
+            # Without "panel": only a clear move verb, and never rover / radiation ("show me the rover" is the rover
+            # view, "check the power" / "show the shields" are status questions).
+            if PANELS[name] in ("rover", "radiation") or \
+                    not q.startswith(("open", "go to", "take me to", "switch to", "bring up", "pull up")):
+                return None
+        return "panel_" + PANELS[name], PANELS[name]
+    if PANEL_BACK.match(q):
+        return "panel_back", "seat"
+    return None
+
+
 PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|build (?:it )?(?:at|on)|i choose|i pick)"
                   r" (?:the )?(.+)$")
 
@@ -124,6 +182,8 @@ class Ctx:
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
+    dd_min: float = DD_MIN             # the Settings filter (FILTERS): below this, talking to someone else
+    dd_strong: float = DD_STRONG       # barge-in while we speak / a yes-no question / a notice needs this much
 
 
 def words(text: str) -> list[str]:
@@ -164,21 +224,22 @@ def echo(text: str, ctx: "Ctx") -> bool:
     return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)
 
 
-def clear_question(text: str, dd: float | None = None, act: list[str] | None = None) -> bool:
+def clear_question(text: str, dd: float | None = None, act: list[str] | None = None,
+                   strong: float = DD_STRONG) -> bool:
     """A device-directed question worth an honest "I don't know that one yet": a wh-question, or "tell me / show me /
     can you / is ..." style, at least 3 words, and Arc (when it ran) agrees the kid is talking to us."""
     q = norm(text)
     ws = q.split()
     if len(ws) < 3:
         return False
-    if dd is not None and float(dd) < DD_STRONG:
+    if dd is not None and float(dd) < strong:
         return False
     if act and not any(a in ("question", "request", "command") for a in act) and not text.strip().endswith("?") and \
             not WH.match(q):
         return False
     if WH.match(q) or ASKY.match(q):
         return True
-    return bool((YESNO.match(q) or text.strip().endswith("?")) and dd is not None and float(dd) >= DD_STRONG)
+    return bool((YESNO.match(q) or text.strip().endswith("?")) and dd is not None and float(dd) >= strong)
 
 
 def lesson_number(tok: str, lessons: list[tuple[str, str]]) -> str | None:
@@ -211,6 +272,13 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     q = re.sub(r"\s+(?:please|now|capcom)$", "", q)
     if not q:
         return None
+    vb = voicebar_intent(q)
+    if vb:
+        return "a11y", vb                      # on every screen; the client runs `arg` (voicebar.handleText)
+    if ctx.screen == "cabin":
+        pn = panel_intent(q)
+        if pn:
+            return pn
     for intent, pat in NAV:
         m = pat.match(q)
         if not m:
@@ -271,11 +339,11 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     # 2. While the app is speaking (and for TAIL_S after), only barge-in-worthy turns get through: a navigation /
     #    control word, or >= 3 words that are clearly device-directed.
     if heard and not explicit and ctx.speaking and not nav:
-        strong = len(ws) >= 3 and (dd is None or dd >= DD_STRONG)
+        strong = len(ws) >= 3 and (dd is None or dd >= ctx.dd_strong)
         if not strong:
             return out("ignore", "speaking")
     # 3. Not for us: Arc says the kid is talking to someone else.
-    if dd is not None and dd < DD_MIN and not (nav and len(ws) <= 4):
+    if dd is not None and dd < ctx.dd_min and not (nav and len(ws) <= 4):
         return out("ignore", "not_directed")
     if nav:
         return out("navigate", "intent", intent=nav[0], arg=nav[1])
@@ -286,36 +354,36 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         hit = next((c for c in ctx.callsigns if c.lower() in ws or norm(c) in norm(raw)), None)
         if hit or re.search(r"\b(call me|my call sign|surprise|random|you pick|pick for me)\b", norm(raw)):
             return out("answer", "callsign")
-        if clear_question(raw, dd, act):
+        if clear_question(raw, dd, act, ctx.dd_strong):
             return out("question", "question")
-        return out("ignore", "callsign_other", notice=bool(dd is not None and dd >= DD_STRONG))
+        return out("ignore", "callsign_other", notice=bool(dd is not None and dd >= ctx.dd_strong))
     if s in ("lesson", "ride") and ctx.step_type:
         # A real question mid-lesson still works ("what is an mSv?"), but only on steps whose answer is not itself a
         # request: an intent step's answer IS "show me …", a command step's is an order, a readback repeats words.
         if ctx.step_type not in ("intent", "keywords", "vocab_say") and WH.match(norm(raw)) and \
-                clear_question(raw, dd, act) and not _names_option(raw, ctx):
+                clear_question(raw, dd, act, ctx.dd_strong) and not _names_option(raw, ctx):
             return out("question", "question_in_lesson")
         if single and ctx.step_type in ("keywords", "command") and not _names_option(raw, ctx):
-            return out("ignore", "too_short", notice=bool(dd is not None and dd >= DD_STRONG))
-        if heard and len(ws) > 14 and not _names_option(raw, ctx) and (dd is None or dd < DD_STRONG):
+            return out("ignore", "too_short", notice=bool(dd is not None and dd >= ctx.dd_strong))
+        if heard and len(ws) > 14 and not _names_option(raw, ctx) and (dd is None or dd < ctx.dd_strong):
             return out("ignore", "chatter")      # a long ramble with no answer in it, not clearly to us
         return out("answer", "step")
     if s == "cabin":
-        if clear_question(raw, dd, act) and not re.search(r"\b(power|shields?|rover|shelter|heaters?|science|"
+        if clear_question(raw, dd, act, ctx.dd_strong) and not re.search(r"\b(power|shields?|rover|shelter|heaters?|science|"
                                                           r"greenhouse|comms|life support|oxygen|battery|dose|"
                                                           r"radiation|houston|storm)\b", norm(raw)):
             return out("question", "question_in_cabin")
         return out("order", "cabin")
     if single:
-        return out("ignore", "too_short", notice=bool(dd is not None and dd >= DD_STRONG))
+        return out("ignore", "too_short", notice=bool(dd is not None and dd >= ctx.dd_strong))
     if s == "library":
         return out("question", "library")
     # map, patch, lesson_done, brief, debrief, callsign: a question still works anywhere; anything else is not for us.
-    if clear_question(raw, dd, act) or (not heard and len(ws) >= 2):
+    if clear_question(raw, dd, act, ctx.dd_strong) or (not heard and len(ws) >= 2):
         return out("question", "question")
-    if heard and len(ws) >= 3 and (dd is not None and dd >= DD_STRONG):
+    if heard and len(ws) >= 3 and (dd is not None and dd >= ctx.dd_strong):
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
-    return out("ignore", "unclear", notice=bool(dd is not None and dd >= DD_STRONG))
+    return out("ignore", "unclear", notice=bool(dd is not None and dd >= ctx.dd_strong))
 
 
 def _names_option(text: str, ctx: Ctx) -> bool:

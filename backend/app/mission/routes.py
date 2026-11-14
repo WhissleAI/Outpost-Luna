@@ -5,6 +5,8 @@ import asyncio
 import time
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from . import registry, sim
@@ -19,7 +21,7 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
-    difficulty: str = Field("commander", pattern="^(cadet|commander)$")   # ages 7-9 / 10-12 (LEARNING_DESIGN §6.5)
+    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): the difficulty band, ages 7-9 / 10-12
 
 
 class CommandReq(BaseModel):
@@ -45,7 +47,7 @@ def mission_sites():
 @router.post("/api/mission/start")
 def mission_start(req: StartReq):
     try:
-        m = registry.create(req.site, req.seed, req.roles, req.difficulty)
+        m = registry.create(req.site, req.seed, req.roles, level=req.level)
     except KeyError:
         raise HTTPException(404, f"unknown site {req.site!r}")
     return sim.to_state(m)
