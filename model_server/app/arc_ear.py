@@ -172,18 +172,43 @@ class EarStream(arcmeta.MetaStream):
     """One live Arc ear. Not thread-safe: call it from one worker thread only (routes_meta does)."""
 
     def __init__(self, domain: str = "assistant", names=None, s=ear_settings):
-        self.s = arcmeta.STATE["arc"].stream(
-            domain=domain, transcript="builtin", partials=True, fallback=None, events="all", names=names or None,
-            partial_every_s=s.ear_partial_every_s, auto_prev=s.ear_auto_prev,
-            segmenter=dict(pause_s=s.ear_pause_s, short_pause_s=s.ear_short_pause_s))
+        self.domain = domain
         self.last_key = None
         self.compute_s = 0.0
         self.audio_s = 0.0
         self.vad = Vad(s.ear_vad_margin_db)
         self.turns = TurnTracker(s)
+        self.s = self._open(names)
+
+    def _open(self, names=None):
+        c = self.turns.cfg
+        return arcmeta.STATE["arc"].stream(
+            domain=self.domain, transcript="builtin", partials=True, fallback=None, events="all", names=names or None,
+            partial_every_s=c.ear_partial_every_s, auto_prev=c.ear_auto_prev,
+            segmenter=dict(pause_s=c.ear_pause_s, short_pause_s=c.ear_short_pause_s))
 
     def set_decoder_context(self, names=None, terms=None, topic=None) -> bool:
+        """Context frame -> Arc. Stream.set_context fills the decoder prompt (names + terms, ~40 tokens, in order) and
+        set_names (StreamContext) the linker; the name-list snap and the decoder's name-bias trie are only built from
+        `names` in Arc.stream(), so they are rebuilt here too (that is what turns "Malapart" into "Malapert" in the
+        written final). The backend sends its Tier A list before any audio, so the worker is idle when the trie swaps."""
         self.s.set_context(names=names or None, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
+        if names and self.audio_s == 0 and hasattr(self, "domain"):
+            # before any audio (the backend's Tier A frame): reopen the Arc stream with the names, which is the only way
+            # to get the name linker's records + snap into transcript_written (set_names / a later kb swap don't)
+            self.s.close()
+            self.s = self._open(names)
+            self.s.set_context(names=names, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
+            return True
+        if names:
+            try:
+                from arc_audio.api import Arc
+                from arc_audio.kbsnap import KB
+                self.s.kb = KB(Arc._kb(names))
+                if getattr(self.s, "tr", None) is not None:
+                    self.s.a._set_bias(self.s.tr, names, True)
+            except Exception:  # noqa: BLE001 (context never breaks the stream)
+                pass
         return True
 
     def add_words(self, words) -> None:   # no external words in ear mode
