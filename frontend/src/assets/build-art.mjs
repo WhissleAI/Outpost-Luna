@@ -235,14 +235,12 @@ function outpostLuna(s) {
   });
   return [
     ...dots,
-    circle(110, 66, 15, P.sky),
-    pathEl("M102 58c5-4 11-2 12 3s-3 6-1 10-5 6-8 2-6-11-3-15Z", P.green, "d"),
+    circle(112, 58, 12, P.sky),
+    pathEl("M106 51c4-3 9-2 10 2s-2 5-1 8-4 5-6 2-5-9-3-12Z", P.green, "d"),
     ground(s, 106, 6, P.moon),
-    pathEl("M44 112A20 20 0 0 1 84 112Z", P.white),
-    pathEl("M58 112V104A6 6 0 0 1 70 104V112Z", P.navy, "d"),
-    line("M98 104V120", P.moondk, 4),
-    pathEl("M86 88H112L108 104H90Z", P.blue, "e", { stroke: P.white, "stroke-width": 2.5, "stroke-linejoin": "round" }),
-    line("M64 92V70", P.white, 3), pathEl("M64 70H80L75 75L80 80H64Z", P.gold),
+    line("M80 86V62", P.white, 3), pathEl("M80 62H98L92 68L98 74H80Z", P.gold),
+    pathEl("M52 114A28 28 0 0 1 108 114Z", P.white),
+    pathEl("M73 114V104A7 7 0 0 1 87 104V114Z", P.navy, "d"),
   ];
 }
 
