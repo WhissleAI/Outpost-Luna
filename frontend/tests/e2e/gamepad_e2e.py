@@ -48,6 +48,20 @@ ACTIVE = "() => { const a = document.activeElement || document.body; return { id
 SPY = "() => { window.__seen = []; window.__outpost.intents.onIntent('*', (a, ev) => { window.__seen.push(ev.name + ':' + ev.source); return false; }, { priority: 100 }); }"
 
 
+def wait_js(pg, expr, timeout=20000):
+    """Polled from Python (wait_for_function starves while the WebGL scenes render)."""
+    import time
+    end = time.time() + timeout / 1000
+    while time.time() < end:
+        try:
+            if pg.evaluate(expr):
+                return True
+        except Exception:
+            pass
+        pg.wait_for_timeout(250)
+    raise SystemExit("FAIL timeout: " + expr + " active=" + str(pg.evaluate(ACTIVE)) + " input=" + str(pg.evaluate("() => document.documentElement.dataset.input + ' ' + document.body.dataset.cabin + ' ' + (document.querySelector('.c3-gl') && document.querySelector('.c3-gl').parentElement.dataset.panel)")))
+
+
 def run_page(b, base, seed):
     ctx = b.new_context(viewport={"width": 1280, "height": 800})
     ctx.add_init_script(STUB + seed)
@@ -131,8 +145,8 @@ def main():
         ok(js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site") != s0, "picker: RB picks the next site")
         tap(LB, 900)
         tap(A, 4000)
-        pg.wait_for_function("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", timeout=30000, polling=250)
-        pg.wait_for_function("() => document.activeElement && document.activeElement.id === 'seatFocus'", timeout=8000, polling=250)
+        wait_js(pg, "() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000)
+        wait_js(pg, "() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000)
         ok(act()["id"] == "seatFocus", "cabin: A took command; focus on a console panel")
         p0 = act()["panel"]
         tap(LEFT, 600)

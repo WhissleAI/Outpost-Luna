@@ -85,7 +85,8 @@ def main():
                 except Exception:
                     pass
                 pg.wait_for_timeout(250)
-            print("  timeout:", what or expr, act())
+            if what != "-":
+                print("  timeout:", what or expr, act())
             return False
 
         def shot(name):
@@ -164,17 +165,22 @@ def main():
                 if t in ("intent", "tap", "terminator", "route"):
                     ok(act()["id"] == "moonFocus", f"{L['id']} step {k + 1} ({t}): focus is on the Moon reticle")
                     taps = len(acc.get("stops") or []) or 1
+                    on_moon = lambda: js("() => document.activeElement && document.activeElement.id === 'moonFocus'")
                     for attempt in range(5):
+                        # wait out a slow grading reply: never press keys meant for the Moon once the step has moved on
+                        if until("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge'))", 2500, "-"):
+                            break
+                        if not on_moon() and not press_until(["ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"], "() => document.activeElement && document.activeElement.id === 'moonFocus'", n=3):
+                            break
                         press(["ArrowRight", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"][attempt], 1500)
                         if attempt == 1 and t == "terminator":
                             press("Shift+ArrowLeft", 300)
                             press("Shift+ArrowLeft", 600)
                         for _ in range(taps):
-                            if done_q():
+                            if done_q() or not on_moon():
                                 break
                             press("Enter", 1200)
-                        pg.wait_for_timeout(1800)
-                        if done_q():
+                        if until("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge'))", 4000, "-"):
                             break
                     return "moon"
                 if t == "command" and answer_for(st, vocab=_Vocab()) in ORDERS and visible_q(".a-order"):

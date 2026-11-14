@@ -226,7 +226,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   function moonHop(dir) {
     const r = moonEl.getBoundingClientRect(), from = rect(cx(r) - 4, cy(r) - 4, 8, 8);
     const pts = moonPoints().filter(o => !moon.target || o.p.id !== moon.target.id);
-    const k = pickBest(from, pts, dir, { cone: 0.8 }); if (k < 0) return false;
+    // a place within ~50° of the arrow; else within ~75°; only with nothing that way does the arrow leave the Moon
+    let k = pickBest(from, pts, dir, { cone: 0.8 }); if (k < 0) k = pickBest(from, pts, dir, { cone: 0.27 }); if (k < 0) return false;
     const f = pts[k].p; moon.target = f;
     const dist = globe.distance || 3;
     globe.flyTo(f.lat, f.lon, Math.min(dist, f.kind === "artifact" ? 2.6 : dist), Math.abs(f.lat) > 74 ? { clamp: false } : 75);
@@ -433,6 +434,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     // a screen that was still loading when focus was restored (the picker's "Loading…"): once its primary action
     // appears, the auto-picked fallback moves to it (only within 4 s, and only if the kid hasn't moved since)
     if (auto.el && a === auto.el && Date.now() - auto.t < 4000) {
+      if (sc.seat) { auto = { el: null, t: 0 }; focusSeat(); return; }   // the 3D cabin finished building after the restore
       const p = primary(sc);
       if (p && p !== a && PRIMARY.some(sel => p.matches(sel))) { auto = { el: p, t: auto.t }; focusEl(p); }
     }

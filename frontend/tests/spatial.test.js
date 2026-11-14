@@ -59,7 +59,7 @@ test("Moon hops: tiny place rects pick the nearest place that way (the reticle a
   assert.equal(hop(pts, "up"), 2);
   assert.equal(hop(pts, "down"), 3, "the place just right of centre is not down");
   assert.equal(hop([at(700, 400)], "left"), -1, "no place that way: the arrow leaves the Moon");
-  assert.equal(hop([at(600, 560)], "right"), -1, "60° off is outside the cone");
+  assert.equal(pickBest(centre, [at(600, 560)], "right", { cone: 0.8 }), -1, "60° off is outside the narrow cone");
 });
 
 // ---------------------------------------------------------------- scopes + memory ---------------------------------
