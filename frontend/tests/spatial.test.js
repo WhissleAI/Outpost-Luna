@@ -187,6 +187,7 @@ test("screenName", () => {
   assert.equal(screenName({ mode: "mission", cabin: true, panel: "comm" }), "cabin_panel");
   assert.equal(screenName({ mode: "mission", mission: "debrief" }), "debrief");
   assert.equal(screenName({ mode: "cadet" }), "library");
+  assert.equal(screenName({ mode: "mission", cabin: true, panel: "seat", tour: true }), "tour");
   assert.equal(screenName({ mode: "cadet", settings: true }), "settings");
 });
 

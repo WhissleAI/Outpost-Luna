@@ -258,6 +258,19 @@ def main():
         ok(until("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000), "picker: Y takes command → the 3D cabin")
 
         # ---------------- the cabin ----------------
+        # the first-mission cabin tour (story): its Next is focused; Enter advances; Esc skips (on rc/2 + story)
+        pg.wait_for_timeout(1500)
+        if js("() => !!document.querySelector('.m-tour:not([hidden])')"):
+            until("() => document.activeElement && document.activeElement.matches('.m-tour .t-next')", 6000, "tour next")
+            ok(js("() => document.activeElement.matches('.m-tour .t-next')"), "tour: focus is on Next")
+            shot("06a-cabin-tour")
+            b0 = js("() => document.querySelector('.m-tour .t-eye').textContent")
+            press("Enter", 1500)
+            ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour .t-eye').textContent !== %s" % json.dumps(b0)), "tour: Enter advances it")
+            press("ArrowLeft", 500)
+            ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour').contains(document.activeElement)"), "tour: arrows stay on the tour card (Next, Skip tour)")
+            press("Escape", 1500)
+            ok(js("() => !document.querySelector('.m-tour:not([hidden])')"), "tour: Esc skips the tour")
         until("() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000, "seat focus")
         ok(act()["id"] == "seatFocus", "seat: focus is on a console panel")
 

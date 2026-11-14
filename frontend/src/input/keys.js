@@ -59,6 +59,7 @@ export function keyAction(ev, c = {}) {
 export function screenName(s) {
   if (!s) return "app";
   if (s.settings) return "settings";
+  if (s.tour) return "tour";
   if (s.cabin) return s.panel && s.panel !== "seat" ? "cabin_panel" : "cabin_seat";
   if (s.mode === "cadet") return "library";
   if (s.mode === "mission") return s.mission === "debrief" ? "debrief" : "picker";
@@ -68,7 +69,7 @@ export function screenName(s) {
   return "map";
 }
 const SCREEN_TITLE = { home: "Home", map: "Moon map", lesson: "Lesson", lesson_moon: "Lesson on the Moon", patch: "Patch earned", ride: "Check ride",
-  picker: "Site picker", cabin_seat: "Cabin, seat view", cabin_panel: "Cabin, panel open", debrief: "Debrief", library: "Library", settings: "Settings", app: "Outpost Luna" };
+  picker: "Site picker", tour: "Cabin tour", cabin_seat: "Cabin, seat view", cabin_panel: "Cabin, panel open", debrief: "Debrief", library: "Library", settings: "Settings", app: "Outpost Luna" };
 const GLOBAL_ROWS = [["← ↑ → ↓", "Move"], ["Enter", "Select"], ["Space", "Tap: select. Hold: talk"], ["Esc", "Back"], ["M", "Mic on or off"],
   ["/", "Type instead"], ["S", "Settings"], ["C", "Captions"], ["H", "These keys"]];
 const SCREEN_ROWS = {
@@ -79,7 +80,8 @@ const SCREEN_ROWS = {
   patch: [["N or Y", "Next lesson"], ["Enter", "Select"]],
   ride: [["1–5", "Pick an order"], ["N", "Next step"]],
   picker: [["↑ ↓", "Pick a site"], ["N or P", "Next or previous site"], ["Y", "Take command"]],
-  cabin_seat: [["← → ↑ ↓", "Light a panel"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
+  tour: [["Enter or N", "Next"], ["Esc", "Skip tour"], ["← →", "Next or Skip tour button"]],
+  cabin_seat: [["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
   cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"]],
   debrief: [["Y", "Fly again"], ["Enter", "Select"]],
   library: [["← → ↑ ↓", "On the Moon: hop to a place"], ["Shift with ← → ↑ ↓", "Turn the Moon"], ["N or P", "Next or previous tour stop"]],
@@ -146,7 +148,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   const ap = () => doc.getElementById("aPanel");
   function screenState() {
     const b = doc.body.dataset, a = ap();
-    return { mode: b.mode, aview: b.aview, ride: b.ride === "1", cabin: inCabin(), panel: cabinPanel(), settings: vis(doc.querySelector(".a11y-panel")),
+    return { mode: b.mode, aview: b.aview, ride: b.ride === "1", cabin: inCabin(), panel: cabinPanel(), settings: vis(doc.querySelector(".a11y-panel")), tour: vis(doc.querySelector(".m-tour")),
       mission: mission && mission.screen ? (mission.screen() || {}).screen : null, moon: spatial.moonActive() && !!(a && a.dataset.step) };
   }
   const screen = () => screenName(screenState());
@@ -283,6 +285,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   // (screens at 10, then shellNav). Never quits the app.
   onIntent("back", () => {
     if (!help.hidden) { showHelp(false); return true; }
+    const skip = doc.querySelector(".m-tour:not([hidden]) [data-t=skip]"); if (vis(skip)) { skip.click(); return true; }   // the cabin tour: back = Skip tour
     const A = O.a11y || a11y, set = doc.querySelector(".a11y-panel");
     if (set && !set.hidden && A && A.open) { A.open(false); return true; }
     const dlg = [...doc.querySelectorAll("dialog[open]")].pop(); if (dlg) { dlg.close(); return true; }

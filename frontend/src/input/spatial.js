@@ -263,7 +263,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     Object.assign(seatEl.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" });
   }
   function focusSeat(id) {
-    seatPanel = id || seatPanel || (mission && mission.highlighted) || "displays";
+    const pointed = doc.querySelector("#mCabin .c3-panel .is-point, #mCabin .c3-panel.is-point");
+    const nowPanel = pointed && pointed.closest(".c3-panel") ? pointed.closest(".c3-panel").dataset.panel : null;
+    seatPanel = id || seatPanel || nowPanel || (mission && mission.highlighted) || "displays";
     if (!panelEl(seatPanel)) seatPanel = (panelEls()[0] || {}).dataset ? panelEls()[0].dataset.panel : null;
     if (!seatPanel) return false;
     seatEl.hidden = false; seatEl.dataset.panel = seatPanel; placeSeat();
@@ -281,6 +283,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const dlg = [...doc.querySelectorAll("dialog[open]")].pop(); if (dlg) return { id: "dialog", roots: [dlg] };
     const modal = shown(".gx-calib, [role=dialog][aria-modal=true]"); if (modal) return { id: "modal", roots: [modal] };
     const gl = shown(".hl-card"); if (gl && gl.contains(doc.activeElement)) return { id: "glossary", roots: [gl] };
+    // the first-mission cabin tour (mission/tour.js): its card holds focus (Next, Skip tour) until it ends
+    const tour = shown(".m-tour"); if (tour) return { id: "tour", roots: [tour] };
     if (in3d()) {
       const p = cabinPanel() || "seat";
       if (p !== "seat") { const open = doc.querySelector("#mCabin .c3-panel.is-open"); if (open) return { id: "panel:" + p, roots: [open, shown(".c3-back")] }; }
@@ -299,11 +303,12 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
 
   // ---- what to focus when nothing is (a new screen, a re-render) ----
-  const PRIMARY = ["#keysHelp [data-close]", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
+  const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
     "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
   function primary(sc = scope()) {
     if (sc.seat) return null;
     const cands = candidates(sc.roots);
+    if (sc.id.startsWith("panel:")) { const pt = cands.find(c => c.matches(".is-point, .is-point *")); if (pt) return pt; }
     if (sc.id === "lesson") {
       const inp = doc.querySelector("#aInput");
       const own = inp && cands.find(c => inp.contains(c) && c.matches("button"));
@@ -333,7 +338,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (m && m.el && within(m.el, sc.roots.filter(Boolean)) && focusable(m.el)) return focusEl(m.el);
     if (m && m.key) { const twin = candidates(sc.roots).find(c => keyOf(c) === m.key); if (twin) return focusEl(twin); }
     if (lastKey) { const twin = candidates(sc.roots).find(c => keyOf(c) === lastKey); if (twin) return focusEl(twin); }
-    return focusEl(primary(sc));
+    const p = primary(sc); auto = { el: p, t: Date.now() };
+    return focusEl(p);
   }
 
   // ---- moving ----
@@ -403,7 +409,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
 
   // ---- watching: remember focus per screen; refocus when a re-render or a new screen drops it ----
-  let lastKey = "", lastPanel = "seat", lastScope = "";
+  let lastKey = "", lastPanel = "seat", auto = { el: null, t: 0 };
   doc.addEventListener("focusin", e => {
     const t = e.target; if (!t || t === doc.body) return;
     if (t !== moonEl && t !== seatEl) lastKey = keyOf(t);
@@ -423,8 +429,13 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const roots = sc.roots.filter(Boolean);
     const ok = a === seatEl ? atSeat() && !seatEl.hidden
       : !!(a && a !== doc.body && a.isConnected && visible(a) && (sc.id === "screen" || within(a, roots) || (isTextField(a) && !sc.id.match(/^(help|settings|dialog|modal)$/))));
-    if (!ok) restore();
-    lastScope = sc.id;
+    if (!ok) { restore(); return; }
+    // a screen that was still loading when focus was restored (the picker's "Loading…"): once its primary action
+    // appears, the auto-picked fallback moves to it (only within 4 s, and only if the kid hasn't moved since)
+    if (auto.el && a === auto.el && Date.now() - auto.t < 4000) {
+      const p = primary(sc);
+      if (p && p !== a && PRIMARY.some(sel => p.matches(sel))) { auto = { el: p, t: auto.t }; focusEl(p); }
+    }
   }
   const timer = setInterval(watch, 160);
   addEventListener("resize", () => { placeMoon(); placeSeat(); });
