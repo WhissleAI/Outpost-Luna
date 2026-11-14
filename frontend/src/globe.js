@@ -326,6 +326,19 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05 }; },
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
+    // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
+    // follows the hand, as a mouse drag does.
+    rotateBy(dx, dy) {
+      fly = null; const s = new THREE.Spherical().setFromVector3(camera.position);
+      s.theta -= dx * Math.PI; s.phi = Math.max(0.15, Math.min(Math.PI - 0.15, s.phi - dy * Math.PI));
+      camera.position.setFromSpherical(s); camera.lookAt(0, 0, 0);
+    },
+    zoomBy(f) {
+      fly = null; const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
+      camera.position.multiplyScalar(n / d);
+    },
+    /** Stop any flight in progress where it is. */
+    halt() { fly = null; },
     route,
     /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
     clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },

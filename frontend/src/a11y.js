@@ -354,7 +354,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function options() {
     const names = controls().map(b => (b.getAttribute("aria-label") || b.textContent).replace(/\s+/g, " ").trim()).filter(Boolean);
     const uniq = [...new Set(names)].slice(0, 8);
-    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.`;
+    const g = O.gestures && O.gestures.summary ? O.gestures.summary() : "";   // [gestures] only while the camera is on
+    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.${g ? " " + g : ""}`;
   }
   function pickPlace(id) {
     const p = places.find(x => x.id === id); if (!p || !tap) return;

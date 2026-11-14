@@ -7,13 +7,20 @@ const HORIZONS = "https://ssd.jpl.nasa.gov/horizons/";
 const LOLA = "https://pds-geosciences.wustl.edu/missions/lro/lola.htm";
 const ARTEMIS = "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/";
 
+// The same five sites and numbers as backend/data/mission/sites.json (window = the mission's 10 April 2026 days, JPL
+// Horizons; sunlight_pct = the long-term average). Keep in step with that file; never invent site facts here.
+const IAU = "https://planetarynames.wr.usgs.gov/Feature/5450";
 export const SITES = [
-  { id: "connecting_ridge", name: "Connecting Ridge (Shackleton rim)", lat: -89.45, lon: -137.3, sunlight_pct: 86, ice: true, earth_visible_pct: 52,
-    notes: "Lots of sunlight, and ice in Shackleton next door. Earth hides about half the time.", sources: [{ title: "LRO LOLA illumination maps", url: LOLA }, { title: "NASA: Artemis III candidate regions", url: ARTEMIS }] },
-  { id: "malapert", name: "Malapert Massif", lat: -85.99, lon: 2.93, sunlight_pct: 63, ice: false, earth_visible_pct: 95,
-    notes: "A tall mountain that almost always sees Earth. Less sun, no ice close by.", sources: [{ title: "NASA: Artemis III candidate regions", url: ARTEMIS }, { title: "JPL Horizons (Earth position)", url: HORIZONS }] },
-  { id: "de_gerlache", name: "de Gerlache Rim", lat: -88.67, lon: -68.0, sunlight_pct: 74, ice: true, earth_visible_pct: 68,
-    notes: "Good sun and a dark crater with ice. Earth is up two days out of three.", sources: [{ title: "LRO LOLA illumination maps", url: LOLA }, { title: "NASA: Artemis III candidate regions", url: ARTEMIS }] },
+  { id: "shackleton_rim", name: "Shackleton Crater Rim", lat: -89.68, lon: -166.0, sunlight_pct: 86, window_sunlit_pct: 100, ice: false, earth_visible_pct: 45,
+    notes: "", sources: [{ title: "IAU Gazetteer of Planetary Nomenclature: Shackleton", url: IAU }, { title: "JPL Horizons", url: HORIZONS }] },
+  { id: "shackleton_floor", name: "Shackleton Crater Floor", lat: -89.67, lon: 129.78, sunlight_pct: 0, window_sunlit_pct: 0, ice: true, earth_visible_pct: 37,
+    notes: "", sources: [{ title: "IAU Gazetteer of Planetary Nomenclature: Shackleton", url: IAU }, { title: "LRO LOLA", url: LOLA }] },
+  { id: "connecting_ridge", name: "Connecting Ridge", lat: -89.44, lon: -141.8, sunlight_pct: 82, window_sunlit_pct: 100, ice: false, earth_visible_pct: 44,
+    notes: "", sources: [{ title: "LRO LOLA", url: LOLA }, { title: "JPL Horizons", url: HORIZONS }] },
+  { id: "de_gerlache_rim", name: "de Gerlache Crater Rim", lat: -88.71, lon: -68.7, sunlight_pct: 81, window_sunlit_pct: 81, ice: false, earth_visible_pct: 51,
+    notes: "", sources: [{ title: "NASA: candidate landing regions", url: ARTEMIS }, { title: "JPL Horizons", url: HORIZONS }] },
+  { id: "malapert_massif", name: "Malapert Massif", lat: -85.98, lon: -1.67, sunlight_pct: 73, window_sunlit_pct: 35, ice: false, earth_visible_pct: 93,
+    notes: "", sources: [{ title: "NASA: candidate landing regions", url: ARTEMIS }, { title: "JPL Horizons", url: HORIZONS }] },
 ];
 
 const STORMS = [

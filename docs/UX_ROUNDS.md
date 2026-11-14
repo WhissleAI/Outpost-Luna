@@ -639,6 +639,54 @@ TTS clip that was cut off).
 - `src/mission.css` (moved from `styles.css`) still uses the legacy aliases: rewrite on tokens or delete what the new
   screens no longer use.
 
+### Round 2: the cabin is a real cabin again (3D), five panels, every state
+
+The owner compared r0 and r1: round 1 had flattened the cabin into a dashboard. Round 2 keeps round 1's clarity (one big
+number per display, red/amber only for real alerts, the storm strip on the glass, voice orders pulse their control,
+tokens + Inter/JetBrains Mono) and rebuilds the cabin as a room.
+
+- **3D cabin** (`mission/cockpit3d.js`, three.js): the commander's seat in a surface habitat whose panels follow Orion's
+  design language (three glass display units side by side, switch panels round them, a guarded switch, a big forward
+  window). It is "inspired by Orion's cockpit", not a replica, and our outpost is not a NASA habitat. No NASA logos.
+  - The window is a real hole in the bulkhead: the existing LOLA terrain and NASA globe views show through it, framed to
+    the window. Lit by the window (area light), a ceiling strip and the displays' glow; PBR materials from the tokens.
+  - The controls are the real DOM, mounted on the console faces with `CSS3DRenderer`: every switch, knob and key is still
+    a `<button>`/slider with a label, focus, screen-reader text and voice. Nothing is canvas-only.
+  - Panels: Displays (DU1 power, DU2 life support, DU3 radiation), Habitat, Rover, Radiation, Comm, and the pedestal
+    (Caution & warning + End shift). Click a panel in the seat view, Tab into it, or say "open the X panel": the camera
+    dollies in until the panel's DOM is about 1:1 (crisp). Seat button, Esc or "back to my seat" return.
+  - Each alarm lights its own panel, with a glow and a label chip that says "Alert"/"Check" (never colour alone). A new
+    warning brings the camera back to the seat so the strip and the lit panel are both in view.
+  - Cadet (Settings → level): CAPCOM's two-way offers open the panel they are about with two big buttons there.
+    Commander: panels stay closed until the kid opens them.
+  - Motion: pointer parallax and a slight head-bob; reduced motion makes every camera move a cut. Settings → graphics
+    "low" drops display glows and reflections and renders at 1× (`setQuality`). No WebGL → the round-1 flat grid.
+  - 60 fps at 1440×900 and 1280×720 (headless Chromium, ANGLE/Metal), cabin + terrain together.
+- **Gestures** (`feat/gestures`): `cabin.look(dx, dy)`, `highlightPanel(id)`, `openPanel(id)`, `seat()`, `nextPanel()`,
+  `prevPanel()`; one entry for every input, `missionUI.intent(name, arg)` (`look`, `highlight_panel`, `panel_open`,
+  `panel_next`/`prev`, `view_next`/`prev`, `confirm`/`cancel`, and every router nav intent). The camera is off by default.
+- **Check ride**: `createCabin(root, {mode: "ride", onCommand, onEndShift})` → the same cabin with the displays, Habitat
+  and End shift only; `cabin.cue("heaters" | "science" | "shields" | "end_shift" | "load:<key>" | …)` pulses one control
+  and opens its panel; `cabin.update(state)` as usual.
+- **Picker**: Sun and Earth in days of the 10-day mission ("10/10"), the yearly-average sun on the picked site's second
+  line; "NASA candidate region" (Malapert, de Gerlache, NASA's Oct 2024 list) or "Studied by scientists"; pins with a
+  label column and leader lines; row ↔ pin hover; Team roles removed. The 86 % vs 100 % bug is gone from the picker
+  (C7 in `LEARNING_DESIGN.md`): both numbers now show, each labelled. The debrief text is the backend's.
+- **Accuracy**: "Solar particle storm" (no G-scale) with the DONKI link; "Pretend tech" tags on shields and the
+  greenhouse; debrief takeaways never claim Artemis III lands; `mock.js` now carries the real five sites and numbers.
+- **Debrief**: follows the theme; no toasts over the sheet; the legend sits under the plot and storm bands are clipped
+  to it; takeaways ≤ 20 words (parentheticals dropped, cut at a clause), the source link carries the detail.
+- **Functional pass** (voice and click, `func.py`): pick a site → take command → shields to 40 → shelter → rover for ice →
+  end shift to a real DONKI storm → shelter → call Houston → debrief → fly again. Both paths pass; no console errors.
+  Click path: in 3D the first click on a closed panel opens it, the second acts (Seat first if another panel is open).
+
+Screenshots: `r2-*` (every state, 1440×900 dark; key states at both sizes and themes), `spike-*`, `ride-*`.
+
+**Round 3 queue:** the 2.5D layered-DOM fallback for low-end GPUs (today: flat grid without WebGL), the Comm panel's
+comm-window timeline and science waiting, the Rover panel's route, Orion-style bezel keys and a twizzle knob on the
+DUs, `src/mission.css` legacy aliases, and the picker framing (the camera can't look straight down at the pole, so the
+pins sit low; the labels now stay clear of the voice bar).
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

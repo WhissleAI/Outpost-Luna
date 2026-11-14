@@ -112,8 +112,14 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
   `frontend/index.html` (and `a11y.js`'s Atkinson Hyperlegible): it fails at once and the UI falls back to system fonts.
   Follow-up for the frontend owner: self-host those fonts (e.g. `@fontsource/*`) so the offline app looks like the web app.
   External links open in the system browser (they will not load offline, which is fine).
-- **Mic:** the permission handler grants audio capture only to `http://127.0.0.1:<backend port>`; everything else
-  (camera, location, notifications, other origins) is denied. `NSMicrophoneUsageDescription` is in `Info.plist`.
+- **Mic and camera:** the permission handler grants audio and video capture only to `http://127.0.0.1:<backend port>`;
+  everything else (screen capture, location, notifications, other origins) is denied. The camera is only ever
+  requested when the kid turns on Settings → Camera & gestures (docs/GESTURES.md); on macOS the first request goes
+  through `systemPreferences.askForMediaAccess("camera")`. `NSMicrophoneUsageDescription` and
+  `NSCameraUsageDescription` are in `Info.plist`; the entitlements carry `device.audio-input` and `device.camera`.
+- **Gesture models:** the MediaPipe WASM runtime and the two models (19.5 MB) are in `app/frontend/vision/`, served
+  from our own origin. `build_python.py` fails the build if any is missing; `smoke.py` checks they are served with
+  the right sizes.
 
 ## Process supervision
 

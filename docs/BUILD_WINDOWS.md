@@ -112,7 +112,14 @@ The installer is **unsigned**, so SmartScreen will say "Windows protected your P
    (see `%APPDATA%\Outpost Luna\ports.json`), add `--base http://127.0.0.1:<backend port>`.
 5. By hand: hold **Space** (or the talk button) and ask "where did Apollo 11 land?". Windows will ask for microphone
    access the first time. You should hear an answer. Open a Flight School lesson, then the **Mission** tab.
-6. Quit the app (close the window). In Task Manager, no `python.exe` from Outpost Luna should remain.
+6. Camera gestures (docs/GESTURES.md): open **Access** (settings) → **Camera & gestures** → turn on **Use the camera for
+   gestures**. The camera stays off until you do this. Windows asks nothing per app, but camera access must be allowed
+   for desktop apps: **Settings → Privacy & security → Camera → "Camera access" on** and **"Let desktop apps access
+   your camera" on**. If either is off, the app says "Camera blocked. Allow it in your computer's privacy settings."
+   With it on: a red "Camera on" chip appears (its **Turn off** button stops the camera at once), and the self-view
+   shows your hand's skeleton. Hold an open hand still for half a second: "Stop". Thumbs up: "Yes". The models are
+   inside the app (`resources\app\frontend\vision\`), so this works with Wi-Fi off.
+7. Quit the app (close the window). In Task Manager, no `python.exe` from Outpost Luna should remain.
 
 ## 6. Common errors
 
@@ -141,3 +148,5 @@ Please send (Slack or the PR):
 6. The `smoke.py` output.
 7. Anything in `%APPDATA%\Outpost Luna\logs\main.log` that says `blocked`, `FAIL` or `exited`.
 8. Whether the microphone prompt appeared and voice worked, and whether quitting left any `python.exe` behind.
+9. Camera gestures: did the camera start (Settings shows "On. N frames a second, graphics chip/processor")? Note N, and
+   CPU % in Task Manager with the camera on vs off. Did "Turn off" turn the webcam light off?

@@ -8,11 +8,16 @@
 // Every control is a <button> (or role=slider) whose aria-label states its state. An order that changes a control
 // (by voice or by click) animates that control (.is-moved). Colours and sizes come from tokens.css only.
 import "../cabin.css";
-import { callSign } from "../story.js";
+import * as story from "../story.js";
+const { callSign } = story;
 import { LOADS } from "./cockpit.js";
 import { icon } from "../assets/icons.js";
+import { createCockpit3D, PANELS } from "./cockpit3d.js";
 
+const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** Invented hardware gets a small tag (docs/ACCURACY_AUDIT.md): the copy owner's words when they land. */
+const pretend = () => `<span class="cb-pretend" title="Not real NASA hardware">${esc(story.PRETEND_TECH || "Pretend tech")}</span>`;
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, +v || 0));
 const deg = v => `${v >= 0 ? "+" : "−"}${Math.abs(+v || 0).toFixed(1)}°`;
 const PAGES = [["PWR", "Power"], ["LIFE", "Life support"], ["RAD", "Radiation"], ["COMM", "Comms"]];
@@ -23,14 +28,22 @@ const TOTAL_H = { collect_ice: 10, explore: 8, repair_array: 5, return: 5 };
 /** Caution & warning: [id, legend, level, lit(state)]. Red = warning, amber = caution, blue = status (never an alarm). */
 const LAMPS = [
   ["storm", "SOLAR STORM", "warn", s => !!(s.env.storm && s.env.storm.active)],
+  ["watch", "STORM WATCH", "caution", s => !!stormWarning(s)],
   ["dose", "HIGH DOSE", "warn", s => (s.alerts || []).some(a => a === "dose_rate_high" || a === "dose_near_limit") || s.resources.dose_msv / (s.resources.dose_limit_msv || 50) > .7],
   ["power", "LOW POWER", "caution", s => (s.alerts || []).includes("low_power") || s.resources.power_pct < 25],
   ["life", "LOW AIR", "caution", s => (s.alerts || []).includes("life_support_low") || s.resources.life_support_pct < 25],
   ["array", "ARRAY DAMAGE", "caution", s => (s.alerts || []).includes("array_damaged")],
   ["shelter", "IN SHELTER", "info", s => !!s.shelter],
   ["rover", "ROVER OUT", "info", s => !!(s.rover && s.rover.busy)],
-  ["comm", "NO EARTH", "info", s => !s.env.earth_visible],
 ];
+/** A storm forecast, if the sim sends one (the game redesign: lead time + confidence). Accepts env.storm_warning or
+ *  env.storm_forecast with lead_h | eta_h, confidence | probability (0–1 or %), real_date, source. null when none. */
+export function stormWarning(s) {
+  const w = s && s.env && (s.env.storm_warning || s.env.storm_forecast);
+  if (!w || w.active === false || (s.env.storm && s.env.storm.active)) return null;
+  const c = w.confidence ?? w.probability, conf = c == null ? null : Math.round(c > 1 ? c : c * 100);
+  return { lead: w.lead_h ?? w.eta_h ?? null, conf, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "" };
+}
 /** Hab switches: [id, label, guarded, on(state), command(on)] */
 const SWITCHES = [
   ["shelter", "Shelter", true, s => !!s.shelter, on => ({ type: "shelter", on })],
@@ -47,6 +60,14 @@ export function createCabin(root, o = {}) {
   let flash = null, flashT = null;
   const guards = { shelter: false };
 
+  const sw = id => { const [, label, guarded] = SWITCHES.find(x => x[0] === id); return `
+          <div class="cb-sw" data-sw="${id}">
+            <div class="cb-swbox">
+              <button type="button" class="cb-toggle" data-sw="${id}" aria-pressed="false" aria-label="${esc(label)}"><i aria-hidden="true"></i></button>
+              ${guarded ? `<button type="button" class="cb-guard" data-guard="${id}" aria-pressed="false" aria-label="${esc(label)} cover: closed">${ic("lock", 16)}</button>` : ""}
+            </div>
+            <span class="cb-swl">${esc(label)}</span><span class="cb-swst" aria-hidden="true"></span>
+          </div>`; };
   root.innerHTML = `
   <div class="cb">
     <section class="cb-window" aria-label="Window">
@@ -62,47 +83,51 @@ export function createCabin(root, o = {}) {
       </div>
     </section>
 
-    <section class="cb-dus" aria-label="Displays">${[0, 1, 2].map(d => `
+    <section class="cb-dus" data-panel="displays" aria-label="Displays">${[0, 1, 2].map(d => `
       <div class="cb-du" data-du="${d}">
         <div class="cb-screen" id="cbDu${d}"></div>
-        <div class="cb-keys" role="group" aria-label="Display ${d + 1} pages">${PAGES.map(([p, n]) => `<button type="button" class="cb-sk" data-du="${d}" data-page="${p}" aria-pressed="false" aria-label="Display ${d + 1}: ${n}">${p}</button>`).join("")}
-          <span class="cb-acts" id="cbAct${d}"></span></div>
+        ${d === 0 ? `<div class="cb-keys" role="group" aria-label="Power to the selected system"><span class="cb-acts" id="cbAct0"></span></div>` : ""}
       </div>`).join("")}
     </section>
 
     <section class="cb-controls" aria-label="Controls">
-      <div class="cb-plate cb-hab" role="group" aria-labelledby="cbHabH"><h3 id="cbHabH">Hab</h3>
-        <div class="cb-sws">${SWITCHES.map(([id, label, guarded]) => `
-          <div class="cb-sw" data-sw="${id}">
-            <div class="cb-swbox">
-              <button type="button" class="cb-toggle" data-sw="${id}" aria-pressed="false" aria-label="${esc(label)}"><i aria-hidden="true"></i></button>
-              ${guarded ? `<button type="button" class="cb-guard" data-guard="${id}" aria-pressed="false" aria-label="${esc(label)} cover: closed"></button>` : ""}
-            </div>
-            <span class="cb-swl">${esc(label)}</span><span class="cb-swst" aria-hidden="true"></span>
-          </div>`).join("")}</div>
+      <div class="cb-grp" data-panel="habitat" role="group" aria-label="Habitat panel">
+        <div class="cb-plate cb-hab"><h3>Habitat</h3><div class="cb-sws">${sw("heaters")}${sw("science")}</div></div>
       </div>
-      <div class="cb-plate cb-rv" role="group" aria-labelledby="cbRvH"><h3 id="cbRvH">Rover</h3>
-        <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
-        <span class="cb-rvst" id="cbRvSt"></span>
-      </div>
-      <div class="cb-plate cb-shield" role="group" aria-labelledby="cbShH"><h3 id="cbShH">Shields</h3>
-        <div class="cb-knobrow">
-          <button type="button" class="cb-mini" id="cbShMinus" aria-label="Shields down 10">−</button>
-          <div class="cb-knob" id="cbKnob" role="slider" tabindex="0" aria-label="Shield power" aria-valuemin="0" aria-valuemax="60" aria-valuenow="0">
-            <svg viewBox="0 0 80 80" aria-hidden="true"><circle class="k-track" cx="40" cy="40" r="32" pathLength="100"/><circle class="k-val" id="cbKval" cx="40" cy="40" r="32" pathLength="100"/></svg>
-            <b id="cbShVal">0</b><small>%</small>
-          </div>
-          <button type="button" class="cb-mini" id="cbShPlus" aria-label="Shields up 10">+</button>
+      <div class="cb-grp" data-panel="rover" role="group" aria-label="Rover panel">
+        <div class="cb-plate cb-rv"><h3>Rover</h3>
+          <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
+          <span class="cb-rvst" id="cbRvSt"></span>
         </div>
       </div>
-      <div class="cb-plate cb-cw" role="group" aria-labelledby="cbCwH"><h3 id="cbCwH">Caution &amp; warning</h3>
-        <button type="button" class="cb-master" id="cbMaster" aria-label="Master alarm: off">Master alarm</button>
-        <div class="cb-lamps" role="list">${LAMPS.map(([id, t, lvl]) => `<span class="cb-lamp is-${lvl}" id="cbl-${id}" role="listitem">${t}<span class="cb-vh">: off</span></span>`).join("")}</div>
+      <div class="cb-grp" data-panel="radiation" role="group" aria-label="Radiation panel">
+        <div class="cb-plate cb-shield"><h3>Radiation</h3>
+          <div class="cb-radrow">${sw("shelter")}
+          <div class="cb-knobrow">
+            <span class="cb-shl">Shields ${pretend()}</span>
+            <button type="button" class="cb-mini" id="cbShMinus" aria-label="Shields down 10">−</button>
+            <div class="cb-knob" id="cbKnob" role="slider" tabindex="0" aria-label="Shield power" aria-valuemin="0" aria-valuemax="60" aria-valuenow="0">
+              <svg viewBox="0 0 80 80" aria-hidden="true"><circle class="k-track" cx="40" cy="40" r="32" pathLength="100"/><circle class="k-val" id="cbKval" cx="40" cy="40" r="32" pathLength="100"/></svg>
+              <b id="cbShVal">0</b><small>%</small>
+            </div>
+            <button type="button" class="cb-mini" id="cbShPlus" aria-label="Shields up 10">+</button>
+          </div></div>
+        </div>
       </div>
-      <div class="cb-plate cb-comm" role="group" aria-label="Houston and shift">
-        <button type="button" class="cb-ptt" id="cbPtt" aria-label="Call Houston"><span class="cb-ptt-t">${ic("houston", 18)}<span>Call Houston</span></span><small id="cbPttSub"></small><i class="cb-trip" aria-hidden="true"></i></button>
-        <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
-        <button type="button" class="cb-db" id="cbDb">Finish mission</button>
+      <div class="cb-grp" data-panel="pedestal" role="group" aria-label="Caution and warning, end shift">
+        <div class="cb-plate cb-cw"><h3>Caution &amp; warning</h3>
+          <button type="button" class="cb-master" id="cbMaster" aria-label="Master alarm: off">Master alarm</button>
+          <div class="cb-lamps" role="list">${LAMPS.map(([id, t, lvl]) => `<span class="cb-lamp is-${lvl}" id="cbl-${id}" role="listitem">${t}<span class="cb-vh">: off</span></span>`).join("")}</div>
+        </div>
+        <div class="cb-plate cb-ped">
+          <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
+          <button type="button" class="cb-db" id="cbDb">Finish mission</button>
+        </div>
+      </div>
+      <div class="cb-grp" data-panel="comm" role="group" aria-label="Comm panel">
+        <div class="cb-plate cb-comm"><h3>Comm</h3>
+          <button type="button" class="cb-ptt" id="cbPtt" aria-label="Call Houston"><span class="cb-ptt-t">${ic("houston", 18)}<span>Call Houston</span></span><small id="cbPttSub"></small><i class="cb-trip" aria-hidden="true"></i></button>
+        </div>
       </div>
     </section>
 
@@ -113,6 +138,41 @@ export function createCabin(root, o = {}) {
   </div>`;
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
+
+  // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
+  let c3 = null, qualityOff = () => {};
+  const reducedMo = () => document.documentElement.dataset.motion === "reduce" || !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
+    const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
+    const holeEl = document.createElement("div"); holeEl.className = "cb-hole";
+    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => holeEl.append(q(sel)));
+    const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
+    backEl.setAttribute("aria-label", "Back to the seat view");
+    cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
+    // ride mode (the Flight School check ride): the first time in the seat, so only the displays, habitat and End shift
+    const ids = o.mode === "ride" ? ["displays", "habitat", "pedestal"] : ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
+    const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
+    if (o.mode === "ride") { root.classList.add("is-ride"); ["rover", "radiation", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
+    c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
+    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
+    else {
+      // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
+      // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live
+      const html = document.documentElement, applyQ = () => c3 && c3.setQuality(html.dataset.graphics === "low" ? "low" : "high"); applyQ();
+      const mo = new MutationObserver(applyQ); mo.observe(html, { attributes: true, attributeFilter: ["data-graphics"] }); qualityOff = () => mo.disconnect();
+      backEl.onclick = () => c3.back();
+      root.addEventListener("keydown", e => { if (e.key === "Escape" && c3.panel) { e.preventDefault(); c3.back(); } });
+      Object.entries(panelEls).forEach(([id, el]) => {
+        el.classList.add("c3-panel"); el.dataset.label = (PANELS.find(p => p[0] === id) || [])[1] || "";
+        // the displays: a click on DU1 opens the Power panel (DU1 + the power split); elsewhere it opens all three
+        const target = e => id === "displays" ? (e.target.closest('[data-du="0"]') ? "power" : "displays") : id;
+        // seat view: a click on a panel opens it (the camera dollies in); a control works once its panel is open
+        el.addEventListener("click", e => { const t = target(e); if (c3.panel !== t && !(t === "power" && c3.panel === "displays")) { e.preventDefault(); e.stopPropagation(); c3.open(t); } }, true);
+        // keyboard: tabbing into a panel opens it, so the focused control is always big and on screen
+        el.addEventListener("focusin", e => { const t = target(e); if (c3.panel !== t && !(t === "power" && c3.panel === "displays")) c3.open(t); });
+      });
+    }
+  }
 
   // ---- window view switcher ----
   function setView(v, quiet) {
@@ -163,7 +223,7 @@ export function createCabin(root, o = {}) {
     if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}
       <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
-      ${row("Air system", Math.round(L.life_support) + "%")}${row("Greenhouse", Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
+      ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
       return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
       ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row("Shields", Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
@@ -174,14 +234,14 @@ export function createCabin(root, o = {}) {
   function paintDus() {
     [0, 1, 2].forEach(d => {
       const scr = q("#cbDu" + d); scr.innerHTML = page(pages[d]); scr.dataset.page = pages[d];
-      root.querySelectorAll(`.cb-sk[data-du="${d}"][data-page]`).forEach(b => b.setAttribute("aria-pressed", b.dataset.page === pages[d]));
+
       scr.querySelectorAll(".du-load").forEach(b => b.onclick = () => { sel = +b.dataset.i; paintDus(); const n = q(`#cbDu${d} .du-load[data-i="${sel}"]`); if (n) n.focus(); });
       const act = q("#cbAct" + d);
-      if (pages[d] === "PWR") {
+      if (act && pages[d] === "PWR") {
         const n = LOADS[sel][1];
-        act.innerHTML = `<button type="button" class="cb-sk is-act" data-a="-5" aria-label="Less power to ${esc(n)}">−5</button><button type="button" class="cb-sk is-act" data-a="5" aria-label="More power to ${esc(n)}">+5</button>`;
+        act.innerHTML = `<span class="cb-actl">${esc(n)}</span><button type="button" class="cb-sk is-act" data-a="-5" aria-label="Less power to ${esc(n)}">−5</button><button type="button" class="cb-sk is-act" data-a="5" aria-label="More power to ${esc(n)}">+5</button>`;
         act.querySelectorAll("[data-a]").forEach(b => b.onclick = () => cb.onCommand({ type: "allocate", to: LOADS[sel][0], amount: { kind: "delta", value: +b.dataset.a }, from: null }));
-      } else act.innerHTML = "";
+      } else if (act) act.innerHTML = "";
     });
   }
   function paintSwitches() {
@@ -206,6 +266,20 @@ export function createCabin(root, o = {}) {
     if (busy) { const p = clamp(1 - (rv.eta_h || 0) / (TOTAL_H[rv.task] || 8), 0, 1);
       ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.eta_h} h</span>`; }
   }
+  const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
+  function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
+  let cueT = null;
+  function applyCue(move) {
+    root.querySelectorAll(".is-cue").forEach(n => n.classList.remove("is-cue")); if (!cueT) return null;
+    const [k, v] = String(cueT).split(":");
+    if (k === "load" && move) { const i = LOADS.findIndex(l => l[0] === v); if (i >= 0 && i !== sel) { sel = i; paintDus(); } }
+    const css = { heaters: '.cb-sw[data-sw="heaters"]', science: '.cb-sw[data-sw="science"]', shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
+      end_shift: "#cbEnd", houston: "#cbPtt", load: `.du-load[data-k="${v}"]`, rover: `.cb-rvb[data-task="${v}"]` }[k];
+    const node = css && q(css); if (!node) return null;
+    node.classList.add("is-cue");
+    const panel = node.closest("[data-panel]"); if (move && c3 && panel) c3.open(k === "load" ? "power" : panel.dataset.panel);
+    return node;
+  }
   function moved(el) { if (!el) return; el.classList.remove("is-moved"); void el.offsetWidth; el.classList.add("is-moved"); }
 
   function update(s) {
@@ -213,7 +287,7 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
     sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible);
-    q("#cbClock").innerHTML = `<b>Day ${s.day} <span>· Shift ${s.shift}</span></b><small>${esc(((s.site && s.site.name) || "").split(" (")[0])} · Score ${Math.round(s.score || 0)}</small>`;
+    q("#cbClock").innerHTML = `<b>Day ${s.day} <span>· Shift ${s.shift}</span></b><small>${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
     paintDus(); paintSwitches(); paintRover();
     const sh = Math.round(s.loads.shields || 0), kn = q("#cbKnob");
     q("#cbKval").style.strokeDasharray = `${(clamp(sh, 0, 60) / 60 * 75).toFixed(1)} 100`;
@@ -226,29 +300,48 @@ export function createCabin(root, o = {}) {
       const pr = prev.rover || {}, rv = s.rover || {};
       if (!!pr.busy !== !!rv.busy || pr.task !== rv.task) moved(q(".cb-rv"));
     }
-    const lit = new Set();
+    const lit = new Set(); let newWarn = false;
     LAMPS.forEach(([id, , lvl, f]) => { let on = false; try { on = f(s); } catch (x) { /* partial state */ }
       const el = q("#cbl-" + id); el.classList.toggle("is-lit", on); el.querySelector(".cb-vh").textContent = on ? ": lit" : ": off";
-      if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id) && prev) masterOn = true; } });
+      if (on) { lit.add(id); if (lvl !== "info" && !litBefore.has(id) && prev) { masterOn = true; if (lvl === "warn") newWarn = true; } } });
+    // a new warning brings the commander back to the seat: the window's alert strip and the lit panel are both in view
+    if (newWarn && c3 && c3.panel) c3.back();
     litBefore = lit; paintMaster();
+    // each alarm lights the panel it belongs to (warn beats caution)
+    const ALARM_PANEL = { storm: "radiation", watch: "radiation", dose: "radiation", power: "displays", array: "displays", life: "habitat" };
+    const lvlOf = id => (LAMPS.find(l => l[0] === id) || [])[2];
+    ["displays", "habitat", "rover", "radiation", "pedestal", "comm"].forEach(pid => {
+      const el = q(`[data-panel="${pid}"]`); if (!el) return;
+      const ids = [...lit].filter(id => ALARM_PANEL[id] === pid), lv = ids.some(id => lvlOf(id) === "warn") ? "warn" : ids.length ? "caution" : "";
+      if (lv) el.dataset.alarm = lv; else delete el.dataset.alarm;
+      // never colour alone: the panel's label chip says it too
+      const base = (PANELS.find(x => x[0] === pid) || [])[1] || ""; if (base) el.dataset.label = lv ? `${base} · ${lv === "warn" ? "Alert" : "Check"}` : base;
+    });
     const storm = e.storm && e.storm.active;
     glassEl.classList.toggle("is-storm", !!storm);
     paintAlert();
     q("#cbPttSub").textContent = e.earth_visible ? "Earth in view" : "No signal";
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
     q("#cbEndSub").textContent = s.over ? "Mission over" : `Shift ${s.shift} of 4`;
+    applyCue(false);
   }
 
   /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. */
   function alert(a) { clearTimeout(flashT); flash = a; paintAlert(); if (a) flashT = setTimeout(() => { flash = null; paintAlert(); }, 7000); }
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
-    const a = stm ? { level: "warn", icon: "storm", title: "Solar storm", text: [stm.real_date ? `Real event, ${stm.real_date}` : stm.name, "NASA " + (stm.source || "DONKI")].filter(Boolean).join(" · "),
-      actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] } : flash;
+    const wn = stormWarning(st);
+    const a = stm ? { level: "warn", icon: "storm", title: "Solar particle storm", link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
+        text: [stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
+        actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] }
+      : wn ? { level: "caution", icon: "storm", title: "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
+        text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
+        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Shields 40"]] }
+      : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
-    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b><span class="cb-al-t">${esc(a.text || "")}</span>
+    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
       ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${n}</button>`).join("")}</span>` : ""}`;
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
       : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
@@ -275,5 +368,27 @@ export function createCabin(root, o = {}) {
     else if (st) q("#cbPttSub").textContent = st.env.earth_visible ? "Earth in view" : "No signal";
   }
   function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); }
-  return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; } };
+  return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
+    /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
+    openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
+    /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
+    look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
+    nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
+    dispose() { if (c3) c3.dispose(); qualityOff(); },
+    setQuality: q => c3 && c3.setQuality(q),
+    /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
+     *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
+    cue(target) { cueT = target || null; return applyCue(true); },
+    /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
+    offer(panelId, actions) {
+      root.querySelectorAll(".cb-offer").forEach(n => n.remove());
+      if (!panelId || !actions || !actions.length) return;
+      const host = q(`[data-panel="${panelId === "power" ? "displays" : panelId}"]`); if (!host) return;
+      const box = document.createElement("div"); box.className = "cb-offer"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "CAPCOM offers");
+      actions.slice(0, 2).forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "cb-offer-b" + (i ? "" : " is-hot"); b.textContent = a.label;
+        b.onclick = () => { box.remove(); a.onClick(); }; box.append(b); });
+      host.append(box);
+      if (c3) c3.open(panelId);
+      requestAnimationFrame(() => { const f = box.querySelector("button"); if (f) f.focus({ preventScroll: true }); });
+    } };
 }
