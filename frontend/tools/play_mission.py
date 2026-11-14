@@ -58,14 +58,17 @@ def chromium():
 
 
 def click(pg, sel, idx=0):
-    """A real mouse click (reachability matters); falls back to a DOM click and says so."""
-    loc = pg.locator(sel).nth(idx)
-    try:
-        loc.click(timeout=2500)
+    """A real mouse click at the control's centre, after a hit test: what a kid's mouse would land on. (The cabin's
+    window HUD follows the 3D camera, so Playwright's "stable" check can stall; the hit test is the honest check.)
+    Falls back to a DOM click, and says so, only when something else is on top."""
+    hit = pg.evaluate("""([s, i]) => { const e = document.querySelectorAll(s)[i]; if (!e) return null; e.scrollIntoView({block: 'nearest'});
+      const r = e.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, h = document.elementFromPoint(x, y);
+      return { x, y, ok: !!(h && (h === e || e.contains(h))), on: h ? h.tagName + '.' + String(h.className).split(' ')[0] : null }; }""", [sel, idx])
+    if hit and hit["ok"]:
+        pg.mouse.click(hit["x"], hit["y"])
         return "click"
-    except Exception:   # noqa: BLE001
-        pg.evaluate("([s, i]) => { const e = document.querySelectorAll(s)[i]; if (e) e.click(); }", [sel, idx])
-        return "dom-click (covered)"
+    pg.evaluate("([s, i]) => { const e = document.querySelectorAll(s)[i]; if (e) e.click(); }", [sel, idx])
+    return f"dom-click (covered by {hit and hit['on']})"
 
 
 def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="high"):
@@ -159,8 +162,9 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
             if after["moment"]:
                 shot("moment-" + after["moment"].lower().replace(" ", "-"))
             last_key = key
-            same = [e for e in log[-6:] if e.get("action") == entry["action"] and e.get("should") == entry["should"]]
-            if len(same) >= 6:   # the same press six times and nothing moved on: the kid is stuck here
+            same = [e for e in log[-10:] if e.get("action") == entry["action"] and e.get("should") == entry["should"]
+                    and e.get("progress") == entry["progress"]]
+            if len(same) >= 10:   # the same press ten times and the mission didn't move (days, science, ice): stuck
                 log.append({"t": round(time.time() - t0), "moment": "STUCK", "obvious": False, "reacted": False,
                             "should": entry["should"], "action": "gave up", "clock": hour})
                 shot("stuck")

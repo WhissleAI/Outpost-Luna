@@ -257,3 +257,64 @@ def test_an_open_ice_run_waits_out_a_storm():
                     v = gameplay.task_view(m, t)
                     if not gameplay._calm(m) or m.shelter:
                         assert not (v["step"]["id"] in ("send", "route") and v["step"]["ready"]), (seed, m.t_h)
+
+
+def test_shelter_wait_counts_down_and_stops_a_skip():
+    """The kid never has to work out "6 hours before": the card counts down, and skip stops when the shelter opens."""
+    for seed in range(20):
+        m = sim.new_mission("m", "shackleton_rim", seed, level="cadet")
+        sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+        while not m.over and sim._warning(m) is None:
+            sim.step(m, 1)
+        if m.over or m.rover["busy"]:
+            continue
+        t = sim.to_state(m)["task"]
+        sh = next(s for s in t["steps"] if s["id"] == "shelter")
+        eta = sim._warning(m)["eta_h"]
+        if eta <= gameplay.SHELTER_LEAD_H:
+            continue
+        assert not sh["ready"] and sh["wait"].startswith(f"Shelter opens in {eta - gameplay.SHELTER_LEAD_H} h")
+        r = sim.apply_command(m, {"type": "skip"})
+        assert sim._warning(m)["eta_h"] == gameplay.SHELTER_LEAD_H, r["say"]
+        assert any(e["kind"] == "task" and e.get("phase") == "ready" for e in r["events"])
+        assert next(s for s in sim.to_state(m)["task"]["steps"] if s["id"] == "shelter")["ready"]
+        return
+    pytest.fail("no seed with a long enough warning")
+
+
+def test_session_drops_storm_news_the_clock_overtook():
+    """A storm line held on the voice floor is dropped once the storm and its warning are gone (the live clock ran)."""
+    from app import session as sessions
+    from app.mission import registry
+    m = registry.create("shackleton_rim", 3, level="cadet")
+    s = sessions.Session("t-overtaken", None, None, registry=registry)
+    s.belief["mission_id"] = m.id
+    say = {"t": "say", "text": "Storm coming. Shelter now, or wait?", "situation": "storm_warning"}
+    card = {"t": "card", "chips": ["Solar storm", "DONKI"]}
+    calm = {"t": "say", "text": "Comm window open."}
+    assert s._overtaken(say) and s._overtaken(card) and not s._overtaken(calm)
+
+
+def test_commander_life_check_always_offers_a_real_change():
+    """Picking the recycler raises it every time (never "to 40" when it is already 40), and past the cap only ice."""
+    m = sim.new_mission("m", "shackleton_rim", 1, level="commander")
+    for share, expect in ((30, 40), (40, 50), (55, 60)):
+        m.loads = sim.reallocate(m.loads, "life_support", share)
+        spec = gameplay._life_check(m)
+        opt = spec["steps"][0]["options"][0]
+        assert opt["id"] == "recycler" and opt["label"] == f"Recycler to {expect}%", (share, opt)
+    m.loads = sim.reallocate(m.loads, "life_support", 60)
+    assert [o["id"] for o in gameplay._life_check(m)["steps"][0]["options"]] == ["ice"]
+
+
+def test_skip_line_names_the_job_it_stopped_for():
+    m = sim.new_mission("m", "shackleton_rim", 4, level="cadet")
+    sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+    for _ in range(8):
+        r = sim.apply_command(m, {"type": "skip"})
+        kinds = {(e["kind"], e.get("phase")) for e in r["events"]}
+        if ("task", "start") in kinds and not any(k in sim.SKIP_STOPS - {"task", "beat"} for k, _ in kinds):
+            assert "A quiet day" not in r["say"] and ("New task" in r["say"] or ":" in r["say"]), r["say"]
+            assert len(r["say"].split()) <= 20
+            return
+    pytest.skip("no task-only skip stop in this seed")

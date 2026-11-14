@@ -168,3 +168,14 @@ The router adds the cabin-only intents `skip_event`, `time_pause`, `time_resume`
   Screenshots and logs go to `docs/img/gameplay/`.
 - `backend/tools/handsfree_run.py`: the voice run now starts the clock, does the card's jobs by "yes" or by naming a
   choice, says "time warp four", "skip to next event" ×3, "pause the clock" and "end shift".
+
+## 8. Round 2: novice playthroughs (fix/gameplay-r2)
+
+Three full first missions were played from the screen only (`frontend/tools/play_mission.py`): Cadet at 1280×720, Cadet at 1440×900, and Commander at 1280×720. Each reached the debrief, and every press got a reaction. Where a kid would get lost, and the fix:
+
+| Where | What a kid would hit | Fix |
+|---|---|---|
+| Storm prep, waiting for the shelter | The card said "Shelter 6 hours before it hits. Keep working till then." A 7-year-old can't work out when that is, and Skip ahead jumped past it. | The card counts down ("Shelter opens in 4 h. Keep working, or skip ahead."). When the step opens, a `task` event fires with `phase: "ready"`, which stops a skip and drops the time warp to 1×. |
+| After a storm | A held CAPCOM "Go to shelter / Set shields to 40" offer arrived hours of sim time late (held on the voice floor for up to 30 s at 4× warp), while the card said "Crew out of the shelter". | The session drops held storm decisions when no storm or warning is on (`Session._overtaken`). The cabin drops a stale storm or night-mode offer (`staleOffer`). |
+| Commander life support check | "Recycler up" set 40% when the recycler was already at 40%. It did nothing, and the check came back every 12 h, four times. | The option is a real raise ("Recycler to 50%"). Past 60% only the ice run is offered. |
+| An ice run open when a storm came | "Send the rover for ice" during the storm, then a risky-order confirm hidden behind an open panel | The ice run waits out storms and warnings. A Cadet offer returns the seat view once answered. The Now card shows a pending yes/no first. |

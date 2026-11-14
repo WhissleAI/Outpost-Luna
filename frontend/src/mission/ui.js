@@ -17,7 +17,7 @@ import { createMissionClock } from "./clock.js";
 const SPOKEN_BEATS = new Set(["settle", "comm_gap", "first_dark", "ice_return", "final_downlink"]);
 /** Events that end a time warp (like a console game: something happened, back to 1x). */
 const WARP_STOPS = new Set(["solar_storm", "storm_warning", "storm_end", "sunset", "sunset_soon", "sunrise", "comm_open", "comm_closed",
-  "low_power", "rover_back", "failure", "shelter_limit", "beat"]);
+  "low_power", "rover_back", "failure", "shelter_limit", "beat", "task"]);
 /** A story beat's window moment: the view that shows it best, for a few seconds (only from the seat's site view). */
 const MOMENT_VIEW = { earthrise: "earth", rover_lights: "rover", earthset: "earth" };
 
@@ -400,7 +400,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     stop() { clearTimeout(this.t); this.left = 0; } };
 
   // ---------- the live mission clock (mission/clock.js) ----------
-  let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = false;
+  let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = null;
   /** Why time must wait right now (docs/GAMEPLAY.md §2), or null. */
   function held() {
     if (screen !== "hud" || !state) return "away";
@@ -424,8 +424,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   async function stepClock(dt) {
     if (!state || !client || screen !== "hud" || !client.step) return;
     const g = gen, id = state.id;
-    stepping = true;
-    let r; try { r = await client.step(id, dt); } finally { stepping = false; }
+    const p = client.step(id, dt); stepping = p;
+    let r; try { r = await p; } finally { if (stepping === p) stepping = null; }
     if (!alive(g) || !state || state.id !== id) return;
     applyLive(r);
   }
@@ -466,7 +466,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
   /** Skip to next event: the sim runs until something happens (at most a day), then the clock carries on. */
   async function skipEvent() {
-    if (!state || state.over || stepping) return;
+    if (!state || state.over) return;
+    // a clock step in flight: wait for it, never drop the press (a slow PC is posting steps most of the time)
+    if (stepping) { try { await stepping; } catch (e) { /* the skip below reports a dead server */ } }
+    if (!state || state.over) return;
     nudge.stop();
     if (cockpit) cockpit.busy(true);
     const g = gen; let r;
@@ -764,8 +767,18 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tier() !== "cadet" || !cockpit || !cockpit.offer || screen !== "hud") return;
     const pid = panelFor(d, text); if (pid) cockpit.offer(pid, actions);
   }
+  /** An offer the live clock has already overtaken (held on the voice floor while time ran): a storm offer with no storm
+   *  and no warning any more, a night-mode offer with night mode on. Showing it would contradict the Now card. */
+  function staleOffer(d) {
+    const s = state; if (!s || !(d.actions || []).length) return false;
+    const e = s.env || {}, text = [d.title, d.body, ...(d.chips || []), ...(d.actions || []).map(a => a.label)].join(" ");
+    if (/storm|shelter|shields/i.test(text) && !(e.storm && e.storm.active) && !(e.warning || e.storm_warning)) return true;
+    if (/night mode/i.test(text) && s.power_save) return true;
+    return false;
+  }
   function showCard(d, send) {
     const s = state;
+    if (staleOffer(d)) return;   // the moment passed while the clock ran; the Now card has the current job
     if ((d.actions || []).length) decisionAt = Date.now();   // an offer is a decision: the clock waits (up to 30 s)
     card.show({ title: d.title || "CAPCOM", asked: d.asked || "", say: d.body || "", arc: d.arc || "",
       eyebrow: [d.hint ? "Heads up" : d.nudge ? "Coach" : "", s ? `Day ${s.day} · shift ${s.shift}` : "Mission"].filter(Boolean).join(" · "),
