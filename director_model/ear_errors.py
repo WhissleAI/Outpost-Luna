@@ -31,23 +31,28 @@ sys.path.insert(0, str(HERE.parent / "backend"))
 from app.director_model.features import STOP, norm  # noqa: E402
 
 DATA = HERE / "data"
-SOURCES = ["ear_eval_arc_tuned.json", "ear_eval_arc.json"]
+EAR = HERE.parent / "backend" / "tests" / "fixtures" / "ear_eval"
+# the current Arc ear (main) first, then two earlier decoder settings kept in data/ (same audio, older decodes)
+SOURCES = [EAR / "results_arc_final.json", EAR / "results_arc_ctx_bias.json", DATA / "ear_eval_arc_tuned.json",
+           DATA / "ear_eval_arc.json"]
 
 
 def item_num(cid: str) -> int:
     return int(re.sub(r"\D", "", cid) or 0)
 
 
-def ear_rows(which: str = "fit"):
+def ear_rows(which: str = "fit", sources=None):
     """Real (ref, hyp, noisy, condition) rows. which='fit' -> odd ids (error model), 'test' -> even ids."""
     out = []
-    for f in SOURCES:
-        d = json.loads((DATA / f).read_text())
+    for f in sources or SOURCES:
+        if not Path(f).exists():
+            continue
+        d = json.loads(Path(f).read_text())
         for cond, v in d["conditions"].items():
             for r in v["rows"]:
                 odd = item_num(r["id"]) % 2 == 1
                 if (which == "fit") == odd:
-                    out.append({"ref": r["ref"], "hyp": r["hyp"], "noisy": bool(r["noisy"]), "cond": f"{f[:-5]}:{cond}",
+                    out.append({"ref": r["ref"], "hyp": r["hyp"], "noisy": bool(r["noisy"]), "cond": f"{Path(f).stem}:{cond}",
                                 "id": r["id"], "clip": r["clip"], "states": r.get("states") or []})
     return out
 

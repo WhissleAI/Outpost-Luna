@@ -247,6 +247,7 @@ class Shadow:
     def turn_result(self, r: dict):
         if self.cur is not None:
             self.cur["r"] = {k: r.get(k) for k in ("action", "command", "nlu", "source", "needs_confirm", "place")}
+            self.cur["r"]["brain"] = (r.get("readout") or {}).get("brain")
 
     def flush(self):
         self._close()

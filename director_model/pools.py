@@ -152,7 +152,7 @@ _BANK = None
 def bank() -> list[dict]:
     global _BANK
     if _BANK is None:
-        ex = json.loads((DATA / "command_bank.json").read_text())["examples"]
+        ex = json.loads((BACKEND / "data" / "mission" / "command_bank.json").read_text())["examples"]
         _BANK = [{"text": e["text"], "cat": "cmd_bank", "root": "bank:" + e["text"], "bank_cmd": e["command"]}
                  for e in ex]
     return _BANK
@@ -241,12 +241,12 @@ def gold_items() -> list[dict]:
 
 
 def heldout40() -> list[dict]:
-    d = json.loads((DATA / "commands_heldout.json").read_text())["commands"]
+    d = json.loads((BACKEND / "tests" / "eval" / "commands_heldout.json").read_text())["commands"]
     return [{"text": x["text"], "cat": "heldout40", "root": "h40:" + x["text"], "expect": x["expect"]} for x in d]
 
 
 def kidq80() -> list[dict]:
-    d = json.loads((DATA / "kid_questions.json").read_text())["questions"]
+    d = json.loads((BACKEND / "tests" / "eval" / "kid_questions.json").read_text())["questions"]
     out = []
     for x in d:
         ok = x["ok"]

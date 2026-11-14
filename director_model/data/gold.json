@@ -1,0 +1,432 @@
+{
+ "_note": "Hand-labeled gold turns where the rule teacher is known wrong (brain report + error analysis). split train|test; mode is the session mode the turn is said in.",
+ "items": [
+  {
+   "text": "park the buggy back in the garage",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "park the rover back at the base",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "bring the buggy back to the garage",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "put the moon car back in its parking spot",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "return",
+    "target": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "the crew feels sleepy and stuffy",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "everyone feels stuffy in here",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "it's hard to breathe in here",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the air smells stale",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "life_support",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "the rover should drive somewhere new",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "let's take the buggy somewhere we've never been",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "go see what's over that hill with the rover",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the rover should go on an adventure",
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "i'm turning into a popsicle",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "i feel like an ice cube",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "my toes are frozen",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "we're turning into snowmen",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "heaters",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "the plants look sad",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the tomatoes are droopy",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "we can't hear earth very well",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the radio is all crackly",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "protect us from the sun",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "train",
+   "mode": "mission"
+  },
+  {
+   "text": "the sun is zapping us",
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "little",
+     "value": 5
+    },
+    "from": null
+   },
+   "split": "test",
+   "mode": "mission"
+  },
+  {
+   "text": "what did lcross find when it crashed",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did lcross discover",
+   "act": "answer",
+   "attr": "science",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did the lcross crash tell us",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what science did the apollo 12 experiments do",
+   "act": "answer",
+   "attr": "science",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "what did the apollo 12 experiments find out",
+   "act": "answer",
+   "attr": "science",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "what was alsep for",
+   "act": "answer",
+   "attr": "why",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "why did they leave mirrors on the moon",
+   "act": "answer",
+   "attr": "why",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "what's the biggest crater",
+   "act": "answer",
+   "attr": "size",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "how big is the biggest crater",
+   "act": "answer",
+   "attr": "size",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "who drove the first moon car",
+   "act": "answer",
+   "attr": "who",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "who was driving the first moon buggy",
+   "act": "answer",
+   "attr": "who",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "when did lcross crash",
+   "act": "answer",
+   "attr": "when",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "when did apollo 11 land",
+   "act": "answer",
+   "attr": "when",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "no you go first",
+   "act": "ignore",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "wait whose turn is it",
+   "act": "ignore",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "haha that's so funny",
+   "act": "ignore",
+   "split": "train",
+   "mode": "cadet"
+  },
+  {
+   "text": "mom i'm hungry",
+   "act": "ignore",
+   "split": "test",
+   "mode": "cadet"
+  },
+  {
+   "text": "yes",
+   "act": "ignore",
+   "split": "train",
+   "mode": "cadet"
+  }
+ ]
+}
