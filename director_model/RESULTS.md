@@ -205,7 +205,7 @@ commands ("what is the crater" -> dispatch explore, "where does the power come f
 
 Next: train on the real decodes (1,082 train turns decoded so far), size m.
 
-## Round 5 — 2026-11-13 ~20:15 (train on real Arc decodes; robust threshold choice) — SHIPPED round 4's s as `on`
+## Round 5 — 2026-11-13 ~20:00 (train on real Arc decodes; robust threshold choice) — SHIPPED round 4's s as `on`
 
 Changes: train regenerated with the real decodes available (1,082 train turns decoded by Arc, replayed for 0.9 of
 the noised turns that have one; the rest still fitted noise); same val/test as round 4. Policy fit: among the
