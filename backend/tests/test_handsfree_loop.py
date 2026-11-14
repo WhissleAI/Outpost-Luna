@@ -162,3 +162,25 @@ def test_two_adults_chatting_in_the_cabin_get_nothing(world):
               "we should call your mom tonight about the weekend"]:
         hear(s, t, dd=0.2, advance=3)
     assert says(s) == []
+
+
+def test_the_kid_can_answer_an_offer_right_away(world):
+    """ "…Say next when you're ready." -> "next" half a second later is the kid, not the echo of our offer."""
+    s = make(world, screen="patch", mode="academy")
+    run(s.handle({"t": "ui", "event": "screen", "screen": "patch", "offer": "next_lesson"}))
+    play(s, "o", "Patch earned, Nova: Moon Scout! Next up: Space words. Say next when you're ready.")
+    hear(s, "next", dd=0.9, advance=0.5)
+    assert s.routes[-1]["outcome"] == "navigate"
+    # but the same word heard WHILE the offer plays is its echo
+    s.clock_obj.t += 3
+    run(s.handle({"t": "playback", "kind": "guide", "state": "start", "id": "o2", "text": "Say next when you're ready."}))
+    hear(s, "next", dd=0.9, advance=0.2)
+    assert s.routes[-1]["reason"] == "echo"
+
+
+def test_a_quick_answer_repeating_the_prompt_is_heard(world):
+    s = make(world, screen="lesson", mode="academy")
+    run(s.handle({"t": "ui", "event": "screen", "screen": "lesson", "step_type": "tap"}))
+    play(s, "q", "Now tap Shackleton crater, inside the gold ring at the pole.")
+    hear(s, "Shackleton", dd=0.9, advance=0.9)   # after the 600 ms hard-mute tail
+    assert s.routes[-1]["outcome"] == "answer"

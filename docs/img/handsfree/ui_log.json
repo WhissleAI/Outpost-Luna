@@ -1,0 +1,437 @@
+[
+ {
+  "kid": "Oh.",
+  "decisions": [
+   [
+    "heard",
+    "Oh."
+   ]
+  ]
+ },
+ {
+  "kid": "Mm-mm.",
+  "decisions": [
+   [
+    "heard",
+    "Mm-mm."
+   ]
+  ]
+ },
+ {
+  "kid": "call me Nova",
+  "decisions": [
+   [
+    "heard",
+    "call me Nova"
+   ],
+   [
+    "nav",
+    "call me Nova"
+   ]
+  ]
+ },
+ {
+  "kid": "start",
+  "decisions": [
+   [
+    "heard",
+    "start"
+   ],
+   [
+    "nav",
+    "start"
+   ]
+  ]
+ },
+ {
+  "kid": "show me Shackleton",
+  "decisions": [
+   [
+    "heard",
+    "show me Shackleton"
+   ],
+   [
+    "nav",
+    "show me Shackleton"
+   ]
+  ]
+ },
+ {
+  "kid": "next",
+  "decisions": [
+   [
+    "heard",
+    "next"
+   ],
+   [
+    "nav",
+    "next"
+   ]
+  ]
+ },
+ {
+  "kid": "Shackleton",
+  "decisions": [
+   [
+    "heard",
+    "Shackleton"
+   ],
+   [
+    "nav",
+    "Shackleton"
+   ]
+  ]
+ },
+ {
+  "kid": "next",
+  "decisions": [
+   [
+    "heard",
+    "next"
+   ],
+   [
+    "nav",
+    "next"
+   ]
+  ]
+ },
+ {
+  "kid": "um",
+  "decisions": [
+   [
+    "heard",
+    "um"
+   ]
+  ]
+ },
+ {
+  "kid": "Its dark floor may hold ice",
+  "decisions": [
+   [
+    "heard",
+    "Its dark floor may hold ice"
+   ],
+   [
+    "nav",
+    "Its dark floor may hold ice"
+   ]
+  ]
+ },
+ {
+  "kid": "next",
+  "decisions": [
+   [
+    "heard",
+    "next"
+   ],
+   [
+    "nav",
+    "next"
+   ]
+  ]
+ },
+ {
+  "kid": "A dark, flat sea of old cooled lava",
+  "decisions": [
+   [
+    "heard",
+    "A dark, flat sea of old cooled lava"
+   ],
+   [
+    "nav",
+    "A dark, flat sea of old cooled lava"
+   ]
+  ]
+ },
+ {
+  "kid": "did you remember to buy the milk",
+  "decisions": [
+   [
+    "heard",
+    "did you remember to buy the milk"
+   ]
+  ]
+ },
+ {
+  "kid": "go to mission",
+  "decisions": [
+   [
+    "heard",
+    "go to mission"
+   ],
+   [
+    "nav",
+    "go to mission"
+   ]
+  ]
+ },
+ {
+  "kid": "pick Malapert",
+  "decisions": [
+   [
+    "heard",
+    "pick Malapert"
+   ],
+   [
+    "nav",
+    "pick Malapert"
+   ]
+  ]
+ },
+ {
+  "kid": "take command",
+  "decisions": [
+   [
+    "heard",
+    "take command"
+   ],
+   [
+    "nav",
+    "take command"
+   ]
+  ]
+ },
+ {
+  "kid": "shields to 40",
+  "decisions": [
+   [
+    "heard",
+    "shields to 40"
+   ],
+   [
+    "hud",
+    ""
+   ],
+   [
+    "card",
+    "Copy, commander. Setting the radiation shields to 40 percent of our power. That "
+   ],
+   [
+    "say",
+    "Copy, commander. Setting the radiation shields to 40 percent of our power. That "
+   ]
+  ]
+ },
+ {
+  "kid": "zoom out",
+  "decisions": [
+   [
+    "heard",
+    "zoom out"
+   ],
+   [
+    "nav",
+    "zoom out"
+   ]
+  ]
+ },
+ {
+  "kid": "end shift",
+  "decisions": [
+   [
+    "heard",
+    "end shift"
+   ],
+   [
+    "cancel",
+    ""
+   ],
+   [
+    "hud",
+    ""
+   ],
+   [
+    "card",
+    "Copy. Ending this shift. Six hours pass on the Moon. Day 1, shift 2. Power 100%,"
+   ],
+   [
+    "say",
+    "Copy. Ending this shift. Six hours pass on the Moon. Day 1, shift 2. Power 100%,"
+   ]
+  ]
+ },
+ {
+  "kid": "Oh.",
+  "decisions": [
+   [
+    "heard",
+    "Oh."
+   ]
+  ]
+ },
+ {
+  "kid": "what is the name of the moon's pet dog",
+  "decisions": [
+   [
+    "heard",
+    "what is the name of the moon's pet dog"
+   ],
+   [
+    "cancel",
+    ""
+   ],
+   [
+    "card",
+    "Did you mean what ice at the south pole is or Is the Moon made of cheese??"
+   ],
+   [
+    "say",
+    "Did you mean what ice at the south pole is or Is the Moon made of cheese??"
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "cancel",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ]
+  ]
+ },
+ {
+  "kid": "debrief",
+  "decisions": [
+   [
+    "heard",
+    "debrief"
+   ],
+   [
+    "nav",
+    "debrief"
+   ],
+   [
+    "heard",
+    "What is your biggest limb wallfall?"
+   ],
+   [
+    "card",
+    "Limb: The edge of the Moon as we see it."
+   ],
+   [
+    "say",
+    "Limb: The edge of the Moon as we see it."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "cancel",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "What's the first woman to win a Nobel Prize?"
+   ],
+   [
+    "answer",
+    ""
+   ]
+  ]
+ },
+ {
+  "kid": "fly again",
+  "decisions": [
+   [
+    "heard",
+    "fly again"
+   ],
+   [
+    "nav",
+    "fly again"
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "floor",
+    ""
+   ],
+   [
+    "heard",
+    "Oh."
+   ],
+   [
+    "floor",
+    ""
+   ]
+  ]
+ }
+]

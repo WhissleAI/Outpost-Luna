@@ -128,7 +128,22 @@ def norm(text: str) -> str:
     t = re.sub(r"[^a-z0-9.\s]", " ", t)
     t = re.sub(r"(?<!\d)\.|\.(?!\d)", " ", t)
     t = re.sub(r"\bper cent\b", "percent", t)
-    return re.sub(r"\s+", " ", t).strip()
+    t = re.sub(r"\s+", " ", t).strip()
+    return _ice_mishears(t)
+
+
+# The ear hears "ice" as "eyes" / "eye" / "i s" / "rice" ("send the rover for eyes", "get eyes"). In a rover or
+# fetch order there are no eyes to fetch: read it as ice.
+ICE_VERB = r"(?:for|get|go get|fetch|collect|grab|dig(?: for)?|find|mine|bring(?: back)?|some|more|the)"
+ICE_HEARD = r"(?:eyes|eye|i s|ices|rice|ise|ayes)"
+
+
+def _ice_mishears(t: str) -> str:
+    t2 = re.sub(rf"\b({ICE_VERB}) {ICE_HEARD}\b", r"\1 ice", t)
+    t2 = re.sub(rf"\b{ICE_HEARD} (run|runs|trip|hunt|mission)\b", r"ice \1", t2)
+    if re.search(r"\b(rover|buggy|moon buggy)\b", t2):
+        t2 = re.sub(rf"\b{ICE_HEARD}\b", "ice", t2)
+    return t2
 
 
 def _words_to_digits(t: str) -> str:

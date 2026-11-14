@@ -362,7 +362,7 @@ class Live:
         await self.ws.send(json.dumps(m))
 
     async def wait(self, sec: float):
-        await asyncio.sleep(min(sec, 0.3))
+        await asyncio.sleep(min(sec, 2.0))       # our line "plays" (the playback events carry the timing)
 
     async def turn(self, text: str, dd: float) -> list[dict]:
         if self.audio and not text.startswith(("Mm", "Oh", "um")) and dd >= 0.5:
@@ -373,6 +373,7 @@ class Live:
         return await self.drain(1.2)
 
     async def turn_audio(self, text: str) -> list[dict]:
+        await asyncio.sleep(0.6)                 # a kid's reaction time after our line
         """Render the line with Steer TTS (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
         import io
         import wave

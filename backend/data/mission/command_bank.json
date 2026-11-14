@@ -359,8 +359,8 @@
     "type": "allocate",
     "to": "shields",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -975,8 +975,8 @@
     "type": "allocate",
     "to": "life_support",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -1591,8 +1591,8 @@
     "type": "allocate",
     "to": "greenhouse",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -2207,8 +2207,8 @@
     "type": "allocate",
     "to": "science",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -2977,8 +2977,8 @@
     "type": "allocate",
     "to": "comms",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -3439,8 +3439,8 @@
     "type": "allocate",
     "to": "heaters",
     "amount": {
-     "kind": "little",
-     "value": -5
+     "kind": "delta",
+     "value": -10
     }
    }
   },
@@ -3664,6 +3664,51 @@
   },
   {
    "text": "go dig for ice",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "collect_ice",
+    "target": null
+   }
+  },
+  {
+   "text": "send the rover for eyes",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "collect_ice",
+    "target": null
+   }
+  },
+  {
+   "text": "get eyes",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "collect_ice",
+    "target": null
+   }
+  },
+  {
+   "text": "go on an ice run",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "collect_ice",
+    "target": null
+   }
+  },
+  {
+   "text": "rover, ice run",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "collect_ice",
+    "target": null
+   }
+  },
+  {
+   "text": "send the rover on an eyes run",
    "command": {
     "type": "dispatch",
     "vehicle": "rover",

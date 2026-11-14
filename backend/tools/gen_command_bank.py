@@ -45,7 +45,8 @@ FEELINGS = [  # situation -> command (kid says how things are, not what to do)
     ("we can't hear earth", {"type": "allocate", "to": "comms", "amount": {"kind": "little", "value": 5}}),
 ]
 DISPATCH = {
-    "collect_ice": ["send the rover to get ice", "go dig for ice", "we need water, go get some ice", "rover, fetch frozen water",
+    "collect_ice": ["send the rover to get ice", "go dig for ice", "send the rover for eyes", "get eyes", "go on an ice run",
+                    "rover, ice run", "send the rover on an eyes run", "we need water, go get some ice", "rover, fetch frozen water",
                     "go mine some ice in the crater", "drive the buggy to the ice", "get us some water from the crater"],
     "repair_array": ["fix the solar panels", "go repair the array", "the solar panels are broken", "send the rover to fix the panels",
                      "patch up the solar array", "the panels need fixing"],
