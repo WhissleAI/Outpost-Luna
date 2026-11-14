@@ -480,6 +480,8 @@ html[data-motion="reduce"] .is-point{animation:none}
 .c3[data-panel="seat"] .du-head span{font-size:var(--text-md)}
 
 /* QA-23: with the alert strip up, the clock / views row, sky and rover chip sit below its real height */
+/* no transition on top here: the window HUD re-lays out every frame, and a stalled transition left the row under the strip */
+.cb-hole>.cb-top{transition:none}
 .cb-hole.has-alert>.cb-top{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
 .cb-hole.has-alert>.cb-sky,.cb-hole.has-alert>.cb-rover{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2) + 56px)}
 .cb-glass.has-alert .cb-top{top:calc(var(--space-4) + var(--alert-h, var(--control-md)) + var(--space-2))}
