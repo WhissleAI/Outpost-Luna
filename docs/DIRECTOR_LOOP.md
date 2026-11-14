@@ -121,18 +121,37 @@ sessions. Each item sends the client's screen frame, so the router sees exactly 
 | `cls_mode` | "go to mission", "back to the map", "open the library", said in the middle of a lesson step. | navigate |
 | `cls_globe` | The 6 globe step types answered by voice: predict, globe_side, terminator, compare, route, earth_view. | the grader on the clean words |
 | `cls_mishear` | Kid lines heard through the real Arc ear, for example "eyes" for "ice". | the kid's intent |
+| `cls_roomtalk` (round 7) | Room talk Arc Tagger rates device-directed (drawn 0.75–0.98): swearing, exclamations, sibling talk ("shit shit oh", "oh my god", "give it back"), on any screen. | ignore |
 
 The real ear (`real_ear.py`) renders these turns in memory with held-out Steer voices and decodes them with Arc. It
 also renders the app's own lines in the app's voices (Aurora `voice_1085`, CAPCOM `voice_0213`, Beacon `voice_0644`),
 so the echo set hears what the ear really makes of our speech. No WAV is ever written.
+
+Round 7: every real-ear job carries its screen frame and that screen's hot lists (`backend/app/hotlist.py`), and the
+decoder gets them as the app sends them, so the decodes are what the biased ear hears. The final words carry the
+ear's n-best, confidence and hot-list match, which the generator replays (features `ear_*`).
+
+**Outcome signals in generation (round 7).** Where no turn log exists, the generator simulates the "ignored, then
+repeated" signal from its own errors: when the router ignores a train / val turn whose gold is not ignore, the kid says
+it again (`--repeat-p`, 0.5) through the ear again, with the same gold. The features `rep_prev`, `prev_ignored`,
+`prev_acted`, `neg_now` carry the signal at serving time too.
 
 ## 4. What the model may do (unchanged rule: a wrong action costs more than a missed one)
 
 - **Features.** The hands-free features (screen, step type, offer, router outcome, navigation intent, on-air timing,
   echo of recent lines, chatter) are appended after the round-5 block. Older weights read their own prefix
   (`features.F_R5`), so new code never breaks shipped weights.
-- **New act.** `navigate` is appended to the act list. The model learns it, but it never navigates on its own. A
-  confident `navigate` can only veto a rules command into "Did you mean…?" (`policy`, `veto`).
+- **New act.** `navigate` is appended to the act list (round 6).
+- **Navigation head (round 7).** A `nav` head names WHICH navigation (`features.NAV_INTENTS`: take / decline the offer,
+  map, library, mission, take command, each panel, help, tour, repeat, slower, settings, ...). On a turn the router did
+  not navigate, the model may navigate (`runtime.nav_policy`, `Session._model_nav`) when p(act = navigate) and p(intent)
+  are both ≥ `nav`, fit on val to add no wrong actions; only intents it can run without an argument (not a lesson or a
+  site), and taking an offer only while one is on screen. A wrong navigation now counts as a wrong action in the eval,
+  for the rules too, and a navigate act is right only with the right intent.
+- **Round-7 features** (appended, `F_R6` = 216 → 236): the screen's hot-list match per tier (exact hits and sound-alike
+  score), the ear's confidence / n-best / rescoring / matched tier, the grader passing only on its sound-alike repair,
+  the router's navigation inside a longer turn, and the outcome signals above. device_directed is one feature among
+  these, never the deciding one.
 - **Lesson answers.** On a turn the router sent to a lesson step as its answer, the model may only silence it
   (`answer_policy`). It needs p(ignore) ≥ `answer_ignore`, fit on val to add no lost answers. The default is off.
 - **Everything else is as in `RETRAIN.md`.** The guard wins. A rules command stands unless vetoed. The model fills
@@ -144,7 +163,7 @@ The candidate is trained with thresholds fit on val. The shipped weights run exa
 numpy runtime with their own policy (`evaluate.py --weights`). Both are scored on the same freshly generated sets.
 
 The new weights ship only if criteria 1–4 hold on **every** held-out set and criterion 5 holds overall. The sets are `test_clean`, `test_asr`, `test_real`,
-`test_ear`, `test_h40`(+asr), `test_q80`(+asr), `test_gold`, every `cls_*` and `test_log`.
+`test_ear`, `test_h40`(+asr), `test_q80`(+asr), `test_gold`, every `cls_*` (round 7 adds `cls_roomtalk`) and `test_log`.
 
 1. Guarded `on` wrong actions ≤ the rules (the `RETRAIN.md` switch-on criterion).
 2. Guarded `on` act accuracy ≥ the rules.

@@ -10,7 +10,9 @@ weights fail to load):
           privacy guard always wins; the model never overrides a rules command; a model
           command must pass nlu.valid(); below CONF the rules decide; style tags outside the allowed set are never
           produced (the space only has allowed tags; steering re-checks FORBIDDEN anyway).
-GET /api/director/stats: shadow agreement counts (main.py).
+GET /api/director/stats: shadow agreement counts (main.py), and `latency` (round 7): the loaded weights' numpy step time
+(p50 / p95 ms, measured at load; the bigger xl size must stay under ~5 ms per step on CPU).
+Round 7 also adds `nav_policy` (the `nav` head: the model may navigate a turn the router did not, fitted and guarded).
 
 The forward pass mirrors director_model/train.py `Director` (verified by director_model/export.py and
 backend/tests/test_director_model.py: numpy streaming == torch parallel).
