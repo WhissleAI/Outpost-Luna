@@ -13,24 +13,41 @@ Outpost Luna.app / Outpost Luna.exe
      └─ BrowserWindow -> http://127.0.0.1:47310/
 ```
 
-## Build (macOS)
+## Build
 
-```
-make data                 # once: NASA media into backend/data/media (or copy it from another checkout)
-make desktop-mac          # desktop-python + desktop-models + desktop-arctag + electron-builder -> desktop/dist/*.dmg
-```
+Builds run locally (no CI). One command per OS, from a fresh clone, with no accounts, keys or tokens:
+
+| | command | output |
+|---|---|---|
+| macOS arm64 | `bash desktop/scripts/build-mac.sh` (or `make desktop-mac`) | `desktop/dist/Outpost Luna-<version>-arm64.dmg` |
+| Windows x64 (untested) | `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` | `desktop\dist\Outpost Luna Setup <version>.exe`; step-by-step in [BUILD_WINDOWS.md](BUILD_WINDOWS.md) |
+
+Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov)
+-> frontend deps -> embedded Python + app code (`build_python.py`) -> models (`gather_models.py`) -> Arc Tagger native
+library (CMake) -> Electron + electron-builder -> print the installer path. Caches stay in `desktop/build/`.
+
+**Models: one public package for every build.** `gather_models.py` (default `--from auto`) copies from this machine's
+HF cache and checkouts when it has every file, else downloads the public model package (119 MB tar of exactly
+`desktop/resources/models`), checks its sha256 (`c9cb030d…`, pinned in the script), then checks every file against
+`desktop/models.lock.json`. Hugging Face is not used: `WhissleAI/arc-tagger` only has v0.4.x (the app ships v0.3 from
+Head Start) and `WhissleAI/steer-tts-edge`'s history was squashed to v2.x (the v1 graphs steertts-edge 1.3.0 needs are
+gone). To change a model: gather it, `--write-lock`, `--pack`, upload the tar as `outpost-luna-models-v2.tar`, and update
+`PACKAGE` in `gather_models.py` (URL, sha256, size).
+
+The pieces, also runnable on their own:
 
 | target | what it does |
 |---|---|
 | `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` and `steertts-edge` wheels; trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
-| `make desktop-models` | `desktop/scripts/gather_models.py`: copies every weight into `desktop/resources/models/` and checks it against `desktop/models.lock.json` (sha256 per file) |
+| `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
+| `make desktop-models` | `desktop/scripts/gather_models.py`: every weight into `desktop/resources/models/` (local, else the public package), checked against `desktop/models.lock.json` |
 | `make desktop-arctag` | CMake build of `desktop/vendor/arctag` (arc-tagger-c sources, native backend only) -> `libarctag.dylib` / `arctag.dll` |
 | `make desktop-run` | run the shell against `desktop/resources` without packaging |
 | `make desktop-clean` | delete `desktop/resources`, `desktop/build`, `desktop/dist` |
 
-Caches stay in the tree: `desktop/build/uv-cache`, `desktop/build/uv-python`, and `ELECTRON_CACHE` / `ELECTRON_BUILDER_CACHE`
-if you point them at `desktop/build/cache`. A full build needs about 5 GB free (resources 1.1 GB, unpacked app 1.9 GB,
-dmg 1.0 GB, caches); `rm -rf desktop/dist/mac-arm64` after the dmg is made.
+A full build needs about 6 GB free (media 0.5 GB, resources 1.1 GB, unpacked app 1.9 GB, dmg 1.0 GB, caches);
+`build-mac.sh` deletes the unpacked app once the dmg is made. The vendored wheels `desktop/vendor/wheels/
+arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB) are committed (CC-BY-NC-4.0, NOTICE inside).
 
 PyInstaller was not used: two separate servers with torch, onnxruntime and ctypes-loaded native libraries are simpler as
 a plain relocatable interpreter plus `--target` folders; nothing is frozen, so tracebacks and the logs stay readable.
@@ -137,8 +154,8 @@ Re-run: `PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/
 Now: ad-hoc signature (`identity: "-"`), no hardened runtime. Gatekeeper blocks a downloaded copy until the user
 right-clicks > Open (or `xattr -dr com.apple.quarantine "/Applications/Outpost Luna.app"`). To ship:
 
-1. An Apple Developer Program membership and a **Developer ID Application** certificate (.p12) -> CI secrets
-   `CSC_LINK` (base64 p12) and `CSC_KEY_PASSWORD`; drop `identity: "-"` and `CSC_IDENTITY_AUTO_DISCOVERY=false`.
+1. An Apple Developer Program membership and a **Developer ID Application** certificate (.p12) -> env vars
+   `CSC_LINK` (path or base64 p12) and `CSC_KEY_PASSWORD` for electron-builder; drop `identity: "-"` and `CSC_IDENTITY_AUTO_DISCOVERY=false`.
 2. `hardenedRuntime: true` with `build-resources/entitlements.mac.plist` (audio input, JIT, unsigned executable memory,
    disable library validation: needed by the embedded CPython, torch and the ctypes-loaded `libarctag`).
 3. electron-builder signs every Mach-O under `Resources/` (the Python tree has hundreds of `.so`/`.dylib`); expect the
@@ -158,25 +175,10 @@ Everything below is **untested**: no Windows machine was available.
 - Supervisor: `taskkill /T /F`, `tasklist` for stale-pid checks, `windowsHide`; the parent watchdog uses
   `OpenProcess` + `WaitForSingleObject`.
 - PyPI's Windows torch wheels are CPU-only already. `soundfile` ships its own libsndfile DLL.
-- `fetch_media.sh` converts the Moon map with `sips` or `ffmpeg`; the Windows runner may lack both (copy `moon4k.jpg` in, or add
-  an ffmpeg step).
+- `fetch_media.py` is plain Python (urllib) plus Pillow for the Moon map: no bash, curl or sips.
+- Clone to a short path (`C:\src\atm`) or enable long paths: torch's deepest files pass 260 characters otherwise.
 - NSIS per-user install, unsigned: SmartScreen warns. Authenticode needs an OV/EV code-signing certificate
   (`WIN_CSC_LINK` / `WIN_CSC_KEY_PASSWORD`, or Azure Trusted Signing).
-
-## CI (`.github/workflows/desktop.yml`)
-
-Matrix `macos-14` (dmg) and `windows-latest` (NSIS), on `workflow_dispatch` or a `desktop-v*` tag; uploads the installers
-as artifacts. It creates no secrets and is not triggered by pushes to branches. It needs:
-
-| | |
-|---|---|
-| `env.MODELS_URL` + `env.MODELS_SHA256` | the public model package (`desktop/resources/models` as one tar, 114 MB, on Dropbox: `/outpost-luna/v1/outpost-luna-models-v1.tar`). Checked by sha256, then each file against `models.lock.json`. No secrets needed. To change models: re-gather, tar, upload as `v2`, update both values. |
-| `desktop/vendor/wheels/*.whl` | `arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB), committed (CC-BY-NC-4.0, NOTICE inside) |
-| NASA media | not hosted by us: `backend/pipeline/fetch_media.sh` downloads the 74 crew clips and the Moon map from NASA |
-
-Why a package and not the upstream HF repos: they do not have the versions the app runs. `WhissleAI/arc-tagger` only has
-v0.4.x (the app ships v0.3 from Head Start), and `WhissleAI/steer-tts-edge`'s history was squashed to v2.x (the v1 graphs
-steertts-edge 1.3.0 needs are gone from the Hub). `gather_models.py --from hf` remains for local experiments.
 
 ## Follow-ups
 

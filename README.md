@@ -47,7 +47,7 @@ says "rules only". The model server is a plain FastAPI app, so it can later run 
 
 ```bash
 make setup      # uv sync (backend, model_server) + npm install (frontend)
-make data       # download NASA media (Moon map + crew clips, ~18 MB)
+make data       # download NASA media (Moon map + 74 crew clips, ~0.5 GB; backend/pipeline/fetch_media.py)
 make dev        # model server + backend + frontend together → http://localhost:5173
 make index      # rebuild the crew index with Arc Tagger (model server must be running)
 make test       # model_server + backend tests
@@ -57,7 +57,27 @@ make models | backend | frontend   # run one part on its own
 make desktop-mac   # the offline desktop app (Electron + embedded Python + every model) -> desktop/dist/*.dmg
 ```
 
-The desktop app (macOS now, Windows next) runs with no internet: see [docs/DESKTOP.md](docs/DESKTOP.md).
+## Desktop app (offline)
+
+One installer that runs with no internet: Electron, an embedded Python, the backend, the model server, every model and
+the NASA audio. Built locally from a fresh clone, no keys or tokens. Details: [docs/DESKTOP.md](docs/DESKTOP.md).
+
+### Build Mac
+
+Needs Xcode command line tools, Node 22+, uv, CMake, ~6 GB free.
+
+```bash
+bash desktop/scripts/build-mac.sh     # -> desktop/dist/Outpost Luna-<version>-arm64.dmg
+```
+
+### Build Windows (untested; the first build will validate it)
+
+Needs Node 22+, uv, CMake, Git, VS 2022 Build Tools (C++) or LLVM, ~6 GB free. Step-by-step:
+[docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1   # -> desktop\dist\Outpost Luna Setup <version>.exe
+```
 
 Requirements: uv, Node 20+, macOS for the Arc Tagger build that is used now. By default it is Head Start's
 `libarctag.dylib` and `models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. No cloud LLM:
@@ -94,7 +114,7 @@ Current build: 28 places linked from Arc Tagger spans, 4 from the gazetteer fall
 left unlinked.
 
 New clips:
-1. Add the URL to `backend/pipeline/fetch_media.sh` and a row to `backend/data/clips_manifest.json`.
+1. Add a row (with its URL) to `backend/data/clips_manifest.json`; `make data` (`backend/pipeline/fetch_media.py`) fetches it.
 2. Run `make data`, `make transcribe` (mlx-whisper; Deepgram is the plan) and `make index`.
 
 ## Roadmap
