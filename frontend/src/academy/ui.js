@@ -369,7 +369,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     }
     if (view !== "lesson") return false;
     if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine("Say next, or tap Next."); } return true; }
-    if (L.steps[i].accept.type === "tap") { feedback = { kind: "retry", text: "For this one, tap the Moon." }; render(); return true; }
+    // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }
   /** A tap on the globe (lat/lon). True when the Academy used it. */

@@ -95,6 +95,9 @@ def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]
     acc, inp = step["accept"], inp or {}
     kind, text = acc["type"], inp.get("text") or ""
     if kind == "tap":
+        if inp.get("tap") is None and text:   # hands-free (and for kids who can't tap): naming the place counts
+            p = gaz().match_text(text)
+            return bool(p and p.id in {acc["place"], *acc.get("also", [])}), {}
         return _tap_ok(inp.get("tap"), acc), {}
     if kind == "intent":
         if inp.get("tap") is not None and _tap_ok(inp["tap"], {**acc, "radius_deg": acc.get("radius_deg", 10)}):

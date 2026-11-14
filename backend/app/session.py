@@ -286,11 +286,14 @@ class Session:
         await self.emit(out)
 
     # ---- the kid's turn --------------------------------------------------------------------------------------------
-    def _dup(self, text: str) -> bool:
+    def _dup(self, text: str, source: str = "typed") -> bool:
+        """The same turn arriving twice: from the ear relay and from the client (another source) within DEDUP_S, or
+        from the same source within a second. A kid who says "end shift" again 4 s later means it."""
         q, now = norm(text), self.clock()
-        if any(q == x and now - ts < DEDUP_S for x, ts in self.recent_turns):
+        fam = "listen" if source == "listen" else "client"
+        if any(q == x and (now - ts < 1.0 or (f != fam and now - ts < DEDUP_S)) for x, ts, f in self.recent_turns):
             return True
-        self.recent_turns.append((q, now))
+        self.recent_turns.append((q, now, fam))
         return False
 
     def resolve_referent(self, text: str) -> str:
@@ -315,7 +318,7 @@ class Session:
 
     async def on_turn(self, text: str, source: str = "typed"):
         text = text.strip()
-        if not text or self._dup(text):
+        if not text or self._dup(text, source):
             return
         async with self.lock:
             await self._turn(text, source)
@@ -333,13 +336,16 @@ class Session:
     def route_ctx(self, source: str) -> router_.Ctx:
         k = self.belief["kid"]
         heard = source in ("listen", "voice", "ptt")
+        # When the kid's turn started (the ear's StartOfTurn): echo can only begin while we speak.
+        now = self.clock()
+        t0 = k["start"] if k.get("start") is not None and now - k["start"] < 20 else now
         return router_.Ctx(
             screen=self.screen_name(), step_type=self.screen.get("step_type"),
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
             source=source if heard else "typed",
             dd=k.get("device_directed") if heard else None,
-            speaking=heard and self.spoken.speaking(), recent=self.spoken.fresh() if heard else [],
-            older=self.spoken.older() if heard else [],
+            speaking=heard and self.spoken.speaking(t0), recent=self.spoken.fresh(t0) if heard else [],
+            older=self.spoken.older(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
     async def _note(self, rt: dict, text: str):

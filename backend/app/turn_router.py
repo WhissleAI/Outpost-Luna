@@ -33,8 +33,7 @@ from .gazetteer import norm
 # ---- thresholds ------------------------------------------------------------------------------------------------------
 ECHO_SHARE = 0.6          # >= 60% of the heard words appear in one of our recent lines -> echo
 ECHO_WINDOW_S = 12.0      # the lines we spoke in the last 12 s are echo references (the mic + ASR lag behind)
-FRESH_S = 3.0             # a line playing or ended < 3 s ago: 60% overlap is an echo. Older lines (3-12 s): only a
-OLD_SHARE = 0.85          # near-verbatim repeat of >= 3 words (a kid reading back an order must still be heard)
+OLD_SHARE = 0.85          # lines that ended before the turn started: only a near-verbatim repeat of >= 3 words
 TAIL_S = 0.6              # hard mute after any app voice ends
 DD_MIN = 0.5              # Arc device_directed under this: talking to someone else
 DD_STRONG = 0.7           # a barge-in while we speak needs a clearly device-directed turn
@@ -115,8 +114,8 @@ class Ctx:
     source: str = "typed"              # typed (keyboard, button) | voice (client mic) | listen (server relay)
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
     speaking: bool = False             # an app voice is playing now, or ended < TAIL_S ago
-    recent: list[str] = field(default_factory=list)   # what we are saying, or said < FRESH_S ago
-    older: list[str] = field(default_factory=list)    # what we said FRESH_S..ECHO_WINDOW_S ago
+    recent: list[str] = field(default_factory=list)   # lines playing when the turn started (or just ended): Spoken.fresh
+    older: list[str] = field(default_factory=list)    # lines that ended before that, within ECHO_WINDOW_S
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
@@ -153,6 +152,8 @@ def echo(text: str, ctx: "Ctx") -> bool:
         return ctx.speaking and echo_of(text, ctx.recent, 0.85)
     if echo_of(text, ctx.recent):
         return True
+    if ctx.screen in ("lesson", "ride"):
+        return False          # a step answer often repeats the prompt's words ("more power to the heaters")
     return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)
 
 
@@ -287,8 +288,6 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
             return out("question", "question_in_lesson")
         if single and ctx.step_type in ("keywords", "command") and not _names_option(raw, ctx):
             return out("ignore", "too_short", notice=bool(dd is not None and dd >= DD_STRONG))
-        if ctx.step_type == "tap":
-            return out("ignore", "tap_step", notice=bool(dd is not None and dd >= DD_STRONG))
         if heard and len(ws) > 14 and not _names_option(raw, ctx) and (dd is None or dd < DD_STRONG):
             return out("ignore", "chatter")      # a long ramble with no answer in it, not clearly to us
         return out("answer", "step")
@@ -319,40 +318,50 @@ def _names_option(text: str, ctx: Ctx) -> bool:
 
 # ---- the spoken-line memory (server side: every say we emit, every playback the client reports) ---------------------
 class Spoken:
-    """The last lines the app said, with times, for the echo check and the hard mute."""
+    """The lines the app said, with when each one played, for the echo check and the hard mute. Times are compared with
+    the kid's turn START (t0): our acoustic echo can only start while a line plays (or within LAG_S of its end, the
+    mic + ear latency). A kid repeating words of a prompt that already ended is an answer, not an echo."""
 
-    def __init__(self, clock=time.monotonic, n: int = 8):
+    LAG_S = 0.8
+
+    def __init__(self, clock=time.monotonic, n: int = 10):
         self.clock = clock
-        self.lines: deque = deque(maxlen=n)       # (text, ts_last_seen)
-        self.playing: dict[str, str] = {}         # id -> text, playing now
+        self.lines: deque = deque(maxlen=n)       # {"id", "text", "start", "end" (None while playing)}
         self.ended = -1e9
 
     def said(self, text: str):
+        """A say decision we emitted (not yet reported as played): a reference for LAG_S from now."""
         if text:
-            self.lines.append((text, self.clock()))
+            now = self.clock()
+            self.lines.append({"id": None, "text": text, "start": now, "end": now})
 
     def start(self, pid: str, text: str):
-        self.playing[pid or "-"] = text or ""
-        self.said(text)
+        self.lines.append({"id": pid or "-", "text": text or "", "start": self.clock(), "end": None})
 
     def end(self, pid: str):
-        t = self.playing.pop(pid or "-", None)
-        if t is None and self.playing and not pid:
-            self.playing.clear()
-        self.ended = self.clock()
-        if t:
-            self.said(t)                           # refresh: the echo window counts from the END of the line
+        now = self.clock()
+        for ln in self.lines:
+            if ln["end"] is None and (not pid or ln["id"] == pid):
+                ln["end"] = now
+        self.ended = now
 
-    def speaking(self) -> bool:
-        return bool(self.playing) or self.clock() - self.ended < TAIL_S
+    def _t0(self, t0):
+        return self.clock() if t0 is None else t0
+
+    def speaking(self, t0: float | None = None) -> bool:
+        t0 = self._t0(t0)
+        return any(ln["end"] is None for ln in self.lines if ln["id"]) or t0 - self.ended < TAIL_S
 
     def recent(self, window: float = ECHO_WINDOW_S) -> list[str]:
         now = self.clock()
-        return [t for t, ts in self.lines if now - ts <= window] + [t for t in self.playing.values() if t]
+        return [ln["text"] for ln in self.lines if ln["text"] and (ln["end"] is None or now - ln["end"] <= window)]
 
-    def fresh(self) -> list[str]:
-        return self.recent(FRESH_S)
+    def fresh(self, t0: float | None = None) -> list[str]:
+        """Lines playing at t0, ended < LAG_S before it, or started since."""
+        t0 = self._t0(t0)
+        return [ln["text"] for ln in self.lines if ln["text"] and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S)]
 
-    def older(self) -> list[str]:
-        now = self.clock()
-        return [t for t, ts in self.lines if FRESH_S < now - ts <= ECHO_WINDOW_S]
+    def older(self, t0: float | None = None) -> list[str]:
+        t0 = self._t0(t0)
+        return [ln["text"] for ln in self.lines if ln["text"] and ln["end"] is not None and
+                t0 - ECHO_WINDOW_S <= ln["end"] < t0 - self.LAG_S]
