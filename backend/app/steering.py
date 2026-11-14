@@ -34,7 +34,7 @@ PERSONA_BASE: dict[str, dict] = {
     "guide": {"tag": "interest", "controls": {}},
     "capcom": {"tag": "confidence", "controls": {"rate": 0.3}},
     "story": {"tag": "nostalgia", "controls": {"rate": -0.5, "f0_med": 0.4}},
-    "houston": {"tag": "enunciated", "controls": {"rate": -0.2}},
+    "houston": {"tag": "enunciated", "controls": {"rate": 1.2}},   # §4d: was -0.2 (2.1 words/s); still the steadiest
 }
 
 # Situation -> tag + controls (z). The table the tests pin.
@@ -206,6 +206,43 @@ def lesson_situation(status: str, badge: bool = False) -> str:
 # ---- a11y: speaking pace + vocabulary emphasis (docs/VOICE_STEERING.md §4b, docs/ACCESSIBILITY.md) -------------------
 SPEEDS = (0.75, 1.0, 1.25, 1.5)       # the kid's caption-bar speed setting
 SPEED_RANGE = (0.6, 1.6)
+# rate z per octave of speed. 3 (was 2): the model server build in use ignores `pace`, so rate carries the setting;
+# 0.75x = rate -1.25 on top of the faster baseline (below) = slower than the old 1x.
+SPEED_RATE_SLOPE = 4.0
+
+# ---- the delivery baseline (docs/VOICE_STEERING.md §4d): Steer sounded low and slow --------------------------------
+# Native controls first, added on top of every style at 1x: shorter phrase pauses (pause z), a faster articulation rate,
+# a little more vocal energy (loud z). Then the backend caps long silences and loudness-normalises (app/loudness.py).
+# Measured on the two eval lines: 2.96 -> 3.59 words/s (guide), 2.81 -> 3.37 (Nebula), WER unchanged (docs/VOICES.md).
+BASE_CONTROLS = {"rate": 1.0, "pause": -1.5, "loud": 0.4}
+SLOW_SITUATIONS = frozenset({"explain", "vocab"})   # slower on purpose: no baseline rate / pause, gentle gap cap
+SLOW_PAUSE = 0.5          # at 0.75x and below: a little more pause than Steer's natural (comfortable, not choppy)
+GAP_FAST_S, GAP_SLOW_S, GAP_KEEP_S =0.25, 0.45, 0.6  # inner silence cap at >= 1x, at <= 0.75x, on slow lines
+
+
+def delivery(controls: dict | None, speed: float | None = None, slow: bool = False) -> tuple[dict, float, float]:
+    """The style's controls -> (controls with the baseline + the kid's speed, pace, max inner gap in s).
+    The pause baseline fades out toward 0.75x (a kid who slows the voice down gets its natural pauses back)."""
+    try:
+        s = max(SPEED_RANGE[0], min(SPEED_RANGE[1], float(speed or 1.0)))
+    except (TypeError, ValueError):
+        s = 1.0
+    f = max(0.0, min(1.0, (s - 0.75) / 0.25))
+    c = dict(controls or {})
+
+    def add(k, v):
+        c[k] = round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(c.get(k, 0.0)) + v)), 2)
+    add("loud", BASE_CONTROLS["loud"])
+    if slow:
+        gap = GAP_KEEP_S
+    else:
+        add("rate", BASE_CONTROLS["rate"])
+        p = BASE_CONTROLS["pause"] * f + (SLOW_PAUSE * (1 - f) if s < 1 else 0.0)
+        if p:
+            add("pause", p)
+        gap = GAP_SLOW_S - (GAP_SLOW_S - GAP_FAST_S) * f
+    c, pace = with_speed(c, s)
+    return c, pace, round(gap, 3)
 
 
 def speed_steer(speed: float | None) -> tuple[float, float]:
@@ -220,7 +257,7 @@ def speed_steer(speed: float | None) -> tuple[float, float]:
     s = max(SPEED_RANGE[0], min(SPEED_RANGE[1], s))
     if abs(s - 1.0) < 1e-3:
         return 0.0, 1.0
-    return round(2.0 * math.log2(s), 2), round(s ** 0.55, 2)
+    return round(SPEED_RATE_SLOPE * math.log2(s), 2), round(s ** 0.55, 2)
 
 
 def with_speed(controls: dict | None, speed: float | None) -> tuple[dict, float]:
@@ -261,7 +298,9 @@ def apply_markup(text: str, emph: list[str] | None = None, vocab: list[str] | No
 
 # ---- Settings: the kid's voice, rate and expressiveness (docs/VOICES.md, docs/VOICE_STEERING.md §4c) ------------------
 EXPR_DEFAULT = 0.5                    # today's delivery: expressiveness 0.5 changes nothing
-EXPR_F0_IQR = 0.8                     # f0_iqr offset at the ends (0 → −0.8 flatter melody, 1 → +0.8 livelier)
+EXPR_F0_IQR = 0.8                     # f0_iqr offset at the lively end (1 → +0.8)
+EXPR_F0_IQR_CALM = 1.4                # ... and at the calm end (0 → −1.4): at the faster delivery −0.8 barely moved
+                                      # the melody (guide f0 IQR 4.1 → 3.7 st), +0.8 moved it a lot (→ 6.0 st)
 EXPR_STRENGTH = (0.4, 1.0)            # the performance director's strength at 0 and 1 (0.7 at 0.5, as today)
 # Calm end (< 0.25): the bounciest tags soften to their calm sibling. Alarm tags are never touched.
 EXPR_CALM_TAGS = {"excited": "interest", "amazement": "interest", "happiness": "contentment", "pride": "contentment",
@@ -278,7 +317,7 @@ def clamp_expr(e) -> float:
 
 def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, expr) -> tuple[str, dict, dict | None]:
     """Expressiveness 0–1 → (tag, controls, perform). k = 2·(e − 0.5) ∈ [−1, 1]:
-    f0_iqr += 0.8·k (melody range; clamped ±2.5), performance-director strength = 0.4 + 0.6·e (0.7 at 0.5: how much
+    f0_iqr += 0.8·k above 0.5, 1.4·k below (melody range; clamped ±2.5), performance-director strength = 0.4 + 0.6·e (0.7 at 0.5: how much
     each sentence is shaped, its pitch, range, endings and pauses), and below 0.25 the liveliest tags soften (excited →
     interest, pride → contentment …). Rate, pace and loudness stay with the situation and the rate setting, so an alert
     is still urgent at every level."""
@@ -287,7 +326,7 @@ def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, e
     if abs(e - EXPR_DEFAULT) < 1e-3:
         return tag, c, perform
     k = 2 * (e - EXPR_DEFAULT)
-    c["f0_iqr"] = round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(c.get("f0_iqr", 0.0)) + EXPR_F0_IQR * k)), 2)
+    c["f0_iqr"] = round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(c.get("f0_iqr", 0.0)) + (EXPR_F0_IQR if k > 0 else EXPR_F0_IQR_CALM) * k)), 2)
     if perform is not None:
         lo, hi = EXPR_STRENGTH
         perform = {**perform, "strength": round(lo + (hi - lo) * e, 2)}
@@ -309,7 +348,7 @@ def pref_voice(persona: str, prefs: dict | None) -> str | None:
 
 
 def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | None:
-    """A say's style with the Settings attached declaratively (`steer_voice`, `speed`, `expr`). /api/tts resolves them
+    """A say's style with the Settings attached declaratively (`steer_voice`, `speed`, `expr`, `volume`). /api/tts resolves them
     (tts.clean_style + speed_steer), so one place applies them, for session lines and client-written lines alike."""
     if not prefs or style is None:
         return style
@@ -323,4 +362,7 @@ def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | 
     e = prefs.get("expressiveness")
     if e is not None and abs(clamp_expr(e) - EXPR_DEFAULT) > 1e-3:
         out["expr"] = clamp_expr(e)
+    vol = prefs.get("volume")
+    if vol is not None and abs(float(vol) - 1.0) > 1e-3:
+        out["volume"] = float(vol)
     return out
