@@ -1,10 +1,10 @@
 """The claim check (docs/REVAMP.md §3.4): the guide never says a number or a place that isn't on the fact sheet.
 
-1. The LLM drafts the guide's line from the fact sheet of the places in play only.
-2. Arc Tagger re-reads each sentence of the draft. Every number span must match a fact-sheet number (within 10%),
-   and every place it names must be in play (or named in their facts).
-3. Failed sentences are rewritten once (the LLM is told what failed), then dropped.
-4. No key, LLM error, or nothing survives: the place's `fact` from places.json, verbatim (it is pre-verified).
+1. The guide's line comes from a knowledge card template (app/knowledge), filled only from the card's data fields,
+   so it is verified by construction. There is no cloud LLM (docs/LOCAL_BRAIN.md).
+2. The check stays as a safety net: Arc Tagger re-reads each sentence. Every number span must match a fact-sheet
+   number (within 10%), and every place it names must be in play (or named in their facts). Failed sentences are dropped.
+3. Nothing survives: the place's `fact` from places.json, verbatim (it is pre-verified).
 """
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ import re
 from . import models_client
 from rapidfuzz import fuzz, process
 
-from .config import settings
 from .gazetteer import Gazetteer, norm
 from .moments import fact_numbers, number_ok
 
@@ -25,29 +24,6 @@ WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seve
            "ten": 10, "eleven": 11, "twelve": 12, "twenty": 20, "fifty": 50, "hundred": 100, "thousand": 1000,
            "million": 1e6, "billion": 1e9}
 MULT = {"thousand": 1e3, "million": 1e6, "billion": 1e9}
-
-_client = None
-
-
-def available() -> bool:
-    return bool(settings.anthropic_api_key)
-
-
-async def _complete(prompt: str) -> str | None:
-    """One LLM call. Tests monkeypatch this."""
-    global _client
-    if not available():
-        return None
-    try:
-        if _client is None:
-            from anthropic import AsyncAnthropic
-            _client = AsyncAnthropic(api_key=settings.anthropic_api_key, timeout=8.0)
-        msg = await _client.messages.create(model=settings.ask_model, max_tokens=200, extra_body={"thinking": {"type": "disabled"}},
-                                            messages=[{"role": "user", "content": prompt}])
-        return "".join(b.text for b in msg.content if b.type == "text").strip() or None
-    except Exception:  # noqa: BLE001 - any LLM failure falls back to verified text
-        return None
-
 
 # ---- number + place extraction ---------------------------------------------------------------------------------------
 def numbers_in(text: str, spans: list[dict] | None = None) -> list[tuple[str, float]]:
@@ -113,6 +89,8 @@ def places_in(text: str, gaz: Gazetteer, spans: list[dict] | None = None) -> set
 def _allowed_places(place_ids: list[str], facts: dict, gaz: Gazetteer) -> set[str]:
     ok = set(place_ids)
     for pid in place_ids:
+        if pid in gaz.places:  # "South Pole-Aitken" names the south pole by its own name: not a new place
+            ok |= places_in(gaz.places[pid].name, gaz)
         for f in (facts.get(pid) or {}).get("facts", []):
             ok |= places_in(f["text"], gaz)
     return ok
@@ -169,47 +147,31 @@ def fallback(place_ids: list[str], gaz: Gazetteer, short: bool = False) -> tuple
 
 
 async def guide_line(place_ids: list[str], question: str, gaz: Gazetteer, facts: dict,
-                     short: bool = False) -> tuple[str, list[dict], str]:
-    """The guide's claim-checked line about the places in play. -> (say, claims, source)."""
+                     short: bool = False, session: str = "") -> tuple[str, list[dict], str]:
+    """The guide's claim-checked line about the places in play, from the place's knowledge card. -> (say, claims, source)."""
+    from . import knowledge
     place_ids = [p for p in place_ids if p in gaz.places]
     if not place_ids:
         return "", [], "none"
-    words = "10" if short else "25"
-    prompt = (f"You are the Moon Guide in a kids' app (ages 5-10). A child said: \"{question}\" "
-              "They mean the Moon place(s) on this fact sheet.\n"
-              f"Fact sheet (the ONLY facts you may use):\n{fact_sheet(place_ids, facts, gaz)}\n\n"
-              f"Answer in {'1 short sentence' if short else 'at most 2 short sentences'} (under {words} words total), "
-              "simple friendly words. Use only numbers and place names from the fact sheet, written as digits. "
-              "Reply with just the sentences.")
-    draft = await _complete(prompt)
-    if not draft:
+    p = gaz.places[place_ids[0]]
+    ans = knowledge.get(gaz, facts).for_card(f"{'artifact' if p.kind == 'artifact' else 'place'}:{p.id}", question, session)
+    if not ans:
         t, c = fallback(place_ids, gaz, short)
         return t, c, PREVERIFIED
-    claims = await verify_draft(draft, place_ids, gaz, facts, prompt)
+    draft = SENT.split(ans["say"])[0] if short else ans["say"]
+    claims = await verify_draft(draft, place_ids, gaz, facts)
     say = " ".join(c["text"] for c in claims if c["status"] == "verified")
     if not say:
         t, c = fallback(place_ids, gaz, short)
         return t, claims + c, PREVERIFIED
-    return say, claims, "llm+claimcheck"
+    return say, claims, f"card:{ans['attr']}+claimcheck"
 
 
-async def verify_draft(draft: str, place_ids: list[str], gaz: Gazetteer, facts: dict,
-                       prompt: str | None = None) -> list[dict]:
-    """Check every sentence; rewrite failures once (when an LLM prompt is given), then drop."""
+async def verify_draft(draft: str, place_ids: list[str], gaz: Gazetteer, facts: dict) -> list[dict]:
+    """Check every sentence of a draft; failures are dropped (status "removed", with the reason)."""
     claims = []
     for sent in [s.strip() for s in SENT.split(draft.strip()) if s.strip()]:
         fails, src = await check_sentence(sent, place_ids, gaz, facts)
-        if fails and prompt:
-            fix = await _complete(f"{prompt}\n\nYou wrote: \"{sent}\"\nThat sentence failed the fact check because "
-                                  f"{'; '.join(fails)}. Rewrite just that one sentence using only the fact sheet. "
-                                  "Reply with the sentence only.")
-            if fix:
-                fix = SENT.split(fix.strip())[0].strip().strip('"')
-                fails2, src2 = await check_sentence(fix, place_ids, gaz, facts)
-                if not fails2:
-                    claims.append({"text": fix, "status": "verified", "source": src2})
-                    claims.append({"text": sent, "status": "removed", "source": "; ".join(fails)})
-                    continue
         if fails:
             claims.append({"text": sent, "status": "removed", "source": "; ".join(fails)})
         else:

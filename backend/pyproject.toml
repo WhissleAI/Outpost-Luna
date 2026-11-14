@@ -9,8 +9,8 @@ dependencies = [
   "pydantic-settings==2.6.1",
   "httpx==0.28.1",
   "rapidfuzz==3.10.1",
-  "anthropic==0.40.0",
   "websockets==17.4",
+  "numpy>=2.4.6",
 ]
 
 [dependency-groups]

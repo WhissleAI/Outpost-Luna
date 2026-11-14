@@ -136,14 +136,44 @@ def test_validator_drops_bad_commands():
         A("shields", "delta", 5)
 
 
-def test_llm_fallback_validated(monkeypatch):
-    async def fake_llm(text, state=None):
-        raw = [{"type": "allocate", "to": "greenhouse", "amount": {"kind": "delta", "value": 10}, "from": None},
-               {"type": "fly_to_mars"}]
-        return [v for v in map(nlu.valid, raw) if v]
-    monkeypatch.setattr(nlu, "llm_parse", fake_llm)
+def test_embed_fallback_fills_slots_and_validates(monkeypatch):
+    """Rules miss -> nearest bank example gives the shape; the load comes from the kid's words; valid() runs."""
+    from app import models_client
+    import numpy as np
+    bank = [{"text": "the plants look sad and droopy", "command": A("greenhouse", "little", 5)},
+            {"text": "go to the shelter", "command": {"type": "shelter", "on": True}}]
+    monkeypatch.setitem(nlu._BANK, "examples", bank)
+    monkeypatch.setitem(nlu._BANK, "vecs", np.eye(2, dtype=np.float32))
+
+    async def fake_embed(texts, kind="query", timeout=None):
+        return [[0.9, 0.1]]
+    monkeypatch.setattr(models_client, "embed", fake_embed)
     out = asyncio.run(nlu.understand("the veggies are hungry for electrons"))
-    assert out["source"] == "llm" and out["commands"] == [A("greenhouse", "delta", 10)]
+    assert out["source"] == "embed" and out["commands"] == [A("greenhouse", "little", 5)]
+    # far from every example -> nothing (a wrong command is worse than asking again)
+
+    async def far(texts, kind="query", timeout=None):
+        return [[0.5, 0.5]]
+    monkeypatch.setattr(models_client, "embed", far)
+    assert asyncio.run(nlu.understand("the veggies are hungry for electrons"))["source"] == "none"
+
+
+def test_embed_fallback_never_borrows_a_positive_for_a_negation(monkeypatch):
+    from app import models_client
+    import numpy as np
+    monkeypatch.setitem(nlu._BANK, "examples", [{"text": "go to the shelter", "command": {"type": "shelter", "on": True}}])
+    monkeypatch.setitem(nlu._BANK, "vecs", np.eye(1, dtype=np.float32))
+
+    async def near(texts, kind="query", timeout=None):
+        return [[1.0]]
+    monkeypatch.setattr(models_client, "embed", near)
+    cmds, score, _ = asyncio.run(nlu.bank_parse("we should never ever hide in that bunker thing"))
+    assert cmds == [] and score > 0.9
+
+
+def test_command_bank_is_valid():
+    ex = nlu._bank()
+    assert 300 <= len(ex) <= 600 and all(nlu.valid(e["command"]) for e in ex)
 
 
 def test_arc_numbers_fill_in_amount():

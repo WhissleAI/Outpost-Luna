@@ -1,13 +1,14 @@
 """Ask the Moon backend. Owns the app's data and decisions; calls the model server for model output."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import llm, models_client
+from . import knowledge, models_client
 from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
@@ -22,7 +23,15 @@ S: dict = {}
 async def lifespan(app: FastAPI):
     S["gaz"] = Gazetteer(settings.data_dir / "places.json")
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
+    # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
+    asyncio.create_task(_warm_brain())
     yield
+
+
+async def _warm_brain():
+    from .mission import nlu
+    await knowledge.get(S["gaz"], S["index"].facts).warm()
+    await nlu._bank_vecs()
 
 
 app = FastAPI(title="Ask the Moon backend", version="0.2.0", lifespan=lifespan)
@@ -52,7 +61,8 @@ class AskRequest(BaseModel):
 async def health():
     return {"ok": True, "places": len(S["gaz"].places), "artifacts": len(S["gaz"].artifacts), "clips": len(S["index"].clips),
             "moments": len(S["index"].moments), "facts": len(S["index"].facts), "glossary": len(S["index"].glossary_terms),
-            "llm": "on" if llm.available() else "off", "model_server": await models_client.health()}
+            "llm": "none", "brain": "local", "cards": len(knowledge.get(S["gaz"], S["index"].facts).cards),
+            "model_server": await models_client.health()}
 
 
 @app.get("/api/places")

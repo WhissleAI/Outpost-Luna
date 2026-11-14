@@ -283,7 +283,7 @@ class Session:
         resolved = self.resolve_referent(text) if b["mission_id"] else text
         read = summarize(await models_client.tag(resolved, "assistant"))
         emotion = k.get("emotion")
-        ctx: dict = {}
+        ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         if b["last_place"]:
             ctx["last_place"] = b["last_place"]
         if emotion:

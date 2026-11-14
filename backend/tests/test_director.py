@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from app import claims, models_client
+from app import claims, knowledge, models_client
 from app.config import settings
 from app.director import direct
 from app.gazetteer import Gazetteer
@@ -38,10 +38,10 @@ def test_response_shape_is_the_contract():
         assert set(ask(text)) == KEYS
 
 
-def test_pii_guard_never_reaches_llm(monkeypatch):
+def test_pii_guard_never_reaches_the_brain(monkeypatch):
     async def boom(*a, **k):
-        raise AssertionError("LLM called on PII")
-    monkeypatch.setattr(claims, "_complete", boom)
+        raise AssertionError("embedder called on PII")
+    monkeypatch.setattr(models_client, "embed", boom)
     raw = {"spans": [{"family": "pii", "type": "safety.pii.street_address", "text": "42 Oak Street"}],
            "utterances": [{}], "events": []}
     r = ask("my name is Maya and I live at 42 Oak Street near Tycho", summarize(raw))
@@ -53,10 +53,18 @@ def test_self_correction():
     assert r["place"] == "copernicus" and r["corrected"] and r["action"] == "fly"
 
 
-def test_fly_uses_preverified_fact_without_llm():
+def test_fly_says_a_card_line():
     r = ask("show me Tycho")
     assert r["action"] == "fly" and r["view"] == {"lat": -43.3, "lon": -11.2}
-    assert r["say"] == GAZ.places["tycho"].fact and r["claims"][0]["status"] == "verified"
+    card = knowledge.get(GAZ, IDX.facts).cards["place:tycho"]
+    assert r["say"] in card["answers"]["about"] and all(c["status"] == "verified" for c in r["claims"])
+
+
+def test_attribute_rules_pick_the_template():
+    assert "85 km" in ask("how big is Tycho")["say"]
+    assert "near side" in ask("where is Tycho")["say"]
+    r = ask("when did Apollo 11 Eagle land")
+    assert "July 20, 1969" in r["say"] and r["place"] == "apollo11_lm_eagle"
 
 
 def test_crew_request_plays_moment_inside_clip_bounds():
@@ -117,46 +125,32 @@ def test_far_side_view():
 
 
 # ---- claim check -----------------------------------------------------------------------------------------------------
-def test_claim_check_catches_wrong_number(monkeypatch):
-    calls = []
-
-    async def fake(prompt):
-        calls.append(prompt)
-        if len(calls) == 1:
-            return "Tycho is 500 km wide. Its bright rays stretch more than 1,500 km."
-        return "Tycho is really 500 km across."  # the rewrite is still wrong -> dropped
-    monkeypatch.setattr(claims, "_complete", fake)
-    say, cl, src = asyncio.run(claims.guide_line(["tycho"], "how big is tycho", GAZ, IDX.facts))
-    assert "Tycho is 500" not in say and "1,500 km" in say
-    assert [c["status"] for c in cl] == ["removed", "verified"]
-    assert "500" in calls[1] and "not on the fact sheet" in calls[1]  # rewrite told what failed
+def test_claim_check_catches_wrong_number():
+    cl = asyncio.run(claims.verify_draft("Tycho is 500 km wide. Its bright rays stretch more than 1,500 km.", ["tycho"],
+                                         GAZ, IDX.facts))
+    assert [c["status"] for c in cl] == ["removed", "verified"] and "not on the fact sheet" in cl[0]["source"]
 
 
-def test_claim_check_accepts_a_good_rewrite(monkeypatch):
-    replies = iter(["Tycho is 500 km wide.", "Tycho is about 85 km wide."])
-
-    async def fake(prompt):
-        return next(replies)
-    monkeypatch.setattr(claims, "_complete", fake)
-    say, cl, _ = asyncio.run(claims.guide_line(["tycho"], "how big", GAZ, IDX.facts))
-    assert say == "Tycho is about 85 km wide."
-    assert {c["status"] for c in cl} == {"verified", "removed"}
+def test_claim_check_blocks_places_not_in_play():
+    cl = asyncio.run(claims.verify_draft("Tycho is right next to Copernicus.", ["tycho"], GAZ, IDX.facts))
+    assert cl[0]["status"] == "removed"
 
 
-def test_claim_check_blocks_places_not_in_play_and_falls_back(monkeypatch):
-    async def fake(prompt):
-        return "Tycho is right next to Copernicus."
-    monkeypatch.setattr(claims, "_complete", fake)
-    say, cl, src = asyncio.run(claims.guide_line(["tycho"], "where", GAZ, IDX.facts))
-    assert say == GAZ.places["tycho"].fact and src == claims.PREVERIFIED
+def test_every_place_template_passes_the_claim_check():
+    """Templates are filled from the data, so the safety net should never fire on them."""
+    b = knowledge.get(GAZ, IDX.facts)
+    for c in b.cards.values():
+        if c["kind"] != "place":
+            continue
+        for attr, lines in c["answers"].items():
+            for line in lines:
+                cl = asyncio.run(claims.verify_draft(line, [c["place"]], GAZ, IDX.facts))
+                assert all(x["status"] == "verified" for x in cl), (c["id"], attr, line, cl)
 
 
-def test_estimated_place_size_is_never_said(monkeypatch):
-    async def fake(prompt):
-        return "Integrity is about 20 km wide."
-    monkeypatch.setattr(claims, "_complete", fake)
-    say, cl, _ = asyncio.run(claims.guide_line(["integrity"], "how big", GAZ, IDX.facts))
-    assert "20 km" not in say
+def test_estimated_place_size_is_never_said():
+    say, cl, _ = asyncio.run(claims.guide_line(["integrity"], "how big is it", GAZ, IDX.facts))
+    assert "km" not in say and "estimate" in say
 
 
 def test_numbers_parse():
