@@ -316,8 +316,9 @@ class Session:
         if override and override["act"] == "ignore":
             r = {"action": "none", "say": "", "source": "director_model", "decisions": []}
         elif override and override["act"] == "ask_clarify":
-            r = {"action": "ask", "say": director.SAY_AGAIN, "source": "director_model",
-                 "ask": {"question": director.SAY_AGAIN, "options": []}}
+            opts = override.get("clarify") or []
+            q = f"Did you mean {opts[0]} or {opts[1]}?" if len(opts) == 2 else director.SAY_AGAIN
+            r = {"action": "ask", "say": q, "source": "director_model", "ask": {"question": q, "options": opts}}
             r["decisions"] = director.decisions_for(r, text, ctx)
         else:
             if override and override["act"] == "command":

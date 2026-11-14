@@ -61,7 +61,8 @@ def main():
     ev = json.load(open(a.eval)) if a.eval else {}
     meta = {"size": TR.SIZES[cfg["size_name"]], "size_name": cfg["size_name"], "params": cfg["params"], "F": cfg["F"],
             "heads": [[k, n] for k, n in TR.HEADS], "word_heads": list(FX.WORD_HEADS),
-            "thr": {"when": ev.get("thr_when", 0.9)}, "run": Path(a.run).name, "data": Path(a.data).name,
+            "thr": {"when": ev.get("thr_when", 0.9)},
+            "policy": {k: v for k, v in (ev.get("policy") or {}).items() if k != "fit"} or None, "run": Path(a.run).name, "data": Path(a.data).name,
             "trained": {k: cfg[k] for k in ("n_train_sessions", "n_train_steps", "best_step") if k in cfg}}
     (out / "weights.json").write_text(json.dumps(meta, indent=1))
     ss = TR.load_split(Path(a.data) / f"{a.split}.npz")[:a.n]

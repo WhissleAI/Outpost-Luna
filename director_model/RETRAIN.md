@@ -12,6 +12,15 @@ make director-retrain                       # defaults: data director_model/data
 make director-retrain DM_SIZE=s DM_GEN_ARGS="--train 3000 --val 300 --test 300"
 ```
 
+`make director-retrain` first runs `make director-real-ear`: it renders every generated kid turn (jobs from the
+same seeds as the generator) with Steer TTS Edge and decodes the audio with the **real Arc ear** (in process,
+model_server's `EarStream` = `/v1/stream?ear=arc`, Tier A context), cached under `director_model/cache/real_ear/`
+(gitignored, text only: `dec/` decodes, ~5 KB per turn; the audio is rendered in memory, seeded, never written).
+**New Arc Mini: `make director-retrain NEW_EAR=1`** drops `dec/` and re-renders + re-decodes (~1 clip/s with 6
+workers x 2 threads). The generator replays these
+decodes (words, partials, eager/end, Arc's device_directed) for the noised turns (`--real-p`, default 0.9) and builds
+`test_real`: held-out sessions (unseen templates / card questions) heard through held-out voices.
+
 It starts a private model server on :8290 (never :8200, the live one), refits the ASR error model, regenerates the
 sessions, trains, evaluates, exports `backend/app/director_model/weights.{npz,json}` + the parity fixture, and runs the
 runtime tests. Step by step:
@@ -69,7 +78,9 @@ cd backend && uv run pytest -q
 
 ## 5. Compare against the last RESULTS row
 
-Append a round to `RESULTS.md` with the same table. Ship only if, on `test_asr`, `test_ear` and `test_h40`, wrong
-actions per 50 commands did not go up, and `test_gold` and the guard/PII rows did not regress. Keep
-`DIRECTOR_MODEL=shadow` until then, and read `/api/director/stats` (shadow agreement) on real sessions before
-switching to `on`.
+Append a round to `RESULTS.md` with the same table. The default is `DIRECTOR_MODEL=on` (since round 4) with the rules
+as fallback. Ship new weights only if the guarded `on` rows (evaluate.py prints them; thresholds are refit on val by
+`fit_policy`) still meet the switch-on criteria in `RESULTS.md`: wrong/50 <= the rules on EVERY held-out set
+(test_clean, test_asr, test_real, test_ear, test_h40(+asr), test_gold), act accuracy >= the rules on every set, and
+the guard/PII rows unchanged. Otherwise keep the previous weights, or set `DIRECTOR_MODEL=shadow`, and read
+`/api/director/stats` on real sessions.

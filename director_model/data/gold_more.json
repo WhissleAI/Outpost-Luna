@@ -98,8 +98,8 @@
     "type": "allocate",
     "to": "heaters",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -218,8 +218,8 @@
     "type": "allocate",
     "to": "life_support",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -383,8 +383,8 @@
     "type": "allocate",
     "to": "shields",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -398,8 +398,8 @@
     "type": "allocate",
     "to": "shields",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -488,8 +488,8 @@
     "type": "allocate",
     "to": "comms",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -503,8 +503,8 @@
     "type": "allocate",
     "to": "science",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },
@@ -533,8 +533,8 @@
     "type": "allocate",
     "to": "science",
     "amount": {
-     "kind": "little",
-     "value": 5
+     "kind": "delta",
+     "value": 10
     },
     "from": null
    },

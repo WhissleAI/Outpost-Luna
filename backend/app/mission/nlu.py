@@ -10,6 +10,10 @@ Amount semantics for `allocate` (what the sim receives):
   percent  value = the load's new share of power (absolute, 0-100)        "set the shields to 30 percent"
   delta    value = signed change in points                               "move 20 percent to shields" (+20)
   little   value = signed small change (+5 / -5)                         "a little more for the plants"
+ONE slot convention (rules, command bank, embed fill, Director gold labels; tests/test_mission_nlu.py):
+  "a little / a bit more|less"  -> little +-5        "more|less" (boost, crank up, turn down, dial back ...) -> delta +-10
+  "to N" / "at N" (even "lower the shields to 20")  -> percent N (set)      "N more" / "add N" / "move N to"  -> delta +N
+  an implied need with no more/less word ("the plants look sad")              -> little +5 (a gentle nudge)
   half / all / none   the load gets half / all / none of the power       "give all of it to life support"
 Contract addition: {"type": "rule", "when": <trigger>, "then": Command}, a standing order ("if a storm comes, go to the
 shelter"). The voice layer stores it and fires `then` when the trigger shows up in State (see director._mission_turn).
@@ -84,6 +88,10 @@ VEHICLE = re.compile(r"\b(rover|buggy|moon buggy|the car|truck|robot)\b")
 POWER_WORD = re.compile(r"\b(power|energy|electricity|juice|battery|percent|electric)\b")
 MORE = re.compile(r"\b(more|extra|boost|increase|raise|add|up|higher|bigger|stronger|crank)\b")
 LESS = re.compile(r"\b(less|fewer|reduce|lower|decrease|down|cut back|smaller|weaker|take away|turn down)\b")
+# more/less phrasings the amount reader also counts (beyond MORE / LESS; amount only, not the command type)
+MORE_X = re.compile(r"\b(louder|warmer|pump|power up)\b")
+LESS_X = re.compile(r"\b(dial (it )?back|save power|too much power|quieter)\b")
+TO_N = re.compile(r"\b(to|at)\s+\d+(\.\d+)?(\s*percent)?\b(?!\s*(percent\s+)?(more|less|from)\b)")
 LITTLE = re.compile(r"\b(a (little|bit|tiny bit|touch|smidge)( bit)?|a little|slightly|tiny bit|bit)\b")
 ALL = re.compile(r"\b(all( of)?( it| the power| power| our power| the energy)?|everything|full power|maximum|max|100 percent|"
                  r"hundred percent)\b")
@@ -185,7 +193,8 @@ def _allocate(t: str, read: dict | None, prev: dict | None) -> tuple[dict | None
     off = bool(OFF.search(t))
     n = _number(t, read)
     amount = None
-    neg = bool(LESS.search(t)) and not MORE.search(t)
+    more, less = bool(MORE.search(t) or MORE_X.search(t)), bool(LESS.search(t) or LESS_X.search(t))
+    neg = less and not more
     if off or (NONE.search(t) and to):
         amount = {"kind": "none", "value": 0}
     elif HALF.search(t):
@@ -199,15 +208,17 @@ def _allocate(t: str, read: dict | None, prev: dict | None) -> tuple[dict | None
         load_then_to = bool(re.search(r"\b(shields?|life support|air|oxygen|greenhouse|plants|science|rover|buggy|"
                                       r"comms|radio|heaters?)\b\s+(to|at)\s+\d+", t))
         make_n = bool(re.search(r"\bmake\b.*\b\d+\b", t))
-        absolute = (bool(SET_TO.search(t)) or load_then_to or make_n) and not MORE.search(t) and not LESS.search(t) \
+        # "to N" is a set even with a more/less verb ("lower the shields to 20 percent", "turn the heaters up to 60")
+        to_n = bool(TO_N.search(t)) and not fm_num(t)
+        absolute = to_n or (bool(SET_TO.search(t)) or load_then_to or make_n) and not more and not less \
             and not re.search(r"\b(move|give|add|send|shift|transfer|take)\b", t)
         if absolute:
             amount = {"kind": "percent", "value": _num(min(n, 100))}
         else:
             amount = {"kind": "delta", "value": _num(-n if neg else n)}
-    elif LITTLE.search(t) and (MORE.search(t) or LESS.search(t)):
+    elif LITTLE.search(t) and (more or less):
         amount = {"kind": "little", "value": -5 if neg else 5}
-    elif MORE.search(t) or LESS.search(t):
+    elif more or less:
         amount = {"kind": "delta", "value": -10 if neg else 10}
     elif ON.search(t) and to:
         amount = {"kind": "delta", "value": 10}
@@ -497,6 +508,11 @@ def _shape(c: dict) -> tuple:
     return (c["type"], c.get("to"), c.get("task"), c.get("what"), c.get("on"), c.get("when"))
 
 
+def fm_num(t: str) -> bool:
+    """'take 10 from comms and give it to science': the number belongs to a from/to transfer, not a set."""
+    return bool(re.search(r"\bfrom\b", t)) and not re.search(r"\b(to|at)\s+\d+", t)
+
+
 def fill_slots(example: dict, t: str, read: dict | None = None) -> dict | None:
     """The example's command with slots re-read from the kid's words (t = norm + words-to-digits)."""
     cmd = json.loads(json.dumps(example["command"]))
@@ -511,8 +527,15 @@ def fill_slots(example: dict, t: str, read: dict | None = None) -> dict | None:
             cmd["amount"] = {"kind": "percent", "value": _num(n)} if a["kind"] == "percent" else \
                 {"kind": "delta", "value": _num(sign * n)}
         elif n is None and a["kind"] in ("percent", "delta", "little"):
-            neg = LESS.search(t) or (not (MORE.search(t) or NEED.search(t)) and (a["value"] or 0) < 0)
-            cmd["amount"] = {"kind": "little", "value": -5 if neg else 5}
+            more = MORE.search(t) or MORE_X.search(t)
+            less = LESS.search(t) or LESS_X.search(t)
+            neg = (less and not more) or (not (more or NEED.search(t)) and (a["value"] or 0) < 0)
+            if LITTLE.search(t):
+                cmd["amount"] = {"kind": "little", "value": -5 if neg else 5}
+            elif more or less:                       # the slot convention: plain more / less = +-10
+                cmd["amount"] = {"kind": "delta", "value": -10 if neg else 10}
+            else:                                    # an implied need ("the plants look sad"): a gentle nudge
+                cmd["amount"] = {"kind": "little", "value": -5 if neg else 5}
     elif ty == "dispatch":
         for rx, task in TASK_WORDS:
             if rx.search(t):
