@@ -142,7 +142,8 @@ def test_no_right_after_and_a_cancelled_confirm(logdir):
 def test_retap_and_hint_signals(logdir):
     clock = Clock()
     s = sess(clock)
-    asyncio.run(s.handle({"t": "ui", "event": "screen", "screen": "lesson", "step_type": "keywords"}))
+    asyncio.run(s.handle({"t": "ui", "event": "screen", "screen": "lesson", "step_type": "keywords",
+                          "lesson_id": "comms", "step": 1}))
     turn(s, clock, "heaters forty")
     clock.t += 1
     asyncio.run(s.handle({"t": "ui", "event": "lesson_result", "status": "hint"}))
