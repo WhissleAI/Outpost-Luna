@@ -305,7 +305,7 @@ export function createCabin(root, o = {}) {
     if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
     const rad = q("#cbInfoRad"), wn = stormWarning(s);
     if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
-      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
+      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
     const ri = q("#cbInfoRv"); if (ri) ri.innerHTML = (rv.busy ? irow("Back in", `${rv.eta_h} h`) : "") + (rv.battery_pct != null ? irow("Battery", Math.round(rv.battery_pct) + "%", mbar(rv.battery_pct)) : "")
       + (rv.dose_msv != null ? irow("Rover dose", (+rv.dose_msv).toFixed(1) + " mSv") : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
     const rt = q("#cbRoute"); if (rt) { const tot = TOTAL_H[rv.task] || 8, pr = rv.busy ? clamp(1 - (rv.eta_h || 0) / tot, 0, 1) : 0, out = rv.task === "return" ? 1 - pr : pr < .5 ? pr * 2 : (1 - pr) * 2;

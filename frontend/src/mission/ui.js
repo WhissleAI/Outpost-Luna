@@ -640,6 +640,29 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     }
   }
 
+  // ---------- the shared intent bus (frontend/src/input/intents.js, feat/gestures): voice, keys and gestures reach the
+  // mission through the same handlers. Soft dependency: until the bus is merged, nothing registers (no build error).
+  const busMods = import.meta.glob("../input/intents.js");
+  /** The panel the head (or a look gesture) is aimed at: x, y in -1..1 from the seat view. */
+  const aimPanel = (x, y) => x < -.3 ? (y > .2 ? "rover" : "habitat") : x > .3 ? (y > .2 ? "comm" : "radiation") : y > .35 ? "pedestal" : y > -.1 ? "displays" : null;
+  const onBus = {
+    next: () => screen === "hud" && cockpit && cockpit.is3d ? (cockpit.nextPanel(), true) : screen === "brief" ? (stepSite(1), true) : false,
+    prev: () => screen === "hud" && cockpit && cockpit.is3d ? (cockpit.prevPanel(), true) : screen === "brief" ? (stepSite(-1), true) : false,
+    panel_open: a => screen === "hud" ? intent("panel_open", a && a.panel) : false,
+    panel_back: () => screen === "hud" ? nav("panel_back") : false,
+    look: a => { if (screen !== "hud" || !cockpit || !cockpit.is3d || !a) return false; cockpit.look(a.x, a.y);
+      if (!cockpit.panel) cockpit.highlightPanel(Math.hypot(a.x || 0, a.y || 0) > .2 ? aimPanel(a.x || 0, a.y || 0) : null); return true; },
+    yes: () => screen === "hud" ? (pending ? intent("confirm") : false) : screen === "brief" ? (start(), true) : screen === "debrief" ? nav("fly_again") : false,
+    no: () => screen === "hud" && pending ? intent("cancel") : false,
+    call_houston: () => screen === "hud" ? (callHouston(), true) : false,
+    end_shift: () => screen === "hud" ? (endShift(), true) : false,
+  };
+  ["panel_power", "panel_comm", "panel_habitat", "panel_rover", "panel_radiation", "view_orbit", "view_site", "view_rover", "view_earth", "take_command", "pick_site", "fly_again", "new_site", "debrief"]
+    .forEach(n => { onBus[n] = a => nav(n, a); });
+  const loadBus = busMods["../input/intents.js"];
+  if (loadBus) loadBus().then(m => Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, a => fn(a) === true, { priority: 10 }))).catch(() => {});
+  function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing(); }
+
   return {
     screen: screenFrame, nav, intent, radioKid: t => radio("kid", t),
     enter, exit, handleText, handleDirector, context,

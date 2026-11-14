@@ -596,6 +596,32 @@ tokens + Inter/JetBrains Mono) and rebuilds the cabin as a room.
 
 Screenshots: `r2-*` (every state, 1440×900 dark; key states at both sizes and themes), `spike-*`, `ride-*`.
 
+### Round 3: full panels, the check ride in the cabin, learning-v3, the intent bus
+
+`r3-*` (1440×900 dark): seat, panel-habitat/rover/radiation/comm/pedestal, storm-active, cabin-site-day, ride.
+
+- **Panels hold their real content:**
+  - Habitat: life support / greenhouse (pretend tech) / heaters meters, the heater and science switches, objectives with stars.
+  - Rover: the task, ETA, a route mini-map, and battery, dose and ice runs when the sim sends them.
+  - Radiation: the dose meter, the rate, "Shelter ready in N h", the warning's lead time and confidence meter, Shelter, Shields (pretend tech).
+  - Comm: a 10-day timeline with a now marker (real windows when `comm_windows` arrives), Earth, the next window, radio delay, science to send, forecasts with confidence.
+  - Power (DU1): the Sun strip (`next_sun_change_h`) and a Night key (`power_save`), shown only when the sim has night mode.
+- **Pedestal:** the C&W lamps are 15px and readable from the seat. End shift is a lit 168×120 push-button.
+- **Storm window:** a storm is glare (bloom 1.45), not fog. Re-clicking the view you are already on no longer re-flies the camera, which was the "grey haze" in the r2 storm shot.
+- **Check ride:** `academy/ui.js` (`[ride]` lines) mounts the cabin full-stage, left of the lesson card, with the terrain behind the window.
+  - The panels are Displays, Radiation and Rover. The step's expected order is cued.
+  - The cabin's controls answer the step with the order buttons' words, graded by the same path.
+  - `frontend/tools/ux_flow.py` passes 20/20 with 0 console errors.
+- **learning-v3:**
+  - Cabin and start: `env.warning`, `objectives`, `power_save`, `env.next_sun_change_h`, and `level` sent on start (Settings).
+  - Picker: `site.status`/`status_label`.
+  - Debrief: `stars` and `try` ("Next time").
+- **Intent bus** (`input/intents.js`, `feat/gestures`): registered at priority 10 through `import.meta.glob`, so the mission builds with or without the bus.
+  - Cabin: next/prev panel, panel_open/back, look (with highlight-on-aim), yes/no, call_houston, end_shift, and the router's panel/view names.
+  - Picker: next/prev and yes.
+  - The gestures branch conflicts with integ in files I don't own (main.js, a11y.js, globe.js, package files), so it is not merged here.
+- `src/mission.css` and `mission/mission.css` are on tokens; no legacy aliases.
+
 **Round 3 queue:** the 2.5D layered-DOM fallback for low-end GPUs (today: flat grid without WebGL), the Comm panel's
 comm-window timeline and science waiting, the Rover panel's route, Orion-style bezel keys and a twizzle knob on the
 DUs, `src/mission.css` legacy aliases, and the picker framing (the camera can't look straight down at the pole, so the
