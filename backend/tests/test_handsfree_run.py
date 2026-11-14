@@ -59,6 +59,7 @@ def test_scripted_handsfree_run(capsys):
     assert c.mid and c.mscreen == "cabin", "fly again started a new shift"
     assert c.replies_to_noise == 0, out
     assert c.unknowns() <= 1, out           # only the one real question may get the honest fallback
+    assert c.bad_unknowns == 0, out         # ... and it is attributed to that question (the live PASS rule)
     panel = [r for r in s.routes if r["text"] in ("open the comm panel", "back to my seat")]
     assert [r.get("intent") for r in panel] == ["panel_comm", "panel_back"], panel
     routes = [r for r in s.routes if r["outcome"] != "ignore"]

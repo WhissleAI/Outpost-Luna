@@ -72,7 +72,8 @@ questions:{attribute:[canonical phrasings]}, place}`.
 | Cosine | Behaviour |
 |---|---|
 | ≥ 0.62 (`ACCEPT`) | answer (fly to the place if the card has one) |
-| 0.48–0.62 (`ASK`) | "Did you mean how big Tycho is or where Tycho is?" with tap-able options that send the canonical question |
+| 0.55–0.62 (`ASK_FLOOR`–`ACCEPT`) | "Did you mean how big Tycho is or where Tycho is?" with tap-able options that send the canonical question (a label's own "?" is dropped in the spoken line) |
+| 0.48–0.55 (`ASK`–`ASK_FLOOR`) | "I don't know that one yet." Here the top two are near-ties between unrelated cards ("weirdest thing about moon dust": storm shelter 0.507 vs the no-craters myth 0.506) |
 | 0.30–0.48 | "I don't know that one yet. Want to hear about {nearest card}?" |
 | < 0.30 | "I don't know that one yet. Try: ..." |
 
@@ -105,8 +106,8 @@ and sites, Academy facts, misconceptions, 10 off-topic):
 | Top-1 card+attribute correct (all 80) | 61 (76%) |
 | In-scope (70) answered correctly | 87%; 89% counting "Did you mean" with the right option |
 | Wrong answers | 7 (9%) |
-| Ask rate | 2 (2%) |
-| "I don't know" rate | 10 (12%), all 10 are the off-topic questions; 0 off-topic questions answered |
+| Ask rate | 1 (1%; the other ask, 0.523 and wrong, is now under `ASK_FLOOR`) |
+| "I don't know" rate | 11 (14%): the 10 off-topic questions, plus that sub-floor ask; 0 off-topic questions answered |
 
 Typical misses: "what's the biggest crater" → the no-craters misconception card; "who drove the first moon car" →
 the Apollo 16 rover story; "what science did the Apollo 12 experiments do" (the gazetteer links Intrepid, not

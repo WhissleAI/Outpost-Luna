@@ -90,6 +90,7 @@ class Client:
         self.mscreen, self.site, self.mid = "brief", "shackleton_rim", None
         self.spoken: list[str] = []          # every line the app spoke
         self.replies_to_noise = 0
+        self.bad_unknowns = 0                # "I don't know" spoken for anything but a real question (once)
         self.n_say = 0
 
     # -- screens --
@@ -266,16 +267,23 @@ class Client:
         await self.speak(f"{line} {OFFER['fly_again']}")
 
     # -- the kid --
-    async def say(self, text: str, dd: float = 0.9, expect_reply: bool = True) -> list[dict]:
+    async def say(self, text: str, dd: float = 0.9, expect_reply: bool = True, question: bool = False) -> list[dict]:
+        """One kid turn. `question`: a real question, the only kind of turn that may get "I don't know that one yet"
+        (once each)."""
         self.log(f"   KID  ▸ {text}" + ("" if expect_reply else "   (noise)"))
         ds = await self.t.turn(text, dd)
         heard = [d for d in ds if d["t"] == "heard"]
         if heard:
             self.log(f"          router: {heard[-1]['outcome']} ({heard[-1].get('reason')})")
+        n0 = self.unknowns()
         acted = await self.apply(ds)
         if not expect_reply and acted:
             self.replies_to_noise += 1
             self.log("          !! replied to noise")
+        new = self.unknowns() - n0
+        if new and (not question or new > 1):
+            self.bad_unknowns += new - (1 if question else 0)
+            self.log("          !! 'I don't know' for a turn that was not a real question")
         return ds
 
     async def noise(self):
@@ -323,7 +331,7 @@ async def script(c: Client, shifts: int = 3):
     for _ in range(shifts):
         await c.say("end shift")
         await c.noise()
-    await c.say("what is the weirdest thing about moon dust")   # a real question: answered once, or "I don't know"
+    await c.say("what is the weirdest thing about moon dust", question=True)   # answered, or one "I don't know"
     await c.say("debrief")
     await c.noise()
     await c.say("fly again")
@@ -469,10 +477,11 @@ async def main_live(a):
     from app.gazetteer import Gazetteer
     c = Client(t, course, Gazetteer(settings.data_dir / "places.json"), vocab)
     await script(c, a.shifts)
-    print(f"\nspoken 'I don't know that one yet': {c.unknowns()}   replies to noise: {c.replies_to_noise}   "
-          f"qualified: {c.qualified}   mission: {c.mid}")
-    # one summary line a script (or a person) can check: no replies to noise, no fallback loop, the whole flow reached
-    fails = [k for k, bad in (("replies to noise", c.replies_to_noise), ("fallback spoken", c.unknowns()),
+    print(f"\nspoken 'I don't know that one yet': {c.unknowns()} (for non-questions: {c.bad_unknowns})   "
+          f"replies to noise: {c.replies_to_noise}   qualified: {c.qualified}   mission: {c.mid}")
+    # one summary line a script (or a person) can check: no replies to noise, "I don't know" only for a real question
+    # (once), the whole flow reached
+    fails = [k for k, bad in (("replies to noise", c.replies_to_noise), ("fallback for a non-question", c.bad_unknowns),
                               ("not qualified", not c.qualified), ("no mission", not c.mid)) if bad]
     print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
     if fails:

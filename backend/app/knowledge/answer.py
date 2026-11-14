@@ -22,6 +22,21 @@ from .cards import ATTR_LABEL, Q_FOR_LABEL, STYLE
 
 # Cosine thresholds for all-MiniLM-L6-v2 (calibrated on tests/eval/kid_questions.json, see docs/LOCAL_BRAIN.md).
 ACCEPT, ASK, RELATED = 0.62, 0.48, 0.30
+# "Did you mean A or B?" only when the best option is at least this relevant. In the low ask band (0.48-0.55) the top
+# two are near-ties between unrelated cards ("weirdest thing about moon dust" -> the storm shelter 0.507 vs the
+# no-craters myth 0.506): offering them is noise, the honest "I don't know that one yet." is better. The eval's one
+# useful ask scores 0.564 (tools/eval_brain.py).
+ASK_FLOOR = 0.55
+
+
+def did_you_mean(labels: list[str]) -> str:
+    """ "Did you mean A or B?" from option labels, each without its own end punctuation ("Is the Moon made of
+    cheese?" must not end the line in "??")."""
+    ls = [re.sub(r"[\s?.!,;:]+$", "", x or "") for x in labels]
+    ls = [x for x in ls if x]
+    if not ls:
+        return "Did you mean that?"
+    return f"Did you mean {ls[0]}?" if len(ls) == 1 else f"Did you mean {', '.join(ls[:-1])} or {ls[-1]}?"
 ENTITY_BOOST = 0.10     # a card whose name/alias is in the words wins ties against look-alikes
 
 ATTR_RULES = [  # first match wins; order matters ("what year" is when, not what)
@@ -169,9 +184,11 @@ class Brain:
             return self.result("answer", c1, a1, self.line(c1, a1, session), round(s1, 3), "card+embed")
         if s1 >= ASK:
             alt = next(((s, c, a) for s, c, a in hits[1:] if (c, a) != (c1, a1) and s >= ASK - 0.06), None)
+            if s1 < ASK_FLOOR and (alt is None or alt[0] < ASK_FLOOR):
+                return self.result("unknown", None, None, UNKNOWN, round(s1, 3), "none")   # unrelated near-ties
             opts = [(c1, a1)] + ([(alt[1], alt[2])] if alt else [])
             labs = [self.label(c, a) for c, a in opts]
-            say = (f"Did you mean {labs[0][0]} or {labs[1][0]}?" if len(labs) == 2 else f"Did you mean {labs[0][0]}?")
+            say = did_you_mean([lab for lab, _ in labs])
             return self.result("ask", c1, a1, say, round(s1, 3), "card+embed",
                                [{"card": c, "attr": a, "label": lab, "send": send} for (c, a), (lab, send) in zip(opts, labs)])
         if s1 >= RELATED:

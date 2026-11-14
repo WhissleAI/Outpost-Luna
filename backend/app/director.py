@@ -13,7 +13,7 @@ import inspect
 import re
 
 from . import claims, knowledge, steering
-from .knowledge.answer import detect_attr
+from .knowledge.answer import detect_attr, did_you_mean
 from .mission import capcom, nlu
 from .gazetteer import Gazetteer, Place, norm
 from .moments import MomentIndex, public
@@ -318,7 +318,7 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
         place, how, cands = _link(q, read, gaz)
     if place is None and cands:
         names = [f"{p.name}" for p, _ in cands]
-        question = f"Did you mean {names[0]}?" if len(names) == 1 else f"Did you mean {', '.join(names[:-1])} or {names[-1]}?"
+        question = did_you_mean(names)
         return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands], "labels": names},
                 "place": cands[0][0].id, "view": _view(cands[0][0]), "source": "arc+link"}
     last = gaz.places.get(ctx.get("last_place") or "")
