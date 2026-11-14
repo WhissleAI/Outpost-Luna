@@ -69,7 +69,8 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
     elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
         sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
         persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
-        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"))
+        style = steering.style_for(persona, text, situation=sit, emotion=style.get("emotion"),
+                                   vocab=style.get("vocab") if isinstance(style.get("vocab"), list) else None)
     persona = style.get("voice") if style.get("voice") in steering.VOICES else voice
     tag = str(style.get("tag") or "none")
     if tag in steering.FORBIDDEN:

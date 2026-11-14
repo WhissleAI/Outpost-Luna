@@ -121,3 +121,4 @@ html[data-contrast="high"] button,html[data-contrast="high"] .pill,html[data-con
 html[data-contrast="high"] a{color:#7FD3FF;text-decoration:underline}
 html[data-contrast="high"] .mpanel,html[data-contrast="high"] .card,html[data-contrast="high"] .dock,html[data-contrast="high"] .caption-bar{border:2px solid #fff;background:#000}
 html[data-contrast="high"] :focus-visible{outline:4px solid #FFE14D!important;outline-offset:2px}
+.a11y-vbanner[hidden],.a11y-panel[hidden],.hl-card[hidden]{display:none!important}

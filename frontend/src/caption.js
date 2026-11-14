@@ -133,7 +133,12 @@ export function initCaptions({ floor, settings = () => ({}) } = {}) {
       e.audio.addEventListener("playing", start, { once: true }); start();
     } else paint(0);
   });
-  floor.on("boundary", e => { if (cur && cur.mode === "boundary") paint(wordAtChar(cur.words, e.charIndex)); });
+  // The browser voice (no server TTS, or this sentence's audio failed to play): follow its word boundaries.
+  floor.on("boundary", e => {
+    if (!cur || cur.id === "crew") return;
+    if (cur.mode !== "boundary") { cur.mode = "boundary"; cur.audio = null; bar.dataset.timing = "boundary"; }
+    paint(wordAtChar(cur.words, e.charIndex));
+  });
   floor.on("playback", e => {
     if (e.state !== "start") { hideT = setTimeout(() => { if (!floor.guideBusy && !crewOn) bar.hidden = true; }, 2500); if (e.kind === "guide") { if (cur) paint(cur.words.length); } }
   });
