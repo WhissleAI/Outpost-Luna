@@ -162,8 +162,9 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
             if after["moment"]:
                 shot("moment-" + after["moment"].lower().replace(" ", "-"))
             last_key = key
-            same = [e for e in log[-6:] if e.get("action") == entry["action"] and e.get("should") == entry["should"]]
-            if len(same) >= 6:   # the same press six times and nothing moved on: the kid is stuck here
+            same = [e for e in log[-10:] if e.get("action") == entry["action"] and e.get("should") == entry["should"]
+                    and e.get("progress") == entry["progress"]]
+            if len(same) >= 10:   # the same press ten times and the mission didn't move (days, science, ice): stuck
                 log.append({"t": round(time.time() - t0), "moment": "STUCK", "obvious": False, "reacted": False,
                             "should": entry["should"], "action": "gave up", "clock": hour})
                 shot("stuck")

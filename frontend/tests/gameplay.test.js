@@ -86,6 +86,8 @@ test("task card: always reflects reality, and says so when nothing is urgent", (
   const steady = nowCard(st(), { started: true, running: true, warp: 1 });
   assert.equal(steady.key, "steady"); assert.equal(steady.text, S.NOW.steady); assert.equal(steady.target, "warp");
   assert.deepEqual(steady.buttons.map(b => b.clock), ["warp", "skip"]);
+  const fast = nowCard(st(), { started: true, running: true, warp: 4 });   // never a dead "Time warp 4x" at 4x
+  assert.equal(fast.key, "steady_fast"); assert.deepEqual(fast.buttons.map(b => b.clock), ["skip"]);
   const paused = nowCard(st(), { started: true, running: false, paused: true, warp: 1 });
   assert.equal(paused.key, "paused"); assert.equal(paused.target, "play");
   assert.equal(nowCard(st({ over: true })), null);

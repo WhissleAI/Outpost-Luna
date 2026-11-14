@@ -112,6 +112,8 @@ function legacy(s, clock) {
   if (e.in_sun === false && !s.power_save) return o("dark", NOW.dark, "night", "power");
   if (ice.goal != null && !ice.met && e.in_sun) return o("ice", NOW.ice, "rover:collect_ice", "rover");
   if (clock && clock.started && !clock.running && !clock.held) return o("paused", NOW.paused, "play", "pedestal");
+  // already at full warp: "Time warp 4x" would be a dead button, so the job is the next event
+  if (clock && clock.running && clock.warp >= 4) return o("steady_fast", NOW.steadyFast, "skip", "pedestal");
   return o("steady", NOW.steady, "warp", "pedestal");
 }
 
