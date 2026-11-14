@@ -67,6 +67,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       cadet(on) { try { localStorage.setItem("outpost-tier", on ? "cadet" : "commander"); } catch (e) { /* blocked */ } },
       offer() { showCard({ title: "CAPCOM", body: "A solar storm is coming. Shelter now, or wait a shift?", actions: [{ label: "Shelter now", send: "shelter" }, { label: "Wait a shift", send: "end shift" }] }, () => {}); },
       quality(q) { if (cockpit) cockpit.setQuality(q); },
+      ride(target = "heaters") { if (!state) return; const host = document.createElement("section"); host.className = "m-cabin"; host.style.zIndex = 9;
+        document.getElementById("stage").append(host); const r = createCabin(host, { mode: "ride", onCommand: c => console.log("ride order", JSON.stringify(c)) });
+        r.update(state); setTimeout(() => r.cue(target), 300); window.__ride = r; },
       panel(id) { if (!cockpit) return; if (id) cockpit.openPanel(id); else cockpit.seat(); cockpit.offer && cockpit.offer(null); },
       calling() { if (cockpit) cockpit.calling(true, 2600); },
       debrief(outcome, extra = {}) { if (!state) return; fakeDebrief = fakeDb(outcome, extra); if (outcome !== "in_progress") { state.over = true; state.outcome = outcome; } showDebrief(); },
@@ -467,7 +470,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
   /** A CAPCOM card from a decision: body, chips, and actions whose clicks go back through `send`. */
   /** Cadet (7–9) or Commander (10–12): Settings / the learning design's difficulty band. Commander is the default. */
-  const tier = () => { try { return localStorage.getItem("outpost-tier") === "cadet" ? "cadet" : "commander"; } catch (e) { return "commander"; } };
+  const tier = () => { try { if (localStorage.getItem("outpost-tier") === "cadet") return "cadet"; return (JSON.parse(localStorage.getItem("outpost-prefs") || "{}").level === "cadet") ? "cadet" : "commander"; } catch (e) { return "commander"; } };
   /** Which panel an offer belongs to (the Director may name it: d.panel). */
   const PANEL_OF = [[/shelter|storm|shield|radiation|dose/i, "radiation"], [/rover|ice|explore|repair/i, "rover"], [/houston|radio|comm|earth/i, "comm"],
     [/heater|greenhouse|life support|air/i, "habitat"], [/power|battery|science|sunset|night/i, "power"]];

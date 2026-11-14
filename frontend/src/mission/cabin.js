@@ -149,13 +149,17 @@ export function createCabin(root, o = {}) {
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
-    const panelEls = Object.fromEntries(["displays", "habitat", "rover", "radiation", "pedestal", "comm"].map(k => [k, q(`[data-panel="${k}"]`)]));
+    // ride mode (the Flight School check ride): the first time in the seat, so only the displays, habitat and End shift
+    const ids = o.mode === "ride" ? ["displays", "habitat", "pedestal"] : ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
+    const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
+    if (o.mode === "ride") { root.classList.add("is-ride"); ["rover", "radiation", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
     if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
-      try { c3.setQuality(localStorage.getItem("outpost-quality") === "low" ? "low" : "high"); } catch (e) { /* storage blocked */ }
-      const onQ = e => c3 && c3.setQuality(e.detail); addEventListener("outpost:quality", onQ); qualityOff = () => removeEventListener("outpost:quality", onQ);
+      // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live
+      const html = document.documentElement, applyQ = () => c3 && c3.setQuality(html.dataset.graphics === "low" ? "low" : "high"); applyQ();
+      const mo = new MutationObserver(applyQ); mo.observe(html, { attributes: true, attributeFilter: ["data-graphics"] }); qualityOff = () => mo.disconnect();
       backEl.onclick = () => c3.back();
       root.addEventListener("keydown", e => { if (e.key === "Escape" && c3.panel) { e.preventDefault(); c3.back(); } });
       Object.entries(panelEls).forEach(([id, el]) => {
@@ -264,6 +268,18 @@ export function createCabin(root, o = {}) {
   }
   const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
   function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
+  let cueT = null;
+  function applyCue(move) {
+    root.querySelectorAll(".is-cue").forEach(n => n.classList.remove("is-cue")); if (!cueT) return null;
+    const [k, v] = String(cueT).split(":");
+    if (k === "load" && move) { const i = LOADS.findIndex(l => l[0] === v); if (i >= 0 && i !== sel) { sel = i; paintDus(); } }
+    const css = { heaters: '.cb-sw[data-sw="heaters"]', science: '.cb-sw[data-sw="science"]', shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
+      end_shift: "#cbEnd", houston: "#cbPtt", load: `.du-load[data-k="${v}"]`, rover: `.cb-rvb[data-task="${v}"]` }[k];
+    const node = css && q(css); if (!node) return null;
+    node.classList.add("is-cue");
+    const panel = node.closest("[data-panel]"); if (move && c3 && panel) c3.open(k === "load" ? "power" : panel.dataset.panel);
+    return node;
+  }
   function moved(el) { if (!el) return; el.classList.remove("is-moved"); void el.offsetWidth; el.classList.add("is-moved"); }
 
   function update(s) {
@@ -307,6 +323,7 @@ export function createCabin(root, o = {}) {
     q("#cbPttSub").textContent = e.earth_visible ? "Earth in view" : "No signal";
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
     q("#cbEndSub").textContent = s.over ? "Mission over" : `Shift ${s.shift} of 4`;
+    applyCue(false);
   }
 
   /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. */
@@ -359,6 +376,9 @@ export function createCabin(root, o = {}) {
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
     dispose() { if (c3) c3.dispose(); qualityOff(); },
     setQuality: q => c3 && c3.setQuality(q),
+    /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
+     *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
+    cue(target) { cueT = target || null; return applyCue(true); },
     /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
     offer(panelId, actions) {
       root.querySelectorAll(".cb-offer").forEach(n => n.remove());

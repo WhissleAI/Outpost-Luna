@@ -371,6 +371,13 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 .c3-panel[data-panel="habitat"] .cb-plate>h3,.c3-panel[data-panel="rover"] .cb-plate>h3,.c3-panel[data-panel="radiation"] .cb-plate>h3,.c3-panel[data-panel="comm"] .cb-plate>h3{display:none}
 /* Cadet: when the offer is on its panel, CAPCOM's card does not repeat the buttons */
 body:has(.cb-offer) .card .card-actions{display:none}
+.cb-grp[hidden]{display:none}
+/* check ride: the next order's control pulses (one at a time) */
+.is-cue{position:relative;border-radius:var(--radius-md);box-shadow:0 0 0 3px var(--color-accent-strong),0 0 24px color-mix(in srgb,var(--color-accent-strong) 60%,transparent)!important;
+  animation:cbCue 1.4s var(--ease-in-out) infinite}
+@keyframes cbCue{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--color-accent-strong) 50%,transparent),0 0 32px color-mix(in srgb,var(--color-accent-strong) 70%,transparent)}}
+html[data-motion="reduce"] .is-cue{animation:none}
+@media (prefers-reduced-motion:reduce){.is-cue{animation:none}}
 /* invented hardware is labelled, small (docs/ACCURACY_AUDIT.md) */
 .cb-pretend{display:inline-block;margin-left:var(--space-1);padding:0 5px;border-radius:var(--radius-sm);border:1px dashed currentColor;font-family:var(--font-ui);
   font-size:10px;font-weight:var(--weight-semibold);letter-spacing:.02em;text-transform:none;opacity:.8;vertical-align:middle}
