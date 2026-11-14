@@ -1,0 +1,116 @@
+{
+ "level": "cadet",
+ "size": "1440x900",
+ "first_shift_s": null,
+ "summary": {
+  "moments": 13,
+  "actions": 0,
+  "obvious": 0,
+  "reacted": 0,
+  "finished": false
+ },
+ "log": [
+  {
+   "t": 105,
+   "moment": "tour",
+   "should": "This is your window. Switch views: Orbit, Site, Rover, Earth.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 137,
+   "moment": "tour",
+   "should": "Your three screens. First, power: the battery the Sun fills.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 163,
+   "moment": "tour",
+   "should": "Life support: the air and water your crew needs.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 177,
+   "moment": "tour",
+   "should": "Dose: the radiation your crew has taken. Keep it low.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 203,
+   "moment": "tour",
+   "should": "Power panel: pick a system, then press plus or minus.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 253,
+   "moment": "tour",
+   "should": "Habitat: heaters, science, and your mission goals.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 319,
+   "moment": "tour",
+   "should": "Rover: send it for ice, then bring it home.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 346,
+   "moment": "tour",
+   "should": "Radiation: shields, and the storm shelter under its cover.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 369,
+   "moment": "tour",
+   "should": "Comm: call Houston when Earth is in view.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 396,
+   "moment": "tour",
+   "should": "Warning lights. Red means act now. Amber means get ready.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 429,
+   "moment": "tour",
+   "should": "Your goal: ten safe days. Send science home. Bring back ice.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "t": 458,
+   "moment": "tour",
+   "should": "First job: raise the shields. Then press Play to start time.",
+   "obvious": true,
+   "action": "dom-click (covered)",
+   "reacted": true
+  },
+  {
+   "moment": "timeout",
+   "obvious": false,
+   "reacted": false,
+   "should": "mission not finished in 2400s"
+  }
+ ]
+}
