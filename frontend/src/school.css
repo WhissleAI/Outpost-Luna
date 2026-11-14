@@ -272,3 +272,42 @@ html[data-motion="reduce"] .gd-mark.is-pulse .gd-ring{animation:none}
 .a-feedback.is-progress{color:var(--color-text)}
 .gd-mark:not(.is-ring) .gd-label{top:12px}
 .gd-mark.is-above .gd-label{top:auto;bottom:calc(var(--r) + 6px)}
+
+/* ---- the lesson card always fits above the voice strip (card_clear.py; the owner hit answer 3 under the caption) ----
+   1. Height: the column card stops above the bar (--strip-h); the caption is narrowed beside it (voicebar.js
+      fitCaption). Where the caption can't fit beside the card (narrow stages) the card keeps the caption's reserve too
+      (--strip-cap, the .mp-card pattern).
+   2. Short stages (<= 760 px tall): a tighter rhythm, a one-line lead and do-line, smaller answer rows.
+   3. Still too tall: the body scrolls inside the card with a fade at the edge that has more, and the focused or picked
+      answer is scrolled into view (academy/ui.js fitBody). */
+@media (max-width:899px){
+  .apanel.is-lesson,.apanel.is-ride{max-height:calc(100% - 2 * var(--gut) - var(--strip-cap, 146px) - var(--space-3))}
+}
+@media (max-height:760px){
+  .a-head{padding-top:var(--space-2)}
+  .a-body{gap:var(--space-2);padding:var(--space-2) var(--space-4) var(--space-3)}
+  .a-step,.a-input{gap:var(--space-2)}
+  .a-title .a-patch svg{width:32px;height:32px}
+  .a-title .m-title{font-size:var(--text-md)}
+  .a-prompt{font-size:var(--text-md)}
+  .a-lead,.a-do{display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .a-do{margin-top:0}
+  .a-do::before{display:inline-block;margin-right:var(--space-2);vertical-align:middle}
+  .a-choice,.a-order{min-height:var(--control-md);padding:6px var(--space-3)}
+  .a-choices{gap:6px}
+  .a-clip{min-height:var(--control-sm)}
+  .v-word{gap:var(--space-2)}
+  .v-word b{font-size:var(--text-lg)}
+  .a-feedback{padding:var(--space-2) var(--space-3)}
+  .a-foot{padding:0 var(--space-4) var(--space-3)}
+}
+@media (max-height:720px){
+  .a-head{padding-top:var(--space-1)}
+  .a-body{padding-bottom:var(--space-2)}
+  .a-title{gap:var(--space-2)}
+  .a-title .a-patch svg{width:28px;height:28px}
+  .v-src{gap:var(--space-1)}
+}
+.a-body.is-more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent)}
+.a-body.is-more.is-scrolled{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 24px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 24px,#000 calc(100% - 48px),transparent)}
+.a-body.is-scrolled:not(.is-more){-webkit-mask-image:linear-gradient(to bottom,transparent,#000 24px);mask-image:linear-gradient(to bottom,transparent,#000 24px)}

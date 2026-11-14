@@ -341,6 +341,20 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (ride && rideCk) { if (ride.state) rideCk.update(ride.state); setTimeout(rideCue, 400); }   // [ride]
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
     applyGuide();
+    fitBody();
+  }
+  /** The card's body scrolls only when it can't fit (school.css): a fade marks the edge with more, and the focused or
+   *  picked answer is always scrolled into view (card_clear.py; the owner's answer 3 under the caption). */
+  function fitBody() {
+    const b = panel.querySelector(".a-body"); if (!b) return;
+    const upd = () => { b.classList.toggle("is-more", b.scrollHeight - b.clientHeight - b.scrollTop > 4); b.classList.toggle("is-scrolled", b.scrollTop > 4); };
+    b.addEventListener("scroll", upd, { passive: true });
+    b.addEventListener("focusin", e => { const t = e.target.closest("button, input, select, [role=option], [tabindex]"); if (t && b.contains(t)) t.scrollIntoView({ block: "nearest" }); });
+    requestAnimationFrame(() => {
+      const pick = b.querySelector('.a-choice[aria-pressed="true"], .a-choice.is-picked, .a-choice.is-wrong, #aFeedback');
+      if (pick && b.scrollHeight > b.clientHeight) pick.scrollIntoView({ block: "nearest" });
+      upd();
+    });
   }
 
   // ---------- guidance: the step's marks on the Moon and the hint ladder on the card (docs/PLAYTEST.md) ----------
