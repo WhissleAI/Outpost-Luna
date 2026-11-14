@@ -1,0 +1,88 @@
+{
+ "_note": "Sourced facts the Flight School lessons use beyond the place/mission data (docs/LEARNING_DESIGN.md §7.2; sources checked in docs/ARTEMIS_REFERENCE.md). Each number in a lesson fact must appear here or in another `from` file (content.check). Computed values say how they were computed.",
+ "concepts": {
+  "tidal_locking": {
+   "text": "The Moon spins once for each trip around Earth (27.3 days), so the same side always faces us. Over time libration lets us see about 59% of the surface.",
+   "numbers": [27.3, 59],
+   "source": {"title": "NASA Science: Moon facts", "url": "https://science.nasa.gov/moon/facts/"}
+  },
+  "lunar_day": {
+   "text": "Sunrise to sunrise on the Moon takes about 29.5 Earth days, so the line between day and night sweeps around the Moon once a month.",
+   "numbers": [29.5],
+   "source": {"title": "NASA Science: Moon phases", "url": "https://science.nasa.gov/moon/moon-phases/"}
+  },
+  "light_time": {
+   "text": "The Moon is about 384,400 km away on average. Radio travels at the speed of light, so a call takes about 1.3 seconds each way.",
+   "numbers": [384400, 1.3],
+   "source": {"title": "NASA Science: Moon facts", "url": "https://science.nasa.gov/moon/facts/"}
+  },
+  "pole_sun": {
+   "text": "At the south pole the Sun never climbs more than about 1.5 degrees above a flat horizon, because the Moon's spin axis is tilted only about 1.5 degrees.",
+   "numbers": [1.5],
+   "source": {"title": "JPL Horizons API", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"}
+  },
+  "sun_year": {
+   "text": "Averaged over a year, a spot on Shackleton's rim gets sunlight about 86% of the time and Malapert about 73% (published Kaguya and LOLA studies).",
+   "numbers": [86, 73],
+   "source": {"title": "Glaser et al. 2018, Illumination conditions at the lunar poles, Planetary and Space Science", "url": "https://doi.org/10.1016/j.pss.2017.07.006"}
+  },
+  "psr_cold": {
+   "text": "Craters that never see the Sun are among the coldest places measured in the solar system: LRO's Diviner found floors near -235 C.",
+   "numbers": [-235],
+   "source": {"title": "Paige et al. 2010, Diviner observations of cold traps, Science 330", "url": "https://doi.org/10.1126/science.1187726"}
+  },
+  "artemis_timeline": {
+   "text": "Artemis II flew its crew around the Moon in April 2026. In February 2026 NASA made Artemis III a 2027 test flight in Earth orbit, and planned the first south-pole landing for Artemis IV, targeted for 2028.",
+   "numbers": [2026, 2027, 2028],
+   "source": {"title": "NASA: Artemis IV", "url": "https://www.nasa.gov/mission/artemis-iv/"},
+   "also": [{"title": "NASA adds mission to Artemis lunar program, updates architecture (2026-02-27)", "url": "https://www.nasa.gov/news-release/nasa-adds-mission-to-artemis-lunar-program-updates-architecture/"}]
+  },
+  "landing_regions": {
+   "text": "NASA's October 2024 list has 9 candidate landing regions near the south pole, including Malapert Massif and de Gerlache Rim 2. Peak near Shackleton and Connecting Ridge were on the 2022 list but not the 2024 one.",
+   "numbers": [2024, 9, 2, 2022],
+   "source": {"title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)", "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"}
+  },
+  "apollo13_record": {
+   "text": "Artemis II passed Apollo 13's record of 248,655 miles from Earth on April 6, 2026.",
+   "numbers": [13, 248655, 6, 2026],
+   "source": {"title": "NASA: Artemis II crew eclipses record for farthest human spaceflight", "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"}
+  },
+  "integrity_name": {
+   "text": "The Artemis II crew proposed the names Integrity and Carroll for two unnamed craters. The names were sent to the IAU and are not approved yet.",
+   "numbers": [],
+   "source": {"title": "NASA: Artemis II crew eclipses record for farthest human spaceflight", "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"}
+  },
+  "orion_shelter": {
+   "text": "On Orion, a radiation sensor called HERA gives the crew up to 1 hour of warning. They pack into the floor bays behind stowage bags and can stay up to 24 hours.",
+   "numbers": [1, 24],
+   "source": {"title": "NASA: Orion crew systems", "url": "https://www.nasa.gov/reference/crew-systems/"}
+  },
+  "artemis1_shielding": {
+   "text": "On Artemis I, test dummies showed the best-shielded spot in Orion got about 4 times less dose than the least shielded spot.",
+   "numbers": [1, 4],
+   "source": {"title": "DLR: Orion radiation protection tested, Artemis I findings (2024)", "url": "https://www.dlr.de/en/latest/news/2024/orion-spacecraft-radiation-protection-tested-initial-findings-from-artemis-i-moon-mission"}
+  },
+  "sep_timing": {
+   "text": "After a big flare, solar particles can arrive in tens of minutes to a few hours. A CME cloud takes about 1 to 3 days.",
+   "numbers": [1, 3],
+   "source": {"title": "NOAA SWPC: Coronal mass ejections", "url": "https://www.swpc.noaa.gov/phenomena/coronal-mass-ejections"}
+  },
+  "lcross": {
+   "text": "The LCROSS Centaur, about 2,300 kg, hit Cabeus crater in 2009. Its plume held about 155 kg of water, about 5.6% of the soil by mass. The crater was about 25 to 30 m wide.",
+   "numbers": [2300, 2009, 155, 5.6, 25, 30],
+   "source": {"title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330", "url": "https://doi.org/10.1126/science.1186986"},
+   "also": [{"title": "NASA NTRS 20100026403", "url": "https://ntrs.nasa.gov/citations/20100026403"}]
+  },
+  "ice_distance": {
+   "text": "Straight-line distance from each outpost site to the middle of Shackleton crater, computed from the site coordinates: Shackleton Rim about 10 km, Malapert Massif about 130 km.",
+   "numbers": [10, 130],
+   "computed": "great circle on a 1737.4 km sphere from mission/sites.json lat/lon to Shackleton (IAU 5450: -89.67, 129.78): 10.5 km and 128.7 km",
+   "source": {"title": "IAU Gazetteer of Planetary Nomenclature: Shackleton", "url": "https://planetarynames.wr.usgs.gov/Feature/5450"}
+  },
+  "game_rules": {
+   "text": "Game doses are doubled so storms matter in 10 days. The powered shields, the greenhouse, the rim power cable and the relay satellite are pretend tech for the game.",
+   "numbers": [10],
+   "source": {"title": "Outpost Luna radiation data and game assumptions", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"}
+  }
+ }
+}
