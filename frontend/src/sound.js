@@ -7,12 +7,13 @@ function ac() {
   return ctx;
 }
 
-/** Soft scene-change chime: two sine partials (G5 + D6), 6 ms attack, ~250 ms decay. */
-export function chime() {
+/** Soft scene-change chime (`alarm`: an alert, scaled by Settings → Alarms too): two sine partials (G5 + D6), 6 ms attack, ~250 ms decay. */
+export function chime(alarm = false) {
   const a = ac(); if (!a) return;
   const t = a.currentTime + 0.01, out = a.createGain();
   const L = (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1, alarms: 1 };   // Settings → Sound
-  out.gain.value = 0.12 * L.master * L.alarms; out.connect(a.destination);
+  // [qa] Sound → Alarms scales only the alarm chimes (chime(true)); place and tour chimes follow Volume alone
+  out.gain.value = 0.12 * L.master * (alarm ? L.alarms : 1); out.connect(a.destination);
   [[783.99, 1], [1174.66, 0.55]].forEach(([hz, amp]) => {
     const o = a.createOscillator(), g = a.createGain();
     o.type = "sine"; o.frequency.value = hz;

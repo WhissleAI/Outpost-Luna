@@ -30,7 +30,7 @@
 .set-voice{position:relative;display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-3);border:1px solid var(--color-line-strong);border-radius:var(--radius-md);cursor:pointer}
 .set-voice input{position:absolute;opacity:0;inset:0;pointer-events:none}
 .set-voice span{flex:1;min-width:0;display:flex;flex-direction:column}
-.set-voice small{color:var(--color-text-2);font-size:var(--text-xs);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.set-voice small{color:var(--color-text-2);font-size:var(--text-xs);line-height:var(--leading-snug)}
 .set-voice:has(input:checked){border-color:var(--color-accent);background:var(--color-accent-soft)}
 .set-voice:has(input:focus-visible){box-shadow:var(--focus-ring)}
 .set-cadets{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
@@ -128,3 +128,4 @@ html[data-contrast="high"] :where(.mpanel,.apanel,.card,.dock,.caption-bar,.a11y
 html[data-contrast="high"] :focus-visible{outline:4px solid var(--color-focus)!important;outline-offset:2px}
 html[data-contrast="high"] .apanel.is-home{background:#000}
 .a11y-vbanner[hidden],.a11y-panel[hidden],.hl-card[hidden]{display:none!important}
+.set-note{margin:0;color:var(--color-text-2);font-size:var(--text-sm)}   /* [qa] "Up to 6 cadets." */

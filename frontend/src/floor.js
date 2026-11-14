@@ -203,6 +203,7 @@ export function ttsUrlFor(base, text, voice, style, i, n, next, speed) {
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+const levels = () => (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1, alarms: 1 };
 export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   const subs = {};
   const emit = (ev, data) => (subs[ev] || []).slice().forEach(fn => { try { fn(data); } catch (e) { console.error(e); } });
@@ -277,7 +278,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     if (tok.cancelled) return "stop";
     return new Promise(res => {
       const u = new SpeechSynthesisUtterance(text), v = pickVoice(), p = VOICE_PARAMS[voice] || VOICE_PARAMS.guide;
-      if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch;
+      if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch; u.volume = Math.min(1, levels().master);   // [qa] Volume applies to the browser voice too
       u.onboundary = e => { if (e.name === "word" || e.name == null) emit("boundary", { id: tok.id, charIndex: e.charIndex, text }); };   // [a11y]
       let done = false;
       const fin = r => { if (done) return; done = true; clearTimeout(cap); clearInterval(keep); tok.stop = null; res(r); };

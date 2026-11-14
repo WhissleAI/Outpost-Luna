@@ -100,7 +100,7 @@ async function boot() {
   const missionUI = createMissionUI({
     globe, card, placeById, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* audio floor: CAPCOM voice, Director style */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
-    alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+    alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id) },   // Flight School patches carry over
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
@@ -110,7 +110,7 @@ async function boot() {
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
   const academyUI = createAcademyUI({
     globe, placeById, player, say: (t, style) => guideSay(t, { voice: CAPCOM_VOICE, style }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking(),
-    alertSound: () => { chime(); setTimeout(chime, 220); setTimeout(chime, 440); },
+    alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     goMission: () => setMode("mission"),
     openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },

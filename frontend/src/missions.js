@@ -10,7 +10,7 @@ const M = [
   { f: "aristarchus", t: "The yellow cheek", clue: "A crew said this plateau looked yellow. It's on the near side." },
   { hw: a => isApollo(16)(a) && a.hw === "rover", t: "The Moon buggy", clue: "Find the rover two astronauts drove over the highlands in 1972." },
   { f: "orientale", t: "The giant bullseye", clue: "Find the huge ringed target on the edge of the near side." },
-  { f: "shackleton", t: "The icy pole", clue: "Find the crater at the very bottom of the Moon where ice hides." },
+  { f: "shackleton", t: "The icy pole", clue: "Find the crater at the Moon's very bottom where ice hides." },
 ];
 
 export function createMissions({ globe, placeById, places = [], say, onFound }) {
