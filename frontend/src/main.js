@@ -73,6 +73,7 @@ async function boot() {
   const turn = { lastPlace: null, emotion: null, seq: 0, lastUnknown: -1e9 };
   const card = createCard();
   const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact });
+  window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
@@ -496,7 +497,7 @@ async function boot() {
   if (SESSION_ON) {
     session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
-    if (floor) { floor.on("playback", e => session.playback(e)); floor.on("floor", e => { if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }
+    if (floor) { floor.on("playback", e => session && session.playback(e)); floor.on("floor", e => { if (!session) return; if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }   // session is null once the socket is down
     let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
     session.hello({ mode: m0 });
     session.connect().then(ok => {
@@ -547,6 +548,21 @@ async function boot() {
       missionUI.exit(); card.hide();
       if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
     }
+  }
+  // A lesson starts clean: an answer card left open from the map or the patch screen would sit over the step.
+  addEventListener("outpost:lesson", () => card.hide());
+  // "What do I do?" (a11y.js help): the Academy answers for its own screens (academy/ui.js); here, the rest.
+  {
+    const O = window.__outpost, academyHelp = O.help || (() => "");
+    O.help = () => {
+      const m = document.body.dataset.mode;
+      if (m === "academy") return academyHelp();
+      if (m === "cadet") return "Tap a place on the Moon to hear about it, or ask a question.";
+      const sc = (missionUI.screen && missionUI.screen()) || {};
+      if (sc.screen === "debrief") return "Tap Fly again, or pick a new site.";
+      if (sc.screen === "cabin") return "Set your power, then tap End shift.";
+      return "Pick a site from the list, then tap Take command.";
+    };
   }
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");

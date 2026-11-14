@@ -15,7 +15,7 @@ const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost |
 O.stepRenderers = O.stepRenderers || {};
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const how = (ico, text) => `<p class="a-how g-how">${icon(ico, { size: 16 })}<span>${esc(text)}</span></p>`;
+// The "do this" line under the question comes from academy/guide.js (DO, or the step's own `do`), drawn by ui.js.
 
 /** Buttons for options, numbered so "option 2" works by voice and Tab/Enter by keyboard. */
 export function optionsHtml(options, cls = "") {
@@ -48,7 +48,7 @@ const withDirective = (ctx, extra) => ({
 
 /** Predict: guess first. Never wrong: any guess reveals the real number (the reply's say + the step's reveal source). */
 O.stepRenderers.predict = ctx => withDirective(ctx, {
-  html: `${how("explore", "Guess first. Then see the real data.")}${optionsHtml(ctx.acc.options)}`,
+  html: `${optionsHtml(ctx.acc.options)}`,
   bind: root => bindOptions(root, ctx),
 });
 
@@ -60,8 +60,7 @@ O.stepRenderers.earth_view = ctx => withDirective(ctx, {
 
 /** Turn the Moon: drag the globe, or the two big side buttons; "Check this view" grades where the camera looks. */
 O.stepRenderers.globe_side = ctx => withDirective(ctx, {
-  html: `${how("orbit", "Drag the Moon to turn it, or pick a side")}
-    <div class="g-sides" role="group" aria-label="Sides">
+  html: `<div class="g-sides" role="group" aria-label="Sides">
       <button type="button" class="a-choice g-side" data-c="near"><span class="g-disc is-near" aria-hidden="true"></span><span>Near side</span></button>
       <button type="button" class="a-choice g-side" data-c="far"><span class="g-disc is-far" aria-hidden="true"></span><span>Far side</span></button>
     </div>
@@ -78,7 +77,7 @@ O.stepRenderers.globe_side = ctx => withDirective(ctx, {
 
 /** Tap the terminator: no buttons; the Moon is lit from the step's Sun and the tap is the answer. */
 O.stepRenderers.terminator = ctx => withDirective(ctx, {
-  html: `${how("tap", "Tap where light turns to dark")}`,
+  html: "",
   bind: () => { if (!ctx.locked && ctx.globe && ctx.globe.setSunDir) ctx.globe.setSunDir(0, ctx.acc.sun_lon); },
   onTap: p => ctx.answer({ tap: { lat: p.lat, lon: p.lon } }),
 });
@@ -105,24 +104,26 @@ function sitePins(ctx) {
 
 /** Compare two sites: two pins on the Moon and two cards side by side; after the answer the cards carry the data. */
 O.stepRenderers.compare = ctx => withDirective(ctx, {
-  html: `${how("tap", "Pick a card, a site on the Moon, or say it")}
-    <div class="g-pair" role="group" aria-label="Sites">${(ctx.acc.options || []).map((o, k) => `
+  html: `<div class="g-pair" role="group" aria-label="Sites">${(ctx.acc.options || []).map((o, k) => `
       <button type="button" class="a-choice g-site" data-c="${esc(o.id)}" data-place="${esc(o.place || "")}">
         <span class="a-key" aria-hidden="true">${k + 1}</span><b>${esc(o.label)}</b><span class="g-data" data-for="${esc(o.place || o.id)}"></span></button>`).join("")}</div>`,
   bind: root => { bindOptions(root, ctx); sitePins(ctx); },
   onTap: p => ctx.answer({ tap: { lat: p.lat, lon: p.lon } }),
 });
 
-/** Trace a route: tap the stops in order; each tap draws the next leg on the Moon. */
+/** Trace a route: tap the stops in order. Each tap is graded as it lands (a right stop is "progress", not a miss),
+ *  so the kid hears "Yes, Orientale. Now Ohm." The taps live in ctx.state (academy/ui.js), which survives re-renders. */
 O.stepRenderers.route = ctx => {
-  const taps = [], n = (ctx.acc.stops || []).length;
+  const S = ctx.state || { taps: [] }, taps = S.taps || (S.taps = []), n = (ctx.acc.stops || []).length;
+  const nameOf = id => { const f = O.placeById && O.placeById(id); return f ? String(f.name).split(" (")[0].replace(/^Mare /, "") : id; };
+  const stopLine = k => `Tap ${k + 1}: ${nameOf(ctx.acc.stops[k])}`;   // "Tap 1: Orientale", matching the numbered ring
   let root = null;
   const paint = () => {
     if (!root || !root.querySelector) return;
     const dots = root.querySelector("[data-progress]");
     if (dots) dots.innerHTML = Array.from({ length: n }, (_, k) => `<i class="${k < taps.length ? "is-done" : k === taps.length ? "is-now" : ""}"></i>`).join("");
     const label = root.querySelector("[data-label]");
-    if (label) label.textContent = taps.length < n ? `Stop ${taps.length + 1} of ${n}` : "Checking your route";
+    if (label) label.textContent = taps.length < n ? stopLine(taps.length) : "Checking your route";
     const reset = root.querySelector("[data-reset]"); if (reset) reset.hidden = !taps.length;
   };
   const draw = () => {   // the legs so far, on the Moon (the globe's route layer; academy/ui.js clears it on the next screen)
@@ -130,17 +131,17 @@ O.stepRenderers.route = ctx => {
     g.route.set(taps.map((t, k) => { const el = document.createElement("span"); el.className = "g-tapdot"; el.textContent = String(k + 1); return { id: "t" + k, lat: t.lat, lon: t.lon, el }; }), taps.length);
   };
   return withDirective(ctx, {
-    html: `${how("map", "Tap the stops in order, or say them")}
-      <div class="g-route"><span class="g-dots" data-progress aria-hidden="true"></span><span class="g-label" data-label aria-live="polite">Stop 1 of ${n}</span>
+    html: `<div class="g-route"><span class="g-dots" data-progress aria-hidden="true"></span><span class="g-label" data-label aria-live="polite">${esc(stopLine(taps.length))}</span>
       <button type="button" class="btn-quiet" data-reset hidden>${icon("retry", { size: 16 })}Start over</button></div>`,
     bind: el => {
-      root = el; paint();
+      root = el; paint(); if (!ctx.locked) draw();
       const r = el && el.querySelector && el.querySelector("[data-reset]");
       if (r) r.onclick = () => { taps.length = 0; paint(); draw(); };
     },
     onTap: p => {
+      if (taps.length >= n) return;
       taps.push({ lat: p.lat, lon: p.lon }); paint(); draw();
-      if (taps.length >= n) { const sent = taps.splice(0); ctx.answer({ taps: sent }); }
+      ctx.answer({ taps: taps.slice() });
     },
   });
 };

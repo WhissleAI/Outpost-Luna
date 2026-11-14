@@ -256,6 +256,45 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
   }
 
+  // ---------- Guide marks (academy/guide.js, docs/PLAYTEST.md): what a Flight School step is about ----------
+  // A ring sized to the place (its real angular radius, projected), an optional number (route stops) and label.
+  // Never clickable: a tap on a mark falls through to the Moon, so it grades as a tap on that place.
+  const glayer = document.createElement("div"); glayer.className = "guide"; glayer.hidden = true; stage.append(glayer);
+  let gmarks = [];
+  const guide = {
+    /** marks: [{id, lat, lon, r (deg), label?, num?, ring?, gold?, pulse?}] */
+    set(list) {
+      glayer.textContent = "";
+      gmarks = (list || []).map(m => {
+        const el = document.createElement("div");
+        el.className = "gd-mark" + (m.pulse ? " is-pulse" : "") + (m.ring ? " is-ring" : " is-dot") + (m.gold ? " is-gold" : "") + (m.label ? " has-label" : "");
+        el.setAttribute("aria-hidden", "true");
+        el.innerHTML = `<i class="gd-ring"></i>${m.num ? `<b class="gd-num"></b>` : ""}${m.label ? `<span class="gd-label"></span>` : ""}`;
+        if (m.num) el.querySelector(".gd-num").textContent = String(m.num);
+        if (m.label) el.querySelector(".gd-label").textContent = m.label;
+        glayer.append(el);
+        const up = m.lat > 0 ? -1 : 1;   // offset toward the equator, so a polar mark still has a size
+        return { ...m, el, p: ll2v(m.lat, m.lon, R * 1.003), q: ll2v(m.lat + up * (m.r || 2), m.lon, R * 1.003) };
+      });
+      glayer.hidden = !gmarks.length;
+    },
+    clear() { guide.set([]); },
+    /** The marks' text, for tests and the a11y "where am I" line. */
+    get labels() { return gmarks.filter(m => m.label).map(m => m.label); },
+  };
+  function tickGuide() {
+    if (glayer.hidden) return;
+    const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+    gmarks.forEach(m => {
+      const f = m.p.clone().normalize().dot(cam), on = f > 0.06;
+      m.el.style.visibility = on ? "" : "hidden"; if (!on) return;
+      tmp.copy(m.p).project(camera); const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h;
+      tmp.copy(m.q).project(camera);
+      const r = Math.max(13, Math.min(150, Math.hypot((tmp.x + 1) / 2 * w - x, (1 - tmp.y) / 2 * h - y)));
+      m.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`; m.el.style.setProperty("--r", r.toFixed(0) + "px");
+    });
+  }
+
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
   let band = null, paused = false;
@@ -296,7 +335,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
       label.style.opacity = facing ? 1 : 0;
     }
-    tickMission(); tickRoute();
+    tickMission(); tickRoute(); tickGuide();
     if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -323,7 +362,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     showFeature, highlight, flyTo, nearest, mission, setViewport, setSunDir, poleView, centerLatLon,   // [learning-v3] sun / pole / centre
     /** Screen position (px in the stage) of a surface point, and whether it faces the camera. Used by the site pins. */
     project(lat, lon) { const p = ll2v(lat, lon, R * 1.004), v = p.clone().project(camera);
-      return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05 }; },
+      const depth = p.clone().normalize().dot(camera.position.clone().normalize());   // 1 = facing the camera, 0 = on the edge
+      return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: depth > 0.05, depth }; },
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
@@ -339,7 +379,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     },
     /** Stop any flight in progress where it is. */
     halt() { fly = null; },
-    route,
+    route, guide,
     /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
     clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },
     /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */

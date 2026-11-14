@@ -89,10 +89,11 @@ def test_attempt_api_retry_hint_pass_badge(client):
     assert [l["id"] for l in pub["lessons"]][:2] == ["moon", "history"]   # map order (LEARNING_DESIGN §5)
     A = lambda step, inp, misses=0: client.post("/api/academy/attempt", json={  # noqa: E731
         "lesson_id": "moon", "step": step, "input": inp, "misses": misses}).json()
-    r = A(0, {"text": "show me tycho"})
-    assert r["status"] == "retry" and "hint" not in r
-    r = A(0, {"text": "tycho"}, 1)
-    assert r["status"] == "hint" and "dark patch" in r["hint"]
+    r = A(0, {"text": "show me tycho"})                                 # rung 1: the hint, and the place glows
+    assert r["status"] == "hint" and r["rung"] == 1 and "dark patch" in r["hint"] and r["focus"] == ["tranquillitatis"]
+    r = A(0, {"text": "tycho"}, 1)                                      # rung 2: the place gets its label
+    assert r["status"] == "hint" and r["rung"] == 2 and r["label"] == ["tranquillitatis"]
+    assert "Sea of Tranquility" in r["say"]
     r = A(0, {"text": "where neil armstrong landed"})
     assert r["status"] == "passed" and r["next_step"] == 1 and "badge" not in r
     assert r["decisions"][0]["t"] == "lesson" and r["decisions"][1]["t"] == "say"
@@ -163,3 +164,64 @@ def test_readback_paraphrase_passes_on_the_same_command():
     assert not asyncio.run(g.similar(heaters, "heaters to 14 percent"))           # numbers are never paraphrased
     assert g.grade(again, {"text": "could you repeat that"})[0]
     assert not g.grade(again, {"text": "roger"})[0]
+
+
+# ---- the hint ladder (app/academy/guide.py, docs/PLAYTEST.md) ----------------------------------------------------------
+def _att(client, lid, step, inp, misses=0):
+    return client.post("/api/academy/attempt", json={"lesson_id": lid, "step": step, "input": inp, "misses": misses}).json()
+
+
+def _step(lid, kind):
+    L = next(l for l in content.course()["lessons"] if l["id"] == lid)
+    return next(k for k, s in enumerate(L["steps"]) if s["accept"]["type"] == kind)
+
+
+def test_ladder_says_what_tap_hit_and_what_to_do(client):
+    k = _step("history", "route")
+    cop = g.gaz().places["copernicus"]
+    r = _att(client, "history", k, {"taps": [{"lat": cop.lat, "lon": cop.lon}]})
+    assert r["status"] == "hint" and r["say"].startswith("That's Copernicus.") and "bullseye" in r["say"]
+    assert r["focus"] == ["orientale"]
+
+
+def test_route_progress_is_not_a_miss(client):
+    k = _step("history", "route")
+    o, h = (g.gaz().places[x] for x in ("orientale", "ohm"))
+    r = _att(client, "history", k, {"taps": [{"lat": o.lat, "lon": o.lon}]})
+    assert r["status"] == "progress" and r["got"] == ["orientale"] and r["next"] == "ohm"
+    r = _att(client, "history", k, {"taps": [{"lat": o.lat, "lon": o.lon}], "text": "ohm"})   # the rest by voice
+    assert r["status"] == "passed"
+    r = _att(client, "history", k, {"taps": [{"lat": o.lat, "lon": o.lon}, {"lat": h.lat, "lon": h.lon}]})
+    assert r["status"] == "passed"
+
+
+def test_ladder_rung2_per_kind(client):
+    k = _step("history", "choice")
+    r = _att(client, "history", k, {"choice": "rover"}, 1)
+    assert r["rung"] == 2 and r["eliminate"] in ("rover", "ice")
+    k = _step("comms", "keywords")
+    r = _att(client, "comms", k, {"text": "um"}, 1)
+    assert r["phrase"].startswith("set the heaters") and "heaters" not in r["say"].lower()   # words on screen only
+    k = _step("power", "command")
+    r = _att(client, "power", k, {"text": "um"}, 1)
+    assert r["cue"]["to"] == "heaters"
+
+
+def test_big_place_tap_anywhere_counts():
+    st = {"accept": {"type": "intent", "place": "orientale"}}
+    o = g.gaz().places["orientale"]
+    assert g.grade(st, {"tap": {"lat": o.lat + 12, "lon": o.lon}})[0]          # on the bullseye, off its centre
+
+
+def test_every_miss_line_short_and_actionable():
+    from app.academy import guide
+    for l in content.course()["lessons"]:
+        if l.get("ride"):
+            continue
+        for s in l["steps"]:
+            if s["accept"]["type"] == "predict":
+                continue
+            for m in (0, 1):
+                out = guide.ladder(s, m, {"text": "um"}, {"got": []})
+                assert len(out["say"].split()) <= 20, out["say"]
+                assert out["say"].strip() not in ("Not that one.", "Not quite.", "Not there."), (l["id"], s["prompt"])

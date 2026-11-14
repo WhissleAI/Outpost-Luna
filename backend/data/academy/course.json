@@ -83,18 +83,19 @@
    ],
    "steps": [
     {
-     "prompt": "Find where Apollo 11 landed.",
+     "prompt": "Apollo 11 landed on a dark patch, the Sea of Tranquility. Find it.",
      "accept": {
       "type": "intent",
       "place": "tranquillitatis"
      },
+     "do": "Tap it on the Moon, or say its name",
      "globe": {
       "do": "side",
       "side": "near"
      },
-     "hint": "Look for a dark patch, right of center.",
+     "hint": "It's the dark patch right of the middle.",
      "success": "Copy. The Sea of Tranquility, July 1969.",
-     "fail": "Not quite. Try the near side."
+     "fail": "Not there."
     },
     {
      "prompt": "Standing there, could you see Earth in the sky?",
@@ -102,13 +103,16 @@
       "type": "earth_view",
       "place": "tranquillitatis"
      },
+     "show": [
+      "tranquillitatis"
+     ],
      "globe": {
       "do": "earth",
       "place": "tranquillitatis"
      },
-     "hint": "This is the near side. It faces Earth.",
+     "hint": "This side of the Moon always faces Earth.",
      "success": "Yes. Earth hangs in the same spot there.",
-     "fail": "Not quite. Which side faces Earth?"
+     "fail": "Not quite."
     },
     {
      "prompt": "Do people on Earth ever see the Moon's far side?",
@@ -160,23 +164,26 @@
       "who": "an Artemis II astronaut",
       "when": "after"
      },
-     "hint": "Say far side, or tap Far.",
+     "hint": "Tap Far, or drag the Moon around.",
      "success": "Roger. The far side gets sunlight too.",
      "fail": "Not yet. Keep turning."
     },
     {
-     "prompt": "Now find the south pole, inside the gold ring.",
+     "prompt": "Now find the south pole. It's inside the gold ring.",
      "accept": {
       "type": "intent",
       "place": "shackleton"
      },
+     "ring": [
+      "shackleton"
+     ],
      "globe": {
       "do": "pole",
       "pole": "south"
      },
-     "hint": "Say south pole, or tap the ring.",
+     "hint": "Tap inside the gold ring.",
      "success": "Roger. Shackleton crater. Our outpost goes here.",
-     "fail": "Not quite. Look at the bottom."
+     "fail": "Not quite."
     }
    ]
   },
@@ -259,16 +266,19 @@
        "highlands"
       ]
      },
+     "show": [
+      "tranquillitatis"
+     ],
      "globe": {
       "do": "fly",
       "place": "tranquillitatis"
      },
-     "hint": "The dark patches you can see from Earth.",
+     "hint": "Look at the dark patch on the Moon.",
      "success": "Yes. A mare is a plain of old lava.",
-     "fail": "Not quite. Look at the dark patch."
+     "fail": "Not quite."
     },
     {
-     "prompt": "What did the Apollo 12 crew take home from Surveyor 3?",
+     "prompt": "Robot Surveyor 3 took photos here. Apollo 12 took one part home. Which?",
      "accept": {
       "type": "choice",
       "answer": "camera",
@@ -297,13 +307,16 @@
        }
       ]
      },
+     "show": [
+      "surveyor3"
+     ],
      "globe": {
       "do": "fly",
       "place": "surveyor3"
      },
-     "hint": "Surveyor 3 took 6,326 pictures. With what?",
+     "hint": "It took photos. What takes photos?",
      "success": "Correct. Scientists studied what the Moon did to it.",
-     "fail": "Not that one. It took pictures."
+     "fail": "Not that one."
     },
     {
      "prompt": "Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?",
@@ -344,7 +357,7 @@
      "fail": "Pick one, then we listen."
     },
     {
-     "prompt": "The crew named a crater. Trace it: Orientale, then up to Ohm.",
+     "prompt": "Artemis II's crew picked a crater name: Integrity. Tap Orientale, then Ohm.",
      "accept": {
       "type": "route",
       "stops": [
@@ -353,6 +366,12 @@
       ],
       "radius_deg": 10
      },
+     "do": "Tap the glowing places in order: 1, then 2",
+     "show": [
+      "orientale",
+      "ohm"
+     ],
+     "after_place": "integrity",
      "globe": {
       "do": "side",
       "side": "far",
@@ -365,9 +384,9 @@
       "who": "the Artemis II crew",
       "when": "after"
      },
-     "hint": "Orientale is the big bullseye. Ohm is north.",
-     "success": "Roger. Halfway between is their crater, Integrity.",
-     "fail": "Not that one. Start at Orientale."
+     "hint": "Orientale is the big bullseye. Ohm is above it.",
+     "success": "Roger. Integrity sits halfway. Name not official yet.",
+     "fail": "Not that one."
     },
     {
      "prompt": "Listen to Charlie Duke. Who landed on the Moon with him?",
@@ -401,6 +420,7 @@
        }
       ]
      },
+     "do": "Tap Hear Charlie Duke, then pick a name",
      "clip": {
       "clip_id": "duke",
       "t0": 5.6,
@@ -412,9 +432,9 @@
       "do": "fly",
       "place": "apollo16_lrv"
      },
-     "hint": "He names his partner right away.",
+     "hint": "Tap Hear Charlie Duke. He says the name first.",
      "success": "Correct. John Young. They drove 26.7 km.",
-     "fail": "Listen again for the name."
+     "fail": "Not that one."
     }
    ]
   },
@@ -505,12 +525,13 @@
        }
       ]
      },
-     "hint": "It's about hearing.",
+     "do": "Tap an answer, or say it",
+     "hint": "Copy is about hearing.",
      "success": "Roger. Copy means I heard you.",
-     "fail": "Not quite."
+     "fail": "Not that one."
     },
     {
-     "prompt": "CAPCOM: \"Commander, set the heaters to 40 percent.\" Read it back.",
+     "prompt": "CAPCOM: \"Commander, set the heaters to 40 percent.\" Say it back.",
      "capcom": "Commander, set the heaters to 40 percent.",
      "accept": {
       "type": "keywords",
@@ -525,7 +546,8 @@
        ]
       ]
      },
-     "hint": "Repeat what, and how much.",
+     "do": "Repeat the order out loud, or type it",
+     "hint": "Say what to set, and how much.",
      "success": "Good readback. Heaters to 40.",
      "fail": "Say again? Repeat the order."
     },
@@ -569,7 +591,7 @@
      "fail": "Pick one, then we check."
     },
     {
-     "prompt": "Which outpost can talk to Earth more often?",
+     "prompt": "Earth hangs over the Moon's near side. Which outpost sees Earth more?",
      "accept": {
       "type": "compare",
       "answer": "malapert_massif",
@@ -602,10 +624,10 @@
      },
      "hint": "Malapert sits on the side facing Earth.",
      "success": "Malapert. Earth was up 9 of 10 days.",
-     "fail": "Not that one. Which faces Earth?"
+     "fail": "Not that one."
     },
     {
-     "prompt": "Static! You missed the last order. What do you say?",
+     "prompt": "Static! You missed the last order. Ask CAPCOM to repeat it, radio style.",
      "accept": {
       "type": "keywords",
       "any": [
@@ -617,9 +639,10 @@
        ]
       ]
      },
-     "hint": "Two words. The second one is again.",
+     "do": "Say it out loud, or type it",
+     "hint": "Radio talk for repeat: two words, ending in again.",
      "success": "Copy. Say again asks for a repeat.",
-     "fail": "Ask CAPCOM to repeat it."
+     "fail": "Not quite."
     }
    ]
   },
@@ -793,7 +816,7 @@
      },
      "hint": "Malapert goes dark early in our mission.",
      "success": "Shackleton Rim. Sun all 10 days in our model.",
-     "fail": "Not that one. Check the sun days."
+     "fail": "Not that one."
     },
     {
      "prompt": "Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
@@ -809,9 +832,9 @@
       "do": "fly",
       "place": "malapert_massif"
      },
-     "hint": "Ask for more power to the heaters.",
+     "hint": "The heaters need more power. Tap Heaters up.",
      "success": "Copy. That dark spell lasted 157 hours.",
-     "fail": "Negative. The heaters need more power."
+     "fail": "Negative."
     }
    ]
   },
@@ -951,9 +974,9 @@
        }
       ]
      },
-     "hint": "An hour is not long. Act early.",
+     "hint": "Particles move fast. An hour is short. Act early.",
      "success": "Right. Get ready before the storm hits.",
-     "fail": "Not quite. Particles move fast."
+     "fail": "Not quite."
     },
     {
      "prompt": "Alert! A solar particle storm, like the real one in May 2024. Your order?",
@@ -965,12 +988,12 @@
        "on": true
       }
      },
-     "hint": "Get the whole crew under cover.",
+     "hint": "Get the crew under cover. Tap Into the shelter.",
      "success": "Copy. Crew in the shelter. Dose rate way down.",
      "fail": "Say again? Radiation is climbing."
     },
     {
-     "prompt": "What is an mSv?",
+     "prompt": "Doctors count radiation in mSv. So what is an mSv?",
      "accept": {
       "type": "choice",
       "answer": "dose",
@@ -1002,7 +1025,7 @@
      },
      "hint": "It measures how much radiation you got.",
      "success": "Correct. One mSv is about 10 chest x-rays.",
-     "fail": "Not quite. It measures something."
+     "fail": "Not quite."
     }
    ]
   },
@@ -1096,11 +1119,11 @@
      },
      "reveal": "To dig up buried stuff. LCROSS found about 155 kg of water.",
      "hint": "Guess first.",
-     "success": "Right. LCROSS found water in the dust.",
+     "success": "Right. Water hid in regolith, the Moon's dust.",
      "fail": "Pick one, then we check."
     },
     {
-     "prompt": "Find where the LCROSS rocket hit, near the south pole.",
+     "prompt": "The LCROSS rocket hit Cabeus crater, near the south pole. Find it.",
      "accept": {
       "type": "tap",
       "place": "lcross_centaur_impact",
@@ -1109,16 +1132,17 @@
       ],
       "radius_deg": 8
      },
+     "do": "Tap it on the Moon, or say its name",
      "globe": {
       "do": "pole",
       "pole": "south"
      },
-     "hint": "Look just above the pole for the marker.",
+     "hint": "It's close to the south pole, in the middle.",
      "success": "Roger. Cabeus crater, 2009.",
-     "fail": "Not there. Look lower."
+     "fail": "Not there."
     },
     {
-     "prompt": "Which outpost is closer to Shackleton's ice?",
+     "prompt": "Ice hides in Shackleton crater. Which outpost is closer to it?",
      "accept": {
       "type": "compare",
       "answer": "shackleton_rim",
@@ -1142,6 +1166,9 @@
        }
       ]
      },
+     "show": [
+      "shackleton"
+     ],
      "globe": {
       "do": "pair",
       "places": [
@@ -1149,9 +1176,9 @@
        "malapert_massif"
       ]
      },
-     "hint": "The rim sits right on the crater.",
+     "hint": "Look at the Moon. The rim sits right on the crater.",
      "success": "The rim, about 10 km. Malapert, about 130.",
-     "fail": "Not that one. Look at the map."
+     "fail": "Not that one."
     },
     {
      "prompt": "Life support is getting low. Send the rover for ice!",
@@ -1162,9 +1189,9 @@
        "task": "collect_ice"
       }
      },
-     "hint": "The rover can dig up ice.",
+     "hint": "The rover can dig up ice. Tap Rover: get ice.",
      "success": "Copy. Rover rolling out for ice.",
-     "fail": "Negative. The rover needs to fetch ice."
+     "fail": "Negative."
     },
     {
      "prompt": "Fill the blank: \"Ice hides in the Moon's dusty soil, the ____.\"",
@@ -1177,9 +1204,10 @@
        "ejecta"
       ]
      },
-     "hint": "It starts with r.",
+     "do": "Tap the missing word, or say it",
+     "hint": "The word for Moon dust starts with r.",
      "success": "Right. Regolith, the Moon's dusty soil.",
-     "fail": "Which word means Moon soil?"
+     "fail": "Not that one."
     }
    ]
   },

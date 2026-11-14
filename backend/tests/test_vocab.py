@@ -85,7 +85,7 @@ def test_glossary_endpoint_and_attempt_route():
         assert c.get("/api/glossary/nope").status_code == 404
         lid, k, _ = next(x for x in _vocab_steps() if x[2]["accept"]["term"] == "regolith")
         r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"text": "rocks"}}).json()
-        assert r["status"] == "retry"
+        assert r["status"] == "hint" and r["rung"] == 1   # the hint ladder starts at the first miss
         say = next(d for d in r["decisions"] if d["t"] == "say")
         assert say["style"]["situation"] == "vocab" and say["style"]["controls"]["rate"] < 0
         r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"text": "regolith"}}).json()

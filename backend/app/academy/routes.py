@@ -11,13 +11,13 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from .. import steering
-from . import content, ride as rides
+from . import content, guide, ride as rides
 from .grade import grade, references, similar
 
 router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
 router.include_router(_vocab_router)
-HINT_AFTER = 2   # misses before the hint
+HINT_AFTER = 1   # misses before the hint (the hint ladder: app/academy/guide.py)
 SHOW_AFTER = 3   # misses before CAPCOM shows the answer and moves on (no dead ends; docs/LEARNING_DESIGN.md §5)
 SHOWN = "Here it is. "
 # The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
@@ -100,9 +100,24 @@ async def academy_attempt(req: AttemptReq):
         return _out(les["id"], req.step, "passed", say, next_step=None if last else req.step + 1,
                     badge=les["badge"] if last else None, shown=True if shown else None,
                     shown_answer=_answer_of(st) if shown else None, **extra)
-    if req.misses + 1 >= HINT_AFTER:
-        return _out(les["id"], req.step, "hint", st["fail"] + " Hint: " + st["hint"], hint=st["hint"])
-    return _out(les["id"], req.step, "retry", st["fail"])
+    if st["accept"]["type"] == "route" and _route_progress(req.input.model_dump(exclude_none=True), extra):
+        nxt = extra["next"]   # every stop so far was right: not a miss, just the next stop
+        return _out(les["id"], req.step, "progress", f"Yes, {guide.short(extra['got'][-1])}. Now {guide.short(nxt)}.",
+                    got=extra["got"], next=nxt)
+    return _miss(les, req, st, extra)
+
+
+def _route_progress(inp: dict, extra: dict) -> bool:
+    got = extra.get("got") or []
+    return bool(got) and len(got) >= len(inp.get("taps") or []) and extra.get("next") is not None
+
+
+def _miss(les: dict, req: AttemptReq, st: dict, extra: dict) -> dict:
+    """A real miss: the next rung of the hint ladder (app/academy/guide.py), which always says what to do next."""
+    g = guide.ladder(st, req.misses, req.input.model_dump(exclude_none=True), extra)
+    if st["accept"]["type"] == "route":
+        g["got"] = extra.get("got") or []   # the stops still right (the client keeps those taps)
+    return _out(les["id"], req.step, "hint", g.pop("say"), **g)
 
 
 def _ride_attempt(les: dict, req: AttemptReq) -> dict:
@@ -182,10 +197,8 @@ def _vocab_out(les: dict, req: AttemptReq, st: dict, ok: bool, last: bool, extra
         out = _out(les["id"], req.step, "passed", (SHOWN if shown else "") + st["success"],
                    next_step=None if last else req.step + 1, shown=True if shown else None,
                    badge=les["badge"] if last else None, term=t or None, **{k: v for k, v in extra.items() if k != "term"})
-    elif req.misses + 1 >= HINT_AFTER:
-        out = _out(les["id"], req.step, "hint", st["fail"] + " Hint: " + st["hint"], hint=st["hint"])
     else:
-        out = _out(les["id"], req.step, "retry", st["fail"])
+        out = _miss(les, req, st, extra)
     if not out.get("badge"):                          # a badge line keeps its proud style
         sit = "passed" if out["status"] == "passed" else "vocab"
         for d in out["decisions"]:

@@ -92,6 +92,15 @@ def _check_globe_step(s: dict, a: dict) -> list[str]:
         out.append(f"bad globe.do {g.get('do')!r}")
     if g and g.get("place") and where(g["place"]) is None:
         out.append(f"globe.place unknown: {g['place']}")
+    # guidance (docs/PLAYTEST.md): places the step shows and labels, rings, and the place labelled after the answer
+    for k in ("show", "ring"):
+        out += [f"{k}: unknown place {x}" for x in s.get(k, []) if where(x) is None]
+    if s.get("after_place") and where(s["after_place"]) is None:
+        out.append(f"after_place unknown: {s['after_place']}")
+    if t == "route" and set(a.get("stops", [])) - set(s.get("show", [])):
+        out.append("route: show every stop (a kid can't trace places nobody showed them)")
+    if s.get("do") and len(str(s["do"]).split()) > 10:
+        out.append("do line over 10 words")
     c = s.get("clip")
     if c and not (c.get("clip_id") and c.get("t1", 0) > c.get("t0", -1) and c.get("t1", 0) - c.get("t0", 0) <= 25.5):
         out.append("clip needs clip_id and 0 < t1 - t0 <= 25 s")

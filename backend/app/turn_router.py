@@ -80,6 +80,10 @@ NAV: list[tuple[str, re.Pattern]] = [
     # frontend/src/a11y.js parseCommand (the client runs them): where am I, options, text size, contrast, press X, option N
     ("a11y", re.compile(r"^(?:where am i|what screen is this|what s on (?:the )?screen|describe (?:the )?screen|"
                         r"what can i do|what can i say|help me|options|what are my options|normal speed|regular speed|"
+                        # "what do I do?": the screen's current hint (window.__outpost.help, docs/PLAYTEST.md)
+                        r"help|help please|hint|give me a hint|i need (?:a hint|help)|what do i do(?: now| here)?|"
+                        r"what should i do|what am i supposed to do|i m stuck|i don t get it|i don t know what to do|"
+                        r"i don t know|how do i do this|"
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
