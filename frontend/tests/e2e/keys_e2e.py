@@ -311,7 +311,7 @@ def main():
             return press_until(["ArrowDown", "ArrowRight"], cond, n=n, ms=350) or press_until(["ArrowUp", "ArrowLeft"], cond, n=n, ms=350)
 
         seen = {act()["panel"]}
-        for target in ["radiation", "comm", "rover", "pedestal"]:
+        for target in ["radiation", "comm", "rover", "pedestal", "habitat", "displays"]:   # the Now card may start the seat on any panel
             if seat_to(target):
                 seen.add(target)
         ok(len(seen) >= 5, f"seat: arrows light the panels ({', '.join(sorted(seen))})")
