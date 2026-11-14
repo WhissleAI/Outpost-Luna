@@ -283,6 +283,19 @@ def s_mic_denied(page, base, theme):
     settle(page, 1800)
 
 
+@state
+def s_lesson_retry(page, base, theme):
+    """Two wrong answers: try-again feedback plus the hint."""
+    seed(page, badges=ALL_BADGES, theme=theme)
+    page.goto(base)
+    settle(page, 1500)
+    open_lesson(page, "moon", 2)
+    for _ in range(2):
+        page.click('.a-choice[data-c="bright"]')
+        page.wait_for_timeout(1800)
+    settle(page, 600)
+
+
 def settings_section(page, base, theme, sec):
     seed(page, badges=["scout", "radio", "sun"], theme=theme)
     page.goto(base)

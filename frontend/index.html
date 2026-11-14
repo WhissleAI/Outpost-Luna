@@ -152,58 +152,59 @@
   <div class="about-bar"><span class="eyebrow">About</span><button class="x" id="aboutClose" type="button" aria-label="Close">&times;</button></div>
   <div class="about-body">
 
-  <header class="about-head"><h1 id="aboutTitle">Outpost Luna: Junior Astronaut Mission Trainer</h1><p>A voice game for kids 7 to 12. Artemis III hasn't landed yet: train at Flight School, then run Outpost Luna, a base at the Moon's south pole, where real NASA data decides what happens.</p></header>
+  <header class="about-head"><h1 id="aboutTitle">Outpost Luna</h1><p>A voice game for kids 7 to 12. Train at Flight School, then run Outpost Luna, a base at the Moon's south pole.</p></header>
   <div class="brief">
     <section>
-      <span class="eyebrow">The challenge</span>
-      <h2>Build a Junior Astronaut Mission Trainer</h2>
-      <p class="lede">NASA Space Apps 2026 asks for a way for young people to practise what astronauts do: make decisions, manage resources and handle surprises on a mission.</p>
+      <span class="eyebrow">The story</span>
+      <h2>Train for the first south-pole landing</h2>
+      <p>Artemis I flew uncrewed in 2022. Artemis II flew its crew around the Moon in April 2026. Artemis III is a 2027 crewed test flight in Earth orbit, and the first landing near the south pole is planned for Artemis IV. You train to help run Outpost Luna for the crews who come after.</p>
     </section>
 
     <section>
       <span class="eyebrow">How you play</span>
       <h2>Ten days on the Moon, one shift at a time</h2>
       <ul>
+        <li><b>Flight School.</b> Short lessons on the Moon map. Say, type or tap your answers. Earn a patch for each one, then fly a check ride.</li>
         <li><b>Pick a site.</b> Each one trades sunlight, ice and how often you can see Earth.</li>
-        <li><b>Balance three things.</b> Power, life support and radiation dose. Every choice costs something: shields use power that the greenhouse needs.</li>
-        <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift." CAPCOM reads it back, and asks first before anything risky.</li>
-        <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer, just like real crews.</li>
-        <li><b>Debrief.</b> See your timeline, your grade, and what the past missions teach. Then try a different strategy.</li>
-        <li><b>Moon library</b>: explore the Moon, the hardware people left there, and the Artemis II crew's own words.</li>
+        <li><b>Balance three things.</b> Power, life support and radiation dose.</li>
+        <li><b>Talk to CAPCOM.</b> "Shields to 40." "Send the rover for ice." "End shift."</li>
+        <li><b>Call Houston.</b> Radio takes about 1.3 seconds each way, so you wait for the answer.</li>
+        <li><b>Debrief.</b> See your timeline and what worked. Then try another plan.</li>
+        <li><b>Library.</b> Explore the Moon, the hardware left there, and the Artemis II crew's own words.</li>
       </ul>
     </section>
 
     <section>
-      <span class="eyebrow">How the Academy works</span>
-      <h2>Train first, then command</h2>
-      <p>Flight School is short lessons with CAPCOM: the Moon's south pole, radio talk, solar power, radiation and solar storms, air and ice, and lessons from Apollo. Each step takes a spoken, typed or tapped answer, and gives a hint after two misses. Every fact shows its NASA source. The last lesson is a check ride: two days on the real mission simulator with the real May 2024 solar storm. Pass it to earn the Mission Commander badge. Patches and your call sign are saved only on this device and never sent. The story is inspired by NASA's Artemis program: Artemis I flew uncrewed in 2022, Artemis II flew its crew around the Moon in April 2026, and Artemis III, the first landing near the south pole, has not happened yet. You train to help run Outpost Luna for the crews who come after. It uses NASA open data and is not endorsed by NASA.</p>
+      <span class="eyebrow">What's real</span>
+      <h2>Real data, some game rules</h2>
+      <p>The Moon map, the sites, the Sun and Earth in the sky and the solar storms come from NASA open data and published space science. Some rules are made up so the game works, like how much power shields use. The Debrief shows which. CAPCOM and Houston are played by the game.</p>
     </section>
 
     <section>
-      <span class="eyebrow">How it works</span>
-      <h2>Whissle's Arc models, running locally</h2>
-      <p>Arc Tagger turns what a kid says into a mission command, and catches names and addresses so they are never looked up. Arc audio metadata hears when a kid starts and stops talking. Both run on a local model server, not in the cloud.</p>
+      <span class="eyebrow">Privacy</span>
+      <h2>Stays on this computer</h2>
+      <p>Your call sign, patches and settings are saved only on this device. Speech is understood by Whissle's Arc models running locally, not in the cloud.</p>
     </section>
 
     <section>
       <span class="eyebrow">Data</span>
-      <h2>Public NASA data</h2>
+      <h2>Sources</h2>
       <div class="tbl"><table>
         <thead><tr><th>Source</th><th>Used for</th></tr></thead>
         <tbody>
-          <tr><td><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">NASA DONKI</a></td><td>Real solar storms (flares, CMEs, particle events) with their real dates</td></tr>
-          <tr><td><a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a></td><td>Where the Sun and Earth sit in the sky at each site, for day/night and comm windows</td></tr>
-          <tr><td><a href="https://pds-geosciences.wustl.edu/missions/lro/lola.htm" target="_blank" rel="noopener">LRO LOLA</a></td><td>How much sunlight each south-pole site gets, and the dark craters where ice hides</td></tr>
+          <tr><td><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">NASA DONKI</a></td><td>Real solar events (flares, CMEs, particle events) with their dates</td></tr>
+          <tr><td><a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons</a></td><td>Where the Sun and Earth sit in the sky at each site</td></tr>
+          <tr><td><a href="https://pds-geosciences.wustl.edu/missions/lro/lola.htm" target="_blank" rel="noopener">LRO LOLA</a></td><td>Sunlight at south-pole sites, and the dark craters where ice hides</td></tr>
           <tr><td><a href="https://nssdc.gsfc.nasa.gov/" target="_blank" rel="noopener">NSSDCA</a></td><td>The hardware on the Moon, and the lessons from past missions</td></tr>
-          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's color map</td></tr>
-          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings in Cadet mode</td></tr>
+          <tr><td><a href="https://www.lroc.asu.edu/" target="_blank" rel="noopener">LROC</a> (<a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noopener">CGI Moon Kit</a>)</td><td>The globe's colour map</td></tr>
+          <tr><td><a href="https://www.nasa.gov/artemisaudio/" target="_blank" rel="noopener">NASA Artemis Audio Library</a></td><td>Artemis II crew recordings in the Library</td></tr>
+          <tr><td>Zhang et al. 2020 (Chang'e 4)</td><td>The radiation dose on the Moon's surface</td></tr>
         </tbody>
       </table></div>
-      <p class="muted">When the mission server is not running, the game uses a small practice model and says "Sample data". The storms in it are still real DONKI events.</p>
     </section>
   </div>
 
-  <p class="foot">NASA media is used under NASA's media guidelines and does not imply NASA endorsement. Space Apps 2026 is Nov 14–15.</p>
+  <p class="foot">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. NASA Space Apps Challenge 2026.</p>
   </div>
 </dialog>
 
