@@ -71,7 +71,7 @@ Deepgram fallback: guide=`aura-2-thalia-en`, capcom/houston=`aura-2-orion-en`, s
 pins each row.
 
 **Persona base** — guide `interest`; CAPCOM `confidence`, rate +0.3; story `nostalgia`, rate −0.5, f0_med +0.4;
-houston `enunciated`, rate −0.2.
+houston `enunciated`, rate +1.2 (was −0.2: 2.1 words/s; §4d).
 
 **Situations** (controls are z-scores against the voice's own neutral speech; tags alone are weak on Steer, so each row
 pairs its tag with controls that carry the effect):
@@ -125,18 +125,26 @@ pairs its tag with controls that carry the effect):
 ## 4b. Accessibility steering: speed, the `vocab` situation, vocabulary emphasis, word timings
 
 **Speaking pace preference.** The kid's caption-bar speed (0.75× / 1× / 1.25× / 1.5×, `a11y.js`, stored on the device
-only) goes to `/api/tts?speed=`. `steering.speed_steer(speed)` maps it to two things:
+only) goes to `/api/tts?speed=` (or rides on the say style as `speed`, from the Settings `rate`).
+`steering.delivery(controls, speed)` adds the 1× delivery baseline (§4d) and then `speed_steer(speed)`. "1×" is the
+new, faster default:
 
-| speed | `rate` offset (z, added on top of the Director's style, then clamped ±2.5) | Steer `pace` (global duration divisor) |
-| --- | --- | --- |
-| 0.75× | −0.83 | 0.85 |
-| 1× | 0 | 1 |
-| 1.25× | +0.64 | 1.13 |
-| 1.5× | +1.17 | 1.25 |
+| speed | `rate` offset from `speed_steer` (z, 4 per octave) | baseline `pause` (z) | inner-gap cap | Steer `pace` | measured words/s (10 voices + guide, CAPCOM, story; Houston is the steadiest at every speed) |
+| --- | --- | --- | --- | --- | --- |
+| 0.75× | −1.66 | +0.5 | 0.45 s | 0.85 | 2.5–2.9 (slower than the old 1×, 2.8–3.2) |
+| **1×** | 0 | −1.5 | 0.25 s | 1 | **3.3–3.8** (Houston 3.0) |
+| 1.25× | +1.29 | −1.5 | 0.25 s | 1.13 | 3.8–4.3 |
+| 1.5× | +2.34 | −1.5 | 0.25 s | 1.25 | 3.9–4.4 |
+
+These rate offsets sit on top of the baseline's +1.0 and are clamped at ±2.5. The slope was 2 per octave; it is now
+4, because the model server build running here **ignores `pace`**: it returns no `X-Steer-Pace` header, and pace 1.3
+gives audio of exactly the same length. So rate carries the whole setting, and 1.25× and 1.5× nearly meet at the clamp. Once the
+model server runs the code in this repo, which applies `pace`, 1.5× gets faster again. Re-measure then; if 1.5× is too
+fast, lower the pace exponent in `speed_steer`.
 
 `rate` keeps it an articulation change in the voice's own style (a storm alert stays faster than a calm line at every
 speed); `pace` carries the rest, since rate z-scores saturate. The model server accepts `pace` (0.6–1.6) on `/v1/tts`
-and reports it in `X-Steer-Pace`. Crew audio is a recording: it gets `playbackRate` (pitch preserved) instead.
+and reports it in `X-Steer-Pace` (once the running build has it). Crew audio is a recording: it gets `playbackRate` (pitch preserved) instead.
 Measured in Chrome: the same 10-word line took 3.86 s of caption time at 1× and 2.69 s at 1.5×.
 
 **`vocab` situation** — `enunciated`, rate −1.0, pause +0.6, f0_iqr +0.3: slower, clear gaps, a little more melody,
@@ -160,7 +168,65 @@ estimates from the audio length and syllables, or follows `speechSynthesis` boun
 
 ## 4c. Settings: the kid's voice, rate and expressiveness
 
-See `VOICES.md`: say styles carry `steer_voice`, `speed` and `expr`, and `/api/tts` applies them (`steering.apply_prefs`, `with_expressiveness`).
+See `VOICES.md`: say styles carry `steer_voice`, `speed`, `expr` and `volume`, and `/api/tts` applies them
+(`steering.apply_prefs`, `with_expressiveness`, `delivery`, `tts.finish`).
+
+## 4d. Louder and faster: the delivery baseline and the master stage
+
+Steer sounded low and slow. Raw renders measured −23.8 to −26.0 LUFS, 2.4–3.2 words/s, with long phrase gaps. Every
+`/api/tts` Steer render now goes through three stages: native controls first, then two DSP steps
+(`tts.speak` → `steering.delivery` → `tts.finish` → `app/loudness.py`).
+
+**1. Native controls (the delivery baseline, `steering.BASE_CONTROLS`)**, added on top of every style at 1×:
+
+| control | z | why | measured alone (guide) |
+| --- | --- | --- | --- |
+| `pause` | −1.5 | shorter phrase pauses: long gaps are most of what made it feel slow | 2.96 → 3.16 words/s |
+| `rate` | +1.0 | faster articulation | +0.4 words/s with the pause change |
+| `loud` | +0.4 | a little more vocal energy (projection) | +0.8 LU raw. It does not change the crest factor, so DSP still does the levelling |
+
+Steer's `loud` tag was also tried. It was inconsistent: the guide got quieter (−24.4 LUFS against −23.8 base), and
+Crater got louder but 1.7 dB peakier. So it is not used. `pace` is ignored by the running build (§4b).
+
+**Slow on purpose:** the `explain` and `vocab` situations, and any line with vocabulary words, get no baseline rate or
+pause and a gentle 0.6 s gap cap (`steering.SLOW_SITUATIONS`). They keep the situation's own −0.8 / −1.0 rate.
+
+**2. Gap cap (`loudness.cap_gaps`):** silences inside the line longer than 0.25 s (0.45 s at 0.75×) are cut to that
+length, with the middle removed. Leading silence becomes 30 ms. The trailing silence is 220 ms when another sentence follows
+(the director's paragraph gap, up to 700 ms on the model server) and 50 ms on the last one. Steer's word timings are
+remapped through the same cut (`X-TTS-Words` stays in sync with the audio).
+
+**3. Master (`loudness.master`):**
+- ITU-R BS.1770-4 integrated loudness (K-weighting applied in the frequency domain, 400 ms gated blocks; a 997 Hz
+  0 dBFS sine reads −3.01 LUFS, and it matches ffmpeg `ebur128` to 0.1 LU).
+- Gain to **−14 LUFS**. Storm, warning and failure lines (`steering.ALARM_SITUATIONS`) get **−12 LUFS**.
+- The Settings `volume` adds 20·log10(volume) dB: up to +6 dB, down to −30.
+- A **look-ahead peak limiter** with a 5 ms look-ahead and 5 ms attack ramp, a 10 ms hold and a 5 ms release ramp:
+  the gain is never a step and never hard-clips. The sample ceiling is −1.5 dBFS. The true peak (4× oversampled) is
+  then checked against **−1 dBTP**.
+- Limiting costs a little loudness, so the gain is re-measured and topped up (up to 4 passes, ±0.2 LU).
+
+Low male voices have a high crest factor: Crater, `voice_1207`, has an 18 dB peak-to-loudness ratio. They need the
+most limiting and land at −14.3 instead of −14.1.
+
+The result is cached as it is sent, and the cache key carries `MASTER_VERSION` (2), so no pre-calibration rendering is
+replayed. The `X-TTS-Loudness: <LUFS> LUFS <TP> dBTP` header reports each miss. Cost: 10–30 ms of numpy per render on
+a cache miss. Deepgram (MP3) and the browser voice are not mastered.
+
+**Crew audio:** the NASA clips measure −25.7 to −7.2 LUFS, and their sources already peak at +1.4 to +2.3 dBTP.
+`tools/clip_loudness.py` (ffmpeg, dev only) writes `data/clip_loudness.json`, and `/api/clips` and `/api/clips/{id}`
+return `gain_db` (= −14 − clip LUFS, from −6.8 to +11.7 dB). The client must play crew audio through a `GainNode` at that
+gain, then a `DynamicsCompressorNode` used as a limiter (threshold −1, knee 0, ratio 20, attack 0.003, release 0.05).
+That way, switching between crew audio and our voices doesn't jump. 30 of 74 clips need a boost; the rest are a plain
+cut. No normalised copy is shipped: the 525 MB of media would double.
+
+**Master volume:** UI 100% is the −14 LUFS target, and anything above 100% must go through the `volume` pref, not
+client gain. The client's own `audio.volume` for the guide should stay at 1.
+
+Tests: `tests/test_loudness.py` covers the reference tone; target ±1 LU at four input levels; no sample over the
+ceiling; a smooth limiter gain; the alarm and volume offsets; every persona through `/api/tts` at the target and cached
+as mastered; the gap cap with remapped word timings; the faster default rate; slow lines kept slow; and the crew-clip
+gains.
 
 ## 5. Measured (M-series Mac, CPU, 2 threads, warm)
 

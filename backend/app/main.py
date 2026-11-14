@@ -73,7 +73,16 @@ def places():
 @app.get("/api/clips")
 def clips():
     S["index"].refresh()
-    return {"clips": S["index"].clips}
+    return {"clips": [{**c, "gain_db": clip_gain_db(c.get("file"))} for c in S["index"].clips]}
+
+
+def clip_gain_db(file: str | None) -> float:
+    """Playback gain (dB) that brings a crew clip to the TTS loudness target (data/clip_loudness.json, §4d); 0 unknown."""
+    if "clip_gain" not in S:
+        import json
+        p = settings.data_dir / "clip_loudness.json"
+        S["clip_gain"] = {k: v["gain_db"] for k, v in json.loads(p.read_text())["clips"].items()} if p.exists() else {}
+    return S["clip_gain"].get((file or "").rsplit("/", 1)[-1], 0.0)
 
 
 @app.get("/api/clips/{clip_id}")
@@ -83,7 +92,8 @@ def clip(clip_id: str):
     c = next((c for c in S["index"].clips if c["id"] == clip_id), None)
     if not c:
         raise HTTPException(404, "no such clip")
-    return {k: c.get(k) for k in ("id", "title", "file", "dur", "words", "tags", "utterances")}
+    return {**{k: c.get(k) for k in ("id", "title", "file", "dur", "words", "tags", "utterances")},
+            "gain_db": clip_gain_db(c.get("file"))}
 
 
 @app.get("/api/moments")
