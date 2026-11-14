@@ -91,6 +91,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = lessons().indexOf(L), acc = st.accept;
     const clip = st.clip || (i === 0 ? L.clip : null);
+    // ---- [a11y/vocab] step renderers registered by other modules (academy/vocab.js): window.__outpost.stepRenderers ----
+    const RF = typeof window !== "undefined" && window.__outpost && window.__outpost.stepRenderers && window.__outpost.stepRenderers[acc.type];
+    const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
+    const R = RF ? RF({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true }) : null;
+    // ---- end [a11y/vocab] ----
     panel.innerHTML = `
       <header class="m-head"><button type="button" class="a-back" id="aBack" aria-label="Back to the course map">‹ Course</button>
         <span class="eyebrow">Lesson ${k + 1} of ${lessons().length}</span>
@@ -105,7 +110,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
         <p class="a-prompt">${esc(st.prompt)}</p>
         ${clip ? `<button type="button" class="pill hot a-clip" id="aClip">▶ Hear ${esc(clip.who)}</button>` : ""}
-        ${acc.type === "choice" ? `<div class="a-choices">${acc.options.map(o => `<button type="button" class="a-choice" data-c="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>`
+        ${R ? R.html : acc.type === "choice" ? `<div class="a-choices">${acc.options.map(o => `<button type="button" class="a-choice" data-c="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div>`
           : `<p class="a-how">${esc(HOW[acc.type] || "")}</p>`}
         <p class="a-feedback${feedback ? " is-" + feedback.kind : ""}" id="aFeedback">${feedback ? esc(feedback.text) : ""}</p>
         ${feedback && feedback.hint ? `<p class="a-hint"><b>Hint</b> ${esc(feedback.hint)}</p>` : ""}
@@ -118,6 +123,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
     panel.querySelectorAll(".a-choice").forEach(b => b.onclick = () => answer({ choice: b.dataset.c }, b));
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
+    if (R && R.bind) R.bind(panel.querySelector(".a-step"));   // [a11y/vocab]
   }
 
   async function answer(input, btn) {

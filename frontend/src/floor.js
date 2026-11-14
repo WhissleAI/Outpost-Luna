@@ -122,8 +122,9 @@ const VOICE_PARAMS = {          // speechSynthesis fallback only
 };
 
 /** The /api/tts URL for one sentence: voice, the Director's style, and its place in the text (for Steer's director). */
-export function ttsUrlFor(base, text, voice, style, i, n, next) {
+export function ttsUrlFor(base, text, voice, style, i, n, next, speed) {
   const q = new URLSearchParams({ voice, text });
+  if (speed && Math.abs(speed - 1) > 1e-3) q.set("speed", String(speed));   // [a11y] the kid's TTS speed (a11y.js)
   if (style && typeof style === "object" && Object.keys(style).length) q.set("style", JSON.stringify(style));
   if (n > 1) { q.set("i", String(i)); q.set("n", String(n)); if (next) q.set("next", next); }
   return `${base}?${q.toString()}`;
@@ -140,6 +141,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   let server = true;                        // false after a 503: this backend has no TTS, use the browser voice
   const synth = typeof window !== "undefined" ? window.speechSynthesis || null : null;
   let lastCancel = 0;
+  let speed = 1;                            // [a11y] TTS speed (0.75–1.5): Steer rate+pace on the server, rate here
 
   let kid = false, holder = "none";
   let cur = null;                           // the say() that owns the guide channel: {id, text, sentence, stop, yield, done}
@@ -172,10 +174,11 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   async function fetchTTS(text, voice, style, i = 0, n = 1, next = "") {
     if (!server) return null;
     try {
-      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, style, i, n, next));
+      const r = await fetch(ttsUrlFor(ttsUrl, text, voice, style, i, n, next, speed));
       if (r.status === 503) { server = false; return null; }
       if (!r.ok) return null;
-      return URL.createObjectURL(await r.blob());
+      // [a11y] word timings (X-TTS-Words, "startMs-endMs,…" per display word) for the caption bar (caption.js)
+      return { url: URL.createObjectURL(await r.blob()), words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "" };
     } catch (e) { return null; }
   }
   function playUrl(url, tok) {
@@ -201,7 +204,8 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     if (tok.cancelled) return "stop";
     return new Promise(res => {
       const u = new SpeechSynthesisUtterance(text), v = pickVoice(), p = VOICE_PARAMS[voice] || VOICE_PARAMS.guide;
-      if (v) u.voice = v; u.rate = p.rate; u.pitch = p.pitch;
+      if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch;
+      u.onboundary = e => { if (e.name === "word" || e.name == null) emit("boundary", { id: tok.id, charIndex: e.charIndex, text }); };   // [a11y]
       let done = false;
       const fin = r => { if (done) return; done = true; clearTimeout(cap); clearInterval(keep); tok.stop = null; res(r); };
       u.onend = () => fin("end"); u.onerror = e => fin(e && (e.error === "interrupted" || e.error === "canceled") ? "stop" : "error");
@@ -248,20 +252,20 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     const n = sentences.length, get = i => fetchTTS(sentences[i], voice, style, i, n, sentences[i + 1] || "");
     let next = get(0), started = false;
     for (let i = 0; i < n; i++) {
-      const url = await next;
+      const got = await next, url = got && got.url;   // [a11y] fetchTTS → {url, words, engine}
       next = i + 1 < n ? get(i + 1) : null;   // prefetch while this one plays
       if (tok.cancelled) { if (url) URL.revokeObjectURL(url); break; }
       tok.sentence = sentences[i]; tok.speaking = true;
       if (!started) { started = true; playback("guide", "start", tok.id); }
       recompute();
-      emit("sentence", { id: tok.id, index: i, text: sentences[i], voice });
+      emit("sentence", { id: tok.id, index: i, text: sentences[i], voice, words: got ? got.words : "", engine: got ? got.engine : "browser", audio: url ? el() : null, speed });
       let r = url ? await playUrl(url, tok) : "error";
       if (url) URL.revokeObjectURL(url);
       if (r === "error" && !tok.cancelled) r = await speakSynth(sentences[i], voice, tok);
       if (r === "stop" || tok.cancelled) break;
       if (tok.yield) { tok.cancelled = true; break; }                   // a critical alert takes the floor after this sentence
     }
-    if (next) next.then(u => u && URL.revokeObjectURL(u));
+    if (next) next.then(u => u && u.url && URL.revokeObjectURL(u.url));
     tok.speaking = false;
     const full = !tok.cancelled;
     if (started) playback("guide", full ? "end" : "interrupted", tok.id);
@@ -302,6 +306,12 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     get crewText() { try { return crewPlaying() ? crew.text() || "" : ""; } catch (e) { return ""; } },
     get ducked() { return ducked; },
     get serverTTS() { return server; },
+    // ---- [a11y] speed + elements for captions (a11y.js, caption.js) ----
+    setSpeed(v) { const x = +v; speed = x >= 0.5 && x <= 2 ? x : 1; },
+    get speed() { return speed; },
+    get guideAudio() { return guideEl; },
+    get crewEl() { return crew.el; },
+    emit,
   };
 }
 
