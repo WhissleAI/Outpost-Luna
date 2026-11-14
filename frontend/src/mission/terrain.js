@@ -377,7 +377,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     const blink = (Math.sin(now / 260) > .6) || reduced();
     hab.userData.beacon.visible = blink; rv.userData.beacon.visible = S.rover.busy && (Math.sin(now / 200 + 1) > .2 || reduced());
     hab.userData.lamp.intensity = S.sunEl < 0 ? 60 : 0;
-    bloom.intensity = (S.storm ? 2.2 : 1.1) * (S.view === "earth" ? .7 : 1);
+    bloom.intensity = (S.storm ? 1.45 : 1.1) * (S.view === "earth" ? .7 : 1);   // storm = glare, not fog
     composer.render(dt);
     project(mHab, tmp.set(0, hab.position.y + 14, 0).clone(), S.view !== "earth");
     project(mRover, rv.position.clone().add(new THREE.Vector3(0, 4, 0)), S.view === "site" && S.rover.busy);

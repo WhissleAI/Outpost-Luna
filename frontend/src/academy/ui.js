@@ -10,7 +10,7 @@
 import "../school.css";
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
-import { createCockpit } from "../mission/cockpit.js";
+import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
@@ -278,6 +278,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
     if (!waitingNext && R.wire) R.wire(panel.querySelector("#aInput"), ctx);
     const slot = panel.querySelector("#aRideSlot"); if (slot && rideEl) { slot.replaceWith(rideEl); if (ride.state) rideCk.update(ride.state); }
+    if (ride && rideCk && ride.state) { rideCk.update(ride.state); rideCue(); }   // [ride]
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
   }
 
@@ -317,13 +318,20 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
 
   // ---------- check ride: the first solo shift, in a simplified cockpit ----------
+  /** [ride] a cabin control → the same words as the order buttons, graded by the same path */
+  const RIDE_WORDS = c => c.type === "allocate" ? `more power to the ${String(c.to).replace("_", " ")}` : c.type === "shelter" ? (c.on ? "everyone into the shelter" : "leave the shelter")
+    : c.type === "dispatch" ? (c.task === "collect_ice" ? "send the rover for ice" : c.task === "return" ? "bring the rover home" : `send the rover to ${c.task}`) : null;
   async function showRideSite() {
     if (!rideSite) {
       try { const s = await (await fetch("/api/mission/sites")).json(); rideSite = s.sites.find(x => x.id === L.ride.site); } catch (e) { rideSite = null; }
     }
-    rideEl = document.createElement("section"); rideEl.className = "a-ride"; rideEl.setAttribute("aria-label", "Check ride cockpit");
-    rideCk = createCockpit(rideEl, { mode: "mini", badges: ui.badges });
-    if (ride && ride.state) rideCk.update(ride.state);
+    // [ride] the cabin, full stage behind the lesson card; its controls answer the step like the order buttons do
+    rideEl = null; if (rideCk && rideCk.dispose) rideCk.dispose();
+    let host = document.getElementById("aRideCabin");
+    if (!host) { host = document.createElement("section"); host.id = "aRideCabin"; host.className = "m-cabin a-ridecabin"; host.setAttribute("aria-label", "Check ride cabin"); panel.parentNode.insertBefore(host, panel); }
+    host.hidden = false; document.body.dataset.ride = "1";
+    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
+    if (ride && ride.state) { rideCk.update(ride.state); rideCue(); }
     if (!rideSite) return;
     globe.mission.enter();
     globe.mission.setSite({ ...rideSite, short: rideSite.name.split(" (")[0] }, { dist: 2.2 });
@@ -331,12 +339,19 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
   function syncRideGlobe() {
     if (!ride || !ride.state) return;
-    if (rideCk) rideCk.update(ride.state);
+    if (rideCk) { rideCk.update(ride.state); rideCue(); }
     if (!rideSite) return;
     const e = ride.state.env;
     globe.mission.setSun(e.sun_elev_deg, ride.state.mission_time_h); globe.mission.setEarth(e.earth_elev_deg);
   }
-  function endRide() { if (ride) { ride = null; globe.mission.exit(); } rideEl = null; rideCk = null; }
+  function endRide() { if (ride) { ride = null; globe.mission.exit(); } rideEl = null; if (rideCk && rideCk.dispose) rideCk.dispose(); rideCk = null;
+    const h = document.getElementById("aRideCabin"); if (h) { h.hidden = true; h.innerHTML = ""; } delete document.body.dataset.ride; }
+  /** [ride] the step's expected order lights its control in the cabin, one at a time */
+  function rideCue() {
+    if (!rideCk || !rideCk.cue || !L || !L.steps[i]) return;
+    const x = (L.steps[i].accept || {}).expect || {};
+    rideCk.cue(x.type === "allocate" ? (x.to === "shields" ? "shields" : `load:${x.to}`) : x.type === "shelter" ? "shelter" : x.type === "dispatch" ? `rover:${x.task}` : null);
+  }
   function rideStep(r) {
     if (r.status === "done") {
       feedback = { kind: r.passed ? "ok" : "retry", text: r.say };

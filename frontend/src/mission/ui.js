@@ -132,6 +132,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
    *  from orbit, the globe dives toward the site first, then the surface view takes over the glass mid-descent. */
   function windowView(v) {
     if (!state) return;
+    if (v === curView && tv && tvHost && tvHost.isConnected) return;   // the view already showing: no re-flight
     const s = state.site, from = curView; curView = v; document.body.dataset.cabinView = v;
     const t = surface(); clearTimeout(surfT);
     if (v === "orbit" || !t) { if (t) t.hide(); globe.pause(false); globe.flyTo(-35, s.lon, 3.8); return; }

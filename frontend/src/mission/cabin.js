@@ -13,6 +13,7 @@ const { callSign } = story;
 import { LOADS } from "./cockpit.js";
 import { icon } from "../assets/icons.js";
 import { createCockpit3D, PANELS } from "./cockpit3d.js";
+import { createTerrainView } from "./terrain.js";
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -140,7 +141,12 @@ export function createCabin(root, o = {}) {
   const glassEl = q(".cb-glass");
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
-  let c3 = null, qualityOff = () => {};
+  let c3 = null, qualityOff = () => {}, ownTv = null;
+  if (o.terrain && o.site) {
+    const tvHost = document.createElement("div"); tvHost.className = "tv"; glassEl.prepend(tvHost);
+    ownTv = createTerrainView(tvHost, { reduced: () => document.documentElement.dataset.motion === "reduce" });
+    if (ownTv) { Promise.resolve(ownTv.setSite(o.site)).then(() => ownTv.setView("site")).catch(() => {}); }
+  }
   const reducedMo = () => document.documentElement.dataset.motion === "reduce" || !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
@@ -150,9 +156,10 @@ export function createCabin(root, o = {}) {
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
     // ride mode (the Flight School check ride): the first time in the seat, so only the displays, habitat and End shift
-    const ids = o.mode === "ride" ? ["displays", "habitat", "pedestal"] : ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
+    // the check ride's orders are shields, shelter and the rover: those panels and the displays, nothing else
+    const ids = o.mode === "ride" ? ["displays", "radiation", "rover"] : ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
-    if (o.mode === "ride") { root.classList.add("is-ride"); ["rover", "radiation", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
+    if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
     if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
@@ -324,6 +331,7 @@ export function createCabin(root, o = {}) {
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
     q("#cbEndSub").textContent = s.over ? "Mission over" : `Shift ${s.shift} of 4`;
     applyCue(false);
+    if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 
   /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. */
@@ -374,7 +382,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { if (c3) c3.dispose(); qualityOff(); },
+    dispose() { if (c3) c3.dispose(); qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
      *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
