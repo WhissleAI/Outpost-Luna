@@ -208,6 +208,8 @@ class EarStream(arcmeta.MetaStream):
         `names` in Arc.stream(), so they are rebuilt here too (that is what turns "Malapart" into "Malapert" in the
         written final). The backend sends its Tier A list before any audio, so the worker is idle when the trie swaps."""
         self.names, self.terms, self.topic = list(names or []), terms or None, topic or None
+        if not hasattr(self, "hot"):          # (a stream built without __init__: the unit tests' fake)
+            self.hot = {"step": [], "names": [], "screen": [], "v": None}
         if any(self.hot[t] for t in hotbias.TIERS):
             names = self._prompt_names()
         self.s.set_context(names=names or None, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
