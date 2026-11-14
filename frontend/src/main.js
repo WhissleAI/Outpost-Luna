@@ -83,6 +83,7 @@ async function boot() {
     onKidDone: () => { player.unduck(); if (useSession()) session.ui("kid_done"); },
     onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
+    screen: () => screenFrame(),          // the pending offer / open step: their reply is never an echo of the tail
   });
   // [session] the socket, its decision handlers, and the hooks the mission UI calls.
   let session = null;

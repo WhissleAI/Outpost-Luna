@@ -5,7 +5,7 @@
 // is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 import { createListener } from "./listen.js";
-import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, isEcho, normWords } from "./floor.js";
+import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen } from "./floor.js";
 export { spaceAction, micErrorText };
 import "./floor.css";
 
@@ -21,8 +21,9 @@ const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo referen
  * @param {()=>void} o.onKidDone              the kid stopped without asking
  * @param {(label:string)=>void} o.onEmotion
  * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
+ * @param {()=>object|null} [o.screen]        the screen frame the router gets ({screen, step_type, offer}, main.js)
  */
-export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false }) {
+export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputBusy = () => false, screen = () => null }) {
   const $ = id => document.getElementById(id);
   const bar = $("askbar"), stateEl = $("listenState"), wordsEl = $("liveWords"), hintEl = $("spaceHint"), micBtn = $("mic");
   let mode = "off", wsBroken = false, starting = false, srOn = false;
@@ -78,7 +79,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
     // Never answer ourselves or a hum: filler ("oh", "mm-mm") and echoes of our last few lines are dropped silently.
-    if (!ptt.held && !pttTurn && (isFiller(text) || isEcho(text, refsNow()) || oldEcho(text))) { wordsEl.textContent = ""; kidDone(); return; }
+    // The reply the screen waits for (an offer's "next" / "yes", a step's answer) is an echo only when one of our
+    // lines was on air at the turn start (turnIsEcho: the same rule as backend turn_router.echo()).
+    const onAir = turnAir || airNow(); turnAir = false;
+    if (!ptt.held && !pttTurn && (isFiller(text) || turnIsEcho({ text, frame: frameNow(), onAir, refs: refsNow(),
+      oldRefs: saidRefs(3000, ECHO_LINES_MS) }))) { wordsEl.textContent = ""; kidDone(); return; }
     const viaPtt = pttTurn; pttTurn = false;
     set("thinking");
     onTurn(text, { ptt: viaPtt }).finally(() => {
@@ -95,6 +100,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     else if (recent.until === Infinity) recent.until = performance.now() + ECHO_TAIL_MS;
   });
   if (floor) floor.on("sentence", () => { recent.refs = liveRefs(); });
+  // On air: a line of ours is playing right now (no tail). A turn keeps the value it had at its start.
+  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!isOutputBusy(); };
+  const frameNow = () => { try { return screen() || null; } catch (e) { return null; } };
+  let turnAir = false;
   const outputBusy = () => {
     const h = floor ? floor.holder : "none";
     return h === "guide" || h === "crew" || isOutputBusy() || performance.now() < recent.until;
@@ -105,18 +114,22 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   if (floor) floor.on("sentence", e => { if (e && e.text) remember(e.text); });
   const saidRefs = (lo, hi) => { const now = performance.now(); return said.filter(x => now - x.at >= lo && now - x.at < hi).map(x => x.text); };
   const refsNow = () => [...liveRefs(), ...recent.refs, ...saidRefs(0, 3000)];
-  // Lines older than 3 s: only a near-verbatim repeat of ≥ 3 words is an echo (a kid reading back an order is not).
-  const oldEcho = t => normWords(t).length >= 3 && isEcho(t, saidRefs(3000, ECHO_LINES_MS), 0.85);
+  // Lines older than 3 s (turnIsEcho's oldRefs): only a near-verbatim repeat of ≥ 3 words is an echo.
 
   // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
   let gated = null, turnDD = null, pttTurn = false;
   function gate(m) {
-    if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "" }; return; }
+    if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "", air: airNow() }; return; }
     if (!gated) return;                                     // words of a turn whose start we didn't see while busy
     if (m.text) gated.text = m.text;
-    const pass = shouldBargeIn({ started: true, text: gated.text, refs: refsNow(), dd: turnDD });
+    if (airNow()) gated.air = true;                         // one of our lines started during the turn
+    // Only the echo tail (our line already ended): the reply the screen waits for gets through, as on the server.
+    const f = frameNow() || {};
+    const awaited = !gated.air && !isFiller(gated.text) && (takesOffer(gated.text, f.offer) || stepOpen(f)) &&
+      !turnIsEcho({ text: gated.text, frame: f, onAir: false, refs: refsNow() });
+    const pass = awaited || shouldBargeIn({ started: true, text: gated.text, refs: refsNow(), dd: turnDD });
     if (!pass) { if (m.t === "turn" && m.state === "end") gated = null; return; }   // echo / chatter: drop it
-    const text = gated.text; gated = null;
+    const text = gated.text; turnAir = gated.air; gated = null;
     turnAsked = false; finalBuf = ""; interim = text;
     bargeIn(); set("hearing"); showWords();
     if (m.t === "turn" && m.state === "end") askTurn(text);
@@ -132,7 +145,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
         if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
         if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
-        else if (m.state === "start") { turnAsked = false; bargeIn(); set("hearing"); }
+        else if (m.state === "start") { turnAir = airNow(); turnAsked = false; bargeIn(); set("hearing"); }
         else if (m.state === "resumed") { kidTalking = true; if (floor) floor.setKid(true); turnAsked = false; set("hearing"); }
         else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }

@@ -43,8 +43,10 @@ an utterance is an order. A question works on every screen.
     still gets through, and in lessons older lines are not used at all.
 - While we speak (and for 600 ms after), only barge-in-worthy turns get through: a navigation or control word, or
   ≥ 3 words with `device_directed` ≥ 0.7. Space (push-to-talk) is always the kid's turn.
-- The client does the same check before it sends anything (`voice.js`: `isFiller`, `isEcho` over the last few
-  lines, and `shouldBargeIn` while audio plays).
+- The client does the same check before it sends anything (`voice.js`: `isFiller`, `turnIsEcho` over the last few
+  lines, and `shouldBargeIn` while audio plays). `turnIsEcho` (`floor.js`) applies the server's exception: with the
+  screen frame's pending offer or open step, the reply it waits for is an echo only when a line was on air at the
+  turn start, never in the client's 2–3 s echo tail.
 
 ## The Director drives the flow
 

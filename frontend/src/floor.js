@@ -75,6 +75,45 @@ export function isEcho(heard, refs, threshold = 0.6) {
   return hits / w.length >= threshold;
 }
 
+// Mirrors backend/app/turn_router.py nav_intent + answers_offer: the words that take a pending spoken offer (the screen
+// frame's `offer`). "next" / "start" / "yes" take any offer; the rest only their own.
+const OFFER_YES = /^(?:yes|yeah|yep|yup|sure|ok|okay|alright|all right|lets do it|lets go|do it|go|go for it|yes please|ready|im ready|affirmative|roger|copy)$/;
+const OFFER_NEXT = /^(?:next|next one|next please|next lesson|next step|go on|keep going|move on|whats next|okay next|ok next|carry on)$/;
+const OFFER_START = /^(?:start|begin|lets start|start (?:the )?lesson|start learning|lets begin|start (?:flight school|the academy)|continue|resume)$/;
+const OFFER_OWN = {
+  mission: /^(?:(?:go to |open |start |begin )?(?:the )?(?:mission|missions|outpost|outpost luna)(?: mode)?|lets (?:go to|do) the mission|go on (?:a|the) mission|(?:ill |i will |let me )?(?:take command|take the command|start the shift|start (?:my |the )?(?:first )?shift|launch|start the mission|begin the mission|im ready to command))$/,
+  take_command: /^(?:ill |i will |let me )?(?:take command|take the command|start the shift|start (?:my |the )?(?:first )?shift|launch|start the mission|begin the mission|im ready to command)$/,
+  fly_again: /^(?:(?:fly|play|go) again|(?:fly|play) (?:it )?one more time|(?:restart|replay) (?:the )?mission|another (?:mission|shift|go)|new mission)$/,
+};
+/** The turn takes the pending offer ("Ready for the next lesson?" → "next", "yes"; "Fly again?" → "fly again"). */
+export function takesOffer(text, offer) {
+  if (!offer) return false;
+  const q = normWords(text).join(" ").replace(/^(?:okay|ok|um|uh|so|hey|capcom|please) /, "").replace(/ (?:please|now|capcom)$/, "");
+  if (!q) return false;
+  return OFFER_YES.test(q) || OFFER_NEXT.test(q) || OFFER_START.test(q) || !!(OFFER_OWN[offer] && OFFER_OWN[offer].test(q));
+}
+
+/** A lesson or check-ride step is waiting for its answer (the screen frame). */
+export const stepOpen = f => !!(f && (f.screen === "lesson" || f.screen === "ride") && f.step_type);
+
+/**
+ * The client's echo decision for a finished open-mic turn (mirrors turn_router.echo()). The reply the screen is
+ * waiting for, a word that takes the pending offer or the answer to an open lesson / ride step, is an echo only when
+ * one of our lines was on air at the turn start (`onAir`: playing, or started during the turn; no tail). Anything
+ * else: an echo of the fresh lines (`refs`: on air + the last 3 s) or a near-verbatim repeat of an older one.
+ * @param {{text:string, frame?:object, onAir:boolean, refs:string[], oldRefs?:string[]}} o
+ */
+export function turnIsEcho({ text, frame, onAir, refs, oldRefs = [] }) {
+  const f = frame || {};
+  if (!onAir && takesOffer(text, f.offer)) return false;
+  if (stepOpen(f)) {
+    // a step answer often repeats the prompt's words ("I heard you"); older lines are never used here
+    const readback = f.step_type === "keywords" || f.step_type === "vocab_say";
+    return onAir && isEcho(text, refs, readback ? 0.85 : 0.6);
+  }
+  return isEcho(text, refs) || (normWords(text).length >= 3 && isEcho(text, oldRefs, 0.85));
+}
+
 /**
  * Open-mic barge-in while audio plays (§3 rule 2): Flux StartOfTurn, ≥ 2 words, not an echo of the guide/crew
  * text, and Arc device_directed ≥ 0.5 when Arc sent one.
