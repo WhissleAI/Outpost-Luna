@@ -172,3 +172,27 @@ def test_session_alert_lines_short():
     assert lines
     for line in lines:
         assert words(line) <= SPOKEN_MAX, line
+
+
+# ---- accuracy (docs/COPY.md "Accuracy"; feat/artemis-ref docs/ACCURACY_AUDIT.md) -------------------------------------
+BANNED = [
+    (r"Artemis III hasn.t landed|Artemis III, the first landing|first landing near the south pole", "Artemis III is a 2027 Earth-orbit test; the first landing is Artemis IV (planned)"),
+    (r"\bG[1-5]\b|geomagnetic storm at", "at the Moon it is a solar particle storm (G/Kp are Earth's magnetic field)"),
+    (r"real NASA data|NASA source", "over-claim: some data is from other agencies and papers; some tech is pretend"),
+    (r"the plan is a shelter", "no NASA plan for a soil shelter; it is a studied idea"),
+]
+
+
+@pytest.mark.parametrize("path", [STORY, COURSE], ids=lambda p: p.name)
+def test_no_outdated_or_overclaiming_copy(path):
+    text = path.read_text()
+    for pat, why in BANNED:
+        m = re.search(pat, text)
+        assert not m, f"{path.name}: {m.group(0)!r}: {why}"
+
+
+def test_pretend_tech_label():
+    src = STORY.read_text()
+    assert 'export const PRETEND_TECH = "Pretend tech";' in src
+    tip = re.search(r'export const PRETEND_TECH_TIP = "([^"]+)";', src).group(1)
+    assert words(tip) == 10, tip
