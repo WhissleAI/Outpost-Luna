@@ -22,7 +22,7 @@
   border-radius:var(--radius-lg);box-shadow:var(--shadow-2);font-family:var(--font-ui)}
 .mx-brief .mx-head{margin-bottom:calc(var(--space-2) * -1)}
 .mx-sites{display:flex;flex-direction:column;gap:var(--space-1)}
-.mx-cols,.mx-site{display:grid;grid-template-columns:minmax(0,1fr) 44px 52px 32px;align-items:center;gap:var(--space-2)}
+.mx-cols,.mx-site{display:grid;grid-template-columns:minmax(0,1fr) 44px 52px 64px;align-items:center;gap:var(--space-2)}
 .mx-cols{padding:0 var(--space-3);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-3)}
 .mx-cols span:not(:first-child){text-align:right}
 .mx-site{min-height:var(--control-lg);padding:0 var(--space-3);border:1px solid var(--color-line);border-radius:var(--radius-md);background:var(--color-surface);color:var(--color-text);
@@ -30,7 +30,7 @@
 .mx-site:hover{border-color:var(--color-line-strong);background:var(--color-surface-2)}
 .mx-site[aria-checked="true"]{border-color:var(--color-accent);background:var(--color-accent-soft);box-shadow:inset 0 0 0 1px var(--color-accent)}
 .mx-site b{padding:var(--space-1) 0;font-size:var(--text-md);font-weight:var(--weight-semibold);line-height:var(--leading-tight)}
-.mx-v{font-family:var(--font-mono);font-size:var(--text-sm);text-align:right;color:var(--color-text-2)}
+.mx-v{font-family:var(--font-mono);font-size:var(--text-sm);text-align:right;color:var(--color-text-2);white-space:nowrap}
 .mx-v.is-best{color:var(--color-text);font-weight:var(--weight-semibold)}
 .mx-v.is-low{color:var(--color-text-3)}
 .mx-srcline{margin:calc(var(--space-2) * -1) 0 0;font-size:var(--text-xs);color:var(--color-text-3)}
@@ -140,3 +140,4 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 .mx-cols,.mx-site{grid-template-columns:minmax(0,1fr) 56px 64px 40px}
 .mx-v small{font-size:var(--text-xs);color:var(--color-text-3);margin-left:1px}
 .mx-site b small{display:block;margin-top:2px;font-size:var(--text-xs);font-weight:var(--weight-regular);color:var(--color-text-2)}
+.mx-pretend{margin-left:var(--space-1);padding:0 4px;border-radius:var(--radius-sm);border:1px dashed var(--color-line-strong);font-size:var(--text-xs);color:var(--color-text-2)}   /* [qa] PRETEND_TECH tag on the picker */

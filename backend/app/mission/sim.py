@@ -93,6 +93,10 @@ def public_site(s: dict) -> dict:
     # sunlight_pct (Bussey 2010), shown only as a second, labelled line.
     out["window_sun_days"] = _half_days(s.get("window_sunlit_pct"))
     out["window_earth_days"] = _half_days(comm.get("earth_visible_pct"))
+    # [qa] the picker explains its numbers: ice a drive away (not "No"), power / radio by pretend cable / relay
+    out["rover_to_ice_h"] = s.get("rover_to_ice_h")
+    out["power_from"] = {"site": s["power_from"]["site"], "pretend_tech": bool(s["power_from"].get("pretend_tech"))} if s.get("power_from") else None
+    out["comm_from"] = {"site": s["comm_from"]["site"], "pretend_tech": bool(s["comm_from"].get("pretend_tech"))} if s.get("comm_from") else None
     return out
 
 
@@ -469,7 +473,9 @@ def advance(m: Mission, shifts: int = 1) -> list:
         m.pending = None
         _check_end(m, out)
         m.shifts.append({"t_h": m.t_h, "power": round(m.power, 1), "life_support": round(m.life, 1),
-                         "dose_msv": round(m.dose, 2), "events": [e["kind"] for e in out if e["t_h"] > m.t_h - SHIFT_H]})
+                         "dose_msv": round(m.dose, 2), "events": [e["kind"] for e in out if e["t_h"] > m.t_h - SHIFT_H],
+                         # [qa] any hour of this shift inside a storm: the debrief shades every storm shift, not just its start
+                         "storm_active": any(st.active(h) for st in m.storms for h in range(int(m.t_h) - SHIFT_H, int(m.t_h)))})
     return out
 
 
