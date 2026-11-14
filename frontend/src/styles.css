@@ -9,81 +9,20 @@
    --f-display --f-body --f-mono --radius.
    --accent-ink = the colour of text/icons sitting ON an --accent fill (not accent-coloured text; --accent itself is legible as text in both themes). */
 
+/* Legacy aliases: older component CSS still reads these short names. Every one points at a token in tokens.css.
+   Delete an alias once nothing uses it (grep the name). New CSS uses the --color-* / --space-* / --text-* tokens directly. */
 :root{
-  /* light */
-  --bg:#F1F0F0;          /* [G] --surface-sink / [P] neutral-100 */
-  --surface:#FFFFFF;     /* [G] --surface-card */
-  --surface-2:#F1F0F0;   /* [G] --surface-hover */
-  --line:#D8D5D5;        /* [P] neutral-200 (a visible hairline on the #F1F0F0 ground) */
-  --ink:#02140E;         /* [G] --ink, designer green-black */
-  --mute:#494141;        /* [P] neutral-600 — 9.6:1 on white */
-  --dim:#6E6262;         /* [P] neutral-500 — 5.9:1 on white, 5.0:1 on --bg */
-  --accent:#124E3F;      /* [P] brand-700, designer primary green — 9.4:1 on white */
-  --accent-ink:#FFFFFF;  /* text on brand-700 fill — 9.4:1 */
-  --accent-2:#E7A93A;    /* [P] gold DEFAULT — the Moon highlight; a GRAPHIC colour (fills, rings, dots), not body text */
-  --accent-2-ink:#02140E;/* text on gold fill — 9.9:1 */
-  --ok:#1C7C54;          /* [P] success.ink — 5.2:1 on white */
-  --warn:#8A6410;        /* [P] warning.ink — 5.4:1 on white */
-  --danger:#B82C30;      /* [G] --accent-ink (coral-700) — 6.1:1; the reserved red, errors only */
-  --soft:#E3F7F2;        /* [P] brand-50 mint — selected / kid-bubble fill */
-
-  /* transcript tag hues — [P] locked signal palette, light shades */
-  --t-feature:#E7A93A; --t-color:#98587B; --t-geo:#3D7BC0; --t-dir:#1C9AA2; --t-awe:#2E9E6B;
-
-  /* deep space: the globe stage is the same night sky in BOTH themes */
-  --space:#02140E;       /* [G] --surface-deep (light), designer green-black */
-  --space-2:#0C3A2E;     /* [P] brand-800, the glow behind the Moon */
-  --on-space:#F1F0F0;    /* [G] --ink-on-deep */
-  --on-space-mute:#ADAFB4;/* [P] neutral-300 — 8.6:1 on --space */
-  --glass:rgba(2,20,14,.72);
-  --glass-line:rgba(241,240,240,.16);
-
-  --f-display:"Sora","Inter",ui-sans-serif,system-ui,sans-serif;   /* [L] */
-  --f-body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; /* [L] */
-  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;           /* [L] */
-  --radius:14px;
-  /* mission resource series (power, life support, dose) — validated categorical trio for light surfaces */
-  --c-power:#B7791F; --c-life:#2F6FB5; --c-dose:#B03A7E;
-
-  /* spacing scale */
-  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
-  --topbar:52px;
-  --shadow:0 1px 2px rgba(2,20,14,.06),0 4px 16px rgba(2,20,14,.06);
-  color-scheme:light;
-}
-/* dark — [G] dark block, [P] *-300 shades measured for dark cards */
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#282323; --surface:#332D2D; --surface-2:#3C3535; --line:#494141;
-    --ink:#F1F0F0; --mute:#D8D5D5; --dim:#ADAFB4;
-    --accent:#7FD9C2; --accent-ink:#02140E; --accent-2:#EFC463; --accent-2-ink:#02140E;
-    --ok:#4FC08A; --warn:#EFC463; --danger:#F7A8AA; --soft:#0C3A2E;
-    --t-feature:#EFC463; --t-color:#C088A6; --t-geo:#6FA3DB; --t-dir:#45BEC5; --t-awe:#4FC08A;
-    --shadow:0 1px 2px rgba(0,0,0,.35);
-    --c-power:#B98324; --c-life:#4A8FE0; --c-dose:#E0609F;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#282323;          /* [G] dark --surface-app */
-  --surface:#332D2D;     /* [G] dark --surface-card */
-  --surface-2:#3C3535;   /* [G] dark --surface-hover */
-  --line:#494141;        /* [G] dark --surface-border */
-  --ink:#F1F0F0;         /* [G] dark --ink — 12.6:1 on surface */
-  --mute:#D8D5D5;        /* [P] neutral-200 — 10:1 */
-  --dim:#ADAFB4;         /* [P] neutral-300 / [G] dark --ink-muted — 6.1:1 */
-  --accent:#7FD9C2;      /* [P] brand-300 / [G] dark --brand-ink — 8.2:1 */
-  --accent-ink:#02140E;
-  --accent-2:#EFC463;    /* [P] gold-300 */
-  --accent-2-ink:#02140E;
-  --ok:#4FC08A;          /* [P] success-300 — 5.9:1 */
-  --warn:#EFC463;        /* [P] warning-300 — 8.2:1 */
-  --danger:#F7A8AA;      /* [P] coral-200 — 7.2:1 */
-  --soft:#0C3A2E;        /* [P] brand-800 */
-  --t-feature:#EFC463; --t-color:#C088A6; --t-geo:#6FA3DB; --t-dir:#45BEC5; --t-awe:#4FC08A;
-  --shadow:0 1px 2px rgba(0,0,0,.35);
-  --c-power:#B98324; --c-life:#4A8FE0; --c-dose:#E0609F;
-  color-scheme:dark;
+  --bg:var(--color-bg); --surface:var(--color-surface); --surface-2:var(--color-surface-2); --line:var(--color-line);
+  --ink:var(--color-text); --mute:var(--color-text-2); --dim:var(--color-text-3);
+  --accent:var(--color-accent); --accent-ink:var(--color-on-accent); --accent-2:var(--color-accent); --accent-2-ink:var(--color-on-accent);
+  --ok:var(--color-success); --warn:var(--color-warning); --danger:var(--color-danger); --soft:var(--color-accent-soft);
+  --t-feature:var(--color-power); --t-color:var(--color-dose); --t-geo:var(--color-life); --t-dir:var(--color-lamp-info); --t-awe:var(--color-success);
+  --on-space:var(--color-on-space); --on-space-mute:var(--color-on-space-2); --glass:var(--color-glass); --glass-line:var(--color-glass-line);
+  --f-display:var(--font-ui); --f-body:var(--font-ui); --f-mono:var(--font-mono);
+  --radius:var(--radius-lg);
+  --c-power:var(--color-power); --c-life:var(--color-life); --c-dose:var(--color-dose);
+  --s1:var(--space-1); --s2:var(--space-2); --s3:var(--space-3); --s4:var(--space-4); --s5:var(--space-5); --s6:var(--space-6);
+  --topbar:var(--topbar-h); --shadow:var(--shadow-2);
 }
 
 /* ---------- base ---------- */
@@ -120,7 +59,7 @@ kbd{font-family:var(--f-mono);font-size:.82em;font-weight:600;line-height:1;disp
 /* ---------- app shell: top bar + one full-bleed globe; everything else floats on it ---------- */
 .app{flex:1;min-height:0;display:flex;padding:0 var(--s3) var(--s3)}
 .stage{position:relative;flex:1;min-width:0;min-height:0;border-radius:var(--radius);overflow:hidden;isolation:isolate;
-  background:radial-gradient(70% 80% at 50% 45%,var(--space-2) 0%,var(--space) 62%);
+  background:radial-gradient(70% 80% at 50% 45%,var(--color-space-2) 0%,var(--color-space) 62%);
   box-shadow:0 0 0 1px var(--line),var(--shadow);color:var(--on-space);
   --dock-w:min(680px,calc(100% - 2*var(--s4)));--dock-h:150px}
 .stage::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 0 80px rgba(0,0,0,.35);z-index:0}
@@ -654,3 +593,23 @@ body[data-qualified="1"] #modeMission::after{content:"✓";margin-left:6px;font-
 .a-row{display:flex;flex-wrap:wrap;gap:6px}
 .a-credit{margin:auto 0 0;font-size:11.5px;color:var(--dim)}
 .m-mars{margin:0;font-size:13px;color:var(--mute)}
+
+/* ---------- shared components (docs/DESIGN_SYSTEM.md) ---------- */
+.btn,.btn-primary,.btn-quiet,.btn-icon{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font:inherit;
+  font-size:var(--text-md);font-weight:var(--weight-semibold);line-height:1;border:1px solid transparent;cursor:pointer;text-decoration:none;
+  transition:background-color var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out)}
+.btn{min-height:var(--control-md);padding:0 var(--space-4);border-radius:var(--radius-md);background:var(--color-surface-2);color:var(--color-text);border-color:var(--color-line)}
+.btn:hover{background:var(--color-surface-3)}
+.btn-primary{min-height:var(--control-lg);padding:0 var(--space-5);border-radius:var(--radius-md);background:var(--color-accent);color:var(--color-on-accent)}
+.btn-primary:hover{background:var(--color-accent-hover)}
+.btn-quiet{min-height:var(--control-sm);padding:0 var(--space-2);border-radius:var(--radius-sm);background:none;color:var(--color-text-2);font-weight:var(--weight-medium)}
+.btn-quiet:hover{color:var(--color-text);background:var(--color-surface-2)}
+.btn-icon{width:var(--control-sm);height:var(--control-sm);padding:0;border-radius:var(--radius-md);background:none;color:var(--color-text-2)}
+.btn-icon:hover{color:var(--color-text);background:var(--color-surface-2)}
+.btn-icon svg,.btn svg,.btn-primary svg,.btn-quiet svg{width:18px;height:18px;flex:none}
+.btn:disabled,.btn-primary:disabled,.btn-quiet:disabled,.btn-icon:disabled{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--control-sm);padding:0 var(--space-3);border-radius:var(--radius-full);
+  border:1px solid var(--color-line-strong);background:var(--color-surface);color:var(--color-text);font:inherit;font-size:var(--text-sm);font-weight:var(--weight-medium);cursor:pointer}
+.chip:hover{border-color:var(--color-accent)}
+.chip[aria-pressed="true"]{background:var(--color-accent-soft);border-color:var(--color-accent);color:var(--color-text)}
+:where(.btn,.btn-primary,.btn-quiet,.btn-icon,.chip):focus-visible{outline:none;box-shadow:var(--focus-ring)}

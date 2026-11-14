@@ -191,9 +191,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     root.dataset.captions = S.captions ? "on" : "off";
     root.style.setProperty("--a11y-zoom", String(S.textScale));
     root.dataset.textScale = S.textScale > 1 ? "big" : "";
-    if (S.dyslexia && !document.getElementById("a11yFont")) {
-      const l = mk("link", "", { id: "a11yFont", rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" });
-      document.head.append(l);
+    if (S.dyslexia && !apply.font) {   // easy-read font: bundled with the app (offline), loaded only when chosen
+      apply.font = Promise.all([import("@fontsource/atkinson-hyperlegible/400.css"), import("@fontsource/atkinson-hyperlegible/700.css")]).catch(() => {});
     }
     if (floor) floor.setSpeed(S.speed);
     const c = floor && floor.crewEl; if (c) { c.playbackRate = S.speed; c.preservesPitch = true; }

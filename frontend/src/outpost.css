@@ -216,13 +216,13 @@ body[data-mode="mission"] .stage:has(.mpanel.is-cockpit:not([hidden])){--panel-w
   background:var(--surface);color:var(--mute);border:2px dashed var(--line)}
 .a-patch>span{line-height:1}
 .a-node.is-next .a-patch{border:3px solid var(--accent);color:var(--ink);font-size:22px;background:var(--soft);animation:patchGlow 2s ease-in-out infinite}
-.a-node.is-done .a-patch{border:3px solid var(--accent-2);background:var(--space);font-size:22px;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent-2)}
+.a-node.is-done .a-patch{border:3px solid var(--accent-2);background:var(--color-space);font-size:22px;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent-2)}
 .a-node.is-ride .a-patch{border-radius:12px}
 .a-stamp{position:absolute;right:-6px;bottom:-4px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:800;
   background:var(--ok);color:#fff;transform:rotate(-12deg);box-shadow:0 0 0 2px var(--surface)}
 @keyframes patchGlow{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 22%,transparent)}}
-.a-patch.is-sm{width:34px;height:34px;font-size:18px;border:2px solid var(--accent-2);background:var(--space)}
-.a-patch.is-big{width:120px;height:120px;font-size:56px;border:4px solid var(--accent-2);background:var(--space);
+.a-patch.is-sm{width:34px;height:34px;font-size:18px;border:2px solid var(--accent-2);background:var(--color-space)}
+.a-patch.is-big{width:120px;height:120px;font-size:56px;border:4px solid var(--accent-2);background:var(--color-space);
   box-shadow:0 0 0 4px var(--surface),0 0 0 8px var(--accent-2),0 0 40px color-mix(in srgb,var(--accent-2) 40%,transparent);animation:medal .6s cubic-bezier(.2,1.4,.4,1) both}
 .a-patch.is-big .a-stamp{width:40px;height:40px;font-size:22px;right:-8px;bottom:-4px;animation:stamp .5s cubic-bezier(.2,1.6,.4,1) .55s both}
 @keyframes stamp{from{transform:scale(2.4) rotate(-30deg);opacity:0}to{transform:rotate(-12deg);opacity:1}}
@@ -271,7 +271,7 @@ body[data-mode="mission"] .stage:has(.mpanel.is-cockpit:not([hidden])){--panel-w
 .m-learned li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:1.4;color:var(--mute)}
 .m-learned li b{color:var(--ink);margin-right:4px}
 .m-lpatch{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:15px;background:var(--surface-2);border:2px dashed var(--line)}
-.m-lpatch.is-earned{background:var(--space);border:2px solid var(--accent-2)}
+.m-lpatch.is-earned{background:var(--color-space);border:2px solid var(--accent-2)}
 
 /* ---------- Flight School catalog (the map view takes the whole stage) ---------- */
 .apanel.is-catalog{left:var(--s4);width:auto;padding:var(--s5) var(--s5) var(--s4);background:var(--bg);overflow:auto}
@@ -293,7 +293,7 @@ body[data-aview="map"] .askbar,body[data-aview="map"] .hud,body[data-aview="map"
 .a-lcard.is-ride{border-style:dashed;border-color:var(--accent-2)}
 .a-lhead{display:flex;align-items:center;gap:10px;min-width:0}
 .a-lcard .a-patch{width:40px;height:40px;font-size:19px}
-.a-lcard.is-done .a-patch{border:3px solid var(--accent-2);background:var(--space);box-shadow:none}
+.a-lcard.is-done .a-patch{border:3px solid var(--accent-2);background:var(--color-space);box-shadow:none}
 .a-lcard.is-next .a-patch{border:2px dashed var(--accent-2);background:var(--soft)}
 .a-lcard .a-nt b{font-family:var(--f-display);font-size:15.5px}
 .a-blurb{font-size:13.5px;line-height:1.4;color:var(--mute)}
@@ -311,7 +311,7 @@ body[data-aview="map"] .askbar,body[data-aview="map"] .hud,body[data-aview="map"
 .a-voice{font-size:12.5px;color:var(--mute)}
 .a-shelf>div{display:flex;flex-wrap:wrap;gap:8px}
 .a-shelf .a-patch{width:44px;height:44px;font-size:21px}
-.a-shelf .a-patch.is-earned{border:3px solid var(--accent-2);background:var(--space)}
+.a-shelf .a-patch.is-earned{border:3px solid var(--accent-2);background:var(--color-space)}
 .a-why p{margin:0;font-size:13.5px;color:var(--mute);line-height:1.45}
 .a-why .a-credit{font-size:11.5px;color:var(--dim)}
 @media (max-width:980px){.a-cat{grid-template-columns:1fr}.a-side{position:static}}
