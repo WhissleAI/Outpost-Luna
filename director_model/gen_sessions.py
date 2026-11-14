@@ -87,7 +87,7 @@ def mission_script(rng: random.Random, split: str, seed: int) -> dict:
         elif r < 0.57:
             items.append(P.risky(rng))
             items.append(P.yes_no(rng, rng.random() < 0.6))
-        elif r < 0.63:
+        elif r < 0.66:
             items.append(P.explorer(rng, split))
         elif r < 0.69:
             items.append(P.chatter(rng))
@@ -103,7 +103,7 @@ def mission_script(rng: random.Random, split: str, seed: int) -> dict:
         elif r < 0.89:
             items.append({"op": "emotion", "label": rng.choice(["frustrated", "confused", "excited", "happy", "bored",
                                                                  "scared"])})
-        elif r < 0.93 and golds:
+        elif r < 0.95 and golds:
             items.append(dict(rng.choice(golds)))
         elif r < 0.95:
             items.append({"text": rng.choice(["give it more", "turn it down", "how much is left of it"]),
@@ -303,13 +303,9 @@ def gold_turn(ann, clean: dict, mode: str) -> dict:
     elif act == "command" and cmd is None:
         cmd = clean.get("cmd")
     if act in ("command", "confirm_yes", "confirm_no") and cmd:
-        sp = FX.spans(ann["clean"], cmd)
-        marked = [i for k in sp for i, v in enumerate(sp[k]) if v]
-        if ann["al"] is not None:
-            lost = any(i not in ann["al"] for i in marked)
-        else:
-            hw = list(ann["heard"])
-            lost = any(ann["clean"][i] not in hw for i in marked)
+        # slot loss: a slot the clean words carried (load / number / task) can no longer be read from the heard words
+        sc, sh = FX.spans(ann["clean"], cmd), FX.spans(list(ann["heard"]), cmd)
+        lost = any(any(sc[k]) and not any(sh[k]) for k in sc)
         if lost:
             act, cmd, src = "ask_clarify", None, src + "+slotloss"
     return {"act": act, "cmd": cmd, "attr": it.get("attr") or g.get("attr"), "src": src}
@@ -476,8 +472,9 @@ async def main():
             ss.append(await make(sc, 950_000 + k, noise, True, True, name, "test"))
         save(out, name, ss)
 
+    eg = json.loads((HERE / "data" / "ear_gold.json").read_text())["items"]
     ear = [{"text": r["ref"], "heard": r["hyp"], "cat": "ear_real", "root": "ear:" + r["id"], "ear_cond": r["cond"],
-            "noisy_audio": r["noisy"]}
+            "noisy_audio": r["noisy"], **({"gold": eg[r["id"]], "attr": eg[r["id"]].get("attr")} if r["id"] in eg else {})}
            for r in ear_rows("test", [EAR / "results_arc_final.json", EAR / "results_arc_ctx_bias.json"])]
     await set_sessions("test_ear", ear, lambda x: "mission", noise=(em, False, 0.0))
     await set_sessions("test_h40", P.heldout40(), lambda x: "mission")

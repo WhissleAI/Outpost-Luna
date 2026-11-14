@@ -1,0 +1,21 @@
+train 1000 sessions 96371 steps; val 120
+params 28,857 (s)
+/Users/karan/Desktop/work/whissle/live_assist/wt-moon-director-model/director_model/train.py:256: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:837.)
+  print(f"step {step} train {float(loss):.3f} val {tot:.3f} act {v['act']:.3f} cmd {v['cmd_type']:.3f} "
+step 200 train 2.277 val 2.260 act 0.112 cmd 0.159 attr 1.072 when 0.325 barge 0.223 (7 s)
+step 400 train 1.094 val 1.632 act 0.074 cmd 0.124 attr 0.523 when 0.300 barge 0.171 (15 s)
+step 600 train 0.886 val 1.351 act 0.064 cmd 0.128 attr 0.335 when 0.285 barge 0.081 (24 s)
+step 800 train 0.760 val 1.155 act 0.054 cmd 0.110 attr 0.303 when 0.282 barge 0.075 (33 s)
+step 1000 train 0.688 val 1.044 act 0.054 cmd 0.128 attr 0.255 when 0.289 barge 0.068 (41 s)
+step 1200 train 0.551 val 1.016 act 0.052 cmd 0.151 attr 0.248 when 0.272 barge 0.061 (50 s)
+step 1400 train 0.507 val 0.960 act 0.045 cmd 0.119 attr 0.267 when 0.278 barge 0.055 (59 s)
+step 1600 train 0.489 val 0.878 act 0.042 cmd 0.113 attr 0.210 when 0.270 barge 0.068 (66 s)
+step 1800 train 0.418 val 0.907 act 0.041 cmd 0.127 attr 0.229 when 0.263 barge 0.045 (74 s)
+step 2000 train 0.361 val 0.869 act 0.043 cmd 0.128 attr 0.194 when 0.254 barge 0.041 (82 s)
+step 2200 train 0.433 val 0.900 act 0.042 cmd 0.133 attr 0.175 when 0.263 barge 0.047 (90 s)
+step 2400 train 0.461 val 0.896 act 0.040 cmd 0.124 attr 0.217 when 0.261 barge 0.040 (98 s)
+step 2600 train 0.547 val 0.861 act 0.039 cmd 0.123 attr 0.181 when 0.258 barge 0.043 (106 s)
+step 2800 train 0.332 val 0.857 act 0.039 cmd 0.122 attr 0.180 when 0.258 barge 0.039 (114 s)
+step 3000 train 0.283 val 0.858 act 0.039 cmd 0.123 attr 0.178 when 0.258 barge 0.038 (122 s)
+saved runs/r1_s best step 2800

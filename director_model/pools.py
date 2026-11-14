@@ -111,6 +111,56 @@ def tpl_split(tid: str) -> str:
     return "val" if h(tid) % 100 < 8 else "train"
 
 
+def _al(to, kind, v=None, frm=None):
+    return {"type": "allocate", "to": to, "amount": {"kind": kind, "value": v}, "from": frm}
+
+
+def _dp(task):
+    return {"type": "dispatch", "vehicle": "rover", "task": task, "target": None}
+
+
+# The INTENT of every template (gold, independent of the rules). Conventions follow the rules where they are right
+# ("more" = +10, "a little" = +5, "turn on" = +10); where the rules are wrong the gold says what the kid meant
+# (A20 "lower the shields to 20 percent" = set 20, A23, D6, R4).
+TPL_GOLD = {
+    "A1": lambda L, L2, n: _al(L, "percent", n), "A2": lambda L, L2, n: _al(L, "percent", n),
+    "A3": lambda L, L2, n: _al(L, "percent", n), "A4": lambda L, L2, n: _al(L, "delta", n),
+    "A5": lambda L, L2, n: _al(L, "delta", n), "A6": lambda L, L2, n: _al(L, "delta", n),
+    "A7": lambda L, L2, n: _al(L, "delta", n, L2), "A8": lambda L, L2, n: _al(L, "delta", 10),
+    "A9": lambda L, L2, n: _al(L, "delta", 10), "A10": lambda L, L2, n: _al(L, "delta", -10),
+    "A11": lambda L, L2, n: _al(L, "delta", -10), "A12": lambda L, L2, n: _al(L, "little", 5),
+    "A13": lambda L, L2, n: _al(L, "all", 100), "A14": lambda L, L2, n: _al(L, "half", 50),
+    "A15": lambda L, L2, n: _al(L, "none", 0), "A16": lambda L, L2, n: _al(L, "delta", 10),
+    "A17": lambda L, L2, n: _al(L, "delta", 10), "A18": lambda L, L2, n: _al(L, "delta", 10),
+    "A19": lambda L, L2, n: _al(L, "delta", 10), "A20": lambda L, L2, n: _al(L, "percent", n),
+    "A21": lambda L, L2, n: _al(L, "percent", n), "A22": lambda L, L2, n: _al(L, "delta", n),
+    "A23": lambda L, L2, n: _al(L, "delta", -10), "A24": lambda L, L2, n: _al(L, "delta", 10),
+    "A25": lambda L, L2, n: _al(L, "little", 5),
+    "D1": lambda *a: _dp("collect_ice"), "D2": lambda *a: _dp("collect_ice"), "D3": lambda *a: _dp("repair_array"),
+    "D4": lambda *a: _dp("explore"), "D5": lambda *a: _dp("return"), "D6": lambda *a: _dp("return"),
+    "D7": lambda *a: _dp("collect_ice"), "D8": lambda *a: _dp("return"), "D9": lambda *a: _dp("repair_array"),
+    "D10": lambda *a: _dp("explore"), "D11": lambda *a: _dp("collect_ice"), "D12": lambda *a: _dp("collect_ice"),
+    **{k: (lambda *a: {"type": "shelter", "on": True}) for k in ("S1", "S2", "S3", "S7")},
+    **{k: (lambda *a: {"type": "shelter", "on": False}) for k in ("S4", "S5", "S6")},
+    **{k: (lambda *a, w=w: {"type": "query", "what": w}) for k, w in
+       (("Q1", "power"), ("Q2", "oxygen"), ("Q3", "dose"), ("Q4", "storm"), ("Q5", "comms"), ("Q6", "all"),
+        ("Q7", "all"), ("Q8", "power"), ("Q9", "dose"), ("Q10", "oxygen"))},
+    **{k: (lambda *a: {"type": "call_houston", "text": ""}) for k in ("H1", "H2", "H3", "H4", "H5")},
+    **{k: (lambda *a: {"type": "end_shift"}) for k in ("E1", "E2", "E3", "E4", "E5")},
+    "R1": lambda *a: {"type": "rule", "when": "storm", "then": {"type": "shelter", "on": True}},
+    "R2": lambda *a: {"type": "rule", "when": "dark", "then": _al("heaters", "delta", 10)},
+    "R3": lambda *a: {"type": "rule", "when": "low_power", "then": _al("science", "none", 0)},
+    "R4": lambda *a: {"type": "rule", "when": "dose_high", "then": {"type": "shelter", "on": True}},
+    "R5": lambda *a: {"type": "rule", "when": "low_power", "then": _al("rover", "delta", -10)},
+    "R6": lambda *a: {"type": "rule", "when": "dark", "then": _al("heaters", "delta", 10)},
+    **{k: (lambda *a: _al("heaters", "delta", 10)) for k in ("K1", "K2", "K3")},
+}
+RISKY_GOLD = {"all power to {L}": lambda L: _al(L, "all", 100), "turn off the heaters": lambda L: _al("heaters", "none", 0),
+              "turn off life support": lambda L: _al("life_support", "none", 0),
+              "give everything to {L}": lambda L: _al(L, "all", 100),
+              "put {L} at 95 percent": lambda L: _al(L, "percent", 95)}
+
+
 def mission_cmd(rng: random.Random, split: str) -> dict:
     """One templated mission command whose template belongs to `split` (train/val/test)."""
     pool = [t for t in list(ALLOC) + list(OTHER) if tpl_split(t) == split] or list(ALLOC)
@@ -118,11 +168,16 @@ def mission_cmd(rng: random.Random, split: str) -> dict:
     s = ALLOC.get(tid) or OTHER[tid]
     ld, lw = _load(rng)
     _, lw2 = _load(rng, exclude=ld)
-    nw, _ = _num(rng)
+    ld2 = next(k for k, v in LOAD_SYN.items() if lw2 in v)
+    nw, n = _num(rng)
     text = s.format(L=lw, L2=lw2, N=nw, V=rng.choice(VEH), P=rng.choice(PLACES_X))
+    if tid[0] == "N":
+        gold = {"act": "ask_clarify"}
+    else:
+        gold = {"act": "command", "command": TPL_GOLD[tid](ld, ld2, n)}
     cat = {"A": "cmd_alloc", "D": "cmd_dispatch", "S": "cmd_shelter", "Q": "cmd_query", "H": "cmd_houston",
            "E": "cmd_end_shift", "R": "cmd_rule", "N": "cmd_negation", "K": "cmd_cold"}[tid[0]]
-    return {"text": text, "cat": cat, "root": f"tpl:{tid}"}
+    return {"text": text, "cat": cat, "root": f"tpl:{tid}", "gold": gold}
 
 
 def compound(rng, split) -> dict:
@@ -132,18 +187,21 @@ def compound(rng, split) -> dict:
     while b["cat"] in ("cmd_rule", "cmd_negation", "cmd_end_shift", "cmd_query", "cmd_houston"):
         b = mission_cmd(rng, split)
     j = rng.choice([" and ", " and then ", " then ", ", "])
-    return {"text": a["text"] + j + b["text"], "cat": "cmd_compound", "root": a["root"] + "+" + b["root"]}
+    return {"text": a["text"] + j + b["text"], "cat": "cmd_compound", "root": a["root"] + "+" + b["root"],
+            "gold": a["gold"]}
 
 
 def risky(rng) -> dict:
     s = rng.choice(RISKY)
     ld, lw = _load(rng)
-    return {"text": s.format(L=lw), "cat": "cmd_risky", "root": "risky:" + s}
+    return {"text": s.format(L=lw), "cat": "cmd_risky", "root": "risky:" + s,
+            "gold": {"act": "command", "command": RISKY_GOLD[s](ld)}}
 
 
 def yes_no(rng, yes: bool) -> dict:
     t = rng.choice(YES if yes else NO)
-    return {"text": t, "cat": "confirm_yes" if yes else "confirm_no", "root": "yn:" + t}
+    return {"text": t, "cat": "confirm_yes" if yes else "confirm_no", "root": "yn:" + t,
+            "gold": {"act": "confirm_yes" if yes else "confirm_no"}}
 
 
 _BANK = None
@@ -233,6 +291,8 @@ def chatter(rng) -> dict:
 
 def gold_items() -> list[dict]:
     g = json.loads((DATA / "gold.json").read_text())["items"]
+    if (DATA / "gold_more.json").exists():
+        g = g + json.loads((DATA / "gold_more.json").read_text())["items"]
     out = []
     for x in g:
         out.append({"text": x["text"], "cat": "gold_fix", "root": "gold:" + x["text"], "mode": x.get("mode", "mission"),
@@ -242,7 +302,8 @@ def gold_items() -> list[dict]:
 
 def heldout40() -> list[dict]:
     d = json.loads((BACKEND / "tests" / "eval" / "commands_heldout.json").read_text())["commands"]
-    return [{"text": x["text"], "cat": "heldout40", "root": "h40:" + x["text"], "expect": x["expect"]} for x in d]
+    return [{"text": x["text"], "cat": "heldout40", "root": "h40:" + x["text"], "expect": x["expect"],
+             "gold": {"act": "command"}} for x in d]
 
 
 def kidq80() -> list[dict]:
@@ -252,7 +313,7 @@ def kidq80() -> list[dict]:
         ok = x["ok"]
         attr = None if ok == ["unknown"] or not ok else ok[0].split("|")[-1]
         out.append({"text": x["q"].lower().rstrip("?"), "cat": "kidq80", "root": "q80:" + x["q"], "attr": attr,
-                    "ok": ok})
+                    "ok": ok, "gold": {"act": "answer"}})
     return out
 
 

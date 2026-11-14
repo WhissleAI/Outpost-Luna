@@ -49,7 +49,7 @@ def main():
     arrs, deq = {}, {}
     for k, v in sd.items():
         v = v.detach().float().numpy()
-        if k in qn and v.ndim == 2:
+        if k in qn and v.ndim == 2 and k != "inp.weight":   # the input projection stays f32: standardized features amplify its rounding
             s = np.abs(v).max(1) / 127.0 + 1e-12
             q = np.clip(np.round(v / s[:, None]), -127, 127).astype(np.int8)
             arrs[k + "::q"], arrs[k + "::s"] = q, s.astype(np.float32)

@@ -1,0 +1,116 @@
+{
+ "_note": "Hand gold for the held-out (even) ear-eval references; c22 roger that / c24 copy CAPCOM keep the teacher label.",
+ "items": {
+  "c02": {
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "greenhouse",
+    "amount": {
+     "kind": "delta",
+     "value": 20
+    },
+    "from": null
+   }
+  },
+  "c04": {
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "shields",
+    "amount": {
+     "kind": "percent",
+     "value": 60
+    },
+    "from": null
+   }
+  },
+  "c06": {
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "science",
+    "amount": {
+     "kind": "delta",
+     "value": 15
+    },
+    "from": null
+   }
+  },
+  "c08": {
+   "act": "command",
+   "command": {
+    "type": "end_shift"
+   }
+  },
+  "c10": {
+   "act": "command",
+   "command": {
+    "type": "allocate",
+    "to": "comms",
+    "amount": {
+     "kind": "percent",
+     "value": 10
+    },
+    "from": null
+   }
+  },
+  "c12": {
+   "act": "answer",
+   "attr": "what"
+  },
+  "c14": {
+   "act": "answer",
+   "attr": "size"
+  },
+  "c16": {
+   "act": "answer"
+  },
+  "c18": {
+   "act": "answer",
+   "attr": "why"
+  },
+  "c20": {
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   }
+  },
+  "c26": {
+   "act": "answer",
+   "attr": "where"
+  },
+  "c28": {
+   "act": "answer",
+   "attr": "who"
+  },
+  "c30": {
+   "act": "answer"
+  },
+  "c32": {
+   "act": "answer",
+   "attr": "what"
+  },
+  "c34": {
+   "act": "answer"
+  },
+  "c36": {
+   "act": "ask_clarify"
+  },
+  "c38": {
+   "act": "command",
+   "command": {
+    "type": "dispatch",
+    "vehicle": "rover",
+    "task": "explore",
+    "target": null
+   }
+  },
+  "c40": {
+   "act": "answer"
+  }
+ }
+}

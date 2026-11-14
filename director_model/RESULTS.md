@@ -44,3 +44,45 @@ ref "send the rover 2 kilometers north" is labeled guard (Arc Tagger PII false p
 Next: gold commands for every template (intent, not teacher); slot-loss = the slot can no longer be read from the
 heard words; h40/q80 gold acts from their sets; an Academy grader feature; rules slots copied when the model agrees
 on type and main slot (numbers from the deterministic parse); more data.
+
+## Round 2 — 2026-11-13 ~18:00 (gold intents, Academy grader feature, slot copy)
+
+Changes: every templated command now carries a **gold Command** (the kid's intent, not the rules teacher; where the
+rules are wrong the gold says so: "lower the shields to 20 percent" = set 20, "take some power away from the lab",
+"drive the buggy home", "if the radiation gets too high" = dose_high); risky/yes/no, h40 (`command`), q80 (`answer`)
+and 18 of the 20 held-out ear references (`data/ear_gold.json`) have gold acts, so R is no longer 1.0 by construction
+there. Slot loss = a slot the clean words carried can't be read from the heard words (was: any aligned word changed).
+New features `lesson_graded` / `lesson_pass` (the Academy grader on the words). Decoding copies the deterministic
+parse's slots when it agrees with the model on type and main slot. Export keeps `inp.weight` f32 (int8 vs float
+0.106 -> 0.037; 137 KB). Evaluator: the guarded `on` policy is scored as shipped (guard wins, CONF 0.7, model may only
+ignore / ask / command) and `on_fill` (the model may only act where the rules found no command).
+
+Data `ds_r2`: train 2,000 sessions (~193 K steps), val 150, same held-out recipe. m 77.5 K params, 4,000 steps
+(best 3,200).
+
+| set | turns | act acc M / R | cmd exact M / R | wrong/50 cmd M / R | attr M / R | card+attr M / R | eot premature, mean gain | barge P/R M ; R |
+|---|---|---|---|---|---|---|---|---|
+| test_clean | 1366 | 0.966 / 0.878 | 0.772 / 0.884 | 9.5 / 6.6 | 0.928 / 0.754 | – | 0.003, 182 ms | 0.98/0.99 ; 0.85/0.17 |
+| test_asr | 1365 | 0.939 / 0.819 | 0.677 / 0.818 | 14.3 / 12.1 | 0.906 / 0.731 | – | 0.006, 180 ms | 0.98/0.99 ; 0.88/0.16 |
+| test_ear (real) | 200 | 0.655 / 0.720 | 0.586 / 0.828 | 45.7 / 17.2 | 0.53 / 1.0 | – | 0, 206 ms | – |
+| test_h40 | 40 | 0.80 / 0.45 | – | 18.8 / 3.8 | – | – | – | – |
+| test_h40_asr | 40 | 0.65 / 0.375 | – | 15.0 / 3.8 | – | – | – | – |
+| test_q80 | 80 | 0.913 / 0.863 | – | – | 0.771 / 0.757 | 0.425 / 0.488 | – | – |
+| test_q80_asr | 80 | 0.925 / 0.813 | – | – | 0.786 / 0.743 | 0.388 / 0.475 | – | – |
+| test_gold | 19 | 0.842 / 0.737 | 0.27 / 0.45 | 22.7 / 13.6 | 0.67 / 1.0 | – | – | – |
+
+h40 (`expect`): M 17 ok / 15 wrong / 8 none; R 15 / 3 / 22. Size s (~30 K) is as good on acts (test_clean act 0.980,
+test_asr 0.950) and slightly worse on test_ear.
+
+Guarded `on` policy vs rules (act acc, wrong/50): test_clean 0.961 vs 0.878, 9.3 vs 6.6; test_asr 0.909 vs 0.819,
+15.2 vs 12.1; test_ear 0.635 vs 0.720, 33.6 vs 17.2; h40 16 ok / 8 wrong vs 15 / 3. `on_fill`: test_clean 6.8 vs
+6.6, test_asr 12.8 vs 12.1, test_ear 29.3 vs 17.2, h40 19 ok / 6 wrong. **Not ready for `on`: more wrong actions
+than the rules on every set.**
+
+Top errors: real ear decodes of QUESTIONS in mission mode fire commands ("how deep is vav love crater" -> command,
+p 1.0: "crater" is an explore cue and mission-mode questions are rare in training); metaphor commands in test_gold
+(snowmen, droopy tomatoes) still -> answer/ignore; "message earth that we are safe" -> confirm_no under ASR; card
+attribute on q80 ~ rules (0.77 vs 0.76) but card+attr below rules (the rules' brain picks attr and card jointly).
+
+Next: more mission-mode explorer questions; 59 more train-only gold paraphrases (`data/gold_more.json`: metaphors per
+load, rover home/explore, science/who/size); 3,000 train sessions.

@@ -38,6 +38,7 @@ from train import FX  # noqa: E402
 
 SETS = ["test_clean", "test_asr", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr", "test_gold"]
 EXEC = ("command", "confirm_yes", "confirm_no")
+CONF = 0.7          # runtime.CONF
 
 
 def load_meta(p: Path) -> list[list[dict]]:
@@ -90,7 +91,7 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
     ss = TR.load_split(data_dir / f"{name}.npz")
     metas = load_meta(data_dir / f"{name}.meta.jsonl")
     pr = TR.predict(model, ss)
-    R = {"model": Counter(), "rules": Counter()}
+    R = {"model": Counter(), "rules": Counter(), "on": Counter(), "on_fill": Counter()}
     cats = defaultdict(lambda: Counter())
     errs = Counter()
     examples = defaultdict(list)
@@ -137,7 +138,19 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
             rc = m.get("rules_cmd") if ra == "command" else None
             gc = m.get("gold_cmd")
             cat = m.get("cat") or "?"
-            for who, a, c in (("model", ma, mc), ("rules", ra, rc)):
+            # the shipped `on` policy (runtime.Shadow.decide_turn): the rules' guard wins; the model may override only
+            # with ignore / ask_clarify / command (a valid Command) at p >= CONF; anything else -> the rules.
+            # `on_fill`: the model may only act where the rules found no command (never re-slot a rules command).
+            pm = float(np.max(p["act"][t]))
+            oa, oc = ra, rc
+            fa, fc = ra, rc
+            if ra != "guard" and pm >= CONF and ma in ("ignore", "ask_clarify", "command") and \
+                    (ma != "command" or mc is not None):
+                if not (ma == "command" and m["mode"] != "mission"):
+                    oa, oc = ma, mc
+                    if ra not in EXEC:
+                        fa, fc = ma, mc
+            for who, a, c in (("model", ma, mc), ("rules", ra, rc), ("on", oa, oc), ("on_fill", fa, fc)):
                 Rw = R[who]
                 Rw["turns"] += 1
                 Rw["act_ok"] += int(a == g)
@@ -146,8 +159,11 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
                 if g == "command" and gc:
                     Rw["cmds"] += 1
                     Rw["cmd_exact"] += int(a == "command" and FX.same_command(c, gc))
-                if a in EXEC and not (a == g and (a != "command" or (gc and FX.same_command(c, gc)))):
-                    Rw["wrong_actions"] += 1
+                if m.get("expect"):
+                    wrong = a in EXEC and not (a == "command" and h40_ok(c, m["expect"]))
+                else:
+                    wrong = a in EXEC and not (a == g and (a != "command" or (gc and FX.same_command(c, gc))))
+                Rw["wrong_actions"] += int(wrong)
                 if m.get("expect"):
                     Rw["h40_n"] += 1
                     Rw["h40_ok"] += int(a == "command" and h40_ok(c, m["expect"]))
@@ -174,26 +190,30 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float) -> dict | No
                     if len(examples[(cat, g, a)]) < 3:
                         examples[(cat, g, a)].append(m["heard"])
     out = {"set": name, "sessions": len(ss), "steps": int(sum(len(s["feats"]) for s in ss))}
-    for who in ("model", "rules"):
+    for who in ("model", "rules", "on", "on_fill"):
         Rw = R[who]
         n = Rw["turns"] or 1
         out[who] = {
             "turns": Rw["turns"], "act_acc": round(Rw["act_ok"] / n, 4),
             "cmd_exact": round(Rw["cmd_exact"] / Rw["cmds"], 4) if Rw["cmds"] else None, "cmds": Rw["cmds"],
-            "wrong_per_50": round(50 * Rw["wrong_actions"] / Rw["cmds"], 2) if Rw["cmds"] else None,
+            "wrong_per_50": round(50 * Rw["wrong_actions"] / max(Rw["cmds"], Rw["h40_n"]), 2)
+            if (Rw["cmds"] or Rw["h40_n"]) else None,
             "wrong_actions": Rw["wrong_actions"],
             "attr_acc": round(Rw["attr_ok"] / Rw["attr_n"], 4) if Rw["attr_n"] else None,
             "card_attr_acc": round(Rw["ca_ok"] / Rw["ca_n"], 4) if Rw["ca_n"] else None,
             "h40": f"{Rw['h40_ok']}/{Rw['h40_n']} ok, {Rw['h40_wrong']} wrong, {Rw['h40_none']} none" if Rw["h40_n"] else None,
         }
+        if who not in barge:
+            continue
         b = barge[who]
         out[who]["barge_p"] = round(b["tp"] / (b["tp"] + b["fp"]), 3) if b["tp"] + b["fp"] else None
         out[who]["barge_r"] = round(b["tp"] / (b["tp"] + b["fn"]), 3) if b["tp"] + b["fn"] else None
     out["eot"] = {"turns": eot["turns"], "fire_rate": round(eot["fired"] / max(1, eot["turns"]), 3),
                   "premature": round(eot["premature"] / max(1, eot["turns"]), 3),
-                  "gain_ms_p50": round(1000 * float(np.median(eot["gain"])), 0) if eot["gain"] else None}
+                  "gain_ms_p50": round(1000 * float(np.median(eot["gain"])), 0) if eot["gain"] else None,
+                  "gain_ms_mean": round(1000 * float(np.mean(eot["gain"])), 0) if eot["gain"] else None}
     out["shadow_agreement"] = round(shadow["agree"] / shadow["n"], 4) if shadow["n"] else None
-    out["by_cat"] = {c: {who: f"{cats[(c, who)]['ok']}/{cats[(c, who)]['n']}" for who in ("model", "rules")}
+    out["by_cat"] = {c: {who: f"{cats[(c, who)]['ok']}/{cats[(c, who)]['n']}" for who in ("model", "rules", "on")}
                      for c in sorted({c for c, _ in cats})}
     out["top_errors"] = [{"cat": k[0], "gold": k[1], "model": k[2], "n": v, "ex": examples[k]}
                          for k, v in errs.most_common(12)]
@@ -220,7 +240,7 @@ def main():
     out = Path(a.out or f"{a.run}/eval.json")
     out.write_text(json.dumps(res, indent=1))
     print(f"| set | turns | act acc M / R | cmd exact M / R | wrong/50 M / R | attr M / R | card+attr M / R | "
-          f"eot premature, gain p50 | barge P/R M ; R | shadow agree |")
+          f"eot premature, mean gain | barge P/R M ; R | shadow agree |")
     print("|---|---|---|---|---|---|---|---|---|---|")
     for name, r in res["sets"].items():
         M, Rr = r["model"], r["rules"]
@@ -228,8 +248,14 @@ def main():
         def f(k):
             return f"{M[k]} / {Rr[k]}"
         print(f"| {name} | {M['turns']} | {f('act_acc')} | {f('cmd_exact')} | {f('wrong_per_50')} | {f('attr_acc')} | "
-              f"{f('card_attr_acc')} | {r['eot']['premature']}, {r['eot']['gain_ms_p50']} ms | "
+              f"{f('card_attr_acc')} | {r['eot']['premature']}, {r['eot']['gain_ms_mean']} ms | "
               f"{M['barge_p']}/{M['barge_r']} ; {Rr['barge_p']}/{Rr['barge_r']} | {r['shadow_agreement']} |")
+    print("\n`on` policy (guarded) vs rules: act acc, cmd exact, wrong/50 | on_fill")
+    for name, r in res["sets"].items():
+        O, F_, Rr = r["on"], r["on_fill"], r["rules"]
+        print(f"| {name} | {O['act_acc']} / {Rr['act_acc']} | {O['cmd_exact']} / {Rr['cmd_exact']} | "
+              f"{O['wrong_per_50']} / {Rr['wrong_per_50']} | fill: {F_['act_acc']}, {F_['cmd_exact']}, {F_['wrong_per_50']} |"
+              + (f" h40 on {O['h40']} ; fill {F_['h40']}" if O.get('h40') else ""))
     for name in ("test_h40", "test_h40_asr"):
         if name in res["sets"]:
             print(name, "model:", res["sets"][name]["model"]["h40"], "| rules:", res["sets"][name]["rules"]["h40"])

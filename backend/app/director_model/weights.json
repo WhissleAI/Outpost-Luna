@@ -8,8 +8,8 @@
   "emb": 8
  },
  "size_name": "m",
- "params": 77541,
- "F": 165,
+ "params": 77637,
+ "F": 167,
  "heads": [
   [
    "act",
@@ -82,13 +82,13 @@
   "w_task"
  ],
  "thr": {
-  "when": 0.9400000000000004
+  "when": 0.9800000000000004
  },
- "run": "r1_m",
- "data": "ds_r1",
+ "run": "r2_m",
+ "data": "ds_r2",
  "trained": {
-  "n_train_sessions": 1000,
-  "n_train_steps": 96371,
-  "best_step": 2200
+  "n_train_sessions": 2000,
+  "n_train_steps": 192589,
+  "best_step": 3200
  }
 }

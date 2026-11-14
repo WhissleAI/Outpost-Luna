@@ -172,7 +172,7 @@ def record(sess, ev: dict, read: dict | None = None) -> dict:
         "now": now, "n_pending": len(sess.pending), "n_held": sum(len(x[1]) for x in sess.held),
         "last_place": bool(b.get("last_place")), "referent": bool(b.get("referent")),
         "state": _state_view(st) if st else None, "pending_confirm": pend,
-        "lesson": {"active": bool(lesson), "step": lesson.get("step") or 0, "status": lesson.get("status"),
+        "lesson": {"active": bool(lesson), "id": lesson.get("lesson_id"), "step": lesson.get("step") or 0, "status": lesson.get("status"),
                    "accept": lesson.get("accept") or _accept_of(lesson)} if lesson else None,
         "new_events": new_ev,
         "read": _read_view(read),
@@ -239,6 +239,7 @@ FEATS: list[str] = (
     + [f"sim_{e}" for e in SIM_EVENTS]                              # new sim events this poll
     # lesson state
     + ["lesson_on", "lesson_step"] + [f"acc_{a}" for a in ACCEPT] + [f"ls_{s}" for s in LESSON_ST]
+    + ["lesson_graded", "lesson_pass"]       # the Academy grader on these words (the step's accept rule)
 )
 F = len(FEATS)
 _IDX = {k: i for i, k in enumerate(FEATS)}
@@ -382,7 +383,24 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
             s(f"acc_{ls['accept']}", 1)
         if ls.get("status") in LESSON_ST:
             s(f"ls_{ls['status']}", 1)
+        g = lesson_grade(ls, rec.get("text") or "")
+        if g is not None:
+            s("lesson_graded", 1); s("lesson_pass", g)
     return x
+
+
+def lesson_grade(ls: dict, text: str) -> bool | None:
+    if not text.strip() or not ls.get("id"):
+        return None
+    try:
+        from ..academy import content, grade
+        L = content.lesson(ls["id"])
+        st = L["steps"][int(ls.get("step") or 0)] if L else None
+        if not st or st["accept"]["type"] == "tap":
+            return None
+        return bool(grade.grade(st, {"text": text})[0])
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def word_feats(w: str, playing: set) -> list[float]:
@@ -529,7 +547,7 @@ def _num_from(ws: list[str]) -> float | None:
     return float(m.group(0)) if m else None
 
 
-def decode_command(o: dict, ws: list[str]) -> dict | None:
+def decode_command(o: dict, ws: list[str], copy_rules: bool = True) -> dict | None:
     """Model outputs at one step (probabilities, numpy) + the heard words -> a Command (validated by nlu.valid)."""
     ty = CMD_TYPES[int(np.argmax(o["cmd_type"]))]
     if ty == "none":
@@ -581,7 +599,31 @@ def decode_command(o: dict, ws: list[str]) -> dict | None:
         c = {"type": "rule", "when": TRIGGERS[int(np.argmax(o["rule_when"]))], "then": then}
     else:
         c = body(ty)
-    return nlu.valid(c) if c else None
+    c = nlu.valid(c) if c else None
+    if c is not None and copy_rules:
+        # The model decides the act, the type and the main slot; when the deterministic parse of the same words reads
+        # the same type and main slot, its exact slots (numbers, amount kind) are used.
+        for rc in [v for v in map(nlu.valid, nlu.parse(" ".join(ws)).get("commands") or []) if v]:
+            if main_slot(rc) == main_slot(c):
+                return rc
+    return c
+
+
+def main_slot(c: dict | None):
+    if not c:
+        return None
+    t = c.get("type")
+    if t == "allocate":
+        return (t, c.get("to"))
+    if t == "dispatch":
+        return (t, c.get("task"))
+    if t == "query":
+        return (t, c.get("what"))
+    if t == "shelter":
+        return (t, c.get("on"))
+    if t == "rule":
+        return (t, c.get("when"), main_slot(c.get("then")))
+    return (t,)
 
 
 def same_command(a: dict | None, b: dict | None) -> bool:
