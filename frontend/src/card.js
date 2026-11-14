@@ -33,7 +33,9 @@ export function createCard() {
     // The Director often answers a hardware question with the artifact's own story; don't print it twice.
     const flat = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const dupStory = e.artifact && e.artifact.story && flat(e.say) && flat(e.artifact.story).startsWith(flat(e.say).slice(0, 60));
-    sayEl.textContent = e.say || ""; sayEl.hidden = !e.say || !!dupStory;
+    // [qa] nor the status line the hardware row already shows ("Bottom half still sitting at Tranquility Base")
+    const dupStatus = e.artifact && e.artifact.status && flat(e.say) === flat(e.artifact.status);
+    sayEl.textContent = e.say || ""; sayEl.hidden = !e.say || !!dupStory || !!dupStatus;
     renderArtifact(e);
     note.textContent = e.note || ""; note.hidden = !e.note;
     lessons.textContent = "";
@@ -45,9 +47,12 @@ export function createCard() {
     }
     lessons.hidden = !lessons.childElementCount;
     claims.textContent = "";
-    (e.claims || []).filter(c => c && c.text && (c.status === "verified" || c.status === "impression")).forEach(c => {
-      const imp = c.status !== "verified";
-      const s = el("span", "chip-claim" + (imp ? " is-impression" : ""), imp ? "crew impression" : (c.source || "checked"));
+    // [qa] a verified claim whose sources the hardware list already links adds nothing; a long "A; B; C" source shows A.
+    const listed = new Set(((e.artifact && e.artifact.sources) || []).map(x => flat(x && x.title)));
+    (e.claims || []).filter(c => c && c.text && (c.status === "verified" || c.status === "impression"))
+      .filter(c => c.status !== "verified" || !c.source || !String(c.source).split(";").every(x => listed.has(flat(x)))).forEach(c => {
+      const imp = c.status !== "verified", src = String(c.source || "").split(";")[0].trim();
+      const s = el("span", "chip-claim" + (imp ? " is-impression" : ""), imp ? "crew impression" : (src || "checked"));
       s.title = c.text; claims.append(s);
     });
     claims.hidden = !claims.childElementCount;

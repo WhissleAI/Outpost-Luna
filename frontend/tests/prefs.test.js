@@ -25,3 +25,8 @@ test("prefs: the barge-in thresholds follow the voice filter (relaxed / normal /
   assert.equal(shouldBargeIn(turn), true);
   delete globalThis.window;
 });
+
+// [qa] QA-17: every per-cadet store is in the profile (camera & gestures, the mission tier), so switching cadets swaps them.
+test("prefs: a cadet profile also carries the gesture settings and the mission tier", () => {
+  for (const k of ["outpost-gestures", "outpost-tier"]) assert.ok(PROFILE_KEYS.includes(k), k);
+});

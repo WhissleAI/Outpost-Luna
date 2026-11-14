@@ -220,8 +220,8 @@ def severity(ev: dict) -> int:
 def event_name(ev: dict) -> str:
     speed = f", CME {ev['cme_speed_kms']} km/s" if ev.get("cme_speed_kms") else ""
     if ev.get("sep"):
-        return f"Real solar particle event, {ev['date']} ({ev['class']} storm at Earth{speed})"
-    return f"Real solar storm, {ev['date']} ({ev['class']} at Earth, few particles at the Moon{speed})"
+        return f"Real solar particle event, {ev['date']} (storm at Earth{speed})"
+    return f"Real solar storm, {ev['date']} (storm at Earth, few particles at the Moon{speed})"   # [qa] no G-scale
 
 
 def rekey_on_sep(events: list[dict], sep: list[dict]) -> list[dict]:
@@ -236,7 +236,7 @@ def rekey_on_sep(events: list[dict], sep: list[dict]) -> list[dict]:
             ev.update(id=s["sepID"], link=s["link"], date=s["eventTime"][:10], type="solar particle event",
                       source={"title": f"DONKI {s['sepID']} (NASA CCMC)", "url": s["link"]})
             ev["name"] = f"Real solar particle storm, {ev['date']}" + (
-                f" (huge auroras on Earth, {ev['class']})" if ev["class"] in ("G4", "G5") else "")
+                " (huge auroras on Earth)" if ev["class"] in ("G4", "G5") else "")   # [qa] no G-scale in the name
         if ev["id"] not in best or ev["severity"] > best[ev["id"]]["severity"]:
             best[ev["id"]] = ev
     return list(best.values())

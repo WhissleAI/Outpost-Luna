@@ -8,7 +8,7 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
 import { nowObjective, nowSpoken, debriefStory } from "./objective.js";
 import { createTour, tourDone } from "./tour.js";
 
@@ -110,7 +110,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       panel.hidden = false; panel.innerHTML = `<p class="m-wait">Loading mission sites…</p>`;
       client = await createMissionClient(); sites = client.sites || [];
     }
-    if (state && !state.over) { showHud(); return; }
+    if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
     briefing();
   }
   // In the cabin the ask dock and the caption line live in the panel's bottom comm row (never over the window or a
@@ -170,7 +170,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { if (tour.active) tour.end(false); screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { if (tour.active) tour.end(false); screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
@@ -179,6 +179,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
    *  that scientists study. The backend can send `nasa_candidate`; until then this table (docs/ACCURACY_AUDIT.md). */
   const NASA_CANDIDATE = new Set(["malapert_massif", "de_gerlache_rim"]);
   const siteTag = s => s.status_label || ((s.status ? s.status === "nasa_2024" : (s.nasa_candidate ?? NASA_CANDIDATE.has(s.id))) ? "NASA candidate region" : "Studied by scientists");
+  // [qa] the day counts come from JPL Horizons (the sim's window), not from the site's first source (the IAU Gazetteer)
+  const HORIZONS = { title: "JPL Horizons", url: "https://ssd.jpl.nasa.gov/horizons/" };
+  const iceLabel = s => s.ice ? "ice nearby" : s.rover_to_ice_h ? `ice a ${s.rover_to_ice_h}-hour drive away` : "no ice nearby";
   const sunPct = s => Math.round(s.window_sunlit_pct ?? s.sunlight_pct);
   /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
   const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
@@ -202,14 +205,14 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice</span></div>
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
-          aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${s.ice ? "ice nearby" : "no ice nearby"}">
-          <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)</small>` : ""}</b>
+          aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${iceLabel(s)}">
+          <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>${s.power_from ? `Power by cable from the rim <span class="mx-pretend" title="${esc(PRETEND_TECH_TIP)}">${esc(PRETEND_TECH)}</span>` : `About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)`}</small>` : ""}</b>
           <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
           <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
-          <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
+          <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : s.rover_to_ice_h ? `${s.rover_to_ice_h}<small> h away</small>` : "No"}</span>
         </button>`).join("")}
       </div>
-      <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${src0 ? srcLink(src0, src0.title.split(":")[0].split(",")[0]) : ""}</p>
+      <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${srcLink(HORIZONS, "JPL Horizons")}</p>
       <button type="button" class="mx-go" id="mStart">Take command</button>`;
     const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
     panel.querySelectorAll(".mx-site").forEach(b => {
@@ -225,7 +228,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
   /** Row and pin: hovering either lights both. */
   function hot(id, on) {
-    document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
+    document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-dot[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
   }
   /** Pins on the pole + their labels in a column beside the cluster, joined by leader lines (four of the five sites are
    *  within 2° of the pole, so labels next to the dots would overlap at any distance the camera allows). */
@@ -271,11 +274,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     globe.setViewport(window.__pickBand || .3); globe.flyTo(-88.6, -40, window.__pickDist || 1.45);
   }
 
+  let starting = false;
   async function start(seed) {
+    // [qa] QA-54: one mission per press (a double click, or a click while saying "take command"); a failed start says so
+    if (starting) return; starting = true;
+    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = true; });
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
     const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
-    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); prev = null; logHistory = []; reminded.clear(); seen.clear();
+    let st = null;
+    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
+    starting = false;
+    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
+    if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
+    if (screen === "off") return;   // left Mission while it started
+    state = st; prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
@@ -562,10 +575,28 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   // ---------- debrief ----------
   /** One headline, a shift-by-shift chart, up to three takeaways with sources, then Fly again / Another site. */
+  let debriefKey = "";
   async function showDebrief() {
     if (!state) return;
+    // [qa] one debrief per outcome: telemetry and the order reply can both report "over"; don't re-fetch and re-speak
+    const key = `${state.id}:${state.over ? "over" : state.day}`;
+    if (screen === "debrief" && key === debriefKey && !fakeDebrief) return;
+    debriefKey = key;
     screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin(); card.hide();
-    let d; if (fakeDebrief) { d = fakeDebrief; fakeDebrief = null; } else try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
+    // [qa] a loading line while it's fetched (no blank screen), and a real error state with Retry (no "Grade ?")
+    debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
+    debriefEl.innerHTML = `<p class="mx-empty" role="status">Loading your debrief…</p>`;
+    let d; if (fakeDebrief) { d = fakeDebrief; fakeDebrief = null; } else try { d = await client.debrief(state.id); } catch (e) { d = null; }
+    if (screen !== "debrief" || !state) return;   // [qa] left while it loaded
+    if (!d) {
+      debriefKey = "";
+      debriefEl.innerHTML = `<header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span></header>
+        <div class="mx-db-top"><div><h2 class="mx-title">Debrief not ready</h2><p class="mx-sub">Couldn't load it. Try again.</p></div></div>
+        <div class="mx-foot"><button type="button" class="mx-go" id="mDbRetry">Try again</button><button type="button" class="mx-btn" id="mNewSite">${esc(DEBRIEF.another)}</button></div>`;
+      $("mDbRetry").onclick = () => showDebrief();
+      $("mNewSite").onclick = () => { if (unsub) unsub(); unsub = null; state = null; briefing(); };
+      return;
+    }
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");
     const paused = outcome === "in_progress" || !outcome;
     const won = outcome === "survived" || outcome === "success";
@@ -573,11 +604,15 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : firstSentence(d.why);
     (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
-    const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).map(l => ({ text: takeaway(l.text), source: l.source }));
+    // [qa] at most two data lessons, so a Flight School callback or the "Next time" tip still gets a slot of the three
+    const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).slice(0, 2).map(l => ({ text: takeaway(l.text), source: l.source }));
     [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
     const story = debriefStory(d, state);   // the mission as a story: three beats, what to try next, one clear choice
     if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
-    const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
+    // [qa] "DONKI 2017-09-04T23:52:00-SEP-001 (NASA CCMC)" → "NASA DONKI, 2017-09-04"; a colon in a time is not a break
+    const srcLabel = s => { const t = String((s && s.title) || "").trim(); if (!t) return "Source";
+      const dk = t.match(/^DONKI\s+(\d{4}-\d{2}-\d{2})/); if (dk) return `NASA DONKI, ${dk[1]}`;
+      return t.split(/[,(]|:\s/)[0].trim() || "Source"; };
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}
@@ -595,14 +630,15 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       <div class="mx-foot">
         <button type="button" class="mx-go" id="mAgain">${esc(paused ? DEBRIEF.resume : DEBRIEF.choiceAgain)}</button>
         <button type="button" class="mx-link" id="mNewSite">${esc(DEBRIEF.choiceNew)}</button>
-        ${(d.data_used || []).length ? `<details class="mx-data"><summary>NASA data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
+        ${(d.data_used || []).length ? `<details class="mx-data"><summary>Data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
       </div>`;
     $("mAgain").onclick = () => { if (paused && state && !state.over) { showHud(); return; } if (unsub) unsub(); state = null; start(); };
     $("mNewSite").onclick = () => { if (unsub) unsub(); state = null; briefing(); };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
-    const line = cs => paused ? `${head}.` : `${head}. ${DEBRIEF.grade(cs, d.grade, Math.round(d.score || 0))}`;
+    // [qa] no "Nice flying" on a failed mission
+    const line = cs => paused ? `${head}.` : `${head}. ${(won ? DEBRIEF.grade : DEBRIEF.gradeOver || DEBRIEF.grade)(cs, d.grade, Math.round(d.score || 0))}`;
     // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer). A typed name is never spoken.
     // three short lines: the result, the story's turning point, then what to try and the one offer
     radio("capcom", line(callSign.shown()));
@@ -627,21 +663,26 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const grid = [0, 50, 100].map(v => `<line class="c-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="c-ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`).join("");
     const step = (W - L - R) / (n - 1);
     // storm shifts: a band per shift, clipped to the plot (never past the first or last point)
-    const storms = tl.map((d, i) => { if (!((d.events || []).includes("solar_storm") || (d.events || []).includes("dose_alert"))) return "";
-      const x0 = Math.max(L, x(i) - step / 2), x1 = Math.min(W - R, x(i) + step / 2);
+    // [qa] every shift a storm was on (storm_active), not only the one it started in; a point is a shift's END, so the
+    // band runs from the previous point to this one
+    const storms = tl.map((d, i) => { if (!(d.storm_active || (d.events || []).includes("solar_storm") || (d.events || []).includes("dose_alert"))) return "";
+      const x0 = Math.max(L, i ? x(i - 1) : x(i) - step / 2), x1 = Math.min(W - R, x(i));
       return `<rect class="c-storm" x="${x0.toFixed(1)}" y="${T}" width="${(x1 - x0).toFixed(1)}" height="${H - T - B}"/>`; }).join("");
-    const days = []; tl.forEach((d, i) => { if (i === 0 || Math.floor((d.t_h - 1) / 24) !== Math.floor((tl[i - 1].t_h - 1) / 24)) days.push(`<text class="c-ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">Day ${Math.floor((d.t_h - 1) / 24) + 1}</text>`); });
+    const dayOf = th => Math.max(1, Math.floor((th - 1) / 24) + 1);   // [qa] never "Day 0" (the sample timeline starts at t=0)
+    const days = []; tl.forEach((d, i) => { if (i === 0 || dayOf(d.t_h) !== dayOf(tl[i - 1].t_h)) days.push(`<text class="c-ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">Day ${dayOf(d.t_h)}</text>`); });
     const lines = series.map(([k, , f]) => `<polyline class="c-${k}" points="${tl.map((d, i) => x(i).toFixed(1) + "," + y(f(d)).toFixed(1)).join(" ")}"/>`).join("");
     const last = tl[n - 1];
     const ly = series.map(([k, nm, f]) => ({ k, n: nm, y: y(f(last)) + 4 })).sort((a, b) => a.y - b.y);
     ly.forEach((l, i) => { if (i && l.y - ly[i - 1].y < 14) l.y = ly[i - 1].y + 14; });
+    // [qa] labels pushed past the bottom (all three lines ending near 0) move back up instead of vanishing
+    for (let i = ly.length - 1, max = H - B; i >= 0; i--) { if (ly[i].y > max) ly[i].y = max; max = ly[i].y - 14; }
     const labels = ly.map(l => `<text class="c-lab c-${l.k}-t" x="${W - R + 8}" y="${l.y.toFixed(1)}">${l.n}</text>`).join("");
     window.__mChart = { tl, x, series, lim, L, W, R };
     const hasStorm = storms.length > 0;
     return `<figure class="mx-chart"><figcaption class="sr-only">Power, life support and radiation dose, shift by shift${hasStorm ? ". Shaded shifts had a solar storm or a dose alert" : ""}.</figcaption>
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Power, life support and dose, shift by shift">${storms}${grid}${days.join("")}${lines}${labels}
       <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="0" x2="0" visibility="hidden"/></svg>
-      ${hasStorm ? `<p class="mx-key"><i></i>Storm or high dose</p>` : ""}<div class="c-tip" id="cTip" hidden></div></figure>`;
+      <p class="mx-key">${hasStorm ? `<i></i>Storm or high dose · ` : ""}Dose is a % of the ${lim} mSv limit</p><div class="c-tip" id="cTip" hidden></div></figure>`;
   }
   function wireChart() {
     const svg = debriefEl.querySelector(".mx-chart svg"), tip = $("cTip"), cross = $("cCross"), c = window.__mChart; if (!svg || !c) return;
@@ -651,7 +692,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       const best = c.tl[bi];
       cross.setAttribute("x1", c.x(bi)); cross.setAttribute("x2", c.x(bi)); cross.setAttribute("visibility", "visible");
       tip.hidden = false; tip.style.left = (c.x(bi) / c.W * 100) + "%";
-      tip.innerHTML = `<b>Day ${Math.floor((best.t_h - 1) / 24) + 1} · shift ${Math.floor(((best.t_h - 1) % 24) / 6) + 1}</b>` + c.series.map(([k, n, f]) => `<span><i class="c-${k}"></i>${n} ${k === "dose" ? (+best.dose_msv).toFixed(1) + " mSv" : Math.round(f(best)) + "%"}</span>`).join("");
+      tip.innerHTML = `<b>Day ${Math.max(1, Math.floor((best.t_h - 1) / 24) + 1)} · shift ${Math.max(1, Math.floor(((best.t_h - 1) % 24) / 6) + 1)}</b>` + c.series.map(([k, n, f]) => `<span><i class="c-${k}"></i>${n} ${k === "dose" ? (+best.dose_msv).toFixed(1) + " mSv" : Math.round(f(best)) + "%"}</span>`).join("");
     });
     svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }

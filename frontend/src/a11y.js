@@ -2,6 +2,7 @@
 // captions/transcripts, keyboard + ARIA helpers (docs/ACCESSIBILITY.md).
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
 import { TOUR } from "./story.js";
+import { icon } from "./assets/icons.js";
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -165,9 +166,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`,
       cadets: PA ? `<ul class="set-cadets">${PA.listProfiles().map(p => `<li class="${p.active ? "is-active" : ""}">
           <span class="set-av" aria-hidden="true">${escH((p.callsign || "?").slice(0, 1).toUpperCase())}</span>
-          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of 8 patches`}</small></span>
+          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of 7 patches`}</small></span>
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
-        <button type="button" class="btn" data-prof-add>Add a cadet</button>
+        ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
@@ -275,6 +276,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const c = floor && floor.crewEl; if (c) { c.playbackRate = S.speed; c.preservesPitch = true; }
   }
   apply();
+  // [qa] the OS "reduce motion" switch can change while the app is open
+  try { matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", apply); } catch (e) { /* old engine */ }
   // Crew audio: the same speed as a playbackRate (it's a recording, so it can't be re-rendered).
   if (floor) floor.on("playback", e => { if (e.kind === "crew" && e.state === "start" && floor.crewEl) { floor.crewEl.playbackRate = S.speed; floor.crewEl.preservesPitch = true; } });
 
@@ -322,7 +325,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function visualAlert(text) {
     if (S.visualAlerts) {
       flash.classList.remove("is-on"); void flash.offsetWidth; flash.classList.add("is-on");
-      vbanner.innerHTML = `<span class="a11y-vb-icon" aria-hidden="true">⚠</span><span>${escH(text.slice(0, 140))}</span>`;
+      vbanner.innerHTML = `<span class="a11y-vb-icon" aria-hidden="true">${icon("warning", { size: 18 })}</span><span>${escH(text.slice(0, 140))}</span>`;
       vbanner.hidden = false; clearTimeout(visualAlert.t); visualAlert.t = setTimeout(() => { vbanner.hidden = true; }, 5000);
     }
     if (S.vibrate && navigator.vibrate) { try { navigator.vibrate([180, 80, 180]); } catch (e) { /* not allowed */ } }
@@ -331,7 +334,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
 
   // ---- screen state on request ----
   function where() {
-    const mode = document.body.dataset.mode, M = { academy: "the Academy", mission: "Mission control", cadet: "the Moon library" };
+    const mode = document.body.dataset.mode, M = { academy: "Flight School", mission: "Mission", cadet: "the Library" };   // [qa] the tab names
     const bits = [`You are in ${M[mode] || "the app"}.`];
     const ap = document.getElementById("aPanel");
     if (ap && !ap.hidden) {
@@ -391,7 +394,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const k = e.key.toLowerCase();
     if (k === "a" || e.code === "KeyA") { e.preventDefault(); open(); }
     else if (k === "w" || e.code === "KeyW") { e.preventDefault(); const t = where(); describe(t, { quiet: true }); if (say) say(t, {}); }
-    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); open(true); const s = panel.querySelector("#a11yPlace"); if (s) { s.closest("details").open = true; s.focus(); } }
+    else if (k === "p" || e.code === "KeyP") { e.preventDefault(); section = "help"; open(true); /* [qa] the picker lives in Help */ const s = panel.querySelector("#a11yPlace"); if (s) { s.closest("details").open = true; s.focus(); } }
   });
   // Every icon-only control gets a name (title → aria-label), and focusable marks show focus (CSS :focus-visible).
   const nameControls = () => document.querySelectorAll("button:not([aria-label]), [role=button]:not([aria-label])").forEach(b => {

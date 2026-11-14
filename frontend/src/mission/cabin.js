@@ -147,7 +147,7 @@ export function createCabin(root, o = {}) {
   const glassEl = q(".cb-glass");
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
-  let c3 = null, qualityOff = () => {}, ownTv = null;
+  let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
   if (o.terrain && o.site) {
     const tvHost = document.createElement("div"); tvHost.className = "tv"; glassEl.prepend(tvHost);
     ownTv = createTerrainView(tvHost, { reduced: () => document.documentElement.dataset.motion === "reduce" });
@@ -174,7 +174,9 @@ export function createCabin(root, o = {}) {
       const html = document.documentElement, applyQ = () => c3 && c3.setQuality(html.dataset.graphics === "low" ? "low" : "high"); applyQ();
       const mo = new MutationObserver(applyQ); mo.observe(html, { attributes: true, attributeFilter: ["data-graphics"] }); qualityOff = () => mo.disconnect();
       backEl.onclick = () => c3.back();
-      root.addEventListener("keydown", e => { if (e.key === "Escape" && c3.panel) { e.preventDefault(); c3.back(); } });
+      // [qa] root (#mCabin) outlives this cabin: the listener is removed in dispose(), or every rebuilt cabin stays alive
+      const onEsc = e => { if (e.key === "Escape" && c3 && c3.panel) { e.preventDefault(); c3.back(); } };
+      root.addEventListener("keydown", onEsc); escOff = () => root.removeEventListener("keydown", onEsc);
       Object.entries(panelEls).forEach(([id, el]) => {
         el.classList.add("c3-panel"); el.dataset.label = (PANELS.find(p => p[0] === id) || [])[1] || "";
         // the displays: a click on DU1 opens the Power panel (DU1 + the power split); elsewhere it opens all three
@@ -420,7 +422,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { if (c3) c3.dispose(); qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
+    dispose() { escOff(); escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
     setWindows(w) { wins = w || null; if (st) paintInfo(st); },

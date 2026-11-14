@@ -298,4 +298,5 @@ export const DEBRIEF = {
   resume: "Back to the cabin",
   tryDefault: "Next time, watch the warning lights and act early.",
   tryNewSite: "Next, try a site with a long night, like Malapert.",
+  gradeOver: (cs, g, pts) => `Grade ${g}, ${pts} points. Let's learn from it, ${cs}.`,   // [qa] a failed mission isn't "nice flying"
 };
