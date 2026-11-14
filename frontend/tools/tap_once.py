@@ -78,7 +78,11 @@ def run(base):
         frame = pg.evaluate("window.__outpost.screenFrame()")
         check(frame.get("step_type") == "route", f"on the route step ({frame})")
         once(tap_place("orientale"), 0, "route step, first stop: the leg is drawn, nothing said")
-        once(tap_place("ohm"), 1, "route step, last stop: one line")
+        # the last stop: CAPCOM acknowledges ("Roger.") and the step's "after" crew clip tells it, never both telling it
+        lines = tap_place("ohm", settle=6000)
+        guide = [ln for ln in lines if ln["voice"] == "guide"]
+        check(len(guide) == 1 and len(guide[0]["text"].split()) <= 3 and len(lines) <= 2,
+              f"route step, last stop: one short CAPCOM ack (+ the crew clip), no paraphrase twice {lines}")
 
         pg.click("#libraryBtn")
         pg.wait_for_function("document.body.dataset.mode === 'cadet'", timeout=10000)

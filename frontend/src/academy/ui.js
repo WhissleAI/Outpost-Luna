@@ -368,7 +368,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       waitingNext = true; render(); showAnswerOnGlobe(reveal);
       // a crew clip marked "after" plays once the success line is said (it's the reward)
       const st = L.steps[i], c = st.clip || (i === 0 ? L.clip : null), at = { L, i };
-      Promise.resolve(r.say ? say(r.say, sayStyle(r)) : null).then(() => {
+      // QA-71 (the owner's double speech): the success line paraphrases the crew clip that follows it ("Roger. The far
+      // side gets sunlight too." then an astronaut saying just that), so one tap said the same thing twice in two
+      // voices. With an "after" clip CAPCOM only acknowledges ("Roger.") and the crew tell it; the full line is on the card.
+      const after = !!(c && c.when === "after" && !sa);
+      const ack = after ? (String(r.say || "").match(/^\s*([^.!?]{1,24}[.!?])/) || [])[1] : null;
+      const line = after ? (ack && ack.trim().split(/\s+/).length <= 3 ? ack.trim() : "") : r.say;
+      Promise.resolve(line ? say(line, sayStyle(r)) : null).then(() => {
         if (c && c.when === "after" && view === "lesson" && L === at.L && i === at.i && waitingNext) player.play({ clip_id: c.clip_id, t0: c.t0, t1: c.t1, speaker: c.who, places: [], jargon: [] });
       });
       return true;
