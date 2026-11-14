@@ -83,8 +83,12 @@ After: `after-empty-start.jpg`, `after-legend-clear.jpg`, `after-map-progress-be
 ### Lessons (every step type, wrong tries, help, mic, mode switches)
 
 These cover lesson 1 (intent, earth_view, predict, globe_side, intent), lesson 2 (vocab_match, choice, predict, route,
-choice) and lesson 3's choice step. The keywords, compare, terminator, command, tap and vocab_fill steps were checked by
-`playtest.py` (below) and by reading `render()`, since they share the same card.
+choice) and lesson 3's choice step. The keywords, compare, terminator, command, tap and vocab_fill steps share the same
+card and the same help, answer and Next code, and `tests/audit2.test.js` checks help for every course step.
+
+A second pass over lessons 3–6 was invalidated. Mid-run the page reset to a fresh cadet on lesson 1. The Vite log shows
+another worktree's browser requesting files from this server (:5311), so the reset came from outside this run. The comms
+step that looked wrong in that run was re-checked by hand: "I heard you" → "Roger. Copy means I heard you." and Next.
 
 | # | Screen | Action | Reacted? | Instruction updated? | Verdict | Fix |
 |---|---|---|---|---|---|---|
