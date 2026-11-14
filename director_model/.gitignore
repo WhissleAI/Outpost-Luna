@@ -1,5 +1,13 @@
 data/ds*/
-runs/
+runs/*
+!runs/*/
+runs/*/*
+!runs/*/report.md
+!runs/*/gate.json
 runs_*.log
 __pycache__/
 cache/
+# imported turn logs stay on the developer's machine (docs/DIRECTOR_LOOP.md, privacy): never in git
+data/real_turns.json
+data/review/
+turnlog/

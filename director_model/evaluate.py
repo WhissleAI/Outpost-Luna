@@ -53,6 +53,38 @@ def guard_of(m: dict) -> bool:
 
 SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr",
         "test_gold"]
+# round 6: today's real failure classes (gen_sessions.py cls_set; pools.CLASSES) and the imported real turns
+CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
+              "test_log"]
+
+
+class NumpyModel:
+    """The SHIPPED weights (backend/app/director_model/weights.*) stepped by the numpy runtime, one event at a time:
+    exactly what the app runs, so the before column of a round is the live Director, not a re-trained copy."""
+
+    def __init__(self, d: Path):
+        self.m = RT.Model(Path(d))
+        self.meta = self.m.meta
+
+
+def predict_any(model, ss):
+    if not isinstance(model, NumpyModel):
+        return TR.predict(model, ss)
+    m = model.m
+    res = []
+    for s in ss:
+        T = len(s["feats"])
+        r: dict = {}
+        st = None
+        for t in range(T):
+            o, st = m.step(st, s["feats"][t], s["toks"][t], s["wtok"][t], s["wfeat"][t])
+            for k, v in o.items():
+                v = np.asarray(v, np.float32)
+                if k == "act" and v.shape[0] < len(FX.ACTS):      # an older model: no `navigate` act
+                    v = np.concatenate([v, np.zeros(len(FX.ACTS) - v.shape[0], np.float32)])
+                r.setdefault(k, np.zeros((T,) + v.shape, np.float32))[t] = v
+        res.append(r)
+    return res
 EXEC = ("command", "confirm_yes", "confirm_no")
 CONF = 0.7          # runtime.CONF
 
@@ -85,7 +117,7 @@ def h40_ok(c: dict | None, expect: dict) -> bool:
 
 def tune_when(model, data_dir: Path, target=0.05) -> float:
     ss = TR.load_split(data_dir / "val.npz")
-    pr = TR.predict(model, ss)
+    pr = predict_any(model, ss)
     best = 0.99
     for thr in np.arange(0.5, 0.99, 0.02):
         pre, n = 0, 0
@@ -105,7 +137,7 @@ def turn_rows(model, data_dir: Path, name: str):
     """Per turn end with a gold act: (meta, model outputs at that step)."""
     ss = TR.load_split(data_dir / f"{name}.npz")
     metas = load_meta(data_dir / f"{name}.meta.jsonl")
-    pr = TR.predict(model, ss)
+    pr = predict_any(model, ss)
     out = []
     for p, ms in zip(pr, metas):
         for t, m in enumerate(ms):
@@ -118,6 +150,11 @@ def on_outcome(m: dict, o: dict, thr: dict):
     """The shipped `on` policy at one turn, exactly as runtime.decide_turn + session run it -> (act, Command)."""
     ra = m["rules_act"]
     rc = m.get("rules_cmd") if ra == "command" else None
+    route = m.get("route")
+    if route in ("ignore", "navigate"):      # the router decided; the model is never asked (session._routed)
+        return ra, rc
+    if route == "answer":                    # a lesson step's answer: the model may only silence it
+        return ("ignore", None) if RT.answer_policy(o, thr) else (ra, rc)
     words = FX.words_of(m["heard"])
     ov = RT.policy(o, words, rules_cmds(m["heard"]), guard_of(m), thr, mission=m["mode"] == "mission")
     if ov and ov["act"] == "command" and m["mode"] != "mission":
@@ -166,6 +203,9 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
                     if best is None or key > best[0]:
                         best = (key, thr, w, ok, extra)
     _, thr, w, ok, extra = best
+    thr_ans = fit_answer_ignore(rows)
+    for c in cands:
+        c[0]["answer_ignore"] = thr_ans
     # robustness (val is small): the most conservative thresholds within 0.5 % act accuracy of the best, with no more
     # wrong actions and still zero extra -> fewer turns ride on a single val example
     slack = 0.005 * len(rows)
@@ -178,12 +218,32 @@ def fit_policy(model, data_dir: Path, sets=("val",)) -> dict:
                            "turns": len(rows)}}
 
 
+def fit_answer_ignore(rows) -> float | None:
+    """The lesson-chatter threshold alone (only `answer`-routed turns depend on it): zero turns the rules got right
+    that `on` gets wrong on val, then the most turns right; None (off) unless it gains."""
+    ans = [(m, o) for m, o in rows if m.get("route") == "answer"]
+    if not ans:
+        return None
+    base = sum(m["rules_act"] == m["gold_act"] for m, _ in ans)
+    best = (base, None)
+    for v in (0.7, 0.8, 0.9, 0.95, 0.98, 0.99):
+        ok = extra = 0
+        for m, o in ans:
+            a, _ = on_outcome(m, o, {"answer_ignore": v})
+            ok += a == m["gold_act"]
+            extra += a != m["gold_act"] and m["rules_act"] == m["gold_act"]
+        if extra == 0 and ok > best[0]:
+            best = (ok, v)
+    print(f"answer_ignore fit: {best[1]} -> {best[0]}/{len(ans)} vs rules {base}", flush=True)
+    return best[1]
+
+
 def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | None = None) -> dict | None:
     if not (data_dir / f"{name}.npz").exists():
         return None
     ss = TR.load_split(data_dir / f"{name}.npz")
     metas = load_meta(data_dir / f"{name}.meta.jsonl")
-    pr = TR.predict(model, ss)
+    pr = predict_any(model, ss)
     pol = pol or RT.DEFAULT_POLICY
     R = {"model": Counter(), "rules": Counter(), "on": Counter(), "on_fill": Counter()}
     cats = defaultdict(lambda: Counter())
@@ -247,6 +307,13 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
                     Rw["cmd_exact"] += int(a == "command" and FX.same_command(c, gc))
                 wrong = is_wrong(m, a, c)
                 Rw["wrong_actions"] += int(wrong)
+                if g == "guard" or a == "guard":
+                    Rw["guard_n"] += int(g == "guard")
+                    Rw["guard_ok"] += int(a == g)
+                if m.get("route") == "answer" and g != "ignore" and a == "ignore":
+                    Rw["answers_dropped"] += 1         # a real lesson answer silenced
+                if m.get("route") == "answer" and g == "ignore" and a in ("answer", "nudge"):
+                    Rw["chatter_graded"] += 1          # room chatter graded as the step's answer (a miss)
                 if who in ("on", "rules") and wrong and len(examples[("WRONG_" + who, g, a)]) < 6:
                     examples[("WRONG_" + who, g, a)].append(f"{m['heard']} -> {a} {json.dumps(c)}")
                 if m.get("expect"):
@@ -283,7 +350,8 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
             "cmd_exact": round(Rw["cmd_exact"] / Rw["cmds"], 4) if Rw["cmds"] else None, "cmds": Rw["cmds"],
             "wrong_per_50": round(50 * Rw["wrong_actions"] / max(Rw["cmds"], Rw["h40_n"]), 2)
             if (Rw["cmds"] or Rw["h40_n"]) else None,
-            "wrong_actions": Rw["wrong_actions"],
+            "wrong_actions": Rw["wrong_actions"], "guard": f"{Rw['guard_ok']}/{Rw['guard_n']}",
+            "answers_dropped": Rw["answers_dropped"], "chatter_graded": Rw["chatter_graded"],
             "attr_acc": round(Rw["attr_ok"] / Rw["attr_n"], 4) if Rw["attr_n"] else None,
             "card_attr_acc": round(Rw["ca_ok"] / Rw["ca_n"], 4) if Rw["ca_n"] else None,
             "h40": f"{Rw['h40_ok']}/{Rw['h40_n']} ok, {Rw['h40_wrong']} wrong, {Rw['h40_none']} none" if Rw["h40_n"] else None,
@@ -309,22 +377,34 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
-    ap.add_argument("--run", required=True)
+    ap.add_argument("--run", default="", help="a trained run (torch): thresholds are fit on val")
+    ap.add_argument("--weights", default="", help="exported weights dir (numpy runtime, e.g. the shipped "
+                    "backend/app/director_model): its own policy, as it runs in the app")
+    ap.add_argument("--refit", action="store_true", help="with --weights: refit the policy thresholds on this val "
+                    "(a policy-only update of the shipped weights)")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
-    cfg = json.load(open(f"{a.run}/train.json"))
-    model = TR.make(cfg["F"], cfg["size_name"])
-    model.load_state_dict(torch.load(f"{a.run}/model.pt", map_location="cpu"))
-    model.eval()
     d = Path(a.data)
-    thr = tune_when(model, d)
-    pol = fit_policy(model, d)
-    res = {"run": a.run, "params": cfg["params"], "size": cfg["size_name"], "thr_when": thr, "policy": pol, "sets": {}}
-    for name in SETS:
+    if a.weights:
+        model = NumpyModel(Path(a.weights))
+        meta = model.meta
+        thr = float((meta.get("thr") or {}).get("when", 0.9))
+        pol = fit_policy(model, d) if a.refit else {**RT.DEFAULT_POLICY, **(meta.get("policy") or {})}
+        res = {"weights": a.weights, "params": meta.get("params"), "size": meta.get("size_name"), "F": meta.get("F"),
+               "thr_when": thr, "policy": pol, "sets": {}}
+    else:
+        cfg = json.load(open(f"{a.run}/train.json"))
+        model = TR.make(cfg["F"], cfg["size_name"])
+        model.load_state_dict(torch.load(f"{a.run}/model.pt", map_location="cpu"))
+        model.eval()
+        thr = tune_when(model, d)
+        pol = fit_policy(model, d)
+        res = {"run": a.run, "params": cfg["params"], "size": cfg["size_name"], "thr_when": thr, "policy": pol, "sets": {}}
+    for name in SETS + CLASS_SETS:
         r = evaluate_set(model, d, name, thr, pol)
         if r:
             res["sets"][name] = r
-    out = Path(a.out or f"{a.run}/eval.json")
+    out = Path(a.out or f"{a.run or a.weights}/eval.json")
     out.write_text(json.dumps(res, indent=1))
     print(f"| set | turns | act acc M / R | cmd exact M / R | wrong/50 M / R | attr M / R | card+attr M / R | "
           f"eot premature, mean gain | barge P/R M ; R | shadow agree |")

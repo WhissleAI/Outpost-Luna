@@ -25,7 +25,8 @@ import numpy as np
 from ..mission import nlu
 
 # ---------------------------------------------------------------------------------------------------- label spaces
-ACTS = ["wait", "answer", "command", "confirm_yes", "confirm_no", "ask_clarify", "guard", "alert", "nudge", "ignore"]
+ACTS = ["wait", "answer", "command", "confirm_yes", "confirm_no", "ask_clarify", "guard", "alert", "nudge", "ignore",
+        "navigate"]          # navigate (round 6): a router navigation intent (appended: older weights have 10 acts)
 CMD_TYPES = ["none", "allocate", "dispatch", "shelter_on", "shelter_off", "query", "call_houston", "end_shift", "rule",
              "confirm", "cancel"]
 AMOUNTS = ["na", "percent", "delta_up", "delta_down", "little_up", "little_down", "all", "half", "none"]
@@ -51,6 +52,13 @@ MODES = ["mission", "academy", "cadet"]
 FLOOR = ["none", "kid", "guide", "crew"]
 ACCEPT = ["intent", "command", "tap", "keywords", "choice"]
 LESSON_ST = ["brief", "task", "passed", "retry", "done"]
+# Hands-free (round 6, appended after the round-5 features so older weights read the prefix): the client's screen frame,
+# the router's decision, the spoken-line timing (docs/HANDSFREE.md, turn_router.py).
+SCREENS = ["map", "callsign", "lesson", "lesson_done", "ride", "patch", "brief", "cabin", "debrief", "library"]
+STEP_TYPES = ["intent", "command", "tap", "keywords", "choice", "predict", "globe_side", "terminator", "compare", "route",
+              "earth_view", "vocab"]
+ROUTES = ["ignore", "navigate", "answer", "order", "question"]
+ROUTE_WHY = ["echo", "filler", "speaking", "not_directed", "too_short", "chatter"]
 K, W = 8, 16                       # hashed newest K words (bag); last W words for the span pointer heads
 WF = 6                             # per-word features (step_tokens)
 
@@ -182,7 +190,39 @@ def record(sess, ev: dict, read: dict | None = None) -> dict:
                    "accept": lesson.get("accept") or _accept_of(lesson)} if lesson else None,
         "new_events": new_ev,
         "read": _read_view(read),
+        **_handsfree(sess, ev, text, now),
     }
+
+
+def _handsfree(sess, ev: dict, text: str, now: float) -> dict:
+    """Round 6: the client's screen frame, the router's decision at a routed turn end (ev["route"]), and the timing
+    of our own lines (turn_router.Spoken). Sessions without a frame (the older generator scripts) use screen_name()."""
+    scr = dict(getattr(sess, "screen", None) or {})
+    try:
+        screen = sess.screen_name()
+    except Exception:  # noqa: BLE001
+        screen = scr.get("screen")
+    sp = getattr(sess, "spoken", None)
+    on_air = speaking = None
+    gap = None
+    recent: list[str] = []
+    if sp is not None:
+        with _suppress():
+            on_air, speaking = bool(sp.on_air(now)), bool(sp.speaking(now))
+            ends = [ln["end"] for ln in sp.lines if ln.get("id") and ln.get("end") is not None]
+            gap = (now - max(ends)) if ends and not on_air else None
+            recent = sp.recent()
+    return {"frame": {"screen": screen, "step_type": scr.get("step_type"), "offer": scr.get("offer"),
+                      "options": list(scr.get("step_options") or [])},
+            "route": ev.get("route"), "on_air": on_air, "speaking": speaking, "line_gap": gap, "recent": recent[-4:]}
+
+
+class _suppress:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return True
 
 
 def _accept_of(lesson: dict) -> str | None:
@@ -246,8 +286,14 @@ FEATS: list[str] = (
     # lesson state
     + ["lesson_on", "lesson_step"] + [f"acc_{a}" for a in ACCEPT] + [f"ls_{s}" for s in LESSON_ST]
     + ["lesson_graded", "lesson_pass"]       # the Academy grader on these words (the step's accept rule)
+    # ---- round 6 (hands-free): appended; a model trained before reads only the first meta["F"] features ----
+    + [f"scr_{x}" for x in SCREENS] + [f"st_{x}" for x in STEP_TYPES] + ["offer_on", "n_options", "opt_named"]
+    + [f"rt_{x}" for x in ROUTES] + [f"rw_{x}" for x in ROUTE_WHY]
+    + ["nav_any", "nav_offer", "nav_panel", "nav_a11y", "nav_mode", "on_air", "speaking", "line_gap", "echo_recent",
+       "lx_chatter", "lx_filler"]
 )
 F = len(FEATS)
+F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -345,7 +391,9 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
     s("n_changed", min(n - k, 6) / 6)
     for key, v in lexical(ws, rec.get("playing_text") or "").items():
         s(key, v)
-    nv = nlu_view(ws)
+    # a turn the router already took as navigation never reaches the mission NLU, not even as evidence ("open the comm
+    # panel" once turned the radio off; tests/test_router_panels.py)
+    nv = nlu_view(ws) if (rec.get("route") or {}).get("outcome") != "navigate" else nlu_view([])
     s("nlu_n", min(nv["n"], 3) / 3)
     s("nlu_clarify", nv["clarify"])
     s("nlu_conf", nv["conf"])
@@ -395,7 +443,59 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
         g = lesson_grade(ls, rec.get("text") or "")
         if g is not None:
             s("lesson_graded", 1); s("lesson_pass", g)
+    _handsfree_feats(rec, ws, s)
     return x
+
+
+def _step_kind(t: str | None) -> str | None:
+    if not t:
+        return None
+    return "vocab" if t.startswith("vocab_") else t if t in STEP_TYPES else None
+
+
+CHATTER_W = {"oh", "it", "it s", "its", "okay", "ok", "alright", "all", "right", "yeah", "yep", "uh", "um", "so", "and",
+             "wait", "hmm", "mm", "like", "well", "the", "a", "is", "that", "this", "s", "huh", "what", "now", "hey"}
+
+
+def _handsfree_feats(rec: dict, ws: list[str], s):
+    fr = rec.get("frame")
+    if fr is None:          # a record from before round 6
+        return
+    if fr.get("screen") in SCREENS:
+        s(f"scr_{fr['screen']}", 1)
+    sk = _step_kind(fr.get("step_type"))
+    if sk:
+        s(f"st_{sk}", 1)
+    s("offer_on", bool(fr.get("offer")))
+    opts = fr.get("options") or []
+    s("n_options", min(len(opts), 4) / 4)
+    t = " ".join(ws)
+    if t and opts:
+        s("opt_named", any(norm(o) and re.search(rf"\b{re.escape(norm(o))}\b", t) for o in opts))
+    rt = rec.get("route") or {}
+    if rt.get("outcome") in ROUTES:
+        s(f"rt_{rt['outcome']}", 1)
+    if rt.get("reason") in ROUTE_WHY:
+        s(f"rw_{rt['reason']}", 1)
+    if ws:
+        from .. import turn_router as R
+        ctx = R.Ctx(screen=fr.get("screen") or "map", step_type=fr.get("step_type"), offer=fr.get("offer"),
+                    step_options=opts)
+        nav = R.nav_intent(t, ctx)
+        if nav:
+            s("nav_any", 1)
+            s("nav_offer", R.answers_offer(nav, ctx) or nav[0] == "decline_offer")
+            s("nav_panel", nav[0].startswith("panel_"))
+            s("nav_a11y", nav[0] == "a11y")
+            s("nav_mode", nav[0] in ("go_mission", "academy", "library", "map", "take_command", "start"))
+        s("lx_filler", R.is_filler(t))
+        s("lx_chatter", len(ws) <= 3 and all(w in CHATTER_W for w in ws))
+        rc = [set(words_of(x)) for x in rec.get("recent") or [] if x]
+        if rc:
+            s("echo_recent", max(sum(w in r for w in ws) / len(ws) for r in rc))
+    s("on_air", bool(rec.get("on_air")))
+    s("speaking", bool(rec.get("speaking")))
+    s("line_gap", _clip_log(rec.get("line_gap"), 30.0) if rec.get("line_gap") is not None else 1.0)
 
 
 def lesson_grade(ls: dict, text: str) -> bool | None:
@@ -531,6 +631,10 @@ def rules_act(r: dict | None) -> str:
         return "guard"
     if a == "none":
         return "ignore"
+    if a == "navigate":
+        return "navigate"
+    if a == "answer_step":       # a lesson step's answer (the client grades it)
+        return "answer"
     if a == "ask":
         return "ask_clarify"
     if a in ("command", "status", "houston"):

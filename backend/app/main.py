@@ -131,6 +131,20 @@ from .academy.routes import router as academy_router; app.include_router(academy
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 
+@app.get("/api/turnlog")
+def turnlog_stats():
+    """Settings -> "Help improve the voice guide": how much the opt-in turn log holds on this device (docs/DIRECTOR_LOOP.md)."""
+    from . import turnlog
+    return turnlog.STORE.stats()
+
+
+@app.delete("/api/turnlog")
+def turnlog_clear():
+    """Delete the turn log on this device (Settings: "Delete what's saved")."""
+    from . import turnlog
+    return {"deleted_files": turnlog.STORE.clear()}
+
+
 @app.get("/api/director/stats")
 def director_stats():
     """The learned Director (DIRECTOR_MODEL=off|shadow|on): mode, model, and shadow agreement with the rules."""

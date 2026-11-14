@@ -63,7 +63,7 @@ DM_REAL_PROCS ?= 6
 
 director-real-ear: ## Render (in memory, no audio on disk) the generator's kid turns with Steer TTS + decode them with the REAL Arc ear (cached; NEW_EAR=1 re-decodes)
 	@if [ "$(NEW_EAR)" = "1" ]; then rm -rf director_model/cache/real_ear/dec; fi
-	uv run --project backend python director_model/real_ear.py jobs --budget $(DM_REAL_BUDGET)
+	uv run --project backend python director_model/real_ear.py jobs --budget $(DM_REAL_BUDGET) $(DM_REAL_ARGS)
 	cd model_server && EAR_PARTIAL_EVERY_S=0.9 uv run python ../director_model/real_ear.py decode --procs $(DM_REAL_PROCS) --threads 2
 	uv run --project backend python director_model/real_ear.py stats
 
@@ -78,6 +78,35 @@ director-retrain: director-real-ear ## Rebuild the learned Director: real Arc de
 	python3 director_model/evaluate.py --data $(DM_DATA) --run $(DM_RUN)
 	python3 director_model/export.py --run $(DM_RUN) --data $(DM_DATA) --eval $(DM_RUN)/eval.json
 	cd backend && uv run pytest -q tests/test_director_model.py
+
+# ---- Director continuous improvement (docs/DIRECTOR_LOOP.md): after every playtest, or weekly ----
+LOG ?=
+DL_DATE := $(shell date +%Y-%m-%d)
+DL_RUN ?= director_model/runs/$(DL_DATE)
+DL_EAR ?= 1
+DL_GEN_ARGS ?= --train 2400 --val 200 --test 200 --hf-p 0.3 --cls-n 160
+
+director-import: ## Opt-in turn logs -> labelled training turns (data/real_turns.json) + a review file (LOG=folder or .jsonl)
+	@test -n "$(LOG)" || (echo "usage: make director-import LOG=path/to/turnlog" && exit 2)
+	python3 director_model/import_logs.py --log $(LOG)
+
+director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate vs shipped + rules -> gate -> export; report in director_model/runs/<date>
+	python3 director_model/loop.py preflight
+	@if [ -n "$(LOG)" ]; then python3 director_model/import_logs.py --log $(LOG); fi
+	@if [ "$(DL_EAR)" = "1" ]; then $(MAKE) director-real-ear DM_REAL_ARGS="--hf-p 0.3 --cls-n 160"; fi
+	python3 director_model/loop.py preflight
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
+	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
+	MODEL_SERVER_URL=http://127.0.0.1:$(DM_PORT) uv run --project backend python director_model/gen_sessions.py \
+	  --out $(DM_DATA) $(DL_GEN_ARGS); st=$$?; kill $$(cat /tmp/director-ms.pid); test $$st = 0
+	python3 director_model/loop.py preflight
+	mkdir -p $(DL_RUN)
+	python3 director_model/train.py --data $(DM_DATA) --out $(DL_RUN)/cand --size $(DM_SIZE)
+	python3 director_model/evaluate.py --data $(DM_DATA) --run $(DL_RUN)/cand --out $(DL_RUN)/eval_candidate.json
+	python3 director_model/evaluate.py --data $(DM_DATA) --weights backend/app/director_model --out $(DL_RUN)/eval_shipped.json
+	python3 director_model/loop.py gate --run $(DL_RUN) --data $(DM_DATA) --export; st=$$?; test $$st = 0 -o $$st = 3
+	cd backend && uv run pytest -q tests/test_director_model.py tests/test_director_loop.py
 
 # ---- Desktop app (docs/DESKTOP.md): one offline installer, Electron + embedded Python + every model ----
 desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
@@ -101,4 +130,4 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain
+.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

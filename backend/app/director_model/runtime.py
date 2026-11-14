@@ -81,7 +81,11 @@ class Model:
         self.heads = meta["heads"]
         self.thr = meta.get("thr", {})
         self.eps = float(np.finfo(np.float32).eps)
-        assert meta["F"] == FX.F, f"feature width {meta['F']} != {FX.F}: retrain/export the model for this features.py"
+        # Features are only ever APPENDED (round 6 added the hands-free block after F_R5): older weights read the
+        # prefix they were trained on. A model wider than features.py is stale code, not stale weights.
+        self.F = int(meta["F"])
+        assert self.F <= FX.F and self.F >= FX.F_R5, \
+            f"feature width {meta['F']} vs {FX.F}: retrain/export the model for this features.py"
 
     def lin(self, name, x):
         y = x @ self.p[name + ".weight"].T
@@ -134,6 +138,7 @@ class Model:
         e = self.emb(toks)
         m = (toks > 0).astype(np.float32)[:, None]
         bag = (e * m).sum(0) / max(1.0, float(m.sum()))
+        feats = feats[:self.F]
         x = self.lin("inp", np.concatenate([(feats - p["mu"]) / p["sd"], bag]))
         state = state or [(None, None)] * self.L
         new = []
@@ -277,7 +282,7 @@ class Shadow:
                 STATS["turns"] += 1
                 STATS["turn_agree"] += int(ra == ma)
                 rc = FX.rules_command(cur["r"])
-                if rc or ma == "command":
+                if (rc or ma == "command") and ra != "navigate":    # navigation never reaches the NLU
                     mc = FX.decode_command(cur["out"], FX.words_of(cur["rec"]["text"])) if ma == "command" else None
                     STATS["commands"] += 1
                     STATS["command_agree"] += int(bool(rc and mc and FX.same_command(rc, mc)) or (not rc and not mc))
@@ -287,6 +292,15 @@ class Shadow:
                               "decisions": [_slim(d) for d in cur["decisions"]]})
 
     # ---- `on` mode -------------------------------------------------------------------------------------------------
+    def decide_answer(self, out: dict | None) -> bool:
+        """A lesson step's answer (router outcome `answer`), `on` mode: True = the model is sure enough it is room
+        chatter / not an answer to silence it (answer_policy). Off unless the weights carry a fitted threshold."""
+        if mode() != "on" or not out:
+            return False
+        m = model()
+        thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        return answer_policy(out, thr)
+
     def decide_turn(self, out: dict | None, text: str, rules_guard: bool) -> dict | None:
         """At a turn end, `on` mode: the model's decision if it may override the rules, else None (rules decide).
         -> {"act": "ignore"|"ask_clarify"|"command", "command"?: Command}."""
@@ -301,7 +315,19 @@ class Shadow:
                       mission=bool(b.get("mission_id")) and b.get("mode") == "mission")
 
 
-DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None}
+DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None, "answer_ignore": None}
+
+
+def answer_policy(out: dict, thr: dict) -> bool:
+    """Router said `answer` (a lesson step is waiting): the model may only SILENCE it, never answer or navigate in its
+    place, and only when p(ignore) >= thr["answer_ignore"] (fit on val by evaluate.fit_policy to add no misses of real
+    answers there; None = off, the rules' routing stands). The cost of a wrong silence is one more try for the kid;
+    the cost of chatter graded as an answer is a miss on a step the kid never answered."""
+    v = thr.get("answer_ignore")
+    if v is None or not out:
+        return False
+    i = int(np.argmax(out["act"]))
+    return FX.ACTS[i] == "ignore" and float(out["act"][i]) >= v
 
 
 def policy(out: dict, words: list[str], rules_cmds: list[dict], rules_guard: bool, thr: dict,
@@ -322,7 +348,7 @@ def policy(out: dict, words: list[str], rules_cmds: list[dict], rules_guard: boo
     act, p = FX.ACTS[i], float(out["act"][i])
     if rules_cmds:
         v = thr.get("veto")
-        if v is not None and mission and act in ("answer", "ignore", "ask_clarify") and p >= v and \
+        if v is not None and mission and act in ("answer", "ignore", "ask_clarify", "navigate") and p >= v and \
                 rules_cmds[0].get("type") not in ("confirm", "cancel"):
             return {"act": "ask_clarify", "clarify": clarify_options(out)}
         return None

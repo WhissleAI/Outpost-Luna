@@ -437,6 +437,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id }); }
     catch (e) { busy = false; feedback = { kind: "retry", text: "I can't reach CAPCOM right now. Try again." }; render(); return true; }
     busy = false;
+    // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
+    try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type } })); } catch (e) { /* no window */ }
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
     if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }

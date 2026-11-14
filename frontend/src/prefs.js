@@ -17,6 +17,7 @@ export const PREF_DEFAULTS = Object.freeze({
   theme: "system",           // "system" | "light" | "dark"
   graphics: "high",          // "high" | "low"
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12)
+  improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
 });
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
@@ -37,6 +38,7 @@ export function normalizePrefs(x) {
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
   pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
   if (typeof s.voice_all === "boolean") o.voice_all = s.voice_all;
+  o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
   return o;
 }
 
@@ -74,7 +76,7 @@ export function createPrefs({ globe = null } = {}) {
   }
   /** What the session needs (main.js sends it on the socket). */
   const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, rate: Math.max(0.6, Math.min(1.6, rate)),
-    volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
+    volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true });
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
   const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };

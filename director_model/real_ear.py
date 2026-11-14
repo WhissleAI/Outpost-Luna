@@ -37,10 +37,14 @@ def key_of(group: str, text: str, var: int = 0) -> str:
 
 
 # ------------------------------------------------------------------------------------------------- 1. jobs
+APP_VOICES = ["voice_1085", "voice_0213", "voice_0644"]   # the app's own: Aurora (guide), CAPCOM, Beacon (steering.py)
+
+
 def items_of(script: dict) -> list[str]:
     out = []
     for it in script["items"]:
-        if it.get("op") in ("end_shift", "emotion", "tap", "lesson", "echo") or "heard" in it or not it.get("text"):
+        if it.get("op") in ("end_shift", "emotion", "tap", "lesson", "echo", "echo2") or "heard" in it or \
+                not it.get("text"):
             continue
         out.append(it["text"])
     return out
@@ -57,19 +61,21 @@ def cmd_jobs(a):
             have[j["key"]] = j
     new = []
 
-    def add(group, text, var=0):
+    def add(group, text, var=0, voice=None):
         k = key_of(group, text, var)
         if k in have:
             return
         rng = random.Random(k)
         j = {"key": k, "group": group, "text": text, "var": var, "seed": rng.randrange(1 << 30)}
+        if voice:
+            j["voice"] = voice
         have[k] = j
         new.append(j)
 
     def sessions(split, n, seed0, mode):
         for k in range(n):
             rng = random.Random(seed0 + k)
-            sc = G.kind_script(rng, split, seed0 + k)
+            sc = G.kind_script(rng, split, seed0 + k, hf_p=a.hf_p if split in ("train", "val") else 0.0)
             noised = mode == "all" or rng.random() < 0.5
             if noised:
                 yield k, sc
@@ -89,6 +95,18 @@ def cmd_jobs(a):
                     add(group, t)
         # a second voice for the most frequent train texts (variety of decodes for the same words)
         print(f"{group}: {len([j for j in have.values() if j['group'] == group]) - n0} new jobs", flush=True)
+    # round 6: the class sets' kid turns (test voices) and the app's own lines in the app's voices (the echo; Aurora
+    # included), so cls_echo / cls_mishear hear what the real ear makes of them
+    import pools as P
+    n0 = len(new)
+    for ci, cls in enumerate(P.CLASSES):
+        for it in G.class_set_items(cls, a.cls_n, 990_000 + 1000 * ci):
+            if it.get("op") != "echo2" and it.get("text"):
+                add("test", it["text"])
+    for i, line in enumerate(P.CAPCOM_LINES + [x[0] for x in P.OFFERS.values()]):
+        for v in APP_VOICES:
+            add("app", line, var=APP_VOICES.index(v), voice=v)
+    print(f"round 6 class + app-voice jobs: {len(new) - n0}", flush=True)
     with open(JOBS, "a") as f:
         for j in new:
             f.write(json.dumps(j) + "\n")
@@ -117,12 +135,15 @@ def iter_audio(jobs):
     bab_pool: list = []
     for j in jobs:
         rng = np.random.default_rng(j["seed"])
-        vs = groups[j["group"]]
-        # bias to higher-pitched (kid-like) voices: the list is f0-descending; draw an index ~ |N(0, 0.35 n)|
-        vi = min(len(vs) - 1, int(abs(rng.normal(0, 0.35 * len(vs)))))
-        v = vs[vi]
-        ctrl = {"rate": float(rng.uniform(-1.0, 1.2))}
-        if rng.random() < 0.5:
+        if j.get("voice") in tts.voices:       # the app's own voice (echo): as the app says it, no kid jitter
+            v, vi, ctrl = j["voice"], -1, {}
+        else:
+            vs = groups["test" if j["group"] == "app" else j["group"]]
+            # bias to higher-pitched (kid-like) voices: the list is f0-descending; draw an index ~ |N(0, 0.35 n)|
+            vi = min(len(vs) - 1, int(abs(rng.normal(0, 0.35 * len(vs)))))
+            v = vs[vi]
+            ctrl = {"rate": float(rng.uniform(-1.0, 1.2))}
+        if vi >= 0 and rng.random() < 0.5:
             ctrl["f0_med"] = float(tts.voice_stats(v)["f0_med"] + rng.uniform(0.5, 2.0))
         try:
             w = tts(j["text"], voice=v, ctrl=ctrl)
@@ -214,7 +235,7 @@ def cmd_decode(a):
     jobs = load_jobs()
     todo = [j for j in jobs if not (CACHE / "dec" / f"{j['key']}.json").exists()]
     if a.order == "test_first":
-        todo.sort(key=lambda j: {"test": 0, "val": 1, "train": 2}[j["group"]])
+        todo.sort(key=lambda j: {"app": 0, "test": 0, "val": 1, "train": 2}[j["group"]])
     print(f"decode {len(todo)} of {len(jobs)}", flush=True)
     t0 = time.time()
     with get_context("spawn").Pool(a.procs) as p:
@@ -274,6 +295,8 @@ if __name__ == "__main__":
     ap.add_argument("--procs", type=int, default=4)
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--order", default="test_first")
+    ap.add_argument("--hf-p", type=float, default=0.3)
+    ap.add_argument("--cls-n", type=int, default=160)
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
     {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats}[a.cmd](a)

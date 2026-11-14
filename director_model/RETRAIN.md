@@ -84,3 +84,17 @@ as fallback. Ship new weights only if the guarded `on` rows (evaluate.py prints 
 (test_clean, test_asr, test_real, test_ear, test_h40(+asr), test_gold), act accuracy >= the rules on every set, and
 the guard/PII rows unchanged. Otherwise keep the previous weights, or set `DIRECTOR_MODEL=shadow`, and read
 `/api/director/stats` on real sessions.
+
+## Round 6 on: the continuous loop
+
+`make director-loop` (docs/DIRECTOR_LOOP.md) wraps steps 1-5 for routine retrains:
+
+- It imports opt-in turn logs (`LOG=...`), then renders and decodes the new turns with the real ear.
+- It generates hands-free sessions and the round-6 class sets (`cls_*`, `test_log`) on top of the sets above.
+- It trains a candidate. It evaluates the candidate and the shipped weights (numpy runtime, their own policy) on the
+  same data.
+- It exports only if the gate passes: these switch-on criteria on every set, plus no class regression vs the shipped
+  weights.
+
+Features are append-only (`features.F_R5`): older weights read their prefix, so a code change never forces a retrain.
+Keep it that way. Add new Arc outputs at the end of `FEATS`, never in the middle.

@@ -393,3 +393,209 @@ def academy_items(rng: random.Random, lesson: dict, step_i: int) -> dict:
         t = rng.choice(["is it here", "where is it", "this one"])
     return {"text": t, "cat": f"academy_{kind}", "root": f"ac:{lesson['id']}:{step_i}:{t}", "lesson": lesson["id"],
             "step": step_i}
+
+
+# ================================================================================================ round 6: hands-free
+# Today's real failure classes (docs/DIRECTOR_LOOP.md). Every item carries the client's screen `frame` (the router's
+# context) and a gold act; lesson answers carry lesson/step so the gold is the Academy grader on the CLEAN words.
+GLOBE_TYPES = ("predict", "globe_side", "terminator", "compare", "route", "earth_view")
+LESSON_CHATTER = ["oh it's", "okay", "alright", "oh it's the", "okay okay", "alright alright", "oh cool", "it's",
+                  "oh wait", "yeah", "oh okay", "wait wait", "alright so", "oh it's a", "okay so", "oh nice",
+                  "okay okay okay", "oh my gosh", "alright then", "oh it's that", "yeah okay", "oh look", "oh right",
+                  "yeah yeah", "okay wait", "oh is it", "it's it's", "alright alright alright", "oh yeah",
+                  "okay let me see", "hold on", "one sec", "wait what", "oh i see"]
+# CAPCOM / guide lines that run back to back (the echo comes back between them); the app's own voices say them
+CAPCOM_LINES = ["Copy. Radiation shields up 20 percent. Less for the greenhouse.",
+                "Solar particle storm. Shields up, or crew to the shelter.",
+                "Battery's low. Turn down what you don't need.", "Sunset. Give the heaters a little more.",
+                "Life support is low. The rover can fetch ice.", "Earth has set. No radio until it rises.",
+                "Dose is climbing. Shields, or the shelter.", "Set your power, then end the shift.",
+                "Copy. Rover heading out to collect ice.", "Crew dose: 12 of 50 mSv.",
+                "Earth is up. Houston can hear us.", "Next window in about 6 hours.",
+                "Copy. Heaters up 10 percent.", "Standing order set: if a storm comes, go to the shelter.",
+                "Commander, set the heaters to 40 percent.", "Find where Apollo 11 landed.",
+                "Turn the Moon to show the far side.", "Tap the line where day meets night.",
+                "Which outpost can talk to Earth more often?", "Night is coming at Malapert. Move power to the heaters.",
+                "Great work, Commander. That's the patch.", "Do people on Earth ever see the Moon's far side?"]
+OFFERS = {"next_lesson": ("Ready for the next lesson?", ["lesson_done", "patch"]),
+          "next_step": ("Ready for the next one?", ["lesson"]),
+          "mission": ("Ready to take command?", ["patch", "map"]),
+          "fly_again": ("Fly again?", ["debrief"])}
+OFFER_TAKE = ["next", "yes", "yeah", "okay", "sure", "next one", "yes please", "let's go", "ready", "okay next",
+              "yep", "next please", "i'm ready", "go"]
+OFFER_DECLINE = ["no", "not now", "no thanks", "maybe later", "nope"]
+PANEL_NAV = ["open the {p} panel", "show me the {p} panel", "go to the {p} station", "open the {p}",
+             "take me to the {p} panel", "the {p} panel please", "pull up the {p} panel", "switch to the {p} panel",
+             "back to my seat", "close the panel", "go back to my seat", "okay open the {p} panel"]
+PANEL_NAMES = ["power", "comm", "comms", "radio", "habitat", "rover", "radiation"]
+PANEL_ORDERS = ["turn off the radio", "radio off", "more power to the radio", "turn on the radio", "comms to 30",
+                "turn down the radio", "power to the habitat heaters", "turn off the rover", "less power for comms",
+                "shields to 40", "more power to the heaters", "send the rover for ice", "turn up the shields"]
+HELP_NAV = ["what can i say", "help me", "what are my options", "where am i", "what can i do", "what screen is this",
+            "move the voice bar to the top right", "put the voice bar on the left", "move the mic bar to the bottom",
+            "reset the voice bar", "move the voice bar to the top", "say that again", "repeat that", "slow down",
+            "speak slower", "open the settings", "what do i do", "what do i do now", "give me a tour",
+            "show me around", "start the tour", "how do i play", "i need help"]
+MODE_NAV = ["go to mission", "go to the mission", "let's do the mission", "open the library", "go to the academy",
+            "go to the map", "back to the map", "open the patch map", "start the mission", "take command",
+            "go to outpost luna", "explore the moon", "go on a mission", "open the missions"]
+# kid-style mishears the real Arc ear makes (fallback when no real decode is cached): word -> heard
+MISHEAR = {"ice": ["eyes", "i s", "rice", "ice"], "rover": ["rover", "roller", "row ver"], "far": ["far", "four", "father"],
+           "shields": ["shield", "she ields", "fields"], "heaters": ["heater", "eaters", "heat yours"],
+           "terminator": ["termination", "terminate her"], "shackleton": ["shackle ton", "shackleton"],
+           "malapert": ["mallow pert", "malla part"], "side": ["side", "sight"], "never": ["never", "nev er"],
+           "forty": ["forty", "four tea"], "radio": ["radio", "ready oh"]}
+MISHEAR_KID = ["send the rover for ice", "rover go get ice", "go collect ice", "the far side", "far side",
+               "show me the far side", "it's the terminator", "the terminator", "shackleton", "malapert",
+               "more power to the heaters", "shields up", "never", "heaters forty", "go dig ice with the rover",
+               "where is the ice", "is there ice on the moon", "turn off the radio", "the rover", "malapert mountain"]
+
+
+def mishear(rng: random.Random, text: str) -> str:
+    out = []
+    for w in text.split():
+        alts = MISHEAR.get(w)
+        out.append(rng.choice(alts) if alts and rng.random() < 0.7 else w)
+    return " ".join(out)
+
+
+def _course():
+    from app.academy import content
+    return content.course()["lessons"]
+
+
+def lesson_steps(types=None) -> list[tuple[dict, int]]:
+    return [(L, i) for L in _course() for i, st in enumerate(L["steps"])
+            if not L.get("ride") and (types is None or st["accept"]["type"] in types)]
+
+
+def step_frame(L: dict, i: int) -> dict:
+    a = L["steps"][i]["accept"]
+    opts = [o["label"] for o in a.get("options") or []]
+    return {"screen": "lesson", "step_type": a["type"], "step_options": opts, "offer": None, "lesson_id": L["id"],
+            "step": i}
+
+
+def globe_answer(rng: random.Random, L: dict, i: int, kind: str) -> str:
+    """A spoken answer to one of the 6 globe step types: correct / wrong / paraphrase (kid style)."""
+    from app.academy import grade as G
+    a = L["steps"][i]["accept"]
+    t = a["type"]
+    wrap = rng.choice(["{w}", "i think {w}", "um {w}", "{w} i guess", "is it {w}", "it's {w}", "{w}"])
+    if t in ("predict", "compare"):
+        opts = a["options"]
+        o = next(x for x in opts if x["id"] == a["answer"]) if kind == "correct" else \
+            rng.choice([x for x in opts if x["id"] != a["answer"]] or opts)
+        if t == "predict" and kind == "wrong":   # a predict guess always passes: a wrong one is not naming any option
+            return rng.choice(["hmm i don't know", "the blue one", "maybe", "uh the other one"])
+        return wrap.format(w=rng.choice([o["label"].lower()] + list(o.get("say") or [])))
+    if t == "globe_side":
+        want = a["want"]
+        other = "near" if want == "far" else "far"
+        ws = G.SIDE_WORDS[want if kind == "correct" else other]
+        return wrap.format(w=rng.choice(ws[:6]))
+    if t == "terminator":
+        return wrap.format(w=rng.choice(["the terminator", "where day meets night", "the shadow line", "terminator",
+                                         "between day and night"] if kind == "correct" else
+                                        ["the middle", "the bright part", "over there", "the dark part"]))
+    if t == "route":
+        names = [G.gaz().places[s].name.lower() for s in a["stops"]]
+        if kind == "correct":
+            return rng.choice(["{a} then {b}", "{a} and then {b}", "go to {a} then {b}", "first {a} then {b}"]).format(
+                a=names[0], b=names[-1])
+        return rng.choice(["{b} then {a}", "just {b}", "tycho then copernicus"]).format(a=names[0], b=names[-1])
+    if t == "earth_view":
+        ok, _ = G.grade(L["steps"][i], {"text": "yes"})
+        right = "yes" if ok else ("no" if G.grade(L["steps"][i], {"text": "no"})[0] else "sometimes")
+        wrong = rng.choice([x for x in ("yes", "no", "sometimes") if x != right])
+        w = right if kind == "correct" else wrong
+        return wrap.format(w=rng.choice([w, w + " you could", w + " always" if w == "yes" else w]))
+    return "hmm"
+
+
+def cls_split(root: str) -> str:
+    """The class pools are small (a dozen phrases): a third of each is held out, so a class set is not one phrase."""
+    x = h(root) % 100
+    return "test" if x < 34 else "val" if x < 44 else "train"
+
+
+def cls_item(cls: str, rng: random.Random, split: str) -> dict:
+    """One item of a round-6 class. `root` is the split key (the phrase / step), so test phrases never train."""
+    def pick(pool, tag):
+        ps = [p for p in pool if cls_split(f"{tag}:{p}") == split] or pool
+        return rng.choice(ps)
+    if cls == "chatter":                    # room chatter during a lesson step: never an answer, never a miss
+        L, i = rng.choice(lesson_steps())
+        t = pick(LESSON_CHATTER, "lc")
+        return {"text": t, "cat": "cls_chatter", "root": "lc:" + t, "frame": step_frame(L, i),
+                "gold": {"act": "ignore"}, "dd": (0.3, 0.95), "lesson": L["id"], "step": i}
+    if cls == "echo":                       # our own line heard back between two back-to-back CAPCOM lines
+        a = pick(CAPCOM_LINES, "cl")
+        b = rng.choice([x for x in CAPCOM_LINES if x != a])
+        ws = re.sub(r"[^a-z0-9' ]", " ", a.lower()).split()
+        k = rng.randint(2, min(6, len(ws)))
+        st = rng.randint(max(0, len(ws) - k - 2), len(ws) - k)
+        return {"op": "echo2", "text": " ".join(ws[st:st + k]), "lines": [a, b], "cat": "cls_echo", "root": "cl:" + a,
+                "frame": {"screen": rng.choice(["cabin", "cabin", "lesson", "brief"]), "step_type": None,
+                          "step_options": [], "offer": None}, "gold": {"act": "ignore"}, "dd": (0.4, 0.9)}
+    if cls == "offer":                      # "next" / "yes" within 0.3 s of the offer line ending: navigate
+        kind = rng.choice(list(OFFERS))
+        line, screens = OFFERS[kind]
+        t = pick(OFFER_TAKE, "ot") if rng.random() < 0.8 else pick(OFFER_DECLINE, "od")
+        return {"op": "offer", "text": t, "lines": [line], "gap": rng.uniform(0.02, 0.3), "cat": "cls_offer",
+                "root": "ot:" + t, "frame": {"screen": rng.choice(screens), "step_type": None, "step_options": [],
+                                             "offer": kind}, "gold": {"act": "navigate"}, "dd": (0.6, 0.98)}
+    if cls == "panel":                      # panel navigation vs a real order, in the cabin
+        if rng.random() < 0.55:
+            f = pick(PANEL_NAV, "pn")
+            t = f.format(p=rng.choice(PANEL_NAMES))
+            g = {"act": "navigate"}
+            root = "pn:" + f
+        else:
+            t = pick(PANEL_ORDERS, "po")
+            g, root = {"act": "command"}, "po:" + t
+        return {"text": t, "cat": "cls_panel", "root": root, "gold": g,
+                "frame": {"screen": "cabin", "step_type": None, "step_options": [], "offer": None}}
+    if cls == "help":                       # voice bar, tour, help, "what do i do"
+        t = pick(HELP_NAV, "hn")
+        sc = rng.choice(["map", "lesson", "cabin", "library", "patch", "brief"])
+        fr = {"screen": sc, "step_type": None, "step_options": [], "offer": None}
+        if sc == "lesson":
+            L, i = rng.choice(lesson_steps())
+            fr = step_frame(L, i)
+        return {"text": t, "cat": "cls_help", "root": "hn:" + t, "frame": fr, "gold": {"act": "navigate"}}
+    if cls == "mode":                       # a mode switch in the middle of a lesson
+        L, i = rng.choice(lesson_steps())
+        t = pick(MODE_NAV, "mn")
+        return {"text": t, "cat": "cls_mode", "root": "mn:" + t, "frame": step_frame(L, i), "gold": {"act": "navigate"}}
+    if cls == "globe":                      # the 6 globe step types answered by voice (gold = the grader)
+        L, i = rng.choice(lesson_steps(GLOBE_TYPES))
+        kind = "correct" if rng.random() < 0.6 else "wrong"
+        t = globe_answer(rng, L, i, kind)
+        return {"text": t, "cat": "cls_globe_" + L["steps"][i]["accept"]["type"], "root": f"gl:{L['id']}:{i}:{t}",
+                "frame": step_frame(L, i), "lesson": L["id"], "step": i}
+    if cls == "mishear":                    # kid-style mishears from the real Arc ear ("eyes" for "ice")
+        t = pick(MISHEAR_KID, "mh")
+        sc = rng.choice(["cabin", "lesson"])
+        it = {"text": t, "cat": "cls_mishear", "root": "mh:" + t, "heard_fallback": mishear(rng, t)}
+        if sc == "lesson":                 # the step's correct answer, heard through the kid-style ear
+            L, i = rng.choice(lesson_steps(("command", "keywords", "intent", *GLOBE_TYPES)))
+            ty = L["steps"][i]["accept"]["type"]
+            for _ in range(8):
+                t = globe_answer(rng, L, i, "correct") if ty in GLOBE_TYPES else academy_items(rng, L, i)["text"]
+                if not t.startswith(("i don", "can i", "help", "i m stuck", "what do", "hmm")):
+                    break
+            it.update(text=t, root=f"mhl:{L['id']}:{i}", heard_fallback=mishear(rng, t), frame=step_frame(L, i),
+                      lesson=L["id"], step=i)
+        else:
+            it.update(frame={"screen": "cabin", "step_type": None, "step_options": [], "offer": None},
+                      gold={"act": "command"} if not t.startswith(("where", "is ", "the ", "far", "show",
+                                                                     "it s", "it's", "never", "shackleton", "malapert"))
+                      else None)
+            if it["gold"] is None:
+                it.pop("gold")
+        return it
+    raise ValueError(cls)
+
+
+CLASSES = ("chatter", "echo", "offer", "panel", "help", "mode", "globe", "mishear")
