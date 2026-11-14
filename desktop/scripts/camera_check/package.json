@@ -1,0 +1,9 @@
+{
+  "name": "outpost-luna-camera-check",
+  "productName": "Outpost Luna Camera Check",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The desktop app's camera path (permissions, Info.plist, entitlements, bundled vision assets) in real Electron.",
+  "author": "Whissle Inc.",
+  "main": "main.js"
+}

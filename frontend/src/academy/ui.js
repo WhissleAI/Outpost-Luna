@@ -13,7 +13,7 @@ import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, TRACKS, LESSON_BLURB } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
@@ -148,9 +148,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
 
   // ---------- course map = the Moon: each lesson is a pin on a real place, the route ends at the south-pole outpost ----------
-  function trackOf(id) { const t = TRACKS.find(t => t.lessons.includes(id)); return t ? t.id : "foundations"; }
   /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the route. */
-  const shownOrder = () => { const ls = lessons(); return TRACKS.flatMap(t => ls.filter(l => trackOf(l.id) === t.id)).concat(ls.filter(l => !TRACKS.some(t => trackOf(l.id) === t.id))); };
+  const shownOrder = () => lessons();   // course.json is in map order (near side first, then the pole)
   let mapSel = null;   // the pin the cadet tapped (null = the next lesson)
   /** A lesson's place on the Moon: course data first, then the fallback table. */
   function placeOf(l) {
@@ -178,7 +177,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.setAttribute("aria-label", `${k + 1}. ${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label"><b>${k + 1}</b>${esc(l.title)}</span>`;
       b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
-      return { id: l.id, lat: at.lat, lon: at.lon, el: b };
+      return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next };
     });
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
@@ -237,21 +236,23 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function render() {
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], k = shownOrder().indexOf(L), acc = st.accept;
-    const clip = st.clip || (i === 0 ? L.clip : null);
+    const clip = st.clip || (i === 0 ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
     setLayout(L.ride ? "ride" : "lesson");
-    if (!waitingNext && (acc.type === "tap" || acc.type === "intent")) globe.setDecor(true);   // the place dots help a tap
+    if (!waitingNext && (acc.type === "tap" || acc.type === "intent" || acc.type === "route")) globe.setDecor(true);   // the place dots help a tap
     const ctx = { L, i, answer, esc, clip, done: waitingNext };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
     const E = STEP_RENDERERS[acc.type];
     const R = typeof E === "function"
-      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe }))
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style), playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext }))
       : (E || { html: () => "" });
+    stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
     const how = HOW[acc.type];
-    const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${feedback.kind === "ok" ? icon("check", { size: 18 }) : ""}<p>${esc(feedback.text)}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
-    stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
+    const FB_ICON = { ok: "check", reveal: "explore", shown: "info" };
+    const revealSrc = feedback && (feedback.kind === "reveal" || (feedback.kind === "ok" && acc.type === "predict")) && st.reveal && st.reveal.source;
+    const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${FB_ICON[feedback.kind] ? icon(FB_ICON[feedback.kind], { size: 18 }) : ""}<p>${esc(feedback.text)}${revealSrc ? ` ${src(revealSrc)}` : ""}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
     panel.innerHTML = `
       <header class="a-head m-head">
         <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
@@ -270,8 +271,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           <p class="a-prompt">${esc(promptOf(st))}</p>
           ${how && !waitingNext ? `<p class="a-how">${esc(how)}</p>` : ""}
-          ${clip ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
-          <div class="a-input" id="aInput">${waitingNext ? "" : R.html(st, ctx)}</div>
+          ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
+          <div class="a-input${waitingNext ? " is-locked" : ""}" id="aInput">${R.html(st, ctx)}</div>
           ${fb}
           ${feedback && feedback.hint ? `<p class="a-hint">${icon("info", { size: 16 })}<span>${esc(feedback.hint)}</span></p>` : ""}
         </section>
@@ -286,11 +287,40 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const cb = panel.querySelector("#aClip");
     if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
     if (!waitingNext && R.wire) R.wire(panel.querySelector("#aInput"), ctx);
+    if (waitingNext) lockInput(panel.querySelector("#aInput"));
     const slot = panel.querySelector("#aRideSlot"); if (slot && rideEl) { slot.replaceWith(rideEl); if (ride.state) rideCk.update(ride.state); }
     if (ride && rideCk) { if (ride.state) rideCk.update(ride.state); setTimeout(rideCue, 400); }   // [ride]
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
   }
 
+  /** After the answer the step stays on screen, locked: the kid's pick, the right one, and any data the reply carried. */
+  function lockInput(el) {
+    if (!el || !feedback) return;
+    el.querySelectorAll(".a-choice, .a-order, [data-view], [data-reset]").forEach(b => { b.disabled = true; b.tabIndex = -1; });
+    const pick = feedback.chosen && el.querySelector(`[data-c="${CSS.escape(feedback.chosen)}"]`);
+    if (pick) pick.classList.add(feedback.kind === "ok" ? "is-correct" : "is-picked");
+    const right = feedback.right && el.querySelector(`[data-c="${CSS.escape(feedback.right)}"]`);
+    if (right) right.classList.add("is-answer");
+    if (feedback.data) {   // compare: the step's metric first, then the other numbers
+      const metric = (L.steps[i].accept || {}).metric || "sun_days";
+      const ROWS = { sun_days: ["sun", "sun days"], earth_days: ["earth", "Earth days"], ice_km: ["ice", "km to ice"] };
+      el.querySelectorAll(".g-data").forEach(d => {
+        const x = feedback.data[d.dataset.for]; if (!x) return;
+        d.innerHTML = [metric, ...Object.keys(ROWS).filter(k => k !== metric)].filter(k => x[k] != null && ROWS[k])
+          .map((k, j) => `<span class="${j === 0 ? "is-metric" : ""}">${icon(ROWS[k][0], { size: 14 })}<b>${esc(x[k])}</b> ${ROWS[k][1]}</span>`).join("");
+      });
+    }
+  }
+  /** CAPCOM shows the answer (after 3 misses): on the Moon too. */
+  function showAnswerOnGlobe(sa) {
+    if (!sa) return;
+    if (sa.place) { const f = placeById(sa.place); if (f) globe.showFeature(f); }
+    if (sa.side) globe.flyTo(0, sa.side === "far" ? 180 : 0, 3.4);
+    if (Array.isArray(sa.stops)) {
+      const pts = sa.stops.map(placeById).filter(Boolean);
+      globe.route.set(pts.map((f, k) => { const e = document.createElement("span"); e.className = "g-tapdot" + (sa.shown ? " is-shown" : ""); e.textContent = String(k + 1); return { id: f.id, lat: f.lat, lon: f.lon, el: e }; }), pts.length);
+    }
+  }
   async function answer(input, btn) {
     if (busy || view !== "lesson" || waitingNext) return false;
     busy = true; if (btn) btn.classList.add("is-busy");
@@ -302,11 +332,20 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (ride && r.events && r.events.length) ride.events = r.events;
     if (r.status === "passed" || r.status === "missed" || r.status === "done") {
       if (L.ride) return rideStep(r);
-      feedback = { kind: "ok", text: r.say };
-      const acc = L.steps[i].accept;
+      const acc = L.steps[i].accept, sa = r.shown ? r.shown_answer || {} : null;
+      // shown = CAPCOM showed the answer (3 misses); a predict guess is never wrong, it reveals the real number
+      const kind = sa ? "shown" : acc.type === "predict" && r.correct === false ? "reveal" : "ok";
+      feedback = { kind, text: r.say, chosen: input && input.choice, right: sa && (sa.choice || sa.side), data: r.data || null };
+      // the reveal on the Moon: the traced route, or the far side turned toward the kid
+      const reveal = sa ? { ...sa, shown: true } : acc.type === "route" ? { stops: acc.stops } : acc.type === "globe_side" && acc.want ? { side: acc.want } : null;
       if (acc.type === "intent" || acc.type === "tap") { const f = placeById(acc.place); if (f) globe.showFeature(f); }
-      if (r.badge) { award(r.badge); speakLine(r.say, r); setTimeout(() => showBadge(r.badge), 900); waitingNext = true; render(); return true; }
-      waitingNext = true; render(); speakLine(r.say, r);
+      if (r.badge) { award(r.badge); speakLine(r.say, r); setTimeout(() => showBadge(r.badge), 900); waitingNext = true; render(); showAnswerOnGlobe(reveal); return true; }
+      waitingNext = true; render(); showAnswerOnGlobe(reveal);
+      // a crew clip marked "after" plays once the success line is said (it's the reward)
+      const st = L.steps[i], c = st.clip || (i === 0 ? L.clip : null), at = { L, i };
+      Promise.resolve(r.say ? say(r.say, sayStyle(r)) : null).then(() => {
+        if (c && c.when === "after" && view === "lesson" && L === at.L && i === at.i && waitingNext) player.play({ clip_id: c.clip_id, t0: c.t0, t1: c.t1, speaker: c.who, places: [], jargon: [] });
+      });
       return true;
     }
     misses++;

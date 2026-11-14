@@ -14,3 +14,6 @@ backend/data/tts_cache/
 # Local embedder weights (model_server/tools/export_embedder.py) and the card-vector cache
 model_server/models/
 backend/data/cache/
+
+# Camera gestures: the on-device vision runtime + models (frontend/tools/fetch_vision.mjs, sha256-pinned)
+frontend/public/vision/

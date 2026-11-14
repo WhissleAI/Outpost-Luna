@@ -94,6 +94,7 @@ export function prefStyle(style, voice, speed) {
   if (P.voice && (P.voice_all || voice === "guide")) out.steer_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
+  if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;
   return Object.keys(out).length ? out : style;
 }
 export function shouldBargeIn({ started, text, refs, dd }) {
@@ -136,11 +137,12 @@ export function spaceAction(target) {
 
 /** A friendly line for a getUserMedia / Web Speech failure. */
 export function micErrorText(e) {
+  // short enough for the voice bar's field (one line at 1280); the state slot already says "Mic blocked"
   const n = e && (e.name || e.error || "");
-  if (/NotAllowed|Security|not-allowed|service-not-allowed/i.test(n)) return "Mic is blocked. Click the lock in the address bar and allow the microphone, or type your question.";
-  if (/NotFound|Overconstrained|audio-capture/i.test(n)) return "No microphone found. Plug one in, or type your question.";
-  if (/NotReadable|Abort/i.test(n)) return "Another app is using the mic. Close it, or type your question.";
-  return "The mic didn't start. Type your question, or tap the mic to try again.";
+  if (/NotAllowed|Security|not-allowed|service-not-allowed/i.test(n)) return "Mic is blocked. Type instead.";
+  if (/NotFound|Overconstrained|audio-capture/i.test(n)) return "No microphone found. Type instead.";
+  if (/NotReadable|Abort/i.test(n)) return "Another app is using the mic. Type instead.";
+  return "The mic didn't start. Type instead, or tap the mic.";
 }
 
 // ---------- the floor manager ----------

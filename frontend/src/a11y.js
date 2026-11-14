@@ -144,7 +144,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""} aria-label="Voice speed ${v} times"><span>${v}×</span></label>`).join("")}</div></fieldset>
         ${PA ? range("expressiveness", "Expressiveness", 0, 1, 0.25, v => (v <= 0.25 ? "Calm" : v >= 0.75 ? "Lively" : "Balanced")) : ""}
         ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`,
-      sound: PA ? `${range("volume", "Volume", 0, 1, 0.05, pct)}${range("alarms", "Alarms", 0, 1, 0.05, pct)}
+      sound: PA ? `${range("volume", "Volume", 0, 2, 0.1, pct)}${range("alarms", "Alarms", 0, 1, 0.05, pct)}
         ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
         ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}` : "",
       listen: PA ? `${seg("listen", "How to talk", [["handsfree", "Hands-free"], ["ptt", "Hold to talk"]])}
@@ -217,6 +217,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
+  addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
   btn.addEventListener("click", () => open());
@@ -353,7 +354,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function options() {
     const names = controls().map(b => (b.getAttribute("aria-label") || b.textContent).replace(/\s+/g, " ").trim()).filter(Boolean);
     const uniq = [...new Set(names)].slice(0, 8);
-    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.`;
+    const g = O.gestures && O.gestures.summary ? O.gestures.summary() : "";   // [gestures] only while the camera is on
+    return `You can say or type your answer, or say press and a button name. Buttons: ${uniq.join(", ")}.${g ? " " + g : ""}`;
   }
   function pickPlace(id) {
     const p = places.find(x => x.id === id); if (!p || !tap) return;

@@ -444,6 +444,92 @@ vocab_listen, vocab_say, patch.
 - hc_lesson (high contrast, 150%)
 - access (Settings · Voice with the server's voices)
 
+## Round 6: the six globe step types (learning-v3), the new route, leftovers
+
+### Inputs
+
+- **Merged** `integ/desktop-v2` 499d50d (learning-v3):
+  - 6 new globe step types, a `place` on every lesson, and the new lesson order;
+  - `globe.js` `poleView`, `setSunDir` and `centerLatLon`.
+- **Conflicts resolved, keeping both behaviours:**
+  - `flyTo`'s 4th argument takes my `maxLat` number or their `{clamp:false}`;
+  - the return keeps my `project` and their three functions;
+  - `ui.js` keeps `stepTap`.
+
+### Critique of the minimal renderers (draft shots, then mine)
+
+- **Answered steps:** an answered step emptied the card. The kid lost what they picked, and a predict reveal had no
+  context.
+- **CAPCOM's shown answer:** after 3 misses it was only text; nothing was highlighted.
+- **Compare:**
+  - The two sites were only buttons; the globe showed nothing to compare.
+  - The server's `data` (sun days, Earth days, km to ice) was never shown.
+- **Terminator:** the "night" side was lit by the strong fill light, so there was no visible line to tap.
+- **Route:** no progress feedback, no legs drawn, and a leftover "Surveyor 3" ring and label from the lesson's place.
+- **Turn the Moon:** the side buttons were plain text, and the "This side" pill was ambiguous. Answered by voice, the
+  globe didn't turn.
+- **Earth view:** the "how" line repeated the prompt, and "Sometimes" overflowed its button.
+- **Crew clips** marked `when: "after"` showed a button before the answer instead of playing after it.
+
+### What changed
+
+- **Answered steps stay on screen, locked:**
+  - the kid's pick is marked "Your guess" (accent) or "Correct" (green);
+  - CAPCOM's answer is marked "Answer" (green);
+  - the buttons are disabled.
+- **Feedback kinds:** `ok` (green), `reveal` (accent, for a predict guess, never "wrong"; carries the reveal source
+  when there is one), and `shown` (neutral, "Here it is…").
+- **On the Moon after a pass:** route steps draw the right route with numbered dots, and turn-the-Moon steps fly to the
+  far side. A CAPCOM-shown answer flies there or rings it.
+- **predict:** "Guess first. Then see the real data." plus numbered guesses. Every guess passes.
+- **earth_view:** three compact answers in a row; the prompt carries the question.
+- **globe_side:**
+  - "Drag the Moon to turn it, or pick a side": two big side buttons, each with a little Moon disc;
+  - a quiet "Check this view" grades where the camera looks.
+- **terminator:** no buttons, just "Tap where light turns to dark". The globe dims its fill light while the step's Sun
+  is locked, so the line is visible.
+- **compare:**
+  - two cards side by side, plus two labelled, tappable pins on the Moon (from `/api/mission/sites`);
+  - after the answer each card shows the data, with the step's metric first and large.
+- **route:**
+  - a progress row (dots plus "Stop n of N", with Start over once you've tapped);
+  - numbered dots and legs drawn on the Moon as you tap;
+  - place dots on, the lesson ring cleared.
+- **Clips:** a clip marked "after" auto-plays once the success line is said, and stays as a replay button.
+- **Map:**
+  - the lessons follow the course order (`course.json` is in map order: Tranquility → Surveyor 3 → Malapert →
+    Shackleton → de Gerlache → Cabeus → Shackleton Rim);
+  - the places come from `course.json`;
+  - no more jump back to the equator.
+- **Mission start sends `level`** (`client.start({…, level})`), so the band applies from the first request.
+- **Mic errors are short:** "Mic is blocked. Type instead.", plus the no-mic, mic-busy and didn't-start messages.
+- **The chosen voice applies to the guide only** unless `voice_all` is on (done in round 5).
+- **Voice calibration** (integ/desktop-v2 027f1a3, merged):
+  - `volume` is a 0–2 pref (1 = −14 LUFS) that the server applies; the guide `<audio>` stays at 1 and there is no
+    client gain on Steer;
+  - client-rendered lines add `style.volume`;
+  - crew audio goes through Web Audio: the clip's `gain_db`, then a limiter (−1 dB, ratio 20, 3 ms / 50 ms), then
+    the master volume;
+  - a saved voice the server no longer has falls back to the default, and Settings opens at Voice once.
+- **Map legs** use each stop's own done/next state, so a course where the earned patches aren't the first N stops
+  still draws the right legs.
+- **Functional pass:** 22 checks, 0 console errors. Lesson 1 runs by voice (intent, earth_view, predict, globe_side,
+  intent); lesson 2 runs by click and typing (vocab_match, choice, predict, route, choice).
+- **Backend:** `test_handsfree_run`, `test_handsfree_loop`, `test_turn_router`, `test_academy`, `test_learning` and
+  `test_copy` pass (130 tests).
+
+### Screenshots
+
+`docs/img/ux/r6-*.jpg`:
+- **Shots:**
+  - every globe step, open (`g_earth`, `g_predict`, `g_side`, `g_terminator`, `g_compare`, `g_route`);
+  - answered (`g_earth_done`, `g_predict_reveal`, `g_side_done`, `g_compare_done`, `g_route_done`);
+  - CAPCOM's shown answer after 3 misses (`g_shown`);
+  - the map (`map`, `map_mid`).
+- **Sizes and themes:**
+  - 1440 dark and 1280 light for everything;
+  - 1440 light and 1280 dark for the six open steps.
+
 ## Router requests (for the hands-free owner)
 
 - **Done** (feat/router-v2): "move the voice bar to the top / bottom / left / right / top left / bottom right …",

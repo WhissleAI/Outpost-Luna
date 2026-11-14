@@ -43,6 +43,22 @@ The voice bar (mic, state, caption, typing) can be moved: drag its grip, or focu
 | **Typing everywhere** | The answer box answers every Academy step, mission order and question; vocab "say it back" also accepts typing. |
 | **"No audio needed"** | A note in Settings → Help: nothing in the app requires hearing. The "listen" vocab step shows the meaning as text too. |
 
+### Kids who can't easily use a mouse, keys or their voice
+
+**Camera gestures** (opt-in: Settings → Camera & gestures; docs/GESTURES.md):
+- an open hand stops;
+- thumbs up / down for yes / no;
+- swipe for next / back;
+- point and hold to press any button or tap the Moon (a ring fills over 0.8 s);
+- a fist turns the Moon;
+- in the cabin, the head looks around.
+
+Every gesture is one more way to do something that voice, tap and keys already do. Nothing needs the camera.
+**Sensitivity** (Careful / Normal / Quick) lengthens or shortens the hold times. **I use my left / right hand** and a
+10-second calibration adapt it to the kid. Each gesture shows a short "Stop" / "Yes" / "Next" toast and is
+announced in a polite live region. Keys: <kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd> next / back, <kbd>Alt</kbd>+<kbd>Y</kbd>/<kbd>N</kbd>
+yes / no, <kbd>Alt</kbd>+<kbd>.</kbd> stop.
+
 ### Reading support
 
 Easy-read font (Atkinson Hyperlegible from Google Fonts, loaded only when chosen, with wider letter/word spacing),

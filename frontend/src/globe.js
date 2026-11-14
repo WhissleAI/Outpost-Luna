@@ -81,9 +81,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     label.hidden = false;
   }
 
-  // maxLat: how close to a pole the camera may look (75 by default; the map's polar view: 88). {clamp: false} = 89.
+  // 4th arg: maxLat (number; how close to a pole the camera may look, the map's polar view uses 88) or
+  // [learning-v3] {clamp:false} (= 89, the pole views of the globe steps)
   function flyTo(lat, lon, dist, opt = 75) {
-    const maxLat = typeof opt === "object" && opt ? (opt.clamp === false ? 89 : 75) : +opt || 75;
+    const maxLat = typeof opt === "number" ? opt : opt && opt.clamp === false ? 89 : 75;
     const d = ll2v(Math.max(-maxLat, Math.min(maxLat, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
     fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: 1300 };
@@ -97,8 +98,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   let sunLock = false;
   /** Light the Moon from a sub-solar point (lat, lon): the day/night line is the real terminator. null = default light. */
   function setSunDir(lat, lon) {
-    if (lat == null) { sunLock = false; sun.position.copy(ll2v(10, -40).multiplyScalar(5)); return; }
-    sunLock = true; sun.position.copy(ll2v(lat, lon).multiplyScalar(5));
+    // the night side must read as night for a terminator step: dim the fill light while the Sun is locked
+    if (lat == null) { sunLock = false; sun.position.copy(ll2v(10, -40).multiplyScalar(5)); if (!mi.on) ambient.intensity = 0.35 * Math.PI; return; }
+    sunLock = true; sun.position.copy(ll2v(lat, lon).multiplyScalar(5)); ambient.intensity = 0.05 * Math.PI;
   }
   /** Look straight down on a pole (flyTo stops at 75°; the south-pole lessons need the view from above). */
   function poleView(pole = "south", dist = 2.2) { flyTo(pole === "north" ? 88 : -88, 0, dist, { clamp: false }); }
@@ -233,8 +235,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     let d = "", dd = "";
     const q = new THREE.Vector3();
     for (let i = 1; i < rstops.length; i++) {
-      if (i > rdone) break;   // only the legs flown, and the one to the next stop
-      const a = rstops[i - 1].p.clone().normalize(), b = rstops[i].p.clone().normalize();
+      // legs: solid between two done stops, dotted into the next stop, nothing else. Stops may carry their own state
+      // ({done, next}); otherwise the first `rdone` stops are the done ones.
+      const A = rstops[i - 1], B = rstops[i];
+      const dn = x => (x.done != null ? !!x.done : rstops.indexOf(x) < rdone), nx = x => (x.next != null ? !!x.next : rstops.indexOf(x) === rdone);
+      const solid = dn(A) && dn(B), dotted = dn(A) && nx(B);
+      if (!solid && !dotted) continue;
+      const a = A.p.clone().normalize(), b = B.p.clone().normalize();
       const om = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))), n = Math.max(2, Math.ceil(om * 40)); let pen = false, seg = "";
       for (let k = 0; k <= n; k++) {
         const t = k / n, s0 = Math.sin(om) || 1;
@@ -243,7 +250,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
         tmp.copy(q).project(camera);
         seg += `${pen ? "L" : "M"}${((tmp.x + 1) / 2 * w).toFixed(1)},${((1 - tmp.y) / 2 * h).toFixed(1)}`; pen = true;
       }
-      if (i <= rdone - 1) dd += seg; else if (i === rdone) d += seg;
+      if (solid) dd += seg; else d += seg;
     }
     rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
@@ -313,13 +320,28 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   });
 
   return {
-    showFeature, highlight, flyTo, nearest, mission, setViewport, setSunDir, poleView, centerLatLon,
+    showFeature, highlight, flyTo, nearest, mission, setViewport, setSunDir, poleView, centerLatLon,   // [learning-v3] sun / pole / centre
     /** Screen position (px in the stage) of a surface point, and whether it faces the camera. Used by the site pins. */
     project(lat, lon) { const p = ll2v(lat, lon, R * 1.004), v = p.clone().project(camera);
       return { x: (v.x + 1) / 2 * stage.clientWidth, y: (1 - v.y) / 2 * stage.clientHeight, facing: p.clone().normalize().dot(camera.position.clone().normalize()) > 0.05 }; },
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
+    // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
+    // follows the hand, as a mouse drag does.
+    rotateBy(dx, dy) {
+      fly = null; const s = new THREE.Spherical().setFromVector3(camera.position);
+      s.theta -= dx * Math.PI; s.phi = Math.max(0.15, Math.min(Math.PI - 0.15, s.phi - dy * Math.PI));
+      camera.position.setFromSpherical(s); camera.lookAt(0, 0, 0);
+    },
+    zoomBy(f) {
+      fly = null; const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
+      camera.position.multiplyScalar(n / d);
+    },
+    /** Stop any flight in progress where it is. */
+    halt() { fly = null; },
     route,
+    /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
+    clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },
     /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */
     setQuality(q) { renderer.setPixelRatio(q === "low" ? 1 : Math.min(devicePixelRatio, 2)); resize(); },
     /** Place dots + hardware markers on/off (off on Flight School screens, where the route pins are the map). */

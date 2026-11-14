@@ -150,9 +150,9 @@ def test_tts_request_carries_the_voice_and_rate(sess, steer):
     d = say(sess, "guide", "The rover found ice near the south pole.")
     run(tts.speak(d["text"], d["voice"], d["style"]))
     body = steer[-1]
-    rate_d, pace = steering.speed_steer(1.25)
+    want, pace, _ = steering.delivery(steering.style_for("guide", d["text"])["controls"], 1.25)
     assert body["steer_voice"] == v
-    assert body["pace"] == pace and body["controls"]["rate"] == rate_d
+    assert body["pace"] == pace and body["controls"]["rate"] == want["rate"]   # baseline + the rate setting
     # CAPCOM keeps its voice but gets the rate
     d = say(sess, "capcom", "Copy, commander. Shields to 40.")
     run(tts.speak(d["text"], d["voice"], d["style"]))
@@ -183,7 +183,7 @@ def test_expressiveness_mapping(e):
     st = steering.style_for("guide", "We made it to the Moon!", situation="badge")
     tag, c, perf = steering.with_expressiveness(st["tag"], st["controls"], st["perform"], e)
     k = 2 * (e - 0.5)
-    assert c["f0_iqr"] == round(st["controls"]["f0_iqr"] + 0.8 * k, 2)
+    assert c["f0_iqr"] == round(st["controls"]["f0_iqr"] + (0.8 if k > 0 else 1.4) * k, 2)
     assert perf["strength"] == pytest.approx(0.4 + 0.6 * e)
     assert c["rate"] == st["controls"]["rate"] and c["loud"] == st["controls"]["loud"]   # urgency/pace untouched
     assert tag == ("contentment" if e < 0.25 else "pride")
@@ -197,8 +197,9 @@ def test_expressiveness_reaches_the_engine_and_never_calms_an_alarm(sess, steer)
     run(tts.speak(d["text"], d["voice"], d["style"]))
     body = steer[-1]
     base = steering.SITUATIONS["storm_alert"]
-    assert body["tag"] == base["tag"] and body["controls"]["rate"] == base["controls"]["rate"]
-    assert body["controls"]["loud"] == base["controls"]["loud"] and body["controls"]["f0_iqr"] == -0.8
+    want, _, _ = steering.delivery(base["controls"])          # the 1x delivery baseline, expressiveness aside
+    assert body["tag"] == base["tag"] and body["controls"]["rate"] == want["rate"]
+    assert body["controls"]["loud"] == want["loud"] and body["controls"]["f0_iqr"] == -1.4
     assert body["perform"]["strength"] == 0.4
 
 
@@ -211,7 +212,7 @@ def test_prefs_over_the_websocket(world):
                       "level": "commander", "voice_all": False})
         ack = ws.receive_json()
     assert ack == {"t": "prefs", "applied": {"voice": v, "voice_all": False, "rate": 0.75, "expressiveness": 0.2,
-                                             "filter": "strict", "level": "commander", "listen": "handsfree"}}
+                                             "filter": "strict", "level": "commander", "listen": "handsfree", "volume": 1.0}}
     s = sessions.get("ws-set-1", create=False)
     assert s.level == "commander" and s.filter_thresholds() == tr.FILTERS["strict"]
 

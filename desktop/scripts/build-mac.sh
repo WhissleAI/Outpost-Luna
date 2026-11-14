@@ -41,7 +41,7 @@ else uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_med
 [ -s backend/data/media/img/moon4k.jpg ] || die "backend/data/media is incomplete (re-run; fetch_media.py resumes)"
 
 step "3/8 frontend dependencies"
-(cd frontend && npm ci --no-audit --no-fund)
+(cd frontend && npm ci --no-audit --no-fund && node tools/fetch_vision.mjs)   # + camera-gesture runtime/models (sha256-pinned)
 
 step "4/8 embedded Python + backend/model-server deps + app code (frontend build included)"
 uv run --no-project python desktop/scripts/build_python.py

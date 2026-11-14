@@ -5,11 +5,12 @@
 //   4. offline by construction: the renderer may only talk to our two loopback ports; children get no API keys
 //   5. quitting kills both process trees (process group on macOS / Linux, taskkill /T on Windows)
 "use strict";
-const { app, BrowserWindow, session, shell, dialog } = require("electron");
+const { app, BrowserWindow, session, shell, dialog, systemPreferences } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const S = require("./supervisor");
+const P = require("./permissions");
 
 const RES = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..", "resources");
 const USER = app.getPath("userData");                   // ~/Library/Application Support/Outpost Luna, %APPDATA%\Outpost Luna
@@ -128,23 +129,9 @@ async function waitHealthy() {
   return false;
 }
 
+// Offline by construction + mic / camera for our own origin only (permissions.js; docs/GESTURES.md for the camera).
 function lockDownSession(origin) {
-  const ses = session.defaultSession;
-  const ours = (u) => { try { return new URL(u).origin === origin; } catch { return false; } };
-  // Offline by construction: the page may load from our backend, data:, blob: and devtools only. Anything else (web fonts,
-  // links) is cancelled at once, so nothing hangs waiting for a network that is not there.
-  ses.webRequest.onBeforeRequest((d, cb) => {
-    const u = d.url;
-    const ok = ours(u) || u.startsWith(origin.replace("http", "ws")) || /^(data|blob|devtools|chrome-extension|file):/.test(u);
-    if (!ok) log("blocked", u.slice(0, 160));
-    cb({ cancel: !ok });
-  });
-  // Microphone for our own origin only; nothing else (camera, geolocation, notifications) for anyone.
-  ses.setPermissionRequestHandler((wc, perm, cb, d) => {
-    const okMedia = perm === "media" && ours(d.requestingUrl || wc.getURL()) && (d.mediaTypes || ["audio"]).every((t) => t === "audio");
-    cb(okMedia || (perm === "fullscreen" && ours(wc.getURL())) || (perm === "clipboard-sanitized-write" && ours(wc.getURL())));
-  });
-  ses.setPermissionCheckHandler((wc, perm, reqOrigin) => (perm === "media" || perm === "fullscreen") && reqOrigin === origin);
+  P.lockDownSession(session.defaultSession, origin, { log, systemPreferences });
 }
 
 function createSplash() {

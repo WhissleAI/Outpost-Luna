@@ -1,0 +1,95 @@
+/* Camera gestures UI. Design tokens from tokens.css (feat/ux-v3) with fallbacks, so this also renders on branches
+   that don't have the token file yet. Shape + text, never colour alone; no emoji. docs/GESTURES.md §UX. */
+.gx-ui, .gx-ui-vars {
+  --gx-accent: var(--color-accent, #4C8DFF);
+  --gx-surface: var(--color-glass, rgba(14, 18, 26, .82));
+  --gx-line: var(--color-glass-line, rgba(255, 255, 255, .16));
+  --gx-text: var(--color-on-space, #F2F5FA);
+  --gx-text-2: var(--color-on-space-2, #B7C0CE);
+  --gx-danger: var(--color-danger, #E5484D);
+  --gx-skel: var(--color-accent, #7CC7FF);
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+.gx-ui [hidden], .gx-cursor[hidden] { display: none !important; }
+.gx-ui .ic { flex: none; }
+
+/* the camera indicator: always visible while the camera is on; one click turns it off. Docked in the top bar next to
+   the Settings gear ([gestures] in main.js); floats under the stage's top-left controls only without a top bar. */
+.gx-indicator[hidden] { display: none !important; }
+.gx-indicator.is-docked { position: static; box-shadow: none; backdrop-filter: none; margin-right: var(--space-2); }
+.gx-indicator {
+  position: fixed; top: calc(var(--topbar-h, var(--topbar, 56px)) + 60px); left: 28px; z-index: var(--z-toast, 40);
+  display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  background: var(--gx-surface); color: var(--gx-text); border: 1px solid var(--gx-line); border-radius: var(--radius-full, 999px);
+  font-size: var(--text-sm, 14px); font-weight: var(--weight-medium, 500); box-shadow: var(--shadow-2, 0 6px 20px rgba(0, 0, 0, .35));
+  backdrop-filter: blur(12px);
+}
+.gx-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gx-danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gx-danger) 30%, transparent); }
+.gx-indicator.is-starting .gx-dot { animation: gx-pulse 1s ease-in-out infinite; }
+@keyframes gx-pulse { 50% { opacity: .35; } }
+.gx-off {
+  min-height: var(--control-sm, 36px); padding: 0 var(--space-3); border-radius: var(--radius-full, 999px); cursor: pointer;
+  border: 1px solid var(--gx-line); background: transparent; color: var(--gx-text); font: inherit; font-weight: var(--weight-semibold, 600);
+}
+.gx-off:hover { background: color-mix(in srgb, var(--gx-text) 10%, transparent); }
+
+/* the self-view: small, movable, mirrored, with the hand skeleton */
+.gx-preview {
+  position: fixed; left: var(--space-5); top: calc(var(--topbar-h, var(--topbar, 56px)) + var(--space-5)); z-index: var(--z-toast, 40); width: 176px;
+  background: var(--gx-surface); border: 1px solid var(--gx-line); border-radius: var(--radius-lg, 16px); overflow: hidden;
+  box-shadow: var(--shadow-2, 0 6px 20px rgba(0, 0, 0, .35)); color: var(--gx-text-2);
+}
+.gx-preview-bar { display: flex; align-items: center; gap: 6px; padding: var(--space-1) var(--space-1) var(--space-1) 10px; font-size: var(--text-xs, 12px); cursor: grab; touch-action: none; user-select: none; }
+.gx-preview-bar span { flex: 1; }
+.gx-x { width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm, 6px); background: transparent; color: inherit; cursor: pointer; }
+.gx-view, .gx-calib-view { position: relative; aspect-ratio: 4 / 3; background: #000; }
+.gx-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }   /* mirror */
+.gx-skel { position: absolute; inset: 0; width: 100%; height: 100%; }   /* landmarks are already in mirror space */
+
+/* the dwell cursor: a ring that fills while you hold still; it never takes the pointer itself */
+.gx-cursor { position: fixed; left: -24px; top: -24px; width: 48px; height: 48px; z-index: var(--z-modal, 50); pointer-events: none; will-change: transform; }
+.gx-cursor svg { width: 100%; height: 100%; overflow: visible; }
+.gx-cursor circle { fill: none; stroke-width: 4; }
+.gx-ring-bg { stroke: rgba(255, 255, 255, .35); }
+.gx-ring { stroke: var(--color-accent, #4C8DFF); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset 60ms linear; }
+.gx-tip { fill: #fff !important; stroke: rgba(0, 0, 0, .5) !important; stroke-width: 1.5 !important; }
+.gx-cursor.is-target .gx-ring-bg { stroke: #fff; }
+.gx-hover { outline: 3px solid var(--color-focus, var(--color-accent, #4C8DFF)) !important; outline-offset: 3px; }
+
+/* the hint chip (contextual) and the gesture feedback toast */
+.gx-hint, .gx-toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: var(--z-toast, 40); display: flex; align-items: center; gap: var(--space-2);
+  padding: 6px var(--space-3); border-radius: var(--radius-full, 999px); background: var(--gx-surface); color: var(--gx-text);
+  border: 1px solid var(--gx-line); font-size: var(--text-sm, 14px); pointer-events: none; backdrop-filter: blur(12px);
+}
+.gx-hint { top: calc(var(--topbar-h, var(--topbar, 56px)) + var(--space-2)); color: var(--gx-text-2); }
+.gx-toast { top: 38%; font-size: var(--text-lg, 20px); font-weight: var(--weight-semibold, 600); padding: var(--space-2) var(--space-4); }
+.gx-toast .ic { width: 24px; height: 24px; }
+.gx-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Settings → Camera & gestures (inside the Settings sheet; reuses its .a11y-sw / .a11y-range rows) */
+.gx-settings { display: grid; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--color-line, rgba(255, 255, 255, .12)); }
+.gx-settings h3 { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--text-md, 16px); }
+.gx-state { margin: 0; font-size: var(--text-sm, 14px); color: var(--color-text-2, inherit); }
+.gx-row { display: grid; gap: var(--space-1); }
+.gx-hand { display: flex; gap: var(--space-3); border: 0; padding: 0; margin: 0; }
+.gx-hand legend { font-weight: var(--weight-semibold, 600); margin-bottom: var(--space-1); }
+.gx-sheet ul { list-style: none; padding: 0; margin: var(--space-2) 0; display: grid; gap: var(--space-2); }
+.gx-sheet li { display: flex; gap: var(--space-3); align-items: flex-start; }
+.gx-sheet li .ic { width: 28px; height: 28px; }
+.gx-sheet li span { display: grid; }
+.gx-sheet small, .gx-note { color: var(--color-text-2, inherit); }
+
+/* calibration */
+.gx-calib { position: fixed; inset: 0; z-index: var(--z-modal, 50); display: grid; place-items: center; background: var(--color-scrim, rgba(0, 0, 0, .55)); }
+.gx-calib-card { width: min(420px, calc(100vw - 32px)); display: grid; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-xl, 24px);
+  background: var(--color-surface, #12161E); color: var(--color-text, #F2F5FA); box-shadow: var(--shadow-3, 0 12px 40px rgba(0, 0, 0, .5)); }
+.gx-calib-card h3 { margin: 0; font-size: var(--text-lg, 20px); }
+.gx-calib-view { border-radius: var(--radius-lg, 16px); overflow: hidden; }
+.gx-calib-step { display: flex; gap: var(--space-2); align-items: center; margin: 0; font-size: var(--text-lg, 20px); font-weight: var(--weight-semibold, 600); }
+.gx-calib-bar { height: 6px; border-radius: 3px; background: var(--color-surface-3, rgba(255, 255, 255, .12)); overflow: hidden; }
+.gx-calib-bar i { display: block; height: 100%; width: 0; background: var(--color-accent, #4C8DFF); transition: width .1s linear; }
+
+@media (prefers-reduced-motion: reduce) { .gx-indicator.is-starting .gx-dot { animation: none; } .gx-ring { transition: none; } }
+html[data-motion="reduce"] .gx-ring { transition: none; }
+@media (max-width: 640px) { .gx-preview { width: 140px; } }

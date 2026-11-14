@@ -19,6 +19,7 @@ The browser plays this as in-page audio, so Chrome's echo canceller can subtract
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import json
 import os
@@ -30,7 +31,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import steering
+from . import loudness, steering
 from .config import settings
 
 router = APIRouter()
@@ -48,6 +49,8 @@ VOICES: dict[str, str] = {
 MEDIA = {"steer": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
 
 CACHE_DIR: Path | None = None     # tests point this elsewhere; default data_dir/tts_cache (gitignored)
+PREF_KEYS = ("steer_voice", "speed", "expr", "volume")
+MASTER_VERSION = 2                # in the cache key: bump when the delivery baseline or the mastering changes
 
 
 def cache_dir() -> Path:
@@ -65,9 +68,10 @@ def cache_path(model: str, text: str, style: dict | None = None, engine: str = "
 def clean_style(voice: str, text: str, style: dict | None) -> dict:
     """The client's style (from the Director) made safe, or the persona default. Only what reaches the engine.
     Settings ride on the style (docs/VOICES.md): `steer_voice` (a curated or persona voice id), `speed` (the rate
-    setting, applied in speak()) and `expr` (expressiveness 0–1, steering.with_expressiveness)."""
-    prefs = {k: style[k] for k in ("steer_voice", "speed", "expr") if k in style} if isinstance(style, dict) else {}
-    if not isinstance(style, dict) or not (set(style) - {"steer_voice", "speed", "expr"}):
+    setting, applied in speak()), `expr` (expressiveness 0–1, steering.with_expressiveness) and `volume` (the master
+    volume, 1 = the loudness target; applied in speak())."""
+    prefs = {k: style[k] for k in PREF_KEYS if k in style} if isinstance(style, dict) else {}
+    if not isinstance(style, dict) or not (set(style) - set(PREF_KEYS)):
         style = steering.style_for(voice, text)   # none, or only Settings: the persona default style, with them
     elif "tag" not in style:   # the client named only the situation / affect (e.g. a badge line it wrote itself)
         sit = style.get("situation") if style.get("situation") in steering.SITUATIONS else None
@@ -85,6 +89,8 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
         except (TypeError, ValueError):
             continue
     out = {"voice": persona, "steer_voice": steering.VOICES[persona], "tag": tag, "controls": ctrl}
+    if style.get("situation") in steering.SITUATIONS:       # picks the loudness target and the slow-line baseline
+        out["situation"] = style["situation"]
     emph = [str(w)[:40] for w in (style.get("emph") or []) if str(w).strip()][:4]
     if emph:
         out["emph"] = emph
@@ -113,7 +119,61 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
         sp = None
     if sp is not None and sp == sp:
         out["speed"] = round(max(0.5, min(2.0, sp)), 2)
+    try:
+        vol = float(prefs["volume"]) if prefs.get("volume") is not None else None
+    except (TypeError, ValueError):
+        vol = None
+    if vol is not None and vol == vol and abs(vol - 1.0) > 1e-3:
+        out["volume"] = round(max(0.0, min(2.0, vol)), 2)
     return out
+
+
+def gain_for_volume(volume: float | None) -> float:
+    """Master volume (1 = 100% = the loudness target) → gain in dB into the limiter: up to +6 dB above, down to -30."""
+    try:
+        v = float(volume if volume is not None else 1.0)
+    except (TypeError, ValueError):
+        v = 1.0
+    if v <= 0.03:
+        return loudness.MIN_GAIN_DB
+    return round(max(loudness.MIN_GAIN_DB, min(loudness.MAX_GAIN_DB, 20 * math.log10(v))), 2)
+
+
+def target_lufs(st: dict) -> float:
+    return loudness.TARGET_LUFS + (loudness.ALARM_LUFS_OFFSET if st.get("situation") in steering.ALARM_SITUATIONS else 0)
+
+
+def _remap_words(words: str, keep) -> str:
+    """Word timings (ms) after cap_gaps removed samples: each time maps to the kept samples before it."""
+    if not words or keep is None:
+        return words
+    import numpy as np
+    sr, kept = keep
+    c = np.concatenate([[0], np.cumsum(kept)])
+    n = len(kept)
+
+    def m(ms):
+        i = min(n, max(0, int(round(int(ms) * sr / 1000))))
+        return int(round(c[i] * 1000 / sr))
+    out = []
+    for pair in words.split(","):
+        a, b = pair.split("-")
+        out.append(f"{m(a)}-{max(m(a), m(b))}")
+    return ",".join(out)
+
+
+def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, dict | None]:
+    """The final stage for every Steer render (§4d): cap long silences (the delivery baseline's gap), then
+    loudness-normalise to the target (+2 LU for alarms, + the kid's volume) under a -1 dBTP look-ahead limiter.
+    Fails open: audio that isn't 16-bit WAV goes out as it came."""
+    try:
+        x, sr = loudness.read_wav(audio)
+    except Exception:  # noqa: BLE001
+        return audio, words, None
+    y, kept = loudness.cap_gaps(x, sr, max_gap_s=st.get("gap_s", steering.GAP_FAST_S),
+                                tail_s=0.05 if last else 0.22, with_mask=True)
+    y, info = loudness.master(y, sr, target_lufs(st), gain_for_volume(st.get("volume")))
+    return loudness.write_wav(y, sr), _remap_words(words, (sr, kept)), info
 
 
 async def _synth(model: str, text: str) -> bytes:
@@ -180,10 +240,14 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             st = clean_style(voice, text, style)
             speed = speed if speed is not None else st.pop("speed", None)   # an explicit ?speed= wins over Settings
             st.pop("speed", None)
-            if speed and abs(float(speed) - 1.0) > 1e-3:             # a11y: the kid's speed, on top of the style
-                st["controls"], st["pace"] = steering.with_speed(st["controls"], speed)
+            # the delivery baseline + the kid's speed (§4d): faster at 1x; vocab / explain lines stay slow on purpose
+            slow = st.get("situation") in steering.SLOW_SITUATIONS or bool(st.get("vocab"))
+            st["controls"], pace, st["gap_s"] = steering.delivery(st["controls"], speed, slow)
+            if pace != 1.0:
+                st["pace"] = pace
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}
-            model, key = st["steer_voice"], {**st, **{k: v for k, v in place.items() if v is not None}}
+            model, key = st["steer_voice"], {**st, **{k: v for k, v in place.items() if v is not None},
+                                             "master": MASTER_VERSION}
         else:
             if not settings.deepgram_api_key:
                 reasons.append("deepgram: DEEPGRAM_API_KEY is not set")
@@ -192,9 +256,9 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
         p = cache_path(model, text, key, engine)
         media = MEDIA[engine][0]
         headers = {"Cache-Control": "public, max-age=604800", "X-TTS-Voice": model, "X-TTS-Engine": engine,
-                   "Access-Control-Expose-Headers": "X-TTS-Words, X-TTS-Engine, X-TTS-Style, X-TTS-Speed"}
-        if st and st.get("pace"):
-            headers["X-TTS-Speed"] = f"{speed} pace={st['pace']} rate={st['controls'].get('rate', 0)}"
+                   "Access-Control-Expose-Headers": "X-TTS-Words, X-TTS-Engine, X-TTS-Style, X-TTS-Speed, X-TTS-Loudness"}
+        if st:
+            headers["X-TTS-Speed"] = f"{speed or 1} pace={st.get('pace', 1.0)} rate={st['controls'].get('rate', 0)}"
         if st:
             headers["X-TTS-Style"] = f"{st['tag']} " + ",".join(f"{k}={v}" for k, v in st["controls"].items())
         if reasons:
@@ -208,6 +272,9 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             if engine == "steer":
                 res = await _steer(text, st, place)
                 audio, words = res if isinstance(res, tuple) else (res, "")
+                audio, words, info = finish(audio, st, clean_words(words), last=not place.get("next"))
+                if info and info.get("lufs") is not None:
+                    headers["X-TTS-Loudness"] = f"{info['lufs']} LUFS {info['tp']} dBTP"
             else:
                 audio, words = await _synth(model, text), ""
         except Exception as e:  # noqa: BLE001 - any upstream failure means "next engine"

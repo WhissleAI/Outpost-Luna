@@ -40,6 +40,7 @@ mac:
   entitlementsInherit: build-resources/entitlements.mac.plist
   extendInfo:
     NSMicrophoneUsageDescription: "Outpost Luna listens when you hold the talk button, so you can ask the Moon questions and give mission orders. Everything stays on this computer."
+    NSCameraUsageDescription: "Only if you turn on Camera & gestures in Settings: Outpost Luna watches your hand and head so you can control it with gestures. The picture stays on this computer and is never saved or sent."
     LSApplicationCategoryType: public.app-category.education
 dmg:
   writeUpdateInfo: false

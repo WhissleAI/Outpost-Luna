@@ -265,7 +265,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function start(seed) {
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
-    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level: tier() }); prev = null; logHistory = []; reminded.clear(); seen.clear();
+    // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
+    const level = (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
+    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
@@ -645,22 +647,16 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- the shared intent bus (frontend/src/input/intents.js, feat/gestures): voice, keys and gestures reach the
   // mission through the same handlers. Soft dependency: until the bus is merged, nothing registers (no build error).
   const busMods = import.meta.glob("../input/intents.js");
-  /** The panel the head (or a look gesture) is aimed at: x, y in -1..1 from the seat view. */
-  const aimPanel = (x, y) => x < -.3 ? (y > .2 ? "rover" : "habitat") : x > .3 ? (y > .2 ? "comm" : "radiation") : y > .35 ? "pedestal" : y > -.1 ? "displays" : null;
+  // The cabin's look / panels / next-prev / yes-no reach missionUI.intent() through the shell's defaults
+  // (input/defaults.js, priority 0) and router decisions through shellNav → nav(). Here (priority 10) only what the
+  // defaults don't cover: the site picker's next / prev / yes, the debrief's yes, and direct Houston / end shift.
   const onBus = {
-    next: () => screen === "hud" && cockpit && cockpit.is3d ? (cockpit.nextPanel(), true) : screen === "brief" ? (stepSite(1), true) : false,
-    prev: () => screen === "hud" && cockpit && cockpit.is3d ? (cockpit.prevPanel(), true) : screen === "brief" ? (stepSite(-1), true) : false,
-    panel_open: a => screen === "hud" ? intent("panel_open", a && a.panel) : false,
-    panel_back: () => screen === "hud" ? nav("panel_back") : false,
-    look: a => { if (screen !== "hud" || !cockpit || !cockpit.is3d || !a) return false; cockpit.look(a.x, a.y);
-      if (!cockpit.panel) cockpit.highlightPanel(Math.hypot(a.x || 0, a.y || 0) > .2 ? aimPanel(a.x || 0, a.y || 0) : null); return true; },
-    yes: () => screen === "hud" ? (pending ? intent("confirm") : false) : screen === "brief" ? (start(), true) : screen === "debrief" ? nav("fly_again") : false,
-    no: () => screen === "hud" && pending ? intent("cancel") : false,
+    next: () => screen === "brief" ? (stepSite(1), true) : false,
+    prev: () => screen === "brief" ? (stepSite(-1), true) : false,
+    yes: () => screen === "brief" ? (start(), true) : screen === "debrief" ? nav("fly_again") : false,
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,
-    end_shift: () => screen === "hud" ? (endShift(), true) : false,
+    end_shift: () => screen === "hud" && !(state && state.over) ? (endShift(), true) : false,
   };
-  ["panel_power", "panel_comm", "panel_habitat", "panel_rover", "panel_radiation", "view_orbit", "view_site", "view_rover", "view_earth", "take_command", "pick_site", "fly_again", "new_site", "debrief"]
-    .forEach(n => { onBus[n] = a => nav(n, a); });
   const loadBus = busMods["../input/intents.js"];
   if (loadBus) loadBus().then(m => Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, a => fn(a) === true, { priority: 10 }))).catch(() => {});
   function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing(); }
