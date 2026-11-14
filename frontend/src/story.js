@@ -127,6 +127,7 @@ export const NOW = {
   dark: "Dark outside. Night mode saves power.",
   ice: "No storm due. Send the rover for ice.",
   steady: "All steady. Time warp?",
+  steadyFast: "All steady at 4x. Skip to the next event?",
   confirmTitle: "CAPCOM asks",
   confirm: "CAPCOM needs a yes or no.",
   paused: "Clock paused. Press Play when you're ready.",

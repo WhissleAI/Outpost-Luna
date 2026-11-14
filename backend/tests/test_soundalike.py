@@ -124,3 +124,14 @@ def test_exclaim_keeps_real_turns():
     assert not R.is_exclaim("okay next")
     assert not R.is_exclaim("what is regolith")
     assert R.route("yes", ctx("patch", offer="next_lesson"))["outcome"] == "navigate"
+
+
+def test_exact_option_answer_passes_the_directed_gate():
+    """Live run (round 7): "Right now" for the option "Right now" was rated not directed by Arc; the kid was stuck."""
+    st = _step("choice", lambda st: any(o["label"] == "Right now" for o in st["accept"]["options"]))
+    c = ctx("lesson", step_type="choice", step=st, dd=0.2, step_options=[o["label"] for o in st["accept"]["options"]])
+    assert R.route("Right now", c)["outcome"] == "answer"
+    assert R.route("um right now", c)["outcome"] == "answer"
+    assert R.route("we have to leave right now ok", c)["outcome"] == "ignore"       # not the answer as written
+    assert R.route("yes", ctx("lesson", step_type="earth_view", dd=0.2))["outcome"] == "ignore"
+    assert R.route("Right now", ctx("cabin", dd=0.2))["outcome"] == "ignore"           # only on a step

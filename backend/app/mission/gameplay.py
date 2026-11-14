@@ -31,6 +31,7 @@ SCIENCE_EVERY_H = 8
 STEER_AFTER_H = 2          # the boulder field comes up this far into an ice drive
 STEER_WAIT_H = 2           # ...and the rover picks its own way if nobody steers in time
 SHELTER_LEAD_H = 6         # storm prep: the shelter step opens this many hours before a likely storm
+RECYCLER_MAX = 60          # the life check never offers the recycler past this (ice is the answer then)
 LIFE_CHECK = 55            # air under this: the life support check (ice, or more recycler power)
 QUIET_RATE = 0.1           # mSv/h: under this the sensor reads "normal" (the quiet-Sun baseline is ~0.06 game)
 
@@ -173,7 +174,11 @@ def _storm_prep(m):
         # shelter early, not too early: the shelter is good for about a day (Orion), and science stops inside
         sh = _shelter_step()
         sh["ready_if"] = lambda m, t: not m.rover["busy"] and (_warning(m) or {}).get("eta_h", 0) <= SHELTER_LEAD_H
-        sh["wait_text"] = f"Shelter {SHELTER_LEAD_H} hours before it hits. Keep working till then."
+        # a kid can't do "6 hours before" sums: the card counts down to the moment the shelter opens, and that moment
+        # stops a skip (a "task" event, phase "ready")
+        sh["wait_text"] = lambda m, t: ("Shelter opens when the rover crew is home." if m.rover["busy"] else
+                                        f"Shelter opens in {max(1, int((_warning(m) or {}).get('eta_h', SHELTER_LEAD_H)) - SHELTER_LEAD_H)} h. "
+                                        "Keep working, or skip ahead.")
         steps.append(sh)
     else:   # a "possible" storm: a real call to make, with no right answer known yet
         steps.append(_choice("decide", "Possible storm. Shelter now, or wait?",
@@ -227,9 +232,14 @@ def _life_check(m):
         steps = [_order("ice", "Send the rover for ice", "rover:collect_ice", ROVER("collect_ice"),
                         lambda m, t: m.rover["task"] == "collect_ice", "Rover off for ice. Good.")]
     else:
-        steps = [_choice("air", "Air is dropping. Recycler up, or an ice run?",
-                         [{"id": "recycler", "label": "Recycler up", "hint": "Costs power"},
-                          {"id": "ice", "label": "Ice run", "hint": "Rover, crew outside"}])]
+        # a real raise every time (a "recycler up" to where it already is did nothing, and the check came back)
+        up = min(RECYCLER_MAX, max(40, m.loads["life_support"] + 10))
+        opts = [{"id": "ice", "label": "Ice run", "hint": "Rover, crew outside"}]
+        if m.loads["life_support"] < RECYCLER_MAX:
+            opts.insert(0, {"id": "recycler", "label": f"Recycler to {up}%", "hint": "Costs power"})
+        steps = [_choice("air", "Air is dropping. Recycler up, or an ice run?" if len(opts) > 1 else
+                         "Air is dropping. The recycler is maxed: ice run?", opts)]
+        steps[0]["up"] = up
     return dict(title="Life support check", lesson="life", panel="habitat", level="caution", priority=70, cool_h=12,
                 say="Life support check. The air is dropping.", steps=steps)
 
@@ -375,6 +385,11 @@ def _check(m, out) -> list[dict]:
     done_now = []
     for t in _active(m):
         for s in t["steps"]:
+            if s.get("ready_if") and not s["done"]:   # a step that becomes doable is news: it stops a skip and the warp
+                r = bool(s["ready_if"](m, t))
+                if r and s.get("was_ready") is False:
+                    _ev(m, out, "task", f"{t['title']}: {s['label']}.", phase="ready", task=t["id"], task_kind=t["kind"], step=s["id"])
+                s["was_ready"] = r
             f = s.get("done_if")
             if f and not (s.get("latch") and s["done"]):
                 # an order step shows the truth: done while the state says so (the rover can leave again)
@@ -607,7 +622,7 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
         return "Okay, we wait and watch the sensor.", {}
     if k == "life_check" and sid == "air":
         if choice == "recycler":
-            return order(ALLOC("life_support", 40), "Recycler up. Air will climb.")
+            return order(ALLOC("life_support", s.get("up", 40)), f"Recycler at {s.get('up', 40)}%. Air will climb.")
         return order(ROVER("collect_ice"), "Rover off for ice.")
     if k == "ice_run" and sid == "route":
         return order({**ROVER("collect_ice"), "route": choice},
@@ -629,11 +644,16 @@ def _lesson(lid):
     return {"id": lid, "n": LESSON_NO.get(lid), "title": LESSON_TITLE.get(lid)} if lid else None
 
 
+def _wait_text(m, t, s):
+    w = s.get("wait_text")
+    return w(m, t) if callable(w) else w
+
+
 def _step_view(m, t, s) -> dict:
     ready = (not s.get("ready_if") or bool(s["ready_if"](m, t))) and s["kind"] != "wait"
     v = {"id": s["id"], "kind": s["kind"], "label": s["label"], "done": s["done"], "ready": ready and not s["done"],
          "target": s.get("target"), "result": s.get("result"),
-         "wait": s.get("wait_text") if not ready and not s["done"] else None}
+         "wait": _wait_text(m, t, s) if not ready and not s["done"] else None}
     if s["kind"] == "order":
         v["cmd"] = s["cmd"]
     if s["kind"] == "choice":

@@ -526,8 +526,10 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         strong = len(ws) >= 3 and (dd is None or dd >= ctx.dd_strong)
         if not strong:
             return out("ignore", "speaking")
-    # 3. Not for us: Arc says the kid is talking to someone else.
-    if dd is not None and dd < ctx.dd_min and not (nav and len(ws) <= 4):
+    # 3. Not for us: Arc says the kid is talking to someone else. Except the open step's own answer, said as it is
+    #    written ("Right now" for the option "Right now"): Arc rates short exact answers as not directed, and the live
+    #    run showed a kid stuck on that step forever (round 7, handsfree_run --audio).
+    if dd is not None and dd < ctx.dd_min and not (nav and len(ws) <= 4) and not exact_option(raw, ctx):
         return out("ignore", "not_directed")
     if nav:
         return out("navigate", "intent", intent=nav[0], arg=nav[1])
@@ -618,6 +620,25 @@ def _plausible(text: str, ctx: Ctx, dd: float | None, strict: bool = False) -> b
     the step's own words count (not the >= 3 content words fallback)."""
     from .academy.grade import plausible
     return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options, strict=strict)
+
+
+_LEAD = re.compile(r"^(?:(?:um|uh|oh|okay|ok|so|i think|it s|its|it is|my answer is|i say|i pick)\s+)+")
+
+
+def exact_option(text: str, ctx: Ctx) -> bool:
+    """On a lesson / ride step with options, the whole turn (after "um", "i think", "it's") IS one option's label or say
+    phrase of >= 2 words or >= 4 letters ("Right now", "Never", "Malapert Massif"): the step's answer, said as written.
+    Bare yes / no stay with yesno_counts (they are room talk as often as answers)."""
+    if ctx.screen not in ("lesson", "ride") or not ctx.step_type:
+        return False
+    q = _LEAD.sub("", norm(text)).strip()
+    if not q or BARE_YESNO.match(q):
+        return False
+    phrases = list(ctx.step_options)
+    if ctx.step:
+        from .academy.grade import step_options
+        phrases += [w for _, say in step_options(ctx.step["accept"]) for w in say if w]
+    return any(norm(p) == q and (len(q.split()) >= 2 or len(q) >= 4) for p in phrases if p)
 
 
 def _names_option(text: str, ctx: Ctx) -> bool:

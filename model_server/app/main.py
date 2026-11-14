@@ -75,11 +75,24 @@ def health():
 
 
 def _rss_mb() -> dict:
-    import resource
+    """Current and peak resident memory in MB. Never raises: /health is the desktop app's readiness probe, so a
+    failure here (e.g. the POSIX-only `resource` module on Windows) would leave the app waiting forever."""
+    import sys
 
     import psutil
-    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20   # bytes on macOS
-    return {"now": round(psutil.Process().memory_info().rss / 2**20), "peak": round(peak)}
+    out = {"now": None, "peak": None}
+    try:
+        mi = psutil.Process().memory_info()
+        out["now"] = round(mi.rss / 2**20)
+        if sys.platform == "win32":
+            out["peak"] = round(getattr(mi, "peak_wset", mi.rss) / 2**20)   # Windows peak working set
+        else:
+            import resource
+            peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            out["peak"] = round(peak / (2**20 if sys.platform == "darwin" else 2**10))  # bytes on macOS, KiB on Linux
+    except Exception:  # noqa: BLE001 - diagnostics only
+        pass
+    return out
 
 
 @app.post("/v1/tag")
