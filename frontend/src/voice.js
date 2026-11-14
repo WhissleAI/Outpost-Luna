@@ -59,7 +59,17 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   }
   const idle = () => { if (!kidTalking) set(mode === "ws" ? "listening" : "off"); };
   const showWords = () => { wordsEl.textContent = turnText(); };
+  const HOLD = hintEl.lastElementChild.textContent || "Hold to talk";
   const note = text => { hintEl.lastElementChild.textContent = text; };
+  // [qa] The ear can drop (model server restarted, too many sessions): never show the server's words to a kid; reconnect
+  // on our own with a back-off, and put "Hold to talk" back once the mic is live again.
+  let retryT = 0, retries = 0, userOff = false;
+  function earLost() {
+    if (userOff || retryT) return;
+    note("Voice paused. Reconnecting…");
+    const wait = Math.min(30000, 2000 * 2 ** retries++);
+    retryT = setTimeout(async () => { retryT = 0; wsBroken = false; if (!(await startAlwaysOn()) && !userOff && mode !== "ws") earLost(); }, wait);
+  }
   function micBlocked(e) {
     set("error", "Mic blocked");
     const msg = micErrorText(e);
@@ -155,10 +165,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
-      else if (m.t === "error") note("Voice hiccup: " + (m.message || "try again"));
+      else if (m.t === "error") note("Voice paused. Reconnecting…");
     },
     level,
-    close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); } },
+    close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); earLost(); } },
     micError: micBlocked,
   });
 
@@ -182,11 +192,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (mode === "ws" || starting || wsBroken || !canWS) return mode === "ws";
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
-    if (ok === true) { mode = "ws"; idle(); return true; }
-    if (ok !== "mic") { wsBroken = true; set("off"); }       // "mic": micBlocked already showed why
+    if (ok === true) { mode = "ws"; retries = 0; userOff = false; note(HOLD); idle(); return true; }
+    if (ok !== "mic") { wsBroken = true; set("off"); earLost(); }   // [qa] retry with a back-off (the ear may be warming up)       // "mic": micBlocked already showed why
     return false;
   }
-  function stopAlwaysOn() { listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
+  function stopAlwaysOn() { userOff = true; clearTimeout(retryT); retryT = 0; listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
   function srStart() { if (!rec || srOn) return; finalBuf = ""; interim = ""; turnAsked = false; try { rec.start(); } catch (e) { /* already running */ } }
 
   // First gesture anywhere opens the mic (browsers need a gesture for audio + mic).
@@ -196,6 +206,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   micBtn.onclick = async () => {
     if (mode === "ws") { stopAlwaysOn(); return; }
     if (srOn) { rec.stop(); return; }
+    userOff = false; wsBroken = false;   // [qa] a tap always tries the local ear again (it may have been warming up)
     if (await startAlwaysOn()) return;
     if (!starting) srStart();
   };

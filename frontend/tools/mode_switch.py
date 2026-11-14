@@ -42,6 +42,10 @@ def run(base):
         pg.wait_for_selector("#aCsForm", timeout=30000)
         say("call me Nova")
         pg.wait_for_selector(".mp-card", timeout=20000)
+        # QA-19: Mission, then straight back to Flight School before the sites have loaded: no picker leaks over it
+        pg.evaluate("document.getElementById('modeMission').click(); document.getElementById('modeAcademy').click()")
+        pg.wait_for_timeout(3000)
+        check(mode() == "academy" and vis(MISSION_CARDS) == 0, "QA-19: Mission -> Flight School while sites load: no picker")
         say("lesson 2")
         pg.wait_for_selector("#aPanel.is-lesson", timeout=20000)
         pg.click(".a-choice[data-c]")                      # answer step 1 by tap (right or wrong: feedback shows)

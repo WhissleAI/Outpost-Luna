@@ -332,7 +332,7 @@
       "name": "Surveyor 1", "type": "lander", "artifact": true, "mission": "Surveyor 1", "lat": -2.4745, "lon": -43.3398, "side": "near",
       "facts": [
         {"text": "I'm Surveyor 1, a robot with a TV camera.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [1]},
-        {"text": "In June 1966 I landed gently on the Moon, one of America's first safe Moon landings.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [1966]},
+        {"text": "In June 1966 I landed gently on the Moon, America's first soft landing there.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": [1966]},
         {"text": "My pictures helped show the ground was solid enough for astronauts.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
         {"text": "The first Surveyor lander, which touched down safely near the crater Flamsteed P and sent back TV pictures of the ground around it.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []},
         {"text": "Surveyor close-ups helped show whether the Moon's surface was safe and solid enough for astronauts to land on.", "source": "NSSDCA: Surveyor (1966-1968)", "numbers": []}

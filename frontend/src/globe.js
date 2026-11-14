@@ -83,11 +83,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   // 4th arg: maxLat (number; how close to a pole the camera may look, the map's polar view uses 88) or
   // [learning-v3] {clamp:false} (= 89, the pole views of the globe steps)
+  const lessMotion = () => document.documentElement.dataset.motion === "reduce";   // a11y.js sets it (Settings or the OS)
   function flyTo(lat, lon, dist, opt = 75) {
     const maxLat = typeof opt === "number" ? opt : opt && opt.clamp === false ? 89 : 75;
     const d = ll2v(Math.max(-maxLat, Math.min(maxLat, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
-    fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: 1300 };
+    // [qa] Settings → Less motion (or the OS setting): cut straight to the view, no flight
+    fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: lessMotion() ? 1 : 1300 };
   }
 
   function showFeature(f, { dist } = {}) {
@@ -264,6 +266,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     if (band) { const hb = h * band; camera.setViewOffset(w, h, 0, (h - hb) / 2, w, h); } else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }
+  let decorOn = true, userPins = true, userHw = true;   // [qa] Library switches (setDecor keeps them)
   function setViewport(frac) { band = frac || null; resize(); }
   new ResizeObserver(resize).observe(stage); resize();
 
@@ -278,7 +281,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       if (t >= 1) fly = null;
     }
     controls.update();
-    if (ring) ring.material.opacity = .65 + .3 * Math.sin(now / 300);
+    if (ring) ring.material.opacity = lessMotion() ? .8 : .65 + .3 * Math.sin(now / 300);
     if (layer.style.display !== "none") {
       const w = stage.clientWidth, h = stage.clientHeight;
       ghosts.forEach(g => {
@@ -345,9 +348,11 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */
     setQuality(q) { renderer.setPixelRatio(q === "low" ? 1 : Math.min(devicePixelRatio, 2)); resize(); },
     /** Place dots + hardware markers on/off (off on Flight School screens, where the route pins are the map). */
-    setDecor(on) { if (mi.on) return; pins.visible = !!on; layer.style.display = on ? "" : "none"; },
-    togglePins() { pins.visible = !pins.visible; return pins.visible; },
-    toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
-    get hardwareOn() { return layer.style.display !== "none"; },
+    // [qa] the Library's Places / Hardware switches are the kid's choice: setDecor(true) brings back only what they left on
+    setDecor(on) { if (mi.on) return; decorOn = !!on; pins.visible = decorOn && userPins; layer.style.display = decorOn && userHw ? "" : "none"; },
+    togglePins() { userPins = !userPins; pins.visible = decorOn && userPins; return userPins; },
+    toggleHardware() { userHw = !userHw; layer.style.display = decorOn && userHw ? "" : "none"; return userHw; },
+    get pinsOn() { return userPins; },
+    get hardwareOn() { return userHw; },
   };
 }

@@ -147,7 +147,7 @@ body:not([data-mode="cadet"]) .ghosts{display:none}
   background:var(--color-overlay);border:1px solid var(--color-overlay-line);color:var(--color-text-2);-webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay)}
 .chips button:hover{color:var(--color-text)}
 .chips .nudge{color:var(--color-text)}
-.chips .nudge[hidden]{display:none}
+.chips .nudge[hidden],body:not([data-mode="cadet"]) .chips .nudge{display:none}
 body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 
 .dock{display:flex;flex-direction:column;border-radius:var(--radius-xl);overflow:hidden;
@@ -393,3 +393,6 @@ body:not([data-mode="cadet"]) .mcard{display:none}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .askbar.is-hearing .orb i,.askbar.is-speaking .orb i{height:12px}
 }
+
+/* [qa] QA-53: no "Hold to talk" while the voice is starting or off */
+.askbar.is-warming .hint,.askbar.is-voiceoff .hint{visibility:hidden}

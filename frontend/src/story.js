@@ -171,4 +171,5 @@ export const DEBRIEF = {
   mars: "On Mars, Houston would answer 6 to 44 minutes later.",
   /** On screen and spoken (pass callSign.spoken() when speaking). */
   grade: (cs, g, pts) => `Nice flying, ${cs}. Grade ${g}, ${pts} points.`,
+  gradeOver: (cs, g, pts) => `Grade ${g}, ${pts} points. Let's learn from it, ${cs}.`,   // [qa] a failed mission isn't "nice flying"
 };

@@ -24,14 +24,16 @@ export async function createMissionClient() {
     debrief: id => j(`/api/mission/${enc(id)}/debrief`),
     /** Earth-up and Sun-up spans over the whole mission ([start_h, end_h]), by the sim's own rule. */
     windows: id => j(`/api/mission/${enc(id)}/windows`),
-    /** WS /ws/mission/{mid} telemetry; reconnects once a second while subscribed. */
+    /** WS /ws/mission/{mid} telemetry; reconnects with a back-off while subscribed (not for an unknown mission). */
     subscribe(id, fn) {
-      let ws = null, stop = false, timer = null;
+      let ws = null, stop = false, timer = null, wait = 1000;
       const open = () => {
         if (stop) return;
         try { ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/mission/" + enc(id)); } catch (e) { return; }
+        ws.onopen = () => { wait = 1000; };
         ws.onmessage = e => { try { const m = JSON.parse(e.data); if (m && m.t === "telemetry") fn(m); } catch (_) { /* ignore */ } };
-        ws.onclose = () => { if (!stop) timer = setTimeout(open, 1000); };
+        // [qa] 4404 = the server doesn't know this mission (it restarted): stop; otherwise back off up to 15 s
+        ws.onclose = e => { if (stop || (e && e.code === 4404)) return; timer = setTimeout(open, wait); wait = Math.min(15000, wait * 2); };
       };
       open();
       return () => { stop = true; clearTimeout(timer); try { ws && ws.close(); } catch (e) { /* closed */ } };
