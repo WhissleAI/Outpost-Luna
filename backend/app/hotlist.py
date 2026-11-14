@@ -26,8 +26,9 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 MAX_STEP = 48
-SCHEMA = 2                   # bump when the way the lists are built changes (it is part of the version)
+SCHEMA = 3                   # bump when the way the lists are built changes (it is part of the version)
 MAX_SCREEN = 260
+MAX_NAMES_STEP = 320           # the Moon screens and the picker: every name in the strong tier
 
 OFFER_WORDS = {"next_lesson": ["next", "yes", "next lesson"], "next_step": ["next", "yes", "next one"],
                "mission": ["take command", "yes", "go to mission"], "take_command": ["take command", "yes"],
@@ -170,8 +171,8 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += V["orders"] + V["panels"] + V["sites"]
         wide += ORDER_WORDS + V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]
     elif screen == "brief":
-        st += V["sites"] + ["take command", "start the mission"]
-        wide += V["orders"] + V["places"] + V["crew"]
+        st += V["sites"] + ["take command", "start the mission"] + V["places"]
+        wide += V["orders"] + V["crew"]
     elif screen == "callsign":
         st += V["callsigns"] + ["call me", "surprise me", "you pick"]
         wide += V["crew"]
@@ -179,11 +180,13 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += ["fly again", "another site"] + V["sites"]
         wide += V["orders"] + V["places"]
     else:          # the Moon screens: map, patch, lesson_done, library -> the whole gazetteer and the hardware
+        # Names ARE what these screens are about: places, crew and hardware ride the strong tier here (round-7 ear
+        # eval: name recall 0.47 -> 0.60 with the strong weights vs 0.49 with the light ones, no false names).
         st += (["next", "start"] if screen != "library" else []) + \
-            [t for t in (_lesson_titles() if screen != "library" else [])]
-        wide += V["places"] + V["hardware"] + V["crew"] + V["glossary"] + V["course"][:80]
+            [t for t in (_lesson_titles() if screen != "library" else [])] + V["places"] + V["crew"] + V["hardware"]
+        wide += V["glossary"] + V["course"][:80]
     wide += V["nav"] + V["help"]
-    st = _dedupe(st, MAX_STEP)
+    st = _dedupe(st, MAX_NAMES_STEP if screen in MOON_SCREENS + ("brief",) else MAX_STEP)
     sk = {w.lower() for w in st}
     return {"v": V["v"], "step": st, "screen": [w for w in _dedupe(wide, MAX_SCREEN) if w.lower() not in sk]}
 
