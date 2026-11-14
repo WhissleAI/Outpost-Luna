@@ -38,6 +38,21 @@ test("macOS: the first camera request asks the system; the answer is the grant",
   assert.equal(calls.length, 2);
 });
 
+test("Windows: no system prompt; the privacy switch is logged and the grant is Chromium's", async () => {
+  const logs = [], asked = [];
+  const sp = { getMediaAccessStatus: (k) => (k === "camera" ? "denied" : "granted"), askForMediaAccess: (k) => { asked.push(k); return Promise.resolve(true); } };
+  const s = fakeSession(); lockDownSession(s, ORIGIN, { platform: "win32", systemPreferences: sp, log: (...a) => logs.push(a.join(" ")) });
+  assert.equal(await ask(s, "media", { requestingUrl: ORIGIN + "/", mediaTypes: ["video"] }), true);
+  assert.equal(await ask(s, "media", { requestingUrl: ORIGIN + "/", mediaTypes: ["audio"] }), true);
+  assert.equal(await ask(s, "media", { requestingUrl: "https://evil.example/", mediaTypes: ["video"] }, wc("https://evil.example/")), false);
+  assert.deepEqual(asked, [], "askForMediaAccess is macOS-only");
+  assert.ok(logs.includes("windows privacy camera: denied"), logs.join("\n"));
+  assert.ok(logs.includes("windows privacy microphone: granted"), logs.join("\n"));
+  assert.equal(logs.filter((l) => l.startsWith("windows privacy")).length, 2, "nothing logged for a foreign origin");
+  const s2 = fakeSession(); lockDownSession(s2, ORIGIN, { platform: "win32", systemPreferences: { getMediaAccessStatus: () => { throw new Error("n/a"); } } });
+  assert.equal(await ask(s2, "media", { requestingUrl: ORIGIN + "/", mediaTypes: ["video"] }), true, "a throwing status check never blocks");
+});
+
 test("offline filter: only our origin, ws, data, blob", () => {
   const s = fakeSession(), blocked = []; lockDownSession(s, ORIGIN, { log: (k, u) => blocked.push(u) });
   const go = (url) => { let r; s.filter({ url }, (x) => { r = x; }); return !r.cancel; };

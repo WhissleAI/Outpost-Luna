@@ -42,7 +42,7 @@ if (-not (Have cmake)) { Die "CMake missing: winget install --id Kitware.CMake -
 # C compiler: Visual Studio (Build Tools) with the C++ workload, found by vswhere; else LLVM clang + Ninja.
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $vs = $null
-if (Test-Path $vswhere) { $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
+if (Test-Path $vswhere) { $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
 $useClang = $false
 if (-not $vs) {
   if ((Have clang) -and (Have ninja)) { $useClang = $true }
@@ -97,9 +97,12 @@ Remove-Item -Recurse -Force dist\win-unpacked -ErrorAction SilentlyContinue
 Run npx electron-builder --win nsis --x64 --publish never
 Pop-Location
 
-Step "8/8 done"
+Step "8/8 checks + done"
 $exe = Get-ChildItem desktop\dist\*.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $exe) { Die "no installer in desktop\dist" }
+# Every .dll / .pyd import resolves inside the app or in Windows itself, so a PC without the VC++ Redistributable
+# (or without Visual Studio, unlike this one) still starts the model server.
+Run uv run --no-project python desktop\scripts\win_bundle_check.py dlls desktop\dist\win-unpacked\resources
 Write-Host ("Installer: {0}  ({1:N0} MB, {2:N0} s)" -f $exe.FullName, ($exe.Length / 1MB), ((Get-Date) - $T0).TotalSeconds) -ForegroundColor Green
 Write-Host "Unpacked app (run it without installing): $Root\desktop\dist\win-unpacked\Outpost Luna.exe"
 Write-Host "Smoke test: start the app, then:  `$env:PYTHONPATH='desktop\resources\site\backend'; desktop\resources\python\python.exe desktop\scripts\smoke.py"

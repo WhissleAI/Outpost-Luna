@@ -152,6 +152,7 @@ The settings are stored on this device in `outpost-keys`.
 |---|---|---|
 | Menu | App (About, Hide, **Quit ⌘Q**), Edit (undo / redo / cut / copy / paste / select all, so the text box keeps them), View (zoom, full screen), Window (Minimize, Zoom). **No Reload, no Dev Tools, no Close (⌘W)**: closing the only window quits the app. | **No menu bar** in a packaged build, so <kbd>Alt</kbd> never opens a menu and Alt+letter mnemonics can't take the page's Alt shortcuts. Quit is the close box or Alt+F4. |
 | Blocked in packaged builds (`before-input-event`) | ⌘R, ⇧⌘R, ⌥⌘I / ⌥⌘J, F5, F12, browser back / forward keys | Ctrl+R, Ctrl+Shift+R, Ctrl+Shift+I / J / C, F5, F12, browser back / forward keys |
+| Zoom, full screen | View menu: ⌘= / ⌘- / ⌘0, full screen | No menu, so the shell handles them itself (`shellAction`): Ctrl+= / Ctrl+- / Ctrl+0, F11 |
 | Dev builds (`npm start`) | Reload and Dev Tools stay in View | A View menu with Reload and Dev Tools |
 
 The page's own keys always pass: the arrows, Enter, Esc, Backspace, Space, letters, `/`, `?`, the Alt shortcuts, and

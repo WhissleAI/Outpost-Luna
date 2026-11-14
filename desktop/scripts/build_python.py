@@ -15,15 +15,25 @@ Output (all under desktop/resources/, gitignored):
 
 The wheels for arc-transcriber and steertts-edge come from desktop/vendor/wheels/ (see docs/DESKTOP.md); with --build-wheels
 they are built from the local checkouts first. Caches stay in desktop/build/.
+
+Cross-build (docs/BUILD_WINDOWS.md, "Cross-build on a Mac"): `--target win-x64` on macOS / Linux lays out the Windows
+tree instead: python-build-standalone's x86_64-pc-windows-msvc build (sha256-checked against the release's SHA256SUMS),
+win_amd64 wheels (`uv pip install --python-platform x86_64-pc-windows-msvc`), and bytecode compiled by this machine's
+CPython of the same minor version (a .pyc depends on the Python version, not the OS).
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import tarfile
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,7 +42,10 @@ RES = DESK / "resources"
 BUILD = DESK / "build"
 WHEELS = DESK / "vendor/wheels"
 PY_VERSION = os.environ.get("DESKTOP_PYTHON", "3.11")
-WIN = sys.platform == "win32"
+WIN = sys.platform == "win32"     # the TARGET is Windows (this machine, or --target win-x64)
+# Cross-build targets: the uv platform for wheels and python-build-standalone's download for the interpreter.
+TARGETS = {"win-x64": {"uv_platform": "x86_64-pc-windows-msvc", "os": "windows", "arch": "x86_64"}}
+CROSS: dict | None = None         # set by --target
 VENDORED = ("arc-transcriber", "steertts-edge")
 LOCAL_SRC = {  # dev-machine checkouts, for --build-wheels (the paths model_server/pyproject.toml uses)
     "arc-transcriber": ROOT / "../../../../dv3work/arc/arc_transcriber",
@@ -49,6 +62,7 @@ def uv_env() -> dict:
     env = dict(os.environ)
     env.setdefault("UV_CACHE_DIR", str(BUILD / "uv-cache"))
     env["UV_PYTHON_INSTALL_DIR"] = str(BUILD / "uv-python")
+    env["UV_PYTHON_INSTALL_BIN"] = "0"   # no python3.11 shim in ~/.local/bin: the build keeps to desktop/build
     return env
 
 
@@ -56,8 +70,65 @@ def python_exe(pydir: Path) -> Path:
     return pydir / "python.exe" if WIN else pydir / "bin/python3"
 
 
+def _sha256(p: Path) -> str:
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def install_python_cross() -> Path:
+    """The target OS's python-build-standalone "install_only_stripped" build: the same release `uv python install`
+    picks natively (uv's own download list), checked against that release's SHA256SUMS, unpacked into resources/python."""
+    out = subprocess.run(["uv", "python", "list", "--all-platforms", "--only-downloads", "--output-format", "json"],
+                         env=uv_env(), check=True, capture_output=True, text=True).stdout
+    cands = [e for e in json.loads(out) if e["implementation"] == "cpython" and e["os"] == CROSS["os"]
+             and e["arch"] == CROSS["arch"] and e.get("variant", "default") == "default"
+             and f"{e['version_parts']['major']}.{e['version_parts']['minor']}" == PY_VERSION and e.get("url")]
+    if not cands:
+        sys.exit(f"uv knows no CPython {PY_VERSION} download for {CROSS['os']}-{CROSS['arch']}")
+    e = max(cands, key=lambda e: e["version_parts"]["patch"])
+    url = e["url"]
+    name = urllib.parse.unquote(url.rsplit("/", 1)[-1])
+    tgz = BUILD / name
+    if not tgz.exists():
+        print(f"downloading {name}", flush=True)
+        with urllib.request.urlopen(url, timeout=120) as r, open(tgz.with_suffix(".part"), "wb") as f:
+            shutil.copyfileobj(r, f)
+        tgz.with_suffix(".part").replace(tgz)
+    sums = urllib.request.urlopen(url.rsplit("/", 1)[0] + "/SHA256SUMS", timeout=60).read().decode()
+    want = {ln.split()[1]: ln.split()[0] for ln in sums.splitlines() if len(ln.split()) == 2}.get(name)
+    got = _sha256(tgz)
+    if want != got:
+        tgz.unlink()
+        sys.exit(f"{name}: sha256 {got} does not match the release's SHA256SUMS ({want})")
+    print(f"{name}: sha256 ok", flush=True)
+    dst = RES / "python"
+    shutil.rmtree(dst, ignore_errors=True)
+    tmp = BUILD / "py-unpack"
+    shutil.rmtree(tmp, ignore_errors=True)
+    with tarfile.open(tgz) as t:
+        t.extractall(tmp, filter="data")
+    shutil.move(str(tmp / "python"), str(dst))
+    shutil.rmtree(tmp, ignore_errors=True)
+    for p in dst.rglob("EXTERNALLY-MANAGED"):
+        p.unlink()
+    return dst
+
+
+def host_python() -> Path:
+    """This machine's managed CPython of PY_VERSION (bytecode for a cross-built tree; same minor version = same .pyc)."""
+    env = uv_env()
+    run("uv", "python", "install", PY_VERSION, env=env)
+    return Path(subprocess.run(["uv", "python", "find", "--managed-python", PY_VERSION], env=env, check=True,
+                               capture_output=True, text=True).stdout.strip())
+
+
 def install_python() -> Path:
     """python-build-standalone via uv, copied (not linked) into resources/python so the app owns it."""
+    if CROSS:
+        return install_python_cross()
     env = uv_env()
     run("uv", "python", "install", PY_VERSION, env=env)
     found = subprocess.run(["uv", "python", "find", "--managed-python", PY_VERSION], env=env, check=True,
@@ -104,8 +175,51 @@ def install_site(py: Path, project: str, target: Path, extra: list[Path]):
     shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True)
     # --no-deps: the export is the whole locked set already (incl. the vendored packages' own deps).
-    run("uv", "pip", "install", "--python", py, "--target", target, "--no-deps", "--link-mode", "copy",
+    # Cross-build: resolve wheels for the target platform; uv evaluates the export's markers for it (colorama-style
+    # Windows-only deps come in, uvloop stays out). Pure-Python sdists (docopt) still build here; check_cross_site()
+    # then refuses anything native to this machine.
+    who = ["--python-platform", CROSS["uv_platform"], "--python-version", PY_VERSION] if CROSS else ["--python", py]
+    run("uv", "pip", "install", *who, "--target", target, "--no-deps", "--link-mode", "copy",
         "-r", req, *extra, env=uv_env())
+    if CROSS:
+        check_cross_site(target)
+
+
+def check_cross_site(site: Path) -> None:
+    """A cross-built site folder must hold only Windows binaries: no .so / .dylib, and every wheel tag win_amd64 or
+    pure (an sdist built on this Mac for a package with C code would otherwise slip in as a macOS binary)."""
+    native = [p.relative_to(site).as_posix() for p in site.rglob("*") if p.suffix in (".so", ".dylib") and p.is_file()]
+    tags = set()
+    for w in site.glob("*.dist-info/WHEEL"):
+        tags |= {ln.split(":", 1)[1].strip() for ln in w.read_text(encoding="utf-8").splitlines() if ln.startswith("Tag:")}
+    foreign = sorted(t for t in tags if not (t.endswith("-any") or t.endswith("win_amd64")))
+    if native or foreign:
+        sys.exit(f"{site.name}: not a Windows tree: native files {native[:8]}, wheel tags {foreign[:8]}")
+    print(f"{site.name}: Windows-only binaries ({len(tags)} wheel tags, all win_amd64 or pure)", flush=True)
+
+
+# The Visual C++ runtime, next to python.exe (the application folder: Windows searches it for every DLL the process
+# loads). torch (c10.dll, torch_cpu.dll), onnxruntime and rapidfuzz import MSVCP140.dll / MSVCP140_1.dll, which
+# python-build-standalone does not ship (it has vcruntime140*.dll only) and a clean Windows does not have unless some
+# other program installed the VC++ Redistributable: without these the model server dies on `import torch` with
+# WinError 126. Microsoft's redistributable DLLs, from the pinned msvc-runtime wheel (PyPI), win_amd64.
+MSVC_RUNTIME = "msvc-runtime==14.44.35112"
+MSVC_DLLS = ("msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "msvcp140_atomic_wait.dll", "msvcp140_codecvt_ids.dll",
+             "vcruntime140.dll", "vcruntime140_1.dll", "concrt140.dll", "vcomp140.dll")
+
+
+def install_msvc_runtime(py_dir: Path, py: Path) -> None:
+    tmp = BUILD / "msvc-runtime"
+    shutil.rmtree(tmp, ignore_errors=True)
+    who = ["--python-platform", TARGETS["win-x64"]["uv_platform"], "--python-version", PY_VERSION] if CROSS else ["--python", py]
+    run("uv", "pip", "install", *who, "--target", tmp, "--no-deps", "--link-mode", "copy", MSVC_RUNTIME, env=uv_env())
+    for name in MSVC_DLLS:
+        src = tmp / name if (tmp / name).exists() else tmp / "Scripts" / name
+        if not src.exists():
+            sys.exit(f"{MSVC_RUNTIME} has no {name}")
+        shutil.copy2(src, py_dir / name)
+    shutil.rmtree(tmp, ignore_errors=True)
+    print(f"Visual C++ runtime ({MSVC_RUNTIME}): {len(MSVC_DLLS)} DLLs next to python.exe", flush=True)
 
 
 # ------------------------------------------------------------------------------------------------- size trimming
@@ -131,6 +245,9 @@ def trim(py_dir: Path, sites: list[Path]) -> None:
     for d in STDLIB_DROP:
         freed += _rm(lib / d)
     for d in ("include", "share", "tcl", "lib/tcl8.6", "lib/tk8.6", "lib/itcl4.2.4", "lib/thread2.8.9"):
+        freed += _rm(py_dir / d)
+    # Windows layout: Tk lives in DLLs/, import libraries (.lib, for building C extensions) in libs/
+    for d in ("libs", "DLLs/_tkinter.pyd", "DLLs/tcl86t.dll", "DLLs/tk86t.dll"):
         freed += _rm(py_dir / d)
     for f in list(py_dir.glob("lib/libtcl*")) + list(py_dir.glob("lib/libtk*")):
         freed += _rm(f)
@@ -163,7 +280,7 @@ def stage_app(skip_frontend: bool):
     shutil.copytree(ROOT / "model_server/app", app / "model_server/app", ignore=APP_IGNORE)
     shutil.copy2(DESK / "runtime/launch.py", app / "launch.py")
     if not skip_frontend:
-        run("npm", "run", "build", cwd=ROOT / "frontend", shell=WIN)
+        run("npm", "run", "build", cwd=ROOT / "frontend", shell=sys.platform == "win32")   # npm.cmd: the HOST, not the target
     dist = ROOT / "frontend/dist"
     if not (dist / "index.html").exists():
         sys.exit("frontend/dist/index.html missing: run `npm run build` in frontend/")
@@ -176,8 +293,7 @@ def stage_app(skip_frontend: bool):
         if not (app / must).exists():
             sys.exit(f"bundle is missing {must}")
     # Settings voices (docs/VOICES.md): every curated voice needs its offline preview clip in the bundle.
-    import json
-    for v in json.loads((app / "backend/data/voices.json").read_text())["voices"]:
+    for v in json.loads((app / "backend/data/voices.json").read_text(encoding="utf-8"))["voices"]:
         if not (app / "backend/data/voice_previews" / f"{v['id']}.wav").exists():
             sys.exit(f"bundle is missing the preview for {v['id']}")
     # Never ship a key: fail the build if any .env slipped in.
@@ -188,7 +304,10 @@ def stage_app(skip_frontend: bool):
 
 def precompile(py: Path, dirs: list[Path]) -> None:
     """Bytecode in the bundle, never re-validated (unchecked-hash): the bundle is read-only and signed, so Python must
-    neither check source mtimes nor write .pyc next to them at run time (the app sets PYTHONDONTWRITEBYTECODE=1)."""
+    neither check source mtimes nor write .pyc next to them at run time (the app sets PYTHONDONTWRITEBYTECODE=1).
+    Cross-build: the target's python.exe cannot run here, so this machine's CPython of the same version compiles."""
+    if CROSS:
+        py = host_python()
     subprocess.run([str(py), "-m", "compileall", "-q", "-j0", "--invalidation-mode", "unchecked-hash",
                     *[str(d) for d in dirs if d.exists()]], check=False)
 
@@ -202,7 +321,11 @@ def main():
     ap.add_argument("--build-wheels", action="store_true", help="build the vendored wheels from the local checkouts first")
     ap.add_argument("--app-only", action="store_true", help="only re-stage the app code (python/ and site/ unchanged)")
     ap.add_argument("--skip-frontend-build", action="store_true", help="use the existing frontend/dist")
+    ap.add_argument("--target", choices=sorted(TARGETS), help="cross-build for another OS (docs/BUILD_WINDOWS.md)")
     a = ap.parse_args()
+    global WIN, CROSS
+    if a.target:
+        CROSS, WIN = TARGETS[a.target], True
     RES.mkdir(parents=True, exist_ok=True)
     BUILD.mkdir(parents=True, exist_ok=True)
     if not a.app_only:
@@ -213,6 +336,8 @@ def main():
         py = python_exe(py_dir)
         install_site(py, "backend", RES / "site/backend", [])
         install_site(py, "model_server", RES / "site/models", extra)
+        if WIN:
+            install_msvc_runtime(py_dir, py)
         trim(py_dir, [RES / "site/backend", RES / "site/models"])
     stage_app(a.skip_frontend_build)
     py_dir = RES / "python"
@@ -222,7 +347,15 @@ def main():
     for p in ("python", "site/backend", "site/models", "app"):
         if (RES / p).exists():
             print(f"  {p:14s} {du(RES / p):8.1f} MB")
-    print(f"platform {platform.system()} {platform.machine()}; resources in {RES}")
+    if WIN and not a.app_only:
+        # every DLL / .pyd import must resolve in the bundle or in Windows itself (a clean PC: no VC++ Redistributable)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from win_bundle_check import check_dlls
+        missing = check_dlls(RES)
+        if missing:
+            sys.exit("DLL imports that resolve nowhere on a clean Windows:\n" + "\n".join(f"  {d} <- {f}" for f, d in missing))
+        print("Windows DLL imports: all resolve (bundle + in-box Windows)")
+    print(f"platform {platform.system()} {platform.machine()}; resources in {RES}{' (target: Windows x64)' if CROSS else ''}")
 
 
 if __name__ == "__main__":

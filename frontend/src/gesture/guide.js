@@ -39,3 +39,14 @@ export function spokenSummary({ cabin = false } = {}) {
   return "With the camera: open hand to stop, thumbs up for yes, thumbs down for no, swipe for next or back, point and hold to pick"
     + (cabin ? ", and lean in to open a panel." : ", and make a fist to turn the Moon.");
 }
+
+/** A friendly line for a camera getUserMedia failure (engine.js). Windows has no per-app camera prompt: the switch is
+ * Settings → Privacy & security → Camera, and Chromium reports it off as NotAllowedError or, with some drivers, as
+ * NotReadableError: the same error as a camera another app is holding. */
+export function cameraErrorText(e) {
+  const n = String((e && e.name) || "");
+  if (/NotAllowed|Security|PermissionDenied/i.test(n)) return "Camera blocked. Allow it in your computer's privacy settings.";
+  if (/NotFound|Overconstrained|DevicesNotFound/i.test(n)) return "No camera found.";
+  if (/NotReadable|TrackStart|Abort/i.test(n)) return "The camera didn't start. Close other apps using it, or check your privacy settings.";
+  return "The camera didn't start.";
+}

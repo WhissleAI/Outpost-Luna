@@ -124,6 +124,9 @@ desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/
 desktop-mac:     ## Desktop: fresh clone -> macOS arm64 .dmg in desktop/dist (desktop/scripts/build-mac.sh; Windows: build-windows.ps1)
 	bash desktop/scripts/build-mac.sh
 
+desktop-win-cross: ## Desktop: Windows x64 installer cross-built on this Mac (desktop/scripts/cross-build-windows.sh; docs/BUILD_WINDOWS.md §8)
+	bash desktop/scripts/cross-build-windows.sh
+
 desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev)
 	cd desktop && node node_modules/electron/install.js && npx electron .
 

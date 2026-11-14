@@ -5,6 +5,7 @@
 // Privacy: the stream never leaves this page. Each frame is downscaled into an ImageBitmap, transferred to the worker
 // and closed there; only landmark numbers come back, and only intents leave this module. Nothing is stored or logged.
 import { createGestureClassifier } from "./classifier.js";
+import { cameraErrorText } from "./guide.js";
 
 const FPS_STEPS = [30, 24, 15, 10];
 
@@ -84,7 +85,7 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
         video: { deviceId: deviceId ? { exact: deviceId } : undefined, width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 }, facingMode: deviceId ? undefined : "user" },
       });
     } catch (e) {
-      status("denied", { error: e && e.name === "NotAllowedError" ? "Camera blocked. Allow it in your computer's privacy settings." : e && e.name === "NotFoundError" ? "No camera found." : "The camera didn't start." });
+      status("denied", { error: cameraErrorText(e) });
       return false;
     }
     video.srcObject = stream;
