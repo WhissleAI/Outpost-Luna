@@ -5,6 +5,8 @@ import asyncio
 import time
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from . import registry, sim
@@ -19,6 +21,7 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
+    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): passed to the sim, no effect yet
 
 
 class CommandReq(BaseModel):
@@ -44,7 +47,7 @@ def mission_sites():
 @router.post("/api/mission/start")
 def mission_start(req: StartReq):
     try:
-        m = registry.create(req.site, req.seed, req.roles)
+        m = registry.create(req.site, req.seed, req.roles, level=req.level)
     except KeyError:
         raise HTTPException(404, f"unknown site {req.site!r}")
     return sim.to_state(m)
