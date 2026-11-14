@@ -3,114 +3,1201 @@
  "size": "1440x900",
  "first_shift_s": null,
  "summary": {
-  "moments": 13,
-  "actions": 0,
-  "obvious": 0,
-  "reacted": 0,
-  "finished": false
+  "moments": 65,
+  "actions": 52,
+  "obvious": 52,
+  "reacted": 52,
+  "finished": true
  },
  "log": [
   {
-   "t": 105,
+   "t": 16,
    "moment": "tour",
    "should": "This is your window. Switch views: Orbit, Site, Rover, Earth.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 137,
+   "t": 18,
    "moment": "tour",
    "should": "Your three screens. First, power: the battery the Sun fills.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 163,
+   "t": 18,
    "moment": "tour",
    "should": "Life support: the air and water your crew needs.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 177,
+   "t": 22,
    "moment": "tour",
    "should": "Dose: the radiation your crew has taken. Keep it low.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 203,
+   "t": 23,
    "moment": "tour",
    "should": "Power panel: pick a system, then press plus or minus.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 253,
+   "t": 25,
    "moment": "tour",
    "should": "Habitat: heaters, science, and your mission goals.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 319,
+   "t": 27,
    "moment": "tour",
    "should": "Rover: send it for ice, then bring it home.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 346,
+   "t": 29,
    "moment": "tour",
    "should": "Radiation: shields, and the storm shelter under its cover.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 369,
+   "t": 30,
    "moment": "tour",
    "should": "Comm: call Houston when Earth is in view.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 396,
+   "t": 32,
    "moment": "tour",
    "should": "Warning lights. Red means act now. Amber means get ready.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 429,
+   "t": 34,
    "moment": "tour",
    "should": "Your goal: ten safe days. Send science home. Bring back ice.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "t": 458,
+   "t": 36,
    "moment": "tour",
    "should": "First job: raise the shields. Then press Play to start time.",
    "obvious": true,
-   "action": "dom-click (covered)",
+   "action": "click",
    "reacted": true
   },
   {
-   "moment": "timeout",
-   "obvious": false,
-   "reacted": false,
-   "should": "mission not finished in 2400s"
+   "t": 40,
+   "clock": "Day 1 \u00b7 00:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Set your power",
+   "should": "Shields up to 30",
+   "meta": "0 of 1Lesson 4 helps here",
+   "buttons": [
+    "Shields up to 30"
+   ],
+   "glow": [
+    "cb-knobrow"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Shields up to 30",
+   "reacted": true,
+   "ack": "Power set. Good.",
+   "next": "Power set. Now press Play to start the clock.",
+   "progress": "Days0.0/10 Science0/120 Ice0/1 Log 1",
+   "moment_shown": null
+  },
+  {
+   "t": 43,
+   "clock": "Day 1 \u00b7 00:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "Power set. Now press Play to start the clock.",
+   "meta": "",
+   "buttons": [
+    "Start the clock"
+   ],
+   "glow": [
+    "cbPlay"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Start the clock",
+   "reacted": true,
+   "ack": "Power set. Good.",
+   "next": "No storm due. Send the rover for ice.",
+   "progress": "Days0.0/10 Science0/120 Ice0/1 Log 1",
+   "moment_shown": null
+  },
+  {
+   "t": 50,
+   "clock": "Day 1 \u00b7 02:15Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Send the rover for ice",
+   "meta": "0 of 3Lesson 6 helps here",
+   "buttons": [
+    "Send the rover for ice"
+   ],
+   "glow": [
+    "cb-rvb"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Send the rover for ice",
+   "reacted": true,
+   "ack": "Rover rolling. Good.",
+   "next": "Rover driving. Back in 13 hours.",
+   "progress": "Days0.1/10 Science0/120 Ice0/1 Log 3",
+   "moment_shown": "On our own"
+  },
+  {
+   "t": 56,
+   "clock": "Day 1 \u00b7 04:15Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Boulders ahead. Steer left or right?",
+   "meta": "1 of 3Lesson 6 helps here",
+   "buttons": [
+    "Steer left",
+    "Steer right"
+   ],
+   "glow": [
+    "cb-now-btns"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Steer left",
+   "reacted": true,
+   "ack": "Nice driving. That saved an hour.",
+   "next": "Rover out, back in 11 hours. Skip ahead to wait.",
+   "progress": "Days0.2/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 57,
+   "clock": "Day 1 \u00b7 04:15Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 11 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Nice driving. That saved an hour.",
+   "next": "Rover out, back in 10 hours. Skip ahead to wait.",
+   "progress": "Days0.2/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 58,
+   "clock": "Day 1 \u00b7 05:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 10 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Nice driving. That saved an hour.",
+   "next": "Rover out, back in 10 hours. Skip ahead to wait.",
+   "progress": "Days0.2/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 59,
+   "clock": "Day 1 \u00b7 05:30Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 10 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Nice driving. That saved an hour.",
+   "next": "Rover out, back in 9 hours. Skip ahead to wait.",
+   "progress": "Days0.2/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 60,
+   "clock": "Day 1 \u00b7 06:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 9 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Nice driving. That saved an hour.",
+   "next": "Rover out, back in 8 hours. Skip ahead to wait.",
+   "progress": "Days0.3/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 61,
+   "clock": "Day 1 \u00b7 07:00Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 8 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 8 hours. Skip ahead to wait.",
+   "progress": "Days0.3/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 62,
+   "clock": "Day 1 \u00b7 07:30Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 8 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 7 hours. Skip ahead to wait.",
+   "progress": "Days0.3/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 63,
+   "clock": "Day 1 \u00b7 08:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 7 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 6 hours. Skip ahead to wait.",
+   "progress": "Days0.4/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 64,
+   "clock": "Day 1 \u00b7 09:00Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 6 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 6 hours. Skip ahead to wait.",
+   "progress": "Days0.4/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 65,
+   "clock": "Day 1 \u00b7 09:30Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 6 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 5 hours. Skip ahead to wait.",
+   "progress": "Days0.4/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 66,
+   "clock": "Day 1 \u00b7 10:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 5 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 4 hours. Skip ahead to wait.",
+   "progress": "Days0.5/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 67,
+   "clock": "Day 1 \u00b7 11:00Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 4 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Rover out, back in 4 hours. Skip ahead to wait.",
+   "progress": "Days0.5/10 Science0/120 Ice0/1 Log 4",
+   "moment_shown": null
+  },
+  {
+   "t": 68,
+   "clock": "Day 1 \u00b7 11:30Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Ice run",
+   "should": "Rover out, back in 4 hours. Skip ahead to wait.",
+   "meta": "2 of 3Lesson 6 helps here",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Take a sample",
+   "progress": "Days0.6/10 Science0/120 Ice1/1 Log 4",
+   "moment_shown": "Ice home"
+  },
+  {
+   "t": 72,
+   "clock": "Day 1 \u00b7 17:30Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Take a sample",
+   "should": "Take a sample",
+   "meta": "0 of 11 h leftLesson 1 helps here",
+   "buttons": [
+    "Take a sample"
+   ],
+   "glow": [
+    "cb-now-btns"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Take a sample",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady. Time warp?",
+   "progress": "Days0.8/10 Science0/120 Ice1/1 Log 8",
+   "moment_shown": null
+  },
+  {
+   "t": 76,
+   "clock": "Day 1 \u00b7 20:15Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "",
+   "next": "Shelter opens in 5 h. Keep working, or skip ahead.",
+   "progress": "Days1.0/10 Science0/120 Ice1/1 Log 8",
+   "moment_shown": "Storm forecast"
+  },
+  {
+   "t": 83,
+   "clock": "Day 1 \u00b7 23:00Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "CAPCOM offer",
+   "should": "Go to shelter / Set shields to 40",
+   "buttons": [
+    "Go to shelter",
+    "Set shields to 40"
+   ],
+   "obvious": true,
+   "action": "click: Go to shelter",
+   "reacted": true,
+   "next": "Storm forecast: about 10 hours to get ready. Shields or shelter."
+  },
+  {
+   "t": 101,
+   "clock": "Day 2 \u00b7 10:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "Crew sheltered. Skip ahead to ride out the storm.",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Crew out of the shelter",
+   "progress": "Days2.4/10 Science0/120 Ice1/1 Log 12",
+   "moment_shown": "All clear"
+  },
+  {
+   "t": 110,
+   "clock": "Day 3 \u00b7 16:15Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days2.8/10 Science0/120 Ice1/1 Log 14",
+   "moment_shown": null
+  },
+  {
+   "t": 111,
+   "clock": "Day 3 \u00b7 19:45Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Take a sample",
+   "progress": "Days3.0/10 Science0/120 Ice1/1 Log 14",
+   "moment_shown": null
+  },
+  {
+   "t": 115,
+   "clock": "Day 4 \u00b7 02:15Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Take a sample",
+   "should": "Take a sample",
+   "meta": "0 of 12 h leftLesson 1 helps here",
+   "buttons": [
+    "Take a sample"
+   ],
+   "glow": [
+    "cb-now-btns"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Take a sample",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady. Time warp?",
+   "progress": "Days3.1/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 116,
+   "clock": "Day 4 \u00b7 02:45Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.2/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 117,
+   "clock": "Day 4 \u00b7 04:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.2/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 118,
+   "clock": "Day 4 \u00b7 06:45Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.4/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 119,
+   "clock": "Day 4 \u00b7 09:30Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Sample logged. Science +2.",
+   "next": "All steady. Time warp?",
+   "progress": "Days3.6/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 120,
+   "clock": "Day 4 \u00b7 14:00Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.6/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 121,
+   "clock": "Day 4 \u00b7 15:30Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.8/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 122,
+   "clock": "Day 4 \u00b7 18:00Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days3.8/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 123,
+   "clock": "Day 4 \u00b7 20:00Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days4.0/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 124,
+   "clock": "Day 4 \u00b7 23:30Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days4.1/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 125,
+   "clock": "Day 5 \u00b7 02:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days5.1/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 126,
+   "clock": "Day 6 \u00b7 03:45Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days5.3/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 130,
+   "clock": "Day 6 \u00b7 07:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days5.4/10 Science0/120 Ice1/1 Log 15",
+   "moment_shown": null
+  },
+  {
+   "t": 131,
+   "clock": "Day 6 \u00b7 09:45Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Radio to 10: send science",
+   "progress": "Days5.6/10 Science7/120 Ice1/1 Log 15",
+   "moment_shown": "Earthrise"
+  },
+  {
+   "t": 137,
+   "clock": "Day 6 \u00b7 18:45Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Comm window",
+   "should": "Radio to 10: send science",
+   "meta": "0 of 25 h leftLesson 3 helps here",
+   "buttons": [
+    "Radio to 10: send science"
+   ],
+   "glow": [
+    "cb-du"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Radio to 10: send science",
+   "reacted": true,
+   "ack": "Downlink running. Science is going home.",
+   "next": "Call Houston",
+   "progress": "Days5.8/10 Science20/120 Ice1/1 Log 16",
+   "moment_shown": null
+  },
+  {
+   "t": 147,
+   "clock": "Day 6 \u00b7 22:30Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Comm window",
+   "should": "Call Houston",
+   "meta": "1 of 21 h leftLesson 3 helps here",
+   "buttons": [
+    "Call Houston"
+   ],
+   "glow": [
+    "cbPtt"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Call Houston",
+   "reacted": true,
+   "ack": "Houston has the news. Good.",
+   "next": "All steady. Time warp?",
+   "progress": "Days6.0/10 Science44/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 148,
+   "clock": "Day 6 \u00b7 23:00Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "Houston has the news. Good.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days6.0/10 Science56/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 148,
+   "clock": "Day 7 \u00b7 01:45Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Houston has the news. Good.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days7.0/10 Science113/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 149,
+   "clock": "Day 8 \u00b7 01:30Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Houston has the news. Good.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days7.2/10 Science116/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 151,
+   "clock": "Day 8 \u00b7 04:15Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Houston has the news. Good.",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days7.3/10 Science118/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 152,
+   "clock": "Day 8 \u00b7 07:30Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Shelter opens in 6 h. Keep working, or skip ahead.",
+   "progress": "Days7.4/10 Science121/120 Ice1/1 Log 18",
+   "moment_shown": null
+  },
+  {
+   "t": 152,
+   "clock": "Day 8 \u00b7 10:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "CAPCOM offer",
+   "should": "Go to shelter / Set shields to 40",
+   "buttons": [
+    "Go to shelter",
+    "Set shields to 40"
+   ],
+   "obvious": true,
+   "action": "click: Go to shelter",
+   "reacted": true,
+   "next": "Storm forecast: about 12 hours to get ready. Shields or shelter."
+  },
+  {
+   "t": 170,
+   "clock": "Day 8 \u00b7 22:30Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "Crew sheltered. Skip ahead to ride out the storm.",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Crew out of the shelter",
+   "progress": "Days8.9/10 Science121/120 Ice1/1 Log 20",
+   "moment_shown": null
+  },
+  {
+   "t": 172,
+   "clock": "Day 9 \u00b7 22:00Shift 4 \u00b7 Shackleton Crater Rim",
+   "task": "All clear: crew out",
+   "should": "Crew out of the shelter",
+   "meta": "0 of 1Lesson 5 helps here",
+   "buttons": [
+    "Crew out of the shelter"
+   ],
+   "glow": [
+    "cb-sw"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Crew out of the shelter",
+   "reacted": true,
+   "ack": "Crew out. Science is back on.",
+   "next": "Air system to 40",
+   "progress": "Days8.9/10 Science121/120 Ice1/1 Log 20",
+   "moment_shown": null
+  },
+  {
+   "t": 176,
+   "clock": "Day 10 \u00b7 01:30Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Life support check",
+   "should": "Air system to 40",
+   "meta": "0 of 1Lesson 6 helps here",
+   "buttons": [
+    "Air system to 40"
+   ],
+   "glow": [
+    "cb-du"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Air system to 40",
+   "reacted": true,
+   "ack": "Air system up. Good.",
+   "next": "All steady. Time warp?",
+   "progress": "Days9.1/10 Science124/120 Ice1/1 Log 22",
+   "moment_shown": null
+  },
+  {
+   "t": 181,
+   "clock": "Day 10 \u00b7 05:00Shift 1 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady. Time warp?",
+   "meta": "",
+   "buttons": [
+    "Time warp 4x",
+    "Skip ahead"
+   ],
+   "glow": [
+    "cb-warps"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Time warp 4x",
+   "reacted": true,
+   "ack": "",
+   "next": "All steady at 4x. Skip to the next event?",
+   "progress": "Days9.2/10 Science126/120 Ice1/1 Log 22",
+   "moment_shown": null
+  },
+  {
+   "t": 183,
+   "clock": "Day 10 \u00b7 06:15Shift 2 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "All steady at 4x. Skip to the next event?",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "Send the rover for ice",
+   "progress": "Days9.5/10 Science130/120 Ice1/1 Log 22",
+   "moment_shown": null
+  },
+  {
+   "t": 184,
+   "clock": "Day 10 \u00b7 13:00Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Life support check",
+   "should": "Send the rover for ice",
+   "meta": "0 of 1Lesson 6 helps here",
+   "buttons": [
+    "Send the rover for ice"
+   ],
+   "glow": [
+    "cb-rvb"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Send the rover for ice",
+   "reacted": true,
+   "ack": "Rover off for ice. Good.",
+   "next": "Rover out, back in 14 hours. Skip ahead to wait.",
+   "progress": "Days9.5/10 Science130/120 Ice1/1 Log 22",
+   "moment_shown": null
+  },
+  {
+   "t": 185,
+   "clock": "Day 10 \u00b7 13:30Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "Rover out, back in 14 hours. Skip ahead to wait.",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "Rover off for ice. Good.",
+   "next": "Rover out, back in 13 hours. Skip ahead to wait.",
+   "progress": "Days9.6/10 Science130/120 Ice1/1 Log 23",
+   "moment_shown": null
+  },
+  {
+   "t": 192,
+   "clock": "Day 10 \u00b7 17:30Shift 3 \u00b7 Shackleton Crater Rim",
+   "task": "Now",
+   "should": "Rover out, back in 10 hours. Skip ahead to wait.",
+   "meta": "",
+   "buttons": [
+    "Skip ahead"
+   ],
+   "glow": [
+    "cbSkip"
+   ],
+   "obvious": true,
+   "glow_on_screen": true,
+   "action": "click: Skip ahead",
+   "reacted": true,
+   "ack": "",
+   "next": "",
+   "progress": "Days10.0/10 Science136/120 Ice1/1 Log 23",
+   "moment_shown": "Mission complete"
+  },
+  {
+   "t": 193,
+   "moment": "debrief",
+   "should": "Read the debrief; Fly again",
+   "obvious": true,
+   "reacted": true,
+   "seen": "Mission complete"
   }
  ]
 }
