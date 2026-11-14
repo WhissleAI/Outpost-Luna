@@ -472,12 +472,18 @@ html[data-motion="reduce"] .is-point{animation:none}
 .cb.is-focus .c3-panel:not(.is-focus):not([data-alarm]):not(.is-open){opacity:.42;filter:saturate(.5)}
 /* seat view: big numbers and the controls only; the detail rows, routes, timelines and tags wait for an open panel */
 /* (the panel the tour or the objective points at keeps its detail: that is the one to read now) */
-.c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-pretend,.cb-swst,.cb-db),
+.c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-swst,.cb-db),
 .c3[data-panel="seat"] .cb-cw>h3{display:none!important}
 .c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.35}
 .c3[data-panel="seat"] .cb-screen{display:flex;flex-direction:column;justify-content:center;gap:var(--space-3)}
 .c3[data-panel="seat"] .du-head b{font-size:64px}
 .c3[data-panel="seat"] .du-head span{font-size:var(--text-md)}
+
+/* QA-23: with the alert strip up, the clock / views row, sky and rover chip sit below its real height */
+.cb-hole.has-alert>.cb-top{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
+.cb-hole.has-alert>.cb-sky,.cb-hole.has-alert>.cb-rover{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2) + 56px)}
+.cb-glass.has-alert .cb-top{top:calc(var(--space-4) + var(--alert-h, var(--control-md)) + var(--space-2))}
+.cb-al-b .cb-pretend{margin-left:4px}
 
 /* the tour card: one beat, one Next, a quiet Skip */
 .m-tour{position:absolute;z-index:30;left:50%;transform:translateX(-50%);width:min(520px,calc(100% - 32px));box-sizing:border-box;

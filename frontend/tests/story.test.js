@@ -64,8 +64,10 @@ test("objective: storms, warnings, power, air, rover and the night, most urgent 
   const s = base(); s.mission_time_h = 30;
   s.env.storm = { active: true }; assert.equal(nowObjective(s).key, "storm_hit"); assert.equal(nowObjective(s).target, "shelter");
   s.shelter = true; assert.equal(nowObjective(s).key, "sheltered");
+  const weak = base(); weak.mission_time_h = 30; weak.env.storm = { active: true, sep: false };
+  assert.equal(nowObjective(weak).key, "weak_storm");   // QA-27: few particles, no shelter rush
   const w = base(); w.mission_time_h = 30; w.env.warning = { confidence: "likely", eta_h: 6 };
-  assert.match(nowObjective(w).text, /Storm in about 6 hours/); assert.equal(nowObjective(w).target, "shields");
+  assert.match(nowObjective(w).text, /about 6 hours to get ready/); assert.doesNotMatch(nowObjective(w).text, /arrive|hits? in/i);   // QA-64 assert.equal(nowObjective(w).target, "shields");
   w.loads.shields = 40; assert.equal(nowObjective(w).target, "shelter");
   const p = base(); p.mission_time_h = 30; p.alerts = ["low_power"]; assert.equal(nowObjective(p).target, "night");
   const a = base(); a.mission_time_h = 30; a.resources.life_support_pct = 20; assert.equal(nowObjective(a).target, "rover:collect_ice");

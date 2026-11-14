@@ -13,7 +13,7 @@ import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
@@ -55,7 +55,7 @@ export const STEP_RENDERERS = {
   tap: { html: () => "" },
   intent: { html: () => "" },
   command: {
-    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}">${icon(ico, { size: 18 })}<span>${esc(label)}</span></button>`).join("")}</div>`,
+    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}">${icon(ico, { size: 18 })}<span>${esc(label)}</span>${ico === "shield" ? `<span class="cb-pretend" title="${esc(PRETEND_TECH_TIP)}">${esc(PRETEND_TECH)}</span>` : ""}</button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-order").forEach(b => b.onclick = () => ctx.answer({ text: b.dataset.say }, b)),
   },
 };

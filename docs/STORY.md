@@ -20,7 +20,7 @@ next action, and saying "what do I do?" on any screen outside a lesson speaks th
 | 1 | **Cadet** | Flight School: the Moon map, one pin per lesson | Learn the Moon from real crew voices and NASA data; each lesson earns a patch | the next lesson |
 | 2 | **Check ride** | One solo shift in the cabin at Shackleton Rim | Prove you can run the outpost; CAPCOM only watches | Qualified: the Mission Commander patch |
 | 3 | **Commander** | Pick a site, then run Outpost Luna for 10 days | Keep the crew safe, send science home, bring back ice | Finish mission (or the mission ends) |
-| 4 | **Debrief** | What happened, in three beats, plus one thing to try | Failure is how you learn; each ending teaches something | **Fly again** (one clear choice; New site is a quiet link) |
+| 4 | **Debrief** | What happened, in three beats, plus one thing to try | Failure is how you learn; each ending teaches something | **Fly again** (one clear choice; "Pick a new site" is a quiet link) |
 | 5 | **Again** | The same site, or another one | Each site is a different puzzle (Sun, Earth, ice) | back to 3 |
 
 `BEATS` (Flight School, Check ride, Command, Debrief) and `ARC_STEP` give the "Step N of 4" eyebrow on the map.
@@ -38,7 +38,7 @@ next action, and saying "what do I do?" on any screen outside a lesson speaks th
 | Qualified → picker | "Pick a site, Commander Nova. Keep the crew safe for ten days." · "Sun means power. Earth means radio. Pick your trade-off." | sub line "Sun means power. Earth means radio. Pick your trade-off."; a first-timer sees a **Best first pick** tag on Shackleton Rim (preselected) and hears "For a first mission, try Shackleton Rim: Sun all 10 days." | Take command |
 | Picker → cabin | "Outpost Luna is online at Shackleton Crater Rim. Day one, Nova." then the **tour** (first mission) or the objective line | the cabin, with the **Now** strip | the glowing control |
 | Cabin → debrief | "Mission complete. Nice flying, Nova. Grade B, 512 points." · the storm beat · "*try line* Fly again?" | **What happened** (3 beats) + **Try next** | Fly again |
-| Debrief (paused) → cabin | "Paused on day 2. Your outpost is waiting. Back to the cabin?" | the same story; the button is **Back to the cabin** | Back to the cabin |
+| Debrief (paused) → cabin | "Paused on day 2. Your outpost is waiting. Back to the cabin?" | the same story; the button is **Resume mission**. Fly again or Pick a new site first asks "Start over? This mission ends, and you begin again at shift 1." (QA-26) | Resume mission |
 
 ## 3. The first-mission cabin tour (`frontend/src/mission/tour.js`)
 
@@ -125,3 +125,11 @@ Before → after: `docs/img/story/before-cabin-1280-dark.jpg` → `docs/img/stor
 - `backend/tools/handsfree_run.py`: the scripted run now takes the cadet tour by voice ("next" × 12, with noise
   mid-way) and asks "what do I do?" in the cabin. It FAILs if the tour isn't finished by voice.
 - Screenshots: `docs/img/story/` (each tour beat, the objective strip, the picker, the debrief).
+
+## 7. QA sweep fixes on this branch
+
+QA-02 (CAPCOM speaks as CAPCOM), QA-23 (alert strip no longer covers the clock), QA-24 (Sun up/down, not "Sun −1.1°" at a
+lit ridge), QA-25 (Pretend tech tags wherever shields or the greenhouse show), QA-26 (no wiping a paused mission without
+asking), QA-27 ("Storm at Earth · Few particles here" for storms without particles), QA-64 (warning copy: "Houston: particles likely
+within hours. Forecast: N hours (game)."), QA-69 (buttons start with a verb), QA-73 (the owner's "no
+direction" report). Status lines are in `docs/QA.md`.

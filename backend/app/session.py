@@ -682,7 +682,7 @@ class Session:
                            situation="storm_warning" if warning else "storm_alert", emotion=self._emotion())
             card = decision("card", pri, title="CAPCOM", body=e.get("text") or line, chips=["Solar storm", src or "NASA"],
                             actions=[{"label": "Go to shelter", "send": {"t": "typed", "text": "go to the shelter"}},
-                                     {"label": "Shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
+                                     {"label": "Set shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
                             hint=True)
             if st:
                 self.warned.add(st.start_h)   # the sim warned already: no second lookahead alert

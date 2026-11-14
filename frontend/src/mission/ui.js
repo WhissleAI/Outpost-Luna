@@ -633,7 +633,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         ${(d.data_used || []).length ? `<details class="mx-data"><summary>Data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
       </div>`;
     $("mAgain").onclick = () => { if (paused && state && !state.over) { showHud(); return; } if (unsub) unsub(); state = null; start(); };
-    $("mNewSite").onclick = () => { if (unsub) unsub(); state = null; briefing(); };
+    $("mNewSite").onclick = () => leaveMission(() => { if (unsub) unsub(); state = null; briefing(); });
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
@@ -646,6 +646,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       .then(() => screen === "debrief" && !paused && say(story.beats[1]))
       .then(() => screen === "debrief" && say(paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`));
   }
+
+  /** QA-26: a paused mission is never wiped by accident. Fly again / a new site from a paused debrief asks first. */
+  function leaveMission(go) {
+    if (!(state && !state.over)) { go(); return; }
+    const box = debriefEl.querySelector(".mx-foot"); if (!box) { go(); return; }
+    box.querySelectorAll(".mx-wipe").forEach(n => n.remove());
+    const w = document.createElement("div"); w.className = "mx-wipe"; w.setAttribute("role", "alertdialog"); w.setAttribute("aria-label", DEBRIEF.wipeAsk);
+    w.innerHTML = `<p>${esc(DEBRIEF.wipeAsk)}</p><button type="button" class="mx-btn" data-w="no">${esc(DEBRIEF.wipeNo)}</button><button type="button" class="mx-link" data-w="yes">${esc(DEBRIEF.wipeYes)}</button>`;
+    box.prepend(w); pendingWipe = go;
+    w.querySelector('[data-w="no"]').onclick = () => { pendingWipe = null; w.remove(); };
+    w.querySelector('[data-w="yes"]').onclick = () => { pendingWipe = null; w.remove(); go(); };
+    w.querySelector('[data-w="no"]').focus({ preventScroll: true });
+    say(DEBRIEF.wipeAsk);
+  }
+  let pendingWipe = null;
 
   /** Score breakdown, when the debrief sends one (the game redesign): [{label, points}] or {label: points}. */
   function breakdown(d) {
@@ -701,7 +716,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   function screenFrame() {
     if (screen === "off") return null;
     if (screen === "hud") return tour.active ? { screen: "cabin", offer: "tour" } : { screen: "cabin" };
-    if (screen === "debrief") return { screen: "debrief", offer: "fly_again" };
+    if (screen === "debrief") return { screen: "debrief", offer: pendingWipe ? "confirm_wipe" : "fly_again" };
     return { screen: "brief", offer: "take_command" };
   }
   /** A navigation intent. True when Mission ran it. */
@@ -722,9 +737,11 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       site = s; previewSite(); briefing(); say(`${s.name.split(" (")[0]}. Good choice. Say take command when you're ready.`); return true;
     }
     if (screen === "brief" && ["take_command", "start", "next", "accept_offer"].includes(intent)) { start(); return true; }
-    if (screen === "debrief" && intent === "accept_offer" && state && !state.over) { showHud(); return true; }   // paused: the offer is "back to the cabin"
-    if (screen === "debrief" && ["fly_again", "accept_offer", "start"].includes(intent)) { if (unsub) unsub(); state = null; start(); return true; }
-    if (screen === "debrief" && intent === "new_site") { if (unsub) unsub(); state = null; briefing(); return true; }
+    if (screen === "debrief" && pendingWipe && ["accept_offer", "yes"].includes(intent)) { const g = pendingWipe; pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); g(); return true; }
+    if (screen === "debrief" && pendingWipe && intent === "decline_offer") { pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); return true; }
+    if (screen === "debrief" && intent === "accept_offer" && state && !state.over) { showHud(); return true; }   // paused: the offer is "resume"
+    if (screen === "debrief" && ["fly_again", "accept_offer", "start"].includes(intent)) { leaveMission(() => { if (unsub) unsub(); state = null; start(); }); return true; }
+    if (screen === "debrief" && intent === "new_site") { leaveMission(() => { if (unsub) unsub(); state = null; briefing(); }); return true; }
     if (screen === "debrief" && intent === "back") { if (state && !state.over) showHud(); else briefing(); return true; }
     if (screen === "hud" && (intent === "debrief" || intent === "fly_again")) { showDebrief(); return true; }
     if (intent === "decline_offer") return true;

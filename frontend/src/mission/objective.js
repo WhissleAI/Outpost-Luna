@@ -26,6 +26,7 @@ export function nowObjective(s) {
   const storm = !!(e.storm && e.storm.active), wn = warningOf(s);
   const sunH = e.next_sun_change_h != null ? n0(e.next_sun_change_h) : null;
   const o = (key, text, target, panel, level = "info") => ({ key, text, target, panel, level });
+  if (storm && e.storm.sep === false) return o("weak_storm", NOW.weakStorm, "end_shift", "pedestal", "info");   // QA-27: a near miss
   if (storm && !s.shelter) return o("storm_hit", NOW.stormHit, "shelter", "radiation", "warn");
   if (storm && s.shelter) return o("sheltered", NOW.sheltered, "end_shift", "pedestal", "info");
   if (wn) return o("warning", NOW.warning(wn.lead != null ? n0(wn.lead) : null), (L.shields || 0) >= 40 ? "shelter" : "shields", "radiation", "caution");
