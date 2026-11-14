@@ -243,7 +243,7 @@ def _allocate(t: str, read: dict | None, prev: dict | None) -> tuple[dict | None
         if prev and prev.get("type") == "allocate" and amount:
             to = prev["to"]
         else:
-            return None, "Which part of the base should get that? Shields, air, greenhouse, science, rover, radio or heaters?"
+            return None, "Which part gets that? Shields, air, greenhouse, science, rover, radio or heaters?"
     if amount is None:
         if prev and prev.get("type") == "allocate":   # "...and the heaters too" -> same amount
             amount = dict(prev["amount"])
@@ -346,15 +346,15 @@ def _negated(t: str) -> tuple[bool, str | None]:
     load = _load_of(rest)
     if OFF.search(rest) and load:
         nice = LOAD_NAMES.get(load, load)
-        return True, f"Okay, the {nice} stay on. Do you want to give them more power, or keep them the same?"
+        return True, f"Okay, the {nice} stay on. More power, or keep it the same?"
     if load:
         nice = LOAD_NAMES.get(load, load)
-        return True, f"Okay, I won't change the {nice}. What would you like to do instead?"
+        return True, f"Okay, no change to the {nice}. What instead?"
     if re.search(r"\b(send|go|drive)\b", rest) and VEHICLE.search(rest):
-        return True, "Okay, the rover stays home. What should we do instead?"
+        return True, "Okay, the rover stays home. What instead?"
     if SHELTER_IN.search(rest):
         return True, "Okay, nobody goes to the shelter. What should the crew do?"
-    return True, "Okay, I won't do that. What would you like to do?"
+    return True, "Okay, I won't. What instead?"
 
 
 LOAD_NAMES = {"shields": "radiation shields", "life_support": "life support", "greenhouse": "greenhouse",
