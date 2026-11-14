@@ -104,6 +104,53 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("back", re.compile(r"^(?:go back|back|previous|go back please|take me back)$")),
     ("end_shift", re.compile(r"^(?:end|finish|next) (?:the |my |this )?shift$")),
 ]
+# 3D cabin panels (frontend mission/ui.js nav: panel_power | panel_comm | panel_habitat | panel_back; rover and radiation
+# are routed too). Panel navigation must never reach the mission NLU: "open the comm panel" once turned the radio OFF.
+PANELS = {"power": "power", "energy": "power", "battery": "power", "comm": "comm", "comms": "comm",
+          "communications": "comm", "communication": "comm", "radio": "comm", "habitat": "habitat", "hab": "habitat",
+          "rover": "rover", "radiation": "radiation", "rad": "radiation", "shield": "radiation", "shields": "radiation"}
+_PANEL_NAME = "|".join(sorted(PANELS, key=len, reverse=True))
+PANEL_OPEN = re.compile(rf"^(?:open|show|show me|go to|take me to|look at|switch to|bring up|pull up|let s see|"
+                        rf"let me see|check)(?: up)? (?:the |my )?({_PANEL_NAME})(?: (panel|station|console|screen|"
+                        rf"desk|board))?$|^(?:the )?({_PANEL_NAME}) (?:panel|station|console)(?: please)?$")
+PANEL_BACK = re.compile(r"^(?:go )?back(?: to (?:my|the) (?:seat|chair|cockpit|window))?$|^(?:close|leave|exit|shut) "
+                        r"(?:the |this )?(?:panel|station|console)$|^(?:my )?seat$|^(?:sit|go) (?:back )?(?:down|to (?:my|the) "
+                        r"seat)$|^back to (?:my|the) (?:seat|chair)$")
+# The voice bar (frontend voicebar.js parseBarCommand): "move the voice bar to the top right", "reset the voice bar".
+VBAR_MOVE = re.compile(r"^(?:move|put|drag|send|place) (?:the |my )?(?:voice|mic|microphone|talk) ?bar (?:to |on |at )?"
+                       r"(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?"
+                       r"(?: (?:side|corner|edge))?$")
+VBAR_RESET = re.compile(r"^(?:reset|restore) (?:the |my )?(?:voice|mic|microphone|talk) ?bar(?: position)?$")
+
+
+def voicebar_intent(q: str) -> str | None:
+    """The canonical command voicebar.js parses ("move the voice bar to the top right" / "reset the voice bar")."""
+    if VBAR_RESET.match(q):
+        return "reset the voice bar"
+    m = VBAR_MOVE.match(q)
+    if not m:
+        return None
+    w = [x for x in m.groups() if x]
+    return "move the voice bar to the " + " ".join("centre" if x in ("middle", "center") else x for x in w)
+
+
+def panel_intent(q: str) -> tuple[str, str] | None:
+    m = PANEL_OPEN.match(q)
+    if m:
+        name = m.group(1) or m.group(3)
+        has_panel_word = bool(m.group(2)) or bool(m.group(3))
+        if not has_panel_word:
+            # Without "panel": only a clear move verb, and never rover / radiation ("show me the rover" is the rover
+            # view, "check the power" / "show the shields" are status questions).
+            if PANELS[name] in ("rover", "radiation") or \
+                    not q.startswith(("open", "go to", "take me to", "switch to", "bring up", "pull up")):
+                return None
+        return "panel_" + PANELS[name], PANELS[name]
+    if PANEL_BACK.match(q):
+        return "panel_back", "seat"
+    return None
+
+
 PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|build (?:it )?(?:at|on)|i choose|i pick)"
                   r" (?:the )?(.+)$")
 
@@ -211,6 +258,13 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     q = re.sub(r"\s+(?:please|now|capcom)$", "", q)
     if not q:
         return None
+    vb = voicebar_intent(q)
+    if vb:
+        return "a11y", vb                      # on every screen; the client runs `arg` (voicebar.handleText)
+    if ctx.screen == "cabin":
+        pn = panel_intent(q)
+        if pn:
+            return pn
     for intent, pat in NAV:
         m = pat.match(q)
         if not m:
