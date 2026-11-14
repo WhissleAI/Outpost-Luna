@@ -45,6 +45,8 @@ const $ = id => document.getElementById(id);
 const CHIPS = ["Where did Apollo 11 land?", "Show me the rovers", "Play the launch"];
 const HW_LABEL = { lander: "Lander", rover: "Rover", impact: "Impact site", instrument: "Instrument", memorial: "Memorial" };
 const TOUR_MS = 3000;   // minimum time at each tour stop
+/** [qa] The hardware tour: a few firsts (first to reach the Moon, first robot rover, first crew, rovers, the latest lander). */
+const TOUR_IDS = ["luna2_impact", "surveyor1", "lunokhod1", "apollo11_lm_eagle", "apollo15_lrv", "apollo17_lm_challenger", "change3_lander", "yutu_rover"];
 // Shown on the card with "I don't know that one yet", never spoken (a spoken example is heard back by the open mic).
 const TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”";
 /** Mirrors turn_router.clear_question: a wh- / "tell me" / "can you" question of ≥ 3 words. */
@@ -61,8 +63,15 @@ async function boot() {
   const csTag = $("csTag"), paintCs = () => { const c = callSign.get(); csTag.textContent = c; csTag.hidden = !c; };
   paintCs(); addEventListener("outpost:callsign", paintCs);
   let places;
-  try { places = await api.places(); }
-  catch (e) { $("loading").innerHTML = "<b>Can&rsquo;t reach Outpost Luna</b><span>Close the app and open it again.</span>"; $("loading").classList.add("is-error"); return; }
+  // [qa] Offline: keep trying (the desktop app's backend may still be starting), so this is never a dead end.
+  for (let tries = 0; !places; tries++) {
+    try { places = await api.places(); }
+    catch (e) {
+      if (!tries) { $("loading").innerHTML = "<b>Can&rsquo;t reach Outpost Luna</b><span>Trying again. If this stays, close the app and open it again.</span>"; $("loading").classList.add("is-error"); }
+      await new Promise(res => setTimeout(res, 3000));
+    }
+  }
+  if ($("loading").classList.contains("is-error")) { $("loading").classList.remove("is-error"); $("loading").textContent = "Loading the Moon…"; }
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
   const sample = !places.some(p => p.kind === "artifact");
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
@@ -113,7 +122,9 @@ async function boot() {
   const a11ySay = (t, o = {}) => o.describe
     ? (floor ? floor.say(t, { voice: "guide", priority: 5, style: { situation: "explain" } }) : speak(t))
     : guideSay(t, { voice: CAPCOM_VOICE, style: o.situation ? { situation: o.situation, vocab: o.vocab } : undefined, keepCrew: true });
-  const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), places, playCrew: m => player.play(m) });
+  const a11y = initA11y({ floor, say: a11ySay, ask: t => ask(t), setMode: m => setMode(m), tap: p => {   // [qa] Help → "Pick a place": a globe tap (Flight School tap steps included); in Mission, shown in the Library
+    if (document.body.dataset.mode === "mission") { setMode("cadet"); setTimeout(() => (p.kind === "artifact" ? onArtifact(p) : onTap(p)), 300); return; }
+    return p.kind === "artifact" ? onArtifact(p) : onTap(p); }, places, playCrew: m => player.play(m) });
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
   const vbar = initVoiceBar({ announce: t => { if (a11y) a11y.describe(t); } });   // the floating voice bar
@@ -172,7 +183,7 @@ async function boot() {
     let r;
     try { r = await api.ask(text, context()); }
     catch (e) {
-      if (my === turn.seq) { card.show({ title: "Hmm", asked: text, say: "I can't reach my brain right now. Is the backend running?" }); voice.show("idle"); }
+      if (my === turn.seq) { card.show({ title: "Hmm", asked: text, say: "I can't answer right now. Try again in a moment." }); voice.show("idle"); }   // [qa] no developer text
       return;
     }
     for (let w = 0; voice.kidTalking && w < 100; w++) await new Promise(res => setTimeout(res, 100));   // WAIT
@@ -225,10 +236,12 @@ async function boot() {
     const q = r.ask.question || r.say, opts = (r.ask.options || []).map(placeById).filter(Boolean);
     card.show({
       title: "Did you mean…", asked, say: q, arc,
-      actions: opts.map(f => ({ label: f.name, hot: true, once: true, onPreview: () => globe.showFeature(f), onClick: () => { turn.lastPlace = f.id; ask(f.name); } })),
+      actions: opts.map(f => ({ label: f.name, hot: true, once: true, onPreview: () => globe.showFeature(f), onClick: () => { clearPreviews(); turn.lastPlace = f.id; ask(f.name); } })),
     });
     guideSay(q);
-    opts.forEach((f, i) => setTimeout(() => { if (!voice.kidTalking) globe.showFeature(f); }, 400 + i * 1600));
+    // [qa] the preview flights stop on a choice, a new turn or a mode switch (cancelNudge clears them)
+    const my = turn.seq;
+    previewT = opts.map((f, i) => setTimeout(() => { if (!voice.kidTalking && my === turn.seq && document.body.dataset.mode === "cadet") globe.showFeature(f); }, 400 + i * 1600));
     scheduleNudge();
   }
 
@@ -306,7 +319,7 @@ async function boot() {
   }
   function tourActions() {
     return [
-      { label: "Next ›", hot: true, onClick: () => { if (!tour.active) return; stopSpeaking(); tourStep(++tour.id, tour.i + 1); } },
+      { label: "Next stop", hot: true, onClick: () => { if (!tour.active) return; stopSpeaking(); tourStep(++tour.id, tour.i + 1); } },
       { label: "Stop", onClick: () => { stopSpeaking(); cancelTour(); } },
     ];
   }
@@ -340,23 +353,24 @@ async function boot() {
       offerCrew(token, f, null);
       guideSay(f.fact);
     } else {
-      const say = `That spot is ${Math.abs(p.lat).toFixed(0)}° ${p.lat >= 0 ? "north" : "south"}, ${Math.abs(p.lon).toFixed(0)}° ${p.lon >= 0 ? "east" : "west"}. No named place is close. Try a darker or brighter patch!`;
+      const say = `That spot is ${Math.abs(p.lat).toFixed(0)}° ${p.lat >= 0 ? "north" : "south"}, ${Math.abs(p.lon).toFixed(0)}° ${p.lon >= 0 ? "east" : "west"}. No named place is close.`;   // [qa] COPY.md: no hype
       card.show({ title: "Unnamed spot", say }); guideSay(say);
     }
   }
 
   // NUDGE: 8 s of quiet after an answer
-  let nudgeT = null;
-  function cancelNudge() { clearTimeout(nudgeT); nudgeT = null; $("nudge").hidden = true; }
+  let nudgeT = null, previewT = [];
+  const clearPreviews = () => { previewT.forEach(clearTimeout); previewT = []; };
+  function cancelNudge() { clearTimeout(nudgeT); nudgeT = null; $("nudge").hidden = true; clearPreviews(); }
   function scheduleNudge() {
     clearTimeout(nudgeT);
     nudgeT = setTimeout(async () => {
       if (missionUI.active || academyUI.active) return;
       if (voice.kidTalking || isSpeaking() || player.active) return;
       const n = $("nudge");
-      if (!missions.started && !missions.open) { n.textContent = "Try a mission?"; n.onclick = () => { cancelNudge(); missions.openCard(); }; n.hidden = false; return; }
-      const ms = await api.moments(null), m = ms.find(x => x.places.some(p => p !== turn.lastPlace && byId[p])) || ms[0];
-      if (!m) return;
+      if (!missions.started && !missions.open) { n.textContent = "Play Find it?"; n.onclick = () => { cancelNudge(); missions.openCard(); }; n.hidden = false; return; }
+      const ms = await api.moments(null).catch(() => []), m = ms.find(x => x.places.some(p => p !== turn.lastPlace && byId[p])) || ms[0];
+      if (!m || !nudgeT || missionUI.active || academyUI.active || voice.kidTalking || isSpeaking() || player.active) return;   // [qa] the world moved on during the fetch
       n.textContent = `Hear the crew at ${(byId[m.places[0]] || { name: "the Moon" }).name}?`;
       n.onclick = () => { cancelNudge(); player.play(m); }; n.hidden = false;
     }, 8000);
@@ -506,6 +520,7 @@ async function boot() {
     });
   }
 
+  $("cardClose").addEventListener("click", () => { if (tour.active) { cancelTour(); card.hide(); } if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); });   // [qa] closing the card ends what it was saying
   $("askForm").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });
   CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
@@ -515,9 +530,11 @@ async function boot() {
   // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
   $("tourBtn").onclick = () => {
     if (tour.active) { stopSpeaking(); cancelTour(); return; }
-    const hw = places.filter(p => p.kind === "artifact").sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
+    // [qa] 36 stops was ~4 minutes: a short tour of firsts, oldest first (the rest stay a tap away on the globe)
+    const all = places.filter(p => p.kind === "artifact"), pick = TOUR_IDS.map(id => all.find(a => a.id === id)).filter(Boolean);
+    const hw = (pick.length >= 4 ? pick : all).sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
     if (!globe.hardwareOn) $("hwBtn").click();
-    runTour(hw.map(a => a.id), `Here is the hardware people left on the Moon. ${hw.length} stops!`);
+    runTour(hw.map(a => a.id), `Here is some of the hardware people left on the Moon. ${hw.length} stops.`);
   };
 
   // ---------- modes: Mission (the headline) and Cadet (the explorer, as training) ----------
@@ -544,6 +561,7 @@ async function boot() {
       if (missions.open) $("mClose").click();
       missionUI.enter();
     } else {
+      $("pinsBtn").setAttribute("aria-pressed", globe.pinsOn !== false); $("hwBtn").setAttribute("aria-pressed", globe.hardwareOn);   // [qa]
       missionUI.exit(); card.hide();
       if (byId.orientale) globe.showFeature(byId.orientale, { dist: 3.3 });
     }
@@ -551,7 +569,7 @@ async function boot() {
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
-  $("libraryBtn").onclick = () => setMode("cadet");
+  $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");   // [qa] a second press goes back
   // A new cadet starts in the Academy; a qualified one in Mission.
   setMode(academyUI.progress.qualified ? "mission" : "academy");
 }
