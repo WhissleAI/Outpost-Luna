@@ -1,8 +1,8 @@
 # Build Outpost Luna for Windows
 
 > **No Windows machine has run this yet.** The script has been parsed and dry-run in PowerShell 7 (on a Mac, with
-> stand-in tools), and the same app has been cross-built into a Windows installer and checked file by file (§8). Only a
-> real PC can show that it starts. Expect a snag or two; §7 says what to send back.
+> stand-in tools), and the same app has been cross-built on a Mac as an unpacked Windows app and checked file by file
+> against the Mac app (§8). Only a real PC can show that it starts. Expect a snag or two; §7 says what to send back.
 
 You will end up with `desktop\dist\Outpost Luna Setup 0.1.0.exe`: an installer for an app that runs with **no
 internet**. The app bundles its own Python, the backend, the model server, every model, the NASA audio, the camera
@@ -248,3 +248,10 @@ Step 8 then checks the result without running it (`desktop/scripts/win_bundle_ch
 `desktop/resources/` holds one platform's build at a time: after a cross-build, `build-mac.sh` rebuilds it for the Mac
 (and the other way round). The script deletes its intermediates (the unpacked app, the Python tree's caches) and keeps
 only the installer. A cross-built installer must still go through §5 on a real PC before it ships.
+
+**Status (2026-11-14).** Steps 1–6 and the unpacked app (`dist/win-unpacked`, 2.1 GB, 24,273 files) were built and
+checked on a Mac: every DLL import resolves, and `compare` against the Mac app reports parity. The NSIS step did
+not finish there: electron-builder's 7-Zip pass (`-mx=9` over 2 GB) ran for 90 minutes without finishing on a
+machine at load average ~50. With `compression: store` the payload was 2.08 GB, which is past NSIS's 2 GB installer
+limit, so makensis timed out after 4 minutes. On an idle Mac the default compression should finish in about 20
+minutes; that has not been measured yet.

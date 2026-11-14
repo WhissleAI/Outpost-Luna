@@ -85,9 +85,8 @@ npm ci --no-audit --no-fund
 rm -rf dist/win-unpacked
 EDIT=()
 command -v wine >/dev/null || command -v wine64 >/dev/null || EDIT=(-c.win.signAndEditExecutable=false)   # no Wine: no icon / version edit
-# COMPRESSION=store skips the 7z ultra pass (-mx=9 over ~2 GB: 20 min on an idle M-series Mac, far longer on a busy
-# one); the installer is then ~2 GB instead of ~1 GB but installs the same files. Default: as configured (normal).
-[ -n "${COMPRESSION:-}" ] && EDIT+=(-c.compression="$COMPRESSION")
+# The 7z pass (-mx=9 over ~2 GB) is the slow part: ~20 min on an idle Mac, hours on a saturated one. Do not use
+# compression=store to skip it: the payload is then 2.08 GB, past NSIS's 2 GB installer limit, and makensis stalls.
 npx electron-builder --win nsis --x64 --publish never "${EDIT[@]+"${EDIT[@]}"}"
 cd "$ROOT"
 EXE=$(ls -t desktop/dist/*.exe | head -1)
