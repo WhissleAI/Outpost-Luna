@@ -35,15 +35,41 @@ async function pickPort(preferred = [], avoid = new Set()) {
   throw new Error("no free loopback port");
 }
 
-/** Command line of a live pid, or null when it is gone. */
-function commandOf(pid) {
+/** Command line of a live pid, or null when it is gone. `platform` / `exec` are for the tests. */
+function commandOf(pid, { platform = process.platform, exec = execFileSync } = {}) {
   try {
-    if (IS_WIN) {
-      const out = execFileSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], { encoding: "utf8", windowsHide: true });
-      return out.includes(`"${pid}"`) ? out : null;
+    if (platform === "win32") {
+      // The full command line (CIM), so a reused pid that is now someone else's python.exe is never taken for ours.
+      try {
+        const cl = String(exec("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+          `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Number(pid)}').CommandLine`],
+          { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"], timeout: 8000 })).trim();
+        if (cl) return cl;
+      } catch { /* no PowerShell / CIM: tasklist below */ }
+      const out = String(exec("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], { encoding: "utf8", windowsHide: true }));
+      return out.includes(`"${pid}"`) ? out.trim() : null;
     }
-    return execFileSync("ps", ["-o", "command=", "-p", String(pid)], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+    return String(exec("ps", ["-o", "command=", "-p", String(pid)], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })).trim() || null;
   } catch { return null; }
+}
+
+/** Is this command line one of our children (does it name our launcher)? Windows paths are case-insensitive. Without
+ * CIM, Windows only has tasklist's image name: a python.exe at that pid is taken for ours. */
+function isOurChild(cmd, marker, platform = process.platform) {
+  if (!cmd) return false;
+  const win = platform === "win32";
+  if (win ? cmd.toLowerCase().includes(String(marker).toLowerCase()) : cmd.includes(marker)) return true;
+  return win && /^"python3?\.exe","/i.test(cmd);
+}
+
+/** taskkill arguments for a whole tree (Windows has no process groups: /T walks the children). */
+function taskkillArgs(pid) { return ["/PID", String(pid), "/T", "/F"]; }
+
+/** spawn() options for a Python child. POSIX: its own process group (detached), so killTree can signal the group.
+ * Windows: not detached (a detached console program gets its own console window), no window (windowsHide); taskkill /T
+ * finds the tree. */
+function childSpawnOptions({ cwd, env, out, platform = process.platform }) {
+  return { cwd, env, stdio: ["ignore", out, out], detached: platform !== "win32", windowsHide: true };
 }
 
 function alive(pid) {
@@ -56,7 +82,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function killTree(pid, graceMs = 4000) {
   if (!pid || !alive(pid)) return;
   if (IS_WIN) {
-    try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch { /* gone */ }
+    try { execFileSync("taskkill", taskkillArgs(pid), { windowsHide: true, stdio: "ignore" }); } catch { /* gone */ }
     return;
   }
   const sig = (s) => { try { process.kill(-pid, s); } catch { try { process.kill(pid, s); } catch { /* gone */ } } };
@@ -69,7 +95,7 @@ async function killTree(pid, graceMs = 4000) {
 /** Synchronous best effort, for process 'exit' handlers (no awaits possible there). */
 function killTreeSync(pid) {
   if (!pid) return;
-  if (IS_WIN) { try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" }); } catch { /* gone */ } return; }
+  if (IS_WIN) { try { execFileSync("taskkill", taskkillArgs(pid), { windowsHide: true, stdio: "ignore" }); } catch { /* gone */ } return; }
   try { process.kill(-pid, "SIGKILL"); } catch { try { process.kill(pid, "SIGKILL"); } catch { /* gone */ } }
 }
 
@@ -84,7 +110,7 @@ class PidFile {
     const killed = [];
     for (const r of this.read()) {
       const cmd = commandOf(r.pid);
-      if (cmd && (IS_WIN ? /python/i.test(cmd) : cmd.includes(marker))) { await killTree(r.pid, 1500); killed.push(r.pid); }
+      if (isOurChild(cmd, marker)) { await killTree(r.pid, 1500); killed.push(r.pid); }
     }
     this.write([]);
     return killed;
@@ -123,4 +149,5 @@ function childEnv(extra, parent = process.env) {
   };
 }
 
-module.exports = { pickPort, portFree, killTree, killTreeSync, PidFile, getJson, childEnv, commandOf, alive, sleep, IS_WIN };
+module.exports = { pickPort, portFree, killTree, killTreeSync, PidFile, getJson, childEnv, commandOf, isOurChild, taskkillArgs,
+  childSpawnOptions, alive, sleep, IS_WIN };

@@ -74,11 +74,8 @@ function envFor(name) {
 function startChild(name) {
   const port = ports[name];
   const out = fs.openSync(path.join(LOGS, `${name}.log`), "a");
-  const proc = spawn(PY, [LAUNCH, name, "--port", String(port)], {
-    cwd: path.join(RES, "app"), env: envFor(name), stdio: ["ignore", out, out],
-    detached: !S.IS_WIN,            // own process group, so quitting can kill the whole tree
-    windowsHide: true,
-  });
+  // POSIX: own process group, so quitting can kill the whole tree. Windows: no console window; taskkill /T on quit.
+  const proc = spawn(PY, [LAUNCH, name, "--port", String(port)], S.childSpawnOptions({ cwd: path.join(RES, "app"), env: envFor(name), out }));
   fs.closeSync(out);
   const k = kids[name] = kids[name] || { restarts: [] };
   k.proc = proc; k.port = port; k.ready = false;

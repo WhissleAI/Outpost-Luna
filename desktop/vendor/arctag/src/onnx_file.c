@@ -1,6 +1,7 @@
 /* See onnx_file.h. Field numbers are those of onnx.proto (ModelProto, GraphProto, NodeProto, AttributeProto, TensorProto,
  * ValueInfoProto, TypeProto, TensorShapeProto). */
 #include "onnx_file.h"
+#include "u8file.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -222,7 +223,7 @@ bad:
 
 int ox_load(ox_graph *g, const char *path, char *err, size_t errlen) {
     memset(g, 0, sizeof *g);
-    FILE *fp = fopen(path, "rb");
+    FILE *fp = u8_fopen(path, "rb");
     if (!fp) { if (err && errlen) snprintf(err, errlen, "cannot open %s", path); return -1; }
     long n = -1;
     if (!fseek(fp, 0, SEEK_END)) n = ftell(fp);

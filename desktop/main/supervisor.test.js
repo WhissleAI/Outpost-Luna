@@ -33,6 +33,49 @@ test("childEnv: no inherited API keys, offline flags set", () => {
   assert.strictEqual(env.X, "1");
 });
 
+test("Windows: commandOf reads the CIM command line, falls back to tasklist, null when gone", () => {
+  const calls = [];
+  const exec = (impl) => (cmd, args) => { calls.push(cmd); return impl(cmd, args); };
+  const LAUNCH = "C:\\Users\\kid\\AppData\\Local\\Programs\\Outpost Luna\\resources\\app\\launch.py";
+  const cl = `"C:\\Users\\kid\\AppData\\Local\\Programs\\Outpost Luna\\resources\\python\\python.exe" "${LAUNCH}" models --port 47210`;
+  assert.strictEqual(S.commandOf(42, { platform: "win32", exec: exec((c) => (c === "powershell.exe" ? cl + "\r\n" : "")) }), cl);
+  assert.deepStrictEqual(calls, ["powershell.exe"]);
+  calls.length = 0;
+  const tl = '"python.exe","42","Console","1","120,000 K"';
+  assert.strictEqual(S.commandOf(42, { platform: "win32", exec: exec((c) => { if (c === "powershell.exe") throw new Error("ENOENT"); return tl + "\r\n"; }) }), tl);
+  assert.deepStrictEqual(calls, ["powershell.exe", "tasklist"]);
+  const gone = (c) => (c === "powershell.exe" ? "\r\n" : "INFO: No tasks are running which match the specified criteria.\r\n");
+  assert.strictEqual(S.commandOf(42, { platform: "win32", exec: gone }), null);
+});
+
+test("Windows: isOurChild matches our launcher (any case), a bare python.exe only from tasklist, never someone else's", () => {
+  const LAUNCH = "C:\\Program Files\\Outpost Luna\\resources\\app\\launch.py";
+  assert.ok(S.isOurChild(`"C:\\PROGRAM FILES\\Outpost Luna\\resources\\python\\python.exe" "${LAUNCH.toUpperCase()}" backend`, LAUNCH, "win32"));
+  assert.ok(S.isOurChild('"python.exe","42","Console","1","120,000 K"', LAUNCH, "win32"), "tasklist fallback");
+  assert.ok(!S.isOurChild('"C:\\Python311\\python.exe" C:\\work\\train.py', LAUNCH, "win32"), "a reused pid running the user's own python");
+  assert.ok(!S.isOurChild(null, LAUNCH, "win32"));
+  assert.ok(!S.isOurChild('"python.exe","42","Console","1","120,000 K"', "/app/launch.py", "darwin"), "POSIX needs the launcher path");
+  assert.ok(S.isOurChild("/x/python3 /x/app/launch.py models", "/x/app/launch.py", "darwin"));
+});
+
+test("Windows: children are not detached (no console), hidden, and killed as a tree", () => {
+  const w = S.childSpawnOptions({ cwd: "C:\\app", env: {}, out: 3, platform: "win32" });
+  assert.strictEqual(w.detached, false);
+  assert.strictEqual(w.windowsHide, true);
+  assert.deepStrictEqual(w.stdio, ["ignore", 3, 3]);
+  assert.strictEqual(S.childSpawnOptions({ cwd: "/app", env: {}, out: 3, platform: "darwin" }).detached, true);
+  assert.deepStrictEqual(S.taskkillArgs(1234), ["/PID", "1234", "/T", "/F"]);
+});
+
+test("childEnv keeps the Windows variables Python and its DLL loading need", () => {
+  const parent = { SystemRoot: "C:\\Windows", APPDATA: "C:\\Users\\kid\\AppData\\Roaming", LOCALAPPDATA: "C:\\Users\\kid\\AppData\\Local",
+    TEMP: "C:\\Users\\kid\\AppData\\Local\\Temp", USERPROFILE: "C:\\Users\\kid", PATHEXT: ".EXE", GEMINI_API_KEY: "x" };
+  const env = S.childEnv({}, parent);
+  for (const k of ["SystemRoot", "APPDATA", "LOCALAPPDATA", "TEMP", "USERPROFILE", "PATHEXT"]) assert.strictEqual(env[k], parent[k], k);
+  assert.strictEqual(env.GEMINI_API_KEY, undefined);
+  assert.strictEqual(env.PYTHONUTF8, "1", "UTF-8 file I/O whatever the Windows code page");
+});
+
 test("killTree kills a detached child and its grandchild; reap kills stale pids", { skip: S.IS_WIN }, async () => {
   const marker = `outpost-test-${process.pid}`;
   const p = spawn("/bin/sh", ["-c", `sleep 30 & sleep 31; : ${marker}`], { detached: true, stdio: "ignore" });
