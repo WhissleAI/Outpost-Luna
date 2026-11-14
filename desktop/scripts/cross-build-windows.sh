@@ -85,6 +85,9 @@ npm ci --no-audit --no-fund
 rm -rf dist/win-unpacked
 EDIT=()
 command -v wine >/dev/null || command -v wine64 >/dev/null || EDIT=(-c.win.signAndEditExecutable=false)   # no Wine: no icon / version edit
+# COMPRESSION=store skips the 7z ultra pass (-mx=9 over ~2 GB: 20 min on an idle M-series Mac, far longer on a busy
+# one); the installer is then ~2 GB instead of ~1 GB but installs the same files. Default: as configured (normal).
+[ -n "${COMPRESSION:-}" ] && EDIT+=(-c.compression="$COMPRESSION")
 npx electron-builder --win nsis --x64 --publish never "${EDIT[@]+"${EDIT[@]}"}"
 cd "$ROOT"
 EXE=$(ls -t desktop/dist/*.exe | head -1)
