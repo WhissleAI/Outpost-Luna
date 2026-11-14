@@ -11,7 +11,7 @@ Messages (the shapes the browser already takes from the Deepgram Flux relay, doc
       start    first non-empty partial of a turn (Arc's first voiced words)
       eager    silence >= EAGER_SILENCE_S and Arc's command_complete p >= EAGER_CC_P (the turn sounds finished)
       resumed  voiced audio again after eager, before end
-      end      Arc closed the utterance (its own pause rule), or silence >= END_SILENCE_S -> Stream.end_turn()
+      end      Arc closed the utterance (its own pause rule), or silence >= EAR_END_SILENCE_S (0.5 s) -> Stream.end_turn()
   {"t":"arc",...}                metadata summary, as in metadata-only mode (arcmeta.MetaStream._summary)
 
 Silence is an energy VAD per chunk with an adaptive floor (Arc's own segmenter rule: quiet = below floor + margin, the
@@ -35,7 +35,7 @@ class EarSettings(BaseSettings):
     arc_ear: str = "on"              # on: load Arc's decoder so /v1/stream?ear=arc works (~+0 MB: it ships in mini/)
     ear_eager_silence_s: float = 0.25
     ear_eager_cc_p: float = 0.5
-    ear_end_silence_s: float = 0.6
+    ear_end_silence_s: float = 0.5   # eval: 0.6 -> p50 958 ms, 0.5 -> 880 ms (docs/LOCAL_EAR.md)
     ear_pause_s: float = 0.5          # Arc segmenter: pause that closes an utterance >= min_s
     ear_short_pause_s: float = 0.6    # ... and one shorter than min_s
     ear_partial_every_s: float = 0.3
