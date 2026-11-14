@@ -22,12 +22,12 @@ Owners:
 | Heard | a used turn | "Heard: …" in the field for 2.6 s | `lesson_feedback` |
 | Didn't catch that | the router's `notice` (a clearly directed turn it couldn't use) | a small chip in the state slot, silent | (live) |
 | Mic denied | the browser refuses the mic | "Mic blocked" plus the reason in the field; typing works | `mic_denied` |
-| Model warming up | the ear or TTS is still loading on the model server | **gap:** not surfaced yet. The voice bar should say "Starting…" until `/api/health` reports the ear loaded. | — |
+| Model warming up | `/api/health`: the ear or Steer TTS is not loaded yet | the voice bar shows "Starting voice…" (dots), or "Voice off · type" after 3 min; typing works | `warming` |
 | Caption duplicates screen text | the spoken line equals the question, feedback or brief on screen | the caption folds out of the strip but stays in `#captionBar` for screen readers | `lesson_feedback` |
 | Voice bar moved | dragging the grip, arrow keys on the grip, or "move the voice bar to the top right" | the bar snaps to one of 6 anchors, remembered per screen class, and the caption flips side | `vbar_moved` |
 | Answer card | a question anywhere (not a lesson answer) | a glass card top-left (Library: top-right): title, answer, crew button | (live) |
 | Visual alert | an alarm, with "Flash for alerts" on | an edge flash plus a toast | (live) |
-| Settings | the gear, Alt+A, or "open settings" | a popover: Voice · Reading & captions · Display · Alerts · Help | `access` |
+| Settings | the gear, Alt+A, or "open settings" | a modal sheet over a scrim: Voice · Sound · Listening · Reading & captions · Display · Cadets · Help (+ Camera & gestures when available) | `access`, `settings_listen`, `settings_cadets`, `settings_display` |
 | About | the info icon | a drawer: the brief, the data sources, the NASA credit | (todo shot) |
 
 ## Flight School
@@ -66,20 +66,26 @@ Owners:
 | Tour | Tour | (todo shot) |
 | Find it | Find it | (todo shot) |
 
-## Settings (planned; the owner confirms scope)
+## Settings (v1, built)
 
-The top-bar gear opens Settings, which folds in today's Access panel. Every control in it works today.
+| section | controls |
+|---|---|
+| **Voice** | curated voice list with preview (`GET /api/voices`; hidden until the endpoint exists), speed 0.75–1.5×, expressiveness calm ↔ lively, describe what happens |
+| **Sound** | volume (every voice and the crew audio), alarms volume, flash for alerts, vibrate |
+| **Listening** | hands-free / hold to talk; ignore other voices: relaxed / normal / strict |
+| **Camera & gestures** | from the gestures agent (`window.__outpost.settingsSections`); not listed until it registers |
+| **Reading & captions** | captions, caption line length, text size, easy-read font |
+| **Display** | theme (system / light / dark), high contrast, less motion, graphics (high / low), reset voice bar position |
+| **Cadets** | profiles (call sign, patches; switch, add up to 6), level (Cadet 7–9 / Commander 10–12), reset my patches (two taps) |
+| **Help** | "No audio needed", transcript, voice and keyboard commands, pick a place on the Moon |
 
-| section | today | planned |
-|---|---|---|
-| **Voice** | speed (0.75–1.5×), describe what happens | 1 of 10 curated voices with preview, expressiveness |
-| **Sound** | — | master volume, alarm volume |
-| **Listening** | — | hands-free vs push-to-talk; background-voice filter (relaxed / normal / strict) |
-| **Reading & captions** | captions, caption line length, text size, easy-read font | — |
-| **Display** | high contrast, less motion, reset the voice bar position | theme, graphics quality |
-| **Alerts** | flash, vibrate | — |
-| **Help** | "No audio needed", the transcript, voice and keyboard commands, pick a place | — |
-| **Cadet profiles** | — | several cadets on one device |
+Everything is stored on this device, per cadet profile. The session gets
+`{t:"prefs", type:"prefs", voice, rate, expressiveness, filter, level, listen}`.
+
+| state | shot |
+|---|---|
+| Switching cadet | the app reloads as the other cadet (their call sign, map and settings) |
+| New cadet | the app reloads to home (call sign) |
 
 ## Mission
 

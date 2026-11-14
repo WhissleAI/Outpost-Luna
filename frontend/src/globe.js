@@ -65,13 +65,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     return { a, el, p: ll2v(a.lat, a.lon, R * 1.003) };
   });
 
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xffc35a, side: THREE.DoubleSide, transparent: true, opacity: .95 });
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xf3f5f8, side: THREE.DoubleSide, transparent: true, opacity: .8 });
   let ring = null, sel = null, fly = null;
 
   function highlight(f) {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); }
     const ang = Math.max((f.km / 2) / MOON_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
-    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.8 : 0.92), r, 96), ringMat);
+    ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.86 : 0.965), r, 96), ringMat);
     const n = ll2v(f.lat, f.lon).normalize();
     ring.position.copy(n.clone().multiplyScalar(h * R + 0.004)); ring.lookAt(n.clone().multiplyScalar(5));
     scene.add(ring); sel = f;
@@ -197,19 +197,30 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   function tickRoute() {
     if (rlayer.hidden) return;
     const w = stage.clientWidth, h = stage.clientHeight, cam = camera.position.clone().normalize();
+    // pins on the near hemisphere only (fading out well before the limb, where they'd be squashed); then pushed apart
+    // on screen so close stops (the south-pole cluster) never overlap, with a dot left on the true spot
     rstops.forEach(s => {
       const f = s.p.clone().normalize().dot(cam);
-      s.on = f > 0.12; tmp.copy(s.p).project(camera);
-      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h;
-      const [dx, dy] = s.nudge || [0, 0], op = Math.max(0, Math.min(1, (f - 0.05) / 0.2)).toFixed(2);
-      s.dot.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px)`; s.dot.style.opacity = op;
-      s.el.style.transform = `translate(${(s.x + dx).toFixed(1)}px,${(s.y + dy).toFixed(1)}px)`; s.el.style.opacity = op;
+      s.f = f; s.on = f > 0.3; tmp.copy(s.p).project(camera);
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + 4;
+    });
+    const vis = rstops.filter(s => s.on);
+    for (let it = 0; it < 6; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
+      const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
+      if (d >= need) return;
+      const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
+    }));
+    rstops.forEach(s => {
+      const op = Math.max(0, Math.min(1, (s.f - 0.3) / 0.15)).toFixed(2);
+      s.dot.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px)`; s.dot.style.opacity = Math.hypot(s.bx - s.x, s.by - s.y) > 4 ? op : 0;
+      s.el.style.transform = `translate(${s.bx.toFixed(1)}px,${s.by.toFixed(1)}px)`; s.el.style.opacity = op;
       s.el.style.visibility = s.on ? "" : "hidden"; s.el.tabIndex = s.on ? 0 : -1;
     });
     // the route follows the surface: each leg is a great-circle arc, drawn only where it faces the camera
     let d = "", dd = "";
     const q = new THREE.Vector3();
     for (let i = 1; i < rstops.length; i++) {
+      if (i > rdone) break;   // only the legs flown, and the one to the next stop
       const a = rstops[i - 1].p.clone().normalize(), b = rstops[i].p.clone().normalize();
       const om = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))), n = Math.max(2, Math.ceil(om * 40)); let pen = false, seg = "";
       for (let k = 0; k <= n; k++) {
@@ -219,7 +230,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
         tmp.copy(q).project(camera);
         seg += `${pen ? "L" : "M"}${((tmp.x + 1) / 2 * w).toFixed(1)},${((1 - tmp.y) / 2 * h).toFixed(1)}`; pen = true;
       }
-      if (i < rdone + 1) dd += seg; else d += seg;
+      if (i <= rdone - 1) dd += seg; else if (i === rdone) d += seg;
     }
     rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
     rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
@@ -296,6 +307,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
     pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     route,
+    /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */
+    setQuality(q) { renderer.setPixelRatio(q === "low" ? 1 : Math.min(devicePixelRatio, 2)); resize(); },
     /** Place dots + hardware markers on/off (off on Flight School screens, where the route pins are the map). */
     setDecor(on) { if (mi.on) return; pins.visible = !!on; layer.style.display = on ? "" : "none"; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },

@@ -26,6 +26,7 @@ import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
 import { initVoiceBar } from "./voicebar.js";
+import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 // ---- end [a11y] ----
 
@@ -107,6 +108,11 @@ async function boot() {
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
   const vbar = initVoiceBar({ announce: t => { if (a11y) a11y.describe(t); } });   // the floating voice bar
+  // Settings v1 (prefs.js): voice, sound, listening, display, level, cadet profiles. The session gets the steering bits.
+  const prefs = createPrefs({ globe });
+  (window.__outpost = window.__outpost || {}).prefsApi = prefs;
+  const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
+  prefs.on(() => sendPrefs());
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
@@ -396,6 +402,18 @@ async function boot() {
   }
   new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
     .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
+  // Model warming up: until the model server reports the ear and the voice loaded, the voice bar says so (typing works).
+  // After ~3 min without them it says voice is offline instead. /api/health is local; polled every 2 s while warming.
+  (function warm(t0 = performance.now()) {
+    const bar = $("askbar");
+    fetch("/api/health").then(r => r.json()).then(h => {
+      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.steer_tts || {};
+      const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
+      bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
+      bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);
+      if (!ready) setTimeout(() => warm(t0), 2000);
+    }).catch(() => { bar.classList.add("is-warming"); if (performance.now() - t0 < 180000) setTimeout(() => warm(t0), 2000); else { bar.classList.remove("is-warming"); bar.classList.add("is-voiceoff"); } });
+  })();
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
   new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
   // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
@@ -452,7 +470,7 @@ async function boot() {
     session.connect().then(ok => {
       if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
       voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
-      pushScreen(true);
+      pushScreen(true); sendPrefs();
     });
   }
 
@@ -461,7 +479,7 @@ async function boot() {
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
   $("farBtn").onclick = () => globe.flyTo(0, 180, 3.6);
   $("pinsBtn").onclick = e => { e.currentTarget.setAttribute("aria-pressed", globe.togglePins()); };
-  $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); $("hwKey").hidden = !on; };
+  $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); };
   // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
   $("tourBtn").onclick = () => {
     if (tour.active) { stopSpeaking(); cancelTour(); return; }

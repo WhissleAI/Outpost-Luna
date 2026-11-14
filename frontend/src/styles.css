@@ -101,10 +101,11 @@ body[data-mode="academy"] .stage:has(#aPanel:not([hidden]):not(.is-catalog)),
 body[data-mode="mission"] .stage:has(#mPanel:not([hidden])){--side:calc(var(--panel-w) + var(--gut))}
 
 /* ---------- Moon library HUD ---------- */
-.hud{position:absolute;left:var(--gut);top:var(--gut);display:none;flex-direction:column;align-items:flex-start;gap:var(--space-2);z-index:var(--z-overlay)}
+.hud{position:absolute;left:var(--gut);top:var(--gut);display:none;align-items:center;gap:2px;z-index:var(--z-overlay);padding:3px;border-radius:var(--radius-md);
+  background:var(--color-glass);border:1px solid var(--color-glass-line);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 body[data-mode="cadet"] .hud{display:flex}
-.hud-row,.legend{display:flex;gap:var(--space-1);flex-wrap:wrap;padding:3px;border-radius:var(--radius-md);background:var(--color-glass);border:1px solid var(--color-glass-line);
-  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.hud-row,.legend{display:flex;gap:2px}
+.hud-sep{width:1px;height:20px;margin:0 var(--space-1);background:var(--color-glass-line)}
 .hud button{display:inline-flex;align-items:center;gap:var(--space-2);min-height:34px;padding:0 var(--space-3);border:0;border-radius:calc(var(--radius-md) - 3px);background:none;
   font-size:var(--text-sm);font-weight:var(--weight-medium);color:var(--color-on-space-2)}
 .hud button:hover{color:var(--color-on-space);background:rgba(255,255,255,.06)}
@@ -223,6 +224,11 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 .askbar.is-notice .listen-state{padding:2px var(--space-2);margin-left:calc(-1 * var(--space-1));border-radius:var(--radius-full);background:var(--color-surface-2);
   color:var(--color-text-2);font-weight:var(--weight-medium);animation:nudge .4s var(--ease-out)}
 .askbar.is-notice .orb{display:none}
+/* the voice is still loading (model server warming up), or never came up: typing always works */
+.askbar.is-warming:not(.is-hearing):not(.is-speaking) .listen-state:empty::before{content:"Starting voice…"}
+.askbar.is-warming:not(.is-hearing):not(.is-speaking) .orb i{width:4px;height:4px;border-radius:50%;background:var(--color-text-3);animation:dots 1.2s ease-in-out infinite}
+.askbar.is-warming:not(.is-hearing):not(.is-speaking) .orb i:nth-child(2){animation-delay:.2s}.askbar.is-warming .orb i:nth-child(3){animation-delay:.4s}.askbar.is-warming .orb i:nth-child(4){display:none}
+.askbar.is-voiceoff:not(.is-hearing) .listen-state:empty::before{content:"Voice off · type"}
 @keyframes eq{0%,100%{height:5px}50%{height:18px}}
 @keyframes breathe{0%,100%{height:6px}50%{height:11px}}
 @keyframes dots{0%,100%{opacity:.35;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
@@ -317,7 +323,7 @@ body[data-mode="cadet"] .card{left:auto;right:var(--gut)}
 body[data-mode="mission"] .nowplaying{display:none}
 
 /* ---------- Find it (Moon library) ---------- */
-.mcard{position:absolute;z-index:var(--z-panel);left:var(--gut);top:calc(var(--gut) + 96px);width:min(320px,calc(100% - 2 * var(--gut)));
+.mcard{position:absolute;z-index:var(--z-panel);left:var(--gut);top:calc(var(--gut) + 60px);width:min(320px,calc(100% - 2 * var(--gut)));
   background:var(--color-overlay);color:var(--color-text);border:1px solid var(--color-overlay-line);border-radius:var(--radius-lg);box-shadow:var(--shadow-3);
   -webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);animation:rise var(--dur-slow) var(--ease-out)}
 .mcard[hidden]{display:none}

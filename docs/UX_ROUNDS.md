@@ -260,11 +260,111 @@ vocab_listen, vocab_say, patch.
 - mic_denied, offline
 - cabin (voice bar docked)
 
+## Round 3: map geometry, Settings v1, warm-up, Library
+
+### Critique of round 2 (coordinator + own)
+
+- **Map route:** the polar cluster (4 pins nudged by hand) plus the long great-circle arcs over the limb look
+  accidental.
+- **Pins on the limb:** squashed and clipped.
+- **Places:** hard-coded in `ui.js`. They should come from course data.
+- **Credit:** sits in a different spot per screen (top right on the map, under the form on home).
+- **Settings:** a popover that overlaps the mission briefing, with text colliding. It should be modal.
+- **Library HUD:** three stacked bits (toggles, controls, a tiny colour key). The highlight ring is a thick gold
+  hoop, the loudest thing on screen.
+- **Model warming up:** no UI.
+
+### What changed
+
+- **Map:**
+  - The route draws only the legs flown (solid) and the leg to the next stop (dotted). Later legs aren't drawn.
+  - Pins show only on the facing hemisphere and fade out before the limb, so nothing is squashed.
+  - Close stops are pushed apart on screen automatically, with a dot left on the true spot. No more hand nudges.
+  - The camera faces the next stop, so a polar next lesson turns the south pole toward the cadet.
+  - Places are data-driven: a lesson's `place` in course.json (`{name, lat, lon}` or a place id) wins, and
+    `LESSON_PLACE` is only the fallback (see Requests).
+  - The Next-up card enters without jumping sideways.
+- **Credit:** one fixed spot on every Flight School screen, bottom left. The voice bar treats it as an obstacle.
+- **Settings v1:** a modal sheet over a scrim (closing About if it's open), with a section list on the left and one
+  section on the right. Sections:
+  - **Voice:**
+    - The curated voice list from `GET /api/voices`, with ▶ preview. It is hidden while the endpoint 404s, so
+      nothing on screen does nothing.
+    - Speed, expressiveness (calm ↔ lively), and "describe what happens".
+  - **Sound:** master volume (scales every voice and the crew audio, and stacks with the floor's ducking and fades),
+    alarms volume (chimes), flash, vibrate.
+  - **Listening:** hands-free vs hold to talk (`voice.js` ignores open-mic turns in hold mode) and the
+    background-voice filter (relaxed / normal / strict).
+  - **Reading & captions.**
+  - **Display:** theme (system / light / dark, in step with the top-bar toggle), high contrast, less motion,
+    graphics (high / low = 1× pixel ratio), reset the voice bar.
+  - **Cadets:**
+    - Profiles show the call sign and n/8 patches. The active one is marked "Playing"; the others have Switch.
+    - Add a cadet, up to 6.
+    - Level: Cadet 7–9 / Commander 10–12.
+    - "Reset my patches" needs a second tap.
+    - Each profile keeps its own call sign, progress, settings and voice-bar position.
+  - **Help.**
+  - **Sending prefs:** `{t:"prefs", type:"prefs", voice, rate, expressiveness, filter, level, listen}` goes on the
+    session socket when the session connects and on every change.
+  - **Extension point:** `window.__outpost.settingsSections` lets the gestures agent add "Camera & gestures"
+    (DESIGN_SYSTEM.md).
+- **Warm-up:** until `/api/health` reports the ear and Steer TTS loaded, the voice bar shows "Starting voice…" (dots).
+  After 3 minutes without them it shows "Voice off · type". Typing works the whole time.
+- **Library:**
+  - One toolbar: Places · Hardware | Near side · Far side | Tour · Find it. The colour key is hidden; hover or focus a
+    marker for its name.
+  - The highlight ring is thin and white.
+- **Voice bar:** "on the right" is accepted. The router routes the spoken bar commands (feat/router-v2, merged).
+  `addObstacle` / `removeObstacle` and the `outpost:voicebar` event are there for the gesture self-view and hint chip.
+- **Merged:** feat/ux-mission b2c89f6 and integ/desktop-v2 (router v2).
+
+### Requests
+
+- **Learning designer / copy:** give each lesson a `place` in `course.json`:
+  - either `{"name": "Malapert Massif", "lat": -85.98, "lon": -1.67}`, or a place id from `/api/places`;
+  - the map, the lesson camera and the Next-up card read it;
+  - until then, `academy/ui.js` `LESSON_PLACE` is the fallback.
+- **Backend:** `GET /api/voices` (curated 10, `preview_url`), and honour the `prefs` frame:
+  - `voice`, `rate`, `expressiveness`, `filter`, `level`;
+  - `listen: "ptt"` means: don't act on open-mic ear turns relayed server-side.
+- **Mission (3D cabin):** the check ride should be a simplified version of the new cabin. Until then it keeps
+  `cockpit.js` mini inside the glass card.
+
+### Screenshots
+
+`docs/img/ux/r3-*.jpg` (1440 dark + 1280 light):
+- home
+- map, map_mid, pin_selected
+- lesson_tap
+- library
+- access (Settings · Voice), settings_listen, settings_cadets
+- warming
+- patch
+
 ## Router requests (for the hands-free owner)
 
-- "move the voice bar to the top / bottom / left / right / top left / bottom right …", "put the voice bar on the
-  right", and "reset the voice bar": these should route to `nav` with intent `a11y`, so the client runs them
-  (`main.js runNav` → `a11y.handleText`; `voicebar.parseBarCommand` parses them). Typed, they already work locally.
+- **Done** (feat/router-v2): "move the voice bar to the top / bottom / left / right / top left / bottom right …",
+  "put the voice bar on the right", and "reset the voice bar" route to `nav` `a11y`. The client runs them through
+  `voicebar.parseBarCommand`.
+- **Open:** with `listen: "ptt"` in the prefs frame, ignore open-mic turns relayed by the ear (only push-to-talk
+  turns count).
+
+## Gesture requests (for the gestures agent)
+
+- **Settings:** add "Camera & gestures" by pushing a section to `window.__outpost.settingsSections` (DESIGN_SYSTEM.md
+  → Extension points).
+- **Self-view and hint chip:**
+  - register each with `window.__outpost.voiceBar.addObstacle(selector)`;
+  - snap to the bar's six anchors (`spot(anchor)`), avoiding the bar's own;
+  - listen for `outpost:voicebar` to re-place them.
+- **Intents:** Flight School actions you can emit as intents, with the handlers already exposed:
+  - next / continue: `academyUI.nav("next")`;
+  - back / map: `nav("map")`;
+  - yes / no: `nav("accept_offer")` / `nav("decline_offer")`;
+  - select: focus + click.
+- **Map pins:** each is a `<button class="pin" data-l="…">`. Point-and-dwell can click it: the first click selects
+  and flies there, the second opens the lesson.
 
 ## Mission
 

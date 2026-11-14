@@ -30,6 +30,8 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   let finalBuf = "", interim = "", turnAsked = false, kidTalking = false, state = "off";
   const ptt = { held: false, tail: null };
   const turnText = () => (finalBuf + " " + interim).trim();
+  /** Settings → Listening → "Hold to talk": open-mic turns are ignored; only Space / a held mic turn counts. */
+  const pttOnly = () => !!(window.__outpost && window.__outpost.prefs && window.__outpost.prefs.listen === "ptt");
 
   // ----- mic level meter (#micLevel, in the listen row) -----
   const meter = document.createElement("span");
@@ -124,6 +126,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     message(m) {
       if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
       else if (m.t === "arc") { if (typeof m.device_directed === "number") turnDD = m.device_directed; }
+      else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
       else if (m.t === "words" || m.t === "turn") {
         if (m.t === "turn" && m.state === "start") turnDD = null;
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).

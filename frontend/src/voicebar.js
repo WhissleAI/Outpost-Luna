@@ -15,7 +15,7 @@ const DEFAULT = { moon: "bc", cabin: null };   // cabin: null = docked in the co
 export function parseBarCommand(text, current = "bc") {
   const t = String(text || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   if (/^(reset|restore) (the )?(voice|mic|talk) ?bar( position)?$/.test(t)) return { cmd: "reset" };
-  const m = t.match(/^(?:move|put|drag|send) (?:the )?(?:voice|mic|talk) ?bar (?:to )?(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?$/);
+  const m = t.match(/^(?:move|put|drag|send) (?:the )?(?:voice|mic|talk) ?bar (?:to |on |onto )?(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?$/);
   if (!m) return null;
   let [v, h] = [current[0], current[1]];
   [m[1], m[2]].filter(Boolean).forEach(w => {
@@ -32,7 +32,8 @@ function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (
 export function initVoiceBar({ announce = () => {} } = {}) {
   const bar = document.getElementById("askbar"), stage = document.getElementById("stage"), grip = document.getElementById("vsGrip");
   if (!bar || !stage || !grip) return null;
-  let saved = load(), anchor = null, free = null;   // free = {x, y} while dragging / nudging
+  let saved = load(), anchor = null, free = null;
+  const extra = new Set();   // more things the bar must not cover (e.g. the gesture self-view): addObstacle(selector)   // free = {x, y} while dragging / nudging
   const M = 16;                                       // margin from the stage edge (--gut)
   const reduced = () => document.documentElement.dataset.motion === "reduce" || !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const klass = () => (document.body.dataset.cabin === "1" ? "cabin" : "moon");
@@ -51,8 +52,8 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   /** What the bar must not cover on this screen. */
   function obstacles() {
     const sel = ["#aPanel.is-lesson", "#aPanel.is-ride", "#aPanel.is-badge", ".mp-card", "#mPanel:not([hidden])", "#mDebrief:not([hidden])",
-      "#card:not([hidden])", ".a11y-panel:not([hidden])", "dialog[open]", ".h-form", ".mp-credit", ".mp-top", ".m-debrief:not([hidden])"];
-    return sel.flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).map(e => e.getBoundingClientRect());
+      "#card:not([hidden])", ".a11y-panel:not([hidden])", "dialog[open]", ".h-form", ".mp-credit", ".h-credit", ".mp-top", ".m-debrief:not([hidden])"];
+    return sel.concat([...extra]).flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).map(e => e.getBoundingClientRect());
   }
   const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
   function covers(a) {
@@ -73,6 +74,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
     const p = spot(got); place(p.x, p.y, animate);
     if (remember) { saved[klass()] = want; save(saved); }
     if (say) announce(`Voice bar moved to ${NAME[got]}.`);
+    dispatchEvent(new CustomEvent("outpost:voicebar", { detail: { anchor: got, rect: bar.getBoundingClientRect() } }));   // e.g. the self-view picks another anchor
   }
   function nearest(x, y) {
     const cx = x + bar.offsetWidth / 2, cy = y + bar.offsetHeight / 2;
@@ -139,7 +141,9 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   new MutationObserver(() => setTimeout(sync, 60)).observe(document.body, { attributes: true, attributeFilter: ["data-cabin"] });
   requestAnimationFrame(sync);
 
-  const api = { moveTo, reset, handleText, get anchor() { return anchor; } };
+  const api = { moveTo, reset, handleText, get anchor() { return anchor; }, get rect() { return bar.getBoundingClientRect(); },
+    /** Other floating things (the gesture self-view, the hint chip) register so the bar keeps clear of them. */
+    addObstacle(sel) { extra.add(sel); recheck(); }, removeObstacle(sel) { extra.delete(sel); recheck(); }, ANCHORS, spot };
   (window.__outpost = window.__outpost || {}).voiceBar = api;
   return api;
 }

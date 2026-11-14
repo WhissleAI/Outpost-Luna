@@ -25,18 +25,18 @@ const UI = {
   patches: SCHOOL.progress, qualified: "Qualified", retry: "Fly it again", shuffle: CALLSIGN_COPY.random,
   callsign: CALLSIGN_COPY.edit, ride: "Check ride", patchEarned: "Patch earned", commander: SCHOOL.go,
 };
-/** Where each lesson sits on the Moon (course.json lesson id → a real place). The route runs from the near side down
- *  to the south-pole outpost, where the check ride (and then the Mission) happens. nudge = pixel offset of the pin
- *  badge from its true spot, so the polar stops don't stack. Data lives here for now (copy owner: names). */
+/** Where each lesson sits on the Moon, when course.json doesn't say (a lesson's `place`: {name, lat, lon} or a place
+ *  id from /api/places wins). The route runs from the near side down to the south-pole outpost, where the check ride
+ *  (and then the Mission) happens. Close stops are pushed apart on screen by the globe (route layer). */
 const LESSON_PLACE = {
   moon: { name: "Sea of Rains", lat: 32.8, lon: -15.6 },
   comms: { name: "Tranquility Base", lat: 0.67, lon: 23.47 },
   words: { name: "Aristarchus Plateau", lat: 26, lon: -51 },
   history: { name: "Surveyor 3 · Apollo 12", lat: -3.02, lon: -23.42 },
-  power: { name: "Malapert Massif", lat: -85.98, lon: -1.67, nudge: [44, -30] },
-  radiation: { name: "de Gerlache Rim", lat: -88.71, lon: -68.7, nudge: [-6, 34] },
-  life: { name: "Cabeus · LCROSS", lat: -84.68, lon: -48.73, nudge: [-52, -26] },
-  checkride: { name: "Outpost Luna · Connecting Ridge", lat: -89.44, lon: -141.8, nudge: [58, 30] },
+  power: { name: "Malapert Massif", lat: -85.98, lon: -1.67 },
+  radiation: { name: "de Gerlache Rim", lat: -88.71, lon: -68.7 },
+  life: { name: "Cabeus · LCROSS", lat: -84.68, lon: -48.73 },
+  checkride: { name: "Outpost Luna · Connecting Ridge", lat: -89.44, lon: -141.8 },
 };
 /** How to answer, per step type: one short line under the question (the dock shows the voice state). */
 const HOW = { intent: "Say it, or tap the Moon", tap: "Tap the Moon, or say it", command: "Tap an order, or say it",
@@ -152,6 +152,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the route. */
   const shownOrder = () => { const ls = lessons(); return TRACKS.flatMap(t => ls.filter(l => trackOf(l.id) === t.id)).concat(ls.filter(l => !TRACKS.some(t => trackOf(l.id) === t.id))); };
   let mapSel = null;   // the pin the cadet tapped (null = the next lesson)
+  /** A lesson's place on the Moon: course data first, then the fallback table. */
+  function placeOf(l) {
+    const p = l && l.place;
+    if (p && typeof p === "object" && p.lat != null) return { name: p.name || "", lat: +p.lat, lon: +p.lon };
+    if (typeof p === "string") { const f = placeById(p); if (f) return { name: f.name.split(" (")[0], lat: f.lat, lon: f.lon }; }
+    return (l && LESSON_PLACE[l.id]) || LESSON_PLACE.moon;
+  }
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); setLayout("map");
@@ -159,20 +166,21 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const sel = (mapSel && ls.find(l => l.id === mapSel)) || nx;
     // the whole route in view, the Moon lifted above the Next-up card and the voice strip
     const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 250) / H));
-    if (!quiet || !mapSel) globe.flyTo(-50, -18, 4.6);
+    // face the next stop (a polar one turns the south pole toward the cadet); the done legs stay in view
+    if (!quiet || !mapSel) { const c = placeOf(sel || ls[0]); globe.flyTo(c.lat, c.lon, 4.2); }
     // pins: earned patch art for done lessons, a grey outline for the rest; the next one is bigger and labelled
     const stops = ls.map((l, k) => {
-      const done = has(l.badge.id), next = nx && nx.id === l.id, at = LESSON_PLACE[l.id] || LESSON_PLACE.moon;
+      const done = has(l.badge.id), next = nx && nx.id === l.id, at = placeOf(l);
       const b = document.createElement("button"); b.type = "button";
       b.className = `pin a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${sel && sel.id === l.id ? " is-sel" : ""}`;
       b.dataset.l = l.id;
       b.setAttribute("aria-label", `${k + 1}. ${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label"><b>${k + 1}</b>${esc(l.title)}</span>`;
       b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
-      return { id: l.id, lat: at.lat, lon: at.lon, nudge: at.nudge, el: b };
+      return { id: l.id, lat: at.lat, lon: at.lon, el: b };
     });
     globe.route.set(stops, n);
-    const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && (LESSON_PLACE[sel.id] || {});
+    const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
     const cta = !sel ? "" : selDone ? UI.replay2 : sel === nx && n > 0 ? UI.cont : UI.start;
     const card = prog.qualified && (!mapSel || !sel)
       ? `<div class="mp-card"><span class="mp-patch">${patch("checkride", { earned: true, size: 64 })}</span>
@@ -207,7 +215,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     } else if (L.globe) {
       const f = L.globe.place && placeById(L.globe.place);
       if (f) globe.showFeature(f, { dist: L.globe.dist }); else if (L.globe.lat != null) globe.flyTo(L.globe.lat, L.globe.lon, L.globe.dist || 3.6);
-    } else if (LESSON_PLACE[L.id]) { const at = LESSON_PLACE[L.id]; globe.flyTo(at.lat, at.lon, 2.6); }
+    } else { const at = placeOf(L); globe.flyTo(at.lat, at.lon, 2.6); }
     render();
     const beat = (LESSON_STORY[L.id] || {}).beat || "";
     // Three short lines, not one long one (the spoken limit is about 20 words a line): hello, the brief, the question.

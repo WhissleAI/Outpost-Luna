@@ -37,7 +37,7 @@ body[data-aview="home"] .card,body[data-aview="map"] .card,body[data-aview="home
 .apanel.is-home .chip:hover{border-color:var(--color-on-space-2);color:var(--color-on-space)}
 .apanel.is-home .chip[aria-pressed="true"]{background:rgba(255,255,255,.14);border-color:var(--color-on-space);color:var(--color-on-space)}
 .h-start{margin-top:var(--space-3);min-width:200px}
-.h-credit{font-size:var(--text-xs);color:var(--color-on-space-2);max-width:42ch}
+.h-credit{position:absolute;left:var(--gut);bottom:var(--gut);max-width:280px;font-size:var(--text-xs);color:var(--color-on-space-2)}
 html[data-contrast="high"] .apanel.is-home{background:#000}
 
 /* ---------- the Moon map: pins on real places, one Next-up card ---------- */
@@ -51,7 +51,8 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-top .chip{min-height:32px;background:var(--color-surface-2);border-color:transparent}
 .mp-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--gut) + var(--strip-h, 62px) + var(--space-3));width:min(640px,calc(100% - 2 * var(--gut)));
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-4) var(--space-4);
-  border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:rise var(--dur-slow) var(--ease-out)}
+  border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:riseX var(--dur-slow) var(--ease-out)}
+@keyframes riseX{from{opacity:0;transform:translate(-50%,8px)}}
 .mp-patch{display:grid;place-items:center}
 .mp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mp-copy h2{font-size:var(--text-lg);font-weight:var(--weight-bold)}
