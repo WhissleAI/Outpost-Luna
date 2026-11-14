@@ -1,0 +1,85 @@
+/* The keyboard / controller layer (input/keys.js, input/spatial.js; docs/KEYBOARD.md).
+   The TV focus ring: while the kid drives with keys or a controller (html[data-input=keys|pad]), the focused control
+   grows a little and wears a two-tone ring (the theme's background, then the focus colour) plus a soft glow, so it
+   reads on the Moon, on light glass and on the cabin's dark panels. Less motion: no grow, no pulse. High contrast:
+   yellow on black, 4 px. Pointer use hides all of it (the plain :focus-visible ring stays). */
+:root {
+  --key-ring: 0 0 0 2px var(--color-bg), 0 0 0 calc(2px + var(--focus-width)) var(--color-focus), 0 0 22px 4px color-mix(in srgb, var(--color-focus) 55%, transparent);
+  --key-ring-dark: 0 0 0 2px #05070D, 0 0 0 calc(2px + var(--focus-width)) #8DB2FF, 0 0 24px 5px rgba(141, 178, 255, .55);
+  --key-scale: 1.04;
+}
+html[data-contrast="high"] {
+  --key-ring: 0 0 0 2px #000, 0 0 0 6px #FFE14D, 0 0 0 8px #000;
+  --key-ring-dark: var(--key-ring);
+}
+html[data-motion="reduce"] { --key-scale: 1; }
+
+:is(html[data-input="keys"], html[data-input="pad"]) :focus:not(.moon-focus):not(.seat-focus):not(input[type="text"]):not(#q):not(#aCsIn):not(.mx-title):not(h2):not(h1) {
+  outline: none !important;
+  box-shadow: var(--key-ring) !important;
+  scale: var(--key-scale);
+  z-index: 3;
+  transition: scale var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  animation: key-glow 1.8s var(--ease-in-out) infinite;
+}
+/* text fields: the ring without the grow (the caret must not jump) */
+:is(html[data-input="keys"], html[data-input="pad"]) :is(input[type="text"], #q, #aCsIn):focus { outline: none !important; box-shadow: var(--key-ring) !important; }
+/* dark surfaces: the Moon (route pins, the reticle), the cabin, the debrief chart, the site picker over the Moon */
+:is(html[data-input="keys"], html[data-input="pad"]) :is(.route, .m-cabin, .mmarks, .nowplaying, .hud) :focus { box-shadow: var(--key-ring-dark) !important; }
+/* inputs inside a styled label (switches, radios): ring the visible part */
+:is(html[data-input="keys"], html[data-input="pad"]) :is(.a11y-sw, .a11y-speed label, .set-voice):has(input:focus) { box-shadow: var(--key-ring); border-radius: var(--radius-md); }
+:is(html[data-input="keys"], html[data-input="pad"]) :is(.a11y-sw, .a11y-speed label, .set-voice) input:focus { box-shadow: none !important; scale: 1; animation: none; }
+@keyframes key-glow { 50% { filter: brightness(1.08); } }
+html[data-motion="reduce"] :focus { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { :focus { animation: none !important; } }
+
+/* ---- the Moon reticle: a ring at the globe's centre, seen only while focused ---- */
+.moon-focus {
+  position: absolute; left: 0; top: 0; width: 72px; height: 72px; margin: -36px 0 0 -36px; z-index: var(--z-overlay);
+  border: 0; border-radius: 50%; background: none; padding: 0; opacity: 0; pointer-events: none; color: #fff;
+}
+.moon-focus:focus { opacity: 1; outline: none; }
+.mf-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: var(--key-ring-dark); }
+.mf-ring::before, .mf-ring::after { content: ""; position: absolute; background: #fff; left: 50%; top: 50%; }
+.mf-ring::before { width: 2px; height: 18px; margin: -9px 0 0 -1px; }
+.mf-ring::after { width: 18px; height: 2px; margin: -1px 0 0 -9px; }
+.mf-name { position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); white-space: nowrap; font: 600 var(--text-sm, 14px)/1.2 var(--font-sans, system-ui);
+  background: rgba(5, 7, 13, .82); padding: 3px 8px; border-radius: var(--radius-sm); }
+.mf-name:empty { display: none; }
+html:not([data-motion="reduce"]) .moon-focus:focus .mf-ring { animation: mf-pulse 1.6s var(--ease-in-out) infinite; }
+@keyframes mf-pulse { 50% { transform: scale(1.08); } }
+
+/* ---- the cabin seat: the proxy sits over the lit panel and draws its ring ---- */
+.seat-focus { position: fixed; z-index: 5; border: 0; background: none; padding: 0; pointer-events: none; border-radius: var(--radius-lg); opacity: 0; }
+.seat-focus:focus { opacity: 1; outline: none; box-shadow: var(--key-ring-dark); }
+.seat-focus::after { content: "Enter · open"; position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%); white-space: nowrap; font: 600 13px/1 var(--font-sans, system-ui);
+  color: #05070D; background: #8DB2FF; padding: 5px 9px; border-radius: var(--radius-sm); }
+html[data-input="pad"] .seat-focus::after { content: "A · open"; }
+
+/* ---- key-hint chip + legend (keyboard / controller only) ---- */
+.key-hint { position: fixed; left: 0; top: 0; z-index: var(--z-toast); pointer-events: none; font: 600 12px/1 var(--font-sans, system-ui); white-space: pre;
+  color: var(--color-bg); background: var(--color-text); padding: 4px 7px; border-radius: var(--radius-sm); box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+.key-legend { position: fixed; left: 12px; bottom: 12px; z-index: var(--z-toast); display: none; gap: 10px; pointer-events: none;
+  font: 500 12px/1 var(--font-sans, system-ui); color: var(--color-on-space, #F3F5F8); background: rgba(5, 7, 13, .72); padding: 6px 9px; border-radius: var(--radius-md); }
+:is(html[data-input="keys"], html[data-input="pad"]) .key-legend { display: flex; }
+html:not([data-input="keys"]):not([data-input="pad"]) .key-hint { display: none; }
+.key-legend kbd, .keys-help kbd { font: 600 11px/1 var(--font-mono, ui-monospace, monospace); padding: 3px 5px; border-radius: 4px; border: 1px solid currentColor; margin-right: 3px; }
+
+/* ---- help sheet ---- */
+.keys-help { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; background: rgba(5, 7, 13, .55); padding: 16px; }
+.keys-help[hidden] { display: none; }
+.kh-card { width: min(760px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--color-surface, #fff); color: var(--color-text);
+  border-radius: var(--radius-xl); padding: 20px 24px; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); }
+.kh-card header { display: flex; align-items: center; justify-content: space-between; }
+.kh-card h2 { margin: 0; font-size: 22px; }
+.kh-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px 28px; margin-top: 12px; }
+.kh-cols h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-2, inherit); }
+.kh-cols dl { margin: 0; display: grid; gap: 6px; }
+.kh-cols dl div { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; align-items: baseline; }
+.kh-cols dt { font-size: 13px; } .kh-cols dd { margin: 0; font-size: 15px; }
+.kh-foot { margin: 16px 0 0; font-size: 13px; color: var(--color-text-2, inherit); }
+
+/* ---- toast ---- */
+.keys-toast { position: fixed; left: 50%; top: 72px; transform: translateX(-50%); z-index: var(--z-toast); padding: 8px 14px; border-radius: var(--radius-full);
+  background: rgba(5, 7, 13, .86); color: #F3F5F8; font: 600 14px/1.2 var(--font-sans, system-ui); pointer-events: none; }
+.keys-toast[hidden] { display: none; }

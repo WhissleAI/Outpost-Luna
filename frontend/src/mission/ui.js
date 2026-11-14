@@ -209,8 +209,11 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
       b.onpointerenter = () => hot(b.dataset.site, true); b.onpointerleave = () => hot(b.dataset.site, false);
     });
     panel.querySelector(".mx-sites").addEventListener("keydown", e => {
-      const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return; e.preventDefault(); e.stopPropagation();
-      pick(sites[(sites.indexOf(site) + d + sites.length) % sites.length].id);
+      // [keys] Up/Down walk the rows; past the first / last row the arrow leaves the list (spatial focus, docs/KEYBOARD.md)
+      const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return;
+      const k = sites.indexOf(site) + d; if (k < 0 || k >= sites.length) return;
+      e.preventDefault(); e.stopPropagation();
+      pick(sites[k].id);
     });
     $("mStart").onclick = () => start();
     previewSite(); pins(pick);
@@ -668,5 +671,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     get active() { return screen !== "off"; },
     get running() { return !!state && screen === "hud"; },
     get sample() { return !!(client && client.sample); },
+    get pending() { return !!pending; },   // [keys] N is "no" while an order waits for a yes / no
+    get highlighted() { return cockpit && cockpit.highlighted || null; },   // [keys] O opens the lit panel
   };
 }

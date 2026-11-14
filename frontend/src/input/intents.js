@@ -37,12 +37,16 @@ export const INTENTS = Object.freeze({
   rotate: "drag-rotate {dx, dy, phase} (fist + drag)", look: "look around {x, y} in -1..1 (head pose)",
   panel_open: "open the highlighted / looked-at panel {panel?} (lean in)",
   zoom: "zoom by {factor} (phase 2: two-hand pinch)", call_houston: "call Houston (phase 2: raise hand)",
-  help: "what can I do?",
+  help: "what can I do? (keys / controller: the help sheet of every key)",
+  // [keys] the keyboard as a TV remote and game controllers (docs/KEYBOARD.md)
+  move: "spatial focus {dir: left|right|up|down, shift?} (arrows, D-pad, left stick)",
+  mic: "mic on / off (M, controller X)", captions: "captions on / off (C)", focus_input: "focus the text box (/)",
+  pick: "pick answer / option {n} (1–4, A–D)", view_next: "cabin window view: next (V)", view_prev: "cabin window view: previous",
 });
 
 /** Continuous intents: delivered like the others but kept out of the log (they fire at frame rate). */
 export const CONTINUOUS = new Set(["point", "rotate", "look", "zoom"]);
-export const SOURCES = ["voice", "tap", "keyboard", "gesture", "typed", "system"];
+export const SOURCES = ["voice", "tap", "keyboard", "gesture", "gamepad", "typed", "system"];
 
 export function createIntentBus({ logSize = 50, now = () => Date.now() } = {}) {
   const handlers = new Map();   // name → [{fn, priority, seq}]
