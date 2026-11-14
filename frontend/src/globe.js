@@ -116,6 +116,19 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   mi.group.add(mi.path);
   const outpostDot = new THREE.Mesh(new THREE.SphereGeometry(0.006, 12, 8), new THREE.MeshBasicMaterial({ color: 0xefc463 })); mi.group.add(outpostDot);
   let arc = [];
+  // The real Earth in the sky (NASA Blue Marble, bundled in /terrain/earth.jpg), on its true line of sight from the Moon:
+  // at 60 Moon radii with a 1-radius sphere it has its true angular size (1.9°), and the sim's Sun lights its phase.
+  const earthTex = new THREE.TextureLoader().load("/terrain/earth.jpg"); earthTex.colorSpace = THREE.SRGBColorSpace;
+  const farEarth = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), new THREE.MeshStandardMaterial({ map: earthTex, roughness: .7, emissive: 0x0a1630, emissiveIntensity: .3 }));
+  farEarth.rotation.y = 2.2; mi.group.add(farEarth);
+  const glareTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d"), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, "rgba(255,250,235,1)"); r.addColorStop(.12, "rgba(255,244,215,.85)"); r.addColorStop(.35, "rgba(255,230,190,.18)"); r.addColorStop(1, "rgba(255,220,180,0)");
+    g.fillStyle = r; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const sunGlare = new THREE.Sprite(new THREE.SpriteMaterial({ map: glareTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  sunGlare.scale.setScalar(9); mi.group.add(sunGlare);
+  /** Sub-Earth point on the equator side (lon 0) whose elevation seen from the site is `el` degrees. */
+  const earthLat = el => { const n = ll2v(mi.site.lat, mi.site.lon).normalize(), s = Math.sin(el * Math.PI / 180); let lo = -15, hi = 15;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (n.dot(ll2v(m, 0).normalize()) > s) lo = m; else hi = m; } return (lo + hi) / 2; };
 
   const mission = {
     enter() { mi.on = true; mi.group.visible = true; mlayer.hidden = false; ambient.intensity = 0.07 * Math.PI; pins.visible = false; layer.style.display = "none"; },
@@ -128,7 +141,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       flyTo(site.lat, site.lon, dist); label.hidden = true; sel = null; if (ring) { scene.remove(ring); ring = null; }
     },
     /** Day/night: aim the Sun so it stands sunElev degrees above the outpost's horizon, circling once per lunar day. */
-    setSun(sunElevDeg, timeH = 0) { if (!mi.f) return; sun.position.copy(dirAt(mi.f, sunElevDeg, 140 + timeH * 360 / 708).multiplyScalar(5)); },
+    setSun(sunElevDeg, timeH = 0) { if (!mi.f) return; const d = dirAt(mi.f, sunElevDeg, 140 + timeH * 360 / 708.7); sun.position.copy(d).multiplyScalar(5); sunGlare.position.copy(d).multiplyScalar(80); },
     /** Earth's direction from the outpost: a dashed pointer, solid blue when Earth is above the horizon. */
     setEarth(earthElevDeg) {
       if (!mi.f) return;
@@ -137,6 +150,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       mi.earthLine.geometry.setFromPoints([p0, p1]); mi.earthLine.computeLineDistances();
       const up = earthElevDeg > 0; mi.earthLine.material.opacity = up ? .95 : .35; earthMat.color.set(up ? 0x6fa3db : 0x51607a);
       earthMark.el.textContent = up ? `Earth ↑ ${earthElevDeg.toFixed(1)}°` : "Earth below horizon"; earthMark.el.classList.toggle("is-down", !up);
+      farEarth.position.copy(ll2v(earthLat(earthElevDeg), 0).normalize().multiplyScalar(60));
     },
     /** Rover path to a target {lat, lon}; progress 0..1 moves the rover dot. null clears it. */
     setRover(target, progress = 0) {
@@ -161,7 +175,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
-  let band = null;
+  let band = null, paused = false;
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
     if (band) { const hb = h * band; camera.setViewOffset(w, h, 0, (h - hb) / 2, w, h); } else camera.clearViewOffset();
@@ -200,7 +214,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.opacity = facing ? 1 : 0;
     }
     tickMission();
-    renderer.render(scene, camera); requestAnimationFrame(tick);
+    if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
 
@@ -224,6 +238,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   return {
     showFeature, highlight, flyTo, nearest, mission, setViewport,
+    /** Stop drawing (the cabin window covers the globe with a surface view); the camera keeps flying. */
+    pause(on) { paused = !!on; renderer.domElement.style.visibility = on ? "hidden" : ""; },
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },

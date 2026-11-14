@@ -4,6 +4,7 @@ import { createMissionClient } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
+import { createTerrainView } from "./terrain.js";
 import { callSign, CAPCOM, callbackLine, CALLBACKS, LESSON_STORY, DEBRIEF, FRAMING } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
@@ -41,6 +42,23 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   const cabinEl = $("mCabin"), panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
   let screen = "off", pending = null, bannerT = null, siteSeed = null, cockpit = null, logHistory = [];
+  // The window's surface views (SITE / ROVER / EARTH) on real LOLA terrain. One WebGL view for the whole session: its
+  // host moves into each new cabin. ORBIT is the globe itself.
+  let tv = null, tvHost = null, curView = null, surfT = null;
+  const reducedMotion = () => document.documentElement.dataset.motion === "reduce" || !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  function surface() {
+    if (!tvHost) {
+      tvHost = document.createElement("div"); tvHost.className = "tv"; tv = createTerrainView(tvHost, { reduced: reducedMotion });
+      window.__cabinViews = { get tv() { return tv; }, get view() { return curView; } };   // test hook (fps, view)
+    }
+    if (import.meta.env && import.meta.env.DEV && !window.__cabinTest) window.__cabinTest = {   // dev-only: force sim states for screenshots
+      storm(on) { if (!state) return; state.env.storm = on ? { active: true, name: "G5 geomagnetic storm", real_date: "10 May 2024", source: "DONKI", severity: 5 } : { active: false };
+        state.alerts = on ? ["dose_rate_high"] : []; render(); },
+      sky(sun, earth) { if (!state) return; Object.assign(state.env, { sun_elev_deg: sun, in_sun: sun > 0, earth_elev_deg: earth, earth_visible: earth > 0 }); testSky = true; render(); },
+      rover(task, eta) { if (!state) return; state.rover = { ...(state.rover || {}), busy: !!task, task, eta_h: eta }; render(); },
+    };
+    return tv;
+  }
   const badges = () => (academy ? academy.badges() : []);
   const learned = lessonId => !!(academy && academy.has(lessonId));
 
@@ -58,18 +76,42 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (state && !state.over) { showHud(); return; }
     briefing();
   }
-  const hideCabin = () => { cabinEl.hidden = true; delete document.body.dataset.cabin; globe.setViewport(null); };
-  /** The window's zoom level on the real globe: orbit (whole Moon), site approach, or along the rover's route. */
+  const hideCabin = () => {
+    cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false);
+    clearTimeout(surfT); if (tv) tv.hide(); curView = null;
+  };
+  /** The window: ORBIT is the NASA globe (LROC colour); SITE / ROVER / EARTH are the LOLA terrain views. Going down
+   *  from orbit, the globe dives toward the site first, then the surface view takes over the glass mid-descent. */
   function windowView(v) {
     if (!state) return;
-    const s = state.site, rv = state.rover || {}, t = rv.busy ? TARGETS[rv.task] : null;
-    if (v === "orbit") globe.flyTo(-35, s.lon, 3.8);
-    else if (v === "rover") globe.flyTo(t ? (s.lat + t.lat) / 2 : s.lat, t ? (s.lon + t.lon) / 2 : s.lon, 1.5);
-    else globe.flyTo(s.lat, s.lon, 2.3);
+    const s = state.site, from = curView; curView = v; document.body.dataset.cabinView = v;
+    const t = surface(); clearTimeout(surfT);
+    if (v === "orbit" || !t) { if (t) t.hide(); globe.pause(false); globe.flyTo(-35, s.lon, 3.8); return; }
+    const glass = cabinEl.querySelector(".cb-glass"); if (glass && tvHost.parentNode !== glass) glass.prepend(tvHost);
+    t.setSite(state.site); syncSurface();
+    if (from === "orbit" || from == null) {
+      globe.pause(false); globe.flyTo(s.lat, s.lon, 1.35);
+      surfT = setTimeout(() => {
+        t.setView(v, { from: "orbit" });
+        surfT = setTimeout(() => { if (curView !== "orbit") globe.pause(true); }, reducedMotion() ? 0 : 900);
+      }, reducedMotion() ? 0 : 900);
+    } else { t.setView(v); globe.pause(true); }
+  }
+  /** Sun, Earth, rover and storm into the surface view, from the same sim numbers as the readouts. */
+  let testSky = false;
+  function syncSurface(f) {
+    if (!tv || !state) return;
+    if (testSky) f = null;
+    const e = state.env || {};
+    tv.setSun(f && f.sun_elev_deg != null ? f.sun_elev_deg : +e.sun_elev_deg || 0, (f && f.mission_time_h) || state.mission_time_h || 0);
+    tv.setEarth(f && f.earth_elev_deg != null ? f.earth_elev_deg : +e.earth_elev_deg || 0);
+    tv.setRover(state.rover || {}, f && f.mission_time_h != null ? Math.max(0, f.mission_time_h - (state.mission_time_h || 0)) : 0);
+    tv.setStorm(!!(e.storm && e.storm.active));
   }
   /** Spoken or typed view changes ("zoom out", "show me the rover", "back to the outpost"). */
-  const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover)\b/, "rover"],
-    [/\b(zoom in|outpost view|site view|back to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
+  const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover|rover cam(era)?)\b/, "rover"],
+    [/\b(earth view|show (me )?(the )?earth|where is (the )?earth|look at (the )?earth)\b/, "earth"],
+    [/\b(zoom in|outpost view|site view|(back|go) to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
   function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   function briefing() {
@@ -146,6 +188,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     globe.mission.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); globe.mission.setEarth(+e.earth_elev_deg || 0);
     const tgt = rv.busy ? TARGETS[rv.task] : null, total = rv.task === "collect_ice" ? 10 : rv.task === "explore" ? 8 : 5;
     globe.mission.setRover(tgt, tgt ? Math.sin(Math.PI * (1 - (rv.eta_h || 0) / total)) : 0);
+    syncSurface();
   }
   /** Radio log lines survive re-renders of the cockpit. */
   function radio(who, text) { if (!text) return; logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
@@ -178,9 +221,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- telemetry: bars move between shifts ----------
   function onTelemetry(f) {
     live = f; if (screen !== "hud" || !state) return;
-    if (cockpit) cockpit.telemetry(f);
+    if (cockpit && !testSky) cockpit.telemetry(f);
     if (f.sun_elev_deg != null) globe.mission.setSun(f.sun_elev_deg, f.mission_time_h || 0);
     if (f.earth_elev_deg != null) globe.mission.setEarth(f.earth_elev_deg);
+    syncSurface(f);
   }
 
   // ---------- commands, events, CAPCOM ----------
