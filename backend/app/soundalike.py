@@ -24,7 +24,7 @@ import re
 from difflib import SequenceMatcher
 from functools import lru_cache
 
-MIN_SCORE = 0.74          # similar() for a span to be read as a vocab phrase
+MIN_SCORE = 0.8          # similar() for a span to be read as a vocab phrase
 VOWELS = set("aeiouy")
 
 # Words that are never rewritten (function words, fillers, acknowledgements, chatter): the plausible gate's list plus a
@@ -179,12 +179,35 @@ def similar(heard: str, target: str) -> float:
     ka, kb = phrase_key(heard), phrase_key(target)
     if not ka or not kb:
         return 0.0
+    if min(len(ka), len(kb)) <= 2:
+        # short keys ("AS" ice, "RT" radio): the consonants say little, so the vowels must agree too: the same
+        # number of syllables and the same first vowel sound ("eyes" ~ "ice"; "issue", "road", "ready" !~ them)
+        return 0.9 if ka == kb and _vowels_agree(heard, target) else 0.0
     ph = 1.0 - _lev(ka, kb) / max(len(ka), len(kb))
-    if min(len(ka), len(kb)) <= 2 and ka != kb:      # short keys ("AS" ice): only an exact sound match counts
-        ph = min(ph, 0.4)
     sa, sb = norm(heard).replace(" ", ""), norm(target).replace(" ", "")
     sp = SequenceMatcher(None, sa, sb).ratio()
     return 0.65 * ph + 0.35 * sp
+
+
+_V_FAMILY = {"i": "I", "y": "I", "ey": "I", "eye": "I", "ie": "I", "ai": "I", "igh": "I", "a": "A", "ay": "A",
+             "ae": "A", "o": "O", "oa": "O", "ow": "O", "oe": "O", "e": "E", "ee": "E", "ea": "E", "u": "U", "oo": "U",
+             "ou": "U", "ue": "U", "ui": "U"}
+
+
+def _vgroups(w: str) -> list[str]:
+    w = re.sub(r"gh", "", w)
+    gs = re.findall(r"[aeiouy]+", w[1:] if w.startswith("y") and len(w) > 1 else w)
+    if len(gs) > 1 and gs[-1] == "e" and re.search(r"e[s]?$", w) and not w.endswith(("ee", "ie")):
+        gs = gs[:-1]                           # a silent final e ("ice", "side", "route")
+    return gs
+
+
+def _vowels_agree(a: str, b: str) -> bool:
+    ga, gb = _vgroups(norm(a).replace(" ", "")), _vgroups(norm(b).replace(" ", ""))
+    if len(ga) != len(gb) or not ga:
+        return False
+    fa, fb = _V_FAMILY.get(ga[0], ga[0][:1].upper()), _V_FAMILY.get(gb[0], gb[0][:1].upper())
+    return fa == fb
 
 
 def content(w: str) -> bool:
@@ -239,9 +262,6 @@ def best_span(text: str, vocab, min_score: float = MIN_SCORE) -> tuple[str, str,
                 if not ok_span(span) or held.intersection(range(i, i + k)):
                     continue
                 s = similar(" ".join(span), v)
-                # a short single-sound target ("ice") needs real spelling overlap too ("eyes" yes, "guys" no)
-                if len(vk) <= 2 and SequenceMatcher(None, "".join(span), v.replace(" ", "")).ratio() < 0.28:
-                    continue
                 if s >= min_score and (best is None or s > best[2] + 1e-9):
                     best = (" ".join(span), v, s, i, i + k)
     return best

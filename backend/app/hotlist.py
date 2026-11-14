@@ -26,6 +26,7 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 MAX_STEP = 48
+SCHEMA = 2                   # bump when the way the lists are built changes (it is part of the version)
 MAX_SCREEN = 260
 
 OFFER_WORDS = {"next_lesson": ["next", "yes", "next lesson"], "next_step": ["next", "yes", "next one"],
@@ -33,9 +34,12 @@ OFFER_WORDS = {"next_lesson": ["next", "yes", "next lesson"], "next_step": ["nex
                "fly_again": ["fly again", "yes", "another site"], "tour": ["next", "skip tour"]}
 PANELS = ["power panel", "comm panel", "comms panel", "habitat panel", "rover panel", "radiation panel",
           "back to my seat", "close the panel"]
+# The cabin's strong tier holds the NOUNS of the orders (what is misheard); the generic order words ("turn", "more",
+# "percent") stay on the screen tier, so the decoder is never pushed to start a turn with "Turn" or end it with them.
 ORDERS = ["shields", "radiation shields", "heaters", "life support", "oxygen", "greenhouse", "science", "rover", "comms",
-          "radio", "ice", "water", "shelter", "end shift", "Houston", "solar panels", "repair the array", "explore",
-          "come back", "percent", "more power", "less power", "status report", "a little more", "turn off", "turn on"]
+          "radio", "ice", "water", "shelter", "end shift", "Houston", "solar panels", "repair the array", "explore"]
+ORDER_WORDS = ["come back", "percent", "more power", "less power", "status report", "a little more", "turn off",
+               "turn on"]
 NAV = ["next", "start", "go back", "go to the map", "patch map", "go to mission", "take command", "library", "academy",
        "flight school", "debrief", "fly again", "another site", "zoom out", "show me the rover", "settings",
        "say that again", "slower", "faster", "skip tour", "show me around"]
@@ -83,6 +87,7 @@ def source_hash() -> str:
     for f in SOURCES:
         p = DATA / f
         h.update(p.read_bytes() if p.exists() else b"")
+    h.update(json.dumps([SCHEMA, ORDERS, ORDER_WORDS, PANELS, NAV, HELP, CALLSIGNS, CREW_NOW]).encode())   # + the lists kept here
     return h.hexdigest()[:12]
 
 
@@ -135,7 +140,7 @@ def build_vocab() -> dict:
         for L in content.course()["lessons"]:
             ws = [L["title"]]
             for st in L["steps"]:
-                ws += step_vocab(st)
+                ws += _bias_words(step_vocab(st, aliases=False))
             lessons[L["id"]] = _dedupe(ws, 120)
             course_words += ws
     except Exception:  # noqa: BLE001
@@ -158,12 +163,12 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += OFFER_WORDS.get(fr["offer"], ["next", "yes"])
     if screen in ("lesson", "ride"):
         from .academy.grade import step_vocab
-        st += step_vocab(step, list(fr.get("step_options") or []))
+        st += _bias_words(step_vocab(step, list(fr.get("step_options") or []), aliases=False))
         wide += V["lessons"].get(fr.get("lesson_id") or "", []) + V["places"] + V["glossary"] + V["crew"] + \
             V["hardware"][:40]
     elif screen == "cabin":
         st += V["orders"] + V["panels"] + V["sites"]
-        wide += V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]
+        wide += ORDER_WORDS + V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]
     elif screen == "brief":
         st += V["sites"] + ["take command", "start the mission"]
         wide += V["orders"] + V["places"] + V["crew"]
@@ -181,6 +186,13 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
     st = _dedupe(st, MAX_STEP)
     sk = {w.lower() for w in st}
     return {"v": V["v"], "step": st, "screen": [w for w in _dedupe(wide, MAX_SCREEN) if w.lower() not in sk]}
+
+
+def _bias_words(ws: list[str]) -> list[str]:
+    """What the decoder may be pushed toward: never function words or fillers ("yeah", "not", "sure"); the offer's
+    own "yes" / "next" come from OFFER_WORDS, not from here. (The grader's sound-alike repair keeps them all.)"""
+    from .soundalike import STOP, norm
+    return [w for w in ws if norm(w) and not all(x in STOP for x in norm(w).split())]
 
 
 @lru_cache(maxsize=1)

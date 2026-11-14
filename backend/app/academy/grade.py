@@ -122,7 +122,7 @@ COMMAND_VOCAB = ["shields", "life support", "greenhouse", "science", "rover", "c
                  "water", "shelter", "houston", "solar panels", "power"]
 
 
-def step_vocab(step: dict | None, options: list[str] | None = None) -> list[str]:
+def step_vocab(step: dict | None, options: list[str] | None = None, aliases: bool = True) -> list[str]:
     """What this step expects to hear (the sound-alike targets): its options and their say words, its keywords, the
     places it names, the side / day-night words, the base parts of a command step, the space word."""
     if not step:
@@ -138,7 +138,7 @@ def step_vocab(step: dict | None, options: list[str] | None = None) -> list[str]
                 *(o.get("id") for o in acc.get("options", []) or [])]:
         p = gaz().places.get(pid) if pid else None
         if p:
-            out += [p.name, *p.aliases]
+            out += [p.name, *(p.aliases if aliases else [])]   # aliases hold kid words and misspellings
     if kind == "terminator":
         out += ["terminator", "shadow line", "day", "night"]
     if kind == "command":

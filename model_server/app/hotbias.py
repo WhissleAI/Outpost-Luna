@@ -29,10 +29,10 @@ class HotSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
     ear_hot: str = "on"                 # on | off: use the hot lists the backend sends
-    ear_hot_step_start: float = 1.5     # bonus (log-prob units) on the first token of a step-list phrase
-    ear_hot_step_cont: float = 2.5      # ... on each token that continues a step-list phrase
-    ear_hot_screen_start: float = 0.5   # screen-wide list: lighter
-    ear_hot_screen_cont: float = 1.5
+    ear_hot_step_start: float = 1.0     # bonus (log-prob units) on the first token of a step-list phrase
+    ear_hot_step_cont: float = 2.0      # ... on each token that continues a step-list phrase
+    ear_hot_screen_start: float = 0.3   # screen-wide list: lighter
+    ear_hot_screen_cont: float = 1.2
     ear_nbest_step: float = 0.35        # n-best rescoring: + per step-list phrase in a hypothesis (seq score units)
     ear_nbest_screen: float = 0.12
     ear_nbest_margin: float = 0.6       # only an alternative within this of the top beam may replace it
@@ -147,7 +147,11 @@ def rescore(nbest: list[dict], lists: dict, s=hot_settings) -> int:
     top = nbest[0]
     th = set(hits(top["text"], lists.get("step") or [])), set(hits(top["text"], lists.get("screen") or []))
 
+    nt = len(norm(top["text"]).split())
+
     def val(h):
+        if abs(len(norm(h["text"]).split()) - nt) > 1:
+            return -1e9          # a hot word must REPLACE heard words, never ride in on an extra tail
         st = set(hits(h["text"], lists.get("step") or [])) - th[0]
         sc = set(hits(h["text"], lists.get("screen") or [])) - th[1]
         return h["score"] + s.ear_nbest_step * len(st) + s.ear_nbest_screen * len(sc)
