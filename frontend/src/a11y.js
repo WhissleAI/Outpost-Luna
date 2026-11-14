@@ -122,30 +122,54 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   btn.setAttribute("aria-haspopup", "dialog"); btn.title = "Settings";
   // "No audio needed" lives in the settings panel (the top bar stays quiet).
 
+  const scrim = mk("div", "set-scrim", { hidden: "", "aria-hidden": "true" });
   const panel = mk("div", "a11y-panel", { role: "dialog", "aria-modal": "true", "aria-labelledby": "a11yTitle", hidden: "" });
-  document.body.append(panel);
+  document.body.append(scrim, panel);
+  // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
+  // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
+  const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
+    ["cadets", "Cadets"], ["help", "Help"]];
+  let section = "voice", resetArmed = false;
   function renderPanel() {
+    const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
-    // Settings (folds in Access). Sections follow the planned IA (docs/FLOWS.md → Settings): Voice · Reading & captions ·
-    // Display · Alerts · Help. Every control here works today; new sections join as they ship.
-    const sec = (id, title, body) => `<section class="set-sec" aria-labelledby="set-${id}"><h3 id="set-${id}">${title}</h3>${body}</section>`;
-    panel.innerHTML = `
-      <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
-      ${sec("voice", "Voice", `<fieldset class="a11y-speed"><legend class="sr-only">Voice speed</legend>
-        ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""} aria-label="Voice speed ${v} times"><span>${v}×</span></label>`).join("")}</fieldset>
-        ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`)}
-      ${sec("read", "Reading &amp; captions", `${sw("captions", "Captions", "Every voice as text, word by word")}
+    const seg = (key, label, opts) => `<fieldset class="set-seg"><legend>${label}</legend><div class="a11y-speed">${opts.map(([v, t]) =>
+      `<label><input type="radio" name="p-${key}" data-p="${key}" value="${v}" ${P[key] === v ? "checked" : ""}><span>${t}</span></label>`).join("")}</div></fieldset>`;
+    const range = (key, label, lo, hi, step, fmt) => `<label class="a11y-range"><b>${label} <output>${fmt(P[key])}</output></b>
+      <input type="range" min="${lo}" max="${hi}" step="${step}" value="${P[key]}" data-p="${key}" aria-valuetext="${fmt(P[key])}"></label>`;
+    const pct = v => Math.round((+v || 0) * 100) + "%";
+    const body = {
+      voice: `<div class="set-voices" id="setVoices" aria-live="polite"></div>
+        <fieldset class="set-seg"><legend>Speed</legend><div class="a11y-speed">
+          ${SPEEDS.map(v => `<label><input type="radio" name="a11ySpeed" value="${v}" ${S.speed === v ? "checked" : ""} aria-label="Voice speed ${v} times"><span>${v}×</span></label>`).join("")}</div></fieldset>
+        ${PA ? range("expressiveness", "Expressiveness", 0, 1, 0.25, v => (v <= 0.25 ? "Calm" : v >= 0.75 ? "Lively" : "Balanced")) : ""}
+        ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`,
+      sound: PA ? `${range("volume", "Volume", 0, 1, 0.05, pct)}${range("alarms", "Alarms", 0, 1, 0.05, pct)}
+        ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
+        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}` : "",
+      listen: PA ? `${seg("listen", "How to talk", [["handsfree", "Hands-free"], ["ptt", "Hold to talk"]])}
+        <p class="set-help">${P.listen === "ptt" ? "Hold <kbd>Space</kbd> or the mic while you talk." : "The mic listens all the time. <kbd>Space</kbd> still works."}</p>
+        ${seg("filter", "Ignore other voices", [["relaxed", "Relaxed"], ["normal", "Normal"], ["strict", "Strict"]])}
+        <p class="set-help">Strict ignores more room chatter.</p>` : "",
+      read: `${sw("captions", "Captions", "Every voice as text, word by word")}
         <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
           <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
         <label class="a11y-range"><b>Text size <output>${Math.round(S.textScale * 100)}%</output></b>
           <input type="range" min="1" max="1.5" step="0.25" value="${S.textScale}" data-k="textScale" aria-valuetext="${Math.round(S.textScale * 100)} percent"></label>
-        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}`)}
-      ${sec("display", "Display", `${sw("contrast", "High contrast", "Black, white and yellow")}
+        ${sw("dyslexia", "Easy-read font", "Atkinson Hyperlegible, wider spacing")}`,
+      display: `${PA ? seg("theme", "Theme", [["system", "System"], ["light", "Light"], ["dark", "Dark"]]) : ""}
+        ${sw("contrast", "High contrast", "Black, white and yellow")}
         ${sw("reducedMotion", "Less motion", "No flying or spinning")}
-        <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`)}
-      ${sec("alerts", "Alerts", `${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
-        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}`)}
-      ${sec("help", "Help", `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
+        ${PA ? seg("graphics", "Graphics", [["high", "High"], ["low", "Low"]]) : ""}
+        <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`,
+      cadets: PA ? `<ul class="set-cadets">${PA.listProfiles().map(p => `<li class="${p.active ? "is-active" : ""}">
+          <span class="set-av" aria-hidden="true">${escH((p.callsign || "?").slice(0, 1).toUpperCase())}</span>
+          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of 8 patches`}</small></span>
+          ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
+        <button type="button" class="btn" data-prof-add>Add a cadet</button>
+        ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
+        <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
+      help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
         <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
           <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
@@ -154,22 +178,56 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <li>Keys: <kbd>Tab</kbd> move · <kbd>Enter</kbd> press · <kbd>Esc</kbd> close · <kbd>Alt</kbd>+<kbd>A</kbd> settings · <kbd>Alt</kbd>+<kbd>W</kbd> where am I · <kbd>Alt</kbd>+<kbd>P</kbd> pick a place</li></ul></details>
         ${places.length ? `<details class="a11y-place"><summary>Pick a place on the Moon</summary>
           <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
-          <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}`)}
-      <p class="a11y-note">Saved on this device only.</p>`;
+          <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
+        <p class="a11y-note">Saved on this device only.</p>`,
+    };
+    const shown = SECTIONS.filter(([id]) => body[id]);
+    if (!shown.some(([id]) => id === section)) section = shown[0][0];
+    panel.innerHTML = `
+      <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
+      <div class="set-body">
+        <nav class="set-nav" aria-label="Settings sections">${shown.map(([id, t]) => `<button type="button" data-sec="${id}" aria-current="${id === section ? "page" : "false"}">${escH(t)}</button>`).join("")}</nav>
+        <section class="set-sec" aria-labelledby="set-h">
+          <h3 id="set-h">${escH(SECTIONS.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
+      </div>`;
     fillTranscript();
+    if (section === "voice" && PA) PA.loadVoices().then(vs => {
+      const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
+      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${[{ id: "", name: "CAPCOM", desc: "The default voice" }, ...vs].map(v => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id ? "checked" : ""}>
+          <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
+          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>`;
+      box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
+    });
   }
   function open(v = panel.hidden) {
-    if (v) { renderPanel(); panel.hidden = false; btn.setAttribute("aria-expanded", "true"); (panel.querySelector("input:checked") || panel.querySelector("input")).focus(); }
-    else { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
+    if (v) {
+      const about = document.getElementById("about"); if (about && about.open) about.close();   // one sheet at a time
+      renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
+      (panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector("input")).focus();
+    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
+  scrim.addEventListener("click", () => open(false));
   btn.addEventListener("click", () => open());
   panel.addEventListener("click", e => {
+    const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
+    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); panel.querySelector(`[data-sec="${section}"]`).focus(); }
     if (e.target.closest("[data-vbar-reset]") && O.voiceBar) O.voiceBar.reset();
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
+    const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);
+    if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();
+    if (e.target.closest("[data-prof-reset]") && PA) { if (resetArmed) PA.resetProgress(); else { resetArmed = true; renderPanel(); panel.querySelector("[data-prof-reset]").focus(); } }
   });
   panel.addEventListener("change", e => {
     const t = e.target;
+    if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
+      const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
+      O.prefsApi.update({ [k]: v });
+      if (t.type === "range") { const out = t.closest("label").querySelector("output"); renderPanel(); const again = panel.querySelector(`[data-p="${k}"]`); if (again) again.focus(); void out; }
+      else if (k === "listen") { renderPanel(); const again = panel.querySelector(`[data-p="listen"]:checked`); if (again) again.focus(); }
+      return;
+    }
     if (t.name === "a11ySpeed") set({ speed: +t.value });
     else if (t.dataset.k && t.type === "checkbox") set({ [t.dataset.k]: t.checked });
     else if (t.dataset.k) set({ [t.dataset.k]: +t.value });

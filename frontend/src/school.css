@@ -37,7 +37,7 @@ body[data-aview="home"] .card,body[data-aview="map"] .card,body[data-aview="home
 .apanel.is-home .chip:hover{border-color:var(--color-on-space-2);color:var(--color-on-space)}
 .apanel.is-home .chip[aria-pressed="true"]{background:rgba(255,255,255,.14);border-color:var(--color-on-space);color:var(--color-on-space)}
 .h-start{margin-top:var(--space-3);min-width:200px}
-.h-credit{font-size:var(--text-xs);color:var(--color-on-space-2);max-width:42ch}
+.h-credit{position:absolute;left:var(--gut);bottom:var(--gut);max-width:280px;font-size:var(--text-xs);color:var(--color-on-space-2)}
 html[data-contrast="high"] .apanel.is-home{background:#000}
 
 /* ---------- the Moon map: pins on real places, one Next-up card ---------- */

@@ -7,7 +7,8 @@ test("voice bar: move commands map to one of six anchors", () => {
   assert.deepEqual(parseBarCommand("move the voice bar to the top"), { cmd: "move", anchor: "tc" });
   assert.deepEqual(parseBarCommand("Move the voice bar to the top right."), { cmd: "move", anchor: "tr" });
   assert.deepEqual(parseBarCommand("move the voice bar to the bottom left"), { cmd: "move", anchor: "bl" });
-  assert.deepEqual(parseBarCommand("put the voice bar on the left".replace(" on", " to")), { cmd: "move", anchor: "bl" });
+  assert.deepEqual(parseBarCommand("put the voice bar on the left"), { cmd: "move", anchor: "bl" });
+  assert.deepEqual(parseBarCommand("put the voice bar on the right", "tc"), { cmd: "move", anchor: "tr" });
   assert.deepEqual(parseBarCommand("move the voice bar to the right", "tc"), { cmd: "move", anchor: "tr" });   // keeps its row
   assert.deepEqual(parseBarCommand("move the voicebar up"), { cmd: "move", anchor: "tc" });
   for (const a of ["tl", "tc", "tr", "bl", "bc", "br"]) assert.ok(ANCHORS.includes(a));

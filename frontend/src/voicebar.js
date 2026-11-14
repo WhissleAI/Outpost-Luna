@@ -15,7 +15,7 @@ const DEFAULT = { moon: "bc", cabin: null };   // cabin: null = docked in the co
 export function parseBarCommand(text, current = "bc") {
   const t = String(text || "").toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
   if (/^(reset|restore) (the )?(voice|mic|talk) ?bar( position)?$/.test(t)) return { cmd: "reset" };
-  const m = t.match(/^(?:move|put|drag|send) (?:the )?(?:voice|mic|talk) ?bar (?:to )?(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?$/);
+  const m = t.match(/^(?:move|put|drag|send) (?:the )?(?:voice|mic|talk) ?bar (?:to |on |onto )?(?:the )?(top|bottom|up|down|left|right|middle|centre|center)(?: (left|right|middle|centre|center))?$/);
   if (!m) return null;
   let [v, h] = [current[0], current[1]];
   [m[1], m[2]].filter(Boolean).forEach(w => {
@@ -51,7 +51,7 @@ export function initVoiceBar({ announce = () => {} } = {}) {
   /** What the bar must not cover on this screen. */
   function obstacles() {
     const sel = ["#aPanel.is-lesson", "#aPanel.is-ride", "#aPanel.is-badge", ".mp-card", "#mPanel:not([hidden])", "#mDebrief:not([hidden])",
-      "#card:not([hidden])", ".a11y-panel:not([hidden])", "dialog[open]", ".h-form", ".mp-credit", ".mp-top", ".m-debrief:not([hidden])"];
+      "#card:not([hidden])", ".a11y-panel:not([hidden])", "dialog[open]", ".h-form", ".mp-credit", ".h-credit", ".mp-top", ".m-debrief:not([hidden])"];
     return sel.flatMap(s => [...document.querySelectorAll(s)]).filter(e => !e.hidden && e.getClientRects().length).map(e => e.getBoundingClientRect());
   }
   const overlaps = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;

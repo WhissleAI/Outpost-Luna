@@ -26,6 +26,7 @@ import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
 import { initHighlight } from "./highlight.js";
 import { initVoiceBar } from "./voicebar.js";
+import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 // ---- end [a11y] ----
 
@@ -107,6 +108,11 @@ async function boot() {
   if (a11y) a11y.wrapGlobe(globe, placeById);
   initCaptions({ floor, settings: () => (a11y ? a11y.settings : {}) });
   const vbar = initVoiceBar({ announce: t => { if (a11y) a11y.describe(t); } });   // the floating voice bar
+  // Settings v1 (prefs.js): voice, sound, listening, display, level, cadet profiles. The session gets the steering bits.
+  const prefs = createPrefs({ globe });
+  (window.__outpost = window.__outpost || {}).prefsApi = prefs;
+  const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
+  prefs.on(() => sendPrefs());
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
@@ -464,7 +470,7 @@ async function boot() {
     session.connect().then(ok => {
       if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
       voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
-      pushScreen(true);
+      pushScreen(true); sendPrefs();
     });
   }
 

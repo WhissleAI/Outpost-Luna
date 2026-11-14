@@ -1,0 +1,139 @@
+// Settings v1 beyond accessibility (a11y.js keeps its own keys): voice, sound, listening, display, level, and cadet
+// profiles. Everything is stored on this device (localStorage, try/catch) per cadet profile. The server gets only what
+// it needs to steer the session: {t:"prefs", type:"prefs", voice, rate, expressiveness, filter, level, listen} on the
+// session socket (main.js sends it whenever a pref changes).
+//
+// Profiles: the active cadet's data lives in the usual keys; switching snapshots them into the profile list, loads
+// the other cadet's, and reloads the app (so every module starts clean).
+
+export const PREF_DEFAULTS = Object.freeze({
+  voice: "",                 // "" = the default CAPCOM voice; else an id from GET /api/voices
+  expressiveness: 0.5,       // 0 calm … 1 lively
+  volume: 1,                 // master: every voice and the crew audio
+  alarms: 1,                 // alarm chimes
+  listen: "handsfree",       // "handsfree" | "ptt" (hold Space / the mic to talk)
+  filter: "normal",          // background-voice filter: "relaxed" | "normal" | "strict"
+  theme: "system",           // "system" | "light" | "dark"
+  graphics: "high",          // "high" | "low"
+  level: "cadet",            // "cadet" (7–9) | "commander" (10–12)
+});
+const KEY = "outpost-prefs";
+const PROFILES = "outpost-profiles";
+/** The keys that belong to one cadet. */
+export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme"];
+
+const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
+const set = (k, v) => { try { if (!store) return; if (v == null) store.removeItem(k); else store.setItem(k, v); } catch (e) { /* private mode */ } };
+
+/** Any stored object → valid prefs (unknown keys dropped, values clamped to their options). */
+export function normalizePrefs(x) {
+  const o = { ...PREF_DEFAULTS }, s = x && typeof x === "object" ? x : {};
+  const num = (v, lo, hi) => (isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : null);
+  if (typeof s.voice === "string") o.voice = s.voice.slice(0, 64);
+  [["expressiveness", 0, 1], ["volume", 0, 1], ["alarms", 0, 1]].forEach(([k, lo, hi]) => { const v = num(s[k], lo, hi); if (v != null) o[k] = v; });
+  const pick = (k, opts) => { if (opts.includes(s[k])) o[k] = s[k]; };
+  pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
+  pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
+  return o;
+}
+
+export function createPrefs({ globe = null } = {}) {
+  let P = (() => { try { return normalizePrefs(JSON.parse(get(KEY) || "null")); } catch (e) { return { ...PREF_DEFAULTS }; } })();
+  const subs = new Set();
+  const root = document.documentElement;
+
+  // ---- effects ----
+  // Master volume: every <audio> the app plays (guide, Houston, story, crew) goes through this logical volume, so the
+  // floor's own fades and ducking keep working on top of it.
+  const vol = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
+  const live = new Set();
+  if (vol && !HTMLMediaElement.prototype.__outpostVol) {
+    Object.defineProperty(HTMLMediaElement.prototype, "volume", {
+      configurable: true,
+      get() { return this.__lv != null ? this.__lv : vol.get.call(this); },
+      set(v) { this.__lv = +v; live.add(this); vol.set.call(this, Math.max(0, Math.min(1, +v * P.volume))); },
+    });
+    HTMLMediaElement.prototype.__outpostVol = true;
+  }
+  const reVolume = () => live.forEach(el => { try { vol.set.call(el, Math.max(0, Math.min(1, (el.__lv ?? 1) * P.volume))); } catch (e) { /* gone */ } });
+  function applyTheme() {
+    if (P.theme === "system") delete root.dataset.theme; else root.dataset.theme = P.theme;
+    set("atm-theme", P.theme === "system" ? null : P.theme);
+    const b = document.getElementById("themeBtn"), mq = window.matchMedia && matchMedia("(prefers-color-scheme: dark)");
+    const dark = (root.dataset.theme || (mq && mq.matches ? "dark" : "light")) === "dark";
+    if (b) { b.dataset.mode = dark ? "dark" : "light"; b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode"); }
+  }
+  function apply(changed) {
+    const O = (window.__outpost = window.__outpost || {});
+    O.prefs = P; O.levels = { master: P.volume, alarms: P.alarms };
+    root.dataset.listen = P.listen; root.dataset.graphics = P.graphics;
+    if (!changed || "volume" in changed) reVolume();
+    if (changed ? "theme" in changed : P.theme !== "system") applyTheme();
+    if (globe && globe.setQuality && (!changed || "graphics" in changed)) globe.setQuality(P.graphics);
+  }
+  apply();
+  // the top-bar theme button flips light/dark: keep the pref in step
+  const tb = document.getElementById("themeBtn");
+  if (tb) tb.addEventListener("click", () => setTimeout(() => { P = { ...P, theme: root.dataset.theme === "dark" ? "dark" : "light" }; set(KEY, JSON.stringify(P)); subs.forEach(f => f(P, { theme: P.theme })); }, 0));
+
+  function update(patch) {
+    P = normalizePrefs({ ...P, ...patch }); set(KEY, JSON.stringify(P));
+    apply(patch); subs.forEach(f => f(P, patch));
+    dispatchEvent(new CustomEvent("outpost:prefs", { detail: P }));
+  }
+  /** What the session needs (main.js sends it on the socket). */
+  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, rate, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
+
+  // ---- voices (GET /api/voices → [{id, name, desc, preview_url}]); none = only the default voice, no picker ----
+  let voices = null;
+  async function loadVoices() {
+    if (voices) return voices;
+    try { const r = await fetch("/api/voices"); voices = r.ok ? (await r.json()) : []; if (!Array.isArray(voices)) voices = voices.voices || []; }
+    catch (e) { voices = []; }
+    return voices;
+  }
+  let preview = null;
+  function previewVoice(v) {
+    if (!v || !v.preview_url) return;
+    try { if (preview) preview.pause(); preview = new Audio(v.preview_url); preview.volume = 1; preview.play().catch(() => {}); } catch (e) { /* no audio */ }
+  }
+
+  // ---- cadet profiles ----
+  const snapshot = () => Object.fromEntries(PROFILE_KEYS.map(k => [k, get(k)]));
+  const restore = data => PROFILE_KEYS.forEach(k => set(k, data && data[k] != null ? data[k] : null));
+  function profiles() {
+    let s; try { s = JSON.parse(get(PROFILES) || "null"); } catch (e) { s = null; }
+    if (!s || !Array.isArray(s.list) || !s.list.length) { s = { active: "p1", list: [{ id: "p1", data: null }] }; set(PROFILES, JSON.stringify(s)); }
+    return s;
+  }
+  const summary = data => {
+    const d = data || {}; let prog = { badges: [] }; try { prog = JSON.parse(d["atm-academy"] || "null") || prog; } catch (e) { /* none */ }
+    return { callsign: d["outpost-callsign"] || "", patches: (prog.badges || []).length, qualified: !!prog.qualified };
+  };
+  /** [{id, callsign, patches, qualified, active}] */
+  function listProfiles() {
+    const s = profiles();
+    return s.list.map(p => ({ id: p.id, active: p.id === s.active, ...summary(p.id === s.active ? snapshot() : p.data) }));
+  }
+  function switchProfile(id) {
+    const s = profiles(); if (id === s.active || !s.list.some(p => p.id === id)) return;
+    s.list = s.list.map(p => (p.id === s.active ? { ...p, data: snapshot() } : p));
+    const to = s.list.find(p => p.id === id); restore(to.data); to.data = null; s.active = id;
+    set(PROFILES, JSON.stringify(s)); location.reload();
+  }
+  function addProfile() {
+    const s = profiles(); if (s.list.length >= 6) return false;
+    s.list = s.list.map(p => (p.id === s.active ? { ...p, data: snapshot() } : p));
+    const id = "p" + (Math.max(...s.list.map(p => +p.id.slice(1) || 0)) + 1);
+    s.list.push({ id, data: null }); s.active = id; restore(null);
+    set(PROFILES, JSON.stringify(s)); location.reload(); return true;
+  }
+  /** Clear this cadet's patches and qualification (the call sign and settings stay). */
+  function resetProgress() { set("atm-academy", null); location.reload(); }
+
+  return {
+    get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire,
+    loadVoices, previewVoice, listProfiles, switchProfile, addProfile, resetProgress,
+  };
+}
