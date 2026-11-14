@@ -83,6 +83,15 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
+    # "What do I do?" (docs/STORY.md): the screen's next job, spoken. Not in a lesson or the ride (their own hint ladder).
+    ("help", re.compile(r"^(?:help|help please|what do i do(?: now| next)?|what should i do(?: now| next)?|"
+                        r"what do i do here|i m lost|i am lost|i don t know what to do|what s my job|whats my job|"
+                        r"what am i supposed to do|what do i have to do)$")),
+    # The cabin tour (mission/tour.js): replay it, or skip it.
+    ("cabin_tour", re.compile(r"^(?:show me around|give me (?:a|the) tour|(?:start |replay |do )?(?:the )?(?:cabin )?tour|"
+                              r"show me the cabin|what s in (?:the|this) cabin|teach me the cabin)$")),
+    ("skip_tour", re.compile(r"^(?:skip|skip (?:the |this )?tour|skip it|end (?:the )?tour|stop (?:the )?tour|"
+                             r"no more tour|i know (?:it|this)|(?:i ve|i have) got it)$")),
     ("repeat", re.compile(rf"^{_N}(?:say (?:that|it) again|repeat(?: that| it)?|read (?:that|it) again|come again|"
                           r"what did you say|pardon|i didn t hear(?: that| you)?|one more time please)$")),
     ("slower", re.compile(r"^(?:speak |talk )?(?:slower|slow down|more slowly)(?: please)?$")),
@@ -239,7 +248,7 @@ def echo(text: str, ctx: "Ctx") -> bool:
 
 # The navigation intents that take each spoken offer (Ctx.offer). "next" / "start" / "yes" take any of them.
 OFFER_TAKERS = {"next_lesson": set(), "next_step": set(), "mission": {"go_mission", "take_command"},
-                "take_command": {"take_command"}, "fly_again": {"fly_again"}}
+                "take_command": {"take_command"}, "fly_again": {"fly_again"}, "tour": {"skip_tour"}}
 
 
 def answers_offer(nav: tuple[str, str | None] | None, ctx: "Ctx") -> bool:
@@ -320,6 +329,13 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue
         if intent == "back" and ctx.screen in ("cabin",):
             continue
+        if intent == "help" and ctx.screen in ("lesson", "ride", "lesson_done"):
+            continue                 # lessons own their hints (the guidance ladder)
+        if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
+            continue
+        if intent == "skip_tour" and q in ("skip", "skip it", "i know it", "i know this", "i ve got it", "i have got it") and \
+                ctx.offer != "tour":
+            continue                 # a bare "skip" is a tour word only while the tour runs
         return intent, None
     if ctx.offer and (YES.match(q) or q in ("next", "next one")):
         return "accept_offer", ctx.offer

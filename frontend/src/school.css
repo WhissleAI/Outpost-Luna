@@ -49,6 +49,11 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-count{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--color-text)}
 .mp-count small{font-size:var(--text-sm);font-weight:var(--weight-regular);color:var(--color-text-3)}
 .mp-top .chip{min-height:32px;background:var(--color-surface-2);border-color:transparent}
+/* the story beat on the map: where you are on the arc, and why (a new cadet; the stop before the check ride) */
+.mp-beat{position:absolute;left:var(--gut);top:calc(var(--gut) + 56px);margin:0;max-width:min(420px,calc(100% - 2 * var(--gut)));display:flex;flex-direction:column;gap:2px;
+  padding:var(--space-2) var(--space-4);border-radius:var(--radius-lg);background:var(--color-overlay);border:1px solid var(--color-overlay-line);box-shadow:var(--shadow-2);
+  font-size:var(--text-sm);color:var(--color-text);animation:fade var(--dur-slow) var(--ease-out)}
+.mp-beat b{font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-2)}
 .mp-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--gut) + var(--strip-h, 62px) + var(--space-3));width:min(640px,calc(100% - 2 * var(--gut)));
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-4) var(--space-4);
   border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:riseX var(--dur-slow) var(--ease-out)}

@@ -57,6 +57,10 @@ The offers are `OFFER` in `frontend/src/story.js` (copy v3), each spoken as its 
 - After the check ride: "Ready to take command?"
 - In the briefing (after picking a site): "Say take command when you're ready."
 - After the debrief: "… Fly again?"
+- During the first-mission cabin tour (`docs/STORY.md` §3) the frame's offer is `tour`: "next" / "yes" moves to the next
+  beat, "skip tour" (`skip_tour`) ends it. "show me around" (`cabin_tour`) replays it.
+- "What do I do?" / "help" / "I'm lost" (`help`) speaks the screen's next job: the cabin's objective strip, or the
+  picker, debrief, map, patch or library line. Not in a lesson or the ride (the guidance ladder owns hints there).
 
 ## Tests
 

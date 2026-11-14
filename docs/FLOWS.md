@@ -121,6 +121,8 @@ Fly again (cabin) / New site (picker)
 | **houston-calling** | Call Houston shows "Signal travelling" with a progress line for the real round trip | | | `calling()` |
 | **debrief-survived / failed / paused** | A sheet over the Moon (follows the theme): headline, one line, Grade + Score (no grade while paused), the shift-by-shift chart with storm shifts shaded, up to three one-sentence takeaways (≤ 20 words) each with its source, "NASA data used" disclosure; a score breakdown when the sim sends one | Fly again | "fly again", "new site" | `debrief(outcome)` |
 | **fly-again** | A new mission at the same site, shift 1 | End shift | | |
+| **tour** | First mission only (once per cadet; replay: "show me around" or Settings → Help): CAPCOM's cabin tour, one beat per card with Next / Skip tour; the beat's control glows, the camera turns to it, and on Cadet the other panels dim (`docs/STORY.md`) | Next | "next", "skip tour" | (first mission) |
+| **objective** | The **Now** strip at the bottom of the window ("Now: Set power, then End shift.") from the sim state; its control glows; on Cadet the other panels dim | the glowing control | "what do I do?" | (every state) |
 | **ride** | The Flight School check ride in the same cabin (`createCabin(root, {mode: "ride"})`): displays, Habitat and End shift only; `cue("heaters")` pulses one control at a time and opens its panel | the cued control | | `ride(target)` |
 
 ### Data slots (for `feat/learning-v3`)

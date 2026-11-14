@@ -1,6 +1,7 @@
 // Accessibility: settings, the settings panel (#a11yBtn), voice-only operation, audio description, visual alerts,
 // captions/transcripts, keyboard + ARIA helpers (docs/ACCESSIBILITY.md).
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
+import { TOUR } from "./story.js";
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -170,6 +171,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
+        <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
         <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
         <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
           <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
@@ -226,6 +228,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (e.target.closest("[data-close]")) open(false);
     const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); panel.querySelector(`[data-sec="${section}"]`).focus(); }
     if (e.target.closest("[data-vbar-reset]") && O.voiceBar) O.voiceBar.reset();
+    if (e.target.closest("[data-cabin-tour]")) { open(false); if (setMode && document.body.dataset.mode !== "mission") setMode("mission"); dispatchEvent(new CustomEvent("outpost:tour")); }
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
     const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);
     if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();

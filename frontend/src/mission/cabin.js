@@ -42,8 +42,11 @@ const LAMPS = [
 export function stormWarning(s) {
   const w = s && s.env && (s.env.warning || s.env.storm_warning || s.env.storm_forecast);
   if (!w || w.active === false || (s.env.storm && s.env.storm.active)) return null;
-  const c = w.confidence ?? w.probability, conf = c == null ? null : Math.round(c > 1 ? c : c * 100);
-  return { lead: w.lead_h ?? w.eta_h ?? null, conf, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "", by: w.by || null };
+  // the sim sends a word ("likely" | "possible"); older shapes sent a number (0-1 or %)
+  const c = w.confidence ?? w.probability, num = typeof c === "number" ? c : (c != null && c !== "" && !isNaN(+c) ? +c : null);
+  const conf = num == null ? null : Math.round(num > 1 ? num : num * 100);
+  const word = typeof c === "string" && isNaN(+c) ? c[0].toUpperCase() + c.slice(1) : null;
+  return { lead: w.lead_h ?? w.eta_h ?? null, conf, word, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "", by: w.by || null };
 }
 /** Hab switches: [id, label, guarded, on(state), command(on)] */
 const SWITCHES = [
@@ -81,6 +84,7 @@ export function createCabin(root, o = {}) {
         </div>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
+        <p class="cb-now" id="cbNow" hidden role="status" aria-live="polite"><b>${esc((story.NOW || {}).label || "Now")}</b><span id="cbNowT"></span></p>
       </div>
     </section>
 
@@ -153,7 +157,7 @@ export function createCabin(root, o = {}) {
   if (o.mode3d !== false && document.documentElement.dataset.quality !== "low") {
     const cabEl = q(".cb"), host = document.createElement("div"); host.className = "c3";
     const holeEl = document.createElement("div"); holeEl.className = "cb-hole";
-    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => holeEl.append(q(sel)));
+    [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => holeEl.append(q(sel)));
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
@@ -163,7 +167,7 @@ export function createCabin(root, o = {}) {
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
     if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
     c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
-    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
+    if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); [".cb-alert", ".cb-top", ".cb-rover", ".cb-sky", ".cb-now"].forEach(sel => glassEl.append(holeEl.querySelector(sel))); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
       // Settings (prefs.js) writes <html data-graphics="high|low">; follow it live
@@ -305,7 +309,7 @@ export function createCabin(root, o = {}) {
     if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
     const rad = q("#cbInfoRad"), wn = stormWarning(s);
     if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
-      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
+      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : wn.word ? ` · ${wn.word}` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
     const ri = q("#cbInfoRv"); if (ri) ri.innerHTML = (rv.busy ? irow("Back in", `${rv.eta_h} h`) : "") + (rv.battery_pct != null ? irow("Battery", Math.round(rv.battery_pct) + "%", mbar(rv.battery_pct)) : "")
       + (rv.dose_msv != null ? irow("Rover dose", (+rv.dose_msv).toFixed(1) + " mSv") : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
     const rt = q("#cbRoute"); if (rt) { const tot = TOTAL_H[rv.task] || 8, pr = rv.busy ? clamp(1 - (rv.eta_h || 0) / tot, 0, 1) : 0, out = rv.task === "return" ? 1 - pr : pr < .5 ? pr * 2 : (1 - pr) * 2;
@@ -376,7 +380,7 @@ export function createCabin(root, o = {}) {
     const a = stm ? { level: "warn", icon: "storm", title: "Solar particle storm", link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
         text: [stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
         actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] }
-      : wn ? { level: "caution", icon: "storm", title: "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
+      : wn ? { level: "caution", icon: "storm", title: wn.word ? `Storm warning · ${wn.word}` : "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
         text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
         actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Shields 40"]] }
       : flash;
@@ -423,6 +427,34 @@ export function createCabin(root, o = {}) {
     /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |
      *  "end_shift" | "houston" | "load:<key>" | "rover:<task>"; null clears. Opens its panel; returns the control. */
     cue(target) { cueT = target || null; return applyCue(true); },
+    /** Glow what the tour or the objective points at, without opening anything (null clears). Targets:
+     *  window | du:<0-2> | panel:<id> | lamps | goals | start, or an objective control: end_shift | shelter | shields |
+     *  night | houston | rover:<task> | load:<key>. Returns the nodes lit. */
+    point(target) {
+      root.querySelectorAll(".is-point").forEach(n => n.classList.remove("is-point"));
+      if (!target) return [];
+      const [k, v] = String(target).split(":");
+      const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
+        goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
+        night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]' }[k];
+      const nodes = sel ? [...root.querySelectorAll(sel)] : [];
+      if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
+      nodes.forEach(n => n.classList.add("is-point"));
+      return nodes;
+    },
+    /** Progressive disclosure (Cadet): the panel the tour or the objective is about stays bright, the rest dim. A panel
+     *  with an alarm is never dimmed. null: everything bright. */
+    focus(panelId) {
+      const home = panelId === "power" ? "displays" : panelId;
+      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", !!home);
+      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", !!home && n.dataset.panel === home));
+    },
+    /** The "what now" strip on the window: {text, level} or null. */
+    objective(o) {
+      const el = q("#cbNow"); if (!el) return;
+      el.hidden = !o; if (!o) return;
+      el.className = "cb-now is-" + (o.level || "info"); q("#cbNowT").textContent = o.text;
+    },
     /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
     offer(panelId, actions) {
       root.querySelectorAll(".cb-offer").forEach(n => n.remove());

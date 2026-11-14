@@ -32,6 +32,14 @@ CAPCOM = {"patch": lambda name: f"Patch earned: {name}. Nice work, {CS}.",
 NOISE = [("Oh.", 0.9), ("Mm-mm.", 0.8), ("um", 0.6), ("did you remember to buy the milk", 0.2)]
 
 
+def tour_beats(level: str = "cadet") -> list[str]:
+    """The first-mission cabin tour as frontend/src/story.js TOUR has it (one source of truth: read from the file)."""
+    import pathlib
+    src = (pathlib.Path(__file__).resolve().parents[2] / "frontend" / "src" / "story.js").read_text()
+    block = re.search(rf"\b{level}: \[(.*?)\n  \]", src, re.S)
+    return re.findall(r'text: "([^"]+)"', block.group(1)) if block else []
+
+
 # ---------------------------------------------------------------------------------------------- what a kid would say
 def answer_for(step: dict, gaz=None, vocab=None) -> str:
     acc = step["accept"]
@@ -89,6 +97,8 @@ class Client:
         self.qualified = False
         self.mscreen, self.site, self.mid = "brief", "shackleton_rim", None
         self.spoken: list[str] = []          # every line the app spoke
+        self.tour: list[str] = []            # cabin tour beats still to show (first mission: mission/tour.js)
+        self.toured = 0                      # beats the kid moved through by voice
         self.replies_to_noise = 0
         self.bad_unknowns = 0                # "I don't know" spoken for anything but a real question (once)
         self.n_say = 0
@@ -104,7 +114,7 @@ class Client:
         if self.mode == "mission":
             return {"screen": {"brief": "brief", "cabin": "cabin", "debrief": "debrief"}[self.mscreen],
                     **({"offer": "fly_again"} if self.mscreen == "debrief" else {"offer": "take_command"}
-                       if self.mscreen == "brief" else {})}
+                       if self.mscreen == "brief" else {"offer": "tour"} if self.tour else {})}
         if self.view == "callsign":
             return {"screen": "callsign"}
         if self.view in ("map", "patch"):
@@ -182,7 +192,20 @@ class Client:
                     elif self.next_lesson():
                         await self.open(self.next_lesson())
             return
-        # mission
+        # mission: the cabin tour takes next / yes / skip first (mission/ui.js nav)
+        if self.mscreen == "cabin" and self.tour and intent in ("next", "accept_offer", "start"):
+            self.tour.pop(0)
+            self.toured += 1
+            await self.push()
+            await self.speak(self.tour[0] if self.tour else "Set power, then End shift.")
+            return
+        if self.mscreen == "cabin" and self.tour and intent in ("skip_tour", "decline_offer"):
+            self.tour = []
+            await self.push()
+            return
+        if self.mscreen == "cabin" and intent == "help":
+            await self.speak("Here's your next job. Set power, then End shift.")   # mission/objective.js nowSpoken
+            return
         if intent == "pick_site" and self.mscreen in ("brief", "debrief"):
             self.site, self.mscreen = arg, "brief"
             await self.speak(f"{arg.replace('_', ' ').title()}. Good choice. Say take command when you're ready.")
@@ -253,6 +276,10 @@ class Client:
         await self.push()
         name = self.site.replace("_", " ").title()
         await self.speak(f"Outpost Luna is online at {name}. Day one, {CS}.")
+        if not self.toured:                       # the first mission: CAPCOM's cabin tour, one beat at a time
+            self.tour = tour_beats("cadet")
+            await self.push()
+            await self.speak(self.tour[0])
 
     async def debrief(self):
         d = await self.t.get(f"/api/mission/{self.mid}/debrief")
@@ -323,6 +350,11 @@ async def script(c: Client, shifts: int = 3):
     await c.noise()
     await c.say("pick Malapert")
     await c.say("take command")
+    while c.tour:                           # the first-mission cabin tour, answered by "next" (with noise mid-way)
+        if c.toured == 3:
+            await c.noise()
+        await c.say("next")
+    await c.say("what do I do?")            # the objective, spoken
     await c.noise()
     for panel in ["open the comm panel", "back to my seat", "move the voice bar to the top right"]:   # 3D cabin + a11y
         await c.say(panel)
@@ -482,7 +514,9 @@ async def main_live(a):
     # one summary line a script (or a person) can check: no replies to noise, "I don't know" only for a real question
     # (once), the whole flow reached
     fails = [k for k, bad in (("replies to noise", c.replies_to_noise), ("fallback for a non-question", c.bad_unknowns),
-                              ("not qualified", not c.qualified), ("no mission", not c.mid)) if bad]
+                              ("not qualified", not c.qualified), ("no mission", not c.mid),
+                              ("tour not finished by voice", c.toured < len(tour_beats("cadet")))) if bad]
+    print(f"cabin tour: {c.toured} of {len(tour_beats('cadet'))} beats by voice")
     print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
     if fails:
         raise SystemExit(1)
