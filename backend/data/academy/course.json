@@ -20,13 +20,13 @@
    "brief": "The next crews will land near the south pole, by a crater called Shackleton.",
    "facts": [
     {
-     "text": "NASA has named candidate landing regions near the south pole for Artemis III, including the rim of Shackleton crater.",
+     "text": "NASA's 2024 list of 9 possible landing regions near the south pole includes Malapert Massif and de Gerlache Rim 2.",
      "from": [
       "mission/sites.json"
      ],
      "source": {
-      "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
-      "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+      "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+      "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
      }
     },
     {
@@ -438,7 +438,7 @@
      }
     },
     {
-     "text": "On 2024-05-10 a real G5 solar storm came with solar particles and a CME at 1561 km/s.",
+     "text": "On 2024-05-10 a huge solar storm gave Earth bright auroras. It also threw out fast particles and a CME at 1561 km/s.",
      "from": [
       "mission/donki_events.json"
      ],
@@ -448,7 +448,7 @@
      }
     },
     {
-     "text": "Regolith, the Moon's dusty soil, stops solar-storm particles well. So the plan is a shelter covered in it.",
+     "text": "Regolith, the Moon's dusty soil, stops storm particles well. Scientists have studied covering a base with it.",
      "from": [
       "mission/radiation.json"
      ],
@@ -532,7 +532,7 @@
      "fail": "Too risky. What stops the particles?"
     },
     {
-     "prompt": "Alert! A solar storm, the real one from May 2024. Your order?",
+     "prompt": "Alert! A solar particle storm, like the real one in May 2024. Your order?",
      "alert": true,
      "accept": {
       "type": "command",
@@ -985,7 +985,7 @@
    "brief": "Your check ride: two days at Shackleton Rim. A real solar storm is coming.",
    "facts": [
     {
-     "text": "The storm in this ride is the real G5 storm of 2024-05-10, replayed at your outpost.",
+     "text": "The storm in this ride is based on the real storm of 2024-05-10, which gave Earth huge auroras.",
      "from": [
       "mission/donki_events.json"
      ],
@@ -1012,7 +1012,7 @@
      "fail": "Negative. The shields need more power."
     },
     {
-     "prompt": "Solar storm! The real G5 storm of May 2024 is here. Your order?",
+     "prompt": "Solar particle storm! Based on the real May 2024 storm. Your order?",
      "alert": true,
      "accept": {
       "type": "command",
