@@ -26,6 +26,7 @@ def run(base):
         pg = b.new_page(viewport={"width": 1280, "height": 720})
         pg.on("console", lambda m: m.type == "error" and not any(x in m.text for x in IGNORE) and errs.append(m.text))
         pg.on("pageerror", lambda e: errs.append(str(e)))
+        pg.on("requestfailed", lambda r: print("  requestfailed:", r.url[:160], r.failure))
         say = lambda t: (pg.fill("#q", t), pg.press("#q", "Enter"))
         step = lambda msg: (log.append(msg), print("  ok ", msg))
 
@@ -61,7 +62,7 @@ def run(base):
             if a["type"] in ("choice", "predict"):
                 pg.click(f'.a-choice[data-c="{a["answer"]}"]')
             else:
-                say(answer_for(st))
+                say(answer_for(st, vocab=_Vocab()))
             last = k == len(L["steps"]) - 1
             pg.wait_for_selector(".a-badge" if last else "#aNext", timeout=25000)
             step(f"click/type: lesson 2 step {k + 1} ({a['type']})")

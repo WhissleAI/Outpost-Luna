@@ -504,6 +504,19 @@ vocab_listen, vocab_say, patch.
 - **Mission start sends `level`** (`client.start({…, level})`), so the band applies from the first request.
 - **Mic errors are short:** "Mic is blocked. Type instead.", plus the no-mic, mic-busy and didn't-start messages.
 - **The chosen voice applies to the guide only** unless `voice_all` is on (done in round 5).
+- **Voice calibration** (integ/desktop-v2 027f1a3, merged):
+  - `volume` is a 0–2 pref (1 = −14 LUFS) that the server applies; the guide `<audio>` stays at 1 and there is no
+    client gain on Steer;
+  - client-rendered lines add `style.volume`;
+  - crew audio goes through Web Audio: the clip's `gain_db`, then a limiter (−1 dB, ratio 20, 3 ms / 50 ms), then
+    the master volume;
+  - a saved voice the server no longer has falls back to the default, and Settings opens at Voice once.
+- **Map legs** use each stop's own done/next state, so a course where the earned patches aren't the first N stops
+  still draws the right legs.
+- **Functional pass:** 22 checks, 0 console errors. Lesson 1 runs by voice (intent, earth_view, predict, globe_side,
+  intent); lesson 2 runs by click and typing (vocab_match, choice, predict, route, choice).
+- **Backend:** `test_handsfree_run`, `test_handsfree_loop`, `test_turn_router`, `test_academy`, `test_learning` and
+  `test_copy` pass (130 tests).
 
 ### Screenshots
 

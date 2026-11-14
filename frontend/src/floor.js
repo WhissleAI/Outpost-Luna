@@ -94,6 +94,7 @@ export function prefStyle(style, voice, speed) {
   if (P.voice && (P.voice_all || voice === "guide")) out.steer_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
+  if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;
   return Object.keys(out).length ? out : style;
 }
 export function shouldBargeIn({ started, text, refs, dd }) {

@@ -10,7 +10,7 @@ export const PREF_DEFAULTS = Object.freeze({
   voice: "",                 // "" = the default CAPCOM voice; else an id from GET /api/voices
   voice_all: false,          // true = every voice (CAPCOM, Houston, the story) uses the chosen voice
   expressiveness: 0.5,       // 0 calm … 1 lively
-  volume: 1,                 // master: every voice and the crew audio
+  volume: 1,                 // master, 0–2 (1 = 100% = the −14 LUFS target): sent to the server; crew audio follows it here
   alarms: 1,                 // alarm chimes
   listen: "handsfree",       // "handsfree" | "ptt" (hold Space / the mic to talk)
   filter: "normal",          // background-voice filter: "relaxed" | "normal" | "strict"
@@ -32,7 +32,7 @@ export function normalizePrefs(x) {
   const o = { ...PREF_DEFAULTS }, s = x && typeof x === "object" ? x : {};
   const num = (v, lo, hi) => (isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : null);
   if (typeof s.voice === "string") o.voice = s.voice.slice(0, 64);
-  [["expressiveness", 0, 1], ["volume", 0, 1], ["alarms", 0, 1]].forEach(([k, lo, hi]) => { const v = num(s[k], lo, hi); if (v != null) o[k] = v; });
+  [["expressiveness", 0, 1], ["volume", 0, 2], ["alarms", 0, 1]].forEach(([k, lo, hi]) => { const v = num(s[k], lo, hi); if (v != null) o[k] = v; });
   const pick = (k, opts) => { if (opts.includes(s[k])) o[k] = s[k]; };
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
   pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
@@ -46,19 +46,8 @@ export function createPrefs({ globe = null } = {}) {
   const root = document.documentElement;
 
   // ---- effects ----
-  // Master volume: every <audio> the app plays (guide, Houston, story, crew) goes through this logical volume, so the
-  // floor's own fades and ducking keep working on top of it.
-  const vol = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
-  const live = new Set();
-  if (vol && !HTMLMediaElement.prototype.__outpostVol) {
-    Object.defineProperty(HTMLMediaElement.prototype, "volume", {
-      configurable: true,
-      get() { return this.__lv != null ? this.__lv : vol.get.call(this); },
-      set(v) { this.__lv = +v; live.add(this); vol.set.call(this, Math.max(0, Math.min(1, +v * P.volume))); },
-    });
-    HTMLMediaElement.prototype.__outpostVol = true;
-  }
-  const reVolume = () => live.forEach(el => { try { vol.set.call(el, Math.max(0, Math.min(1, (el.__lv ?? 1) * P.volume))); } catch (e) { /* gone */ } });
+  // Master volume: the server renders every Steer line at it (prefs.volume), so the guide's <audio> stays at 1; the
+  // crew audio (player.js, Web Audio) and the chimes (sound.js) read window.__outpost.levels.master.
   function applyTheme() {
     if (P.theme === "system") delete root.dataset.theme; else root.dataset.theme = P.theme;
     set("atm-theme", P.theme === "system" ? null : P.theme);
@@ -70,7 +59,6 @@ export function createPrefs({ globe = null } = {}) {
     const O = (window.__outpost = window.__outpost || {});
     O.prefs = P; O.levels = { master: P.volume, alarms: P.alarms };
     root.dataset.listen = P.listen; root.dataset.graphics = P.graphics;
-    if (!changed || "volume" in changed) reVolume();
     if (changed ? "theme" in changed : P.theme !== "system") applyTheme();
     if (globe && globe.setQuality && (!changed || "graphics" in changed)) globe.setQuality(P.graphics);
   }
@@ -86,7 +74,7 @@ export function createPrefs({ globe = null } = {}) {
   }
   /** What the session needs (main.js sends it on the socket). */
   const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, rate: Math.max(0.6, Math.min(1.6, rate)),
-    expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
+    volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen });
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
   const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };
@@ -99,6 +87,9 @@ export function createPrefs({ globe = null } = {}) {
     catch (e) { voices = []; }
     return voices;
   }
+  loadVoices().then(vs => {
+    if (P.voice && vs.length && !vs.some(v => v.id === P.voice)) { update({ voice: "" }); dispatchEvent(new CustomEvent("outpost:voice-missing")); }
+  });
   let preview = null;
   function previewVoice(v) {
     if (!v || !v.preview_url) return;

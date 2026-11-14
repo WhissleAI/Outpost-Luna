@@ -7,7 +7,7 @@ import { BARGE, shouldBargeIn } from "../src/floor.js";
 test("prefs: defaults, clamps and option lists", () => {
   assert.deepEqual(normalizePrefs(null), { ...PREF_DEFAULTS });
   const p = normalizePrefs({ volume: 3, alarms: -1, expressiveness: "0.75", listen: "ptt", filter: "loud", theme: "dark", graphics: "low", level: "commander", junk: 1 });
-  assert.equal(p.volume, 1); assert.equal(p.alarms, 0); assert.equal(p.expressiveness, 0.75);
+  assert.equal(p.volume, 2); assert.equal(p.alarms, 0);   // volume: 0–2 (1 = the −14 LUFS target) assert.equal(p.expressiveness, 0.75);
   assert.equal(p.listen, "ptt"); assert.equal(p.filter, "normal"); assert.equal(p.theme, "dark");
   assert.equal(p.graphics, "low"); assert.equal(p.level, "commander"); assert.ok(!("junk" in p));
 });
