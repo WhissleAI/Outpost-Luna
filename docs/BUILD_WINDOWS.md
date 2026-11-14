@@ -69,7 +69,7 @@ It prints `==> [time] step n/8` as it goes. The steps are the same as the Mac bu
 | step | what | time (rough) |
 |---|---|---|
 | 1 | check the tools above, the C compiler, free disk, long paths | seconds |
-| 2 | download the NASA crew audio (74 clips) and the Moon map, ~0.5 GB, from nasa.gov | 2–10 min |
+| 2 | download the NASA crew audio (74 clips) and the Moon map, ~0.5 GB, from nasa.gov; then cut the installer's copy (only the stretches the app plays, mono 48 kbps, ~175 MB) with `backend\pipeline\trim_media.py` | 2–10 min (+3 min the first time) |
 | 3 | `npm ci` in `frontend\`, then the camera-gesture runtime and models (sha256-pinned) | 1 min |
 | 4 | embedded Python 3.11 + backend and model-server packages (torch CPU, onnxruntime, …) + the Visual C++ runtime + app code; builds the frontend; checks every DLL import resolves | 3–5 min |
 | 5 | models: downloads the public model package (119 MB), checks its sha256 and every file | 1 min |
@@ -80,11 +80,19 @@ It prints `==> [time] step n/8` as it goes. The steps are the same as the Mac bu
 If the media download stops part-way (NASA's server can be slow), just run the command again: finished files are kept.
 To skip that step when `backend\data\media` is already complete: add `-SkipMedia`.
 
+The trim always runs (it skips clips that are already up to date). It needs no bash and no ffmpeg install: `uv run
+--with imageio-ffmpeg==0.6.0` fetches a pinned wheel that carries a static `ffmpeg.exe` (ffmpeg 7.1, with LAME), the
+same version the Mac build uses. A re-run gives the same bytes (the time map is computed from the data, not from the
+encoder, so it is the same on both platforms). Its output is
+`backend\data\media\desktop\` (`audio\*.mp3` + `trim.json`, the clip-time map the player reads). To run it alone:
+`cd backend; uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media`. Details: [DESKTOP.md](DESKTOP.md),
+"Crew audio in the installer".
+
 ## 4. Where the output goes
 
 | | |
 |---|---|
-| installer | `desktop\dist\Outpost Luna Setup 0.1.0.exe` (about 1 GB) |
+| installer | `desktop\dist\Outpost Luna Setup 0.1.0.exe` (about 0.7 GB; the Mac dmg is 646 MB) |
 | unpacked app (run without installing) | `desktop\dist\win-unpacked\Outpost Luna.exe` |
 | installed app | `%LOCALAPPDATA%\Programs\Outpost Luna\` (per-user install; you can choose the folder) |
 | app data and logs | `%APPDATA%\Outpost Luna\` (`logs\main.log`, `logs\models.log`, `logs\backend.log`) |

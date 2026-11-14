@@ -62,10 +62,12 @@ if ($freeGB -lt 6) { Die "only $freeGB GB free on ${drive}:; the build needs abo
 Write-Host ("node {0}, {1}, {2}, compiler {3}, {4} GB free" -f (node -v), (uv --version), ((cmake --version) | Select-Object -First 1),
   $(if ($vs) { "MSVC ($vs)" } else { "clang + ninja" }), $freeGB)
 
-Step "2/8 NASA media (backend\data\media: 74 crew clips + Moon map, ~0.5 GB)"
+Step "2/8 NASA media (backend\data\media: 74 crew clips + Moon map, ~0.5 GB; trimmed copy for the app, ~175 MB)"
 if ($SkipMedia) { Write-Host "skipped (-SkipMedia)" }
 else { Run uv run --no-project --with pillow==11.3.0 python backend\pipeline\fetch_media.py }
 if (-not (Test-Path backend\data\media\img\moon4k.jpg)) { Die "backend\data\media is incomplete (re-run; fetch_media.py resumes)" }
+# The installer ships only the playable stretches of each clip, mono 48 kbps (~175 MB, not ~550): ffmpeg from a pinned wheel
+Push-Location backend; Run uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media; Pop-Location
 
 Step "3/8 frontend dependencies"
 Push-Location frontend; Run npm ci --no-audit --no-fund; Run node tools/fetch_vision.mjs; Pop-Location   # + camera-gesture runtime/models (sha256-pinned)
