@@ -62,7 +62,7 @@ camera settles. While it runs the Now strip steps aside. Moving on (Next, skip) 
 | 9 | Comm | Comm: call Houston when Earth is in view. |
 | 10 | caution & warning lamps | Warning lights. Red means act now. Amber means get ready. |
 | 11 | the goals (Habitat) | Your goal: ten safe days. Send science home. Bring back ice. |
-| 12 | display 1 + End shift | First job: set power, then press End shift. |
+| 12 | display 1 + End shift | First job: raise the shields. Then press Play to start time. |
 
 **Commander (2 beats):** "Window up top. Three screens below. Five panels around you." · "Ten safe days, science home,
 ice back. First: set power, End shift."
@@ -145,3 +145,11 @@ direction" report). Status lines are in `docs/QA.md`.
 | The tour card covered "Day 1 · Shift 1" and the site | the card docks under the HUD | `frontend/tools/tour_clear.py` (all 12 beats) |
 | Silent orders: no readback for "more power to the heaters", a silent first "end shift" | the floor's TTS fetch times out after 8 s (browser voice for that sentence) and a clip that never ends releases the floor; the first-shift nudge and the objective lines are proactive (priority 4: they wait, never cut a readback); any order stops the nudge; the tour hushes its beat when the kid moves on | `frontend/tools/orders_spoken.py` (each readback and report plays to its end) |
 | A wrong tap said "Not there." with Mare Imbrium right there | a named place within 5 degrees of its rim (or the client's nearest named place) leads the line: "That's Sea of Rains." | `test_playtest_rc3.py` |
+
+## 9. Live clock and the Now task card (feat/mission-gameplay)
+
+The owner's Malapert play exposed a bug. "Set power, then End shift." never changed after they moved the shields, and
+the turn-based shifts left them lost. The mission now runs on a live clock, with tasks, story beats, a mission log and
+a Now **task card**, which replaces the strip's static line. The objective table in §4 is now the fallback (no task
+open), using "Skip ahead" and "Time warp?" in place of "End shift". The first job reacts to any power change ("Power
+set. Good.", then "Now press Play to start the clock."). See docs/GAMEPLAY.md.

@@ -115,10 +115,12 @@ async function boot() {
     globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
-    academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id) },   // Flight School patches carry over
+    academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id), qualified: () => !!academyUI.progress.qualified,
+      goRide: () => setMode("academy") },   // Flight School patches carry over; the check ride gates command (Cadet before)
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),
+      live: () => useSession(),   // the session Director speaks story beats; without it the cabin does
     },
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
@@ -527,7 +529,7 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
-  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe });   // what tests read (tools/*.py)
+  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe, missionUI });   // what tests read (tools/*.py)
 
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";

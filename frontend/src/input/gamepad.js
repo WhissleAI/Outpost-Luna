@@ -1,12 +1,13 @@
 // Game controllers (PlayStation, Xbox, generic "standard" mapping) as one more remote (docs/KEYBOARD.md §Controller).
 // Off until a controller connects ("Controller connected" toast); then a rAF poll maps it to the SAME intents the keys
 // emit: D-pad / left stick → move, A/Cross → select, B/Circle → back, X/Square → mic, Y/Triangle → help,
-// shoulders → prev / next, right stick → turn the Moon (rotate) or look around the cabin (look).
+// shoulders → prev / next, right stick → turn the Moon (rotate) or look around the cabin (look). In the cabin the live
+// mission clock: View/Select/Share → pause or run, RT/R2 → skip to next event, LT/L2 → time warp (docs/GAMEPLAY.md).
 // Settings → Keyboard & controller → Left-handed swaps the sticks. The pure part (readPad, createPadReader) is unit-tested.
 import { emitIntent } from "./intents.js";
 
 /** Standard-mapping button indices (https://w3c.github.io/gamepad/#remapping). */
-export const BTN = Object.freeze({ a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 });
+export const BTN = Object.freeze({ a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, lt: 6, rt: 7, back: 8, start: 9, up: 12, down: 13, left: 14, right: 15 });
 const DEAD = 0.5, LOOK_DEAD = 0.18;
 
 /** One Gamepad (or a stub) → {dir, buttons:{a,b,x,y,lb,rb,start}, look:{x,y}}. lefty swaps the sticks. */
@@ -17,10 +18,12 @@ export function readPad(pad, { lefty = false } = {}) {
   let dir = b(BTN.up) ? "up" : b(BTN.down) ? "down" : b(BTN.left) ? "left" : b(BTN.right) ? "right" : null;
   if (!dir && Math.max(Math.abs(mx), Math.abs(my)) > DEAD) dir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? "right" : "left") : (my > 0 ? "down" : "up");
   const dz = v => (Math.abs(v) < LOOK_DEAD ? 0 : v);
-  return { dir, buttons: { a: b(BTN.a), b: b(BTN.b), x: b(BTN.x), y: b(BTN.y), lb: b(BTN.lb), rb: b(BTN.rb), start: b(BTN.start) }, look: { x: dz(lx), y: dz(ly) } };
+  return { dir, buttons: { a: b(BTN.a), b: b(BTN.b), x: b(BTN.x), y: b(BTN.y), lb: b(BTN.lb), rb: b(BTN.rb), start: b(BTN.start),
+    back: b(BTN.back), lt: b(BTN.lt), rt: b(BTN.rt) }, look: { x: dz(lx), y: dz(ly) } };
 }
 
-const PRESS = { a: ["select"], b: ["back"], x: ["mic"], y: ["help"], lb: ["prev"], rb: ["next"], start: ["settings"] };
+const PRESS = { a: ["select"], b: ["back"], x: ["mic"], y: ["help"], lb: ["prev"], rb: ["next"], start: ["settings"],
+  back: ["time_toggle"], rt: ["skip_event"], lt: ["time_warp"] };   // the clock intents do nothing outside the cabin
 
 /**
  * Edges → actions. step(frame, t) returns [{intent, args}] for this frame: a button fires once per press; a held
