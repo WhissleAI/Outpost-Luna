@@ -5,6 +5,7 @@ import { sayStyle } from "../floor.js";
 import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
 import { createTerrainView } from "./terrain.js";
+import "./mission.css";
 import { callSign, CAPCOM, callbackLine, CALLBACKS, LESSON_STORY, DEBRIEF, FRAMING } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
@@ -65,6 +66,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   const shortName = n => n.split(" (")[0].replace(/ rocket impact site| impact site/, "");
   const lessons = () => LESSONS.map(([id, text]) => { const a = placeById(id); return a ? { text, name: shortName(a.name), source: (a.sources || [])[0] } : null; }).filter(Boolean);
   const sampleTag = () => client && client.sample ? `<span class="m-sample" title="The mission server isn't running yet; this is a local practice model.">Sample data</span>` : "";
+  /** Visual + screen-reader alert through the a11y module (screen-edge flash, vibration, assertive live region). */
+  const a11yAlert = text => { try { const a = window.__outpost && window.__outpost.a11y; if (a && a.visualAlert) a.visualAlert(text); } catch (e) { /* a11y not loaded */ } };
+  const srcLink = (s, label) => s && s.url ? `<a class="mx-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(label || s.title || new URL(s.url).hostname)}</a>` : "";
+  const firstSentence = t => { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return (m ? m[0] : String(t || "")).trim(); };
 
   // ---------- briefing ----------
   async function enter() {
@@ -124,38 +129,43 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover|rover cam(era)?)\b/, "rover"],
     [/\b(earth view|show (me )?(the )?earth|where is (the )?earth|look at (the )?earth)\b/, "earth"],
     [/\b(zoom in|outpost view|site view|(back|go) to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
-  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
+  /** The site picker: five real south-pole sites, three numbers each, one primary action. */
   function briefing() {
-    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin();
+    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide();
     if (!site) site = sites[0];
+    const src0 = site && (site.sources || [])[0];
+    panel.classList.add("mx-brief");
     panel.innerHTML = `
-      <header class="m-head"><span class="eyebrow">Outpost Luna · Briefing</span>${sampleTag()}</header>
-      <h2 class="m-title">Where will you build Outpost Luna, ${esc(callSign.shown())}?</h2>
-      <p class="m-sub">${esc(FRAMING.split(". ").slice(1).join(". "))} Sun charges batteries. Ice makes water. You can call home only when Earth is up.</p>
-      <div class="m-sites" role="radiogroup" aria-label="Outpost site">${sites.map(s => `
-        <button type="button" class="m-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}">
+      <header class="mx-head"><span class="eyebrow">Briefing</span>${sampleTag()}</header>
+      <h2 class="mx-title">Pick your outpost site</h2>
+      <p class="mx-sub">Sun for power. Ice for water. Earth for radio.</p>
+      <div class="mx-sites" role="radiogroup" aria-label="Outpost site">
+        <div class="mx-cols" aria-hidden="true"><span></span><span>Sun</span><span>Earth</span><span>Ice</span></div>
+        ${sites.map(s => `
+        <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}"
+          aria-label="${esc(s.name)}: sun ${Math.round(s.sunlight_pct)} percent, Earth in view ${Math.round(s.earth_visible_pct)} percent, ${s.ice ? "ice nearby" : "no ice nearby"}">
           <b>${esc(s.name)}</b>
-          <span class="m-facts"><span title="How much of the time the Sun shines here">☀ ${Math.round(s.sunlight_pct)}% sun</span>
-            <span>${s.ice ? "❄ Ice nearby" : "No ice nearby"}</span><span title="How much of the time Earth is above the horizon">🌍 Earth ${Math.round(s.earth_visible_pct)}%</span></span>
+          <span class="mx-v${s.sunlight_pct >= 80 ? " is-best" : s.sunlight_pct < 20 ? " is-low" : ""}">${Math.round(s.sunlight_pct)}%</span>
+          <span class="mx-v${s.earth_visible_pct >= 80 ? " is-best" : ""}">${Math.round(s.earth_visible_pct)}%</span>
+          <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Yes" : "No"}</span>
         </button>`).join("")}
       </div>
-      <p class="m-note">${esc(site && site.notes || "")}</p>
-      <div class="m-srcrow">${(site && site.sources || []).map(src).join("")}</div>
-      <section class="m-roles"><span class="eyebrow">Team roles (optional)</span>
-        <div>${ROLES.map(([id, n]) => `<button type="button" class="m-role" data-role="${id}" aria-pressed="${roles.has(id)}">${n}</button>`).join("")}</div></section>
-      <button type="button" class="m-go" id="mStart">Take command</button>`;
-    panel.querySelectorAll(".m-site").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); });
-    panel.querySelectorAll(".m-role").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
+      <p class="mx-srcline">${src0 ? `Source: ${srcLink(src0, src0.title.split(":")[0].split(",")[0])}` : ""}</p>
+      <div class="mx-foot">
+        <button type="button" class="mx-go" id="mStart">Take command</button>
+        <details class="mx-roles"><summary>Team roles</summary>
+          <div>${ROLES.map(([id, n]) => `<button type="button" class="mx-chip" data-role="${id}" aria-pressed="${roles.has(id)}">${n}</button>`).join("")}</div></details>
+      </div>`;
+    panel.querySelectorAll(".mx-site").forEach(b => b.onclick = () => { site = sites.find(s => s.id === b.dataset.site); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); });
+    panel.querySelector(".mx-sites").addEventListener("keydown", e => {
+      const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return; e.preventDefault(); e.stopPropagation();
+      const i = (sites.indexOf(site) + d + sites.length) % sites.length; site = sites[i]; previewSite(); briefing(); panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`).focus();
+    });
+    panel.querySelectorAll("[data-role]").forEach(b => b.onclick = () => { const r = b.dataset.role; roles.has(r) ? roles.delete(r) : roles.add(r); b.setAttribute("aria-pressed", roles.has(r)); });
     $("mStart").onclick = () => start();
     previewSite();
-    briefCard();
-  }
-  /** CAPCOM's welcome + lessons from hardware already on the Moon (real artifacts from /api/places). */
-  function briefCard() {
-    card.show({ title: "CAPCOM", eyebrow: "Briefing" + (client.sample ? " · Sample data" : ""),
-      say: CAPCOM.missionBrief(callSign.shown()),
-      lessons: lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })) });
   }
   function previewSite() {
     if (!site) return;
@@ -214,22 +224,10 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (cockpit) cockpit.calling(true);
     await askDirector("Call Houston");
   }
+  /** Alerts in the cabin: the storm strip comes from the state (cabin.js); short warnings go through here. */
   function renderBanner(transient) {
-    const st = state && state.env && state.env.storm;
-    clearTimeout(bannerT);
-    if (transient) {
-      banner.className = "m-banner is-" + transient.level; banner.hidden = false; banner.innerHTML = transient.html;
-      bannerT = setTimeout(() => renderBanner(), 6000); return;
-    }
-    if (st && st.active) {
-      banner.className = "m-banner is-storm"; banner.hidden = false;
-      banner.innerHTML = `<b>☀ Solar storm</b><span>${esc(st.name)}${st.real_date ? ` · real event, ${esc(st.real_date)}` : ""}</span>${src({ title: "Source: NASA " + (st.source || "DONKI"), url: st.url || "https://kauai.ccmc.gsfc.nasa.gov/DONKI/" })}`;
-      if (!state.shelter) {
-        banner.insertAdjacentHTML("beforeend", `<span class="m-bact"><button type="button" class="m-bbtn is-hot" data-act="shelter">🏠 Everyone to shelter</button><button type="button" class="m-bbtn" data-act="shields">🛡️ Shields to 40</button></span>`);
-        banner.querySelector('[data-act="shelter"]').onclick = () => run({ type: "shelter", on: true });
-        banner.querySelector('[data-act="shields"]').onclick = () => run({ type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null });
-      }
-    } else banner.hidden = true;
+    banner.hidden = true;
+    if (transient && cockpit && screen === "hud") cockpit.alert(transient);
   }
 
   // ---------- telemetry: bars move between shifts ----------
@@ -300,22 +298,25 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     const cbk = evs.map(e => e.kind).find(k => CALLBACKS[k] && !reminded.has(k));
     if (cbk) { const line = remind(cbk); if (line) setTimeout(() => { if (screen === "hud") say(line, { situation: "coach" }); }, 2500); }
     const storm = evs.find(e => e.kind === "solar_storm");
-    if (storm) { alertSound(); renderBanner(); return; }
+    if (storm) { alertSound(); stormAlert(); return; }
     const alarm = evs.find(e => e.kind === "low_power" || e.kind === "dose_alert");
-    if (alarm) { alertSound(); renderBanner({ level: "warn", html: `<b>${alarm.kind === "low_power" ? "⚡ Low power" : "☢ Dose alert"}</b><span>${esc(alarm.text)}</span>` }); return; }
+    if (alarm) { alertSound(); const t = alarm.kind === "low_power" ? "Low power" : "High dose"; renderBanner({ level: alarm.kind === "low_power" ? "caution" : "warn", title: t, text: alarm.text }); a11yAlert(`${t}. ${alarm.text || ""}`); return; }
     const comm = evs.find(e => e.kind === "comm_open" || e.kind === "comm_closed");
-    if (comm) renderBanner({ level: "info", html: `<b>🌍 ${comm.kind === "comm_open" ? "Comm window open" : "Comm window closed"}</b><span>${esc(comm.text)}</span>` });
+    if (comm) renderBanner({ level: "info", title: comm.kind === "comm_open" ? "Earth in view" : "Earth set", text: comm.text });
   }
 
+  function stormAlert() {
+    const st = state && state.env && state.env.storm;
+    a11yAlert(`Solar storm${st && st.real_date ? `, a real event from ${st.real_date}` : ""}. Take shelter or raise the shields.`);
+  }
   /** Houston: show the signal travelling (each way) and wait the real round trip before speaking. */
   async function houston(line, delayMs = 2600, style = null) {
     const oneWay = (delayMs / 2000).toFixed(1);
-    signal.hidden = false; signal.style.setProperty("--trip", delayMs + "ms");
-    signal.innerHTML = `<span class="m-sig-moon">Moon</span><span class="m-sig-track"><i></i></span><span class="m-sig-earth">Earth</span><small>Signal travelling to Earth… ${oneWay} s each way</small>`;
+    void oneWay;
     capcom({ say: CAPCOM.houstonCalling, eyebrow: "Houston · radio delay" });
-    if (cockpit) cockpit.calling(true);
+    if (cockpit) cockpit.calling(true, delayMs);
     await new Promise(r => setTimeout(r, delayMs));
-    signal.hidden = true; if (cockpit) cockpit.calling(false);
+    if (cockpit) cockpit.calling(false);
     capcom({ say: line, eyebrow: "Houston" }); radio("houston", line);
     await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
   }
@@ -356,9 +357,9 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (s.over) showDebrief();
   }
   function alert(d) {
-    const icon = d.level === "critical" ? "☢" : d.level === "warn" ? "⚠" : "🌍";
-    if (d.level !== "info") alertSound();
-    renderBanner({ level: d.level === "critical" ? "storm" : d.level, html: `<b>${icon} ${d.level === "critical" ? "Alert" : d.level === "warn" ? "Warning" : "Update"}</b><span>${esc(d.text)}</span>` });
+    if (screen !== "hud") return;   // alerts belong to the cabin; never over the briefing or the debrief
+    if (d.level !== "info") { alertSound(); a11yAlert(d.text); }
+    renderBanner({ level: d.level === "critical" ? "warn" : d.level === "warn" ? "caution" : "info", title: d.level === "critical" ? "Alert" : d.level === "warn" ? "Caution" : "Update", text: d.text });
   }
   /** A CAPCOM card from a decision: body, chips, and actions whose clicks go back through `send`. */
   function showCard(d, send) {
@@ -384,74 +385,78 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   }
 
   // ---------- debrief ----------
+  /** One headline, a shift-by-shift chart, up to three takeaways with sources, then Fly again / Another site. */
   async function showDebrief() {
     if (!state) return;
-    screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin();
+    screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin(); card.hide();
     let d; try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
-    const ls = (d.lessons && d.lessons.length ? d.lessons.map(l => ({ text: l.text, source: l.source })) : lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })));
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");
-    const head = outcome === "survived" || outcome === "success" ? "Mission complete!" : outcome === "in_progress" || !outcome ? "Mission paused" : "Mission over";
+    const paused = outcome === "in_progress" || !outcome;
+    const won = outcome === "survived" || outcome === "success";
+    const head = won ? "Mission complete" : paused ? "Mission paused" : "Mission over";
+    const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : firstSentence(d.why);
     (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
-    const lessonsSeen = [...new Set([...seen].map(k => CALLBACKS[k].lesson))];
-    const learnedHtml = `<section class="m-learned"><span class="eyebrow">${esc(DEBRIEF.learned)}</span>${lessonsSeen.length
-      ? `<ul>${lessonsSeen.map(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id), c = CALLBACKS[k];
-          return `<li><span class="m-lpatch${learned(id) ? " is-earned" : ""}" aria-hidden="true">${(LESSON_STORY[id] || {}).patch || "★"}</span><span><b>Lesson ${c.n}</b> ${esc(c.text)}</span></li>`; }).join("")}</ul>`
-      : `<p class="m-sub">${esc(DEBRIEF.learnedEmpty)}</p>`}</section>`;
-    debriefEl.hidden = false;
+    // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
+    const tks = (d.lessons || []).filter(l => l && l.text).map(l => ({ text: firstSentence(l.text), source: l.source }));
+    [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: firstSentence(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
+    if (!tks.length) lessons().forEach(l => tks.push({ text: firstSentence(l.text), source: { ...l.source, title: l.name } }));
+    const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
+    debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `
-      <header class="m-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}<button class="x" id="mDbClose" type="button" aria-label="Back to the mission">&times;</button></header>
-      <div class="m-db-top">
-        <div><h2 class="m-title">${head}</h2><p class="m-sub">${esc(outcome === "in_progress" ? `You stopped on day ${state.day}. You can go back and keep playing.` : d.why || "")}</p></div>
-        <div class="m-grade" aria-label="Grade ${esc(d.grade)}"><b>${esc(d.grade)}</b><span>★ ${Math.round(d.score || 0)}</span></div>
+      <header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}
+        <button class="mx-x" id="mDbClose" type="button" aria-label="${paused ? "Back to the mission" : "Close"}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
+      <div class="mx-db-top">
+        <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
+        <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div></dl>
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
-      ${learnedHtml}
-      <p class="m-mars">${esc(DEBRIEF.mars)}</p>
-      <div class="m-db-cols">
-        <section><span class="eyebrow">Lessons</span><ul>${ls.map(l => `<li>${esc(l.text)} ${src(l.source)}</li>`).join("")}</ul></section>
-        <section><span class="eyebrow">Data we used</span><ul>${(d.data_used || []).map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a> ${esc(x.how || "")}</li>`).join("")}</ul></section>
-      </div>
-      <div class="m-foot"><button type="button" class="m-go" id="mAgain">${esc(DEBRIEF.replay)}</button><button type="button" class="pill" id="mNewSite">${esc(DEBRIEF.another)}</button></div>`;
+      <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : ""}</li>`).join("")}</ul>
+      <div class="mx-foot">
+        <button type="button" class="mx-go" id="mAgain">${esc(DEBRIEF.replay)}</button>
+        <button type="button" class="mx-btn" id="mNewSite">${esc(DEBRIEF.another)}</button>
+        ${(d.data_used || []).length ? `<details class="mx-data"><summary>NASA data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
+      </div>`;
     $("mAgain").onclick = () => { if (unsub) unsub(); state = null; start(); };
     $("mNewSite").onclick = () => { if (unsub) unsub(); state = null; briefing(); };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
     wireChart();
-    const line = cs => `${head} Nice flying, ${cs}. Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`;
+    requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
+    const line = cs => `${head}. Nice flying, ${cs}.${paused ? "" : ` Your grade is ${d.grade}, with ${Math.round(d.score || 0)} points.`}`;
     // Hands-free: one short offer, spoken once; "fly again" / "yes" takes it (screen().offer).
-    capcom({ say: line(callSign.shown()), eyebrow: "Debrief" }); say(line(callSign.spoken()) + " Want to fly again? Say fly again.");
+    radio("capcom", line(callSign.shown())); say(line(callSign.spoken()) + " Want to fly again? Say fly again.");
   }
 
-  /** Line chart: power %, life support %, dose as % of the limit (one 0–100 axis), with event markers. */
+  /** Shift-by-shift lines: power %, life support %, dose as % of the limit (one 0-100 axis); storm shifts shaded. */
   function chart(tl, lim) {
-    if (tl.length < 2) return `<p class="m-sub">Play a shift or two to see your timeline.</p>`;
-    const W = 640, H = 170, L = 34, Rm = 8, T = 10, B = 22, t0 = tl[0].t_h, t1 = tl[tl.length - 1].t_h || 1;
-    const x = t => L + (t - t0) / ((t1 - t0) || 1) * (W - L - Rm), y = v => T + (1 - pct(v) / 100) * (H - T - B);
-    const series = [["power", "Power", d => d.power], ["life", "Life support", d => d.life_support], ["dose", "Dose (% of limit)", d => d.dose_msv / lim * 100]];
-    const lines = series.map(([k, , f]) => `<polyline class="c-${k}" points="${tl.map(d => x(d.t_h).toFixed(1) + "," + y(f(d)).toFixed(1)).join(" ")}"/>`).join("");
-    const grid = [0, 50, 100].map(v => `<line class="c-grid" x1="${L}" x2="${W - Rm}" y1="${y(v)}" y2="${y(v)}"/><text class="c-ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`).join("");
-    const days = []; for (let h = Math.ceil(t0 / 24) * 24; h <= t1; h += 24) days.push(`<text class="c-ax" x="${x(h)}" y="${H - 6}" text-anchor="middle">Day ${h / 24 + 1}</text>`);
-    const marks = tl.filter(d => (d.events || []).length).map(d => { const k = d.events.includes("solar_storm") ? "storm" : d.events.some(e => e === "low_power" || e === "dose_alert") ? "warn" : "info";
-      return k === "info" ? "" : `<g class="c-ev is-${k}"><line x1="${x(d.t_h)}" x2="${x(d.t_h)}" y1="${T}" y2="${H - B}"/><text x="${x(d.t_h) + 3}" y="${T + 9}">${k === "storm" ? "☀ storm" : "⚠"}</text></g>`; }).join("");
-    const last = tl[tl.length - 1];
-    // direct labels at the line ends, nudged apart so they never collide
-    const ly = series.map(([k, n, f]) => ({ n: n.split(" (")[0], y: Math.max(T + 10, y(f(last)) - 5) })).sort((a, b) => a.y - b.y);
-    ly.forEach((l, i) => { if (i && l.y - ly[i - 1].y < 13) l.y = ly[i - 1].y + 13; });
-    const labels = ly.map(l => `<text class="c-lab" x="${W - Rm - 2}" y="${l.y.toFixed(1)}" text-anchor="end">${l.n}</text>`).join("");
-    window.__mChart = { tl, x, series, lim, L, W, Rm };
-    return `<figure class="m-chart"><figcaption><span class="eyebrow">Your 3 resources</span>
-      <span class="m-legend">${series.map(([k, n]) => `<span><i class="c-${k}"></i>${n}</span>`).join("")}<span><i class="c-storm"></i>Solar storm</span></span></figcaption>
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of power, life support and radiation dose">${grid}${days.join("")}${marks}${lines}${labels}
-      <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="0" x2="0" visibility="hidden"/></svg><div class="c-tip" id="cTip" hidden></div></figure>`;
+    if (tl.length < 2) return `<p class="mx-empty">Fly a few shifts to see your chart.</p>`;
+    const W = 720, H = 200, L = 36, R = 88, T = 8, B = 24, n = tl.length;
+    const x = i => L + i / (n - 1) * (W - L - R), y = v => T + (1 - pct(v) / 100) * (H - T - B);
+    const series = [["power", "Power", d => d.power], ["life", "Life support", d => d.life_support], ["dose", "Dose", d => d.dose_msv / lim * 100]];
+    const grid = [0, 50, 100].map(v => `<line class="c-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="c-ax" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}%</text>`).join("");
+    const step = (W - L - R) / (n - 1);
+    const storms = tl.map((d, i) => (d.events || []).includes("solar_storm") || (d.events || []).includes("dose_alert") ? `<rect class="c-storm" x="${(x(i) - step / 2).toFixed(1)}" y="${T}" width="${step.toFixed(1)}" height="${H - T - B}"/>` : "").join("");
+    const days = []; tl.forEach((d, i) => { if (i === 0 || Math.floor((d.t_h - 1) / 24) !== Math.floor((tl[i - 1].t_h - 1) / 24)) days.push(`<text class="c-ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : "middle"}">Day ${Math.floor((d.t_h - 1) / 24) + 1}</text>`); });
+    const lines = series.map(([k, , f]) => `<polyline class="c-${k}" points="${tl.map((d, i) => x(i).toFixed(1) + "," + y(f(d)).toFixed(1)).join(" ")}"/>`).join("");
+    const last = tl[n - 1];
+    const ly = series.map(([k, nm, f]) => ({ k, n: nm, y: y(f(last)) + 4 })).sort((a, b) => a.y - b.y);
+    ly.forEach((l, i) => { if (i && l.y - ly[i - 1].y < 14) l.y = ly[i - 1].y + 14; });
+    const labels = ly.map(l => `<text class="c-lab c-${l.k}-t" x="${W - R + 8}" y="${l.y.toFixed(1)}">${l.n}</text>`).join("");
+    window.__mChart = { tl, x, series, lim, L, W, R };
+    const hasStorm = storms.length > 0;
+    return `<figure class="mx-chart"><figcaption class="sr-only">Power, life support and radiation dose, shift by shift${hasStorm ? ". Shaded shifts had a solar storm or a dose alert" : ""}.</figcaption>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Power, life support and dose, shift by shift">${storms}${grid}${days.join("")}${lines}${labels}
+      <line class="c-cross" id="cCross" y1="${T}" y2="${H - B}" x1="0" x2="0" visibility="hidden"/></svg>
+      ${hasStorm ? `<span class="mx-key"><i></i>Storm</span>` : ""}<div class="c-tip" id="cTip" hidden></div></figure>`;
   }
   function wireChart() {
-    const svg = debriefEl.querySelector(".m-chart svg"), tip = $("cTip"), cross = $("cCross"), c = window.__mChart; if (!svg || !c) return;
+    const svg = debriefEl.querySelector(".mx-chart svg"), tip = $("cTip"), cross = $("cCross"), c = window.__mChart; if (!svg || !c) return;
     svg.addEventListener("pointermove", e => {
       const r = svg.getBoundingClientRect(), vx = (e.clientX - r.left) / r.width * c.W;
-      let best = c.tl[0]; c.tl.forEach(d => { if (Math.abs(c.x(d.t_h) - vx) < Math.abs(c.x(best.t_h) - vx)) best = d; });
-      cross.setAttribute("x1", c.x(best.t_h)); cross.setAttribute("x2", c.x(best.t_h)); cross.setAttribute("visibility", "visible");
-      tip.hidden = false; tip.style.left = (c.x(best.t_h) / c.W * 100) + "%";
-      tip.innerHTML = `<b>Day ${Math.floor(best.t_h / 24) + 1}, hour ${best.t_h % 24}</b>` + c.series.map(([k, n, f]) => `<span><i class="c-${k}"></i>${n.split(" (")[0]} ${k === "dose" ? (+best.dose_msv).toFixed(1) + " mSv" : Math.round(f(best)) + "%"}</span>`).join("")
-        + ((best.events || []).length ? `<span>${esc(best.events.join(", ").replace(/_/g, " "))}</span>` : "");
+      let bi = 0; c.tl.forEach((d, i) => { if (Math.abs(c.x(i) - vx) < Math.abs(c.x(bi) - vx)) bi = i; });
+      const best = c.tl[bi];
+      cross.setAttribute("x1", c.x(bi)); cross.setAttribute("x2", c.x(bi)); cross.setAttribute("visibility", "visible");
+      tip.hidden = false; tip.style.left = (c.x(bi) / c.W * 100) + "%";
+      tip.innerHTML = `<b>Day ${Math.floor((best.t_h - 1) / 24) + 1} · shift ${Math.floor(((best.t_h - 1) % 24) / 6) + 1}</b>` + c.series.map(([k, n, f]) => `<span><i class="c-${k}"></i>${n} ${k === "dose" ? (+best.dose_msv).toFixed(1) + " mSv" : Math.round(f(best)) + "%"}</span>`).join("");
     });
     svg.addEventListener("pointerleave", () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); });
   }
