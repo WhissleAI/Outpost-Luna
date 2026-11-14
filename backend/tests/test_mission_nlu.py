@@ -14,6 +14,17 @@ def D(task, target=None):
     return {"type": "dispatch", "vehicle": "rover", "task": task, "target": target}
 
 
+@pytest.mark.parametrize("heard", ["Send the rover for eyes.", "get eyes", "send the rover on an eyes run",
+                                   "go on an ice run with the rover", "rover, fetch some eyes", "rover get eye"])
+def test_ice_misheard_as_eyes_is_still_the_ice_order(heard):
+    """The Arc ear hears "ice" as "eyes" (packaged app, live run): the rover order must still be collect_ice."""
+    assert nlu.parse(heard)["commands"] == [D("collect_ice")]
+
+
+def test_eyes_outside_an_ice_order_stay_eyes():
+    assert nlu.parse("close your eyes")["commands"] == []
+
+
 Q = lambda what: {"type": "query", "what": what}  # noqa: E731
 CLARIFY = "CLARIFY"
 
