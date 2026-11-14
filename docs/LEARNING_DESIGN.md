@@ -1,6 +1,6 @@
 # Outpost Luna: learning and game design (v3)
 
-2026-11-13 · Owner: learning/game design (`feat/learning-v3`) · Status: **phase 1 design, for review**. Nothing here is built yet.
+2026-11-13 · Owner: learning/game design (`feat/learning-v3`) · Status: **phase 2 built** (§10 says what shipped and what changed from the phase 1 design).
 Inputs: `docs/ADVISOR_BRIEF.md`, `docs/HANDSFREE.md`, `docs/VOCABULARY.md`, `docs/COPY.md` (`feat/copy-v3`),
 `backend/data/academy/course.json`, `backend/app/mission/sim.py`, and the data in `backend/data/`.
 
@@ -101,6 +101,11 @@ Rules: a clip plays at most once per lesson, ≤ 25 s, is skippable ("skip"), al
 caption. Clips never carry an answer the kid hasn't been asked yet.
 
 ## 5. Lesson redesign
+
+> **Shipped version (phase 2):** 6 lessons plus the check ride, in Moon-map order: `moon`, `history`, `comms`, `power`,
+> `radiation`, `life`, `checkride`. The `words` lesson is gone and its words are woven in (product owner, §9.4). Each
+> lesson has a `place` pin. The authored source is `backend/tools/build_course.py`, and §10.2 lists the changes from
+> the drafts below.
 
 Seven lessons plus the check ride (8 patches, as today). **Lesson ids and patch ids stay** (progress, tests, routing).
 Titles are copy-v3's. Each lesson: hook (clip or question) → 4–5 steps, no two in a row of the same type → a real-data
@@ -260,12 +265,47 @@ By site (survival): planner 1.00 everywhere except **Malapert 0.00**; always_she
 | T7 | **Storm spacing.** Slots 18–80, 100–150, 170–216; ≥ 24 h apart | — | Each storm is readable on its own |
 | T8 | Low-power advice made true: "Try night mode, or wait for the Sun" | — | Fixes D4 without breaking the 100 % split contract |
 
+Shipped values differ from the drafts above. Storms ×8 / ×4 / ×1.25 lasting 24 / 18 / 12 h. Night mode ×0.35 with
+the greenhouse at half. The shelter is capped at 24 h, then 12 h of rest (Orion's shelter). A particle-sensor alarm
+fires a few hours ahead when no forecast came. See `docs/MISSION_CONTRACT.md` "learning design v3".
+
 Acceptance targets after tuning (asserted in `tests/test_strategy.py`):
 1. planner survives ≥ 0.9 at **every** site and has the top mean score.
 2. No fixed policy (idle, always_shelter, shields/science/comms max, rover_spam) reaches grade B on average.
 3. always_shelter misses the science objective in ≥ 95 % of runs.
 4. idle survives < 0.5 overall on Commander.
 5. Each degenerate policy fails for a different reason, so each debrief teaches something different.
+
+### 6.4b Strategy simulation after tuning
+`backend/tools/strategy_sim.py`, 5 sites × 30 seeds = 150 missions per policy and band. The policies read only the
+State, the events and Houston's replies. "Goals" is the share of runs that met both goals (science home and an ice
+run).
+
+| Policy | Before: survived / mean score | **Commander** after: survived / goals / score | **Cadet** after: survived / goals / score | Main way it fails |
+|---|---|---|---|---|
+| planner (reads the data: likely warnings, night mode before sunset, Houston in windows) | 0.80 / 745 (fails all of Malapert) | **1.00 / 0.69 / 646** (A 55, B 47, C 48) | **1.00 / 0.68 / 668** | none |
+| cautious (shelters on every warning, even "possible") | — | 1.00 / 0.69 / 640 | 1.00 / 0.68 / 658 | false alarms cost a little science |
+| reactive (shelters only when hit) | 0.80 / 507 | 0.79 / 0.00 / 399 | 0.80 / 0.00 / 399 | power out at Malapert; extra dose |
+| rover_spam | 0.02 / 286 | 0.20 / 0.73 / 350 | 0.09 / 1.00 / 365 | dose limit (driving into storms) |
+| **always_shelter** | **1.00 / 370** | **0.68 / 0.00 / 340** | 0.80 / 0.00 / 357 | goals never met; power out at Malapert |
+| idle (spam end shift) | 0.35 / 373 | 0.38 / 0.00 / 303 | 0.80 / 0.00 / 324 | power out; no goals |
+| shields_max / science_max / comms_max | 0.00 / 53 / 230 / 17 | 0.00 / 74 / 45 / 45 | 0.00 / 74 / 33 / 33 | life support out |
+
+What changed:
+- **Always shelter** was the only rule that never lost (D1). Now it never meets a goal and loses at Malapert.
+- **Malapert** couldn't be won by any active play (D3). Now the planner survives it 30/30, using night mode before the 157 h dark spell.
+- **Idle** is down to D/F grades.
+- **Reading the data** beats the best fixed rule by about 290 points (Commander) and is the only policy with A grades.
+- **Cautious and planner** end up about level: acting on every warning only costs a little science, so heeding a forecast is never a trap.
+
+`tests/test_strategy.py` enforces all of this on every test run:
+- the planner survives at least 90% at every site, in both bands;
+- the planner beats the best fixed rule by at least 150 points;
+- no fixed rule averages a B, and at most 20% of a fixed rule's runs get an A;
+- always_shelter meets the goals in 5% of runs or fewer;
+- idle survives less than 50% on Commander;
+- the fixed rules fail for at least 3 different reasons;
+- no policy reads the hidden storm schedule.
 
 ### 6.5 Difficulty bands
 
@@ -347,6 +387,18 @@ keep only what the learning design changes. Rows below that overlap the audit wi
 here. The branch wasn't on origin when this section was written.
 
 ### 7.1 Corrections found in the current course, sim and UI
+
+Phase 2 fixed C1–C9, C11, C12 and C14 in the files this design owns, together with the `docs/ACCURACY_AUDIT.md` items:
+- the Artemis IV timeline;
+- the NASA 2024 landing regions;
+- ISS 523 µSv/day;
+- the Orion shelter;
+- pretend-tech flags;
+- LCROSS;
+- the SPA width.
+
+`backend/tests/test_learning.py` locks them. Still open, in other owners' files: C10 (the Lovell caption) and C13
+(`mission/ui.js`).
 
 | # | Where | Today | Problem | Fix |
 |---|---|---|---|---|
@@ -483,8 +535,47 @@ Sim (`docs/MISSION_CONTRACT.md`, additive): `new_mission(..., difficulty="comman
 | Final wording of every prompt/success/fail/hint/brief | copy agent | `feat/copy-v3` |
 | Mission NLU phrases for night mode ("night mode", "power save", "hibernate") | learning designer (with tests) | `feat/learning-v3` |
 
-### 9.4 Open questions for review
-1. Night mode adds one order. OK, or should the shelter keep doubling as hibernate (simpler, but D1/D2 stay)?
-2. Mission objectives (T5): is "survived but objectives missed" too harsh for 7–9? Proposal: Cadet shows it as a silver patch, not a C.
-3. Cadet relay satellite: fine to say "a future relay satellite" to justify warnings when Earth is down?
-4. Keep `words` as a lesson, or fold its 5 steps into the others and drop to 6 lessons + check ride?
+### 9.4 Decisions (product owner, after the phase 1 review)
+1. **Night mode:** one new order, by voice and on the Power panel. Shipped (`power_save`).
+2. **Cadet scoring:** surviving is the success (grade B); the goals are bonus stars (both goals: A). Commander's goals count toward the grade.
+3. **Relay satellite:** Cadet only, labelled as future ("a relay satellite like the ones NASA plans"). Commander keeps the real blackout when Earth is down.
+4. **Space words:** woven into the lessons. No separate vocab lesson; the `words` patch is retired.
+
+## 10. What shipped (phase 2)
+
+### 10.1 Files
+| Area | Files |
+|---|---|
+| Lessons | `backend/data/academy/course.json` (generated by `backend/tools/build_course.py`), `backend/data/learning/concepts.json` (sourced facts) |
+| Grading | `backend/app/academy/grade.py` (`GLOBE_TYPES`), `content.py` (public view and checks: options, places, clip lengths, pins, no two of a type in a row), `routes.py` (predict reveal, shown after 3 misses, `view`/`taps` inputs) |
+| Mission | `backend/app/mission/sim.py`, `nlu.py` (night mode), `capcom.py`, `registry.py`, `routes.py` (`difficulty`), `backend/app/session.py` (warning and near-miss lines, shelter limit, night-mode nudge), `backend/app/academy/ride.py` (starts at hour 138, when Earth is up) |
+| Data accuracy | `donki_events.json` (keyed on SEP, deduplicated to 13), `sites.json` (2024 list status, sun/Earth bases, pretend-tech flags), `radiation.json` (ISS 523, Orion shelter, pretend tech), `places.json` (SPA width, Artemis IV aliases), `facts.json` and `artifacts.json` (LCROSS) |
+| Client | `frontend/src/globe.js` (`poleView`, `setSunDir`, `centerLatLon`), `frontend/src/academy/globe_steps.js` (6 renderers), `academy/ui.js` and `main.js` (4 lines marked `[learning-v3]`) |
+| Tests | `backend/tests/test_learning.py` (graders, course shape, clips, map order, accuracy locks), `test_strategy.py`, `frontend/tests/globe_steps.test.js`, plus updates to the academy, vocab, router, session and mission tests |
+| Tools | `backend/tools/strategy_sim.py`, `tools/handsfree_run.py` (says the new step types) |
+
+### 10.2 Changes from the §5 drafts
+- **Lesson order follows the map** (UX lead's data-driven Moon map): Tranquility (`moon`) → Surveyor 3 (`history`) → Malapert (`comms`) → Shackleton (`power`) → de Gerlache (`radiation`) → Cabeus (`life`) → Shackleton Rim (`checkride`). Near side first, then the pole, with no jump back to the equator. `test_map_order_has_no_long_jumps_back` checks this.
+- **Space words:**
+  - mare moves to `history` (Apollo 11 landed on a mare);
+  - terminator is the `power` globe step itself;
+  - regolith is in `life`;
+  - earthrise is the mission's comm-window clip.
+- **Comms readback** uses the heaters, not the pretend-tech shields.
+- **Check ride:** the shields order is replaced by "Ask Houston about space weather" (a comm-window decision). It opens with a predict step: "Earth is up. Can you call Houston?"
+- **Storm prompt:** "particles likely within an hour" (Orion's HERA warning), not a 6-hour particle warning.
+
+### 10.3 Client contract as shipped
+- The attempt input adds `view: {lat, lon}` (globe_side) and `taps: [...]` (route).
+- After 3 misses the reply is `status: "passed"` with `shown: true` and `shown_answer` (`{choice}`, `{place}`, `{stops}`, `{side}` or `{sun_lon}`). It starts "Here it is.", and the UI should highlight that answer.
+- A predict reply always passes, with `correct` and `guess`. The `say` is `success` for the right guess, or the step's `reveal` line otherwise.
+- `compare` replies add `data: {site_id: {sun_days, earth_days, sun_year_pct, ice_km}}` for the cards.
+- A renderer factory may return `onTap(p)`. `academy/ui.js` sends Moon taps to it for non-tap steps.
+
+### 10.4 Asks for other owners
+| Owner | Ask |
+|---|---|
+| UX lead (`feat/ux-v3`) | Review the 4 `[learning-v3]` lines in `academy/ui.js` and `main.js`, and the 3 `globe.js` additions. Restyle `globe_steps.js` or replace it, keeping the contract. Show `shown_answer` and the `compare` data chips. Turn the lesson `clip` with `when: "after"` into an auto-play after the pass. |
+| Mission UX (`feat/ux-mission`) | Play the §4 mission clips on `comm_open`, `comm_closed`, mission start and survived. Power panel: night mode switch and `env.next_sun_change_h` strip. Radiation panel: `env.warning` chip (confidence, ETA, by). Habitat panel: `objectives`. Label every `pretend_tech` item "pretend tech". `shelter_ready_in_h` on the shelter control. Site picker: `window_sun_days`/`window_earth_days` ("of 10 days"), plus `status_label`. |
+| Copy agent (`feat/copy-v3`) | Polish the new prompt, reveal and success lines in `tools/build_course.py` (they meet the `docs/COPY.md` budgets: `test_copy.py` passes). Check the new sim lines: `storm_warning`, near miss, `shelter_limit`, night mode. |
+| Art agent | The `words` patch (Word Explorer, glyph V) is retired; `course.json` lists it in `retired_badges` for back-compat. 7 patches remain. |

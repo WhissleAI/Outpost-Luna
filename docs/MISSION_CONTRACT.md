@@ -70,3 +70,15 @@ Nothing above was changed; these were only added:
 - **Telemetry frames**: `forecast:true` when the frame is a preview into the current shift (a 6-hour shift plays out over ~30 s, then holds), plus `over`.
 - **Debrief**: `outcome`, `why` (one sentence), `lose_reason`, `site`, `seed`, `final{...}`, and `log` (the event/command text log). `timeline` has one entry per shift: `{t_h, power, life_support, dose_msv, events:[kind]}`.
 - **Python** (Director): `app.mission.registry.get(mid)` returns a Mission with `.apply(cmd)` returning `{state, result}` and `.state()`. `registry.apply(mid, cmd)` returns the same shape.
+
+## Additive fields (learning design v3, feat/learning-v3; docs/LEARNING_DESIGN.md §6)
+Nothing above was removed. Added:
+- **Start**: `POST /api/mission/start` takes `difficulty: "cadet" | "commander"` (default `commander`). Cadet: 2 storms, both with solar particles, 12 h warnings delivered even when Earth is down (a relay satellite, labelled as future), no array failure; surviving is the success and goals add stars. Commander: 2–3 storms, some without particles (honest near misses), 6 h warnings only when Earth is up, one array failure.
+- **Command** `{"type": "power_save", "on": bool}`: night mode. Draw ×0.35; science stops; the greenhouse runs at half. Voice: "night mode on/off", "hibernate", "power save", "wake up the outpost". Role: power. No confirm.
+- **Shelter**: Orion-style. Draw ×0.8 (not a hibernate); greenhouse at half. After 24 h in a row (and no storm on) the crew comes out (`shelter_limit` event) and can't re-enter for 12 h unless a storm is on (the command returns `ok:false` with the wait).
+- **Events**: `storm_warning` `{confidence: "likely"|"possible", lead_h, by: "houston"|"relay"|"sensor"}` is separate from `solar_storm` (the hit, which adds `sep: bool`). `shelter_limit`. Houston's call says "likely/possible in the next two days", never an exact hour.
+- **Storms**: keyed on DONKI SEP records (`donki_events.json` `id` is the SEP id when there is one; `gst_id`/`gst_link`/`class` keep the Earth storm as context). Dose ×8 (SEP + CME ≥ 1500 km/s, 24 h), ×4 (SEP, 18 h), ×1.25 (no SEP, 12 h).
+- **State**: `power_save`, `shelter_hours`, `shelter_ready_in_h`, `difficulty`, `objectives {science:{goal,got,met}, ice:{goal,got,met}, met}`, `good_calls` (count), `pretend_tech` (labels for the UI), `env.next_sun_change_h` (Sun strip), `env.relay`, `env.warning {confidence, eta_h, by, real_date} | null`, `env.storm.sep`; `site.window_sun_days`, `site.window_earth_days`, `site.status` (`nasa_2024` | `studied`), `site.status_label`.
+- **Alerts**: `storm_warning` (a warning heard, storm not yet here).
+- **Score/grade**: 300 survival + up to 300 goals (science sent home ≤ 200, 50 per ice run ≤ 2) + 40 per good call (≤ 6) − 6 per game-mSv above 15. A ≥ 700, B ≥ 560, C ≥ 420, D ≥ 280. Commander: a survivor who missed a goal is capped at C. Cadet: survived = B, both goals = A.
+- **Debrief**: `difficulty`, `objectives`, `stars` (0–3), `good_calls [{t_h, kind, text}]`, `try` (one line for next time).
