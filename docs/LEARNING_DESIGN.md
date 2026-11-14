@@ -320,7 +320,31 @@ Each patch unlocks one real tool in the cockpit (owned by the mission UX agent):
 - Callbacks fire once per mission per lesson; Cadet hears all of them, Commander only on alarms.
 - Never auto-ends a shift; "end shift" is always the kid's. Silence > 30 s on the first shift → one nudge (`CAPCOM.firstShift`).
 
+### 6.10 The cabin: five panels
+The mission UX agent is building a 3D cabin with panels the kid can open. Every mechanic above lives on exactly one
+panel, so the kid learns where to look. The Director names the panel in its offer, and the panel that needs attention
+lights up: a glow plus an icon, never colour alone.
+
+| Panel | What it shows | Orders on it (each one also works by voice with the panel closed) | It lights up when | Patch tool it gains |
+|---|---|---|---|---|
+| **Power** | Battery, Sun strip (sunrise/sunset from Horizons), the power split | allocate loads, night mode on/off | `low_power`; sunset ≤ 6 h away | Sun Tracker: sunset countdown |
+| **Comm** | Earth's elevation, comm-window timeline, science waiting to go home, Houston log | call Houston, more power to the radio | comm window opens/closes; `storm_warning` received | Radio Ready: window timeline |
+| **Habitat** | Life support, greenhouse, heaters, the mission objectives | heaters / life support / greenhouse power | `life_support_low`; heaters < 10 % in the dark | Word Explorer: tap-to-define labels |
+| **Rover** | Rover status and ETA, route on the globe, ice runs done | rover: ice, repair, explore, return | `array_damaged`; rover back | Ice Hunter: ice route and distance |
+| **Radiation** | Dose meter (game mSv, or % for Cadet), dose rate, shields share, the warning chip with its confidence and lead time | shields power, shelter on/off | `storm_warning`; `solar_storm`; `dose_near_limit` | Storm Watcher: confidence chip |
+
+Rules:
+- **Hands-free first.** "Open the power panel" opens it, but no order needs a panel open. A blind kid plays the whole mission by voice, and "what's on this panel?" reads it.
+- **One alarm, one panel.** Each alert kind maps to one panel (table above), so "where's the problem?" always has one answer.
+- **Cadet:** when the Director makes an offer, the right panel opens with the two choices as big buttons. **Commander:** panels stay closed until the kid opens them.
+- The State needs no new fields for panels. The mapping is a client table from alert and event kinds to panels, owned by the mission UX agent. Phase 2 adds `power_save`, `objectives` and `storm_warning` (§9.2).
+
 ## 7. NASA correctness checklist
+
+The research agent on `feat/artemis-ref` is writing `docs/ARTEMIS_REFERENCE.md` (sourced facts) and
+`docs/ACCURACY_AUDIT.md` (a claim-by-claim audit). When they land, this section will point to those docs for sources and
+keep only what the learning design changes. Rows below that overlap the audit will be merged into it, not repeated
+here. The branch wasn't on origin when this section was written.
 
 ### 7.1 Corrections found in the current course, sim and UI
 
@@ -331,8 +355,8 @@ Each patch unlocks one real tool in the cockpit (owned by the mission UX agent):
 | C3 | L4 fact; debrief | "1369 µSv/day, about 2.6 times the ISS" | `radiation.json` holds ISS = 731 µSv/day, which is 1.9×. The 2.6 in Zhang 2020 compares a different ISS figure | Quote the paper's sentence exactly, or say "about 2 times" from our two numbers |
 | C4 | Cockpit dose readout | "dose 14.2 / 50 mSv" | Game doses are ×2 and the 50 mSv limit is a game limit; shown as real mSv | Label "game mSv" (or a meter for Cadet); the real-mSv conversion stays in the debrief |
 | C5 | Shields load | "Powered shields (water walls pumped…)" | No NASA design uses powered radiation shields; it's a game idea (`radiation.json` says so) | Debrief and the glossary card say "game idea"; never in a NASA-fact line |
-| C6 | Sites cards; L2 | "Earth is above the horizon about 93% of the time" (Malapert) | 93 % is our 10-day April window, not a long-term average | Always say "in our April 2026 window" |
-| C7 | Debrief; site cards | "Sun up 100% of these 10 days" (Rim, Ridge) | Horizons uses smooth ground; real terrain blocks the Sun. Long-term ≈ 86 % / 82 % (Bussey 2010) | Keep the caveat sentence; show both numbers |
+| C6 | Sites cards; L2 | "Earth is above the horizon about 93% of the time" (Malapert) | 93 % is our 10-day April window, not a long-term average | Same rule as sun % (§7.4): "Radio with Earth: 9 of 10 days" |
+| C7 | Site picker vs debrief (**known bug**) | Picker: "Shackleton Rim ☀ 86% sun" (`sunlight_pct`). Debrief: "Sun was up 100% of these 10 days" (`window_sunlit_pct`) | Two different numbers under one label. 86 % is a long-term, terrain-aware average (Bussey 2010); 100 % is our 10-day April 2026 window from Horizons, with smooth ground and a calibrated horizon. The sim uses the window number | One meaning for sun %, defined in §7.4 |
 | C8 | Comm windows | Radio only when Earth is in the sky | True for a direct link; NASA plans lunar relay satellites | One line in L2 and the debrief: "Without a relay satellite…" |
 | C9 | `artifacts.json` LCROSS | "2000 kg Centaur" | NASA's LCROSS figure is about 2,300 kg (2,305 kg). **To verify** against NSSDCA 2009-031B before changing | Correct the number in the data file, with the source |
 | C10 | Lovell clip caption | "Frank Foreman and Bill Andrews" | ASR error: Frank Borman and Bill Anders | Caption override for `lovell` |
@@ -361,6 +385,36 @@ Each patch unlocks one real tool in the cockpit (owned by the mission UX agent):
 - "Game idea" is said wherever a mechanic is invented (shields, ×2 dose, 50 mSv limit, cable power, rover times).
 - Artemis timeline: Artemis II flew around the Moon in April 2026; Artemis III has not landed; no date is given for it.
 - Never "NASA's outpost", "NASA says you…", or a NASA logo. Credit line: "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA."
+
+### 7.4 One meaning for "sun %" (and "Earth %")
+
+**Decision:** anywhere in the app, the sun number means **the sunlight on your mission**: the share of the 10-day April 2026
+window when the Sun is above the site's horizon in the sim (`window_sunlit_pct`, from JPL Horizons). It is the number
+that actually drives power in the game, so the picker, the cockpit and the debrief all show the same thing. The long-term
+figure (`sunlight_pct`, Bussey 2010, which includes terrain) appears only as a second, labelled line on the site card
+and in the debrief. The same rule applies to Earth (radio).
+
+| Where | Kid label (primary) | Secondary line (site card "More" and the debrief only) |
+|---|---|---|
+| Site picker chip | ☀ **Sun on your mission: 10 of 10 days** | — |
+| Site card | same | "Over a whole year, this spot gets sun about 86 % of the time. Mountains and craters block it sometimes." (Bussey 2010) |
+| Debrief | "The Sun was up 10 of your 10 days." | the year figure, plus "Our sim treats the ground as smooth, so real shadows are missing." |
+| Radio chip | 📡 **Radio with Earth: 4½ of 10 days** | "Without a relay satellite, you can only talk when Earth is in your sky." |
+
+The label is in **days, rounded to the half day**, because "days" is concrete for a 7-year-old and "%" isn't. Read aloud
+it becomes "Sun on your mission: ten of ten days". Values for each site (from `sites.json` and the ephemerides; phase 2
+adds them to the API as `window_sun_days` and `window_earth_days`):
+
+| Site | Sun on your mission | Radio with Earth | Over a year (Bussey 2010) |
+|---|---|---|---|
+| Shackleton Rim | 10 of 10 days | 4½ of 10 days | about 86 % |
+| Connecting Ridge | 10 of 10 days | 4½ of 10 days | about 82 % |
+| de Gerlache Rim | 8 of 10 days | 5 of 10 days | about 81 % |
+| Malapert Massif | 3½ of 10 days | 9 of 10 days | about 73 % |
+| Shackleton Floor | 0 of 10 days (power by cable from the rim) | through the rim relay, 4½ of 10 days | 0 % |
+
+Owners: the API fields and the debrief text are mine (phase 2). The picker chip is the mission UX agent's. The wording
+is the copy agent's.
 
 ## 8. Accessibility and hands-free
 
