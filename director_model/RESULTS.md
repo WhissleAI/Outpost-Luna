@@ -396,3 +396,195 @@ The refit shipped weights also FAIL: test_clean, test_real, cls_echo, cls_panel 
   - Their router changes (room yes / no on yes-no steps; "what do I do?" by voice) are not in the round-6 rules
     column.
   - The next `make director-loop` regenerates against them.
+
+## Round 7 — 2026-11-14 (contextual biasing in the ear, sound-alike matching, nav head, xl) — NOT SHIPPED (gate FAIL, both candidates)
+
+The ear and rules changes are already in main: feat/director-r7, merged with rc/7. This section is the measurement and
+the gate. `DIRECTOR_MODEL` stays `shadow`, and the shipped weights stay r4 s.
+
+### What changed
+
+- **Contextual biasing in the ear** (`docs/LOCAL_EAR.md`)
+  - Per-screen hot lists are built from the app's JSON and versioned in `backend/data/ear_vocab.json`, in three tiers:
+    - `step` (strong): what the open step or offer expects;
+    - `names` (strong, on the Moon screens and the picker): places, crew, hardware;
+    - `screen` (light): the rest of the screen's vocabulary.
+  - The relay sends the lists on every screen change.
+  - The ear applies a token prefix-tree boost and length-constrained n-best rescoring.
+  - The final words now carry the n-best, a confidence and the matched tier.
+- **Sound-alike matching** (`backend/app/soundalike.py`)
+  - The grader repairs failed spoken answers against the step's vocabulary.
+  - `plausible` counts a mishear of the step's words as a try.
+  - The router finds a navigation phrase inside a longer turn and reads panel names by sound.
+  - Room exclamations are filler, however device-directed Arc Tagger rates them.
+- **Director**
+  - F 216 → 236:
+    - hot-list match;
+    - ear n-best and confidence;
+    - sound-alike passes;
+    - fuzzy navigation;
+    - outcome signals (repeat, previous turn ignored, "no").
+  - A `nav` intent head and a fitted navigation fill (`nav_policy`).
+  - Size `xl` (740 K params).
+  - Simulated repeats as weak labels (525 repeat turns in train).
+  - New held-out set `cls_roomtalk`: room talk Arc rates directed (dd 0.75–0.98), gold ignore.
+  - The evaluator scores navigation by intent. A navigation the kid did not mean, or with the wrong intent, is a wrong
+    action, for the rules too.
+
+### Ear before / after (`director_model/ear_hot_eval.py`)
+
+The same audio was decoded twice: Tier A context only (what shipped) vs with the screen's hot lists. Voices are
+held-out kid-style Steer voices with pitch and rate jitter, half with classroom babble. No WAV is written to disk.
+
+| set | clips | WER | keyword recall | + sound-alike (what the router reads) | name recall | false hot words / 100 clips |
+|---|---|---|---|---|---|---|
+| mishear (cls_mishear items, in their frames) | 160 | 0.551 → **0.527** | 0.668 → **0.793** | 0.761 → **0.826** | – | 6.9 → 5.0 |
+| names (places, crew, hardware; library / picker) | 83 | 0.403 → 0.427 | 0.470 → **0.530** | 0.482 → 0.554 | 0.470 → **0.530** | 7.2 → 9.6 |
+| 40-line ear eval (2 voices each) | 80 | 0.374 → **0.347** | 0.605 → **0.674** | 0.651 → **0.698** | 0.522 → 0.543 | 7.5 → 2.5 |
+| room chatter + no-speech clips | 69 | 0.867 → 0.927 | – | – | – | **4.3 → 8.7** |
+
+- **Keyword recall rises 6–13 points on every speech set.**
+  - Examples fixed: "eyes" → ice, "and shift" → end shift, "Pythagoramus" → Pythagoras, "live support" → life support.
+  - With the sound-alike layer, the mishear set reaches 0.83.
+- **Names gain less than hoped: 0.47 → 0.53, and WER on names gets worse.**
+  - A run with the strong weights on the whole screen list reached 0.60, with no false names. Noise on 83 clips is a
+    few points.
+  - Most remaining name misses happen before any bias can act: "Cernan" → "Gigi Shannon", "Antares" → "Jerry's". The 4
+    beams do not hold the name (`docs/ARC_FEEDBACK.md`).
+- **False hot words on chatter doubled: 3 → 6 of 69 clips.**
+  - Arc's babble hallucinations now land on list words (a tail of "the rover", "Shackleton").
+  - No-speech clips sometimes decode as "Oh. Oh.".
+  - The router's filler, plausible and device-directed gates still run after the ear. The fix belongs in the ear (a
+    no-speech / tail guard).
+- **Tuning.** The first weights (step 1.5 / 2.5, n-best free to add a tail) had higher recall but more false triggers.
+  The shipped weights are step 1.0 / 2.0, screen 0.3 / 1.2, and an n-best alternative must be within ±1 word of the
+  top. They give up about 1 point of recall for fewer false words.
+
+### Rules before / after, on the same decodes (the non-model wins)
+
+- Before is the round-6 code (2d1c09b). After is main as merged, which includes rc/7's router fixes; rc/7 also made
+  "back to the map" navigate.
+- Same items, seeds and real-ear cache. A turn may still replay a different decode of the same words, because the new
+  generator prefers the one heard on the same screen. So ±2 turns is noise.
+- Wrong actions here count commands / confirms, plus navigations where gold is not navigate.
+
+| set | rules act acc before → after | rules wrong actions before → after |
+|---|---|---|
+| cls_mode | 0.350 → **0.886** | 0 → 0 |
+| cls_panel | 0.738 → **0.863** | 13 → **5** |
+| cls_offer | 0.625 → **0.719** | 0 → 0 |
+| cls_help | 0.550 → **0.629** | 7 → **1** |
+| cls_globe | 0.662 → 0.675 | 1 → 3 |
+| cls_mishear | 0.750 → 0.738 | 1 → 1 |
+| cls_chatter | 0.931 → 0.912 | 0 → 0 |
+| cls_echo | 0.844 → 0.844 | 9 → 9 |
+| test_real | 0.597 → 0.597 | 31 → 32 |
+| test_ear | 0.715 → 0.715 | 15 → 15 |
+
+- **Navigation classes gain 8–54 points.** The causes are navigation inside a longer turn, the panel and map pattern
+  fixes, and sound-alikes.
+- **The losses are about 2–3 turns each, mostly turns that replayed a more hallucinated decode of the same words.** For
+  example, "alright so" was heard as "alright so i'll see you in the next one", which then has 3 content words.
+
+### Data and models
+
+- **Data `ds_r7`:**
+  - train: 2,400 sessions, 224,705 steps;
+  - val: 200;
+  - test_clean, test_asr: 200 each;
+  - test_real: 86 sessions, 878 turns;
+  - each class set: 160 turns.
+- **Real Arc decodes with the hot lists:**
+  - 1,948 new, plus 2,649 round-6 train decodes reused (these carry no ear extras);
+  - rough WER: train 0.435, val 0.459, test 0.490;
+  - `ear_avail` is set on only 2 % of train steps.
+- **Models:**
+  - m: 82,468 params, best step 2,200;
+  - xl: 739,850 params, best step 1,800.
+- **numpy int8 step time:**
+  - p50 at rest: r4 s 0.15 ms, m 0.23 ms, xl 0.48 ms (xl p95 1.1 ms);
+  - under the shared machine load (load average 20–50): xl about 3 ms p50 in `export.py`;
+  - int8 vs float, max |dp|: m 0.024, xl 0.045;
+  - `runtime.LATENCY` and `/api/director/stats` report the step time.
+
+### Gate: FAIL, both candidates (`director_model/runs/2026-11-14-r7/report.md`)
+
+Guarded `on`: act accuracy / wrong actions, on the same regenerated sets for every column. Raw act is the model alone.
+
+| set | turns | rules | **shipped r4 s** | m | xl | raw act: shipped / m / xl |
+|---|---|---|---|---|---|---|
+| test_clean | 1979 | 0.802 / 126 | **0.806 / 126** | 0.804 / 120 | 0.808 / 129 | 0.925 / 0.935 / 0.945 |
+| test_asr | 1977 | 0.716 / 168 | **0.721 / 167** | 0.720 / 160 | 0.721 / 166 | 0.894 / 0.878 / 0.880 |
+| test_real | 878 | 0.597 / 70 | **0.601 / 69** | 0.598 / 68 | 0.598 / 67 | 0.838 / 0.799 / 0.802 |
+| test_ear | 200 | 0.715 / 20 | **0.715 / 19** | 0.705 / 22 | 0.715 / 19 | 0.720 / 0.715 / 0.790 |
+| test_h40 | 40 | 0.450 / 3 | **0.450 / 1** | 0.525 / 1 | 0.525 / 4 | 0.950 / 0.825 / 0.775 |
+| test_h40_asr | 40 | 0.400 / 4 | **0.400 / 3** | 0.450 / 3 | 0.475 / 4 | 0.900 / 0.825 / 0.750 |
+| test_q80 | 80 | 0.850 / 1 | **0.850 / 1** | 0.850 / 1 | 0.850 / 1 | 0.887 / 0.875 / 0.938 |
+| test_q80_asr | 80 | 0.812 / 0 | **0.812 / 0** | 0.812 / 0 | 0.812 / 0 | 0.812 / 0.912 / 0.938 |
+| test_gold | 19 | 0.789 / 3 | **0.789 / 3** | 0.789 / 2 | 0.789 / 3 | 0.842 / 0.895 / 0.789 |
+| cls_chatter | 160 | 0.912 / 0 | **0.912 / 0** | 0.912 / 0 | 0.975 / 0 | 0.438 / 0.812 / 0.950 |
+| cls_echo | 160 | 0.844 / 9 | **0.856 / 9** | 0.906 / 5 | 0.938 / 7 | 0.181 / 0.869 / 0.944 |
+| cls_offer | 160 | 0.719 / 0 | **0.719 / 0** | 0.719 / 0 | 0.719 / 0 | 0.000 / 0.900 / 0.794 |
+| cls_panel | 160 | 0.775 / 19 | **0.775 / 23** | 0.775 / 20 | 0.775 / 20 | 0.456 / 0.681 / 0.681 |
+| cls_help | 159 | 0.629 / 1 | **0.629 / 1** | 0.629 / 1 | 0.629 / 1 | 0.000 / 0.598 / 0.503 |
+| cls_mode | 158 | 0.886 / 0 | **0.886 / 0** | 0.886 / 0 | 0.886 / 0 | 0.000 / 0.430 / 0.392 |
+| cls_globe | 160 | 0.675 / 3 | **0.675 / 3** | 0.675 / 3 | 0.675 / 3 | 0.656 / 0.869 / 0.844 |
+| cls_mishear | 160 | 0.738 / 1 | **0.725 / 1** | 0.738 / 1 | 0.738 / 1 | 0.700 / 0.800 / 0.719 |
+| cls_roomtalk (new) | 160 | 0.756 / 1 | **0.812 / 1** | 0.800 / 1 | 0.781 / 1 | 0.369 / 0.719 / 0.713 |
+| **all sets** | | 429 wrong | **427 wrong, 4,991 right** | 408 wrong, 4,993 right | 426 wrong, 5,017 right | |
+
+The "rules" column in this table also counts navigation with the wrong intent, so it differs from the before / after
+table above.
+
+Fitted policies (val):
+
+| model | cmd | veto | ignore | ask | answer_ignore | nav |
+|---|---|---|---|---|---|---|
+| m | 0.95 | 0.9 | 0.8 | 0.9 | off | off |
+| xl | 0.98 | 0.98 | 0.95 | off | 0.7 | off |
+
+Why each candidate fails:
+
+- **m**
+  - test_ear: 22 wrong actions vs 20 for the rules; act accuracy 0.705 vs 0.715.
+  - cls_panel: 20 wrong vs 19 for the rules.
+  - cls_roomtalk regresses vs the shipped weights: 0.800 vs 0.812.
+- **xl**
+  - test_clean: 129 wrong vs 126 for the rules.
+  - test_h40: 4 wrong vs 3.
+  - cls_panel: 20 wrong vs 19.
+  - cls_roomtalk regresses vs the shipped weights: 0.781 vs 0.812.
+- **Both beat the shipped weights overall.**
+  - m: 19 fewer wrong actions and 2 more right.
+  - xl: 1 fewer wrong and 26 more right.
+  - Each still misses a per-set criterion by 1–3 turns.
+
+### What the round shows
+
+1. **This round's big wins are in the ear and the rules, and they ship whatever the model does.**
+   - Voice navigation improved: mode 0.35 → 0.89, help 0.55 → 0.63, offer 0.63 → 0.72.
+   - Panel wrong actions fell from 13 to 5.
+   - Keyword recall from the biased ear rose 6–13 points.
+   - The shipped r4 s weights ride on the better rules.
+2. **The nav head cannot beat the rules now.**
+   - When the rules navigate, they now pick the right intent 100 % of the time on offer / help / mode.
+   - The nav head picks the right intent on: offer 0.90, help 0.66, mode 0.43 (m). So `nav` fit to off.
+   - What the rules still miss are turns the ear destroyed: "go back to my seat" heard as "what do i have to do next
+     week" is routed to help. No text model recovers those.
+3. **xl is the best raw model, not the best guarded one.**
+   - Raw act is highest on test_clean, test_ear and q80.
+   - It is also the cleanest guarded model on chatter and echo (0.975 / 0.938).
+   - Its command fills cost wrong actions on test_clean and h40: "the crew feels sleepy and stuffy" → heaters +5.
+4. **Room talk.** The shipped r4 s weights already silence room talk better than the rules do (0.812 vs 0.756). The new
+   candidates come close. The one wrong action left is a real-looking order heard in room talk ("turn off the
+   greenhouse").
+
+### Next round
+
+- **In the ear, which needs Arc:** a no-speech / tail guard and a wider n-best for names. This is the biggest lever
+  left, for names and for false triggers.
+- **Train decodes:** re-decode all train decodes with the hot lists. Only 2 % of train steps carried the ear features
+  this round.
+- **xl:** retrain with the cost-sensitive command loss (`--fp-exec`). It is the best raw model, and its gate failures are
+  command fills.
+- **`test_log`:** from the first opted-in playtest.
