@@ -25,7 +25,7 @@ from playwright.sync_api import sync_playwright
 
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
-  localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'%s'}));
+  localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'%s', graphics:'%s'}));
   window.__hourMs = %s; }catch(e){}"""
 
 # What a kid sees: the Now card, its buttons, the glow, the clock, any tour / confirm, the progress strip.
@@ -40,6 +40,7 @@ LOOK = """() => {
   const card = document.querySelector('#card:not([hidden])');
   const cardBtns = card ? [...card.querySelectorAll('button.pill:not([disabled])')].filter(vis).map(b => b.textContent.trim()) : [];
   const debrief = document.querySelector('#mDebrief:not([hidden]) .mx-title');
+  const offer = [...document.querySelectorAll('.cb-offer-b')].filter(vis).map(b => b.textContent.trim());
   return { tour: tour ? (tour.querySelector('.t-text') || {}).textContent : null,
     now: vis(now) ? { title: (now.querySelector('.cb-now-title') || {}).textContent || '', text: (now.querySelector('#cbNowT') || {}).textContent || '',
       ack: ((now.querySelector('.cb-now-ack') || {}).textContent || '').trim(), meta: ((now.querySelector('.cb-now-meta') || {}).textContent || '').trim(),
@@ -47,7 +48,7 @@ LOOK = """() => {
     glow: glow.map(g => g.id || g.className.split(' ')[0]), glowClear: glow.some(clear),
     clock: (document.querySelector('#cbClock') || {}).textContent || '', held: (document.querySelector('#cbHeld') || {}).textContent || '',
     prog: ((document.querySelector('#cbProg') || {}).textContent || '').replace(/\\s+/g, ' ').trim(),
-    capcom: cardBtns, debrief: debrief ? debrief.textContent : null,
+    capcom: cardBtns, offer, debrief: debrief ? debrief.textContent : null,
     moment: (() => { const m = document.querySelector('.cb-moment:not([hidden]) b'); return m ? m.textContent : null; })() };
 }"""
 
@@ -67,7 +68,7 @@ def click(pg, sel, idx=0):
         return "dom-click (covered)"
 
 
-def play(base, level, size, shots, fast_ms, real_first_shift, max_s):
+def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="high"):
     vw, vh = size
     log, seen_keys, shots_taken = [], set(), 0
     t0 = time.time()
@@ -75,7 +76,7 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s):
         b = p.chromium.launch(executable_path=chromium(), args=["--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
         pg = b.new_page(viewport={"width": vw, "height": vh})
         pg.set_default_timeout(120000)
-        pg.add_init_script(SEED % (level, "0" if real_first_shift else fast_ms))
+        pg.add_init_script(SEED % (level, graphics, "0" if real_first_shift else fast_ms))
         pg.goto(base)
         pg.wait_for_selector("#mStart")
         pg.wait_for_timeout(1500)
@@ -112,6 +113,14 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s):
                 log.append({"t": round(time.time() - t0), "moment": "confirm", "should": "Answer CAPCOM: Yes", "obvious": True,
                             "action": click(pg, "#card button.pill", 0), "reacted": True})
                 pg.wait_for_timeout(600)
+                continue
+            if v["offer"]:   # Cadet: CAPCOM's offer opened its panel with two big buttons; take the lit one
+                log.append({"t": round(time.time() - t0), "clock": v["clock"], "task": "CAPCOM offer", "should": " / ".join(v["offer"]),
+                            "buttons": v["offer"], "obvious": True, "action": f"{click(pg, '.cb-offer-b', 0)}: {v['offer'][0]}"})
+                pg.wait_for_timeout(900)
+                a2 = pg.evaluate(LOOK)
+                log[-1]["reacted"] = not a2["offer"] or a2["clock"] != v["clock"]
+                log[-1]["next"] = (a2["now"] or {}).get("text", "")
                 continue
             n = v["now"]
             hour = v["clock"]
@@ -150,6 +159,12 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s):
             if after["moment"]:
                 shot("moment-" + after["moment"].lower().replace(" ", "-"))
             last_key = key
+            same = [e for e in log[-6:] if e.get("action") == entry["action"] and e.get("should") == entry["should"]]
+            if len(same) >= 6:   # the same press six times and nothing moved on: the kid is stuck here
+                log.append({"t": round(time.time() - t0), "moment": "STUCK", "obvious": False, "reacted": False,
+                            "should": entry["should"], "action": "gave up", "clock": hour})
+                shot("stuck")
+                break
         else:
             log.append({"moment": "timeout", "obvious": False, "reacted": False, "should": f"mission not finished in {max_s}s"})
         b.close()
@@ -173,6 +188,7 @@ if __name__ == "__main__":
     ap.add_argument("--fast-ms", type=int, default=900, help="ms per sim hour after the first shift (dev hook)")
     ap.add_argument("--real-first-shift", action="store_true", help="time the first shift on the shipped clock")
     ap.add_argument("--max-s", type=int, default=900)
+    ap.add_argument("--graphics", default="high", choices=["high", "low"], help="Settings -> graphics (low: a slow PC)")
     a = ap.parse_args()
     for d in (a.shots, a.log):
         if d:
@@ -180,7 +196,7 @@ if __name__ == "__main__":
     ok = True
     for sz in a.sizes.split(","):
         size = tuple(map(int, sz.split("x")))
-        log, fst = play(a.base, a.level, size, a.shots, a.fast_ms, a.real_first_shift, a.max_s)
+        log, fst = play(a.base, a.level, size, a.shots, a.fast_ms, a.real_first_shift, a.max_s, a.graphics)
         s = summary(log)
         print(f"== {a.level} {sz}: {s['actions']} actions, {s['obvious']} obvious, {s['reacted']} reacted, finished={s['finished']}"
               + (f", first shift took {fst}s of real time" if fst else ""))

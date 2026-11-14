@@ -70,6 +70,10 @@ function taskCard(s, t, clock) {
 
 export function nowCard(s, clock = null) {
   if (!s || s.over) return null;
+  // a risky order waits for a yes / no (the sim's `pending`): that is the job right now, wherever the CAPCOM card is
+  if (s.pending) return { key: "confirm", title: NOW.confirmTitle, text: NOW.confirm, target: "task", panel: null, level: "caution",
+    progress: null, left_h: null, lesson: null, readouts: [], choice: true,
+    buttons: [{ label: "Yes", cmd: { type: "confirm" } }, { label: "No", cmd: { type: "cancel" } }] };
   if (s.task) return taskCard(s, s.task, clock);
   const o = legacy(s, clock);
   if (!o) return null;

@@ -76,6 +76,12 @@ test("task card: the step, its progress, the countdown, the lesson and the butto
   assert.equal(w.target, "skip"); assert.match(w.text, /7 hours/); assert.equal(w.buttons[0].clock, "skip");
 });
 
+test("task card: a pending yes / no is the job (never a stale step under it)", () => {
+  const c = nowCard(st({ pending: { type: "dispatch", task: "collect_ice" }, task: { id: "ice_run-2", kind: "ice_run", title: "Ice run", steps: [], done_count: 0, total: 3,
+    step: { id: "send", kind: "order", label: "Send the rover for ice", ready: true, target: "rover:collect_ice", cmd: { type: "dispatch" } } } }));
+  assert.equal(c.key, "confirm"); assert.deepEqual(c.buttons.map(b => b.cmd.type), ["confirm", "cancel"]);
+});
+
 test("task card: always reflects reality, and says so when nothing is urgent", () => {
   const steady = nowCard(st(), { started: true, running: true, warp: 1 });
   assert.equal(steady.key, "steady"); assert.equal(steady.text, S.NOW.steady); assert.equal(steady.target, "warp");
