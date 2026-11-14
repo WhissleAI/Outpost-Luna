@@ -98,7 +98,7 @@ desktop-mac:     ## Desktop: build the macOS arm64 .dmg (unsigned / ad-hoc) -> d
 	cd desktop && npm ci --no-audit --no-fund && npx electron-builder --mac dmg --arm64
 
 desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev)
-	cd desktop && npx electron .
+	cd desktop && node node_modules/electron/install.js && npx electron .
 
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist

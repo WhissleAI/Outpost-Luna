@@ -54,7 +54,10 @@ make test       # model_server + backend tests
 make build      # frontend → frontend/dist, then served by the backend at http://localhost:8100
 make health     # check all three
 make models | backend | frontend   # run one part on its own
+make desktop-mac   # the offline desktop app (Electron + embedded Python + every model) -> desktop/dist/*.dmg
 ```
+
+The desktop app (macOS now, Windows next) runs with no internet: see [docs/DESKTOP.md](docs/DESKTOP.md).
 
 Requirements: uv, Node 20+, macOS for the Arc Tagger build that is used now. By default it is Head Start's
 `libarctag.dylib` and `models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. No cloud LLM:
