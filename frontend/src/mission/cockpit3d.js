@@ -224,6 +224,12 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     /** Mark a panel as the one a lean-in would open (null clears). */
     highlight(id) { hl = id || null; Object.entries(objs).forEach(([k, P]) => P.el.classList.toggle("is-hl", k === hl)); },
     get highlighted() { return hl; },
-    resize, dispose() { running = false; cancelAnimationFrame(raf); ro.disconnect(); renderer.dispose(); pmrem.dispose(); renderer.domElement.remove(); cssR.domElement.remove(); },
+    resize, dispose() {
+      running = false; cancelAnimationFrame(raf); ro.disconnect();
+      // [qa] free the GPU side too: geometries, materials, their textures, the environment map and the context itself
+      scene.traverse(o => { if (o.geometry) o.geometry.dispose(); [].concat(o.material || []).forEach(m => { Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); });
+      envTex.dispose(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss();
+      renderer.domElement.remove(); cssR.domElement.remove();
+    },
   };
 }

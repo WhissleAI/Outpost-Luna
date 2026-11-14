@@ -399,8 +399,10 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     W = host.clientWidth || 1; H = host.clientHeight || 1;
     renderer.setSize(W, H, false); composer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); csm.updateFrustums();
   }
-  new ResizeObserver(resize).observe(host); resize();
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else if (S.visible && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); } });
+  const ro = new ResizeObserver(resize); ro.observe(host); resize();
+  let disposed = false;   // [qa] a dispose() during a tile load must not start the render loop afterwards
+  const onVis = () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else if (S.visible && !raf && !disposed) { last = performance.now(); raf = requestAnimationFrame(frame); } };
+  document.addEventListener("visibilitychange", onVis);
 
   const api = {
     get view() { return S.view; },
@@ -411,6 +413,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
       const prevCam = S.cam && S.visible ? S.cam : null;
       S.view = v; S.visible = true; host.classList.add("is-surface");
       if (S.loading) await S.loading;
+      if (disposed || !S.visible || S.view !== v) return;   // [qa] hidden, disposed or re-aimed while the tiles loaded
       if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
       if (from === "orbit" || !prevCam) {
         if (v === "site" && !reduced()) { S.t0 = performance.now(); flyTo(descentStart(), 7000); }
@@ -443,7 +446,11 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     get fps() { const f = S.frames; return f.length > 1 ? Math.round((f.length - 1) / ((f[f.length - 1] - f[0]) / 1000)) : 0; },
     get earthAbove() { return S.earthEl > 0; },
     get debug() { return { S, camera, terrain, sun, earthshine, hab, rv, renderer }; },
-    dispose() { cancelAnimationFrame(raf); renderer.dispose(); canvas.remove(); marks.remove(); },
+    dispose() {   // [qa] stop everything this view started, and give the GPU context back
+      disposed = true; S.visible = false; cancelAnimationFrame(raf); raf = 0; ro.disconnect(); document.removeEventListener("visibilitychange", onVis);
+      try { csm.dispose(); composer.dispose(); } catch (e) { /* already gone */ }
+      renderer.dispose(); renderer.forceContextLoss(); canvas.remove(); marks.remove();
+    },
   };
   return api;
 }

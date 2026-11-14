@@ -1,4 +1,4 @@
-"""Story and onboarding words in the hands-free router (docs/STORY.md): "what do I do?" (help), the cabin tour
+"""Story and onboarding words in the hands-free router (docs/STORY.md): "what do I do?" (the a11y help path), the cabin tour
 ("show me around", "next", "skip tour"), and that none of them leak into lessons or reach the mission NLU."""
 import pytest
 
@@ -22,14 +22,17 @@ def nav(text, c):
 @pytest.mark.parametrize("text", ["what do I do?", "What do I do now", "help", "I'm lost", "what do I do next", "what should I do",
                                   "what's my job"])
 @pytest.mark.parametrize("screen", ["cabin", "brief", "debrief", "map", "patch", "library"])
-def test_help_is_a_nav_outside_lessons(text, screen):
-    assert nav(text, ctx(screen))[0] == "help"
+def test_help_is_one_path_everywhere(text, screen):
+    # one help path (rc/2): the a11y "help" command -> window.__outpost.help, which each screen answers (the cabin with
+    # its objective, the picker / debrief / library with their lines, the Academy with guidance's hint ladder)
+    assert nav(text, ctx(screen)) == ("a11y", None)
 
 
 @pytest.mark.parametrize("screen,extra", [("lesson", {"step_type": "choice", "step_options": ["Near side", "Far side"]}),
                                           ("ride", {"step_type": "command"}), ("lesson_done", {"offer": "next_step"})])
-def test_help_never_takes_a_lesson_turn(screen, extra):
-    assert nav("what do I do", ctx(screen, **extra))[0] != "help"
+def test_help_in_a_lesson_reaches_the_guidance_ladder(screen, extra):
+    assert nav("what do I do", ctx(screen, **extra)) == ("a11y", None)
+    assert nav("I'm lost", ctx(screen, **extra)) == ("a11y", None)
 
 
 def test_what_can_i_do_stays_on_the_a11y_path():

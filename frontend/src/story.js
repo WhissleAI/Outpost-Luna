@@ -19,6 +19,9 @@ export const PRETEND_TECH_TIP = "Made up for the game. Real crews don't have thi
 /** The May 2024 storm, told truthfully: Earth saw a magnetic storm (auroras); the Moon's hazard is the particles. */
 export const STORM = {
   name: "Solar particle storm",
+  /** QA-27: a storm with few particles (sep: false) is named by what it is at the Moon */
+  weak: "Storm at Earth",
+  weakText: "Few particles here",
   may2024: "Based on the real May 2024 storm. It gave Earth huge auroras.",
 };
 
@@ -112,8 +115,9 @@ export const NOW = {
   label: "Now",
   firstShift: "Set power, then End shift.",
   stormHit: "Storm hitting. Get the crew into the shelter.",
+  weakStorm: "Storm at Earth, few particles here. Keep working.",
   sheltered: "Crew sheltered. End shift to ride out the storm.",
-  warning: h => (h != null ? `Storm in about ${h} hours. Get ready: shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
+  warning: h => (h != null ? `Storm forecast: about ${h} hours to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
   lowPower: "Battery low. Turn on night mode, or cut a load.",
   lowAir: "Air is low. Send the rover for ice.",
   roverDark: "Rover out. Bring it home before dark.",
@@ -294,8 +298,13 @@ export const DEBRIEF = {
   endLost: "The mission ended early.",
   /** The one clear choice at the end (the primary button) and its spoken offer. */
   choiceAgain: "Fly again",
-  choiceNew: "New site",
-  resume: "Back to the cabin",
+  choiceNew: "Pick a new site",
+  resume: "Resume mission",
+  /** QA-26: leaving a paused mission asks first */
+  wipeAsk: "Start over? This mission ends, and you begin again at shift 1.",
+  wipeYes: "Start over",
+  wipeNo: "Keep my mission",
   tryDefault: "Next time, watch the warning lights and act early.",
   tryNewSite: "Next, try a site with a long night, like Malapert.",
+  gradeOver: (cs, g, pts) => `Grade ${g}, ${pts} points. Let's learn from it, ${cs}.`,   // [qa] a failed mission isn't "nice flying"
 };

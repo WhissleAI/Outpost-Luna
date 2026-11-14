@@ -33,3 +33,8 @@ test("prefs: 'Help improve the voice guide' is off by default and only an explic
   assert.equal(normalizePrefs({ improve: 1 }).improve, false);
   assert.equal(normalizePrefs({ improve: true }).improve, true);
 });
+
+// [qa] QA-17: every per-cadet store is in the profile (camera & gestures, the mission tier), so switching cadets swaps them.
+test("prefs: a cadet profile also carries the gesture settings and the mission tier", () => {
+  for (const k of ["outpost-gestures", "outpost-tier"]) assert.ok(PROFILE_KEYS.includes(k), k);
+});

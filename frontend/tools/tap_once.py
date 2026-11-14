@@ -2,7 +2,8 @@
 twice, in two voices). Real mouse taps on the globe at a place's screen position; every line the floor starts playing is
 recorded (floor "playback" start events, with the voice). Asserts:
   - a lesson tap step (Know your Moon: find Apollo 11's landing site): exactly one line per tap, wrong or right;
-  - a lesson route step (Lessons from Apollo: Orientale, then Ohm): the leg taps say nothing, the last tap one line;
+  - a lesson route step (Lessons from Apollo: Orientale, then Ohm): every stop says exactly ONE short line (guidance's
+    per-stop feedback, "Yes, Orientale. Now Ohm."), the last one a short CAPCOM ack plus at most the crew clip;
   - free explore: a tap on a named place in the Library says one line; a tap on the Flight School map says nothing;
   - no line is ever spoken twice for one tap, in any voice.
 
@@ -77,8 +78,16 @@ def run(base):
             quiet(300)
         frame = pg.evaluate("window.__outpost.screenFrame()")
         check(frame.get("step_type") == "route", f"on the route step ({frame})")
-        once(tap_place("orientale"), 0, "route step, first stop: the leg is drawn, nothing said")
-        once(tap_place("ohm"), 1, "route step, last stop: one line")
+        # guidance's per-stop feedback is the design (docs/PLAYTEST.md): one short line per stop, never two, one voice
+        lines = tap_place("orientale")
+        once(lines, 1, "route step, first stop: one short line")
+        check(all(ln["voice"] == "guide" for ln in lines) and all(len(ln["text"].split()) <= 8 for ln in lines),
+              f"route step, first stop: one voice, a short line {lines}")
+        # the last stop: CAPCOM acknowledges ("Roger.") and the step's "after" crew clip tells it, never both telling it
+        lines = tap_place("ohm", settle=6000)
+        guide = [ln for ln in lines if ln["voice"] == "guide"]
+        check(len(guide) == 1 and len(guide[0]["text"].split()) <= 3 and len(lines) <= 2,
+              f"route step, last stop: one short CAPCOM ack (+ the crew clip), no paraphrase twice {lines}")
 
         pg.click("#libraryBtn")
         pg.wait_for_function("document.body.dataset.mode === 'cadet'", timeout=10000)

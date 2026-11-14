@@ -128,7 +128,7 @@ export function createCabin(root, o = {}) {
         </div>
         <div class="cb-plate cb-ped">
           <button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>
-          <button type="button" class="cb-db" id="cbDb">Finish mission</button>
+          <button type="button" class="cb-db" id="cbDb">See debrief</button>
         </div>
       </div>
       <div class="cb-grp" data-panel="comm" role="group" aria-label="Comm panel">
@@ -147,7 +147,7 @@ export function createCabin(root, o = {}) {
   const glassEl = q(".cb-glass");
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
-  let c3 = null, qualityOff = () => {}, ownTv = null;
+  let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
   if (o.terrain && o.site) {
     const tvHost = document.createElement("div"); tvHost.className = "tv"; glassEl.prepend(tvHost);
     ownTv = createTerrainView(tvHost, { reduced: () => document.documentElement.dataset.motion === "reduce" });
@@ -174,7 +174,9 @@ export function createCabin(root, o = {}) {
       const html = document.documentElement, applyQ = () => c3 && c3.setQuality(html.dataset.graphics === "low" ? "low" : "high"); applyQ();
       const mo = new MutationObserver(applyQ); mo.observe(html, { attributes: true, attributeFilter: ["data-graphics"] }); qualityOff = () => mo.disconnect();
       backEl.onclick = () => c3.back();
-      root.addEventListener("keydown", e => { if (e.key === "Escape" && c3.panel) { e.preventDefault(); c3.back(); } });
+      // [qa] root (#mCabin) outlives this cabin: the listener is removed in dispose(), or every rebuilt cabin stays alive
+      const onEsc = e => { if (e.key === "Escape" && c3 && c3.panel) { e.preventDefault(); c3.back(); } };
+      root.addEventListener("keydown", onEsc); escOff = () => root.removeEventListener("keydown", onEsc);
       Object.entries(panelEls).forEach(([id, el]) => {
         el.classList.add("c3-panel"); el.dataset.label = (PANELS.find(p => p[0] === id) || [])[1] || "";
         // the displays: a click on DU1 opens the Power panel (DU1 + the power split); elsewhere it opens all three
@@ -235,12 +237,12 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50;
     const sunCh = e.next_sun_change_h != null ? row(e.in_sun ? "Sunset in" : "Sunrise in", `${Math.round(e.next_sun_change_h)} h`, e.in_sun && e.next_sun_change_h <= 6 ? "is-warn" : "") : "";
     if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
-      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
+      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}${k === "shields" || k === "greenhouse" ? ` ${pretend()}` : ""}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
       ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
       return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
-      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row("Shields", Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
+      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(`Shields ${pretend()}`, Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
     return `${big("Comms", e.earth_visible ? "Open" : "Closed", "", false)}
       ${row(e.earth_visible ? "Radio delay" : "Next window", e.earth_visible ? `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way` : `${e.next_comm_window_h ?? "?"} h`)}
       <ol class="du-log">${logLines.slice(-3).map(l => `<li><b>${esc(l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM")}</b> ${esc(l.text)}</li>`).join("")}</ol>`;
@@ -331,7 +333,7 @@ export function createCabin(root, o = {}) {
     if (!s) return; prev = st; st = s;
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
-    sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible);
+    sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible, e.in_sun);
     q("#cbClock").innerHTML = `<b>Day ${s.day} <span>· Shift ${s.shift}</span></b><small>${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
     paintDus(); paintSwitches(); paintRover();
     const sh = Math.round(s.loads.shields || 0), kn = q("#cbKnob");
@@ -377,26 +379,33 @@ export function createCabin(root, o = {}) {
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
     const wn = stormWarning(st);
-    const a = stm ? { level: "warn", icon: "storm", title: "Solar particle storm", link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
-        text: [stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
-        actions: st.shelter ? [] : [["shelter", "Shelter"], ["shields", "Shields 40"]] }
+    const weak = !!stm && stm.sep === false;   // QA-27: few particles reach the Moon
+    const a = stm ? { level: weak ? "caution" : "warn", icon: "storm", title: weak ? (story.STORM.weak || "Storm at Earth") : story.STORM.name, link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
+        text: [weak ? story.STORM.weakText : "", stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
+        actions: st.shelter || weak ? [] : [["shelter", "Shelter the crew"], ["shields", "Set shields to 40", true]] }
       : wn ? { level: "caution", icon: "storm", title: wn.word ? `Storm warning · ${wn.word}` : "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
-        text: [wn.lead != null ? `Arrives in ~${wn.lead} h` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
-        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Shields 40"]] }
+        text: [wn.lead != null ? `Forecast ~${wn.lead} h (game)` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
+        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Set shields to 40", true]] }
       : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
+    const hole = root.querySelector(".cb-hole"); if (hole) hole.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
     el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
-      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${n}</button>`).join("")}</span>` : ""}`;
+      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n, fake], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${esc(n)}${fake ? ` ${pretend()}` : ""}</button>`).join("")}</span>` : ""}`;
+    // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
+    requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
       : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
   }
 
-  function sky(sunDeg, earthDeg, up) {
-    q("#cbSky").innerHTML = `<span><em>Sun</em> ${deg(sunDeg)}</span><span><em>Earth</em> ${earthDeg == null ? (up ? "up" : "down") : up ? deg(earthDeg) : "below"}</span>`;
+  /** QA-24: the sim's "in sun" (a ridge-top site stays lit with the Sun a degree under the flat horizon) decides the
+   *  word; the elevation stays in the tooltip for the curious. */
+  function sky(sunDeg, earthDeg, up, inSun) {
+    const lit = inSun == null ? sunDeg > 0 : !!inSun;
+    q("#cbSky").innerHTML = `<span title="Sun elevation ${deg(sunDeg)}"><em>Sun</em> ${lit ? "up" : "down"}</span><span><em>Earth</em> ${earthDeg == null ? (up ? "up" : "down") : up ? deg(earthDeg) : "below"}</span>`;
   }
-  function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible); }
+  function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible, f.in_sun != null ? f.in_sun : st.env.in_sun); }
   /** Radio log (COMM page) + the fallback caption line (the caption bar takes over when captions are on). */
   function log(who, text) {
     if (!text) return;
@@ -420,7 +429,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { if (c3) c3.dispose(); qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
+    dispose() { escOff(); escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
     setWindows(w) { wins = w || null; if (st) paintInfo(st); },
@@ -445,9 +454,9 @@ export function createCabin(root, o = {}) {
     /** Progressive disclosure (Cadet): the panel the tour or the objective is about stays bright, the rest dim. A panel
      *  with an alarm is never dimmed. null: everything bright. */
     focus(panelId) {
-      const home = panelId === "power" ? "displays" : panelId;
-      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", !!home);
-      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", !!home && n.dataset.panel === home));
+      const ids = (Array.isArray(panelId) ? panelId : [panelId]).filter(Boolean).map(id => (id === "power" ? "displays" : id));
+      const cab = root.querySelector(".cb"); if (cab) cab.classList.toggle("is-focus", ids.length > 0);
+      root.querySelectorAll("[data-panel]").forEach(n => n.classList.toggle("is-focus", ids.includes(n.dataset.panel)));
     },
     /** The "what now" strip on the window: {text, level} or null. */
     objective(o) {

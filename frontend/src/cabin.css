@@ -249,6 +249,10 @@ html:not([data-captions="off"]) .cb-capwrap:has(.caption-bar:not([hidden])) .cb-
   box-shadow:inset 0 0 0 1px var(--cb-line)}
 .cb-askslot .listen{flex:0 1 auto;height:auto;padding:0 var(--space-3);border:0;border-right:1px solid var(--cb-line);gap:var(--space-2);max-width:40%}
 .cb-askslot .listen-state{min-width:0;font-family:var(--font-mono);color:var(--cb-text-2)}
+/* QA-22: the state colours of the light dock (.askbar.is-listening .listen-state = --color-text, dark) out-rank the
+   rule above and put dark green on the dark plate: in the cabin the state word is always light (phosphor when hearing) */
+.cb-askslot .askbar[class] .listen-state,.cb-askslot .askbar[class] .listen-state:empty::before{color:var(--color-on-space)}
+.cb-askslot .askbar.is-hearing[class] .listen-state,.cb-askslot .askbar.is-hearing[class] .listen-state:empty::before{color:var(--color-phosphor)}
 .cb-askslot .live-words,.cb-askslot .hint,.cb-askslot .cs-tag{display:none}
 .cb-askslot .vs-grip{color:var(--cb-text-2)}
 .cb-askslot .ask{flex:1;min-width:0;padding:var(--space-1) var(--space-1) var(--space-1) var(--space-3);gap:var(--space-1)}
@@ -471,13 +475,21 @@ html[data-motion="reduce"] .is-point{animation:none}
 /* Cadet: one panel in focus, the rest dim (alarms are never dimmed) */
 .cb.is-focus .c3-panel:not(.is-focus):not([data-alarm]):not(.is-open){opacity:.42;filter:saturate(.5)}
 /* seat view: big numbers and the controls only; the detail rows, routes, timelines and tags wait for an open panel */
-.c3[data-panel="seat"] .cb-info,.c3[data-panel="seat"] .cb-route,.c3[data-panel="seat"] .cb-tl,.c3[data-panel="seat"] .cb-fc,
-.c3[data-panel="seat"] .cb-obj,.c3[data-panel="seat"] .du-row,.c3[data-panel="seat"] .du-loads,.c3[data-panel="seat"] .cb-keys,
-.c3[data-panel="seat"] .cb-pretend,.c3[data-panel="seat"] .cb-swst,.c3[data-panel="seat"] .cb-cw>h3,.c3[data-panel="seat"] .cb-db{display:none!important}
+/* (the panel the tour or the objective points at keeps its detail: that is the one to read now) */
+.c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-swst,.cb-db),
+.c3[data-panel="seat"] .cb-cw>h3{display:none!important}
 .c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.35}
 .c3[data-panel="seat"] .cb-screen{display:flex;flex-direction:column;justify-content:center;gap:var(--space-3)}
 .c3[data-panel="seat"] .du-head b{font-size:64px}
 .c3[data-panel="seat"] .du-head span{font-size:var(--text-md)}
+
+/* QA-23: with the alert strip up, the clock / views row, sky and rover chip sit below its real height */
+/* no transition on top here: the window HUD re-lays out every frame, and a stalled transition left the row under the strip */
+.cb-hole>.cb-top{transition:none}
+.cb-hole.has-alert>.cb-top{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
+.cb-hole.has-alert>.cb-sky,.cb-hole.has-alert>.cb-rover{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2) + 56px)}
+.cb-glass.has-alert .cb-top{top:calc(var(--space-4) + var(--alert-h, var(--control-md)) + var(--space-2))}
+.cb-al-b .cb-pretend{margin-left:4px}
 
 /* the tour card: one beat, one Next, a quiet Skip */
 .m-tour{position:absolute;z-index:30;left:50%;transform:translateX(-50%);width:min(520px,calc(100% - 32px));box-sizing:border-box;

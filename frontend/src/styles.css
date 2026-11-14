@@ -147,7 +147,7 @@ body:not([data-mode="cadet"]) .ghosts{display:none}
   background:var(--color-overlay);border:1px solid var(--color-overlay-line);color:var(--color-text-2);-webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay)}
 .chips button:hover{color:var(--color-text)}
 .chips .nudge{color:var(--color-text)}
-.chips .nudge[hidden]{display:none}
+.chips .nudge[hidden],body:not([data-mode="cadet"]) .chips .nudge{display:none}
 body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 
 .dock{display:flex;flex-direction:column;border-radius:var(--radius-xl);overflow:hidden;
@@ -165,7 +165,7 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 /* A floating bar never changes its own box (voicebar.js moves it only on drags, screen changes and resizes): the
    caption floats out of flow, growing upward from a bottom bar (downward from a top one), and the chips row does too. */
 .askbar.is-floating .dock{overflow:visible}
-.askbar.is-floating .dock .caption-bar{position:absolute;left:0;right:0;bottom:calc(100% + var(--space-2));padding:var(--space-3) var(--space-5);
+.askbar.is-floating .dock .caption-bar{position:absolute;left:var(--cap-l,0px);right:var(--cap-r,0px);bottom:calc(100% + var(--space-2));padding:var(--space-3) var(--space-5);
   border-radius:var(--radius-lg);background:var(--color-overlay);border:1px solid var(--color-overlay-line);box-shadow:var(--shadow-3);
   -webkit-backdrop-filter:var(--blur-overlay);backdrop-filter:var(--blur-overlay);pointer-events:none}
 .askbar.is-floating[data-anchor^="t"] .dock .caption-bar{bottom:auto;top:calc(100% + var(--space-2));padding:var(--space-3) var(--space-5)}
@@ -177,8 +177,13 @@ body:not([data-mode="cadet"]) .chips>button:not(.nudge){display:none}
 .mpanel[hidden],.m-debrief[hidden],.m-banner[hidden],.card[hidden]{display:none!important}
 body:not([data-mode="academy"]) #aPanel,body:not([data-mode="academy"]) #aRideCabin,body:not([data-mode="mission"]) #mPanel,
 body:not([data-mode="mission"]) #mDebrief,body:not([data-mode="mission"]) #mBanner{display:none!important}
-.stage{--strip-h:var(--strip-live,62px)}
-.stage[data-vbar^="t"]{--strip-h:0px}
+/* --strip-h: the bar (lesson / ride cards keep clear of it; the caption narrows to the span beside them, voicebar.js
+   fitCaption). --strip-cap: the bar plus a FIXED reserve for the caption floating above it, for centred cards (Next up,
+   the patch). Fixed, so a caption coming and going never re-flows a card (that loop was the bar jitter), yet it
+   never covers a card (the vocab card at 1280x720). No captions: no reserve. */
+.stage{--cap-reserve:84px;--strip-h:var(--strip-live,62px);--strip-cap:calc(var(--strip-h) + var(--cap-reserve))}
+html[data-captions="off"] .stage{--cap-reserve:0px}
+.stage[data-vbar^="t"]{--strip-h:0px;--strip-cap:0px}
 .vs-grip{flex:none;width:20px;height:44px;display:grid;place-items:center;border:0;border-radius:var(--radius-sm);background:none;color:var(--color-text-3);cursor:grab;touch-action:none}
 .vs-grip svg{width:18px;height:18px}
 .vs-grip:hover{color:var(--color-text-2);background:var(--color-surface-2)}
@@ -393,3 +398,6 @@ body:not([data-mode="cadet"]) .mcard{display:none}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .askbar.is-hearing .orb i,.askbar.is-speaking .orb i{height:12px}
 }
+
+/* [qa] QA-53: no "Hold to talk" while the voice is starting or off */
+.askbar.is-warming .hint,.askbar.is-voiceoff .hint{visibility:hidden}

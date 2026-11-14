@@ -220,6 +220,7 @@ export function nearSame(a, b) {
   return ab / A.size >= 0.85 && ab / B.size >= 0.85;
 }
 
+const levels = () => (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1, alarms: 1 };
 export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   const subs = {};
   const emit = (ev, data) => (subs[ev] || []).slice().forEach(fn => { try { fn(data); } catch (e) { console.error(e); } });
@@ -300,7 +301,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     if (tok.cancelled) return "stop";
     return new Promise(res => {
       const u = new SpeechSynthesisUtterance(text), v = pickVoice(), p = VOICE_PARAMS[voice] || VOICE_PARAMS.guide;
-      if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch;
+      if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch; u.volume = Math.min(1, levels().master);   // [qa] Volume applies to the browser voice too
       u.onboundary = e => { if (e.name === "word" || e.name == null) emit("boundary", { id: tok.id, charIndex: e.charIndex, text }); };   // [a11y]
       let done = false;
       const fin = r => { if (done) return; done = true; clearTimeout(cap); clearInterval(keep); tok.stop = null; res(r); };
@@ -380,7 +381,11 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       recompute();
       emit("sentence", { id: tok.id, index: i, text: sentences[i], voice, words: got ? got.words : "", engine: got ? got.engine : "browser", audio: url ? el() : null, speed });
       let r = url ? await playUrl(url, tok) : "error";
-      if (url) URL.revokeObjectURL(url);
+      if (url) {
+        // stopped / failed mid-load: detach the element first, or it keeps fetching a revoked blob (a console error)
+        if (r !== "end" && guideEl && guideEl.src === url) { try { guideEl.removeAttribute("src"); guideEl.load(); } catch (e) { /* */ } }
+        URL.revokeObjectURL(url);
+      }
       if (r === "error" && !tok.cancelled) r = await speakSynth(sentences[i], voice, tok);
       if (r === "stop" || tok.cancelled) break;
       if (tok.yield) { tok.cancelled = true; break; }                   // a critical alert takes the floor after this sentence

@@ -56,14 +56,14 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
   padding:var(--space-2) var(--space-4);border-radius:var(--radius-lg);background:var(--color-overlay);border:1px solid var(--color-overlay-line);box-shadow:var(--shadow-2);
   font-size:var(--text-sm);color:var(--color-text);animation:fade var(--dur-slow) var(--ease-out)}
 .mp-beat b{font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-2)}
-.mp-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--gut) + var(--strip-h, 62px) + var(--space-3));width:min(640px,calc(100% - 2 * var(--gut)));
+.mp-card{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--gut) + var(--strip-cap, 62px) + var(--space-3));width:min(640px,calc(100% - 2 * var(--gut)));
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-4);padding:var(--space-4) var(--space-4) var(--space-4) var(--space-4);
   border-radius:var(--radius-xl);transition:bottom var(--dur-base) var(--ease-out);animation:riseX var(--dur-slow) var(--ease-out)}
 @keyframes riseX{from{opacity:0;transform:translate(-50%,8px)}}
 .mp-patch{display:grid;place-items:center}
 .mp-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
 .mp-copy h2{font-size:var(--text-lg);font-weight:var(--weight-bold)}
-.mp-sub{color:var(--color-text-2);font-size:var(--text-sm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-sub{color:var(--color-text-2);font-size:var(--text-sm);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}   /* QA-58: the blurb wraps to 2 lines, never cut mid-word */
 .mp-card .btn-primary{min-width:148px}
 .mp-credit{position:absolute;left:var(--gut);bottom:var(--gut);max-width:280px;text-align:left;font-size:var(--text-xs);color:var(--color-on-space-2);pointer-events:none!important}
 
@@ -211,7 +211,7 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .g-tapdot.is-shown{background:#1E7A4C}
 
 /* ---------- patch earned: a centred glass card over the Moon ---------- */
-.apanel.is-badge{left:50%;top:calc((100% - var(--strip-h, 62px) - var(--gut)) / 2);transform:translate(-50%,-50%);width:min(400px,calc(100% - 2 * var(--gut)));
+.apanel.is-badge{left:50%;top:calc((100% - var(--strip-cap, 62px) - var(--gut)) / 2);transform:translate(-50%,-50%);width:min(400px,calc(100% - 2 * var(--gut)));
   border-radius:var(--radius-xl);animation:fade var(--dur-slow) var(--ease-out)}
 .a-badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--space-2);padding:var(--space-6) var(--space-5) var(--space-5)}
 .a-bigpatch{margin-bottom:var(--space-3);animation:stamp 600ms cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 12px 28px rgba(0,0,0,.35))}
@@ -245,3 +245,69 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
   .a-body{gap:var(--space-3)}
 }
 @media (prefers-reduced-motion:reduce){.pin.is-next .pin-badge,.a-bigpatch{animation:none}}
+
+/* ---- guidance (academy/guide.js, docs/PLAYTEST.md): marks on the Moon, the "do this" line, the hint ladder ---- */
+.guide{position:absolute;inset:0;z-index:var(--z-overlay);pointer-events:none;overflow:hidden}
+.gd-mark{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;--r:24px;--gd:#7FB2FF}
+.gd-mark.is-gold{--gd:#F2C14E}
+.gd-ring{position:absolute;left:calc(-1 * var(--r));top:calc(-1 * var(--r));width:calc(2 * var(--r));height:calc(2 * var(--r));border-radius:50%;
+  border:3px solid var(--gd);box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 18px var(--gd)}
+.gd-mark.is-dot .gd-ring{--r:6px;background:var(--gd);border-width:2px}
+.gd-mark.is-pulse .gd-ring{animation:gdPulse 1.4s ease-in-out infinite}
+@keyframes gdPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.12)}}
+.gd-num{position:absolute;left:calc(-1 * var(--r) - 14px);top:calc(-1 * var(--r) - 14px);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  background:var(--gd);color:#0B1020;font-weight:700;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.gd-label{position:absolute;left:0;top:calc(var(--r) + 6px);transform:translateX(-50%);white-space:nowrap;padding:3px 10px;border-radius:999px;
+  background:rgba(11,16,32,.88);color:#fff;font-weight:600;font-size:14px;border:1px solid var(--gd)}
+html[data-motion="reduce"] .gd-mark.is-pulse .gd-ring{animation:none}
+@media (prefers-reduced-motion:reduce){.gd-mark.is-pulse .gd-ring{animation:none}}
+.a-where{font-size:var(--text-xs, 12px);color:var(--color-text-2);letter-spacing:.02em;text-transform:none;margin-left:auto;margin-right:var(--space-2)}
+.a-lead{font-size:var(--text-sm);color:var(--color-text-2);margin:0}
+.a-do{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-sm);color:var(--color-text);margin-top:calc(-1 * var(--space-2))}
+.a-do::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--color-accent)}
+.a-intro{font-size:var(--text-sm);color:var(--color-text);background:color-mix(in srgb,var(--color-accent) 14%,transparent);border-radius:var(--radius-md);padding:6px 10px;margin:0}
+.a-intro b{color:var(--color-accent);margin-right:6px}
+.a-phrase{font-size:var(--text-md, 16px);font-weight:600;color:var(--color-text);border:1px dashed var(--color-accent);border-radius:var(--radius-md);padding:6px 10px;margin:0}
+.a-choice.is-out{opacity:.45;text-decoration:line-through}
+.a-feedback.is-progress{color:var(--color-text)}
+.gd-mark:not(.is-ring) .gd-label{top:12px}
+.gd-mark.is-above .gd-label{top:auto;bottom:calc(var(--r) + 6px)}
+
+/* ---- the lesson card always fits above the voice strip (card_clear.py; the owner hit answer 3 under the caption) ----
+   1. Height: the column card stops above the bar (--strip-h); the caption is narrowed beside it (voicebar.js
+      fitCaption). Where the caption can't fit beside the card (narrow stages) the card keeps the caption's reserve too
+      (--strip-cap, the .mp-card pattern).
+   2. Short stages (<= 760 px tall): a tighter rhythm, a one-line lead and do-line, smaller answer rows.
+   3. Still too tall: the body scrolls inside the card with a fade at the edge that has more, and the focused or picked
+      answer is scrolled into view (academy/ui.js fitBody). */
+@media (max-width:899px){
+  .apanel.is-lesson,.apanel.is-ride{max-height:calc(100% - 2 * var(--gut) - var(--strip-cap, 146px) - var(--space-3))}
+}
+@media (max-height:760px){
+  .a-head{padding-top:var(--space-2)}
+  .a-body{gap:var(--space-2);padding:var(--space-2) var(--space-4) var(--space-3)}
+  .a-step,.a-input{gap:var(--space-2)}
+  .a-title .a-patch svg{width:32px;height:32px}
+  .a-title .m-title{font-size:var(--text-md)}
+  .a-prompt{font-size:var(--text-md)}
+  .a-lead,.a-do{display:-webkit-box;-webkit-line-clamp:1;line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .a-do{margin-top:0}
+  .a-do::before{display:inline-block;margin-right:var(--space-2);vertical-align:middle}
+  .a-choice,.a-order{min-height:var(--control-md);padding:6px var(--space-3)}
+  .a-choices{gap:6px}
+  .a-clip{min-height:var(--control-sm)}
+  .v-word{gap:var(--space-2)}
+  .v-word b{font-size:var(--text-lg)}
+  .a-feedback{padding:var(--space-2) var(--space-3)}
+  .a-foot{padding:0 var(--space-4) var(--space-3)}
+}
+@media (max-height:720px){
+  .a-head{padding-top:var(--space-1)}
+  .a-body{padding-bottom:var(--space-2)}
+  .a-title{gap:var(--space-2)}
+  .a-title .a-patch svg{width:28px;height:28px}
+  .v-src{gap:var(--space-1)}
+}
+.a-body.is-more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent)}
+.a-body.is-more.is-scrolled{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 24px,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 24px,#000 calc(100% - 48px),transparent)}
+.a-body.is-scrolled:not(.is-more){-webkit-mask-image:linear-gradient(to bottom,transparent,#000 24px);mask-image:linear-gradient(to bottom,transparent,#000 24px)}

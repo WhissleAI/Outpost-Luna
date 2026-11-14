@@ -181,6 +181,55 @@ def test_reveal_needs_three_misses_and_twenty_seconds(api):
     assert late["status"] == "passed" and late["shown"] and late["say"].startswith("Here it is.")
 
 
+# ---- 4b. a room "yes" / "no" never answers a yes-no step (guidance playtest) ------------------------------------------
+PREDICT = 2      # Lessons from Apollo: "Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?"
+
+
+def _routed(s, text):
+    return next(r for r in reversed(s.routes) if r["text"] == text)
+
+
+def test_a_room_yes_no_on_a_predict_step_needs_dd_or_a_settled_question(world):
+    assert content.lesson(LESSON)["steps"][PREDICT]["accept"]["type"] == "predict"
+    # the step opens and its question starts playing; "yes" from the room 0.4 s in, mid-question: ignored
+    s = lesson_session(world, PREDICT)
+    run(s.handle({"t": "playback", "kind": "guide", "state": "start", "id": "q", "text": "Did Artemis II beat it?"}))
+    hear(s, "yes", advance=0.4)
+    assert _routed(s, "yes")["outcome"] == "ignore" and answers(s) == []
+    # the question ends; a room "no" 0.3 s later (inside the hard-mute tail): ignored
+    s.clock_obj.t += 0.4
+    run(s.handle({"t": "playback", "kind": "guide", "state": "end", "id": "q"}))
+    s.clock_obj.t += 0.3
+    run(s.handle({"t": "turn", "state": "start", "text": ""}))
+    run(s.handle({"t": "turn", "state": "end", "text": "no"}))
+    assert _routed(s, "no")["outcome"] == "ignore" and answers(s) == []
+
+
+def test_a_yes_no_counts_once_the_question_settled_or_when_clearly_directed(world):
+    # clearly directed: counts at once, even early
+    s = lesson_session(world, PREDICT)
+    hear(s, "yes", dd=0.85, advance=0.3)
+    assert _routed(s, "yes")["outcome"] == "answer" and len(answers(s)) == 1
+    # Arc unsure, but the question finished and the step has been open >= 1.5 s: the kid's answer
+    s = lesson_session(world, PREDICT)
+    line(s, "q", "Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?", dur=1.2, gap=0.0)
+    hear(s, "no", dd=0.55, advance=1.0)
+    assert _routed(s, "no")["outcome"] == "answer" and len(answers(s)) == 1
+    # Arc unsure and only 0.5 s into the step (nothing playing): not yet
+    s = lesson_session(world, PREDICT)
+    hear(s, "yes", dd=0.55, advance=0.5)
+    assert _routed(s, "yes")["reason"] == "room_yes_no" and answers(s) == []
+    # longer answers are graded as usual; earth_view follows the same rule
+    s = lesson_session(world, PREDICT)
+    hear(s, "yes it went farther", dd=0.55, advance=0.5)
+    assert _routed(s, "yes it went farther")["outcome"] == "answer"
+    ctx = R.Ctx(screen="lesson", step_type="earth_view", step_options=["Yes", "No", "Sometimes"], source="listen", dd=0.5, step_age=0.6)
+    assert R.route("yes", ctx)["reason"] == "room_yes_no"
+    assert R.route("yes", R.Ctx(screen="lesson", step_type="earth_view", step_options=["Yes", "No", "Sometimes"], source="listen", dd=0.5, step_age=3.0))[
+        "outcome"] == "answer"
+    assert R.route("yes", R.Ctx(screen="lesson", step_type="earth_view", step_options=["Yes", "No", "Sometimes"], source="typed"))["outcome"] == "answer"
+
+
 # ---- 5. a queued multi-line say is one on-air span --------------------------------------------------------------------
 def test_hard_mute_holds_across_a_queued_capcom_sequence():
     c = Clock()

@@ -93,6 +93,10 @@ def public_site(s: dict) -> dict:
     # sunlight_pct (Bussey 2010), shown only as a second, labelled line.
     out["window_sun_days"] = _half_days(s.get("window_sunlit_pct"))
     out["window_earth_days"] = _half_days(comm.get("earth_visible_pct"))
+    # [qa] the picker explains its numbers: ice a drive away (not "No"), power / radio by pretend cable / relay
+    out["rover_to_ice_h"] = s.get("rover_to_ice_h")
+    out["power_from"] = {"site": s["power_from"]["site"], "pretend_tech": bool(s["power_from"].get("pretend_tech"))} if s.get("power_from") else None
+    out["comm_from"] = {"site": s["comm_from"]["site"], "pretend_tech": bool(s["comm_from"].get("pretend_tech"))} if s.get("comm_from") else None
     return out
 
 
@@ -394,8 +398,9 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
             relay = m.difficulty == "cadet" and not env["earth_visible"]
             if env["earth_visible"] or relay:
                 m.warned[ev["id"]] = {"by": "relay" if relay else "houston", "t_h": m.t_h}
-                _emit(m, out, "storm_warning", f"Houston: big flare. Particle storm {storm_confidence(ev)} "
-                      f"within {lead} hours.", ev["source"], ev["date"],
+                # QA-64: the lead is the game's (WARN_LEAD_H); the copy never claims a precise arrival time
+                _emit(m, out, "storm_warning", f"Houston: particles {storm_confidence(ev)} within hours. "
+                      f"Forecast: {lead} hours (game).", ev["source"], ev["date"],
                       extra={"confidence": storm_confidence(ev), "lead_h": lead, "by": m.warned[ev["id"]]["by"]})
         if m.t_h == st.start_h and ev.get("sep") and m.shelter:
             _good(m, "sheltered_early", f"In the shelter before the {ev['date']} storm hit.")
@@ -469,7 +474,9 @@ def advance(m: Mission, shifts: int = 1) -> list:
         m.pending = None
         _check_end(m, out)
         m.shifts.append({"t_h": m.t_h, "power": round(m.power, 1), "life_support": round(m.life, 1),
-                         "dose_msv": round(m.dose, 2), "events": [e["kind"] for e in out if e["t_h"] > m.t_h - SHIFT_H]})
+                         "dose_msv": round(m.dose, 2), "events": [e["kind"] for e in out if e["t_h"] > m.t_h - SHIFT_H],
+                         # [qa] any hour of this shift inside a storm: the debrief shades every storm shift, not just its start
+                         "storm_active": any(st.active(h) for st in m.storms for h in range(int(m.t_h) - SHIFT_H, int(m.t_h)))})
     return out
 
 
@@ -852,7 +859,7 @@ def debrief(m: Mission) -> dict:
                     f"radiation {mult:g}x for {st.dur_h} hours, and your crew took {got:.1f} game-mSv. The Moon has "
                     "no magnetic field or thick air. Mass blocks particles: Orion crews hide behind packed supplies.")
         else:
-            text = (f"On {ev['date']} Earth had a real {ev['class']} magnetic storm, but few particles came with it "
+            text = (f"On {ev['date']} Earth had a real magnetic storm, but few particles came with it "   # [qa] no G-scale
                     f"(DONKI). At the Moon that is a near miss: radiation only {mult:g}x. Not every warning is a big "
                     "storm, which is why forecasters say likely or possible.")
         lessons.append({"text": text, "source": ev["source"]})
@@ -862,7 +869,7 @@ def debrief(m: Mission) -> dict:
     iss = rad["iss_comparison"]["gcr_usv_per_day"]
     lessons.append({"text": (f"China's Chang'e 4 measured {base['dose_equivalent_usv_per_day']} microsieverts per day on "
                              f"the Moon's surface, about {base['dose_equivalent_usv_per_day'] / iss:.1f} times the "
-                             f"cosmic-ray dose inside the Space Station ({iss}). Your crew's "
+                             f"cosmic-ray dose inside the Space Station ({iss} microsieverts a day). Your crew's "   # [qa] a number keeps its unit
                              f"{m.dose:.1f} game-mSv is about {m.dose / rad['game']['dose_scale_factor']:.1f} real mSv "
                              f"(the game doubles doses). NASA's career limit is {rad['limits']['career_msv']} mSv."),
                     "source": base["source"]})

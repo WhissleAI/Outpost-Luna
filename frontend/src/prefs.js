@@ -22,7 +22,7 @@ export const PREF_DEFAULTS = Object.freeze({
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
 /** The keys that belong to one cadet. */
-export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme"];
+export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier"];   // [qa] + camera and mission tier
 
 const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
@@ -95,7 +95,7 @@ export function createPrefs({ globe = null } = {}) {
   let preview = null;
   function previewVoice(v) {
     if (!v || !v.preview_url) return;
-    try { if (preview) preview.pause(); preview = new Audio(v.preview_url); preview.volume = 1; preview.play().catch(() => {}); } catch (e) { /* no audio */ }
+    try { if (preview) preview.pause(); preview = new Audio(v.preview_url); preview.volume = Math.min(1, P.volume); /* [qa] the Volume setting */ preview.play().catch(() => {}); } catch (e) { /* no audio */ }
   }
 
   // ---- cadet profiles ----
