@@ -1,5 +1,6 @@
 // The guide's answer card: place, the spoken line (the caption), source chips, option/crew buttons, Arc read-out.
 // Only the latest answer, plus a one-step "Previous" toggle. No chat log.
+import { maskProfanity } from "./profanity.js";
 
 /** Arc Tagger read-out as one quiet line. */
 export function readoutLine(r) {
@@ -29,7 +30,7 @@ export function createCard() {
   function render(e) {
     title.textContent = e.title || "Guide";
     title.classList.toggle("is-place", !!e.place);
-    asked.textContent = e.asked ? "“" + e.asked + "”" : ""; asked.hidden = !e.asked;
+    asked.textContent = e.asked ? "“" + maskProfanity(e.asked) + "”" : ""; asked.hidden = !e.asked;   // [P0] kid text
     // The Director often answers a hardware question with the artifact's own story; don't print it twice.
     const flat = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const dupStory = e.artifact && e.artifact.story && flat(e.say) && flat(e.artifact.story).startsWith(flat(e.say).slice(0, 60));

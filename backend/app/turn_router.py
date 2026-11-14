@@ -28,6 +28,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from . import safety as safety_
 from .gazetteer import norm
 
 # ---- thresholds ------------------------------------------------------------------------------------------------------
@@ -236,6 +237,7 @@ class Ctx:
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
+    unsafe: bool = False               # [P0] Arc Tagger's safety tags flagged the turn (profanity, toxicity, child.*): safety.py
     dd_min: float = DD_MIN             # the Settings filter (FILTERS): below this, talking to someone else
     dd_strong: float = DD_STRONG       # barge-in while we speak / a yes-no question / a notice needs this much
 
@@ -423,6 +425,10 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     # 1. Silence first: nothing, filler, our own voice.
     if not ws:
         return out("ignore", "empty")
+    # [P0] a rude or unsafe turn is never an answer, a question or an order (Arc's safety tags, then the word list):
+    # silent, no notice, and the client never shows it
+    if ctx.unsafe or safety_.has_profanity(raw):
+        return out("ignore", "safety")
     if heard and is_filler(raw) and not _option_key(raw, ctx):
         return out("ignore", "filler")
     if heard and not explicit and echo(raw, ctx):

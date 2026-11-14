@@ -145,6 +145,14 @@ def turnlog_clear():
     return {"deleted_files": turnlog.STORE.clear()}
 
 
+@app.get("/api/safety/flags")
+def safety_flags():
+    """[P0] The parent / teacher side: turns Arc Tagger marked as a crisis or grooming cue (kind, tags, screen, time).
+    Never the words. In memory only, on this device (docs/ARC_FEEDBACK.md, app/safety.py)."""
+    from .session import SESSIONS
+    return {"flags": [{"session": sid, **f} for sid, s in SESSIONS.items() for f in s.flags]}
+
+
 @app.get("/api/director/stats")
 def director_stats():
     """The learned Director (DIRECTOR_MODEL=off|shadow|on): mode, model, and shadow agreement with the rules."""

@@ -12,3 +12,14 @@ def no_embedder(monkeypatch, request):
     async def off(texts, kind="query", timeout=None):
         return None
     monkeypatch.setattr(models_client, "embed", off)
+
+
+@pytest.fixture(autouse=True)
+def no_safety_tagger(monkeypatch):
+    """[P0] Tests don't call the model server's tagger for a turn's safety tags (the word list still runs); a test that
+    wants tags patches app.safety.tagger_read itself (tests/test_safety.py)."""
+    from app import safety
+
+    async def none(text):
+        return []
+    monkeypatch.setattr(safety, "tagger_read", none)

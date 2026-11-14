@@ -17,6 +17,7 @@ import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP } from "./story.js";
 import { chime } from "./sound.js";
+import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
 import { speak, stopSpeaking, isSpeaking, STORY_VOICE, CAPCOM_VOICE, floor, sayStyle } from "./floor.js";
 // ---- end audio floor ----
@@ -178,14 +179,24 @@ async function boot() {
     if (useSession()) {
       if (!heard && a11y && await a11y.handleText(text)) { $("q").value = ""; return; }   // typed a11y commands stay local
       $("q").value = ""; pushScreen(true);
-      session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed"); voice.clearWords(); voice.show("idle"); return;
+      // [P0] a spoken turn waits for the router's `heard` decision (voice.decided): no words, no "Thinking" before it
+      session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed", heard ? { dd: opts.dd ?? null, safety: opts.safety || null } : null);
+      if (!heard) { voice.clearWords(); voice.show("idle"); }
+      return "session";
     }
+    // [P0] no session (the router is server-side): the client's own gate for open-mic turns. Arc says it was for
+    // someone else, or it is rude: dropped, silently, and never graded or shown.
+    if (heard && !opts.ptt && ((opts.dd != null && opts.dd < 0.5) || hasProfanity(text))) return;
     const my = ++turn.seq; cancelNudge(); cancelTour();
-    $("q").value = ""; voice.show("thinking");
-    if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text);   // [a11y] transcript
-    if (a11y && await a11y.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // [a11y] "where am I?", "faster", "press next"
-    if (missionUI.active && await missionUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }
-    if (academyUI.active && await academyUI.handleText(text)) { voice.clearWords(); voice.show("idle"); return; }   // Academy
+    $("q").value = "";
+    // [P0] a spoken turn shows "Thinking" only if it is still undecided after a moment (voice.js), and reaches the
+    // transcript only once something used it (logKid below); a typed one was meant for us
+    const logKid = () => { if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", text); };
+    if (!heard) { voice.show("thinking"); logKid(); }
+    const used = () => { if (heard) logKid(); voice.clearWords(); voice.show("idle"); };
+    if (a11y && await a11y.handleText(text)) { used(); return; }   // [a11y] "where am I?", "faster", "press next"
+    if (missionUI.active && await missionUI.handleText(text)) { used(); return; }
+    if (academyUI.active && await academyUI.handleText(text)) { used(); return; }   // Academy
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -203,6 +214,7 @@ async function boot() {
       if (!clearQuestion(text) || (r.source === "none" && performance.now() - turn.lastUnknown < 30000)) { voice.clearWords(); voice.show("idle"); return; }
       if (r.source === "none") turn.lastUnknown = performance.now();
     }
+    if (heard) logKid();
     voice.clearWords();
     if (missionUI.active) {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
@@ -412,10 +424,16 @@ async function boot() {
     prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
+      voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
       if (d.outcome === "ignore") { if (d.notice) voice.notice(); return; }
-      if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", d.text);
-      showHeard(d.text);
-      if (missionUI.running) missionUI.radioKid(d.text);
+      // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
+      // all; the offline word list catches what the tagger misses (profanity.js)
+      const shownText = d.safety ? "" : maskProfanity(d.text);
+      if (shownText) {
+        if (window.__outpost && window.__outpost.captions) window.__outpost.captions.log("kid", shownText);
+        showHeard(shownText);
+        if (missionUI.running) missionUI.radioKid(shownText);
+      }
       cancelNudge(); cancelTour();
     },
     nav: d => runNav(d.intent, d.arg, d.text),
@@ -527,16 +545,26 @@ async function boot() {
   });
   // ---- end [input] ----
   if (SESSION_ON) {
-    session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => console.warn("session closed; /api/ask fallback") });
+    let reconnect = () => {};
+    session = createSession({ handlers, reportsPlayback: !!floor, onClose: () => { console.warn("session closed; /api/ask fallback (retrying)"); reconnect(); } });
     // The floor reports playback (guide + crew) and holder changes; forward them on /ws/session.
     // [qa] QA-74: the socket can fail (session = null below): forwarding then threw a TypeError on every playback event
     if (floor) { floor.on("playback", e => { if (session) session.playback(e); }); floor.on("floor", e => { if (!session) return; if (e && e.holder === "kid") session.ui("barge_in"); else if (e && e.holder === "none") session.ui("kid_done"); }); }
     let m0 = "mission"; try { m0 = localStorage.getItem("atm-mode") === "cadet" ? "cadet" : "mission"; } catch (e) { /* private mode */ }
     session.hello({ mode: m0 });
-    session.connect().then(ok => {
-      if (!ok) { session = null; console.info("session socket unavailable; using /api/ask"); return; }
-      voice.sendContext({ t: "context", session: session.id });   // [hands-free] the ear posts its turns into this session
-      pushScreen(true); sendPrefs();
+    // [P0] the router lives in the session: without it, open-mic turns had no gate but the client's. If the socket
+    // can't connect (the backend still starting), keep retrying with a back-off instead of staying on /api/ask for good.
+    const sess = session;
+    const up = () => { session = sess; voice.sendContext({ t: "context", session: sess.id }); pushScreen(true); sendPrefs(); };   // the ear posts its turns into this session
+    let retrying = false;
+    const retry = (n = 0) => { retrying = true; setTimeout(() => {
+      sess.hello({ mode: document.body.dataset.mode || "academy", mission_id: (missionUI.context() || {}).id || null });   // sent on open
+      sess.connect(5000).then(ok => { if (ok) { retrying = false; up(); } else retry(n + 1); });
+    }, Math.min(30000, 2000 * 2 ** n)); };
+    reconnect = () => { if (!retrying) retry(); };
+    sess.connect().then(ok => {
+      if (ok) { up(); return; }
+      session = null; console.info("session socket unavailable; using /api/ask (retrying)"); retry();
     });
   }
 

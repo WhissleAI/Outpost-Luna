@@ -3,6 +3,7 @@
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
 import { TOUR } from "./story.js";
 import { icon } from "./assets/icons.js";
+import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -290,7 +291,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // ---- transcript ----
   function fillTranscript() {
     const ol = panel.querySelector("#a11yTranscript"); if (!ol) return;
-    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.text)}</li>`).join("");
+    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
   }
   window.addEventListener("outpost:transcript", () => { if (!panel.hidden) fillTranscript(); });
 
