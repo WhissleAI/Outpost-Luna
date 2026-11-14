@@ -508,7 +508,7 @@ class Session:
         del self.routes[:-200]
         self.history.append({"route": rt["outcome"], "reason": rt.get("reason"), "text": shown, "ts": self.clock()})
         if self.screen:   # a hands-free client: tell it what we heard (the mic chip shows "didn't catch that")
-            await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"),
+            await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"), intent=rt.get("intent"),
                                       notice=bool(rt.get("notice")) or None, text="" if safety else text,
                                       safety=True if safety else None)])
 

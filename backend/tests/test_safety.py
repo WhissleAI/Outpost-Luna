@@ -46,6 +46,19 @@ def test_router_never_routes_a_rude_turn():
     assert rt["outcome"] == "ignore"
 
 
+def test_audit2_router_fixes():
+    """[audit2] "back to the map" mid-lesson navigates; a typed turn never vanishes silently."""
+    for t in ("back to the map", "go to the map", "take me to the map", "show me the map", "go back to the map"):
+        rt = R.route(t, R.Ctx(screen="lesson", step_type="choice", step_options=["I heard you", "Say again"], source="voice"))
+        assert rt["outcome"] == "navigate" and rt["intent"] == "map", (t, rt)
+    rt = R.route("hi", R.Ctx(screen="map", source="typed"))
+    assert rt["outcome"] == "ignore" and rt["notice"]
+    rt = R.route("Zed", R.Ctx(screen="callsign", source="typed", callsigns=["Nova"]))
+    assert rt["outcome"] == "answer"
+    rt = R.route("hello there", R.Ctx(screen="callsign", source="voice", callsigns=["Nova"]))
+    assert rt["outcome"] == "ignore"
+
+
 def test_a_rude_turn_is_never_graded():
     cl = TestClient(app)
     r = cl.post("/api/academy/attempt", json={"lesson_id": "moon", "step": 0, "input": {"text": "shit Sea of Tranquility"}, "misses": 0})

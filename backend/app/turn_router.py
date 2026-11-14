@@ -103,8 +103,9 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("settings", re.compile(r"^(?:access |open |show )?(?:the )?(?:accessibility|settings)(?: settings| panel)?$")),
     ("lesson", re.compile(r"^(?:start |open |go to |play |do |begin )?lesson (?:number )?(\w+)$")),
     ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:patch|course|lesson|academy) ?map$|^(?:show (?:me )?)?"
-                       r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:the )?map$")),
-    ("academy", re.compile(r"^(?:go (?:back )?to |open |back to )?(?:the )?(?:academy|flight school|lessons)$")),
+                       r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:go |take me |let s go )?(?:back )?(?:to )?(?:the )?map$|"
+                       r"^(?:show (?:me )?|open )(?:the )?map$")),   # [audit2] "back to the map", "go to the map"
+    ("academy", re.compile(r"^(?:go (?:back )?to |take me (?:back )?to |open |back to )?(?:the )?(?:academy|flight school|lessons)$")),
     ("library", re.compile(r"^(?:go to |open )?(?:the )?(?:moon )?(?:library|explorer)$|^explore the moon$")),
     ("go_mission", re.compile(r"^(?:go to |open |start |begin )?(?:the )?(?:mission|missions|outpost|outpost luna)"
                               r"(?: mode)?$|^(?:let s|lets) (?:go to|do) the mission$|^go on (?:a|the) mission$")),
@@ -409,6 +410,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
             return out("answer", "callsign")
         if clear_question(raw, dd, act, ctx.dd_strong):
             return out("question", "question")
+        if not heard:   # [audit2] typed on the call-sign screen: the kid typed a name; the screen says what to do with it
+            return out("answer", "callsign_typed")
         return out("ignore", "callsign_other", notice=bool(dd is not None and dd >= ctx.dd_strong))
     if s in ("lesson", "ride") and ctx.step_type:
         # A real question mid-lesson still works ("what is an mSv?"), but only on steps whose answer is not itself a
@@ -441,7 +444,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("question", "question")
     if heard and len(ws) >= 3 and (dd is not None and dd >= ctx.dd_strong):
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
-    return out("ignore", "unclear", notice=bool(dd is not None and dd >= ctx.dd_strong))
+    # [audit2] a typed turn was meant for us: never silent (the bar shows "Didn't catch that")
+    return out("ignore", "unclear", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
 
 
 YESNO_STEPS = ("predict", "earth_view")
