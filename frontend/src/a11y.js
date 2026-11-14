@@ -150,7 +150,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       listen: PA ? `${seg("listen", "How to talk", [["handsfree", "Hands-free"], ["ptt", "Hold to talk"]])}
         <p class="set-help">${P.listen === "ptt" ? "Hold <kbd>Space</kbd> or the mic while you talk." : "The mic listens all the time. <kbd>Space</kbd> still works."}</p>
         ${seg("filter", "Ignore other voices", [["relaxed", "Relaxed"], ["normal", "Normal"], ["strict", "Strict"]])}
-        <p class="set-help">Strict ignores more room chatter.</p>` : "",
+        <p class="set-help">Strict ignores more room chatter.</p>
+        <label class="a11y-sw"><input type="checkbox" data-pb="improve" ${PA.value.improve ? "checked" : ""}><span><b>Help improve the voice guide</b><small>Saves what it heard as text on this computer. No audio, no names. Nothing is sent.</small></span></label>
+        ${PA.value.improve ? `<button type="button" class="btn-quiet" data-turnlog-clear>Delete what's saved</button>` : ""}` : "",
       read: `${sw("captions", "Captions", "Every voice as text, word by word")}
         <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
           <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>
@@ -229,11 +231,13 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
     const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);
     if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();
+    const tl = e.target.closest("[data-turnlog-clear]");
+    if (tl) { fetch("/api/turnlog", { method: "DELETE" }).then(() => { tl.textContent = "Deleted"; tl.disabled = true; }).catch(() => { tl.textContent = "Couldn't delete. Try again."; }); }
     if (e.target.closest("[data-prof-reset]") && PA) { if (resetArmed) PA.resetProgress(); else { resetArmed = true; renderPanel(); panel.querySelector("[data-prof-reset]").focus(); } }
   });
   panel.addEventListener("change", e => {
     const t = e.target;
-    if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); return; }   // a boolean pref
+    if (t.dataset.pb && O.prefsApi) { O.prefsApi.update({ [t.dataset.pb]: t.checked }); if (t.dataset.pb === "improve") { renderPanel(); const again = panel.querySelector(`[data-pb="improve"]`); if (again) again.focus(); } return; }   // a boolean pref
     if (t.dataset.p && O.prefsApi) {   // Settings v1 prefs (prefs.js)
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
       O.prefsApi.update({ [k]: v });

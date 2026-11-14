@@ -25,3 +25,11 @@ test("prefs: the barge-in thresholds follow the voice filter (relaxed / normal /
   assert.equal(shouldBargeIn(turn), true);
   delete globalThis.window;
 });
+
+test("prefs: 'Help improve the voice guide' is off by default and only an explicit true turns it on", () => {
+  assert.equal(PREF_DEFAULTS.improve, false);
+  assert.equal(normalizePrefs({}).improve, false);
+  assert.equal(normalizePrefs({ improve: "true" }).improve, false);
+  assert.equal(normalizePrefs({ improve: 1 }).improve, false);
+  assert.equal(normalizePrefs({ improve: true }).improve, true);
+});

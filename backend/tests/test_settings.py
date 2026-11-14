@@ -212,7 +212,8 @@ def test_prefs_over_the_websocket(world):
                       "level": "commander", "voice_all": False})
         ack = ws.receive_json()
     assert ack == {"t": "prefs", "applied": {"voice": v, "voice_all": False, "rate": 0.75, "expressiveness": 0.2,
-                                             "filter": "strict", "level": "commander", "listen": "handsfree", "volume": 1.0}}
+                                             "filter": "strict", "level": "commander", "listen": "handsfree", "volume": 1.0,
+                                             "improve": False}}
     s = sessions.get("ws-set-1", create=False)
     assert s.level == "commander" and s.filter_thresholds() == tr.FILTERS["strict"]
 

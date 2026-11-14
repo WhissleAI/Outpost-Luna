@@ -22,7 +22,7 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from . import director, models_client, steering
+from . import director, models_client, steering, turnlog
 from . import turn_router as router_
 from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
@@ -51,7 +51,8 @@ ALARM_EMOTIONS = ("frustrated", "confused", "scared", "anxious")
 
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
-                 "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0}
+                 "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
+                 "improve": False}   # improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
 LEVELS = ("cadet", "commander")
 LISTEN = ("handsfree", "ptt")
 OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
@@ -91,6 +92,8 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
             pass
     if m.get("listen") in LISTEN:
         p["listen"] = m["listen"]
+    if "improve" in m:    # only an explicit true turns the turn log on
+        p["improve"] = m.get("improve") is True
     return p
 
 
@@ -121,6 +124,10 @@ def _sites() -> list[tuple[str, str]]:
 
 def _words(t: str) -> list[str]:
     return [w for w in norm(t or "").split() if w]
+
+
+def _p(x):
+    return None if x is None else round(float(x), 3)
 
 
 class Session:
@@ -154,6 +161,9 @@ class Session:
         self.routes: list[dict] = []           # every routed turn (tests and /api/session/{id}/routes read it; capped)
         # The kid's Settings (docs/VOICES.md): sent by the client on every connect; in memory only, never persisted.
         self.prefs: dict = dict(PREF_DEFAULTS)
+        # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
+        self.tlog = turnlog.SessionLog(self)
+        self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -280,6 +290,10 @@ class Session:
         if ev == "screen":         # the client's screen frame (hands-free routing context)
             self.screen = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer") if k in m}
             return
+        if ev == "lesson_result":  # the Academy's grade of a step answer (turn log outcome signal only)
+            self.tlog.lesson(m.get("status"), m.get("step_type") or self.screen.get("step_type"))
+            return
+        self.tlog.ui(ev, m.get("id") or m.get("target"))
         if ev in ("tap_place", "tap_artifact") and m.get("id"):
             self.belief["last_place"] = m["id"]
         elif ev == "barge_in":     # the client accepted a barge-in (Space, or its echo check passed)
@@ -463,17 +477,50 @@ class Session:
             await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"),
                                       notice=bool(rt.get("notice")) or None, text=text)])
 
+    def _end_event(self, text: str, source: str, rt: dict | None = None) -> dict:
+        ev = {"t": "turn", "state": "end", "text": text} if source == "listen" else \
+            {"t": "typed", "text": text, "source": source}
+        if rt:      # the router's decision rides on the step (features: rt_*, rw_*)
+            ev["route"] = {"outcome": rt.get("outcome"), "reason": rt.get("reason"), "intent": rt.get("intent")}
+        return ev
+
     async def _turn(self, text: str, source: str):
-        b, k = self.belief, self.belief["kid"]
+        k = self.belief["kid"]
         ctx_r = self.route_ctx(source)
         rt = router_.route(text, ctx_r, act=k.get("act"))
+        self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
+        try:
+            await self._routed(text, source, ctx_r, rt)
+        finally:
+            if self._tl is not None:
+                self.tlog.finish(self._tl, self._tl.pop("_dir", None), guard=bool(self._tl.pop("_guard", False)))
+            self._tl = None
+
+    def _log_dir(self, **d):
+        if self._tl is not None:
+            self._tl["_dir"] = {k_: v for k_, v in d.items() if v is not None}
+
+    async def _routed(self, text: str, source: str, ctx_r: router_.Ctx, rt: dict):
+        b, k = self.belief, self.belief["kid"]
+        out = None
+        if rt["outcome"] in ("ignore", "navigate", "answer") and self.dm is not None:
+            # The learned Director steps on every routed turn end (the same stream it was trained on); on a lesson
+            # step's answer it may silence the turn (room chatter: "oh, it's", "okay") when it is sure enough
+            # (runtime.answer_policy; off unless the shipped weights carry a fitted threshold).
+            with contextlib.suppress(Exception):
+                out = self.dm.step(self._end_event(text, source, rt), {"available": False})
+            if rt["outcome"] == "answer" and out is not None and self.dm.decide_answer(out):
+                rt = {"outcome": "ignore", "reason": "model_chatter"}
+                dmodel.STATS["model_overrides"] += 1
+                if self._tl is not None:
+                    self._tl["router"]["model"] = "ignore"
+        ma, mp = self.dm.model_act(out) if (self.dm is not None and out is not None) else (None, None)
         if rt["outcome"] == "ignore":
             # Stay silent. Never cancel what we are saying for something we didn't mean to hear (our own echo).
             if self.dm is not None:
                 with contextlib.suppress(Exception):
-                    self.dm.step({"t": "turn", "state": "end", "text": text} if source == "listen" else
-                                 {"t": "typed", "text": text, "source": source}, {"available": False})
                     self.dm.turn_result({"action": "none", "source": "router+" + rt["reason"]})
+            self._log_dir(rules="ignore", model=ma, p=_p(mp), final="ignore")
             k["open"] = False
             if b["floor"] == "kid":
                 b["floor"] = "none"
@@ -481,6 +528,12 @@ class Session:
             return
         await self._note(rt, text)
         if rt["outcome"] in ("navigate", "answer"):
+            if self.dm is not None:
+                with contextlib.suppress(Exception):
+                    self.dm.turn_result({"action": "navigate" if rt["outcome"] == "navigate" else "answer_step",
+                                         "source": "router+" + str(rt.get("intent") or rt["outcome"])})
+            fin = "navigate" if rt["outcome"] == "navigate" else "answer"
+            self._log_dir(rules=fin, model=ma, p=_p(mp), final=fin)
             # The client owns the screens: it runs the navigation / grades the step answer (one decision, visual).
             k["open"] = False
             if b["floor"] == "kid":
@@ -508,10 +561,8 @@ class Session:
         read = summarize(await models_client.tag(resolved, "assistant"))
         out = None
         if self.dm is not None:
-            ev = {"t": "turn", "state": "end", "text": text} if source == "listen" else \
-                {"t": "typed", "text": text, "source": source}
             with contextlib.suppress(Exception):
-                out = self.dm.step(ev, read)
+                out = self.dm.step(self._end_event(text, source, rt), read)
         emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         ctx["level"] = self.level          # Settings: cadet | commander (passed through; docs/VOICES.md)
@@ -524,9 +575,10 @@ class Session:
         if k.get("device_directed") is not None and source == "listen":
             ctx["device_directed"] = k["device_directed"]
         override = None
+        guard = bool(director.NAME_GIVEN.search(norm(resolved)))
+        with contextlib.suppress(Exception):
+            guard = guard or bool(self.gaz is not None and director._hard_pii(read, self.gaz))
         if self.dm is not None and out is not None:
-            guard = bool(self.gaz is not None and director._hard_pii(read, self.gaz)) or bool(
-                director.NAME_GIVEN.search(norm(resolved)))
             override = self.dm.decide_turn(out, resolved, guard)
         if override and override["act"] == "command" and not (b["mission_id"] and b["mode"] == "mission"):
             override = None
@@ -546,6 +598,16 @@ class Session:
         r = self._gate_fallback(r, text, ctx_r, k.get("act"))
         if self.dm is not None:
             self.dm.turn_result(r)
+        if self._tl is not None:
+            from .director_model import features as _fx
+            ma, mp = self.dm.model_act(out) if (self.dm is not None and out is not None) else (None, None)
+            rc = _fx.rules_command(r) if not override else None
+            self._log_dir(rules=None if override else _fx.rules_act(r), rules_cmd=(rc or {}).get("type"),
+                          model=ma, p=_p(mp), override=(override or {}).get("act"), final=_fx.rules_act(r),
+                          source=r.get("source"),
+                          confirm=bool(r.get("needs_confirm")) or any(d.get("t") == "ask_confirm"
+                                                                       for d in r.get("decisions") or []))
+            self._tl["_guard"] = guard or r.get("action") == "guard"
         if r.get("action") == "none":
             await self.emit(pre)
             return

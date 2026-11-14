@@ -154,10 +154,52 @@ def academy_script(rng, split, seed) -> dict:
     return {"mode": "academy", "lesson": L["id"], "seed": seed, "items": items}
 
 
-def kind_script(rng, split, seed):
+def kind_script(rng, split, seed, hf_p: float = 0.0):
+    if hf_p and random.Random(seed * 7 + 1).random() < hf_p:     # own stream: older sessions keep their seeds
+        return handsfree_script(random.Random(seed * 7 + 2), split, seed)
     r = rng.random()
     return mission_script(rng, split, seed) if r < 0.5 else cadet_script(rng, split, seed) if r < 0.8 else \
         academy_script(rng, split, seed)
+
+
+CLASS_W = {"chatter": 3, "echo": 3, "offer": 2, "panel": 2, "help": 2, "mode": 1, "globe": 3, "mishear": 2}
+
+
+def logged_items(split: str) -> list[dict]:
+    """Turns imported from the opt-in turn logs (import_logs.py -> data/real_turns.json), weak / reviewed gold."""
+    if "logged" not in _LOGGED:
+        f = HERE / "data" / "real_turns.json"
+        _LOGGED["logged"] = json.loads(f.read_text())["items"] if f.exists() else []
+    return [dict(x) for x in _LOGGED["logged"] if x.get("split") == split]
+
+
+_LOGGED: dict = {}
+
+
+def handsfree_script(rng: random.Random, split: str, seed: int) -> dict:
+    """Round 6: a hands-free session with the client's screen frames: today's failure classes (pools.CLASSES) mixed
+    with ordinary cabin orders / questions and the imported real turns."""
+    items = []
+    cl = list(CLASS_W)
+    logged = logged_items(split)
+    for _ in range(rng.randint(8, 14)):
+        r = rng.random()
+        if r < 0.7:
+            items.append(P.cls_item(rng.choices(cl, [CLASS_W[c] for c in cl])[0], rng, split))
+        elif r < 0.8 and logged:
+            items.append(rng.choice(logged))
+        elif r < 0.9:
+            items.append({**P.mission_cmd(rng, split), "frame": {"screen": "cabin", "step_type": None,
+                                                                  "step_options": [], "offer": None}})
+        else:
+            items.append({**P.explorer(rng, split), "frame": {"screen": rng.choice(["library", "map"]),
+                                                               "step_type": None, "step_options": [], "offer": None}})
+    return {"mode": "mission", "site": rng.choice(SITES), "seed": seed, "role": None, "items": items, "hf": True}
+
+
+def class_set_items(cls: str, n: int, seed: int) -> list[dict]:
+    rng = random.Random(seed)
+    return [P.cls_item(cls, rng, "test") for _ in range(n)]
 
 
 def set_script(items: list[dict], mode: str, seed: int, site: str | None = None) -> dict:
@@ -221,6 +263,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
     await sess.handle(hello)
     anns: dict = {}
     lesson_step = None
+    frame = None
     for tid, it in enumerate(script["items"]):
         clock.t += rng.uniform(1.5, 9.0)
         if mode == "mission" and rng.random() < 0.7:
@@ -241,6 +284,34 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             lesson_step = (it["lesson_id"], it["step"])
             await sess.handle({"t": "lesson", "lesson_id": it["lesson_id"], "step": it["step"], "status": it["status"]})
             continue
+        fr = it.get("frame")
+        if fr is not None and fr != frame:          # the client's screen frame (hands-free routing context)
+            frame = fr
+            await sess.handle({"t": "ui", "event": "screen", **{k: v for k, v in fr.items()}})
+        if it.get("lesson") and fr is not None:
+            if lesson_step != (it["lesson"], it["step"]):
+                lesson_step = (it["lesson"], it["step"])
+                await sess.handle({"t": "lesson", "lesson_id": it["lesson"], "step": it["step"], "status": "task"})
+        pend_line = None
+        if op in ("echo2", "offer"):
+            # our line(s) end right before the kid's turn: back-to-back CAPCOM lines (echo between them) or an offer
+            # taken within ~0.3 s of its end
+            ln = it["lines"]
+            await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": f"L{tid}a", "text": ln[0]})
+            clock.t += max(1.0, len(ln[0].split()) / 2.6)
+            await sess.handle({"t": "playback", "kind": "guide", "state": "end", "id": f"L{tid}a"})
+            if op == "offer":
+                clock.t += it.get("gap", 0.15)
+            else:
+                g_b, g_k = rng.uniform(0.05, 0.4), rng.uniform(0.0, 0.3)
+                if g_b <= g_k:
+                    clock.t += g_b
+                    await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": f"L{tid}b",
+                                       "text": ln[1]})
+                    clock.t += g_k - g_b
+                else:
+                    clock.t += g_k
+                    pend_line = (clock.t + g_b - g_k, f"L{tid}b", ln[1])
         playing = None
         if it.get("during_play") or op == "echo":
             if not [d for d in sess.pending.values() if d["t"] == "say"]:
@@ -259,13 +330,24 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             it = {**it, "text": " ".join(cw), "root": "echo"}
         cw = FX.words_of(it["text"])
         rd = None
-        if real is not None and noise is not None and op != "echo" and "heard" not in it and rng.random() < real[2]:
+        if real is not None and noise is not None and op not in ("echo", "echo2") and "heard" not in it and \
+                rng.random() < real[2]:
             d = real[0].get(real[1], it["text"], rng)
             rd = real_stream(d) if d else None
+        if op == "echo2" and noise is not None and real is not None:
+            d = real[0].get("app", it["lines"][0], rng)     # the line in the app's own voice, through the real ear
+            if d and d.get("hyp"):
+                hy = FX.words_of(d["hyp"])
+                k = min(len(hy), len(cw))
+                a0 = int(round(len(hy) * (len(FX.words_of(it["lines"][0])) - len(cw)) / max(1, len(FX.words_of(it["lines"][0])))))
+                if k:
+                    it = {**it, "heard": " ".join(hy[max(0, min(a0, len(hy) - k)):][:k])}
         if rd is not None:
             hw, al = rd[0], None
         elif "heard" in it and noise is not None:
             hw, al = FX.words_of(it["heard"]), None
+        elif "heard_fallback" in it and noise is not None and rng.random() < 0.6:
+            hw, al = FX.words_of(it["heard_fallback"]), None
         elif noise is not None and op != "echo":
             em, noisy, level = noise
             hw, al = em.corrupt(cw, rng, noisy=noisy, level=level)
@@ -274,7 +356,8 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         if not hw:
             continue
         ann = {"tid": tid, "item": it, "clean": cw, "heard": hw, "al": al, "words": [], "end": None,
-               "lesson": lesson_step if mode == "academy" else None, "real": rd is not None}
+               "lesson": (it["lesson"], it["step"]) if it.get("lesson") else lesson_step if mode == "academy" else None,
+               "real": rd is not None}
         anns[tid] = ann
         dd_rng = it.get("dd") or ((0.3, 0.7) if op == "echo" else (0.55, 0.98))
         dd = rng.uniform(*dd_rng)
@@ -291,6 +374,10 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             ps = rd[1] if rd is not None else partials(hw, rng)
             for j, p in enumerate(ps):
                 clock.t += 0.32 * rng.uniform(0.7, 1.5)
+                if pend_line is not None and clock.t >= pend_line[0]:
+                    await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
+                                       "text": pend_line[2]})
+                    pend_line = None
                 ann["words"].append((sess.dm.n, p))
                 await sess.handle({"t": "words", "text": " ".join(p)})
                 if j == min(1, len(ps) - 1) and arc_on:
@@ -306,6 +393,12 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             await sess.handle({"t": "turn", "state": "end", "text": " ".join(hw)})
             ann["end"] = i0 if sess.dm.n > i0 else None
         ann["t_end"] = clock.t
+        if op == "echo2":
+            if pend_line is not None:
+                await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
+                                   "text": pend_line[2]})
+            clock.t += 1.0
+            await sess.handle({"t": "playback", "kind": "guide", "state": "end", "id": f"L{tid}b"})
         if playing is not None and playing["id"] in sess.pending:
             await sess.handle({"t": "playback", "kind": "guide", "state": "interrupted", "id": playing["id"]})
         await play_pending(sess, clock, rng)
@@ -412,7 +505,9 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
         st = sink[i]
         r = st["r"] or {}
         rattr = (r.get("brain") or {}).get("attr") or detect_attr(" ".join(final))
-        if ann.get("lesson"):    # an Academy answer: the app's rule is the grader on the heard words
+        if ann.get("lesson") and (not it.get("frame") or metas[i]["rules_act"] == "answer"):
+            # an Academy answer: the app's rule is the grader on the heard words (hands-free: only when the router
+            # passed the turn to the step as its answer; a routed-away turn keeps the router's act)
             L = AC.lesson(ann["lesson"][0])
             ok, _ = AG.grade(L["steps"][ann["lesson"][1]], {"text": " ".join(final)})
             metas[i]["rules_act"] = "answer" if ok else "nudge"
@@ -420,7 +515,9 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
                         gold_act=g["act"], gold_cmd=g["cmd"], gold_src=g["src"], gold_attr=g["attr"],
                         rules_cmd=FX.rules_command(r), rules_attr=rattr, rules_place=r.get("place"),
                         rules_card=(r.get("brain") or {}).get("card"), t_end=ann.get("t_end"),
-                        expect=it.get("expect"), ok=it.get("ok"))
+                        expect=it.get("expect"), ok=it.get("ok"),
+                        route=(st["rec"].get("route") or {}).get("outcome"), hf=bool(it.get("frame")),
+                        gold_conf=it.get("conf"))
     for m in metas:
         m.update(meta_base)
     return {"feats": feats, "toks": toks, "wtok": wtok, "wfeat": wfeat, **{f"y_{k}": v for k, v in y.items()},

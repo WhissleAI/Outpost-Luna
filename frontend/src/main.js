@@ -121,7 +121,9 @@ async function boot() {
   const prefs = createPrefs({ globe });
   (window.__outpost = window.__outpost || {}).prefsApi = prefs;
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
-  prefs.on(() => sendPrefs()); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
+  prefs.on(() => sendPrefs());
+  // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint
+  addEventListener("outpost:lesson-result", e => { if (prefs.value.improve && useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
