@@ -909,8 +909,27 @@ class Session:
         now = self.clock()
         held, self.held = self.held, []
         ds = [d for ts, bundle in held if now - ts <= HOLD_MAX_S for d in bundle]
+        ds = [d for d in ds if not self._overtaken(d)]
         if ds:
             await self.emit(ds)
+
+    def _overtaken(self, d: dict) -> bool:
+        """A held storm decision the live mission clock has overtaken (no storm and no warning now): drop it, or CAPCOM
+        says "Storm coming. Shelter now?" after the storm has passed (docs/GAMEPLAY.md)."""
+        m = self._mission()
+        if m is None or d.get("t") not in ("say", "card", "alert"):
+            return False
+        style = (d.get("style") or {}).get("situation") or d.get("situation")
+        storm_d = style in ("storm_warning", "storm_alert") or "Solar storm" in (d.get("chips") or []) or \
+            (d.get("t") == "alert" and any(w in str(d.get("text", "")).lower() for w in ("storm", "particle")) and
+             d.get("level") in ("warn", "critical"))
+        if not storm_d:
+            return False
+        try:
+            from .mission import sim
+            return not sim.env_at(m, m.t_h)["storm"] and sim._warning(m) is None
+        except Exception:  # noqa: BLE001
+            return False
 
     async def end_shift(self):
         """The End shift button through the session: the sim advances, then HUD + shift line + events."""

@@ -764,8 +764,18 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tier() !== "cadet" || !cockpit || !cockpit.offer || screen !== "hud") return;
     const pid = panelFor(d, text); if (pid) cockpit.offer(pid, actions);
   }
+  /** An offer the live clock has already overtaken (held on the voice floor while time ran): a storm offer with no storm
+   *  and no warning any more, a night-mode offer with night mode on. Showing it would contradict the Now card. */
+  function staleOffer(d) {
+    const s = state; if (!s || !(d.actions || []).length) return false;
+    const e = s.env || {}, text = [d.title, d.body, ...(d.chips || []), ...(d.actions || []).map(a => a.label)].join(" ");
+    if (/storm|shelter|shields/i.test(text) && !(e.storm && e.storm.active) && !(e.warning || e.storm_warning)) return true;
+    if (/night mode/i.test(text) && s.power_save) return true;
+    return false;
+  }
   function showCard(d, send) {
     const s = state;
+    if (staleOffer(d)) return;   // the moment passed while the clock ran; the Now card has the current job
     if ((d.actions || []).length) decisionAt = Date.now();   // an offer is a decision: the clock waits (up to 30 s)
     card.show({ title: d.title || "CAPCOM", asked: d.asked || "", say: d.body || "", arc: d.arc || "",
       eyebrow: [d.hint ? "Heads up" : d.nudge ? "Coach" : "", s ? `Day ${s.day} · shift ${s.shift}` : "Mission"].filter(Boolean).join(" · "),
