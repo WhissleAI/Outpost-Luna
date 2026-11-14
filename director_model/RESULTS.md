@@ -579,6 +579,27 @@ Why each candidate fails:
    candidates come close. The one wrong action left is a real-looking order heard in room talk ("turn off the
    greenhouse").
 
+### Live run (`tools/handsfree_run.py --audio`, private servers :8291 model server + :8331 backend, round-7 main code)
+
+Every kid line is rendered with Steer TTS and streamed into `/ws/listen`, which runs the Arc ear with the hot lists.
+Room noise is mixed in at every screen.
+
+- **First runs: stuck.** Lesson "radiation", step 1 never passed. The kid says "Right now", which is the option's own
+  label, and it was heard right every time. Arc rated it not device-directed, and once it fell in the hard-mute tail,
+  so the router ignored it each time and the kid repeated it until the script's guard ran out.
+  - Fixed in this PR (`turn_router.exact_option`): an option's label or say phrase, said as written, passes the
+    device-directed gate on a lesson step. Bare yes / no still go through `yesno_counts`.
+- **After the fix: `HANDSFREE RESULT: PASS`.**
+  - 237 kid turns (134 of them noise).
+  - Every lesson passed and the kid qualified; the mission was flown.
+  - The cabin tour was done by voice (12 of 12 beats). Voice clock control: 3 skips, 5 job steps, pause / resume / warp.
+  - 0 replies to noise; "I don't know that one yet" spoken once, for a real question.
+  - Noise routing: 81 filler, 27 not directed, 23 echo.
+- **Still seen:**
+  - 3 echoes of a cabin HUD line ("Sample logged. Science +2.") were routed as cabin orders. They got no reply (the
+    NLU read no command), but they are not caught as echo. The line is probably never reported as playback.
+  - "regolith" on the fill-the-blank step took 3 tries: Arc still misses it with the hot list.
+
 ### Next round
 
 - **In the ear, which needs Arc:** a no-speech / tail guard and a wider n-best for names. This is the biggest lever
