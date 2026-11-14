@@ -1,0 +1,436 @@
+# Outpost Luna: learning and game design (v3)
+
+2026-11-13 · Owner: learning/game design (`feat/learning-v3`) · Status: **phase 1 design, for review**. Nothing here is built yet.
+Inputs: `docs/ADVISOR_BRIEF.md`, `docs/HANDSFREE.md`, `docs/VOCABULARY.md`, `docs/COPY.md` (`feat/copy-v3`),
+`backend/data/academy/course.json`, `backend/app/mission/sim.py`, and the data in `backend/data/`.
+
+**The problem in one line.** Today Flight School is a quiz: 31 steps, and 28 of them are `choice`, `keywords`, `command` or vocab
+drills on a text panel; only 3 ask the kid to touch the Moon. Crew audio plays in 3 of the 31 steps. The mission can be
+"won" by never leaving the storm shelter.
+
+**The fix in one line.** Every lesson becomes a short Moon adventure on the globe: hook with a real crew voice, have the kid
+*predict*, *move the Moon* to check, reveal the real NASA number, and earn a patch that gives a real tool in the
+mission. The mission is retuned so that reading the data beats every fixed rule.
+
+---
+
+## 1. Learning goals
+
+Each goal is checked twice: once in a lesson (L1–L7, CR = check ride) and once in the mission, where it changes a decision.
+
+| # | A kid leaves able to… | NASA STEM theme | Taught in | Used in mission | Real data in this repo |
+|---|---|---|---|---|---|
+| G1 | Say that the Moon keeps one face to Earth, and that the far side is not dark | Moon motion, tidal locking | L1 | Picking a site: why the Earth-facing side can talk to Houston | `glossary.json` (far side), `places.json` (lon), new `learning/concepts.json` (NASA Moon facts) |
+| G2 | Point to where day meets night (the terminator) and explain that it moves | Light and shadow, phases | L3 | Sunrise/sunset events; the cockpit's Sun strip | Horizons `sun_elev_deg`; globe Sun direction; Glover clip |
+| G3 | Explain why the Sun stays low at the south pole, so sunlight depends on height and place | Sunlight at the poles | L3 | Site choice; power planning | `mission/sites.json` (Bussey 2010 %), Horizons ephemerides |
+| G4 | Plan for the dark: store energy, power down, keep heaters on | Engineering trade-offs, energy | L3 | Malapert's 157-hour night; night mode | `ephemeris_malapert_massif.json` (`longest_dark_h` calc) |
+| G5 | Say why there is ice in craters that never see the Sun, and how NASA found it | Water, the south pole | L5 | Rover ice runs; Shackleton Floor site | LCROSS (`artifacts.json`, NSSDCA), M3/Chandrayaan-1 source in `sites.json` |
+| G6 | Say that the Moon has no magnetic field or thick air, so solar particles reach the ground; regolith stops them | Radiation, space weather | L4 | Storm warnings, shelter, shields | `radiation.json` (Chang'e 4 LND, NTRS regolith), `donki_events.json` |
+| G7 | Act on a warning *before* the hit, and weigh a forecast's confidence | How missions make decisions | L4, CR | Storm warnings with lead time and confidence | DONKI SEP/CME records |
+| G8 | Explain that radio needs Earth in the sky (or a relay), and that it takes about 1.3 s each way | Communication | L2 | Comm windows; sending science home; Houston forecasts | Horizons `earth_elev_deg`; `capcom.MOON_ROUND_TRIP_MS` |
+| G9 | Use radio words: copy, roger, say again, and a readback | Teamwork, procedures | L2 | Every order (the Director reads back) | Artemis II "loud and clear" audio |
+| G10 | Tell the story Apollo → Artemis II → Artemis III, in order, with one thing each taught the next | History of exploration | L6 | Debrief "what a real crew did" lines | `artifacts.json` (NSSDCA), crew clips (Lovell, Duke, Apollo 13 record) |
+| G11 | Describe a place with crew words (mare, albedo, basin, ejecta, earthrise, regolith) | Observation, vocabulary | L7, in context in all | The cabin labels and CAPCOM's lines | `glossary.json` + the crew clip where each word is said |
+
+Standards hooks for teachers: NGSS 1-ESS1-1 (patterns of Sun and Moon), 5-ESS1-2 (day/night, shadows), MS-ESS1-1
+(Moon phases), MS-ETS1-1/-2 (design under constraints). We cite them; we don't claim alignment review.
+
+## 2. Pedagogy: what we do and why
+
+| Principle | What it means for 7–12 | How Outpost Luna does it | Source |
+|---|---|---|---|
+| Retrieval beats re-reading | Recalling something fixes it better than hearing it again | No "fact slides". Facts come *after* a guess or an action, as the reveal. The NASA facts stay in the disclosure for teachers | Roediger & Karpicke 2006, *Psych. Science* 17(3) |
+| Predict → observe → explain | A wrong guess you check yourself teaches more than a told answer | New `predict` step: the kid commits ("Will the Sun set at Malapert?"), the globe or the data shows it, and CAPCOM explains in one line. **A prediction is never marked wrong**: it is "your guess" vs "the data" | White & Gunstone 1992, *Probing Understanding*; NASA STEM "Predict, observe, explain" activity format |
+| Show, then ask | Young kids need to see a thing before they can name it | Every find or tap step first flies the globe or plays the crew; the question follows | Mayer, multimedia learning (signalling, temporal contiguity) |
+| Short loops | Attention at 7–9 is short; finishing feels good | 3–5 minutes per lesson, 4–5 steps, about 40 s per step; a patch at the end of each | Cognitive load theory (Sweller); NASA STEM classroom activity lengths |
+| Immediate, concrete feedback | "Correct" teaches less than "Yes: 157 hours, more than 6 days of night" | The success line carries the number or the fact. After 3 misses, CAPCOM **shows** the answer on the globe and moves on (no dead ends) | Hattie & Timperley 2007, feedback |
+| Spacing and callbacks | Meeting an idea again later makes it stick | The mission calls back each lesson at the moment it matters: "Remember Malapert's long night? Sunset is in 6 hours." | Cepeda et al. 2006, spacing effect |
+| Agency | Kids learn more when choices are theirs | Predictions, route choices, site choice, and a mission where there is no single correct script | Self-determination theory (Deci & Ryan) |
+| Real over invented | Real voices and real dates feel important | Every hook is a real Artemis II recording; every number has a NASA (or cited peer-reviewed) source | Challenge brief; `docs/ADVISOR_BRIEF.md` |
+| Low reading load | Many 7-year-olds can't read the panel | Everything spoken; captions on; options numbered for "option 2"; prompts ≤ 90 characters (`docs/COPY.md`) | `docs/ACCESSIBILITY.md` |
+
+## 3. The globe as the teaching surface
+
+Eight verbs. Each is a step type (graded on the server) or a globe directive (a camera move with no grading). The globe
+does the motion first, then the step waits for the kid.
+
+| Verb | By voice | By tap or keyboard | What the globe does | Graded by | Kind |
+|---|---|---|---|---|---|
+| **V1 Find a place** | Name it: "Aristarchus", "where Apollo 11 landed" (gazetteer aliases) | Tap it; Tab cycles the pins, Enter picks | Flies to it and rings it after the answer; on a miss, pulses a hint ring around the right area | existing `intent` / `tap` (gazetteer match, or tap within `radius_deg`) | existing |
+| **V2 Turn the Moon** (near/far side) | "show me the far side", "turn it around", "the side we see" | Drag to rotate, or tap the **Near / Far** toggle; keyboard ← → rotates 30° | Animates a half-turn; a small Earth marker shows which way Earth is | new `globe_side` {want: near\|far}: the voice side word, the toggle, or the camera's centre longitude (far: \|lon\| > 110°, near: \|lon\| < 70°) | new |
+| **V3 Follow the sunlight** (terminator) | "the terminator", "where day meets night", or name a place on the line | Tap on the line | Sets the Sun direction (a sub-solar longitude); the line is the real day/night edge; optional slow sweep to show it move | new `terminator` {sun_lon, tol_deg}: tap within `tol_deg` of the great circle 90° from the sub-solar point; or the word "terminator"; or a named place within `tol_deg` of the line | new |
+| **V4 Compare two sites** | Name one: "Malapert", "the rim" | Tap one of the two lit cards (or pins) | Shows both sites, each with a data chip (sunlight %, Earth-up %, distance to ice) **after** the answer | new `compare` {places:[a,b], answer, metric}: tap/choice id or the spoken name; options carry `place` | new |
+| **V5 Trace a route** | Say the stops in order: "Orientale, then Ohm" | Tap the stops in order (each tap draws the next leg) | Draws the leg as each stop is hit; the finished line is the reveal (e.g. Integrity crater halfway) | new `route` {stops:[ids], ordered}: stops matched in order from taps, or gazetteer hits in the words in order; partial credit lists the next stop | new |
+| **V6 Zoom from orbit to the site** | "zoom in", "land", "go" | Tap **Zoom**, or the site | Orbit view → south-pole view → site, in 3 short moves | not graded (directive `globe.do: "zoom"`) | directive |
+| **V7 Spot the difference** | Say what changed ("the shadow moved", "the dark spot") or option 2 | Tap an option | Shows the same view twice (two Sun angles, or near side vs far side) | existing `choice` + directive `globe.do: "pair"` | directive + choice |
+| **V8 Earth-in-view check** | "yes", "no", "sometimes" | Tap Yes / No / Sometimes | Puts a little astronaut at the place and shows Earth's direction (above or below the horizon) | new `earth_view` {place, answer}: answer is computed from the place's longitude, not typed in: near side (\|lon\| < 80°) yes, far side (\|lon\| > 100°) no, limb and poles "sometimes" (libration) | new |
+
+Pole view: `globe.flyTo` clamps latitude to ±75°, so the south pole can't be seen from above. V1/V6 at the pole need a
+**`globe.poleView("south")`** (camera over the pole, up = toward lon 0). V3 needs **`globe.setSunDir(lat, lon)`** in
+explorer mode (today the Sun is fixed at 10°N 40°W). Both are small additions to `frontend/src/globe.js` (§9).
+
+## 4. Real crew clips as story beats
+
+All ids are from `backend/data/clips_manifest.json`; times are the Moment cuts in `data/index/clips.json`
+(`app/moments.py`), all `kid_safe`. Speakers are named only where the clip says who is speaking or is a named message;
+otherwise it is "an Artemis II astronaut".
+
+| Lesson | Role | Clip id | t0–t1 (s) | Who | What the kid hears → what they do |
+|---|---|---|---|---|---|
+| L1 Moon | hook | `hansen` | 0.0–24.9 | Jeremy Hansen | Finding Neil Armstrong in an encyclopedia → "Let's find where he landed" |
+| L1 Moon | reward | `orientale-basin-ejecta-extent` | 1.1–22.4 | Artemis II astronaut | "Orientale is the primary feature of the far side" → after turning to the far side |
+| L2 Radio | hook | `loud-and-clear` | 0.4–21.3 | Crew and Houston | "Houston, we have you loud and clear… Houston copies all" (already used) |
+| L3 Sun | hook | `features-along-terminator` | 47.3–54.5 | Victor Glover (names himself at 1.1 s) | "The terminator is just unreal" → find the terminator |
+| L3 Sun | reward | `aristarchus-plateau-imaging-mare` | 145.0–169.4 | Artemis II astronaut | "Get the terminator real quick… just ridiculous" |
+| L4 Storms | hook | `observing-pulsating-streamers-suns` | 0.0–22.6 | Artemis II astronaut | The Sun's glow "pulsing" during the eclipse → "The Sun is restless" |
+| L5 Ice | hook | `impact-flashes-observing-moons` | 0.6–22.2 | Christina Koch (names herself) | Watching for impact flashes → "In 2009 NASA made an impact on purpose" |
+| L6 Apollo | hook | `lovell` | 4.6–26.0 | Jim Lovell | "Welcome to my old neighborhood… Apollo 8" (already used; fix caption names, §7) |
+| L6 Apollo | route | `naming` | 40.5–54.9 | Artemis II crew | "Look at Orientale… draw a line straight up to Ohm… an unnamed crater… Integrity" → trace the route |
+| L6 Apollo | reveal | `apollo13-record` | 0.5–25.0 | Houston CAPCOM | Apollo 13's 1970 distance record → Artemis II passes it |
+| L6 Apollo | question | `duke` | 5.6–21.3 | Charlie Duke | "John Young and I landed… in 1972" (already used) |
+| L7 Words | hook | `aristarchus` | 25.4–44.0 | Artemis II astronaut | "Very high albedo… hummocky" → find Aristarchus, then the word |
+| L7 Words | word | `crew-reacts-joyfully-earth` | 0.5–20.6 | Artemis II crew | "That is the Earth… poking out from behind the Moon" → earthrise |
+| L7 Words | word | `vavilov-crater-central-peaks` | 11.8–23.9 | Christina Koch | "It has a central peak" (optional 5th step) |
+| CR | pass | `good-burn` | 0.6–8.4 | Crew | "Integrity looks like a good burn" → patch |
+| Mission | start | `full-send` | 23.1–31.9 | Crew | "Go for launch. Full send." → outpost online |
+| Mission | comm window opens | `crew-reacts-joyfully-earth` | 0.5–20.6 | Artemis II crew | Earth rising = radio is back (the real reason comm windows exist) |
+| Mission | comm window closes | `observing-earthset` | 9.4–33.0 | Victor Glover | "We're going to see Earthset" = no radio until it rises |
+| Mission | survived | `splashdown` | 0.9–24.9 | Houston | "Splashdown confirmed" → the debrief |
+
+Rules: a clip plays at most once per lesson, ≤ 25 s, is skippable ("skip"), always captioned, and its transcript is the
+caption. Clips never carry an answer the kid hasn't been asked yet.
+
+## 5. Lesson redesign
+
+Seven lessons plus the check ride (8 patches, as today). **Lesson ids and patch ids stay** (progress, tests, routing).
+Titles are copy-v3's. Each lesson: hook (clip or question) → 4–5 steps, no two in a row of the same type → a real-data
+reveal → patch. Wording below is draft; the copy agent owns final wording (`docs/COPY.md` §3 budgets).
+
+Step-type key: **find** (`intent`/`tap`), **side**, **term**(inator), **cmp**, **route**, **earth**, **predict**, **choice**,
+**cmd**, **read**(back, `keywords`), **vocab_***. A step marked † replays the same globe view as the reveal.
+
+### L1 `moon` · Know your Moon · patch Moon Scout · ~4 min
+Hook: `hansen` 0–24.9 s. Brief: "The Moon always shows Earth the same face. Let's explore both sides."
+
+| # | Type | Globe | Prompt (draft) | Answer | Real-data reveal (success line) | Source |
+|---|---|---|---|---|---|---|
+| 1 | find | near side, lit | Find where Apollo 11 landed. | `tranquillitatis` (aliases: Armstrong, first landing) | "Copy. The Sea of Tranquility, July 20, 1969. A mare: a plain of old lava." | NSSDCA Apollo 11; `facts.json` |
+| 2 | earth | astronaut at Tranquility | Standing here, can you see Earth? | yes (computed: lon 23°) | "Yes. Earth hangs in the same spot in the sky." | NASA Moon facts (tidal locking) |
+| 3 | predict | — | Do we ever see the far side from Earth? | Never / Only at full Moon / Every month → *Never* | "Never. The Moon turns once for each trip around Earth." | NASA Science: Moon (tidal locking) |
+| 4 | side | half-turn | Turn the Moon to show the far side. | far | Clip `orientale-basin-ejecta-extent` 1.1–22.4. "The far side gets sunlight too. It's just turned away." | IAU; glossary "far side" |
+| 5 | find † | `poleView("south")`, zoom | Now find the south pole, inside the gold ring. | `shackleton` | "Roger. Shackleton, 21 km wide. Our outpost goes here." | IAU Gazetteer 5450 |
+
+### L2 `comms` · Talk on the radio · patch Radio Ready · ~4 min
+Hook: `loud-and-clear` 0.4–21.3 s. Brief: "Radio is noisy. Short words and readbacks keep everyone safe."
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | choice | — | What does "copy" mean on the radio? | I heard you | "Copy means I heard you." | Artemis II audio |
+| 2 | read | — | CAPCOM: "Commander, set the shields to 40 percent." Read it back. | shields + 40 | "Good readback." | — |
+| 3 | predict | Earth–Moon line | How long does your voice take to reach Earth? | About 1 second / 1 minute / 1 hour → *1 s* | "About 1.3 seconds each way, at the speed of light." | 384,400 km ÷ c (NASA Moon facts) |
+| 4 | cmp | rim and Malapert | Which outpost can talk to Houston more? | `malapert_massif` | "Malapert. Earth was up 93% of our April window; the rim, 45%." | JPL Horizons (`sites.json`) |
+| 5 | read | — | The radio crackled. Ask CAPCOM to repeat. | say again | "Copy. Say again." | — |
+
+### L3 `power` · Power from the Sun · patch Sun Tracker · ~5 min
+Hook: `features-along-terminator` 47.3–54.5 s. Brief: "Solar panels need sunlight. At the pole, the Sun skims the horizon."
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | term | Sun set to a quarter phase | Tap the line where day meets night. | within 8° of the terminator, or "terminator" | "That's the terminator. It sweeps around once a month." | Glossary; 29.5-day lunar day |
+| 2 | predict | pole view, Sun low | At the south pole, how high does the Sun climb? | Overhead / Just above the horizon / Never rises → *just above* | "It stayed within about one degree of the horizon all April window." | JPL Horizons ephemeris |
+| 3 | cmp | rim and Malapert, Sun chips | Which site stayed sunny for our 10 days? | `shackleton_rim` | "The rim. Malapert had sun only 35% of the time." | Horizons (`window_sunlit_pct`); Bussey 2010 for the long-term 86% / 73% |
+| 4 | cmd | Malapert, Sun sinking | Night is coming. Move power to the heaters so the pipes don't freeze. | allocate heaters, more | "Copy. Malapert's night lasted 157 hours." | `longest_dark_h` calc |
+| 5 | vocab_listen (optional) | — | Which word: the line between day and night? | terminator | in context, after step 1 | crew clip |
+
+Reward clip: `aristarchus-plateau-imaging-mare` 145.0–169.4 s.
+
+### L4 `radiation` · Radiation and storms · patch Storm Watcher · ~4 min
+Hook: `observing-pulsating-streamers-suns` 0–22.6 s. Brief: "The Sun sometimes throws out fast particles. On the Moon, nothing stops them."
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | predict | Earth with field lines vs Moon | Earth has a magnetic shield and thick air. Does the Moon? | Yes / No → *No* | "No. Solar particles reach the ground." | `radiation.json` (Zhang 2020); NASA "Why space radiation matters" |
+| 2 | choice | — | Houston says particles may arrive in 6 hours. When do you shelter? | Now / When it hits / Never → *Now* | "Right. Get ready before the storm hits." | DONKI (flare → SEP lead) |
+| 3 | cmd (alert) | — | ALERT! The real storm of May 2024 is here. Your order? | shelter on | "Shelter. Soil overhead stops most storm particles." | NTRS 19890004839; DONKI |
+| 4 | choice | — | What does mSv measure? | radiation dose | "A dose. One mSv is about 10 chest x-rays." | NASA "Why space radiation matters" |
+
+Copy note: "the May 2024 storm" is a solar particle event that **also** caused a G5 storm at Earth. Don't call it "G5 at the outpost" (§7).
+
+### L5 `life` · Air, water and ice · patch Ice Hunter · ~4 min
+Hook: `impact-flashes-observing-moons` 0.6–22.2 s. Brief: "Water is heavy to launch. Ice on the Moon can become water and air."
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | predict | — | Why would NASA crash a rocket into a dark crater? | To dig up hidden ice / To test brakes / To make a crater for fun → *ice* | "To see what was buried. LCROSS found water." | NSSDCA LCROSS |
+| 2 | find † | `poleView`, LCROSS marker | Find where the LCROSS rocket hit. | `lcross_centaur_impact` (also `lcross_impact`) | "Cabeus crater, 2009." | `artifacts.json` |
+| 3 | cmp | rim and Malapert to Shackleton | Which outpost is closer to the ice in Shackleton? | `shackleton_rim` | "The rim: about 10 km. Malapert: about 130 km." | computed from `sites.json` + IAU (calc `dist_km`) |
+| 4 | cmd | rover path drawn | Life support is low. Send the rover for ice. | dispatch collect_ice | "Rover rolling. Ice means water and oxygen." | — |
+
+### L6 `history` · Lessons from Apollo · patch Historian · ~5 min
+Hook: `lovell` 4.6–26.0 s. Brief: "Every mission teaches the next one. Follow the crews."
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | route | far side | The crew named a crater. Trace it: Orientale, then up to Ohm. | stops [`orientale`, `ohm`] | Plays `naming` 40.5–54.9; rings Integrity halfway. "They proposed the name Integrity." | Crew audio; name not IAU-approved yet |
+| 2 | choice | flies to Surveyor 3 | What did Apollo 12 take home from Surveyor 3? | its camera | "Its camera, to see how parts aged on the Moon." | NSSDCA Surveyor 3 |
+| 3 | predict | — | Apollo 13 went farther from Earth than anyone. Did Artemis II beat it? | Yes / No → *Yes* | Plays `apollo13-record` 0.5–25.0. "Yes, in April 2026." | Artemis II audio |
+| 4 | choice (clip) | flies to Apollo 16 | Listen to Charlie Duke. Who landed with him? | John Young | "John Young. They drove 26.7 km." | NSSDCA LRV |
+
+### L7 `words` · Space words · patch Word Explorer · ~4 min
+The words lesson stops being a drill: each word comes from a crew clip and a place on the globe.
+
+| # | Type | Globe | Prompt (draft) | Answer | Reveal | Source |
+|---|---|---|---|---|---|---|
+| 1 | find | near side | The crew saw a very bright spot. Find Aristarchus. | `aristarchus` | Clip `aristarchus` 25.4–44.0 | Crew audio; IAU |
+| 2 | vocab_match | stays on Aristarchus | What does "albedo" mean? | how bright a surface is | "Aristarchus has a high albedo." | glossary + clip |
+| 3 | find (tap) | near side | Tap a dark mare. | any of `imbrium`, `tranquillitatis`, `crisium`, `humorum` | "Dark lava plains, low albedo." | IAU |
+| 4 | vocab_fill | Earth rising over the limb (V8 visual) | Earth comes up over the Moon's edge: an ____. | earthrise | Clip `crew-reacts-joyfully-earth` 0.5–20.6 | crew audio |
+| 5 | vocab_say | — | Say it back: regolith. | regolith | "The dusty soil your shelter is buried under." | glossary |
+
+### CR `checkride` · Check ride · patch Mission Commander · ~5 min
+Keep the 4 orders; fix the facts and add one decision with uncertainty.
+
+| # | Type | Change |
+|---|---|---|
+| 0 | predict (new) | "Earth is below your horizon. Can Houston warn you about storms?" → No (no relay yet). Reveal: "So we start when Earth is up." |
+| 1 | cmd | "Houston sees a flare. Particles likely in 6 hours." → shields more (or shelter now: **both pass**; the debrief notes the trade) |
+| 2 | cmd (alert) | Shelter on. The storm is the real May 2024 solar particle event |
+| 3 | cmd | Leave the shelter |
+| 4 | cmd | Rover for ice |
+
+Ride fix: the ride starts at mission hour 138 at Shackleton Rim, when Earth is up (Horizons), so Houston *can* warn. Today
+it starts at hour 0, when Earth is below the horizon and a Houston warning is physically impossible without a relay.
+
+### Course-wide rules
+- 3 misses → CAPCOM shows the answer (globe flies and rings it, or the right option lights) and the step passes as `shown` (no star). Today a kid can loop forever on a hint.
+- Patch stars: ★ per step passed without a hint. Predictions don't cost stars.
+- Vocab in context: every first use of a glossary word gets a ≤ 6-word gloss in the success line (`docs/COPY.md`), and the word is tap-to-define in captions.
+
+## 6. Mission game design
+
+### 6.1 The loop today
+40 shifts of 6 h. Each shift: set the power split (7 loads, always sums to 100), optional orders (shelter, rover ice /
+repair / explore, call Houston), then "end shift". Battery: solar (Horizons Sun at the site) + 1%/h backup − draw.
+Life support: recycler + greenhouse − crew use, freeze loss in the dark. Dose: Chang'e 4 baseline ×2 (game) × storm
+multiplier × shields × shelter × EVA. 2–3 real DONKI storms per run at seeded times; one array failure. Science
+collected, scored ×1.5 only when sent home in a comm window. Score = 500 for surviving (else pro-rata) + science − 8/mSv.
+
+### 6.2 Strategy simulation (before tuning)
+`backend/tools/strategy_sim.py` plays fixed policies through the real `sim.py`. Policies see only what a kid sees (State,
+events, Houston's replies), never the hidden storm schedule. 5 sites × 30 seeds = 150 missions each.
+
+| Policy | What it does | Survived | Mean score (grade) | Mean dose (game mSv) | Fails |
+|---|---|---|---|---|---|
+| planner | listens for warnings, calls Houston in comm windows, shelters early, banks science home | 0.80 | 745 (A) | 25.9 | Malapert: power out 20/30, life support 10 |
+| reactive | shelters only when a storm is already hitting; fixes alarms | 0.80 | 507 (C) | 20.0 | Malapert: power out 30/30 |
+| idle | never gives an order; "end shift" ×40 | 0.35 | 373 (D) | 36.3 | power out 87, dose 11 |
+| **always_shelter** | lives in the shelter for 10 days | **1.00** | 370 (D) | 16.2 | none |
+| rover_spam | rover out whenever free | 0.02 | 286 | 43.0 | dose 90, power 57 |
+| science_max | all power to science | 0.00 | 230 | 17.6 | life support 150 |
+| shields_max | all power to shields | 0.00 | 53 | 8.8 | life support 150 |
+| comms_max | all power to the radio (the cheapest load) | 0.00 | 17 | 17.6 | life support 150 |
+
+By site (survival): planner 1.00 everywhere except **Malapert 0.00**; always_shelter 1.00 everywhere.
+
+### 6.3 Dominant and degenerate play found
+
+| # | Problem | Evidence | Why it's bad for learning |
+|---|---|---|---|
+| D1 | **Always shelter** is the only strategy that never loses, and the only one that survives Malapert | 150/150 survived | A 7-year-old's goal is "don't lose". The safest play teaches "hide forever", the opposite of a mission |
+| D2 | The shelter doubles as a free **hibernate** button (draw ×0.3 for everything) | always_shelter never runs low on power | Mixes up two real ideas: a radiation shelter and powering down for the night |
+| D3 | **Malapert is unwinnable** by any active play (157 h night) | planner 0/30 | The best data lesson in the game (Horizons night) has no correct answer except D1 |
+| D4 | Power can't be cut: the split always sums to 100, so the low-power advice "cut some loads" does nothing | draw only moves between 2.3 and 5.3 %/h by reweighting | The game says one thing and does another |
+| D5 | **Spam end shift** survives the sunny sites | idle 0.87 at Shackleton Rim and Connecting Ridge | Rewards not playing |
+| D6 | Houston's forecast is exact ("a storm in about 37 hours") and always right | `_execute` call_houston reads the hidden schedule | No uncertainty to reason about; no reason to weigh a warning |
+| D7 | Storm "warnings" use the same event kind as the hit (`solar_storm`) | `_hour_events` | UI and Director can't tell "prepare" from "act now" |
+| D8 | Non-SEP storms hit as hard as SEP ones (G4 without particles = ×3) | `donki_events.json` mapping on Kp | Wrong physics (§7) and no false alarms |
+| D9 | Storm slots overlap (96–170 and 150–216) | `new_mission` | Two storms can stack; feels random, not readable |
+| D10 | Survival is 500 of ~750 points; reasoning earns little | score formula | Grinding to day 10 beats thinking |
+
+### 6.4 Tuning (phase 2)
+
+| # | Change | Real basis | Trade-off it creates |
+|---|---|---|---|
+| T1 | **Storm strength from particles, not Earth's storm scale.** SEP + CME ≥ 1500 km/s ×6; SEP ×3; no SEP ×1.2 | On the Moon only energetic particles matter; G/Kp measure Earth's magnetic field | Some warnings turn out mild: a real false alarm |
+| T2 | **Warnings as forecasts.** New event `storm_warning` at start − lead, with `confidence` (high if SEP, low if not) and `lead_h` (6–12 h). Delivered only when Earth is up (or a relay is on, §6.5). Houston's call says "likely / possible storm in the next day or two", not an exact hour | DONKI flare → SEP onset; NOAA forecasts are probabilities | Shelter early (lose science) or wait for more data (risk dose) |
+| T3 | **Night mode** (new command `power_save` {on}): draw ×0.5, science and greenhouse stop, heaters must stay ≥ 10 % | Landers hibernate through the lunar night (e.g. Chang'e 4/Yutu-2); NASA FSP exists because of the night | Malapert becomes winnable by *planning* for sunset; it costs science |
+| T4 | **The shelter is for storms.** Shelter draw ×0.8 (life support and heat still run; lights, science, rover off); greenhouse output halved | A small buried shelter isn't a hibernation mode | D1/D2 lose their free power |
+| T5 | **Mission objectives.** Survive + send home ≥ 120 science + finish ≥ 1 ice run. Outcome `survived` stays; debrief adds `objectives:{science, ice}`. Grade caps at C if an objective is missed | NASA missions are judged on objectives, not just a safe return | Hiding is safe but fails the mission; spamming risks the crew |
+| T6 | **Score rewards reasoning.** 300 survival + up to 300 objectives + "good calls" +40 each (sheltered before a storm's hit, night mode before sunset, science sent in a window, ice run with no storm due), − 6 per game-mSv above the quiet baseline | — | Preparing early is worth more than grinding |
+| T7 | **Storm spacing.** Slots 18–80, 100–150, 170–216; ≥ 24 h apart | — | Each storm is readable on its own |
+| T8 | Low-power advice made true: "Try night mode, or wait for the Sun" | — | Fixes D4 without breaking the 100 % split contract |
+
+Acceptance targets after tuning (asserted in `tests/test_strategy.py`):
+1. planner survives ≥ 0.9 at **every** site and has the top mean score.
+2. No fixed policy (idle, always_shelter, shields/science/comms max, rover_spam) reaches grade B on average.
+3. always_shelter misses the science objective in ≥ 95 % of runs.
+4. idle survives < 0.5 overall on Commander.
+5. Each degenerate policy fails for a different reason, so each debrief teaches something different.
+
+### 6.5 Difficulty bands
+
+| | Cadet (7–9) | Commander (10–12) |
+|---|---|---|
+| Storms | 2, both with particles (no false alarms) | 2–3, including one low-confidence warning |
+| Warnings | Always delivered (a relay satellite, stated as a future NASA plan), 12 h lead | Only when Earth is up, 6 h lead |
+| Array failure | none | one, seeded |
+| Loads shown | 4 (shields, life support, heaters, science); the rest are fixed | all 7 |
+| Director | Offers each decision as two options: "Shelter now, or wait a shift?" | Reports events; offers only on alarms |
+| Dose display | A meter (0–100 % of the mission limit) | game mSv with the real-mSv conversion in the debrief |
+
+### 6.6 Replayability: real geometry per site (April 2026 window, Horizons)
+
+| Site | Sun in the window | Earth (radio) | Distance to Shackleton ice | Its puzzle |
+|---|---|---|---|---|
+| Shackleton Rim | up all 10 days | down until hour 132 | ~10 km | No warnings for 5 days: go in cautious or bank science early |
+| Connecting Ridge | up all 10 days | down until hour 135 | ~20 km | Same, with a longer ice drive |
+| de Gerlache Rim | sets at hour 196 | up from hour 118 | ~49 km | Late sunset: plan night mode for the last 2 days |
+| Malapert Massif | sets at hour 84, dark for the rest (157 h) | up from hour 18 | ~129 km | Best radio, longest night: power planning |
+| Shackleton Floor | never (power by cable from the rim, 50 %) | via the rim relay | 0 km | Ice at hand, power-starved: careful splits |
+
+Seeds pick different real DONKI events (15 in the catalogue, 2017–2025) and times, so each run is a different real storm
+season. The debrief names the real date of each.
+
+### 6.7 Failure as learning: the debrief
+Each lose reason gets one "what really happened" line from data plus one "try" line:
+
+| Outcome | Data line | Try line |
+|---|---|---|
+| dose_limit | "On {date}, the Sun really released particles at {speed} km/s (DONKI). Your crew took {x} mSv in it." | "Shelter when Houston warns, not when it hits." |
+| power_out | "At {site} the Sun set at hour {h} and stayed down {n} hours (Horizons)." | "Turn on night mode before sunset." |
+| life_support_out | "Life support needs power for the recycler, or ice." | "Send the rover for ice when no storm is due." |
+| survived, objective missed | "Your crew was safe but sent home {s} of 120 science." | "Come out of the shelter when the storm ends." |
+
+### 6.8 Lessons pay off in the mission
+Each patch unlocks one real tool in the cockpit (owned by the mission UX agent):
+
+| Patch | Unlocks | Mission callback line (Director) |
+|---|---|---|
+| Moon Scout | Site map with the near-side/far-side shading | "Malapert faces Earth. Remember the near side?" |
+| Radio Ready | Comm-window timeline | "Earth rises in 6 hours. Then you can call Houston." |
+| Sun Tracker | Sunrise/sunset strip from Horizons | "Sunset in 6 hours, like Malapert's long night. Night mode?" |
+| Storm Watcher | Warning confidence chip | "Houston: storm likely. You learned this: shelter early?" |
+| Ice Hunter | Rover route to the ice on the globe | "Ice run? No storm is due." |
+| Historian | Debrief "a real crew did this" lines | — |
+| Word Explorer | Tap-to-define labels in the cabin | — |
+
+### 6.9 The hands-free Director
+- Narrates events in ≤ 20-word lines, then makes one offer (`docs/HANDSFREE.md`: an offer is spoken once).
+- Offers a choice, never makes it: "Houston sees a flare. Shelter now, or wait?" Yes/no and both names work.
+- Callbacks fire once per mission per lesson; Cadet hears all of them, Commander only on alarms.
+- Never auto-ends a shift; "end shift" is always the kid's. Silence > 30 s on the first shift → one nudge (`CAPCOM.firstShift`).
+
+## 7. NASA correctness checklist
+
+### 7.1 Corrections found in the current course, sim and UI
+
+| # | Where | Today | Problem | Fix |
+|---|---|---|---|---|
+| C1 | `donki_events.json` mapping; check ride; L4 | Storm strength from Kp/G-scale; "the real G5 storm… hitting the outpost" | G-scale and Kp measure Earth's magnetic field; the Moon has none. Dose on the Moon comes from solar energetic particles (SEP) | Map strength on SEP + CME speed (T1). Say "the May 2024 solar particle event (it caused a G5 storm at Earth)" |
+| C2 | Check ride step 1 | "Houston sees an active region…" at hour 0, Shackleton Rim | Earth is below the horizon until hour 132 (Horizons): no radio without a relay | Start the ride at hour 138, or say "your radiation monitor" |
+| C3 | L4 fact; debrief | "1369 µSv/day, about 2.6 times the ISS" | `radiation.json` holds ISS = 731 µSv/day, which is 1.9×. The 2.6 in Zhang 2020 compares a different ISS figure | Quote the paper's sentence exactly, or say "about 2 times" from our two numbers |
+| C4 | Cockpit dose readout | "dose 14.2 / 50 mSv" | Game doses are ×2 and the 50 mSv limit is a game limit; shown as real mSv | Label "game mSv" (or a meter for Cadet); the real-mSv conversion stays in the debrief |
+| C5 | Shields load | "Powered shields (water walls pumped…)" | No NASA design uses powered radiation shields; it's a game idea (`radiation.json` says so) | Debrief and the glossary card say "game idea"; never in a NASA-fact line |
+| C6 | Sites cards; L2 | "Earth is above the horizon about 93% of the time" (Malapert) | 93 % is our 10-day April window, not a long-term average | Always say "in our April 2026 window" |
+| C7 | Debrief; site cards | "Sun up 100% of these 10 days" (Rim, Ridge) | Horizons uses smooth ground; real terrain blocks the Sun. Long-term ≈ 86 % / 82 % (Bussey 2010) | Keep the caveat sentence; show both numbers |
+| C8 | Comm windows | Radio only when Earth is in the sky | True for a direct link; NASA plans lunar relay satellites | One line in L2 and the debrief: "Without a relay satellite…" |
+| C9 | `artifacts.json` LCROSS | "2000 kg Centaur" | NASA's LCROSS figure is about 2,300 kg (2,305 kg). **To verify** against NSSDCA 2009-031B before changing | Correct the number in the data file, with the source |
+| C10 | Lovell clip caption | "Frank Foreman and Bill Andrews" | ASR error: Frank Borman and Bill Anders | Caption override for `lovell` |
+| C11 | `places.json` Integrity, Carroll | Shown as craters | Crew-proposed names, not IAU-approved; the positions are estimated | Keep the "est." tag; L6 says "proposed" |
+| C12 | `sim.py` | Comment "crew uses 0.8 %/h"; value 1.0 | Comment drift | Fix the comment |
+| C13 | `mission/ui.js` dev storm | severity 5 | Scale is 1–3 | Use 3 |
+| C14 | `places.json` Tranquility | 180 km pin; `facts.json` says 873 km | The pin is the Apollo 11 site, not the mare | Name the pin "Tranquility Base" for find steps, or use 873 km |
+
+### 7.2 Claims the new design adds (each needs source, value, check)
+
+| Claim | Value | Source | Check |
+|---|---|---|---|
+| Moon keeps one face to Earth | rotation = orbit, 27.3 d | NASA Science: Moon | `learning/concepts.json` + `content.check()` number test |
+| Lunar day (sunrise to sunrise) | 29.5 Earth days | NASA Science: Moon phases | same |
+| Light time Earth–Moon | 1.3 s (384,400 km) | NASA Moon facts | calc `light_s` |
+| We see about 59 % of the surface over time (libration) | 59 % | NASA Science: libration | same |
+| Sun within ~1° of the horizon at the rim (April 2026) | max −0.81° geometric, above the site's horizon of −1.31° | JPL Horizons | calc `max_sun_elev` |
+| Rim–Shackleton ice ≈ 10 km; Malapert ≈ 129 km | great-circle | `sites.json`, IAU 5450 | calc `dist_km` |
+| Malapert night 157 h | Horizons | existing calc `longest_dark_h` | existing |
+| Earth up 93 % / 45 % in the window | Horizons | `sites.json` | existing number test |
+| Apollo 13 record 248,655 statute miles (1970) | clip transcript | Artemis II audio | quoted, not restated |
+| Landers hibernate in the lunar night | Chang'e 4 / Yutu-2 | NASA Science feature on Chang'e 4 (**to source**) | must have a URL before T3 ships copy |
+
+### 7.3 Standing rules
+- Every number on screen or in speech traces to a repo data file with a `{title,url}` (`content.check()` enforces this for lessons; phase 2 extends it to the new step `reveal` fields).
+- "Game idea" is said wherever a mechanic is invented (shields, ×2 dose, 50 mSv limit, cable power, rover times).
+- Artemis timeline: Artemis II flew around the Moon in April 2026; Artemis III has not landed; no date is given for it.
+- Never "NASA's outpost", "NASA says you…", or a NASA logo. Credit line: "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA."
+
+## 8. Accessibility and hands-free
+
+| Step type | Voice only | Tap / keyboard only | Captions / no audio |
+|---|---|---|---|
+| find | name the place (gazetteer aliases) | tap; Tab through pins, Enter | prompt on screen; clip transcript captioned |
+| side | "far side", "turn it around" | Near/Far toggle; ← → | the toggle shows the current side |
+| term | "terminator" or a place on the line | tap the line; or Tab to "the line" focus target | the line is drawn with a dashed overlay, not by shading alone |
+| cmp | say a site name | tap a card; options numbered | data chips are text |
+| route | stops in order, in one turn or several | tap stops; Tab through pins | each leg announced: "Orientale. Next: Ohm." |
+| earth | yes / no / sometimes | three buttons | Earth marker labelled "Earth above / below the horizon" |
+| predict | say an option or "option 2" | tap | reveal is text plus speech |
+| clips | "skip", "say that again" | ▶ / skip buttons | full transcript caption |
+
+- No step has a time limit. The check-ride "the world doesn't wait" rule is the only pressure, and it's off for Cadet.
+- Every globe directive has an audio description line ("Turning the Moon to the far side").
+- The 3-miss "show me" rule means no kid gets stuck, whatever the input.
+- The hands-free router: the new types are answer turns in a lesson step (`turn_router`: `answer`). The NLU for `side`, `route` and `earth` is word lists in the grader; no new router outcome.
+
+## 9. Scope and plan
+
+### 9.1 Build now (phase 2) vs later
+
+| Now | Later |
+|---|---|
+| New accept types `predict`, `globe_side`, `terminator`, `compare`, `route`, `earth_view` in `grade.py` + `content.check()`, with tests | Sweep animation of the terminator through a month |
+| `course.json` v3 (on `feat/copy-v3`'s copy), new `data/learning/concepts.json` with sourced facts and calcs | Teacher view / NGSS export |
+| 3-miss "shown" pass in `routes.py` | Sign-language video |
+| Sim T1–T8 with `difficulty`, `tests/test_strategy.py`, and before/after tables here | A Mars epilogue |
+| `frontend/src/academy/globe_steps.js`: minimal renderers for the 6 new types | Polished renderers (UX lead) |
+| Additive `globe.js`: `poleView(pole)`, `setSunDir(lat, lon)`, `centerLatLon()` | — |
+| `tools/handsfree_run.py` script for the new lessons | Real-kid playtest (advisor ask) |
+
+### 9.2 Contracts
+
+Step (backend, `course.json`), additive fields:
+```json
+{"prompt": "...", "hint": "...", "success": "...", "fail": "...",
+ "globe": {"do": "fly|side|pole|sun|zoom|pair|earth|route", "place": "id", "side": "near|far", "sun_lon": -90,
+           "places": ["a", "b"], "dist": 2.4},
+ "clip": {"clip_id": "naming", "t0": 40.54, "t1": 54.85, "who": "Artemis II crew", "when": "before|after"},
+ "reveal": {"text": "...", "source": {"title": "...", "url": "..."}, "from": ["mission/sites.json"], "calc": {...}},
+ "accept": {"type": "predict|globe_side|terminator|compare|route|earth_view", "...": "..."}}
+```
+
+| accept.type | Author fields | Public (client) fields | Client sends | Server returns (extra) |
+|---|---|---|---|---|
+| `predict` | `options[{id,label,say}]`, `answer` | options | `{choice}` or `{text}` | always `passed`; `correct: bool`, `guess` |
+| `globe_side` | `want` | `want` | `{choice:"near"\|"far"}`, `{view:{lat,lon}}`, or `{text}` | `side` |
+| `terminator` | `sun_lon`, `tol_deg` | `sun_lon` | `{tap:{lat,lon}}` or `{text}` | `off_deg` |
+| `compare` | `places[2]`, `answer`, `metric` | `places`, `metric` | `{choice}`, `{tap}`, or `{text}` | `choice`, `data:{a:..., b:...}` |
+| `route` | `stops[]`, `ordered` | `stops` count + `places` to show | `{taps:[...]}` or `{text}` (one turn or cumulative) | `got:[ids]`, `next` |
+| `earth_view` | `place` (answer computed) | `place` | `{choice:"yes"\|"no"\|"sometimes"}` or `{text}` | `answer`, `earth_elev` |
+
+Renderer contract (unchanged, `window.__outpost.stepRenderers[type]`): a factory `({step, acc, answer, say, playCrew, esc, captions, globe}) → {html, bind(el)}`. Phase 2 adds `globe` to the context (one line in `academy/ui.js`, flagged for the UX lead).
+
+Sim (`docs/MISSION_CONTRACT.md`, additive): `new_mission(..., difficulty="commander"|"cadet")`; command `{"type":"power_save","on":bool}`; event kind `storm_warning` with `confidence` and `lead_h`; State `power_save`, `objectives`; debrief `objectives`, `good_calls[]`.
+
+### 9.3 Who owns what
+
+| Piece | Owner | Branch |
+|---|---|---|
+| This design; `course.json` content; graders; sim tuning; strategy sim; `globe_steps.js` minimal renderers; handsfree script | learning designer | `feat/learning-v3` |
+| Academy screens, `stepRenderers` registry, final renderers, adding `globe` to ctx, `globe.js` additions review | UX lead | `feat/ux-v3` |
+| Cockpit: night mode control, warning chip, objectives, patch-unlocked tools | mission UX agent | `feat/ux-mission` |
+| Final wording of every prompt/success/fail/hint/brief | copy agent | `feat/copy-v3` |
+| Mission NLU phrases for night mode ("night mode", "power save", "hibernate") | learning designer (with tests) | `feat/learning-v3` |
+
+### 9.4 Open questions for review
+1. Night mode adds one order. OK, or should the shelter keep doubling as hibernate (simpler, but D1/D2 stay)?
+2. Mission objectives (T5): is "survived but objectives missed" too harsh for 7–9? Proposal: Cadet shows it as a silver patch, not a C.
+3. Cadet relay satellite: fine to say "a future relay satellite" to justify warnings when Earth is down?
+4. Keep `words` as a lesson, or fold its 5 steps into the others and drop to 6 lessons + check ride?
