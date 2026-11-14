@@ -3,7 +3,7 @@
 import { createMissionClient } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { parseCommand } from "./mock.js";
-import { createCockpit } from "./cockpit.js";
+import { createCabin } from "./cabin.js";
 import { callSign, CAPCOM, callbackLine, CALLBACKS, LESSON_STORY, DEBRIEF, FRAMING } from "../story.js";
 
 const LOADS = [["shields", "Shields"], ["life_support", "Life support"], ["greenhouse", "Greenhouse"], ["science", "Science"],
@@ -38,7 +38,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // `academy` (optional): {badges() → [{id,name,patch,lesson}], has(lessonId) → bool}: Flight School patches carry over.
   // [session hook] `session` (optional): {onStart(state), endShift(state) → true when the session Director handles it}.
   const $ = id => document.getElementById(id);
-  const panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
+  const cabinEl = $("mCabin"), panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
   let screen = "off", pending = null, bannerT = null, siteSeed = null, cockpit = null, logHistory = [];
   const badges = () => (academy ? academy.badges() : []);
@@ -58,10 +58,22 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     if (state && !state.over) { showHud(); return; }
     briefing();
   }
-  function exit() { screen = "off"; panel.classList.remove("is-cockpit"); globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  const hideCabin = () => { cabinEl.hidden = true; delete document.body.dataset.cabin; globe.setViewport(null); };
+  /** The window's zoom level on the real globe: orbit (whole Moon), site approach, or along the rover's route. */
+  function windowView(v) {
+    if (!state) return;
+    const s = state.site, rv = state.rover || {}, t = rv.busy ? TARGETS[rv.task] : null;
+    if (v === "orbit") globe.flyTo(-35, s.lon, 3.8);
+    else if (v === "rover") globe.flyTo(t ? (s.lat + t.lat) / 2 : s.lat, t ? (s.lon + t.lon) / 2 : s.lon, 1.5);
+    else globe.flyTo(s.lat, s.lon, 1.75);
+  }
+  /** Spoken or typed view changes ("zoom out", "show me the rover", "back to the outpost"). */
+  const VIEW_WORDS = [[/\b(zoom out|orbit|whole moon|full moon|go up)\b/, "orbit"], [/\b(rover view|show (me )?the rover|follow the rover|where is the rover)\b/, "rover"],
+    [/\b(zoom in|outpost view|site view|back to the (outpost|base|site)|show (me )?the (outpost|base|site))\b/, "site"]];
+  function exit() { screen = "off"; hideCabin(); globe.mission.exit(); panel.hidden = true; banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   function briefing() {
-    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; panel.classList.remove("is-cockpit");
+    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin();
     if (!site) site = sites[0];
     panel.innerHTML = `
       <header class="m-head"><span class="eyebrow">Outpost Luna · Briefing</span>${sampleTag()}</header>
@@ -110,18 +122,18 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
-    screen = "hud"; debriefEl.hidden = true; panel.hidden = false; panel.classList.add("is-cockpit");
-    panel.innerHTML = "";
-    cockpit = createCockpit(panel, {
-      mode: "full", badges,
-      onAllocate: (to, amount) => run({ type: "allocate", to, amount, from: null }),
-      onShelter: on => run({ type: "shelter", on }),
-      onRover: task => run({ type: "dispatch", vehicle: "rover", task, target: null }),
+    screen = "hud"; debriefEl.hidden = true; panel.hidden = true; cabinEl.hidden = false; document.body.dataset.cabin = "1";
+    cockpit = createCabin(cabinEl, {
+      badges,
+      onCommand: c => run(c),
       onHouston: () => callHouston(),
+      onView: v => windowView(v),
       onEndShift: () => endShift(),
       onDebrief: () => showDebrief(),
     });
-    if (client && client.sample) panel.insertAdjacentHTML("afterbegin", sampleTag());
+    if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
+    requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
+      if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
     render();
   }
@@ -255,6 +267,8 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function handleText(text) {
     if (!state || screen !== "hud") return false;
     radio("kid", text);
+    const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
+    if (vw && cockpit) { cockpit.setView(vw[1]); return true; }
     if (!client.sample) return false;          // the real Director parses commands
     const c = parseCommand(text); if (!c) return false;
     if (c.type === "call_houston") { await houston("Houston here. We copy you, Commander. Keep the crew safe and the lights on.", 2600); return true; }
@@ -314,7 +328,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- debrief ----------
   async function showDebrief() {
     if (!state) return;
-    screen = "debrief"; panel.hidden = true; banner.hidden = true;
+    screen = "debrief"; panel.hidden = true; banner.hidden = true; hideCabin();
     let d; try { d = await client.debrief(state.id); } catch (e) { d = { score: state.score, grade: "?", timeline: [], lessons: [], data_used: [] }; }
     const ls = (d.lessons && d.lessons.length ? d.lessons.map(l => ({ text: l.text, source: l.source })) : lessons().map(l => ({ text: l.text, source: { ...l.source, title: l.name } })));
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");

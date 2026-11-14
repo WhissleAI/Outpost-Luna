@@ -159,7 +159,15 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     });
   }
 
-  function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
+  // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
+  let band = null;
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
+    if (band) { const hb = h * band; camera.setViewOffset(w, h, 0, (h - hb) / 2, w, h); } else camera.clearViewOffset();
+    camera.updateProjectionMatrix();
+  }
+  function setViewport(frac) { band = frac || null; resize(); }
   new ResizeObserver(resize).observe(stage); resize();
 
   const tmp = new THREE.Vector3();
@@ -215,7 +223,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   });
 
   return {
-    showFeature, highlight, flyTo, nearest, mission,
+    showFeature, highlight, flyTo, nearest, mission, setViewport,
     togglePins() { pins.visible = !pins.visible; return pins.visible; },
     toggleHardware() { const on = layer.style.display === "none"; layer.style.display = on ? "" : "none"; return on; },
     get hardwareOn() { return layer.style.display !== "none"; },

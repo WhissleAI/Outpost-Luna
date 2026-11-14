@@ -8,7 +8,7 @@
 <script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@600;700;800&family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap">
 </head>
 <body>
 
@@ -69,6 +69,8 @@
 
     <!-- Mission Trainer (mission/ui.js): side panel (briefing / HUD), event banner, Houston signal, debrief -->
     <aside class="mpanel" id="mPanel" hidden aria-label="Mission control"></aside>
+    <!-- Outpost Luna cabin (mission/cabin.js): the window + instrument panel; replaces the globe while a mission runs -->
+    <section class="m-cabin" id="mCabin" hidden aria-label="Outpost Luna cockpit"></section>
     <!-- Junior Astronaut Academy (academy/ui.js): course map, lesson, badge -->
     <aside class="mpanel apanel" id="aPanel" hidden aria-label="Junior Astronaut Academy"></aside>
     <div class="m-banner" id="mBanner" hidden role="status"></div>
