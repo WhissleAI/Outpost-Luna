@@ -212,7 +212,7 @@ export function createCabin(root, o = {}) {
   // ---- shield knob ----
   const shield = d => st && cb.onCommand({ type: "allocate", to: "shields", amount: { kind: "percent", value: clamp(Math.round(((st.loads.shields || 0) + d) / 10) * 10, 0, 60) }, from: null });
   q("#cbShMinus").onclick = () => shield(-10); q("#cbShPlus").onclick = () => shield(10);
-  q("#cbKnob").addEventListener("keydown", e => { const d = { ArrowUp: 10, ArrowRight: 10, ArrowDown: -10, ArrowLeft: -10 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); shield(d); } });
+  q("#cbKnob").addEventListener("keydown", e => { const d = { ArrowRight: 10, ArrowLeft: -10, PageUp: 10, PageDown: -10 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); shield(d); } });
   q("#cbKnob").addEventListener("click", e => { const r = e.currentTarget.getBoundingClientRect(); shield(e.clientX > r.left + r.width / 2 ? 10 : -10); });
 
   // ---- master alarm, Houston, end shift ----

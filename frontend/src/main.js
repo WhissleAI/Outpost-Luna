@@ -36,6 +36,10 @@ import { emitIntent, onIntent } from "./input/intents.js";
 import { installDefaultIntents, installKeyboardIntents, cabinPanel } from "./input/defaults.js";
 import { lookTarget } from "./gesture/bind.js";
 import { initGestures } from "./gesture/ui.js";
+import "./input/keys.css";   // [keys]
+import { installKeys } from "./input/keys.js";   // [keys] the keyboard as a TV remote (docs/KEYBOARD.md)
+import { installGamepad } from "./input/gamepad.js";   // [keys]
+import { REPEAT_MS } from "./input/spatial.js";   // [keys]
 // ---- end [input] ----
 
 // [session] The session Director (docs/SESSION_CONTRACT.md) is ON unless ?session=0 or localStorage atm-session=0.
@@ -487,6 +491,11 @@ async function boot() {
     stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
   });
   installKeyboardIntents();
+  // [keys] arrows / Enter / Esc / letters and game controllers emit the same intents (docs/KEYBOARD.md)
+  const keys = installKeys({ globe, places, mission: missionUI, inCabin, cabinPanel, a11y });
+  installGamepad({ settings: () => keys.settings, repeatMs: () => REPEAT_MS[keys.settings.repeat], inCabin,
+    setMode: () => { document.documentElement.dataset.input = "pad"; },
+    onConnect: on => { keys.padConnected(on); keys.toast(on ? "Controller connected" : "Controller disconnected"); } });
   // Library tour: next / previous stop (swipe, Alt+arrows, or "next" by voice) while a tour runs.
   const tourStepBy = d => { if (!tour.active) return false; stopSpeaking(); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
   onIntent("next", () => tourStepBy(1), { priority: 10 });
