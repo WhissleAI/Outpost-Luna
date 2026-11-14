@@ -176,7 +176,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   /** NASA's list of nine Artemis candidate landing regions (Oct 2024): two of our sites are on it; the others are sites
    *  that scientists study. The backend can send `nasa_candidate`; until then this table (docs/ACCURACY_AUDIT.md). */
   const NASA_CANDIDATE = new Set(["malapert_massif", "de_gerlache_rim"]);
-  const siteTag = s => (s.nasa_candidate ?? NASA_CANDIDATE.has(s.id)) ? "NASA candidate region" : "Studied by scientists";
+  const siteTag = s => s.status_label || ((s.status ? s.status === "nasa_2024" : (s.nasa_candidate ?? NASA_CANDIDATE.has(s.id))) ? "NASA candidate region" : "Studied by scientists");
   const sunPct = s => Math.round(s.window_sunlit_pct ?? s.sunlight_pct);
   /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
   const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
@@ -265,7 +265,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function start(seed) {
     siteSeed = seed ?? Math.floor(Math.random() * 1e9);
-    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles] }); prev = null; logHistory = []; reminded.clear(); seen.clear();
+    state = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level: tier() }); prev = null; logHistory = []; reminded.clear(); seen.clear();
     if (unsub) unsub();
     unsub = client.subscribe(state.id, onTelemetry);
     pushContext();
@@ -521,6 +521,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
     const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).map(l => ({ text: takeaway(l.text), source: l.source }));
     [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
+    if (d.try && tks.length < 3) tks.push({ text: takeaway(d.try), source: null, lesson: null, next: true });
     if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
     const srcLabel = s => s && s.title ? s.title.split(/[,:(]/)[0].trim() : "Source";
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
@@ -529,11 +530,11 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
         <button class="mx-x" id="mDbClose" type="button" aria-label="${esc(DEBRIEF.close)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
       <div class="mx-db-top">
         <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
-        <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div></dl>
+        <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div>${d.stars != null ? `<div><dt>Stars</dt><dd class="mx-stars" aria-label="${d.stars} of 3 stars">${[0, 1, 2].map(k => `<span class="${k < d.stars ? "is-on" : ""}">${ic("star", 20)}</span>`).join("")}</dd></div>` : ""}</dl>
         ${breakdown(d)}
       </div>
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
-      <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : ""}</li>`).join("")}</ul>
+      <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>
       <div class="mx-foot">
         <button type="button" class="mx-go" id="mAgain">${esc(DEBRIEF.replay)}</button>
         <button type="button" class="mx-btn" id="mNewSite">${esc(DEBRIEF.another)}</button>

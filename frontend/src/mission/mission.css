@@ -131,6 +131,7 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
   .mx-debrief .mx-tks{align-self:center}
   .mx-debrief .mx-title{font-size:var(--text-lg)}
 }
+.mx-stars{display:flex;gap:2px;color:var(--color-text-3)} .mx-stars .is-on{color:var(--color-warning)}
 .mx-tag2{display:block;width:max-content;margin-top:2px;padding:0 6px;border-radius:var(--radius-sm);background:var(--color-surface-2);font-style:normal;
   font-size:11px;font-weight:var(--weight-medium);color:var(--color-text-2)}
 /* picker: days of the mission, with the year average on the picked site's second line */

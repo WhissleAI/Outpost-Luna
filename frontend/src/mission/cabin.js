@@ -40,10 +40,10 @@ const LAMPS = [
 /** A storm forecast, if the sim sends one (the game redesign: lead time + confidence). Accepts env.storm_warning or
  *  env.storm_forecast with lead_h | eta_h, confidence | probability (0–1 or %), real_date, source. null when none. */
 export function stormWarning(s) {
-  const w = s && s.env && (s.env.storm_warning || s.env.storm_forecast);
+  const w = s && s.env && (s.env.warning || s.env.storm_warning || s.env.storm_forecast);
   if (!w || w.active === false || (s.env.storm && s.env.storm.active)) return null;
   const c = w.confidence ?? w.probability, conf = c == null ? null : Math.round(c > 1 ? c : c * 100);
-  return { lead: w.lead_h ?? w.eta_h ?? null, conf, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "" };
+  return { lead: w.lead_h ?? w.eta_h ?? null, conf, date: w.real_date || null, source: w.source || "DONKI", name: w.name || "", by: w.by || null };
 }
 /** Hab switches: [id, label, guarded, on(state), command(on)] */
 const SWITCHES = [
@@ -229,7 +229,8 @@ export function createCabin(root, o = {}) {
   function page(p) {
     const s = st; if (!s) return "";
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50;
-    if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}
+    const sunCh = e.next_sun_change_h != null ? row(e.in_sun ? "Sunset in" : "Sunrise in", `${Math.round(e.next_sun_change_h)} h`, e.in_sun && e.next_sun_change_h <= 6 ? "is-warn" : "") : "";
+    if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
       <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
       ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
@@ -248,7 +249,9 @@ export function createCabin(root, o = {}) {
       const act = q("#cbAct" + d);
       if (act && pages[d] === "PWR") {
         const n = LOADS[sel][1];
-        act.innerHTML = `<span class="cb-actl">${esc(n)}</span><button type="button" class="cb-sk is-act" data-a="-5" aria-label="Less power to ${esc(n)}">−5</button><button type="button" class="cb-sk is-act" data-a="5" aria-label="More power to ${esc(n)}">+5</button>`;
+        const night = st && st.power_save != null ? `<button type="button" class="cb-sk is-night" aria-pressed="${!!st.power_save}" aria-label="Night mode: ${st.power_save ? "on" : "off"}">${ic("moon", 14)}Night</button>` : "";
+        act.innerHTML = `${night}<span class="cb-actl">${esc(n)}</span><button type="button" class="cb-sk is-act" data-a="-5" aria-label="Less power to ${esc(n)}">−5</button><button type="button" class="cb-sk is-act" data-a="5" aria-label="More power to ${esc(n)}">+5</button>`;
+        const nb = act.querySelector(".is-night"); if (nb) nb.onclick = () => cb.onCommand({ type: "power_save", on: !st.power_save });
         act.querySelectorAll("[data-a]").forEach(b => b.onclick = () => cb.onCommand({ type: "allocate", to: LOADS[sel][0], amount: { kind: "delta", value: +b.dataset.a }, from: null }));
       } else if (act) act.innerHTML = "";
     });
@@ -296,7 +299,9 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env || {}, L = s.loads, rv = s.rover || {}, lim = r.dose_limit_msv || 50;
     const hab = q("#cbInfoHab"); if (hab) hab.innerHTML = irow("Life support", Math.round(r.life_support_pct) + "%", mbar(r.life_support_pct, 100, r.life_support_pct < 25 ? "is-warn" : ""))
       + irow(`Greenhouse ${pretend()}`, Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0)) + irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0));
-    const obj = q("#cbObj"), O = s.objectives || null;
+    const obj = q("#cbObj"), O0 = s.objectives || null;
+    const O = Array.isArray(O0) ? O0 : O0 ? Object.entries(O0).filter(([, v]) => v && typeof v === "object" && "goal" in v)
+      .map(([k, v]) => ({ text: `${k === "ice" ? "Ice" : k === "science" ? "Science" : k} ${Math.round(v.got || 0)} / ${v.goal}`, done: !!v.met })) : null;
     if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
     const rad = q("#cbInfoRad"), wn = stormWarning(s);
     if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
