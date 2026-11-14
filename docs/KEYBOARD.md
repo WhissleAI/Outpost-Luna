@@ -240,4 +240,13 @@ uv run --no-project --with playwright==1.58.0 python frontend/tests/e2e/keys_e2e
 uv run --no-project --with playwright==1.58.0 python frontend/tests/e2e/gamepad_e2e.py --base http://127.0.0.1:5297
 ```
 
+Results on `rc/2` with the story merge (2026-11-14):
+- keys_e2e: 178/178 checks, 0 console errors (full journey, keyboard only, no pointer events);
+- gamepad_e2e: 31/31;
+- gestures_e2e: 21/21;
+- ux_flow: 22/22;
+- unit: 117/117;
+- desktop: 11/11;
+- backend pytest: 746 passed.
+
 Screenshots of the focus states are in `docs/img/keys/`.
