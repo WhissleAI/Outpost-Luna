@@ -19,3 +19,30 @@ What the app does now: device_directed never decides alone.
 
 Asks: a profanity / exclamation tag; device_directed calibrated on short exclamations (one to three words); PII off for
 words with no name, number or address in them.
+
+### Arc Mini ear: names and hallucinated tails (round-7 ear eval, `director_model/ear_hot_eval.py`)
+
+TTS kid-style voices (held-out Steer voices, pitch / rate jitter, half with classroom babble), decoded by the Arc ear
+with the Tier A names, before and after the per-screen hot lists:
+
+| said | Arc heard (Tier A only) | with the screen's hot lists |
+|---|---|---|
+| tell me about Tycho | Tell me about Tiger. See you next time. | tell me about tiger louder See you next time. |
+| where is Antares | Where is Jerry's? Oh, | where is cherry's |
+| tell me about Eugene Cernan | Tell me about Gigi Shannon. | tell me about jersey john and |
+| where is Vavilov | Where is Sappelov? | Where is that loving? |
+| tell me about Buzz Aldrin | Tell me about Puzz over. | Tell me about Puzz Aldrin. |
+| what is at Pythagoras | What is it, Pythagoramus? | What is it, Pythagoras? |
+| rover go get ice | rover go get eyes | rover go get ice |
+| end shift | and shift. | End shift. |
+| one sec (room chatter) | Shout out to Seth Shackleton. Mm-hmm Mm-hmm Mm-hmm ... | Shot by Seth Shackleton. Mm-hmm did not did not ... |
+| tell me about Apollo 13 rocket | ... the Apollo 13 rocket. you you you you | ... the Apollo 13 rocket. |
+
+Patterns for the Arc team:
+- **Hallucinated tails** after the speech ends, often a Tier A name repeated ("Vavilov Vavilov", "you you you", "the
+  rover"). The bias trie makes them land on list words. A tail / repetition guard tied to the VAD would help most.
+- **Names under babble** fail before any bias can help ("Cernan" -> "Gigi Shannon"): the n-best (4 beams) rarely holds
+  the name, so rescoring cannot recover it. A wider n-best, or name candidates per span, would let the list do more.
+- **Short words**: "ice" -> "eyes", "end" -> "and"; the bias fixes most of these when the screen expects them.
+- **Silence** on a screen with a hot list sometimes decodes as "Oh. Oh." (base: nothing); a no-speech gate before the
+  decoder would stop it.
