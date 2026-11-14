@@ -403,7 +403,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "map") {
       const nx = nextLesson(), n = lessons().filter(l => has(l.badge.id)).length, sel = (mapSel && lessons().find(l => l.id === mapSel)) || nx;
       if (prog.qualified && (!mapSel || !sel)) return "Tap Take command to run the outpost.";
-      return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title) : "Tap a patch to fly a lesson again.";
+      return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title, !!sel.ride && !has(sel.badge.id)) : "Tap a patch to fly a lesson again.";
     }
     if (view === "badge") return "Tap Next for the next lesson, or Map.";
     if (view !== "lesson" || !L) return "";

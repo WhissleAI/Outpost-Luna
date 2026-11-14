@@ -225,7 +225,7 @@ export const SCHOOL = {
   /** [audit2] the map's beat after the first patch (was blank: a returning cadet saw no "where am I"). */
   progressLine: (n, of, next) => `${n} of ${of} lessons done. Next: ${next}.`,
   /** [audit2] "What do I do?" on the map names the button the card really shows. */
-  mapHelp: (cta, title) => `Tap ${cta} to begin ${title}.`,
+  mapHelp: (cta, title, ride) => (ride ? `Tap ${cta}. One solo shift, then you take command.` : `Tap ${cta} to begin ${title}.`),
 };
 
 /** One short story beat per lesson (shown above CAPCOM's brief, and spoken before it). Keyed by course.json lesson id.

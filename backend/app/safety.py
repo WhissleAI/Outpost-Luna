@@ -78,10 +78,19 @@ def from_tag(resp: dict | None) -> list[dict]:
     return out
 
 
+TAGGER_BUDGET_S = 0.3   # a busy model server never holds a turn up: past this, the word list decides alone
+
+
 async def tagger_read(text: str) -> list[dict]:
-    """Arc Tagger's safety list for a turn's words (POST /v1/tag, ~20 ms locally); [] when the model server is off."""
+    """Arc Tagger's safety list for a turn's words (POST /v1/tag, ~20 ms locally); [] when the model server is off or
+    slower than TAGGER_BUDGET_S (every turn waits for this, so it is capped)."""
+    import asyncio
+
     from . import models_client
-    return from_tag(await models_client.tag(text, "assistant"))
+    try:
+        return from_tag(await asyncio.wait_for(models_client.tag(text, "assistant"), TAGGER_BUDGET_S))
+    except (asyncio.TimeoutError, Exception):
+        return []
 
 
 def classify(text: str, safety=None) -> dict:
