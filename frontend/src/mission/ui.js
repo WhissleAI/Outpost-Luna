@@ -198,8 +198,21 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     pushContext();
     showHud();
     if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
-    capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) }); say(CAPCOM.missionStart(callSign.spoken(), site.name));
+    capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
+    const first = !firstDone();
+    Promise.resolve(say(CAPCOM.missionStart(callSign.spoken(), site.name))).catch(() => {}).then(() => { if (first && screen === "hud") { say(CAPCOM.firstShift); nudge.arm(); } });
+    if (first) markFirstDone();
   }
+
+  // ---------- first mission: one "how to play" line, repeated only after ~20 s of silence with no order (max twice) ----------
+  const firstKey = () => "outpost-first-mission:" + (callSign.get() || "cadet");
+  const firstDone = () => { try { return localStorage.getItem(firstKey()) === "1"; } catch (e) { return false; } };
+  const markFirstDone = () => { try { localStorage.setItem(firstKey(), "1"); } catch (e) { /* private mode */ } };
+  const nudge = { t: null, left: 0,
+    arm() { this.left = 2; this.wait(); },
+    wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => { if (screen !== "hud" || !state) return; this.left--; say(CAPCOM.firstShift); this.wait(); }, 20000); },
+    heard() { if (this.left > 0) this.wait(); },   // the kid spoke: the silence starts again
+    stop() { clearTimeout(this.t); this.left = 0; } };
 
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
@@ -232,7 +245,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
     syncSurface();
   }
   /** Radio log lines survive re-renders of the cockpit. */
-  function radio(who, text) { if (!text) return; logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
+  function radio(who, text) { if (!text) return; if (who === "kid") nudge.heard(); logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
   /** The Call Houston push button: the real Director in a live mission, the local practice line otherwise. */
   async function callHouston() {
     if (!state) return;
@@ -272,6 +285,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function run(command, { spoken } = {}) {
     if (!state) return;
+    nudge.stop();
     if (command.type === "end_shift") return endShift();
     let r;
     try { r = await client.command(state.id, command); } catch (e) { capcom({ say: "CAPCOM can't reach the mission server." }); return; }
@@ -286,6 +300,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
 
   async function endShift() {
     if (!state || state.over) return;
+    nudge.stop();
     if (session && !client.sample && session.endShift && session.endShift(state)) return;   // [session hook]
     if (cockpit) cockpit.busy(true);
     let r;
@@ -355,6 +370,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   async function handleDirector(r) {
     if (!r || !state) return false;
     if (r.action === "command" && r.command) {
+      nudge.stop();
       // Assumption: if the Director already applied it, it returns state; otherwise we post it to the sim.
       if (r.state) { applyState(r.state); pending = r.needs_confirm ? r.command : null; capcom({ say: r.say, confirm: !!r.needs_confirm, viaDirector: true }); await say(r.say, sayStyle(r)); }
       else await run(r.command, { spoken: true });
@@ -367,6 +383,7 @@ export function createMissionUI({ globe, card, placeById, say, alertSound, onCon
   // ---------- [session hook] decisions from the session Director (frontend/src/session.js) ----------
   function applyRemote(s) {
     if (!s) return;
+    if (state && s.mission_time_h !== state.mission_time_h) nudge.stop();   // a shift ended through the session Director
     const st0 = state;
     if (st0 && s.env && s.env.storm && s.env.storm.active && !(st0.env.storm && st0.env.storm.active)) handleEvents([{ kind: "solar_storm" }]);
     (s.alerts || []).forEach(a => { if (a === "low_power" || a === "life_support_low") seen.add(a); });

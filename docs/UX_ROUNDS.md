@@ -115,7 +115,99 @@ Screenshots are in the scratchpad only (not committed). Critique:
 
 `docs/img/ux/r1-*.jpg`: home, map, map_mid, lesson_choice, lesson_tap, lesson_feedback, vocab_listen, vocab_say, patch.
 
+## Mission
+
+Owner: Mission UX (`feat/ux-mission`). Files: `mission/*` (`ui.js`, `cabin.js`, `cockpit.js`, `terrain.js`,
+`mission.css`), `cabin.css`, `src/mission.css`. Screenshots: `docs/img/ux/mission/<round>-<state>-<w>x<h>-<theme>.jpg`
+(scratchpad drivers: `shots.py` for the states, `func.py` for the end-to-end pass).
+
+### Round 0: baseline (before)
+
+`r0-picker-1440x900-light`, `r0-cabin-1440x900-dark`, `r0-storm-1280x720-light`, `r0-debrief-1440x900-light`.
+
+- **Picker:** a side panel with a 5-line paragraph, five cards each with three emoji facts (☀ ❄ 🌍), a site
+  paragraph, three long source chips, "Team roles (optional)", and Take command below the fold at 1440×900. A
+  separate CAPCOM card on the left repeats the brief with three lesson paragraphs. Two things talk at once.
+- **Cabin:** a good direction (window over the NASA terrain, three display units, real controls), but loud:
+  - The bulkhead is a brushed, grained, bolted SVG frame with 40+ bolts and Dzus fasteners. The plates have their own
+    bolts. Everything competes with the window.
+  - The window carries a breadcrumb that duplicates the view switcher, a MET/score line, a three-line sky readout,
+    a top-centre NASA credit line and "LOW-LIGHT CAMERA · SUN BELOW HORIZON" over the terrain.
+  - Displays put the page keys on both sides (PWR LIFE RAD COMM + SEL▲ SEL▼ +5 −5) and their text is 11px.
+  - "NO EARTH" lights amber all the time, so amber means nothing. NIGHT is a lamp.
+  - Two condensed fonts (Barlow Condensed, Share Tech Mono) from Google Fonts: not offline, not the design system.
+  - END SHIFT and PTT · HOUSTON are both styled as hero buttons; END SHIFT has hazard stripes. No single primary.
+  - A duplicate caption: the cabin's own phosphor line plus the docked caption bar.
+- **Storm:** two banners at once: the mission banner (emoji, a run-on line with no spaces: "Solar stormG5…") over the
+  window, and the accessibility visual-alert banner stacked above it. Both cover the middle of the view.
+- **Debrief:** "Mission paused" with grade F while the mission is only paused. A dashed "☀ storm" marker. Six lessons
+  paragraphs, a "Data we used" column of methodology text, a Mars line, and a stale "Warning" banner over the sheet.
+  The CAPCOM card peeks out on the left. The primary action is below the fold.
+
+### Round 1
+
+`r1-{picker,cabin,storm,debrief}-{1440x900,1280x720}-{light,dark}.jpg`
+
+**Cabin** (`cabin.js` rewritten, `cabin.css` rewritten on tokens):
+
+- One grid, top to bottom: window → three displays → controls → comm strip, with one gap token and one plate style.
+  The window is a hole in the panel: the glass's spread shadow paints the panel round it (no SVG bulkhead), so ORBIT
+  still shows the globe through it.
+- Window: clock ("Day 1 · Shift 1", site and score under it), a segmented view switcher with `icons.js` glyphs, the sky
+  readout as one line bottom-left, the NASA credit bottom-right. Breadcrumb, MET line and the top credit are gone.
+- Displays: one big number per unit (Power %, Life support %, Dose mSv) with a bar, then 3–4 rows. Page keys are one row
+  under each screen. On PWR, the seven loads are buttons (select) and −5 / +5 act on the selected one.
+- Controls: Hab (Shelter under a "Lift" cover, Heaters, Science as switches), Rover (Ice · Explore · Home), Shields ring
+  (−/+, arrow keys), Caution & warning (8 lamps + master alarm), Call Houston + **End shift** (the one primary) and a
+  quiet "Finish mission".
+- Colour: red and amber only on lit warning/caution lamps, the master alarm and the alert strip. "No Earth", "Rover out",
+  "In shelter" are blue status lamps; they never trip the master alarm.
+- Alerts: the storm is a **strip along the glass's top edge** (icon, "Solar storm", "Real event, 10 May 2024 · NASA
+  DONKI", Shelter / Shields 40); the clock and the switcher drop below it. Short warnings use the same strip for 7 s.
+  The a11y module still flashes the screen edge, vibrates and announces (`a11y.visualAlert`), but its banner is hidden in
+  the cabin so there is one alert, not two. The master alarm rings the glass in red instead of tinting it.
+- Voice: every order animates its control (`.is-moved` on the shield ring, the switch, the rover plate, the load row);
+  verified by `func.py` (shields to 40 → ring at 40 and pulses; rover for ice → Ice pressed, plate pulses).
+- Houston: the PTT button shows "Signal travelling" with a progress line for the real round trip; the floating
+  Moon–Earth signal panel is gone.
+- Fonts: Inter / JetBrains Mono from tokens; `@fontsource/barlow-condensed` and `share-tech-mono` removed.
+
+**Picker** (Moon-first): the globe is the backdrop with the five sites as pins on the south pole (selected one
+labelled); a glass panel with a 2–6 word headline, one line, a Sun / Earth / Ice table (radio group, arrow keys), one
+source link, **Take command**, and Team roles behind a disclosure. No CAPCOM card.
+
+**Debrief:** a glass sheet: headline (Mission complete / paused / over), one line, Grade + Score (grade hidden while
+paused), a shift-by-shift chart with storm shifts shaded, up to three one-sentence takeaways each with its source,
+**Fly again** / New site, and "NASA data used" behind a disclosure. On short screens the chart and takeaways sit side by
+side so the buttons never scroll away.
+
+**Functional pass** (`func.py`, voice): pick Malapert by voice, arrow keys on the list, take command, shields to 40,
+shelter, rover for ice, end shift ×4 to a real DONKI storm (2017-09-07), shelter, call Houston, debrief, fly again. All
+pass except "shelter while the rover is out", which the sim correctly refuses ("Call them back first"); the test now
+recalls the rover first. No console errors from Mission code (two `blob:` 404s per run come from `floor.js` revoking a
+TTS clip that was cut off).
+
+**Round 2 queue:**
+
+- Picker pins: four of five sites are within 2° of the pole, so their dots overlap at any globe distance the camera
+  allows. Try a polar inset, or fan the labels out with leader lines.
+- Debrief takeaway 2 is three lines; the chart is flat for short missions (paused on day 3). Show the shift dots and
+  the storm band labels.
+- Lamp legends wrap to two lines at 10px; try 3 × 3 with the master alarm in the grid.
+- Rover plate: show the route progress (the window has it; the plate only says "Parked" / "Ice run · 6 h").
+- Data-driven slots for the game redesign (`feat/learning-v3`): warning confidence + lead time on the alert strip,
+  score breakdown on the debrief.
+- `src/mission.css` (moved from `styles.css`) still uses the legacy aliases: rewrite on tokens or delete what the new
+  screens no longer use.
+
 ## Copy requests (for the copy owner)
+
+- **Mission (from Mission UX):**
+  - Debrief takeaways come from the backend `lessons[].text` (2–3 sentences each); the debrief shows only the first
+    sentence. One short sentence per takeaway (≤ 110 characters) would read better.
+  - `d.why` on the debrief: one sentence, ≤ 80 characters.
+  - Picker line "Sun for power. Ice for water. Earth for radio." and headline "Pick your outpost site" are in
+    `mission/ui.js`; move them to `story.js` if you want to own them.
 
 - **Home headline:** `SCHOOL.hero` + `SCHOOL.hero2` is the home headline. It needs to fit 2 lines at 40px in 600px:
   ≤ 32 characters per line.

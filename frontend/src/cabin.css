@@ -310,4 +310,5 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 .cb-view,.cb-rvb,.cb-ptt-t{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .cb-al-i .ic{width:20px;height:20px}
 @media (min-width:860px) and (max-height:780px){.cb-view .ic,.cb-rvb .ic,.cb-ptt-t .ic{display:none}.cb-view{min-width:56px}}
-@media (max-width:1366px){.cb-rvb .ic,.cb-ptt-t .ic{display:none}}
+.cb-rvb .ic{display:none}
+@media (max-width:1366px){.cb-ptt-t .ic{display:none}}
