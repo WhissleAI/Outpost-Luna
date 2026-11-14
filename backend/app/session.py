@@ -338,7 +338,8 @@ class Session:
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
             source=source if heard else "typed",
             dd=k.get("device_directed") if heard else None,
-            speaking=heard and self.spoken.speaking(), recent=self.spoken.recent() if heard else [],
+            speaking=heard and self.spoken.speaking(), recent=self.spoken.fresh() if heard else [],
+            older=self.spoken.older() if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
     async def _note(self, rt: dict, text: str):

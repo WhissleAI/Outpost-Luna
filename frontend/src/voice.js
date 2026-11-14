@@ -5,7 +5,7 @@
 // is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 import { createListener } from "./listen.js";
-import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, isEcho } from "./floor.js";
+import { floor, shouldBargeIn, spaceAction, micErrorText, isFiller, isEcho, normWords } from "./floor.js";
 export { spaceAction, micErrorText };
 import "./floor.css";
 
@@ -76,7 +76,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
     // Never answer ourselves or a hum: filler ("oh", "mm-mm") and echoes of our last few lines are dropped silently.
-    if (!ptt.held && !pttTurn && (isFiller(text) || isEcho(text, refsNow()))) { wordsEl.textContent = ""; kidDone(); return; }
+    if (!ptt.held && !pttTurn && (isFiller(text) || isEcho(text, refsNow()) || oldEcho(text))) { wordsEl.textContent = ""; kidDone(); return; }
     const viaPtt = pttTurn; pttTurn = false;
     set("thinking");
     onTurn(text, { ptt: viaPtt }).finally(() => {
@@ -101,8 +101,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const remember = t => { if (!t) return; said.push({ text: t, at: performance.now() }); if (said.length > 8) said.shift(); };
   if (floor) floor.on("playback", e => { if (e && e.text) remember(e.text); });
   if (floor) floor.on("sentence", e => { if (e && e.text) remember(e.text); });
-  const saidRefs = () => { const now = performance.now(); return said.filter(x => now - x.at < ECHO_LINES_MS).map(x => x.text); };
-  const refsNow = () => [...liveRefs(), ...recent.refs, ...saidRefs()];
+  const saidRefs = (lo, hi) => { const now = performance.now(); return said.filter(x => now - x.at >= lo && now - x.at < hi).map(x => x.text); };
+  const refsNow = () => [...liveRefs(), ...recent.refs, ...saidRefs(0, 3000)];
+  // Lines older than 3 s: only a near-verbatim repeat of ≥ 3 words is an echo (a kid reading back an order is not).
+  const oldEcho = t => normWords(t).length >= 3 && isEcho(t, saidRefs(3000, ECHO_LINES_MS), 0.85);
 
   // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
   let gated = null, turnDD = null, pttTurn = false;

@@ -33,6 +33,8 @@ from .gazetteer import norm
 # ---- thresholds ------------------------------------------------------------------------------------------------------
 ECHO_SHARE = 0.6          # >= 60% of the heard words appear in one of our recent lines -> echo
 ECHO_WINDOW_S = 12.0      # the lines we spoke in the last 12 s are echo references (the mic + ASR lag behind)
+FRESH_S = 3.0             # a line playing or ended < 3 s ago: 60% overlap is an echo. Older lines (3-12 s): only a
+OLD_SHARE = 0.85          # near-verbatim repeat of >= 3 words (a kid reading back an order must still be heard)
 TAIL_S = 0.6              # hard mute after any app voice ends
 DD_MIN = 0.5              # Arc device_directed under this: talking to someone else
 DD_STRONG = 0.7           # a barge-in while we speak needs a clearly device-directed turn
@@ -113,7 +115,8 @@ class Ctx:
     source: str = "typed"              # typed (keyboard, button) | voice (client mic) | listen (server relay)
     dd: float | None = None            # Arc device_directed for this turn (None: unknown)
     speaking: bool = False             # an app voice is playing now, or ended < TAIL_S ago
-    recent: list[str] = field(default_factory=list)   # what we said in the last ECHO_WINDOW_S (newest last)
+    recent: list[str] = field(default_factory=list)   # what we are saying, or said < FRESH_S ago
+    older: list[str] = field(default_factory=list)    # what we said FRESH_S..ECHO_WINDOW_S ago
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
@@ -141,6 +144,16 @@ def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
         return True
     every = set().union(*refs) if refs else set()
     return len(ws) <= 3 and all(w in every for w in ws)
+
+
+def echo(text: str, ctx: "Ctx") -> bool:
+    """Our own voice coming back: the current / fresh lines at 60% overlap; older lines only near-verbatim. On a
+    readback step (the kid repeats CAPCOM's order on purpose) only what is playing right now counts."""
+    if ctx.step_type in ("keywords", "vocab_say") and ctx.screen in ("lesson", "ride"):
+        return ctx.speaking and echo_of(text, ctx.recent, 0.85)
+    if echo_of(text, ctx.recent):
+        return True
+    return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)
 
 
 def clear_question(text: str, dd: float | None = None, act: list[str] | None = None) -> bool:
@@ -241,7 +254,7 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("ignore", "empty")
     if heard and is_filler(raw):
         return out("ignore", "filler")
-    if heard and not explicit and echo_of(raw, ctx.recent):
+    if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None
     nav = nav_intent(raw, ctx)
@@ -263,11 +276,13 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         hit = next((c for c in ctx.callsigns if c.lower() in ws or norm(c) in norm(raw)), None)
         if hit or re.search(r"\b(call me|my call sign|surprise|random|you pick|pick for me)\b", norm(raw)):
             return out("answer", "callsign")
+        if clear_question(raw, dd, act):
+            return out("question", "question")
         return out("ignore", "callsign_other", notice=bool(dd is not None and dd >= DD_STRONG))
     if s in ("lesson", "ride") and ctx.step_type:
         # A real question mid-lesson still works ("what is an mSv?"), but only on steps whose answer is not itself a
         # request: an intent step's answer IS "show me …", a command step's is an order, a readback repeats words.
-        if (ctx.step_type == "choice" or ctx.step_type.startswith("vocab_")) and WH.match(norm(raw)) and \
+        if ctx.step_type not in ("intent", "keywords", "vocab_say") and WH.match(norm(raw)) and \
                 clear_question(raw, dd, act) and not _names_option(raw, ctx):
             return out("question", "question_in_lesson")
         if single and ctx.step_type in ("keywords", "command") and not _names_option(raw, ctx):
@@ -334,3 +349,10 @@ class Spoken:
     def recent(self, window: float = ECHO_WINDOW_S) -> list[str]:
         now = self.clock()
         return [t for t, ts in self.lines if now - ts <= window] + [t for t in self.playing.values() if t]
+
+    def fresh(self) -> list[str]:
+        return self.recent(FRESH_S)
+
+    def older(self) -> list[str]:
+        now = self.clock()
+        return [t for t, ts in self.lines if FRESH_S < now - ts <= ECHO_WINDOW_S]
