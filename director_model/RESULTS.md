@@ -382,3 +382,17 @@ The refit shipped weights also FAIL: test_clean, test_real, cls_echo, cls_panel 
 - More train real decodes: 1,396 of 2,649 train jobs were decoded at generation time, and the rest decode on the
   next `make director-loop`.
 - `test_log` from the first opted-in playtest.
+
+### After the round
+
+- **The live run found a dead end in the rules.** In the real-ear `handsfree_run --audio`, "Malapert Massif" is heard
+  as "Malapart must be". `grade.plausible` called that "not an answer", so the compare step ignored the kid forever,
+  silently and with no miss.
+  - Fix: a near-miss of an option name (difflib ≥ 0.8, words of ≥ 5 letters) is a try, and it grades as that option
+    (`grade.near_name`, `tests/test_step_tries.py`).
+  - This is the cls_mishear class showing up live.
+- **The other branches landed after the dataset was generated.** The QA sweep (rc-polish, story-onboarding and
+  guidance through rc/2) and keys merged later.
+  - Their router changes (room yes / no on yes-no steps; "what do I do?" by voice) are not in the round-6 rules
+    column.
+  - The next `make director-loop` regenerates against them.
