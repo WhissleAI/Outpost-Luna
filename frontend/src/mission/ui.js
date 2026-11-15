@@ -93,6 +93,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         r.update(state); setTimeout(() => r.cue(target), 300); window.__ride = r; },
       panel(id) { if (!cockpit) return; if (id) cockpit.openPanel(id); else cockpit.seat(); cockpit.offer && cockpit.offer(null); },
       calling() { if (cockpit) cockpit.calling(true, 2600); },
+      // a story moment on the glass (tools/mission_ui.py checks it never sits on the rover pill, the tabs or the Now panel)
+      moment(title = "On our own") { if (cockpit && cockpit.moment) cockpit.moment({ title, visual: "earthset", objective: "No radio for now. Keep the crew safe.", t_h: (state && state.mission_time_h) || 0 }); },
       debrief(outcome, extra = {}) { if (!state) return; fakeDebrief = fakeDb(outcome, extra); if (outcome !== "in_progress") { state.over = true; state.outcome = outcome; } showDebrief(); },
     };
     return tv;

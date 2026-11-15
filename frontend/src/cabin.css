@@ -737,3 +737,15 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 
 /* the alert strip on the glass starts right of the Now panel when the window reaches under it (fitNow sets --now-clear) */
 .m-cabin .cb-hole>.cb-alert{left:max(var(--inset),var(--now-clear,0px))}
+
+/* the sky readout lives in the deck, after the clock; a story moment has the glass's centre to itself */
+.m-cabin .cb-deck .cb-sky{position:static;flex:0 0 auto;display:flex;flex-direction:column;gap:0;font-size:var(--text-xs);line-height:1.3;text-shadow:none;color:var(--color-on-space)}
+.m-cabin .cb-deck .cb-sky span{white-space:nowrap}
+.m-cabin .cb-hole.has-moment>.cb-rover,.m-cabin .cb-glass.has-moment>.cb-rover{opacity:0;transition:opacity var(--dur-base)}
+.m-cabin .cb-hole>.cb-rover,.m-cabin .cb-glass>.cb-rover{transition:opacity var(--dur-base)}
+.m-cabin .cb-hole>.cb-moment{max-width:60%;width:max-content}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-sky{display:none}}
+/* the story banner hangs just under the view tabs (never on them), centred, and fades in and out in place */
+.m-cabin .cb-hole>.cb-moment{top:calc(var(--inset) + var(--control-md) + var(--space-3));transform:translateX(-50%);animation-name:cbMomentTop;max-height:calc(100% - var(--inset) * 2 - var(--control-md));overflow:hidden}
+.m-cabin .cb-hole>.cb-moment b{font-size:clamp(22px,2.4vw,var(--text-2xl))}
+@keyframes cbMomentTop{0%{opacity:0;transform:translate(-50%,6px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}

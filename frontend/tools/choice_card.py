@@ -114,14 +114,15 @@ def run(base, size):
         pg = fresh(b, base, size, pad=True)
         if pg:
             pg.evaluate("window.__plug()")
-            pg.wait_for_timeout(800)
+            pg.wait_for_timeout(1500)
+            pg.evaluate("window.__btn(12, true)"); pg.wait_for_timeout(700); pg.evaluate("window.__btn(12, false)"); pg.wait_for_timeout(700)   # any pad input: controller mode on
             pg.evaluate("document.querySelector('.cb-now-btns .cb-now-b').focus()")
             for i in (15,):   # D-pad right
-                pg.evaluate(f"window.__btn({i}, true)"); pg.wait_for_timeout(250); pg.evaluate(f"window.__btn({i}, false)"); pg.wait_for_timeout(400)
+                pg.evaluate(f"window.__btn({i}, true)"); pg.wait_for_timeout(700); pg.evaluate(f"window.__btn({i}, false)"); pg.wait_for_timeout(800)
             s1 = pg.evaluate(STATE)
             ok(s1["focus"] == 1, f"controller: the D-pad moves to the other option (focus {s1['focus']})")
             before = s1["card"]
-            pg.evaluate("window.__btn(0, true)"); pg.wait_for_timeout(250); pg.evaluate("window.__btn(0, false)")
+            pg.evaluate("window.__btn(0, true)"); pg.wait_for_timeout(700); pg.evaluate("window.__btn(0, false)")
             s = moved_on(pg, before)
             ok(s["card"] != before, "controller: A presses it")
             pg.close()

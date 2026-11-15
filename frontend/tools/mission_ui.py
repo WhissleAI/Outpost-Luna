@@ -31,14 +31,18 @@ SIZES = "1280x720,1440x879,1440x900,1920x1080,1024x640"
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
   localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'cadet', graphics:'low'}));
-  localStorage.setItem('outpost-tour-done:Comet','1'); window.__hourMs = 700; window.__missionSeed = 2; }catch(e){}"""
+  localStorage.setItem('outpost-tour-done:Comet','1'); window.__hourMs = 2000; window.__missionSeed = 2; }catch(e){}"""
 # seed 2 at Shackleton Rim (Cadet): the first storm is at hour 62, so the ice run's boulders come first, every run
 
 # The HUD elements a kid reads in the seat view. Selectors that don't exist in a build are simply skipped.
 HUD = {
     "clock": "#cbClock", "time": "#cbTime", "views": ".cb-views", "progress": "#cbProg", "now": "#cbNow",
     "sky": "#cbSky", "rover": "#cbRover", "alert": "#cbAlert", "log": "#cbMlog", "deck": ".cb-deck",
+    "moment": "#cbMoment",   # the story banner ("Day 1 / On our own"): text on the glass, never on another text
 }
+# what rides on the glass: a 3D console in front of the window must never cover any of it (the bottom of the hole is
+# behind the consoles; the owner's "Sun up · Earth below" sat on the Displays / Radiation edge)
+GLASS = ("views", "rover", "alert", "moment", "sky")
 MEASURE = """(HUD) => {
   const vis = e => !!(e && !e.hidden && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && +getComputedStyle(e).opacity > 0.05);
   const R = e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
@@ -46,7 +50,7 @@ MEASURE = """(HUD) => {
   for (const [k, s] of Object.entries(HUD)) { const e = document.querySelector(s); if (vis(e)) out.hud[k] = R(e); }
   // the deck contains the clock / time / progress: they are one element there, not three to compare
   const deck = document.querySelector('.cb-deck');
-  if (deck && vis(deck)) for (const k of ['clock', 'time', 'progress', 'views']) { const e = document.querySelector(HUD[k]); if (e && deck.contains(e)) delete out.hud[k]; }
+  if (deck && vis(deck)) for (const k of ['clock', 'time', 'progress', 'views', 'sky']) { const e = document.querySelector(HUD[k]); if (e && deck.contains(e)) delete out.hud[k]; }
   // the top bar: the Mute button sits next to Settings; nothing in the bar overlaps (the brand, the sections, the icons)
   out.topbar = [...document.querySelectorAll('.topbar .brand, .topbar .modes, .topnav > button')].filter(vis).map(e => [e.id || e.className.split(' ')[0], ...R(e)]);
   out.mute = (() => { const m = document.getElementById('muteBtn'), g = document.getElementById('a11yBtn');
@@ -105,6 +109,11 @@ def findings(m):
         out.append("no Mute button in the top bar")
     elif not m["mute"]["nextToSettings"]:
         out.append("the Mute button is not next to Settings")
+    for k in GLASS:
+        r = m["hud"].get(k)
+        for c in m.get("consoles", []):
+            if r and hits(r, c[1:]):
+                out.append(f"the {c[0]} console covers the {k} text on the glass")
     deck = m["hud"].get("deck")
     if deck and m.get("windshield") and hits(deck, m["windshield"]):
         out.append("the deck covers the windshield centre")
@@ -172,6 +181,16 @@ def main(base, shots, tag, sizes):
                 pg.wait_for_timeout(1500)
             m = pg.evaluate(MEASURE, HUD)
             f = findings(m) + ([] if got else ["never reached the steer choice"])
+            # again with a story banner up (day start, comm gap, storm): it has its own slot, never text on text
+            pg.evaluate("() => window.__cabinTest && window.__cabinTest.moment('On our own')")
+            pg.wait_for_timeout(1200)
+            mb = pg.evaluate(MEASURE, HUD)
+            if "moment" not in mb["hud"]:
+                f.append("the story banner did not show")
+            f += [f"with a banner: {x}" for x in findings(mb) if x not in f]
+            if shots:
+                pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}-banner.jpg"), type="jpeg", quality=70, timeout=300000)
+            pg.wait_for_timeout(5200)   # the banner fades out; the shot below is the plain seat view
             bad[f"{vw}x{vh}"] = f
             if shots:
                 pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}.jpg"), type="jpeg", quality=70, timeout=300000)

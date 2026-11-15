@@ -77,6 +77,7 @@ export function createCabin(root, o = {}) {
   <div class="cb">
     <header class="cb-deck" aria-label="Mission clock">
       <div class="cb-clock" id="cbClock"></div>
+      <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
       ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock controls" data-state="paused">
         <span class="cb-state" id="cbState"><i aria-hidden="true"></i><span id="cbHeld" role="status" aria-live="polite"></span></span>
         <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
@@ -99,7 +100,6 @@ export function createCabin(root, o = {}) {
         <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
         <div class="cb-rover" id="cbRover" hidden></div>
-        <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
       </div>
     </section>
 
@@ -161,7 +161,7 @@ export function createCabin(root, o = {}) {
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
   // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
-  const HUD = [".cb-alert", ".cb-views", ".cb-rover", ".cb-sky", ".cb-moment"];
+  const HUD = [".cb-alert", ".cb-views", ".cb-rover", ".cb-moment"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -500,12 +500,13 @@ export function createCabin(root, o = {}) {
   function moment(b) {
     const el = q("#cbMoment"); if (!el) return;
     clearTimeout(momentT);
-    if (!b) { el.hidden = true; return; }
+    const slot = on => [root.querySelector(".cb-hole"), glassEl].forEach(n => n && n.classList.toggle("has-moment", on));
+    if (!b) { el.hidden = true; slot(false); return; }
     glassEl.dataset.moment = b.visual || "";
     el.className = "cb-moment is-" + (b.visual || "site");
     el.innerHTML = `<small>Day ${Math.floor((b.t_h || 0) / 24) + 1}</small><b>${esc(b.title)}</b>${b.objective ? `<span>${esc(b.objective)}</span>` : ""}`;
-    el.hidden = false;
-    momentT = setTimeout(() => { el.hidden = true; delete glassEl.dataset.moment; }, 5200);
+    el.hidden = false; slot(true);
+    momentT = setTimeout(() => { el.hidden = true; slot(false); delete glassEl.dataset.moment; }, 5200);
   }
   let cardKey = "";
   /** The word a kid can say for each option: the one word no other option has ("Steer left" / "Steer right" -> left,
@@ -560,7 +561,8 @@ export function createCabin(root, o = {}) {
     const el = q("#cbNow"), hole = root.querySelector(".cb-hole");
     // the window's own strips start where the Now panel ends (a wide window at 1024 px reaches under the panel)
     if (hole) { const nr = el && !el.hidden ? el.getBoundingClientRect() : null, hr = hole.getBoundingClientRect();
-      const clear = nr && nr.bottom > hr.top && nr.right > hr.left ? Math.ceil(nr.right - hr.left + 8) : 0;
+      const seat = !c3 || !c3.panel || c3.panel === "seat";
+      const clear = seat && nr && hr.width > 0 && nr.bottom > hr.top && nr.right > hr.left ? Math.min(Math.ceil(nr.right - hr.left + 8), Math.floor(hr.width * 0.45)) : 0;
       hole.style.setProperty("--now-clear", clear + "px"); }
     if (!el || el.hidden) return;
     el.classList.remove("is-tight", "is-tighter", "is-tightest");
