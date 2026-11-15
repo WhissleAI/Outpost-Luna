@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outpost Luna · Data</title>
+<meta name="description" content="The NASA speech corpus behind Arc Transcriber Space, the speech model for Outpost Luna: real Artemis crew audio and NASA podcasts, how it is annotated, how test sets are kept out, and what the model measures.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Outpost Luna · The NASA corpus behind Arc Transcriber Space">
+<meta property="og:description" content="Real Artemis crew audio and NASA podcasts: the data that teaches the model to hear the Moon.">
+<meta property="og:url" content="https://whissleai.github.io/Outpost-Luna/data.html">
+<meta property="og:image" content="https://whissleai.github.io/Outpost-Luna/assets/og.jpg">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0b0e16">
+<link rel="icon" type="image/png" href="assets/icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css?v=2">
+<script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <a class="brand" href="./" aria-label="Outpost Luna home">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+    Outpost Luna</a>
+  <nav aria-label="Sections">
+    <a href="#corpus">Corpus</a><a href="#annotation">Annotation</a><a href="#hygiene">Test sets</a><a href="#results">Results</a><a href="./">Home</a>
+  </nav>
+  <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+  </button>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <p class="eyebrow">Data report · Arc Transcriber Space</p>
+    <h1>Teaching a model to <em>hear the Moon</em>.</h1>
+    <p class="lede">Arc Transcriber Space is the speech model built for Outpost Luna. Its core data is a corpus of real NASA speech: Artemis crew audio and NASA's own podcasts, where astronauts, flight controllers and scientists talk about the Moon in their own words. This page covers what is in it, how it is labelled, how test sets are kept out, and what the model measures.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://huggingface.co/WhissleAI/arc-transcriber-space">The model on Hugging Face</a>
+      <a class="btn" href="https://github.com/WhissleAI/arc_transcriber">Code: arc_transcriber</a>
+    </div>
+    <p class="fine">Uses NASA open media; not endorsed by NASA. Model weights © 2026 Whissle Inc., CC BY-NC 4.0.</p>
+  </section>
+
+  <section id="why" class="sec two">
+    <div>
+      <h2>Why this corpus</h2>
+      <p class="sec-lede">General speech models stumble on exactly the words Outpost Luna needs most.</p>
+    </div>
+    <ul class="points one">
+      <li><b>Real mission speech.</b> Crew and mission control talk over radio loops, with noise, cross-talk and clipped phrasing. Clean read speech has none of this.</li>
+      <li><b>The Moon's vocabulary.</b> Crater and mare names, landing sites, spacecraft and missions: Tycho, Shackleton, Sinus Medii, Orion, Artemis II. A general model writes "tie co" for Tycho.</li>
+      <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to what a curious kid asks the app.</li>
+      <li><b>Long context.</b> Whole episodes keep earlier sentences and the names already mentioned, so the model learns to use context: what was just said, and the list of names on screen.</li>
+    </ul>
+  </section>
+
+  <section id="corpus" class="sec">
+    <h2>What is in the corpus</h2>
+    <p class="sec-lede">Our advisor collected and cleaned the corpus: NASA audio with matching transcripts. <!-- TODO(user): name / credit line for the advisor, if they want one. --></p>
+    <!-- Source: the advisor's shared folder "nasa-hackathon" (12 archives). Numbers: filled from the data inventory (TODO). -->
+    <div class="tscroll">
+    <table class="dtable">
+      <caption>Sources. Hours and segments are counted after cleaning.</caption>
+      <thead><tr><th scope="col">Source</th><th scope="col">From</th><th scope="col">What it is</th><th scope="col" class="num">Episodes / recordings</th><th scope="col" class="num">Hours</th><th scope="col" class="num">Segments</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Artemis audio</th><td>NASA Artemis audio library</td><td>Artemis II crew and mission audio</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
+        <tr><th scope="row">Houston We Have a Podcast</th><td>NASA Johnson Space Center</td><td>Interviews with astronauts, flight controllers and engineers</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
+        <tr><th scope="row">Small Steps, Giant Leaps</th><td>NASA APPEL</td><td>Conversations about mission lessons and project work</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
+        <tr><th scope="row">Curious Universe</th><td>NASA</td><td>Stories about NASA science and exploration</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
+      </tbody>
+      <tfoot><tr><th scope="row" colspan="3">Total</th><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr></tfoot>
+    </table>
+    </div>
+
+    <h3 class="sub-h">Hours by source</h3>
+    <!-- Bars: width = hours / max hours. Fill --w (0–100%) from the inventory. -->
+    <ul class="bars" aria-label="Hours of audio per source">
+      <li><span class="bl">Artemis audio</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
+      <li><span class="bl">Houston We Have a Podcast</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
+      <li><span class="bl">Small Steps, Giant Leaps</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
+      <li><span class="bl">Curious Universe</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
+    </ul>
+
+    <h3 class="sub-h">Alongside it</h3>
+    <ul class="facts">
+      <li><span class="v">Children</span><span class="d"><b>Children's read speech</b> from an openly licensed corpus (Apache-2.0), so the model also hears young voices. Speaker ids are anonymised.</span><span class="src">Open dataset</span></li>
+      <li><span class="v">Kid questions</span><span class="d"><b>Synthetic kids' space questions</b> ("why is Tycho so bright?"), with the app's own spoken answers mixed in as background. The model learns not to transcribe the app talking.</span><span class="src">Generated</span></li>
+      <li><span class="v">NASA</span><span class="d"><b>Other public NASA mission audio</b> (Apollo and NASA TV commentary) for older mission vocabulary.</span><span class="src">NASA open media</span></li>
+    </ul>
+  </section>
+
+  <section id="annotation" class="sec">
+    <h2>How it is annotated</h2>
+    <p class="sec-lede">The transcripts are where the labels start. Every segment gets the labels the model returns at run time.</p>
+    <dl class="priv">
+      <div><dt>Spoken-form transcripts</dt><dd>Text is written the way it is said: "apollo twelve", "nineteen sixty nine". This is the same normalization the app's names lists use, so what the model hears and what it links to line up.</dd></div>
+      <div><dt>Entity tags</dt><dd>Mentions are tagged inline by type: lunar feature, site, celestial body, spacecraft, mission, crew, plus numbers, places and organisations.</dd></div>
+      <div><dt>Names lists</dt><dd>Most segments carry a names list like the one the app sends: names with their kind, in order of relevance. The model learns to link a mention to the right entry, and to say "not in the list" when it should. <!-- TODO(data): confirm share of segments with a list for the new corpus. --></dd></div>
+      <div><dt>Context</dt><dd>Earlier text from the same episode and the names already mentioned travel with each segment, so the model learns to use context without depending on it.</dd></div>
+      <div><dt>Sounds and channel</dt><dd>Radio beeps, static, music beds and cross-talk are labelled as events, not dropped. Who is speaking is kept anonymous.</dd></div>
+    </dl>
+    <p class="note-p">The full rules for names lists are in the <a href="https://github.com/WhissleAI/arc_transcriber/blob/main/docs/NAMES_LISTS.md">names-list guide</a>.</p>
+  </section>
+
+  <section id="hygiene" class="sec two">
+    <div>
+      <h2>Keeping test sets out</h2>
+      <p class="sec-lede">A score means something only if the model never saw the test audio.</p>
+    </div>
+    <ul class="points one">
+      <li><b>Split by recording, not by segment.</b> Held-out episodes and recordings are chosen first, and nothing from them goes into training, so the same voices and conversations never fall on both sides.</li>
+      <li><b>Checked against every test set.</b> Each candidate training segment is compared with the evaluation sets (Artemis, children's speech, kids' questions and Common Voice) by recording, by audio fingerprint and by transcript overlap. Anything that matches is removed. <span class="todo">TODO: confirm checks ran on this corpus; numbers removed per check.</span></li>
+      <li><b>Duplicates across sources.</b> The same interview can appear in more than one place. Repeats are found by transcript overlap and kept on one side only. <span class="todo">TODO: count.</span></li>
+      <li><b>General speech as a guard.</b> The model is also scored on the Common Voice English test set, to make sure space training doesn't cost it everyday speech.</li>
+    </ul>
+    <!-- TODO: held-out hours / episodes per source from the inventory. -->
+  </section>
+
+  <section id="results" class="sec">
+    <h2>What the model measures</h2>
+    <!-- Source: huggingface.co/WhissleAI/arc-transcriber-space README "Results". 300 utterances per set; names list = the utterance's names + 20 decoys; int8 ONNX encoder. -->
+    <p class="sec-lede">Each set has 300 held-out utterances. Each utterance comes with a names list made of its own names plus 20 similar-sounding decoys. All runs use the int8 model that runs on a laptop CPU.</p>
+    <div class="stats">
+      <div class="stat"><b>97.1%</b><span>names linked correctly</span><small>Artemis II crew audio, with 0.0% linked to a wrong entry.</small><a class="src" href="https://huggingface.co/WhissleAI/arc-transcriber-space#results">Model card · Results</a></div>
+      <div class="stat"><b>13.4%</b><span>word error rate on crew audio</span><small>Artemis II lunar-observation audio: radio, noise and cross-talk.</small><a class="src" href="https://huggingface.co/WhissleAI/arc-transcriber-space#results">Model card · Results</a></div>
+      <div class="stat"><b>0.13×</b><span>real time on a CPU</span><small>Speech encoder and decoder on 4 threads; about 2.3 GB RAM with the model.</small><a class="src" href="https://huggingface.co/WhissleAI/arc-transcriber-space#results">Model card · Results</a></div>
+    </div>
+    <div class="tscroll">
+    <table class="dtable">
+      <caption>All sets</caption>
+      <thead><tr><th scope="col">Set</th><th scope="col" class="num">Word error rate</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked wrong</th><th scope="col" class="num">Space-tag F1</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Artemis II crew audio</th><td class="num">13.4%</td><td class="num">94%</td><td class="num">97.1%</td><td class="num">0.0%</td><td class="num">0.88</td></tr>
+        <tr><th scope="row">Kids' space questions (synthetic)</th><td class="num">6.1%</td><td class="num">86%</td><td class="num">91.9%</td><td class="num">1.5%</td><td class="num">0.84</td></tr>
+        <tr><th scope="row">Children's read speech</th><td class="num">18.1%</td><td class="num">–</td><td class="num" colspan="2">2.0 false links per 100 utterances</td><td class="num">–</td></tr>
+        <tr><th scope="row">Common Voice English (test, 2,000 clips, no names list)</th><td class="num">17.5%</td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note-p">Test with real voices, not text-to-speech. The model is built to ignore the app's own spoken answers, so TTS voices can be partly ignored.</p>
+  </section>
+
+  <section id="use" class="sec">
+    <h2>Use it</h2>
+    <div class="paths">
+      <div class="path">
+        <h3>Model <span class="tag">Hugging Face</span></h3>
+        <p>Weights, model card and sample clips.</p>
+        <a class="more" href="https://huggingface.co/WhissleAI/arc-transcriber-space">WhissleAI/arc-transcriber-space</a>
+      </div>
+      <div class="path">
+        <h3>Python and C <span class="tag">GitHub</span></h3>
+        <p>The <code>arc_transcriber</code> package (the <code>space</code> extra) and a C library over ONNX Runtime.</p>
+<pre>pip install "arc-transcriber[space] @ git+https://github.com/WhissleAI/arc_transcriber"</pre>
+        <a class="more" href="https://github.com/WhissleAI/arc_transcriber">WhissleAI/arc_transcriber</a>
+      </div>
+      <div class="path">
+        <h3>Names lists <span class="tag">read first</span></h3>
+        <p>How to write the lists the app sends: kinds, order, aliases and the normalization the model uses.</p>
+        <a class="more" href="https://github.com/WhissleAI/arc_transcriber/blob/main/docs/NAMES_LISTS.md">docs/NAMES_LISTS.md</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="credits" class="sec two">
+    <div>
+      <h2>Licence and credits</h2>
+    </div>
+    <dl class="priv">
+      <div><dt>NASA</dt><dd>Audio and transcripts come from NASA's public media: the Artemis audio library and the podcasts Houston We Have a Podcast, Small Steps, Giant Leaps and Curious Universe. Credit: NASA. This work is not affiliated with or endorsed by NASA.</dd></div>
+      <div><dt>Our advisor</dt><dd>Our advisor collected, cleaned and shared the corpus. Thank you. <!-- TODO(user): name and affiliation, if wanted. --></dd></div>
+      <div><dt>The model</dt><dd>© 2026 Whissle Inc. Weights licensed CC BY-NC 4.0 with the Whissle terms, for non-commercial use. Commercial licences: <a href="mailto:ksingla@whissle.ai">ksingla@whissle.ai</a>. It builds on NVIDIA's FastConformer (CC-BY-4.0) and Moonshine (MIT); see the model card's NOTICE. Not endorsed by NVIDIA.</dd></div>
+    </dl>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><b>Inspired by NASA's Artemis program. Uses NASA open data and media; not endorsed by NASA.</b></p>
+  <div class="row">
+    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
+    <span><a href="./">Home</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://huggingface.co/WhissleAI/arc-transcriber-space">Model</a></span>
+  </div>
+</footer>
+<script>
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const r = document.documentElement;
+    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    r.dataset.theme = cur === "dark" ? "light" : "dark";
+    try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
+  });
+</script>
+</body>
+</html>
