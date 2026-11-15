@@ -17,7 +17,7 @@ PROCS=${PROCS:-3}
 MS_PORT=${MS_PORT:-8298}
 TRAIN=${TRAIN:-2400}
 COV=${COV:-1200}
-PENDING=${PENDING-cls_video_ctrl,cls_video_echo,cls_prep,cls_prep_roomtalk,cls_voice_echo_os,cls_gesture_cooccur,cls_lesson_new,cls_offers_new,cls_coverage_pending}
+PENDING=${PENDING-}          # every round-8 feature is merged: every class set gates
 export REAL_EAR_CACHE=${REAL_EAR_CACHE:-$PWD/director_model/cache/real_ear_r8}
 GEN="--out $DATA --train $TRAIN --val 200 --test 200 --hf-p 0.3 --cls-n 160 --r8-p 0.35 --cov-sessions $COV --cov-heldout 10"
 python3 director_model/loop.py preflight
