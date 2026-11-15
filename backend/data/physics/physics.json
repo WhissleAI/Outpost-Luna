@@ -56,7 +56,7 @@
    "use": "Regolith thermal properties and reference temperatures"
   },
   "outpost_model": {
-   "title": "Outpost Luna game scale (docs/PHYSICS.md)",
+   "title": "Outpost Luna game model (scaled from NASA numbers)",
    "url": "https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/PHYSICS.md",
    "licence": "game rule",
    "use": "Game percent to kW and kWh: 250 kWh battery from a 15 kW array"
