@@ -319,6 +319,7 @@ main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows
 | `libarc (the ear) needs clang` (step 1) | Run the Build Tools command in §1 again: it adds the clang-cl components. Or install LLVM and Ninja (§1) |
 | CMake: `arc.dll was not produced` / `The build tools for ClangCL cannot be found` | Same as above. Send the CMake output if it persists |
 | CMake: `arctag.dll was not produced` | Send the CMake output. Try the other compiler (MSVC or LLVM) |
+| `No CMAKE_C_COMPILER could be found` at `cmake ... -T ClangCL` | Two Visual Studios are installed and CMake picked the newer one, which has no clang-cl (e.g. VS 2026 next to VS 2022 with clang). Pull the latest main (the script now pins the Visual Studio that has clang-cl), or set `$env:CMAKE_GENERATOR = "Visual Studio 17 2022"`, delete `desktop\build\arctag` and `desktop\build\libarc`, and re-run |
 | `git clone` says `invalid path` | You have an old copy: four screenshot names had a `?` until 2026-11-15. Clone again |
 | Path / "file name too long" deep inside a package | Clone to `C:\src\atm`, or turn on long paths (§1) |
 | `only N GB free` | Free up space: the build uses about 4 GB, and 8 GB free is safe |
