@@ -5,6 +5,7 @@
 //
 // Off by default. Turning it on is an explicit choice in Settings (or "turn on the camera", which opens Settings).
 // Frames never leave the device and are never stored; settings live in localStorage on this device only.
+import { installChoiceGestures } from "../input/choices.js";   // [answers] thumbs = yes / no, fingers = option n
 import "./gestures.css";
 import { emitIntent, recentIntents } from "../input/intents.js";
 import { spinState, configureSpin } from "../input/defaults.js";
@@ -85,12 +86,17 @@ export function initGestures(ctx = {}) {
   // ---------- gesture events → intents ----------
   function context() {
     const p = ctx.cabinPanel ? ctx.cabinPanel() : null;
-    return { cabin: !!(ctx.inCabin && ctx.inCabin()), panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2 };
+    // pointingAtControl: the point cursor is on a button / control, so a still index is "point and hold", not "1"
+    return { cabin: !!(ctx.inCabin && ctx.inCabin()), panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2,
+      pointingAtControl: !!(hover && hover.tagName !== "CANVAS") };
   }
   // a hand gesture drives like the keys / remote: the same focus ring (keys.css, html[data-input=gesture])
-  const DRIVES = new Set(["palm_hold", "thumbs_up", "thumbs_down", "swipe_left", "swipe_right", "point", "select", "grab_start"]);
+  const DRIVES = new Set(["palm_hold", "thumbs_up", "thumbs_down", "swipe_left", "swipe_right", "point", "select", "grab_start", "fingers"]);
+  let fingerPickT = -1e9;   // a "1" just picked: the same still index's dwell must not also press what is under it
   function handle(ev) {
     if (calib) { calib.event(ev); return; }
+    if (ev.type === "select" && !hover && performance.now() - fingerPickT < 1200) return;
+    if (ev.type === "fingers" && ev.n === 1 && !(hover && hover.tagName !== "CANVAS")) fingerPickT = performance.now();
     if (DRIVES.has(ev.type)) document.documentElement.dataset.input = "gesture";
     if (ev.type === "point") showCursor(ev);
     if (ev.type === "point_end") hideCursor();
@@ -135,7 +141,9 @@ export function initGestures(ctx = {}) {
     clearTimeout(toastT); toastT = setTimeout(() => { toast.hidden = true; }, 900);
   }
   let hintKey = "", hintT = 0;
+  let hintHold = 0;   // a one-off hint (showHint) stays up this long before the screen's own hint comes back
   function paintHint() {
+    if (performance.now() < hintHold) return;
     if (!engine.running || calib) { hint.hidden = true; hintKey = ""; return; }
     const frame = (ctx.screen && ctx.screen()) || {};
     const confirm = [...document.querySelectorAll("#card button")].some(b => b.offsetParent && /^(yes|no)$/i.test(b.textContent.trim()));
@@ -148,6 +156,15 @@ export function initGestures(ctx = {}) {
     hintT = setTimeout(() => { hint.hidden = true; }, 6000);
   }
   setInterval(paintHint, 500);
+  /** A one-off hint from an answer gesture that had nothing to do ("Point at an answer, or hold up fingers"). */
+  function showHint(text) {
+    hintKey = text; clearTimeout(hintT); hintHold = performance.now() + 3500;
+    hint.innerHTML = icon("hand") + `<span>${esc(text)}</span>`; hint.hidden = false;
+    live.textContent = ""; requestAnimationFrame(() => { live.textContent = text; });
+    hintT = setTimeout(() => { hint.hidden = true; hintKey = ""; }, 3500);
+  }
+  // thumbs up / down answer any yes / no choice; fingers pick option n (input/choices.js)
+  installChoiceGestures({ hint: showHint });
 
   // ---------- the fist: stick indicator (grab, direction, speed) + the Moon's heading arrow ----------
   let spinRaf = 0;
@@ -199,7 +216,7 @@ export function initGestures(ctx = {}) {
     else card.querySelector("[data-close]").focus({ preventScroll: true });
     return true;
   }
-  function hideCard() { clearTimeout(cardT); const was = !card.hidden && card.dataset.mode === "help"; card.hidden = true; if (was) $("gxHelpBtn").focus({ preventScroll: true }); }
+  function hideCard() { clearTimeout(cardT); const was = !card.hidden && card.dataset.mode === "help"; card.hidden = true; const hb = $("gxHelpBtn"); if (was && hb && hb.isConnected && !hb.closest("[hidden]")) hb.focus({ preventScroll: true }); }   // [robustness] the button can be gone (Settings closed)
   card.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); hideCard(); } });
   $("gxHelpBtn").onclick = () => (card.hidden || card.dataset.mode !== "help" ? showCard("help") : hideCard());
   let lastKey = "";
@@ -264,7 +281,7 @@ export function initGestures(ctx = {}) {
         if (!spinCal && !S.spinOffered) { set({ spinOffered: true }); setTimeout(() => calibrate({ first: true }), 400); }
       }
     }
-    else { await engine.stop(); if (ctx.announce) ctx.announce("Camera off."); }
+    else { if (calib && calib.stop) calib.stop(); await engine.stop(); if (ctx.announce) ctx.announce("Camera off."); }   // [robustness] no calibration left over a dead camera
     paintStatus();
   }
 
@@ -336,8 +353,12 @@ export function initGestures(ctx = {}) {
   // ---------- calibration: hand size, the fist's comfortable range per direction, the head (≤ 30 s, skippable) ----------
   // "Hold up your open hand… Make a fist… now tilt it left… right… up… down… Sit back and look at the screen."
   // Step holds run on the landmark clock (frame t), so injected frames (tests) calibrate the same way as a camera.
+  // a native modal (the video overlay) opened: the calibration would sit under it, inert; stop it
+  addEventListener("outpost:modal-open", () => { if (calib && calib.stop) calib.stop(); });
   function calibrate({ first = false } = {}) {
     if (!engine.running || calib) return;
+    // [robustness] never under a native modal <dialog> (the video overlay): offer it again next time instead
+    if (document.querySelector("dialog[open]")) { if (first) set({ spinOffered: false }); return; }
     hideCard();
     const dlg = document.createElement("div"); dlg.className = "gx-calib"; dlg.setAttribute("role", "dialog"); dlg.setAttribute("aria-modal", "true"); dlg.setAttribute("aria-labelledby", "gxCalTitle");
     dlg.innerHTML = `<div class="gx-calib-card"><h3 id="gxCalTitle">${first ? "Let's tune your gestures" : "Tune your gestures"}</h3><div class="gx-calib-view"><div class="gx-calib-dir" aria-hidden="true"></div></div>
@@ -366,7 +387,7 @@ export function initGestures(ctx = {}) {
     const next = () => { i++; since = null; if (steps[i]) show(); else { stepEl.textContent = "All set."; bar.style.width = "100%"; setTimeout(() => finish(true), 600); } };
     const finish = ok => {
       if (!calib) return;
-      clearInterval(tickT); calib = null;
+      clearInterval(tickT); removeEventListener("keydown", onEsc, true); calib = null;
       if (ok && scale) { set({ minHandScale: Math.max(0.03, +(scale * 0.45).toFixed(3)) }); }
       if (spun) { const c = fc.result(); if (saveSpinCal(c)) spinCal = loadSpinCal(); }
       engine.configure({ ...(S.minHandScale ? { minHandScale: S.minHandScale } : {}), spinCal });
@@ -404,11 +425,16 @@ export function initGestures(ctx = {}) {
         } else since = null;
       },
       event() { /* gestures don't act during calibration */ },
+      stop: () => finish(false),
     };
     const tickT = setInterval(() => { if (performance.now() - t0 >= BUDGET && calib) finish(i >= steps.length - 1); }, 250);
     dlg.querySelector("[data-close]").onclick = () => finish(i >= 2);
     dlg.querySelector("[data-skip]").onclick = () => { if (steps[i] && steps[i].dir) { next(); } else finish(false); };
-    dlg.addEventListener("keydown", e => { if (e.key === "Escape") finish(false); });
+    // Esc closes it wherever focus is (it is not a native modal: focus can wander off it)
+    const onEsc = e => { if (e.key === "Escape" && calib) { e.preventDefault(); e.stopPropagation(); finish(false); } };
+    addEventListener("keydown", onEsc, true);
+    // it is modal: focus that wanders out (a shortcut, a re-render behind it) comes back to it
+    dlg.addEventListener("focusout", () => setTimeout(() => { if (calib && dlg.isConnected && !dlg.contains(document.activeElement)) { const b = dlg.querySelector("[data-skip]"); if (b) b.focus({ preventScroll: true }); } }, 0));
     dlg.querySelector("[data-skip]").focus();
   }
 

@@ -198,3 +198,14 @@ def test_api_level_starts_the_band():
     with TestClient(app) as c:
         st = c.post("/api/mission/start", json={"site": "malapert_massif", "seed": 2, "level": "cadet"}).json()
     assert st["level"] == st["difficulty"] == "cadet" and st["env"]["relay"]
+
+
+def test_globe_side_retry_line_is_state_aware():
+    """[owner bug] the retry never says 'Tap the Far side button' (they may have just pressed it); ≤ 20 words."""
+    from app.academy.guide import ladder
+    st = {"accept": {"type": "globe_side", "want": "far"}, "hint": "Tap Far, or drag the Moon around.", "fail": "Not yet. Keep turning."}
+    for misses in (0, 1):
+        say = ladder(st, misses, {"choice": "near"}, {})["say"]
+        assert "button" not in say.lower() and "turn the moon until the far side faces you" in say.lower()
+        assert len(say.split()) <= 20
+    assert ladder(st, 1, {}, {})["cue"] == {"side": "far"}

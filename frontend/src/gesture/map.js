@@ -1,6 +1,6 @@
 // The one gesture → action map (docs/GESTURES.md §The map). Same gesture, same meaning, on every screen:
 //   open hand = stop / pause · thumbs up = yes · thumbs down = no · swipe left = next · swipe right = back ·
-//   point and hold = press · fist = steer the view (spin the Moon, look round the cabin) · twist the fist = zoom ·
+//   show 1-4 fingers = pick answer 1-4 · point and hold = press · fist = steer the view (spin the Moon, look round the cabin) · twist the fist = zoom ·
 //   head (cabin) = look, lean in = open, sit back = close.
 // bind.js turns classifier events into these intents; screens decide what an intent does for them (input/intents.js).
 // This file is also what the per-screen coach mark, the "Gestures" help card and the docs table are made from.
@@ -17,6 +17,7 @@ export const GESTURES = Object.freeze({
   thumbs_down: { intent: "no", icon: "thumbs-down", name: "Thumbs down", short: "Thumbs down" },
   swipe_left: { intent: "next", icon: "swipe", name: "Swipe left, open hand", short: "Swipe left" },
   swipe_right: { intent: "prev", icon: "swipe", name: "Swipe right, open hand", short: "Swipe right" },
+  fingers: { intent: "pick", icon: "hand", name: "Show 1, 2, 3 or 4 fingers", short: "Show fingers" },
   point: { intent: "select", icon: "pointer", name: "Point and hold", short: "Point and hold" },
   fist: { intent: "spin", icon: "grab", name: "Make a fist, then lean it", short: "Fist and lean" },
   twist: { intent: "spin", icon: "grab", name: "Twist your fist", short: "Twist fist" },
@@ -27,7 +28,7 @@ export const GESTURES = Object.freeze({
 
 /** Classifier event → gesture id (for the table above). */
 export const EVENT_GESTURE = Object.freeze({
-  palm_hold: "palm", thumbs_up: "thumbs_up", thumbs_down: "thumbs_down", swipe_left: "swipe_left", swipe_right: "swipe_right",
+  palm_hold: "palm", thumbs_up: "thumbs_up", thumbs_down: "thumbs_down", swipe_left: "swipe_left", swipe_right: "swipe_right", fingers: "fingers",
   point: "point", select: "point", point_end: "point", grab_start: "fist", grab_move: "fist", grab_end: "fist",
   head: "head", lean_in: "lean", lean_back: "lean", zoom: "pinch2", zoom_end: "pinch2",
 });
@@ -40,15 +41,16 @@ export const SCREEN_MAP = Object.freeze({
     fist: "Spin the Moon that way", twist: "Zoom in or out", pinch2: "Zoom",
   },
   lesson: {      // a lesson step, the check ride
-    palm: "Stop the voice", swipe_left: "Next, after you answer", swipe_right: "Go back",
+    palm: "Stop the voice", thumbs_up: "Yes, on a yes/no answer", thumbs_down: "No, on a yes/no answer",
+    fingers: "Pick answer 1 to 4", swipe_left: "Next, after you answer", swipe_right: "Go back",
     point: "Pick an answer or a place", fist: "Spin the Moon to find it", twist: "Zoom in or out", pinch2: "Zoom",
   },
   menu: {        // mission brief, site picker, debrief, patch earned, call sign
-    palm: "Stop the voice", thumbs_up: "Yes, the big button", thumbs_down: "No thanks",
+    palm: "Stop the voice", thumbs_up: "Yes, the big button", thumbs_down: "No thanks", fingers: "Pick option 1 to 4",
     swipe_left: "Next", swipe_right: "Go back", point: "Press a button", fist: "Spin the Moon that way",
   },
   cabin: {       // Mission cabin (the seat view and an open panel)
-    palm: "Stop the voice and the clock", thumbs_up: "Yes, confirm or do it", thumbs_down: "No, cancel",
+    palm: "Stop the voice and the clock", thumbs_up: "Yes, confirm or do it", thumbs_down: "No, cancel", fingers: "Pick a choice on the card",
     swipe_left: "Next view or panel", swipe_right: "Previous view or panel", point: "Press a control",
     fist: "Look around", head: "Look around", lean: "Lean in opens, sit back closes",
   },
@@ -84,7 +86,7 @@ export function helpRows(key, { phase2 = false, headLook = true } = {}) {
 /** The first-use coach mark for a screen: the two or three gestures worth learning there first. */
 export const COACH = Object.freeze({
   moon: ["fist", "point", "palm"],
-  lesson: ["point", "palm", "swipe_left"],
+  lesson: ["thumbs_up", "fingers", "point"],
   menu: ["thumbs_up", "point", "swipe_left"],
   cabin: ["lean", "swipe_left", "thumbs_up"],
   video: ["palm", "swipe_left"],

@@ -9,7 +9,7 @@
 // FaceDetector keypoints: 0 right eye, 1 left eye, 2 nose tip, 3 mouth, 4 right ear, 5 left ear.
 //
 // Events (push() returns the events of that frame, in order):
-//   palm_hold · thumbs_up · thumbs_down · swipe_left · swipe_right
+//   palm_hold · thumbs_up · thumbs_down · swipe_left · swipe_right · fingers {n: 1..4, x, y}
 //   point {x, y, progress} (cursor 0..1 in screen space, dwell progress 0..1) · point_end · select {x, y}
 //   grab_start {x, y, stick} · grab_move {dx, dy, stick: {x, y, z}} · grab_end {how: "open" | "lost" | "other"}
 //     stick: the fist as a joystick from where it grabbed (gesture/spin.js), calibrated, One-Euro filtered, -1.5..1.5
@@ -74,9 +74,19 @@ export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1) {
   else if (n4 === 0 && ext[0] && thumbDir === "down" && P[THUMB[3]][1] > Math.max(...FINGERS.map(f => P[f[1]][1]))) pose = "thumbs_down";
   else if (n4 === 0) pose = "fist";
   // palm centre: the mean of the wrist and the four knuckles, back in normalised image units
+  // a finger count (1-4) a kid shows to pick an answer: index; index+middle; index+middle+ring (or thumb+index+middle);
+  // all four with the thumb tucked. The thumb out with all four is the open hand (5 = stop), never a count.
+  // Two or three fingers must be spread like a V (tips apart): a relaxed, half-open hand has two straight fingers too,
+  // side by side, and must never pick anything.
+  const [th, ix, md, rg, pk] = ext;
+  const tipGap = (a, b) => len(sub(P[a[3]], P[b[3]])) / s;
+  const vee = tipGap(INDEX, MIDDLE) > 0.55;
+  const count = !th && ix && !md && !rg && !pk ? 1 : !th && ix && md && !rg && !pk && vee ? 2
+    : ((ix && md && rg && !pk && !th && tipGap(INDEX, RING) > 0.6) || (th && ix && md && !rg && !pk && vee)) ? 3
+    : !th && ix && md && rg && pk && spread ? 4 : 0;
   const C = [WRIST, 5, 9, 13, 17].map(i => P[i]);
   const palm = [C.reduce((a, p) => a + p[0], 0) / 5 / aspect, C.reduce((a, p) => a + p[1], 0) / 5];
-  return { pose, ext, scale: s, palm, thumbDir, pinch, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
+  return { pose, ext, count, scale: s, palm, thumbDir, pinch, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
 }
 
 /** The face that counts: the largest (nearest) one. Never identifies anyone: only box + six points. */
@@ -94,6 +104,7 @@ export function createGestureClassifier(opts = {}) {
       hist: [],                         // [{t, x, y, s}] palm centre history (swipe, speed)
       palmFired: false, palmCool: -1e9, stillSince: 0,
       thumbFired: null, thumbCool: -1e9,
+      fCount: 0, fSince: 0, fFrames: 0, fFired: 0, fCool: -1e9,
       swipeCool: -1e9, lastSwipe: null, lastSwipeT: -1e9,
       pointing: false, cursor: null, dwellAt: null, dwellT: 0, dwellLocked: false,
       grabbing: false, grabFrom: null, grabLostT: null, grabN: null, openFrames: 0, stick: null, quietUntil: -1e9, discreteT: -1e9,
@@ -177,11 +188,27 @@ export function createGestureClassifier(opts = {}) {
       S.thumbFired = S.pose; S.thumbCool = t + cfg.thumbCooldownMs; fired(t); emit(S.pose);
     }
 
+    // show N fingers → pick option N
+    fingersStep(hp, t, emit);
+
     // point + dwell → cursor + select
     pointStep(hp, t, stable, emit);
     // phase 2: both hands pinching → zoom
     if (cfg.phase2) zoomStep(all, aspect, emit);
     return out;
+  }
+
+  // Finger count, with hysteresis: the SAME count for fingersFrames frames, held fingersHoldMs with the hand still (so
+  // the counts a hand passes through on its way to 3 never fire), once per showing (lower the hand or change the count
+  // to go again), and a cooldown. A fist (grabbing) never gets here. "1" is the point pose: the classifier reports it
+  // and gesture/ui.js decides (a static index NOT over a control, with a choice on screen = 1; over a control = point).
+  function fingersStep(hp, t, emit) {
+    const n = hp.count || 0;
+    if (n !== S.fCount) { S.fCount = n; S.fSince = t; S.fFrames = 1; if (n !== S.fFired) S.fFired = 0; } else S.fFrames++;
+    if (!n || n === S.fFired || S.fFrames < cfg.fingersFrames || t < S.fCool || t < S.quietUntil || !canFire(t)) return;
+    if (Math.min(t - S.fSince, t - S.stillSince) < cfg.fingersHoldMs * holdMul()) return;
+    S.fFired = n; S.fCool = t + cfg.fingersCooldownMs; fired(t);
+    emit("fingers", { n, x: hp.tip[0], y: hp.tip[1] });
   }
 
   function speed() {
@@ -273,7 +300,7 @@ export function createGestureClassifier(opts = {}) {
     emit("grab_end", { how });
   }
 
-  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; }
+  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; S.fCount = 0; S.fFired = 0; }
 
   function zoomStep(all, aspect, emit) {
     if (all.length < 2) { if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } return; }

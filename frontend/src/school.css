@@ -330,3 +330,10 @@ html[data-motion="reduce"] .gd-mark.is-pulse .gd-ring{animation:none}
 /* explorer lessons not unlocked yet (explorer.js): dimmed pins; the card says when they open */
 .pin.a-lcard.is-locked{opacity:.55}
 .a-clipnote{margin-top:var(--space-1)}
+
+/* [answers] camera on: every lesson choice shows its number (show that many fingers to pick it; docs/GESTURES.md) */
+body[data-camera=on] .g-opts.is-row .a-key{display:inline-grid}
+body[data-camera=on] .a-key[data-n]{font-size:0}
+body[data-camera=on] .a-key[data-n]::before{content:attr(data-n);font-size:var(--text-sm, 14px)}
+/* the option a thumb or a finger count picked: the focus ring for a moment before it is pressed (input/choices.js) */
+.is-gesture-pick{outline:3px solid var(--color-accent, #3b82f6)!important;outline-offset:3px;transition:outline-offset .15s}

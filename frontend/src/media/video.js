@@ -300,6 +300,9 @@ function run({ v, status, fb, context, resolve }) {
       if (!player) return;
       if (c === "pause") player.pause(); else if (c === "play") player.play(); else if (c === "toggle") player.toggle();
     } };
+  // [robustness] one sheet at a time: Settings and the gestures calibration are plain elements and would sit under the
+  // dialog's top layer, inert; they close themselves on this event
+  try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "video" } })); } catch (e) { /* */ }
   if (!dlg.open) dlg.showModal();
   const kind = v.missing ? "error" : v.source === "youtube" ? (status === "online" ? "youtube" : "offline")
     : status === "cached" || status === "online" ? "file" : "offline";

@@ -6,6 +6,7 @@ import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // He
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
+import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -225,11 +226,30 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function open(v = panel.hidden) {
     if (v) {
       const about = document.getElementById("about"); if (about && about.open) about.close();   // one sheet at a time
+      // [robustness] the video overlay is a native modal <dialog> (the top layer): Settings opened over it (by voice)
+      // sat underneath, inert, and the kid could not touch it. One sheet at a time: the video closes first.
+      if (O.video && O.video.isOpen && O.video.isOpen()) O.video.command("stop");
+      try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* the calibration steps aside */ }
       renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
-      (panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector("input")).focus();
+      { const f = panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector(".set-nav button, input"); if (f) f.focus(); }
     } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
+  // [robustness] Settings is modal: while it is up, gestures / keys / the controller move and press inside it, and screen
+  // intents (next, yes / no, pick, the clock, the cabin) never reach the screen underneath. A swipe "next" used to
+  // advance the lesson behind the sheet and pull focus out of it. Swipe right ("Go back") closes it. Voice still
+  // navigates (the router closes nothing it does not own; a screen change is what the kid asked for).
+  const IN_SETTINGS = new Set(["move", "select", "point", "back", "stop", "mute", "mute_sound", "unmute_sound", "captions", "mic", "help",
+    "settings", "a11y", "repeat", "focus_input"]);
+  onIntent("*", (a, ev) => {
+    if (ev.source === "voice" || ev.source === "typed" || ev.source === "system") return false;
+    const calib = !!document.querySelector(".gx-calib");   // the gestures calibration is modal the same way
+    if (panel.hidden && !calib) return false;
+    if (ev.name === "prev" && !panel.hidden) { open(false); return true; }
+    return !IN_SETTINGS.has(ev.name);
+  }, { priority: 90 });
+  // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
+  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
@@ -237,7 +257,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   panel.addEventListener("click", e => {
     const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
-    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); panel.querySelector(`[data-sec="${section}"]`).focus(); }
+    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
     const vb = e.target.closest("[data-vbar-reset]");
     if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
       setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }

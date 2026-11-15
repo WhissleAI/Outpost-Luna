@@ -89,8 +89,13 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     const d = ll2v(Math.max(-maxLat, Math.min(maxLat, lat)), lon).normalize();
     const from = camera.position.clone(), r0 = from.length();
     // [qa] Settings → Less motion (or the OS setting): cut straight to the view, no flight
+    endFly();
     fly = { fd: from.clone().normalize(), td: d, r0, r1: dist || Math.min(Math.max(r0, 2.4), 3.2), t0: performance.now(), dur: lessMotion() ? 1 : 1300 };
+    // resolves when the camera is there (or the flight was cut short: a drag, a spin, another flight); never hangs
+    return new Promise(res => { const f = fly; f.done = res; setTimeout(() => { if (fly === f) { endFly(); } else res(); }, f.dur + 600); });
   }
+  /** End the current flight (it lands where it is) and settle its promise. */
+  function endFly() { const f = fly; fly = null; if (f && f.done) f.done(); }
 
   function showFeature(f, { dist } = {}) {
     highlight(f); flyTo(f.lat, f.lon, dist || (f.kind === "artifact" ? 2.3 : f.km > 800 ? 3.2 : 2.5));
@@ -318,7 +323,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       if (a.dot(b) < -0.98) { const mid = new THREE.Vector3(0, 1, 0).cross(a).normalize(); dir = e < .5 ? a.clone().lerp(mid, e * 2) : mid.clone().lerp(b, (e - .5) * 2); }
       else dir = a.clone().lerp(b, e);
       camera.position.copy(dir.normalize().multiplyScalar(fly.r0 + (fly.r1 - fly.r0) * e)); camera.lookAt(0, 0, 0);
-      if (t >= 1) fly = null;
+      if (t >= 1) endFly();
     }
     controls.update();
     if (ring) ring.material.opacity = lessMotion() ? .8 : .65 + .3 * Math.sin(now / 300);
@@ -374,12 +379,12 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     // [gestures] grab-to-rotate, two-hand zoom and stop (docs/GESTURES.md). dx, dy: fractions of the view; the surface
     // follows the hand, as a mouse drag does.
     rotateBy(dx, dy) {
-      fly = null; const s = new THREE.Spherical().setFromVector3(camera.position);
+      endFly(); const s = new THREE.Spherical().setFromVector3(camera.position);
       s.theta -= dx * Math.PI; s.phi = Math.max(0.15, Math.min(Math.PI - 0.15, s.phi - dy * Math.PI));
       camera.position.setFromSpherical(s); camera.lookAt(0, 0, 0);
     },
     zoomBy(f) {
-      fly = null; const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
+      endFly(); const d = camera.position.length(), n = Math.max(controls.minDistance, Math.min(controls.maxDistance, d / (f || 1)));
       camera.position.multiplyScalar(n / d);
     },
     // [keys] the keyboard / gamepad Moon reticle (input/spatial.js): where the camera is, and a tap without a pointer
@@ -387,7 +392,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     tap(lat, lon) { onTap({ lat, lon }); },
     tapArtifact(id) { const g = ghosts.find(x => x.a.id === id); if (g) onArtifact(g.a); },
     /** Stop any flight in progress where it is. */
-    halt() { fly = null; },
+    halt() { endFly(); },
     route, guide,
     /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
     clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },

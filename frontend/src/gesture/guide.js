@@ -5,6 +5,7 @@ export const CHEATSHEET = [
   { id: "palm", icon: "hand", name: "Open hand, hold still", does: "Stop. Quiets the voice and the Moon." },
   { id: "thumbs_up", icon: "thumbs-up", name: "Thumbs up", does: "Yes. Confirms, or takes the offer." },
   { id: "thumbs_down", icon: "thumbs-down", name: "Thumbs down", does: "No. Cancels, or says no thanks." },
+  { id: "fingers", icon: "hand", name: "Show 1, 2, 3 or 4 fingers", does: "Picks answer 1 to 4, like the number keys. Hold still a moment." },
   { id: "swipe", icon: "swipe", name: "Swipe with an open hand", does: "Swipe left for next, right for back." },
   { id: "point", icon: "pointer", name: "Point and hold", does: "Picks what the ring is on. Works on any button and the Moon." },
   { id: "grab", icon: "grab", name: "Make a fist, then lean it", does: "Spins the Moon that way: lean more to go faster. Open your hand to stop. In the cabin it looks around." },
@@ -22,7 +23,7 @@ export function hintFor(frame = {}, { confirm = false, speaking = false, headLoo
   if (s === "lesson_done" || s === "patch") return { icon: "swipe", text: "Swipe left for next" };
   if (s === "lesson" || s === "ride") {
     if (frame.step_type === "tap") return { icon: "pointer", text: "Point and hold on the Moon" };
-    if (frame.step_options && frame.step_options.length) return { icon: "pointer", text: "Point and hold an answer" };
+    if (frame.step_options && frame.step_options.length) return { icon: "thumbs-up", text: "Thumbs up, or show fingers" };
     return speaking ? { icon: "hand", text: "Open hand to stop" } : null;
   }
   if (s === "map") return { icon: "swipe", text: "Swipe left to start" };
@@ -36,7 +37,7 @@ export function hintFor(frame = {}, { confirm = false, speaking = false, headLoo
 
 /** One sentence for "What can I do?" when the camera is on. */
 export function spokenSummary({ cabin = false } = {}) {
-  return "With the camera: open hand to stop, thumbs up for yes, thumbs down for no, swipe for next or back, point and hold to pick"
+  return "With the camera: open hand to stop, thumbs up for yes, thumbs down for no, show fingers to pick an answer, swipe for next or back, point and hold to press"
     + (cabin ? ", and lean in to open a panel." : ", and make a fist and lean it to spin the Moon.");
 }
 

@@ -16,6 +16,7 @@ const CONTINUOUS = new Set(["point", "point_end", "head", "grab_move"]);
 function discrete(events, keep = []) {
   const out = [];
   for (const e of events) {
+    if (e.type === "fingers" && e.n === 1) continue;   // a still index: "1" or a point; gesture/ui.js decides (point here)
     if (CONTINUOUS.has(e.type) && !keep.includes(e.type)) continue;
     if (CONTINUOUS.has(e.type) && out[out.length - 1] === e.type) continue;
     out.push(e.type);

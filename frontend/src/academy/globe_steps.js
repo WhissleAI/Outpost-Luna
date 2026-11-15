@@ -20,7 +20,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 /** Buttons for options, numbered so "option 2" works by voice and Tab/Enter by keyboard. */
 export function optionsHtml(options, cls = "") {
   return `<div class="a-choices g-opts ${cls}" role="group" aria-label="Answers">${(options || []).map((o, k) =>
-    `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${k + 1}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`;
+    `<button type="button" class="a-choice" data-c="${esc(o.id)}"${o.id === "yes" ? " data-yes" : o.id === "no" ? " data-no" : ""}><span class="a-key" aria-hidden="true">${k + 1}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`;
 }
 function bindOptions(root, ctx) {
   root.querySelectorAll(".a-choice").forEach(b => (b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)));
@@ -64,14 +64,49 @@ O.stepRenderers.globe_side = ctx => withDirective(ctx, {
       <button type="button" class="a-choice g-side" data-c="near"><span class="g-disc is-near" aria-hidden="true"></span><span>Near side</span></button>
       <button type="button" class="a-choice g-side" data-c="far"><span class="g-disc is-far" aria-hidden="true"></span><span>Far side</span></button>
     </div>
-    <button type="button" class="btn-quiet g-view" data-view>${icon("check", { size: 16 })}Check this view</button>`,
+    <button type="button" class="btn-quiet g-view" data-view>${icon("check", { size: 16 })}Check this view</button>
+    <p class="g-turning" data-turning aria-live="polite" hidden></p>`,
   bind: root => {
-    root.querySelectorAll(".a-choice").forEach(b => (b.onclick = () => {
-      if (ctx.globe) ctx.globe.flyTo(0, b.dataset.c === "far" ? 180 : 0, 3.4);
-      ctx.answer({ choice: b.dataset.c }, b);
-    }));
+    // [owner bug] a press turned the Moon AND graded at once, so the answer and the view disagreed; and a drag or a
+    // fist spin to the far side was never graded without a button. Now every way in turns the Moon first and grades
+    // on the view it lands on: a press (tap, Enter, a number key, point-and-hold, thumbs up on a focused side) flies
+    // there and answers when the flight ends; a drag or fist spin answers once the wanted side has faced the kid for
+    // a moment (wrong views are never graded while they turn).
+    let busy = false, done = false;
+    const want = ctx.acc.want, status = root.querySelector("[data-turning]");
+    const say = t => { if (status) { status.textContent = t; status.hidden = !t; } };
+    const press = async b => {
+      if (busy || done || ctx.locked) return;
+      busy = true;
+      const side = b.dataset.c;
+      root.querySelectorAll(".g-side").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      say("Turning…");
+      try { if (ctx.globe) await ctx.globe.flyTo(0, side === "far" ? 180 : 0, 3.4); } catch (e) { /* no globe */ }
+      busy = false;
+      if (!root.isConnected || done) return;
+      say(side === want ? "There it is." : "");
+      done = true;
+      ctx.answer({ choice: side }, b);
+    };
+    root.querySelectorAll(".a-choice").forEach(b => (b.onclick = () => press(b)));
     const v = root.querySelector("[data-view]");
-    if (v) v.onclick = () => ctx.globe && ctx.answer({ view: ctx.globe.centerLatLon() }, v);
+    if (v) v.onclick = () => { if (ctx.globe && !busy) { done = true; ctx.answer({ view: ctx.globe.centerLatLon() }, v); } };
+    // turned by hand (drag, fist spin, the stick): grade when the wanted side has faced the kid for 700 ms
+    if (!ctx.locked && ctx.globe && ctx.globe.centerLatLon && want) {
+      // "mostly in view": a margin past the grader's own line (far > 110°, near < 70°), so a turn that just grazes it
+      // keeps turning instead of being graded on the limb
+      const sideOf = c => { const lon = Math.abs((((+c.lon + 180) % 360) + 360) % 360 - 180); return lon > 125 ? "far" : lon < 55 ? "near" : "limb"; };
+      const start = sideOf(ctx.globe.centerLatLon());
+      let since = 0;
+      const iv = setInterval(() => {
+        if (!root.isConnected || done) { clearInterval(iv); return; }
+        if (busy) { since = 0; return; }
+        const now = sideOf(ctx.globe.centerLatLon());
+        if (now !== want || start === want) { since = 0; return; }
+        since = since || performance.now();
+        if (performance.now() - since >= 700) { clearInterval(iv); done = true; say("There it is."); ctx.answer({ view: ctx.globe.centerLatLon() }, root.querySelector(`.g-side[data-c="${want}"]`)); }
+      }, 200);
+    }
   },
 });
 
