@@ -1,6 +1,6 @@
 # Outpost Luna: Junior Astronaut Mission Trainer
 
-A voice-first trainer for kids 7–12, built for NASA Space Apps 2026 (Nov 14–15) on the challenge **"Build a Junior
+A voice-first Moon mission trainer, built for NASA Space Apps 2026 (Nov 14–15) on the challenge **"Build a Junior
 Astronaut Mission Trainer"**. Inspired by NASA's Artemis program and built on NASA open data. Not affiliated with or
 endorsed by NASA. (Formerly `ask-the-moon`.)
 
