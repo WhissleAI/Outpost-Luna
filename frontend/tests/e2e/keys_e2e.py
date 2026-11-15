@@ -501,8 +501,10 @@ def main():
         stop1 = js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''")
 
         # ---------------- About, help, captions, mic ----------------
-        ok(press_until(["ArrowUp", "ArrowRight"], "() => document.activeElement.id === 'aboutBtn'", n=8), "top bar: arrows reach About")
+        ok(press_until(["ArrowUp"], "() => !!(document.activeElement && document.activeElement.closest('.topbar'))", n=8),
+           "library: Up leaves a paused tour card for the top bar (no trap)")
         ok(js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''") == stop1, "library: arrows over a paused tour move focus, not the tour")
+        ok(press_until(["ArrowRight"], "() => document.activeElement.id === 'aboutBtn'", n=8), "top bar: arrows reach About")
         press("Enter", 900)
         ok(js("() => document.getElementById('about').open"), "About opens")
         press("ArrowDown", 400)
