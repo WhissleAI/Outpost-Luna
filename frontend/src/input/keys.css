@@ -1,5 +1,5 @@
 /* The keyboard / controller layer (input/keys.js, input/spatial.js; docs/KEYBOARD.md).
-   The TV focus ring: while the kid drives with keys or a controller (html[data-input=keys|pad]), the focused control
+   The TV focus ring: while the kid drives with keys, a controller or camera gestures (html[data-input=keys|pad|gesture]), the focused control
    grows a little and wears a two-tone ring (the theme's background, then the focus colour) plus a soft glow, so it
    reads on the Moon, on light glass and on the cabin's dark panels. Less motion: no grow, no pulse. High contrast:
    yellow on black, 4 px. Pointer use hides all of it (the plain :focus-visible ring stays). */
@@ -14,7 +14,7 @@ html[data-contrast="high"] {
 }
 html[data-motion="reduce"] { --key-scale: 1; }
 
-:is(html[data-input="keys"], html[data-input="pad"]) :focus:not(.moon-focus):not(.seat-focus):not(input[type="text"]):not(#q):not(#aCsIn):not(.mx-title):not(h2):not(h1) {
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) :focus:not(.moon-focus):not(.seat-focus):not(input[type="text"]):not(#q):not(#aCsIn):not(.mx-title):not(h2):not(h1) {
   outline: none !important;
   box-shadow: var(--key-ring) !important;
   scale: var(--key-scale);
@@ -23,12 +23,12 @@ html[data-motion="reduce"] { --key-scale: 1; }
   animation: key-glow 1.8s var(--ease-in-out) infinite;
 }
 /* text fields: the ring without the grow (the caret must not jump) */
-:is(html[data-input="keys"], html[data-input="pad"]) :is(input[type="text"], #q, #aCsIn):focus { outline: none !important; box-shadow: var(--key-ring) !important; }
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) :is(input[type="text"], #q, #aCsIn):focus { outline: none !important; box-shadow: var(--key-ring) !important; }
 /* dark surfaces: the Moon (route pins, the reticle), the cabin, the debrief chart, the site picker over the Moon */
-:is(html[data-input="keys"], html[data-input="pad"]) :is(.route, .m-cabin, .mmarks, .nowplaying, .hud) :focus { box-shadow: var(--key-ring-dark) !important; }
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) :is(.route, .m-cabin, .mmarks, .nowplaying, .hud) :focus { box-shadow: var(--key-ring-dark) !important; }
 /* inputs inside a styled label (switches, radios): ring the visible part */
-:is(html[data-input="keys"], html[data-input="pad"]) :is(.a11y-sw, .a11y-speed label, .set-voice):has(input:focus) { box-shadow: var(--key-ring); border-radius: var(--radius-md); }
-:is(html[data-input="keys"], html[data-input="pad"]) :is(.a11y-sw, .a11y-speed label, .set-voice) input:focus { box-shadow: none !important; scale: 1; animation: none; }
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) :is(.a11y-sw, .a11y-speed label, .set-voice):has(input:focus) { box-shadow: var(--key-ring); border-radius: var(--radius-md); }
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) :is(.a11y-sw, .a11y-speed label, .set-voice) input:focus { box-shadow: none !important; scale: 1; animation: none; }
 @keyframes key-glow { 50% { filter: brightness(1.08); } }
 html[data-motion="reduce"] :focus { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) { :focus { animation: none !important; } }
@@ -61,7 +61,7 @@ html[data-input="pad"] .seat-focus::after { content: "A · open"; }
   color: var(--color-bg); background: var(--color-text); padding: 4px 7px; border-radius: var(--radius-sm); box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
 .key-legend { position: fixed; left: 12px; bottom: 12px; z-index: var(--z-toast); display: none; gap: 10px; pointer-events: none;
   font: 500 12px/1 var(--font-sans, system-ui); color: var(--color-on-space, #F3F5F8); background: rgba(5, 7, 13, .72); padding: 6px 9px; border-radius: var(--radius-md); }
-:is(html[data-input="keys"], html[data-input="pad"]) .key-legend { display: flex; }
+:is(html[data-input="keys"], html[data-input="pad"], html[data-input="gesture"]) .key-legend { display: flex; }
 html:not([data-input="keys"]):not([data-input="pad"]) .key-hint { display: none; }
 .key-legend kbd, .keys-help kbd { font: 600 11px/1 var(--font-mono, ui-monospace, monospace); padding: 3px 5px; border-radius: 4px; border: 1px solid currentColor; margin-right: 3px; }
 

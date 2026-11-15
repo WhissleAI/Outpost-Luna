@@ -90,6 +90,58 @@
 .gx-calib-bar { height: 6px; border-radius: 3px; background: var(--color-surface-3, rgba(255, 255, 255, .12)); overflow: hidden; }
 .gx-calib-bar i { display: block; height: 100%; width: 0; background: var(--color-accent, #4C8DFF); transition: width .1s linear; }
 
-@media (prefers-reduced-motion: reduce) { .gx-indicator.is-starting .gx-dot { animation: none; } .gx-ring { transition: none; } }
+/* the fist joystick: a ring with a knob that leans the way the fist leans; brighter while it holds */
+.gx-stick {
+  position: fixed; left: 50%; bottom: calc(var(--space-8, 96px) + 24px); transform: translateX(-50%); z-index: var(--z-toast, 40);
+  display: grid; justify-items: center; gap: var(--space-1); pointer-events: none;
+}
+.gx-stick svg { width: 84px; height: 84px; overflow: visible; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .45)); }
+.gx-stick-ring { fill: var(--gx-surface); stroke: var(--gx-line); stroke-width: 2; }
+.gx-stick-dead { fill: none; stroke: rgba(255, 255, 255, .25); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.gx-stick-arrow { stroke: var(--gx-accent); stroke-width: 5; stroke-linecap: round; fill: none; }
+.gx-stick-knob { fill: rgba(255, 255, 255, .55); stroke: rgba(0, 0, 0, .4); stroke-width: 1.5; transition: fill 120ms; }
+.gx-stick.is-grabbed .gx-stick-knob { fill: #fff; }
+.gx-stick:not(.is-grabbed) { opacity: .6; }
+.gx-stick-text { font-size: var(--text-sm, 14px); color: var(--gx-text); background: var(--gx-surface); border: 1px solid var(--gx-line); border-radius: var(--radius-full, 999px); padding: 2px var(--space-3); }
+.gx-stick-text:empty { display: none; }
+
+/* where the Moon is heading: chevrons at its centre, pointing the way the surface turns */
+.gx-heading { position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px; z-index: 2; pointer-events: none; transform: rotate(var(--gx-rot, 0deg)); }
+.gx-heading svg { width: 100%; height: 100%; overflow: visible; }
+.gx-chev path { fill: none; stroke: #fff; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(0, 0, 0, .6)); }
+.gx-chev path + path { opacity: .55; }
+
+/* the "Gestures" help card and the first-use coach mark (same card; the coach mark goes by itself) */
+.gx-card[hidden] { display: none !important; }
+.gx-card {
+  position: fixed; right: var(--space-4, 16px); top: calc(var(--topbar-h, var(--topbar, 56px)) + var(--space-3, 12px)); z-index: var(--z-toast, 40);
+  width: min(320px, calc(100vw - 32px)); display: grid; gap: var(--space-2); padding: var(--space-4, 16px);
+  background: var(--gx-surface); color: var(--gx-text); border: 1px solid var(--gx-line); border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-2, 0 6px 20px rgba(0, 0, 0, .35)); backdrop-filter: blur(12px); font-family: var(--font-ui, system-ui, sans-serif);
+}
+.gx-card h3 { display: flex; gap: var(--space-2); align-items: center; margin: 0; font-size: var(--text-md, 16px); }
+.gx-card ul { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+.gx-card li { display: flex; gap: var(--space-3); align-items: flex-start; }
+.gx-card li .ic { width: 24px; height: 24px; flex: none; }
+.gx-card li span { display: grid; }
+.gx-card small, .gx-card .gx-note { color: var(--gx-text-2); margin: 0; }
+.gx-card [data-close] { justify-self: end; }
+.gx-card[data-mode="coach"] { border-color: color-mix(in srgb, var(--gx-accent) 60%, transparent); }
+.gx-help-btn { margin-right: 2px; }
+
+/* calibration: the tilt arrow and the buttons */
+.gx-calib-row { display: flex; justify-content: space-between; gap: var(--space-2); }
+.gx-calib-dir { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.gx-calib-dir:not([data-dir=""])::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -18px 0 0 -18px;
+  border: 18px solid transparent; border-left-color: var(--color-accent, #4C8DFF); opacity: calc(.45 + var(--gx-k, 0) * .55);
+  transform: translate(calc(var(--dx, 0) * 70px), calc(var(--dy, 0) * 50px)) rotate(var(--r, 0deg));
+}
+.gx-calib-dir[data-dir="left"] { --dx: -1; --r: 180deg; }
+.gx-calib-dir[data-dir="right"] { --dx: 1; }
+.gx-calib-dir[data-dir="up"] { --dy: -1; --r: -90deg; }
+.gx-calib-dir[data-dir="down"] { --dy: 1; --r: 90deg; }
+
+@media (prefers-reduced-motion: reduce) { .gx-indicator.is-starting .gx-dot { animation: none; } .gx-ring { transition: none; } .gx-stick-knob { transition: none; } }
 html[data-motion="reduce"] .gx-ring { transition: none; }
 @media (max-width: 640px) { .gx-preview { width: 140px; } }
