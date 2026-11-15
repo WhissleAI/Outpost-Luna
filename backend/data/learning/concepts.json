@@ -27,15 +27,18 @@
    "source": {"title": "Glaser et al. 2018, Illumination conditions at the lunar poles, Planetary and Space Science", "url": "https://doi.org/10.1016/j.pss.2017.07.006"}
   },
   "psr_cold": {
-   "text": "Craters that never see the Sun are among the coldest places measured in the solar system: LRO's Diviner found floors near -235 C.",
-   "numbers": [-235],
-   "source": {"title": "Paige et al. 2010, Diviner observations of cold traps, Science 330", "url": "https://doi.org/10.1126/science.1187726"}
+   "text": "Craters that never see the Sun are some of the coldest spots measured in the solar system: LRO measured below -246 C there. NASA's Moon Base page gives about -203 C for shadowed craters in general.",
+   "numbers": [-246, -203],
+   "source": {"title": "NASA Science: Weather on the Moon", "url": "https://science.nasa.gov/moon/weather-on-the-moon/"},
+   "sources": [{"title": "NASA Science: Weather on the Moon", "url": "https://science.nasa.gov/moon/weather-on-the-moon/"}, {"title": "NASA: About the Moon Base", "url": "https://www.nasa.gov/reference/moonbase-about/"}],
+   "checked": "2026-11-14: science.nasa.gov 'lower than -410°F (-246°C)'; nasa.gov/reference/moonbase-about 'as low as -334°F (-203°C) inside permanently shadowed craters'. Replaces Paige et al. 2010's -235 C (an early Diviner result)."
   },
   "artemis_timeline": {
-   "text": "Artemis II flew its crew around the Moon in April 2026. In February 2026 NASA made Artemis III a 2027 test flight in Earth orbit, and planned the first south-pole landing for Artemis IV, targeted for 2028.",
+   "text": "Artemis II flew its crew around the Moon in April 2026. In February 2026 NASA made Artemis III a 2027 test flight in Earth orbit. Artemis IV, planned for early 2028, is to land two astronauts near the south pole.",
    "numbers": [2026, 2027, 2028],
    "source": {"title": "NASA: Artemis IV", "url": "https://www.nasa.gov/mission/artemis-iv/"},
-   "also": [{"title": "NASA adds mission to Artemis lunar program, updates architecture (2026-02-27)", "url": "https://www.nasa.gov/news-release/nasa-adds-mission-to-artemis-lunar-program-updates-architecture/"}]
+   "sources": [{"title": "NASA: Artemis IV", "url": "https://www.nasa.gov/mission/artemis-iv/"}, {"title": "NASA Adds Mission to Artemis Lunar Program, Updates Architecture (Feb 27, 2026)", "url": "https://www.nasa.gov/news-release/nasa-adds-mission-to-artemis-lunar-program-updates-architecture/"}],
+   "checked": "2026-11-14: Artemis IV page launch 'Early 2028', 'two crew members will descend to the surface ... near the South Pole'; Feb 27 release: Artemis III 'now in 2027', tests 'in low Earth orbit'."
   },
   "landing_regions": {
    "text": "NASA's October 2024 list has 9 candidate landing regions near the south pole, including Malapert Massif and de Gerlache Rim 2. Peak near Shackleton and Connecting Ridge were on the 2022 list but not the 2024 one.",
@@ -48,9 +51,10 @@
    "source": {"title": "NASA: Artemis II crew eclipses record for farthest human spaceflight", "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"}
   },
   "integrity_name": {
-   "text": "The Artemis II crew proposed the names Integrity and Carroll for two unnamed craters. The names were sent to the IAU and are not approved yet.",
+   "text": "The Artemis II crew proposed the names Integrity and Carroll for two unnamed craters. As of November 2026 the IAU has not approved them.",
    "numbers": [],
-   "source": {"title": "NASA: Artemis II crew eclipses record for farthest human spaceflight", "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"}
+   "source": {"title": "USGS/IAU Gazetteer of Planetary Nomenclature: Moon", "url": "https://planetarynames.wr.usgs.gov/"},
+   "checked": "2026-11-14: the Gazetteer's Moon list (newest approvals Sep 21, 2026) has no Integrity or Carroll."
   },
   "orion_shelter": {
    "text": "On Orion, a radiation sensor called HERA gives the crew up to 1 hour of warning. They pack into the floor bays behind stowage bags and can stay up to 24 hours.",
@@ -83,6 +87,56 @@
    "text": "Game doses are doubled so storms matter in 10 days. The powered shields, the greenhouse, the rim power cable and the relay satellite are pretend tech for the game.",
    "numbers": [10],
    "source": {"title": "Outpost Luna radiation data and game assumptions", "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"}
+  },
+  "artemis2_record": {
+   "text": "On April 6, 2026, Artemis II reached 252,756 miles from Earth, a new record for human spaceflight. It passed Apollo 13's record of 248,655 miles.",
+   "numbers": [6, 2026, 252756, 13, 248655],
+   "source": {"title": "NASA: Artemis II Flight Day 6 lunar flyby updates", "url": "https://www.nasa.gov/blogs/missions/2026/04/06/artemis-ii-flight-day-6-lunar-flyby-updates/"},
+   "checked": "2026-11-14: 'reached the mission's maximum distance from Earth at 252,756 miles, setting a new record for human spaceflight'."
+  },
+  "moon_base": {
+   "text": "NASA plans its Moon Base, humanity's first lunar outpost, near the lunar South Pole. Phase One, robotic exploration, runs from now to 2029.",
+   "numbers": [2029],
+   "source": {"title": "NASA: About the Moon Base", "url": "https://www.nasa.gov/reference/moonbase-about/"},
+   "sources": [{"title": "NASA: About the Moon Base", "url": "https://www.nasa.gov/reference/moonbase-about/"}, {"title": "NASA Moon Base", "url": "https://www.nasa.gov/moon-base/"}],
+   "checked": "2026-11-14: 'plans to establish the Moon Base near the lunar South Pole'; 'Phase One (Now–2029)'. Outpost Luna is a pretend base."
+  },
+  "lro_crater": {
+   "text": "LRO launched on June 18, 2009. Its CRaTER instrument measures cosmic rays from the Sun and deep space.",
+   "numbers": [18, 2009],
+   "source": {"title": "NASA Science: LRO science and data", "url": "https://science.nasa.gov/mission/lro/science-and-data/"},
+   "sources": [{"title": "NASA Science: LRO", "url": "https://science.nasa.gov/mission/lro/"}, {"title": "NASA Science: LRO science and data", "url": "https://science.nasa.gov/mission/lro/science-and-data/"}],
+   "checked": "2026-11-14: launch 'June 18, 2009'; CRaTER 'measuring galactic and solar cosmic ray radiation'."
+  },
+  "moon_phases": {
+   "text": "The Sun always lights half of the Moon. As the Moon goes around Earth, we see more or less of that sunlit half.",
+   "numbers": [],
+   "source": {"title": "NASA Science: Moon phases", "url": "https://science.nasa.gov/moon/moon-phases/"},
+   "checked": "2026-11-14: 'The Sun always illuminates half of the Moon'."
+  },
+  "lunar_eclipse": {
+   "text": "In a lunar eclipse, Earth gets in the way of the Sun's light, and Earth's shadow covers the Moon. It can look reddish.",
+   "numbers": [],
+   "source": {"title": "NASA Space Place: What is an eclipse?", "url": "https://spaceplace.nasa.gov/eclipses/en/"},
+   "checked": "2026-11-14: 'Earth gets in the way of the Sun's light hitting the Moon'; 'The Moon can also look reddish'."
+  },
+  "moon_gravity": {
+   "text": "Gravity on the Moon's surface is 0.165 of Earth's, about one sixth. So 30 kg feels like about 5 kg.",
+   "numbers": [0.165, 30, 5],
+   "source": {"title": "NSSDCA Moon Fact Sheet", "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html"},
+   "checked": "2026-11-14: 'Surface gravity (m/s2) 1.62 / 9.80 / 0.165'. 30 x 0.165 = 4.95."
+  },
+  "feather_drop": {
+   "text": "At the end of the last Apollo 15 moonwalk in 1971, Commander David Scott dropped a hammer and a feather. They hit the ground together.",
+   "numbers": [15, 1971],
+   "source": {"title": "NSSDCA: The Apollo 15 Hammer-Feather Drop", "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html"},
+   "checked": "2026-11-14: 'Commander David Scott'; they 'strike the lunar surface simultaneously'. Apollo 15 flew in 1971 (NSSDCA)."
+  },
+  "regolith": {
+   "text": "The Moon's dusty, rocky top layer is called regolith. Its tiny, sharp bits act like broken glass and cling to everything.",
+   "numbers": [],
+   "source": {"title": "NASA Knows: What is lunar regolith? (grades 5-8)", "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/nasa-knows-what-is-lunar-regolith-grades-5-8/"},
+   "checked": "2026-11-14: 'This dusty, rocky layer is called lunar regolith'; 'tiny, sharp pieces that can act like little bits of broken glass'."
   }
  }
 }

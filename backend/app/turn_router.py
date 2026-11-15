@@ -81,9 +81,10 @@ ASKY = re.compile(r"^(?:tell me|show me|can you (?:tell|show)|could you (?:tell|
 YESNO = re.compile(r"^(?:can you|could you|would you|do you|did|does|do|is|are|was|were|will|can|could|should|"
                    r"have you|has|i wonder)\b")
 
-WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "first": 1,
-           "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7, "eighth": 8, "1": 1, "2": 2,
-           "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "won": 1, "to": 2, "too": 2, "for": 4, "ate": 8}
+WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+           "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7, "eighth": 8,
+           "ninth": 9, "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "won": 1, "to": 2,
+           "too": 2, "for": 4, "ate": 8}
 
 # Navigation intents: (intent, pattern over the normalised text). First match wins; the screen decides if it applies.
 _N = r"(?:please )?"

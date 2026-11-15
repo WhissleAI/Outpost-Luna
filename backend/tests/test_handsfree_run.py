@@ -55,7 +55,8 @@ def test_scripted_handsfree_run(capsys):
         Path(os.environ["HANDSFREE_TRACE"]).with_suffix(".txt").write_text(out)
     print(out)
     assert c.qualified, out[-3000:]
-    assert len(c.badges) == len(content.course()["lessons"]), c.badges
+    core = [l for l in content.course()["lessons"] if l.get("track", "core") == "core"]   # explorer lessons: after missions
+    assert len(c.badges) == len(core), c.badges
     assert c.mid and c.mscreen == "cabin", "fly again started a new shift"
     # the live clock by voice (docs/GAMEPLAY.md): skip to next event, the Now card's jobs, pause / run / warp
     assert c.skips >= 1, out[-3000:]
@@ -72,7 +73,7 @@ def test_scripted_handsfree_run(capsys):
     # after that echo's playback ended, still navigated on the first try (the RC looped here forever).
     patch = [r for r in s.routes if r["screen"] == "patch"]
     offers = [i for i, r in enumerate(patch) if r["reason"] == "echo" and r["text"] in hf.OFFER.values()]
-    assert len(offers) == len(content.course()["lessons"]) - 1, patch
+    assert len(offers) == len([l for l in content.course()["lessons"] if l.get("track", "core") == "core"]) - 1, patch
     assert all(patch[i + 1]["text"] == "next" and patch[i + 1]["outcome"] == "navigate" for i in offers), patch
 
 
@@ -91,4 +92,4 @@ def test_live_course_is_matched_by_lesson_id():
 def test_course_order_is_the_current_one():
     """The script walks the course in its own order (next_lesson); this is the order the UI and the docs use."""
     assert [L["id"] for L in content.course()["lessons"]] == \
-        ["moon", "history", "comms", "power", "radiation", "life", "checkride"]
+        ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]

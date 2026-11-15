@@ -13,6 +13,7 @@ import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
+import { installMissionLearning } from "./mission_learning.js";   // Moon Base offer + debrief Learn more (outside mission/ui.js)
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP } from "./story.js";
@@ -140,6 +141,11 @@ async function boot() {
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
+  const missionLearning = installMissionLearning({
+    missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking(),
+    lessons: () => academyUI.lessons(),
+    openLesson: id => { setMode("academy"); setTimeout(() => academyUI.nav("lesson", id), 400); },
+  });
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   // ---- [a11y] settings + voice commands + audio description, captions, highlights ----
@@ -518,6 +524,7 @@ async function boot() {
     if (intent === "library") { setMode("cadet"); return; }
     if (intent === "go_mission") { setMode("mission"); return; }
     if (academyUI.active && academyUI.nav(intent, arg)) return;
+    if (missionUI.active && missionLearning.nav(intent, arg)) return;   // the first-mission Moon Base card, if it's up
     if (missionUI.active && missionUI.nav(intent, arg)) return;
     const mode = document.body.dataset.mode;
     if (intent === "lesson" || intent === "map") { setMode("academy"); setTimeout(() => academyUI.nav(intent, arg), 400); return; }
@@ -533,7 +540,7 @@ async function boot() {
     const vn = videoNow(); if (vn) return { screen: "video", video: vn.id };   // [media] the router takes only pause / play / skip / stop
     const m = document.body.dataset.mode;
     if (m === "cadet") return { screen: "library" };
-    const f = m === "academy" ? academyUI.screen() : missionUI.screen();
+    const f = m === "academy" ? academyUI.screen() : (missionLearning.screen() || missionUI.screen());
     return f || { screen: m === "academy" ? "map" : "brief" };
   }
   function pushScreen(force) {

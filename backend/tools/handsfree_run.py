@@ -82,6 +82,8 @@ def answer_for(step: dict, gaz=None, vocab=None) -> str:
         if q and acc.get("all"):
             return "Copy. " + q[0].replace("Commander, ", "").rstrip(".")
         return " ".join(g[0] for g in groups) or "copy"
+    if k == "video":
+        return "skip this one"   # a video step: the voice-only kid skips it (the reveal is said either way)
     if k.startswith("vocab_"):
         t = (vocab.term(acc["term"]) if vocab else None) or {}
         return t.get("explain", acc["term"]) if k == "vocab_match" else acc["term"]
@@ -115,7 +117,9 @@ class Client:
         return self.course["lessons"]
 
     def next_lesson(self):
-        return next((l for l in self.lessons() if l["badge"]["id"] not in self.badges), None)
+        # explorer lessons (track "explorer") open only after missions (frontend/src/explorer.js); this run flies none first
+        return next((l for l in self.lessons() if l["badge"]["id"] not in self.badges
+                     and l.get("track", "core") != "explorer"), None)
 
     def frame(self) -> dict:
         if self.mode == "mission":
@@ -405,7 +409,7 @@ async def script(c: Client, shifts: int = 3):
     await c.say("call me Nova")
     await c.say("start")
     guard = 0
-    while not c.qualified and guard < 80:   # every lesson by voice, then the check ride
+    while not c.qualified and guard < 200:  # every lesson by voice, then the check ride
         guard += 1
         if c.view == "patch":
             await c.noise()

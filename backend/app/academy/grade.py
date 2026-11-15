@@ -19,6 +19,9 @@ Globe steps (docs/LEARNING_DESIGN.md §3, client contract in §9.2):
   route       {stops:[place ids], radius_deg?}      the stops in order: {taps:[...]} or the names in order in the
                                                     words; extra {got, next}
   earth_view  {place}                               yes / no / sometimes, computed from where the place is
+A NASA video step (docs/MEDIA.md; media ids from backend/data/video/catalog.json):
+  video       {media}    {video: {watched, seconds, ...}} or a choice always passes (watched, skipped, offline); words
+                         pass only when they say watch / skip (VIDEO_WORDS); anything else is ignored, never a miss
 """
 from __future__ import annotations
 
@@ -189,7 +192,8 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
             t = _norm(text)
             hit = next((k for k, ws in VIDEO_WORDS.items() if any(_has(t, w) for w in ws)), None)
             return hit is not None, {"watched": False, "seconds": 0.0, **({"choice": hit} if hit else {})}
-        vid = vid or {}
+        if vid is None:                                # a plain choice (Watch / Skip button, or "offline")
+            vid = {"watched": inp.get("choice") in ("watch", "watched")}
         try:
             secs = max(0.0, float(vid.get("seconds") or 0))
         except (TypeError, ValueError):

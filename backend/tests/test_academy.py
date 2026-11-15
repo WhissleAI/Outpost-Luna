@@ -15,7 +15,7 @@ def client():
 def test_course_validates():
     assert content.check() == []
     c = content.course()
-    assert 6 <= len(c["lessons"]) <= 8          # 8 with Space words (docs/VOCABULARY.md)
+    assert 6 <= len(c["lessons"]) <= 9          # v4: 8 lessons and the check ride
     assert c["lessons"][-1]["id"] == "checkride" and c["lessons"][-1]["badge"]["id"] == c["pass_badge"]
     for l in c["lessons"]:
         assert l["facts"] and all(f["source"]["url"].startswith("http") for f in l["facts"])
@@ -86,11 +86,11 @@ def test_grading(step, inp, ok):
 
 def test_attempt_api_retry_hint_pass_badge(client):
     pub = client.get("/api/academy/course").json()
-    assert [l["id"] for l in pub["lessons"]][:2] == ["moon", "history"]   # map order (LEARNING_DESIGN §5)
+    assert [l["id"] for l in pub["lessons"]][:3] == ["moon", "phases", "power"]   # map order (LEARNING_DESIGN §11)
     A = lambda step, inp, misses=0: client.post("/api/academy/attempt", json={  # noqa: E731
         "lesson_id": "moon", "step": step, "input": inp, "misses": misses}).json()
     r = A(0, {"text": "show me tycho"})                                 # rung 1: the hint, and the place glows
-    assert r["status"] == "hint" and r["rung"] == 1 and "dark patch" in r["hint"] and r["focus"] == ["tranquillitatis"]
+    assert r["status"] == "hint" and r["rung"] == 1 and "dark plain" in r["hint"] and r["focus"] == ["tranquillitatis"]
     r = A(0, {"text": "tycho"}, 1)                                      # rung 2: the place gets its label
     assert r["status"] == "hint" and r["rung"] == 2 and r["label"] == ["tranquillitatis"]
     assert "Sea of Tranquility" in r["say"]
@@ -99,8 +99,11 @@ def test_attempt_api_retry_hint_pass_badge(client):
     assert r["decisions"][0]["t"] == "lesson" and r["decisions"][1]["t"] == "say"
     r = A(1, {"text": "yes, always"})                                   # earth_view: near side
     assert r["status"] == "passed" and r["answer"] == "yes"
-    r = A(2, {"choice": "month"})                                       # predict: a guess is never wrong
-    assert r["status"] == "passed" and r["correct"] is False and r["say"].startswith("Never.")
+    r = A(2, {"text": "time warp four please"})                          # video: words that aren't Watch / Skip
+    assert r["status"] == "ignored"                                     # ... never count as a miss
+    r = A(2, {"choice": "skip"})                                        # video: Skip (or offline) still moves on
+    assert r["status"] == "passed" and r["next_step"] == 3 and r["watched"] is False
+    assert r["say"] == "Yes. Far side, not dark side."                  # the reveal, said either way
     r = A(3, {"view": {"lat": 0, "lon": 175}})                          # globe_side: camera on the far side
     assert r["status"] == "passed"
     r = A(4, {"text": "tycho"}, 2)                                      # third miss: CAPCOM shows it and moves on

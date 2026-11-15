@@ -1,0 +1,14 @@
+/* mission_learning.js: the first-mission Moon Base card and the debrief's Learn more / unlocked lesson */
+.ml-offer{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:var(--space-4);background:rgba(5,9,18,.55)}
+.ml-card{max-width:420px;width:100%;display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-5);border-radius:var(--radius-lg, 16px);
+  background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-line-strong);box-shadow:0 12px 40px rgba(0,0,0,.35)}
+.ml-card h2{margin:0}
+.ml-line{margin:0;color:var(--color-text-2)}
+.ml-actions{display:flex;justify-content:flex-end;gap:var(--space-3)}
+.ml-actions .btn-primary{display:inline-flex;align-items:center;gap:var(--space-2)}
+.ml-learn{display:flex;flex-direction:column;gap:var(--space-2);margin:0}
+.ml-learn h3{margin:0;font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-2)}
+.ml-go{display:inline-flex;align-items:center;gap:var(--space-2);align-self:flex-start;text-align:left}
+.ml-go small{color:var(--color-text-3)}
+.ml-fact,.ml-unlock{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--text-sm);color:var(--color-text-2)}
+.ml-unlock button{margin-left:auto}

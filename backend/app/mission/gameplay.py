@@ -21,10 +21,20 @@ import random
 
 from . import sim
 
-# Lesson numbers in Flight School order (backend/data/academy/course.json), for "Lesson 5 helps here".
-LESSON_NO = {"moon": 1, "history": 2, "comms": 3, "power": 4, "radiation": 5, "life": 6}
-LESSON_TITLE = {"moon": "Know your Moon", "history": "Lessons from Apollo", "comms": "Talk on the radio",
-                "power": "Power from the Sun", "radiation": "Radiation and storms", "life": "Air, water and ice"}
+
+
+def _lesson_order() -> tuple[dict, dict]:
+    """Lesson numbers and titles in Flight School order (backend/data/academy/course.json), for "Lesson 5 helps
+    here". Read from the course, so a new lesson never leaves a stale number. Core lessons only, as the map numbers
+    them (the check ride and the explorer lessons aren't numbered)."""
+    import json
+    from pathlib import Path
+    c = json.loads((Path(__file__).resolve().parents[2] / "data" / "academy" / "course.json").read_text())
+    ls = [l for l in c["lessons"] if not l.get("ride") and l.get("track", "core") == "core"]   # core lessons only
+    return {l["id"]: k + 1 for k, l in enumerate(ls)}, {l["id"]: l["title"] for l in ls}
+
+
+LESSON_NO, LESSON_TITLE = _lesson_order()
 SAMPLE_SCIENCE = 2.0       # a sample or a logged sensor reading: small, and only when the kid does it
 SCIENCE_TASKS = {"cadet": 4, "commander": 6}
 SCIENCE_EVERY_H = 8

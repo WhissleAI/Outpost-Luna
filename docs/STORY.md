@@ -31,7 +31,7 @@ next action, and saying "what do I do?" on any screen outside a lesson speaks th
 |---|---|---|---|
 | First launch → map | "Copy that, Nova. Welcome to Flight School." · "Each pin on the Moon is a lesson. Earn the patches, then command the outpost." · "Ready for lesson one?" | Map beat: **Step 1 of 4 · Flight School**, "Earn a patch at each pin. Then fly your check ride." | Start on the Next-up card, or "next" |
 | Map → lesson | `CAPCOM.lessonHello` + the lesson's story beat ("Radio check. Houston is 384,000 km away. Here we go, Nova."). CAPCOM speaks every beat, so beats are first person or plain statements, never narrator copy ("CAPCOM pulls up a map" became "Let's start with a map of the Moon"), and the only questions are offers the router waits for, then the brief and the question | the lesson card | the step |
-| Lesson → patch | "Patch earned: Radio Ready. Nice work, Nova." · "Ready for the next lesson?" | "3 of 7 patches. 4 lessons to go." under the patch | Next: *lesson*, or "next" |
+| Lesson → patch | "Patch earned: Radio Ready. Nice work, Nova." · "Ready for the next lesson?" | "3 of 9 patches. 6 lessons to go." under the patch | Next: *lesson*, or "next" |
 | Patch → map | none (the kid chose the map) | the Next-up card | Start |
 | Last lesson → ride | patch line · "Your check ride is next: one solo shift. Pass it to take command." · "Ready for your check ride?" | map beat **Step 2 of 4 · Check ride**, "One solo shift. Pass it and you take command." | Next: Check ride |
 | Ride → qualified | "Mission Commander patch earned. You're qualified, Commander Nova." · "Ready to take command?" | "Next: pick a site and run Outpost Luna for 10 days." | Take command |

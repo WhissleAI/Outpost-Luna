@@ -19,6 +19,38 @@
 
 ---
 
+## Status (re-checked 2026-11-14, `feat/learning-v1`)
+
+Facts re-verified on nasa.gov and the USGS Gazetteer on 2026-11-14; sources are in `backend/data/learning/concepts.json`
+(`checked` fields) and listed in `docs/LEARNING_DESIGN.md` §11.
+
+| # | Status | Where it stands now |
+|---|---|---|
+| 1 | **Resolved** | Artemis III = 2027 Earth-orbit test; Artemis IV = first south-pole landing, NASA: "Early 2028" (nasa.gov/mission/artemis-iv). `tests/test_learning.py::test_nothing_says_artemis_iii_lands` locks it. |
+| 2 | **Resolved** (picker) / open (debrief wording) | The picker labels the yearly average ("About 86% sunlight (yearly average)") and shows the window as days. The debrief still names "JPL Horizons" next to the window days, with a "smooth ground" caveat. |
+| 3 | **Resolved** | Events are keyed on DONKI SEP records (`sep_id`) and named "solar particle storm"; the G class stays only as Earth-side context. Still open: the dev-only storm mock in `mission/ui.js:74` says "G5" (owned by the mission-UI branch; handed off). |
+| 4 | **Resolved** | Houston's warning says particles "within hours" (lead 12 h Cadet / 6 h Commander, a game setting). |
+| 5 | **Resolved** | The `moon` lesson cites NASA's Oct 2024 list of 9 regions (Malapert Massif, de Gerlache Rim 2). |
+| 6 | **Resolved** | 2.6 times the ISS cosmic-ray dose (523 µSv/day); locked by `test_dose_baseline_compares_with_the_iss_cosmic_ray_dose`. |
+| 7 | **Resolved** | No "the plan is a soil shelter"; the lessons use Orion's stowage-bag shelter. |
+| 8 | **Resolved** | "Pretend tech" tags on the shields and other game hardware (`story.js` PRETEND_TECH). NASA's real Moon Base plan now exists, so the credit lines add "Outpost Luna is a pretend outpost for learning. NASA's real Moon Base plans: nasa.gov/moon-base." (`PRETEND_BASE`, home, map, About). |
+| 9 | **Resolved** | LCROSS: about 2,300 kg Centaur, about 155 kg of water (Colaprete 2010). |
+| 10 | **Resolved** | "Built on NASA open data, plus a few science papers" (`SOURCES_LINE`); About no longer says "Every fact shows its NASA source". |
+
+Other items closed in this pass:
+- **Coldest temperature.** NASA now gives "lower than -410°F (-246°C)" (science.nasa.gov/moon/weather-on-the-moon). The
+  old "near -235 C" (Paige et al. 2010, an early Diviner result) is replaced. The wording stays "the coldest spots
+  measured", with NASA's Moon Base page (about -203 °C in shadowed craters, nasa.gov/reference/moonbase-about) as a
+  second source.
+- **Integrity and Carroll.** Still not in the IAU Gazetteer's Moon list (newest approvals Sep 21, 2026). The history
+  lesson says "proposed" and "the IAU has not approved them".
+- **LROC.** The site moved to lroc.im-ldi.com. About now links it and credits "NASA/GSFC/Arizona State University", and
+  credits NASA's Scientific Visualization Studio for the CGI Moon Kit.
+- **SPA "as wide as the USA"** and **"Mare Orientale"** are fixed in `places.json` ("more than half as wide",
+  "Orientale Basin").
+
+---
+
 ## Top 10 corrections (priority order)
 
 | # | Where | Current claim | Verdict | Fix | Source |
