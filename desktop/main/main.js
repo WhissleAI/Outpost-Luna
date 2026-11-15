@@ -77,6 +77,7 @@ function envFor(name) {
       ARCTAG_MODEL_DIR: a.ARCTAG_MODEL_DIR,
       EMBED_MODEL_DIR: a.EMBED_MODEL_DIR,
       VOICE_PACK_DIR: a.VOICE_PACK_DIR,        // the recorded fixed lines (docs/VOICE_PACK.md)
+      STEER_TTS_MODEL: a.STEER_TTS_MODEL,      // Steer TTS Edge, the optional engine (loaded once its asset is in)
     });
   }
   const a = store.envPaths();
@@ -96,6 +97,7 @@ function envFor(name) {
     // Settings -> About / Storage: GET /api/assets reads the summary, POST /api/assets/check asks for a check
     ASSETS_STATE_FILE: path.join(store.dir, "summary.json"),
     ASSETS_CHECK_FILE: path.join(store.dir, "check-request"),
+    ASSETS_DIR: store.dir,                // the backend asks for an optional asset (.want/<id>) and shows its state
     // the pinned videos come from the asset pack: no second download of the same files from nasa.gov
     ...(vids && vids.url ? { VIDEO_PREFETCH: "0" } : {}),
   });
@@ -284,7 +286,22 @@ function requiredAssets() {
   });
 }
 
-/** After the UI is up: the optional assets (crew audio, videos), quietly; a failure waits for the next launch. */
+/** On demand: an optional asset the backend asked for (<assets>/.want/<id>: the kid picked the Steer voice) downloads
+ *  at once instead of waiting its turn. Polled every 2 s; one at a time. */
+let wantBusy = false;
+function watchWanted() {
+  setInterval(async () => {
+    if (wantBusy || quitting) return;
+    const id = store.wanted()[0];
+    if (!id) return;
+    wantBusy = true;
+    try { await store.download(id); log(`assets: ${id} installed (asked for)`); }
+    catch (e) { log(`assets: ${id} not downloaded (${e.message})`); }
+    finally { wantBusy = false; }
+  }, 2000);
+}
+
+/** After the UI is up: the optional assets (Steer voice, crew audio, videos), quietly; a failure waits for the next launch. */
 async function fetchOptional() {
   const todo = store.status().filter((x) => !x.required && x.state !== "installed").map((x) => x.id);
   for (const id of todo) {
@@ -389,6 +406,7 @@ if (!app.requestSingleInstanceLock()) {
       setTimeout(fetchOptional, 20000);
       setTimeout(() => runUpdates("launch"), 30000);   // non-blocking, after the UI is up; offline: nothing changes
       watchCheckRequests();
+      watchWanted();
     }
   });
   app.on("window-all-closed", () => app.quit());
