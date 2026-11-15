@@ -10,8 +10,9 @@
 #   MAC_SIGN_IDENTITY="Developer ID Application: Whissle LLC (XXK95K57U5)"   # in the login keychain
 #   NOTARY_PROFILE=outpost-notary        # once: xcrun notarytool store-credentials outpost-notary ...
 #
-# Needs: Xcode command line tools (clang), Node 22+, uv, CMake, Git. About 6 GB free disk. No accounts, keys or tokens:
-# the models come from the public, sha256-pinned model package; the NASA media from nasa.gov.
+# Needs: Xcode command line tools (clang), Node 22+, uv, CMake, Git. About 6 GB free disk. No accounts, keys or tokens.
+# The installer ships code only: the models, the voice pack, the crew audio and the pinned NASA videos are first-run
+# assets the app downloads from the public links in desktop/assets.manifest.json (`make asset-pack` builds them).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -58,10 +59,10 @@ fi
 
 if [ "${SKIP_PREP:-0}" = 1 ]; then
   step "2-6/8 skipped (SKIP_PREP=1)"
-  for f in desktop/resources/python/bin/python3 desktop/resources/native/libarctag.dylib desktop/resources/models/arctag; do
+  for f in desktop/resources/python/bin/python3 desktop/resources/native/libarctag.dylib desktop/resources/native/libarc.dylib; do
     [ -e "$f" ] || die "SKIP_PREP=1 but $f is missing; run without it"; done
 else
-step "2/8 NASA media (backend/data/media: 74 crew clips + Moon map, ~0.5 GB; trimmed copy for the app, ~175 MB)"
+step "2/8 NASA media (backend/data/media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
 if [ "${SKIP_MEDIA:-0}" = 1 ]; then echo "skipped (SKIP_MEDIA=1)"
 else uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py; fi
 [ -s backend/data/media/img/moon4k.jpg ] || die "backend/data/media is incomplete (re-run; fetch_media.py resumes)"
@@ -74,19 +75,22 @@ step "4/8 embedded Python + backend/model-server deps + app code (frontend build
 uv run --no-project python backend/tools/voice_pack_check.py --allow-empty
 uv run --no-project python desktop/scripts/build_python.py
 
-step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
-uv run --no-project python desktop/scripts/gather_models.py
+step "5/8 first-run assets: nothing bundled (desktop/assets.manifest.json lists them; the app downloads them)"
+python3 -c "import json,sys; m=json.load(open('desktop/assets.manifest.json')); r=[a for a in m['assets'] if a['required']]; \
+  miss=[a['id'] for a in r if not a.get('url') and not a.get('fallback')]; \
+  print('required %d MB, optional %d MB' % (sum(a['size'] for a in r)/1e6, sum(a['size'] for a in m['assets'] if not a['required'])/1e6)); \
+  sys.exit('assets without a download link: %s (make asset-pack asset-upload)' % miss if miss else 0)"
+rm -rf desktop/resources/models   # an older build's bundled models
 
-step "6/8 Arc Tagger native library (libarctag.dylib)"
+step "6/8 native libraries (libarctag.dylib: Arc Tagger; libarc.dylib: the ear, Arc Transcriber Space)"
 cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
 cmake --build desktop/build/arctag --config Release
+cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
+cmake --build desktop/build/libarc --config Release
 mkdir -p desktop/resources/native
-cp desktop/build/arctag/libarctag.dylib desktop/resources/native/
+cp desktop/build/arctag/libarctag.dylib desktop/build/libarc/libarc.dylib desktop/resources/native/
 
 fi
-
-# Always (also with SKIP_MEDIA / SKIP_PREP; incremental, seconds when current). The installer ships only the playable stretches of each clip, mono 48 kbps (~175 MB, not ~550): ffmpeg from a pinned wheel
-(cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media)
 
 step "7/8 Electron + electron-builder (dmg)"
 cd desktop
@@ -128,7 +132,7 @@ else
     spctl -a -vvv -t exec "$APP"
   fi
 fi
-rm -rf dist/mac-arm64 dist/builder-debug.yml          # the unpacked app (1.9 GB) is inside the dmg
+rm -rf dist/mac-arm64 dist/builder-debug.yml          # the unpacked app is inside the dmg
 
 step "8/8 done"
 ls -lh dist/*.dmg

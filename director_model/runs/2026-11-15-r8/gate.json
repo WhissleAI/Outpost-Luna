@@ -1,0 +1,1194 @@
+{
+ "m": {
+  "date": "2026-11-15T08:50",
+  "run": "director_model/runs/2026-11-15-r8/m",
+  "data": "director_model/data/ds_r8",
+  "pass": false,
+  "reasons": [
+   "test_real: wrong actions 69 > rules 67",
+   "test_real: act acc 0.588 < rules 0.5891",
+   "test_ear: wrong actions 22 > rules 20",
+   "cls_roomtalk: class regresses: act acc 0.8553 < shipped 0.8742",
+   "cls_prep_roomtalk: class regresses: act acc 0.925 < shipped 0.9375"
+  ],
+  "policy": {
+   "cmd": 0.9,
+   "veto": 0.98,
+   "ignore": 0.9,
+   "ask": 0.7,
+   "answer_ignore": 0.7,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 118,
+    "extra_wrong": 0,
+    "rules_wrong": 130,
+    "act_ok": 1586,
+    "turns": 2040
+   }
+  },
+  "shipped_policy": {
+   "conf": 0.7,
+   "cmd": 0.95,
+   "ignore": 0.8,
+   "ask": 1.01,
+   "veto": 0.99,
+   "answer_ignore": null,
+   "nav": null
+  },
+  "rows": [
+   {
+    "set": "test_clean",
+    "turns": 2001,
+    "rules_act": 0.7866,
+    "ship_act": 0.7916,
+    "cand_act": 0.7876,
+    "rules_wrong": 132,
+    "ship_wrong": 132,
+    "cand_wrong": 121,
+    "rules_w50": 9.91,
+    "ship_w50": 9.91,
+    "cand_w50": 9.08,
+    "model_act": 0.9435,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_asr",
+    "turns": 1998,
+    "rules_act": 0.7032,
+    "ship_act": 0.7087,
+    "cand_act": 0.7057,
+    "rules_wrong": 164,
+    "ship_wrong": 162,
+    "cand_wrong": 153,
+    "rules_w50": 13.62,
+    "ship_w50": 13.46,
+    "cand_w50": 12.71,
+    "model_act": 0.8834,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_real",
+    "turns": 920,
+    "rules_act": 0.5891,
+    "ship_act": 0.5902,
+    "cand_act": 0.588,
+    "rules_wrong": 67,
+    "ship_wrong": 67,
+    "cand_wrong": 69,
+    "rules_w50": 14.38,
+    "ship_w50": 14.38,
+    "cand_w50": 14.81,
+    "model_act": 0.812,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": [
+     "wrong actions 69 > rules 67",
+     "act acc 0.588 < rules 0.5891"
+    ]
+   },
+   {
+    "set": "test_ear",
+    "turns": 200,
+    "rules_act": 0.72,
+    "ship_act": 0.72,
+    "cand_act": 0.72,
+    "rules_wrong": 20,
+    "ship_wrong": 19,
+    "cand_wrong": 22,
+    "rules_w50": 17.24,
+    "ship_w50": 16.38,
+    "cand_w50": 18.97,
+    "model_act": 0.82,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "wrong actions 22 > rules 20"
+    ]
+   },
+   {
+    "set": "test_h40",
+    "turns": 40,
+    "rules_act": 0.45,
+    "ship_act": 0.45,
+    "cand_act": 0.575,
+    "rules_wrong": 3,
+    "ship_wrong": 1,
+    "cand_wrong": 3,
+    "rules_w50": 3.75,
+    "ship_w50": 1.25,
+    "cand_w50": 3.75,
+    "model_act": 0.825,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_h40_asr",
+    "turns": 40,
+    "rules_act": 0.4,
+    "ship_act": 0.4,
+    "cand_act": 0.475,
+    "rules_wrong": 4,
+    "ship_wrong": 3,
+    "cand_wrong": 4,
+    "rules_w50": 5.0,
+    "ship_w50": 3.75,
+    "cand_w50": 5.0,
+    "model_act": 0.75,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80",
+    "turns": 80,
+    "rules_act": 0.85,
+    "ship_act": 0.85,
+    "cand_act": 0.85,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9375,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80_asr",
+    "turns": 80,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.925,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_gold",
+    "turns": 19,
+    "rules_act": 0.7895,
+    "ship_act": 0.7895,
+    "cand_act": 0.7895,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": 13.64,
+    "ship_w50": 13.64,
+    "cand_w50": 13.64,
+    "model_act": 0.8947,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_chatter",
+    "turns": 160,
+    "rules_act": 0.9125,
+    "ship_act": 0.9125,
+    "cand_act": 0.9187,
+    "rules_wrong": 2,
+    "ship_wrong": 2,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8375,
+    "chatter_graded": [
+     12,
+     12,
+     11
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_echo",
+    "turns": 160,
+    "rules_act": 0.8438,
+    "ship_act": 0.8562,
+    "cand_act": 0.9,
+    "rules_wrong": 10,
+    "ship_wrong": 10,
+    "cand_wrong": 7,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_offer",
+    "turns": 160,
+    "rules_act": 0.7,
+    "ship_act": 0.7,
+    "cand_act": 0.7,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8125,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_panel",
+    "turns": 160,
+    "rules_act": 0.775,
+    "ship_act": 0.775,
+    "cand_act": 0.775,
+    "rules_wrong": 12,
+    "ship_wrong": 12,
+    "cand_wrong": 12,
+    "rules_w50": 8.45,
+    "ship_w50": 8.45,
+    "cand_w50": 8.45,
+    "model_act": 0.725,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_help",
+    "turns": 160,
+    "rules_act": 0.6813,
+    "ship_act": 0.6813,
+    "cand_act": 0.6813,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mode",
+    "turns": 159,
+    "rules_act": 0.805,
+    "ship_act": 0.805,
+    "cand_act": 0.805,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.761,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_globe",
+    "turns": 160,
+    "rules_act": 0.7375,
+    "ship_act": 0.7375,
+    "cand_act": 0.7375,
+    "rules_wrong": 4,
+    "ship_wrong": 4,
+    "cand_wrong": 4,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8875,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mishear",
+    "turns": 160,
+    "rules_act": 0.7188,
+    "ship_act": 0.7,
+    "cand_act": 0.7188,
+    "rules_wrong": 18,
+    "ship_wrong": 18,
+    "cand_wrong": 18,
+    "rules_w50": 18.37,
+    "ship_w50": 18.37,
+    "cand_w50": 18.37,
+    "model_act": 0.7312,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_roomtalk",
+    "turns": 159,
+    "rules_act": 0.8428,
+    "ship_act": 0.8742,
+    "cand_act": 0.8553,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8113,
+    "chatter_graded": [
+     4,
+     4,
+     4
+    ],
+    "fail": [
+     "class regresses: act acc 0.8553 < shipped 0.8742"
+    ]
+   },
+   {
+    "set": "cls_video_ctrl",
+    "turns": 160,
+    "rules_act": 0.4188,
+    "ship_act": 0.4188,
+    "cand_act": 0.4188,
+    "rules_wrong": 17,
+    "ship_wrong": 17,
+    "cand_wrong": 17,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.4562,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_video_echo",
+    "turns": 140,
+    "rules_act": 1.0,
+    "ship_act": 1.0,
+    "cand_act": 1.0,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 1.0,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_prep",
+    "turns": 160,
+    "rules_act": 0.5687,
+    "ship_act": 0.5687,
+    "cand_act": 0.5687,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.225,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_prep_roomtalk",
+    "turns": 160,
+    "rules_act": 0.925,
+    "ship_act": 0.9375,
+    "cand_act": 0.925,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8063,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "class regresses: act acc 0.925 < shipped 0.9375"
+    ]
+   },
+   {
+    "set": "cls_voice_echo_os",
+    "turns": 160,
+    "rules_act": 0.8125,
+    "ship_act": 0.8187,
+    "cand_act": 0.9,
+    "rules_wrong": 4,
+    "ship_wrong": 4,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8875,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_gesture_cooccur",
+    "turns": 160,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8812,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_lesson_new",
+    "turns": 160,
+    "rules_act": 0.725,
+    "ship_act": 0.725,
+    "cand_act": 0.725,
+    "rules_wrong": 2,
+    "ship_wrong": 2,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8938,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_offers_new",
+    "turns": 160,
+    "rules_act": 0.5625,
+    "ship_act": 0.5625,
+    "cand_act": 0.5625,
+    "rules_wrong": 18,
+    "ship_wrong": 18,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.6375,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_coverage",
+    "turns": 3009,
+    "rules_act": 0.8398,
+    "ship_act": 0.8401,
+    "cand_act": 0.8451,
+    "rules_wrong": 49,
+    "ship_wrong": 49,
+    "cand_wrong": 47,
+    "rules_w50": 98.0,
+    "ship_w50": 98.0,
+    "cand_w50": 94.0,
+    "model_act": 0.6434,
+    "chatter_graded": [
+     5,
+     5,
+     0
+    ],
+    "fail": []
+   }
+  ],
+  "exported": false
+ },
+ "xl": {
+  "date": "2026-11-15T08:50",
+  "run": "director_model/runs/2026-11-15-r8/xl",
+  "data": "director_model/data/ds_r8",
+  "pass": false,
+  "reasons": [
+   "test_real: act acc 0.5859 < rules 0.5891",
+   "test_ear: act acc 0.715 < rules 0.72",
+   "cls_mishear: act acc 0.6875 < rules 0.7188",
+   "cls_mishear: class regresses: act acc 0.6875 < shipped 0.7",
+   "cls_roomtalk: class regresses: act acc 0.8428 < shipped 0.8742",
+   "cls_prep_roomtalk: class regresses: act acc 0.925 < shipped 0.9375",
+   "cls_lesson_new: act acc 0.7125 < rules 0.725",
+   "cls_lesson_new: class regresses: act acc 0.7125 < shipped 0.725"
+  ],
+  "policy": {
+   "cmd": 0.995,
+   "veto": 0.9,
+   "ignore": 0.95,
+   "ask": 0.7,
+   "answer_ignore": 0.7,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 108,
+    "extra_wrong": 0,
+    "rules_wrong": 130,
+    "act_ok": 1582,
+    "turns": 2040
+   }
+  },
+  "shipped_policy": {
+   "conf": 0.7,
+   "cmd": 0.95,
+   "ignore": 0.8,
+   "ask": 1.01,
+   "veto": 0.99,
+   "answer_ignore": null,
+   "nav": null
+  },
+  "rows": [
+   {
+    "set": "test_clean",
+    "turns": 2001,
+    "rules_act": 0.7866,
+    "ship_act": 0.7916,
+    "cand_act": 0.7891,
+    "rules_wrong": 132,
+    "ship_wrong": 132,
+    "cand_wrong": 129,
+    "rules_w50": 9.91,
+    "ship_w50": 9.91,
+    "cand_w50": 9.68,
+    "model_act": 0.956,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_asr",
+    "turns": 1998,
+    "rules_act": 0.7032,
+    "ship_act": 0.7087,
+    "cand_act": 0.7117,
+    "rules_wrong": 164,
+    "ship_wrong": 162,
+    "cand_wrong": 156,
+    "rules_w50": 13.62,
+    "ship_w50": 13.46,
+    "cand_w50": 12.96,
+    "model_act": 0.9009,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_real",
+    "turns": 920,
+    "rules_act": 0.5891,
+    "ship_act": 0.5902,
+    "cand_act": 0.5859,
+    "rules_wrong": 67,
+    "ship_wrong": 67,
+    "cand_wrong": 64,
+    "rules_w50": 14.38,
+    "ship_w50": 14.38,
+    "cand_w50": 13.73,
+    "model_act": 0.8,
+    "chatter_graded": [
+     1,
+     1,
+     1
+    ],
+    "fail": [
+     "act acc 0.5859 < rules 0.5891"
+    ]
+   },
+   {
+    "set": "test_ear",
+    "turns": 200,
+    "rules_act": 0.72,
+    "ship_act": 0.72,
+    "cand_act": 0.715,
+    "rules_wrong": 20,
+    "ship_wrong": 19,
+    "cand_wrong": 13,
+    "rules_w50": 17.24,
+    "ship_w50": 16.38,
+    "cand_w50": 11.21,
+    "model_act": 0.8,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "act acc 0.715 < rules 0.72"
+    ]
+   },
+   {
+    "set": "test_h40",
+    "turns": 40,
+    "rules_act": 0.45,
+    "ship_act": 0.45,
+    "cand_act": 0.575,
+    "rules_wrong": 3,
+    "ship_wrong": 1,
+    "cand_wrong": 3,
+    "rules_w50": 3.75,
+    "ship_w50": 1.25,
+    "cand_w50": 3.75,
+    "model_act": 0.9,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_h40_asr",
+    "turns": 40,
+    "rules_act": 0.4,
+    "ship_act": 0.4,
+    "cand_act": 0.45,
+    "rules_wrong": 4,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": 5.0,
+    "ship_w50": 3.75,
+    "cand_w50": 3.75,
+    "model_act": 0.8,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80",
+    "turns": 80,
+    "rules_act": 0.85,
+    "ship_act": 0.85,
+    "cand_act": 0.85,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_q80_asr",
+    "turns": 80,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "test_gold",
+    "turns": 19,
+    "rules_act": 0.7895,
+    "ship_act": 0.7895,
+    "cand_act": 0.7895,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": 13.64,
+    "ship_w50": 13.64,
+    "cand_w50": 13.64,
+    "model_act": 0.8947,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_chatter",
+    "turns": 160,
+    "rules_act": 0.9125,
+    "ship_act": 0.9125,
+    "cand_act": 0.925,
+    "rules_wrong": 2,
+    "ship_wrong": 2,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.75,
+    "chatter_graded": [
+     12,
+     12,
+     10
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_echo",
+    "turns": 160,
+    "rules_act": 0.8438,
+    "ship_act": 0.8562,
+    "cand_act": 0.9313,
+    "rules_wrong": 10,
+    "ship_wrong": 10,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_offer",
+    "turns": 160,
+    "rules_act": 0.7,
+    "ship_act": 0.7,
+    "cand_act": 0.7,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.5625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_panel",
+    "turns": 160,
+    "rules_act": 0.775,
+    "ship_act": 0.775,
+    "cand_act": 0.7812,
+    "rules_wrong": 12,
+    "ship_wrong": 12,
+    "cand_wrong": 11,
+    "rules_w50": 8.45,
+    "ship_w50": 8.45,
+    "cand_w50": 7.75,
+    "model_act": 0.7125,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_help",
+    "turns": 160,
+    "rules_act": 0.6813,
+    "ship_act": 0.6813,
+    "cand_act": 0.6813,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.6687,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mode",
+    "turns": 159,
+    "rules_act": 0.805,
+    "ship_act": 0.805,
+    "cand_act": 0.805,
+    "rules_wrong": 1,
+    "ship_wrong": 1,
+    "cand_wrong": 1,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.6226,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_globe",
+    "turns": 160,
+    "rules_act": 0.7375,
+    "ship_act": 0.7375,
+    "cand_act": 0.7375,
+    "rules_wrong": 4,
+    "ship_wrong": 4,
+    "cand_wrong": 4,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.8625,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_mishear",
+    "turns": 160,
+    "rules_act": 0.7188,
+    "ship_act": 0.7,
+    "cand_act": 0.6875,
+    "rules_wrong": 18,
+    "ship_wrong": 18,
+    "cand_wrong": 18,
+    "rules_w50": 18.37,
+    "ship_w50": 18.37,
+    "cand_w50": 18.37,
+    "model_act": 0.6438,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "act acc 0.6875 < rules 0.7188",
+     "class regresses: act acc 0.6875 < shipped 0.7"
+    ]
+   },
+   {
+    "set": "cls_roomtalk",
+    "turns": 159,
+    "rules_act": 0.8428,
+    "ship_act": 0.8742,
+    "cand_act": 0.8428,
+    "rules_wrong": 3,
+    "ship_wrong": 3,
+    "cand_wrong": 3,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7862,
+    "chatter_graded": [
+     4,
+     4,
+     2
+    ],
+    "fail": [
+     "class regresses: act acc 0.8428 < shipped 0.8742"
+    ]
+   },
+   {
+    "set": "cls_video_ctrl",
+    "turns": 160,
+    "rules_act": 0.4188,
+    "ship_act": 0.4188,
+    "cand_act": 0.4188,
+    "rules_wrong": 17,
+    "ship_wrong": 17,
+    "cand_wrong": 17,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.6,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_video_echo",
+    "turns": 140,
+    "rules_act": 1.0,
+    "ship_act": 1.0,
+    "cand_act": 1.0,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 1.0,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_prep",
+    "turns": 160,
+    "rules_act": 0.5687,
+    "ship_act": 0.5687,
+    "cand_act": 0.5687,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.25,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_prep_roomtalk",
+    "turns": 160,
+    "rules_act": 0.925,
+    "ship_act": 0.9375,
+    "cand_act": 0.925,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.775,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "class regresses: act acc 0.925 < shipped 0.9375"
+    ]
+   },
+   {
+    "set": "cls_voice_echo_os",
+    "turns": 160,
+    "rules_act": 0.8125,
+    "ship_act": 0.8187,
+    "cand_act": 0.95,
+    "rules_wrong": 4,
+    "ship_wrong": 4,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9187,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_gesture_cooccur",
+    "turns": 160,
+    "rules_act": 0.8125,
+    "ship_act": 0.8125,
+    "cand_act": 0.8125,
+    "rules_wrong": 0,
+    "ship_wrong": 0,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.925,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_lesson_new",
+    "turns": 160,
+    "rules_act": 0.725,
+    "ship_act": 0.725,
+    "cand_act": 0.7125,
+    "rules_wrong": 2,
+    "ship_wrong": 2,
+    "cand_wrong": 2,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.9,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": [
+     "act acc 0.7125 < rules 0.725",
+     "class regresses: act acc 0.7125 < shipped 0.725"
+    ]
+   },
+   {
+    "set": "cls_offers_new",
+    "turns": 160,
+    "rules_act": 0.5625,
+    "ship_act": 0.5625,
+    "cand_act": 0.5625,
+    "rules_wrong": 18,
+    "ship_wrong": 18,
+    "cand_wrong": 0,
+    "rules_w50": null,
+    "ship_w50": null,
+    "cand_w50": null,
+    "model_act": 0.7937,
+    "chatter_graded": [
+     0,
+     0,
+     0
+    ],
+    "fail": []
+   },
+   {
+    "set": "cls_coverage",
+    "turns": 3009,
+    "rules_act": 0.8398,
+    "ship_act": 0.8401,
+    "cand_act": 0.8441,
+    "rules_wrong": 49,
+    "ship_wrong": 49,
+    "cand_wrong": 46,
+    "rules_w50": 98.0,
+    "ship_w50": 98.0,
+    "cand_w50": 92.0,
+    "model_act": 0.6271,
+    "chatter_graded": [
+     5,
+     5,
+     0
+    ],
+    "fail": []
+   }
+  ],
+  "exported": false
+ }
+}

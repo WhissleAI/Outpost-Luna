@@ -50,14 +50,15 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "panel_habitat": "open the habitat panel", "panel_rover": "open the rover panel",
           "panel_radiation": "open the radiation panel", "panel_back": "back to my seat",
           "accept_offer": "yes", "decline_offer": "no thanks", "pick_site": "pick malapert massif",
-          "task_choice": "the ridge", "mute_sound": "mute", "unmute_sound": "unmute", "recenter": "look forward"}
+          "task_choice": "the ridge", "mute_sound": "mute", "unmute_sound": "unmute", "recenter": "look forward",
+          "zoom_in": "closer", "zoom_out": "farther"}
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],
                   "prep": ["prep_done", "prep_skip", "prep_wait", "prep_help"]}
-PENDING_INTENTS = {"video_watch": "feat/media-v1 (lesson step answer, not a router intent)"}
-OFFERS = ["next_lesson", "next_step", "mission", "take_command", "fly_again", "tour", "task", "briefing_video",
-          "learn_more"]
+PENDING_INTENTS: dict = {}     # all merged (main 4b4b7e1)
+OFFERS = ["next_lesson", "next_step", "mission", "take_command", "fly_again", "tour", "task", "practice",
+          "practice_done", "moon_base", "prep_task"]
 
 
 def _setup():
@@ -132,16 +133,11 @@ def capabilities() -> dict:
         for neg in ("chatter", "echo", "roomtalk"):
             add(screen, "ignore:" + neg, "ignore", pending=PENDING_SCREENS.get(screen))
         add(screen, "question", "answer", pending=PENDING_SCREENS.get(screen))
-    add("video", "ignore:video_audio", "ignore", pending="feat/media-v1")
+    add("video", "ignore:video_audio", "ignore")
     for screen in FX.SCREENS:
-        add(screen, "ignore:echo_os_voice", "ignore", pending="feat/os-voices + feat/voice-pack")
-    for o, screens in (("briefing_video", ("brief", "cabin")), ("learn_more", ("debrief",)),
-                       ("explorer_lesson", ("debrief", "map"))):
-        for a in ("accept_offer", "decline_offer"):
-            for sc in screens:
-                add(sc, f"nav:{a}@{o}", "navigate", pending="feat/learning-v1")
+        add(screen, "ignore:echo_os_voice", "ignore")
     for screen in ("library", "map", "brief", "cabin"):
-        add(screen, "gesture+voice", "cooccur", pending="feat/gestures-v2")
+        add(screen, "gesture+voice", "cooccur")
     return cells
 
 

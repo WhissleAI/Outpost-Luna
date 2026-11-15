@@ -56,7 +56,7 @@ SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlin
 
 
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
-PREF_DEFAULTS = {"voice": None, "voice_all": False, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
+PREF_DEFAULTS = {"voice": None, "voice_all": False, "engine": "os", "steer_voice": None, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
                  "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
                  "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
 LEVELS = ("cadet", "commander")
@@ -76,6 +76,14 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
             p["voice"] = v
     if "voice_all" in m:
         p["voice_all"] = bool(m.get("voice_all"))
+    if m.get("engine") in steering.ENGINES:   # Settings -> Voice: the computer's voice (default) or Steer TTS
+        p["engine"] = m["engine"]
+    if "steer_voice" in m:
+        v = m.get("steer_voice")
+        if v in (None, "", "default"):
+            p["steer_voice"] = None
+        elif voices.steer_allowed(v):
+            p["steer_voice"] = v
     if "pack" in m:       # Settings "Use the recorded guide voice for story lines" (on by default)
         p["pack"] = m.get("pack") is not False
     if "rate" in m:
@@ -105,6 +113,9 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
     return p
 
 
+# Decisions whose text is ours on screen (never "nav", which carries the kid's own words)
+SHOWN_TYPES = ("alert", "ask_confirm", "hud", "card", "toast")
+PREP_MISSING_LINE ="That's okay. You can skip this one, or use something else you have."
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
 _CACHE: dict = {}
@@ -191,6 +202,10 @@ class Session:
             if d["t"] == "say":
                 self.spoken.said(d.get("text") or "")
                 self._with_prefs(d)
+            elif d["t"] in SHOWN_TYPES:   # round 8: our text put on screen is an echo reference too (Spoken.shown)
+                for k in ("text", "ack", "line"):
+                    if isinstance(d.get(k), str):
+                        self.spoken.show(d[k])
             self.outbox.append(d)
             self.history.append({"out": d["t"], "id": d["id"], "text": d.get("text") or d.get("title"), "ts": self.clock()})
         del self.outbox[:-400]
@@ -357,8 +372,9 @@ class Session:
         ptt = self.ptt_only()
         if t == "words":
             k["words"] = m.get("text") or ""
-            if m.get("final"):     # round 7: the ear's n-best / confidence / hot-list match ride on the final words
-                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored") if m.get(x) is not None}
+            if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
+                # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
+                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken") if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -499,6 +515,12 @@ class Session:
         steps = (les or {}).get("steps") or []
         return steps[i] if 0 <= i < len(steps) else None
 
+    def ear_names(self) -> list[dict]:
+        """The ear's names list for the screen the kid is on (names_list.py; /ws/listen sends it to Arc Transcriber
+        Space on every change): <= 40 {"name", "kind", "aliases"}, most relevant first."""
+        from .names_list import screen_names
+        return screen_names({**self.screen, "screen": self.screen_name()}, self.open_step(), self.belief.get("last_place"))
+
     def hot_words(self) -> dict:
         """The ear's tiered hot lists for the screen the kid is on (round 7, hotlist.py; /ws/listen sends them to the
         Arc ear): {"step": strongest boost, "screen": lighter, "v": data version}."""
@@ -523,6 +545,7 @@ class Session:
             speaking=heard and self.spoken.speaking(t0), playing=heard and self.spoken.playing_at(t0),
             on_air=heard and self.spoken.on_air(t0), recent=self.spoken.fresh(t0) if heard else [],
             older=self.spoken.older(t0) if heard else [],
+            shown=self.spoken.shown(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
     async def _note(self, rt: dict, text: str, safety: bool = False):
@@ -623,6 +646,8 @@ class Session:
             if b["floor"] == "kid":
                 b["floor"] = "none"
             # a11y nav with a canonical command (the voice bar): the client runs `text`, so send the canonical form
+            if rt.get("intent") == "prep_help" and rt.get("arg") == "missing":   # round 8: a gentle way out
+                await self.emit([decision("say", P_ANSWER, text=PREP_MISSING_LINE, voice="capcom")])
             run_text = rt["arg"] if rt.get("intent") == "a11y" and rt.get("arg") else text
             await self.emit([decision("nav", P_ANSWER, intent=rt.get("intent") or "answer", arg=rt.get("arg"),
                                       text=run_text, heard=text if run_text != text else None)])
@@ -659,6 +684,9 @@ class Session:
 
         resolved = self.resolve_referent(text) if b["mission_id"] else text
         read = summarize(await models_client.tag(resolved, "assistant"))
+        names = (k.get("ear") or {}).get("names") if source in OPEN_MIC or source == "ptt" else None
+        if names:   # the ear's names for THIS turn: director._link routes on names[i].entity, not on the raw words
+            read = {**read, "ear_names": names}
         out = None
         if self.dm is not None:
             with contextlib.suppress(Exception):

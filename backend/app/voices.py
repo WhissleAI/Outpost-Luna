@@ -1,4 +1,10 @@
-"""The Settings voices (docs/VOICES.md): this computer's own offline OS voices, as the model server ranks them.
+"""The Settings voices (docs/VOICES.md): this computer's own offline OS voices, as the model server ranks them, and the
+optional Steer TTS voices (the curated list in data/voices.json, with pre-rendered previews).
+
+GET  /api/voices?engine=steer          → the Steer voices [{id, name, desc, preview_url}] (Aurora first: the default)
+GET  /api/tts/engines                  → {"default": "os", "os": {"state": "ready"}, "steer": {"state":
+                                         "ready" | "downloading" | "missing" | "off", "voices": n}}
+POST /api/tts/engines/steer            → ask for the Steer voice now (the desktop downloads it at once) → the same
 
 GET /api/voices                        → [{id, name, desc, preview_url}], best first (the first is the default guide voice)
 GET /api/voices/preview/<id>.wav       → a short line in that voice, rendered on demand through /api/tts (so it is
@@ -110,9 +116,109 @@ def public() -> list[dict]:
 
 
 @router.get("/api/voices")
-async def list_voices():
+async def list_voices(engine: str = "os"):
+    if engine == "steer":
+        return steer_public()
     await refresh()
     return public()
+
+
+# ---- Steer TTS, the optional engine (model_server/app/tts_steer.py) -----------------------------------------------------
+STEER_PREVIEW_PREFIX = "/api/voices/steer/preview"
+_STEER: dict = {"data": None, "mtime": None}
+STATUS: dict = {"at": -1e9, "steer": None}
+STATUS_TTL_S = 3.0
+
+
+def steer_previews_dir():
+    return settings.data_dir / "voice_previews"
+
+
+def steer_load() -> dict:
+    p = settings.data_dir / "voices.json"
+    try:
+        mtime = p.stat().st_mtime
+    except OSError:
+        return {"voices": []}
+    if _STEER["mtime"] != mtime:
+        import json
+        _STEER["data"], _STEER["mtime"] = json.loads(p.read_text(encoding="utf-8")), mtime
+    return _STEER["data"]
+
+
+def steer_ids() -> list[str]:
+    return [v["id"] for v in steer_load().get("voices") or []]
+
+
+def steer_allowed(voice_id: object) -> bool:
+    return isinstance(voice_id, str) and (voice_id in steer_ids() or voice_id in steering.STEER_VOICES.values())
+
+
+def steer_public() -> list[dict]:
+    return [{"id": v["id"], "name": v["name"], "desc": v.get("desc") or "",
+             "preview_url": f"{STEER_PREVIEW_PREFIX}/{v['id']}.wav"} for v in steer_load().get("voices") or []]
+
+
+def _flag(kind: str, id_: str):
+    d = getattr(settings, "assets_dir", None)   # the desktop's asset folder (0.3 line, first-run downloads); None on 0.1.x
+    return (d / kind / id_) if d else None
+
+
+async def _steer_health() -> dict:
+    """The model server's /health steer_tts entry ({} when unreachable)."""
+    try:
+        async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=3.0) as c:
+            r = await c.get("/health")
+        if r.status_code == 200:
+            return (r.json().get("models") or {}).get("steer_tts") or {}
+    except (httpx.HTTPError, ValueError):
+        pass
+    return {}
+
+
+async def steer_state(force: bool = False) -> dict:
+    """ready (the model server has it loaded, or loads it now), downloading (the desktop is fetching the asset, or was
+    asked to), off (STEER_TTS=off), missing. Cached for STATUS_TTL_S."""
+    if not force and STATUS["steer"] is not None and time.monotonic() - STATUS["at"] < STATUS_TTL_S:
+        return STATUS["steer"]
+    h = await _steer_health()
+    if h.get("loaded"):
+        st = "ready"
+    elif any(f is not None and f.exists() for f in (_flag(".active", "steer"), _flag(".want", "steer"))):
+        st = "downloading"
+    elif "STEER_TTS=off" in str(h.get("error") or ""):
+        st = "off"
+    else:
+        st = "missing"
+    STATUS.update(at=time.monotonic(), steer={"state": st, "voices": len(steer_ids()), "reason": h.get("error"),
+                                              "downloadable": getattr(settings, "assets_dir", None) is not None})
+    return STATUS["steer"]
+
+
+def steer_ready_cached() -> bool | None:
+    """The last known Steer state without a network call (None: not asked yet)."""
+    s = STATUS["steer"]
+    return None if s is None else s["state"] == "ready"
+
+
+@router.get("/api/tts/engines")
+async def engines():
+    return {"default": "os", "os": {"state": "ready"}, "steer": await steer_state()}
+
+
+@router.post("/api/tts/engines/steer")
+async def want_steer():
+    """The kid picked the Steer voice: ask the desktop app to download it now (desktop/main/assets.js polls .want/)."""
+    st = await steer_state(force=True)
+    f = _flag(".want", "steer")
+    if st["state"] == "missing" and f is not None:
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.touch()
+        except OSError:
+            pass
+        st = await steer_state(force=True)
+    return st
 
 
 @router.get(PREVIEW_PREFIX + "/{voice_id}.wav")

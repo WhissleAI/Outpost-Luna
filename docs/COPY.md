@@ -97,7 +97,12 @@ Source for these rules: `docs/ACCURACY_AUDIT.md` and `docs/ARTEMIS_REFERENCE.md`
   - Some data is not NASA's: the baseline dose comes from China's Chang'e 4, and some numbers come from science papers.
   - Some rules are game choices: the dose is doubled, and the shields are pretend.
   - The approved line is `SOURCES_LINE`: "Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it."
-- **Pretend tech gets a tag.** Use `PRETEND_TECH` ("Pretend tech") with `PRETEND_TECH_TIP` ("Made up for the game. Real crews don't have this.").
+- **Pretend tech gets a mark.** Use `pretendLabel(label)` from `src/pretend.js`: a small muted-amber sparkle glued to the
+  label's last word. It carries `PRETEND_TECH` ("Pretend tech") and `PRETEND_TECH_TIP` ("Made up for the game. Real crews
+  don't have this.") as its accessible name and tooltip. It is not a dashed box: it never changes a button's height,
+  never crosses its border and never wraps by itself. The first time a kid picks something marked this way, the guide
+  says `PRETEND_EXPLAIN` ("Real bases use thick walls and water for shielding. Our shields are pretend."), once per
+  cadet. `tests/e2e/pretend_e2e.py` checks every mark stays inside its button or row at 1024–1920 px.
   - It applies to the powered radiation shields, the greenhouse, the rim-to-floor power cable and the rim relay.
   - Never say "the plan is" for something NASA has not planned. Real crews in Orion build a storm shelter out of their supply bags. A soil-covered base is a studied idea.
 - CAPCOM and Houston are played by the game.

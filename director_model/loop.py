@@ -36,8 +36,7 @@ CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "
               "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending"]
 # Round 8: the classes whose feature is still on a branch are reported but do not gate until the branch is merged
 # (the rules cannot act on a screen the app does not have yet): `--pending` lists them; R8_PENDING is the default.
-R8_PENDING = {"cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
-              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage_pending"}
+R8_PENDING: set = set()      # every round-8 feature is merged (main 4b4b7e1): every class set gates
 CACHE_DIRS = [HERE / "data", HERE / "cache", HERE / "runs"]
 
 

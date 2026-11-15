@@ -8,10 +8,14 @@ SHELL := /bin/bash
 help:            ## List commands
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
 
-setup:           ## Install all dependencies (uv + npm)
+setup:           ## Install all dependencies (uv + npm) + the ear (libarc build, Arc Transcriber Space download)
 	cd model_server && uv sync
 	cd backend && uv sync
 	cd frontend && npm install
+	$(MAKE) desktop-libarc ear-model
+
+ear-model:       ## The ear's model (Arc Transcriber Space nft2/, pinned revision, ~460 MB) -> model_server/models/arc-space
+	python3 scripts/asset_pack.py --fetch-ear
 
 data:            ## Download NASA media (Moon map + crew clips)
 	uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py
@@ -131,12 +135,21 @@ director-coverage: ## Rebuild director_model/coverage.json (the capability x flo
 director-collect: ## The collection kit: one guided, consented, local recording session (docs/DIRECTOR_COLLECTION.md); OUT=folder
 	python3 director_model/collect.py --out $(or $(OUT),~/Desktop/director_sessions)
 
-# ---- Desktop app (docs/DESKTOP.md): one offline installer, Electron + embedded Python + every model ----
+# ---- Desktop app (docs/DESKTOP.md): Electron + embedded Python; models and media are first-run assets ----
 desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
 	uv run --no-project python desktop/scripts/build_python.py
 
-desktop-models:  ## Desktop: every model file -> desktop/resources/models (local HF cache, else the public package; sha256-checked)
-	python3 desktop/scripts/gather_models.py --from $(or $(DESKTOP_MODELS_FROM),auto)
+asset-pack:      ## Desktop: first-run assets -> desktop/build/assets (one .tar each + the offline zip) + desktop/assets.manifest.json (after `make data media-desktop`)
+	uv run --project backend python scripts/asset_pack.py
+
+asset-upload:    ## Desktop: upload the asset pack to Dropbox, public dl=1 links into the manifest (DROPBOX_TOKEN_FILE=<file holding the token>)
+	python3 scripts/upload_assets.py
+
+desktop-libarc:  ## Desktop: build libarc (the ear: libarc.dylib / arc.dll / libarc.so) from desktop/vendor/libarc -> desktop/resources/native
+	cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release
+	cmake --build desktop/build/libarc --config Release
+	mkdir -p desktop/resources/native
+	cp desktop/build/libarc/libarc.* desktop/resources/native/ 2>/dev/null || cp desktop/build/libarc/Release/arc.dll desktop/resources/native/
 
 desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/arctag -> desktop/resources/native
 	cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release
@@ -150,10 +163,10 @@ desktop-mac:     ## Desktop: fresh clone -> macOS arm64 .dmg in desktop/dist (de
 desktop-win-cross: ## Desktop: Windows x64 installer cross-built on this Mac (desktop/scripts/cross-build-windows.sh; docs/BUILD_WINDOWS.md §8)
 	bash desktop/scripts/cross-build-windows.sh
 
-desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev)
+desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev; first run downloads the assets)
 	cd desktop && node node_modules/electron/install.js && npx electron .
 
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: ear-model asset-pack asset-upload desktop-libarc voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

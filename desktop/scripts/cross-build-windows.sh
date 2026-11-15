@@ -12,6 +12,8 @@
 #   packages  `uv pip install --python-platform x86_64-pc-windows-msvc`: the same locked versions, win_amd64 wheels
 #   bytecode  compiled by this machine's CPython 3.11 (a .pyc depends on the Python version, not the OS)
 #   arctag    arctag.dll from mingw-w64 gcc (AVX2 + FMA kernels, CPU-checked at load) instead of MSVC (scalar kernels)
+#   libarc    arc.dll (the ear) from the same mingw-w64 gcc; ONNX Runtime is the Python wheel's, loaded by path at run time
+#   assets    none bundled: the models, voice pack, crew audio and videos are first-run downloads (desktop/assets.manifest.json)
 #   exe       electron-builder writes the NSIS installer; without Wine it cannot edit the .exe's icon / version
 #             resources (signAndEditExecutable: false): the app shows Electron's default icon and file details.
 # Needs: Node 22+, uv, CMake, mingw-w64 (brew install mingw-w64) or zig (brew install zig), 7-Zip (brew install
@@ -46,12 +48,10 @@ FREE_GB=$(df -Pk "$ROOT" | awk 'NR==2{print int($4/1048576)}')
 echo "node $(node -v), $(uv --version), $(cmake --version | head -1), compiler ${CC_WIN[*]}, 7-Zip ${SEVENZ:-none}, ${FREE_GB} GB free"
 if [ -d desktop/resources/python/bin ]; then echo "note: desktop/resources holds a macOS build; it is replaced (build-mac.sh rebuilds it)"; fi
 
-step "2/8 NASA media (backend/data/media: 74 crew clips + Moon map, ~0.5 GB; trimmed copy for the app, ~175 MB)"
+step "2/8 NASA media (backend/data/media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
 if [ "${SKIP_MEDIA:-0}" = 1 ]; then echo "skipped (SKIP_MEDIA=1)"
 else uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py; fi
 [ -s backend/data/media/img/moon4k.jpg ] || die "backend/data/media is incomplete (re-run; fetch_media.py resumes)"
-# The installer ships only the playable stretches of each clip, mono 48 kbps (~175 MB, not ~550): ffmpeg from a pinned wheel
-(cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media)
 
 step "3/8 frontend dependencies"
 (cd frontend && npm ci --no-audit --no-fund && node tools/fetch_vision.mjs)
@@ -60,11 +60,12 @@ step "4/8 embedded Python for Windows + win_amd64 packages + VC++ runtime + app 
 uv run --no-project python backend/tools/voice_pack_check.py --allow-empty   # the voice pack ships to Windows too
 uv run --no-project python desktop/scripts/build_python.py --target win-x64
 
-step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
-uv run --no-project python desktop/scripts/gather_models.py
+step "5/8 first-run assets: nothing bundled (desktop/assets.manifest.json lists them; the app downloads them)"
+python3 -c "import json,sys; m=json.load(open('desktop/assets.manifest.json')); miss=[a['id'] for a in m['assets'] if a['required'] and not a.get('url') and not a.get('fallback')]; sys.exit('assets without a download link: %s (make asset-pack asset-upload)' % miss if miss else 0)"
+rm -rf desktop/resources/models   # an older build's bundled models
 
-step "6/8 Arc Tagger native library (arctag.dll, mingw-w64)"
-rm -rf desktop/build/arctag-win desktop/resources/native
+step "6/8 native libraries (arctag.dll: Arc Tagger; arc.dll: the ear; mingw-w64)"
+rm -rf desktop/build/arctag-win desktop/build/libarc-win desktop/resources/native
 CC=${CC_WIN[0]}
 if [ "${#CC_WIN[@]}" -gt 1 ]; then   # zig: CMake wants one executable as the compiler
   mkdir -p desktop/build && CC="$ROOT/desktop/build/zig-cc-win"
@@ -79,8 +80,14 @@ mkdir -p desktop/resources/native
 DLL=$(ls desktop/build/arctag-win/arctag.dll desktop/build/arctag-win/libarctag.dll 2>/dev/null | head -1 || true)
 [ -n "$DLL" ] || die "arctag.dll was not produced (see the CMake output above)"
 cp "$DLL" desktop/resources/native/arctag.dll
+cmake -S desktop/vendor/libarc -B desktop/build/libarc-win -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+  -DCMAKE_C_COMPILER="$CC" "${CMAKE_RC[@]+"${CMAKE_RC[@]}"}" -DCMAKE_BUILD_TYPE=Release >/dev/null
+cmake --build desktop/build/libarc-win --config Release
+DLL=$(ls desktop/build/libarc-win/arc.dll desktop/build/libarc-win/libarc.dll 2>/dev/null | head -1 || true)
+[ -n "$DLL" ] || die "arc.dll was not produced (see the CMake output above)"
+cp "$DLL" desktop/resources/native/arc.dll
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/resources/native >/dev/null \
-  || die "arctag.dll imports a DLL Windows does not have (see: python desktop/scripts/win_bundle_check.py dlls desktop/resources/native)"
+  || die "arctag.dll / arc.dll imports a DLL Windows does not have (see: python desktop/scripts/win_bundle_check.py dlls desktop/resources/native)"
 
 step "7/8 Electron + electron-builder (NSIS installer, Windows x64)"
 cd desktop
@@ -115,7 +122,7 @@ fi
 # Keep only the installer: the unpacked app, the Python tree and the caches are several GB.
 if [ "${KEEP_INTERMEDIATES:-0}" != 1 ]; then
   rm -rf desktop/dist/win-unpacked desktop/dist/builder-debug.yml desktop/dist/*.blockmap desktop/build/uv-cache \
-         desktop/build/cache desktop/build/arctag-win desktop/build/uv-python desktop/build/py-unpack
+         desktop/build/cache desktop/build/arctag-win desktop/build/libarc-win desktop/build/uv-python desktop/build/py-unpack
 fi
 ls -lh "$EXE"
 echo "Installer: $ROOT/$EXE  ($(( $(date +%s) - T0 )) s). Cross-built: run it on Windows before shipping (docs/BUILD_WINDOWS.md §5)."

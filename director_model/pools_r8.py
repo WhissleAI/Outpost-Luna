@@ -31,12 +31,12 @@ BACKEND = HERE.parent / "backend"
 VIDEO_CTRL = {"video_pause": ["pause", "pause it", "pause the video", "stop it for a sec", "hold the video", "wait pause"],
               "video_play": ["play", "play it", "keep going", "resume", "play the video", "start it again"],
               "video_stop": ["stop", "stop the video", "close the video", "no more video", "turn it off"],
-              "video_skip": ["skip", "skip it", "skip the video", "skip this", "i don't want to watch"],
-              "video_watch": ["watch", "i want to watch", "yes show me the video", "let's watch it", "play the video"]}
+              "video_skip": ["skip", "skip it", "skip the video", "skip this", "next"]}
 PREP_SAY = {"prep_done": ["done", "done!", "i'm done", "we did it", "finished", "all done", "ok done", "it's ready"],
-            "prep_skip": ["skip", "skip this one", "we don't have flour", "can we skip it", "next one please"],
+            "prep_skip": ["skip", "skip this one", "can we skip it", "next one please"],
             "prep_wait": ["wait", "hold on", "one sec", "give me a minute", "not yet", "we're still doing it"],
-            "prep_help": ["i need help", "what do i do", "how do we do this", "help me", "say it again"],
+            "prep_help": ["i need help", "what do i do", "how do we do this", "help me", "say it again",
+                          "we don't have flour"],   # round 8 rules: a missing thing is help (a gentle "you can skip")
             "prep_where": ["where's the flour", "where is the flashlight", "where are the cookies", "do we need a bowl",
                            "what's a flashlight for"]}
 PREP_ROOM = ["ha ha ha", "oh no the flour went everywhere", "mom look", "can i eat the cookie", "it's on my shirt",
@@ -63,10 +63,10 @@ NEW_LESSONS = {"phases": {"options": ["New Moon", "Full Moon", "Half Moon", "Cre
                                       "the lunar module", "apollo seventeen", "they drove a rover"]},
                "video_step": {"options": ["Watch", "Skip"],
                               "answers": ["watch", "skip", "watch it", "show me", "i saw it", "they jumped high"]}}
-NEW_OFFERS = {"briefing_video": ("Want to watch the mission briefing?", ["brief", "cabin"]),
-              "learn_more": ("Want to learn more about that?", ["debrief"]),
-              # an explorer lesson unlocked after mission 1 (gravity) or 2 (Apollo), offered on the debrief / patch map
-              "explorer_lesson": ("New explorer lesson unlocked: Moon gravity. Want to try it?", ["debrief", "map"])}
+# The new offers as the merged app frames them: the first-mission Moon Base briefing card sits on the picker (its
+# frame keeps offer take_command: "yes" / "watch" takes it); the practice shift is its own offer on the map / patch.
+NEW_OFFERS = {"take_command": ("Before you fly: watch the Moon Base briefing?", ["brief"]),
+              "practice": ("Want to try a practice shift?", ["map", "patch"])}
 # Houston is relayed by CAPCOM ("Houston says: ..."), in the one Nora voice, after a static beep: the echo of it
 HOUSTON_RELAY = ["Houston says: storm watch, keep the shields ready.", "Houston says: good work on the power, Commander.",
                  "Houston says: the rover is cleared to drive.", "Houston says: next radio window in six hours.",
@@ -75,9 +75,29 @@ TAKE = ["yes", "yeah", "watch it", "sure", "okay", "yes please", "show me"]
 DECLINE = ["no", "no thanks", "skip it", "not now", "nope"]
 CLASSES_R8 = ("video_ctrl", "video_echo", "prep", "prep_roomtalk", "voice_echo_os", "gesture_cooccur", "lesson_new",
               "offers_new")
-PENDING = {"video_ctrl": "feat/media-v1", "video_echo": "feat/media-v1", "prep": "feat/learning-v1",
-           "prep_roomtalk": "feat/learning-v1", "voice_echo_os": "feat/os-voices + feat/voice-pack",
-           "gesture_cooccur": "feat/gestures-v2", "lesson_new": "feat/learning-v1", "offers_new": "feat/learning-v1"}
+# Every round-8 feature is merged (main 4b4b7e1): nothing is pending; the sets gate. (Kept as a map for the next branch.)
+PENDING: dict = {}
+
+
+NEW_LESSON_IDS = ("phases", "gravity", "history")
+
+
+def new_lesson_answer(rng: random.Random, L: dict, i: int, kind: str) -> str:
+    """A spoken answer to a step of the new lessons (the gold is the grader on these words)."""
+    a = L["steps"][i]["accept"]
+    t = a["type"]
+    if t == "video":
+        return rng.choice(["watch", "watch it", "skip", "skip it", "play it"]) if kind == "correct" else \
+            rng.choice(["the moon is big", "hmm", "i like it"])
+    if t in ("vocab_say",):
+        return a.get("term", "regolith") if kind == "correct" else rng.choice(["moon dust", "sand", "dirt"])
+    if t in ("vocab_match", "vocab_fill", "vocab_listen"):
+        from app.academy import vocab
+        os_ = vocab.options(a)
+        return (rng.choice(os_)["label"] if os_ else "regolith").lower()
+    if t in P.GLOBE_TYPES:
+        return P.globe_answer(rng, L, i, kind)
+    return P.academy_items(rng, L, i)["text"]
 
 
 def _frame(screen: str, step_type=None, options=None, offer=None, **k) -> dict:
@@ -137,30 +157,30 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
     if cls == "video_ctrl":
         intent = rng.choice(list(VIDEO_CTRL))
         t = _pick(rng, VIDEO_CTRL[intent], "vc", split)
-        return {"text": t, "cat": "cls_video_ctrl", "root": "vc:" + t, "frame": _frame("video", offer="video"),
-                "gold": {"act": "navigate", "nav": intent}, "dd": (0.6, 0.98), "pending": PENDING[cls]}
+        return {"text": t, "cat": "cls_video_ctrl", "root": "vc:" + t, "frame": _frame("video"),
+                "gold": {"act": "navigate", "nav": intent}, "dd": (0.6, 0.98), "pending": PENDING.get(cls)}
     if cls == "video_echo":
         if rng.random() < 0.8 and narration():
             seg = rng.choice([s for s in narration() if P.cls_split("ve:" + s["text"]) == split] or narration())
             ws = re.sub(r"[^a-z0-9' ]", " ", seg["text"].lower()).split()
             return {"op": "video_leak", "text": " ".join(ws), "cat": "cls_video_echo", "root": "ve:" + seg["text"],
                     "audio": {"kind": "file", **{k: seg[k] for k in ("file", "start", "dur")}},
-                    "frame": _frame("video", offer="video"), "gold": {"act": "ignore"}, "dd": (0.3, 0.95),
-                    "pending": PENDING[cls]}
+                    "frame": _frame("video"), "gold": {"act": "ignore"}, "dd": (0.3, 0.95),
+                    "pending": PENDING.get(cls)}
         t = rng.choice(MUSIC)
         return {"op": "video_leak", "text": t, "cat": "cls_video_echo", "root": "vm:" + t, "audio": {"kind": "music"},
-                "frame": _frame("video", offer="video"), "gold": {"act": "ignore"}, "dd": (0.2, 0.8),
-                "pending": PENDING[cls]}
+                "frame": _frame("video"), "gold": {"act": "ignore"}, "dd": (0.2, 0.8),
+                "pending": PENDING.get(cls)}
     if cls == "prep":
         intent = rng.choice(list(PREP_SAY))
         t = _pick(rng, PREP_SAY[intent], "pp", split)
         g = {"act": "navigate", "nav": intent} if intent != "prep_where" else {"act": "answer"}
         return {"text": t, "cat": "cls_prep", "root": "pp:" + t, "frame": _frame("prep", offer="prep_task"),
-                "gold": g, "dd": (0.5, 0.98), "pending": PENDING[cls]}
+                "gold": g, "dd": (0.5, 0.98), "pending": PENDING.get(cls)}
     if cls == "prep_roomtalk":
         t = _pick(rng, PREP_ROOM + MULTI_KID, "pr", split)
         return {"text": t, "cat": "cls_prep_roomtalk", "root": "pr:" + t, "frame": _frame("prep", offer="prep_task"),
-                "gold": {"act": "ignore"}, "dd": (0.4, 0.95), "pending": PENDING[cls]}
+                "gold": {"act": "ignore"}, "dd": (0.4, 0.95), "pending": PENDING.get(cls)}
     if cls == "voice_echo_os":
         ls = app_lines() + [{"text": t, "role": "houston_relay"} for t in HOUSTON_RELAY]
         a = rng.choice([x for x in ls if P.cls_split("vo:" + x["text"]) == split] or ls)
@@ -172,23 +192,21 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
                 "cat": "cls_voice_echo_os", "root": "vo:" + a["text"],
                 "audio": {"kind": "os_voice", "line": a["text"], "beep": a.get("role") == "houston_relay"},
                 "frame": _frame(rng.choice(["cabin", "cabin", "lesson", "brief", "map"])), "gold": {"act": "ignore"},
-                "dd": (0.4, 0.9), "pending": PENDING[cls]}
+                "dd": (0.4, 0.9), "pending": PENDING.get(cls)}
     if cls == "gesture_cooccur":
         t, intent = GESTURE_VOICE[rng.randrange(len(GESTURE_VOICE))]
         screen = "cabin" if intent.startswith(("panel_", "view_")) else "brief" if intent == "pick_site" else \
             rng.choice(["library", "map"])
         g = {"act": "answer"} if intent in ("answer", "question") else {"act": "navigate", "nav": intent}
         return {"text": t, "cat": "cls_gesture_cooccur", "root": "gc:" + t, "frame": _frame(screen),
-                "gesture": rng.choice(GESTURES), "gold": g, "dd": (0.6, 0.98), "pending": PENDING[cls]}
-    if cls == "lesson_new":
-        name = rng.choice(list(NEW_LESSONS))
-        L = NEW_LESSONS[name]
-        t = _pick(rng, L["answers"], "ln:" + name, split)
-        st = "video" if name == "video_step" else "choice"
-        return {"text": rng.choice(["{w}", "i think {w}", "um {w}", "it's {w}"]).format(w=t), "cat": "cls_lesson_new",
-                "root": f"ln:{name}:{t}", "frame": _frame("lesson", step_type=st, options=L["options"],
-                                                          lesson_id=f"new_{name}", step=0),
-                "gold": {"act": "answer"}, "dd": (0.6, 0.98), "pending": PENDING[cls]}
+                "gesture": rng.choice(GESTURES), "gold": g, "dd": (0.6, 0.98), "pending": PENDING.get(cls)}
+    if cls == "lesson_new":        # the merged lessons: Phases (core), Moon gravity and dust + Apollo (explorer)
+        steps = [(L, i) for L in P._course() if L["id"] in NEW_LESSON_IDS for i in range(len(L["steps"]))
+                 if L["steps"][i]["accept"]["type"] != "tap"]
+        L, i = rng.choice(steps)
+        t = new_lesson_answer(rng, L, i, "correct" if rng.random() < 0.65 else "wrong")
+        return {"text": t, "cat": "cls_lesson_new_" + L["steps"][i]["accept"]["type"], "root": f"ln:{L['id']}:{i}:{t}",
+                "frame": P.step_frame(L, i), "lesson": L["id"], "step": i, "dd": (0.6, 0.98)}
     if cls == "offers_new":
         kind = rng.choice(list(NEW_OFFERS))
         line, screens = NEW_OFFERS[kind]
@@ -197,7 +215,7 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
         return {"op": "offer", "text": t, "lines": [line], "gap": rng.uniform(0.05, 0.6), "cat": "cls_offers_new",
                 "root": "on:" + t, "frame": _frame(rng.choice(screens), offer=kind),
                 "gold": {"act": "navigate", "nav": "accept_offer" if take else "decline_offer"}, "dd": (0.6, 0.98),
-                "pending": PENDING[cls]}
+                "pending": PENDING.get(cls)}
     raise ValueError(cls)
 
 
@@ -208,6 +226,8 @@ NAV_SAY = {
     "mute_sound": ["mute", "mute the sound", "sound off", "turn the sound off", "be quiet"],     # the top bar's Mute
     "unmute_sound": ["unmute", "sound on", "turn the sound back on", "unmute the app"],
     "recenter": ["center", "look forward", "center the view", "reset view", "look ahead"],                # Center view
+    "zoom_in": ["zoom in", "closer", "get closer", "a bit closer", "zoom in more"],                         # the Moon zoom (not the cabin)
+    "zoom_out": ["zoom out", "farther", "further away", "zoom out a bit", "back out"],
     "a11y": ["what do i do", "help me", "where am i", "what can i say", "i'm stuck", "give me a hint",
              "move the voice bar to the top", "reset the voice bar"],
     "skip_event": ["skip to the next event", "fast forward", "skip ahead", "jump to the next job"],
@@ -265,7 +285,7 @@ def cell_item(cell: dict, rng: random.Random, split: str) -> dict | None:
         t = _pick(rng, TAKE if nav == "accept_offer" else DECLINE, "on", split)
         return {"op": "offer", "text": t, "lines": [NEW_OFFERS[kind][0]], "gap": rng.uniform(0.05, 0.6),
                 "cat": "cls_offers_new", "root": "on:" + t, "frame": _frame(sc, offer=kind),
-                "gold": {"act": "navigate", "nav": nav}, "dd": (0.6, 0.98), "pending": PENDING["offers_new"]}
+                "gold": {"act": "navigate", "nav": nav}, "dd": (0.6, 0.98), "pending": PENDING.get("offers_new")}
     if intent.startswith("nav:") and intent[4:] in (*VIDEO_CTRL, *PREP_SAY):
         nav = intent[4:]
         pool = VIDEO_CTRL.get(nav) or PREP_SAY[nav]

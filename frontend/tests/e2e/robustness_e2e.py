@@ -462,6 +462,25 @@ def ch_visibility(r):
         r.wait(800)
 
 
+def ch_reset(r):
+    # Settings -> Reset -> Start over, held 3 s, while the surface is open (docs/RESET.md): the app must come back fresh
+    # at first launch with its chrome, never half-reset. Voice opens the confirm (a modal may cover the gear).
+    r.js("() => window.__outpost.a11y.handleText('reset')")   # opens Settings → Reset (both options)
+    r.until("() => !!document.querySelector('[data-reset-open=start]')", 6000)
+    r.js("() => document.querySelector('[data-reset-open=start]').click()")
+    if not r.until("() => !!document.querySelector('.rs-confirm [data-reset-hold]')", 6000):
+        raise RuntimeError("the reset confirm did not open")
+    box = r.js("() => { const q = document.querySelector('[data-reset-hold]').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }")
+    r.pg.mouse.move(*box)
+    r.pg.mouse.down()
+    r.wait(3400)
+    r.pg.mouse.up()
+    r.until("() => document.readyState === 'complete' && window.__outpost && window.__outpost.shellNav && !!document.getElementById('aCsForm')", 30000)
+    r.wait(1000)
+    if r.js("() => Object.keys(localStorage).some(k => /^(outpost-callsign|atm-academy)$/.test(k))"):
+        raise RuntimeError("progress survived the reset")
+
+
 def ch_double(r):
     # a double press of whatever is focused, and of the tab buttons
     r.pg.keyboard.press("Enter")
@@ -479,6 +498,7 @@ CHANGES = [
     ("mute_btn", ch_mute_btn), ("theme", ch_theme), ("offline_online", ch_offline), ("resize", ch_resize), ("tabs", ch_tabs),
     ("esc", ch_esc), ("voice_stop", ch_voice("stop")), ("voice_map", ch_voice("go to the map")), ("voice_mute", ch_voice("mute")),
     ("gestures", ch_gestures), ("thumbs", ch_thumbs), ("fingers", ch_fingers), ("backend_restart", ch_backend_restart), ("visibility", ch_visibility), ("double_press", ch_double),
+    ("reset", ch_reset),   # last: it erases the row's seeded state
 ]
 
 

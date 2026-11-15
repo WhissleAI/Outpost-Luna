@@ -64,6 +64,7 @@ match a state attribute the app writes on `<body>` or `<html>`.
 - voice "stop", "go to the map" and "mute"
 - the gestures open hand, thumbs down and swipe
 - thumbs up and down (answers), and three fingers held up (pick option 3)
+- Settings → Reset → Start over, held 3 s (last in every row: it erases the row's state; docs/RESET.md)
 - a backend kill and restart
 - the page hidden and shown (`visibilitychange`)
 - a double press
@@ -119,9 +120,11 @@ By surface (pass / cells): after_video 18→20/20; video_yt, video_file and vide
 prep_card 15→20/20; settings 10→18/20; mission_choice 16→18/20; storm_alert 5→7/17; calibration 10/16 (unchanged);
 debrief 18/20; crew_clip, l1_far_side and l1_yes_no 20/20.
 
+Fixed since (feat/reset-app): calibration over Settings. The calibration and a native dialog now take focus before
+Settings in input/spatial.js, a focusin trap brings stray focus back, and voice "reset" stops a running calibration.
+The calibration row passes 8/8, and the reset change passes on all 16 surfaces.
+
 Still open:
-- **calibration over Settings:** focus can land on a Settings section button while the calibration is up (Shift+M,
-  Mute, theme, offline).
 - **Harness limits, not app bugs:**
   - Under SwiftShader the 3D cabin starves Playwright's click waits. This hit the mission rows (`mission_choice` /
     `storm_alert` × camera / Settings / theme), `debrief × tabs` and `settings × voice_stop`. The harness now clicks

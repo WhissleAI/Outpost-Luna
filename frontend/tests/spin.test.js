@@ -24,7 +24,7 @@ test("dead zone: a small wobble never spins; just past it is slow, full stick is
   assert.ok(just > 0 && just < 0.05, `just past the dead zone is slow (${just})`);
   assert.equal(+shapeStick({ x: 1, y: 0 }).m.toFixed(6), 1);
   assert.equal(+shapeStick({ x: 3, y: 4 }).m.toFixed(6), 1, "clamped at full");
-  assert.equal(shapeAxis(0.2), 0, "twist has its own, bigger dead zone");
+  assert.equal(shapeAxis(0.1), 0, "the zoom slide has its own dead zone");
 });
 
 test("gain curve: monotonic, fine near the middle (expo), direction kept", () => {
@@ -74,15 +74,6 @@ test("release momentum: keeps a share of the speed, decays smoothly to a stop", 
   assert.ok(!sp.active && sp.velocity.speed === 0, "halt (stop) kills the momentum");
 });
 
-test("twist zooms only past its dead zone, and only while held", () => {
-  const sp = createSpinner(); sp.set({ x: 0, y: 0, z: 0.2 });
-  assert.equal(sp.step(1 / 60).zoom, 1);
-  sp.set({ x: 0, y: 0, z: 1 }); const z = sp.step(0.1).zoom;
-  assert.ok(Math.abs(Math.log(z) - SPIN.zoomRate * 0.1) < 1e-9, "full twist: zoomRate per second");
-  sp.set({ x: 0, y: 0, z: -1 }); assert.ok(sp.step(0.1).zoom < 1, "the other way zooms out");
-  sp.set(null); assert.equal(sp.step(0.1).zoom, 1);
-});
-
 test("One Euro: cuts jitter on a still hand, follows a fast move with little lag", () => {
   const f = oneEuro(DEFAULTS.fistFilter), R = rng(3);
   let raw = 0, filt = 0;
@@ -100,7 +91,7 @@ test("fist reading: lean, tilt and twist read from the landmarks", () => {
   assert.ok(rP.pitch > 0.2, `pitch toward the screen (${rP.pitch.toFixed(2)})`);
   assert.ok(rT.twist > 0.2, `twist (${rT.twist.toFixed(2)})`);
   // the synthetic left hand is the mirror image: the same anatomical turn is the opposite knob direction on screen,
-  // so it reads as the opposite twist (a knob turned clockwise zooms in, whichever hand turns it)
+  // so it reads as the opposite twist (the twist is read, but it never zooms: see spin_zoom.test.js)
   const lT = fistReading(hand("fist", { twist: 0.4, side: "left" }));
   assert.ok(lT.twist < -0.2, "the mirrored turn reads as the other knob direction");
   const st = rawStick(rR, r0);
@@ -163,8 +154,8 @@ test("not confidently present: a low-score hand or face does nothing", () => {
 
 test("calibration applies per direction: the stick is scaled by the kid's own range that way", () => {
   const cal = { v: 1, left: 0.5, right: 1, up: 1, down: 0.5, pitchSign: 1 };
-  assert.deepEqual(calibrated({ x: -0.5, y: 0.25, z: 0 }, cal), { x: -1, y: 0.5, z: 0 });
-  assert.deepEqual(calibrated({ x: 0.5, y: -0.5, z: 0.3 }, null), { x: 0.5, y: -0.5, z: 0.3 });
+  assert.deepEqual(calibrated({ x: -0.5, y: 0.25 }, cal), { x: -1, y: 0.5 });
+  assert.deepEqual(calibrated({ x: 0.5, y: -0.5 }, null), { x: 0.5, y: -0.5 });
   const ev = run(fistSpin(FIST_DIRS.left, rng(2), 0.003), { spinCal: { ...cal, left: 2 } }).filter(e => e.type === "grab_move").slice(-10);
   const evD = run(fistSpin(FIST_DIRS.left, rng(2), 0.003)).filter(e => e.type === "grab_move").slice(-10);
   assert.ok(Math.abs(ev[0].stick.x) < Math.abs(evD[0].stick.x) * 0.6, `a kid with a big range needs a bigger lean (${ev[0].stick.x.toFixed(2)} vs ${evD[0].stick.x.toFixed(2)})`);
@@ -250,7 +241,7 @@ test("map: screen keys, help rows and coach marks", () => {
   assert.equal(screenKey({ screen: "map" }, { settings: true }), "settings");
   assert.equal(screenKey({ screen: "cabin" }, { cabin: true, video: true }), "video");
   const moon = helpRows("moon").map(r => r.id);
-  assert.ok(moon.includes("fist") && moon.includes("twist") && !moon.includes("pinch2") && !moon.includes("head"));
+  assert.ok(moon.includes("fist") && moon.includes("pinch") && !moon.includes("twist") && !moon.includes("pinch2") && !moon.includes("head"));
   assert.ok(helpRows("moon", { phase2: true }).some(r => r.id === "pinch2"));
   assert.ok(!helpRows("cabin", { headLook: false }).some(r => r.id === "head" || r.id === "lean"));
   for (const k of Object.keys(SCREEN_MAP)) assert.ok(coachRows(k).length >= 1 && coachRows(k).length <= 3, k);

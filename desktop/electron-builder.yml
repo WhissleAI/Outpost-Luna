@@ -1,6 +1,7 @@
-# Outpost Luna desktop: electron-builder config. Inputs come from `make desktop-python desktop-models desktop-arctag`
-# (desktop/resources/) plus the NASA media: the Moon map from backend/data/media/img and the trimmed crew clips + their
-# time map from backend/data/media/desktop (backend/pipeline/trim_media.py). docs/DESKTOP.md has the full layout.
+# Outpost Luna desktop: electron-builder config. Inputs come from `make desktop-python desktop-arctag desktop-libarc`
+# (desktop/resources/) plus the Moon map from backend/data/media/img. The installer ships CODE only: the models, the
+# voice pack, the crew audio and the pinned NASA videos are first-run assets (assets.manifest.json, downloaded by
+# main/assets.js into the per-user folder; docs/DESKTOP.md "First run: assets").
 appId: ai.whissle.outpostluna
 productName: Outpost Luna
 copyright: Copyright © 2026 Whissle Inc.
@@ -20,16 +21,13 @@ extraResources:
     to: site
   - from: resources/app
     to: app
-  - from: resources/models
-    to: models
+  - from: assets.manifest.json
+    to: assets.manifest.json
   - from: resources/native
     to: native
   - from: ../backend/data/media/img
     to: app/backend/data/media/img
     filter: ["**/*", "!.DS_Store"]
-  - from: ../backend/data/media/desktop
-    to: app/backend/data/media
-    filter: ["audio/*.mp3", "trim.json"]
 compression: normal
 afterPack: scripts/sign-resources.js
 mac:
@@ -44,7 +42,7 @@ mac:
   # The Python / model / media trees: scripts/sign-resources.js (afterPack) signs exactly their Mach-O files;
   # osx-sign would otherwise "sign" every model, image and .pyc through xattrs.
   signIgnore:
-    - "/Contents/Resources/(python|site|native|app|models)/"
+    - "/Contents/Resources/(python|site|native|app)/"
   gatekeeperAssess: false
   entitlements: build-resources/entitlements.mac.plist
   entitlementsInherit: build-resources/entitlements.mac.plist

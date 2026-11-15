@@ -3,6 +3,7 @@
 // emit: D-pad / left stick → move, A/Cross → select, B/Circle → back, X/Square → mic, Y/Triangle → help,
 // shoulders → prev / next, right stick → spin the Moon (spin, the same rate control as the fist) or look around the cabin (look). In the cabin the live
 // mission clock: View/Select/Share → pause or run, RT/R2 → skip to next event, LT/L2 → time warp (docs/GAMEPLAY.md).
+// Outside the cabin the triggers zoom the Moon: RT/R2 closer, LT/L2 farther, as far as you press them (zoom_rate).
 // Settings → Keyboard & controller → Left-handed swaps the sticks. The pure part (readPad, createPadReader) is unit-tested.
 import { emitIntent } from "./intents.js";
 
@@ -18,8 +19,10 @@ export function readPad(pad, { lefty = false } = {}) {
   let dir = b(BTN.up) ? "up" : b(BTN.down) ? "down" : b(BTN.left) ? "left" : b(BTN.right) ? "right" : null;
   if (!dir && Math.max(Math.abs(mx), Math.abs(my)) > DEAD) dir = Math.abs(mx) > Math.abs(my) ? (mx > 0 ? "right" : "left") : (my > 0 ? "down" : "up");
   const dz = v => (Math.abs(v) < LOOK_DEAD ? 0 : v);
+  // the triggers' travel (0..1): outside the cabin RT zooms in and LT zooms out at the pinch's rates
+  const tv = i => { const x = pad && pad.buttons && pad.buttons[i]; const v = x ? (+x.value || (x.pressed ? 1 : 0)) : 0; return v < 0.08 ? 0 : v; };
   return { dir, buttons: { a: b(BTN.a), b: b(BTN.b), x: b(BTN.x), y: b(BTN.y), lb: b(BTN.lb), rb: b(BTN.rb), start: b(BTN.start),
-    back: b(BTN.back), lt: b(BTN.lt), rt: b(BTN.rt) }, look: { x: dz(lx), y: dz(ly) } };
+    back: b(BTN.back), lt: b(BTN.lt), rt: b(BTN.rt) }, look: { x: dz(lx), y: dz(ly) }, zoom: tv(BTN.rt) - tv(BTN.lt) };
 }
 
 const PRESS = { a: ["select"], b: ["back"], x: ["mic"], y: ["help"], lb: ["prev"], rb: ["next"], start: ["settings"],
@@ -41,6 +44,9 @@ export function createPadReader({ delay = 380, repeat = () => 150 } = {}) {
       const moving = f.look.x || f.look.y, was = prev.look.x || prev.look.y;
       if (moving) out.push({ look: { x: f.look.x, y: f.look.y } });
       else if (was) out.push({ look: { x: 0, y: 0 }, end: true });
+      const zw = prev.zoom || 0, zn = f.zoom || 0;
+      if (zn) out.push({ zoom: zn, start: !zw });
+      else if (zw) out.push({ zoom: 0, end: true });
       prev = f; void dirT;
       return out;
     },
@@ -60,7 +66,8 @@ export function installGamepad({ settings = () => ({}), repeatMs = () => 150, in
     const acts = reader.step(f, performance.now());
     if (acts.length) setMode();
     acts.forEach(a => {
-      if (a.intent) { emitIntent(a.intent, a.args, "gamepad"); return; }
+      if (a.intent) { if ((a.intent === "skip_event" || a.intent === "time_warp") && !inCabin()) return; emitIntent(a.intent, a.args, "gamepad"); return; }   // the triggers zoom outside the cabin
+      if ("zoom" in a) { if (!inCabin()) emitIntent("zoom_rate", { phase: a.end ? "end" : a.start ? "start" : "move", rate: a.zoom }, "gamepad"); return; }
       if (inCabin()) emitIntent("look", { x: a.look.x, y: a.look.y }, "gamepad");   // the stick is the look offset; centre recentres
       else emitIntent("spin", { phase: a.end ? "end" : "move", x: a.look.x, y: a.look.y }, "gamepad");   // the same rate feel as the fist
     });

@@ -5,8 +5,9 @@ import { TOUR, MOON_BASE } from "./story.js";
 import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
-import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
+import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
+import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset (docs/RESET.md)
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -65,6 +66,9 @@ export function parseCommand(text) {
   if (/^(audio description|stop describing)( off)?$/.test(t) && /off|stop/.test(t)) return { cmd: "describe", arg: false };
   if (/^(say (that|it) again|repeat (that|it)|read (that|it) again)$/.test(t)) return { cmd: "repeat" };
   if (/^(open )?(accessibility|settings)( settings)?$/.test(t)) return { cmd: "panel" };
+  // voice can only OPEN the reset confirm; the 3-second hold is the only way to do it
+  if (/^(reset|start over|erase) (everything|it all|all)$|^(reset|erase) (the )?(whole )?(app|game|outpost luna) (and )?(downloads|everything)$/.test(t)) return { cmd: "reset", arg: "all" };
+  if (/^(reset|reset (the |my )?(whole )?(app|game|progress|outpost luna)|start the (whole )?(app|game) over|erase (my )?(progress|everything))$/.test(t)) return { cmd: "reset", arg: "start" };
   let m = t.match(/^(?:press|tap|click|choose|pick|select) (?:the )?(.+?)(?: button)?$/);
   if (m) return { cmd: "press", arg: m[1] };
   m = t.match(/^(?:option|answer|number) (\d|one|two|three|four)$/);
@@ -136,8 +140,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
   // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
   const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
-    ["cadets", "Cadets"], ["help", "Help"]];
-  let section = "voice", resetArmed = false;
+    ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset"]];   // reset: the danger zone, always last (docs/RESET.md)
+  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0;
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -178,6 +182,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
+        <p class="set-help rs-link">Start over with a new cadet? <button type="button" class="btn-link" data-sec-go="reset">Reset</button></p>
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
@@ -192,12 +197,14 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
           <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
         <p class="a11y-note">Saved on this device only.</p>`,
+      reset: resetView ? confirmHtml(resetView) : zoneHtml(),
     };
     // Sections other modules add (e.g. "Camera & gestures" from the gestures agent): window.__outpost.settingsSections =
     // [{id, title, after?, html() → string, bind?(el)}]. A section with nothing to show is not listed.
     const extraSecs = (O.settingsSections || []).filter(x => x && x.id && x.title && typeof x.html === "function");
     extraSecs.forEach(x => { try { body[x.id] = x.html(); } catch (e) { body[x.id] = ""; } });
     const order = SECTIONS.slice(); extraSecs.forEach(x => { const k = order.findIndex(s => s[0] === (x.after || "listen")); order.splice(k < 0 ? order.length - 1 : k + 1, 0, [x.id, x.title]); });
+    { const r = order.findIndex(s => s[0] === "reset"); if (r >= 0 && r !== order.length - 1) order.push(order.splice(r, 1)[0]); }   // Reset stays last
     const shown = order.filter(([id]) => body[id]);
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
@@ -208,20 +215,41 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <h3 id="set-h">${escH(order.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
       </div>`;
     fillTranscript();
+    unbindReset(); unbindReset = () => {};
+    if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
-    if (section === "voice" && PA) PA.loadVoices().then(vs => {
-      const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
-      const ap = PA.applied, vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "the default voice";
-      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
-        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id || (!PA.value.voice && i === 0) ? "checked" : ""}>
-          <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
-          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
-        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: Houston keeps its own radio voice</small></span></label>
-        <label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only with the default voice at normal speed.</small></span></label>
+    // Settings → Voice: exactly two engines. "Your computer's voice" picks the OS voice by itself (Siri on a Mac, the
+    // best WinRT voice on Windows): no voice list. "Steer TTS (Whissle)" shows Steer's voices, with previews.
+    if (section === "voice" && PA) Promise.resolve(PA.steerState ? PA.steerState() : { state: "off" }).then(async (steer) => {
+      const box = panel.querySelector("#setVoices"); if (!box) return;
+      const steerOn = PA.value.engine === "steer" && steer.state === "ready";
+      const engineHtml = engineChoiceHtml(PA.value, steer, escH);
+      clearTimeout(steerPoll);
+      if (steer.state === "downloading") steerPoll = setTimeout(() => { if (!panel.hidden && section === "voice") renderPanel(); }, 3000);
+      const ap = PA.applied;
+      const mood = ap && ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : "";
+      if (!steerOn) {
+        box.innerHTML = `${engineHtml}
+        <label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only at normal speed.</small></span></label>
         ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}
-        ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
+        ${ap ? `<p class="set-help set-applied" role="status">In use: your computer's voice${mood}</p>` : ""}`;
+        bindSteer(box); return;
+      }
+      const vs = await PA.loadSteerVoices();
+      const vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "Aurora";
+      box.innerHTML = `${engineHtml}${vs.length ? `<fieldset class="set-seg" data-steer-voices><legend>Steer voice</legend><div class="set-vlist">${vs.map((v, i) => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="steer_voice" value="${escH(v.id)}" ${PA.value.steer_voice === v.id || (!PA.value.steer_voice && i === 0) ? "checked" : ""}>
+          <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
+          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>` : ""}
+        <p class="set-help">With Steer every line is spoken live in the Steer voice.</p>
+        ${ap ? `<p class="set-help set-applied" role="status">In use: Steer · ${escH(vname(PA.value.steer_voice || ""))}${mood}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
+      bindSteer(box);
     });
+    function bindSteer(box) {
+      const g = box.querySelector("[data-get-steer]");
+      if (g) g.onclick = async e => { e.preventDefault(); g.disabled = true; g.textContent = "Downloading Steer voice…"; await PA.requestSteer(); renderPanel(); };
+    }
   }
   function open(v = panel.hidden) {
     if (v) {
@@ -257,7 +285,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   panel.addEventListener("click", e => {
     const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
-    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
+    const go = e.target.closest("[data-sec-go]"); if (go) { section = go.dataset.secGo; resetView = null; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); return; }
+    const ro = e.target.closest("[data-reset-open]"); if (ro) { resetView = ro.dataset.resetOpen; renderPanel(); return; }
+    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; resetView = null; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
     const vb = e.target.closest("[data-vbar-reset]");
     if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
       setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }
@@ -287,7 +317,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
       O.prefsApi.update({ [k]: v });
       if (t.type === "range") { const out = t.closest("label").querySelector("output"); renderPanel(); const again = panel.querySelector(`[data-p="${k}"]`); if (again) again.focus(); void out; }
-      else if (k === "listen") { renderPanel(); const again = panel.querySelector(`[data-p="listen"]:checked`); if (again) again.focus(); }
+      else if (k === "listen" || k === "engine") { renderPanel(); const again = panel.querySelector(`[data-p="${k}"]:checked`); if (again) again.focus(); }
       return;
     }
     if (t.name === "a11ySpeed") set({ speed: +t.value });
@@ -435,6 +465,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       case "describe": set({ describe: c.arg }); reply(`Audio description ${c.arg ? "on" : "off"}.`); break;
       case "repeat": { const last = (O.transcript || []).filter(e => e.who !== "describe" && e.who !== "kid").slice(-1)[0]; if (last && say) say(last.text, {}); break; }
       case "panel": open(true); break;
+      // voice opens the Reset panel itself (both options); it never confirms. The option asked for gets focus.
+      case "reset": section = "reset"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`); if (b) b.focus(); } reply("Here's Reset. A grown-up can choose Start over or Reset everything."); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;

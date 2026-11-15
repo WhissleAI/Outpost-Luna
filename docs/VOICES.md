@@ -160,3 +160,29 @@ language → Speech → Manage voices. The list refreshes within 30 s.
 
 **Voice pack (next).** `tts_os.PACK_LOOKUP` is the seam for pre-rendered fixed lines: a callable (voice id,
 `os_voices.pack_key(text)`, rate) → WAV or None, asked before the engine. Not wired yet.
+
+## Steer TTS (optional second engine)
+
+Settings → Voice has exactly **two choices**: "Your computer's voice" (the default: Siri / the Mac's system voice, the
+best WinRT voice on Windows, picked automatically; no list, a one-line hint about downloading better OS voices) or
+"Steer TTS (Whissle)", which shows Steer's voice list with previews. The OS voice grid and "Use this voice for
+everyone" are gone (old saved picks are cleared by `normalizePrefs`); "Use the recorded guide voice for story lines"
+shows only under the computer's voice.
+Steer was the app's voice before the OS voices (commit 7ea1bad); it is restored as an option:
+
+- **Engine**: Steer TTS Edge v1 (`model_server/app/tts_steer.py`, `POST /v1/tts/steer`), the vendored
+  `desktop/vendor/wheels/steertts_edge-1.3.0-py3-none-any.whl` (pure Python + ONNX Runtime + numpy + safetensors: the
+  same wheel on macOS and Windows; without a libm, as on Windows, its director falls back to numpy). CC BY-NC 4.0.
+- **What it adds**: the whole style is honoured (tags, the 12 controls, emphasis markup, the performance director's
+  per-sentence plan), and the word timings are the model's own (`X-Steer-Words` → `X-TTS-Words`): captions are exact.
+- **Voices**: the 10 curated voices of `backend/data/voices.json` (Aurora first, the default) with their offline
+  previews (`backend/data/voice_previews/`); the chosen Steer voice speaks every role (Houston is relayed by CAPCOM).
+  Mute covers Steer like every guide line (same `<audio>` path).
+- **Voice pack**: never with Steer (`steering.pack_allowed`, `floor.packAllowed`): every line renders live in Steer.
+- **Delivery (0.3)**: ON DEMAND, never in the installer: the manifest's `steer` asset (13 MB, `on_demand: true`) downloads
+  only when the kid picks Steer in Settings → Voice ("Get the Steer voice (13 MB)" → `POST /api/tts/engines/steer` →
+  `<assets>/.want/steer` → the Electron main process, "Downloading Steer voice…", then the voices). Until the asset's
+  own Dropbox link exists, its 12 files come out of the public v1 model package (`fallback.kind = "tar_members"`, each
+  sha256-checked; LICENSE + NOTICE written from the manifest). The model server loads it on first use once the folder
+  is there. (0.1.x bundled it via gather_models.py; that line is retired.)
+- **Fallback**: Steer missing, downloading or failing → the line is spoken by the OS voice (`X-TTS-Fallback` says why).

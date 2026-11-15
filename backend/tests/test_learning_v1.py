@@ -227,7 +227,7 @@ def test_mission_lesson_numbers_follow_the_course():
 
 # ---- the router's prep screen (integ/v1: director round 8) ------------------------------------------------------------
 @pytest.mark.parametrize("text,want", [("done!", "prep_done"), ("we did it", "prep_done"), ("skip this one", "prep_skip"),
-                                       ("we don't have flour", "prep_skip"), ("hold on", "prep_wait"),
+                                       ("we don't have flour", "prep_help"), ("hold on", "prep_wait"),
                                        ("i need help", "prep_help"), ("say it again", "prep_help")])
 def test_router_prep_screen_takes_done_skip_wait_help(text, want):
     from app import turn_router as R

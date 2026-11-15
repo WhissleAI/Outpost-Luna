@@ -34,10 +34,46 @@ export const DEFAULTS = Object.freeze({
   fistPosRange: 1.0,     // hand-lengths of movement from where the fist grabbed
   fistRollRange: 0.45,   // radians of lean left / right (wrist → middle-knuckle angle in the image), ≈ 26°
   fistPitchRange: 0.5,   // radians of tilt toward / away from the screen (MediaPipe z), ≈ 29°
-  fistTwistRange: 0.6,   // radians of twist (doorknob) about the forearm
   fistTiltWeight: 1,     // how much the fist's tilt adds to its position (0 = position only)
   fistFilter: { minCutoff: 1.0, beta: 0.8, dCutoff: 1 },   // One Euro on the stick [webcam]
   spinCal: null,         // the kid's calibration (gesture/calibration.js); null = the defaults above
+});
+
+/**
+ * The one-hand zoom: "pinch and slide" (gesture/classifier.js pinchStep). Thumb tip to index tip, held still, then
+ * slide the pinched hand up (closer) or down (farther); let go to stop. Distances are in hand-lengths (wrist → middle
+ * knuckle), so they hold for every hand size and distance from the camera.
+ */
+export const PINCH = Object.freeze({
+  on: 0.22,              // thumb tip to index tip under this (hand-lengths) is a pinch … [webcam]
+  off: 0.38,             // … and it stays one until they are this far apart (hysteresis)
+  calOnK: 1.6,           // with a calibrated pinch distance d: on = d × 1.6 (clamped to onMin..onMax), off = on × offK
+  onMin: 0.12, onMax: 0.3, offK: 1.7,
+  // the shape, so a fist, a pointing finger (count 1) or a thumbs up is never a pinch:
+  minIndexReach: 0.45,   // index tip to index knuckle: a fist folds the index onto the palm (≈ 0.3) [webcam]
+  minIndexReachStay: 0.38,
+  minThumbReach: 0.6,    // thumb tip to thumb base: a fist tucks the thumb (≈ 0.4)
+  minThumbReachStay: 0.5,
+  maxTipCos: 0.5,        // the thumb and the index tip point at each other (angle between them > 60°)
+  holdMs: 250,           // a still pinch this long engages the zoom [webcam]
+  holdFrames: 5,
+  stillRange: 0.25,      // hand-lengths the pinch may wander while it engages
+  releaseFrames: 3,      // not a pinch for this many frames in a row releases
+  afterFistMs: 500,      // never engages within this long after a fist lets go (or while one holds)
+  slideRange: 0.8,       // hand-lengths of slide up / down from where it engaged = full zoom rate [webcam]
+  filter: { minCutoff: 1.0, beta: 0.8, dCutoff: 1 },   // One Euro on the slide
+});
+
+/** Zoom rate control (gesture/spin.js createZoomer): the pinch slide, +/- keys and the controller triggers all use it. */
+export const ZOOM = Object.freeze({
+  dead: 0.15,            // dead zone of the slide (0..1) [webcam]
+  expo: 1.4,             // gain curve, fine near the middle
+  maxRate: 0.9,          // ln(zoom) per second at full slide / a held key (≈ 2.5× a second)
+  easeTau: 0.1,          // s: the rate eases toward the target
+  stopTau: 0.08,         // s: after a release the rate dies this fast (no coasting zoom)
+  tapStep: 1.25,         // a quick key tap still zooms at least this much (eased)
+  voiceStep: 1.6,        // "zoom in" / "closer" (eased over stepMs)
+  stepMs: 350,
 });
 
 /** Fist-spin rate control (gesture/spin.js): stick → angular speed of the Moon. */
@@ -52,10 +88,8 @@ export const SPIN = Object.freeze({
   stopBelow: 0.02,       // rad/s: below this the Moon stops
   refDistance: 3.6,      // camera distance at which maxSpeed applies; closer = slower, so zoomed in stays steerable
   minDistScale: 0.25, maxDistScale: 1.5,
-  // twist (doorknob) zooms; pinch (phase 2) and +/- keys zoom too
-  twistZoom: true,
-  twistDead: 0.35,       // a bigger dead zone than the stick: a twist must be meant [webcam]
-  zoomRate: 0.7,         // ln(zoom factor) per second at full twist (≈ 2× a second)
+  // the fist only turns: zoom is its own gesture (pinch and slide, PINCH / ZOOM below). Twisting the fist used to zoom,
+  // and a kid's natural wrist roll while leaning made the Moon zoom during a spin (owner feedback, 0.1.2).
   invert: false,         // false: the surface moves the way the fist moves (like pushing the globe); Settings can flip it
 });
 
@@ -71,4 +105,7 @@ export const CALIBRATION = Object.freeze({
   stepMaxMs: 3500,       // a step that never gets there keeps the default for that direction
   fistHoldMs: 400,       // "Make a fist. Keep it still.": held this long, moving under fistStill hand-lengths
   fistStill: 0.15,
+  pinchHoldMs: 400,      // "Pinch your fingers.": the thumb to index distance is measured over this hold (skippable)
+  pinchLoose: 0.45,      // a pinch for calibration (loose: it is what we measure)
+  pinchMin: 0.03, pinchMax: 0.4,
 });

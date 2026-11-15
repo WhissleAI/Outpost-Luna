@@ -1,0 +1,20 @@
+libarc (Arc inference code in C), vendored from https://github.com/WhissleAI/arc_transcriber (c/, commit
+bfffb19358781423d7fed432ee33a85292d0f8e4).
+Copyright (c) 2026 Whissle Inc. Licensed under the Creative Commons Attribution-NonCommercial 4.0 International License
+(CC BY-NC 4.0) and the Whissle terms in LICENSE; commercial use requires a separate written licence from Whissle Inc.
+(ksingla@whissle.ai, https://whissle.ai). src/arc_ntext.c contains a C port of jellyfish's Metaphone (MIT License,
+Copyright (c) 2015 James Turk; full text in the upstream NOTICE).
+
+Local changes for Outpost Luna (desktop/vendor/libarc):
+- src/arc_nft2_ort.c: plain_session() reads the RNNT .onnx files into memory and uses CreateSessionFromArray (as the
+  encoder already does), so no file path crosses the ONNX Runtime API (ORTCHAR_T is wchar_t on Windows).
+- ort_loader.c (new): OrtGetApiBase() is resolved at run time from the ONNX Runtime library the app already ships (the
+  Python onnxruntime wheel's libonnxruntime / onnxruntime.dll), set with arc_ort_set_library() or ARC_ORT_LIB, so
+  libarc links no ONNX Runtime and the installer carries one copy of it. The C API version used is 23 (ONNX Runtime
+  1.23 headers); newer runtimes serve older API versions.
+- compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c.
+
+third_party/onnxruntime/include: ONNX Runtime 1.23.2 C API headers (Microsoft, MIT License, third_party/onnxruntime/LICENSE).
+
+The model weights (WhissleAI/arc-transcriber-space, nft2/) are NOT here: the app downloads them on first run with their
+own LICENSE and NOTICE (desktop/assets.manifest.json).

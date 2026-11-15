@@ -3,12 +3,16 @@
 GET  /api/tts?text=…&voice=guide|capcom|story|houston[&style=<json>][&i=&n=&next=]  → audio, cached on disk by hash
 POST /api/tts {text, voice, style?, i?, n?, next?}                                      → the same
 
-Engines (TTS_ENGINE=os|deepgram, default os):
+Engines (TTS_ENGINE=os|deepgram, default os; the kid's Settings can add Steer in front, style.tts_engine = "steer"):
+  steer     Steer TTS Edge on the model server (POST /v1/tts/steer), the optional engine: the whole style (tag, controls,
+            emphasis markup, the performance director's plan) and the model's own word timings. → audio/wav
   os        The operating system's own offline voice on the model server (POST /v1/tts; macOS `say`, Windows WinRT /
             SAPI): the persona's role (or the kid's chosen voice) at the style's rate and pauses. → audio/wav + word
             timings
   deepgram  Deepgram Aura-2 over REST. → audio/mpeg
-Fallback chain: os → deepgram (when DEEPGRAM_API_KEY is set) → 503 {"fallback":"browser"} (speechSynthesis).
+Fallback chain: [steer →] os → deepgram (when DEEPGRAM_API_KEY is set) → 503 {"fallback":"browser"} (speechSynthesis).
+Steer not downloaded yet (or failing): the line is spoken by the OS voice, with X-TTS-Fallback saying why. The recorded
+voice pack never speaks with Steer selected (steering.pack_allowed): every line renders live in Steer.
 
 `style` is the `say.style` the Director sent (backend/app/steering.py); without one the persona's default style is
 used, so `/api/tts?text=&voice=` keeps working. `i`/`n`/`next` place the sentence in its text (the client splits long
@@ -48,10 +52,10 @@ VOICES: dict[str, str] = {
     "story": "aura-2-iris-en",      # young, cheerful
     "houston": "aura-2-orion-en",
 }
-MEDIA = {"os": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
+MEDIA = {"os": ("audio/wav", ".wav"), "steer": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
 
 CACHE_DIR: Path | None = None     # tests point this elsewhere; default data_dir/tts_cache (gitignored)
-PREF_KEYS = ("tts_voice", "speed", "expr", "volume", "pack")
+PREF_KEYS = ("tts_voice", "speed", "expr", "volume", "pack", "tts_engine", "steer_voice")
 PACK_PERSONAS = ("guide", "capcom")   # the recorded voice pack covers these (docs/VOICE_PACK.md); Houston, story: live
 MASTER_VERSION = 4                # in the cache key: bump when the delivery baseline or the mastering changes
 
@@ -130,6 +134,11 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
         out["volume"] = round(max(0.0, min(2.0, vol)), 2)
     if prefs.get("pack") is False:
         out["pack"] = False
+    if prefs.get("tts_engine") == "steer":       # Settings -> Voice: Steer TTS (the optional engine)
+        out["tts_engine"] = "steer"
+        out["steer_voice"] = prefs["steer_voice"] if voices.steer_allowed(prefs.get("steer_voice")) else \
+            steering.STEER_VOICES.get(persona, steering.STEER_VOICES["guide"])
+        out["pack"] = False
     return out
 
 
@@ -137,7 +146,7 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
 def pack_version() -> str:
     """Changes whenever the pack's index changes (a re-recorded clip must not be shadowed by the TTS cache)."""
     try:
-        st = (settings.data_dir / "voice_pack" / "index.json").stat()
+        st = (settings.voice_pack() / "index.json").stat()
         return f"{st.st_mtime_ns:x}-{st.st_size:x}"
     except OSError:
         return ""
@@ -189,7 +198,7 @@ def _remap_words(words: str, keep) -> str:
     return ",".join(out)
 
 
-def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, dict | None]:
+def finish(audio: bytes, st: dict, words: str, last: bool, limiter: bool = False) -> tuple[bytes, str, dict | None]:
     """The final stage for every OS-voice render (§4d): cut only pathological silences (the voice's own pauses stay),
     then one clean gain to the loudness target (+2 LU for alarms, + the kid's volume) with a -1 dBTP true-peak ceiling:
     no limiter or compressor on the OS voices (a peaky line plays slightly under target instead).
@@ -200,7 +209,8 @@ def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, 
         return audio, words, None
     y, kept = loudness.cap_gaps(x, sr, max_gap_s=st.get("gap_s", steering.GAP_FAST_S),
                                 tail_s=0.05 if last else 0.22, with_mask=True)
-    y, info = loudness.master(y, sr, target_lufs(st), gain_for_volume(st.get("volume")), limiter=False)
+    # Steer (limiter=True, as before the OS voices): its peaks are steady, a -1 dBTP look-ahead limiter holds them
+    y, info = loudness.master(y, sr, target_lufs(st), gain_for_volume(st.get("volume")), limiter=limiter)
     return loudness.write_wav(y, sr), _remap_words(words, (sr, kept)), info
 
 
@@ -234,6 +244,26 @@ async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str, str]
     if r.status_code != 200 or not r.content:
         raise RuntimeError(f"os tts {r.status_code}: {r.text[:160]}")
     return r.content, r.headers.get("X-TTS-Words", ""), r.headers.get("X-TTS-Engine", "os")
+
+
+async def _steer(text: str, style: dict, place: dict) -> tuple[bytes, str]:
+    """One Steer TTS Edge render on the model server → (wav, word timings header). Raises on any failure (the caller
+    falls back to the OS voice). Restored from before 7ea1bad."""
+    marked = bool(style.get("emph") or style.get("vocab"))
+    body = {"text": steering.apply_markup(text, style.get("emph"), style.get("vocab")) if marked else text,
+            "voice": style["steer_voice"], "tag": style["tag"], "controls": style["controls"] or None,
+            "markup": marked}
+    if style.get("pace", 1.0) != 1.0:
+        body["pace"] = style["pace"]
+    if style.get("guidance"):
+        body["guidance"] = style["guidance"]
+    if style.get("perform"):
+        body["perform"] = {**style["perform"], **{k: v for k, v in place.items() if v is not None}}
+    async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s) as c:
+        r = await c.post("/v1/tts/steer", json=body)
+    if r.status_code != 200 or not r.content:
+        raise RuntimeError(f"steer tts {r.status_code}: {r.text[:160]}")
+    return r.content, r.headers.get("X-Steer-Words", "")
 
 
 # ---- a11y: word timings for captions (docs/ACCESSIBILITY.md) -----------------------------------------------------------
@@ -274,11 +304,13 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
     next_text = narration.spoken(next_text) if next_text else next_text
     reasons: list[str] = []
     engines = ["deepgram"] if settings.tts_engine == "deepgram" else ["os", "deepgram"]   # "steer" (old .env) = os
+    if "os" in engines and isinstance(style, dict) and style.get("tts_engine") == "steer":
+        engines.insert(0, "steer")              # the kid picked Steer (Settings): first, the OS voice behind it
     from . import voices
     if "os" in engines:
         await voices.refresh()
     for engine in engines:
-        if engine == "os":
+        if engine in ("os", "steer"):
             st = clean_style(voice, text, style)
             speed = speed if speed is not None else st.pop("speed", None)   # an explicit ?speed= wins over Settings
             st.pop("speed", None)
@@ -288,13 +320,21 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             if pace != 1.0:
                 st["pace"] = pace
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}
-            if use_pack(st, pace):
-                st["pack_on"] = pack_version()
-                st["tts_voice"] = "guide"                       # CAPCOM speaks in the guide voice with the pack
-            st.pop("pack", None)
-            st["tts_voice"] = voices.resolve(st["tts_voice"])     # the role -> this machine's voice for it
-            model, key = st["tts_voice"], {**st, "voice_tag": voices.cache_tag(st["tts_voice"]), **{k: v for k, v in place.items() if v is not None},
-                                             "master": MASTER_VERSION}
+            if engine == "steer":
+                for k in ("pack", "tts_voice", "tts_engine"):
+                    st.pop(k, None)
+                model, key = st["steer_voice"], {**st, **{k: v for k, v in place.items() if v is not None},
+                                                 "master": MASTER_VERSION}
+            else:
+                st.pop("tts_engine", None)
+                st.pop("steer_voice", None)
+                if use_pack(st, pace):
+                    st["pack_on"] = pack_version()
+                    st["tts_voice"] = "guide"                       # CAPCOM speaks in the guide voice with the pack
+                st.pop("pack", None)
+                st["tts_voice"] = voices.resolve(st["tts_voice"])     # the role -> this machine's voice for it
+                model, key = st["tts_voice"], {**st, "voice_tag": voices.cache_tag(st["tts_voice"]), **{k: v for k, v in place.items() if v is not None},
+                                                 "master": MASTER_VERSION}
         else:
             if not settings.deepgram_api_key:
                 reasons.append("deepgram: DEEPGRAM_API_KEY is not set")
@@ -318,7 +358,12 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             return Response(p.read_bytes(), media_type=media,
                             headers={**headers, "X-TTS-Cache": "hit", **({"X-TTS-Words": w} if w else {})})
         try:
-            if engine == "os":
+            if engine == "steer":
+                audio, words = await _steer(text, st, place)
+                audio, words, info = finish(audio, st, clean_words(words), last=not place.get("next"), limiter=True)
+                if info and info.get("lufs") is not None:
+                    headers["X-TTS-Loudness"] = f"{info['lufs']} LUFS {info['tp']} dBTP"
+            elif engine == "os":
                 res = await _os_tts(text, st, place)
                 res = res if isinstance(res, tuple) else (res, "")
                 audio, words = res[0], res[1]

@@ -1,4 +1,5 @@
-"""POST /v1/meta (whole clip) and WS /v1/stream (live) for Arc audio metadata. See app/arcmeta.py."""
+"""POST /v1/meta (whole clip) and WS /v1/stream (live): the ear (?ear=arc) and its metadata-only form. See app/arcmeta.py
+and app/arc_ear.py."""
 from __future__ import annotations
 
 import asyncio
@@ -35,7 +36,7 @@ def _decode(data: bytes) -> np.ndarray:
 
 @router.post("/v1/meta")
 async def meta(audio: UploadFile = File(...), words: str | None = Form(None), domain: str = Form("assistant"),
-               events: str = Form("default")):
+               events: str = Form("default"), names: str | None = Form(None)):
     if arcmeta.STATE["arc"] is None:
         raise HTTPException(503, f"Arc metadata not loaded: {arcmeta.STATE['error']}")
     try:
@@ -43,11 +44,16 @@ async def meta(audio: UploadFile = File(...), words: str | None = Form(None), do
         assert isinstance(ws, list)
     except Exception:  # noqa: BLE001
         raise HTTPException(400, 'words must be a JSON list of {"w","t0","t1"}')
+    try:
+        ns = json.loads(names) if names else []
+        assert isinstance(ns, list)
+    except Exception:  # noqa: BLE001
+        raise HTTPException(400, 'names must be a JSON list of {"name","kind","aliases"}')
     wav = _decode(await audio.read())
     if len(wav) < arcmeta.SR // 10:
         raise HTTPException(400, "audio shorter than 100 ms or unreadable")
     try:
-        return await run_in_threadpool(arcmeta.predict, wav, ws, domain, events)
+        return await run_in_threadpool(arcmeta.predict, wav, ws, domain, events, ns)
     except (KeyError, ValueError) as e:
         raise HTTPException(400, str(e))
 
@@ -78,20 +84,20 @@ async def stream(ws: WebSocket):
     loop = asyncio.get_running_loop()
     ms = None
     try:
-        ms = await loop.run_in_executor(pool, arcmeta.MetaStream, domain)
-        await ws.send_json({"t": "arc", "available": True, "model": "arc-v1.1 mini", "domain": domain})
+        ms = await loop.run_in_executor(pool, lambda: arc_ear.EarStream(domain, metadata_only=True))
+        await ws.send_json({"t": "arc", "available": True, "model": arcmeta.MODEL, "domain": domain})
         buf = b""
         while True:
             m = await ws.receive()
             if m["type"] == "websocket.disconnect":
                 break
-            out = None
             if m.get("bytes"):
                 buf += m["bytes"]
                 if len(buf) >= 2560:          # >= 80 ms
                     n = len(buf) // 2 * 2
                     chunk, buf = buf[:n], buf[n:]
-                    out = await loop.run_in_executor(pool, ms.feed, chunk)
+                    for o in await loop.run_in_executor(pool, ms.feed_all, chunk):
+                        await ws.send_json(ctx.decorate(o))
             elif m.get("text"):
                 try:
                     msg = json.loads(m["text"])
@@ -101,17 +107,19 @@ async def stream(ws: WebSocket):
                 if t == "context":
                     await ws.send_json(await loop.run_in_executor(pool, ctx.update, msg, ms))
                 elif t == "words":
-                    await loop.run_in_executor(pool, ms.add_words, msg.get("words") or [])
+                    pass        # the external words are not needed: the model hears the audio itself
                 elif t == "end_turn":
-                    out = await loop.run_in_executor(pool, ms.end_turn)
+                    for o in await loop.run_in_executor(pool, ms.end_turn_all):
+                        await ws.send_json(ctx.decorate(o))
                 elif t == "stop":
-                    out = await loop.run_in_executor(pool, ms.flush)
-                    if out:
-                        out["final"] = True
-                        await ws.send_json(ctx.decorate(out))
+                    outs = [o for o in await loop.run_in_executor(pool, ms.flush_all) if o.get("t") == "arc"]
+                    outs = outs or [{"t": "arc", "at": round(ms.audio_s, 2), "device_directed": None, "speech": False,
+                                     "audio_events": [], "bio_events": [], "names": [],
+                                     "rtf": round(ms.compute_s / ms.audio_s, 3) if ms.audio_s else None}]
+                    for o in outs:
+                        o["final"] = True
+                        await ws.send_json(ctx.decorate(o))
                     break
-            if out:
-                await ws.send_json(ctx.decorate(out))
     except WebSocketDisconnect:
         pass
     finally:
@@ -128,13 +136,11 @@ async def stream(ws: WebSocket):
 def _ear_unavailable() -> str | None:
     if arcmeta.STATE["arc"] is None:
         return f"Arc not loaded: {arcmeta.STATE['error']}"
-    if not arcmeta.STATE["decoder"]:
-        return "Arc decoder not loaded (ARC_EAR=off)"
     return None
 
 
 async def ear_stream(ws: WebSocket, domain: str):
-    """WS /v1/stream?ear=arc: Arc's own words + turns + metadata (app/arc_ear.py). Unlike metadata mode this does not
+    """WS /v1/stream?ear=arc: Arc Transcriber Space's words + turns + names + metadata (app/arc_ear.py). Unlike metadata mode this does not
     fail open: when the ear can't be served the client is told at once ({"t":"ear","available":false}) and the socket
     closes (1013), so it can pick another ear."""
     why = _ear_unavailable()
@@ -155,7 +161,7 @@ async def ear_stream(ws: WebSocket, domain: str):
 
     try:
         es = await loop.run_in_executor(pool, arc_ear.EarStream, domain)
-        await ws.send_json({"t": "ear", "available": True, "ear": "arc", "model": "arc-v1.1 mini", "domain": domain})
+        await ws.send_json({"t": "ear", "available": True, "ear": "arc", "model": arcmeta.MODEL, "domain": domain})
         await ws.send_json({"t": "emotion", "available": False, "reason": arcmeta.EMOTION_REASON})
         buf = b""
         while True:

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import knowledge, models_client, video
+from . import knowledge, models_client, reset, video
 from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
@@ -105,11 +105,11 @@ def clip(clip_id: str):
 def clip_segs(file: str | None) -> list | None:
     """The desktop build ships trimmed crew audio (backend/pipeline/trim_media.py): [[clip_t0, file_t0, len], ...] maps
     clip time to file time (the player converts at the <audio> element). None with the original audio (dev)."""
-    if "clip_segs" not in S:
+    if not S.get("clip_segs"):    # re-read until found: the crew-audio asset may install after the backend started
         import json
-        p = settings.data_dir / "media" / "trim.json"
+        p = next((d / "trim.json" for d in settings.media_dirs() if (d / "trim.json").exists()), None)
         S["clip_segs"] = ({k: v["segs"] for k, v in json.loads(p.read_text(encoding="utf-8"))["clips"].items()}
-                          if p.exists() else {})
+                          if p else {})
     return S["clip_segs"].get((file or "").rsplit("/", 1)[-1])
 
 
@@ -147,7 +147,9 @@ from .session import router as session_router; app.include_router(session_router
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
+app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
+from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 
 @app.get("/api/turnlog")
 def turnlog_stats():
@@ -179,7 +181,22 @@ def director_stats():
 
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
-app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
+class MediaFiles(StaticFiles):
+    """StaticFiles over several folders, first hit wins (settings.media_dirs: the desktop's installed crew-audio asset,
+    then data_dir/media). A folder that does not exist yet (an asset still downloading) is simply skipped."""
+
+    def __init__(self, dirs):
+        self.dirs = list(dirs)
+        super().__init__(directory=self.dirs[-1], check_dir=False)
+
+    def get_directories(self, directory=None, packages=None):
+        return [str(d) for d in self.dirs]
+
+
+app.mount("/media", MediaFiles(settings.media_dirs()), name="media")
+# Settings: the Steer voices' previews (pre-rendered, offline), before the frontend's catch-all mount.
+app.mount(_voices.STEER_PREVIEW_PREFIX, StaticFiles(directory=_voices.steer_previews_dir(), check_dir=False),
+          name="steer_voice_previews")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
 

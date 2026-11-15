@@ -35,6 +35,9 @@ from .gazetteer import norm
 # ---- thresholds ------------------------------------------------------------------------------------------------------
 ECHO_SHARE = 0.6          # >= 60% of the heard words appear in one of our recent lines -> echo
 ECHO_WINDOW_S = 12.0      # the lines we spoke in the last 12 s are echo references (the mic + ASR lag behind)
+SHOWN_WINDOW_S = 90.0     # round 8: our lines (spoken or on the HUD) this recent catch a near-verbatim repeat
+SHOWN_SHARE = 0.9
+SHOWN_COVER = 0.6
 OLD_SHARE = 0.85          # lines that ended before the turn started: only a near-verbatim repeat of >= 3 words
 TAIL_S = 0.6              # hard mute after any app voice ends
 DD_MIN = 0.5              # Arc device_directed under this: talking to someone else
@@ -106,6 +109,10 @@ NAV: list[tuple[str, re.Pattern]] = [
     # The cabin's Center view (the seat pose): "center", "look forward"
     ("recenter", re.compile(r"^(?:center|centre|recenter|recentre|look forward|look ahead|face forward|"
                             r"(?:center|centre|reset) (?:the |my )?view)$")),
+    # Settings → Reset (docs/RESET.md): voice only OPENS the confirm view (a11y.js parseCommand); a 3-second hold resets
+    ("a11y", re.compile(r"^(?:reset|reset (?:the |my )?(?:whole )?(?:app|game|progress|outpost luna)|"
+                        r"(?:reset|start over|erase) (?:everything|it all|all)|erase (?:my )?progress|"
+                        r"start the (?:whole )?(?:app|game) over)$")),
     # The top bar's Mute (every screen; output only, the mic stays as it is)
     ("mute_sound", re.compile(r"^(?:mute|mute (?:the )?(?:sound|audio|app|voices?)|sound off|turn (?:the )?sound off|be quiet)$")),
     ("unmute_sound", re.compile(r"^(?:unmute|unmute (?:the )?(?:sound|audio|app|voices?)|sound on|turn (?:the )?sound (?:back )?on)$")),
@@ -153,6 +160,12 @@ NAV: list[tuple[str, re.Pattern]] = [
                               r"where s the rover)$")),
     ("view_site", re.compile(r"^(?:zoom in|outpost view|site view|back to the (?:outpost|base|site)|show (?:me )?the "
                              r"(?:outpost|base|site))$")),
+    # The Moon's zoom (not the cabin: there "zoom in / out" are the window views above). An eased step on the client.
+    ("zoom_in", re.compile(r"^(?:zoom in|zoom (?:in )?closer|(?:get |go |come |move |fly )?closer|(?:a )?(?:bit|little) closer|"
+                           r"zoom in (?:a (?:bit|little)|more)|(?:go |get )?nearer|make it bigger)$")),
+    ("zoom_out", re.compile(r"^(?:zoom out|zoom (?:back )?out (?:a (?:bit|little)|more)|(?:go |get |move |fly )?(?:farther|further)"
+                            r"(?: away| out)?|(?:a )?(?:bit|little) (?:farther|further)(?: away)?|back out|zoom back out|"
+                            r"make it smaller)$")),
     ("start", re.compile(r"^(?:start|begin|let s start|lets start|start (?:the )?lesson|start learning|let s begin|"
                          r"start (?:flight school|the academy)|continue|resume)$")),
     ("next", re.compile(r"^(?:next|next one|next please|next lesson|next step|go on|keep going|move on|"
@@ -253,6 +266,7 @@ class Ctx:
                                        # None: timing unknown, the lines in `recent` count as on air
     recent: list[str] = field(default_factory=list)   # lines playing when the turn started (or just ended): Spoken.fresh
     older: list[str] = field(default_factory=list)    # lines that ended before that, within ECHO_WINDOW_S
+    shown: list[str] = field(default_factory=list)    # round 8: lines said or shown (HUD) within SHOWN_WINDOW_S
     lessons: list[tuple[str, str]] = field(default_factory=list)   # [(lesson_id, title)]
     sites: list[tuple[str, str]] = field(default_factory=list)     # [(site_id, name)]
     callsigns: list[str] = field(default_factory=list)
@@ -363,6 +377,30 @@ def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
     return len(ws) <= 3 and all(word_in(w, every) for w in ws)
 
 
+_NUM_WORDS = {"plus", "minus", "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+              "percent", "point"}
+
+
+def _shown_words(text: str) -> list[str]:
+    """Words for the shown-line echo, without numbers ("Science +2." is read back as "science plus two")."""
+    return [w for w in words(text) if not w.isdigit() and w not in _NUM_WORDS]
+
+
+def shown_echo(text: str, lines: list[str]) -> bool:
+    """Near-verbatim repeat of ONE line we said or showed: >= SHOWN_SHARE of the heard words are in it AND the turn
+    covers >= SHOWN_COVER of the line. A kid taking our advice ("skip this one" after "You can skip this one, or use
+    something else") reuses a few of its words; an echo carries most of the line."""
+    ws = _shown_words(text)
+    for ln in lines or []:
+        if not ws or ln.rstrip().endswith("?"):
+            continue     # our questions / offers: the kid repeats those as the answer
+        ref = _shown_words(ln)
+        if ref and sum(w in set(ref) for w in ws) / len(ws) >= SHOWN_SHARE and \
+                sum(w in set(ws) for w in ref) / len(ref) >= SHOWN_COVER:
+            return True
+    return False
+
+
 def echo(text: str, ctx: "Ctx") -> bool:
     """Our own voice coming back: the current / fresh lines at 60% overlap; older lines only near-verbatim. On a
     readback step (the kid repeats CAPCOM's order on purpose) only what is playing right now counts.
@@ -389,7 +427,11 @@ def echo(text: str, ctx: "Ctx") -> bool:
         return len(echo_words(words(text))) >= 4 and not _names_option(text, ctx) and echo_of(text, ctx.recent, OLD_SHARE)
     if echo_of(text, ctx.recent):
         return True
-    return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)
+    if len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE):
+        return True
+    # round 8: a line we said or showed (the HUD, a task ack) up to SHOWN_WINDOW_S ago, heard back near-verbatim
+    # ("Sample logged. Science +2." read out and then picked up again by the mic)
+    return len(words(text)) >= 3 and shown_echo(text, ctx.shown)
 
 
 # The navigation intents that take each spoken offer (Ctx.offer). "next" / "start" / "yes" take any of them.
@@ -446,6 +488,44 @@ def _match_title(q: str, items: list[tuple[str, str]]) -> str | None:
     return best[0] if best else None
 
 
+OFFER_FILLERS = {"um", "uh", "like", "so", "well", "hmm", "oh", "er"}
+
+
+def offer_reply(text: str) -> str | None:
+    """Round 8 rules: a short yes / no to a pending offer, read as said ("not now" loses its "now" to nav_intent's
+    strip) and without the ear's fillers ("okay so", "not like now"): accept_offer / decline_offer, else None."""
+    ws = norm(text or "").split()
+    r = " ".join(w for w in ws if w not in OFFER_FILLERS) if len(ws) <= 4 else ""
+    if r and NO.match(r):
+        return "decline_offer"
+    if r and YES.match(r):
+        return "accept_offer"
+    return None
+
+
+OFFER_LEAD_MAX = 7
+_ACCEPT_LEAD = {"yes", "yeah", "yep", "yup", "sure", "okay", "ok", "alright", "ready"}
+_DECLINE_LEAD = ("not now", "no thanks", "no thank", "maybe later")
+_NEG = {"no", "not", "nope", "nah", "later", "don", "dont", "stop", "wait", "never"}
+_WH_ANY = {"what", "whats", "where", "wheres", "when", "why", "who", "which", "how"}
+
+
+def offer_lead(text: str) -> str | None:
+    """Round 8 rules: a short turn that opens with the reply to the pending offer and trails ear noise ("ready all day
+    ready olly", "alright okay oh it s good", "not now but a late one minute"): accept_offer / decline_offer. An
+    accept needs no negation and no question word anywhere in the turn; a decline needs a two-word decline up front
+    (a bare "no ..." inside chatter is not one)."""
+    raw = norm(text or "").split()
+    if not raw or len(raw) > OFFER_LEAD_MAX:
+        return None
+    ws = [w for w in raw if w not in OFFER_FILLERS]
+    if " ".join(ws[:2]) in _DECLINE_LEAD:
+        return "decline_offer"
+    if ws and ws[0] in _ACCEPT_LEAD and not (set(ws) & (_NEG | _WH_ANY)):
+        return "accept_offer"
+    return None
+
+
 def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     """(intent, arg) for a navigation turn in this screen, else None."""
     q = norm(text)
@@ -483,6 +563,8 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue
         if intent == "recenter" and ctx.screen != "cabin":
             continue
+        if intent in ("zoom_in", "zoom_out") and ctx.screen == "cabin":
+            continue                 # the cabin has no Moon zoom: its "zoom in / out" are the window views
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue
         if intent in CLOCK_INTENTS:
@@ -497,6 +579,9 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         return "accept_offer", ctx.offer
     if ctx.offer and NO.match(q):
         return "decline_offer", ctx.offer
+    reply = offer_reply(text) if ctx.offer else None
+    if reply:
+        return reply, ctx.offer
     if ctx.screen in ("patch", "lesson_done", "map") and YES.match(q):
         return "next", None
     m = PICK.match(q)
@@ -572,6 +657,10 @@ def nav_fuzzy(text: str, ctx: Ctx) -> tuple[str, str | None, int] | None:
             break
         if best:
             break
+    if best is None and ctx.offer:
+        lead = offer_lead(q)
+        if lead:
+            best = (lead, ctx.offer, 1)
     return best
 
 
@@ -585,9 +674,36 @@ VIDEO_CMDS = (
 )
 
 
-def video_command(text: str) -> str | None:
-    q = re.sub(r"^(?:okay |ok |please |capcom |hey )+|(?: please| now| capcom)+$", "", norm(text or "")).strip()
-    return next((name for name, rx in VIDEO_CMDS if rx.match(q)), None)
+VIDEO_MAX_WORDS = 8          # longer is narration leaking from the video, never a command
+VIDEO_LEAD = 3               # the control word must be among the first words ("...and then we pause" is narration)
+_V_CLOSE = {"close", "exit", "done", "enough", "quit", "finished"}
+_V_WORDS = (("video_stop", {"stop"}), ("video_pause", {"pause", "wait", "freeze", "hold", "hang"}),
+            ("video_skip", {"skip"}), ("video_play", {"play", "resume", "unpause", "continue", "watch"}))
+
+
+def video_command(text: str, fuzzy: bool = True) -> str | None:
+    """The video overlay's control in this turn. Exact phrases first; then (round 8 rules) the control word inside a
+    short turn, since the ear adds tails ("play the video with lena hargrove", "next pause at 12 p m"): close / exit /
+    done win (stop), a "stop ... for a sec" is a pause, pause beats skip, skip beats play. Narration-like turns (more
+    than VIDEO_MAX_WORDS words, or no control word among the first VIDEO_LEAD) are never commands."""
+    q = re.sub(r"^(?:okay |ok |please |capcom |hey |um |uh |oh )+|(?: please| now| capcom)+$", "", norm(text or "")).strip()
+    hit = next((name for name, rx in VIDEO_CMDS if rx.match(q)), None)
+    if hit or not fuzzy:
+        return hit
+    ws = q.split()
+    if not ws or len(ws) > VIDEO_MAX_WORDS:
+        return None
+    lead = set(ws[:VIDEO_LEAD])
+    if lead & _V_CLOSE or (lead & {"stop"} and {"close", "exit"} & set(ws)):
+        return "video_stop"
+    if "stop" in lead and set(ws) & {"sec", "second", "minute", "moment"}:
+        return "video_pause"
+    best = None
+    for name, keys in _V_WORDS:
+        pos = min((i for i, w in enumerate(ws[:VIDEO_LEAD]) if w in keys), default=None)
+        if pos is not None and best is None:
+            best = name
+    return best
 
 
 # Mission prep (learning v1, docs/LEARNING_DESIGN.md §11.4): a hands-on task away from the screen. The kid says done,
@@ -603,6 +719,42 @@ PREP_CMDS = (
     ("prep_help", re.compile(r"^(?:help|help me|i need help|what do i do|what do we do|how do (?:i|we) do this|"
                              r"say it again|say that again|again|repeat|what was it|what s next)$")),
 )
+
+
+# Round 8 rules: a missing thing for the hands-on task ("we don't have flour", "I can't find the flashlight",
+# "where's the flour") is a call for help, answered with a gentle "you can skip this one" (session.PREP_MISSING_LINE),
+# never a skip the kid did not ask for and never a mission order.
+PREP_MISSING = re.compile(r"^(?:(?:we|i) don t have (?:any |the |a |an )?\w+(?: \w+)?|(?:we|i) (?:can t|cannot|couldn t) find "
+                          r"(?:any |the |a |an |my |our )?\w+(?: \w+)?|(?:there s|there is) no \w+(?: \w+)?|"
+                          r"we re out of \w+|no \w+ here)$")
+PREP_WAIT_MORE = re.compile(r"^(?:not yet|not done yet|wait a (?:sec|second|minute)|give (?:me|us) (?:a|one) (?:sec|second|minute|"
+                            r"moment)|one (?:more )?(?:sec|second|minute|moment)|just a (?:sec|second|minute|moment)|"
+                            r"hold on a (?:sec|second|minute)|almost done|still doing it)$")
+
+
+PREP_MAX_WORDS = 10           # longer is room talk, never a prep control
+PREP_LEAD = 3                 # the control phrase starts among the first words ("give uh give me a minute")
+
+
+def prep_fuzzy(text: str) -> str | None:
+    """A prep control inside a short turn: the ear repeats ("i'm done i'm done i'm done") and adds tails ("give me a
+    minute to leave"). The longest span of >= 2 words that starts among the first PREP_LEAD words and is a control
+    on its own wins."""
+    ws = norm(text or "").split()
+    if not ws or len(ws) > PREP_MAX_WORDS:
+        return None
+    for i in range(min(PREP_LEAD, len(ws))):
+        for j in range(len(ws), i + 1, -1):
+            span = " ".join(ws[i:j])
+            cmd = prep_command(span) or ("prep_wait" if PREP_WAIT_MORE.match(span) else None)
+            if cmd:
+                return cmd
+    return None
+
+
+def prep_missing(text: str) -> bool:
+    q = re.sub(r"^(?:okay |ok |um |uh |so |oh |but |mom |hey )+|(?: please| now)+$", "", norm(text or "")).strip()
+    return bool(PREP_MISSING.match(q))
 
 
 def prep_command(text: str) -> str | None:
@@ -625,16 +777,23 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     # silent, no notice, and the client never shows it
     if ctx.unsafe or safety_.has_profanity(raw):
         return out("ignore", "safety")
-    if heard and is_filler(raw) and not _option_key(raw, ctx):
-        return out("ignore", "filler")
+    if heard and is_filler(raw) and not _option_key(raw, ctx) and not (ctx.offer and offer_reply(raw)) and \
+            not (ctx.screen in ("video", "prep") and (video_command(raw, fuzzy=False) or prep_command(raw))):
+        return out("ignore", "filler")     # ("stop it", "wait" are filler elsewhere, but controls on these screens)
     if ctx.screen == "video":            # the video overlay is up: pause / play / skip / stop, nothing else
-        cmd = video_command(raw)
+        cmd = video_command(raw, fuzzy=False)
+        if cmd is None and not (heard and not explicit and ctx.dd is not None and ctx.dd < ctx.dd_min):
+            cmd = video_command(raw)     # the word inside a short turn, only when Arc does not say "not for us"
         return out("navigate", "video", intent=cmd, arg=None) if cmd else out("ignore", "video")
     if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None
     if ctx.screen == "prep":             # Mission prep: done / skip / wait / help; a real question still works
-        cmd = prep_command(raw)
+        if prep_missing(raw):
+            return out("navigate", "prep", intent="prep_help", arg="missing")
+        cmd = prep_command(raw) or ("prep_wait" if PREP_WAIT_MORE.match(norm(raw)) else None)
+        if cmd is None and not (dd is not None and dd < ctx.dd_min):
+            cmd = prep_fuzzy(raw)        # the control inside a short turn, only when Arc does not say "not for us"
         if cmd:
             return out("navigate", "prep", intent=cmd, arg=None)
         if clear_question(raw, dd, act, ctx.dd_strong):
@@ -762,7 +921,17 @@ def exact_option(text: str, ctx: Ctx) -> bool:
     if ctx.step:
         from .academy.grade import step_options
         phrases += [w for _, say in step_options(ctx.step["accept"]) for w in say if w]
-    return any(norm(p) == q and (len(q.split()) >= 2 or len(q) >= 4) for p in phrases if p)
+    if any(norm(p) == q and (len(q.split()) >= 2 or len(q) >= 4) for p in phrases if p):
+        return True
+    # a keywords / command step has no options: a short turn (2-4 words) the step's grader passes on is its answer
+    # said as written (round 8 live run: "say again" on the radio step was rated not directed every time)
+    if ctx.step and ctx.step_type in ("keywords", "command") and 2 <= len(q.split()) <= 4:
+        try:
+            from .academy.grade import _grade
+            return bool(_grade(ctx.step, {"text": q})[0])
+        except Exception:  # noqa: BLE001
+            return False
+    return False
 
 
 def _names_option(text: str, ctx: Ctx) -> bool:
@@ -846,6 +1015,20 @@ class Spoken:
         """Lines playing at t0, ended < LAG_S before it, or started since."""
         t0 = self._t0(t0)
         return [ln["text"] for ln in self.lines if ln["text"] and (ln["end"] is None or ln["end"] >= t0 - self.LAG_S)]
+
+    def show(self, text: str):
+        """A line put on screen (the HUD, a task ack, a card) without being played: an echo reference too."""
+        if text:
+            now = self.clock()
+            self.shown_lines = (getattr(self, "shown_lines", []) + [(now, text)])[-20:]
+
+    def shown(self, t0: float | None = None, window: float = SHOWN_WINDOW_S) -> list[str]:
+        """Every line said or shown within `window` before t0 (near-verbatim echo references). Not our questions and
+        offers ("Ready for the next lesson?"): a kid repeats those as the answer, long after the 12 s echo window."""
+        t0 = self._t0(t0)
+        said = [ln["text"] for ln in self.lines if ln["text"] and (ln["end"] is None or t0 - ln["end"] <= window)]
+        lines = said + [t for ts, t in getattr(self, "shown_lines", []) if t0 - ts <= window]
+        return [t for t in lines if not t.rstrip().endswith("?")]
 
     def older(self, t0: float | None = None) -> list[str]:
         t0 = self._t0(t0)

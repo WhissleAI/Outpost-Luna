@@ -36,7 +36,9 @@ const POSES = {
   fist: { f: [0, 0, 0, 0], t: "tuck" },
   thumbs_up: { f: [0, 0, 0, 0], t: "up" },
   thumbs_down: { f: [0, 0, 0, 0], t: "down" },
-  pinch: { f: [1, 0, 0, 0], t: "pinch" },
+  pinch: { f: [1, 0, 0, 0], t: "pinch" },   // phase 2's two-hand pinch: a straight index, the thumb at its tip
+  // the one-hand zoom's pinch: the index part-bent to meet the thumb tip; the others curled (pinch1) or out (ok sign)
+  pinch1: { f: [0, 0, 0, 0], t: "meet" }, ok: { f: [0, 1, 1, 1], t: "meet" },
   relaxed: { f: [1, 1, 0, 0], t: "tuck" },   // a half-open resting hand: not a gesture
   two: { f: [1, 1, 0, 0], t: "tuck", v: true }, three: { f: [1, 1, 1, 0], t: "tuck", v: true }, four: { f: [1, 1, 1, 1], t: "tuck", v: true },
 };
@@ -52,10 +54,15 @@ export function rng(seed = 1) {
  * arm's length), side "right" | "left", rot (radians, + = clockwise on screen), noise (normalised), pitch (radians,
  * + = knuckles tipped toward the camera), twist (radians, + = the pinky side turned away; MediaPipe-style z).
  */
-export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot = 0, pitch = 0, twist = 0, aspect = 4 / 3, noise = 0, rand = Math.random, score = 0.95 } = {}) {
+export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot = 0, pitch = 0, twist = 0, gap = 0, aspect = 4 / 3, noise = 0, rand = Math.random, score = 0.95 } = {}) {
   const P = POSES[pose]; if (!P) throw new Error("unknown pose " + pose);
   let pts;
-  if (pose === "pinch") {
+  if (P.t === "meet") {
+    // gap: how far the thumb tip sits from the index tip (hand-lengths), to test the hysteresis
+    const tip = [-0.68, 1.42];
+    pts = [[0, 0], [-0.35, 0.25], [-0.55, 0.6], [-0.66, 1.0], [tip[0] - 0.02 - gap, tip[1] - 0.06], MCP.index, [-0.42, 1.28], [-0.56, 1.45], tip,
+      MCP.middle, ...finger("middle", !!P.f[1]), MCP.ring, ...finger("ring", !!P.f[2]), MCP.pinky, ...finger("pinky", !!P.f[3])];
+  } else if (pose === "pinch") {
     const idx = finger("index", true), tip = idx[2];
     pts = [[0, 0], [-0.35, 0.25], [-0.55, 0.5], [tip[0] - 0.15, tip[1] - 0.2], [tip[0] - 0.05, tip[1] - 0.08], MCP.index, ...idx,
       MCP.middle, ...finger("middle", false), MCP.ring, ...finger("ring", false), MCP.pinky, ...finger("pinky", false)];
@@ -141,6 +148,14 @@ export function sequences() {
     // ----- the fist as a joystick: grab, lean / move one way and hold, open the hand (8 directions) -----
     ...Object.fromEntries(Object.entries(FIST_DIRS).map(([d, v]) => [`fist_spin_${d}`, { expect: ["grab_start", "grab_move", "grab_end"],
       note: `fist grabs, leans ${d.replace("_", "-")} and holds, then the hand opens`, dir: v, frames: fistSpin(v, R, N) }])),
+    // the owner's 0.1.2 problem: the same spins with the wrist rolling ±0.5 rad (twist) as the fist leans: never a zoom
+    ...Object.fromEntries(Object.entries(FIST_DIRS).map(([d, v], i) => [`fist_spin_roll_${d}`, { expect: ["grab_start", "grab_move", "grab_end"],
+      note: `fist leans ${d.replace("_", "-")} with the wrist rolled ${i % 2 ? "-" : "+"}0.5 rad: it turns, never zooms`, dir: v,
+      frames: fistSpin(v, R, N, { twist: i % 2 ? -0.5 : 0.5 }) }])),
+    // the one-hand zoom: pinch, hold still, slide up (closer) or down (farther), then open the hand
+    pinch_slide_up: { expect: ["pinch_start", "pinch_move", "pinch_end"], note: "pinch, slide up 0.8 hand-lengths: zoom in", frames: pinchSlide(-0.8, R, N) },
+    pinch_slide_down: { expect: ["pinch_start", "pinch_move", "pinch_end"], note: "pinch, slide down 0.8 hand-lengths: zoom out", frames: pinchSlide(0.8, R, N) },
+    pinch_hold: { expect: ["pinch_start", "pinch_move", "pinch_end"], note: "a still pinch (the calibration's 'Pinch your fingers')", frames: pinchSlide(0, R, N, { holdMs: 600 }) },
     other_face_bigger_later: { expect: [], note: "head events only; a second, smaller face never drives the view",
       frames: seq(600, () => ({ faces: [face({ w: 0.2 }), face({ cx: 0.85, w: 0.08, yaw: 0.8 })] })) },
   };
@@ -149,8 +164,15 @@ export function sequences() {
 /** The 8 stick directions: [x, y], x > 0 = the kid's right, y > 0 = down. */
 export const FIST_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1], up_left: [-0.71, -0.71], up_right: [0.71, -0.71], down_left: [-0.71, 0.71], down_right: [0.71, 0.71] };
 /** A fist that grabs at (0.5, 0.62), moves 0.75 hand-lengths and leans (roll / pitch) towards v, holds, then opens. */
-export function fistSpin(v, R = rng(11), N = 0.003, { holdMs = 900, s = 0.12, aspect = 4 / 3 } = {}) {
-  const at = k => ({ cx: 0.5 + v[0] * 0.75 * s / aspect * k, cy: 0.62 + v[1] * 0.75 * s * k, rot: v[0] * 0.3 * k, pitch: -v[1] * 0.3 * k });
+export function fistSpin(v, R = rng(11), N = 0.003, { holdMs = 900, s = 0.12, aspect = 4 / 3, twist = 0 } = {}) {
+  // twist: the wrist roll (doorknob) a kid adds while leaning, in radians, ramped in with the lean (owner's 0.1.2 report)
+  const at = k => ({ cx: 0.5 + v[0] * 0.75 * s / aspect * k, cy: 0.62 + v[1] * 0.75 * s * k, rot: v[0] * 0.3 * k, pitch: -v[1] * 0.3 * k, twist: twist * k });
   const f = (pose, k) => ({ hands: [hand(pose, { ...at(k), s, noise: N, rand: R })] });
   return chain(seq(450, () => f("fist", 0)), seq(300, (i, t, k) => f("fist", ease(k))), seq(holdMs, () => f("fist", 1)), seq(350, () => f("palm", 1)));
+}
+
+/** A pinch that engages at (0.5, 0.6), slides `dy` hand-lengths (− = up = closer), holds, then opens into a palm. */
+export function pinchSlide(dy, R = rng(13), N = 0.003, { holdMs = 900, s = 0.12, pose = "pinch1" } = {}) {
+  const f = (p, k) => ({ hands: [hand(p, { cx: 0.5, cy: 0.6 + dy * s * k, s, noise: N, rand: R })] });
+  return chain(seq(450, () => f(pose, 0)), seq(300, (i, t, k) => f(pose, ease(k))), seq(holdMs, () => f(pose, 1)), seq(350, () => f("palm", 1)));
 }

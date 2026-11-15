@@ -100,7 +100,7 @@ active in the Library and on every lesson step whose answer is a tap on the Moon
 |---|---|
 | <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> | Hops to the nearest named place that way on screen, within about 50° of the arrow (else about 75°), and within the neighbourhood (30 % of the stage's short side). The globe flies there, keeping its zoom; the place is ringed and named under the reticle, and is announced. Hardware markers count in the Library when the Hardware layer is on. With no place near that way, the arrow **leaves the Moon** to the nearest control (the Library toolbar, the lesson card). Shift+arrows bring far places near. |
 | <kbd>Shift</kbd>+arrows / right stick | Turns the Moon freely (about 7° a press), for the terminator, or to find the far side. |
-| <kbd>+</kbd> <kbd>−</kbd> | Zoom. |
+| <kbd>+</kbd> <kbd>−</kbd> | Zoom, on any screen showing the Moon: held, at the camera pinch's rate; a quick tap is one eased step (docs/GESTURES.md §Zoom). |
 | <kbd>Enter</kbd> / Space tap / A | Picks what is under the ring: the hopped place (`globe.tap`, or `tapArtifact` for hardware), else the point at the centre of the view. It is graded exactly like a tap. After three misses CAPCOM shows the answer, so a Moon step is never a dead end. |
 
 The **map pins** of the course map are real buttons. The arrows move between them by their screen position (that is,
@@ -223,7 +223,8 @@ still work.
 | | Another site | "new site" | — | arrows to Another site, Enter | Another site |
 | | Close | "go back" | — | Esc, Backspace | × |
 | **Library** | Pick a place | "where did Apollo 11 land?" | point at the Moon | Moon reticle: arrows hop, Enter | tap the Moon or a marker |
-| | Turn the Moon | "show me the far side" | fist and lean (spin; twist zooms) | Shift+arrows, right stick | drag, Near / Far side |
+| | Turn the Moon | "show me the far side" | fist and lean (spin) | Shift+arrows, right stick | drag, Near / Far side |
+| | Zoom the Moon | "zoom in", "closer", "zoom out", "farther" | pinch and slide up / down | + / −, RT / LT | scroll / pinch |
 | | Tour, next / previous stop | "next" | swipe | Enter on Tour, N / P | Tour, Next |
 | | Close the card | — | — | Esc | × |
 | | Hear the crew | "play it" | point | arrows to Hear the crew, Enter | Hear the crew |
