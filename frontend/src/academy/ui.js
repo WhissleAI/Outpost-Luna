@@ -13,7 +13,9 @@ import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP, VIDEO, PREP, EXPLORER } from "../story.js";
+import { videoState, playVideo, playable } from "../video_shim.js";   // NASA video (feat/media-v1 player); never blocks
+import { missionsFlown, unlocked, isExplorer, coreLessons } from "../explorer.js";   // explorer lessons open after missions
 import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
 
@@ -44,8 +46,41 @@ const LESSON_PLACE = {
 const ORDERS = [["heater", "Heaters up", "more power to the heaters"], ["shield", "Shields up", "more power to the shields"],
   ["shelter", "Into the shelter", "everyone into the shelter"], ["leave", "Leave the shelter", "leave the shelter"], ["rover", "Rover: get ice", "send the rover for ice"]];
 
-/** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done} */
+/** Words that take a video step's Watch / Skip (a voice turn never just "passes" it: Watch opens the player). */
+const WATCH_WORDS = /\b(watch|play|show me|yes|yeah|ok|okay|sure)\b/;
+const SKIP_WORDS = /\b(skip|no|nope|not now|next|later)\b/;
+/** A video step (course.json {type: "video", media, say, reveal}): the predict line is the prompt; one glowing Watch
+ *  button (or, with no video now, one "Show me" button) and a quiet Skip. Any of them answers the step, so the server
+ *  says the reveal and the lesson goes on: offline and Skip never block. */
+export const videoStep = {
+  html: st => `<div class="a-video" data-media="${esc(st.media)}">
+      <button type="button" class="btn-primary a-watch" data-intent="yes" hidden>${icon("play", { size: 18 })}<span>${esc(VIDEO.watch(st.media))}</span></button>
+      <button type="button" class="btn-quiet a-vskip" data-intent="no">${esc(VIDEO.skip)}</button>
+      <p class="a-vnote" role="status" hidden></p></div>`,
+  wire(el, ctx) {
+    const st = ctx.L.steps[ctx.i], box = el.querySelector(".a-video"); if (!box) return;
+    const watch = box.querySelector(".a-watch"), skip = box.querySelector(".a-vskip"), note = box.querySelector(".a-vnote");
+    skip.onclick = () => ctx.answer({ choice: "skip" }, skip);
+    watch.onclick = async () => {
+      if (ctx.stop) ctx.stop();
+      watch.disabled = true;
+      const r = await playVideo(st.media, { context: { lesson: ctx.L.id, step: ctx.i } });
+      watch.disabled = false;
+      ctx.answer({ choice: r.watched ? "watched" : "skip" }, watch);
+    };
+    videoState(st.media).then(state => {
+      if (!box.isConnected) return;
+      if (playable(state)) { watch.hidden = false; return; }
+      // offline / no player: the one button shows the answer (the reveal), and says why there's no video
+      skip.className = "btn-primary a-vskip"; skip.textContent = VIDEO.answer;
+      note.textContent = state === "offline" ? VIDEO.offline : VIDEO.missing; note.hidden = false;
+    });
+  },
+};
+
+/** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done, stop} */
 export const STEP_RENDERERS = {
+  video: videoStep,
   choice: {
     html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${"ABCD"[k]}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-choice").forEach(b => b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)),
@@ -87,16 +122,21 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
+    lessons: () => lessons(),  // the course lessons (mission_learning.js: which explorer lesson a mission unlocked)
     /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
     badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
   };
 
   const lessons = () => (course ? course.lessons : []);
-  /** "Lesson n of 6": the check ride is not a lesson (it shows as "Check ride"); patches still count n/7. */
-  const lessonNo = l => { const ls = lessons().filter(x => !x.ride); return { n: ls.indexOf(l) + 1, of: ls.length }; };
+  /** The step that carries the lesson's crew-audio hook: the first one that isn't a video. */
+  const hookAt = l => Math.max(0, l.steps.findIndex(x => (x.accept || {}).type !== "video"));
+  /** "Lesson n of 6" counts core lessons; the check ride shows "Check ride", an explorer lesson "Explorer". */
+  // core lessons only: explorer lessons and the check ride aren't numbered (the patch total still counts every lesson)
+  const lessonNo = l => { const ls = coreLessons(lessons()); return { n: ls.indexOf(l) + 1, of: ls.length }; };
   const has = id => prog.badges.includes(id);
-  const nextLesson = () => lessons().find(l => !has(l.badge.id)) || null;
+  const open = l => unlocked(l, missionsFlown(callSign.get()));
+  const nextLesson = () => lessons().find(l => !has(l.badge.id) && open(l)) || null;
   const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
   /** Panel layout for this view. The Moon is always the backdrop: home and map are overlays on it, lesson / patch /
    *  ride are glass cards. The route pins live only on the map; the place dots only on steps that ask for a tap. */
@@ -124,6 +164,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       }
     }
     if (!ui.active) return;
+    try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().length; } catch (e) { /* tests */ }
     if (resume()) return;
     showMap();
   }
@@ -171,7 +212,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <p class="h-err" id="aCsErr" role="status" hidden></p>
           <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.begin)}${icon("chevron-right")}</button>
         </form>
-        <p class="h-credit">${esc(CREDIT)}</p>
+        <p class="h-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>
       </div>`;
     const input = panel.querySelector("#aCsIn");
     const err = panel.querySelector("#aCsErr");
@@ -228,8 +269,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const b = document.createElement("button"); b.type = "button";
       b.className = `pin a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${sel && sel.id === l.id ? " is-sel" : ""}`;
       b.dataset.l = l.id;
-      const no = l.ride ? "" : String(lessonNo(l).n);
-      b.setAttribute("aria-label", `${no ? no + ". " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : ""}. ${at.name}`);
+      const no = l.ride || isExplorer(l) ? "" : String(lessonNo(l).n);
+      if (!open(l)) b.classList.add("is-locked");
+      b.setAttribute("aria-label", `${no ? no + ". " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, ${EXPLORER.locked(l.unlock_after_missions)}` : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label">${no ? `<b>${no}</b>` : ""}${esc(l.title)}</span>`;
       b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
       return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next };
@@ -242,9 +284,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <div class="mp-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2></div>
           <button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button></div>`
       : sel ? `<div class="mp-card"><span class="mp-patch">${patch(sel.id, { earned: selDone, size: 64 })}</span>
-          <div class="mp-copy"><p class="eyebrow">${esc(sel === nx ? UI.nextUp : sel.ride ? UI.ride : UI.lesson(lessonNo(sel).n, lessonNo(sel).of))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
-            <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(LESSON_BLURB[sel.id] || sel.brief)}</p></div>
-          <button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button></div>` : "";
+          <div class="mp-copy"><p class="eyebrow">${esc(sel === nx ? UI.nextUp : sel.ride ? UI.ride : isExplorer(sel) ? EXPLORER.eyebrow : UI.lesson(lessonNo(sel).n, lessonNo(sel).of))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
+            <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(open(sel) ? (LESSON_BLURB[sel.id] || sel.brief) : EXPLORER.locked(sel.unlock_after_missions))}</p></div>
+          ${open(sel) ? `${sel.prep && !has(sel.badge.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}
+          <button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button>` : ""}</div>` : "";
     panel.innerHTML = `
       <header class="mp-top">
         <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
@@ -253,19 +296,22 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       </header>
       ${!prog.qualified && nx ? `<p class="mp-beat"><b>${esc(ARC_STEP(nx.ride ? 1 : 0))} · ${esc(nx.ride ? TRANSITION.toRide.where : TRANSITION.firstMap.where)}</b>${esc(nx.ride ? TRANSITION.toRide.line : n === 0 ? TRANSITION.firstMap.line : SCHOOL.progressLine(n, lessonNo(nx).of, nx.title))}</p>` : ""}
       ${card}
-      <p class="mp-credit">${esc(CREDIT)}</p>`;
+      <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);
+    const pm = panel.querySelector("#aPrepMap"); if (pm) pm.onclick = () => openLesson(pm.dataset.l, { prep: true });   // Mission prep, from the map
   }
   function leaveCatalog() { mapSel = null; delete document.body.dataset.aview; }
   /** The card's button for a lesson: Replay (done), Fly check ride, Continue (the next one, after the first patch),
    *  or Start lesson. One place, so "what do I do?" names the button the card really shows. */
-  function ctaFor(sel, nx, n) { return !sel ? "" : has(sel.badge.id) ? UI.replay2 : sel.ride ? SCHOOL.ride : sel === nx && n > 0 ? UI.cont : UI.start; }
+  function ctaFor(sel, nx, n) { return !sel || !open(sel) ? "" : has(sel.badge.id) ? UI.replay2 : sel.ride ? SCHOOL.ride : sel === nx && n > 0 ? UI.cont : UI.start; }
 
   // ---------- lesson ----------
-  async function openLesson(id) {
-    L = lessons().find(l => l.id === id); if (!L) return;
+  async function openLesson(id, { prep = false } = {}) {
+    const want = lessons().find(l => l.id === id); if (!want) return;
+    if (!open(want)) { mapSel = want.id; showMap(true); say(EXPLORER.lockedSay); return; }   // an explorer lesson, still locked
+    L = want;
     view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; nagged = false; stepKey = ""; leaveCatalog(); freshStep();
     try { dispatchEvent(new CustomEvent("outpost:lesson", { detail: { id } })); } catch (e) { /* tests */ }   // main.js closes a stale answer card
     endRide();
@@ -276,6 +322,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const f = L.globe.place && placeById(L.globe.place);
       if (f) globe.showFeature(f, { dist: L.globe.dist }); else if (L.globe.lat != null) globe.flyTo(L.globe.lat, L.globe.lon, L.globe.dist || 3.6);
     } else { const at = placeOf(L); globe.flyTo(at.lat, at.lon, 2.6); }
+    if (L.prep && !L.ride && (prep || !prepSeen(L.id))) { showPrep(); return; }   // Mission prep: before the lesson, never mid-lesson
+    beginLesson();
+  }
+  /** The lesson proper: its card, then hello + brief + the first question as one say. */
+  function beginLesson() {
+    view = "lesson";
     render();
     const beat = (LESSON_STORY[L.id] || {}).beat || "";
     // Three short lines, not one long one (the spoken limit is about 20 words a line): hello, the brief, the question.
@@ -283,6 +335,46 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // room chatter and our own echo in as "answers"; docs/HANDSFREE.md). Leaving the lesson stops it (stop()).
     say([CAPCOM.lessonHello(callSign.spoken("cadet"), beat), L.brief, L.steps[0].prompt, ...(intro ? [intro] : [])], { situation: "lesson_brief" });
     if (L.steps[0].alert) alertSound();
+  }
+
+  // ---------- Mission prep: a hands-on job before the lesson (course.json lesson.prep; docs/LEARNING_DESIGN.md) ----------
+  // Up to 3 spoken steps, then Done (voice, thumbs-up, or the button) or Skip. Shown by itself the first time the lesson
+  // opens; after that, from the lesson's card on the map (never mid-lesson). Either answer goes on to the lesson. The NASA
+  // activity it comes from is credited in course.json, not on screen.
+  const PREP_KEY = "outpost-prep-seen";
+  const prepSeen = id => { try { return JSON.parse(localStorage.getItem(PREP_KEY) || "[]").includes(id); } catch (e) { return true; } };
+  const markPrep = id => { try { const a = JSON.parse(localStorage.getItem(PREP_KEY) || "[]"); if (!a.includes(id)) a.push(id); localStorage.setItem(PREP_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } };
+  function showPrep() {
+    const p = L && L.prep; if (!p) return;
+    markPrep(L.id);
+    view = "prep"; setLayout("lesson");
+    panel.dataset.step = "prep";
+    panel.innerHTML = `
+      <header class="a-head m-head">
+        <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
+        <span class="eyebrow a-where">${esc(PREP.eyebrow)}</span>
+      </header>
+      <div class="a-body">
+        <div class="a-title"><span class="a-patch">${patch(L.id, { earned: has(L.badge.id), size: 44 })}</span><h2 class="m-title">${esc(p.title)}</h2></div>
+        <section class="a-step a-prep" aria-live="polite">
+          ${p.grown_up ? `<p class="a-prep-tag">${icon("astronaut", { size: 16 })}${esc(PREP.grownUp)}</p>` : ""}
+          <ol class="a-prep-steps">${p.steps.map(t => `<li>${esc(t)}</li>`).join("")}</ol>
+          <p class="a-how a-do">${esc(PREP.how)}</p>
+        </section>
+      </div>
+      <footer class="a-foot"><button type="button" class="btn-quiet" id="aPrepSkip" data-intent="no">${esc(PREP.skip)}</button>
+        <button type="button" class="btn-primary" id="aPrepDone" data-intent="yes">${icon("check", { size: 18 })}${esc(PREP.done)}</button></footer>`;
+    panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
+    panel.querySelector("#aPrepDone").onclick = () => prepDone(true);
+    panel.querySelector("#aPrepSkip").onclick = () => prepDone(false);
+    panel.querySelector("#aPrepDone").focus({ preventScroll: true });
+    say([PREP.intro, ...(p.grown_up ? [PREP.grownUpSay] : []), ...p.steps], { situation: "lesson_brief" });
+  }
+  function prepDone(done) {
+    if (view !== "prep" || !L) return;
+    stop();
+    say(done ? PREP.doneSay : PREP.skipSay, { situation: done ? "badge" : "lesson_brief" });
+    beginLesson();
   }
 
   /** The question as shown. A fill-the-blank prompt that quotes its own sentence shows only its lead-in ("Fill the
@@ -296,10 +388,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "lesson" || !L) return;
     const st = L.steps[i], acc = st.accept;
     if (stepKey !== L.id + ":" + i) { stepKey = L.id + ":" + i; stepAt = now(); }
-    const clip = st.clip || (i === 0 ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
+    const clip = st.clip || (i === hookAt(L) ? L.clip : null), clipAfter = !!(clip && clip.when === "after");
     setLayout(L.ride ? "ride" : "lesson");
     panel.dataset.step = acc.type;   // [keys] a Moon step gets the keyboard reticle (input/spatial.js)
-    const ctx = { L, i, answer, esc, clip, done: waitingNext };
+    const ctx = { L, i, answer, esc, clip, done: waitingNext, stop };
     // Registry entries are either {html(step, ctx), wire?(el, ctx)} or, for modules like academy/vocab.js,
     // a factory fn({step, acc, answer, esc, say, playCrew, captions}) → {html, bind(el)}.
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
@@ -316,7 +408,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.innerHTML = `
       <header class="a-head m-head">
         <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
-        <span class="eyebrow a-where">${esc(L.ride ? UI.ride : UI.lesson(lessonNo(L).n, lessonNo(L).of))} · ${esc(UI.step(i + 1, L.steps.length))}</span>
+        <span class="eyebrow a-where">${esc(L.ride ? UI.ride : isExplorer(L) ? EXPLORER.eyebrow : UI.lesson(lessonNo(L).n, lessonNo(L).of))} · ${esc(UI.step(i + 1, L.steps.length))}</span>
         <span class="a-steps" role="img" aria-label="${esc(UI.step(i + 1, L.steps.length))}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span>
       </header>
       <div class="a-body">
@@ -334,7 +426,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${intro && !waitingNext && gs.rung === 0 ? `<p class="a-intro"><b>New</b>${esc(intro.replace(/^New: /, ""))}</p>` : ""}
           ${how && !waitingNext ? `<p class="a-how a-do">${esc(how)}</p>` : ""}
           ${gs.phrase && !waitingNext ? `<p class="a-phrase">Say: &ldquo;${esc(gs.phrase)}&rdquo;</p>` : ""}
-          ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>` : ""}
+          ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>${clip.note ? `<p class="a-how a-clipnote">${esc(clip.note)}</p>` : ""}` : ""}
           <div class="a-input${waitingNext ? " is-locked" : ""}" id="aInput">${R.html(st, ctx)}</div>
           ${fb}
 
@@ -348,7 +440,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const rp = panel.querySelector("#aReplay"); if (rp) rp.onclick = () => say(L.brief, undefined, { repeat: true });
     const lib = panel.querySelector("#aLib"); if (lib) lib.onclick = () => openLibrary(L.library.place);
     const cb = panel.querySelector("#aClip");
-    if (cb) cb.onclick = () => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] });
+    if (cb) cb.onclick = () => Promise.resolve(clip.note ? say(clip.note) : null)   // frame the clip first ("She means the night side")
+      .then(() => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] }));
     if (!waitingNext && R.wire) R.wire(panel.querySelector("#aInput"), ctx);
     if (!waitingNext && !stepState.directed && st.globe && !GLOBE_STEP_TYPES.includes(acc.type)) runDirective(globe, st.globe);
     stepState.directed = true;
@@ -481,7 +574,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (r.badge) { award(r.badge); speakLine(r.say, r); setTimeout(() => showBadge(r.badge), 900); waitingNext = true; render(); showAnswerOnGlobe(reveal); return true; }
       waitingNext = true; render(); showAnswerOnGlobe(reveal);
       // a crew clip marked "after" plays once the success line is said (it's the reward)
-      const st = L.steps[i], c = st.clip || (i === 0 ? L.clip : null), at = { L, i };
+      const st = L.steps[i], c = st.clip || (i === hookAt(L) ? L.clip : null), at = { L, i };
       // QA-71 (the owner's double speech): the success line paraphrases the crew clip that follows it ("Roger. The far
       // side gets sunlight too." then an astronaut saying just that), so one tap said the same thing twice in two
       // voices. With an "after" clip CAPCOM only acknowledges ("Roger.") and the crew tell it; the full line is on the card.
@@ -594,6 +687,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
             : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}
           <button type="button" class="btn-quiet" id="aMap">${icon("map", { size: 16 })}${esc(UI.map)}</button>
         </div>
+        ${L.patch_video ? `<button type="button" class="btn-quiet a-patchvideo" id="aPatchVideo" hidden>${icon("play", { size: 16 })}${esc(L.patch_video.line)} <small>${esc(VIDEO.watch(L.patch_video.media).replace(/^Watch /, ""))}</small></button>` : ""}
       </div>`;
     // Hands-free: one short offer, spoken once with the patch line; "yes" / "next" takes it (screen().offer).
     const offer = commander ? OFFER.mission : nx ? (nx.ride ? OFFER.ride : OFFER.nextLesson) : "";
@@ -606,6 +700,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
     (g || n || panel.querySelector("#aMap")).focus({ preventScroll: true });
+    const pv = panel.querySelector("#aPatchVideo"), pvm = L.patch_video && L.patch_video.media;
+    if (pv) videoState(pvm).then(st => { if (!pv.isConnected || !playable(st)) return; pv.hidden = false; pv.onclick = () => { stop(); playVideo(pvm, { context: { lesson: L.id, at: "patch" } }); }; });
   }
 
   // ---------- hands-free (the session's router decides; these run what it decided) ----------
@@ -615,6 +711,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") return { screen: "callsign" };
     if (view === "map") { const nx = nextLesson(); return { screen: "map", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
     if (view === "badge") { const nx = nextLesson(); return { screen: "patch", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
+    if (view === "prep" && L) return { screen: "lesson", step_type: "prep", step_options: [PREP.done.replace("!", ""), PREP.skip], offer: "prep" };
     if (view !== "lesson" || !L) return { screen: "map" };
     if (waitingNext) return { screen: "lesson_done", offer: "next_step" };
     const acc = L.steps[i].accept;
@@ -627,6 +724,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") return false;
     const nx = nextLesson();
     if (intent === "lesson") { if (lessons().some(l => l.id === arg)) { stop(); openLesson(arg); return true; } return false; }
+    if (view === "prep") {   // Mission prep: yes / next / a thumbs-up is Done; no is Skip
+      if (["next", "start", "accept_offer", "yes"].includes(intent)) { prepDone(true); return true; }
+      if (["decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
+    }
+    if (view === "lesson" && L && !waitingNext && L.steps[i].accept.type === "video") {   // a video step: next skips it
+      if (["next", "decline_offer", "no"].includes(intent)) { answer({ choice: "skip" }); return true; }
+      if (["accept_offer", "yes"].includes(intent)) { const w = panel.querySelector(".a-watch:not([hidden])"); if (w) w.click(); else answer({ choice: "skip" }); return true; }
+    }
     if (intent === "map" || (intent === "back" && view !== "map")) { stop(); showMap(); return true; }
     if (intent === "repeat_step" && view === "lesson" && L) { say(L.steps[i].prompt, undefined, { repeat: true }); return true; }
     if (["next", "start", "accept_offer"].includes(intent)) {
@@ -664,8 +769,19 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (NEXT_WORDS.test(t)) { const nx = nextLesson(); if (prog.qualified && (view === "badge" || !nx)) goMission(); else if (nx) openLesson(nx.id); return true; }
       return false;
     }
+    if (view === "prep") {   // "done", "finished", "yes" / "skip", "no", "not now"
+      if (/\b(done|did it|finished|all done|ready|yes|yeah|next)\b/.test(t)) { prepDone(true); return true; }
+      if (/\b(skip|no|nope|not now|later)\b/.test(t)) { prepDone(false); return true; }
+      say(PREP.ask); return true;
+    }
     if (view !== "lesson") return false;
     if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine(OFFER.nextStep); } return true; }
+    if (L.steps[i].accept.type === "video") {   // Watch opens the player; never a silent pass by voice
+      const w = panel.querySelector(".a-watch:not([hidden])");
+      if (SKIP_WORDS.test(t) || (!w && WATCH_WORDS.test(t))) { answer({ choice: "skip" }); return true; }
+      if (WATCH_WORDS.test(t) && w) { w.click(); return true; }
+      return true;   // anything else on a video step: not a try (the server would ignore it too)
+    }
     // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }

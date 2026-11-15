@@ -100,6 +100,8 @@ export const PATCHES = {
   power: { name: "Sun Tracker", badge: "sun", kind: "lesson", shape: "round", border: P.orange, field: P.navy, emblem: sunTracker },
   radiation: { name: "Storm Watcher", badge: "storm", kind: "lesson", shape: "shield", border: P.red, field: P.deep, emblem: stormWatcher },
   life: { name: "Ice Hunter", badge: "ice", kind: "lesson", shape: "round", border: P.ice, field: P.navy, emblem: iceHunter },
+  phases: { name: "Moon Watcher", badge: "watcher", kind: "lesson", shape: "round", border: P.sky, field: P.deep, emblem: moonWatcher },
+  gravity: { name: "Moonwalker", badge: "moonwalker", kind: "lesson", shape: "round", border: P.gold, field: P.navy, emblem: moonwalker },
   history: { name: "Historian", badge: "history", kind: "lesson", shape: "round", border: P.blue, field: P.moon, stitch: P.gold, emblem: historian },
   words: { name: "Word Explorer", badge: "words", kind: "lesson", shape: "round", border: P.sky, field: P.navy, emblem: wordExplorer },
   checkride: { name: "Mission Commander", badge: "commander", kind: "lesson", shape: "shield", border: P.gold, field: P.navy, emblem: commander },
@@ -107,6 +109,32 @@ export const PATCHES = {
   outpost_luna: { name: "Outpost Luna", kind: "mission", shape: "round", border: P.gold, field: P.deep, emblem: outpostLuna },
 };
 
+// Moon Watcher (phases and eclipses): a row of phases over a big Moon half in Earth's shadow
+function moonWatcher() {
+  return [
+    circle(80, 92, 34, P.moon),
+    crescent(80, 92, 34, 98, 92, 34, P.red, "d"),
+    circle(70, 82, 6, P.moondk, "d"), circle(88, 104, 7, P.moondk, "d"),
+    circle(36, 46, 8, P.moon), crescent(58, 40, 8, 62, 38, 7, P.moon), circle(80, 36, 8, P.moon),
+    crescent(102, 40, 8, 98, 38, 7, P.moon), circle(124, 46, 8, P.moon),
+    pathEl("M36 38A8 8 0 0 0 36 54Z", P.deep, "d"), pathEl("M124 38A8 8 0 0 1 124 54Z", P.deep, "d"),
+    sparkle(44, 118, 5, P.white), sparkle(122, 120, 4.5, P.white),
+  ];
+}
+// Moonwalker (gravity and dust): a boot print in the dust, a falling feather and a hammer side by side
+function moonwalker(shape) {
+  return [
+    ground(shape, 108, 6, P.moondk),
+    pathEl("M66 112c-6 0-9 5-9 10s3 9 8 9 8-4 8-9-2-10-7-10Z", P.foot, "d"),
+    line("M60 117H70M59 122H71M60 127H70", P.moondk, 2, "d"),
+    pathEl("M90 116c-5 0-7 4-7 8s2 7 6 7 6-3 6-7-1-8-5-8Z", P.foot, "d"),
+    line("M52 40V96", P.white, 2, "e", { "stroke-dasharray": "2 5" }), line("M108 40V96", P.white, 2, "e", { "stroke-dasharray": "2 5" }),
+    pathEl("M52 50c10 6 12 22 0 36c-12-14-10-30 0-36Z", P.white),
+    line("M52 52V92", P.paper, 2.5),
+    pathEl("M96 62H120V74H96Z", P.moon), line("M108 74V96", P.gold, 6),
+    sparkle(130, 40, 5, P.white), sparkle(32, 70, 4, P.white),
+  ];
+}
 function moonScout(s) {
   const tilt = { transform: "rotate(-18 80 84)" };
   return [

@@ -109,7 +109,7 @@ def test_storm_prep_from_a_warning_and_its_steps_tick_off():
     while not m.over and sim._warning(m) is None:
         sim.step(m, 1)
     t = task(m)
-    assert t["kind"] == "storm_prep" and t["lesson"]["n"] == 5 and t["time_left_h"] > 0
+    assert t["kind"] == "storm_prep" and t["lesson"]["n"] == 5 and t["time_left_h"] > 0   # radiation, core lesson 5
     r = sim.apply_command(m, {"type": "shelter", "on": True})      # by voice / tap: the same order
     assert r["ack"] == "Crew sheltered. Good."
     assert task(m) is None or task(m)["kind"] != "storm_prep"

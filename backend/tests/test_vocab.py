@@ -26,7 +26,7 @@ def test_space_words_are_woven_into_the_lessons():
     assert content.lesson("words") is None and "words" in content.course()["retired_badges"]
     vocab_lessons = {l["id"] for l in content.course()["lessons"]
                      if any(s["accept"]["type"].startswith("vocab_") for s in l["steps"])}
-    assert {"history", "life"} <= vocab_lessons
+    assert {"history", "gravity"} <= vocab_lessons
     assert content.course()["lessons"][-1]["id"] == "checkride"      # the check ride stays last
 
 

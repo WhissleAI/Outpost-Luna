@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.academy.grade import compare_data  # noqa: E402  (QA-28: compare lines quote the numbers the cards show)
+from app.academy.content import VIDEO_OPTIONS  # noqa: E402  (a video step's Watch / Skip)
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "academy" / "course.json"
 C = "learning/concepts.json"
@@ -56,16 +57,32 @@ def clip(clip_id, t0, t1, who, when="before"):
     return {"clip_id": clip_id, "t0": t0, "t1": t1, "who": who, "when": when}
 
 
+def video(media, say, reveal):
+    """A NASA video beat (frontend contract: {type: video, media, say, reveal}): CAPCOM asks for a guess (`say`), the
+    kid watches (or skips, or is offline), then CAPCOM says the one-line `reveal`. It never blocks: every answer passes.
+    The rest (prompt, accept, hint, success, fail) lets the step machinery treat it like any other step."""
+    return {"type": "video", "media": media, "say": say, "reveal": reveal, "prompt": say,
+            "accept": {"type": "video", "media": media, "options": VIDEO_OPTIONS},
+            "hint": "Tap Watch, or tap Skip.", "success": reveal, "fail": "Tap Watch, or Skip."}
+
+
+def prep(id_, title, steps, source, grown_up=False):
+    """Mission prep: an optional hands-on job before the lesson, adapted from a NASA activity (credited here, in data,
+    never on screen). 3 spoken steps or fewer; the last ends "Tell me when it's ready." (never the trigger word: the
+    open mic would hear "done" back). The kid answers Done by voice, a thumbs-up or the button."""
+    return {"id": id_, "title": title, "steps": steps, "grown_up": grown_up, "source": source}
+
+
 LESSONS = [
     # ---------------------------------------------------------------- 1. the Moon: both sides, Earth in the sky
     {"id": "moon", "title": "Know your Moon", "minutes": 4, "place": "tranquillitatis",
      "badge": {"id": "scout", "name": "Moon Scout", "glyph": "S"},
      "globe": {"lat": 0, "lon": 0, "dist": 3.6},
      "clip": clip("hansen", 0.0, 24.89, "Jeremy Hansen"),
-     "brief": "The Moon always shows Earth the same face. Let's explore both sides.",
+     "brief": "Let's explore the Moon, from its big dark plains to the south pole.",
      "facts": [
          fact("Artemis II flew its crew around the Moon in April 2026. NASA plans the first south-pole landing for "
-              "Artemis IV, targeted for 2028.", C, S_CONCEPT["artemis_timeline"]),
+              "Artemis IV, in early 2028.", C, S_CONCEPT["artemis_timeline"]),
          fact("NASA's 2024 list of 9 possible landing regions near the south pole includes Malapert Massif and "
               "de Gerlache Rim 2.", "mission/sites.json", src("NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
               "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/")),
@@ -73,14 +90,22 @@ LESSONS = [
               S_CONCEPT["tidal_locking"]),
          fact("Shackleton is a crater about 21 km wide and about 4 km deep. The south pole is on its edge.",
               "facts.json", IAU_SHACK),
-         fact("Craters that never see the Sun are some of the coldest places measured, near -235 C.", C,
+         fact("Craters that never see the Sun are some of the coldest spots measured: below -246 C.", C,
               S_CONCEPT["psr_cold"]),
+         fact("NASA's Moon Base page gives about -203 C inside shadowed craters.", C,
+              src("NASA: About the Moon Base", "https://www.nasa.gov/reference/moonbase-about/")),
      ],
+     "prep": prep("crater_drop", "Crater drop",
+                  ["Pour flour in a pan. Sprinkle cocoa powder on top.",
+                   "Drop a marble from up high. See the splash? That's ejecta.",
+                   "Look at your crater and its rays. Tell me when it's ready."],
+                  src("NASA JPL Education: Make a Moon Crater",
+                      "https://www.jpl.nasa.gov/edu/resources/project/make-a-moon-crater/"), grown_up=True),
      "steps": [
-         step("Apollo 11 landed on a dark patch, the Sea of Tranquility. Find it.",
+         step("Apollo 11 landed on a dark plain of old lava, called a mare. Find the Sea of Tranquility.",
               {"type": "intent", "place": "tranquillitatis"},
               "Copy. The Sea of Tranquility, July 1969.", "Not there.",
-              "It's the dark patch right of the middle.",
+              "It's the dark plain right of the middle.",
               do="Tap it on the Moon, or say its name",
               globe={"do": "side", "side": "near"}),
          step("Standing there, could you see Earth in the sky?",
@@ -88,17 +113,11 @@ LESSONS = [
               "Yes. Earth hangs in the same spot there.", "Not quite.",
               "This side of the Moon always faces Earth.",
               show=["tranquillitatis"], globe={"do": "earth", "place": "tranquillitatis"}),
-         step("Do people on Earth ever see the Moon's far side?",
-              {"type": "predict", "answer": "never",
-               "options": [opt("never", "Never", "never", "no"),
-                           opt("full", "Only at full Moon", "full moon", "full"),
-                           opt("month", "Once a month", "once a month", "month")]},
-              "Right. The Moon turns once per trip around Earth.", "Pick one, then we check.",
-              "Guess first. Then we'll see.",
-              reveal="Never. The Moon turns once per trip around Earth."),
+         video("far_side_view", "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
+               "Yes. Far side, not dark side."),
          step("Turn the Moon to show the far side.",
               {"type": "globe_side", "want": "far"},
-              "Roger. The far side gets sunlight too.", "Not yet. Keep turning.",
+              "Roger. That's the far side.", "Not yet. Keep turning.",
               "Tap Far, or drag the Moon around.",
               clip=clip("orientale-basin-ejecta-extent", 1.12, 22.42, "an Artemis II astronaut", "after")),
          step("Now find the south pole. It's inside the gold ring.",
@@ -107,7 +126,104 @@ LESSONS = [
               "Tap inside the gold ring.",
               ring=["shackleton"], globe={"do": "pole", "pole": "south"}),
      ]},
-    # ---------------------------------------------------------------- 2. Apollo to Artemis (near-side history)
+    # ---------------------------------------------------------------- 2. phases and eclipses (NGSS 1-ESS1-1, MS-ESS1-1)
+    {"id": "phases", "title": "Phases and eclipses", "minutes": 5, "place": "imbrium",
+     "badge": {"id": "watcher", "name": "Moon Watcher", "glyph": "M"},
+     "globe": {"lat": 0, "lon": 0, "dist": 3.6},
+     "ngss": ["1-ESS1-1", "MS-ESS1-1"],
+     "clip": clip("moon-during-eclipse-rare", 65.84, 83.33, "the Artemis II crew"),
+     "brief": "The Moon seems to change shape. Let's find out why, then catch an eclipse.",
+     "facts": [
+         fact("The Sun always lights half of the Moon. As it goes around Earth, we see more or less of that half.",
+              C, S_CONCEPT["moon_phases"]),
+         fact("Sunrise to sunrise on the Moon takes about 29.5 Earth days, so the phases repeat about every month.", C,
+              S_CONCEPT["lunar_day"]),
+         fact("In a lunar eclipse, Earth's shadow covers the Moon. It can look reddish.", C,
+              S_CONCEPT["lunar_eclipse"]),
+         fact("Behind the Moon, the Artemis II crew watched the Moon cover the Sun, with the Sun's glowing corona "
+              "around it.", "index/clips.json",
+              src("NASA Artemis II audio: Moon During Eclipse",
+                  "https://www.nasa.gov/wp-content/uploads/2026/10/art002a000053-part-1-clipped.mp3")),
+     ],
+     "prep": prep("oreo_phases", "Oreo phases",
+                  ["Grab some sandwich cookies. Twist each one open.",
+                   "Scrape off filling to make a half Moon.",
+                   "Now make a thin crescent and a full Moon. Tell me when it's ready."],
+                  src("NASA Space Place: Make Oreo Moon Phases", "https://spaceplace.nasa.gov/oreo-moon/en/")),
+     "steps": [
+         step("Why does the Moon seem to change shape each month?",
+              {"type": "predict", "answer": "sunny",
+               "options": [opt("shadow", "Earth's shadow covers it", "shadow", "earth's shadow"),
+                           opt("sunny", "We see more or less of its sunny side", "sunny", "sunny side", "more or less"),
+                           opt("shrink", "It really shrinks", "shrinks", "shrink", "smaller")]},
+              "Right. Half the Moon is always sunny.", "Pick one, then we check.",
+              "Guess first. Then we'll watch.",
+              reveal="We see more or less of its sunny half. It's not Earth's shadow."),
+         video("phases_loop", "Here's a whole month in 15 seconds. Watch the bright part grow, then shrink.",
+               "Half is always lit. We see a slice."),
+         step("The bright part's edge moves every night. Tap where day meets night.",
+              {"type": "terminator", "sun_lon": 45, "tol_deg": 12},
+              "That's the terminator. It shapes the phase.", "Not quite. Find the shadow's edge.",
+              "Where the bright part turns dark.",
+              globe={"do": "sun", "sun_lon": 45}),
+         step("Artemis two flew behind the Moon. What did the Moon block for the crew?",
+              {"type": "predict", "answer": "sun",
+               "options": [opt("sun", "The Sun", "sun"), opt("earth", "Earth", "earth"),
+                           opt("stars", "The stars", "stars")]},
+              "Right. The Moon hid the Sun.", "Pick one, then we listen.",
+              "Guess first. Then hear the crew.",
+              reveal="The Sun. The Moon hid it: a solar eclipse.",
+              clip=clip("observing-pulsating-streamers-suns", 27.49, 50.78, "an Artemis II astronaut", "after")),
+         video("lunar_eclipse", "In a lunar eclipse, what covers the Moon? Guess, then watch.",
+               "Yes, Earth's shadow. Phases happen without it."),
+     ]},
+    # ---------------------------------------------------------------- 3. gravity and dust (NGSS 5-PS2-1)
+    {"id": "gravity", "title": "Moon gravity and dust", "minutes": 5, "place": "apollo15_lm_falcon",
+     "badge": {"id": "moonwalker", "name": "Moonwalker", "glyph": "G"},
+     "globe": {"place": "apollo15_lm_falcon", "dist": 2.3},
+     "ngss": ["5-PS2-1"],
+     "clip": clip("ohm-crater-ray-systems", 290.0, 306.5, "an Artemis II astronaut"),
+     "brief": "Moon gravity and Moon dust both surprise people. Let's test them.",
+     "facts": [
+         fact("At the end of the last Apollo 15 moonwalk in 1971, Commander David Scott dropped a hammer and a "
+              "feather. They hit the ground together.", C, S_CONCEPT["feather_drop"]),
+         fact("Gravity on the Moon's surface is 0.165 of Earth's, about one sixth. So 30 kg feels like about 5 kg.",
+              C, S_CONCEPT["moon_gravity"]),
+         fact("Regolith is the Moon's dusty soil. Its tiny, sharp bits cling to everything.", C,
+              S_CONCEPT["regolith"]),
+     ],
+     "prep": prep("feather_coin", "Feather and coin",
+                  ["Crumple one paper into a ball. Keep one paper flat.",
+                   "Drop both from the same height. Which lands first?",
+                   "Air slows the flat one. The Moon has no air. Tell me when it's ready."],
+                  src("NSSDCA: The Apollo 15 Hammer-Feather Drop",
+                      "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html")),
+     "steps": [
+         step("On the Moon, drop a hammer and a feather together. Which lands first?",
+              {"type": "predict", "answer": "same",
+               "options": [opt("feather", "The feather", "feather"), opt("hammer", "The hammer", "hammer"),
+                           opt("same", "Both at once", "both", "same time", "together", "at once")]},
+              "Good guess. Let's see what Apollo 15 found.", "Pick one, then we watch.",
+              "Guess first. Then we'll watch.",
+              reveal="Good guess. Let's see what Apollo 15 found."),
+         video("hammer_feather", "Commander David Scott tried it on the Moon. Watch closely.",
+               "Together. No air slows the feather."),
+         step("Your backpack feels like 30 kilos here. How heavy on the Moon?",
+              {"type": "choice", "answer": "five",
+               "options": [opt("five", "Like 5 kilos", "five", "5"), opt("thirty", "Like 30 kilos", "thirty", "30"),
+                           opt("sixty", "Like 60 kilos", "sixty", "60")]},
+              "Right. About 5 kilos. One sixth.", "Not that one.",
+              "The Moon pulls about one sixth as hard.",
+              do="Tap an answer, or say it"),
+         video("lunar_dust", "Is Moon dust soft like flour, or sharp? Guess, then watch.",
+               "Sharp, like tiny glass. It clings to everything."),
+         step("Moon dust has a science name: regolith. Say it out loud: regolith!",
+              {"type": "vocab_say", "term": "regolith"},
+              "Yes! Regolith, the Moon's dusty soil.", "Say it again.",
+              "Say it slowly: reg, oh, lith.",
+              do="Say the word out loud"),
+     ]},
+    # ---------------------------------------------------------------- 4. Apollo to Artemis (near-side history)
     {"id": "history", "title": "Lessons from Apollo", "minutes": 5, "place": "surveyor3",
      "badge": {"id": "history", "name": "Historian", "glyph": "H"},
      "globe": {"place": "surveyor3", "dist": 2.3},
@@ -120,10 +236,14 @@ LESSONS = [
               src("NSSDCA Master Catalog: Surveyor 3", "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A")),
          fact("John Young and Charlie Duke drove the Apollo 16 rover 26.7 km across the Moon's highlands.",
               "artifacts.json", src("NSSDCA: Apollo Lunar Roving Vehicle", "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_lrv.html")),
-         fact("Artemis II passed Apollo 13's record of 248,655 miles from Earth on April 6, 2026.", C,
-              S_CONCEPT["apollo13_record"]),
-         fact("The Artemis II crew proposed the names Integrity and Carroll for two craters. They are not approved yet.",
-              C, S_CONCEPT["integrity_name"]),
+         fact("On April 6, 2026, Artemis II reached 252,756 miles from Earth, a new record for human spaceflight. It "
+              "passed Apollo 13's record of 248,655 miles.", C, S_CONCEPT["artemis2_record"]),
+         fact("Artemis III is a 2027 test flight in Earth orbit. Artemis IV, planned for early 2028, is to land two "
+              "astronauts near the south pole.", C, S_CONCEPT["artemis_timeline"]),
+         fact("NASA plans its Moon Base, humanity's first lunar outpost, near the lunar South Pole. Outpost Luna is a "
+              "pretend base.", C, S_CONCEPT["moon_base"]),
+         fact("The Artemis II crew proposed the names Integrity and Carroll for two craters. As of November 2026 the IAU "
+              "has not approved them.", C, S_CONCEPT["integrity_name"]),
      ],
      "steps": [
          step("Apollo 11 landed on a mare. What does mare mean?",
@@ -138,18 +258,18 @@ LESSONS = [
               "Correct. Scientists studied what the Moon did to it.", "Not that one.",
               "It took photos. What takes photos?",
               show=["surveyor3"], globe={"do": "fly", "place": "surveyor3"}),
-         step("Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?",
+         step("Apollo 13 went farther from Earth than anyone. Did Artemis two beat it?",
               {"type": "predict", "answer": "yes",
                "options": [opt("yes", "Yes, it went farther", "yes", "farther", "beat"),
                            opt("no", "No, Apollo 13 still holds it", "no", "still", "holds")]},
-              "Yes. Artemis II passed it on April 6, 2026.", "Pick one, then we listen.",
+              "Yes. Artemis two went over 250 thousand miles.", "Pick one, then we listen.",
               "Guess first. Then hear Houston.",
-              reveal="Artemis II passed it on April 6, 2026.",
+              reveal="It did: over 250 thousand miles, in April 2026.",
               clip=clip("apollo13-record", 0.48, 24.98, "Houston", "after")),
-         step("Artemis II's crew picked a crater name: Integrity. Tap Orientale, then Ohm.",
+         step("Artemis two's crew picked a crater name: Integrity. Tap Orientale Basin, then Ohm.",
               {"type": "route", "stops": ["orientale", "ohm"], "radius_deg": 10},
-              "Roger. Integrity sits halfway. Name not official yet.", "Not that one.",
-              "Orientale is the big bullseye. Ohm is above it.",
+              "Roger. Integrity sits halfway. Not official yet.", "Not that one.",
+              "Orientale Basin is the big bullseye. Ohm is above it.",
               do="Tap the glowing places in order: 1, then 2",
               show=["orientale", "ohm"], after_place="integrity",
               globe={"do": "side", "side": "far", "lon": -100},
@@ -217,7 +337,7 @@ LESSONS = [
      "badge": {"id": "sun", "name": "Sun Tracker", "glyph": "P"},
      "globe": {"lat": 0, "lon": 0, "dist": 3.4},
      "clip": clip("features-along-terminator", 47.33, 54.5, "Victor Glover"),
-     "brief": "Solar panels need sunlight. At the south pole, the Sun skims the horizon.",
+     "brief": "Solar panels need sunlight. Let's see how the Sun moves at the pole.",
      "facts": [
          fact("Day and night sweep around the Moon once every 29.5 Earth days.", C, S_CONCEPT["lunar_day"]),
          fact("At the pole the Sun never climbs more than about 1.5 degrees above a flat horizon.", C,
@@ -229,12 +349,12 @@ LESSONS = [
               "mission/ephemeris_malapert_massif.json", HORIZONS,
               calc={"kind": "longest_dark_h", "site": "malapert_massif"}),
      ],
+     "prep": prep("low_sun", "Low Sun at the pole",
+                  ["Put a ball on a chair. Put a lamp on the floor.",
+                   "Shine the lamp low across the ball. See the long shadows?",
+                   "That's sunlight at the south pole. Tell me when it's ready."],
+                  src("NASA SVS: Moon Essentials: Seasons", "https://svs.gsfc.nasa.gov/5229/"), grown_up=True),
      "steps": [
-         step("Tap the line where day meets night.",
-              {"type": "terminator", "sun_lon": 90, "tol_deg": 12},
-              "That's the terminator. It sweeps around monthly.", "Not quite. Find the shadow's edge.",
-              "Where the bright part turns dark.",
-              globe={"do": "sun", "sun_lon": 90}),
          step("At the south pole, how high does the Sun climb?",
               {"type": "predict", "answer": "low",
                "options": [opt("high", "High overhead", "high", "overhead"),
@@ -261,8 +381,7 @@ LESSONS = [
     {"id": "radiation", "title": "Radiation and storms", "minutes": 4,
      "place": {"name": "de Gerlache Rim", "lat": -88.71, "lon": -68.7},
      "badge": {"id": "storm", "name": "Storm Watcher", "glyph": "W"},
-     "clip": clip("observing-pulsating-streamers-suns", 0.0, 22.6, "an Artemis II astronaut"),
-     "brief": "The Sun sometimes throws out fast particles. On the Moon, nothing stops them.",
+     "brief": "The Sun sometimes throws out storms. Let's learn to keep a crew safe.",
      "facts": [
          fact("China's Chang'e 4 lander measured 1369 microsieverts a day on the Moon, about 2.6 times the cosmic-ray "
               "dose inside the ISS, 523 microsieverts a day.", "mission/radiation.json", ZHANG),
@@ -273,8 +392,16 @@ LESSONS = [
               C, S_CONCEPT["orion_shelter"]),
          fact("Game doses are doubled so storms matter in 10 days. The powered shields are pretend tech.", C,
               S_CONCEPT["game_rules"]),
+         fact("LRO has measured cosmic rays since 2009, with its CRaTER instrument.", C, S_CONCEPT["lro_crater"]),
      ],
+     "prep": prep("ray_shield", "Ray shield",
+                  ["Shine a flashlight through a book. Then through foil.",
+                   "Which blocks more light? Thick, heavy stuff shields best.",
+                   "Shields for radiation work a bit like that. Tell me when it's ready."],
+                  src("NASA STEM: Ray Shielding Activity", "https://www.nasa.gov/stem-content/ray-shielding-activity/")),
      "steps": [
+         video("moon_weather", "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
+               "Yes: space weather, fast particles from the Sun."),
          step("Earth has a magnetic shield and thick air. Does the Moon?",
               {"type": "predict", "answer": "no",
                "options": [opt("yes", "Yes, the Moon does too", "yes", "does"),
@@ -302,8 +429,9 @@ LESSONS = [
     {"id": "life", "title": "Air, water and ice", "minutes": 4, "place": "lcross_centaur_impact",
      "badge": {"id": "ice", "name": "Ice Hunter", "glyph": "I"},
      "globe": {"place": "lcross_centaur_impact", "dist": 2.4},
-     "clip": clip("impact-flashes-observing-moons", 0.56, 22.16, "Christina Koch"),
-     "brief": "Water is heavy to launch. Ice on the Moon could become water and air.",
+     "clip": {**clip("impact-flashes-observing-moons", 0.56, 22.16, "Christina Koch"),
+              "note": "She says dark side. She means the night side."},
+     "brief": "Water is heavy to launch. Let's look for some on the Moon.",
      "facts": [
          fact("In 2009 NASA crashed a Centaur rocket stage, about 2,300 kg, into Cabeus crater near the south pole.", C,
               S_CONCEPT["lcross"]),
@@ -311,7 +439,15 @@ LESSONS = [
          fact("Shackleton Rim is about 10 km from the middle of Shackleton crater; Malapert is about 130 km away.", C,
               S_CONCEPT["ice_distance"]),
      ],
+     "prep": prep("make_regolith", "Make regolith",
+                  ["Put a cracker in a bag. Crush it into crumbs.",
+                   "Touch the crumbs. Tiny bits stick to your fingers.",
+                   "Regolith, the Moon's dusty soil, clings like that. Tell me when it's ready."],
+                  src("NASA: Making Regolith (educator activity)",
+                      "https://www.nasa.gov/wp-content/uploads/2012/02/146860main_making_regolith_educator.pdf")),
      "steps": [
+         video("psr", "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
+               "Among the coldest spots measured. Ice hides there."),
          step("Why would NASA crash a rocket into a dark crater?",
               {"type": "predict", "answer": "dig",
                "options": [opt("dig", "To dig up what's buried", "dig", "buried", "ice", "water"),
@@ -335,12 +471,9 @@ LESSONS = [
               {"type": "command", "expect": {"type": "dispatch", "task": "collect_ice"}},
               "Copy. Rover rolling out for ice.", "Negative.",
               "The rover can dig up ice. Tap Rover: get ice."),
-         step("Fill the blank: \"Ice hides in the Moon's dusty soil, the ____.\"",
-              {"type": "vocab_fill", "term": "regolith", "sentence": "Ice hides in the Moon's dusty soil, the ____.",
-               "distractors": ["albedo", "ejecta"]},
-              "Right. Regolith, the Moon's dusty soil.", "Not that one.", "The word for Moon dust starts with r.",
-              do="Tap the missing word, or say it"),
-     ]},
+     ],
+     # at the patch: an optional "Ice home" video on the patch screen (never a step; the patch is already earned)
+     "patch_video": {"media": "water_extraction", "line": "How could crews get water out of icy dirt?"}},
     # ---------------------------------------------------------------- 7. check ride
     {"id": "checkride", "title": "Check ride", "minutes": 5,
      "place": {"name": "Shackleton Rim", "lat": -89.68, "lon": -166.0},
@@ -381,14 +514,27 @@ LESSONS = [
 ]
 
 
+# Map / course order (coordinator, 2026-11-14): the basics first, then the outpost systems, then Apollo, then the ride.
+# Owner decision (via the coordinator, 2026-11-14): 6 core lessons before the check ride; "Moon gravity and dust" and
+# "Lessons from Apollo" are explorer lessons, unlocked after missions (gravity after the 1st, Apollo after the 2nd).
+# The check ride stays the last stop; explorer lessons sit before it in the data but never block it.
+ORDER = ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]
+EXPLORER = {"gravity": 1, "history": 2}     # lesson id -> missions to fly before it unlocks
+
+
 def build() -> dict:
-    return {"_note": "Flight School v3 (docs/LEARNING_DESIGN.md §5): 6 lessons and a check ride, in map order (each "
+    return {"_note": "Flight School v4 (docs/LEARNING_DESIGN.md §11): 6 core lessons, the check ride, and 2 explorer "
+                     "lessons unlocked after missions (`track`, `unlock_after_missions`), in map order (each "
                      "lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a "
                      "{title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); "
                      "tests check every number in a fact appears in those files (or is recomputed, for `calc`). "
-                     "Steps accept voice or taps; app/academy/grade.py lists the accept types.",
+                     "Steps accept voice or taps; app/academy/grade.py lists the accept types. A `video` step "
+                     "(app/academy/content.py VIDEO_MEDIA) is predict -> watch -> reveal and never blocks; a lesson's "
+                     "optional `prep` is a hands-on Mission prep task with its NASA activity source.",
             "title": "Junior Astronaut Academy", "pass_badge": "commander", "retired_badges": ["words"],
-            "lessons": LESSONS}
+            "lessons": [{**l, "track": "explorer" if l["id"] in EXPLORER else "core",
+                         **({"unlock_after_missions": EXPLORER[l["id"]]} if l["id"] in EXPLORER else {})}
+                        for l in sorted(LESSONS, key=lambda l: ORDER.index(l["id"]))]}
 
 
 if __name__ == "__main__":

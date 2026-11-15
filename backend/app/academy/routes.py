@@ -92,6 +92,8 @@ async def academy_attempt(req: AttemptReq):
         ok = await similar(st, req.input.text)
     if not ok and text_only(req.input.model_dump(exclude_none=True)) and not plausible(st, req.input.text):
         return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
+    if not ok and st["accept"]["type"] == "video":
+        return _ignored(les["id"], req.step)          # a video step never counts a miss: only Watch / Skip move it on
     last = req.step == len(steps) - 1
     shown = not ok and reveal_due(req.misses + 1, req.step_s)
     if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed

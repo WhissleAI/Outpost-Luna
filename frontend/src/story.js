@@ -4,10 +4,14 @@
 //
 // Framing (keep it true; docs/ACCURACY_AUDIT.md #1): Artemis II flew its crew around the Moon in April 2026. Since
 // NASA's 2026-02-27 restructure, Artemis III (2027) is a crewed test flight in Earth orbit, with no landing. The first
-// crewed landing is planned for Artemis IV (2028), and NASA has not confirmed its site. No crew has landed at the
+// crewed landing is planned for Artemis IV (early 2028), near the south pole. NASA also plans a real Moon Base near the
+// south pole (nasa.gov/moon-base); Outpost Luna is a pretend one (PRETEND_BASE). No crew has landed at the
 // south pole. The kid trains at Flight School to help run Outpost Luna, a south-pole base for the crews who will come.
 
 export const CREDIT = "Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.";
+/** Beside CREDIT (home, map, About): NASA now has a real Moon Base plan near the south pole, so say plainly ours is not
+ *  it (docs/ACCURACY_AUDIT.md). The address is shown as text; About links it. */
+export const PRETEND_BASE = "Outpost Luna is a pretend outpost for learning. NASA's real Moon Base plans: nasa.gov/moon-base.";
 
 /** Honest sourcing line (About, Debrief). Never claim that everything comes from NASA (docs/COPY.md, Accuracy). */
 export const SOURCES_LINE = "Built on NASA open data, plus a few science papers. Some outpost tech is pretend, and we label it.";
@@ -189,22 +193,32 @@ export const CALLSIGN_COPY = {
 };
 
 // ---------- Academy (Flight School): a course catalog in tracks ----------
-/** Tracks group course.json lesson ids. A lesson id not listed here (e.g. a new vocabulary lesson) joins Foundations. */
+/** Tracks group course.json lesson ids (6 core lessons, the check ride, 2 explorer lessons;
+ *  frontend/tests/learning_v1.test.js keeps them in sync). A lesson id not listed here joins Foundations. */
 export const TRACKS = [
-  { id: "foundations", title: "Foundations", lessons: ["moon", "comms", "vocab", "words"] },
+  { id: "foundations", title: "Foundations", lessons: ["moon", "phases", "comms"] },
   { id: "systems", title: "Outpost systems", lessons: ["power", "radiation", "life"] },
-  { id: "field", title: "Field skills", lessons: ["rover", "history"] },
   { id: "qual", title: "Qualification", lessons: ["checkride"] },
+  { id: "explorer", title: "Explorer", lessons: ["gravity", "history"] },
 ];
+/** Explorer lessons (course.json track "explorer"): locked until the cadet has flown missions (explorer.js). */
+export const EXPLORER = {
+  eyebrow: "Explorer",
+  locked: n => (n > 1 ? "Unlocks after your second mission" : "Unlocks after your first mission"),
+  lockedSay: "That lesson opens after a mission. Fly one first.",
+  unlockedTitle: "New lesson unlocked",
+  open: "Open it",
+};
 /** One line per lesson for its catalog card (keyed by course.json id). 12 words or fewer. */
 export const LESSON_BLURB = {
   moon: "Near side, far side, and Shackleton crater at the pole.",
+  phases: "Moon phases, and the eclipse the Artemis II crew saw.",
+  gravity: "Feather or hammer? Moon gravity, and dust that sticks.",
   comms: "Copy, roger, say again. Talk like the Artemis II crew.",
   power: "Sunlight, batteries, and Malapert's long dark spell.",
   radiation: "Measure radiation. Ride out a solar particle storm.",
   life: "Air, water, and the ice LCROSS found.",
   history: "What Apollo left behind for the next crews.",
-  words: "Albedo, regolith, terminator: words the crew really used.",
   checkride: "Two days at Shackleton Rim. Your first solo shift.",
 };
 export const WHY_TITLE = "Why this matters";
@@ -250,12 +264,13 @@ export const SCHOOL = {
  *  Patches are drawn by the art set (no emoji here). */
 export const LESSON_STORY = {
   moon: { beat: "Day one. Let's start with a map of the Moon." },
+  phases: { beat: "The Moon seems to change shape. Let's see why." },
+  gravity: { beat: "Moon gravity is gentle. Let's test it like Apollo 15." },
   comms: { beat: "Radio check. Houston is 384,000 km away." },
   power: { beat: "The outpost runs on sunlight." },
   radiation: { beat: "Storm drill. The Sun can throw storms at the Moon." },
   life: { beat: "No air, no rivers. Let's go looking for ice." },
   history: { beat: "Every crew learns from the crews before." },
-  words: { beat: "A new world needs new words." },
   checkride: { beat: "Solo shift. I'm only watching this time." },
 };
 
@@ -304,18 +319,82 @@ export const OFFER = {
 };
 
 // ---------- Mission: lessons come back as events ----------
-/** Mission event kind / alert → the Flight School lesson that taught it (course.json id), and CAPCOM's reminder. */
+/** Mission event kind / alert → the Flight School lesson that taught it (course.json id), and CAPCOM's reminder.
+ *  `n` is that lesson's number among the core lessons, in course order (as the map numbers them and as
+ *  backend gameplay.LESSON_NO derives it); learning_v1.test.js and test_learning_v1.py check it against the course. */
 export const CALLBACKS = {
-  solar_storm: { lesson: "radiation", n: 4, text: "Solar particle storm. Shields up, or crew to the shelter." },
+  solar_storm: { lesson: "radiation", n: 5, text: "Solar particle storm. Shields up, or crew to the shelter." },
   low_power: { lesson: "power", n: 3, text: "Battery's low. Turn down what you don't need." },
   sunset: { lesson: "power", n: 3, text: "Sunset. Give the heaters a little more." },
-  life_support_low: { lesson: "life", n: 5, text: "Life support is low. The rover can fetch ice." },
-  comm_closed: { lesson: "comms", n: 2, text: "Earth has set. No radio until it rises." },
-  dose_alert: { lesson: "radiation", n: 4, text: "Dose is climbing. Shields, or the shelter." },
+  life_support_low: { lesson: "life", n: 6, text: "Life support is low. The rover can fetch ice." },
+  comm_closed: { lesson: "comms", n: 4, text: "Earth has set. No radio until it rises." },
+  dose_alert: { lesson: "radiation", n: 5, text: "Dose is climbing. Shields, or the shelter." },
 };
 export const callbackLine = (kind, earned) => {
   const c = CALLBACKS[kind]; if (!c) return null;
   return (earned ? `Remember Lesson ${c.n}? ` : `Lesson ${c.n} covers this. `) + c.text;
+};
+
+// ---------- NASA video (lesson video steps, the first-mission briefing, the debrief's Learn more) ----------
+// The player is frontend/src/media/video.js (reached through ../video_shim.js). A video never blocks: Skip, offline and
+// "no player" all go on, and the step's reveal line is said either way. Spoken lines are fixed strings (voice pack).
+/** Rounded lengths for the Watch button ("Watch (1 min)"), from the NASA Moon Learning & Media Plan v1. */
+export const VIDEO_LENGTH = {
+  phases_loop: "15 s", lunar_eclipse: "2 min", hammer_feather: "1 min", lunar_dust: "3 min", psr: "2 min",
+  water_extraction: "2 min", moon_weather: "1 min", moon_base_6mo: "1 min", far_side_view: "2 min",
+  solar_eclipse_sp: "2 min", south_pole_shadows: "1 min", artemis_south_pole: "2 min", solar_eruptions: "2 min",
+  impact_flashes: "2 min", meet_crew: "3 min", ltv: "2 min",
+};
+export const VIDEO = {
+  watch: id => (VIDEO_LENGTH[id] ? `Watch (${VIDEO_LENGTH[id]})` : "Watch"),
+  skip: "Skip",
+  /** no video right now (offline, or no player): the one button shows the answer */
+  answer: "Show me",
+  offline: "Needs internet. Ask a grown-up to connect.",
+  missing: "No video here yet. Guess, then tap Show me.",
+};
+
+/** Mission prep: a hands-on job before a lesson (course.json lesson.prep, adapted from a NASA activity). Shown on its
+ *  own the first time a lesson opens; after that from the lesson's card on the map, never mid-lesson. Done by voice, a
+ *  thumbs-up or a tap. Spoken lines never say "done" (the open mic would hear it back, docs/COPY.md). */
+export const PREP = {
+  eyebrow: "Mission prep",
+  open: "Mission prep",
+  done: "Done!",
+  skip: "Skip",
+  grownUp: "Needs a grown-up",
+  /** spoken before the task's own steps */
+  intro: "Mission prep first. Try this at home, or skip it.",
+  grownUpSay: "Ask a grown-up to help with this one.",
+  /** on screen under the steps (not spoken) */
+  how: "Tap Done, or show a thumbs-up.",
+  /** spoken when the kid says something else on the prep card */
+  ask: "Tell me when it's ready. Or tap Skip.",
+  doneSay: "Nice work. Now the lesson.",
+  skipSay: "No problem. On to the lesson.",
+};
+
+/** First mission only, before the cabin: NASA's real plan, then ours. Shown once; Settings -> Help replays the video. */
+export const MOON_BASE = {
+  title: "NASA's real Moon Base",
+  line: "NASA plans a real base near here. Ours is pretend. Let's run it.",
+  watch: "Watch (1 min)",
+  skip: "Skip",
+  help: "NASA's Moon Base video",
+};
+
+/** Debrief "Learn more": one video per outcome (the sim's outcome names), or a fact card when there is no video, or
+ *  it can't play (offline, no player). `online` is the better pick when the internet is up (YouTube only). */
+export const LEARN_MORE = {
+  title: "Learn more",
+  dose_limit: { media: "moon_weather", online: "solar_eruptions", line: "Space weather: what the Sun throws at the Moon.",
+    fact: "The Moon has no magnetic shield or thick air. Shelter early." },
+  power_out: { media: null, line: "Why power runs out at the pole.",
+    fact: "At the pole the Sun skims the horizon. Long dark spells drain batteries." },
+  life_support_out: { media: "water_extraction", line: "How crews could turn Moon ice into water.",
+    fact: "Ice in shadowed craters could one day become water and air." },
+  survived: { media: "meet_crew", line: "Meet the Artemis II crew.",
+    fact: "Artemis II flew four astronauts around the Moon in April 2026." },
 };
 
 // ---------- Debrief ----------

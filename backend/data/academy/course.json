@@ -1,5 +1,5 @@
 {
- "_note": "Flight School v3 (docs/LEARNING_DESIGN.md §5): 6 lessons and a check ride, in map order (each lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; app/academy/grade.py lists the accept types.",
+ "_note": "Flight School v4 (docs/LEARNING_DESIGN.md §11): 6 core lessons, the check ride, and 2 explorer lessons unlocked after missions (`track`, `unlock_after_missions`), in map order (each lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; app/academy/grade.py lists the accept types. A `video` step (app/academy/content.py VIDEO_MEDIA) is predict -> watch -> reveal and never blocks; a lesson's optional `prep` is a hands-on Mission prep task with its NASA activity source.",
  "title": "Junior Astronaut Academy",
  "pass_badge": "commander",
  "retired_badges": [
@@ -28,10 +28,10 @@
     "who": "Jeremy Hansen",
     "when": "before"
    },
-   "brief": "The Moon always shows Earth the same face. Let's explore both sides.",
+   "brief": "Let's explore the Moon, from its big dark plains to the south pole.",
    "facts": [
     {
-     "text": "Artemis II flew its crew around the Moon in April 2026. NASA plans the first south-pole landing for Artemis IV, targeted for 2028.",
+     "text": "Artemis II flew its crew around the Moon in April 2026. NASA plans the first south-pole landing for Artemis IV, in early 2028.",
      "from": [
       "learning/concepts.json"
      ],
@@ -71,19 +71,43 @@
      }
     },
     {
-     "text": "Craters that never see the Sun are some of the coldest places measured, near -235 C.",
+     "text": "Craters that never see the Sun are some of the coldest spots measured: below -246 C.",
      "from": [
       "learning/concepts.json"
      ],
      "source": {
-      "title": "Paige et al. 2010, Diviner observations of cold traps, Science 330",
-      "url": "https://doi.org/10.1126/science.1187726"
+      "title": "NASA Science: Weather on the Moon",
+      "url": "https://science.nasa.gov/moon/weather-on-the-moon/"
+     }
+    },
+    {
+     "text": "NASA's Moon Base page gives about -203 C inside shadowed craters.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA: About the Moon Base",
+      "url": "https://www.nasa.gov/reference/moonbase-about/"
      }
     }
    ],
+   "prep": {
+    "id": "crater_drop",
+    "title": "Crater drop",
+    "steps": [
+     "Pour flour in a pan. Sprinkle cocoa powder on top.",
+     "Drop a marble from up high. See the splash? That's ejecta.",
+     "Look at your crater and its rays. Tell me when it's ready."
+    ],
+    "grown_up": true,
+    "source": {
+     "title": "NASA JPL Education: Make a Moon Crater",
+     "url": "https://www.jpl.nasa.gov/edu/resources/project/make-a-moon-crater/"
+    }
+   },
    "steps": [
     {
-     "prompt": "Apollo 11 landed on a dark patch, the Sea of Tranquility. Find it.",
+     "prompt": "Apollo 11 landed on a dark plain of old lava, called a mare. Find the Sea of Tranquility.",
      "accept": {
       "type": "intent",
       "place": "tranquillitatis"
@@ -93,7 +117,7 @@
       "do": "side",
       "side": "near"
      },
-     "hint": "It's the dark patch right of the middle.",
+     "hint": "It's the dark plain right of the middle.",
      "success": "Copy. The Sea of Tranquility, July 1969.",
      "fail": "Not there."
     },
@@ -115,41 +139,40 @@
      "fail": "Not quite."
     },
     {
-     "prompt": "Do people on Earth ever see the Moon's far side?",
+     "type": "video",
+     "media": "far_side_view",
+     "say": "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
+     "reveal": "Yes. Far side, not dark side.",
+     "prompt": "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
      "accept": {
-      "type": "predict",
-      "answer": "never",
+      "type": "video",
+      "media": "far_side_view",
       "options": [
        {
-        "id": "never",
-        "label": "Never",
+        "id": "watch",
+        "label": "Watch",
         "say": [
-         "never",
-         "no"
+         "watch",
+         "play",
+         "watch it",
+         "show me"
         ]
        },
        {
-        "id": "full",
-        "label": "Only at full Moon",
+        "id": "skip",
+        "label": "Skip",
         "say": [
-         "full moon",
-         "full"
-        ]
-       },
-       {
-        "id": "month",
-        "label": "Once a month",
-        "say": [
-         "once a month",
-         "month"
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
         ]
        }
       ]
      },
-     "reveal": "Never. The Moon turns once per trip around Earth.",
-     "hint": "Guess first. Then we'll see.",
-     "success": "Right. The Moon turns once per trip around Earth.",
-     "fail": "Pick one, then we check."
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Yes. Far side, not dark side.",
+     "fail": "Tap Watch, or Skip."
     },
     {
      "prompt": "Turn the Moon to show the far side.",
@@ -165,7 +188,7 @@
       "when": "after"
      },
      "hint": "Tap Far, or drag the Moon around.",
-     "success": "Roger. The far side gets sunlight too.",
+     "success": "Roger. That's the far side.",
      "fail": "Not yet. Keep turning."
     },
     {
@@ -185,258 +208,454 @@
      "success": "Roger. Shackleton crater. Our outpost goes here.",
      "fail": "Not quite."
     }
-   ]
+   ],
+   "track": "core"
   },
   {
-   "id": "history",
-   "title": "Lessons from Apollo",
+   "id": "phases",
+   "title": "Phases and eclipses",
    "minutes": 5,
-   "place": "surveyor3",
+   "place": "imbrium",
    "badge": {
-    "id": "history",
-    "name": "Historian",
-    "glyph": "H"
+    "id": "watcher",
+    "name": "Moon Watcher",
+    "glyph": "M"
    },
    "globe": {
-    "place": "surveyor3",
-    "dist": 2.3
+    "lat": 0,
+    "lon": 0,
+    "dist": 3.6
    },
+   "ngss": [
+    "1-ESS1-1",
+    "MS-ESS1-1"
+   ],
    "clip": {
-    "clip_id": "lovell",
-    "t0": 4.64,
-    "t1": 26.04,
-    "who": "Jim Lovell",
+    "clip_id": "moon-during-eclipse-rare",
+    "t0": 65.84,
+    "t1": 83.33,
+    "who": "the Artemis II crew",
     "when": "before"
    },
-   "library": {
-    "place": "surveyor3",
-    "label": "Open Surveyor 3"
-   },
-   "brief": "Every mission teaches the next. Follow the crews from Apollo to Artemis.",
+   "brief": "The Moon seems to change shape. Let's find out why, then catch an eclipse.",
    "facts": [
     {
-     "text": "Surveyor 3 sent 6,326 pictures. In 1969 Apollo 12 astronauts walked over and took about 10 kg of parts home, including its TV camera.",
-     "from": [
-      "artifacts.json"
-     ],
-     "source": {
-      "title": "NSSDCA Master Catalog: Surveyor 3",
-      "url": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A"
-     }
-    },
-    {
-     "text": "John Young and Charlie Duke drove the Apollo 16 rover 26.7 km across the Moon's highlands.",
-     "from": [
-      "artifacts.json"
-     ],
-     "source": {
-      "title": "NSSDCA: Apollo Lunar Roving Vehicle",
-      "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_lrv.html"
-     }
-    },
-    {
-     "text": "Artemis II passed Apollo 13's record of 248,655 miles from Earth on April 6, 2026.",
+     "text": "The Sun always lights half of the Moon. As it goes around Earth, we see more or less of that half.",
      "from": [
       "learning/concepts.json"
      ],
      "source": {
-      "title": "NASA: Artemis II crew eclipses record for farthest human spaceflight",
-      "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"
+      "title": "NASA Science: Moon phases",
+      "url": "https://science.nasa.gov/moon/moon-phases/"
      }
     },
     {
-     "text": "The Artemis II crew proposed the names Integrity and Carroll for two craters. They are not approved yet.",
+     "text": "Sunrise to sunrise on the Moon takes about 29.5 Earth days, so the phases repeat about every month.",
      "from": [
       "learning/concepts.json"
      ],
      "source": {
-      "title": "NASA: Artemis II crew eclipses record for farthest human spaceflight",
-      "url": "https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/"
+      "title": "NASA Science: Moon phases",
+      "url": "https://science.nasa.gov/moon/moon-phases/"
+     }
+    },
+    {
+     "text": "In a lunar eclipse, Earth's shadow covers the Moon. It can look reddish.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Space Place: What is an eclipse?",
+      "url": "https://spaceplace.nasa.gov/eclipses/en/"
+     }
+    },
+    {
+     "text": "Behind the Moon, the Artemis II crew watched the Moon cover the Sun, with the Sun's glowing corona around it.",
+     "from": [
+      "index/clips.json"
+     ],
+     "source": {
+      "title": "NASA Artemis II audio: Moon During Eclipse",
+      "url": "https://www.nasa.gov/wp-content/uploads/2026/10/art002a000053-part-1-clipped.mp3"
      }
     }
    ],
+   "prep": {
+    "id": "oreo_phases",
+    "title": "Oreo phases",
+    "steps": [
+     "Grab some sandwich cookies. Twist each one open.",
+     "Scrape off filling to make a half Moon.",
+     "Now make a thin crescent and a full Moon. Tell me when it's ready."
+    ],
+    "grown_up": false,
+    "source": {
+     "title": "NASA Space Place: Make Oreo Moon Phases",
+     "url": "https://spaceplace.nasa.gov/oreo-moon/en/"
+    }
+   },
    "steps": [
     {
-     "prompt": "Apollo 11 landed on a mare. What does mare mean?",
-     "accept": {
-      "type": "vocab_match",
-      "term": "mare",
-      "distractors": [
-       "crater",
-       "highlands"
-      ]
-     },
-     "show": [
-      "tranquillitatis"
-     ],
-     "globe": {
-      "do": "fly",
-      "place": "tranquillitatis"
-     },
-     "hint": "Look at the dark patch on the Moon.",
-     "success": "Yes. A mare is a plain of old lava.",
-     "fail": "Not quite."
-    },
-    {
-     "prompt": "Robot Surveyor 3 took photos here. Apollo 12 took one part home. Which?",
-     "accept": {
-      "type": "choice",
-      "answer": "camera",
-      "options": [
-       {
-        "id": "camera",
-        "label": "Its TV camera",
-        "say": [
-         "camera",
-         "tv"
-        ]
-       },
-       {
-        "id": "rover",
-        "label": "A rover",
-        "say": [
-         "rover"
-        ]
-       },
-       {
-        "id": "ice",
-        "label": "A block of ice",
-        "say": [
-         "ice"
-        ]
-       }
-      ]
-     },
-     "show": [
-      "surveyor3"
-     ],
-     "globe": {
-      "do": "fly",
-      "place": "surveyor3"
-     },
-     "hint": "It took photos. What takes photos?",
-     "success": "Correct. Scientists studied what the Moon did to it.",
-     "fail": "Not that one."
-    },
-    {
-     "prompt": "Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?",
+     "prompt": "Why does the Moon seem to change shape each month?",
      "accept": {
       "type": "predict",
-      "answer": "yes",
+      "answer": "sunny",
       "options": [
        {
-        "id": "yes",
-        "label": "Yes, it went farther",
+        "id": "shadow",
+        "label": "Earth's shadow covers it",
         "say": [
-         "yes",
-         "farther",
-         "beat"
+         "shadow",
+         "earth's shadow"
         ]
        },
        {
-        "id": "no",
-        "label": "No, Apollo 13 still holds it",
+        "id": "sunny",
+        "label": "We see more or less of its sunny side",
         "say": [
-         "no",
-         "still",
-         "holds"
+         "sunny",
+         "sunny side",
+         "more or less"
+        ]
+       },
+       {
+        "id": "shrink",
+        "label": "It really shrinks",
+        "say": [
+         "shrinks",
+         "shrink",
+         "smaller"
         ]
        }
       ]
      },
-     "reveal": "Artemis II passed it on April 6, 2026.",
+     "reveal": "We see more or less of its sunny half. It's not Earth's shadow.",
+     "hint": "Guess first. Then we'll watch.",
+     "success": "Right. Half the Moon is always sunny.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "type": "video",
+     "media": "phases_loop",
+     "say": "Here's a whole month in 15 seconds. Watch the bright part grow, then shrink.",
+     "reveal": "Half is always lit. We see a slice.",
+     "prompt": "Here's a whole month in 15 seconds. Watch the bright part grow, then shrink.",
+     "accept": {
+      "type": "video",
+      "media": "phases_loop",
+      "options": [
+       {
+        "id": "watch",
+        "label": "Watch",
+        "say": [
+         "watch",
+         "play",
+         "watch it",
+         "show me"
+        ]
+       },
+       {
+        "id": "skip",
+        "label": "Skip",
+        "say": [
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
+        ]
+       }
+      ]
+     },
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Half is always lit. We see a slice.",
+     "fail": "Tap Watch, or Skip."
+    },
+    {
+     "prompt": "The bright part's edge moves every night. Tap where day meets night.",
+     "accept": {
+      "type": "terminator",
+      "sun_lon": 45,
+      "tol_deg": 12
+     },
+     "globe": {
+      "do": "sun",
+      "sun_lon": 45
+     },
+     "hint": "Where the bright part turns dark.",
+     "success": "That's the terminator. It shapes the phase.",
+     "fail": "Not quite. Find the shadow's edge."
+    },
+    {
+     "prompt": "Artemis two flew behind the Moon. What did the Moon block for the crew?",
+     "accept": {
+      "type": "predict",
+      "answer": "sun",
+      "options": [
+       {
+        "id": "sun",
+        "label": "The Sun",
+        "say": [
+         "sun"
+        ]
+       },
+       {
+        "id": "earth",
+        "label": "Earth",
+        "say": [
+         "earth"
+        ]
+       },
+       {
+        "id": "stars",
+        "label": "The stars",
+        "say": [
+         "stars"
+        ]
+       }
+      ]
+     },
+     "reveal": "The Sun. The Moon hid it: a solar eclipse.",
      "clip": {
-      "clip_id": "apollo13-record",
-      "t0": 0.48,
-      "t1": 24.98,
-      "who": "Houston",
+      "clip_id": "observing-pulsating-streamers-suns",
+      "t0": 27.49,
+      "t1": 50.78,
+      "who": "an Artemis II astronaut",
       "when": "after"
      },
-     "hint": "Guess first. Then hear Houston.",
-     "success": "Yes. Artemis II passed it on April 6, 2026.",
+     "hint": "Guess first. Then hear the crew.",
+     "success": "Right. The Moon hid the Sun.",
      "fail": "Pick one, then we listen."
     },
     {
-     "prompt": "Artemis II's crew picked a crater name: Integrity. Tap Orientale, then Ohm.",
+     "type": "video",
+     "media": "lunar_eclipse",
+     "say": "In a lunar eclipse, what covers the Moon? Guess, then watch.",
+     "reveal": "Yes, Earth's shadow. Phases happen without it.",
+     "prompt": "In a lunar eclipse, what covers the Moon? Guess, then watch.",
      "accept": {
-      "type": "route",
-      "stops": [
-       "orientale",
-       "ohm"
-      ],
-      "radius_deg": 10
-     },
-     "do": "Tap the glowing places in order: 1, then 2",
-     "show": [
-      "orientale",
-      "ohm"
-     ],
-     "after_place": "integrity",
-     "globe": {
-      "do": "side",
-      "side": "far",
-      "lon": -100
-     },
-     "clip": {
-      "clip_id": "naming",
-      "t0": 40.54,
-      "t1": 54.85,
-      "who": "the Artemis II crew",
-      "when": "after"
-     },
-     "hint": "Orientale is the big bullseye. Ohm is above it.",
-     "success": "Roger. Integrity sits halfway. Name not official yet.",
-     "fail": "Not that one."
-    },
-    {
-     "prompt": "Listen to Charlie Duke. Who landed on the Moon with him?",
-     "accept": {
-      "type": "choice",
-      "answer": "young",
+      "type": "video",
+      "media": "lunar_eclipse",
       "options": [
        {
-        "id": "young",
-        "label": "John Young",
+        "id": "watch",
+        "label": "Watch",
         "say": [
-         "john",
-         "young"
+         "watch",
+         "play",
+         "watch it",
+         "show me"
         ]
        },
        {
-        "id": "armstrong",
-        "label": "Neil Armstrong",
+        "id": "skip",
+        "label": "Skip",
         "say": [
-         "neil",
-         "armstrong"
-        ]
-       },
-       {
-        "id": "lovell",
-        "label": "Jim Lovell",
-        "say": [
-         "jim",
-         "lovell"
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
         ]
        }
       ]
      },
-     "do": "Tap Hear Charlie Duke, then pick a name",
-     "clip": {
-      "clip_id": "duke",
-      "t0": 5.6,
-      "t1": 21.32,
-      "who": "Charlie Duke",
-      "when": "before"
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Yes, Earth's shadow. Phases happen without it.",
+     "fail": "Tap Watch, or Skip."
+    }
+   ],
+   "track": "core"
+  },
+  {
+   "id": "power",
+   "title": "Power from the Sun",
+   "minutes": 4,
+   "place": "shackleton",
+   "badge": {
+    "id": "sun",
+    "name": "Sun Tracker",
+    "glyph": "P"
+   },
+   "globe": {
+    "lat": 0,
+    "lon": 0,
+    "dist": 3.4
+   },
+   "clip": {
+    "clip_id": "features-along-terminator",
+    "t0": 47.33,
+    "t1": 54.5,
+    "who": "Victor Glover",
+    "when": "before"
+   },
+   "brief": "Solar panels need sunlight. Let's see how the Sun moves at the pole.",
+   "facts": [
+    {
+     "text": "Day and night sweep around the Moon once every 29.5 Earth days.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: Moon phases",
+      "url": "https://science.nasa.gov/moon/moon-phases/"
+     }
+    },
+    {
+     "text": "At the pole the Sun never climbs more than about 1.5 degrees above a flat horizon.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "JPL Horizons API",
+      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+     }
+    },
+    {
+     "text": "Averaged over a year, Shackleton's rim gets sunlight about 86% of the time and Malapert about 73%.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "Glaser et al. 2018, Illumination conditions at the lunar poles, Planetary and Space Science",
+      "url": "https://doi.org/10.1016/j.pss.2017.07.006"
+     }
+    },
+    {
+     "text": "In our model of April 2026, Malapert was in sunlight 35% of the time.",
+     "from": [
+      "mission/sites.json"
+     ],
+     "source": {
+      "title": "JPL Horizons API",
+      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+     }
+    },
+    {
+     "text": "Its longest dark spell in that window lasted 157 hours, more than 6 days.",
+     "from": [
+      "mission/ephemeris_malapert_massif.json"
+     ],
+     "source": {
+      "title": "JPL Horizons API",
+      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+     },
+     "calc": {
+      "kind": "longest_dark_h",
+      "site": "malapert_massif"
+     }
+    }
+   ],
+   "prep": {
+    "id": "low_sun",
+    "title": "Low Sun at the pole",
+    "steps": [
+     "Put a ball on a chair. Put a lamp on the floor.",
+     "Shine the lamp low across the ball. See the long shadows?",
+     "That's sunlight at the south pole. Tell me when it's ready."
+    ],
+    "grown_up": true,
+    "source": {
+     "title": "NASA SVS: Moon Essentials: Seasons",
+     "url": "https://svs.gsfc.nasa.gov/5229/"
+    }
+   },
+   "steps": [
+    {
+     "prompt": "At the south pole, how high does the Sun climb?",
+     "accept": {
+      "type": "predict",
+      "answer": "low",
+      "options": [
+       {
+        "id": "high",
+        "label": "High overhead",
+        "say": [
+         "high",
+         "overhead"
+        ]
+       },
+       {
+        "id": "low",
+        "label": "Just above the horizon",
+        "say": [
+         "just above",
+         "horizon",
+         "low"
+        ]
+       },
+       {
+        "id": "never",
+        "label": "It never rises",
+        "say": [
+         "never"
+        ]
+       }
+      ]
+     },
+     "reveal": "It skims the horizon, never more than about 1.5 degrees up.",
+     "globe": {
+      "do": "pole",
+      "pole": "south"
+     },
+     "hint": "Guess first.",
+     "success": "Right. It skims the horizon all day.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Which site stays sunny for our 10-day mission?",
+     "accept": {
+      "type": "compare",
+      "answer": "shackleton_rim",
+      "metric": "sun_days",
+      "options": [
+       {
+        "id": "shackleton_rim",
+        "label": "Shackleton Rim",
+        "say": [
+         "shackleton",
+         "rim"
+        ]
+       },
+       {
+        "id": "malapert_massif",
+        "label": "Malapert Massif",
+        "say": [
+         "malapert",
+         "mountain"
+        ]
+       }
+      ]
+     },
+     "globe": {
+      "do": "pair",
+      "places": [
+       "shackleton_rim",
+       "malapert_massif"
+      ]
+     },
+     "hint": "Malapert goes dark early in our mission.",
+     "success": "Shackleton Rim. Sun all 10 days in our model.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
+     "accept": {
+      "type": "command",
+      "expect": {
+       "type": "allocate",
+       "to": "heaters",
+       "more": true
+      }
      },
      "globe": {
       "do": "fly",
-      "place": "apollo16_lrv"
+      "place": "malapert_massif"
      },
-     "hint": "Tap Hear Charlie Duke. He says the name first.",
-     "success": "Correct. John Young. They drove 26.7 km.",
-     "fail": "Not that one."
+     "hint": "The heaters need more power. Tap Heaters up.",
+     "success": "Copy. That dark spell lasted 157 hours.",
+     "fail": "Negative."
     }
-   ]
+   ],
+   "track": "core"
   },
   {
    "id": "comms",
@@ -644,199 +863,8 @@
      "success": "Copy. Say again asks for a repeat.",
      "fail": "Not quite."
     }
-   ]
-  },
-  {
-   "id": "power",
-   "title": "Power from the Sun",
-   "minutes": 4,
-   "place": "shackleton",
-   "badge": {
-    "id": "sun",
-    "name": "Sun Tracker",
-    "glyph": "P"
-   },
-   "globe": {
-    "lat": 0,
-    "lon": 0,
-    "dist": 3.4
-   },
-   "clip": {
-    "clip_id": "features-along-terminator",
-    "t0": 47.33,
-    "t1": 54.5,
-    "who": "Victor Glover",
-    "when": "before"
-   },
-   "brief": "Solar panels need sunlight. At the south pole, the Sun skims the horizon.",
-   "facts": [
-    {
-     "text": "Day and night sweep around the Moon once every 29.5 Earth days.",
-     "from": [
-      "learning/concepts.json"
-     ],
-     "source": {
-      "title": "NASA Science: Moon phases",
-      "url": "https://science.nasa.gov/moon/moon-phases/"
-     }
-    },
-    {
-     "text": "At the pole the Sun never climbs more than about 1.5 degrees above a flat horizon.",
-     "from": [
-      "learning/concepts.json"
-     ],
-     "source": {
-      "title": "JPL Horizons API",
-      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
-     }
-    },
-    {
-     "text": "Averaged over a year, Shackleton's rim gets sunlight about 86% of the time and Malapert about 73%.",
-     "from": [
-      "learning/concepts.json"
-     ],
-     "source": {
-      "title": "Glaser et al. 2018, Illumination conditions at the lunar poles, Planetary and Space Science",
-      "url": "https://doi.org/10.1016/j.pss.2017.07.006"
-     }
-    },
-    {
-     "text": "In our model of April 2026, Malapert was in sunlight 35% of the time.",
-     "from": [
-      "mission/sites.json"
-     ],
-     "source": {
-      "title": "JPL Horizons API",
-      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
-     }
-    },
-    {
-     "text": "Its longest dark spell in that window lasted 157 hours, more than 6 days.",
-     "from": [
-      "mission/ephemeris_malapert_massif.json"
-     ],
-     "source": {
-      "title": "JPL Horizons API",
-      "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
-     },
-     "calc": {
-      "kind": "longest_dark_h",
-      "site": "malapert_massif"
-     }
-    }
    ],
-   "steps": [
-    {
-     "prompt": "Tap the line where day meets night.",
-     "accept": {
-      "type": "terminator",
-      "sun_lon": 90,
-      "tol_deg": 12
-     },
-     "globe": {
-      "do": "sun",
-      "sun_lon": 90
-     },
-     "hint": "Where the bright part turns dark.",
-     "success": "That's the terminator. It sweeps around monthly.",
-     "fail": "Not quite. Find the shadow's edge."
-    },
-    {
-     "prompt": "At the south pole, how high does the Sun climb?",
-     "accept": {
-      "type": "predict",
-      "answer": "low",
-      "options": [
-       {
-        "id": "high",
-        "label": "High overhead",
-        "say": [
-         "high",
-         "overhead"
-        ]
-       },
-       {
-        "id": "low",
-        "label": "Just above the horizon",
-        "say": [
-         "just above",
-         "horizon",
-         "low"
-        ]
-       },
-       {
-        "id": "never",
-        "label": "It never rises",
-        "say": [
-         "never"
-        ]
-       }
-      ]
-     },
-     "reveal": "It skims the horizon, never more than about 1.5 degrees up.",
-     "globe": {
-      "do": "pole",
-      "pole": "south"
-     },
-     "hint": "Guess first.",
-     "success": "Right. It skims the horizon all day.",
-     "fail": "Pick one, then we check."
-    },
-    {
-     "prompt": "Which site stays sunny for our 10-day mission?",
-     "accept": {
-      "type": "compare",
-      "answer": "shackleton_rim",
-      "metric": "sun_days",
-      "options": [
-       {
-        "id": "shackleton_rim",
-        "label": "Shackleton Rim",
-        "say": [
-         "shackleton",
-         "rim"
-        ]
-       },
-       {
-        "id": "malapert_massif",
-        "label": "Malapert Massif",
-        "say": [
-         "malapert",
-         "mountain"
-        ]
-       }
-      ]
-     },
-     "globe": {
-      "do": "pair",
-      "places": [
-       "shackleton_rim",
-       "malapert_massif"
-      ]
-     },
-     "hint": "Malapert goes dark early in our mission.",
-     "success": "Shackleton Rim. Sun all 10 days in our model.",
-     "fail": "Not that one."
-    },
-    {
-     "prompt": "Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
-     "accept": {
-      "type": "command",
-      "expect": {
-       "type": "allocate",
-       "to": "heaters",
-       "more": true
-      }
-     },
-     "globe": {
-      "do": "fly",
-      "place": "malapert_massif"
-     },
-     "hint": "The heaters need more power. Tap Heaters up.",
-     "success": "Copy. That dark spell lasted 157 hours.",
-     "fail": "Negative."
-    }
-   ]
+   "track": "core"
   },
   {
    "id": "radiation",
@@ -852,14 +880,7 @@
     "name": "Storm Watcher",
     "glyph": "W"
    },
-   "clip": {
-    "clip_id": "observing-pulsating-streamers-suns",
-    "t0": 0.0,
-    "t1": 22.6,
-    "who": "an Artemis II astronaut",
-    "when": "before"
-   },
-   "brief": "The Sun sometimes throws out fast particles. On the Moon, nothing stops them.",
+   "brief": "The Sun sometimes throws out storms. Let's learn to keep a crew safe.",
    "facts": [
     {
      "text": "China's Chang'e 4 lander measured 1369 microsieverts a day on the Moon, about 2.6 times the cosmic-ray dose inside the ISS, 523 microsieverts a day.",
@@ -910,9 +931,69 @@
       "title": "Outpost Luna radiation data and game assumptions",
       "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/"
      }
+    },
+    {
+     "text": "LRO has measured cosmic rays since 2009, with its CRaTER instrument.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: LRO science and data",
+      "url": "https://science.nasa.gov/mission/lro/science-and-data/"
+     }
     }
    ],
+   "prep": {
+    "id": "ray_shield",
+    "title": "Ray shield",
+    "steps": [
+     "Shine a flashlight through a book. Then through foil.",
+     "Which blocks more light? Thick, heavy stuff shields best.",
+     "Shields for radiation work a bit like that. Tell me when it's ready."
+    ],
+    "grown_up": false,
+    "source": {
+     "title": "NASA STEM: Ray Shielding Activity",
+     "url": "https://www.nasa.gov/stem-content/ray-shielding-activity/"
+    }
+   },
    "steps": [
+    {
+     "type": "video",
+     "media": "moon_weather",
+     "say": "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
+     "reveal": "Yes: space weather, fast particles from the Sun.",
+     "prompt": "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
+     "accept": {
+      "type": "video",
+      "media": "moon_weather",
+      "options": [
+       {
+        "id": "watch",
+        "label": "Watch",
+        "say": [
+         "watch",
+         "play",
+         "watch it",
+         "show me"
+        ]
+       },
+       {
+        "id": "skip",
+        "label": "Skip",
+        "say": [
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
+        ]
+       }
+      ]
+     },
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Yes: space weather, fast particles from the Sun.",
+     "fail": "Tap Watch, or Skip."
+    },
     {
      "prompt": "Earth has a magnetic shield and thick air. Does the Moon?",
      "accept": {
@@ -1027,7 +1108,8 @@
      "success": "Correct. One mSv is about 10 chest x-rays.",
      "fail": "Not quite."
     }
-   ]
+   ],
+   "track": "core"
   },
   {
    "id": "life",
@@ -1048,9 +1130,10 @@
     "t0": 0.56,
     "t1": 22.16,
     "who": "Christina Koch",
-    "when": "before"
+    "when": "before",
+    "note": "She says dark side. She means the night side."
    },
-   "brief": "Water is heavy to launch. Ice on the Moon could become water and air.",
+   "brief": "Water is heavy to launch. Let's look for some on the Moon.",
    "facts": [
     {
      "text": "In 2009 NASA crashed a Centaur rocket stage, about 2,300 kg, into Cabeus crater near the south pole.",
@@ -1083,7 +1166,57 @@
      }
     }
    ],
+   "prep": {
+    "id": "make_regolith",
+    "title": "Make regolith",
+    "steps": [
+     "Put a cracker in a bag. Crush it into crumbs.",
+     "Touch the crumbs. Tiny bits stick to your fingers.",
+     "Regolith, the Moon's dusty soil, clings like that. Tell me when it's ready."
+    ],
+    "grown_up": false,
+    "source": {
+     "title": "NASA: Making Regolith (educator activity)",
+     "url": "https://www.nasa.gov/wp-content/uploads/2012/02/146860main_making_regolith_educator.pdf"
+    }
+   },
    "steps": [
+    {
+     "type": "video",
+     "media": "psr",
+     "say": "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
+     "reveal": "Among the coldest spots measured. Ice hides there.",
+     "prompt": "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
+     "accept": {
+      "type": "video",
+      "media": "psr",
+      "options": [
+       {
+        "id": "watch",
+        "label": "Watch",
+        "say": [
+         "watch",
+         "play",
+         "watch it",
+         "show me"
+        ]
+       },
+       {
+        "id": "skip",
+        "label": "Skip",
+        "say": [
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
+        ]
+       }
+      ]
+     },
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Among the coldest spots measured. Ice hides there.",
+     "fail": "Tap Watch, or Skip."
+    },
     {
      "prompt": "Why would NASA crash a rocket into a dark crater?",
      "accept": {
@@ -1192,24 +1325,519 @@
      "hint": "The rover can dig up ice. Tap Rover: get ice.",
      "success": "Copy. Rover rolling out for ice.",
      "fail": "Negative."
+    }
+   ],
+   "patch_video": {
+    "media": "water_extraction",
+    "line": "How could crews get water out of icy dirt?"
+   },
+   "track": "core"
+  },
+  {
+   "id": "gravity",
+   "title": "Moon gravity and dust",
+   "minutes": 5,
+   "place": "apollo15_lm_falcon",
+   "badge": {
+    "id": "moonwalker",
+    "name": "Moonwalker",
+    "glyph": "G"
+   },
+   "globe": {
+    "place": "apollo15_lm_falcon",
+    "dist": 2.3
+   },
+   "ngss": [
+    "5-PS2-1"
+   ],
+   "clip": {
+    "clip_id": "ohm-crater-ray-systems",
+    "t0": 290.0,
+    "t1": 306.5,
+    "who": "an Artemis II astronaut",
+    "when": "before"
+   },
+   "brief": "Moon gravity and Moon dust both surprise people. Let's test them.",
+   "facts": [
+    {
+     "text": "At the end of the last Apollo 15 moonwalk in 1971, Commander David Scott dropped a hammer and a feather. They hit the ground together.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NSSDCA: The Apollo 15 Hammer-Feather Drop",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html"
+     }
     },
     {
-     "prompt": "Fill the blank: \"Ice hides in the Moon's dusty soil, the ____.\"",
+     "text": "Gravity on the Moon's surface is 0.165 of Earth's, about one sixth. So 30 kg feels like about 5 kg.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NSSDCA Moon Fact Sheet",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html"
+     }
+    },
+    {
+     "text": "Regolith is the Moon's dusty soil. Its tiny, sharp bits cling to everything.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Knows: What is lunar regolith? (grades 5-8)",
+      "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/nasa-knows-what-is-lunar-regolith-grades-5-8/"
+     }
+    }
+   ],
+   "prep": {
+    "id": "feather_coin",
+    "title": "Feather and coin",
+    "steps": [
+     "Crumple one paper into a ball. Keep one paper flat.",
+     "Drop both from the same height. Which lands first?",
+     "Air slows the flat one. The Moon has no air. Tell me when it's ready."
+    ],
+    "grown_up": false,
+    "source": {
+     "title": "NSSDCA: The Apollo 15 Hammer-Feather Drop",
+     "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html"
+    }
+   },
+   "steps": [
+    {
+     "prompt": "On the Moon, drop a hammer and a feather together. Which lands first?",
      "accept": {
-      "type": "vocab_fill",
-      "term": "regolith",
-      "sentence": "Ice hides in the Moon's dusty soil, the ____.",
-      "distractors": [
-       "albedo",
-       "ejecta"
+      "type": "predict",
+      "answer": "same",
+      "options": [
+       {
+        "id": "feather",
+        "label": "The feather",
+        "say": [
+         "feather"
+        ]
+       },
+       {
+        "id": "hammer",
+        "label": "The hammer",
+        "say": [
+         "hammer"
+        ]
+       },
+       {
+        "id": "same",
+        "label": "Both at once",
+        "say": [
+         "both",
+         "same time",
+         "together",
+         "at once"
+        ]
+       }
       ]
      },
-     "do": "Tap the missing word, or say it",
-     "hint": "The word for Moon dust starts with r.",
-     "success": "Right. Regolith, the Moon's dusty soil.",
+     "reveal": "Good guess. Let's see what Apollo 15 found.",
+     "hint": "Guess first. Then we'll watch.",
+     "success": "Good guess. Let's see what Apollo 15 found.",
+     "fail": "Pick one, then we watch."
+    },
+    {
+     "type": "video",
+     "media": "hammer_feather",
+     "say": "Commander David Scott tried it on the Moon. Watch closely.",
+     "reveal": "Together. No air slows the feather.",
+     "prompt": "Commander David Scott tried it on the Moon. Watch closely.",
+     "accept": {
+      "type": "video",
+      "media": "hammer_feather",
+      "options": [
+       {
+        "id": "watch",
+        "label": "Watch",
+        "say": [
+         "watch",
+         "play",
+         "watch it",
+         "show me"
+        ]
+       },
+       {
+        "id": "skip",
+        "label": "Skip",
+        "say": [
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
+        ]
+       }
+      ]
+     },
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Together. No air slows the feather.",
+     "fail": "Tap Watch, or Skip."
+    },
+    {
+     "prompt": "Your backpack feels like 30 kilos here. How heavy on the Moon?",
+     "accept": {
+      "type": "choice",
+      "answer": "five",
+      "options": [
+       {
+        "id": "five",
+        "label": "Like 5 kilos",
+        "say": [
+         "five",
+         "5"
+        ]
+       },
+       {
+        "id": "thirty",
+        "label": "Like 30 kilos",
+        "say": [
+         "thirty",
+         "30"
+        ]
+       },
+       {
+        "id": "sixty",
+        "label": "Like 60 kilos",
+        "say": [
+         "sixty",
+         "60"
+        ]
+       }
+      ]
+     },
+     "do": "Tap an answer, or say it",
+     "hint": "The Moon pulls about one sixth as hard.",
+     "success": "Right. About 5 kilos. One sixth.",
+     "fail": "Not that one."
+    },
+    {
+     "type": "video",
+     "media": "lunar_dust",
+     "say": "Is Moon dust soft like flour, or sharp? Guess, then watch.",
+     "reveal": "Sharp, like tiny glass. It clings to everything.",
+     "prompt": "Is Moon dust soft like flour, or sharp? Guess, then watch.",
+     "accept": {
+      "type": "video",
+      "media": "lunar_dust",
+      "options": [
+       {
+        "id": "watch",
+        "label": "Watch",
+        "say": [
+         "watch",
+         "play",
+         "watch it",
+         "show me"
+        ]
+       },
+       {
+        "id": "skip",
+        "label": "Skip",
+        "say": [
+         "skip",
+         "skip it",
+         "not now",
+         "no thanks"
+        ]
+       }
+      ]
+     },
+     "hint": "Tap Watch, or tap Skip.",
+     "success": "Sharp, like tiny glass. It clings to everything.",
+     "fail": "Tap Watch, or Skip."
+    },
+    {
+     "prompt": "Moon dust has a science name: regolith. Say it out loud: regolith!",
+     "accept": {
+      "type": "vocab_say",
+      "term": "regolith"
+     },
+     "do": "Say the word out loud",
+     "hint": "Say it slowly: reg, oh, lith.",
+     "success": "Yes! Regolith, the Moon's dusty soil.",
+     "fail": "Say it again."
+    }
+   ],
+   "track": "explorer",
+   "unlock_after_missions": 1
+  },
+  {
+   "id": "history",
+   "title": "Lessons from Apollo",
+   "minutes": 5,
+   "place": "surveyor3",
+   "badge": {
+    "id": "history",
+    "name": "Historian",
+    "glyph": "H"
+   },
+   "globe": {
+    "place": "surveyor3",
+    "dist": 2.3
+   },
+   "clip": {
+    "clip_id": "lovell",
+    "t0": 4.64,
+    "t1": 26.04,
+    "who": "Jim Lovell",
+    "when": "before"
+   },
+   "library": {
+    "place": "surveyor3",
+    "label": "Open Surveyor 3"
+   },
+   "brief": "Every mission teaches the next. Follow the crews from Apollo to Artemis.",
+   "facts": [
+    {
+     "text": "Surveyor 3 sent 6,326 pictures. In 1969 Apollo 12 astronauts walked over and took about 10 kg of parts home, including its TV camera.",
+     "from": [
+      "artifacts.json"
+     ],
+     "source": {
+      "title": "NSSDCA Master Catalog: Surveyor 3",
+      "url": "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1967-035A"
+     }
+    },
+    {
+     "text": "John Young and Charlie Duke drove the Apollo 16 rover 26.7 km across the Moon's highlands.",
+     "from": [
+      "artifacts.json"
+     ],
+     "source": {
+      "title": "NSSDCA: Apollo Lunar Roving Vehicle",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_lrv.html"
+     }
+    },
+    {
+     "text": "On April 6, 2026, Artemis II reached 252,756 miles from Earth, a new record for human spaceflight. It passed Apollo 13's record of 248,655 miles.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA: Artemis II Flight Day 6 lunar flyby updates",
+      "url": "https://www.nasa.gov/blogs/missions/2026/04/06/artemis-ii-flight-day-6-lunar-flyby-updates/"
+     }
+    },
+    {
+     "text": "Artemis III is a 2027 test flight in Earth orbit. Artemis IV, planned for early 2028, is to land two astronauts near the south pole.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA: Artemis IV",
+      "url": "https://www.nasa.gov/mission/artemis-iv/"
+     }
+    },
+    {
+     "text": "NASA plans its Moon Base, humanity's first lunar outpost, near the lunar South Pole. Outpost Luna is a pretend base.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA: About the Moon Base",
+      "url": "https://www.nasa.gov/reference/moonbase-about/"
+     }
+    },
+    {
+     "text": "The Artemis II crew proposed the names Integrity and Carroll for two craters. As of November 2026 the IAU has not approved them.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "USGS/IAU Gazetteer of Planetary Nomenclature: Moon",
+      "url": "https://planetarynames.wr.usgs.gov/"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "Apollo 11 landed on a mare. What does mare mean?",
+     "accept": {
+      "type": "vocab_match",
+      "term": "mare",
+      "distractors": [
+       "crater",
+       "highlands"
+      ]
+     },
+     "show": [
+      "tranquillitatis"
+     ],
+     "globe": {
+      "do": "fly",
+      "place": "tranquillitatis"
+     },
+     "hint": "Look at the dark patch on the Moon.",
+     "success": "Yes. A mare is a plain of old lava.",
+     "fail": "Not quite."
+    },
+    {
+     "prompt": "Robot Surveyor 3 took photos here. Apollo 12 took one part home. Which?",
+     "accept": {
+      "type": "choice",
+      "answer": "camera",
+      "options": [
+       {
+        "id": "camera",
+        "label": "Its TV camera",
+        "say": [
+         "camera",
+         "tv"
+        ]
+       },
+       {
+        "id": "rover",
+        "label": "A rover",
+        "say": [
+         "rover"
+        ]
+       },
+       {
+        "id": "ice",
+        "label": "A block of ice",
+        "say": [
+         "ice"
+        ]
+       }
+      ]
+     },
+     "show": [
+      "surveyor3"
+     ],
+     "globe": {
+      "do": "fly",
+      "place": "surveyor3"
+     },
+     "hint": "It took photos. What takes photos?",
+     "success": "Correct. Scientists studied what the Moon did to it.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Apollo 13 went farther from Earth than anyone. Did Artemis two beat it?",
+     "accept": {
+      "type": "predict",
+      "answer": "yes",
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes, it went farther",
+        "say": [
+         "yes",
+         "farther",
+         "beat"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, Apollo 13 still holds it",
+        "say": [
+         "no",
+         "still",
+         "holds"
+        ]
+       }
+      ]
+     },
+     "reveal": "It did: over 250 thousand miles, in April 2026.",
+     "clip": {
+      "clip_id": "apollo13-record",
+      "t0": 0.48,
+      "t1": 24.98,
+      "who": "Houston",
+      "when": "after"
+     },
+     "hint": "Guess first. Then hear Houston.",
+     "success": "Yes. Artemis two went over 250 thousand miles.",
+     "fail": "Pick one, then we listen."
+    },
+    {
+     "prompt": "Artemis two's crew picked a crater name: Integrity. Tap Orientale Basin, then Ohm.",
+     "accept": {
+      "type": "route",
+      "stops": [
+       "orientale",
+       "ohm"
+      ],
+      "radius_deg": 10
+     },
+     "do": "Tap the glowing places in order: 1, then 2",
+     "show": [
+      "orientale",
+      "ohm"
+     ],
+     "after_place": "integrity",
+     "globe": {
+      "do": "side",
+      "side": "far",
+      "lon": -100
+     },
+     "clip": {
+      "clip_id": "naming",
+      "t0": 40.54,
+      "t1": 54.85,
+      "who": "the Artemis II crew",
+      "when": "after"
+     },
+     "hint": "Orientale Basin is the big bullseye. Ohm is above it.",
+     "success": "Roger. Integrity sits halfway. Not official yet.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Listen to Charlie Duke. Who landed on the Moon with him?",
+     "accept": {
+      "type": "choice",
+      "answer": "young",
+      "options": [
+       {
+        "id": "young",
+        "label": "John Young",
+        "say": [
+         "john",
+         "young"
+        ]
+       },
+       {
+        "id": "armstrong",
+        "label": "Neil Armstrong",
+        "say": [
+         "neil",
+         "armstrong"
+        ]
+       },
+       {
+        "id": "lovell",
+        "label": "Jim Lovell",
+        "say": [
+         "jim",
+         "lovell"
+        ]
+       }
+      ]
+     },
+     "do": "Tap Hear Charlie Duke, then pick a name",
+     "clip": {
+      "clip_id": "duke",
+      "t0": 5.6,
+      "t1": 21.32,
+      "who": "Charlie Duke",
+      "when": "before"
+     },
+     "globe": {
+      "do": "fly",
+      "place": "apollo16_lrv"
+     },
+     "hint": "Tap Hear Charlie Duke. He says the name first.",
+     "success": "Correct. John Young. They drove 26.7 km.",
      "fail": "Not that one."
     }
-   ]
+   ],
+   "track": "explorer",
+   "unlock_after_missions": 2
   },
   {
    "id": "checkride",
@@ -1342,7 +1970,8 @@
      "success": "Copy. Rover rolling out for ice.",
      "fail": "Negative. The rover needs to fetch ice."
     }
-   ]
+   ],
+   "track": "core"
   }
  ]
 }

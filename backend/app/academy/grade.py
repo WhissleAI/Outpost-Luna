@@ -19,6 +19,8 @@ Globe steps (docs/LEARNING_DESIGN.md §3, client contract in §9.2):
   route       {stops:[place ids], radius_deg?}      the stops in order: {taps:[...]} or the names in order in the
                                                     words; extra {got, next}
   earth_view  {place}                               yes / no / sometimes, computed from where the place is
+A NASA video beat (content.VIDEO_MEDIA):
+  video       {media, options: watch|skip}          always passes (Watch, Skip, offline); extra {watched}
 """
 from __future__ import annotations
 
@@ -179,6 +181,8 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
         return c == acc["answer"], {"choice": c}
     if kind in GLOBE_TYPES:
         return GLOBE_TYPES[kind](acc, inp, text)
+    if kind == "video":
+        return _video(acc, inp, text)
     # ---- vocab steps (a11y / learning design) ----
     if kind.startswith("vocab_"):
         from . import vocab
@@ -218,6 +222,16 @@ def near_name(text: str, names: list[str]) -> bool:
             if any(SequenceMatcher(None, w, h).ratio() >= NEAR for h in hw) or w in joined:
                 return True
     return False
+
+
+def _video(acc, inp, text):
+    """A video step never blocks: any choice passes (Watch, Skip, or the client's "offline" / "done" when the player
+    closed or was missing), and so do words that name Watch or Skip. extra {watched}."""
+    c = inp.get("choice")
+    if c:
+        return True, {"watched": c in ("watch", "watched", "done")}
+    g = _option_of({"text": text}, acc.get("options", []))
+    return g is not None, ({"watched": g == "watch"} if g else {})
 
 
 def _predict(acc, inp, text):
@@ -456,7 +470,7 @@ def option_index(text: str, n: int) -> int | None:
 def step_options(acc: dict) -> list[tuple[str, list[str]]]:
     """[(option id, [label, *say words])] in the order the client shows them (its numbers / letters)."""
     kind = acc["type"]
-    if kind in ("choice", "predict", "compare"):
+    if kind in ("choice", "predict", "compare", "video"):
         return [(o["id"], [o["label"], *o.get("say", [])]) for o in acc.get("options", [])]
     if kind == "earth_view":
         return [(k, [k.capitalize(), *EARTH_WORDS[k]]) for k in ("yes", "no", "sometimes")]

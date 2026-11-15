@@ -102,8 +102,9 @@ caption. Clips never carry an answer the kid hasn't been asked yet.
 
 ## 5. Lesson redesign
 
-> **Shipped version (phase 2):** 6 lessons plus the check ride, in Moon-map order: `moon`, `history`, `comms`, `power`,
-> `radiation`, `life`, `checkride`. The `words` lesson is gone and its words are woven in (product owner, §9.4). Each
+> **Shipped version (v4, §11):** 6 core lessons, then the check ride: `moon`, `phases`, `power`, `comms`,
+> `radiation`, `life`, `checkride`. Two explorer lessons, `gravity` and `history`, unlock after missions 1 and 2.
+> 9 patches in all. Phase 2 shipped 6 lessons and the ride. The `words` lesson is gone and its words are woven in (product owner, §9.4). Each
 > lesson has a `place` pin. The authored source is `backend/tools/build_course.py`, and §10.2 lists the changes from
 > the drafts below.
 
@@ -598,3 +599,89 @@ event clocks. At 10 seeds × 5 sites:
 Tasks (storm prep, night power-down, ice run...) are guided checklists over the same orders. Their only extra rewards
 are small and need the kid's own press (+2 science for a sample or a correctly logged sensor reading). So no fixed
 policy gains from them, and the no-dominant-strategy result stands.
+
+## 11. Learning v1: Moon basics, NASA video and Mission prep (`feat/learning-v1`)
+
+Source: the owner-approved "NASA Moon Learning & Media Plan" v1, then a narration review and the owner's lesson
+structure (via the coordinator, 2026-11-14). The video player, downloads and the Electron allow-list are built
+separately (`feat/media-v1`, `frontend/src/media/video.js`); this branch only calls it. `mission/ui.js` belongs to the
+mission-UI branch: the mission-side beats here live in `frontend/src/mission_learning.js`, installed from `main.js`.
+
+### 11.1 Structure: 6 core lessons, the check ride, 2 explorer lessons
+
+Course order (data-driven, `tools/build_course.py` ORDER): `moon` → `phases` → `power` → `comms` → `radiation` →
+`life` → (`gravity`, `history`) → `checkride`. Each lesson has `track` (`core` | `explorer`); explorer lessons carry
+`unlock_after_missions` (gravity 1, Apollo 2). The map shows a locked explorer pin and "Unlocks after your first
+mission"; the cadet's next lesson skips locked ones, so the check ride follows `life`. "Lesson n of 6" counts core
+lessons only; the patch total counts all 9. Missions flown are counted per call sign on the device
+(`frontend/src/explorer.js`, by mission id), and the debrief offers a lesson the mission just unlocked ("Open it").
+Mission lesson numbers ("Lesson 5 helps here") come from the course (`gameplay.LESSON_NO`, core only); `story.js`
+CALLBACKS are checked against them. Every lesson has 5 steps or fewer.
+
+### 11.2 The new lessons
+
+| Lesson | Patch | NGSS | Steps |
+|---|---|---|---|
+| `phases` Phases and eclipses (pin: Sea of Rains), core | Moon Watcher | 1-ESS1-1, MS-ESS1-1 | predict (why the shape changes) → video `phases_loop` → terminator (the course's one terminator step) → predict "What did the Moon block?" + the corona clip `observing-pulsating-streamers-suns` 27.5–50.8 s → video `lunar_eclipse` ("Yes, Earth's shadow. Phases happen without it."). Hook: `moon-during-eclipse-rare` 65.8–83.3 s ("a black ball in front of us"). |
+| `gravity` Moon gravity and dust (pin: Apollo 15, Hadley), explorer after mission 1 | Moonwalker | 5-PS2-1 | predict (feather or hammer) → video `hammer_feather` → choice ("Your backpack feels like 30 kilos here.") → video `lunar_dust` → vocab_say "regolith" |
+
+### 11.3 Video steps
+
+`{"type": "video", "media", "say", "reveal"}` plus `prompt` (= say), `accept: {type: "video", media, options: watch|skip}`
+and `success` (= reveal), so the router, the hint ladder and the voice treat it like any other step. Media ids come from
+one list, `app/academy/content.py` `VIDEO_MEDIA` (8 cached NASA files, 8 YouTube-only). A video step never blocks:
+Watch, Skip, offline and "no player" all pass, the reveal is said either way, and words that aren't Watch or Skip are
+ignored (never a miss). The client reaches the player only through `frontend/src/video_shim.js`
+(`import.meta.glob("./media/video.js")`: an empty map until the module exists, so this branch builds and runs without
+it). Hooks in existing lessons: `moon` far-side video (it carries the far-side guess); `radiation` opens with
+`moon_weather` (the CRaTER fact is in its facts); `life` opens with `psr`, and `water_extraction` is an optional video on
+its patch screen (`lesson.patch_video`), never a step.
+
+### 11.4 Mission prep
+
+`lesson.prep = {id, title, steps (<= 3 spoken lines), grown_up, source}`; checked by `content.check_prep`. The last
+line ends "Tell me when it's ready." and no line says "done" (the open mic would hear it back; the button still says
+Done). Offered by itself the first time a lesson opens, then from the lesson's card on the map; never mid-lesson. Done
+by voice, a thumbs-up (the Done button is `data-intent="yes"`) or a tap; Skip always works. The NASA activity is
+credited in `source`, never on screen.
+
+| Lesson | Task | Grown-up | Source |
+|---|---|---|---|
+| moon | Crater drop (flour, cocoa, marble) | yes | JPL Education: Make a Moon Crater |
+| phases | Oreo phases | no | NASA Space Place: Oreo Moon phases |
+| gravity | Feather and coin (paper ball vs flat paper) | no | NSSDCA: Apollo 15 hammer-feather drop |
+| power | Low Sun at the pole (lamp on the floor, ball on a chair) | yes | NASA SVS 5229 Moon Essentials: Seasons |
+| radiation | Ray shield (flashlight through a book, then foil) | no | NASA STEM: Ray Shielding Activity |
+| life | Make regolith (crushed cracker) | no | NASA: Making Regolith (educator PDF) |
+
+### 11.5 Story beats and copy
+
+- First mission only, on "Take command": "NASA plans a real base near here. Ours is pretend. Let's run it." with
+  `moon_base_6mo` (Watch or Skip; when it can't play, the mission just starts). Settings → Help replays it.
+- Debrief "Learn more" (`frontend/src/learn_more.js`): `dose_limit` → `moon_weather` (`solar_eruptions` when online),
+  `power_out` → a fact card, `life_support_out` → `water_extraction`, `survived` → `meet_crew`; a fact card whenever the
+  video can't play.
+- Credits: "Outpost Luna is a pretend outpost for learning. NASA's real Moon Base plans: nasa.gov/moon-base." beside the
+  not-endorsed line (home, map, About).
+- Narration: briefs set up a question without answering it; spoken numbers are easy to say ("over 250 thousand
+  miles", "30 kilos"); spoken "Artemis two"; "a dark plain of old lava, called a mare"; regolith is "the Moon's dusty
+  soil"; "Orientale Basin"; Christina Koch's "dark side" clip carries the note "She says dark side. She means the night
+  side."
+
+### 11.6 Facts verified (2026-11-14)
+
+| Fact | Source |
+|---|---|
+| Artemis II reached 252,756 miles from Earth on April 6, 2026 (past Apollo 13's 248,655) | nasa.gov/blogs/missions/2026/04/06/artemis-ii-flight-day-6-lunar-flyby-updates/ |
+| Artemis III: 2027, tests in low Earth orbit | nasa.gov/news-release/nasa-adds-mission-to-artemis-lunar-program-updates-architecture/ |
+| Artemis IV: "Early 2028", two crew near the South Pole | nasa.gov/mission/artemis-iv/ |
+| Moon Base: "near the lunar South Pole"; Phase One now–2029; about -203 °C in shadowed craters | nasa.gov/reference/moonbase-about/ |
+| Coldest: "lower than -410°F (-246°C)" | science.nasa.gov/moon/weather-on-the-moon/ |
+| LRO launched June 18, 2009; CRaTER measures cosmic rays | science.nasa.gov/mission/lro/ |
+| Integrity, Carroll: not in the IAU Gazetteer | planetarynames.wr.usgs.gov |
+| Hammer and feather landed together (Commander David Scott, Apollo 15) | nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html |
+| Surface gravity 0.165 of Earth's | nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html |
+| Half the Moon is always lit; lunar eclipse = Earth's shadow, can look reddish | science.nasa.gov/moon/moon-phases/, spaceplace.nasa.gov/eclipses/en/ |
+| Regolith: sharp, clingy bits | nasa.gov NASA Knows: What is lunar regolith? |
+
+Not used: a Shackleton location for NASA's Moon Base (the page says "near the lunar South Pole" only).

@@ -80,13 +80,16 @@ def test_course_v3_shape():
     c = content.course()
     assert content.check() == []
     ids = [l["id"] for l in c["lessons"]]
-    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 7
+    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 9
+    assert [l["id"] for l in c["lessons"] if l.get("track") == "core" and not l.get("ride")] == \
+        ["moon", "phases", "power", "comms", "radiation", "life"]           # 6 core lessons before the ride
     for l in c["lessons"]:
         assert l.get("place"), f"{l['id']} has no Moon-map pin"
         if l.get("ride"):
             continue
-        assert 4 <= len(l["steps"]) <= 5, l["id"]
-        assert l.get("clip"), f"{l['id']} has no crew-audio hook"
+        graded = [s for s in l["steps"] if s["accept"]["type"] != "video"]   # video beats ride along, never graded
+        assert len(l["steps"]) <= 5 and len(graded) >= 3, l["id"]           # 5 steps or fewer (narration review)
+        assert l.get("clip") or l["steps"][0]["accept"]["type"] == "video", f"{l['id']} has no hook (crew audio or video)"
     used = {s["accept"]["type"] for l in c["lessons"] for s in l["steps"]}
     assert set(g.GLOBE_TYPES) <= used          # every globe verb is taught somewhere
 
@@ -105,7 +108,9 @@ def test_map_order_has_no_long_jumps_back():
     for l in content.course()["lessons"]:
         p = l["place"]
         lats.append(p["lat"] if isinstance(p, dict) else g.where(p)[0])
-    assert all(abs(x) < 20 for x in lats[:2]) and all(x < -80 for x in lats[2:])
+    core = [(l["id"], x) for l, x in zip(content.course()["lessons"], lats) if l.get("track") == "core"]
+    k = next(i for i, (_, x) in enumerate(core) if x < -80)    # the first south-pole stop among the core lessons
+    assert k >= 2 and all(abs(x) < 40 for _, x in core[:k]) and all(x < -80 for _, x in core[k:])
 
 
 def test_public_course_hides_globe_answers():

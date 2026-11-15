@@ -10,7 +10,25 @@ DATA = Path(__file__).resolve().parents[2] / "data"
 COURSE = DATA / "academy" / "course.json"
 ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
-                "predict", "globe_side", "terminator", "compare", "route", "earth_view")   # globe steps: grade.py
+                "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
+                "video")   # a NASA video beat (VIDEO_MEDIA below): predict -> watch -> reveal; never blocks
+# The NASA videos a lesson step may name: the one list (the player and its downloads live in frontend/src/media/,
+# feat/media-v1). "cached": NASA files kept on this computer after the first online launch, so they play offline.
+# "online": YouTube embeds from NASA's own channels, stream only. A step on an online video still passes offline:
+# the reveal line is said and the lesson goes on (Skip works the same way).
+VIDEO_MEDIA = {
+    "cached": ("phases_loop", "lunar_eclipse", "hammer_feather", "lunar_dust", "psr", "water_extraction",
+               "moon_weather", "moon_base_6mo"),
+    "online": ("far_side_view", "solar_eclipse_sp", "south_pole_shadows", "artemis_south_pole", "solar_eruptions",
+               "impact_flashes", "meet_crew", "ltv"),
+}
+VIDEO_IDS = frozenset(VIDEO_MEDIA["cached"] + VIDEO_MEDIA["online"])
+# A video step's two answers. Any of them passes (Watch, Skip, or the client's "offline"): the reveal is said either way.
+VIDEO_OPTIONS = [{"id": "watch", "label": "Watch", "say": ["watch", "play", "watch it", "show me"]},
+                 {"id": "skip", "label": "Skip", "say": ["skip", "skip it", "not now", "no thanks"]}]
+PREP_MAX_STEPS = 3      # a mission-prep task: 3 spoken steps or fewer
+PREP_END = "Tell me when it's ready."   # how a prep task's last line ends: never the trigger word "done" (the open mic
+                                        # would hear our own "done" back, docs/COPY.md); the button still says Done
 GLOBE_DO = ("fly", "side", "pole", "sun", "zoom", "pair", "earth", "route")   # step.globe.do (client directive)
 NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
@@ -47,6 +65,8 @@ def public() -> dict:
         if a["type"] == "earth_view":
             acc["place"] = a["place"]
             acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
+        if a["type"] == "video":
+            acc |= {"media": a["media"], "options": [{"id": o["id"], "label": o["label"]} for o in a["options"]]}
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -107,6 +127,62 @@ def _check_globe_step(s: dict, a: dict) -> list[str]:
     return out
 
 
+def check_video_step(s: dict) -> list[str]:
+    """A video step: {"type": "video", "media", "say", "reveal"} (the frontend contract), plus the fields every step
+    carries so the step machinery (router, hint ladder, voice) treats it like any other: prompt == say, an accept of
+    type video naming the same media, success == reveal."""
+    out = []
+    a = s.get("accept") or {}
+    if s.get("type") != "video" or a.get("type") != "video":
+        out.append("video step needs type and accept.type 'video'")
+    m = s.get("media")
+    if m not in VIDEO_IDS:
+        out.append(f"unknown video media {m!r} (content.VIDEO_MEDIA)")
+    if a.get("media") != m:
+        out.append("accept.media must match media")
+    for k in ("say", "reveal"):
+        if not str(s.get(k) or "").strip():
+            out.append(f"video step needs {k}")
+        elif len(str(s[k]).split()) > 20:
+            out.append(f"video {k} over 20 words")
+    if s.get("prompt") != s.get("say"):
+        out.append("video prompt must equal say (the predict line)")
+    if s.get("success") != s.get("reveal"):
+        out.append("video success must equal reveal (said after Watch, Skip or offline)")
+    if {o.get("id") for o in a.get("options", [])} != {o["id"] for o in VIDEO_OPTIONS}:
+        out.append("video options must be watch and skip")
+    return out
+
+
+def check_prep(p: dict) -> list[str]:
+    """A mission-prep task (lesson.prep): a hands-on job before the lesson, adapted from a NASA activity.
+    {id, title, steps: [<= 3 spoken lines], grown_up: bool, source: {title, url}}. The last line ends PREP_END and no
+    line says "done" (the kid answers Done by voice, a thumbs-up or a tap; Skip always works). The source is credited
+    in data only."""
+    out = []
+    for k in ("id", "title", "steps", "source"):
+        if not p.get(k):
+            out.append(f"prep missing {k}")
+    if len(str(p.get("title", "")).split()) > 6:
+        out.append("prep title over 6 words")
+    steps = p.get("steps") or []
+    if not 1 <= len(steps) <= PREP_MAX_STEPS:
+        out.append(f"prep needs 1 to {PREP_MAX_STEPS} spoken steps")
+    for t in steps:
+        if len(str(t).split()) > 20:
+            out.append(f"prep step over 20 words: {t!r}")
+    if steps and not str(steps[-1]).rstrip().endswith(PREP_END):
+        out.append(f"prep's last step must end with {PREP_END!r}")
+    if any(re.search(r"\bdone\b", str(t), re.I) for t in steps):
+        out.append("prep never speaks the trigger word 'done'")
+    if not isinstance(p.get("grown_up"), bool):
+        out.append("prep.grown_up must be true or false")
+    src = p.get("source") or {}
+    if not (src.get("title") and str(src.get("url", "")).startswith("https://")):
+        out.append("prep source needs {title, https url}")
+    return out
+
+
 def check() -> list[str]:
     """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data."""
     probs: list[str] = []
@@ -142,11 +218,35 @@ def check() -> list[str]:
                 if calc_vals and any(float(plain) < float(v) / 24 for v in calc_vals):  # "more than 6 days"
                     continue
                 probs.append(f"{lid}: number {n} not in {f.get('from')}: {f['text']!r}")
-        for i, s in enumerate(l.get("steps", [])):
+        if l.get("prep") is not None:
+            probs += [f"{lid}: {p}" for p in check_prep(l["prep"])]
+        if l.get("track", "core") not in ("core", "explorer"):
+            probs.append(f"{lid}: track must be core or explorer")
+        if l.get("track") == "explorer" and not (isinstance(l.get("unlock_after_missions"), int)
+                                                 and l["unlock_after_missions"] >= 1):
+            probs.append(f"{lid}: an explorer lesson needs unlock_after_missions >= 1")
+        if l.get("track") == "explorer" and l.get("ride"):
+            probs.append(f"{lid}: the check ride is core")
+        pv = l.get("patch_video")
+        if pv is not None and not (pv.get("media") in VIDEO_IDS and pv.get("line") and len(pv["line"].split()) <= 12):
+            probs.append(f"{lid}: patch_video needs a known media id and a line of 12 words or fewer")
+        cl = l.get("clip") or {}
+        if cl.get("note") and len(cl["note"].split()) > 12:
+            probs.append(f"{lid}: clip note over 12 words")
+        steps = l.get("steps", [])
+        graded = [s for s in steps if (s.get("accept") or {}).get("type") != "video"]
+        if steps and not graded:
+            probs.append(f"{lid}: a lesson needs at least one step that isn't a video")
+        for i, s in enumerate(steps):
             for k in ("prompt", "accept", "hint", "success", "fail"):
                 if not s.get(k):
                     probs.append(f"{lid}[{i}]: missing {k}")
             a = s.get("accept") or {}
+            if a.get("type") == "video" or s.get("type") == "video":
+                probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
+                if l.get("ride"):
+                    probs.append(f"{lid}[{i}]: no videos in the check ride (it runs on the live sim)")
+                continue
             if a.get("type") not in ACCEPT_TYPES:
                 probs.append(f"{lid}[{i}]: bad accept type {a.get('type')!r}")
             if a.get("type") == "choice" and a.get("answer") not in {o["id"] for o in a.get("options", [])}:
