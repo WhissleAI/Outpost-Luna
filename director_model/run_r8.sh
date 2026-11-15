@@ -31,7 +31,8 @@ python3 director_model/loop.py preflight
 echo "[model server :$MS_PORT] $(date +%T)"
 (cd model_server && EMBED_MODEL_DIR=${EMBED_MODEL_DIR:-$PWD/models/minilm} STEER_TTS=off ARC_EAR=off ARC_META=off OS_TTS=off \
   $MPY -m uvicorn app.main:app --host 127.0.0.1 --port "$MS_PORT" > /tmp/director-r8-ms.log 2>&1 & echo $! > /tmp/director-r8-ms.pid)
-trap 'kill $(cat /tmp/director-r8-ms.pid) 2>/dev/null || true' EXIT
+stop_ms() { kill $(lsof -tiTCP:"$MS_PORT" -sTCP:LISTEN 2>/dev/null) 2>/dev/null || true; }   # by port: the pid file can be stale
+trap stop_ms EXIT
 until curl -sf "localhost:$MS_PORT/health" >/dev/null; do sleep 2; done
 export MODEL_SERVER_URL=http://127.0.0.1:$MS_PORT
 echo "[gen] $(date +%T)"
@@ -43,7 +44,7 @@ $BPY director_model/gen_sessions.py $GEN --only "val,test_clean,test_asr,test_re
 for p in "${pids[@]}"; do wait "$p"; done
 $BPY director_model/gen_sessions.py --out "$DATA" --merge "$SHARDS"
 rm -f "$DATA"/train_s*.npz "$DATA"/train_s*.meta.jsonl
-kill "$(cat /tmp/director-r8-ms.pid)" 2>/dev/null || true
+stop_ms
 echo "[train] $(date +%T) m + xl"
 python3 director_model/train.py --data "$DATA" --out "$RUN/m/cand" --size m --threads 3 > "$RUN/train_m.log" 2>&1 &
 pm=$!

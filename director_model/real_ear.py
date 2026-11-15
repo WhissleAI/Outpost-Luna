@@ -304,7 +304,7 @@ def cmd_decode(a):
     if a.order == "test_first":
         todo.sort(key=lambda j: {"app": 0, "test": 0, "val": 1, "train": 2}[j["group"]])
     elif a.order == "mix":     # round 7: held-out first, but every 3rd job a train / val one (a cut-short run still
-        held = [j for j in todo if j["group"] in ("app", "test")]   # leaves train decodes with the ear's extras)
+        held = [j for j in todo if j["group"] not in ("val", "train")]   # test, app, app_os, video ...   # leaves train decodes with the ear's extras)
         va = [j for j in todo if j["group"] == "val"]
         tr = [j for j in todo if j["group"] == "train"]
         todo = []
