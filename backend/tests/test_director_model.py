@@ -164,6 +164,15 @@ def test_policy_is_cost_aware():
     assert a == {"act": "ask_clarify", "clarify": ["shields", "heaters"]}
 
 
+def test_policy_never_silences_a_very_short_turn():
+    """Round 9 (RESULTS.md): with ignore_min_words, the model may not silence a turn shorter than that ("far side" said
+    plainly is a real request); longer room talk / echo can still be silenced. None keeps the old behaviour."""
+    thr = {"cmd": 0.95, "ignore": 0.8, "ask": 1.01, "veto": None, "ignore_min_words": 3}
+    assert RT.policy(_out("ignore", 0.99), ["far", "side"], [], False, thr) is None
+    assert RT.policy(_out("ignore", 0.99), "my brother took my pencil".split(), [], False, thr) == {"act": "ignore"}
+    assert RT.policy(_out("ignore", 0.99), ["far", "side"], [], False, {**thr, "ignore_min_words": None}) == {"act": "ignore"}
+
+
 def test_default_mode_is_shadow_with_rules_fallback(monkeypatch):
     """Owner decision 2026-11-14 (RESULTS.md round 6): `shadow` by default until a loop round passes the gate (the r4
     weights silence some real-ear mishears); the shipped weights still carry their fitted cost-aware thresholds, and

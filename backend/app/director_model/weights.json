@@ -86,9 +86,10 @@
  },
  "policy": {
   "cmd": 0.95,
-  "veto": 0.99,
+  "veto": null,
   "ignore": 0.8,
-  "ask": 1.01
+  "ask": 1.01,
+  "ignore_min_words": 3
  },
  "run": "r4_s",
  "data": "ds_r4",
@@ -96,5 +97,8 @@
   "n_train_sessions": 2400,
   "n_train_steps": 232430,
   "best_step": 1200
- }
+ },
+ "history": [
+  "2026-11-15 round 9: policy-only update on the new ear (veto off, ignore_min_words 3); weights unchanged (r4 s)"
+ ]
 }
