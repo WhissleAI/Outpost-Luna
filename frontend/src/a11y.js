@@ -225,11 +225,16 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function open(v = panel.hidden) {
     if (v) {
       const about = document.getElementById("about"); if (about && about.open) about.close();   // one sheet at a time
+      // [robustness] the video overlay is a native modal <dialog> (the top layer): Settings opened over it (by voice)
+      // sat underneath, inert, and the kid could not touch it. One sheet at a time: the video closes first.
+      if (O.video && O.video.isOpen && O.video.isOpen()) O.video.command("stop");
       renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
       (panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector("input")).focus();
     } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
+  // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
+  addEventListener("outpost:modal-open", () => { if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
