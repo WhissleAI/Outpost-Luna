@@ -1,5 +1,5 @@
 """The ear (/v1/stream?ear=arc, Arc Transcriber Space): turn logic with a fake model, and live runs on REAL voices
-(the Artemis II crew audio; the model ignores TTS on purpose, so synthetic fixtures can't test it)."""
+(the Artemis II crew audio: the model is trained to ignore synthetic TTS, so real voices are the test)."""
 import json
 from pathlib import Path
 
@@ -183,3 +183,10 @@ def test_start_comes_before_the_arc_read_when_only_the_final_has_words():
     msgs = run(es, [1] * 6 + [0] * 10)
     assert [(x["t"], x.get("state")) for x in msgs] == [("turn", "start"), ("arc", None), ("words", None),
                                                          ("turn", "end")]
+
+
+def test_wordless_segment_has_no_device_directed_read():
+    """Real noise beds read 0.6-0.9 on the head with no words: a wordless segment must not look directed."""
+    es = arc_ear.EarStream(model=FakeModel(text="", directed=0.9))
+    arc = [x for x in run(es, [1] * 10 + [0] * 10) if x["t"] == "arc"]
+    assert arc[0]["device_directed"] is None and arc[0]["directed"] is None and arc[0]["speech"] is False

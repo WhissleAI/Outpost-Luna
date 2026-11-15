@@ -8,9 +8,11 @@ How a turn is heard (one EarStream per connection, the model shared under its lo
      own cost, and only on the first EAR_PARTIAL_MAX_S). The first non-empty partial starts the TURN.
   3. EAR_END_SILENCE_S of silence (or end_turn / stop, or EAR_MAX_TURN_S) closes it: one full decode gives the final
      words, the names linked to the screen's list, the sound events and the device-directed head.
-A segment whose final decode has no words is not a turn: noise, or the app's own TTS voice leaking into the mic (the
-model is built not to transcribe TTS playback). Its `arc` message still goes out (speech=false, the sound events), so
-room noise is visible downstream without ever taking the floor.
+A segment whose final decode has no words is not a turn: noise, or synthetic speech the model chose not to transcribe
+(it is trained to ignore Kokoro-style TTS). Its `arc` message still goes out (speech=false, the sound events, no
+device-directed read), so room noise is visible downstream without ever taking the floor. NOTE: the app's own voices
+(the Nora voice pack, the macOS OS voice) ARE transcribed when they reach the mic (40/40 clean clips,
+tools/ear_compare.py), so the backend's echo check (turn_router.echo_of against what we just said) stays the defence.
 
 Messages (the shapes the browser takes from the Deepgram Flux relay, docs/SESSION_CONTRACT.md, plus names):
   {"t":"turn","state":"start","text"}       the first non-empty partial (or the final, when no partial had words)
@@ -213,8 +215,11 @@ class EarStream:
                   "kind": _kind(self.names, n["entity"])} for n in out["names"]]
         spoken = " ".join(u["text"].strip() for u in utts).strip()
         text = " ".join(display_text(u, out["names"]) for u in utts).strip()
-        dh = [u["directed_head"] for u in out["utts"] if u.get("directed_head") is not None]
-        dflag = [u["directed"] for u in out["utts"] if u.get("directed") is not None]
+        # the device-directed head over the utterances WITH words only: on a wordless segment (room noise, a TV, our own
+        # voice the model chose not to transcribe) it can read high (0.6-0.9 on real noise beds), and "no speech" is
+        # never "talking to the app"
+        dh = [u["directed_head"] for u in utts if u.get("directed_head") is not None]
+        dflag = [u["directed"] for u in utts if u.get("directed") is not None]
         top = lambda k: next((u[k] for u in out["utts"] if u.get(k)), None)  # noqa: E731
         if not self.meta_only and not self.turn_open and text:
             msgs += self._start(text)     # before the arc read: a client resets its per-turn read on "start"
