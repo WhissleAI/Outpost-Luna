@@ -1,7 +1,8 @@
 # Outpost Luna desktop: one command from a fresh clone to desktop\dist\Outpost Luna Setup <version>.exe (Windows x64).
 # Mirrors desktop/scripts/build-mac.sh step for step. Step-by-step guide: docs/BUILD_WINDOWS.md.
 #
-# UNTESTED: written on a Mac; the first Windows build will validate it. Please report what breaks (docs/BUILD_WINDOWS.md).
+# Not yet run on a real PC: parsed and dry-run in PowerShell 7, and the same tree cross-built and checked on a Mac
+# (cross-build-windows.sh). Please report what breaks (docs/BUILD_WINDOWS.md, "What to report back").
 #
 #   powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 #   powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1 -SkipMedia   # media already in place
@@ -39,17 +40,35 @@ $nodeMajor = [int]((node -p "process.versions.node.split('.')[0]").Trim())
 if ($nodeMajor -lt 22) { Die "Node $nodeMajor found, need 22+:  winget upgrade --id OpenJS.NodeJS.LTS -e" }
 if (-not (Have uv))    { Die "uv missing:    winget install --id astral-sh.uv -e   (then open a new terminal)" }
 if (-not (Have cmake)) { Die "CMake missing: winget install --id Kitware.CMake -e   (then open a new terminal)" }
-# C compiler: Visual Studio (Build Tools) with the C++ workload, found by vswhere; else LLVM clang + Ninja.
+# C compilers, checked now (not 15 minutes in, at step 6). Two libraries:
+#   arctag.dll  Visual Studio (Build Tools) MSVC with the C++ workload, found by vswhere; else LLVM clang + Ninja.
+#   arc.dll     libarc, the ear: needs clang (C11 atomics, GCC builtins; plain cl.exe can't): LLVM clang + Ninja, else
+#               Visual Studio's clang-cl toolset (-T ClangCL: the "C++ Clang Compiler for Windows" + "MSBuild support for
+#               LLVM (clang-cl) toolset" components). The one VS command in docs/BUILD_WINDOWS.md installs both.
+# winget's LLVM does not put clang on PATH: use its default folder when it is there.
+$llvmBin = "$env:ProgramFiles\LLVM\bin"
+if (-not (Have clang) -and (Test-Path "$llvmBin\clang.exe")) { $env:PATH = "$llvmBin;$env:PATH" }
+$vsCmd = "winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override `"--wait --passive --add Microsoft.VisualStudio.Workload.VCTools " +
+         "--add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --includeRecommended`""
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$vs = $null
-if (Test-Path $vswhere) { $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath }
+$vs = $null; $vsClang = $null
+if (Test-Path $vswhere) {
+  $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+  $vsClang = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property installationPath
+}
+$haveClang = (Have clang) -and (Have ninja)
 $useClang = $false
 if (-not $vs) {
-  if ((Have clang) -and (Have ninja)) { $useClang = $true }
-  else { Die ("No C compiler. Install one of:`n  winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override " +
-              "`"--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended`"`n" +
-              "  or: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e") }
+  if ($haveClang) { $useClang = $true }
+  else { Die ("No C compiler. Install Visual Studio Build Tools (MSVC + clang-cl, about 3 GB):`n  $vsCmd`n" +
+              "  or LLVM + Ninja: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e") }
 }
+if (-not $haveClang -and -not $vsClang) {
+  Die ("libarc (the ear) needs clang, and none was found. Either add the clang-cl components to Visual Studio (re-run):`n" +
+       "  $vsCmd`n  or: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e   (then open a new terminal)")
+}
+$libarcCompiler = $(if ($haveClang) { "clang + ninja" } else { "clang-cl (Visual Studio)" })
+$compilers = "arctag: $(if ($vs) { "MSVC ($vs)" } else { "clang + ninja" }); libarc: $libarcCompiler"
 # Deep paths (torch) can pass 260 characters: keep the clone short (e.g. C:\src\atm) or enable long paths.
 $longPaths = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -ErrorAction SilentlyContinue).LongPathsEnabled
 if ($longPaths -ne 1 -and $Root.Length -gt 20) {
@@ -60,7 +79,7 @@ $drive = (Get-Item $Root).PSDrive
 $freeGB = [math]::Floor($drive.Free / 1GB)
 if ($freeGB -lt 6) { Die "only $freeGB GB free on ${drive}:; the build needs about 6 GB" }
 Write-Host ("node {0}, {1}, {2}, compiler {3}, {4} GB free" -f (node -v), (uv --version), ((cmake --version) | Select-Object -First 1),
-  $(if ($vs) { "MSVC ($vs)" } else { "clang + ninja" }), $freeGB)
+  $compilers, $freeGB)
 
 Step "2/8 NASA media (backend\data\media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
 if ($SkipMedia) { Write-Host "skipped (-SkipMedia)" }
@@ -100,7 +119,7 @@ Copy-Item $dll desktop\resources\native\arctag.dll -Force
 # "C++ Clang tools for Windows" component). Install either: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e
 if ((Have clang) -and (Have ninja)) {
   Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
-} elseif ($vs) {
+} elseif ($vsClang) {
   Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64 -T ClangCL
 } else { Die "libarc needs clang: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e" }
 Run cmake --build desktop\build\libarc --config Release
@@ -123,6 +142,8 @@ if (-not $exe) { Die "no installer in desktop\dist" }
 # (or without Visual Studio, unlike this one) still starts the model server.
 Run uv run --no-project python desktop\scripts\win_bundle_check.py dlls desktop\dist\win-unpacked\resources
 Run uv run --no-project python desktop\scripts\win_bundle_check.py speech desktop\dist\win-unpacked\resources
+# every runtime file: models at their sha256, the voice-pack clips, the trimmed crew audio, the video catalog, the shell
+Run uv run --no-project python desktop\scripts\win_bundle_check.py runtime desktop\dist\win-unpacked\resources
 Write-Host ("Installer: {0}  ({1:N0} MB, {2:N0} s)" -f $exe.FullName, ($exe.Length / 1MB), ((Get-Date) - $T0).TotalSeconds) -ForegroundColor Green
 Write-Host "Unpacked app (run it without installing): $Root\desktop\dist\win-unpacked\Outpost Luna.exe"
 Write-Host "Smoke test: start the app, then:  `$env:PYTHONPATH='desktop\resources\site\backend'; desktop\resources\python\python.exe desktop\scripts\smoke.py"

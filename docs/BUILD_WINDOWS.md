@@ -1,57 +1,71 @@
-# Build Outpost Luna for Windows
+# Build and test Outpost Luna on Windows
 
-> **No Windows machine has run this yet.** The script has been parsed and dry-run in PowerShell 7 (on a Mac, with
-> stand-in tools), and the same app has been cross-built on a Mac as an unpacked Windows app and checked file by file
-> against the Mac app (§8). Only a real PC can show that it starts. Expect a snag or two; §7 says what to send back.
+You build the Windows app (version 0.3) from `main` with one command. Then you run it and go through the checklist in
+§8. You need no accounts, keys or tokens, and nothing from us.
 
-You will end up with `desktop\dist\Outpost Luna Setup 0.1.0.exe`: an installer for an app that runs with **no
-internet**. The app bundles its own Python, the backend, the model server, every model, the NASA audio, the camera
-gesture models and the Visual C++ runtime. You need no accounts, API keys or tokens.
+> **Status.** No Windows PC has run this app yet. On a Mac, the same app was cross-built for Windows and checked file
+> by file (§12). Expect a snag or two. If anything breaks, send the items in §9.
 
-## 1. What you need
+**The short version**
 
-- Windows 10 or 11, 64-bit (x64), 16 GB RAM recommended, a CPU from about 2015 or later
-- About **6 GB free** on the drive you clone to
-- Internet access *for the build* (the finished app needs none)
-- These tools. In PowerShell:
+1. Install the tools (§1). Then open a **new** PowerShell window.
+2. Clone the repo to `C:\src\atm` (§2).
+3. Run `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` (§3). It takes about 15 to 30 minutes.
+4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.0.exe` (§5).
+5. On first launch the app downloads its models (510 MB, required), or you click **Import offline pack…** (§6).
+6. Go through the tester checklist (§8) and send it back with the logs from `%APPDATA%\Outpost Luna\logs` (§9).
+
+---
+
+## 1. Prerequisites
+
+You need:
+
+- Windows 10 or Windows 11, 64-bit (x64). ARM PCs are not supported.
+- 16 GB of RAM recommended.
+- **8 GB free** on the drive you clone to. The build uses about 4 GB: the package cache (about 1 GB), the NASA media
+  download (0.7 GB), the staged app (0.4 GB), the unpacked app (0.8 GB), the installer and node_modules. The app's first
+  launch then downloads up to 0.9 GB into `%APPDATA%`.
+- Internet access while you build, and for the first launch (or the offline pack, §6). After that the app needs none.
+- A webcam and a microphone, to test gestures and voice.
+
+In PowerShell (a normal window, not Administrator):
 
 ```powershell
-winget install --id Git.Git -e
-winget install --id OpenJS.NodeJS.LTS -e          # Node 22 or newer
-winget install --id astral-sh.uv -e               # Python toolchain; it fetches its own Python
-winget install --id Kitware.CMake -e
-# a C compiler for the Arc Tagger library (about 2 GB; takes a while):
-winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-# clang for libarc, the ear (it needs C11 atomics and GCC builtins that plain cl.exe lacks):
-winget install --id LLVM.LLVM -e
-winget install --id Ninja-build.Ninja -e
+winget install --id Git.Git -e                      # Git 2.40 or newer
+winget install --id OpenJS.NodeJS.LTS -e            # Node 22 or newer (the LTS is fine)
+winget install --id astral-sh.uv -e                 # uv 0.9 or newer; it fetches its own Python 3.11
+winget install --id Kitware.CMake -e                # CMake 3.20 or newer
+# C compilers (about 3 GB, 10 to 20 minutes): MSVC for the Arc Tagger library, and clang-cl for libarc (the ear)
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --includeRecommended"
 ```
 
-Close and reopen PowerShell afterwards so the new tools are on `PATH`. Check:
+**Close PowerShell and open a new window**, so the new tools are on `PATH`. Then check them:
 
 ```powershell
 git --version; node -v; uv --version; cmake --version
 ```
 
-(Instead of Visual Studio Build Tools you can use LLVM: `winget install --id LLVM.LLVM -e` and
-`winget install --id Ninja-build.Ninja -e`. The script picks whichever it finds. The LLVM route is the less certain one:
-see §6 if it fails to link.)
+Why two compilers: libarc, the speech recognizer ("the ear"), needs clang (C11 atomics and GCC built-ins). Plain
+`cl.exe` can't compile it. The command above adds Visual Studio's own clang-cl, so you need nothing else. If you
+already have Build Tools without clang, run the same command again: it adds the missing parts. LLVM works too:
+`winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e`. The build script finds LLVM in
+`C:\Program Files\LLVM\bin` even when it is not on `PATH`, and it checks for clang in step 1, before the long steps.
 
-**Long paths.** Some files inside the bundled Python (torch) have very long paths. Either clone to a short folder such as
-`C:\src\atm` (recommended), or enable long paths once, in an **Administrator** PowerShell:
+You do **not** need to install Python, ffmpeg, 7-Zip, ONNX Runtime or the Visual C++ Redistributable. The build
+fetches pinned copies, and the app ships its own.
+
+**Long paths.** Some files deep inside the Python packages have long paths. Clone to a short folder such as `C:\src\atm`
+(see §2). Or turn on long paths once, in an **Administrator** PowerShell:
 
 ```powershell
 New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force
 git config --global core.longpaths true
 ```
 
-The *installed* app is fine without long paths: its deepest file is 138 characters below `resources\`, so the default
-install folder (`C:\Users\<you>\AppData\Local\Programs\Outpost Luna\resources\`, ~75 characters) stays well under 260.
-Only an install folder longer than about 120 characters would need long paths.
-
 ## 2. Get the code
 
-The repo is public: `WhissleAI/Outpost-Luna` on GitHub. No account or token is needed to clone it.
+The repo is public, so no GitHub account is needed. (It was renamed from `ask-the-moon`; old URLs redirect.)
 
 ```powershell
 mkdir C:\src -Force; cd C:\src
@@ -59,7 +73,11 @@ git clone https://github.com/WhissleAI/Outpost-Luna.git atm
 cd atm
 ```
 
-(`main` is the release line. To build a branch under test, add `-b <branch>`, e.g. `-b fix/windows-parity`.)
+To update a clone you already have:
+
+```powershell
+cd C:\src\atm; git checkout main; git pull
+```
 
 ## 3. Build (one command)
 
@@ -67,270 +85,305 @@ cd atm
 powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 ```
 
-It prints `==> [time] step n/8` as it goes. The steps are the same as the Mac build's (`build-mac.sh`):
+While it works, it prints `==> [time] step n/8`. The steps match the Mac build (`build-mac.sh`):
 
-| step | what | time (rough) |
+| step | what it does | time |
 |---|---|---|
-| 1 | check the tools above, the C compiler, free disk, long paths | seconds |
-| 2 | download the NASA crew audio (74 clips) and the Moon map, ~0.5 GB, from nasa.gov; then cut the installer's copy (only the stretches the app plays, mono 48 kbps, ~175 MB) with `backend\pipeline\trim_media.py` | 2–10 min (+3 min the first time) |
-| 3 | `npm ci` in `frontend\`, then the camera-gesture runtime and models (sha256-pinned) | 1 min |
-| 4 | embedded Python 3.11 + backend and model-server packages (torch CPU, onnxruntime, …) + the Visual C++ runtime + app code; builds the frontend; checks every DLL import resolves | 3–5 min |
-| 5 | models: downloads the public model package (119 MB), checks its sha256 and every file | 1 min |
-| 6 | builds `arctag.dll` with CMake | 1 min |
-| 7 | Electron + electron-builder → NSIS installer | 5–10 min |
-| 8 | checks the unpacked app's DLL imports again, prints the installer path | seconds |
+| 1 | Checks the tools, both compilers (MSVC for arctag, clang for libarc), free disk and long paths | seconds |
+| 2 | Downloads the NASA media from nasa.gov (about 0.5 GB). Only the Moon map goes into the installer | 3 to 10 min |
+| 3 | Runs `npm ci` for the frontend, then fetches the camera-gesture runtime and models (sha256-pinned) | 1 to 2 min |
+| 4 | Sets up the embedded Python 3.11 and installs the backend and model-server packages: ONNX Runtime, the WinRT and SAPI speech packages, the Steer TTS runtime, and the Visual C++ runtime DLLs. It then builds the frontend and stages the app code, and checks that every DLL import resolves | 3 to 6 min |
+| 5 | Checks `desktop\assets.manifest.json`. No models are bundled: the app downloads them on first launch (§6) | seconds |
+| 6 | Builds `arctag.dll` (MSVC) and `arc.dll` (libarc, the ear: clang-cl or clang) with CMake | 1 to 2 min |
+| 7 | Runs Electron and electron-builder. This makes `dist\win-unpacked`, then compresses it into the NSIS installer | 3 to 10 min |
+| 8 | Checks the unpacked app: `win_bundle_check.py dlls`, `speech` and `runtime` (§12). Then it prints the installer path | under 1 min |
 
-If the media download stops part-way (NASA's server can be slow), just run the command again: finished files are kept.
-To skip that step when `backend\data\media` is already complete: add `-SkipMedia`.
+The total is about **15 to 30 minutes** on a recent PC. A re-run is faster, because downloads and caches are kept.
 
-The trim always runs (it skips clips that are already up to date). It needs no bash and no ffmpeg install: `uv run
---with imageio-ffmpeg==0.6.0` fetches a pinned wheel that carries a static `ffmpeg.exe` (ffmpeg 7.1, with LAME), the
-same version the Mac build uses. A re-run gives the same bytes (the time map is computed from the data, not from the
-encoder, so it is the same on both platforms). Its output is
-`backend\data\media\desktop\` (`audio\*.mp3` + `trim.json`, the clip-time map the player reads). To run it alone:
-`cd backend; uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media`. Details: [DESKTOP.md](DESKTOP.md),
-"Crew audio in the installer".
+If the NASA download stops part-way, run the same command again. It keeps the files it already has. When
+`backend\data\media` is complete, `-SkipMedia` skips that download.
 
 ## 4. Where the output goes
 
-| | |
+| what | where |
 |---|---|
-| installer | `desktop\dist\Outpost Luna Setup 0.1.0.exe` (about 0.7 GB; the Mac dmg is 646 MB) |
-| unpacked app (run without installing) | `desktop\dist\win-unpacked\Outpost Luna.exe` |
-| installed app | `%LOCALAPPDATA%\Programs\Outpost Luna\` (per-user install; you can choose the folder) |
-| app data and logs | `%APPDATA%\Outpost Luna\` (`logs\main.log`, `logs\models.log`, `logs\backend.log`) |
-| voice-guide turn log (only if Settings → "Help improve the voice guide" is on) | `%APPDATA%\Outpost Luna\cache\turnlog\turns.jsonl` |
+| Installer | `desktop\dist\Outpost Luna Setup 0.3.0.exe` (about 190 MB) |
+| Unpacked app (runs without installing) | `desktop\dist\win-unpacked\Outpost Luna.exe` (783 MB, about 7,900 files) |
+| Installed app | `%LOCALAPPDATA%\Programs\Outpost Luna\` (a per-user install; you can choose another folder) |
+| Downloaded models and media | `%APPDATA%\Outpost Luna\assets\` (`ear`, `tagger`, `embedder`, `voice`, and later `crew`, `videos`, `steer`) |
+| App data, settings and caches | `%APPDATA%\Outpost Luna\` |
+| **Logs** | `%APPDATA%\Outpost Luna\logs\` (`main.log`, `backend.log`, `models.log`) |
+| Ports the app chose | `%APPDATA%\Outpost Luna\ports.json` (backend on 47310, models on 47210 unless taken) |
 
-## 5. First run and what to test
+To open the logs folder, run `explorer "$env:APPDATA\Outpost Luna\logs"`.
 
-### 5.1 SmartScreen (first run only)
+## 5. Run it
 
-The installer is **unsigned** (no Authenticode certificate yet; docs/DESKTOP.md). The first time, Windows Defender
-SmartScreen shows **"Windows protected your PC"**: click **More info → Run anyway**. The same can happen once more when
-the installed app first starts. Nothing else should prompt:
+**Without installing** (the quickest way to test):
 
-- **No firewall prompt.** Both servers listen on `127.0.0.1` only, and Windows Defender Firewall only asks about programs
-  that listen on a network interface. If a "Windows Defender Firewall has blocked some features" dialog appears for
-  `python.exe` or Outpost Luna, that is a bug: report it (and it is safe to click Cancel).
+```powershell
+& "desktop\dist\win-unpacked\Outpost Luna.exe"
+```
+
+**With the installer.** Double-click `desktop\dist\Outpost Luna Setup 0.3.0.exe`. It is a per-user install, so it does
+not ask for Administrator rights. Start the app from the Start menu: **Outpost Luna**. To uninstall, use Settings →
+Apps → Outpost Luna → Uninstall. (Uninstalling leaves `%APPDATA%\Outpost Luna`; delete it by hand for a clean slate.)
+
+### SmartScreen (the app is unsigned)
+
+There is no code-signing certificate yet. So the first time you run the installer or the app, Windows shows **"Windows
+protected your PC"**. Click **More info → Run anyway**. Nothing else should prompt:
+
+- **No firewall prompt.** Both servers listen on `127.0.0.1` only. A "Windows Defender Firewall has blocked some
+  features" dialog for `python.exe` is a bug: report it. Clicking Cancel is safe.
 - **No console windows.** The two `python.exe` children start hidden. A black console window is a bug.
-- **Antivirus** may scan the ~20,000 files on first start (slow first launch). If it quarantines `python.exe` or a
-  `.pyd`, allow the install folder and reinstall.
+- **Antivirus** may scan the new files on the first start and right after each download, which makes those slower.
+  The app retries renames that a scan blocks for a moment. If it quarantines `python.exe` or a `.pyd` file, allow
+  the install folder and reinstall.
 
-### 5.2 Camera and microphone privacy switches
+### Camera and microphone
 
-Windows does not ask per app, the way macOS does. Two system switches decide, for every desktop app:
+Windows doesn't ask each app for the camera or microphone. Two system switches decide for every desktop app:
 
-- **Settings → Privacy & security → Camera**: **"Camera access" on** and **"Let desktop apps access your camera" on**.
-- **Settings → Privacy & security → Microphone**: **"Microphone access" on** and **"Let desktop apps access your
-  microphone" on**.
+- **Settings → Privacy & security → Camera**: turn on "Camera access" and "Let desktop apps access your camera".
+- **Settings → Privacy & security → Microphone**: turn on "Microphone access" and "Let desktop apps access your
+  microphone".
 
-If the camera switch is off, turning on gestures shows "Camera blocked. Allow it in your computer's privacy settings."
-(or, with some drivers, "The camera didn't start. Close other apps using it, or check your privacy settings."). If the
-microphone switch is off, the voice bar says "Mic is blocked. Type instead." Either way `main.log` records what Windows
-reported, e.g. `windows privacy camera: denied`. Turn the switch on, then turn gestures (or the mic) off and on again;
-no restart needed. A camera already in use by another app (Teams, Zoom) gives the second message too.
+If a switch is off, the app says "Camera blocked" or "Mic is blocked. Type instead.", and `main.log` records
+`windows privacy camera: denied`. Turn the switch on, then turn gestures (or the mic) off and on again. You don't
+need to restart the app.
 
-### 5.3 Smoke test, offline
+## 6. First launch: the downloads (or the offline pack)
 
-1. Install and start **Outpost Luna**. You should see a splash, "Warming up the models…", then the Flight School screen
-   within about 30 seconds. Note how long it takes.
-2. **Block the network for the app.** Easiest: turn Wi-Fi off / unplug the cable. Or, more precisely, add Windows
-   Firewall rules in an **Administrator** PowerShell (they block the app and its Python, not your other programs):
+The installer carries the code only. On the very first launch the app shows **"Getting Outpost Luna ready"** and
+downloads its models from Dropbox into `%APPDATA%\Outpost Luna\assets\`:
 
-   ```powershell
-   $app = "$env:LOCALAPPDATA\Programs\Outpost Luna"
-   New-NetFirewallRule -DisplayName "Outpost Luna offline test (app)"    -Direction Outbound -Action Block -Program "$app\Outpost Luna.exe"
-   New-NetFirewallRule -DisplayName "Outpost Luna offline test (python)" -Direction Outbound -Action Block -Program "$app\resources\python\python.exe"
-   ```
+| asset | what | size | when |
+|---|---|---|---|
+| `ear` | Arc Transcriber Space (the speech recognizer) | 461 MB | first launch, required |
+| `tagger` | Arc Tagger v0.3 | 12 MB | first launch, required |
+| `embedder` | MiniLM (the local brain's embedder) | 23 MB | first launch, required |
+| `voice` | the recorded Nora voice pack (889 lines) | 14 MB | first launch, required |
+| `crew` | the Artemis II crew audio | 175 MB | in the background, after the window opens |
+| `videos` | the 8 saved NASA videos | 199 MB | in the background, after the window opens |
+| `steer` | the Steer TTS voice | about 119 MB download | only when you pick Steer in Settings → Voice |
 
-   Loopback traffic (the app talking to its own servers on 127.0.0.1) is not affected by these rules. Remove them later:
-   `Remove-NetFirewallRule -DisplayName "Outpost Luna offline test*"`.
-3. Quit and restart the app with the network blocked. It must start the same way.
-4. Run the automated smoke test (it talks to the running app on 127.0.0.1). From your clone, with the installed app's
-   own Python:
+So the first launch needs **510 MB** before the app opens, then about **375 MB more** in the background. Each file is
+checked against its sha256 before it is installed. You can:
 
-   ```powershell
-   cd C:\src\atm
-   $app = "$env:LOCALAPPDATA\Programs\Outpost Luna\resources"
-   $env:PYTHONPATH = "$app\site\backend"; $env:PYTHONUTF8 = "1"
-   & "$app\python\python.exe" desktop\scripts\smoke.py
-   ```
+- Watch the progress. The app opens by itself when the four required assets are in.
+- Click **Continue later**. The app quits, and the next launch resumes where it stopped (it doesn't start from 0).
+- Click **Try again** after a network error.
+- Click **Import offline pack…** and pick `outpost-luna-assets-v2.zip` (885 MB: all six assets except Steer). This
+  works with no network at all. Get the zip on another computer (or from a USB stick):
+  [outpost-luna-assets-v2.zip](https://www.dropbox.com/scl/fi/h88nx83klw5i6s6a70ku1/outpost-luna-assets-v2.zip?rlkey=v4446k5cn0csua1a046jl1rn5&dl=1)
+  (sha256 `aa0961fbcd6caf7efffe78ff443710a560a885b1afc9f53c74249f0b436d5e8d`).
 
-   (If you built it yourself, `desktop\resources\python\python.exe` with `PYTHONPATH=desktop\resources\site\backend`
-   works too.) Expected: a list of `PASS` lines ending in `ALL PASS`: the local speech ear hears "show me the giant
-   bull's eye", answers, speaks with the Windows voice (and checks its word timings against the audio), grades a Flight School step, runs a mission shift, and finds every
-   gesture model both served and on disk. If the app chose other ports (see `%APPDATA%\Outpost Luna\ports.json`), add
-   `--base http://127.0.0.1:<backend port>`.
-5. **Voice (the Windows voices).** The app speaks with Windows' own offline voices: WinRT SpeechSynthesis (the
-   "OneCore" voices: Zira, David, Mark …), with SAPI as the fallback; nothing is downloaded. Check, and note for §7:
-   - **Which engine and voice were picked.** Open `http://127.0.0.1:47210/health` in a browser (the model server; see
-     `ports.json` if it chose another port): `models.tts` shows `engine` (expect `winrt`; `sapi` means WinRT failed to
-     start: send `models.log`), `voice` / `voice_name` (the guide), `roles` (CAPCOM should be a different voice if two
-     English voices are installed), `voices` (how many), `timing` (expect `os`) and `warm_ms`.
-     `http://127.0.0.1:47210/v1/tts/voices` lists them all, best first.
-   - **Latency.** Hold **Space** (or the talk button) and ask "where did Apollo 11 land?". Note how long from the end of
-     your question to the first word you hear, and whether there are gaps between sentences. The smoke test prints
-     the server's time for one line (`OS voice TTS: … in ___ ms`).
-   - **Captions.** Settings → Read → Captions on. While the guide speaks, the highlighted word should move with the
-     voice (on Windows the timings come from the voice itself). Note if it runs ahead or behind.
-   - **Settings → Voice**: the list shows this PC's English voices, best first, with "Parents can download clearer
-     Windows voices: Settings → Time & language → Speech → Manage voices." Play two or three previews, pick one, ask
-     again: the answer uses the new voice. Volume and speed changes apply to the next line. Optional: add a voice in
-     Windows Settings (as the hint says) and, within 30 s, it appears in the list.
-6. **Keyboard** (docs/KEYBOARD.md). With the mouse untouched: arrows move the focus ring, Enter selects, Esc goes back,
-   `?` opens the key help, **Alt+→ / Alt+←** next / previous, **Alt+Y / Alt+N** yes / no, **Alt+.** stops speech.
-   Pressing **Alt** alone must do nothing (there is no menu bar to open). The shell keys: **F5**, **Ctrl+R** and
-   **Ctrl+Shift+I** must do nothing (no reload, no dev tools); **Ctrl+= / Ctrl+- / Ctrl+0** zoom in / out / reset;
-   **F11** full screen; **Alt+F4** quits.
-7. **Cockpit.** Open a Flight School lesson, then the **Mission** tab: the 3D cabin must build within a few seconds and
-   turn smoothly (note roughly how smooth: the GPU is used through Direct3D here, Metal on the Mac). Open a panel
-   (power, comm, …), give an order ("give shields more"), and go back to the seat.
-8. **Controller** (optional; docs/KEYBOARD.md §Controller). Plug in or pair an Xbox or PlayStation controller and press
-   any button: a "Controller connected" toast appears. D-pad / left stick move, A / Cross selects, B / Circle goes back,
-   X / Square is the mic, Y / Triangle help, LB / RB previous / next, the right stick turns the Moon (or looks around
-   in the cabin). Xbox pads work over USB or Bluetooth; a PlayStation pad works over USB, and over Bluetooth on most PCs.
-9. **Camera gestures** (docs/GESTURES.md). Check the privacy switches in §5.2 first. Open **Access** (settings) →
-   **Camera & gestures** → turn on **Use the camera for gestures**. The camera stays off until you do this. With it on:
-   a red "Camera on" chip appears (its **Turn off** button stops the camera at once; the webcam light must go off), and
-   the self-view shows your hand's skeleton. Hold an open hand still for half a second: "Stop". Thumbs up: "Yes".
-   Swipe an open hand sideways: next / back. In the cabin, lean in towards the screen: the aimed panel opens. The models
-   are inside the app (`resources\app\frontend\vision\`), so this works with Wi-Fi off.
-10. **Answers by gesture and the far side** (camera on). Flight School → Know your Moon. On "Could you see Earth in the
-    sky?" (Yes / No / Sometimes) a thumbs up answers Yes; on a retry, three fingers held still picks Sometimes. The
-    answer badges show 1 2 3 while the camera is on. On "Turn the Moon to show the far side", pressing **Far side**
-    (or saying "far side", or a fist turned to the side) turns the Moon round, then passes. Esc closes a NASA video;
-    with a video open, turning the camera on in Settings must not blank the window (the PR #19 bug).
-11. **Settings → Reset Outpost Luna** (docs/RESET.md). Fly a lesson first. Then Settings → Reset Outpost Luna →
-    **Start over**: the sheet lists what goes; a click does nothing; Esc backs out; holding **Hold to start over** for
-    3 seconds (mouse, or Enter held, or a controller's A held) closes the app and it starts again by itself at the
-    call-sign screen, without downloading anything. Then **Reset everything**: the same, and
-    `%APPDATA%\Outpost Luna\cache` and `hf` are gone afterwards (logs, `ports.json` and `children.json` stay).
-    `main.log` must say `reset start: … relaunching` / `reset all: …` and must NOT say `could not delete` (that would be
-    a Windows file lock: send the line). The installed program in `%LOCALAPPDATA%\Programs\Outpost Luna` is never
-    touched; nothing else of ours should be in `%LOCALAPPDATA%`.
-12. Quit the app (close the window). In Task Manager, no `python.exe` from Outpost Luna should remain. Start it again:
-    it must reach Flight School the same way (and `main.log` may say `reaped stale children` only after a crash).
+Then you see a splash screen, "Warming up the models…", and the call-sign screen or Flight School within about 30
+seconds. Later launches skip the download and only check the files' sizes. Settings → **Storage & updates** shows what
+is installed, and whether an update is ready.
 
-## 6. Common errors
+### Automated smoke test (optional, 1 minute)
+
+With the app running:
+
+```powershell
+cd C:\src\atm
+$res = "desktop\dist\win-unpacked\resources"     # installed app: "$env:LOCALAPPDATA\Programs\Outpost Luna\resources"
+$env:PYTHONPATH = "$res\site\backend"; $env:PYTHONUTF8 = "1"
+& "$res\python\python.exe" desktop\scripts\smoke.py
+```
+
+It should print `PASS` lines that end in `ALL PASS`. If the app chose other ports (see `ports.json`), add
+`--base http://127.0.0.1:<backend port>`.
+
+## 7. Keys you'll need for testing
+
+| key | what it does |
+|---|---|
+| Hold **Space** (or the talk button) | Talk to the guide |
+| **M** | Mic on or off |
+| **Shift+M** | Mute: every sound off, or back on (the same as the Mute button in the top bar) |
+| **R** | Cabin: re-centre the view (the same as the Center view button). **Ctrl+R** must do nothing |
+| **Esc** | Back, or close a video |
+| **?** | Key help |
+| **F5**, **Ctrl+R**, **Ctrl+Shift+I** | Must do nothing (no reload, no dev tools) |
+| **Ctrl+= / Ctrl+- / Ctrl+0**, **F11** | Zoom in, out or reset; full screen |
+| **Alt+F4** | Quit |
+
+## 8. Tester checklist
+
+Do it once with Wi-Fi **on**, then start the app again with Wi-Fi **off**. Note anything odd, even if it worked.
+
+1. **First launch.** On a fresh Windows account (or after deleting `%APPDATA%\Outpost Luna`): the "Getting Outpost
+   Luna ready" screen shows about 510 MB and its progress. Note how long it takes: ___ min. Then check:
+   - Click **Continue later** halfway, and start the app again: it resumes, it doesn't start from 0.
+   - With Wi-Fi off from the start: the screen says you're offline and offers the pack. **Import offline pack…** with
+     the zip (§6) installs everything with no network.
+   - After the window opens, the crew audio and the videos keep downloading (Settings → Storage & updates).
+2. **Start.** After the downloads: splash, then Flight School in about 30 s or less (second start: ___ s, offline:
+   ___ s). There should be no console window and no firewall dialog.
+3. **The ear, with your real voice** (don't play TTS into the mic). Hold Space and say "show me Tycho", then "take me
+   to the Sea of Tranquility": the right place opens. Open `http://127.0.0.1:47210/health`: `models.arc_ear` should
+   say it is available, on ONNX Runtime. Note how long it feels from the end of your sentence to the response.
+4. **Voice: which engine and voice.** In the same `/health`, under `models.tts`, note `engine` (expect `winrt`; `sapi`
+   means WinRT failed, so send `models.log`), `voice_name`, `voices` and `warm_ms`. In Settings → Voice, the
+   computer's voice lists this PC's English voices. Preview two, pick one, and ask a question: the answer should use
+   the new voice.
+5. **Steer.** Settings → Voice → **Steer TTS (Whissle)**. It says it is downloading the Steer voice (about 119 MB),
+   then answers in Steer with captions in step. Switch back to the computer's voice mid-session: that works too.
+6. **Nora lines.** The scripted lines (lesson prompts and CAPCOM calls) play the recorded Nora voice. Live answers use
+   the chosen engine. Both should be clear, with no clipped starts.
+7. **First-word latency.** Ask "where did Apollo 11 land?". Time from the end of your question to the first word you
+   hear: ___ s. Note any gaps between sentences.
+8. **Captions.** Settings → Read → Captions on. While the guide speaks, the highlighted word should keep pace with the
+   voice. Is it ahead, behind or fine?
+9. **Mic and turn-taking.** Ask three questions in a row. Interrupt the guide mid-sentence by talking. Does it stop
+   and listen? Does it ever answer itself, or miss a question?
+10. **Camera gestures.** Settings → Camera & gestures → turn on **Use the camera for gestures**. A red "Camera on" chip
+    and your hand's skeleton should appear. Check each of these:
+    - Open hand held still: Stop.
+    - Thumbs up: Yes. Thumbs down: No.
+    - 1, 2 or 3 fingers held still: picks that answer (the badges show 1 2 3).
+    - Fist leaned to one side: the Moon spins that way.
+    - Swipe an open hand: next or back.
+    - **Turn off** in the chip: the webcam light goes off.
+    Note the "N frames a second" figure: ___.
+11. **Videos.** Open a lesson with a NASA video. A saved NASA video plays in the app's own player, even with Wi-Fi off.
+    A NASA YouTube clip plays as an embed when online, and says "Needs internet" when offline. Click the YouTube logo
+    or "Watch on YouTube": a grown-up gate must appear (hold for 3 s), and only then does the browser open. Esc closes
+    a video.
+12. **Reset.** Fly a lesson first. Then go to Settings → Reset (the last item):
+    - **Start over**: a plain click does nothing. Holding **Hold to start over** for 3 s closes the app, and it
+      restarts by itself at the call-sign screen. Nothing downloads again.
+    - **Reset everything**: the app restarts at the **"Getting Outpost Luna ready"** screen and downloads the 510 MB
+      again (or takes the offline pack). `%APPDATA%\Outpost Luna\assets`, `cache` and `hf` were emptied; `logs` stays.
+    - `main.log` must not say `could not delete`. If it does, send the line: that is a Windows file lock.
+13. **Mute.** Press Shift+M (or click Mute in the top bar). Every sound stops: the voice, crew audio, videos and the
+    beeps. Captions stay. Press Shift+M again: sound is back.
+14. **Cabin re-centre.** Mission tab → the 3D cabin. Turn your head (camera on) or drag to look away. Press **R**: the
+    view comes back to the centre. The Center view button does the same. Ctrl+R does nothing.
+15. **Quit.** Close the window. In Task Manager, no `python.exe` from Outpost Luna is left.
+
+## 9. What to send back
+
+Copy this, fill it in, and attach the three logs (`%APPDATA%\Outpost Luna\logs\*.log`).
+
+```
+build-windows.ps1: pass / fail (if fail: the last 40 lines)    build time: ___ min    installer: ___ MB
+compilers printed in step 1 (arctag / libarc):
+Windows version (winver) / CPU / RAM / GPU / is your Windows user name plain ASCII?
+SmartScreen "Run anyway" worked? firewall dialog? console window?
+first launch: 510 MB took ___ min; Continue later resumed? offline pack import worked? background crew+videos done?
+start to Flight School: 2nd ___ s, offline ___ s
+smoke.py: ALL PASS? (paste the output if not)
+ear with my voice: "show me Tycho" opened Tycho? Sea of Tranquility? feel of the delay: ___
+voice: engine ___  voice ___  voices ___  warm_ms ___   Steer: downloaded? speaks? captions in step?
+Nora lines clear? ___   first word after a question: ___ s   gaps between sentences? ___
+captions in step with the voice? (ahead / behind / fine)
+mic and turn-taking: interrupting works? missed questions?
+gestures: stop / yes / no / 1-2-3 / fist spin / swipe / camera off: each ok? frames a second: ___
+videos: saved NASA video plays offline? YouTube embed plays online? gate shown?
+reset: Start over relaunches, no re-download? Reset everything re-downloads (or takes the pack)? "could not delete"?
+mute: Shift+M silences everything and brings it back?
+cabin: R and Center view re-centre? Ctrl+R does nothing?
+quit: no python.exe left?
+RAM after one question (Outpost Luna + its python.exe processes): ___ MB
+main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows privacy":
+```
+
+## 10. Known limitations
+
+- **Unsigned.** There is no Authenticode certificate yet, so SmartScreen warns once (§5).
+- **First launch needs the internet, or the offline pack.** 510 MB before the app opens; 375 MB more in the
+  background; Steer another ~119 MB when picked.
+- **NSIS 2 GB limit.** An NSIS installer can't hold more than 2 GB. The 0.3 app is **783 MB uncompressed**
+  (`dist\win-unpacked`, 7,896 files, measured 2026-11-15), well under it, because the models are no longer bundled.
+  (0.1.x bundled them: 1,620 MB.) Compressed, the installer is 192 MB.
+- **x64 only.** There is no ARM64 build.
+- **No app icon yet.** The app shows Electron's default icon, on the Mac too (`desktop/build-resources` has none).
+  A cross-built installer (§12) also lacks the version details, because it is built without Wine.
+- **Downloads ignore system proxies.** On a network that only allows a proxy, use the offline pack.
+- **Voices.** The computer's voices come from Windows itself. You can add better ones in Settings → Time & language →
+  Speech → Manage voices; they appear in the app within 30 s.
+- **The clang-cl build of libarc is untested.** The Mac cross-build uses mingw-w64 gcc. Report step 6's output if it
+  fails.
+
+## 11. Troubleshooting
 
 | you see | do this |
 |---|---|
-| `uv` / `node` / `cmake` "is not recognized" | open a new PowerShell after `winget install` |
-| `No C compiler` | install VS 2022 Build Tools with the C++ workload (command in §1), or LLVM + Ninja |
-| `running scripts is disabled on this system` | use the exact command in §3 (`-ExecutionPolicy Bypass`) |
-| path / "file name too long" / `FileNotFoundError` deep inside `torch` | clone to `C:\src\atm` or enable long paths (§1) |
-| media step fails with HTTP 403 / timeouts | re-run; NASA's CDN is rate-limited at times |
-| `model package sha256 mismatch` | re-run (it re-downloads); if it persists the package link changed: report it |
-| `assets without a download link` | run `make asset-pack asset-upload` on the Mac that owns the Dropbox folder, commit `desktop/assets.manifest.json` |
-| CMake: `arctag.dll was not produced` | send the CMake output; try the other compiler route |
-| CMake: `libarc needs clang` / `arc.dll was not produced` | install LLVM + Ninja (§1); with only Visual Studio, add its "C++ Clang tools for Windows" component (the script then uses `-T ClangCL`) |
-| `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | send `models.log`: libarc loads the onnxruntime wheel's `onnxruntime.dll` by path (`site\models\onnxruntime\capi\`) |
-| LLVM route: `unresolved external symbol __cpu_model` / `__cpu_indicator_init` | use the Visual Studio route (it builds the portable kernels), or the cross-built `arctag.dll` (§8) |
-| `DLL imports that resolve nowhere on a clean Windows` (step 4 or 8) | send the list: a package started needing a DLL the app does not ship |
-| splash says the backend or model server "keeps stopping" | send `%APPDATA%\Outpost Luna\logs\*.log` |
-| `models.log`: `DLL load failed` / `WinError 126` on `import torch` | send `models.log`; as a check, installing the "Microsoft Visual C++ Redistributable (x64)" should make it go away (it must not be needed: the app ships those DLLs) |
-| `models.log`: `this x86_64 CPU does not report AVX2 + FMA` | a CPU older than ~2013 with a mingw / clang `arctag.dll`; the MSVC build does not need AVX2. Report the CPU |
-| antivirus quarantines `python.exe` or a `.pyd` | allow the `desktop\` folder (or the install folder) and re-run |
+| `uv` / `node` / `cmake` "is not recognized" | Open a new PowerShell after `winget install` |
+| `running scripts is disabled on this system` | Use the exact command in §3 (it has `-ExecutionPolicy Bypass`) |
+| `No C compiler` | Install the Build Tools with the command in §1 |
+| `libarc (the ear) needs clang` (step 1) | Run the Build Tools command in §1 again: it adds the clang-cl components. Or install LLVM and Ninja (§1) |
+| CMake: `arc.dll was not produced` / `The build tools for ClangCL cannot be found` | Same as above. Send the CMake output if it persists |
+| CMake: `arctag.dll was not produced` | Send the CMake output. Try the other compiler (MSVC or LLVM) |
+| `git clone` says `invalid path` | You have an old copy: four screenshot names had a `?` until 2026-11-15. Clone again |
+| Path / "file name too long" deep inside a package | Clone to `C:\src\atm`, or turn on long paths (§1) |
+| `only N GB free` | Free up space: the build uses about 4 GB, and 8 GB free is safe |
+| Media step fails with HTTP 403 or timeouts | Run it again. NASA's server limits the rate at times |
+| `assets without a download link` (step 5) | Report it: the asset manifest on `main` is incomplete |
+| `DLL imports that resolve nowhere` (step 4 or 8) | Send the list: a package needs a DLL the app doesn't ship |
+| `runtime check(s) failed` (step 8) | Send the `MISS` lines: a file the app needs is not in the bundle |
+| "Windows protected your PC" | Click More info → Run anyway (§5) |
+| First launch: "You're offline" / the download fails | Check the network and click Try again, or use **Import offline pack…** (§6) |
+| First launch stuck at the same percentage | Wait a minute (antivirus scans each finished file), then Continue later and start again: it resumes |
+| `main.log`: `assets: ... sha256 mismatch` | Click Try again (the file downloads again). If it repeats, send `main.log` |
+| "not enough disk space for …" | Free the space it names on the system drive (`%APPDATA%` lives there), then Try again |
+| Splash says the backend or model server "keeps stopping" | Send `%APPDATA%\Outpost Luna\logs\*.log` |
+| `models.log`: `libarc not found` or `cannot load ... arc.dll` | Send `models.log`. The app should have `resources\native\arc.dll` |
+| `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | Send `models.log`. libarc loads `resources\site\models\onnxruntime\capi\onnxruntime.dll` by path |
+| `models.log`: `cannot open ...` for a file under `assets\ear` | Send `models.log`, and say whether your Windows user name has accents or non-Latin letters |
+| `models.log`: `DLL load failed` / `WinError 126` | Send `models.log`. As a test only, installing the "Microsoft Visual C++ Redistributable (x64)" should fix it; report it either way |
+| `models.log`: `does not report AVX2 + FMA` | Report the CPU (only a cross-built DLL needs AVX2) |
+| No voice, and `/health` shows `engine: sapi` or none | Send `models.log`. Check Settings → Time & language → Speech that an English voice is installed |
+| Steer stays at "Downloading…" | Check the network; send `main.log` lines with `assets: steer` |
+| "Camera blocked" / "Mic is blocked" | Turn on the privacy switches (§5) |
+| Camera "didn't start" | Close Teams, Zoom or other apps that use the camera |
+| YouTube clip shows an error (101, 150, 153) | Note the video and the error. Saved NASA videos should still play |
+| Reset: `could not delete` in `main.log` | Send the line (a file lock). Quit, then delete `%APPDATA%\Outpost Luna\assets` and `cache` by hand |
+| Antivirus quarantines `python.exe` or a `.pyd` | Allow the `desktop\` folder (or the install folder) and run it again |
+| A `python.exe` stays after quitting | Send `main.log`. To end it: `taskkill /IM python.exe /F` (this also stops other Python programs) |
 
-## 5.4 First run, the ear, updates: check on a real PC
+## 12. Cross-building on a Mac (for us, not the tester)
 
-The installer no longer carries the models or the media: the app downloads them on first launch into
-`%APPDATA%\Outpost Luna\assets\` (docs/DESKTOP.md "First run: assets"). Check each line on a real Windows PC:
-
-- **First-run download.** On a fresh account (or after deleting `%APPDATA%\Outpost Luna`), the "Getting Outpost Luna
-  ready" screen shows ~510 MB and progress; the app opens when the ear, tagger, embedder and voice are in. Then:
-  - "Continue later" mid-download, start again: it resumes (does not restart from 0);
-  - network off at first launch: the offline message, then "Import offline pack…" with `outpost-luna-assets-v2.zip`
-    from a USB stick installs everything without network;
-  - crew audio and videos keep downloading in the background after the window opens;
-  - Windows Defender / another antivirus scanning the new files does not break the install (renames are retried).
-- **The ear, with a REAL voice** (not TTS played into the mic). Ask "show me Tycho" and "take me to the Sea of
-  Tranquility": the card opens on the right place. `models.log` shows `arc_ear` available with backend `onnxruntime
-  1.32.0`; `/health` `models.arc_ear.rss_after_load_mb` about 1 GB. Note the turn-end delay you feel.
-- **Steer switch** (with the Steer PR, feat/steer-optional): Settings -> Voice -> "Steer TTS (Whissle)" downloads the
-  Steer voice ("Downloading Steer voice…"), then answers in Steer with captions in step; switching back works mid-session.
-- **Update + rollback.** Point the app at a test manifest (`OUTPOST_ASSETS_MANIFEST_URL=<https URL>`, on an allowed host, docs/DESKTOP.md
-  "Asset updates"), with a newer `voice` entry: Settings -> Storage says "Update ready (restart)"; after a restart
-  the new version is in use. Then publish a deliberately broken `ear` update: after the restart `main.log` shows
-  `assets: ROLLBACK ear ...` and the app still listens (the previous ear is back). Both swaps happen with the app's
-  python.exe processes stopped (Windows locks files in use).
-- **Quit** leaves no python.exe; `%APPDATA%\Outpost Luna\assets\` holds only `ear tagger embedder voice crew videos`
-  (+ `state.json`, the cached manifest, and `.prev\` after an update).
-
-## 7. What to report back
-
-Short checklist (Slack or the PR). Copy it, fill in each line:
-
-```
-[ ] build-windows.ps1: pass / fail (if fail: last 40 lines)          build time: ___ min   installer: ___ MB
-[ ] Windows version (winver) / CPU / RAM / compiler (MSVC or clang):
-[ ] SmartScreen: "Run anyway" worked?  Any firewall dialog? (should be none)  Any console window? (should be none)
-[ ] cold start to Flight School: 1st ___ s, 2nd ___ s, with network blocked ___ s
-[ ] smoke.py: ALL PASS?  (paste the output if not)
-[ ] voice: /health models.tts engine ___ (winrt?)  guide voice ___  CAPCOM voice ___  voices ___  timing ___  warm_ms ___
-[ ] voice: question end -> first word heard ___ s;  smoke "OS voice TTS ... in ___ ms";  gaps between sentences? ___
-[ ] captions: highlighted word in step with the voice?  (ahead / behind / fine)
-[ ] voice: previews play?  changing the voice changes the answer?  the "Manage voices" hint shown?
-[ ] keyboard: arrows/Enter/Esc, Alt shortcuts, F5 and Ctrl+R do nothing, Ctrl+= zooms, F11 full screen?
-[ ] cockpit: cabin builds and turns smoothly?  panel opens, order works?
-[ ] cabin camera: turn your head far left / right, then cover the webcam: back to the centre view within ~1 s?
-            R and the Center view button (top right, under the clock bar) re-centre?  Ctrl+R does nothing?
-            view tabs (Orbit / Site / Rover / Earth) always on screen?  any grey surface across the windshield?
-[ ] controller (if you have one): toast shown, A/B/D-pad work?
-[ ] camera: privacy switches on?  "Camera on" + skeleton seen?  open hand = Stop, thumbs up = Yes?  "On. N frames a second": N = ___
-            CPU % with camera on ___ / off ___   "Turn off" turns the webcam light off?
-[ ] gestures answer: thumbs up = Yes, 3 fingers = Sometimes, badges 1 2 3 shown?  Far side button turns the Moon, passes?
-[ ] reset: Start over relaunches at the call sign, nothing re-downloads?  Reset everything removes cache\ and hf\?
-            logs kept?  main.log "reset … relaunching", no "could not delete"?  window came back by itself?
-[ ] quit: no python.exe left in Task Manager?
-[ ] RAM after one voice question (Outpost Luna + its python.exe processes): ___ MB
-[ ] main.log lines with "blocked", "FAIL", "exited", "windows privacy":
-[ ] §5.4 first run: download ___ min for ___ MB; resume works?  offline pack import works?
-[ ] §5.4 ear with a real voice: "show me Tycho" opened Tycho?  turn-end delay feel: ___
-[ ] §5.4 Steer switch works (download state, captions)?   update + rollback seen in main.log?
-```
-
-## 8. Alternative: cross-build the installer on a Mac
-
-The native build above stays the primary path: it is the one that runs on the machine it targets. A Mac can produce
-the same installer, which is how the Windows bundle was first checked without a PC:
+A Mac can build the same Windows tree. This is how it was checked without a PC:
 
 ```bash
-brew install mingw-w64 sevenzip cmake node@22 uv     # mingw-w64 (or zig) compiles arctag.dll; 7-Zip unpacks the installer
-bash desktop/scripts/cross-build-windows.sh                  # -> desktop/dist/Outpost Luna Setup 0.1.0.exe
-SKIP_MEDIA=1 bash desktop/scripts/cross-build-windows.sh     # media already in backend/data/media
-MAC_APP="/Applications/Outpost Luna.app" bash desktop/scripts/cross-build-windows.sh   # + a parity report vs the Mac app
+brew install mingw-w64 sevenzip cmake node@22 uv
+bash desktop/scripts/cross-build-windows.sh                       # -> desktop/dist/Outpost Luna Setup 0.3.0.exe
+SKIP_MEDIA=1 DIR_ONLY=1 KEEP_INTERMEDIATES=1 bash desktop/scripts/cross-build-windows.sh   # win-unpacked only, kept
+MAC_APP="/Applications/Outpost Luna.app" bash desktop/scripts/cross-build-windows.sh       # + a parity report vs the Mac app
 ```
 
-Same 8 steps, same inputs. What differs:
+These are the differences from the native build:
 
-| | native (build-windows.ps1) | cross (cross-build-windows.sh) |
-|---|---|---|
-| Python | `uv python install 3.11` (python-build-standalone) | the same release's `x86_64-pc-windows-msvc` build, downloaded and checked against its `SHA256SUMS` (`build_python.py --target win-x64`) |
-| packages | `uv pip install` for this PC | `uv pip install --python-platform x86_64-pc-windows-msvc`: the same locked versions, win_amd64 wheels; the build fails if any macOS binary slips in |
-| bytecode | compiled by the bundled `python.exe` | compiled by the Mac's CPython 3.11 (a `.pyc` depends on the Python version, not the OS) |
-| `arctag.dll` | MSVC (portable scalar kernels) or clang | mingw-w64 gcc: AVX2 + FMA kernels (the CPU is checked at load); needs only Windows' own DLLs |
-| `.exe` resources | electron-builder edits the icon / version info | without Wine, not edited (`signAndEditExecutable: false`): the default Electron icon and file details. Nothing else changes |
+- **Python and wheels.** The interpreter is python-build-standalone's `x86_64-pc-windows-msvc` build, checked against
+  its `SHA256SUMS`. The packages are win_amd64 wheels, from `uv pip install --python-platform x86_64-pc-windows-msvc`.
+- **`arctag.dll` and `arc.dll`** come from mingw-w64 gcc, statically linked (they import only Windows' own DLLs).
+- **The `.exe` icon and version info are not edited**, because there is no Wine.
 
-Step 8 then checks the result without running it (`desktop/scripts/win_bundle_check.py`):
+`desktop/resources/` holds one platform's build at a time. After a cross-build, `build-mac.sh` rebuilds it for the Mac.
 
-- `dlls`: every `.dll` / `.pyd` import (the import and delay-load tables, read from the PE files) resolves in the
-  bundle or in Windows itself; this is the check that found the missing `MSVCP140.dll` (now shipped).
-- the installer is unpacked with 7-Zip and its payload compared file by file with `dist/win-unpacked`;
-- `compare` (with `MAC_APP`): the Mac `.app`'s `Contents/Resources` against the Windows `resources`: app code, models
-  (none bundled: the first-run asset manifest instead), media, vision assets, the OS-voice engine, Director weights, the native library,
-  and both site folders' packages;
-- `speech`: the Windows speech packages are in `site/models` (pywinrt 3.2.1's `_winrt*.pyd` for SpeechSynthesis,
-  Media.Core (word cues), Storage.Streams, Foundation, Foundation.Collections, and comtypes for the SAPI fallback).
-  `build_python.py --target win-x64` refuses a tree without them.
+Step 8 checks the result with `desktop/scripts/win_bundle_check.py`, which is stdlib-only and also runs on Windows:
 
-`desktop/resources/` holds one platform's build at a time: after a cross-build, `build-mac.sh` rebuilds it for the Mac
-(and the other way round). The script deletes its intermediates (the unpacked app, the Python tree's caches) and keeps
-only the installer. A cross-built installer must still go through §5 on a real PC before it ships.
+| command | checks |
+|---|---|
+| `dlls <resources>` | Every `.dll` / `.pyd` import (the import and delay-load tables) resolves in the bundle or in Windows itself |
+| `speech <resources>` | The WinRT SpeechSynthesis, Media.Core, Storage.Streams and Foundation `.pyd` files, comtypes (SAPI) and `steertts_edge` (the Steer runtime) |
+| `runtime <resources>` | Every file the app needs at run time: python.exe and the VC++ DLLs; `arctag.dll` and `arc.dll`; the `onnxruntime.dll` libarc loads; no bundled models; a usable `assets.manifest.json` (an https download, sha256 and file list for every asset); the NASA video catalog and downloader; the ear and Steer bindings; Reset; the assets API; the Director weights; the vision assets; and the Electron shell inside `app.asar` (main, supervisor, permissions, keys, reset, the grown-up gate, the splash, the first-run screen, assets and updates) |
+| `compare <mac Resources> <win resources>` | Parity with a Mac build, area by area |
 
-**Status (2026-11-14).** Steps 1–6 and the unpacked app (`dist/win-unpacked`, 2.1 GB, 24,273 files) were built and
-checked on a Mac: every DLL import resolves, and `compare` against the Mac app reports parity. The NSIS step did
-not finish there: electron-builder's 7-Zip pass (`-mx=9` over 2 GB) ran for 90 minutes without finishing on a
-machine at load average ~50. With `compression: store` the payload was 2.08 GB, which is past NSIS's 2 GB installer
-limit, so makensis timed out after 4 minutes. On an idle Mac the default compression should finish in about 20
-minutes; that has not been measured yet.
+The platform-mocked tests run on any OS:
+
+```bash
+cd desktop && node --test main/       # shell: win32 paths, taskkill, reset, keys, assets, updates, sign-resources no-op, repo paths
+cd model_server && uv run pytest tests/test_platform_win.py tests/test_tts_os.py tests/test_os_voices.py tests/test_tts_steer.py
+cd backend && uv run pytest tests/test_windows_paths.py tests/test_reset.py tests/test_video.py tests/test_assets_api.py
+```
+
+**Last cross-build (2026-11-15, `main` at 0.3.0 + this guide's PR):** steps 1 to 8 passed, including the NSIS
+installer (`Outpost Luna Setup 0.3.0.exe`, 192 MB; 9.4 min on a Mac at load average ~30). `dlls`: 231 DLL/PYD files,
+every import resolves. `speech`: all 8 present. `runtime`: RUNTIME OK. The installer's payload, unpacked with 7-Zip, is
+identical to `win-unpacked` (783 MB, 7,896 files). Every asset link in the manifest answered a 1-byte range request.

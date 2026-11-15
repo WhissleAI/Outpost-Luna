@@ -5,6 +5,7 @@ cross-build, or the teammate's Windows build).
     python desktop/scripts/win_bundle_check.py manifest <resources> [--out f]   the bundle's manifest (JSON)
     python desktop/scripts/win_bundle_check.py compare  <mac Resources> <win resources>   parity report; exit 1 on a gap
     python desktop/scripts/win_bundle_check.py speech   <win resources>              the WinRT / SAPI speech packages
+    python desktop/scripts/win_bundle_check.py runtime  <win resources>              every runtime file the app needs
 
 <resources> is `desktop/resources`, `desktop/dist/win-unpacked/resources`, or an unpacked installer's `resources`.
 
@@ -13,6 +14,13 @@ next to the importer, next to python.exe (the application folder, searched for e
 packages add themselves (torch/lib, <pkg>.libs, onnxruntime/capi, ...), or in Windows itself (the in-box list below).
 Anything else would fail on a clean PC with "DLL load failed" / WinError 126, the classic case being MSVCP140.dll
 on a machine without the Visual C++ Redistributable.
+
+runtime: one Windows tree on its own (no Mac app needed): every MUST file below, the embedded python.exe + Visual C++
+runtime, arctag.dll and arc.dll (libarc, the ear) + the onnxruntime.dll it loads by path, no bundled models (0.3: they
+are first-run assets) and a usable resources/assets.manifest.json (https download + sha256 + file list for every
+asset), a valid NASA video catalog, the speech packages (WinRT, SAPI, the Steer runtime), and the Electron shell inside
+app.asar (main, supervisor, reset, keys, permissions, the grown-up gate, the splash, the first-run screen, assets and
+updates). The build scripts run it in step 8.
 
 compare: the Mac .app's Contents/Resources against the Windows resources, by area: app code (byte-for-byte, except
 the .pyc bytecode), the first-run asset manifest (no models / crew audio / voice clips bundled: they download on first
@@ -174,12 +182,95 @@ MUST = {
     "OS voice engine": ["model_server/app/tts_os.py", "model_server/app/os_voices.py"],
     "voice pack (manifest; clips are a first-run asset)": ["model_server/app/voice_pack.py",
                                                            "backend/data/voice_pack/lines.json"],
-    "NASA video catalog": ["backend/data/video/catalog.json"],
+    "NASA video catalog + downloader": ["backend/data/video/catalog.json", "backend/app/video.py"],
+    "ear (libarc binding) + Steer engine": ["model_server/app/nft2.py", "model_server/app/arc_ear.py",
+                                            "model_server/app/tts_steer.py"],
+    "first-run assets API": ["backend/app/assets_api.py"],
     "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "frontend": ["frontend/index.html"],
     "launcher": ["launch.py"],
 }
+
+
+# The Electron shell's files, inside resources/app.asar (electron-builder.yml `files: main/**/*`).
+SHELL_FILES = ("package.json", "main/main.js", "main/supervisor.js", "main/permissions.js", "main/keys.js", "main/reset.js",
+               "main/gate.js", "main/gate.html", "main/splash.html", "main/assets.js", "main/updates.js",
+               "main/firstrun.html", "main/firstrun-preload.js")
+SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+PY_FILES = ("python.exe", "python311.dll", "vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "Lib", "DLLs")
+
+
+def asar_files(asar: Path) -> set[str]:
+    """The file paths inside an Electron asar archive (its JSON header; stdlib only)."""
+    with open(asar, "rb") as f:
+        head = f.read(16)
+        if len(head) < 16:
+            return set()
+        n = struct.unpack_from("<I", head, 12)[0]          # pickle: [4][header size][payload size][json length] json
+        tree = json.loads(f.read(n).decode("utf-8"))
+    out: set[str] = set()
+
+    def walk(node, pre):
+        for name, sub in node.get("files", {}).items():
+            walk(sub, pre + name + "/") if "files" in sub else out.add(pre + name)
+    walk(tree, "")
+    return out
+
+
+def runtime(res: Path) -> dict[str, tuple[bool, str]]:
+    """{check: (ok, detail)} for one Windows resources tree."""
+    app = res / "app"
+    out: dict[str, tuple[bool, str]] = {}
+    for area, must in MUST.items():
+        miss = [m for m in must if not (app / m).is_file()]
+        out[area] = (not miss, "all present" if not miss else f"missing {miss}")
+    miss = [f for f in PY_FILES if not (res / "python" / f).exists()]
+    out["embedded python + VC++ runtime"] = (not miss, "python.exe, python311.dll, VC++ DLLs" if not miss else f"missing {miss}")
+    nat = {n: (res / "native" / n).is_file() for n in ("arctag.dll", "arc.dll")}
+    out["native Arc Tagger + libarc (the ear)"] = (all(nat.values()), ", ".join(f"{n} {'ok' if v else 'MISSING'}" for n, v in nat.items()))
+    ort = sorted((res / "site/models/onnxruntime/capi").glob("onnxruntime*.dll"))
+    out["ONNX Runtime DLL (libarc loads it by path)"] = (bool(ort), ", ".join(p.name for p in ort) or "no onnxruntime.dll")
+    models = res / "models"
+    out["no bundled models (0.3: first-run assets)"] = (not models.exists(), "none" if not models.exists() else "resources/models still there")
+    try:
+        m = json.loads((res / "assets.manifest.json").read_text(encoding="utf-8"))
+        bad, req, opt = [], 0, 0
+        for x in m["assets"]:
+            if not SHA_RE.match(str(x.get("sha256", ""))) or not x.get("files"):
+                bad.append(f"{x.get('id')}: sha256/files")
+            src = x.get("url") or (x.get("fallback") or {}).get("url") or (x.get("fallback") or {}).get("base")
+            if not (src and str(src).startswith("https://")):
+                bad.append(f"{x.get('id')}: no https download")
+            if x.get("required"):
+                req += int(x.get("size", 0))
+            else:
+                opt += int(x.get("size", 0))
+        ids = [x["id"] for x in m["assets"]]
+        out["first-run asset manifest"] = (not bad and bool(req), f"{len(ids)} assets {ids}; required {req / 1e6:.0f} MB, "
+                                           f"optional {opt / 1e6:.0f} MB" + (f"; problems {bad}" if bad else ""))
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        out["first-run asset manifest"] = (False, f"resources/assets.manifest.json unreadable: {e}")
+    try:
+        cat = json.loads((app / "backend/data/video/catalog.json").read_text(encoding="utf-8"))
+        items = cat if isinstance(cat, list) else cat.get("videos", cat.get("items", []))
+        srcs = sorted({v.get("source") for v in items})
+        out["NASA video catalog parses"] = (bool(items), f"{len(items)} videos, sources {srcs}")
+    except (OSError, ValueError, AttributeError) as e:
+        out["NASA video catalog parses"] = (False, f"catalog.json unreadable: {e}")
+    asar = res / "app.asar"
+    have = asar_files(asar) if asar.is_file() else None
+    if have is None:
+        out["Electron shell (app.asar)"] = (False, "no app.asar (point at dist/win-unpacked/resources)")
+    else:
+        miss = [f for f in SHELL_FILES if f not in have]
+        out["Electron shell (app.asar)"] = (not miss, f"{len(have)} files" + (f"; missing {miss}" if miss else
+                                            ": main, supervisor, permissions, keys, reset, grown-up gate, splash, first run, assets, updates"))
+        tests = sorted(f for f in have if f.endswith(".test.js"))
+        out["no test files in the shell"] = (not tests, "none" if not tests else str(tests[:4]))
+    for k, v in speech_packages(res / "site/models").items():
+        out[f"speech: {k}"] = (v, "present" if v else "MISSING")
+    return out
 
 
 def compare(mac: Path, win: Path) -> int:
@@ -240,7 +331,7 @@ def speech_packages(site: Path) -> dict[str, bool]:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("dlls", "manifest", "compare", "speech"))
+    ap.add_argument("cmd", choices=("dlls", "manifest", "compare", "speech", "runtime"))
     ap.add_argument("paths", nargs="+", type=Path)
     ap.add_argument("--out", type=Path)
     a = ap.parse_args()
@@ -257,6 +348,13 @@ def main():
         for k, v in got.items():
             print(f"  {'OK  ' if v else 'MISS'} {k}")
         sys.exit(0 if all(got.values()) else 1)
+    if a.cmd == "runtime":
+        got = runtime(a.paths[0])
+        for k, (ok, detail) in got.items():
+            print(f"  {'OK  ' if ok else 'MISS'} {k:36s} {detail}")
+        bad = sum(not ok for ok, _ in got.values())
+        print("RUNTIME OK" if not bad else f"{bad} runtime check(s) failed")
+        sys.exit(1 if bad else 0)
     if a.cmd == "manifest":
         m = json.dumps(manifest(a.paths[0]), indent=1, sort_keys=True)
         a.out.write_text(m) if a.out else print(m)

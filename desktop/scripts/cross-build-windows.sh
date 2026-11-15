@@ -6,6 +6,7 @@
 #   bash desktop/scripts/cross-build-windows.sh                 # everything -> desktop/dist/Outpost Luna Setup <v>.exe
 #   SKIP_MEDIA=1 bash desktop/scripts/cross-build-windows.sh    # backend/data/media already in place
 #   MAC_APP="/Applications/Outpost Luna.app" bash desktop/scripts/cross-build-windows.sh   # + parity vs a Mac build
+#   DIR_ONLY=1 KEEP_INTERMEDIATES=1 bash desktop/scripts/cross-build-windows.sh   # unpacked app only, kept (no 7z pass)
 #
 # What differs from the native build, and why it is the same app:
 #   python    python-build-standalone x86_64-pc-windows-msvc (the release `uv python install` picks; SHA256SUMS-checked)
@@ -17,7 +18,7 @@
 #   exe       electron-builder writes the NSIS installer; without Wine it cannot edit the .exe's icon / version
 #             resources (signAndEditExecutable: false): the app shows Electron's default icon and file details.
 # Needs: Node 22+, uv, CMake, mingw-w64 (brew install mingw-w64) or zig (brew install zig), 7-Zip (brew install
-# sevenzip) for the installer check. About 8 GB free while it runs; intermediates are deleted at the end.
+# sevenzip) for the installer check. About 5 GB free while it runs (0.3: no models bundled); intermediates are deleted at the end.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
@@ -44,7 +45,7 @@ elif command -v zig >/dev/null; then CC_WIN=(zig cc -target x86_64-windows-gnu);
 else die "no Windows C compiler: brew install mingw-w64 (or brew install zig)"; fi
 SEVENZ=$(command -v 7zz || command -v 7z || true)
 FREE_GB=$(df -Pk "$ROOT" | awk 'NR==2{print int($4/1048576)}')
-[ "$FREE_GB" -ge 8 ] || die "only ${FREE_GB} GB free; the cross-build needs about 8 GB while it runs"
+[ "$FREE_GB" -ge "${MIN_FREE_GB:-5}" ] || die "only ${FREE_GB} GB free; the cross-build needs about 5 GB while it runs (MIN_FREE_GB overrides)"
 echo "node $(node -v), $(uv --version), $(cmake --version | head -1), compiler ${CC_WIN[*]}, 7-Zip ${SEVENZ:-none}, ${FREE_GB} GB free"
 if [ -d desktop/resources/python/bin ]; then echo "note: desktop/resources holds a macOS build; it is replaced (build-mac.sh rebuilds it)"; fi
 
@@ -97,15 +98,27 @@ EDIT=()
 command -v wine >/dev/null || command -v wine64 >/dev/null || EDIT=(-c.win.signAndEditExecutable=false)   # no Wine: no icon / version edit
 # The 7z pass (-mx=9 over ~2 GB) is the slow part: ~20 min on an idle Mac, hours on a saturated one. Do not use
 # compression=store to skip it: the payload is then 2.08 GB, past NSIS's 2 GB installer limit, and makensis stalls.
-npx electron-builder --win nsis --x64 --publish never "${EDIT[@]+"${EDIT[@]}"}"
+# DIR_ONLY=1: only dist/win-unpacked (minutes, not the 7z pass): enough for every step-8 check except the installer's.
+if [ "${DIR_ONLY:-0}" = 1 ]; then
+  npx electron-builder --win dir --x64 --publish never "${EDIT[@]+"${EDIT[@]}"}"
+else
+  npx electron-builder --win nsis --x64 --publish never "${EDIT[@]+"${EDIT[@]}"}"
+fi
 cd "$ROOT"
-EXE=$(ls -t desktop/dist/*.exe | head -1)
-[ -n "$EXE" ] || die "no installer in desktop/dist"
+EXE=""
+if [ "${DIR_ONLY:-0}" != 1 ]; then
+  EXE=$(ls -t desktop/dist/*.exe | head -1)
+  [ -n "$EXE" ] || die "no installer in desktop/dist"
+fi
 
 step "8/8 structural checks (the installer cannot run here)"
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/dist/win-unpacked/resources
 uv run --no-project python desktop/scripts/win_bundle_check.py speech desktop/dist/win-unpacked/resources   # WinRT + SAPI speech packages
-if [ -n "$SEVENZ" ]; then
+uv run --no-project python desktop/scripts/win_bundle_check.py runtime desktop/dist/win-unpacked/resources  # every runtime file
+# The installer's payload must stay under NSIS's 2 GB limit (it is the uncompressed app the 7z archive holds).
+PAYLOAD_MB=$(du -sk desktop/dist/win-unpacked | awk '{print int($1/1024)}')
+echo "win-unpacked: ${PAYLOAD_MB} MB uncompressed, $(find desktop/dist/win-unpacked -type f | wc -l | tr -d ' ') files (NSIS limit: 2048 MB per installer)"
+if [ -n "$SEVENZ" ] && [ -n "$EXE" ]; then
   # The NSIS installer holds the app as app-64.7z: unpack both and check that what the user installs is the same tree.
   X="$ROOT/desktop/build/installer-check"; rm -rf "$X"; mkdir -p "$X"
   "$SEVENZ" x -y -o"$X/nsis" "$EXE" >/dev/null
@@ -115,6 +128,7 @@ if [ -n "$SEVENZ" ]; then
     || die "the installer's payload differs from dist/win-unpacked"
   [ -f "$X/app/Outpost Luna.exe" ] || die "the installer has no Outpost Luna.exe"
   rm -rf "$X"
+elif [ -z "$EXE" ]; then echo "DIR_ONLY=1: no installer built, so it was not unpacked"
 else echo "7-Zip not found: the installer itself was not unpacked (brew install sevenzip)"; fi
 if [ -n "${MAC_APP:-}" ]; then
   uv run --no-project python desktop/scripts/win_bundle_check.py compare "$MAC_APP/Contents/Resources" desktop/dist/win-unpacked/resources
@@ -124,5 +138,7 @@ if [ "${KEEP_INTERMEDIATES:-0}" != 1 ]; then
   rm -rf desktop/dist/win-unpacked desktop/dist/builder-debug.yml desktop/dist/*.blockmap desktop/build/uv-cache \
          desktop/build/cache desktop/build/arctag-win desktop/build/libarc-win desktop/build/uv-python desktop/build/py-unpack
 fi
-ls -lh "$EXE"
-echo "Installer: $ROOT/$EXE  ($(( $(date +%s) - T0 )) s). Cross-built: run it on Windows before shipping (docs/BUILD_WINDOWS.md §5)."
+if [ -n "$EXE" ]; then
+  ls -lh "$EXE"
+  echo "Installer: $ROOT/$EXE  ($(( $(date +%s) - T0 )) s). Cross-built: run it on Windows before shipping (docs/BUILD_WINDOWS.md §5)."
+else echo "Unpacked app checked ($(( $(date +%s) - T0 )) s; DIR_ONLY=1, KEEP_INTERMEDIATES=1 keeps dist/win-unpacked)."; fi

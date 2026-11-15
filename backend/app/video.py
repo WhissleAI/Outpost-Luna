@@ -189,7 +189,7 @@ class Cache:
         self.root.mkdir(parents=True, exist_ok=True)
         tmp = self.idx_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(d, indent=1), encoding="utf-8")
-        os.replace(tmp, self.idx_path)
+        _replace(tmp, self.idx_path)
 
     def path(self, name: str) -> Path:
         if not re.fullmatch(r"[a-z0-9_]+\.(mp4|vtt|jpg)", name):
@@ -236,7 +236,8 @@ class Cache:
                     break
                 if e.get("pinned") or name == keep:
                     continue
-                self.path(name).unlink(missing_ok=True)
+                if not _unlink(self.path(name)):
+                    continue            # open elsewhere (Windows: a video playing right now); evicted next time
                 tot -= int(e.get("bytes", 0))
                 d.pop(name)
                 gone.append(name)
@@ -245,13 +246,20 @@ class Cache:
         return gone
 
     def clear(self) -> int:
+        """Delete every cached file. A file the OS holds open (Windows: the video playing right now) stays, and keeps
+        its index entry, instead of failing the whole clear; it goes on the next clear or eviction."""
         with self.lock:
             n = 0
+            d = self._load()
+            kept = {}
             for p in list(self.root.glob("*")) if self.root.exists() else []:
                 if p.is_file() and re.search(r"\.(mp4|vtt|jpg|part|tmp)$", p.name):
-                    n += p.stat().st_size
-                    p.unlink(missing_ok=True)
-            self._save({})
+                    size = p.stat().st_size
+                    if _unlink(p):
+                        n += size
+                    elif p.name in d:
+                        kept[p.name] = d[p.name]
+            self._save(kept)
             return n
 
     def stats(self) -> dict:
@@ -308,7 +316,7 @@ class Cache:
             if sha256 and file_sha256(part) != sha256:
                 part.unlink(missing_ok=True)
                 raise DownloadError(f"{name}: sha256 mismatch")
-            os.replace(part, dest)
+            _replace(part, dest)
         self.add(name, pinned)
         return dest
 
@@ -326,9 +334,32 @@ class Cache:
         self.root.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_name(name + ".tmp")
         tmp.write_text(text, encoding="utf-8")
-        os.replace(tmp, dest)
+        _replace(tmp, dest)
         self.add(name, pinned)
         return dest
+
+
+def _unlink(p: Path) -> bool:
+    """Delete p; False when the OS refuses. On Windows a file another handle has open (FileResponse streaming it to the
+    player, an antivirus scan) cannot be deleted: PermissionError (WinError 32). POSIX unlinks it regardless."""
+    try:
+        p.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def _replace(src: Path, dst: Path, tries: int = 10, wait_s: float = 0.05) -> None:
+    """os.replace, retried briefly on PermissionError: on Windows an antivirus scan or a reader can hold dst (or src)
+    open for a moment right after it is written. POSIX succeeds the first time."""
+    for i in range(tries):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i == tries - 1:
+                raise
+            time.sleep(wait_s)
 
 
 def file_sha256(p: Path) -> str:

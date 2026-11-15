@@ -274,20 +274,20 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
       if (!st || st.size !== f.size) throw new Error(`${a.id}: ${f.path} missing or wrong size after unpacking`);
     }
     const dst = home(a.id), old = path.join(dir, `.old-${a.id}`);
-    await fsp.rm(old, { recursive: true, force: true });
+    await fsp.rm(old, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (fs.existsSync(dst)) await renameRetry(dst, old);
     await renameRetry(staging, dst);
-    await fsp.rm(old, { recursive: true, force: true });
+    await fsp.rm(old, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     const s = readState();
     s[a.id] = { version: String(a.version || "1"), sha256: a.sha256, size: a.size, files: a.files || [],
       installed_at: new Date().toISOString() };
     writeState(s);
-    fs.rmSync(path.join(dir, ".prev", a.id), { recursive: true, force: true });   // a repair supersedes any rollback copy
+    fs.rmSync(path.join(dir, ".prev", a.id), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });   // a repair supersedes any rollback copy
   }
 
   async function installTar(a, tar) {
     const staging = path.join(dir, ".staging", a.id);
-    await fsp.rm(staging, { recursive: true, force: true });
+    await fsp.rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.mkdir(staging, { recursive: true });
     await extractTar(tar, staging);
     await commit(a, staging);
@@ -346,7 +346,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     }
     onProgress && onProgress({ id: a.id, phase: "install", done: total, total });
     const staging = path.join(dir, ".staging", a.id);
-    await fsp.rm(staging, { recursive: true, force: true });
+    await fsp.rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.mkdir(path.dirname(staging), { recursive: true });
     await renameRetry(base, staging);
     await commit(a, staging);
@@ -366,7 +366,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     onProgress && onProgress({ id: a.id, phase: "install", done: fb.size, total: fb.size });
     const want = new Map(fb.members.map((m) => [safeRel(m.from), m]));
     const staging = path.join(dir, ".staging", a.id);
-    await fsp.rm(staging, { recursive: true, force: true });
+    await fsp.rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.mkdir(staging, { recursive: true });
     await extractTar(part, staging, (name) => (want.has(name) ? want.get(name).path : null));
     for (const m of fb.members) {
@@ -517,7 +517,7 @@ function cmpVersion(a, b) {
 function clearAll(dir) {
   if (!dir || !fs.existsSync(dir)) return 0;
   let n = 0;
-  for (const e of fs.readdirSync(dir)) { fs.rmSync(path.join(dir, e), { recursive: true, force: true }); n++; }
+  for (const e of fs.readdirSync(dir)) { fs.rmSync(path.join(dir, e), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); n++; }
   return n;
 }
 

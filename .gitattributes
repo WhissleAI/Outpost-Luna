@@ -1,0 +1,26 @@
+# Same bytes on every OS. Git for Windows defaults to core.autocrlf=true, which would check text files out with CRLF:
+# the Windows app would then ship different bytes from the Mac app (win_bundle_check.py compares app code byte for
+# byte), and any text file we hash would stop matching. LF everywhere; binaries are never touched.
+* text=auto eol=lf
+*.ps1 text eol=lf
+*.mp3 binary
+*.wav binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.icns binary
+*.whl binary
+*.npz binary
+*.npy binary
+*.onnx binary
+*.bin binary
+*.tflite binary
+*.task binary
+*.wasm binary
+*.safetensors binary
+*.zip binary
+*.xz binary
+*.pdf binary
