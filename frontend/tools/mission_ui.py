@@ -229,6 +229,69 @@ def camera_checks(pg, tag, shots):
     return out, times
 
 
+NAV_MEASURE = """() => {
+  const vis = e => !!(e && !e.hidden && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && e.offsetParent !== null);
+  const R = e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
+  const one = q => { const e = document.querySelector(q); return vis(e) ? R(e) : null; };
+  const st = document.getElementById('mStart'), sr = st && st.getBoundingClientRect();
+  const top = sr ? document.elementFromPoint(sr.left + sr.width / 2, sr.top + sr.height / 2) : null;
+  return { vw: innerWidth, vh: innerHeight, map: one('.nv-map'), panel: one('#mPanel'), bar: one('.nv-bar'), zoom: one('.nv-zoom'),
+    legend: one('.nv-legend'), ask: one('#askbar'), caption: one('#captionBar'), topbar: one('.topbar'), start: one('#mStart'),
+    startOnTop: !!(top && st && (top === st || st.contains(top))),
+    labels: [...document.querySelectorAll('.nv-plab')].filter(vis).map(e => [e.dataset.pin, ...R(e)]),
+    clipped: [...document.querySelectorAll('#mPanel .nv-row b, #mPanel .mx-title, .nv-layer, #mStart')].filter(vis)
+      .filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent.trim().slice(0, 40)) };
+}"""
+
+
+def navigator_checks(pg, tag, shots):
+    """The landing-site navigator (docs/SITE_NAVIGATOR.md): the map, its controls and labels, the panel, the voice bar and
+    the caption line never overlap; Take command is fully on screen and nothing covers it; nothing is clipped."""
+    pg.wait_for_selector(".nv-map .nv-layer", timeout=60000)
+    pg.wait_for_timeout(1500)
+    out = []
+    for step, js in (("sunlight", None), ("ice query", "() => window.__outpost.shellNav('site_query', 'ice')"),
+                     ("a region", "() => window.__outpost.shellNav('pick_site', 'a3_nobile_rim_2')")):
+        if js:
+            pg.evaluate(js); pg.wait_for_timeout(1400)
+        m = pg.evaluate(NAV_MEASURE)
+        f = []
+        for k in ("map", "panel", "start", "bar"):
+            if not m[k]:
+                f.append(f"{k} not visible")
+        boxes = {k: m[k] for k in ("map", "panel", "ask", "caption", "topbar") if m[k]}
+        ks = list(boxes)
+        for i, a in enumerate(ks):
+            for b in ks[i + 1:]:
+                if hits(boxes[a], boxes[b]):
+                    f.append(f"{a} overlaps {b}: {boxes[a]} / {boxes[b]}")
+        for k in ("bar", "zoom", "legend"):
+            for k2 in ("bar", "zoom", "legend"):
+                if k < k2 and m[k] and m[k2] and hits(m[k], m[k2]):
+                    f.append(f"map controls {k} / {k2} overlap")
+        labs = m["labels"]
+        for i, a in enumerate(labs):
+            for b in labs[i + 1:]:
+                if hits(a[1:], b[1:]):
+                    f.append(f"map labels {a[0]} / {b[0]} overlap")
+            for k in ("bar", "zoom", "legend"):
+                if m[k] and hits(a[1:], m[k]):
+                    f.append(f"map label {a[0]} sits on the {k}")
+            if m["map"] and not (a[1] >= m["map"][0] - 1 and a[3] <= m["map"][2] + 1 and a[2] >= m["map"][1] - 1 and a[4] <= m["map"][3] + 1):
+                f.append(f"map label {a[0]} leaves the map")
+        for k in ("map", "panel", "start"):
+            r = m[k]
+            if r and (r[0] < 0 or r[1] < 0 or r[2] > m["vw"] or r[3] > m["vh"]):
+                f.append(f"{k} off screen: {r}")
+        if not m["startOnTop"]:
+            f.append("something covers Take command")
+        f += [f"clipped: {t!r}" for t in m["clipped"]]
+        out += [f"[{step}] {x}" for x in f]
+        if shots:
+            pg.screenshot(path=os.path.join(shots, f"{tag}-nav-{step.replace(' ', '-')}.jpg"), type="jpeg", quality=72)
+    return out
+
+
 def chromium():
     return (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
 
@@ -256,7 +319,7 @@ def to_steer(pg):
     return False
 
 
-def main(base, shots, tag, sizes, camera=True):
+def main(base, shots, tag, sizes, camera=True, navigator_only=False):
     bad = {}
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--use-gl=angle", "--use-angle=swiftshader"])
@@ -266,13 +329,21 @@ def main(base, shots, tag, sizes, camera=True):
             pg.add_init_script(PAD)
             pg.add_init_script(SEED)
             pg.goto(base)
+            nf = navigator_checks(pg, f"{tag}-{vw}x{vh}", shots)
+            print(f"{'ok  ' if not nf else 'FAIL'} {vw}x{vh}  navigator")
+            for x in nf:
+                print(f"       {x}")
+            if navigator_only:
+                bad[f"{vw}x{vh}"] = nf
+                pg.close()
+                continue
             got = to_steer(pg)
             pg.wait_for_timeout(1500)
             if pg.evaluate("() => { const c = document.querySelector('.c3'); return !!(c && c.dataset.panel && c.dataset.panel !== 'seat'); }"):
                 pg.keyboard.press("Escape")   # a Cadet offer opened a panel: the kid goes back to the seat, where the HUD is measured
                 pg.wait_for_timeout(1500)
             m = pg.evaluate(MEASURE, HUD)
-            f = findings(m) + ([] if got else ["never reached the steer choice"])
+            f = nf + findings(m) + ([] if got else ["never reached the steer choice"])
             # again with a story banner up (day start, comm gap, storm): it has its own slot, never text on text
             # the app's reduced-motion mode: no fade, so a busy machine's slow animation can't hide the banner from the check
             pg.evaluate("() => { document.documentElement.dataset.motion = 'reduce'; window.__cabinTest && window.__cabinTest.moment('On our own'); }")
@@ -314,7 +385,8 @@ if __name__ == "__main__":
     ap.add_argument("--tag", default="after")
     ap.add_argument("--sizes", default=SIZES)
     ap.add_argument("--no-camera", action="store_true", help="skip the look-input / spring-back checks")
+    ap.add_argument("--navigator-only", action="store_true", help="only the landing-site navigator screen")
     a = ap.parse_args()
     if a.shots:
         os.makedirs(a.shots, exist_ok=True)
-    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera))
+    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera, navigator_only=a.navigator_only))

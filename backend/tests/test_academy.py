@@ -34,8 +34,10 @@ def test_check_catches_unsourced_number(monkeypatch):
 
 
 def test_longest_night_is_recomputed_from_horizons():
-    assert content.longest_dark_h("malapert_massif") == 157
-    assert content.longest_dark_h("shackleton_rim") == 0
+    # JPL Horizons against the real LOLA skyline at each outpost (pipeline/site_physics.py; was one calibrated angle:
+    # 157 h and 0 h). Shackleton Rim's spot starts the window in a ridge's shadow.
+    assert content.longest_dark_h("malapert_massif") == 74
+    assert content.longest_dark_h("shackleton_rim") == 53
 
 
 def test_public_course_hides_answers():

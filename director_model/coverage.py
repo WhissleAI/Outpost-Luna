@@ -51,7 +51,9 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "panel_radiation": "open the radiation panel", "panel_back": "back to my seat",
           "accept_offer": "yes", "decline_offer": "no thanks", "pick_site": "pick malapert massif",
           "task_choice": "the ridge", "mute_sound": "mute", "unmute_sound": "unmute", "recenter": "look forward",
-          "zoom_in": "closer", "zoom_out": "farther"}
+          "zoom_in": "closer", "zoom_out": "farther",
+          # the landing-site navigator (docs/SITE_NAVIGATOR.md), the picker screen only
+          "site_layer": "show sunlight", "site_query": "which site has the most ice", "site_preset": "ice first"}
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],

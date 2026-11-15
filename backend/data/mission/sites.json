@@ -33,9 +33,9 @@
    "lat": -89.68,
    "lon": -166.0,
    "alt_km": 1.9,
-   "sunlight_pct": 86,
+   "sunlight_pct": 87,
    "ice": false,
-   "rover_to_ice_h": 6,
+   "rover_to_ice_h": 7,
    "notes": "One of the sunniest spots on the Moon, on the rim of Shackleton crater. 'Peak near Shackleton' was a NASA candidate landing region in 2022 but is not on the 2024 list; scientists have studied this rim for years. Ice is a short drive down into the crater.",
    "sources": [
     {
@@ -49,15 +49,29 @@
     {
      "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
      "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+    },
+    {
+     "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+     "url": "https://pgda.gsfc.nasa.gov/products/69"
+    },
+    {
+     "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+     "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    },
+    {
+     "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+     "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/"
     }
    ],
    "horizon_deg": -1.312,
-   "earth_visible_pct": 45,
-   "window_sunlit_pct": 100,
+   "earth_visible_pct": 44,
+   "window_sunlit_pct": 73,
    "status": "studied",
    "status_label": "Studied by scientists",
-   "sunlight_basis": "yearly average, published studies",
-   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
+   "sunlight_basis": "yearly average over 18.6 years, LOLA (NASA LRO), at the outpost spot",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions against the real LOLA terrain horizon at the outpost spot",
+   "rover_slope_power": 2,
+   "physics_id": "shackleton_rim"
   },
   {
    "id": "shackleton_floor",
@@ -92,15 +106,29 @@
     {
      "title": "Mazarico et al. 2011, Illumination conditions of the lunar polar regions using LOLA topography, Icarus 211",
      "url": "https://doi.org/10.1016/j.icarus.2010.10.030"
+    },
+    {
+     "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+     "url": "https://pgda.gsfc.nasa.gov/products/69"
+    },
+    {
+     "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+     "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    },
+    {
+     "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+     "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/"
     }
    ],
    "horizon_deg": 90.0,
-   "earth_visible_pct": 37,
+   "earth_visible_pct": 0,
    "window_sunlit_pct": 0,
    "status": "studied",
    "status_label": "Studied by scientists",
-   "sunlight_basis": "yearly average, published studies",
-   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
+   "sunlight_basis": "yearly average over 18.6 years, LOLA (NASA LRO), at the outpost spot",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions against the real LOLA terrain horizon at the outpost spot",
+   "rover_slope_power": 0,
+   "physics_id": "shackleton_floor"
   },
   {
    "id": "connecting_ridge",
@@ -108,9 +136,9 @@
    "lat": -89.44,
    "lon": -141.8,
    "alt_km": 1.6,
-   "sunlight_pct": 82,
+   "sunlight_pct": 60,
    "ice": false,
-   "rover_to_ice_h": 12,
+   "rover_to_ice_h": 16,
    "notes": "The ridge between Shackleton and de Gerlache craters. It was a NASA candidate landing region in 2022 but is not on the 2024 list. Long sunlit stretches.",
    "sources": [
     {
@@ -120,15 +148,29 @@
     {
      "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
      "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+    },
+    {
+     "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+     "url": "https://pgda.gsfc.nasa.gov/products/69"
+    },
+    {
+     "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+     "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    },
+    {
+     "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+     "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/"
     }
    ],
    "horizon_deg": -1.23,
-   "earth_visible_pct": 44,
-   "window_sunlit_pct": 100,
+   "earth_visible_pct": 14,
+   "window_sunlit_pct": 76,
    "status": "studied",
    "status_label": "Studied by scientists",
-   "sunlight_basis": "yearly average, published studies",
-   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
+   "sunlight_basis": "yearly average over 18.6 years, LOLA (NASA LRO), at the outpost spot",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions against the real LOLA terrain horizon at the outpost spot",
+   "rover_slope_power": 2,
+   "physics_id": "connecting_ridge"
   },
   {
    "id": "de_gerlache_rim",
@@ -136,9 +178,9 @@
    "lat": -88.71,
    "lon": -68.7,
    "alt_km": 1.5,
-   "sunlight_pct": 81,
+   "sunlight_pct": 71,
    "ice": false,
-   "rover_to_ice_h": 10,
+   "rover_to_ice_h": 17,
    "notes": "Rim of de Gerlache crater. 'de Gerlache Rim 2' is on NASA's 2024 list of 9 candidate landing regions. Sunny rim next to a shadowed crater floor.",
    "sources": [
     {
@@ -152,15 +194,29 @@
     {
      "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
      "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+    },
+    {
+     "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+     "url": "https://pgda.gsfc.nasa.gov/products/69"
+    },
+    {
+     "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+     "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    },
+    {
+     "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+     "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/"
     }
    ],
    "horizon_deg": -1.334,
-   "earth_visible_pct": 51,
-   "window_sunlit_pct": 81,
+   "earth_visible_pct": 45,
+   "window_sunlit_pct": 95,
    "status": "nasa_2024",
    "status_label": "NASA candidate landing region (2024 list)",
-   "sunlight_basis": "yearly average, published studies",
-   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
+   "sunlight_basis": "yearly average over 18.6 years, LOLA (NASA LRO), at the outpost spot",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions against the real LOLA terrain horizon at the outpost spot",
+   "rover_slope_power": 2,
+   "physics_id": "de_gerlache_rim"
   },
   {
    "id": "malapert_massif",
@@ -168,9 +224,9 @@
    "lat": -85.98,
    "lon": -1.67,
    "alt_km": 5.0,
-   "sunlight_pct": 73,
+   "sunlight_pct": 66,
    "ice": false,
-   "rover_to_ice_h": 18,
+   "rover_to_ice_h": 31,
    "notes": "A 5 km-tall mountain (Mons Malapert) on the Earth-facing side of the pole, so Earth is above the horizon much more often: best for talking to Houston, farther from ice. On NASA's 2024 list of 9 candidate landing regions.",
    "sources": [
     {
@@ -184,15 +240,29 @@
     {
      "title": "Bussey et al. 2010, Illumination conditions of the south pole of the Moon derived using Kaguya topography, Icarus 208",
      "url": "https://doi.org/10.1016/j.icarus.2010.03.028"
+    },
+    {
+     "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+     "url": "https://pgda.gsfc.nasa.gov/products/69"
+    },
+    {
+     "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+     "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+    },
+    {
+     "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+     "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/"
     }
    ],
    "horizon_deg": -2.363,
-   "earth_visible_pct": 93,
+   "earth_visible_pct": 71,
    "window_sunlit_pct": 35,
    "status": "nasa_2024",
    "status_label": "NASA candidate landing region (2024 list)",
-   "sunlight_basis": "yearly average, published studies",
-   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions with one calibrated horizon angle per site"
+   "sunlight_basis": "yearly average over 18.6 years, LOLA (NASA LRO), at the outpost spot",
+   "window_basis": "our model of 2026-04-08 to 04-18: JPL Horizons Sun and Earth positions against the real LOLA terrain horizon at the outpost spot",
+   "rover_slope_power": 3,
+   "physics_id": "malapert_massif"
   }
  ],
  "status_source": {

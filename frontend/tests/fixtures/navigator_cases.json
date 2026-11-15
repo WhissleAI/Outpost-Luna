@@ -1,0 +1,277 @@
+[
+ {
+  "place": "shackleton_rim",
+  "preset": "balanced",
+  "score": 64,
+  "values": {
+   "sunlight_pct": 87,
+   "earth_pct": 54,
+   "ice_km": 2.9,
+   "slope_deg": 11.0
+  }
+ },
+ {
+  "place": "shackleton_rim",
+  "preset": "ice_first",
+  "score": 70,
+  "values": {
+   "sunlight_pct": 87,
+   "earth_pct": 54,
+   "ice_km": 2.9,
+   "slope_deg": 11.0
+  }
+ },
+ {
+  "place": "shackleton_rim",
+  "preset": "power_first",
+  "score": 74,
+  "values": {
+   "sunlight_pct": 87,
+   "earth_pct": 54,
+   "ice_km": 2.9,
+   "slope_deg": 11.0
+  }
+ },
+ {
+  "place": "shackleton_rim",
+  "preset": "comms_first",
+  "score": 61,
+  "values": {
+   "sunlight_pct": 87,
+   "earth_pct": 54,
+   "ice_km": 2.9,
+   "slope_deg": 11.0
+  }
+ },
+ {
+  "place": "shackleton_rim",
+  "preset": "safety_first",
+  "score": 52,
+  "values": {
+   "sunlight_pct": 87,
+   "earth_pct": 54,
+   "ice_km": 2.9,
+   "slope_deg": 11.0
+  }
+ },
+ {
+  "place": "shackleton_floor",
+  "preset": "balanced",
+  "score": 43,
+  "values": {
+   "sunlight_pct": 0,
+   "earth_pct": 0,
+   "ice_km": 0.1,
+   "slope_deg": 4.1
+  }
+ },
+ {
+  "place": "shackleton_floor",
+  "preset": "ice_first",
+  "score": 62,
+  "values": {
+   "sunlight_pct": 0,
+   "earth_pct": 0,
+   "ice_km": 0.1,
+   "slope_deg": 4.1
+  }
+ },
+ {
+  "place": "shackleton_floor",
+  "preset": "power_first",
+  "score": 29,
+  "values": {
+   "sunlight_pct": 0,
+   "earth_pct": 0,
+   "ice_km": 0.1,
+   "slope_deg": 4.1
+  }
+ },
+ {
+  "place": "shackleton_floor",
+  "preset": "comms_first",
+  "score": 29,
+  "values": {
+   "sunlight_pct": 0,
+   "earth_pct": 0,
+   "ice_km": 0.1,
+   "slope_deg": 4.1
+  }
+ },
+ {
+  "place": "shackleton_floor",
+  "preset": "safety_first",
+  "score": 53,
+  "values": {
+   "sunlight_pct": 0,
+   "earth_pct": 0,
+   "ice_km": 0.1,
+   "slope_deg": 4.1
+  }
+ },
+ {
+  "place": "malapert_massif",
+  "preset": "balanced",
+  "score": 48,
+  "values": {
+   "sunlight_pct": 66,
+   "earth_pct": 64,
+   "ice_km": 12.1,
+   "slope_deg": 8.0
+  }
+ },
+ {
+  "place": "malapert_massif",
+  "preset": "ice_first",
+  "score": 38,
+  "values": {
+   "sunlight_pct": 66,
+   "earth_pct": 64,
+   "ice_km": 12.1,
+   "slope_deg": 8.0
+  }
+ },
+ {
+  "place": "malapert_massif",
+  "preset": "power_first",
+  "score": 52,
+  "values": {
+   "sunlight_pct": 66,
+   "earth_pct": 64,
+   "ice_km": 12.1,
+   "slope_deg": 8.0
+  }
+ },
+ {
+  "place": "malapert_massif",
+  "preset": "comms_first",
+  "score": 53,
+  "values": {
+   "sunlight_pct": 66,
+   "earth_pct": 64,
+   "ice_km": 12.1,
+   "slope_deg": 8.0
+  }
+ },
+ {
+  "place": "malapert_massif",
+  "preset": "safety_first",
+  "score": 47,
+  "values": {
+   "sunlight_pct": 66,
+   "earth_pct": 64,
+   "ice_km": 12.1,
+   "slope_deg": 8.0
+  }
+ },
+ {
+  "place": "a3_haworth",
+  "preset": "balanced",
+  "score": 63,
+  "values": {
+   "sunlight_pct": 51,
+   "earth_pct": 65,
+   "ice_km": 2.1,
+   "slope_deg": 5.2
+  }
+ },
+ {
+  "place": "a3_haworth",
+  "preset": "ice_first",
+  "score": 71,
+  "values": {
+   "sunlight_pct": 51,
+   "earth_pct": 65,
+   "ice_km": 2.1,
+   "slope_deg": 5.2
+  }
+ },
+ {
+  "place": "a3_haworth",
+  "preset": "power_first",
+  "score": 54,
+  "values": {
+   "sunlight_pct": 51,
+   "earth_pct": 65,
+   "ice_km": 2.1,
+   "slope_deg": 5.2
+  }
+ },
+ {
+  "place": "a3_haworth",
+  "preset": "comms_first",
+  "score": 64,
+  "values": {
+   "sunlight_pct": 51,
+   "earth_pct": 65,
+   "ice_km": 2.1,
+   "slope_deg": 5.2
+  }
+ },
+ {
+  "place": "a3_haworth",
+  "preset": "safety_first",
+  "score": 64,
+  "values": {
+   "sunlight_pct": 51,
+   "earth_pct": 65,
+   "ice_km": 2.1,
+   "slope_deg": 5.2
+  }
+ },
+ {
+  "place": "a3_nobile_rim_2",
+  "preset": "balanced",
+  "score": 61,
+  "values": {
+   "sunlight_pct": 52,
+   "earth_pct": 70,
+   "ice_km": 7.4,
+   "slope_deg": 2.0
+  }
+ },
+ {
+  "place": "a3_nobile_rim_2",
+  "preset": "ice_first",
+  "score": 58,
+  "values": {
+   "sunlight_pct": 52,
+   "earth_pct": 70,
+   "ice_km": 7.4,
+   "slope_deg": 2.0
+  }
+ },
+ {
+  "place": "a3_nobile_rim_2",
+  "preset": "power_first",
+  "score": 53,
+  "values": {
+   "sunlight_pct": 52,
+   "earth_pct": 70,
+   "ice_km": 7.4,
+   "slope_deg": 2.0
+  }
+ },
+ {
+  "place": "a3_nobile_rim_2",
+  "preset": "comms_first",
+  "score": 64,
+  "values": {
+   "sunlight_pct": 52,
+   "earth_pct": 70,
+   "ice_km": 7.4,
+   "slope_deg": 2.0
+  }
+ },
+ {
+  "place": "a3_nobile_rim_2",
+  "preset": "safety_first",
+  "score": 70,
+  "values": {
+   "sunlight_pct": 52,
+   "earth_pct": 70,
+   "ice_km": 7.4,
+   "slope_deg": 2.0
+  }
+ }
+]

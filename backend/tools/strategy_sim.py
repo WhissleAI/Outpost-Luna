@@ -170,12 +170,18 @@ class Planner(Policy):
             cmd(m, {"type": "shelter", "on": False})
         nxt = env.get("next_sun_change_h")
         dark_soon = (env["in_sun"] and nxt is not None and nxt <= 6) or not env["in_sun"]
-        if dark_soon != m.power_save and not st["site"].get("window_sun_days") == 0:
+        if st["site"].get("power_from"):       # a cabled site: night mode while its rim arrays are in shadow
+            dark_soon = not env.get("power_sun", True)
+        if dark_soon != m.power_save:
             cmd(m, {"type": "power_save", "on": dark_soon})
         alloc(m, "comms", 10 if env["earth_visible"] else 2)
         if m.power_save:                       # in the long night, the recycler gets the spare power
             alloc(m, "life_support", 45)
         _housekeeping(m, st, ice_at=55, science_bias=not m.power_save)
+        calm = not env["storm"]["active"] and not w.get("eta_h", 99) <= 24
+        if (m.ice_runs < sim.ICE_GOAL and calm and not m.shelter and not m.rover["busy"] and m.power > 50
+                and not m.power_save):          # the ice goal: one run on a calm, sunny day with a full-ish battery
+            cmd(m, {"type": "dispatch", "vehicle": "rover", "task": "collect_ice"})
         return []
 
 

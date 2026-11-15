@@ -105,6 +105,7 @@ def public_site(s: dict) -> dict:
     out["window_earth_days"] = _half_days(comm.get("earth_visible_pct"))
     # [qa] the picker explains its numbers: ice a drive away (not "No"), power / radio by pretend cable / relay
     out["rover_to_ice_h"] = s.get("rover_to_ice_h")
+    out["rover_slope_power"] = s.get("rover_slope_power", 0)   # the ice drive's slope cost (LOLA; site_physics.py)
     out["power_from"] = {"site": s["power_from"]["site"], "pretend_tech": bool(s["power_from"].get("pretend_tech"))} if s.get("power_from") else None
     out["comm_from"] = {"site": s["comm_from"]["site"], "pretend_tech": bool(s["comm_from"].get("pretend_tech"))} if s.get("comm_from") else None
     return out
@@ -258,18 +259,26 @@ def _comm_site(s: dict) -> str:
     return cf["site"] if cf else s["id"]
 
 
+def _horizon(site_id: str, body: str, t: float) -> float:
+    """The ground's edge in the body's direction at hour t: the real LOLA terrain horizon at its azimuth (ephemeris
+    *_terrain_deg, pipeline/site_physics.py), else the old single calibrated horizon angle."""
+    if f"{body}_terrain_deg" in ephemeris(site_id):
+        return _eph_at(site_id, f"{body}_terrain_deg", t)
+    h = site(site_id)["horizon_deg"]
+    return h if body == "sun" else min(h, 0)
+
+
 def env_at(m: Mission, t: float) -> dict:
     s = site(m.site_id)
     psite, eff = _power_site(s)
-    ps = site(psite)
     sun = _eph_at(m.site_id, "sun_elev_deg", t)
     psun = _eph_at(psite, "sun_elev_deg", t)
-    sun_frac = max(0.0, min(1.0, (psun - ps["horizon_deg"]) / 0.5 + 0.5)) * eff
-    in_sun = (sun > s["horizon_deg"]) if not s.get("power_from") else False
+    sun_frac = max(0.0, min(1.0, (psun - _horizon(psite, "sun", t)) / 0.5 + 0.5)) * eff
+    in_sun = (sun > _horizon(m.site_id, "sun", t)) if not s.get("power_from") else False
     cs = site(_comm_site(s))
     earth = _eph_at(m.site_id, "earth_elev_deg", t)
     cearth = _eph_at(cs["id"], "earth_elev_deg", t)
-    earth_visible = cearth > min(cs["horizon_deg"], 0)
+    earth_visible = cearth > _horizon(cs["id"], "earth", t)
     storm = next((st for st in m.storms if st.active(t)), None)
     return {"sun_elev_deg": round(sun, 3), "in_sun": in_sun, "sun_frac": sun_frac,
             "earth_elev_deg": round(earth, 3), "earth_visible": earth_visible, "storm": storm}
@@ -791,7 +800,7 @@ def _execute(m: Mission, cmd: dict) -> dict:
             return {"ok": False, "say": f"The rover can't do {task!r}.", "readback": rb, "events": []}
         s = site(m.site_id)
         eta = {"collect_ice": max(4, 2 * s.get("rover_to_ice_h", 8) + 2), "repair_array": 6, "explore": 12}[task]
-        charge = ROVER_POWER
+        charge = ROVER_POWER + (s.get("rover_slope_power", 0) if task == "collect_ice" else 0)   # steep drives cost more (LOLA slope)
         route = ROUTES.get(cmd.get("route")) if task == "collect_ice" else None
         if route:   # a route picked on the LOLA slope map: time against battery (gameplay.py rover task)
             eta, charge = max(4, eta + route["eta_h"]), charge + route["power"]
@@ -947,6 +956,7 @@ def to_state(m: Mission) -> dict:
         "loads": dict(m.loads),
         "env": {"sun_elev_deg": env["sun_elev_deg"], "in_sun": env["in_sun"], "earth_elev_deg": env["earth_elev_deg"],
                 "earth_visible": env["earth_visible"], "next_comm_window_h": next_comm_window_h(m, m.t_h),
+                "power_sun": env["sun_frac"] > 0,   # the arrays that feed this outpost see the Sun (a cabled site's rim)
                 "comm_delay_s": COMM_DELAY_S,
                 "next_sun_change_h": next_sun_change_h(m, m.t_h),
                 "comm_closes_in_h": comm_closes_in_h(m, m.t_h),
@@ -1058,8 +1068,8 @@ def debrief(m: Mission) -> dict:
         sun_text = (f"At {s['name']} the Sun was up {ps['window_sun_days']:g} of your 10 days (JPL Horizons, April "
                     f"2026), never more than a degree or so above the horizon: at the pole the Sun skims the edge. "
                     f"Radio with Earth: {ps['window_earth_days']:g} of 10 days. Over a whole year this spot gets sun "
-                    f"about {s['sunlight_pct']}% of the time (Bussey 2010). Our sim treats the ground as smooth, so "
-                    "real mountain shadows are missing.")
+                    f"about {s['sunlight_pct']}% of the time (LOLA, NASA's Lunar Reconnaissance Orbiter). The mountain "
+                    "shadows are real too: each hour the sim checks the Sun against the LOLA skyline.")
     lessons.append({"text": sun_text, "source": {"title": "JPL Horizons API", "url": eph["source"]["url"]}})
     timeline = list(m.shifts)
     obj = objectives(m)
@@ -1075,12 +1085,13 @@ def debrief(m: Mission) -> dict:
     data_used = [
         {"name": "JPL Horizons ephemerides (Sun and Earth elevation, hourly, 2026-04-08 to 04-18)",
          "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
-         "how": "Sun elevation sets solar power and day/night; Earth elevation sets comm windows. Topocentric "
-                "observer at the site; terrain ignored except for one calibrated horizon angle per site."},
+         "how": "Sun elevation sets solar power and day/night; Earth elevation sets comm windows. Each hour the Sun "
+                "and Earth are checked against the real skyline at the outpost (LOLA terrain, NASA LRO)."},
         {"name": "Outpost sites (IAU Gazetteer; NASA's 2024 list of candidate landing regions; illumination studies)",
          "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/",
          "how": "Malapert Massif and de Gerlache Rim 2 are on NASA's 2024 list of 9 candidate regions; the other sites "
-                "are studied by scientists. Coordinates, ice, and the yearly sunlight % that calibrates each horizon."},
+                "are studied by scientists. Coordinates; yearly sunlight and Earth view (LOLA); the ice-run distance to "
+                "ground cold enough for ice (LRO Diviner) and its slope (LOLA)."},
         {"name": "Real solar particle events (NASA CCMC DONKI SEP records)",
          "url": storms_catalog()["source"]["url"],
          "how": "Each mission replays 2-3 real events, moved into the mission and scaled for the game. "

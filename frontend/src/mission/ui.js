@@ -14,6 +14,7 @@ import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./obj
 import { createTour, tourDone } from "./tour.js";
 import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
+import { createNavigator } from "./navigator.js";   // the landing-site navigator (docs/SITE_NAVIGATOR.md)
 
 
 
@@ -139,6 +140,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       panel.hidden = false; panel.innerHTML = `<p class="m-wait">Loading mission sites…</p>`;
       const c = await createMissionClient();
       client = client || c; sites = client.sites || [];
+      if (!client.sample) await nv.load();   // real NASA numbers per site + map layers (falls back to the plain picker)
       if (g !== gen || !entered) return;   // QA-19: left Mission while the sites loaded: no picker over another mode
     }
     if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
@@ -201,7 +203,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { nv.hide(); if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
@@ -260,6 +262,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // the transition beat: where you are (Command), why the choice matters; spoken once per visit
     // one say through the line queue: no async chain to outlive the screen (rc-polish's screen generations)
     if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say([CAPCOM.missionBrief(callSign.spoken(), rank()), PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {}); }
+    if (nv.ready && sites.every(s => nv.place(s.id))) {   // the navigator: map, layers, numbers with sources, weights
+      nv.render({ site, firstPick, recommended: PICKER.recommended, recTag: PICKER.recTag });
+      previewSite(); if (!nv.mapShown) pins(pickSite); else if (pinEl) pinEl.hidden = true;
+      return;
+    }
     const src0 = site && (site.sources || [])[0];
     panel.classList.add("mx-brief");
     panel.innerHTML = `
@@ -295,6 +302,21 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     $("mStart").onclick = () => start();
     previewSite(); pins(pick);
   }
+  /** One pick path for the picker's rows, its pins and the navigator's map: select, preview, re-render, keep focus. */
+  function pickSite(id) {
+    const s = sites.find(x => x.id === id); if (!s) return;
+    site = s; previewSite(); briefing();
+    const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus({ preventScroll: true });
+  }
+  const nv = createNavigator({
+    panel, say: t => say(t), onPick: id => pickSite(id), onStart: () => start(), active: () => screen === "brief",
+    missionText: id => { const s = sites.find(x => x.id === id); if (!s) return "";
+      const parts = [`Sun ${sunDays(s)} of 10 days`, `radio ${earthDays(s)} of 10 days`,
+        s.ice ? "ice right here" : s.rover_to_ice_h ? `ice run ${s.rover_to_ice_h} h each way` : ""];
+      if (s.rover_slope_power) parts.push(`steep drive +${s.rover_slope_power}% battery`);
+      return parts.filter(Boolean).join(" · ") + "."; },
+  });
+  try { (window.__outpost = window.__outpost || {}).navigator = nv; } catch (e) { /* */ }   // tests/e2e/site_navigator_e2e.py
   /** Row and pin: hovering either lights both. */
   function hot(id, on) {
     document.querySelectorAll(`.mx-pin[data-site="${CSS.escape(id)}"], .mx-dot[data-site="${CSS.escape(id)}"], .mx-site[data-site="${CSS.escape(id)}"]`).forEach(n => n.classList.toggle("is-hot", on));
@@ -549,6 +571,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
 
   // ---------- cockpit (mission/cockpit.js): the console that replaced the HUD panel ----------
   function showHud() {
+    nv.hide();
     screen = "hud"; debriefEl.hidden = true; panel.hidden = true; cabinEl.hidden = false; document.body.dataset.cabin = "1";
     dockOut();   // createCabin rewrites the cabin's HTML: lift the docked nodes out first
     if (cockpit && cockpit.dispose) cockpit.dispose();
@@ -1003,6 +1026,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
     if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }
+    if (screen === "brief" && nv.nav(intent, arg)) return true;   // map layers, "which site has the most ice?", weights, regions
     if (intent === "pick_site" && (screen === "brief" || screen === "debrief")) {
       const s = sites.find(x => x.id === arg); if (!s) return false;
       if (unsub && screen === "debrief") { unsub(); unsub = null; state = null; }

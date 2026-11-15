@@ -47,6 +47,7 @@ with the chunked upload-session API, makes public links and checks each one anon
 | `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
 | `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
 | `videos` | the 8 pinned NASA videos + captions + posters | no | 199 MB | `VIDEO_PACK_DIR` (copied into the video cache) |
+| `site_layers` | the site navigator's polar map layers (NASA LRO; `make site-layers`, docs/SITE_NAVIGATOR.md) | no | 20 MB | `SITE_LAYERS_DIR` |
 
 First launch downloads **510 MB** (required) and then 375 MB more in the background; the offline zip
 (`outpost-luna-assets-v2.zip`) is all six, 885 MB. The flow (`desktop/main/assets.js`, `firstrun.html`):

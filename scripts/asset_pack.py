@@ -17,6 +17,8 @@ Assets (id -> what, where it is installed under <per-user data>/assets/<id>/, re
                NOTICE; CC BY-NC 4.0): the optional second voice engine
     crew       trimmed Artemis II crew audio (audio/*.mp3, trim.json), NASA    optional   MEDIA_AUDIO_DIR
     videos     the pinned NASA videos (<id>.mp4/.vtt/.jpg), NASA               optional   VIDEO_PACK_DIR
+    site_layers  the site navigator's polar map layers (5 PNG + layers.json), optional   SITE_LAYERS_DIR
+               NASA LRO via backend/pipeline/site_physics.py (`make site-layers` first)
 
 Each tar is deterministic (sorted, mtime 0, uid/gid 0), so rebuilding from the same sources gives the same sha256 and
 the manifest's public links stay valid. A tar whose sha256 changes loses its url (null) until scripts/upload_assets.py
@@ -209,6 +211,18 @@ def src_steer():
     return out + [("LICENSE", STEER_REPO / "LICENSE"), ("NOTICE", STEER_REPO / "edge/NOTICE")]
 
 
+# ---- site_layers (feat/site-navigator, docs/SITE_NAVIGATOR.md) ------------------------------------------------------
+def src_site_layers():
+    """The landing-site navigator's polar map layers: 5 PNGs + layers.json + NOTICE, built from NASA LRO rasters by
+    `make site-layers` (backend/pipeline/site_physics.py) into backend/data/cache/site_layers."""
+    d = Path(os.environ.get("SITE_LAYERS_SRC", ROOT / "backend/data/cache/site_layers"))
+    names = ["relief.png", "sunlight.png", "slope.png", "ice.png", "earth.png", "layers.json", "NOTICE"]
+    if not all((d / n).exists() for n in names):
+        sys.exit(f"{d}: site layers missing: run `make site-layers` first")
+    return [(n, d / n) for n in names]
+# ---- end site_layers -------------------------------------------------------------------------------------------------
+
+
 # id, title, required, source, licence files, env var + subfolder the app points at
 ASSETS = [
     ("ear", "Speech model (Arc Transcriber Space)", True, src_ear, ["LICENSE", "NOTICE"], "ARC_SPACE_DIR", "nft2"),
@@ -218,6 +232,8 @@ ASSETS = [
     ("steer", "Steer voice (Whissle)", False, src_steer, ["LICENSE", "NOTICE"], "STEER_TTS_MODEL", "steer-tts-edge"),
     ("crew", "Artemis II crew audio", False, src_crew, ["NOTICE"], "MEDIA_AUDIO_DIR", ""),
     ("videos", "NASA videos", False, src_videos, ["NOTICE"], "VIDEO_PACK_DIR", ""),
+    # the site navigator's map layers (optional; the app shows "Map layers downloading…" until they are in)
+    ("site_layers", "Landing-site map layers (NASA LRO)", False, src_site_layers, ["NOTICE"], "SITE_LAYERS_DIR", ""),
 ]
 
 
@@ -279,6 +295,10 @@ def build(only: set[str] | None) -> dict:
                              "inline": [{"path": x["path"], "text": src[x["path"]].read_text(encoding="utf-8")}
                                         for x in listing if not x["path"].startswith("steer-tts-edge/")]}
             a["note"] = "Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded."
+        if aid == "site_layers":   # new in 0.3 (the app's SITE_LAYERS_DIR); url null until uploaded
+            a.setdefault("version", "1"); a.setdefault("min_app", "0.3.0")
+            a["note"] = ("Optional: the site navigator's polar map layers (NASA LRO LOLA + Diviner; "
+                         "backend/pipeline/site_physics.py). The app works without them.")
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
             a["fallback"] = {"kind": "files", "base": HF,
@@ -338,6 +358,7 @@ def main():
     if a.check:
         sys.exit(1 if check(asset_manifest.read()) else 0)
     print(f"asset pack {PACK} -> {OUT}", flush=True)
+    old = asset_manifest.read()     # the manifest before this build (write() bumps changed versions against it)
     m = build(set(a.only.split(",")) if a.only else None)
     if not a.no_zip:
         m["offline_pack"] = write_zip(m)

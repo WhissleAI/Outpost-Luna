@@ -70,10 +70,13 @@ ACTION_COMMANDS = [
 @pytest.mark.parametrize("cmd", ACTION_COMMANDS, ids=lambda c: c["type"] + ":" + str(c.get("to") or c.get("task") or ""))
 def test_every_command_costs_something(cmd):
     """No free choices: every action changes at least two resources' futures (power, life, dose, science)."""
-    base = sim.new_mission("c", SITE, 3)
+    # A site whose Earth rises before an idle crew runs out of power: on the real LOLA skyline the ridge sees Earth only
+    # from hour 208 (docs/SITE_NAVIGATOR.md), de Gerlache from hour 138.
+    base = sim.new_mission("c", "de_gerlache_rim", 3)
     # Move to a time when Earth is up so call_houston is possible.
-    while not sim.env_at(base, base.t_h)["earth_visible"]:
+    while not sim.env_at(base, base.t_h)["earth_visible"] and not base.over:
         sim.advance(base, 1)
+    assert not base.over
     ref = _future(base)
     m = copy.deepcopy(base)
     res = sim.apply_command(m, cmd)
