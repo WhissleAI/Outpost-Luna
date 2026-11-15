@@ -20,7 +20,8 @@
 //          min_app / max_app (the app versions it works with, inclusive; null = no bound), requires ([{id,
 //          min_version}]: other assets it needs), min_version (in the BUNDLED manifest: the oldest installed version
 //          this app build accepts; older is replaced in the foreground), licence, files [{path, size}], env, subdir,
-//          fallback ({kind: "files", base, files: [{path, size, sha256}]}, optional)
+//          fallback ({kind: "files", base, files: [{path, size, sha256}]} or {kind: "tar_members", url, sha256, size,
+//          members: [{from, path, size, sha256}], inline: [{path, text}]}, optional)
 "use strict";
 const fs = require("fs");
 const fsp = require("fs/promises");
@@ -59,7 +60,9 @@ function validateManifest(m, { allow = ALLOW_HOSTS } = {}) {
     if (typeof a.file !== "string" || !/^[\w.-]+$/.test(a.file)) err.push(`${id}: bad file name`);
     if (a.url != null && !hostAllowed(a.url, allow)) err.push(`${id}: url not https on an allowed host`);
     if (a.fallback) {
-      if (!hostAllowed(a.fallback.base, allow)) err.push(`${id}: fallback not https on an allowed host`);
+      // kind "files": a base URL + per-file sha256; kind "tar_members": one https tar (sha256) whose listed members are taken
+      if (!hostAllowed(a.fallback.base || a.fallback.url, allow)) err.push(`${id}: fallback not https on an allowed host`);
+      if (a.fallback.kind === "tar_members" && !SHA_RE.test(a.fallback.sha256 || "")) err.push(`${id}: fallback tar sha256`);
       for (const f of a.fallback.files || []) if (f.sha256 && !SHA_RE.test(f.sha256)) err.push(`${id}: fallback file sha256`);
     }
     for (const f of a.files || []) {
