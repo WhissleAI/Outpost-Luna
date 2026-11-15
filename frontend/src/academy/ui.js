@@ -17,6 +17,8 @@ import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, 
 import { isAvailable, openVideo, getVideo, watchLabel } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, coreLessons } from "../explorer.js";   // explorer lessons open after missions
 import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
+/** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
+const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
 import { stepWord as videoStepWord } from "../media/video_ui.js";   // [media] the video step (docs/MEDIA.md)
 
@@ -369,7 +371,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
-    const how = doLine(st);
+    const how = doLine(st, { gesture: gesturesOn() });
     const FB_ICON = { ok: "check", reveal: "explore", shown: "info", progress: "check" };
     const revealSrc = feedback && (feedback.kind === "reveal" || (feedback.kind === "ok" && acc.type === "predict")) && st.reveal && st.reveal.source;
     const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${FB_ICON[feedback.kind] ? icon(FB_ICON[feedback.kind], { size: 18 }) : ""}<p>${esc(feedback.text)}${revealSrc ? ` ${src(revealSrc)}` : ""}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
@@ -475,8 +477,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const focus = acc.type === "route" ? [acc.stops[stepState.taps.length] || acc.stops[0]] : acc.place ? [acc.place] : [];
     // [audit2] the do-line is already on the card: the card adds only the hint, and a hint that repeats the do-line
     // ("Guess first. Any guess is fine." + "Guess first. Then we'll see.") is not said twice
-    const line = helpLine(doLine(st), st.hint);
-    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: st.hint || doLine(st) }; render(); turnToFocus(focus); }
+    const line = helpLine(doLine(st, { gesture: gesturesOn() }), st.hint);
+    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: st.hint || doLine(st, { gesture: gesturesOn() }) }; render(); turnToFocus(focus); }
     return line;
   }
   try { (window.__outpost = window.__outpost || {}).help = help; } catch (e) { /* tests */ }

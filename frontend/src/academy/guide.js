@@ -31,7 +31,20 @@ export const INTRO = {
   command: "New: give an order. Tap a button, or say it.", keywords: "New: radio practice. Say the order back.",
   video: "New: a NASA video. Guess first, then watch.",
 };
-export const doLine = st => (st && (st.do || DO[(st.accept || {}).type])) || "";
+/** With the camera on: the same line, saying the gesture (≤ 10 words). `want` fills in the side / answer. */
+export const DO_GESTURE = {
+  globe_side: w => `Make a fist and turn it, or point at ${w === "near" ? "Near" : "Far"} side`,
+  choice: () => "Thumbs up or down, show fingers, or point", earth_view: () => "Thumbs up for yes, down for no, or 3 fingers",
+  predict: () => "Show fingers to pick, or point at one", compare: () => "Show fingers to pick, or point at one",
+  video: () => "Thumbs up to watch, thumbs down to skip",
+};
+/** The "do this" line; `gesture`: the camera is on (a step's own `do` still wins). */
+export const doLine = (st, { gesture = false } = {}) => {
+  if (!st) return "";
+  if (st.do) return st.do;
+  const kind = (st.accept || {}).type, g = gesture && DO_GESTURE[kind];
+  return (g ? g((st.accept || {}).want) : DO[kind]) || "";
+};
 
 /** [audit2] "What do I do?" in a step: the do-line, then the hint, unless the hint says the same thing (then the hint
  *  alone). Before, "Drag the Moon to turn it, or tap a side. Tap Far, or drag the Moon around." said it twice. */

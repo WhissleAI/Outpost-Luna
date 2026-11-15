@@ -102,6 +102,14 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
     if name and target and name == short(target):
         name = None
     lead = f"That's {name}. " if name else fail + " "
+    if kind == "globe_side":
+        # [owner bug] "Tap the Far side button" right after they pressed it. State-aware and the same on both rungs:
+        # what to do with the Moon first, the button second (≤ 20 spoken words, docs/COPY.md)
+        w = acc["want"]
+        out["say"] = f"Not yet. Turn the Moon until the {w} side faces you. Or press {w.title()} side."
+        if rung == 2:
+            out["cue"] = {"side": w}
+        return out
     if rung == 1:
         out["say"] = lead + hint
         if target:
@@ -123,9 +131,6 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
         if w:
             out["eliminate"] = w
         out["say"] = lead + hint + (" I crossed one out." if w else "")
-    elif kind == "globe_side":
-        out["cue"] = {"side": acc["want"]}
-        out["say"] = lead + f"Tap the {acc['want'].title()} side button."
     elif kind == "command":
         out["cue"] = acc["expect"]
         out["say"] = lead + "Tap the glowing order."
