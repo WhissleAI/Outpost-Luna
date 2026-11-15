@@ -53,7 +53,7 @@
     <ul class="points one">
       <li><b>Real mission speech.</b> Crew and mission control talk over radio loops, with noise, cross-talk and clipped phrasing. Clean read speech has none of this.</li>
       <li><b>The Moon's vocabulary.</b> Crater and mare names, landing sites, spacecraft and missions: Tycho, Shackleton, Sinus Medii, Orion, Artemis II. A general model writes "tie co" for Tycho.</li>
-      <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to what a curious kid asks the app.</li>
+      <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to the questions people ask the app.</li>
       <li><b>Long context.</b> Whole episodes keep earlier sentences and the names already mentioned, so the model learns to use context: what was just said, and the list of names on screen.</li>
     </ul>
   </section>
@@ -94,8 +94,8 @@
 
     <h3 class="sub-h">Alongside it</h3>
     <ul class="facts">
-      <li><span class="v">Children</span><span class="d"><b>Children's read speech</b> from an openly licensed corpus (Apache-2.0), so the model also hears young voices. Speaker ids are anonymised.</span><span class="src">Open dataset</span></li>
-      <li><span class="v">Kid questions</span><span class="d"><b>Synthetic kids' space questions</b> ("why is Tycho so bright?"), with the app's own spoken answers mixed in as background. The model learns not to transcribe the app talking.</span><span class="src">Generated</span></li>
+      <li><span class="v">Read speech</span><span class="d"><b>Read speech</b> from an openly licensed corpus (Apache-2.0), so the model hears a wider range of voices. Speaker ids are anonymised.</span><span class="src">Open dataset</span></li>
+      <li><span class="v">Questions</span><span class="d"><b>Synthetic space questions</b> ("why is Tycho so bright?"), with the app's own spoken answers mixed in as background. The model learns not to transcribe the app talking.</span><span class="src">Generated</span></li>
       <li><span class="v">NASA</span><span class="d"><b>Other public NASA mission audio</b> (Apollo and NASA TV commentary) for older mission vocabulary.</span><span class="src">NASA open media</span></li>
     </ul>
   </section>
@@ -120,7 +120,7 @@
     </div>
     <ul class="points one">
       <li><b>Test recordings never enter.</b> All 15 recordings of our Artemis test set were skipped when the corpus was loaded, so they are not in the training data at all.</li>
-      <li><b>Whole episodes, checked against every test set.</b> Each episode's text is searched for every test sentence of 6 or more words. The test sets cover Artemis, Apollo, real and synthetic kids' speech, held-out names and Common Voice. Any segment that equals a test sentence of 4 or more words also counts as a hit. One hit removes the whole episode. <strong>32 episodes (20.3 h) were removed:</strong> 9 Artemis recordings that rebroadcast test audio, and 23 podcast episodes that matched only common phrases, removed anyway to be safe.</li>
+      <li><b>Whole episodes, checked against every test set.</b> Each episode's text is searched for every test sentence of 6 or more words. The test sets cover Artemis, Apollo, open read speech, synthetic space questions, held-out names and Common Voice. Any segment that equals a test sentence of 4 or more words also counts as a hit. One hit removes the whole episode. <strong>32 episodes (20.3 h) were removed:</strong> 9 Artemis recordings that rebroadcast test audio, and 23 podcast episodes that matched only common phrases, removed anyway to be safe.</li>
       <li><b>A new held-out test set from the corpus.</b> About 2.5% of each podcast series is set aside, at least 2 episodes per series, chosen by a fixed hash. Only episodes with less than 5% 8-word overlap with any earlier training text qualify, so no model has seen them. <strong>19 episodes, 12.8 h, 10,410 segments</strong> (Houston We Have a Podcast 11, Small Steps, Giant Leaps 5, Curious Universe 3), frozen before training.</li>
       <li><b>General speech as a guard.</b> The model is also scored on a fixed sample of the Common Voice English test set. Those test sentences are banned from training, so space training can't quietly cost it everyday speech.</li>
     </ul>
@@ -141,8 +141,8 @@
       <thead><tr><th scope="col">Set</th><th scope="col" class="num">Word error rate</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked wrong</th><th scope="col" class="num">Space-tag F1</th></tr></thead>
       <tbody>
         <tr><th scope="row">Artemis II crew audio</th><td class="num">13.4%</td><td class="num">94%</td><td class="num">97.1%</td><td class="num">0.0%</td><td class="num">0.88</td></tr>
-        <tr><th scope="row">Kids' space questions (synthetic)</th><td class="num">6.1%</td><td class="num">86%</td><td class="num">91.9%</td><td class="num">1.5%</td><td class="num">0.84</td></tr>
-        <tr><th scope="row">Children's read speech</th><td class="num">18.1%</td><td class="num">–</td><td class="num" colspan="2">2.0 false links per 100 utterances</td><td class="num">–</td></tr>
+        <tr><th scope="row">Space questions (synthetic)</th><td class="num">6.1%</td><td class="num">86%</td><td class="num">91.9%</td><td class="num">1.5%</td><td class="num">0.84</td></tr>
+        <tr><th scope="row">Open read speech</th><td class="num">18.1%</td><td class="num">–</td><td class="num" colspan="2">2.0 false links per 100 utterances</td><td class="num">–</td></tr>
       </tbody>
     </table>
     </div>
