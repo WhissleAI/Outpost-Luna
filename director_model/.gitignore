@@ -13,3 +13,4 @@ data/review/
 turnlog/
 data/smoke/
 data/*.log
+data/collected_turns.json

@@ -31,7 +31,13 @@ WEIGHTS = ROOT / "backend" / "app" / "director_model"
 HELD_OUT = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr",
             "test_gold"]
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
-              "cls_roomtalk", "test_log"]
+              "cls_roomtalk", "test_log",
+              "cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
+              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending"]
+# Round 8: the classes whose feature is still on a branch are reported but do not gate until the branch is merged
+# (the rules cannot act on a screen the app does not have yet): `--pending` lists them; R8_PENDING is the default.
+R8_PENDING = {"cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
+              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage_pending"}
 CACHE_DIRS = [HERE / "data", HERE / "cache", HERE / "runs"]
 
 
@@ -62,7 +68,9 @@ def _f(x, nd=3):
     return "–" if x is None else (f"{x:.{nd}f}" if isinstance(x, float) else str(x))
 
 
-def check(cand: dict, ship: dict) -> tuple[bool, list[str], list[dict]]:
+def check(cand: dict, ship: dict, pending: set | None = None) -> tuple[bool, list[str], list[dict]]:
+    """pending: class sets whose feature is not merged yet: reported (row "pending"), never gating."""
+    pending = R8_PENDING if pending is None else pending
     ok, why, rows = True, [], []
     cs, ss = cand["sets"], ship["sets"]
     for name in HELD_OUT + CLASS_SETS:
@@ -87,6 +95,8 @@ def check(cand: dict, ship: dict) -> tuple[bool, list[str], list[dict]]:
                 row["fail"].append(f"class regresses: act acc {C['act_acc']} < shipped {S['act_acc']}")
             if C["wrong_actions"] > S["wrong_actions"]:
                 row["fail"].append(f"class regresses: wrong {C['wrong_actions']} > shipped {S['wrong_actions']}")
+        if name in pending:
+            row["pending"], row["fail"] = row["fail"] or ["-"], []
         if row["fail"]:
             ok = False
             why += [f"{name}: {x}" for x in row["fail"]]
@@ -113,14 +123,14 @@ def table(rows: list[dict]) -> str:
         out.append(f"| {r['set']} | {r['turns']} | {_f(r['rules_act'])} / {_f(r['ship_act'])} / **{_f(r['cand_act'])}** | "
                    f"{r['rules_wrong']} / {_f(r['ship_wrong'])} / **{r['cand_wrong']}** | {_f(r['rules_w50'], 1)} / "
                    f"{_f(r['ship_w50'], 1)} / **{_f(r['cand_w50'], 1)}** | {_f(r['model_act'])} | "
-                   f"{'ok' if not r['fail'] else 'FAIL'} |")
+                   f"{'pending' if r.get('pending') else 'ok' if not r['fail'] else 'FAIL'} |")
     return "\n".join(out)
 
 
-def gate(run: Path, data: Path, export: bool) -> dict:
+def gate(run: Path, data: Path, export: bool, pending: set | None = None) -> dict:
     cand = json.loads((run / "eval_candidate.json").read_text())
     ship = json.loads((run / "eval_shipped.json").read_text())
-    ok, why, rows = check(cand, ship)
+    ok, why, rows = check(cand, ship, pending)
     res = {"date": dt.datetime.now().isoformat(timespec="minutes"), "run": str(run), "data": str(data), "pass": ok,
            "reasons": why, "policy": cand.get("policy"), "shipped_policy": ship.get("policy"), "rows": rows}
     exported = False
@@ -155,6 +165,8 @@ def main():
     ap.add_argument("--run", default="")
     ap.add_argument("--data", default=str(HERE / "data" / "ds"))
     ap.add_argument("--export", action="store_true")
+    ap.add_argument("--pending", default=None, help="comma list of class sets that report but do not gate (default "
+                    "R8_PENDING; '' = every set gates, once the round-8 branches are merged)")
     ap.add_argument("--min-free-gb", type=float, default=3.0)
     ap.add_argument("--max-cache-gb", type=float, default=1.0)
     a = ap.parse_args()
@@ -163,7 +175,8 @@ def main():
     elif a.cmd == "today":
         print(dt.date.today().isoformat())
     else:
-        r = gate(Path(a.run), Path(a.data), a.export)
+        pend = None if a.pending is None else {x for x in a.pending.split(",") if x}
+        r = gate(Path(a.run), Path(a.data), a.export, pend)
         raise SystemExit(0 if r["pass"] else 3)
 
 

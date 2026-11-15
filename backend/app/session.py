@@ -305,6 +305,8 @@ class Session:
         if ev == "lesson_result":  # the Academy's grade of a step answer (turn log outcome signal only)
             self.tlog.lesson(m.get("status"), m.get("step_type") or self.screen.get("step_type"))
             return
+        if ev == "gesture":        # round 8: a hand gesture (feat/gestures-v2): the Director sees voice + gesture together
+            self.last_gesture = (str(m.get("id") or m.get("target") or "")[:24], self.clock())
         self.tlog.ui(ev, m.get("id") or m.get("target"))
         if ev in ("tap_place", "tap_artifact") and m.get("id"):
             self.belief["last_place"] = m["id"]

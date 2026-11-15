@@ -225,6 +225,8 @@ def main():
     # train.npz, or the generator's shards train_s*.npz (gen_sessions.py --shard; no merged copy on disk)
     tr = load_split(d / "train.npz") if (d / "train.npz").exists() else \
         [s for f in sorted(d.glob("train_s*.npz")) for s in load_split(f)]
+    # round 8: the coverage sweep sessions (gen_sessions.py --cov-sessions), one file or its shards
+    tr += [s for f in sorted(d.glob("train_cov*.npz")) for s in load_split(f)]
     va = load_split(d / "val.npz")
     print(f"train {len(tr)} sessions {sum(len(s['feats']) for s in tr)} steps; val {len(va)}", flush=True)
     model = make(FX.F, a.size, a.drop)
