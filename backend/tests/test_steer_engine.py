@@ -99,8 +99,8 @@ def test_steer_missing_falls_back_to_the_system_voice(engines):
     assert "steer_voice" not in engines["os"][0]["style"]
 
 
-def test_engine_state_and_on_demand_download(monkeypatch, tmp_path):
-    monkeypatch.setattr(settings, "assets_dir", tmp_path)
+def test_engine_state_bundled_steer(monkeypatch):
+    """0.1.x bundles the Steer model: the state is ready (loaded) or missing / off, never a download (no assets folder)."""
     health = {"loaded": False, "available": False, "error": "Steer TTS Edge model not found"}
 
     async def h():
@@ -109,9 +109,9 @@ def test_engine_state_and_on_demand_download(monkeypatch, tmp_path):
     monkeypatch.setattr(voices, "STATUS", {"at": -1e9, "steer": None})
     from app.main import app
     with TestClient(app) as c:
-        assert c.get("/api/tts/engines").json()["steer"]["state"] == "missing"
-        st = c.post("/api/tts/engines/steer").json()           # the kid picked Steer: ask the desktop for it
-        assert st["state"] == "downloading" and (tmp_path / ".want" / "steer").exists()
+        st = c.get("/api/tts/engines").json()["steer"]
+        assert st["state"] == "missing" and st["downloadable"] is False
+        assert c.post("/api/tts/engines/steer").json()["state"] == "missing"   # nothing to ask for on 0.1.x
         health["loaded"] = True
         voices.STATUS["at"] = -1e9
         assert c.get("/api/tts/engines").json()["steer"]["state"] == "ready"

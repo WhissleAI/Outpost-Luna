@@ -190,7 +190,8 @@ async def steer_state(force: bool = False) -> dict:
         st = "off"
     else:
         st = "missing"
-    STATUS.update(at=time.monotonic(), steer={"state": st, "voices": len(steer_ids()), "reason": h.get("error")})
+    STATUS.update(at=time.monotonic(), steer={"state": st, "voices": len(steer_ids()), "reason": h.get("error"),
+                                              "downloadable": getattr(settings, "assets_dir", None) is not None})
     return STATUS["steer"]
 
 

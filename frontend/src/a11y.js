@@ -218,23 +218,31 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     unbindReset(); unbindReset = () => {};
     if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
-    if (section === "voice" && PA) Promise.all([PA.loadVoices(), PA.steerState ? PA.steerState() : { state: "off" }]).then(async ([osVs, steer]) => {
+    // Settings → Voice: exactly two engines. "Your computer's voice" picks the OS voice by itself (Siri on a Mac, the
+    // best WinRT voice on Windows): no voice list. "Steer TTS (Whissle)" shows Steer's voices, with previews.
+    if (section === "voice" && PA) Promise.resolve(PA.steerState ? PA.steerState() : { state: "off" }).then(async (steer) => {
       const box = panel.querySelector("#setVoices"); if (!box) return;
       const steerOn = PA.value.engine === "steer" && steer.state === "ready";
-      const vs = steerOn ? await PA.loadSteerVoices() : osVs, vkey = steerOn ? "steer_voice" : "voice";
       const engineHtml = engineChoiceHtml(PA.value, steer, escH);
       clearTimeout(steerPoll);
       if (steer.state === "downloading") steerPoll = setTimeout(() => { if (!panel.hidden && section === "voice") renderPanel(); }, 3000);
-      if (!vs.length) { box.innerHTML = engineHtml; bindSteer(box); return; }
-      const ap = PA.applied, vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "the default voice";
-      box.innerHTML = `${engineHtml}<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
-        <label class="set-voice"><input type="radio" name="p-voice" data-p="${vkey}" value="${escH(v.id)}" ${PA.value[vkey] === v.id || (!PA.value[vkey] && i === 0) ? "checked" : ""}>
+      const ap = PA.applied;
+      const mood = ap && ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : "";
+      if (!steerOn) {
+        box.innerHTML = `${engineHtml}
+        <label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only at normal speed.</small></span></label>
+        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}
+        ${ap ? `<p class="set-help set-applied" role="status">In use: your computer's voice${mood}</p>` : ""}`;
+        bindSteer(box); return;
+      }
+      const vs = await PA.loadSteerVoices();
+      const vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "Aurora";
+      box.innerHTML = `${engineHtml}${vs.length ? `<fieldset class="set-seg" data-steer-voices><legend>Steer voice</legend><div class="set-vlist">${vs.map((v, i) => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="steer_voice" value="${escH(v.id)}" ${PA.value.steer_voice === v.id || (!PA.value.steer_voice && i === 0) ? "checked" : ""}>
           <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
-          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
-        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: Houston keeps its own radio voice</small></span></label>
-        ${steerOn ? `<p class="set-help">With Steer every line is spoken live in the Steer voice.</p>` : `<label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only with the default voice at normal speed.</small></span></label>
-        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}`}
-        ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
+          ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>` : ""}
+        <p class="set-help">With Steer every line is spoken live in the Steer voice.</p>
+        ${ap ? `<p class="set-help set-applied" role="status">In use: Steer · ${escH(vname(PA.value.steer_voice || ""))}${mood}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
       bindSteer(box);
     });

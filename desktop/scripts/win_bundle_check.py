@@ -196,7 +196,9 @@ def compare(mac: Path, win: Path) -> int:
         miss = [m for m in must if m not in wm["app"]]
         row(area, not miss, "all present" if not miss else f"missing {miss}")
     speech = speech_packages(win / "site/models")
-    row("Windows speech (WinRT + SAPI)", all(speech.values()), ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in speech.items()))
+    row("Windows speech (WinRT + SAPI + Steer)", all(speech.values()), ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in speech.items()))
+    st = steer_model(win)
+    row("Steer TTS Edge model", all(st.values()), "all present" if all(st.values()) else f"missing {[k for k, v in st.items() if not v]}")
     media = [k for k in wm["app"] if k.startswith("backend/data/media/audio/")]
     row("NASA crew clips", len(media) == len([k for k in mm["app"] if k.startswith("backend/data/media/audio/")]),
         f"{len(media)} clips (mac {len([k for k in mm['app'] if k.startswith('backend/data/media/audio/')])})")
@@ -236,7 +238,16 @@ SPEECH_MODULES = {"WinRT runtime": "winrt/_winrt.*.pyd",
                   "WinRT Storage.Streams": "winrt/_winrt_windows_storage_streams.*.pyd",
                   "WinRT Foundation": "winrt/_winrt_windows_foundation.*.pyd",
                   "WinRT Foundation.Collections": "winrt/_winrt_windows_foundation_collections.*.pyd",
-                  "comtypes (SAPI)": "comtypes/__init__.py"}
+                  "comtypes (SAPI)": "comtypes/__init__.py",
+                  "steertts_edge (Steer TTS, the optional engine)": "steertts_edge/__init__.py"}
+# The bundled Steer TTS Edge model (desktop/scripts/gather_models.py STEER_FILES) + its licence files.
+STEER_MODEL_FILES = ("config.json", "director.bin", "voices.json", "voices.safetensors", "onnx/enc.onnx", "onnx/dec.onnx",
+                     "onnx/voc.onnx", "front/gru.npz", "LICENSE", "NOTICE")
+
+
+def steer_model(res: Path) -> dict[str, bool]:
+    d = res / "models/steer-tts-edge"
+    return {f"Steer model {f}": (d / f).is_file() for f in STEER_MODEL_FILES}
 
 
 def speech_packages(site: Path) -> dict[str, bool]:
@@ -258,7 +269,7 @@ def main():
         print(f"{n} DLL/PYD files; {'every import resolves' if not miss else f'{len(miss)} unresolved import(s)'}")
         sys.exit(1 if miss else 0)
     if a.cmd == "speech":
-        got = speech_packages(a.paths[0] / "site/models")
+        got = {**speech_packages(a.paths[0] / "site/models"), **steer_model(a.paths[0])}
         for k, v in got.items():
             print(f"  {'OK  ' if v else 'MISS'} {k}")
         sys.exit(0 if all(got.values()) else 1)

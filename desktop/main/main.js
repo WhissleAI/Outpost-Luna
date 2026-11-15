@@ -60,6 +60,9 @@ function envFor(name) {
       ARCTAG_MODEL_DIR: path.join(MODELS, "arctag"),
       ARC_META_WEIGHTS: path.join(MODELS, "arc-v1.1"),
       EMBED_MODEL_DIR: path.join(MODELS, "minilm"),
+      // the optional Steer engine (Settings -> Voice), bundled on 0.1.x (a first-run asset on the 0.3 line)
+      STEER_TTS_MODEL: path.join(MODELS, "steer-tts-edge"),
+      STEER_DIRECTOR: path.join(MODELS, "steer-tts-edge", "director.bin"),
       VOICE_PACK_DIR: path.join(RES, "app", "backend", "data", "voice_pack"),   // the recorded fixed lines (docs/VOICE_PACK.md)
     });
   }

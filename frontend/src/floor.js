@@ -144,10 +144,10 @@ export function prefStyle(style, voice, speed) {
   const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
   if (!P) return style;
   const out = { ...(style && typeof style === "object" ? style : {}) };
-  if (P.voice && (P.voice_all || voice !== "houston")) out.tts_voice = P.voice;   // guide, CAPCOM and the story together; Houston keeps its own unless voice_all
+  if (P.voice && voice !== "houston") out.tts_voice = P.voice;   // (old saved prefs only: the OS voice is picked by the OS now)
   if (P.engine === "steer") {               // Settings → Voice: Steer TTS (the server falls back to the OS voice until it is ready)
     out.tts_engine = "steer";
-    if (P.steer_voice && (P.voice_all || voice !== "houston")) out.steer_voice = P.steer_voice;
+    if (P.steer_voice) out.steer_voice = P.steer_voice;   // every role (Houston is relayed by CAPCOM)
   }
   if (!packAllowed(P)) out.pack = false;   // the recorded guide voice for fixed lines (docs/VOICE_PACK.md)
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;

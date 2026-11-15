@@ -10,12 +10,15 @@ Layout (what the Electron main process points the model server at; docs/DESKTOP.
     arctag/            Arc Tagger v0.3 int8 graph + tokenizer + meta          -> ARCTAG_MODEL_DIR
     arc-v1.1/mini/     Arc v1.1 Mini (heads, trunk, Moonshine Streaming tiny) -> ARC_META_WEIGHTS
     minilm/            all-MiniLM-L6-v2 int8 ONNX + tokenizer                -> EMBED_MODEL_DIR
+    steer-tts-edge/    Steer TTS Edge (onnx/, front/, voices, config, director.bin) + LICENSE + NOTICE
+                       -> STEER_TTS_MODEL / STEER_DIRECTOR: the optional Steer engine (Settings -> Voice)
 
 The package is the one source every build can reach: a tar of this folder, pinned by sha256 below, and every file is
 then checked again against desktop/models.lock.json. Hugging Face is not used: Arc Tagger v0.3 is no longer on the Hub in
 the version the app runs. Speech needs no model: the app uses the OS's own voices (model_server/app/tts_os.py). The v1
-package still carries the retired steer-tts-edge/ folder; it is skipped when unpacking (DROPPED), so the package's
-sha256 pin stays valid and the bundle no longer ships it.
+package's steer-tts-edge/ folder is the bundled Steer engine (0.1.x line; on the 0.3 line, PR #20/#21, it becomes an
+optional first-run asset instead). Its 12 files are pinned below (STEER_FILES); its LICENSE and NOTICE come from
+desktop/vendor/steer/ (the v1 package has none).
 """
 from __future__ import annotations
 
@@ -81,7 +84,34 @@ def local_sources() -> dict[str, list[tuple[str, Path]]] | None:
                     + [(p.relative_to(arc).as_posix(), p) for p in sorted((arc / "mini").rglob("*")) if p.is_file()],
         "minilm": [("model.int8.onnx", minilm / "model.int8.onnx"), ("tokenizer.json", minilm / "tokenizer.json")],
     }
+    if steer_local() is None:          # Steer TTS Edge is bundled too (from here, or from the package)
+        return None
     return out if all(src.exists() for files in out.values() for _, src in files) else None
+
+
+def steer_local() -> dict | None:
+    """A folder on this machine with every Steer file at its pinned sha256 (STEER_TTS_MODEL, the HF cache snapshot plus
+    the steer-tts repo's director.bin), else None."""
+    cands = [Path(os.environ["STEER_TTS_MODEL"])] if os.environ.get("STEER_TTS_MODEL") else []
+    cands.append(ROOT / "model_server/models" / STEER)
+    snapd = snap("WhissleAI/steer-tts-edge")
+    if snapd:
+        cands.append(snapd)
+    for d in cands:
+        def src(rel):
+            p = d / rel
+            if not p.exists() and rel == "director.bin":
+                p = ROOT.parent / "steer-tts/c/models/steer-tts-edge/director.bin"
+            return p
+        if all(src(r).exists() and src(r).stat().st_size == v["size"] and sha256(src(r)) == v["sha256"]
+               for r, v in STEER_FILES.items()):
+            return {r: src(r) for r in STEER_FILES}
+    return None
+
+
+def add_steer_licence():
+    for f in ("LICENSE", "NOTICE"):
+        shutil.copyfile(STEER_LICENCE / f, OUT / STEER / f)
 
 
 def gather_local(srcs):
@@ -92,6 +122,14 @@ def gather_local(srcs):
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src.resolve(), dst)          # dereference HF cache symlinks
     (OUT / "minilm/NOTICE").write_text(MINILM_NOTICE)
+    steer = steer_local()
+    if steer is None:
+        sys.exit("--from local: no local Steer TTS Edge copy matches STEER_FILES (use --from package)")
+    for rel, p in steer.items():
+        dst = OUT / STEER / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(p.resolve(), dst)
+    add_steer_licence()
 
 
 # ------------------------------------------------------------------------------------------------- package (any machine)
@@ -119,8 +157,62 @@ def download(url: str, dst: Path):
     print(f"  downloaded {n / 1e6:.0f} MB in {time.time() - t:.0f} s", flush=True)
 
 
-# Folders the v1 package still holds that the app no longer uses: never unpacked, never bundled.
-DROPPED = ("steer-tts-edge",)   # Steer TTS Edge: replaced by the OS's own voices
+# Folders the v1 package holds that the app does not use: never unpacked, never bundled. (steer-tts-edge is used again:
+# the optional Steer engine.)
+DROPPED: tuple[str, ...] = ()
+STEER = "steer-tts-edge"
+STEER_LICENCE = ROOT / "desktop/vendor/steer"
+# The Steer TTS Edge files as the v1 package holds them (path -> size, sha256); the director comes with them.
+STEER_FILES = {
+ "config.json": {
+  "size": 1170,
+  "sha256": "2f80669c353aebb15ecdf170c6f8c18b92608c92ae9bfb776ade2dc39c4da44b"
+ },
+ "director.bin": {
+  "size": 516924,
+  "sha256": "54a2abfef01ff47893cb923093a16f8fe0cd95f3c32d25b7f16cb8b223b6a630"
+ },
+ "front/cmudict.lex": {
+  "size": 332712,
+  "sha256": "4538056fbaeae707e3ae2f7095df5e42c19c53f14a5ce8f6d1e41465b9b1ddc7"
+ },
+ "front/front.json.xz": {
+  "size": 18432,
+  "sha256": "1175db253f517b3fe66097aabc97f17825161e5c718839ae4698c660044213d4"
+ },
+ "front/gru.npz": {
+  "size": 787545,
+  "sha256": "af855a5d9d2796e631a05d38aa08303fdb33a68f078540fa8b5d7942a9afb62e"
+ },
+ "front/oov_cache.lex": {
+  "size": 11560,
+  "sha256": "3b9c6fa35ba1a121bc185a65b49816d1188a14d0a13ba7b83ca32e767b2f3b75"
+ },
+ "onnx/dec.onnx": {
+  "size": 2969598,
+  "sha256": "f4ac36d4a9661dbc3ef722e21735c0821ef7e70cf07dbc9fbd498cf12ac1686d"
+ },
+ "onnx/enc.onnx": {
+  "size": 4142610,
+  "sha256": "cfdf6b47874e0af50b94662e66641881b395ca207e8cb4c618db298b83a7493d"
+ },
+ "onnx/spkproj.safetensors": {
+  "size": 131464,
+  "sha256": "d75fd8d5bd8c0e6fb90acbb43ee72742076525074d8dcfb60e5c433a8a367912"
+ },
+ "onnx/voc.onnx": {
+  "size": 3959010,
+  "sha256": "5df9264dbc582cdcbfc2b5e3c7763d797120bb47f3cc14d52ca8a7cc3abb76d0"
+ },
+ "voices.json": {
+  "size": 19720,
+  "sha256": "cf143e0133edec5207f9d2e700b3ee88b501c7040919b3c002796da096360713"
+ },
+ "voices.safetensors": {
+  "size": 30544,
+  "sha256": "a6f22f5b552d85c127664d2a3bc2ef463151f208342de44245c1308fad416978"
+ }
+}
 
 
 def gather_package():
@@ -147,6 +239,8 @@ def gather_package():
                 sys.exit(f"unexpected entry in the model package: {m.name}")
         keep = [m for m in t.getmembers() if not (len(Path(m.name).parts) > 1 and Path(m.name).parts[1] in DROPPED)]
         t.extractall(RES, members=keep)
+    if (OUT / STEER).exists():
+        add_steer_licence()
     if os.environ.get("DESKTOP_KEEP_MODELS_TAR", "1") == "0":
         tar.unlink()
 
