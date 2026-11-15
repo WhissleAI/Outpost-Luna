@@ -21,7 +21,7 @@ test("tour: every beat 12 words or fewer, Cadet full and Commander two beats", (
   assert.deepEqual(cadet.filter(b => b.show.startsWith("panel:")).map(b => b.show.slice(6)).sort(), ["comm", "habitat", "power", "radiation", "rover"]);
   assert.ok(order.indexOf("lamps") > order.lastIndexOf("panel"));
   assert.equal(cadet[cadet.length - 1].show, "start");
-  assert.match(cadet[cadet.length - 1].text, /shields.*Play/i);   // the live clock: set power, then start time
+  assert.match(cadet[cadet.length - 1].text, /shields.*time starts/i);   // [polish wave 2] the first order starts the clock itself
   assert.match(cadet.find(b => b.show === "goals").text, /ten safe days.*science.*ice/i);
   for (const k of ["next", "done", "skip", "replay"]) assert.ok(words(S.TOUR[k]) <= 3);
 });
