@@ -435,6 +435,12 @@ def evaluate_set(model, data_dir: Path, name: str, thr_when: float, pol: dict | 
     return out
 
 
+def ignore_only(pol: dict) -> dict:
+    """Round 9's restricted policy (runtime.IGNORE_ONLY): keep the fitted ignore thresholds, switch off command fill,
+    ask, veto and navigation."""
+    return {**pol, "cmd": 1.01, "ask": 1.01, "veto": None, "nav": None}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
@@ -444,6 +450,11 @@ def main():
     ap.add_argument("--refit", action="store_true", help="with --weights: refit the policy thresholds on this val "
                     "(a policy-only update of the shipped weights)")
     ap.add_argument("--out", default="")
+    ap.add_argument("--ignore-only", action="store_true", help="round 9: the restricted policy. The model may only "
+                    "silence a turn (ignore / answer_ignore at the fitted thresholds); it never fills a command, asks, "
+                    "vetoes a rules command or navigates. Everything else stays with the rules")
+    ap.add_argument("--policy", default="", help='round 9: JSON merged over the policy, e.g. '
+                    '\'{"veto": null, "ignore_min_words": 3}\'')
     a = ap.parse_args()
     d = Path(a.data)
     if a.weights:
@@ -461,6 +472,13 @@ def main():
         thr = tune_when(model, d)
         pol = fit_policy(model, d)
         res = {"run": a.run, "params": cfg["params"], "size": cfg["size_name"], "thr_when": thr, "policy": pol, "sets": {}}
+    if a.policy:
+        pol = {**pol, **json.loads(a.policy)}
+        res["policy"] = pol
+    if a.ignore_only:
+        pol = ignore_only(pol)
+        res["policy"] = pol
+        res["policy_kind"] = "ignore_only"
     for name in SETS + CLASS_SETS:
         r = evaluate_set(model, d, name, thr, pol)
         if r:

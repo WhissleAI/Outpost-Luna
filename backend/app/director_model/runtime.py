@@ -353,6 +353,7 @@ class Shadow:
 
 
 DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None, "answer_ignore": None,
+                  "ignore_min_words": None,
                   "nav": None}
 
 
@@ -418,6 +419,11 @@ def policy(out: dict, words: list[str], rules_cmds: list[dict], rules_guard: boo
             return {"act": "command", "command": c}
         return None
     if act == "ignore" and p >= thr.get("ignore", CONF):
+        # round 9: never silence a very short turn (it is usually a real answer or a screen control said plainly,
+        # e.g. "far side"); the model's silencing wins are on longer room talk and echo. None = no minimum.
+        mw = thr.get("ignore_min_words")
+        if mw and len([w for w in words if w]) < mw:
+            return None
         return {"act": "ignore"}
     if act == "ask_clarify" and p >= thr.get("ask", CONF):
         return {"act": "ask_clarify", "clarify": clarify_options(out)}
