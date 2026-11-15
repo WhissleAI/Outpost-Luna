@@ -23,6 +23,16 @@ Story copy lives in `frontend/src/story.js`. Inspired by NASA's Artemis program.
 The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with sources, Artemis II crew moments) is a
 small button inside the app, used by the lessons.
 
+## Download for Mac
+**[Download Outpost Luna for Mac](https://github.com/WhissleAI/ask-the-moon/releases/latest)** (Apple silicon, 647 MB,
+about 1.5 GB once installed). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
+it. It runs with no internet, no account and no keys: every model and the NASA crew audio are inside the app. The NASA
+video files download once when the computer is online; the NASA YouTube clips need a connection. Each release lists the
+DMG's SHA-256.
+
+Windows: build it from source with one command ([docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)). Website:
+<https://whissleai.github.io/ask-the-moon/> (source in `site/`, published with `scripts/publish_site.sh`).
+
 ## Layout: three services
 
 | Part | Stack | Port | Owns |

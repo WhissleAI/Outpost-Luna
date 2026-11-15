@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outpost Luna</title>
+<meta name="description" content="Outpost Luna: Junior Astronaut Mission Trainer. A voice-first desktop app for kids 7–12: Flight School with real Artemis crew audio and NASA videos, then a pretend Moon outpost at the south pole. Every model runs on the computer.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Outpost Luna: Junior Astronaut Mission Trainer">
+<meta property="og:description" content="A voice-first desktop app for kids 7–12. Learn the Moon with real Artemis crew audio and NASA data, then run a pretend outpost at the lunar south pole. Runs offline.">
+<meta property="og:url" content="https://whissleai.github.io/ask-the-moon/">
+<meta property="og:image" content="https://whissleai.github.io/ask-the-moon/assets/og.jpg">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1080">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0b0e16">
+<link rel="icon" type="image/png" href="assets/icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css?v=1">
+<script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <a class="brand" href="./" aria-label="Outpost Luna home">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+    Outpost Luna</a>
+  <nav aria-label="Sections">
+    <a href="#how">How it works</a><a href="#results">Measured</a><a href="#privacy">Privacy</a><a href="#start">Get started</a><a href="https://github.com/WhissleAI/ask-the-moon">GitHub</a>
+  </nav>
+  <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+  </button>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <p class="eyebrow">Junior Astronaut Mission Trainer · NASA Space Apps Challenge 2026</p>
+    <h1>Train for the Moon by <em>talking</em> to CAPCOM.</h1>
+    <p class="lede">A voice-first desktop app for kids 7–12. Learn the Moon in Flight School with real Artemis crew audio and NASA videos, then run a pretend outpost at the lunar south pole. Every model runs on the computer.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/WhissleAI/ask-the-moon/releases/latest">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.39-.92-2.4-3.66ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z"/></svg>
+        Download for Mac</a>
+      <a class="btn" href="#windows">Build for Windows</a>
+    </div>
+    <!-- 647 MB: the v0.1.0 release asset (647,080,125 bytes), notarized and stapled (spctl: Notarized Developer ID). -->
+    <p class="fine">Notarized Mac app · Apple silicon · 647 MB · no account, no keys</p>
+  </section>
+
+  <figure class="art">
+    <img src="assets/hero.jpg" width="1600" height="900" alt="Outpost Luna title art: the Moon in space with a marker at Shackleton Rim, labelled our outpost.">
+    <figcaption class="cap">Moon: NASA/GSFC/Arizona State University (LRO), via the NASA SVS CGI Moon Kit.</figcaption>
+  </figure>
+
+  <section id="app" class="sec">
+    <h2>One story, four steps</h2>
+    <!-- Source: docs/STORY.md §1 (the arc), README.md, backend/data/academy/course.json (6 core + 2 explorer lessons + check ride), backend/data/mission/sites.json (5 sites). -->
+    <p class="sec-lede">Artemis II flew its crew around the Moon in April 2026. The kid trains to help run Outpost Luna, a pretend base near the south pole for the crews who come after.</p>
+    <ol class="stages">
+      <li><span class="n">01</span><h3>Flight School</h3><p>6 core lessons and 2 explorer lessons. Each is a story beat, a few voice or tap steps, and a patch.</p></li>
+      <li><span class="n">02</span><h3>Check ride</h3><p>One solo shift at Shackleton Rim, through the real May 2024 solar storm. Pass to earn the Mission Commander patch.</p></li>
+      <li><span class="n">03</span><h3>Command</h3><p>Run the outpost for 10 days at one of 5 south-pole sites, with real Sun and Earth positions and real solar storms.</p></li>
+      <li><span class="n">04</span><h3>Debrief</h3><p>What happened, the real data behind each event, and one thing to try. Then fly again.</p></li>
+    </ol>
+    <div class="shots">
+      <figure>
+        <img src="assets/lesson.jpg" width="1280" height="800" loading="lazy" alt="A Flight School lesson card beside the Moon globe: Robot Surveyor 3 took photos here. Apollo 12 took one part home. Which? The answer, its TV camera, is marked correct.">
+        <figcaption>Flight School: a lesson step, answered by voice, tap or keys.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/cabin.jpg" width="1440" height="879" loading="lazy" alt="The mission cabin: a live clock reading Day 1 04:00 at Shackleton Crater Rim, a Now card asking which way to steer the rover, the window onto lunar terrain, and power, life support and dose displays.">
+        <figcaption>The cabin: live clock, the Now task card, and the window onto real LOLA terrain.</figcaption>
+      </figure>
+    </div>
+    <!-- Inputs: docs/GESTURES.md, docs/KEYBOARD.md, docs/HANDSFREE.md. Moon library: README.md (36 pieces of hardware; backend/data/artifacts.json has 36 entries). -->
+    <p class="inputs"><b>Every input works.</b> Talk, tap or type, use the keyboard or a game controller, or turn on the camera for hand gestures: an open hand stops, a thumbs up says yes, a fist spins the Moon. A Moon library holds 36 pieces of hardware left on the Moon, with their sources.</p>
+  </section>
+
+  <section id="how" class="sec">
+    <h2>How it works</h2>
+    <p class="sec-lede">The ear, the tagger and the Director run on the computer and decide what each turn means. Every lane that answers works offline.</p>
+    <figure class="arch">
+      <ul class="legend" aria-hidden="true">
+        <li><i class="k-acc"></i>Whissle models</li>
+        <li><i class="k-lane"></i>On-device lanes</li>
+        <li><i class="k-net"></i>Online, optional</li>
+      </ul>
+      <div class="scroll">
+      <!-- Names and sizes: desktop/models.lock.json + docs/DESKTOP.md "What is in the bundle":
+           Arc v1.1 Mini 68 MB (models/arc-v1.1/mini), Arc Tagger v0.3 arctag_int8.onnx 12 MB, all-MiniLM-L6-v2 int8 22 MB.
+           device_directed / command_complete come from Arc v1.1 Mini's audio heads (model_server/app/arcmeta.py);
+           safety / intent / entities from Arc Tagger (model_server/app/arctag.py EMIT; backend/app/safety.py masks swearing).
+           Director: backend/app/director_model/runtime.py, DIRECTOR_MODEL default "shadow" (owner 2026-11-14).
+           Voice out: docs/VOICES.md (macOS say, Windows WinRT then SAPI) + docs/VOICE_PACK.md (Nora pack).
+           Video: docs/MEDIA.md. NASA data: docs/DESKTOP.md "Offline guarantees" (baked into backend/data, no NASA API calls at run time). -->
+      <svg viewBox="0 0 1000 480" role="img" aria-labelledby="archT archD">
+        <title id="archT">Outpost Luna architecture</title>
+        <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc v1.1 Mini: live words, whether the kid is talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (rules decide; the learned model runs in shadow). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ah"/></marker>
+          <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ahn"/></marker>
+        </defs>
+        <rect class="zone dev" x="10" y="10" width="680" height="460" rx="16"/>
+        <text class="zl" x="28" y="36">On your computer</text>
+        <rect class="zone cloud" x="710" y="10" width="280" height="460" rx="16"/>
+        <text class="zl" x="728" y="36">Online, only when available</text>
+
+        <g class="node"><rect x="30" y="56" width="124" height="64" rx="10"/><text x="92" y="84">Mic</text><text class="s" x="92" y="103">open or hold Space</text></g>
+        <g class="node acc"><rect x="180" y="56" width="220" height="64" rx="10"/><text x="290" y="84">Arc ear · v1.1 Mini</text><text class="s" x="290" y="103">words · to the app? · turn end</text></g>
+        <g class="node acc"><rect x="430" y="56" width="240" height="64" rx="10"/><text x="550" y="84">Arc Tagger v0.3</text><text class="s" x="550" y="103">safety mask · intent · places</text></g>
+
+        <g class="node"><rect x="30" y="166" width="124" height="64" rx="10"/><text x="92" y="194">Camera</text><text class="s" x="92" y="213">opt-in only</text></g>
+        <g class="node"><rect x="180" y="166" width="220" height="64" rx="10"/><text x="290" y="194">MediaPipe hand + face</text><text class="s" x="290" y="213">gestures → the same intents</text></g>
+        <g class="node"><rect x="430" y="166" width="240" height="64" rx="10"/><text x="550" y="194">Director</text><text class="s" x="550" y="213">rules decide · model in shadow</text></g>
+
+        <g class="node lane"><rect x="30" y="284" width="150" height="60" rx="10"/><text x="105" y="309">Voice out</text><text class="s" x="105" y="328">OS voice + Nora pack</text></g>
+        <g class="node lane"><rect x="192" y="284" width="150" height="60" rx="10"/><text x="267" y="309">Facts &amp; places</text><text class="s" x="267" y="328">MiniLM over NASA facts</text></g>
+        <g class="node lane"><rect x="354" y="284" width="150" height="60" rx="10"/><text x="429" y="309">Mission engine</text><text class="s" x="429" y="328">storms · power · ice</text></g>
+        <g class="node lane"><rect x="516" y="284" width="150" height="60" rx="10"/><text x="591" y="309">Flight School</text><text class="s" x="591" y="328">grader · check ride</text></g>
+        <text class="rl" x="30" y="372">Lanes · act, ignore or navigate · all offline</text>
+
+        <g class="node"><rect x="30" y="392" width="636" height="60" rx="10"/><text x="348" y="417">NASA data, built into the app</text><text class="s" x="348" y="436">Horizons Sun &amp; Earth · DONKI storms · LROC / LOLA Moon maps · NSSDCA hardware sites</text></g>
+
+        <g class="node net"><rect x="730" y="56" width="240" height="64" rx="10"/><text x="850" y="84">NASA video files</text><text class="s" x="850" y="103">downloaded once, then offline</text></g>
+        <g class="node net"><rect x="730" y="166" width="240" height="64" rx="10"/><text x="850" y="194">YouTube embeds</text><text class="s" x="850" y="213">NASA channels · stream only</text></g>
+        <g class="node build"><rect x="730" y="284" width="240" height="60" rx="10"/><text x="850" y="309">NASA open-data APIs</text><text class="s" x="850" y="328">at build time, never at run time</text></g>
+
+        <path class="ln" d="M154 88H176" marker-end="url(#ah)"/>
+        <path class="ln" d="M400 88H426" marker-end="url(#ah)"/>
+        <path class="ln" d="M550 120V162" marker-end="url(#ah)"/>
+        <path class="ln" d="M154 198H176" marker-end="url(#ah)"/>
+        <path class="ln" d="M400 198H426" marker-end="url(#ah)"/>
+        <path class="ln" d="M550 230V258M105 258H591"/>
+        <path class="ln" d="M105 258V280" marker-end="url(#ah)"/><path class="ln" d="M267 258V280" marker-end="url(#ah)"/><path class="ln" d="M429 258V280" marker-end="url(#ah)"/><path class="ln" d="M591 258V280" marker-end="url(#ah)"/>
+        <path class="ln" d="M429 392V348" marker-end="url(#ah)"/><path class="ln" d="M591 392V348" marker-end="url(#ah)"/>
+        <path class="ln dash" d="M850 344V422H670" marker-end="url(#ah)"/>
+        <path class="ln netln" d="M730 88H700V314H670" marker-end="url(#ahn)"/>
+        <path class="ln netln" d="M730 198H700"/>
+      </svg>
+      </div>
+      <p class="swipe">Swipe sideways to see the whole diagram.</p>
+      <figcaption>Purple = Whissle models. Teal = on-device lanes, all offline. Amber = online and optional: NASA video files download once and then play offline; only the YouTube embeds need a connection. NASA data is fetched when the app is built, never while it runs.</figcaption>
+    </figure>
+    <ul class="points">
+      <li><b>Hears the kid, not the room.</b> Arc v1.1 Mini turns speech into words and also reads the audio: is this said to the app, and is the turn over. Room talk is ignored.</li>
+      <li><b>Keeps it kid-safe.</b> Arc Tagger's safety labels, backed by an offline word list, mask swearing wherever it would show. A masked turn is never graded or answered.</li>
+      <li><b>Decides carefully.</b> The Director's rules pick what to do: act, ignore or navigate. A learned model runs beside them in shadow until it beats them on every test.</li>
+      <li><b>Speaks in one voice.</b> The computer's own voices answer live. 889 fixed lines are pre-recorded in Siri Voice 1 (Nora), on Mac and Windows alike.</li>
+    </ul>
+  </section>
+
+  <section id="results" class="sec">
+    <h2>Measured, not claimed</h2>
+    <p class="sec-lede">Numbers from the packaged app and the test runs, with the doc each one comes from.</p>
+    <div class="stats">
+      <!-- docs/DESKTOP.md "Tested on this Mac (macOS 26.2, Apple Silicon), 2026-11-13": packaged app from the read-only dmg, network blocked; "turn end 0.56 s after speech end". -->
+      <div class="stat"><b>0.56 s</b><span>from speech end to turn end</span><small>Packaged app, run from the dmg with the network blocked.</small><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#tested-on-this-mac-macos-262-apple-silicon-2026-11-13">docs/DESKTOP.md · Tested on this Mac</a></div>
+      <!-- docs/DESKTOP.md "Re-tested with the OS voices, 2026-11-14": smoke.py ALL PASS (health, voices, ear, answer, OS-voice TTS, Flight School, mission, gesture assets). -->
+      <div class="stat"><b>ALL PASS</b><span>offline smoke test</span><small>Ear, answer, OS voice, Flight School, a mission shift and the gesture models.</small><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-tested with the OS voices</a></div>
+      <!-- backend/data/voice_pack/index.json: 889 clips; lines.json count 889; docs/VOICE_PACK.md. -->
+      <div class="stat"><b>889</b><span>recorded guide lines</span><small>Every fixed line, pre-recorded in Siri Voice 1 (Nora) and shipped in both installers.</small><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/VOICE_PACK.md">docs/VOICE_PACK.md</a></div>
+    </div>
+
+    <h3 class="sub-h">The rest of the numbers</h3>
+    <ul class="facts">
+      <!-- backend/data/video/catalog.json: 16 entries; source nasa_file 8 (all prefetch), youtube 8. docs/MEDIA.md. -->
+      <li><span class="v">16 videos</span><span class="d"><b>NASA video.</b> 8 NASA files, cached for offline play, and 8 NASA-channel YouTube embeds that stream when online.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/MEDIA.md">docs/MEDIA.md · catalog.json</a></li>
+      <!-- docs/DESKTOP.md "Crew audio in the installer": 74 Artemis II crew clips; installer copy 175 MB, 8.1 h. -->
+      <li><span class="v">74 clips</span><span class="d"><b>Artemis II crew audio.</b> 8.1 hours in the installer (175 MB), trimmed to what the app can play.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#crew-audio-in-the-installer">docs/DESKTOP.md · Crew audio</a></li>
+      <!-- docs/DESKTOP.md re-test 2026-11-14: cold start to window 17.7 s (models healthy at 17.2 s), machine under load ~8. -->
+      <li><span class="v">17.7 s</span><span class="d"><b>Cold start to window,</b> with every model loaded, on a Mac under load.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-test</a></li>
+      <!-- docs/DESKTOP.md re-test 2026-11-14: first audio for one sentence, idle 1.3 s (Siri system voice) / 0.8 s (Tara premium); 1.5–1.7 s under load. -->
+      <li><span class="v">0.8–1.3 s</span><span class="d"><b>First audio for a spoken sentence</b> on an idle Mac (1.5–1.7 s under load). Repeats come from cache in about 3 ms.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-test</a></li>
+      <!-- docs/DESKTOP.md "Tested on this Mac" 2026-11-13: RAM steady after a voice turn ~1.23 GB total. -->
+      <li><span class="v">1.23 GB</span><span class="d"><b>Memory after a voice turn,</b> app and both model processes together.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md#tested-on-this-mac-macos-262-apple-silicon-2026-11-13">docs/DESKTOP.md · Tested on this Mac</a></li>
+      <!-- PR #13 (v1 integration) Tests table: backend pytest 963 passed 2 skipped; model_server 77 passed 2 skipped; frontend npm test 180 passed; desktop main 23 passed. -->
+      <li><span class="v">963 + 180</span><span class="d"><b>Tests at integration:</b> 963 backend and 180 frontend, plus 77 model server and 23 desktop. All passed.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/pull/13">PR #13 · Tests</a></li>
+      <!-- PR #13: keys_e2e 180/180 (0 console errors), gamepad_e2e 32/32, gestures_e2e 54/54 twice, mute_e2e 12/12. -->
+      <li><span class="v">278 / 278</span><span class="d"><b>End-to-end input checks:</b> keyboard 180, gamepad 32, gestures 54 (run twice), mute 12. All silent.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/pull/13">PR #13 · Tests</a></li>
+      <!-- director_model/runs/2026-11-14-r7/report.md + gate.json: both candidates (m, xl) FAIL.
+           m: test_ear wrong actions 22 > rules 20; act acc 0.705 < rules 0.715; cls_panel 20 > 19; cls_roomtalk 0.8 < shipped 0.8125.
+           xl: test_clean wrong actions 129 > rules 126; test_h40 4 > 3; cls_panel 20 > 19; cls_roomtalk 0.7812 < 0.8125.
+           backend/app/director_model/runtime.py: DIRECTOR_MODEL default "shadow" since 2026-11-14 (owner decision). -->
+      <li class="fail"><span class="v">Gate: FAIL</span><span class="d"><b>Director round 7.</b> Both retrained models failed the ship gate. One made 22 wrong actions on real-ear turns where the rules made 20. So the learned model stays in shadow and the rules decide every turn.</span><a class="src" href="https://github.com/WhissleAI/ask-the-moon/blob/main/director_model/runs/2026-11-14-r7/report.md">director_model · round-7 report</a></li>
+    </ul>
+  </section>
+
+  <section id="privacy" class="sec two">
+    <div>
+      <h2>Private by default</h2>
+      <p class="sec-lede">Built for kids: no account, no cloud model, nothing uploaded.</p>
+    </div>
+    <!-- Sources: docs/DESKTOP.md "Offline guarantees" and "Where things go at run time"; docs/VOICES.md (listen: handsfree / ptt);
+         docs/GESTURES.md "Privacy and kids"; docs/DIRECTOR_LOOP.md §1 (turn log); README.md (call sign kept on the device, never sent). -->
+    <dl class="priv">
+      <div><dt>Runs on the computer</dt><dd>The ear, the tagger, the Director, the embedder and the voices all run locally. The app window may only talk to its own local servers; anything else is blocked, apart from the NASA YouTube player.</dd></div>
+      <div><dt>The mic: open or push-to-talk</dt><dd>Hands-free listening by default, or push-to-talk (hold Space) in Settings. Audio is never stored.</dd></div>
+      <div><dt>The camera is opt-in</dt><dd>Off until a kid or parent turns on gestures in Settings, with a "Camera on" chip and a Turn off button while it runs. Frames are read on the computer and never saved or sent. No face recognition.</dd></div>
+      <div><dt>No account</dt><dd>The kid picks a call sign. It and all progress stay on the device.</dd></div>
+      <div><dt>Turn log: opt-in, text only</dt><dd>Off by default. If a family turns on "Help improve the voice guide", the app keeps a small text log with names redacted. It is never uploaded, and "Delete what's saved" erases it.</dd></div>
+    </dl>
+  </section>
+
+  <section id="start" class="sec">
+    <h2>Get started</h2>
+    <p class="sec-lede">The Mac app is ready to download. Windows builds from source, with one command.</p>
+    <div class="paths">
+      <div class="path">
+        <h3>Mac <span class="tag">Apple silicon</span></h3>
+        <p>Download the dmg, drag Outpost Luna to Applications, and open it. It is signed and notarized, and runs with no internet.</p>
+        <a class="btn primary" href="https://github.com/WhissleAI/ask-the-moon/releases/latest">Download for Mac</a>
+        <p class="note">Each release lists the dmg's SHA-256 next to it.</p>
+      </div>
+      <!-- Summarised from docs/BUILD_WINDOWS.md §1–§7. Windows has been built and checked structurally, not yet run on a Windows PC (docs/DESKTOP.md). -->
+      <div class="path" id="windows">
+        <h3>Windows <span class="tag">build from source</span></h3>
+        <p>Not yet run on a real PC: your first build is the test. Windows 10 or 11 (x64), 16 GB RAM, about 6 GB free.</p>
+        <ol>
+          <li>Install Git, Node 22+, uv, CMake and VS 2022 Build Tools (C++). The winget lines are in the guide.</li>
+          <li>Clone to a short path and build:
+<pre>git clone https://github.com/WhissleAI/ask-the-moon.git C:\src\atm
+cd C:\src\atm
+powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1</pre></li>
+          <li>Run <code>desktop\dist\Outpost Luna Setup 0.1.0.exe</code>. It is unsigned, so SmartScreen asks: More info, then Run anyway.</li>
+          <li>Check the voice picked in Settings → Voice, the time from your question's end to the first word, and that captions follow the voice.</li>
+          <li>Logs live in <code>%APPDATA%\Outpost Luna\logs</code>. Send them with the checklist.</li>
+        </ol>
+        <a class="more" href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/BUILD_WINDOWS.md">Full guide and checklist: docs/BUILD_WINDOWS.md</a>
+      </div>
+      <!-- README.md "Commands". -->
+      <div class="path">
+        <h3>Developers <span class="tag">run from source</span></h3>
+        <p>Three services: the frontend, the backend and the model server. Needs uv and Node 20+.</p>
+<pre>git clone https://github.com/WhissleAI/ask-the-moon.git
+cd ask-the-moon
+make setup   # uv sync + npm install
+make data    # NASA media, ~0.5 GB
+make dev     # http://localhost:5173
+make test</pre>
+        <p class="note">The Mac installer builds with <code>make desktop-mac</code>.</p>
+        <a class="more" href="https://github.com/WhissleAI/ask-the-moon#readme">README</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="next" class="sec">
+    <h2>What's next</h2>
+    <p class="sec-lede">What comes after v0.1.0.</p>
+    <ul class="next">
+      <li class="wide"><b>The approved next round</b>
+        <ul class="nr">
+          <li>Crew clips that play by themselves</li>
+          <li>A shorter cabin tour</li>
+          <li>A story-first debrief</li>
+          <li>A Moon journal and collectible Moon cards</li>
+          <li>A phase scrubber</li>
+        </ul></li>
+      <!-- docs/DIRECTOR_COLLECTION.md: 15-minute guided, consented, local session (make director-collect); docs/DIRECTOR_COVERAGE.md round 8. -->
+      <li><b>Director round 8 with real kids' voices</b><span>A 15-minute guided session, with a parent's consent, recorded and kept on the family's computer. It can ship only if it passes the gate.</span></li>
+      <!-- docs/DESKTOP.md "Windows": NSIS installer is unsigned; Authenticode needs an OV/EV certificate. -->
+      <li><b>Windows, run and signed</b><span>A first run on a real PC, then a code-signing certificate so SmartScreen stops warning.</span></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><b>Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. Outpost Luna is a pretend outpost for learning.</b></p>
+  <p>Images: Moon from NASA/GSFC/Arizona State University (LRO), via the NASA SVS CGI Moon Kit. Cabin terrain: NASA LRO LOLA elevation. Earth: NASA Blue Marble. Crew audio: NASA Artemis Audio Library.</p>
+  <div class="row">
+    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
+    <span><a href="https://github.com/WhissleAI/ask-the-moon">Source on GitHub</a> · <a href="https://github.com/WhissleAI/ask-the-moon/releases/latest">Releases</a> · <a href="https://github.com/WhissleAI/ask-the-moon/blob/main/docs/DESKTOP.md">Desktop notes</a></span>
+  </div>
+</footer>
+<script>
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const r = document.documentElement;
+    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    r.dataset.theme = cur === "dark" ? "light" : "dark";
+    try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
+  });
+</script>
+</body>
+</html>
