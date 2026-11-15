@@ -166,7 +166,7 @@ downloads its models from Dropbox into `%APPDATA%\Outpost Luna\assets\`:
 | `voice` | the recorded Nora voice pack (889 lines) | 14 MB | first launch, required |
 | `crew` | the Artemis II crew audio | 175 MB | in the background, after the window opens |
 | `videos` | the 8 saved NASA videos | 199 MB | in the background, after the window opens |
-| `steer` | the Steer TTS voice | about 119 MB download | only when you pick Steer in Settings → Voice |
+| `steer` | the Steer TTS voice | 13 MB | only when you pick Steer in Settings → Voice |
 
 So the first launch needs **510 MB** before the app opens, then about **375 MB more** in the background. Each file is
 checked against its sha256 before it is installed. You can:
@@ -230,7 +230,7 @@ Do it once with Wi-Fi **on**, then start the app again with Wi-Fi **off**. Note 
    means WinRT failed, so send `models.log`), `voice_name`, `voices` and `warm_ms`. In Settings → Voice, the
    computer's voice lists this PC's English voices. Preview two, pick one, and ask a question: the answer should use
    the new voice.
-5. **Steer.** Settings → Voice → **Steer TTS (Whissle)**. It says it is downloading the Steer voice (about 119 MB),
+5. **Steer.** Settings → Voice → **Steer TTS (Whissle)**. It says it is downloading the Steer voice (13 MB),
    then answers in Steer with captions in step. Switch back to the computer's voice mid-session: that works too.
 6. **Nora lines.** The scripted lines (lesson prompts and CAPCOM calls) play the recorded Nora voice. Live answers use
    the chosen engine. Both should be clear, with no clipped starts.
@@ -296,7 +296,7 @@ main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows
 
 - **Unsigned.** There is no Authenticode certificate yet, so SmartScreen warns once (§5).
 - **First launch needs the internet, or the offline pack.** 510 MB before the app opens; 375 MB more in the
-  background; Steer another ~119 MB when picked.
+  background; Steer another 13 MB when picked.
 - **NSIS 2 GB limit.** An NSIS installer can't hold more than 2 GB. The 0.3 app is **783 MB uncompressed**
   (`dist\win-unpacked`, 7,896 files, measured 2026-11-15), well under it, because the models are no longer bundled.
   (0.1.x bundled them: 1,620 MB.) Compressed, the installer is 192 MB.
