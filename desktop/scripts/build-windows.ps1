@@ -55,6 +55,14 @@ $vs = $null; $vsClang = $null
 if (Test-Path $vswhere) {
   $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
   $vsClang = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property installationPath
+  # CMake's "Visual Studio" generator defaults to the NEWEST Visual Studio, which may not be the one with clang-cl
+  # (e.g. VS 2026 Community next to VS 2022 Build Tools). Pin the generator and the instance to the clang-cl one.
+  $vsClangGen = $null
+  if ($vsClang) {
+    $ver = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property installationVersion
+    $year = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property catalog_productLineVersion
+    if ($ver -and $year) { $vsClangGen = "Visual Studio $($ver.Split('.')[0]) $year" }
+  }
 }
 $haveClang = (Have clang) -and (Have ninja)
 $useClang = $false
@@ -120,7 +128,13 @@ Copy-Item $dll desktop\resources\native\arctag.dll -Force
 if ((Have clang) -and (Have ninja)) {
   Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
 } elseif ($vsClang) {
-  Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64 -T ClangCL
+  # A previous configure with another generator/instance makes CMake refuse: start the libarc build dir clean.
+  if (Test-Path desktop\build\libarc\CMakeCache.txt) { Remove-Item -Recurse -Force desktop\build\libarc }
+  if ($vsClangGen) {
+    Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -G $vsClangGen -A x64 -T ClangCL "-DCMAKE_GENERATOR_INSTANCE=$vsClang"
+  } else {
+    Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64 -T ClangCL "-DCMAKE_GENERATOR_INSTANCE=$vsClang"
+  }
 } else { Die "libarc needs clang: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e" }
 Run cmake --build desktop\build\libarc --config Release
 $dll = @("desktop\build\libarc\Release\arc.dll", "desktop\build\libarc\arc.dll", "desktop\build\libarc\libarc.dll") |
