@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("VIDEO_PREFETCH", "0")   # NASA video: tests never start the background download (app/video.py)
+
 import pytest
 
 from app import models_client

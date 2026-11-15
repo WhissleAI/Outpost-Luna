@@ -170,6 +170,7 @@ MUST = {
                       "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"],
     "story / places / clips data": ["backend/data/places.json", "backend/data/index/clips.json", "backend/data/clip_loudness.json"],
     "voices": ["backend/data/voices.json"],
+    "NASA video catalog": ["backend/data/video/catalog.json"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "crew clip time map": ["backend/data/media/trim.json"],
     "frontend": ["frontend/index.html"],

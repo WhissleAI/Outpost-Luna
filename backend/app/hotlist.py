@@ -168,6 +168,8 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += _bias_words(step_vocab(step, list(fr.get("step_options") or []), aliases=False))
         wide += V["lessons"].get(fr.get("lesson_id") or "", []) + V["places"] + V["glossary"] + V["crew"] + \
             V["hardware"][:40]
+    elif screen == "video":      # the video overlay (docs/MEDIA.md): its four controls only
+        st += ["pause", "play", "skip", "stop"]
     elif screen == "cabin":
         st += V["orders"] + V["panels"] + V["sites"]
         wide += ORDER_WORDS + V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]

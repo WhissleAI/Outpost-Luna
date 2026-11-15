@@ -310,7 +310,7 @@ def stage_app(skip_frontend: bool):
     # data: read-only in the bundle. media is mapped by electron-builder (Moon map + the trimmed clips, trim_media.py);
     # cache/ and tts_cache/ are rebuilt in the per-user folder (CACHE_DIR).
     shutil.copytree(ROOT / "backend/data", app / "backend/data",
-                    ignore=shutil.ignore_patterns("media", "cache", "tts_cache", ".DS_Store", ".env"))
+                    ignore=shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", ".DS_Store", ".env"))
     shutil.copytree(ROOT / "model_server/app", app / "model_server/app", ignore=APP_IGNORE)
     shutil.copy2(DESK / "runtime/launch.py", app / "launch.py")
     if not skip_frontend:
@@ -322,7 +322,7 @@ def stage_app(skip_frontend: bool):
     # Camera gestures: the vision runtime + models ship inside the app (frontend/tools/fetch_vision.mjs; docs/GESTURES.md)
     for must in ("backend/app/director_model/weights.json", "backend/app/director_model/weights.npz",
                  "backend/data/places.json", "backend/data/index/clips.json", "backend/data/voices.json",
-                 "backend/data/ear_vocab.json",
+                 "backend/data/ear_vocab.json", "backend/data/video/catalog.json",
                  "frontend/vision/vision_wasm_module_internal.js", "frontend/vision/vision_wasm_module_internal.wasm",
                  "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"):
         if not (app / must).exists():

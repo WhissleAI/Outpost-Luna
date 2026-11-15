@@ -231,7 +231,7 @@ PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|buil
 @dataclass
 class Ctx:
     """What the router knows about the app at this turn (session.belief + the client's screen frame)."""
-    screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library
+    screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library|video
     step_type: str | None = None       # the lesson step's accept.type (choice, keywords, command, tap, intent, vocab_*)
     step_options: list[str] = field(default_factory=list)   # choice labels (an answer that names one is an answer)
     step: dict | None = None           # the open course step (content.lesson(lesson_id).steps[i]): what a try sounds like
@@ -496,6 +496,21 @@ def nav_fuzzy(text: str, ctx: Ctx) -> tuple[str, str | None, int] | None:
     return best
 
 
+# A video is playing (docs/MEDIA.md; frontend/src/media/video.js mirrors this): only its own four controls get through.
+VIDEO_CMDS = (
+    ("video_pause", re.compile(r"^(?:pause|pause it|pause (?:the|this) video|wait|hold on|hang on|freeze)$")),
+    ("video_play", re.compile(r"^(?:play|play it|resume|unpause|keep going|go on|continue|keep playing|start it)$")),
+    ("video_skip", re.compile(r"^(?:skip|skip it|skip (?:the|this) video|skip this|next)$")),
+    ("video_stop", re.compile(r"^(?:stop|stop it|stop (?:the|this) video|close|close it|close (?:the|this) video|"
+                              r"that s enough|enough|i m done|done)$")),
+)
+
+
+def video_command(text: str) -> str | None:
+    q = re.sub(r"^(?:okay |ok |please |capcom |hey )+|(?: please| now| capcom)+$", "", norm(text or "")).strip()
+    return next((name for name, rx in VIDEO_CMDS if rx.match(q)), None)
+
+
 def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     """-> {"outcome": ignore|navigate|answer|order|question, "reason", "intent"?, "arg"?, "notice"?}."""
     raw = (text or "").strip()
@@ -513,6 +528,9 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("ignore", "safety")
     if heard and is_filler(raw) and not _option_key(raw, ctx):
         return out("ignore", "filler")
+    if ctx.screen == "video":            # the video overlay is up: pause / play / skip / stop, nothing else
+        cmd = video_command(raw)
+        return out("navigate", "video", intent=cmd, arg=None) if cmd else out("ignore", "video")
     if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None

@@ -31,6 +31,10 @@ import { initVoiceBar } from "./voicebar.js";
 import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
+// ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
+import "./media/video.css";
+import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
+import { fillCredits } from "./media/video_ui.js";
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
 import { emitIntent, onIntent } from "./input/intents.js";
@@ -111,6 +115,10 @@ async function boot() {
   // [session] the socket, its decision handlers, and the hooks the mission UI calls.
   let session = null;
   const useSession = () => !!(session && session.connected);
+  // [media] a video starts clean: no guide line, no crew clip, nothing queued from the session (docs/MEDIA.md)
+  initVideo({ stopOthers: () => { cancelNudge(); cancelTour(); stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); } });
+  onVideoChange(() => pushScreen(true));
+  $("aboutBtn").addEventListener("click", () => { fillCredits(); });
   const missionUI = createMissionUI({
     globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
@@ -182,6 +190,8 @@ async function boot() {
   async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
     if (vbar && vbar.handleText(text)) { $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }   // "move the voice bar to the top"
+    // [media] a video is up: pause / play / skip / stop run here; nothing else is a turn until it closes
+    if (videoOpen()) { videoVoice(text); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }
     const heard = source === "voice";
     // [hands-free] One router for every turn (backend/app/turn_router.py): with a live session, every turn (spoken or
     // typed, in every screen) goes up the socket with the current screen; the Director answers with nav / answer /
@@ -413,6 +423,7 @@ async function boot() {
   const handlers = {
     // The floor manager is the only audio owner: say decisions go to floor.say() with the contract priority.
     say: async d => {
+      if (videoOpen()) return false;   // [media] never over a video (the router keeps quiet on the video screen)
       if (d.delay_ms) { await missionUI.houston(d.text, +d.delay_ms, d.style); return true; }
       if (!floor) return guideSay(d.text, { voice: d.voice === "story" ? STORY_VOICE : d.voice === "capcom" ? CAPCOM_VOICE : undefined, style: d.style });
       if (player.active && (d.priority ?? 3) <= 3) player.stop(true);
@@ -421,7 +432,7 @@ async function boot() {
       voice.show("idle");
       return ok;
     },
-    play: async d => { const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
+    play: async d => { if (videoOpen()) return; const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
     stop: () => { stopSpeaking(); if (player.active) player.stop(true); },
     card: d => { if (missionUI.active) missionUI.showCard(d, sendRaw); else card.show({ title: d.title, asked: d.asked, say: d.body, claims: d.claims, arc: readoutLine({ readout: d.readout, source: d.source, action: d.action }) }); },
     hud: d => missionUI.applyRemote(d.state),
@@ -451,6 +462,7 @@ async function boot() {
     },
     nav: d => runNav(d.intent, d.arg, d.text),
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
+      if (videoOpen()) return;   // [media]
       const r = d.r || {}, my = ++turn.seq;
       if (missionUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
       if (academyUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
@@ -518,6 +530,7 @@ async function boot() {
   // [hands-free] The router needs the screen the kid is looking at (server-relayed ear turns arrive before the client's).
   let lastScreen = "";
   function screenFrame() {
+    const vn = videoNow(); if (vn) return { screen: "video", video: vn.id };   // [media] the router takes only pause / play / skip / stop
     const m = document.body.dataset.mode;
     if (m === "cadet") return { screen: "library" };
     const f = m === "academy" ? academyUI.screen() : missionUI.screen();

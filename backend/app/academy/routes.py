@@ -30,6 +30,7 @@ class AttemptInput(BaseModel):
     choice: str | None = Field(None, max_length=60)
     view: dict | None = None                       # globe_side: the camera's centre {lat, lon}
     taps: list[str | dict] | None = Field(None, max_length=12)   # route: the stops tapped so far, in order
+    video: dict | None = None                      # video step: {watched, seconds, skipped?, offline?} (docs/MEDIA.md)
 
 
 class AttemptReq(BaseModel):
@@ -92,6 +93,8 @@ async def academy_attempt(req: AttemptReq):
         ok = await similar(st, req.input.text)
     if not ok and text_only(req.input.model_dump(exclude_none=True)) and not plausible(st, req.input.text):
         return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
+    if not ok and st["accept"]["type"] == "video":
+        return _ignored(les["id"], req.step)          # a video step is never missed: only watch / skip move it on
     last = req.step == len(steps) - 1
     shown = not ok and reveal_due(req.misses + 1, req.step_s)
     if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed

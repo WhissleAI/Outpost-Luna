@@ -8,7 +8,9 @@
 //            prefetched, played as an in-page <audio> so the browser's echo canceller removes it from the mic.
 //            Fallback (no key / offline / 5xx): speechSynthesis, sentence by sentence, never cancel() right before
 //            speak() (≥ 60 ms gap), with a keep-alive so Chrome doesn't cut long utterances at ~15 s.
-//   crew     the crew-audio <audio> element owned by player.js (attachCrew).
+//   crew     the crew-audio <audio> element owned by player.js (attachCrew), and any video playing in the video
+//            overlay (attachMedia, media/video.js): the floor holder is "crew" while either plays, so the ear is gated
+//            and ducked the same way (docs/MEDIA.md).
 //   effects  the chime (sound.js). Not a floor holder.
 //
 // Event bus
@@ -239,7 +241,10 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   let nextId = 1;
   const waiters = new Set();                // re-check functions for say()s waiting on the floor
 
-  function crewPlaying() { const el = crew.el; return !!(el && !el.paused && !el.ended); }
+  const media = new Set();                  // videos in the overlay: {paused, ended, duck(l), unduck(), text()}
+  const mediaPlaying = () => [...media].some(m => { try { return !m.paused && !m.ended; } catch (e) { return false; } });
+  function crewPlaying() { const el = crew.el; return !!(el && !el.paused && !el.ended) || mediaPlaying(); }
+  const crewElPlaying = () => { const el = crew.el; return !!(el && !el.paused && !el.ended); };
   function recompute() {
     const h = kid ? "kid" : cur && cur.speaking ? "guide" : crewPlaying() ? "crew" : "none";
     if (h !== holder) { holder = h; emit("floor", { holder }); }
@@ -428,11 +433,15 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     ["play", "playing", "pause", "ended", "emptied"].forEach(ev => audioEl.addEventListener(ev, recompute));
   }
   function crewPlayback(state, id) { if (state !== "start") ducked = false; let tx = ""; try { tx = state === "start" ? crew.text() || "" : ""; } catch (e) { /* */ } playback("crew", state, id, tx); recompute(); }
-  function duck(level = 0.15) { ducked = true; if (crewPlaying()) fadeTo(crew.el, level, 150); }
-  function unduck() { if (!ducked) return; ducked = false; if (crewPlaying()) fadeTo(crew.el, 1, 250); }
+  function duck(level = 0.15) { ducked = true; if (crewElPlaying()) fadeTo(crew.el, level, 150); media.forEach(m => { try { m.duck && m.duck(level); } catch (e) { /* */ } }); }
+  function unduck() { if (!ducked) return; ducked = false; if (crewElPlaying()) fadeTo(crew.el, 1, 250); media.forEach(m => { try { m.unduck && m.unduck(); } catch (e) { /* */ } }); }
+  /** A video in the overlay joins the crew channel (media/video.js). Returns detach(). */
+  function attachMedia(m) { media.add(m); recompute(); return () => { media.delete(m); recompute(); }; }
+  /** The overlay reports its video's start / end / interrupted (the session hears it like crew audio). */
+  function mediaPlayback(state, id, text = "") { if (state !== "start") ducked = false; playback("crew", state, id, text); recompute(); }
 
   return {
-    on, off, say, stopGuide, duck, unduck, attachCrew, crewPlayback,
+    on, off, say, stopGuide, duck, unduck, attachCrew, crewPlayback, attachMedia, mediaPlayback,
     setKid(v) { v = !!v; if (v !== kid) { kid = v; recompute(); } },
     get holder() { return holder; },
     get guideBusy() { return [...pending].some(t => !t.cancelled && !t.finished); },
@@ -441,7 +450,10 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     get onAir() { return holder === "guide" || holder === "crew" || [...pending].some(t => !t.cancelled && !t.finished) || moreAfter(null); },
     get guideText() { return cur && !cur.cancelled && !cur.finished ? cur.text : ""; },
     get guideSentence() { return cur && cur.speaking ? cur.sentence : ""; },
-    get crewText() { try { return crewPlaying() ? crew.text() || "" : ""; } catch (e) { return ""; } },
+    get crewText() {
+      try { return [crewElPlaying() ? crew.text() || "" : "", ...[...media].filter(m => !m.paused && !m.ended).map(m => (m.text && m.text()) || "")].filter(Boolean).join(" "); }
+      catch (e) { return ""; }
+    },
     get ducked() { return ducked; },
     get serverTTS() { return server; },
     // ---- [a11y] speed + elements for captions (a11y.js, caption.js) ----

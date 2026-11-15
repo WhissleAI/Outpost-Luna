@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     brain: str = "local"   # knowledge cards + the model server embedder (docs/LOCAL_BRAIN.md); no cloud LLM
     frontend_dist: Path = ROOT.parent / "frontend/dist"
     cors_origins: str = "http://localhost:5173"
+    # NASA video (app/video.py, docs/MEDIA.md): the offline cache's cap, the background prefetch of the pinned files on
+    # first online launch, and a switch that makes the backend act offline (tests; trying the offline cards).
+    video_cache_mb: int = 1024
+    video_prefetch: bool = True
+    video_offline: bool = False
 
 
     def vector_cache(self) -> Path:
@@ -30,6 +35,9 @@ class Settings(BaseSettings):
 
     def tts_cache(self) -> Path:
         return self.cache_dir / "tts" if self.cache_dir else self.data_dir / "tts_cache"
+
+    def video_cache(self) -> Path:
+        return self.cache_dir / "video" if self.cache_dir else self.data_dir / "video_cache"
 
 
 settings = Settings()
