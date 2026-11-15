@@ -131,7 +131,13 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .a11y-vbanner[hidden],.a11y-panel[hidden],.hl-card[hidden]{display:none!important}
 .set-note{margin:0;color:var(--color-text-2);font-size:var(--text-sm)}   /* [qa] "Up to 6 cadets." */
 /* Settings → Reset Outpost Luna (reset.js, docs/RESET.md): the danger zone, last in the list and set apart */
-.set-nav [data-sec="reset"]{margin-top:var(--space-4);border-top:1px solid var(--color-line);border-radius:0 0 var(--radius-md) var(--radius-md);padding-top:var(--space-2);color:var(--color-danger)}
+/* last, below Help, after a thin divider; the warning colour only when hovered or selected */
+.set-nav [data-sec="reset"]{position:relative;margin-top:var(--space-4);flex:none}
+.set-nav [data-sec="reset"]::before{content:"";position:absolute;left:var(--space-2);right:var(--space-2);top:calc(-1 * var(--space-2) - 1px);border-top:1px solid var(--color-line)}
+.set-nav [data-sec="reset"]:hover,.set-nav [data-sec="reset"][aria-current="page"]{color:var(--color-danger)}
+.set-nav [data-sec="reset"][aria-current="page"]{background:color-mix(in srgb,var(--color-danger) 12%,transparent)}
+.rs-link{margin:var(--space-2) 0 0}
+.rs-link .btn-link{border:0;background:none;padding:0;color:var(--color-accent);text-decoration:underline;font:inherit;cursor:pointer}
 .rs-zone{display:grid;gap:var(--space-2);justify-items:start}
 .rs-btn{color:var(--color-danger);border-color:var(--color-danger)}
 .rs-note{margin:-2px 0 var(--space-2);font-size:var(--text-sm);color:var(--color-text-2)}

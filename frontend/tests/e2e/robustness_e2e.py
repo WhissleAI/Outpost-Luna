@@ -465,7 +465,9 @@ def ch_visibility(r):
 def ch_reset(r):
     # Settings -> Reset -> Start over, held 3 s, while the surface is open (docs/RESET.md): the app must come back fresh
     # at first launch with its chrome, never half-reset. Voice opens the confirm (a modal may cover the gear).
-    r.js("() => window.__outpost.a11y.handleText('reset')")
+    r.js("() => window.__outpost.a11y.handleText('reset')")   # opens Settings → Reset (both options)
+    r.until("() => !!document.querySelector('[data-reset-open=start]')", 6000)
+    r.js("() => document.querySelector('[data-reset-open=start]').click()")
     if not r.until("() => !!document.querySelector('.rs-confirm [data-reset-hold]')", 6000):
         raise RuntimeError("the reset confirm did not open")
     box = r.js("() => { const q = document.querySelector('[data-reset-hold]').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }")
