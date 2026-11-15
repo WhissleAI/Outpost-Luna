@@ -875,3 +875,115 @@ the hot lists). Noise is mixed in at every screen.
   - Noise routing: 81 filler, 27 not directed, 21 echo, 1 speaking.
 - **Still seen:** the HUD line "Sample logged. Science +2." heard back is routed as a cabin order 3 times. It gets no
   reply, but it is not caught as an echo (as in round 7).
+
+## Round 9 — 2026-11-15 (the Director on the new ear, Arc Transcriber Space) — PARTIAL, NOT SHIPPED (shadow stays)
+
+Run on main b8c17d9 (0.3.1 + #39), under a ~100-minute deadline on a machine shared with other jobs (load average
+26–73). `DIRECTOR_MODEL` stays `shadow`; the shipped weights stay r4 s. Pipeline: `director_model/run_r9.sh`.
+
+### Data: the new ear, re-decoded
+
+- **The ear path needed no port.** `real_ear.py decode` already goes through `model_server/app/arc_ear.EarStream`; on
+  main that is Arc Transcriber Space (libarc + ONNX Runtime). Run with `ARC_SPACE_DIR` = the desktop app's downloaded
+  `ear/nft2` and `ARC_LIB` = the app's `libarc.dylib`, so the decodes are what 0.3.1 hears.
+- **Jobs:** 2,962 (train 902, val 302, test 1,241, app 78, app_os 308, video 131), same recipe as round 8.
+- **Decoded (time-boxed, held-out first):** 747 clips: the 502 test-split turns, the 81 `cls_mishear` turns, 150 val
+  turns, 24 train. One partial every 3 s (`EAR_PARTIAL_EVERY_S=3.0`: each partial re-decodes the open segment; the
+  final words and turn events are unchanged).
+- **The new ear on the Steer TTS kid voices (with babble / reverb, as in round 8):**
+
+| group | clips | WER | exact | empty | Arc dd ≥ 0.5 |
+|---|---|---|---|---|---|
+| test | 576 | 10.5 % | 68 % | 13 | 86 % |
+| val | 150 | 12.7 % | 69 % | 5 | 90 % |
+
+  The round-9 plan's worry that TTS kid turns come back empty from the new ear does not hold: 2.7 % empty.
+  `device_directed` rates almost every rendered kid turn as directed, so `dd` no longer separates room talk.
+- **Sets generated on these decodes:** val (200 sessions), `test_ear` (200 turns), `cls_mishear`, `cls_roomtalk`,
+  `cls_echo`, `cls_voice_echo_os`, `cls_prep_roomtalk`, `cls_lesson_new`, `cls_offers_new` (~160 turns each).
+  Session generation ran at ~6 s per session under the machine load, so the full train set (2,400 + 1,200 sweep) and
+  the remaining sets did not fit the deadline.
+
+### Shipped r4 s on the new ear: policy as shipped, refit on new-ear val, and ignore-only
+
+`evaluate.py --weights backend/app/director_model` (+ `--refit`, + new `--ignore-only`: the model may only silence a
+turn; no command fill, ask, veto or navigation). Act accuracy / wrong actions, guarded `on` vs the rules:
+
+| set | turns | rules | r4 s as shipped | r4 s refit | r4 s ignore-only (refit) |
+|---|---|---|---|---|---|
+| test_ear | 200 | 0.720 / 20 | 0.720 / 19 | 0.725 / 21 | 0.720 / 20 |
+| cls_echo | 160 | 0.881 / 9 | 0.894 / 8 | 0.881 / 9 | 0.881 / 9 |
+| cls_mishear | 158 | 0.880 / 4 | **0.823** / 4 | 0.880 / 4 | 0.880 / 4 |
+| cls_roomtalk | 160 | 0.944 / 0 | 0.975 / 0 | 0.944 / 0 | 0.944 / 0 |
+| cls_prep_roomtalk | 149 | 0.899 / 0 | 0.960 / 0 | 0.899 / 0 | 0.899 / 0 |
+| cls_voice_echo_os | 160 | 0.844 / 7 | 0.863 / 7 | 0.844 / 7 | 0.844 / 7 |
+| cls_lesson_new | 157 | 0.828 / 5 | 0.828 / 5 | 0.828 / 5 | 0.828 / 5 |
+| cls_offers_new | 160 | 1.000 / 0 | 1.000 / 0 | 1.000 / 0 | 1.000 / 0 |
+| **all** | | 1,134 right / 45 wrong | **1,144 / 43** | 1,135 / 46 | 1,134 / 45 |
+
+Policies: shipped cmd 0.95 · veto 0.99 · ignore 0.8 · ask off. The new-ear val refit picks cmd 0.85 · ignore off ·
+ask off · veto off (val has too few new-ear room-talk turns to justify an ignore threshold), so ignore-only after
+the refit is exactly the rules.
+
+- **As shipped, r4 s is better than the rules on the new ear overall** (+10 right, −2 wrong) and never adds a wrong
+  action, but fails the gate on `cls_mishear` by 9 turns of act accuracy (0 extra wrong actions).
+- **Where it wins and loses (per turn):** every win is an `ignore` of a turn the rules would answer: room talk (5),
+  prep room talk (9), the app's own voice heard back (3 OS-voice, 2 echo). The 9 losses: 7 × ignoring the kid's
+  two-word "far side" (heard correctly; the rules answer it) and 2 × a veto → ask on a real command.
+- **No clean per-class enable from runtime signals:** the new ear's `device_directed` is ≥ 0.5 on both the wins and
+  the losses, and two-word turns are on both sides (echo wins vs "far side" losses). A per-situation enable needs a
+  new signal, e.g. "the words match an on-screen control / hot-list item → the model may not silence it" (would have
+  kept all 7 "far side" turns) plus `veto` off (the other 2). Not implemented in this round.
+
+### Update: s and xl trained on round-9 data (same session)
+
+The machine load dropped (load average ~20), and session generation went from ~6 s to ~0.4 s per session, so a
+train set and two models fit after all.
+
+- **ds_r9 train:** 1,600 sessions / 150,475 steps + the coverage sweep (800 sessions, 6 shards), the fitted error
+  model for the kid's words (only 24 new-ear train decodes: the decode budget went to the held-out sets), new-ear
+  decodes in val and every test / class set above, plus `test_real` (885 turns, generated last and not looked at
+  before the policy below was chosen).
+- **Sizes (train.py, cost-sensitive loss on xl `--fp-exec 0.5`, steps capped at round 8's):**
+  - s: 32,971 params, best step 2,200; train loss 0.48–0.84, val 1.124 (still improving slowly).
+  - xl: 743,069 params, best step 2,200; train loss falls to 0.12–0.16 while val flattens at 0.90–0.91 from step
+    1,600. **xl is data-limited, not capacity-limited, so no xxl was trained** (decision rule: a larger size only if
+    xl's train loss had not flattened or val kept improving from m to xl).
+
+| set | turns | rules | r4 s as shipped | **r4 s, veto off + min 3 words (ships)** | r9 s | r9 xl | r9 xl + min 3 words |
+|---|---|---|---|---|---|---|---|
+| test_real | 885 | 0.632 / 87 | 0.632 / 87 | **0.632 / 87** | 0.632 / 85 | 0.630 / 86 | 0.632 / 88 |
+| test_ear | 200 | 0.720 / 20 | 0.720 / 19 | **0.720 / 20** | 0.715 / 21 | 0.720 / 20 | 0.720 / 20 |
+| cls_echo | 160 | 0.881 / 9 | 0.894 / 8 | **0.887 / 8** | 0.938 / 7 | 0.950 / 5 | 0.938 / 8 |
+| cls_mishear | 158 | 0.880 / 4 | 0.823 / 4 | **0.880 / 4** | 0.873 / 4 | 0.829 / 4 | 0.880 / 4 |
+| cls_roomtalk | 160 | 0.944 / 0 | 0.975 / 0 | **0.969 / 0** | 0.981 / 0 | 0.994 / 0 | 0.975 / 0 |
+| cls_prep_roomtalk | 149 | 0.899 / 0 | 0.960 / 0 | **0.960 / 0** | 0.899 / 0 | 0.899 / 0 | 0.899 / 0 |
+| cls_voice_echo_os | 160 | 0.844 / 7 | 0.863 / 7 | **0.844 / 7** | 0.956 / 5 | 0.969 / 1 | 0.912 / 5 |
+| cls_lesson_new | 157 | 0.828 / 5 | 0.828 / 5 | **0.828 / 5** | 0.828 / 5 | 0.828 / 5 | 0.828 / 5 |
+| cls_offers_new | 160 | 1.000 / 0 | 1.000 / 0 | **1.000 / 0** | 1.000 / 0 | 1.000 / 0 | 1.000 / 0 |
+| **all** | | 1,693 / 132 | 1,703 / 130 | **1,707 / 131** | 1,724 / 127 | 1,723 / **121** | 1,718 / 130 |
+| **gate** | | | FAIL (mishear −9) | **PASS (every set)** | FAIL (test_ear +1 wrong) | FAIL (test_real −1, mishear −8) | FAIL (test_real +1 wrong) |
+
+Fitted policies (val): r9 s cmd 0.8 · ignore 0.9 · veto off · ask off; r9 xl cmd 0.99 · veto 0.95 · ignore 0.95 ·
+ask off.
+
+### Verdict and what ships
+
+- **No new weights pass the gate.** r9 xl is the best raw model (fewest wrong actions of anything: 121 vs the rules'
+  132; OS-voice echo wrong actions 7 → 1, room talk 0.994) but misses by one turn on `test_real`; r9 s misses by one
+  wrong action on `test_ear`.
+- **Ships in this PR: a policy-only update of the shipped r4 s weights** (`backend/app/director_model/weights.json`):
+  `veto` off and the new `ignore_min_words: 3` (runtime.policy: the model may not silence a turn of fewer than 3
+  words). Same weights. It passes every round-9 set, `test_real` included: +14 right / −1 wrong vs the rules on the
+  held-out sets, every win a silenced room-talk / echo turn the rules would have answered.
+- **Caveats, stated plainly:**
+  - The 3-word minimum was chosen after looking at the `cls_mishear` losses (7 × "far side"). `test_real` was
+    generated afterwards and not looked at before: there the policy ties the rules exactly (the model defers on
+    every turn), so it confirms "no harm", not "help".
+  - Only 9 of round 8's 28 sets were rebuilt on the new ear (deadline). `cls_video_ctrl`, `cls_prep`, `cls_offer`,
+    `cls_panel`, `cls_help`, `cls_mode`, `cls_globe`, `cls_chatter`, `cls_coverage`, `test_clean/asr/h40/q80/gold`
+    were not re-run.
+- **`DIRECTOR_MODEL` stays `shadow`.** Recommended next step before flipping to `on`: run the rest of `run_r9.sh` (all
+  28 sets on new-ear decodes, ~1 h on an idle machine) and gate the policy-updated r4 s and r9 xl together; r9 xl
+  with the same 3-word minimum is one wrong action from passing and is the strongest candidate once train decodes
+  are on the new ear too.
