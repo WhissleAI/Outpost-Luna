@@ -3,21 +3,62 @@
 // here: the session and systemPreferences are passed in.
 "use strict";
 
+// NASA video (docs/MEDIA.md): the one way off our origin. A youtube-nocookie embed (the only frame we let in) and the
+// player traffic it needs; never a YouTube page as the main window or a frame. NASA files are NOT here: the backend
+// downloads them (backend/app/video.py) and the page plays them from our own origin, so the renderer never talks to NASA.
+const YT_FRAME = "www.youtube-nocookie.com";
+const YT_HOSTS = new Set([YT_FRAME, "www.youtube.com", "s.ytimg.com", "i.ytimg.com"]);
+const YT_REFERER = "https://ai.whissle.outpostluna/";
+
+// The player's own art, by path only (measured in Electron 44, desktop/main/permissions.test.js): the YouTube logo and
+// control icons, its Roboto font, and the channel avatar. Without them the video still plays, but unbranded.
+const YT_ASSETS = [["www.gstatic.com", "/youtube/"], ["fonts.gstatic.com", "/s/i/youtube_"], ["fonts.gstatic.com", "/s/roboto/"],
+  ["yt3.ggpht.com", "/"]];
+
+function hostOf(u) { try { const x = new URL(u); return x.protocol === "https:" ? x.hostname : ""; } catch { return ""; } }
+function pathOf(u) { try { return new URL(u).pathname; } catch { return ""; } }
+/** A YouTube player host (the embed, its scripts and images, and the video bytes on *.googlevideo.com). */
+function isYouTubeHost(u) {
+  const h = hostOf(u);
+  return YT_HOSTS.has(h) || /^[a-z0-9-]+\.googlevideo\.com$/.test(h) || YT_ASSETS.some(([ah, p]) => ah === h && pathOf(u).startsWith(p));
+}
+/**
+ * May the page load this YouTube URL? The embed itself only as a frame (https://www.youtube-nocookie.com/embed/…);
+ * everything else from those hosts only as a sub-resource (script, image, xhr, media…), never as a page or a frame,
+ * so a click inside the player can never turn the app into YouTube (links open behind the grown-up gate instead).
+ */
+function allowYouTube(u, resourceType) {
+  if (!isYouTubeHost(u)) return false;
+  if (resourceType === "mainFrame") return false;
+  if (resourceType === "subFrame") return hostOf(u) === YT_FRAME && pathOf(u).startsWith("/embed/");
+  return true;
+}
+
 /**
  * Offline by construction: the page may load from our backend origin (http + ws), data:, blob:, devtools and file:
- * only; anything else is cancelled at once (logged as "blocked"). Microphone, and the camera for gestures (off until
- * the kid turns it on in Settings; docs/GESTURES.md), are granted to our own origin only. Nothing else (screen
- * capture, geolocation, notifications) for anyone. On macOS the first camera request asks the system
- * (NSCameraUsageDescription in Info.plist).
+ * only, plus the YouTube embed's traffic (allowYouTube) when a NASA video plays online; anything else is cancelled at
+ * once (logged as "blocked"). Offline, the YouTube requests simply fail and the page shows its "Needs internet" card.
+ * Microphone, and the camera for gestures (off until the kid turns it on in Settings; docs/GESTURES.md), are granted
+ * to our own origin only (never to the YouTube frame). Nothing else (screen capture, geolocation, notifications) for
+ * anyone. On macOS the first camera request asks the system (NSCameraUsageDescription in Info.plist).
+ * `referer`: send Referer: https://ai.whissle.outpostluna/ to YouTube hosts only (its player refuses to play with no
+ * Referer, error 153); off when the loopback origin is accepted as it is.
  */
-function lockDownSession(ses, origin, { log = () => {}, platform = process.platform, systemPreferences = null } = {}) {
+function lockDownSession(ses, origin, { log = () => {}, platform = process.platform, systemPreferences = null, referer = false } = {}) {
   const ours = (u) => { try { return new URL(u).origin === origin; } catch { return false; } };
   ses.webRequest.onBeforeRequest((d, cb) => {
     const u = d.url;
-    const ok = ours(u) || u.startsWith(origin.replace("http", "ws")) || /^(data|blob|devtools|chrome-extension|file):/.test(u);
-    if (!ok) log("blocked", u.slice(0, 160));
+    const ok = ours(u) || u.startsWith(origin.replace("http", "ws")) || /^(data|blob|devtools|chrome-extension|file):/.test(u) ||
+      allowYouTube(u, d.resourceType);
+    if (!ok) log("blocked", (d.resourceType ? d.resourceType + " " : "") + u.slice(0, 160));
     cb({ cancel: !ok });
   });
+  if (referer && ses.webRequest.onBeforeSendHeaders) {
+    ses.webRequest.onBeforeSendHeaders((d, cb) => {
+      if (!isYouTubeHost(d.url)) return cb({ requestHeaders: d.requestHeaders });
+      cb({ requestHeaders: { ...d.requestHeaders, Referer: YT_REFERER } });
+    });
+  }
   ses.setPermissionRequestHandler((wc, perm, cb, d = {}) => {
     const okMedia = perm === "media" && ours(d.requestingUrl || wc.getURL()) && (d.mediaTypes || ["audio"]).every((t) => t === "audio" || t === "video");
     if (okMedia && (d.mediaTypes || []).includes("video")) log("camera requested");
@@ -41,4 +82,4 @@ function lockDownSession(ses, origin, { log = () => {}, platform = process.platf
   ses.setPermissionCheckHandler((wc, perm, reqOrigin) => (perm === "media" || perm === "fullscreen") && reqOrigin === origin);
 }
 
-module.exports = { lockDownSession };
+module.exports = { lockDownSession, allowYouTube, isYouTubeHost, YT_REFERER };

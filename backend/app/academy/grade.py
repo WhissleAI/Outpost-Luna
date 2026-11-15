@@ -183,6 +183,18 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
     if kind.startswith("vocab_"):
         from . import vocab
         return vocab.grade(acc, inp)
+    if kind == "video":   # pass-through: watched or skipped (or offline), the lesson goes on and the reveal is said
+        vid = inp.get("video") if isinstance(inp.get("video"), dict) else None
+        if vid is None and not inp.get("choice"):     # words alone: only "watch" / "skip" (the client plays it)
+            t = _norm(text)
+            hit = next((k for k, ws in VIDEO_WORDS.items() if any(_has(t, w) for w in ws)), None)
+            return hit is not None, {"watched": False, "seconds": 0.0, **({"choice": hit} if hit else {})}
+        vid = vid or {}
+        try:
+            secs = max(0.0, float(vid.get("seconds") or 0))
+        except (TypeError, ValueError):
+            secs = 0.0
+        return True, {"watched": bool(vid.get("watched")), "seconds": round(secs, 1)}
     return False, {}
 
 
@@ -453,6 +465,10 @@ def option_index(text: str, n: int) -> int | None:
     return k if k is not None and k < n else None
 
 
+VIDEO_WORDS = {"watch": ["Watch", "watch it", "play", "play it", "show me", "yes"],
+               "skip": ["Skip", "skip it", "no thanks", "not now"]}
+
+
 def step_options(acc: dict) -> list[tuple[str, list[str]]]:
     """[(option id, [label, *say words])] in the order the client shows them (its numbers / letters)."""
     kind = acc["type"]
@@ -465,6 +481,8 @@ def step_options(acc: dict) -> list[tuple[str, list[str]]]:
         return [(o["id"], [o["label"]] + ([o["term"]] if kind != "vocab_match" else [])) for o in vocab.options(acc)]
     if kind == "globe_side":
         return [(k, ["", *SIDE_WORDS[k]]) for k in ("near", "far")]
+    if kind == "video":
+        return [(k, w) for k, w in VIDEO_WORDS.items()]
     return []
 
 
@@ -539,4 +557,4 @@ def text_only(inp: dict) -> bool:
     """A spoken / typed attempt (no tap, choice, view or taps): the only kind that can be room talk."""
     inp = inp or {}
     return bool((inp.get("text") or "").strip()) and \
-        not any(inp.get(k) is not None for k in ("tap", "choice", "view", "taps"))
+        not any(inp.get(k) is not None for k in ("tap", "choice", "view", "taps", "video"))

@@ -10,14 +10,34 @@ DATA = Path(__file__).resolve().parents[2] / "data"
 COURSE = DATA / "academy" / "course.json"
 ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
-                "predict", "globe_side", "terminator", "compare", "route", "earth_view")   # globe steps: grade.py
+                "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
+                "video")   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal
 GLOBE_DO = ("fly", "side", "pole", "sun", "zoom", "pair", "earth", "route")   # step.globe.do (client directive)
 NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
+VIDEO_HINT = "Tap Watch, or say skip."
+
+
+def video_step(s: dict) -> dict:
+    """A video step as written in course.json, {"type": "video", "media": id, "say": predict prompt, "reveal": line},
+    in the shape every other step has: prompt = say, accept = {type: video, media}, success = reveal. Watching or
+    skipping both pass (never block a lesson on media); the reveal is said either way."""
+    if s.get("type") != "video" or "accept" in s:
+        return s
+    return {**s, "prompt": s.get("say", ""), "accept": {"type": "video", "media": s.get("media")},
+            "success": s.get("reveal", ""), "hint": s.get("hint") or VIDEO_HINT, "fail": s.get("fail") or VIDEO_HINT}
+
+
+def normalize(c: dict) -> dict:
+    for l in c.get("lessons", []):
+        l["steps"] = [video_step(s) for s in l.get("steps", [])]
+    return c
+
+
 @lru_cache(maxsize=1)
 def course() -> dict:
-    return json.loads(COURSE.read_text())
+    return normalize(json.loads(COURSE.read_text()))
 
 
 def lesson(lesson_id: str) -> dict | None:
@@ -47,6 +67,8 @@ def public() -> dict:
         if a["type"] == "earth_view":
             acc["place"] = a["place"]
             acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
+        if a["type"] == "video":
+            acc["media"] = a.get("media")
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -65,6 +87,25 @@ def longest_dark_h(site_id: str) -> int:
         cur = 0 if elev > e["horizon_deg"] else cur + 1
         best = max(best, cur)
     return best
+
+
+def check_video_step(s: dict, ids: set[str] | None = None) -> list[str]:
+    """A video step names a catalog video (backend/data/video/catalog.json) and has its predict line and its reveal."""
+    if (s.get("accept") or {}).get("type") != "video" and s.get("type") != "video":
+        return []
+    if ids is None:
+        from .. import video
+        ids = {v["id"] for v in video.catalog()}
+    out = []
+    m = s.get("media") or (s.get("accept") or {}).get("media")
+    if m not in ids:
+        out.append(f"video step: media {m!r} is not in the video catalog")
+    for k in ("say", "reveal"):
+        if not str(s.get(k) or "").strip():
+            out.append(f"video step needs {k}")
+        elif len(str(s[k]).split()) > 20:
+            out.append(f"video step {k} over 20 spoken words")
+    return out
 
 
 def _check_globe_step(s: dict, a: dict) -> list[str]:
@@ -155,6 +196,7 @@ def check() -> list[str]:
                 from .vocab import check_step
                 probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
             probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
+            probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
         pl = l.get("place")   # the Moon-map pin for this lesson (UX: data-driven map)
         if isinstance(pl, str):
             from .grade import where

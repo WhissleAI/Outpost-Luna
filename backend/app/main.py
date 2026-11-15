@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import knowledge, models_client
+from . import knowledge, models_client, video
 from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
@@ -25,7 +25,9 @@ async def lifespan(app: FastAPI):
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
     asyncio.create_task(_warm_brain())
+    asyncio.create_task(video.prefetch_task())   # NASA video: pinned files on first online launch (docs/MEDIA.md)
     yield
+    video.stop_prefetch()
 
 
 async def _warm_brain():
@@ -144,6 +146,7 @@ from .mission.routes import router as mission_router; app.include_router(mission
 from .session import router as session_router; app.include_router(session_router)  # noqa: E402  (docs/SESSION_CONTRACT.md)
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
+app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 
 @app.get("/api/turnlog")

@@ -16,6 +16,7 @@ import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP } from "../story.js";
 import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
+import { stepWord as videoStepWord } from "../media/video_ui.js";   // [media] the video step (docs/MEDIA.md)
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>` : "";
@@ -666,6 +667,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     }
     if (view !== "lesson") return false;
     if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine(OFFER.nextStep); } return true; }
+    // [media] a video step: "watch" plays it here, "skip" moves on (the server never has to grade those words)
+    if (L.steps[i].accept.type === "video" && stepState.video) { const w = videoStepWord(text); if (w) { stepState.video[w](); return true; } }
     // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }

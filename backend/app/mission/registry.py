@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import secrets
 import threading
+import time
 
 from . import sim
 
@@ -10,10 +11,16 @@ LOCK = threading.RLock()   # the live clock (POST /step), the session's orders a
 
 MISSIONS: dict[str, sim.Mission] = {}
 MAX_MISSIONS = 500
+LAST_ACTIVE = [0.0]   # time.monotonic() of the last mission call: the video prefetch waits while a mission runs
+
+
+def _touch() -> None:
+    LAST_ACTIVE[0] = time.monotonic()
 
 
 def create(site: str, seed: int | None = None, roles: list[str] | None = None, level: str = "cadet") -> sim.Mission:
     """level (Settings / session prefs.level): cadet | commander, the difficulty band (docs/LEARNING_DESIGN.md §6.5)."""
+    _touch()
     if len(MISSIONS) >= MAX_MISSIONS:  # drop the oldest
         MISSIONS.pop(next(iter(MISSIONS)))
     mid = "m-" + secrets.token_hex(4)
@@ -30,6 +37,7 @@ def get(mid: str) -> sim.Mission | None:
 
 def apply(mid: str, cmd: dict) -> dict:
     """{state, result:{ok, needs_confirm, say, readback, events}}; KeyError if no such mission."""
+    _touch()
     m = MISSIONS[mid]
     with LOCK:
         out = m.apply(cmd)
@@ -39,6 +47,7 @@ def apply(mid: str, cmd: dict) -> dict:
 
 def advance(mid: str, shifts: int = 1) -> dict:
     """End the shift (early): the clock runs to the next shift boundary."""
+    _touch()
     m = MISSIONS[mid]
     with LOCK:
         evs = sim.advance(m, shifts)
@@ -48,6 +57,7 @@ def advance(mid: str, shifts: int = 1) -> dict:
 def step(mid: str, dt_h: float) -> dict:
     """The live clock: `dt_h` mission hours pass (the client sends them while time runs). `live` is the frame at the
     fractional time, so the Sun, Earth and bars move smoothly between whole hours."""
+    _touch()
     m = MISSIONS[mid]
     with LOCK:
         evs = sim.step(m, dt_h)
@@ -56,6 +66,7 @@ def step(mid: str, dt_h: float) -> dict:
 
 def skip(mid: str) -> dict:
     """Skip to the next event."""
+    _touch()
     m = MISSIONS[mid]
     with LOCK:
         evs = sim.skip_to_event(m)

@@ -10,6 +10,8 @@ frontend/dist/
 backend/data/media
 # Server TTS cache (GET /api/tts)
 backend/data/tts_cache/
+# NASA video cache in a dev checkout (app/video.py; the desktop app keeps it in the per-user folder)
+backend/data/video_cache/
 
 # Local embedder weights (model_server/tools/export_embedder.py) and the card-vector cache
 model_server/models/
