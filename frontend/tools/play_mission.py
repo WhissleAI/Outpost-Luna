@@ -22,6 +22,10 @@ import sys
 import time
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
 
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
@@ -76,7 +80,7 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
     log, seen_keys, shots_taken = [], set(), 0
     t0 = time.time()
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=chromium(), args=["--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
+        b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
         pg = b.new_page(viewport={"width": vw, "height": vh})
         pg.set_default_timeout(120000)
         pg.add_init_script(SEED % (level, graphics, "0" if real_first_shift else fast_ms))

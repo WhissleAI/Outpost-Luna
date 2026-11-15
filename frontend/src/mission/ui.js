@@ -12,6 +12,18 @@ import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP
 import { nowCard, nowSpoken, nudgeLine, debriefStory } from "./objective.js";
 import { createTour, tourDone } from "./tour.js";
 import { createMissionClock } from "./clock.js";
+import { radioBeep } from "../sound.js";
+
+/** CAPCOM's relay of a Houston line: "Houston says: ..." within the 20-word spoken budget (the card keeps the full line). */
+export function houstonRelay(line) {
+  const body = String(line || "").replace(/^\s*Houston here[.,!]?\s*/i, "").trim();
+  const sentences = body.match(/[^.!?]+[.!?]*/g) || [body];
+  let out = [];
+  for (const s of sentences) { const next = [...out, s.trim()]; if (next.join(" ").split(/\s+/).length > 17 && out.length) break; out = next; }
+  let text = out.join(" ").trim();
+  const w = text.split(/\s+/); if (w.length > 17) text = w.slice(0, 17).join(" ").replace(/[,;:]$/, "") + ".";
+  return `Houston says: ${text}`;
+}
 
 /** Story beats CAPCOM says from the client when no session Director is connected (the session says them otherwise). */
 const SPOKEN_BEATS = new Set(["settle", "comm_gap", "first_dark", "ice_return", "final_downlink"]);
@@ -696,7 +708,12 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (cockpit) cockpit.calling(false);
     if (!alive(g)) return;   // QA-20: Houston never answers over another mode
     capcom({ say: line, eyebrow: "Houston" }); radio("houston", line);
-    await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
+    // Owner decision: one voice in the app, so CAPCOM relays Houston ("Houston says: ..."), after a radio beep. The card's
+    // eyebrow and the radio log still say Houston, so it is clear where the message came from.
+    try { radioBeep(); } catch (e) { /* no Web Audio */ }
+    await new Promise(r => setTimeout(r, 300));
+    if (!alive(g)) return;
+    await say(houstonRelay(line), style && style.voice === "houston" ? { ...style, voice: "capcom" } : style);
   }
 
   // ---------- voice ----------

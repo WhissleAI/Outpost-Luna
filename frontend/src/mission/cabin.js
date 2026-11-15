@@ -75,26 +75,31 @@ export function createCabin(root, o = {}) {
           </div>`; };
   root.innerHTML = `
   <div class="cb">
+    <header class="cb-deck" aria-label="Mission clock">
+      <div class="cb-clock" id="cbClock"></div>
+      ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock controls" data-state="paused">
+        <span class="cb-state" id="cbState"><i aria-hidden="true"></i><span id="cbHeld" role="status" aria-live="polite"></span></span>
+        <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
+        <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}×</button>`).join("")}</span>
+        <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
+      </div>`}
+      <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
+      ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
+    </header>
+    <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
+    <section class="cb-now" id="cbNow" hidden aria-label="Now">
+      <div class="cb-now-head"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span>
+        <button type="button" class="cb-now-fold" id="cbNowFold" aria-expanded="true" aria-controls="cbNowMore" aria-label="Fold the Now panel">${ic("chevron-up", 16)}</button></div>
+      <p class="cb-now-step" id="cbNowT" role="status" aria-live="polite"></p>
+      <div class="cb-now-more" id="cbNowMore"></div>
+    </section>
     <section class="cb-window" aria-label="Window">
       <div class="cb-glass" data-view="site">
         <div class="cb-tint" aria-hidden="true"></div>
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
-        <div class="cb-top">
-          <div class="cb-clock" id="cbClock"></div>
-          <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
-        </div>
-        ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock">
-            <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
-            <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}x</button>`).join("")}</span>
-            <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
-            <span class="cb-held" id="cbHeld" aria-live="polite"></span>
-          </div>`}
-        <div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
-        <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
-        <section class="cb-now" id="cbNow" hidden aria-label="Now"><p class="cb-now-row"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span><span id="cbNowT" role="status" aria-live="polite"></span></p><div class="cb-now-more" id="cbNowMore"></div></section>
       </div>
     </section>
 
@@ -155,7 +160,8 @@ export function createCabin(root, o = {}) {
   </div>`;
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
-  const HUD = [".cb-alert", ".cb-top", ".cb-time", ".cb-prog", ".cb-rover", ".cb-sky", ".cb-moment", ".cb-mlog", ".cb-now"];
+  // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
+  const HUD = [".cb-alert", ".cb-rover", ".cb-sky", ".cb-moment"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -238,7 +244,13 @@ export function createCabin(root, o = {}) {
     root.querySelectorAll(".cb-warp").forEach(b => b.onclick = () => cb.onClock("warp:" + b.dataset.warp));
     q("#cbSkip").onclick = () => cb.onClock("skip");
   }
-  q("#cbProg").addEventListener("click", e => { if (e.target.closest(".cb-logbtn")) toggleLog(); });
+  if (q("#cbProg")) q("#cbProg").addEventListener("click", e => { if (e.target.closest(".cb-logbtn")) toggleLog(); });
+  // the Now panel folds to its one line (title + the step), remembered on this device
+  let folded = false; try { folded = localStorage.getItem("outpost-now-folded") === "1"; } catch (e) { /* blocked */ }
+  const paintFold = () => { const n = q("#cbNow"), b = q("#cbNowFold"); n.classList.toggle("is-folded", folded); b.setAttribute("aria-expanded", String(!folded));
+    b.setAttribute("aria-label", folded ? "Open the Now panel" : "Fold the Now panel"); b.innerHTML = ic(folded ? "chevron-down" : "chevron-up", 16); };
+  q("#cbNowFold").onclick = () => { folded = !folded; try { localStorage.setItem("outpost-now-folded", folded ? "1" : "0"); } catch (e) { /* blocked */ } paintFold(); };
+  paintFold();
   q("#cbDb").onclick = () => cb.onDebrief();
 
   function paintMaster() {
@@ -448,10 +460,10 @@ export function createCabin(root, o = {}) {
   function paintClock(s, tH) {
     const t = tH != null ? tH : (s.clock && s.clock.mission_time_h != null ? s.clock.mission_time_h : s.mission_time_h || 0);
     const day = Math.min(10, Math.floor(t / 24) + 1), shift = Math.floor((t % 24) / 6) + 1;
-    q("#cbClock").innerHTML = `<b>Day ${day} <span>· ${hh(t)}</span></b><small>Shift ${shift} · ${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
+    q("#cbClock").innerHTML = `<b>Day <span class="num">${day}</span> <span class="num cb-hh">${hh(t)}</span></b><small>Shift ${shift} · ${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
   }
   let clockSt = null;
-  const HELD = { tour: "Paused for the tour", confirm: "Paused: yes or no?", decision: "Paused: your call", choice: "Paused: your call",
+  const HELD = { tour: "On hold: the tour", confirm: "On hold: yes or no?", decision: "On hold: your call", choice: "On hold: your choice",
     hidden: "Paused", start: "", over: "", away: "" };
   function paintTime(c) {
     clockSt = c; const p = q("#cbPlay"); if (!p || !c) return;
@@ -460,18 +472,20 @@ export function createCabin(root, o = {}) {
     p.setAttribute("aria-label", on || waiting ? "Pause the clock" : c.started ? "Resume the clock" : "Start the clock");
     p.classList.toggle("is-on", !!on);
     root.querySelectorAll(".cb-warp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.warp === c.warp)));
-    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "" : c.paused ? "Paused" : `${c.warp}x`;
+    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "Ready" : c.paused ? "Paused" : `Running ${c.warp}×`;
     q("#cbTime").dataset.state = on ? "run" : waiting ? "held" : "paused";
+    const cab = root.querySelector(".cb"); if (cab) cab.dataset.clock = on ? "run" : waiting ? "held" : "paused";
   }
   function paintProg(s) {
     const P = s.progress, el = q("#cbProg"); if (!el) return;
     if (!P) { el.innerHTML = ""; el.hidden = true; return; }
     el.hidden = false;
     const sci = Math.min(1, P.science_sent / (P.science_goal || 120)), ice = Math.min(1, P.ice / (P.ice_goal || 1));
-    el.innerHTML = `<span class="pg" title="Days survived"><em>Days</em><b>${P.days_done.toFixed(1)}<small>/${P.days_total}</small></b><i style="--p:${(P.days_done / P.days_total * 100).toFixed(1)}%"></i></span>
-      <span class="pg${sci >= 1 ? " is-met" : ""}" title="Science sent home"><em>Science</em><b>${Math.round(P.science_sent)}<small>/${P.science_goal}</small></b><i style="--p:${(sci * 100).toFixed(1)}%"></i></span>
-      <span class="pg${ice >= 1 ? " is-met" : ""}" title="Ice runs"><em>Ice</em><b>${P.ice}<small>/${P.ice_goal}</small></b><i style="--p:${(ice * 100).toFixed(1)}%"></i></span>
-      <button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog">${ic("todo", 14)}<span>Log ${logEntries.length ? `<small>${logEntries.length}</small>` : ""}</span></button>`;
+    const bit = (cls, title, name, val, of, p) => `<span class="pg${cls}" title="${title}"><em>${name}</em><b class="num">${val}<small>/${of}</small></b><i style="--p:${(p * 100).toFixed(1)}%"></i></span>`;
+    el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
+      + bit(sci >= 1 ? " is-met" : "", "Science sent home", "Science", Math.round(P.science_sent), P.science_goal, sci)
+      + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
+      + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
   }
   let logEntries = [];
   function toggleLog(force) { const el = q("#cbMlog"); el.hidden = force != null ? !force : !el.hidden; paintLog(); if (st) paintProg(st); }
@@ -494,11 +508,18 @@ export function createCabin(root, o = {}) {
     momentT = setTimeout(() => { el.hidden = true; delete glassEl.dataset.moment; }, 5200);
   }
   let cardKey = "";
+  /** The word a kid can say for each option: the one word no other option has ("Steer left" / "Steer right" -> left,
+   *  right). The router's task_choice matches the same words (backend turn_router.task_choice). */
+  function sayWords(labels) {
+    const W = l => String(l).toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !["to", "the", "an", "or", "and"].includes(w));
+    return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
+  }
+  const NOWSAY = ws => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${ws.map((_, i) => i + 1).join(" or ")}.`;
   /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
   function card(c, { ack = null, cadet = false } = {}) {
     const el = q("#cbNow"); if (!el) return;
     el.hidden = !c; if (!c) { cardKey = ""; return; }
-    el.className = `cb-now is-${c.level || "info"}${c.progress ? " is-task" : ""}${cadet ? " is-cadet" : ""}${c.choice ? " is-choice" : ""}`;
+    el.className = `cb-now is-${c.level || "info"}${c.progress ? " is-task" : ""}${cadet ? " is-cadet" : ""}${c.choice ? " is-choice" : ""}${folded ? " is-folded" : ""}`;
     q("#cbNowTitle").textContent = c.progress ? c.title : "";
     q("#cbNowT").textContent = c.text;
     const left = c.left_h != null ? (c.left_h >= 1 ? `${Math.round(c.left_h)} h left` : `${Math.max(1, Math.round(c.left_h * 60))} min left`) : "";
@@ -515,13 +536,31 @@ export function createCabin(root, o = {}) {
     const steps = c.progress ? `<span class="cb-now-steps" aria-label="Step ${Math.min(c.progress.done + 1, c.progress.total)} of ${c.progress.total}">${Array.from({ length: c.progress.total }, (_, i) => `<i class="${i < c.progress.done ? "is-done" : ""}"></i>`).join("")}<em>${c.progress.done} of ${c.progress.total}</em></span>` : "";
     const lesson = c.lesson && c.lesson.n ? `<span class="cb-now-lesson" title="${esc(c.lesson.title || "")}">${esc((story.NOW.lessonHelps || (n => `Lesson ${n}`))(c.lesson.n))}</span>` : "";
     const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em><span> ${esc(r.v)}</span></span>`).join("");
-    const btns = (c.buttons || []).map((b, i) => `<button type="button" class="cb-now-b${i ? "" : " is-hot"}" data-b="${i}" ${i === 0 ? 'data-intent="yes"' : ""}>${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</button>`).join("");
+    // a choice: each option is its own button with its number and the word to say; anything else: one hot button (T)
+    const words = sayWords((c.buttons || []).map(b => b.label));
+    const btns = (c.buttons || []).map((b, i) => `<button type="button" class="cb-now-b${i || c.choice ? "" : " is-hot"}" data-b="${i}" ${i === 0 && !c.choice ? 'data-intent="yes"' : ""}
+      aria-keyshortcuts="${c.choice ? i + 1 : "T"}"><kbd aria-hidden="true">${c.choice ? i + 1 : "T"}</kbd><span class="cb-now-bl">${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</span></button>`).join("");
+    const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words))}</p>` : "";
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
       <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
       ${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
-      ${btns ? `<div class="cb-now-btns" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}`;
+      ${btns ? `<div class="cb-now-btns${c.choice ? " is-choice" : ""}" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}${sayLine}`;
     q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));
+    fitNow();
   }
+  /** The Now panel lives on the wall above the Habitat console: when the wall is short (a small window), it drops its
+   *  details (read-outs, the hint, then the meta row and the say line) so it never sits on the console. The step and
+   *  its buttons always stay. */
+  function fitNow() {
+    const el = q("#cbNow"); if (!el || el.hidden) return;
+    el.classList.remove("is-tight", "is-tighter");
+    const hab = q('.c3-panel[data-panel="habitat"]') || q('.c3-panel[data-panel="rover"]');
+    if (!hab || !c3 || (c3.panel && c3.panel !== "seat")) return;
+    const room = () => hab.getBoundingClientRect().top - 40 - el.getBoundingClientRect().bottom;   // 40: the console's label chip
+    if (room() < 0) el.classList.add("is-tight");
+    if (room() < 0) el.classList.add("is-tighter");
+  }
+  addEventListener("resize", () => requestAnimationFrame(fitNow));
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
     openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
@@ -545,7 +584,7 @@ export function createCabin(root, o = {}) {
       const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
         goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
         night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]',
-        play: "#cbPlay", skip: "#cbSkip", warp: ".cb-warps", task: ".cb-now-btns" }[k];
+        play: "#cbPlay", skip: "#cbSkip", warp: ".cb-warps", task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
       const nodes = sel ? [...root.querySelectorAll(sel)] : [];
       if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
       nodes.forEach(n => n.classList.add("is-point"));

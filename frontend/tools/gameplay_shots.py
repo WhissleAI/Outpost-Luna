@@ -10,6 +10,10 @@ import glob
 import os
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
 
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
@@ -21,7 +25,7 @@ NOW = "() => { const n = document.querySelector('#cbNow'); return n && !n.hidden
 def main(base, out, tag, sizes):
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=exe, args=["--use-gl=angle", "--use-angle=swiftshader"])
+        b = p.chromium.launch(executable_path=exe, args=["--mute-audio", "--use-gl=angle", "--use-angle=swiftshader"])
         for vw, vh in sizes:
             pg = b.new_page(viewport={"width": vw, "height": vh})
             pg.set_default_timeout(120000)

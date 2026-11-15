@@ -101,6 +101,9 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
+    # The top bar's Mute (every screen; output only, the mic stays as it is)
+    ("mute_sound", re.compile(r"^(?:mute|mute (?:the )?(?:sound|audio|app|voices?)|sound off|turn (?:the )?sound off|be quiet)$")),
+    ("unmute_sound", re.compile(r"^(?:unmute|unmute (?:the )?(?:sound|audio|app|voices?)|sound on|turn (?:the )?sound (?:back )?on)$")),
     # The live mission clock (docs/GAMEPLAY.md), cabin only: skip to the next event, pause / run time, time warp.
     # Before "start" (which takes "resume") and "skip_tour" (which takes a bare "skip").
     ("skip_event", re.compile(r"^(?:skip|jump|fast forward|go|warp)(?: ahead| forward)?(?: to)?(?: the)? next "

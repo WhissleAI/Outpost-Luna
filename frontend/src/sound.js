@@ -24,6 +24,22 @@ export function chime(alarm = false) {
   });
 }
 
+/** A short radio squelch + beep before CAPCOM relays Houston (Mute: levels().master is 0, so nothing plays). */
+export function radioBeep() {
+  const a = ac(); if (!a) return;
+  const L = (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1 };
+  if (!L.master) return;
+  const t = a.currentTime + 0.01, out = a.createGain(); out.gain.value = 0.08 * L.master; out.connect(a.destination);
+  // 120 ms of band-passed noise (the squelch), then a 1.4 kHz beep
+  const n = Math.floor(a.sampleRate * 0.12), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = a.createBufferSource(), bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1800; bp.Q.value = 0.8;
+  src.buffer = buf; src.connect(bp).connect(out); src.start(t);
+  const o = a.createOscillator(), g = a.createGain(); o.type = "sine"; o.frequency.value = 1400;
+  g.gain.setValueAtTime(0, t + 0.13); g.gain.linearRampToValueAtTime(0.6, t + 0.14); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+  o.connect(g).connect(out); o.start(t + 0.13); o.stop(t + 0.28);
+}
+
 /** Smoothly move an <audio> element's volume to `to` over `ms`. */
 export function fadeTo(el, to, ms = 180) {
   return new Promise(res => {
