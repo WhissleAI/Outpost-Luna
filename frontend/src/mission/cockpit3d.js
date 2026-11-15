@@ -133,7 +133,11 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   // ---------- camera: seat, parallax, dolly ----------
   let open = null, tween = null, pointer = { x: 0, y: 0 }, size = { w: 1, h: 1 };
   // look-around offset (gestures: head pose / grab-drag), clamped; eased toward its target each frame
-  const lookT = { x: 0, y: 0 }, lookC = { x: 0, y: 0 }, MAX_YAW = 0.55, MAX_PITCH = 0.3;
+  // Bounded so the windshield and the consoles always stay in frame (the owner got stuck at ±0.55 rad yaw, the window
+  // pushed off to one side). Any look input that stops (the face lost, the camera off, a hand gone) springs back to the
+  // seat after LOOK_IDLE_MS; the tour's beats hold their look until the next beat (look(..., {hold: true})).
+  const lookT = { x: 0, y: 0 }, lookC = { x: 0, y: 0 }, MAX_YAW = 0.2, MAX_PITCH = 0.1, LOOK_IDLE_MS = 700;
+  let lookAt = 0, lookHold = false, lookLast = performance.now();
   let hl = null;
   const target = { pos: SEAT.pos.clone(), look: SEAT.look.clone() };
   host.dataset.panel = "seat";
@@ -206,7 +210,11 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     }
     const red = reduced(), bob = red ? 0 : Math.sin(now / 1900) * 0.004;
     const par = red || open ? 0 : 1;
-    const kk = red ? 1 : Math.min(1, dt * 6); lookC.x += (lookT.x - lookC.x) * kk; lookC.y += (lookT.y - lookC.y) * kk;
+    if (!lookHold && (lookT.x || lookT.y) && now - lookAt > LOOK_IDLE_MS) { lookT.x = 0; lookT.y = 0; }   // input ended: back to the seat
+    // time-based, not per frame: a slow frame (a busy machine, a software renderer) must not stretch the spring-back
+    const lookDt = Math.min(0.5, Math.max(0, (now - lookLast) / 1000)); lookLast = now;
+    const kk = red ? 1 : 1 - Math.exp(-lookDt * 8); lookC.x += (lookT.x - lookC.x) * kk; lookC.y += (lookT.y - lookC.y) * kk;
+    if (Math.abs(lookC.x) < 1e-4 && Math.abs(lookC.y) < 1e-4 && !lookT.x && !lookT.y) { lookC.x = 0; lookC.y = 0; }
     camera.position.set(cur.pos.x + pointer.x * 0.07 * par, cur.pos.y + bob - pointer.y * 0.035 * par, cur.pos.z);
     camera.lookAt(cur.look.x + pointer.x * 0.03 * par, cur.look.y - pointer.y * 0.02 * par, cur.look.z);
     if (lookC.x || lookC.y) { camera.rotateY(-lookC.x); camera.rotateX(-lookC.y); }
@@ -219,8 +227,14 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
 
   return {
     open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
-    /** Look around from where the camera is: dx, dy in -1..1 (yaw, pitch), clamped. look(0, 0) recentres. */
-    look(dx, dy) { lookT.x = Math.max(-1, Math.min(1, +dx || 0)) * MAX_YAW; lookT.y = Math.max(-1, Math.min(1, +dy || 0)) * MAX_PITCH; },
+    /** Look around from where the camera is: dx, dy in -1..1 (yaw, pitch), clamped to ±MAX_YAW / ±MAX_PITCH. look(0, 0)
+     *  recentres; with no new look input for LOOK_IDLE_MS it springs back by itself (opts.hold: the tour's beats). */
+    look(dx, dy, { hold = false } = {}) { lookT.x = Math.max(-1, Math.min(1, +dx || 0)) * MAX_YAW; lookT.y = Math.max(-1, Math.min(1, +dy || 0)) * MAX_PITCH;
+      lookAt = performance.now(); lookHold = !!hold && !!(lookT.x || lookT.y); },
+    /** Center view: the seat pose, now (any panel closes, any look offset goes). */
+    recenter() { lookT.x = lookT.y = 0; lookHold = false; if (open) go(null); },
+    /** The camera as the tests see it: the look offset (rad), the open panel, a dolly in flight. */
+    get pose() { return { yaw: lookC.x, pitch: lookC.y, targetYaw: lookT.x, targetPitch: lookT.y, panel: open, moving: !!tween, maxYaw: MAX_YAW, maxPitch: MAX_PITCH }; },
     /** Mark a panel as the one a lean-in would open (null clears). */
     highlight(id) { hl = id || null; Object.entries(objs).forEach(([k, P]) => P.el.classList.toggle("is-hl", k === hl)); },
     get highlighted() { return hl; },

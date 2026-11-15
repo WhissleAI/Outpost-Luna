@@ -102,6 +102,9 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"(?:bigger|larger|smaller) (?:text|words)|high contrast(?: on| off)?|"
                         r"(?:describe things|audio description)(?: on| off)?|stop describing|"
                         r"(?:press|tap|click) (?:the )?.+|(?:option|answer|number) (?:\d|one|two|three|four))$")),
+    # The cabin's Center view (the seat pose): "center", "look forward"
+    ("recenter", re.compile(r"^(?:center|centre|recenter|recentre|look forward|look ahead|face forward|"
+                            r"(?:center|centre|reset) (?:the |my )?view)$")),
     # The top bar's Mute (every screen; output only, the mic stays as it is)
     ("mute_sound", re.compile(r"^(?:mute|mute (?:the )?(?:sound|audio|app|voices?)|sound off|turn (?:the )?sound off|be quiet)$")),
     ("unmute_sound", re.compile(r"^(?:unmute|unmute (?:the )?(?:sound|audio|app|voices?)|sound on|turn (?:the )?sound (?:back )?on)$")),
@@ -407,6 +410,8 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         if intent in ("view_orbit", "view_rover", "view_site") and ctx.screen not in ("cabin", "brief"):
             continue
         if intent == "back" and ctx.screen in ("cabin",):
+            continue
+        if intent == "recenter" and ctx.screen != "cabin":
             continue
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue

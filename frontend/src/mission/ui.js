@@ -563,8 +563,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     });
     mclock.attach(); cockpit.clock(mclock.state);
     dockIn();
-    if (client && client.sample) cabinEl.insertAdjacentHTML("afterbegin", sampleTag());
-    if (practice) cabinEl.insertAdjacentHTML("afterbegin", `<span class="m-sample m-practice" title="${esc(GATE.sub)}">${esc(GATE.tag)}</span>`);
+    // the Sample / Practice tags ride in the deck (at the bottom right they sat on the voice bar)
+    const deckEl = cabinEl.querySelector(".cb-deck .cb-clock");
+    if (client && client.sample) (deckEl ? deckEl.insertAdjacentHTML("afterend", sampleTag()) : cabinEl.insertAdjacentHTML("afterbegin", sampleTag()));
+    if (practice) { const tag = `<span class="m-sample m-practice" title="${esc(GATE.sub)}">${esc(GATE.tag)}</span>`; deckEl ? deckEl.insertAdjacentHTML("afterend", tag) : cabinEl.insertAdjacentHTML("afterbegin", tag); }
     requestAnimationFrame(() => { const w = cabinEl.querySelector(".cb-hole") || cabinEl.querySelector(".cb-glass"), r = w && w.getBoundingClientRect(), sr = cabinEl.getBoundingClientRect();
       if (r && sr.height) globe.setViewport((r.bottom - sr.top) / sr.height); windowView(cockpit.view || "site"); });
     logHistory.forEach(l => cockpit.log(l.who, l.text));
@@ -727,6 +729,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (/^((start|resume|run|unpause)( the)? (clock|time)|resume|unpause|play)$/.test(w)) { radio("kid", text); return clockAction("play"); }
     { const m = w.match(/^(time ?warp|warp)( speed)?( (one|two|four|1|2|4))?( x| times)?$/); if (m) { radio("kid", text); return clockAction("warp", { one: 1, two: 2, four: 4 }[m[4]] || (m[4] ? +m[4] : undefined)); } }
     if (/^(do it|go|ok do it|lets do it)$/.test(w) && doTaskStep()) { radio("kid", text); return true; }
+    if (/^(center|centre|recenter|recentre|look forward|look ahead|face forward|(center|centre|reset) (the )?view)$/.test(w) && cockpit && cockpit.recenter) { cockpit.recenter(); return true; }
     { const c = nowCard(state, mclock.state);   // a choice: the option the words name ("left", "the ridge", "shelter now")
       if (c && c.choice && w && w.split(" ").length <= 4) {
         const hit = c.buttons.filter(b => { const lw = b.label.toLowerCase(); return w.split(" ").some(x => x.length > 2 && lw.split(/[^a-z]+/).includes(x) &&
@@ -985,6 +988,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tour.active && ["next", "accept_offer", "yes", "start"].includes(intent)) { tour.next(); return true; }
     if (tour.active && (intent === "skip_tour" || intent === "decline_offer")) { tour.end(false); return true; }
     if (intent === "cabin_tour") return replayTour();
+    if (intent === "recenter" && screen === "hud" && cockpit && cockpit.recenter) { cockpit.recenter(); return true; }
     if (screen === "hud" && !tour.active) {
       if (intent === "skip_event") { skipEvent(); return true; }
       if (intent === "time_pause") return clockAction("pause");
@@ -1025,6 +1029,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (screen !== "hud" || !cockpit) return nav(name, arg);
     switch (name) {
       case "look": cockpit.look && cockpit.look(arg && arg.dx, arg && arg.dy); return true;
+      case "recenter": if (cockpit.recenter) cockpit.recenter(); return true;
       case "highlight_panel": cockpit.highlightPanel && cockpit.highlightPanel(arg); return true;
       case "panel_next": cockpit.nextPanel && cockpit.nextPanel(); return true;
       case "panel_prev": cockpit.prevPanel && cockpit.prevPanel(); return true;
@@ -1086,6 +1091,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     /** The live clock and the Now card (tools/*.py read these: what the kid sees, never the sim's hidden schedule). */
     get clock() { return mclock.state; },
     get card() { return state && screen === "hud" ? nowCard(state, mclock.state) : null; },
+    /** The 3D camera's pose (tools/mission_ui.py: it must spring back to the seat). */
+    get camera() { return cockpit && cockpit.pose ? cockpit.pose : null; },
     clockAction, skipEvent,
   };
 }

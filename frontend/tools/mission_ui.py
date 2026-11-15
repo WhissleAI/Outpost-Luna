@@ -31,14 +31,14 @@ SIZES = "1280x720,1440x879,1440x900,1920x1080,1024x640"
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
   localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'cadet', graphics:'low'}));
-  localStorage.setItem('outpost-tour-done:Comet','1'); window.__hourMs = 2000; window.__missionSeed = 2; }catch(e){}"""
+  localStorage.setItem('outpost-tour-done:Comet','1'); localStorage.setItem('outpost-moonbase-seen:Comet','1'); window.__hourMs = 2000; window.__missionSeed = 2; }catch(e){}"""
 # seed 2 at Shackleton Rim (Cadet): the first storm is at hour 62, so the ice run's boulders come first, every run
 
 # The HUD elements a kid reads in the seat view. Selectors that don't exist in a build are simply skipped.
 HUD = {
     "clock": "#cbClock", "time": "#cbTime", "views": ".cb-views", "progress": "#cbProg", "now": "#cbNow",
     "sky": "#cbSky", "rover": "#cbRover", "alert": "#cbAlert", "log": "#cbMlog", "deck": ".cb-deck",
-    "moment": "#cbMoment",   # the story banner ("Day 1 / On our own"): text on the glass, never on another text
+    "moment": "#cbMoment", "viewbar": ".cb-viewbar",   # the story banner ("Day 1 / On our own"): text on the glass, never on another text
 }
 # what rides on the glass: a 3D console in front of the window must never cover any of it (the bottom of the hole is
 # behind the consoles; the owner's "Sun up · Earth below" sat on the Displays / Radiation edge)
@@ -50,6 +50,7 @@ MEASURE = """(HUD) => {
   for (const [k, s] of Object.entries(HUD)) { const e = document.querySelector(s); if (vis(e)) out.hud[k] = R(e); }
   // the deck contains the clock / time / progress: they are one element there, not three to compare
   const deck = document.querySelector('.cb-deck');
+  const vb = document.querySelector('.cb-viewbar'); if (vb && vis(vb) && out.hud.views) delete out.hud.views;
   if (deck && vis(deck)) for (const k of ['clock', 'time', 'progress', 'views', 'sky']) { const e = document.querySelector(HUD[k]); if (e && deck.contains(e)) delete out.hud[k]; }
   // the top bar: the Mute button sits next to Settings; nothing in the bar overlaps (the brand, the sections, the icons)
   out.topbar = [...document.querySelectorAll('.topbar .brand, .topbar .modes, .topnav > button')].filter(vis).map(e => [e.id || e.className.split(' ')[0], ...R(e)]);
@@ -138,6 +139,83 @@ def findings(m):
     return out
 
 
+PAD = """(() => { const B = () => Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }));
+  const pad = { id: 'Synthetic (STANDARD GAMEPAD)', index: 0, connected: true, mapping: 'standard', buttons: B(), axes: [0, 0, 0, 0], timestamp: 0 };
+  let plugged = false;
+  Object.defineProperty(navigator, 'getGamepads', { value: () => (plugged ? [pad, null, null, null] : [null, null, null, null]), configurable: true });
+  window.__plug = () => { plugged = true; const e = new Event('gamepadconnected'); Object.defineProperty(e, 'gamepad', { value: pad }); dispatchEvent(e); };
+  window.__axes = a => { pad.axes = a; pad.timestamp++; }; })();"""
+# what the camera shows: its pose, the windshield's projected rectangle, and the window controls
+CAM = """() => { const p = window.__outpost.missionUI.camera || {}, h = document.querySelector('.cb-hole'), vis = e => !!(e && !e.hidden && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+  const r = h ? h.getBoundingClientRect() : null, cx = r ? (r.left + r.right) / 2 : -1, cy = r ? (r.top + r.bottom) / 2 : -1;
+  const inV = e => { if (!vis(e)) return false; const b = e.getBoundingClientRect(); return b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight; };
+  const area = r ? Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)) / Math.max(1, (r.right - r.left) * (r.bottom - r.top)) : 0;
+  return { yaw: p.yaw || 0, pitch: p.pitch || 0, maxYaw: p.maxYaw, maxPitch: p.maxPitch, panel: p.panel || null, moving: !!p.moving,
+    centreIn: cx >= 0 && cy >= 0 && cx <= innerWidth && cy <= innerHeight, windowShown: +area.toFixed(2),
+    tabs: inV(document.querySelector('.cb-viewbar .cb-views')), center: inV(document.getElementById('cbCenter')) }; }"""
+
+
+def camera_checks(pg, tag, shots):
+    """Each look input to its extreme, then released: the camera stays bounded with the windshield and the window
+    controls on screen, and springs back to the seat pose within about a second."""
+    out, emit = [], lambda name, args: pg.evaluate("([n, a]) => window.__outpost.intents.emitIntent(n, a, 'gesture')", [name, args])
+
+    # a frame counter: the spring-back runs in the render loop, and a software renderer on a loaded machine can drop to
+    # 1-2 frames a second, so the deadline is `limit` seconds or 10 rendered frames, whichever is later (max 8 s)
+    pg.evaluate("window.__camF = window.__camF || 0; if (!window.__camFOn) { window.__camFOn = 1; (function f() { window.__camF++; requestAnimationFrame(f); })(); }")
+
+    def back_to_seat(what, limit=1.6):
+        t, step, f0 = 0.0, 0.1, pg.evaluate("window.__camF")
+        while t < limit or (pg.evaluate("window.__camF") - f0 < 10 and t < 8):
+            c = pg.evaluate(CAM)
+            if abs(c["yaw"]) < 0.01 and abs(c["pitch"]) < 0.01 and not c["panel"] and not c["moving"]:
+                return round(t, 1)
+            pg.wait_for_timeout(int(step * 1000)); t += step
+        out.append(f"{what}: not back at the seat after {limit} s ({pg.evaluate(CAM)})")
+        return None
+
+    def extreme(what, c):
+        if not c["centreIn"]:
+            out.append(f"{what}: the windshield's centre left the screen")
+        if c["windowShown"] < 0.9:
+            out.append(f"{what}: only {int(c['windowShown'] * 100)}% of the windshield on screen")
+        if not c["tabs"] or not c["center"]:
+            out.append(f"{what}: the view tabs or Center view are not on screen")
+        if c["maxYaw"] is not None and (abs(c["yaw"]) > c["maxYaw"] + 1e-3 or abs(c["pitch"]) > c["maxPitch"] + 1e-3):
+            out.append(f"{what}: past the camera bounds ({c['yaw']:.2f}, {c['pitch']:.2f})")
+
+    times = {}
+    # 1. head turn (the head gesture's look intent, streamed), then the face is lost: no more input
+    for name, (x, y) in (("head left-down", (-1, 1)), ("head right-up", (1, -1))):
+        for _ in range(12):
+            emit("look", {"x": x, "y": y}); pg.wait_for_timeout(100)
+        c = pg.evaluate(CAM); extreme(name, c)
+        if shots and name == "head left-down":
+            pg.screenshot(path=os.path.join(shots, f"{tag}-head-extreme.jpg"), type="jpeg", quality=62, timeout=300000)
+        times[name] = back_to_seat(name)
+    # 2. a fist drag that never ends (the hand leaves the frame)
+    for _ in range(10):
+        emit("rotate", {"phase": "move", "dx": -0.2, "dy": 0.15}); pg.wait_for_timeout(80)
+    extreme("fist", pg.evaluate(CAM)); times["fist"] = back_to_seat("fist")
+    # 3. the controller's right stick, held, then let go
+    pg.evaluate("window.__plug && window.__plug()"); pg.wait_for_timeout(600)
+    pg.evaluate("window.__axes && window.__axes([0, 0, -1, 1])"); pg.wait_for_timeout(1200)
+    extreme("right stick", pg.evaluate(CAM))
+    pg.evaluate("window.__axes && window.__axes([0, 0, 0, 0])")
+    times["right stick"] = back_to_seat("right stick")
+    # 4. each 3D console opened (focus or a lean-in dollies the camera to it), then back to the seat
+    for panel in ("habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"):
+        emit("panel_open", {"panel": panel}); pg.wait_for_timeout(1200)
+        c = pg.evaluate(CAM)
+        if not c["tabs"] or not c["center"]:
+            out.append(f"panel {panel}: the view tabs or Center view are not on screen")
+        emit("panel_back", {}); times[f"panel {panel}"] = back_to_seat(f"panel {panel}", 2.0)
+    # 5. Center view (R) from a turned, dollied camera
+    emit("panel_open", {"panel": "radiation"}); pg.wait_for_timeout(900); emit("look", {"x": 1, "y": 1}); pg.wait_for_timeout(300)
+    pg.keyboard.press("r"); times["R (Center view)"] = back_to_seat("R (Center view)", 2.0)
+    return out, times
+
+
 def chromium():
     return (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
 
@@ -165,13 +243,14 @@ def to_steer(pg):
     return False
 
 
-def main(base, shots, tag, sizes):
+def main(base, shots, tag, sizes, camera=True):
     bad = {}
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--use-gl=angle", "--use-angle=swiftshader"])
         for vw, vh in sizes:
             pg = b.new_page(viewport={"width": vw, "height": vh}, device_scale_factor=1)
             pg.set_default_timeout(180000)
+            pg.add_init_script(PAD)
             pg.add_init_script(SEED)
             pg.goto(base)
             got = to_steer(pg)
@@ -198,6 +277,10 @@ def main(base, shots, tag, sizes):
             bad[f"{vw}x{vh}"] = f
             if shots:
                 pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}.jpg"), type="jpeg", quality=70, timeout=300000)
+            if camera:
+                cf, times = camera_checks(pg, f"{tag}-{vw}x{vh}", shots)
+                f += cf
+                print(f"       camera back at the seat (s): {times}")
             print(f"{'ok  ' if not f else 'FAIL'} {vw}x{vh}  now: {m['now']}")
             for x in f:
                 print(f"       {x}")
@@ -217,7 +300,8 @@ if __name__ == "__main__":
     ap.add_argument("--shots", default="")
     ap.add_argument("--tag", default="after")
     ap.add_argument("--sizes", default=SIZES)
+    ap.add_argument("--no-camera", action="store_true", help="skip the look-input / spring-back checks")
     a = ap.parse_args()
     if a.shots:
         os.makedirs(a.shots, exist_ok=True)
-    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")]))
+    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera))

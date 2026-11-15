@@ -54,6 +54,7 @@
   "panel_radiation",
   "panel_rover",
   "pick_site",
+  "recenter",
   "repeat",
   "settings",
   "skip_event",
@@ -87,9 +88,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 394,
+  "cells": 395,
   "covered": 70,
-  "gap": 324,
+  "gap": 325,
   "pending": 26,
   "by_kind": {
    "answer": {
@@ -118,7 +119,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 262,
+    "cells": 263,
     "covered": 19,
     "pending": 11
    },
@@ -1011,6 +1012,19 @@
    "intent": "nav:pick_site",
    "kind": "navigate",
    "probe": "pick malapert massif",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "cabin|nav:recenter",
+   "screen": "cabin",
+   "intent": "nav:recenter",
+   "kind": "navigate",
+   "probe": "look forward",
    "train": 0,
    "heldout": 0,
    "gap": [

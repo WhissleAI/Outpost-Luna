@@ -86,6 +86,13 @@ bigger dead zone than the stick, so a twist must be meant. The two-hand pinch (p
 middle on release, the same as the head and the controller's right stick. The controller's right stick on the Moon now
 sends the same `spin` intent, so the fist and the stick feel the same.
 
+**Bounded look, and the way back.** Every look input (head, fist, right stick) is clamped to ±0.2 rad yaw and ±0.1 rad
+pitch, so the windshield and the consoles always stay in frame. Any look input that stops without an end event (the
+face is lost, the camera goes off, the hand leaves the frame) springs back to the seat after 0.7 s. **Center view**
+(the button under the deck, <kbd>R</kbd>, voice "center" / "look forward", or a gesture emitting the `recenter`
+intent) returns to the seat at once and closes any open panel. The cabin tour's beats hold their look until the next
+beat.
+
 **Feedback.** While the fist holds, a small joystick ring at the bottom centre shows the grab (bright knob), the
 direction and the speed (the arrow), with "Lean your fist to spin" until it moves and "Open your hand to stop" once it
 does. Chevrons at the Moon's centre point where it is heading, brighter when faster, and they fade out with the

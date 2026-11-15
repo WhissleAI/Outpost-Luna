@@ -207,6 +207,7 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
 NAV_SAY = {
     "mute_sound": ["mute", "mute the sound", "sound off", "turn the sound off", "be quiet"],     # the top bar's Mute
     "unmute_sound": ["unmute", "sound on", "turn the sound back on", "unmute the app"],
+    "recenter": ["center", "look forward", "center the view", "reset view", "look ahead"],                # Center view
     "a11y": ["what do i do", "help me", "where am i", "what can i say", "i'm stuck", "give me a hint",
              "move the voice bar to the top", "reset the voice bar"],
     "skip_event": ["skip to the next event", "fast forward", "skip ahead", "jump to the next job"],

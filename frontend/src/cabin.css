@@ -749,3 +749,20 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 .m-cabin .cb-hole>.cb-moment{top:calc(var(--inset) + var(--control-md) + var(--space-3));transform:translateX(-50%);animation-name:cbMomentTop;max-height:calc(100% - var(--inset) * 2 - var(--control-md));overflow:hidden}
 .m-cabin .cb-hole>.cb-moment b{font-size:clamp(22px,2.4vw,var(--text-2xl))}
 @keyframes cbMomentTop{0%{opacity:0;transform:translate(-50%,6px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}
+
+/* ---------- cabin camera (fix/cabin-camera): the window's controls are screen-docked, never in 3D space ----------
+   The view tabs and Center view sit on the right wall under the deck, so they stay visible whatever the camera does. */
+.m-cabin .cb>.cb-viewbar{position:absolute;z-index:5;right:var(--rail);top:calc(var(--rail) * 2 + var(--deck-h));display:flex;align-items:center;gap:var(--space-2)}
+.m-cabin .cb-viewbar .cb-views{position:static;background:var(--color-panel);border-color:var(--cb-line)}
+.m-cabin .cb-center{display:inline-flex;align-items:center;gap:6px;min-height:var(--control-md);padding:0 var(--space-3);border-radius:var(--radius-md);
+  border:1px solid var(--cb-line);background:var(--color-panel);color:var(--color-on-space);font-size:var(--text-sm);font-weight:var(--weight-semibold);white-space:nowrap}
+.m-cabin .cb-center:hover{background:color-mix(in srgb,var(--color-on-space) 12%,transparent)}
+.m-cabin .cb[data-offcentre="1"] .cb-center{border-color:var(--color-accent-strong);box-shadow:0 0 0 2px color-mix(in srgb,var(--color-accent-strong) 50%,transparent)}
+.m-cabin .cb>.cb-mlog{top:calc(var(--rail) * 3 + var(--deck-h) + var(--control-md))}
+@media (max-width:1366px){.m-cabin .cb-center span{display:none}.m-cabin .cb-center{padding:0 var(--space-2)}}
+/* the Practice / Sample tag rides in the deck (it overlapped the voice bar at the bottom right) */
+.m-cabin .cb-deck .m-sample{position:static;flex:0 0 auto;margin:0}
+/* seat view: the big number sits under its label, so "9.4 / 50 mSv" and "POWER" never clip at the screen's edge */
+.c3[data-panel="seat"] .du-head{flex-direction:column;align-items:flex-start;gap:var(--space-1);min-width:0}
+.c3[data-panel="seat"] .du-head b{white-space:nowrap;max-width:100%}
+.c3[data-panel="seat"] .du-head b small{font-size:var(--text-lg)}

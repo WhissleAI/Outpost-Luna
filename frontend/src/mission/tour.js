@@ -53,7 +53,7 @@ export function createTour({ host, cockpit, say, hush = () => {}, callsign = () 
       if (ck.seat && ck.panel) ck.seat();
       if (ck.point) ck.point(b.show === "start" ? "start" : b.show);
       if (ck.focus) ck.focus(b.show === "window" ? null : PANEL[b.show] || null);
-      const lk = LOOK[b.show] || [0, 0]; if (ck.look) ck.look(lk[0], lk[1]);
+      const lk = LOOK[b.show] || [0, 0]; if (ck.look) ck.look(lk[0], lk[1], { hold: true });   // held until the next beat
     }
     requestAnimationFrame(() => { const n = c.querySelector(".t-next"); if (n) n.focus({ preventScroll: true }); });
     // a list goes through the floor's line queue as one on-air span (the hello + the first beat)

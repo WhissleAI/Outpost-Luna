@@ -56,6 +56,7 @@ export function keyAction(ev, c = {}) {
     case "k": return { intent: "time_toggle", args: {} };
     case "w": return { intent: "time_warp", args: {} };
     case "e": return { intent: "skip_event", args: {} };
+    case "r": return { intent: "recenter", args: {} };   // cabin: Center view (C is captions)
     default: return null;
   }
 }
@@ -86,7 +87,7 @@ const SCREEN_ROWS = {
   ride: [["1–5", "Pick an order"], ["N", "Next step"]],
   picker: [["↑ ↓", "Pick a site"], ["N or P", "Next or previous site"], ["Y", "Take command"]],
   tour: [["Enter or N", "Next"], ["Esc", "Skip tour"], ["← →", "Next or Skip tour button"]],
-  cabin_seat: [["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["W", "Time warp 1x, 2x, 4x"], ["E", "Skip to next event"],
+  cabin_seat: [["R", "Center view"], ["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["W", "Time warp 1x, 2x, 4x"], ["E", "Skip to next event"],
     ["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
   cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"], ["T", "Do the Now job"], ["K", "Pause or run the clock"], ["E", "Skip to next event"]],
   debrief: [["Y", "Fly again"], ["Enter", "Select"]],
