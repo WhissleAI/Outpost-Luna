@@ -5,7 +5,7 @@ import { TOUR, MOON_BASE } from "./story.js";
 import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
-import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
+import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset (docs/RESET.md)
 
@@ -141,7 +141,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
   const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
     ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset"]];   // reset: the danger zone, always last (docs/RESET.md)
-  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {};
+  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0;
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -218,19 +218,30 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     unbindReset(); unbindReset = () => {};
     if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
-    if (section === "voice" && PA) PA.loadVoices().then(vs => {
-      const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
+    if (section === "voice" && PA) Promise.all([PA.loadVoices(), PA.steerState ? PA.steerState() : { state: "off" }]).then(async ([osVs, steer]) => {
+      const box = panel.querySelector("#setVoices"); if (!box) return;
+      const steerOn = PA.value.engine === "steer" && steer.state === "ready";
+      const vs = steerOn ? await PA.loadSteerVoices() : osVs, vkey = steerOn ? "steer_voice" : "voice";
+      const engineHtml = engineChoiceHtml(PA.value, steer, escH);
+      clearTimeout(steerPoll);
+      if (steer.state === "downloading") steerPoll = setTimeout(() => { if (!panel.hidden && section === "voice") renderPanel(); }, 3000);
+      if (!vs.length) { box.innerHTML = engineHtml; bindSteer(box); return; }
       const ap = PA.applied, vname = id => ((vs.find(v => v.id === id) || vs[0] || {}).name) || "the default voice";
-      box.innerHTML = `<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
-        <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id || (!PA.value.voice && i === 0) ? "checked" : ""}>
+      box.innerHTML = `${engineHtml}<fieldset class="set-seg"><legend>Voice</legend><div class="set-vlist">${vs.map((v, i) => `
+        <label class="set-voice"><input type="radio" name="p-voice" data-p="${vkey}" value="${escH(v.id)}" ${PA.value[vkey] === v.id || (!PA.value[vkey] && i === 0) ? "checked" : ""}>
           <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
           ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
         <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: Houston keeps its own radio voice</small></span></label>
-        <label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only with the default voice at normal speed.</small></span></label>
-        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}
+        ${steerOn ? `<p class="set-help">With Steer every line is spoken live in the Steer voice.</p>` : `<label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only with the default voice at normal speed.</small></span></label>
+        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}`}
         ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
+      bindSteer(box);
     });
+    function bindSteer(box) {
+      const g = box.querySelector("[data-get-steer]");
+      if (g) g.onclick = async e => { e.preventDefault(); g.disabled = true; g.textContent = "Downloading Steer voice…"; await PA.requestSteer(); renderPanel(); };
+    }
   }
   function open(v = panel.hidden) {
     if (v) {
@@ -298,7 +309,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       const k = t.dataset.p, v = t.type === "range" ? +t.value : t.value;
       O.prefsApi.update({ [k]: v });
       if (t.type === "range") { const out = t.closest("label").querySelector("output"); renderPanel(); const again = panel.querySelector(`[data-p="${k}"]`); if (again) again.focus(); void out; }
-      else if (k === "listen") { renderPanel(); const again = panel.querySelector(`[data-p="listen"]:checked`); if (again) again.focus(); }
+      else if (k === "listen" || k === "engine") { renderPanel(); const again = panel.querySelector(`[data-p="${k}"]:checked`); if (again) again.focus(); }
       return;
     }
     if (t.name === "a11ySpeed") set({ speed: +t.value });

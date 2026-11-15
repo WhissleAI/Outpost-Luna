@@ -181,6 +181,9 @@ def director_stats():
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
 app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
+# Settings: the Steer voices' previews (pre-rendered, offline), before the frontend's catch-all mount.
+app.mount(_voices.STEER_PREVIEW_PREFIX, StaticFiles(directory=_voices.steer_previews_dir(), check_dir=False),
+          name="steer_voice_previews")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
 

@@ -1,0 +1,423 @@
+{
+ "generated_by": "backend/tools/voice_curate.py (docs/VOICES.md)",
+ "default": "voice_1085",
+ "score_lines": [
+  "Good morning, Commander! The rover found ice near the south pole crater.",
+  "Set the shields to forty percent, then check the battery before the storm."
+ ],
+ "preview_line": "Hello! Ready to fly?",
+ "ear": "Arc v1.1 Mini via WS /v1/stream?ear=arc, no context",
+ "noise": "pink noise, 5 dB SNR",
+ "candidates": 38,
+ "clear": 33,
+ "voices": [
+  {
+   "id": "voice_1085",
+   "name": "Aurora",
+   "desc": "Crisp, clear default voice; cuts noise.",
+   "profile": {
+    "gender": "female",
+    "register": "low",
+    "pace": "fast",
+    "catalog_f0_hz": 136.2
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.0,
+    "rms_dbfs": -24.25,
+    "peak_dbfs": -10.1,
+    "clip_pct": 0.0,
+    "dur_s": 8.68,
+    "words_per_s": 2.88,
+    "f0_med_hz": 161.8,
+    "f0_iqr_st": 4.87,
+    "f0_range_st": 9.44
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.39,
+     "tp_dbtp": -10.09,
+     "wps": 2.94,
+     "wer": 0.0,
+     "wer_noisy": 0.0
+    },
+    "after": {
+     "lufs": -14.1,
+     "tp_dbtp": -1.37,
+     "wps": 3.58,
+     "wer": 0.0,
+     "wer_noisy": 0.12
+    }
+   }
+  },
+  {
+   "id": "voice_0644",
+   "name": "Beacon",
+   "desc": "Warm, clear voice for a guide.",
+   "profile": {
+    "gender": "female",
+    "register": "mid",
+    "pace": "average",
+    "catalog_f0_hz": 195.0
+   },
+   "scores": {
+    "wer": 0.04,
+    "wer_noisy": 0.44,
+    "rms_dbfs": -22.62,
+    "peak_dbfs": -9.18,
+    "clip_pct": 0.0,
+    "dur_s": 8.68,
+    "words_per_s": 2.88,
+    "f0_med_hz": 187.6,
+    "f0_iqr_st": 4.11,
+    "f0_range_st": 8.6
+   },
+   "clear": false,
+   "calibration": {
+    "before": {
+     "lufs": -23.83,
+     "tp_dbtp": -9.17,
+     "wps": 2.95,
+     "wer": 0.04,
+     "wer_noisy": 0.44
+    },
+    "after": {
+     "lufs": -14.13,
+     "tp_dbtp": -1.43,
+     "wps": 3.58,
+     "wer": 0.0,
+     "wer_noisy": 0.6
+    }
+   }
+  },
+  {
+   "id": "voice_1439",
+   "name": "Meteor",
+   "desc": "Lively, bouncy voice with big melody.",
+   "profile": {
+    "gender": "male",
+    "register": "mid",
+    "pace": "average",
+    "catalog_f0_hz": 110.9
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.04,
+    "rms_dbfs": -24.52,
+    "peak_dbfs": -7.17,
+    "clip_pct": 0.0,
+    "dur_s": 8.5,
+    "words_per_s": 2.94,
+    "f0_med_hz": 107.8,
+    "f0_iqr_st": 6.29,
+    "f0_range_st": 11.25
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.68,
+     "tp_dbtp": -7.08,
+     "wps": 3.0,
+     "wer": 0.0,
+     "wer_noisy": 0.04
+    },
+    "after": {
+     "lufs": -14.13,
+     "tp_dbtp": -1.26,
+     "wps": 3.57,
+     "wer": 0.04,
+     "wer_noisy": 0.04
+    }
+   }
+  },
+  {
+   "id": "voice_1207",
+   "name": "Crater",
+   "desc": "Deep, steady voice, calm and low.",
+   "profile": {
+    "gender": "male",
+    "register": "low",
+    "pace": "average",
+    "catalog_f0_hz": 88.2
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.16,
+    "rms_dbfs": -24.13,
+    "peak_dbfs": -7.13,
+    "clip_pct": 0.0,
+    "dur_s": 8.02,
+    "words_per_s": 3.12,
+    "f0_med_hz": 87.1,
+    "f0_iqr_st": 5.16,
+    "f0_range_st": 8.82
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.45,
+     "tp_dbtp": -7.13,
+     "wps": 3.19,
+     "wer": 0.0,
+     "wer_noisy": 0.16
+    },
+    "after": {
+     "lufs": -14.27,
+     "tp_dbtp": -1.28,
+     "wps": 3.8,
+     "wer": 0.04,
+     "wer_noisy": 0.08
+    }
+   }
+  },
+  {
+   "id": "voice_1059",
+   "name": "Thruster",
+   "desc": "Quick, bright voice that keeps moving.",
+   "profile": {
+    "gender": "male",
+    "register": "mid",
+    "pace": "fast",
+    "catalog_f0_hz": 110.8
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.04,
+    "rms_dbfs": -24.62,
+    "peak_dbfs": -9.07,
+    "clip_pct": 0.0,
+    "dur_s": 8.52,
+    "words_per_s": 2.93,
+    "f0_med_hz": 113.0,
+    "f0_iqr_st": 4.97,
+    "f0_range_st": 9.03
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.76,
+     "tp_dbtp": -9.05,
+     "wps": 2.93,
+     "wer": 0.0,
+     "wer_noisy": 0.04
+    },
+    "after": {
+     "lufs": -14.15,
+     "tp_dbtp": -1.35,
+     "wps": 3.54,
+     "wer": 0.08,
+     "wer_noisy": 0.16
+    }
+   }
+  },
+  {
+   "id": "voice_1035",
+   "name": "Nebula",
+   "desc": "Soft, unhurried voice, gentle and warm.",
+   "profile": {
+    "gender": "female",
+    "register": "low",
+    "pace": "slow",
+    "catalog_f0_hz": 144.3
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.04,
+    "rms_dbfs": -24.09,
+    "peak_dbfs": -10.11,
+    "clip_pct": 0.0,
+    "dur_s": 9.08,
+    "words_per_s": 2.75,
+    "f0_med_hz": 174.4,
+    "f0_iqr_st": 4.54,
+    "f0_range_st": 9.85
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.02,
+     "tp_dbtp": -10.11,
+     "wps": 2.8,
+     "wer": 0.0,
+     "wer_noisy": 0.04
+    },
+    "after": {
+     "lufs": -14.17,
+     "tp_dbtp": -1.35,
+     "wps": 3.34,
+     "wer": 0.0,
+     "wer_noisy": 0.08
+    }
+   }
+  },
+  {
+   "id": "voice_1627",
+   "name": "Zippy",
+   "desc": "High, quick voice full of energy.",
+   "profile": {
+    "gender": "female",
+    "register": "high",
+    "pace": "fast",
+    "catalog_f0_hz": 209.7
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.16,
+    "rms_dbfs": -23.97,
+    "peak_dbfs": -8.31,
+    "clip_pct": 0.0,
+    "dur_s": 8.42,
+    "words_per_s": 2.97,
+    "f0_med_hz": 211.4,
+    "f0_iqr_st": 4.81,
+    "f0_range_st": 8.12
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -24.82,
+     "tp_dbtp": -8.26,
+     "wps": 3.03,
+     "wer": 0.0,
+     "wer_noisy": 0.16
+    },
+    "after": {
+     "lufs": -14.15,
+     "tp_dbtp": -1.4,
+     "wps": 3.61,
+     "wer": 0.0,
+     "wer_noisy": 0.12
+    }
+   }
+  },
+  {
+   "id": "voice_0840",
+   "name": "Twinkle",
+   "desc": "High, light voice, soft and clear.",
+   "profile": {
+    "gender": "female",
+    "register": "high",
+    "pace": "slow",
+    "catalog_f0_hz": 208.5
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.04,
+    "rms_dbfs": -23.67,
+    "peak_dbfs": -8.89,
+    "clip_pct": 0.0,
+    "dur_s": 8.66,
+    "words_per_s": 2.89,
+    "f0_med_hz": 211.8,
+    "f0_iqr_st": 4.78,
+    "f0_range_st": 8.14
+   },
+   "clear": true,
+   "replaces": {
+    "id": "voice_2423",
+    "why": "noisy WER 0.20 -> 0.32 at the faster delivery (over the 0.25 bar)"
+   },
+   "calibration": {
+    "before": {
+     "lufs": -24.65,
+     "tp_dbtp": -8.89,
+     "wps": 2.94,
+     "wer": 0.0,
+     "wer_noisy": 0.04
+    },
+    "after": {
+     "lufs": -14.1,
+     "tp_dbtp": -1.33,
+     "wps": 3.54,
+     "wer": 0.0,
+     "wer_noisy": 0.08
+    }
+   }
+  },
+  {
+   "id": "voice_1442",
+   "name": "Drifter",
+   "desc": "Relaxed voice that takes its time.",
+   "profile": {
+    "gender": "male",
+    "register": "mid",
+    "pace": "slow",
+    "catalog_f0_hz": 125.3
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.16,
+    "rms_dbfs": -24.48,
+    "peak_dbfs": -8.67,
+    "clip_pct": 0.0,
+    "dur_s": 8.86,
+    "words_per_s": 2.82,
+    "f0_med_hz": 126.0,
+    "f0_iqr_st": 4.78,
+    "f0_range_st": 10.29
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -25.6,
+     "tp_dbtp": -8.62,
+     "wps": 2.85,
+     "wer": 0.0,
+     "wer_noisy": 0.16
+    },
+    "after": {
+     "lufs": -14.14,
+     "tp_dbtp": -1.36,
+     "wps": 3.34,
+     "wer": 0.0,
+     "wer_noisy": 0.04
+    }
+   }
+  },
+  {
+   "id": "voice_0762",
+   "name": "Lander",
+   "desc": "Friendly, upbeat voice, clear and even.",
+   "profile": {
+    "gender": "male",
+    "register": "mid",
+    "pace": "average",
+    "catalog_f0_hz": 126.1
+   },
+   "scores": {
+    "wer": 0.0,
+    "wer_noisy": 0.12,
+    "rms_dbfs": -24.79,
+    "peak_dbfs": -10.06,
+    "clip_pct": 0.0,
+    "dur_s": 8.62,
+    "words_per_s": 2.9,
+    "f0_med_hz": 120.7,
+    "f0_iqr_st": 5.57,
+    "f0_range_st": 10.6
+   },
+   "clear": true,
+   "calibration": {
+    "before": {
+     "lufs": -26.01,
+     "tp_dbtp": -10.05,
+     "wps": 2.97,
+     "wer": 0.0,
+     "wer_noisy": 0.12
+    },
+    "after": {
+     "lufs": -14.07,
+     "tp_dbtp": -1.33,
+     "wps": 3.59,
+     "wer": 0.0,
+     "wer_noisy": 0.2
+    }
+   }
+  }
+ ],
+ "calibration": {
+  "pipeline": "/api/tts: delivery baseline (rate +1.0, pause -1.5, loud +0.4 z) + gap cap 0.25 s + -14 LUFS master, -1 dBTP limiter (docs/VOICE_STEERING.md §4d)",
+  "tool": "backend/tools/voice_calibrate.py"
+ }
+}

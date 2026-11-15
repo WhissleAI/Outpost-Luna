@@ -160,3 +160,26 @@ language → Speech → Manage voices. The list refreshes within 30 s.
 
 **Voice pack (next).** `tts_os.PACK_LOOKUP` is the seam for pre-rendered fixed lines: a callable (voice id,
 `os_voices.pack_key(text)`, rate) → WAV or None, asked before the engine. Not wired yet.
+
+## Steer TTS (optional second engine)
+
+Settings → Voice → **Speech engine**: "Your computer's voice (Siri / Windows)" (the default) or "Steer TTS (Whissle)".
+Steer was the app's voice before the OS voices (commit 7ea1bad); it is restored as an option:
+
+- **Engine**: Steer TTS Edge v1 (`model_server/app/tts_steer.py`, `POST /v1/tts/steer`), the vendored
+  `desktop/vendor/wheels/steertts_edge-1.3.0-py3-none-any.whl` (pure Python + ONNX Runtime + numpy + safetensors: the
+  same wheel on macOS and Windows; without a libm, as on Windows, its director falls back to numpy). CC BY-NC 4.0.
+- **What it adds**: the whole style is honoured (tags, the 12 controls, emphasis markup, the performance director's
+  per-sentence plan), and the word timings are the model's own (`X-Steer-Words` → `X-TTS-Words`): captions are exact.
+- **Voices**: the 10 curated voices of `backend/data/voices.json` (Aurora first, the default) with their offline
+  previews (`backend/data/voice_previews/`); personas keep their Steer voices (`steering.STEER_VOICES`): Houston its
+  own radio voice unless "use this voice for everyone". Houston is still relayed by CAPCOM on screen; Mute covers Steer
+  like every guide line (same `<audio>` path).
+- **Voice pack**: never with Steer (`steering.pack_allowed`, `floor.packAllowed`): every line renders live in Steer.
+- **Delivery**: the optional first-run asset `steer` (13 MB, `desktop/assets.manifest.json`): downloaded in the
+  background after the window opens (before crew audio and videos), or at once when the kid presses "Get the Steer
+  voice" (`POST /api/tts/engines/steer` → `<assets>/.want/steer` → the Electron main process). The switch stays
+  disabled ("Downloading Steer voice…") until `GET /api/tts/engines` says `ready`; the model server loads the model on
+  first use once the folder is there. Until the asset's own Dropbox link exists, it comes out of the public v1 model
+  package (`fallback.kind = "tar_members"`, each file sha256-checked, LICENSE + NOTICE added).
+- **Fallback**: Steer missing, downloading or failing → the line is spoken by the OS voice (`X-TTS-Fallback` says why).
