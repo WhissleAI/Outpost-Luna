@@ -1,0 +1,4341 @@
+{
+ "schema": 1,
+ "pack": "v2",
+ "note": "First-run assets for Outpost Luna (scripts/asset_pack.py; downloaded by desktop/main/assets.js).",
+ "folder": "/Outpost Luna/assets/v2/",
+ "assets": [
+  {
+   "id": "ear",
+   "title": "Speech model (Arc Transcriber Space)",
+   "required": true,
+   "file": "outpost-luna-v2-ear-176d324.tar",
+   "url": "https://www.dropbox.com/scl/fi/tzi64ub64mvwegpll4xkk/outpost-luna-v2-ear-176d324.tar?rlkey=hp0a1s8ih29xmv2f4ls5sjkme&dl=1",
+   "sha256": "ea1b54f07b6eca960bbcf379bca74e6dfdb7092de24493451d4d742dd1f204ba",
+   "size": 460595200,
+   "unpacked_size": 460571964,
+   "n_files": 24,
+   "env": "ARC_SPACE_DIR",
+   "subdir": "nft2",
+   "licence": [
+    "LICENSE",
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "LICENSE",
+     "size": 22053
+    },
+    {
+     "path": "NAMES_LISTS.md",
+     "size": 5047
+    },
+    {
+     "path": "NOTICE",
+     "size": 1354
+    },
+    {
+     "path": "nft2/adapters.safetensors",
+     "size": 18707468
+    },
+    {
+     "path": "nft2/config.json",
+     "size": 106792
+    },
+    {
+     "path": "nft2/decoder/LICENSE",
+     "size": 14180
+    },
+    {
+     "path": "nft2/decoder/config.json",
+     "size": 1537
+    },
+    {
+     "path": "nft2/decoder/generation_config.json",
+     "size": 247
+    },
+    {
+     "path": "nft2/decoder/model.safetensors",
+     "size": 96442080
+    },
+    {
+     "path": "nft2/decoder/processor_config.json",
+     "size": 340
+    },
+    {
+     "path": "nft2/decoder/tokenizer.json",
+     "size": 1691637
+    },
+    {
+     "path": "nft2/decoder/tokenizer_config.json",
+     "size": 294
+    },
+    {
+     "path": "nft2/encoder_onnx/config.json",
+     "size": 1874
+    },
+    {
+     "path": "nft2/encoder_onnx/decoder.onnx",
+     "size": 17393816
+    },
+    {
+     "path": "nft2/encoder_onnx/encoder.onnx",
+     "size": 1196317
+    },
+    {
+     "path": "nft2/encoder_onnx/encoder.weights",
+     "size": 282249216
+    },
+    {
+     "path": "nft2/encoder_onnx/encoder_first.onnx",
+     "size": 1195151
+    },
+    {
+     "path": "nft2/encoder_onnx/frontend.npz",
+     "size": 84342
+    },
+    {
+     "path": "nft2/encoder_onnx/joint_enc.onnx",
+     "size": 1313547
+    },
+    {
+     "path": "nft2/encoder_onnx/joint_net.onnx",
+     "size": 2628502
+    },
+    {
+     "path": "nft2/encoder_onnx/tokenizer.model",
+     "size": 260690
+    },
+    {
+     "path": "nft2/encoder_onnx/tokens.txt",
+     "size": 11896
+    },
+    {
+     "path": "nft2/model.q4.safetensors",
+     "size": 37098434
+    },
+    {
+     "path": "nft2/tags.json",
+     "size": 145150
+    }
+   ],
+   "source": {
+    "repo": "WhissleAI/arc-transcriber-space",
+    "revision": "176d32449b070893739db21e15ea5320af005a68",
+    "licence": "CC BY-NC 4.0"
+   },
+   "fallback": {
+    "kind": "files",
+    "base": "https://huggingface.co/WhissleAI/arc-transcriber-space/resolve/176d32449b070893739db21e15ea5320af005a68/",
+    "files": [
+     {
+      "path": "LICENSE",
+      "size": 22053,
+      "sha256": "47377b0214c20476d0c6a2c934d9b9845e54155f8df860e7f668eaf8f460b11a"
+     },
+     {
+      "path": "NAMES_LISTS.md",
+      "size": 5047,
+      "sha256": "2e658739d01b1e8a344da39d1ec39cf83ec4e09b739c734225835a6857a25343"
+     },
+     {
+      "path": "NOTICE",
+      "size": 1354,
+      "sha256": "666d757439d549747ec671e851f9b3b867066c3f3591f7ee8b3da7cc7979089a"
+     },
+     {
+      "path": "nft2/adapters.safetensors",
+      "size": 18707468,
+      "sha256": "0624399e9817debf2d54c842fd6fa46f6ae602ee5fa81ebd274243921047b5f9"
+     },
+     {
+      "path": "nft2/config.json",
+      "size": 106792,
+      "sha256": "52e25a3a2b3b424ba6d7708eb0e6a028819e453aaae03adfec8fa7dbcfe1e30c"
+     },
+     {
+      "path": "nft2/decoder/LICENSE",
+      "size": 14180,
+      "sha256": "fa7d1174dd8af6a7cd280be20b80d10095ed4c19b5b20b61a7715c3ad790dc5f"
+     },
+     {
+      "path": "nft2/decoder/config.json",
+      "size": 1537,
+      "sha256": "5c00a220c4588d8ccc525eb0d9b0e9c23788addd0cab9007976fb7fcdfd5a0e9"
+     },
+     {
+      "path": "nft2/decoder/generation_config.json",
+      "size": 247,
+      "sha256": "76738b486ca48ac8504af13a4978f62ff80502be99ed0dd9fdc286cfa8f9cb99"
+     },
+     {
+      "path": "nft2/decoder/model.safetensors",
+      "size": 96442080,
+      "sha256": "f0dde9ec3e74ab26bcc534f99f5c9479edc3d1b945e6c5e65ea627ef7fb9b30c"
+     },
+     {
+      "path": "nft2/decoder/processor_config.json",
+      "size": 340,
+      "sha256": "41db69af4b4f77d88e3d9d403d3bda2d027547b8880cda6507f2ac23dc09f1c1"
+     },
+     {
+      "path": "nft2/decoder/tokenizer.json",
+      "size": 1691637,
+      "sha256": "0d34dabb14ef0f1e0e92541d79646d7c833df7bd3228743faa2e3533745f4cc1"
+     },
+     {
+      "path": "nft2/decoder/tokenizer_config.json",
+      "size": 294,
+      "sha256": "68abd67d38150c56e3b44af16f005a5220d6ec2380cc98de16c35415c620c5af"
+     },
+     {
+      "path": "nft2/encoder_onnx/config.json",
+      "size": 1874,
+      "sha256": "05d404b2a0989f62508a03555a957f5c57f071da3645f107512d2d2b9d59e0cf"
+     },
+     {
+      "path": "nft2/encoder_onnx/decoder.onnx",
+      "size": 17393816,
+      "sha256": "54e0ceb0e6b417181f50f4f95cdec862b59b131d14d242eebc7add0bd8fa4cad"
+     },
+     {
+      "path": "nft2/encoder_onnx/encoder.onnx",
+      "size": 1196317,
+      "sha256": "f2b88309e2a53a0b6c9e59d399eb4ad2e588b333f48900245b709518bd977bfc"
+     },
+     {
+      "path": "nft2/encoder_onnx/encoder.weights",
+      "size": 282249216,
+      "sha256": "b88cf2c219e38aaf6e7f44019824b240d1ddb845708dba2a5ca7c18f7bf1de5f"
+     },
+     {
+      "path": "nft2/encoder_onnx/encoder_first.onnx",
+      "size": 1195151,
+      "sha256": "fcc691840f1eecf64a44724a1835472ccd1434c50f182d34f2cf0cecb68f6967"
+     },
+     {
+      "path": "nft2/encoder_onnx/frontend.npz",
+      "size": 84342,
+      "sha256": "3fff5d0b6d6c2ce0e88c81bbc90811a28b674be7decb693f5563e1b70d86c9d4"
+     },
+     {
+      "path": "nft2/encoder_onnx/joint_enc.onnx",
+      "size": 1313547,
+      "sha256": "c750897280ebbb98dd2e4592d4860a1b886ec2606f50c29b025e9c903b822ecf"
+     },
+     {
+      "path": "nft2/encoder_onnx/joint_net.onnx",
+      "size": 2628502,
+      "sha256": "99a11294cb863bb96bbba9746abd5a8499ff9358c52c34f193a62de0deae7180"
+     },
+     {
+      "path": "nft2/encoder_onnx/tokenizer.model",
+      "size": 260690,
+      "sha256": "6fdbb245a2b0020c7466e1f2b2913fe5bc282a6981c78f2366b6662ed0905f6d"
+     },
+     {
+      "path": "nft2/encoder_onnx/tokens.txt",
+      "size": 11896,
+      "sha256": "618dc110fc2213886b52e063ff42329bbdf37a266ca7705184090fa5f39f3131"
+     },
+     {
+      "path": "nft2/model.q4.safetensors",
+      "size": 37098434,
+      "sha256": "cccf781963855beedcfd439fd7740a8756ae5b80518700eac7ac55906eccdc9f"
+     },
+     {
+      "path": "nft2/tags.json",
+      "size": 145150,
+      "sha256": "d68e86adca1aacf1d46cdd91ea24dfae0d902c9548544f71e23543e1eab4f902"
+     }
+    ]
+   }
+  },
+  {
+   "id": "tagger",
+   "title": "Safety tagger (Arc Tagger)",
+   "required": true,
+   "file": "outpost-luna-v2-tagger.tar",
+   "url": "https://www.dropbox.com/scl/fi/pmfq10zu5n49fwo0erfb0/outpost-luna-v2-tagger.tar?rlkey=e2caxnqq8191yfh21gkcn899h&dl=1",
+   "sha256": "aaf0e5b7fd6dabe46b0af30fd4d78cfd79fc8b6a1758914d63e33bebd4a21760",
+   "size": 12103680,
+   "unpacked_size": 12090616,
+   "n_files": 5,
+   "env": "ARCTAG_MODEL_DIR",
+   "subdir": "",
+   "licence": [
+    "LICENSE",
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "LICENSE",
+     "size": 22075
+    },
+    {
+     "path": "NOTICE",
+     "size": 561
+    },
+    {
+     "path": "arctag_int8.onnx",
+     "size": 11453059
+    },
+    {
+     "path": "arctag_meta.json",
+     "size": 61075
+    },
+    {
+     "path": "tokenizer.json",
+     "size": 553846
+    }
+   ]
+  },
+  {
+   "id": "embedder",
+   "title": "Knowledge search (MiniLM)",
+   "required": true,
+   "file": "outpost-luna-v2-embedder.tar",
+   "url": "https://www.dropbox.com/scl/fi/dlarbvz6ldh48cbp1mwvo/outpost-luna-v2-embedder.tar?rlkey=1twcd2i1po4fdmhgim5wi3029&dl=1",
+   "sha256": "4f08ec6c9b8b37a5ad2746a5d99dc50015546f7f873dd1e11fa00bc069c73d03",
+   "size": 23377920,
+   "unpacked_size": 23370184,
+   "n_files": 3,
+   "env": "EMBED_MODEL_DIR",
+   "subdir": "",
+   "licence": [
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "NOTICE",
+     "size": 203
+    },
+    {
+     "path": "model.int8.onnx",
+     "size": 22903734
+    },
+    {
+     "path": "tokenizer.json",
+     "size": 466247
+    }
+   ]
+  },
+  {
+   "id": "voice",
+   "title": "Nora's recorded voice",
+   "required": true,
+   "file": "outpost-luna-v2-voice.tar",
+   "url": "https://www.dropbox.com/scl/fi/2e9aasdvehivu9ti8x97t/outpost-luna-v2-voice.tar?rlkey=26gyf1pdq8qbyrkzcbhdk07al&dl=1",
+   "sha256": "d1df2b6d1ec71567662049dd1bba9cec5094c05c1598396fbb5a28fd0c595ad5",
+   "size": 13783040,
+   "unpacked_size": 13098655,
+   "n_files": 891,
+   "env": "VOICE_PACK_DIR",
+   "subdir": "",
+   "licence": [],
+   "files": [
+    {
+     "path": "clips/00014719ef1810f0-11a17e01.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/012b35351e2f90f1-41477564.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/019b51f56c0e7385-7a86fa3d.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/01c73b9ded2ec6e7-6d8d9d90.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/01fbe7e5548371fe-b4718774.mp3",
+     "size": 26958
+    },
+    {
+     "path": "clips/029c02e5bf4ae92b-6c7badf6.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/02a9c3e9f23ddf6b-b6596143.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/02df117a070961d0-ed31b5a4.mp3",
+     "size": 10031
+    },
+    {
+     "path": "clips/035c5cb356aa2410-5cde45e1.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/0384f6ced5fd067c-689a00f9.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/039a0a58acd3881d-546e118c.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/03bfee6fa4649c73-381e7cea.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/03c0602b4e1d5608-8062b21d.mp3",
+     "size": 4702
+    },
+    {
+     "path": "clips/0545c2137981dab4-112d66cb.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/05a964b522548366-b00623e6.mp3",
+     "size": 22413
+    },
+    {
+     "path": "clips/05c9bc2f60164ab6-aff144b8.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/05d4dc172a68987e-942926a9.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/05d560923983b3da-4442b5e1.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/06219cb9c297b24f-e22a692e.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/0634c07bdcb78426-92b7baa5.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/067b1b1ff2309312-c19e5e47.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/06b6ac7a43913723-e642f39d.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/06bc3625feae7561-101af5b3.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/06f61d1a9b515090-9813ecb4.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/07195d82ebb95818-8ed22ca4.mp3",
+     "size": 4702
+    },
+    {
+     "path": "clips/0742a51ec251873d-99f3cf1a.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/078f1bb7b06df321-f4f234db.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/080f7b94e92d8f53-175b4cf2.mp3",
+     "size": 11441
+    },
+    {
+     "path": "clips/085ad51bb6d8932a-f3186c5e.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/087ba3b0776611fc-f44594de.mp3",
+     "size": 14263
+    },
+    {
+     "path": "clips/08982f2d56b1f725-6b5116b8.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/09459a77f919dcfe-304d9188.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/0a4dd99167999d78-8a66d33a.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/0a86e432319a1119-c95e49fc.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/0a9a7ba862addf21-2c81bbdc.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/0b6f3978efa7d653-4d96f2f5.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/0b7ee23f983a3e39-f5a03c3c.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/0bbcc461087cde54-83ff50bf.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/0bc77a8d8aabc9a3-269dfff2.mp3",
+     "size": 24450
+    },
+    {
+     "path": "clips/0c25586f4c349da5-bcc23e5d.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/0c4a1c533b9f3b26-9935b572.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/0c8a8fb43b5a74b5-8e70b897.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/0c9aaee423867e33-ebb0f6ee.mp3",
+     "size": 5956
+    },
+    {
+     "path": "clips/0cb001e4ab8f39f4-568dd457.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/0cb2bee2e4a5e455-4b2b8e04.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/0cff91aed45aff69-b5d12203.mp3",
+     "size": 19748
+    },
+    {
+     "path": "clips/0d0c3e9fa1cf142d-088e78bb.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/0def5da251a7abf5-b04c7e4f.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/0e0056f22f2c1c09-d70c1d4a.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/0e54069a05f04421-61b74b38.mp3",
+     "size": 21943
+    },
+    {
+     "path": "clips/0ee6a834df53eab3-21a1fde6.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/0ef6f51e3cd64745-2cd02034.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/0ef80d58efedc15a-927481dd.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/0f285772f6c9b8ea-2e14eb3a.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/0f9a89277875ee89-9efca6fb.mp3",
+     "size": 23510
+    },
+    {
+     "path": "clips/0fc7c2ebed71e116-053b65cc.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/10150f5604fe22e9-5a1acbc9.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/10272061fd129f4a-91928c7f.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/104ba70d918abb1b-e5bf91ed.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/10a3c59a79885bdb-18e485c3.mp3",
+     "size": 28839
+    },
+    {
+     "path": "clips/10c7aa7d72da2a07-e1e73075.mp3",
+     "size": 25704
+    },
+    {
+     "path": "clips/10e9b7b281fee526-9c7f8493.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/118441368411c340-a9324d15.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/11937484fe24eae2-4dc3e92c.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/11d25a309492810f-3bd376e1.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/11d5f1212bf38405-e7c363a5.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/124f28be77b4e13d-bf8f3d3f.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/125cc3fcb0958fc9-fff700ea.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/12af1ba2df56d82c-3f1e45f3.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/12fc3ad520a11590-60500cac.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/1313edf67d286388-3a1ea303.mp3",
+     "size": 24921
+    },
+    {
+     "path": "clips/1348e86f294edc2e-4ce189a5.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/13d667ff2d0ceef5-77d46006.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/141ccb02b4144d40-65634e85.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/1433674e4bcbaedc-43638585.mp3",
+     "size": 6583
+    },
+    {
+     "path": "clips/144d8aacbd65ea86-2f4c1fd4.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/15f2fea289cfc16e-a31b3b6e.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/15f35e38931b82ce-4b7bf1a6.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/1614af9a526056ca-a135afee.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/16287521ba9a0856-662e8bf3.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/1702a2f0631a2c86-441006e0.mp3",
+     "size": 5329
+    },
+    {
+     "path": "clips/1732c14e5bde1f70-3308b8cd.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/173cbf5d8ba6405c-5536a9ca.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/178fbe32a4ec96cc-67be8c9a.mp3",
+     "size": 6896
+    },
+    {
+     "path": "clips/17e67cbd2642fd94-05c2792e.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/185122fbf351cb09-9bce2554.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/189376ca158f61c0-033173fc.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/18d4b9703891da53-584608bb.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/18d52fc155939a3f-9f3b271c.mp3",
+     "size": 6896
+    },
+    {
+     "path": "clips/18f64b15fdb160c0-d6d1af4d.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/192c1167172677fc-a5bbaefd.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/199e297ccb1fb456-931c3a94.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/19c184a260c8440e-4a1e0ad1.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/1a299b2333389332-849128e5.mp3",
+     "size": 6896
+    },
+    {
+     "path": "clips/1a5b5c523f6e4034-0709c799.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/1b1772c22030c95f-eeedd6f7.mp3",
+     "size": 25548
+    },
+    {
+     "path": "clips/1b3dd8f564abe0fa-7d58bbc2.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/1b4b31858b40dffb-f1bde971.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/1b6be19087fdcfd8-6c521f45.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/1b990c151da4950c-5c627375.mp3",
+     "size": 25548
+    },
+    {
+     "path": "clips/1c695ad239eb0073-4be4a888.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/1c805506ff543d01-b8f566d6.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/1c9cd8215973e5d4-759426f7.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/1cd6532365ac62d6-df6d5dc6.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/1d9ea7df91747119-8707685e.mp3",
+     "size": 7210
+    },
+    {
+     "path": "clips/1e0d8c13bfa04509-4f564acc.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/1e404c40072a5644-1e86ef86.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/1e72eb5397365827-fcf34f48.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/1eb1b1e89ded4f2f-f090f236.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/1f51e813f9c01cea-636c7db6.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/1f5a574a9e36c3a3-206f32f7.mp3",
+     "size": 470
+    },
+    {
+     "path": "clips/1f62a06021331d18-08c3b358.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/1f8d4540522386a1-9f73380d.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/1f9075bea6a3bb99-763190ff.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/1f9b624eda377ce3-8f2885fc.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/1fa0d48e14b4629d-350f89ac.mp3",
+     "size": 4702
+    },
+    {
+     "path": "clips/1fab3a59e74398cb-b73013b4.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/1fdddec82d8bbe0b-b1f3e4e9.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/2040119addf414be-dc6193fe.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/20cac5d98706f258-75e77488.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/20d1fdbd9d287ffb-4483127f.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/21241d0c29fd354f-d64f6892.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/21299d91748ad4de-2ab44818.mp3",
+     "size": 10031
+    },
+    {
+     "path": "clips/21618aa0757f9417-438fc060.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/21874cedb2900694-53af6ed2.mp3",
+     "size": 14106
+    },
+    {
+     "path": "clips/22042f976cd5a616-194bc453.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/222557ef611572ab-e6dda0ef.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/22b7bbb58cc8af36-00d910cf.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/23097776f9c9dac2-74fda403.mp3",
+     "size": 23196
+    },
+    {
+     "path": "clips/235b3214e72ea40d-ef9c341a.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/238764429ae7a361-5bad6531.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/2427f5e8aeb595d8-4eda93a1.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/246e8c7d9fcdb14b-b60aaca6.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/247c798b7b0f6612-c155ded7.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/24812a3d317580f4-c3e25bbc.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/249fe69ea463d553-46ef58b3.mp3",
+     "size": 13792
+    },
+    {
+     "path": "clips/24cd62e868a9fd8f-d035b9e1.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/25865c4288c18a48-0856afcd.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/25d7c3e4b1887d2b-e9202cc8.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/2652b3c09100520d-719eb794.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/26cb7e7efba36f5b-547971ae.mp3",
+     "size": 20845
+    },
+    {
+     "path": "clips/273e09f24192aff5-02068608.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/27434761e0769484-c730dd65.mp3",
+     "size": 13792
+    },
+    {
+     "path": "clips/27da9ed3eb6dabf5-783eb2f2.mp3",
+     "size": 14106
+    },
+    {
+     "path": "clips/27f0d486b628d862-f173a0ed.mp3",
+     "size": 4075
+    },
+    {
+     "path": "clips/2808d4f42d9a32f6-676514fd.mp3",
+     "size": 21629
+    },
+    {
+     "path": "clips/2891fccb25797c7a-3a13a010.mp3",
+     "size": 14263
+    },
+    {
+     "path": "clips/28cf9448335580c8-ee2e70ef.mp3",
+     "size": 22413
+    },
+    {
+     "path": "clips/290fc2c20f586c24-eb4c6d1a.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/29210b655048d9fc-1a81556d.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/299b49aa9aa875a1-34506c29.mp3",
+     "size": 19435
+    },
+    {
+     "path": "clips/29b407293fbf572d-56ec0755.mp3",
+     "size": 22726
+    },
+    {
+     "path": "clips/2a744a904125894f-4d5f03b6.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/2a9cacd84f1f83a4-1bfd37bf.mp3",
+     "size": 13792
+    },
+    {
+     "path": "clips/2aa5fbfa846c37c3-b8247760.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/2ae6046b59ee6140-9ddcf2e4.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/2b22132a4b43cf54-acdf559f.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/2bf47de3f1706578-a28579bf.mp3",
+     "size": 14263
+    },
+    {
+     "path": "clips/2c10c9502b232ef5-ba5372c3.mp3",
+     "size": 32130
+    },
+    {
+     "path": "clips/2c9ff96562baee85-e3f82531.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/2ca101efd645e42c-75bae390.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/2d056a5327980593-c9e3a951.mp3",
+     "size": 24450
+    },
+    {
+     "path": "clips/2d10ccf47f677395-fad0053f.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/2d5132c8c34d4b98-c7ff1aaa.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/2d87542d286e4f54-087ecdd6.mp3",
+     "size": 18965
+    },
+    {
+     "path": "clips/2dc060b7b372cfa1-a60bdcca.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/2e34014375dd248a-4351990a.mp3",
+     "size": 24607
+    },
+    {
+     "path": "clips/2f195cce427437f4-9924a425.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/2fd4e39b452328b7-cb7298f1.mp3",
+     "size": 14890
+    },
+    {
+     "path": "clips/3011528dc777b46a-53f6b659.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/305709ae532929bd-711c4794.mp3",
+     "size": 21316
+    },
+    {
+     "path": "clips/30a613bbe1f15481-bd6b70ef.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/30a9b5a130d8d846-3b74279f.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/30ed9ea5c61e26de-4f2814ef.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/31496f3a274d8c20-846a1a4c.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/318fe24319040026-ac184b29.mp3",
+     "size": 23196
+    },
+    {
+     "path": "clips/31a35653810ed1d6-f267e3a7.mp3",
+     "size": 20845
+    },
+    {
+     "path": "clips/31ad2f56025baf13-8de3878e.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/31f9e8e5ab0ce8f2-a27c1398.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/321acf836f724958-79816dfd.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/327057fc60a6b1e6-ff549a3d.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/3283f6e1e06313ef-03ed5de3.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/32c1915123dee4b7-b573356b.mp3",
+     "size": 25391
+    },
+    {
+     "path": "clips/3364584c10de8f9c-73852891.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/33a5d74d55646ed7-551138f8.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/33f4392c4ddf6025-55f68881.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/341a61e5d0e35ce2-8c762286.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/34614019019a9aba-4009a20c.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/34b1902131fa8f8c-7b80b64a.mp3",
+     "size": 4545
+    },
+    {
+     "path": "clips/34fec25ddf1c1f67-795150ec.mp3",
+     "size": 23667
+    },
+    {
+     "path": "clips/3502cdfa2d9bebf5-6d63c870.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/3504bfc647540c3d-87a712b7.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/3563a53d24c4b5ca-dff573bd.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/3662eb46fc9f9452-b8498272.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/367b53dd17a128fb-acf9f19d.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/367c5f0699bc844b-90cd6a69.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/36cefe8b8e8a7221-34003b9a.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/37629681d07b19af-7d3a5d22.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/37a5e5bdbdd5d4eb-a9d3033d.mp3",
+     "size": 23510
+    },
+    {
+     "path": "clips/37bbc462c167ef3d-66ad71d9.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/3880f31b9583fd12-ee70b0a8.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/38eb208491c1f5d6-1a7e4a8b.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/390480496db24c27-ab5fde7e.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/3969d53676d281b2-473015f0.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/396a838c84bd095b-bb547cc7.mp3",
+     "size": 7366
+    },
+    {
+     "path": "clips/3975dc4893cde77b-46b9944d.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/3983b49699406ef4-7dbd5277.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/3a2ec86168b8075e-560f62f2.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/3a332d3be5a23f18-bf0e5c4f.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/3a3539eace9cab84-ae29bff7.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/3a887afec71722e4-a5a83d85.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/3aa73ea5d7b95e93-8c7b9844.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/3af23d603a938337-da1689f4.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/3af92cdac7b0e842-5d32b3e3.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/3b30c45d383a8362-8e954edf.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/3b3afce1f06e8c32-3bfcd1bf.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/3b82aae1ed24f607-0cacefc1.mp3",
+     "size": 3918
+    },
+    {
+     "path": "clips/3ba4a540c01e2b7e-6a8d8153.mp3",
+     "size": 28525
+    },
+    {
+     "path": "clips/3bdcbc01a8c15439-ff2cc662.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/3beb851ee8bd5f0a-fe559b29.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/3bfdf71a0105778e-9b31158d.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/3ce58c34a892151b-3ef49a20.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/3d3945f1957b60b1-5fd3a086.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/3d616b04326aad85-06d00bcb.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/3dd1da3e4bd56237-c2c8a618.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/3de8722a6d0f67ad-7d174352.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/3e2684507134ade7-3d4e1bdc.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/3e870597b7cba768-e83c50ba.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/3eefff90a59e699c-3bee52b8.mp3",
+     "size": 21629
+    },
+    {
+     "path": "clips/3f23f801a0aa0732-97104456.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/40130df80e3f1efd-3df930e4.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/4017cb7f43d1d3a5-bea74725.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/405679e0a556b923-4c83d9ed.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/408ab535c166b5c1-81bf3802.mp3",
+     "size": 12852
+    },
+    {
+     "path": "clips/40f4d98d2ca1b20f-67101373.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/414a6296517d4f35-c6b922d9.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/415ee3ff26850921-2f7a1aab.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/41c949d9db53fda0-2bad1771.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/4207f70cb65e8208-7a5d827f.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/422646c5ff4f4910-3c144d9b.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/42625c34ad4ea2d3-e6ef8ec6.mp3",
+     "size": 12852
+    },
+    {
+     "path": "clips/42da29d99c299927-bb135bfe.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/4307a29afad6c131-b4879b5e.mp3",
+     "size": 21786
+    },
+    {
+     "path": "clips/4309f6e14e1bddb1-a49df7b4.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/430ac72a1c592c53-05933eaa.mp3",
+     "size": 4232
+    },
+    {
+     "path": "clips/43181eb599cebf4d-96ced7e6.mp3",
+     "size": 23667
+    },
+    {
+     "path": "clips/43259e8a57d11635-e1dbc40a.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/4387134784cf3aa4-ae2a28e4.mp3",
+     "size": 3291
+    },
+    {
+     "path": "clips/441927b50cc663dc-b42d8e4c.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/457dfb782d6dfd41-977155a5.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/45c156b089e56612-48382439.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/46c8dcb309ce9c26-93423ef5.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/47321309ef086700-a70fd4e2.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/473fd52c9feaa69f-cae3040c.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/47720275ad9e0297-c0367879.mp3",
+     "size": 23667
+    },
+    {
+     "path": "clips/47b8d2ea49d982b4-27b5758a.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/47f3dbeb1f4fe9ed-52c67888.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/493ac4fa9e1f546b-8826ddd2.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/49f29de1b59b4e69-09146149.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/4b0e9d75b19353e9-677a4d62.mp3",
+     "size": 14106
+    },
+    {
+     "path": "clips/4b2737b081691dda-cf5813f7.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/4b6274eac0421e68-33ecafb8.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/4b780ccc415e16f0-d6014d26.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/4bffb758afcb3c5a-ad943fc3.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/4c425fa96cc8e42e-9744f974.mp3",
+     "size": 21316
+    },
+    {
+     "path": "clips/4c7779243ccbe88d-7ca9683f.mp3",
+     "size": 10031
+    },
+    {
+     "path": "clips/4cbd54917b34c7a1-59464d8f.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/4cca8fb19ea5b569-9da084b7.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/4cce1c80a41a200d-6799f34e.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/4ce3d2fb9166bcfb-03d25522.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/4dfc060ca5c839f1-b97bbc56.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/4e90a54ef8df7bc0-0240fe92.mp3",
+     "size": 19748
+    },
+    {
+     "path": "clips/4ea38f4d4f3fb246-602522c8.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/4eada3b6094f370d-47dff2f0.mp3",
+     "size": 15360
+    },
+    {
+     "path": "clips/4eb335d7715b74a6-91f4daf4.mp3",
+     "size": 13792
+    },
+    {
+     "path": "clips/4f1602b7ddc3e516-cc2ca581.mp3",
+     "size": 21002
+    },
+    {
+     "path": "clips/4f929bf5e87b0214-2635ebd0.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/5044bc577378ed42-90ebda68.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/512232fcf0eb7bfc-000c27de.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/518e3912749b1558-97baefb5.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/51dfd4bee4f38439-18e3e97a.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/5287fb63d29e03af-f5b9727d.mp3",
+     "size": 18024
+    },
+    {
+     "path": "clips/52bdf378649205e7-fd776d21.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/5316da8e89ae1663-94bea63f.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/5319a8dacc146fc1-9179bb77.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/535f8ea45b300268-86a364c7.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/5365250c76b53bcc-4287965f.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/539ee888d72a4df2-21346bd3.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/53f5e01de025f633-d36896b1.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/545eba57c219b480-f1203cf2.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/54798da742e5eca0-f9a82e45.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/5484b02c91c20221-e5c5f15c.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/54ce664a5839bd7f-9afa0e95.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/54e03893fdc7030a-830c70a2.mp3",
+     "size": 23040
+    },
+    {
+     "path": "clips/54f62e947753629a-2205d07a.mp3",
+     "size": 21159
+    },
+    {
+     "path": "clips/551af071bfcf7f1f-77b5b928.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/552b06da1f220f29-45375159.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/55377dcc47e810fd-38f3b928.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/555acc9503a07e9f-4a6a18bb.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/5588e36a84c45c16-a69926df.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/559aea22c3538619-239ff43a.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/566bb8d83121808c-90873be3.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/5671a49bc748e4ea-3322f0da.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/56c07cda5f5eff08-50c30913.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/56e510b8d2bc0986-a77f9e16.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/56ff48cc76e4b5fa-f382a6ce.mp3",
+     "size": 21002
+    },
+    {
+     "path": "clips/5715dba19a8b8335-18af72c8.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/573c03af68fbf6bd-8d8f30de.mp3",
+     "size": 14263
+    },
+    {
+     "path": "clips/5741a09d003c0007-df64529e.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/578896b4e831796a-b2382629.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/58f6cc6a46dcfa56-b7f0442e.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/5a5594b0a75b78ca-31ae8e8c.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/5a8a1bf8827b41b7-8bbac1cf.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/5aa72227fa25cad2-fa5a856a.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/5ab66d377b235850-aa347a5d.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/5adc0fabcd73e099-dbfa99a4.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/5b1653bbe713a00d-8d80eb49.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/5b1f55077c1e6ec9-e85654dc.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/5b622ed956ca64ae-69f86b86.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/5bb1cb4b9188dcba-c6745830.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/5bc25c84112b02cd-2cc3e2c2.mp3",
+     "size": 14890
+    },
+    {
+     "path": "clips/5c6f4ac0bfcbd41c-005b1ec0.mp3",
+     "size": 21159
+    },
+    {
+     "path": "clips/5c77b88ad158e656-491fbe99.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/5c77cb85a1ffc925-eed0231d.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/5c8c10ce9b45da98-2ee64ddb.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/5cd1c45ed8e6aa73-48c71bd0.mp3",
+     "size": 20062
+    },
+    {
+     "path": "clips/5d19a0b1f9159941-fc21997b.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/5d615578be1af99b-5aa73460.mp3",
+     "size": 17868
+    },
+    {
+     "path": "clips/5d760065adc7a5fc-849254d4.mp3",
+     "size": 5329
+    },
+    {
+     "path": "clips/5d8e1535101be75c-961719cc.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/5d957472adf64e4e-6fe2fff1.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/5df7fa1f0489130a-724f2cac.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/5e309c0724fcdd5a-92a35701.mp3",
+     "size": 6583
+    },
+    {
+     "path": "clips/5e56038e6f1b9994-233cba58.mp3",
+     "size": 14106
+    },
+    {
+     "path": "clips/5e624ca4c234292b-af0fb5d5.mp3",
+     "size": 5015
+    },
+    {
+     "path": "clips/5ed86ef4f6fe6f0f-8136ea34.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/5ee5547d60e2b28d-7d9a839a.mp3",
+     "size": 20689
+    },
+    {
+     "path": "clips/5f5bad6ef0aa1090-1b9fea8f.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/5faace5f986e011c-58065105.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/6004420e5746e32f-86f47f6b.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/6029488e8054a525-9a220109.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/603d28cf1a9b0e83-004de57e.mp3",
+     "size": 18024
+    },
+    {
+     "path": "clips/603f3277b1a41e63-d75f335a.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/606f661a9cffef64-9184a6ea.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/60a7a2003bd25e99-fe4bd6ea.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/60bea5606aa8157b-a2b63b90.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/610b509095d7c52e-58981220.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/611e1e5e01ac107d-19ec9b93.mp3",
+     "size": 22726
+    },
+    {
+     "path": "clips/61c0da185af1ee42-659d8f0f.mp3",
+     "size": 22570
+    },
+    {
+     "path": "clips/62379af2412e0591-53275baa.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/62476bcc6cdd0d2f-24596974.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/631aaf4835dffad1-3a7ff88c.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/634ad3d0a027eea8-3e2ccb52.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/63a45254ee93b987-cf4b122d.mp3",
+     "size": 21943
+    },
+    {
+     "path": "clips/64348606af3ef592-f9e715a4.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/646753971d23b5d2-775aaf42.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/647e4cdc68de18bc-e57aea04.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/658054f514106f98-9ade811f.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/6595bd56a8aa57de-d4d838a3.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/65ace57d2b4b8038-3c6a4acb.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/65cfd7154e5600f3-b97b871b.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/67454d2e1b3230e1-ca830eda.mp3",
+     "size": 20689
+    },
+    {
+     "path": "clips/6760a618339da983-b80edf5a.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/67d4a84389bdb2f0-936e73da.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/682c9d46b07e4dd4-0b9d709c.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/68b5beeef93b6a81-3b67a147.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/69163f19600e3796-2f38733f.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/6927248b69302bec-ae80d13c.mp3",
+     "size": 4388
+    },
+    {
+     "path": "clips/697904a49f339884-59002b2f.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/6991cb47f8f8614e-7d8b5c40.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/69b7698c70f00904-871a7595.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/69d1a269050aea31-8ea42051.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/69ec22788d28f6b8-ef43777a.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/6b27b312648c8fca-99b1d26e.mp3",
+     "size": 24921
+    },
+    {
+     "path": "clips/6b51a91fd4e68b11-86dbef49.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/6bb5f694beb34859-cba51dbe.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/6bbffbe806f4fd7e-aada51e9.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/6bc1f8dd6a0650ff-1e0167d3.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/6c35fd8cb4a6a5e8-a3bc3945.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/6c3bdc0ff78462c2-aec3acd9.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/6c54362f532f16cb-7a4ba7eb.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/6c6b7e205fd99aec-cfc328a1.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/6ce7148a0a891710-89fe6239.mp3",
+     "size": 24137
+    },
+    {
+     "path": "clips/6ceedcd9b6f6e403-c5c4647e.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/6cf50d79010d610d-d55f4a70.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/6daa65e8711de1d7-56ac60d4.mp3",
+     "size": 5642
+    },
+    {
+     "path": "clips/6dfaf5b5a2ce4914-711ff5ca.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/6e174f343ee675da-75637cab.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/6e314befb0b07765-a7a7f2ff.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/6e63f1b3d1c3b1d7-55a4d2b8.mp3",
+     "size": 21472
+    },
+    {
+     "path": "clips/6ea503f4648599d9-d046e1a7.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/6f2ec3f7099abec6-ee34f83c.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/6f5a6034e770acbf-b9440a3c.mp3",
+     "size": 3134
+    },
+    {
+     "path": "clips/6f8860eb5103a16b-9c150433.mp3",
+     "size": 3761
+    },
+    {
+     "path": "clips/6f9b798301626529-303dc1d2.mp3",
+     "size": 5015
+    },
+    {
+     "path": "clips/6fd90aeff8f599b7-527f76ca.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/6ffcf6d911d62fd7-eefb2048.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/70690976dfa8b643-a33e3a03.mp3",
+     "size": 20689
+    },
+    {
+     "path": "clips/70cb494a5ad4733b-ceea1833.mp3",
+     "size": 5485
+    },
+    {
+     "path": "clips/70f5f24defa1dc44-8272867f.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/7117b8d8d2322f2b-d779c3a4.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/725bc5d6e1156888-de6bb36a.mp3",
+     "size": 22413
+    },
+    {
+     "path": "clips/7269e0e2eb724f29-103989aa.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/72820fa4812b4239-a1cb2d2b.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/72fa2bdfc3814a9e-0a97673c.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/72fa7b096a75d546-0483589c.mp3",
+     "size": 5485
+    },
+    {
+     "path": "clips/73014f95ba37e359-78e2243f.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/741b442582ee0d39-9e70c681.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/744b7fd78dae203a-7cadc311.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/7451f9e80987019c-c58f1d70.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/7465665101ee59d2-1b55994b.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/7468ba30c2c01c13-f6a3d05e.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/747f0f50aa917f07-27d9a192.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/74ae37b319527634-f9c3f6d0.mp3",
+     "size": 16614
+    },
+    {
+     "path": "clips/7506cd38a4463619-c40f4e41.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/7512fde7acf5cbb7-14d84557.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/751aa2e10f7e0ac2-e2bbd977.mp3",
+     "size": 5956
+    },
+    {
+     "path": "clips/7545905c2377fb96-e8ee65a3.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/75745738c70e74af-f916ddc8.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/75f073da96ae87ef-14c2f4e6.mp3",
+     "size": 6426
+    },
+    {
+     "path": "clips/763ce2794862dcec-8aa2dbd1.mp3",
+     "size": 20532
+    },
+    {
+     "path": "clips/7653a2aaa4c5ea2c-b390d88c.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/7686dcfa44da4439-655bff5b.mp3",
+     "size": 20532
+    },
+    {
+     "path": "clips/7694702cd839e494-aaf7b7e6.mp3",
+     "size": 5642
+    },
+    {
+     "path": "clips/76b52c74ad9f4ca4-a771ede9.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/76ba3cb0a296f157-4c1547f7.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/770c3e23eaccbd02-1d7a61c0.mp3",
+     "size": 21159
+    },
+    {
+     "path": "clips/770e607624d68926-04eaa479.mp3",
+     "size": 2508
+    },
+    {
+     "path": "clips/771bc753fd2c0f63-3843ef15.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/773f5395b6ba8a5c-fddf4053.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/7744f3ff644bec0e-da8c47c0.mp3",
+     "size": 7366
+    },
+    {
+     "path": "clips/7774f5ad3207c78f-f97c8324.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/77bc06c55d29ee3c-c8666876.mp3",
+     "size": 3448
+    },
+    {
+     "path": "clips/7892813ff4caa902-e47c163f.mp3",
+     "size": 21786
+    },
+    {
+     "path": "clips/78dbb45fd48d6909-ad32484b.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/7952e52c0ef6e89b-fc653e48.mp3",
+     "size": 23980
+    },
+    {
+     "path": "clips/7962e10cd9a0e2fd-ea50f185.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/7a4cdb662f2c1044-947e18ae.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/7b90390540275345-d9602e50.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/7c33677043efe3cc-954ce17e.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/7c3ac410866bc5ef-38c39635.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/7cbc60f953b17840-d5011164.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/7ce497fa40c9ce01-6bfe19d0.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/7d0da309db44ed78-23e92816.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/7d4d23c32225c669-aed1363d.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/7d7181ba99d70b13-02b6d224.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/7d944aa153da48cb-783ba5c7.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/7e12a3d8a72775a1-8b75cbb0.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/7e12d1ff40d952ab-4e945c5f.mp3",
+     "size": 21786
+    },
+    {
+     "path": "clips/7e59aa3f569daa5a-787f693f.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/7e6236fc6e25dc24-95f7bc80.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/7e881777d5d58188-1f47daa9.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/7ef5dceb65bbc3cc-8eab791d.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/7ef984cea5c3362a-e6fc8374.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/7f9271a485caf91f-dc0df4c9.mp3",
+     "size": 7210
+    },
+    {
+     "path": "clips/7fcc943a64744013-e0ba9c7a.mp3",
+     "size": 7366
+    },
+    {
+     "path": "clips/80853616f441d61c-57ccc21a.mp3",
+     "size": 18965
+    },
+    {
+     "path": "clips/80cdd4c2d01f6df1-42c30ec4.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/81331893b48be0db-50b5a992.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/8163a14098dae522-910103c8.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/816d7526b89abb89-c231ee76.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/81b0655cafd1ff8c-4d94ccde.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/81e79c1c85bf9c0e-f3b6bc1c.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/81ed82ca66c81c20-c07e7459.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/82a20947ca24f33c-25a61dba.mp3",
+     "size": 23980
+    },
+    {
+     "path": "clips/833e1cb6d11bbd9a-2d5d73ed.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/835762eb76457611-c99ab6ad.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/83949aadf189e79a-2613ec8d.mp3",
+     "size": 7210
+    },
+    {
+     "path": "clips/83c2408bcca21b99-b3395ac9.mp3",
+     "size": 20062
+    },
+    {
+     "path": "clips/84358a09eee582a7-2f32a68f.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/846d5589d58ba7ac-f21d8fc4.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/846e1b37073c25dc-1f1c4674.mp3",
+     "size": 21629
+    },
+    {
+     "path": "clips/84725b0592b69e6f-092bdbee.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/8477617a964a889e-34d72cd4.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/84a9fc38a06137e0-bea20bea.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/854bdd066bedf3ee-199e0a95.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/85510502ce0d53ef-40fe7c0b.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/855e59088e3eac17-02a25958.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/859208bfb9091e48-8a04d9b2.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/874b0fb12602b7f3-21939272.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/876c0361147814aa-fce17adb.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/878331e0eee19592-9f39355e.mp3",
+     "size": 28525
+    },
+    {
+     "path": "clips/878945fbd8883494-09385872.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/87b76aa88f253ff8-d2db7b59.mp3",
+     "size": 22413
+    },
+    {
+     "path": "clips/87b7817da0ebfa29-4a76ac00.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/88903939738130d0-02644672.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/898e68f89acd477a-dd31cd45.mp3",
+     "size": 21943
+    },
+    {
+     "path": "clips/89b7fcf28e899ad1-5c07409e.mp3",
+     "size": 19748
+    },
+    {
+     "path": "clips/8a14fdd9d97bce98-6af6ef3c.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/8a1887f3de336bae-52037e7b.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/8a1ec6674ce339e4-33c4a597.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/8a72500885965748-7f5aae8b.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/8a798890fe938171-464a36b8.mp3",
+     "size": 3134
+    },
+    {
+     "path": "clips/8aed86196ca4e6db-93263d17.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/8b0f28990966b394-3d3b018f.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/8b653a59575d6214-b8240ec8.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/8b77152df157cfad-6277e8e4.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/8b9355ddbc4d1067-bd7f35b8.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/8ba973ed5ef37e88-95085087.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/8bbfd74153e0701e-a97e7e5f.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/8c3bae94d2ccff33-60a2b3d0.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/8c7011366f815d43-864271cb.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/8ca89c962a550c52-f0da7524.mp3",
+     "size": 3918
+    },
+    {
+     "path": "clips/8cd344a7e95a1590-fc735a32.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/8ceaa48672a82d1b-1c724b1d.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/8d3751cb3808a1b8-7e83337d.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/8d3f1fcb05059f6a-ba904d3b.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/8e573098d47a5c89-f189631e.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/8e5aa3cf515db088-c7aa6c2b.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/8e85bdf203410747-cf06f7a5.mp3",
+     "size": 5329
+    },
+    {
+     "path": "clips/8ea6ca6a53777b28-acee270d.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/8edc4e70558c83ce-8c3c4c8e.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/8f14db6aa4b1feec-05bfe4d5.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/90cdc74e68bf5631-226defe2.mp3",
+     "size": 10031
+    },
+    {
+     "path": "clips/916f33fffd4e355f-f2681644.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/91b097805766c265-fe852451.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/91dc5386c3e58342-db84f03a.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/92626b27c3d9e762-06e684c6.mp3",
+     "size": 22883
+    },
+    {
+     "path": "clips/92c5296c92d6ede6-c5982969.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/934daf9a469eb643-aa9ccdbc.mp3",
+     "size": 25391
+    },
+    {
+     "path": "clips/9378a0c4c8737af0-b8f67055.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/93acbfb7497bd772-0ae72194.mp3",
+     "size": 17868
+    },
+    {
+     "path": "clips/940c73c7fcf16df7-55984796.mp3",
+     "size": 21786
+    },
+    {
+     "path": "clips/94f77674969542c0-ace4bb4c.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/9571791baecd63df-4297ac73.mp3",
+     "size": 6269
+    },
+    {
+     "path": "clips/95b9ab3ca18cd7da-e02a6717.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/9640bf057699e290-e131621d.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/965b1aafa181a7fe-d267f879.mp3",
+     "size": 27272
+    },
+    {
+     "path": "clips/96a39ea1f6e6f46e-e1d7db9e.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/96c4237a886b32f0-091ce810.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/96ed315480f001c3-0184acd6.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/96f1ec040f513f75-81fab2b9.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/9716c69764c76744-87358260.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/972cd02822620ff7-73bead1f.mp3",
+     "size": 20375
+    },
+    {
+     "path": "clips/97a66bb7b794fb7b-4545cff6.mp3",
+     "size": 18965
+    },
+    {
+     "path": "clips/97d1d5879461ac6d-c316599f.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/983e745a0cba86bc-5ee5cde1.mp3",
+     "size": 28212
+    },
+    {
+     "path": "clips/9887f8305eefa3c8-80559dc6.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/98d288a6d2e79a40-24d25ebe.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/9918955777a19c3c-b45fb87c.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/99832ab872347b17-e3704d99.mp3",
+     "size": 27115
+    },
+    {
+     "path": "clips/9a97ce802cae3191-60ab82e3.mp3",
+     "size": 19748
+    },
+    {
+     "path": "clips/9b3817190d7faebb-bd6687d3.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/9b4ce968a3d9e063-214b619e.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/9c051da63f86e4f6-af2d8b0f.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/9c5a059c7e2d00db-a1a81783.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/9c6e3b5c64ea96e7-dbff6fc8.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/9c79b6bdcbc9fcc1-3dd34917.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/9ce072dfd28a4011-3ae430a5.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/9d98d33ebc824aed-45346dc8.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/9da15654ab653513-c4c03df1.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/9e7477e4d70d9f2c-ca5d1da6.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/9ed898f51a90e155-7df658f4.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/9f0b97d8d6639808-e6c30187.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/9f2b0759f56180ce-b736706d.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/9f6bd59b0e83fe32-b5849ecb.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/9fa9fe8293cecf34-98315858.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/9fb63f5a77dd2b31-be9df5b4.mp3",
+     "size": 10658
+    },
+    {
+     "path": "clips/a014f4a196ad68a6-7ae1e2e1.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/a02ff48d15b744ce-58f93669.mp3",
+     "size": 6426
+    },
+    {
+     "path": "clips/a07a4e069e642b87-31927f55.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/a0a54972852ea47a-49cb5306.mp3",
+     "size": 13322
+    },
+    {
+     "path": "clips/a0a833295759c2d7-dca9b4a1.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/a0b512053219ccd9-148c458c.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/a0dbb93247c3c7b5-d7ebb98f.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/a0e58cb4f250a4fb-c0d1b65f.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/a120ca02112c498a-7cd53799.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/a1927e62dc3e7896-83a2663b.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/a1a5a172c2bc38be-e9832853.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/a21c98d0f1843d1c-93b407a9.mp3",
+     "size": 6112
+    },
+    {
+     "path": "clips/a233e275441dcabb-40f88f52.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/a2f708934a2bbed5-58236ff9.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/a307152f9f909a03-a8793053.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/a34255285db9b64a-ea1852f0.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/a3c37b4849534242-e78a0e5a.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/a3e6a4460bd245ae-a1846d30.mp3",
+     "size": 21629
+    },
+    {
+     "path": "clips/a4263ce19496fa5f-dc45bb60.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/a46a256d62ef15f0-01bd840f.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/a54bf94f59c22951-1fb2b4dc.mp3",
+     "size": 4859
+    },
+    {
+     "path": "clips/a5a9b0ecf6b04f08-b8da3cc6.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/a724f0b7ad2853ee-0858e885.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/a769a5edc5c5276f-a2ff3e31.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/a76f7d2b02beb899-1288e2c8.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/a79bc4dcdde929bd-847d0770.mp3",
+     "size": 28369
+    },
+    {
+     "path": "clips/a7a676f06c085cb1-a402e5a9.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/a7d765d354da94a7-ec7f6f33.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/a829d27586bd4f62-c546fd2a.mp3",
+     "size": 20375
+    },
+    {
+     "path": "clips/a82dc8ed0426f512-760de946.mp3",
+     "size": 4702
+    },
+    {
+     "path": "clips/a87353e217c394ec-0119113d.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/a8b10e942765fa64-5dd4050f.mp3",
+     "size": 6896
+    },
+    {
+     "path": "clips/a8e0f74a6cb51a71-89836700.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/a92aa86ad7f26c11-0213f1d0.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/a95b1b37ef3afd14-87e8defd.mp3",
+     "size": 21159
+    },
+    {
+     "path": "clips/a9aaeea7ccc7ce78-c4878398.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/a9b4596c5227e7ce-835a216e.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/a9fe915fffda17e4-84016e39.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/aa4f38fe4cc83be6-085e7990.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/aa517858f22ba78f-27b09dee.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/aa7abd86aea34b6e-0ded8011.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/ab1925486b61ce7a-b53cde66.mp3",
+     "size": 23667
+    },
+    {
+     "path": "clips/ab81c95a3a38894d-657ed411.mp3",
+     "size": 19435
+    },
+    {
+     "path": "clips/abb79d75eea99203-28821f92.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/ac3d1957ed04c0fc-2c96cf0b.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/ac5b8be67ebf6829-9ba2c97e.mp3",
+     "size": 6112
+    },
+    {
+     "path": "clips/acc6ec9f212ad82b-4a28be45.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/ace1886903aaac61-d86de5f5.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/ad0367d8f8e13902-1ba82e4a.mp3",
+     "size": 14419
+    },
+    {
+     "path": "clips/ad51964d02d7968c-11ed2fa2.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/ad9aeb6312deb13d-e9e96fb0.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/ad9cc71130bb81cc-42df3c11.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/ada7506adebf143c-5efc28f3.mp3",
+     "size": 21472
+    },
+    {
+     "path": "clips/adb0625fb0a22ae1-9170c133.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/ae37428dadeb5c12-5693ec61.mp3",
+     "size": 18181
+    },
+    {
+     "path": "clips/ae8c9349bf787215-ab1e65ef.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/af1e606ca663a547-021615e9.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/af5761eb252223f7-cf20918c.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/afc8189e31ad5935-cfa16385.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/afc99ae4fd068ddb-52f4ed37.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/affc3663e3270db4-0a628dc4.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/b023614c873816ff-69b41875.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/b06d45960003ae8d-6d1f9a2b.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/b0915d752941e1fd-a2265577.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/b0fadfcc5aefb334-69942240.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/b10935f54f02e3b9-c331284b.mp3",
+     "size": 18024
+    },
+    {
+     "path": "clips/b11f0ccd954cf5eb-e0a630ca.mp3",
+     "size": 21786
+    },
+    {
+     "path": "clips/b14f2eae147b030c-57d3c962.mp3",
+     "size": 31347
+    },
+    {
+     "path": "clips/b18b93ef8fec0cf6-a2bf2efa.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/b219544190590ab4-dd4022a8.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/b23f473cd677f580-7054bc01.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/b2c449a6636e3031-3572783b.mp3",
+     "size": 5642
+    },
+    {
+     "path": "clips/b2dd0db2833b26b0-fc47c5e3.mp3",
+     "size": 7210
+    },
+    {
+     "path": "clips/b32e16d6bee6f6ba-9481c958.mp3",
+     "size": 22726
+    },
+    {
+     "path": "clips/b348371f8cfa4981-184c4aab.mp3",
+     "size": 14890
+    },
+    {
+     "path": "clips/b3547860945dbaaa-44a13a02.mp3",
+     "size": 14263
+    },
+    {
+     "path": "clips/b48a3b633369554f-1d5e0b82.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/b492faf719f3f3db-c408aa8b.mp3",
+     "size": 19592
+    },
+    {
+     "path": "clips/b4acb58dadc1b5f2-7a069a92.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/b4e4e326dc1155c7-9c4ad0f4.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/b4ed80e758c122b2-ea3f5918.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/b546cedd24131574-fe170164.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/b5989716c0bbcc39-062410a4.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/b646d852069406d3-1b515060.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/b764d66790129a1e-687d88f7.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/b83b0f71e84f4e2e-cd4f286b.mp3",
+     "size": 21002
+    },
+    {
+     "path": "clips/b84778eb7276283d-070a8722.mp3",
+     "size": 5329
+    },
+    {
+     "path": "clips/b907b80b13257fee-76df6930.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/bb1423879b3297e4-4f30d14b.mp3",
+     "size": 4545
+    },
+    {
+     "path": "clips/bb1d1e2c76f99924-7f58ac2c.mp3",
+     "size": 23510
+    },
+    {
+     "path": "clips/bb39e7eab9dcf8e2-d10e0370.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/bb7b64fab5c0a364-f6c38460.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/bb891b3220178e16-0638daf3.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/bbae26c1c653a6ec-841deed0.mp3",
+     "size": 24764
+    },
+    {
+     "path": "clips/bbfe6fe2d14d546a-f841447f.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/bc8f2a2f2da64e20-1cb78772.mp3",
+     "size": 19748
+    },
+    {
+     "path": "clips/bc90e237642228b4-df138351.mp3",
+     "size": 24294
+    },
+    {
+     "path": "clips/bd215b00b4743665-ef07263b.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/bd4202e434f91f77-4a9af095.mp3",
+     "size": 3761
+    },
+    {
+     "path": "clips/bda2627c64224d79-4ed76661.mp3",
+     "size": 18494
+    },
+    {
+     "path": "clips/bdad6c80948a529f-0761f62a.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/be58be075b9af624-652adb92.mp3",
+     "size": 27585
+    },
+    {
+     "path": "clips/be75977763cfb583-be7f4a8b.mp3",
+     "size": 16927
+    },
+    {
+     "path": "clips/bea7af66a94d6330-2e6ba395.mp3",
+     "size": 10971
+    },
+    {
+     "path": "clips/beb05fefbf436918-bd407d15.mp3",
+     "size": 21316
+    },
+    {
+     "path": "clips/bebf08c284894b0d-0a1e2db8.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/bec6837fdea64dec-5cdd78dc.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/bee83a5f6b9d396b-e3519c25.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/beed1bec70c16ffe-89232e44.mp3",
+     "size": 13792
+    },
+    {
+     "path": "clips/bf1db59f8bf36390-bc48ead6.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/bf23479da298b640-93e97bfa.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/bf6e0ae6d64431ed-8f5fc638.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/c01c07e629fae6e4-11496b8e.mp3",
+     "size": 20219
+    },
+    {
+     "path": "clips/c0257b5aa0329e76-0f295cf9.mp3",
+     "size": 6112
+    },
+    {
+     "path": "clips/c07e650c6a65c294-3b62485a.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/c16fd71683537303-8d8c7008.mp3",
+     "size": 7053
+    },
+    {
+     "path": "clips/c1a6a78f1502cf4c-db8ed265.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/c1ad72d5a664edfc-5738ca76.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/c1b1a6880335b06d-f78e6431.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/c1c204d4219578e1-93c95ae9.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/c1dfa9e63a0d32bb-e5563031.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/c25f57ad90b4bb2d-0c96eaca.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/c27b51aebe404542-d40d6101.mp3",
+     "size": 6896
+    },
+    {
+     "path": "clips/c351e277cbe614b3-9f34416d.mp3",
+     "size": 12382
+    },
+    {
+     "path": "clips/c41db2fb76da254c-227ec008.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/c4350a9c67583b55-5587e63c.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/c497249ec614f126-2e74a7bb.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/c4bd48bc30e5b3d7-f6c407bb.mp3",
+     "size": 15360
+    },
+    {
+     "path": "clips/c534a351623fc632-cd61186d.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/c5e761b8cfcdb8b9-4ecd718e.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/c77b2844e5076563-821b46e9.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/c7836b5d37c81b2e-873df124.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/c7e76aa3df0c63e4-cdc128fc.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/c87680c678fc8dae-31501db5.mp3",
+     "size": 17868
+    },
+    {
+     "path": "clips/c89cfa6c1bc70ec6-f173dbe6.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/c90a89ed96acfd7c-751bc6de.mp3",
+     "size": 5799
+    },
+    {
+     "path": "clips/c931b35c0b35e82f-00d3b28e.mp3",
+     "size": 9404
+    },
+    {
+     "path": "clips/c94ba9b513c2eee2-62dff614.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/c9523bede3ce10d5-4adc7d29.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/c9f95cef59990ec9-516e1348.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/ca17948da21b565b-11d9cf63.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/ca3873263e7c607a-535d4263.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/caa91cc13e1c8e47-bb86e29c.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/cb6b1c0bac6964c8-84a8443f.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/cbcea03df93d8594-4cdcebf0.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/cbcf48cfaae5e1dc-906ba970.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/ccb1d1e76c547ed1-1eff767c.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/ccb40a621af38350-7f305f63.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/ccb8ae9dea9ffaf5-73625bf5.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/cccbd54b752aca62-a6dd17ae.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/cd1bd56a5459061c-9f6afd1e.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/cd719d0ddc88cc59-763386ef.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/cdbff160b3f54ea5-d3380656.mp3",
+     "size": 21472
+    },
+    {
+     "path": "clips/ce18f4374679c4eb-0e8d08f3.mp3",
+     "size": 17711
+    },
+    {
+     "path": "clips/ce1cde5b08d0f7c0-2760ac69.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/cf9e9bbf6d478e54-03b816a6.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/d0156f7aca2632b2-11b5c1e3.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/d06619a4484cc2de-d1d5ae1f.mp3",
+     "size": 25234
+    },
+    {
+     "path": "clips/d066ad7e79b84fa9-d33d0706.mp3",
+     "size": 39027
+    },
+    {
+     "path": "clips/d08f106e8e015d05-58d2675b.mp3",
+     "size": 17868
+    },
+    {
+     "path": "clips/d0dcd1f0b3b7144a-5076e41a.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/d167c2fe2360d4ac-3ad7796e.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/d2829f40c4da3c18-e8936519.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/d29893c0278aac96-6daefaf7.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/d2c84cb6308576b3-7177c896.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/d2d806e799d891bf-3aa3f1a4.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/d3952b3126bf7ac9-0c7d90dd.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/d3cc2722b476fb23-cfef202a.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/d43994d3110c4bf3-e9b3886d.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/d4d74145306f00d3-954ee27a.mp3",
+     "size": 23667
+    },
+    {
+     "path": "clips/d4e5a58ac99b4989-667db262.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/d4ed188cdeb274a1-7d11b156.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/d503f1271285d0f8-c6533229.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/d6a154c28027995b-d026e73f.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/d6b27424ff64953b-9a4d0d7b.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/d6c074f9d38d46a4-d26b8db7.mp3",
+     "size": 8620
+    },
+    {
+     "path": "clips/d717bfca660c3159-5872f3bf.mp3",
+     "size": 20219
+    },
+    {
+     "path": "clips/d762dc266bb7c16f-b654aba9.mp3",
+     "size": 5956
+    },
+    {
+     "path": "clips/d76bd0ca1eff9329-ab5ac778.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/d771ad6913af98ca-1cff1772.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/d7744c66d648a0c0-c3c7d53f.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/d79f29b7f5264a78-f38184f9.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/d80351ad3a96dad8-86fd619c.mp3",
+     "size": 24764
+    },
+    {
+     "path": "clips/d868ddbd354c634b-4102ba1e.mp3",
+     "size": 21943
+    },
+    {
+     "path": "clips/d8fce51cbb65daf9-096ced8e.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/d9a8eaf17e72b1fb-3d6dfcba.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/d9a9ff1f8dcc090e-e82f5727.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/d9ed786bd674a0aa-260dd0fc.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/da4e2aecd00b8786-2a8e9d40.mp3",
+     "size": 4545
+    },
+    {
+     "path": "clips/da732c2f76e3148b-70cea5b8.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/da766afe4e90e17b-5e2a8c40.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/daf73fd44a2285ac-1cb1ac83.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/dafa854e437d9a22-30a6e686.mp3",
+     "size": 22099
+    },
+    {
+     "path": "clips/db57732b871a9609-6264e58c.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/dbce18c8c0fbc07a-4dd3f220.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/dbed06b61432229b-66f0bb54.mp3",
+     "size": 19121
+    },
+    {
+     "path": "clips/dbf909e4bbeceb21-81b159db.mp3",
+     "size": 30720
+    },
+    {
+     "path": "clips/dc4692c22455298a-2f65ecd9.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/dcd472f33b35fa04-6381e3c5.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/dd539f34cd7d81a5-58ddccfe.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/dd71370540327e52-245ca1de.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/dd7584a4b64bee9c-8f065cc9.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/dd9dac470c448ecc-8e0a393b.mp3",
+     "size": 19905
+    },
+    {
+     "path": "clips/ddb433aef7dcd14e-c365fdbe.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/ddc4d8f8570237a3-9f445956.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/ddc674d4f991f185-9c53a6f0.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/de321069bbeabdd5-bf1f9d93.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/de33d0ea2e903dce-0b38d1ae.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/de7931c38da3b472-3a8f6ec6.mp3",
+     "size": 11441
+    },
+    {
+     "path": "clips/de876813872d20be-58482fea.mp3",
+     "size": 13636
+    },
+    {
+     "path": "clips/df1b93496736f969-eda5859b.mp3",
+     "size": 21159
+    },
+    {
+     "path": "clips/df8fe0d823706847-239d5f4e.mp3",
+     "size": 31974
+    },
+    {
+     "path": "clips/e09dc0734af1c7ab-d8c44194.mp3",
+     "size": 10501
+    },
+    {
+     "path": "clips/e13ad96eafffd6c2-90a7df45.mp3",
+     "size": 22883
+    },
+    {
+     "path": "clips/e1794ac25277685d-059782e7.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/e1e1762649bd3faf-2598ca25.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/e25d4c822f35ca1a-edfb089a.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/e3b5acb3776ca8e8-3ea8e964.mp3",
+     "size": 16457
+    },
+    {
+     "path": "clips/e3e7e231aa62dd43-72afbba5.mp3",
+     "size": 12695
+    },
+    {
+     "path": "clips/e40db7b6e812a628-43f4bf2b.mp3",
+     "size": 23040
+    },
+    {
+     "path": "clips/e43ff959930f5be1-2ef5bad7.mp3",
+     "size": 25704
+    },
+    {
+     "path": "clips/e45f54b75a24547e-75cccd36.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/e46c039fa03fe30f-c4aeefc8.mp3",
+     "size": 18965
+    },
+    {
+     "path": "clips/e48753f0d0c17cbd-761de276.mp3",
+     "size": 13479
+    },
+    {
+     "path": "clips/e49ae70c0ecc0d68-84bc5b1d.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/e49f49fe6a7f154e-52f8245b.mp3",
+     "size": 17868
+    },
+    {
+     "path": "clips/e5308eb089f6fb11-b4f1d0e2.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/e5b0726c6a985947-9df64fc8.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/e5c14a8e3e01cfdb-06e8df49.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/e61a645c5f20d051-aaa9a1fc.mp3",
+     "size": 24764
+    },
+    {
+     "path": "clips/e6c0598ead0d679f-3451f310.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/e6f6dbdb84b722b0-ee94f5ce.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/e874c714c94911bc-09e9daff.mp3",
+     "size": 12852
+    },
+    {
+     "path": "clips/e8885e841a09be68-5440f4a8.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/e88ed98c4cef153a-979f487c.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/e8a23903a2346c13-435de18a.mp3",
+     "size": 22726
+    },
+    {
+     "path": "clips/e8b19cc3c3e738d0-e189537f.mp3",
+     "size": 28839
+    },
+    {
+     "path": "clips/e8d4b98c78513280-2003e227.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/e982ea026901bb0b-812e153e.mp3",
+     "size": 11441
+    },
+    {
+     "path": "clips/e989ab880df02608-439bd3ac.mp3",
+     "size": 4545
+    },
+    {
+     "path": "clips/e9de0bc96048efe3-f28b1010.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/ea1208881d923377-265f3732.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/ea58e22b01139814-65778a6f.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/eaa29c687cd22ece-da1f51ef.mp3",
+     "size": 12225
+    },
+    {
+     "path": "clips/eac17e7b3539cfdb-3112fce2.mp3",
+     "size": 18808
+    },
+    {
+     "path": "clips/eae60b0afbb49b75-a9f61652.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/eb658384da543d4a-0ba65789.mp3",
+     "size": 8934
+    },
+    {
+     "path": "clips/eb72b0e4cbefaf84-2d96d7eb.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/eb8ff72392449ea3-e78d99c8.mp3",
+     "size": 13165
+    },
+    {
+     "path": "clips/eb92835969292ba6-773d067c.mp3",
+     "size": 6112
+    },
+    {
+     "path": "clips/ec1a2c31c39b3846-fb49e195.mp3",
+     "size": 17084
+    },
+    {
+     "path": "clips/ec557d12b04af395-ae2af358.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/ec85bac4f331f1fc-ab97bb28.mp3",
+     "size": 7680
+    },
+    {
+     "path": "clips/ecd445030bf68221-ab8665aa.mp3",
+     "size": 18338
+    },
+    {
+     "path": "clips/ed1fbdc9c7851933-c1e1c0de.mp3",
+     "size": 32130
+    },
+    {
+     "path": "clips/ed20b8dd872e8ad3-bd9cefdc.mp3",
+     "size": 14733
+    },
+    {
+     "path": "clips/ed3371ef15442f5e-0e965450.mp3",
+     "size": 13949
+    },
+    {
+     "path": "clips/ed7e6d056b37871e-b64bb59f.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/ee20c4cb1528a823-e98660e8.mp3",
+     "size": 13009
+    },
+    {
+     "path": "clips/ee4d7324f582ecea-d14e87ff.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/ee51e9107c85e1a1-543d68c8.mp3",
+     "size": 20689
+    },
+    {
+     "path": "clips/ee5222c65d6d6e3e-3dd35ca4.mp3",
+     "size": 11755
+    },
+    {
+     "path": "clips/ee62adfbafa83516-e2454304.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/ef060bbe91bacebf-15f02c7d.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/ef586c4cb2ddd290-649ea9b7.mp3",
+     "size": 24607
+    },
+    {
+     "path": "clips/ef85e772d04eef4c-b58a38d4.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/ef9d017b1ad9ca8d-b6b4f607.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/efbbc5191fcb4874-79cb0803.mp3",
+     "size": 11441
+    },
+    {
+     "path": "clips/efda9f0c86a33e19-e7f95091.mp3",
+     "size": 11285
+    },
+    {
+     "path": "clips/f00ab3608b11def0-7f39cec0.mp3",
+     "size": 15046
+    },
+    {
+     "path": "clips/f020285a76d5a55e-c52487e4.mp3",
+     "size": 9247
+    },
+    {
+     "path": "clips/f02a9617a4d31036-851fc6a6.mp3",
+     "size": 16770
+    },
+    {
+     "path": "clips/f0e6b5a91c2f2a26-823c17c5.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/f10eb69ac0875421-4ee74d50.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/f11e7229cbbd159b-44d9e1e5.mp3",
+     "size": 10344
+    },
+    {
+     "path": "clips/f17906c6b59d0dd1-52956086.mp3",
+     "size": 9717
+    },
+    {
+     "path": "clips/f184f61705396eb2-29f25ae7.mp3",
+     "size": 12068
+    },
+    {
+     "path": "clips/f1cc274168b8bdf9-18888a1a.mp3",
+     "size": 17397
+    },
+    {
+     "path": "clips/f1e0c1b3f0591f6a-bd236ddc.mp3",
+     "size": 11441
+    },
+    {
+     "path": "clips/f21a7401ede2ff36-25cb1b6b.mp3",
+     "size": 15673
+    },
+    {
+     "path": "clips/f22bb30082b2825f-1724acb1.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/f263e3719a120bed-9ded4f6b.mp3",
+     "size": 18651
+    },
+    {
+     "path": "clips/f27bd301da4d7c01-96fc8bb5.mp3",
+     "size": 9561
+    },
+    {
+     "path": "clips/f34993d75e110630-3e84e980.mp3",
+     "size": 23823
+    },
+    {
+     "path": "clips/f3d19aac802ed38a-c8b6c1dd.mp3",
+     "size": 18024
+    },
+    {
+     "path": "clips/f3f1bf4e54915802-4be8daec.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/f44e0bb570cb438d-62e8daae.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/f4633b162849bc4b-a10ff5e7.mp3",
+     "size": 7836
+    },
+    {
+     "path": "clips/f46873d8b035a07c-c663f8e8.mp3",
+     "size": 10814
+    },
+    {
+     "path": "clips/f49389ac39abdeee-c2e352f2.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/f5491e1a0c70a44f-afff3fae.mp3",
+     "size": 20375
+    },
+    {
+     "path": "clips/f5c88b3a107b42fa-a780721e.mp3",
+     "size": 10188
+    },
+    {
+     "path": "clips/f697d53b1069ad61-e61406f8.mp3",
+     "size": 7523
+    },
+    {
+     "path": "clips/f6ceb4563f6f1e54-776ee2c6.mp3",
+     "size": 16300
+    },
+    {
+     "path": "clips/f6d7947098071aa9-af1c29bf.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/f70a96d7499ba0db-2986b197.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/f70fd1285f774504-fef616a0.mp3",
+     "size": 8307
+    },
+    {
+     "path": "clips/f731bf010320c58c-cd1242a2.mp3",
+     "size": 23353
+    },
+    {
+     "path": "clips/f7336ccac20a6ebb-268641ae.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/f7475b0f0f2e8fa6-3d37b1b4.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/f785f4811d888d24-b4e9aeee.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/f83564dcfebe6322-3598359a.mp3",
+     "size": 8463
+    },
+    {
+     "path": "clips/f91243919117ed94-d79bbad3.mp3",
+     "size": 6112
+    },
+    {
+     "path": "clips/f94652b5cc3a6b81-17af5816.mp3",
+     "size": 27899
+    },
+    {
+     "path": "clips/f96297c742601f77-224dbde8.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/f96f5d4cba880732-fa3b4b0f.mp3",
+     "size": 14576
+    },
+    {
+     "path": "clips/fa0c45faa9bee7ed-5a40e371.mp3",
+     "size": 12539
+    },
+    {
+     "path": "clips/fa4a60a0d78dacec-26a1dc58.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/fa572865d1f993f3-210dbb3a.mp3",
+     "size": 11912
+    },
+    {
+     "path": "clips/fa95bcaf6cfbbb7c-2efb52d4.mp3",
+     "size": 12852
+    },
+    {
+     "path": "clips/faa59c5324efbc70-9a0a7563.mp3",
+     "size": 11128
+    },
+    {
+     "path": "clips/fabdf0f396535705-5f59a609.mp3",
+     "size": 16143
+    },
+    {
+     "path": "clips/fadec4996786bd5e-e92d9e15.mp3",
+     "size": 17554
+    },
+    {
+     "path": "clips/fb099729367d2f25-108fbb00.mp3",
+     "size": 19278
+    },
+    {
+     "path": "clips/fb42146837519d67-cfebdbc7.mp3",
+     "size": 23980
+    },
+    {
+     "path": "clips/fb45f757863df242-d0e941b9.mp3",
+     "size": 6739
+    },
+    {
+     "path": "clips/fbc64d429c2e526f-5faaf9d9.mp3",
+     "size": 7993
+    },
+    {
+     "path": "clips/fc6b5394417d58fc-650d473f.mp3",
+     "size": 11598
+    },
+    {
+     "path": "clips/fcd752848f54d732-5779a37f.mp3",
+     "size": 28212
+    },
+    {
+     "path": "clips/fce11db1971f1e58-f5914d1a.mp3",
+     "size": 34168
+    },
+    {
+     "path": "clips/fcf792f143dc8b21-090a6e0d.mp3",
+     "size": 15987
+    },
+    {
+     "path": "clips/fd1b05f4122e966c-5b712c7c.mp3",
+     "size": 17241
+    },
+    {
+     "path": "clips/fd823c83af1e02b2-8aac02e3.mp3",
+     "size": 9874
+    },
+    {
+     "path": "clips/fdfa4f12e24dd8a6-bc4e40a1.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/fe2eebbf5b5ef3b4-e7b35274.mp3",
+     "size": 9090
+    },
+    {
+     "path": "clips/fe3e8f636581c7d2-c54e5153.mp3",
+     "size": 8150
+    },
+    {
+     "path": "clips/ff1ac554db03bec2-27285b92.mp3",
+     "size": 8777
+    },
+    {
+     "path": "clips/ff211bd84db533ce-5ed89e5d.mp3",
+     "size": 15516
+    },
+    {
+     "path": "clips/ff57a07d72d103b6-de6fde0c.mp3",
+     "size": 15203
+    },
+    {
+     "path": "clips/ffc3a580ed2bf1bc-8d6dfc3a.mp3",
+     "size": 15830
+    },
+    {
+     "path": "clips/ffec4c665b181e35-5f8aba2f.mp3",
+     "size": 15673
+    },
+    {
+     "path": "index.json",
+     "size": 440222
+    },
+    {
+     "path": "lines.json",
+     "size": 200281
+    }
+   ]
+  },
+  {
+   "id": "crew",
+   "title": "Artemis II crew audio",
+   "required": false,
+   "file": "outpost-luna-v2-crew.tar",
+   "url": "https://www.dropbox.com/scl/fi/qtov3tuekvl0t0eh6cqz1/outpost-luna-v2-crew.tar?rlkey=h93fihp4a4xxxduuwpfeilh8r&dl=1",
+   "sha256": "69af856b62ecca8638ffa8086d8b6d8cfa5872321829a25601ffdeac1d0f6379",
+   "size": 175360000,
+   "unpacked_size": 175301358,
+   "n_files": 76,
+   "env": "MEDIA_AUDIO_DIR",
+   "subdir": "",
+   "licence": [
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "NOTICE",
+     "size": 290
+    },
+    {
+     "path": "audio/art002a000005-ck-swampcolors.mp3",
+     "size": 1092274
+    },
+    {
+     "path": "audio/art002a000005-ck-vg-relief-color-audio.mp3",
+     "size": 451296
+    },
+    {
+     "path": "audio/art002a000005.mp3",
+     "size": 4595877
+    },
+    {
+     "path": "audio/art002a000006.mp3",
+     "size": 3923828
+    },
+    {
+     "path": "audio/art002a000007.mp3",
+     "size": 1376604
+    },
+    {
+     "path": "audio/art002a000008.mp3",
+     "size": 6237327
+    },
+    {
+     "path": "audio/art002a000009.mp3",
+     "size": 3563244
+    },
+    {
+     "path": "audio/art002a000010.mp3",
+     "size": 928765
+    },
+    {
+     "path": "audio/art002a000011-ck-sobeautiful-final.mp3",
+     "size": 938724
+    },
+    {
+     "path": "audio/art002a000011.mp3",
+     "size": 2403525
+    },
+    {
+     "path": "audio/art002a000012.mp3",
+     "size": 2333344
+    },
+    {
+     "path": "audio/art002a000013.mp3",
+     "size": 1911282
+    },
+    {
+     "path": "audio/art002a000014.mp3",
+     "size": 485431
+    },
+    {
+     "path": "audio/art002a000015-omg-stop-it.mp3",
+     "size": 315327
+    },
+    {
+     "path": "audio/art002a000015.mp3",
+     "size": 2331174
+    },
+    {
+     "path": "audio/art002a000016.mp3",
+     "size": 1703052
+    },
+    {
+     "path": "audio/art002a000017.mp3",
+     "size": 7836590
+    },
+    {
+     "path": "audio/art002a000018.mp3",
+     "size": 3474410
+    },
+    {
+     "path": "audio/art002a000019-reid-geologist.mp3",
+     "size": 359840
+    },
+    {
+     "path": "audio/art002a000019.mp3",
+     "size": 2812276
+    },
+    {
+     "path": "audio/art002a000020.mp3",
+     "size": 2936979
+    },
+    {
+     "path": "audio/art002a000021.mp3",
+     "size": 2721854
+    },
+    {
+     "path": "audio/art002a000022.mp3",
+     "size": 1727242
+    },
+    {
+     "path": "audio/art002a000023.mp3",
+     "size": 5797844
+    },
+    {
+     "path": "audio/art002a000024-clipped.mp3",
+     "size": 257893
+    },
+    {
+     "path": "audio/art002a000024.mp3",
+     "size": 6812177
+    },
+    {
+     "path": "audio/art002a000025-reid-tourist.mp3",
+     "size": 969973
+    },
+    {
+     "path": "audio/art002a000025.mp3",
+     "size": 2721689
+    },
+    {
+     "path": "audio/art002a000026.mp3",
+     "size": 3192893
+    },
+    {
+     "path": "audio/art002a000028.mp3",
+     "size": 10676817
+    },
+    {
+     "path": "audio/art002a000029.mp3",
+     "size": 4468857
+    },
+    {
+     "path": "audio/art002a000030.mp3",
+     "size": 1696425
+    },
+    {
+     "path": "audio/art002a000031.mp3",
+     "size": 1382213
+    },
+    {
+     "path": "audio/art002a000032.mp3",
+     "size": 581425
+    },
+    {
+     "path": "audio/art002a000033.mp3",
+     "size": 777853
+    },
+    {
+     "path": "audio/art002a000034.mp3",
+     "size": 4354512
+    },
+    {
+     "path": "audio/art002a000035.mp3",
+     "size": 5026713
+    },
+    {
+     "path": "audio/art002a000036.mp3",
+     "size": 1235181
+    },
+    {
+     "path": "audio/art002a000037.mp3",
+     "size": 5606314
+    },
+    {
+     "path": "audio/art002a00003708-clipped.mp3",
+     "size": 2066085
+    },
+    {
+     "path": "audio/art002a000038.mp3",
+     "size": 4472615
+    },
+    {
+     "path": "audio/art002a000039.mp3",
+     "size": 5184677
+    },
+    {
+     "path": "audio/art002a000040.mp3",
+     "size": 1653504
+    },
+    {
+     "path": "audio/art002a000041.mp3",
+     "size": 3155131
+    },
+    {
+     "path": "audio/art002a000042.mp3",
+     "size": 3610897
+    },
+    {
+     "path": "audio/art002a000043.mp3",
+     "size": 3644312
+    },
+    {
+     "path": "audio/art002a000044.mp3",
+     "size": 1846750
+    },
+    {
+     "path": "audio/art002a000045.mp3",
+     "size": 1125874
+    },
+    {
+     "path": "audio/art002a000046-clipped.mp3",
+     "size": 306982
+    },
+    {
+     "path": "audio/art002a000046.mp3",
+     "size": 3918625
+    },
+    {
+     "path": "audio/art002a000047.mp3",
+     "size": 2443053
+    },
+    {
+     "path": "audio/art002a000048.mp3",
+     "size": 666828
+    },
+    {
+     "path": "audio/art002a000049.mp3",
+     "size": 2687410
+    },
+    {
+     "path": "audio/art002a00004915-clipped.mp3",
+     "size": 852033
+    },
+    {
+     "path": "audio/art002a000052-alt.mp3",
+     "size": 12461737
+    },
+    {
+     "path": "audio/art002a000052-jeremy-pulses-of-light.mp3",
+     "size": 692252
+    },
+    {
+     "path": "audio/art002a000052-jeremy-stars-depth.mp3",
+     "size": 193522
+    },
+    {
+     "path": "audio/art002a000053-part-1-clipped.mp3",
+     "size": 929945
+    },
+    {
+     "path": "audio/art002a000053.mp3",
+     "size": 6514959
+    },
+    {
+     "path": "audio/artemis-ii-breaks-apollo-13-distance-record.mp3",
+     "size": 487721
+    },
+    {
+     "path": "audio/artemis-ii-go-for-translunar-injection.mp3",
+     "size": 180704
+    },
+    {
+     "path": "audio/artemis-ii-good-burn.mp3",
+     "size": 53948
+    },
+    {
+     "path": "audio/artemis-ii-houston-we-have-you-loud-and-clear-1.mp3",
+     "size": 132625
+    },
+    {
+     "path": "audio/artemis-ii-launch-full-send.mp3",
+     "size": 192778
+    },
+    {
+     "path": "audio/artemis-ii-launch-go-no-go-poll.mp3",
+     "size": 1024961
+    },
+    {
+     "path": "audio/artemis-ii-liftoff.mp3",
+     "size": 157335
+    },
+    {
+     "path": "audio/artemis-ii-message-from-apollo-astronaut-charlie-duke.mp3",
+     "size": 283685
+    },
+    {
+     "path": "audio/artemis-ii-message-from-apollo-astronaut-jim-lovell.mp3",
+     "size": 300670
+    },
+    {
+     "path": "audio/artemis-ii-names-new-craters-integrity-and-carroll.mp3",
+     "size": 815482
+    },
+    {
+     "path": "audio/artemis-ii-splashdown-shorter.mp3",
+     "size": 309557
+    },
+    {
+     "path": "audio/christina-koch-clip-privileged-to-be-part-of-artemis-ii-crew.mp3",
+     "size": 211563
+    },
+    {
+     "path": "audio/jeremy-hansen-clip-inspired-by-neil-armstrong.mp3",
+     "size": 260489
+    },
+    {
+     "path": "audio/reid-wiseman-clip-artemis-builds-on-a-solid-legacy.mp3",
+     "size": 269139
+    },
+    {
+     "path": "audio/victor-glover-clip-exploring-is-who-we-are.mp3",
+     "size": 132755
+    },
+    {
+     "path": "trim.json",
+     "size": 41421
+    }
+   ]
+  },
+  {
+   "id": "videos",
+   "title": "NASA videos",
+   "required": false,
+   "file": "outpost-luna-v2-videos.tar",
+   "url": "https://www.dropbox.com/scl/fi/x4xm0nmcqnb1a29frhpcl/outpost-luna-v2-videos.tar?rlkey=cyj9u6jylfy7odbvxrus4srqs&dl=1",
+   "sha256": "541458fe6321154dbb0665de75fe55e53bfd1e398376fbae4ab63c9bbb8eb21d",
+   "size": 199352320,
+   "unpacked_size": 199323900,
+   "n_files": 23,
+   "env": "VIDEO_PACK_DIR",
+   "subdir": "",
+   "licence": [
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "NOTICE",
+     "size": 290
+    },
+    {
+     "path": "hammer_feather.jpg",
+     "size": 1102369
+    },
+    {
+     "path": "hammer_feather.mp4",
+     "size": 4103437
+    },
+    {
+     "path": "lunar_dust.jpg",
+     "size": 10080
+    },
+    {
+     "path": "lunar_dust.mp4",
+     "size": 46080368
+    },
+    {
+     "path": "lunar_dust.vtt",
+     "size": 3941
+    },
+    {
+     "path": "lunar_eclipse.jpg",
+     "size": 7135
+    },
+    {
+     "path": "lunar_eclipse.mp4",
+     "size": 35593136
+    },
+    {
+     "path": "lunar_eclipse.vtt",
+     "size": 2353
+    },
+    {
+     "path": "moon_base_6mo.jpg",
+     "size": 16525
+    },
+    {
+     "path": "moon_base_6mo.mp4",
+     "size": 19725118
+    },
+    {
+     "path": "moon_base_6mo.vtt",
+     "size": 1661
+    },
+    {
+     "path": "moon_weather.jpg",
+     "size": 3593
+    },
+    {
+     "path": "moon_weather.mp4",
+     "size": 26382697
+    },
+    {
+     "path": "moon_weather.vtt",
+     "size": 2056
+    },
+    {
+     "path": "phases_loop.jpg",
+     "size": 121750
+    },
+    {
+     "path": "phases_loop.mp4",
+     "size": 3836605
+    },
+    {
+     "path": "psr.jpg",
+     "size": 13167
+    },
+    {
+     "path": "psr.mp4",
+     "size": 32881024
+    },
+    {
+     "path": "psr.vtt",
+     "size": 2751
+    },
+    {
+     "path": "water_extraction.jpg",
+     "size": 13061
+    },
+    {
+     "path": "water_extraction.mp4",
+     "size": 29418081
+    },
+    {
+     "path": "water_extraction.vtt",
+     "size": 2702
+    }
+   ]
+  }
+ ],
+ "offline_pack": {
+  "file": "outpost-luna-assets-v2.zip",
+  "url": "https://www.dropbox.com/scl/fi/h88nx83klw5i6s6a70ku1/outpost-luna-assets-v2.zip?rlkey=v4446k5cn0csua1a046jl1rn5&dl=1",
+  "sha256": "aa0961fbcd6caf7efffe78ff443710a560a885b1afc9f53c74249f0b436d5e8d",
+  "size": 884664442
+ }
+}

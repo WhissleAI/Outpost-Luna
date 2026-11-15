@@ -62,12 +62,10 @@ if ($freeGB -lt 6) { Die "only $freeGB GB free on ${drive}:; the build needs abo
 Write-Host ("node {0}, {1}, {2}, compiler {3}, {4} GB free" -f (node -v), (uv --version), ((cmake --version) | Select-Object -First 1),
   $(if ($vs) { "MSVC ($vs)" } else { "clang + ninja" }), $freeGB)
 
-Step "2/8 NASA media (backend\data\media: 74 crew clips + Moon map, ~0.5 GB; trimmed copy for the app, ~175 MB)"
+Step "2/8 NASA media (backend\data\media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
 if ($SkipMedia) { Write-Host "skipped (-SkipMedia)" }
 else { Run uv run --no-project --with pillow==11.3.0 python backend\pipeline\fetch_media.py }
 if (-not (Test-Path backend\data\media\img\moon4k.jpg)) { Die "backend\data\media is incomplete (re-run; fetch_media.py resumes)" }
-# The installer ships only the playable stretches of each clip, mono 48 kbps (~175 MB, not ~550): ffmpeg from a pinned wheel
-Push-Location backend; Run uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media; Pop-Location
 
 Step "3/8 frontend dependencies"
 Push-Location frontend; Run npm ci --no-audit --no-fund; Run node tools/fetch_vision.mjs; Pop-Location   # + camera-gesture runtime/models (sha256-pinned)
@@ -77,11 +75,14 @@ Step "4/8 embedded Python + backend/model-server deps + app code (frontend build
 Run uv run --no-project python backend\tools\voice_pack_check.py --allow-empty
 Run uv run --no-project python desktop\scripts\build_python.py
 
-Step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
-Run uv run --no-project python desktop\scripts\gather_models.py
+Step "5/8 first-run assets: nothing bundled (desktop\assets.manifest.json lists them; the app downloads them)"
+$m = Get-Content desktop\assets.manifest.json -Raw | ConvertFrom-Json
+$miss = @($m.assets | Where-Object { $_.required -and -not $_.url -and -not $_.fallback } | ForEach-Object { $_.id })
+if ($miss.Count) { Die "assets without a download link: $($miss -join ', ') (make asset-pack asset-upload)" }
+Remove-Item -Recurse -Force desktop\resources\models -ErrorAction SilentlyContinue   # an older build's bundled models
 
-Step "6/8 Arc Tagger native library (arctag.dll)"
-Remove-Item -Recurse -Force desktop\build\arctag -ErrorAction SilentlyContinue
+Step "6/8 native libraries (arctag.dll: Arc Tagger; arc.dll: the ear)"
+Remove-Item -Recurse -Force desktop\build\arctag, desktop\build\libarc -ErrorAction SilentlyContinue
 if ($useClang) {
   Run cmake -S desktop\vendor\arctag -B desktop\build\arctag -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
 } else {
@@ -93,6 +94,17 @@ $dll = @("desktop\build\arctag\Release\arctag.dll", "desktop\build\arctag\arctag
 if (-not $dll) { Die "arctag.dll was not produced (see the CMake output above)" }
 New-Item -ItemType Directory -Force desktop\resources\native | Out-Null
 Copy-Item $dll desktop\resources\native\arctag.dll -Force
+# libarc (the ear): same compiler; ONNX Runtime is the Python wheel's onnxruntime.dll, loaded by path at run time
+if ($useClang) {
+  Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
+} else {
+  Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64
+}
+Run cmake --build desktop\build\libarc --config Release
+$dll = @("desktop\build\libarc\Release\arc.dll", "desktop\build\libarc\arc.dll", "desktop\build\libarc\libarc.dll") |
+  Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $dll) { Die "arc.dll was not produced (see the CMake output above)" }
+Copy-Item $dll desktop\resources\native\arc.dll -Force
 
 Step "7/8 Electron + electron-builder (NSIS installer)"
 Push-Location desktop

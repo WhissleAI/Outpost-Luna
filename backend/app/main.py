@@ -105,11 +105,11 @@ def clip(clip_id: str):
 def clip_segs(file: str | None) -> list | None:
     """The desktop build ships trimmed crew audio (backend/pipeline/trim_media.py): [[clip_t0, file_t0, len], ...] maps
     clip time to file time (the player converts at the <audio> element). None with the original audio (dev)."""
-    if "clip_segs" not in S:
+    if not S.get("clip_segs"):    # re-read until found: the crew-audio asset may install after the backend started
         import json
-        p = settings.data_dir / "media" / "trim.json"
+        p = next((d / "trim.json" for d in settings.media_dirs() if (d / "trim.json").exists()), None)
         S["clip_segs"] = ({k: v["segs"] for k, v in json.loads(p.read_text(encoding="utf-8"))["clips"].items()}
-                          if p.exists() else {})
+                          if p else {})
     return S["clip_segs"].get((file or "").rsplit("/", 1)[-1])
 
 
@@ -179,7 +179,19 @@ def director_stats():
 
 
 # NASA media (audio supports HTTP Range for seeking), and the built frontend when it exists.
-app.mount("/media", StaticFiles(directory=settings.data_dir / "media"), name="media")
+class MediaFiles(StaticFiles):
+    """StaticFiles over several folders, first hit wins (settings.media_dirs: the desktop's installed crew-audio asset,
+    then data_dir/media). A folder that does not exist yet (an asset still downloading) is simply skipped."""
+
+    def __init__(self, dirs):
+        self.dirs = list(dirs)
+        super().__init__(directory=self.dirs[-1], check_dir=False)
+
+    def get_directories(self, directory=None, packages=None):
+        return [str(d) for d in self.dirs]
+
+
+app.mount("/media", MediaFiles(settings.media_dirs()), name="media")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
 

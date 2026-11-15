@@ -137,7 +137,7 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
 def pack_version() -> str:
     """Changes whenever the pack's index changes (a re-recorded clip must not be shadowed by the TTS cache)."""
     try:
-        st = (settings.data_dir / "voice_pack" / "index.json").stat()
+        st = (settings.voice_pack() / "index.json").stat()
         return f"{st.st_mtime_ns:x}-{st.st_size:x}"
     except OSError:
         return ""

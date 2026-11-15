@@ -13,7 +13,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const MACHO = new Set(['cffaedfe', 'cefaedfe', 'cafebabe', 'feedfacf', 'bebafeca']);
-const TREES = ['python', 'site', 'native', 'app', 'models'];
+const TREES = ['python', 'site', 'native', 'app'];
 
 function isMachO(p) {
   const fd = fs.openSync(p, 'r');
