@@ -60,7 +60,7 @@ The card's words come from `state.why[gauge]`, written by `physics.why()`. Each 
 
 - the physics now, in plain words, with one number;
   - on screen it is at most 2 lines;
-  - spoken it is at most 20 words, with numbers and units in words ("41 percent", "minus 206 degrees Celsius").
+  - spoken it is at most 20 words, with numbers and units in words ("41 percent", "minus 208 degrees Celsius").
 - the formula in plain text;
 - the source.
 
@@ -68,7 +68,7 @@ Engineer adds the equation with its numbers.
 
 Example cards:
 - "Panels make 41% now: the Sun sits on the ridge, its disk partly hidden (JPL Horizons)."
-- "Dark ground here drops to about −206 °C (LRO Diviner). Heaters stop the water freezing."
+- "Dark ground here drops to about −208 °C (LRO Diviner). Heaters stop the water freezing."
 - "Storm: radiation 8x normal here. LRO's CRaTER saw real storms thousands of times quiet. Shelter!"
 
 Every way of opening a card ends at the same intent, `why {gauge?}`:
@@ -98,12 +98,13 @@ The ledger (`Mission.phys`, filled by `physics.account()`) books, every hour:
 - each night;
 - each storm's dose with and without the shelter.
 
-Sample lines (Engineer, Malapert Massif, seed 7, a scripted player that shelters on warnings and uses night mode):
-- "You sheltered for 20 h in the 31 May 2025 storm: dose 5.0 mSv instead of 11.9 mSv." (NASA DONKI)
-- "Your heaters used 10.9 kWh over a 90-hour night; the battery dipped to 71%." (JPL Horizons)
-- "Your panels made 1262 kWh; the outpost used 1141 kWh." (JPL Horizons)
+Sample lines (Engineer, Shackleton Crater Rim, seed 7, a scripted player that shelters on warnings and uses night mode
+when the arrays are dark; it survived with grade B):
+- "You sheltered for 24 h in the 31 May 2025 storm: dose 2.7 mSv instead of 10.9 mSv." (NASA DONKI)
+- "Your heaters used 7.6 kWh over a 53-hour night; the battery dipped to 75%." (JPL Horizons)
+- "Your panels made 1804 kWh; the outpost used 2044 kWh." (JPL Horizons)
 - "Ice run done. Polar soil is about 5.6% water, so 100 kg of soil gives about 5.6 kg." (LCROSS)
-- "Crew dose 15.7 mSv in game units: about 7.9 mSv of real Moon radiation." (Chang'e 4)
+- "Crew dose 16.7 mSv in game units: about 8.4 mSv of real Moon radiation." (Chang'e 4)
 
 The spoken debrief follows the same order: the story's turning point, its biggest number, the grade, then the offer.
 
