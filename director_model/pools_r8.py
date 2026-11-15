@@ -374,7 +374,7 @@ def cell_item(cell: dict, rng: random.Random, split: str) -> dict | None:
             cs = [c for c in map(nlu.valid, nlu.parse(t).get("commands") or []) if c]
             return {"text": t, "cat": "cov_cmd", "root": f"cm:{want}:{t}", "frame": _frame("cabin"),
                     "gold": {"act": "command", **({"command": cs[0]} if cs else {})}}
-        for _ in range(40):
+        for _ in range(200):   # a rare type (query) needs more draws; 40 failed whenever the rng order shifted
             it = P.mission_cmd(rng, split) if rng.random() < 0.7 else P.compound(rng, split)
             c = (it.get("gold") or {}).get("command")
             from app.director_model import features as FX

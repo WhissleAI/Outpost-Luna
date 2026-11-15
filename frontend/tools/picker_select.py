@@ -55,7 +55,9 @@ def run(base):
         check(selected(pg) == "shackleton_rim", f"fresh profile preselects Shackleton Rim ({selected(pg)})")
         check(pg.evaluate("!!document.querySelector('.mx-site[data-site=\"shackleton_rim\"] .mx-rectag')"), "it carries the Best first pick tag")
         pg.hover('.mx-site[data-site="malapert_massif"]'); pg.wait_for_timeout(250)
-        pg.hover('.mx-pin[data-site="de_gerlache_rim"]', force=True); pg.wait_for_timeout(250)
+        # the pin: the navigator's map label when the map layers are in, else the globe's pin (docs/SITE_NAVIGATOR.md)
+        pin = '.nv-plab[data-pin="de_gerlache_rim"]' if pg.locator('.nv-plab[data-pin="de_gerlache_rim"]').count() else '.mx-pin[data-site="de_gerlache_rim"]'
+        pg.hover(pin, force=True); pg.wait_for_timeout(250)
         pg.mouse.move(4, 400); pg.wait_for_timeout(200)
         check(selected(pg) == "shackleton_rim", f"hovering rows and pins never selects ({selected(pg)})")
         pg.evaluate(TYPED, "take command")
@@ -86,7 +88,7 @@ def run(base):
         for vw, vh in ((1440, 900), (1280, 720)):
             ctx, pg, _ = fresh(vw, vh)
             spill = pg.evaluate("""() => { const card = document.getElementById('mPanel').getBoundingClientRect();
-              return [...document.querySelectorAll('.mx-site .mx-v, .mx-cols span')].map(e => e.getBoundingClientRect().right - card.right).filter(d => d > 0.5); }""")
+              return [...document.querySelectorAll('.mx-site .mx-v, .mx-cols span, .mx-site .nv-nums span, .mx-site .nv-score')].map(e => e.getBoundingClientRect().right - card.right).filter(d => d > 0.5); }""")
             check(not spill, f"{vw}x{vh}: the Sun / Earth / Ice columns stay inside the card {spill}")
             ctx.close()
         b.close()
