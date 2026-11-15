@@ -320,6 +320,7 @@ main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows
 | CMake: `arc.dll was not produced` / `The build tools for ClangCL cannot be found` | Same as above. Send the CMake output if it persists |
 | CMake: `arctag.dll was not produced` | Send the CMake output. Try the other compiler (MSVC or LLVM) |
 | `No CMAKE_C_COMPILER could be found` at `cmake ... -T ClangCL` | Two Visual Studios are installed and CMake picked the newer one, which has no clang-cl (e.g. VS 2026 next to VS 2022 with clang). Pull the latest main (the script now pins the Visual Studio that has clang-cl), or set `$env:CMAKE_GENERATOR = "Visual Studio 17 2022"`, delete `desktop\build\arctag` and `desktop\build\libarc`, and re-run |
+| clang-cl build of `arc.dll` fails on AVX2 / FMA intrinsics | Fixed on main: libarc's CMakeLists passes `/arch:AVX2` to clang-cl. Pull main. The Windows app needs a CPU with AVX2 (Intel 2013+, AMD 2015+) |
 | `git clone` says `invalid path` | You have an old copy: four screenshot names had a `?` until 2026-11-15. Clone again |
 | Path / "file name too long" deep inside a package | Clone to `C:\src\atm`, or turn on long paths (§1) |
 | `only N GB free` | Free up space: the build uses about 4 GB, and 8 GB free is safe |
