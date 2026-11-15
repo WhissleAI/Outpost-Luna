@@ -213,6 +213,7 @@ test("Windows: a rename held by an antivirus scan (EPERM) is retried; clearAll e
   assert.equal(A.clearAll(d), 2);
   assert.deepEqual(fs.readdirSync(d), []);
   fs.rmSync(d, { recursive: true, force: true });
+});
 
 test("steer: the fallback takes its files out of a bigger tar (the v1 model package) and adds its licence", async () => {
   const model = { "steer-tts-edge/config.json": Buffer.from('{"v":1}'), "steer-tts-edge/onnx/enc.onnx": crypto.randomBytes(9000) };
