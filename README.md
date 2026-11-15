@@ -24,11 +24,12 @@ The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with
 small button inside the app, used by the lessons.
 
 ## Download for Mac
-**[Download Outpost Luna for Mac](https://www.dropbox.com/scl/fi/o7ywoe58gs7afy10fgolr/Outpost-Luna-0.1.0-arm64.dmg?rlkey=q3n2qkq2atguhbnnehkzqnff7&dl=1)** (Dropbox; mirror: [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest)) (Apple silicon, 647 MB,
-about 1.5 GB once installed). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
-it. It runs with no internet, no account and no keys: every model and the NASA crew audio are inside the app. The NASA
-video files download once when the computer is online; the NASA YouTube clips need a connection. Each release lists the
-DMG's SHA-256.
+**[Download Outpost Luna for Mac](https://www.dropbox.com/scl/fi/b78wiznugi88zy0wxi21n/Outpost-Luna-0.3.0-arm64.dmg?rlkey=elkxa3ou7rxzc5w393vqaiowi&dl=1)** (Dropbox; mirror: [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest)) (Apple silicon, 242 MB,
+about 1.2 GB once set up). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
+it. On first run it downloads the models once (about 510 MB: the ear, Arc Tagger, the embedder and the voice pack), then
+runs with no internet, no account and no keys. The Artemis II crew audio and the NASA videos download in the background;
+the Steer voice (13 MB) only if you ask for it in Settings. Or import the offline pack with no network. The NASA YouTube
+clips need a connection. Each release lists the DMG's SHA-256.
 
 Windows: build it from source with one command ([docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)). Website:
 <https://whissleai.github.io/Outpost-Luna/> (source in `site/`, published with `scripts/publish_site.sh`).
