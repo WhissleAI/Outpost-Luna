@@ -215,3 +215,37 @@ a:focus-visible, .btn:focus-visible, .theme:focus-visible { outline: 2px solid v
   .bars li { grid-template-columns: minmax(0, 1fr) 70px; }
   .bars .bt { grid-column: 1 / -1; grid-row: 2; }
 }
+
+/* Guide page (guide.html): annotated screenshots. Markers sit over the image in % so they stay sharp at any width. */
+.guide-hero { padding-bottom: 8px; }
+.toc { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.toc a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); text-decoration: none; font-weight: 600; font-size: 14px; }
+.toc a b { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--acc-soft); color: var(--acc); font-size: 12px; }
+.toc a:hover, .toc a:focus-visible { border-color: var(--acc); }
+.kicker { margin: 0 0 6px; color: var(--acc); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.ann { margin: 0 0 14px; }
+.ann .shot { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: #05070d; }
+.ann .shot img { width: 100%; }
+.ann figcaption { color: var(--ink-3); font-size: 13.5px; margin-top: 8px; font-weight: 600; }
+.mk { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: #f5b400; color: #111; font: 800 14px/1 var(--sans); border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.45); pointer-events: none; }
+.ann.wide { margin-top: 8px; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; margin-top: 28px; }
+.key { margin: 4px 0 28px; padding: 0; list-style: none; counter-reset: k; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 28px; }
+.key[start="8"] { counter-reset: k 7; }
+.key li { counter-increment: k; position: relative; padding-left: 36px; color: var(--ink-2); font-size: 15px; }
+.key li::before { content: counter(k); position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+  background: #f5b400; color: #111; font: 800 12.5px/1 var(--sans); }
+.key b { color: var(--ink); }
+.points > div { display: grid; gap: 4px; }
+.points > div span { color: var(--ink-2); }
+@media (max-width: 860px) {
+  .trio, .pair, .key { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .mk { width: 20px; height: 20px; font-size: 11px; border-width: 1.5px; }
+}
+.pair.narrow { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: start; }
+@media (max-width: 860px) { .pair.narrow { grid-template-columns: minmax(0, 340px); } }
