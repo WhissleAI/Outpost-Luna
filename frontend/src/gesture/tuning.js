@@ -65,9 +65,11 @@ export const PINCH = Object.freeze({
   holdMs: 250,           // a still pinch this long engages the zoom [webcam]
   holdFrames: 5,
   stillRange: 0.25,      // hand-lengths the pinch may wander while it engages
-  releaseFrames: 3,      // not a pinch for this many frames in a row releases
+  releaseFrames: 6,      // not a pinch for this many frames in a row releases (a sliding hand blurs: ~0.4 s grace at 15 fps)
+  minFacing: 0.45,       // the palm side toward the camera (knuckle width / hand length): an edge-on or resting hand never arms
   afterFistMs: 500,      // never engages within this long after a fist lets go (or while one holds)
-  slideRange: 0.8,       // hand-lengths of slide up / down from where it engaged = full zoom rate [webcam]
+  slideRange: 0.55,      // hand-lengths of slide up / down from where it engaged = full zoom rate [webcam] (0.8 felt dead)
+  idleHideMs: 2500,      // a held pinch that does not slide for this long hides the zoom indicator (a resting hand)
   filter: { minCutoff: 1.0, beta: 0.8, dCutoff: 1 },   // One Euro on the slide
 });
 

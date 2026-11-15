@@ -13,9 +13,9 @@ import { tick } from "../sound.js";
 import { createGestureEngine } from "./engine.js";
 import { gestureIntents, FEEDBACK } from "./bind.js";
 import { CHEATSHEET, CHEATSHEET_PHASE2, hintFor, spokenSummary } from "./guide.js";
-import { screenKey, helpRows, coachRows } from "./map.js";
+import { screenKey, helpRows, coachRows, ZOOM_SCREENS } from "./map.js";
 import { createFistCalibration, loadSpinCal, saveSpinCal, measurePinch } from "./calibration.js";
-import { CALIBRATION } from "./tuning.js";
+import { CALIBRATION, PINCH } from "./tuning.js";
 import { fistReading, pinchFeatures } from "./spin.js";
 import { icon } from "./icons.js";
 import { handPose } from "./classifier.js";
@@ -88,7 +88,9 @@ export function initGestures(ctx = {}) {
   function context() {
     const p = ctx.cabinPanel ? ctx.cabinPanel() : null;
     // pointingAtControl: the point cursor is on a button / control, so a still index is "point and hold", not "1"
-    return { cabin: !!(ctx.inCabin && ctx.inCabin()), panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2,
+    const cabin = !!(ctx.inCabin && ctx.inCabin());
+    return { cabin, panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2,
+      zoomable: !cabin && ZOOM_SCREENS.has(currentKey()),   // the pinch and slide only arms where something zooms
       pointingAtControl: !!(hover && hover.tagName !== "CANVAS") };
   }
   // a hand gesture drives like the keys / remote: the same focus ring (keys.css, html[data-input=gesture])
@@ -103,8 +105,9 @@ export function initGestures(ctx = {}) {
     if (ev.type === "point_end") hideCursor();
     if (ev.type === "grab_start") { tick("grab"); paintSpinSoon(); }
     if (ev.type === "grab_end") tick("release");
-    if (ev.type === "pinch_start") { tick("grab"); paintZoomSoon(); }
-    if (ev.type === "pinch_end") tick("release");
+    if (ev.type === "pinch_start") { pinch = context().zoomable ? { z: 0, moved: performance.now() } : null; if (pinch) { tick("grab"); paintZoomSoon(); } }
+    if (ev.type === "pinch_move" && pinch) { pinch.z = ev.z; if (Math.abs(ev.z) >= 0.15) pinch.moved = performance.now(); }
+    if (ev.type === "pinch_end") { if (pinch) tick("release"); pinch = null; paintZoomSoon(); }
     if (ev.type !== "point" && ev.type !== "point_end" && ev.type !== "head" && ev.type !== "grab_move" && ev.type !== "pinch_move" && !card.hidden && card.dataset.mode === "coach") hideCard();
     // round 8: tell the session a discrete gesture happened, so the Director sees voice + gesture together
     if (DRIVES.has(ev.type) && ev.type !== "point" && ctx.onGesture) { try { ctx.onGesture(ev.type); } catch (e) { /* no session */ } }
@@ -198,14 +201,18 @@ export function initGestures(ctx = {}) {
   }
 
   // ---------- the pinch and slide: a small zoom indicator beside the joystick ring (+ up, − down, the knob = the rate) ----------
-  let zoomRaf = 0;
+  // Shown only while a pinch armed on a screen that zooms (the Moon, the site map), and hidden again when the held pinch
+  // has not slid for PINCH.idleHideMs (a resting hand) or the screen stops zooming (a card, Settings, a lesson came up).
+  let zoomRaf = 0, pinch = null;
   function paintZoomSoon() { if (!zoomRaf) zoomRaf = requestAnimationFrame(paintZoom); }
   function paintZoom() {
     zoomRaf = 0;
-    const z = zoomState(), on = z.held && z.source === "gesture";
+    const z = zoomState(), now = performance.now();
+    const on = !!pinch && context().zoomable && now - pinch.moved < PINCH.idleHideMs;
     zoomEl.hidden = !on;
+    if (pinch && !on) zoomRaf = requestAnimationFrame(paintZoom);   // keep watching: a slide brings it back
     if (on) {
-      const k = Math.max(-1, Math.min(1, z.input));
+      const k = Math.max(-1, Math.min(1, pinch.z));
       zoomEl.querySelector(".gx-zoom-knob").style.transform = `translateY(${(-k * 26).toFixed(1)}px)`;
       zoomEl.classList.toggle("is-in", z.rate > 0.02); zoomEl.classList.toggle("is-out", z.rate < -0.02);
       zoomEl.querySelector(".gx-zoom-text").textContent = Math.abs(k) < 0.15 ? "Slide up or down to zoom" : "Let go to stop";
