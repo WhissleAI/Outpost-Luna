@@ -113,13 +113,13 @@
    "title": "Williams et al. 2019, Seasonal polar temperatures on the Moon (LRO Diviner maps)",
    "url": "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/",
    "licence": "journal paper: numbers cited only; maps by the Diviner team from PDS data",
-   "use": "Night and winter ground temperature at each site: the heaters card"
+   "use": "Night minimum at each site's spot: the Heaters card in the dark"
   },
   "diviner_prp": {
    "title": "LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650)",
    "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
    "licence": "NASA PDS archive, open (cite the data set)",
-   "use": "Annual max and mean temperature, ice-stability depth at each site"
+   "use": "Sunlit maximum and shadowed-floor average (via the navigator's sites_physics.json)"
   },
   "diviner_team": {
    "title": "LRO Diviner team: new seasonal polar data products",
@@ -131,13 +131,13 @@
    "title": "LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0)",
    "url": "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/",
    "licence": "NASA PDS archive, open (cite the data set)",
-   "use": "Slopes at each site: the rover card, the route choice"
+   "use": "Ice-drive slopes: the route choice and the Rover card (via the navigator's sites_physics.json)"
   },
   "lola_illum": {
    "title": "LRO LOLA average illumination and Earth visibility (NASA PGDA product 69)",
    "url": "https://pgda.gsfc.nasa.gov/products/69",
    "licence": "NASA PDS archive, open (cite the data set)",
-   "use": "Ground-level sunlight % per site (a cross-check; see SOURCES.md)"
+   "use": "Yearly sunlight and Earth view (the navigator); the sim's skyline sets panel light"
   },
   "lcross": {
    "title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330",
@@ -405,366 +405,94 @@
  "sites": {
   "shackleton_rim": {
    "diviner": {
-    "max_k": {
-     "value": 257.3,
-     "source": "diviner_prp",
-     "where": "annual maximum surface temperature, box median",
-     "range": [
-      230.7,
-      300.9
-     ]
-    },
     "min_k": {
-     "value": 66.7,
+     "value": 64.9,
      "source": "diviner",
-     "where": "winter minimum, box median (Williams 2019)",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
      "range": [
-      61.8,
-      82.4
+      61.2,
+      95.1
      ]
-    },
-    "avg_k": {
-     "value": 145.5,
-     "source": "diviner_prp",
-     "where": "annual mean at 2 cm depth, box median"
     }
-   },
-   "slope": {
-    "median_deg": {
-     "value": 18.8,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box median"
-    },
-    "p90_deg": {
-     "value": 25.3,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box 90th percentile"
-    }
-   },
-   "lola_ground_sun_pct": {
-    "value": 38.7,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M, ground level, box median"
-   },
-   "lola_ground_earth_pct": {
-    "value": 44.2,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M_EARTH, ground level, box median"
-   },
-   "ice_stable": {
-    "surface_flag_frac": 0.0,
-    "no_ice_frac": 1.0,
-    "depth_m": null,
-    "source": "diviner_prp"
    }
   },
   "shackleton_floor": {
    "diviner": {
-    "max_k": {
-     "value": 82.6,
-     "source": "diviner_prp",
-     "where": "annual maximum surface temperature, box median",
-     "range": [
-      76.7,
-      91.7
-     ]
-    },
     "min_k": {
      "value": 37.2,
      "source": "diviner",
-     "where": "winter minimum, box median (Williams 2019)",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
      "range": [
       30.0,
       46.2
      ]
-    },
-    "avg_k": {
-     "value": 50.4,
-     "source": "diviner_prp",
-     "where": "annual mean at 2 cm depth, box median"
-    },
-    "psr": true
-   },
-   "slope": {
-    "median_deg": {
-     "value": 3.6,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box median"
-    },
-    "p90_deg": {
-     "value": 6.6,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box 90th percentile"
     }
-   },
-   "lola_ground_sun_pct": {
-    "value": 0.0,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M, ground level, box median"
-   },
-   "lola_ground_earth_pct": {
-    "value": 0.0,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M_EARTH, ground level, box median"
-   },
-   "ice_stable": {
-    "surface_flag_frac": 1.0,
-    "no_ice_frac": 0.0,
-    "depth_m": null,
-    "source": "diviner_prp"
    }
   },
   "connecting_ridge": {
    "diviner": {
-    "max_k": {
-     "value": 235.6,
-     "source": "diviner_prp",
-     "where": "annual maximum surface temperature, box median",
-     "range": [
-      222.4,
-      241.7
-     ]
-    },
     "min_k": {
-     "value": 61.7,
+     "value": 60.8,
      "source": "diviner",
-     "where": "winter minimum, box median (Williams 2019)",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
      "range": [
-      60.4,
-      72.3
+      55.0,
+      74.8
      ]
-    },
-    "avg_k": {
-     "value": 134.2,
-     "source": "diviner_prp",
-     "where": "annual mean at 2 cm depth, box median"
     }
-   },
-   "slope": {
-    "median_deg": {
-     "value": 9.1,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box median"
-    },
-    "p90_deg": {
-     "value": 13.4,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box 90th percentile"
-    }
-   },
-   "lola_ground_sun_pct": {
-    "value": 38.6,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M, ground level, box median"
-   },
-   "lola_ground_earth_pct": {
-    "value": 15.4,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M_EARTH, ground level, box median"
-   },
-   "ice_stable": {
-    "surface_flag_frac": 0.0,
-    "no_ice_frac": 1.0,
-    "depth_m": null,
-    "source": "diviner_prp"
    }
   },
   "de_gerlache_rim": {
    "diviner": {
-    "max_k": {
-     "value": 233.9,
-     "source": "diviner_prp",
-     "where": "annual maximum surface temperature, box median",
-     "range": [
-      207.3,
-      256.8
-     ]
-    },
     "min_k": {
-     "value": 61.2,
+     "value": 63.5,
      "source": "diviner",
-     "where": "winter minimum, box median (Williams 2019)",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
      "range": [
       51.6,
       107.1
      ]
-    },
-    "avg_k": {
-     "value": 128.7,
-     "source": "diviner_prp",
-     "where": "annual mean at 2 cm depth, box median"
     }
-   },
-   "slope": {
-    "median_deg": {
-     "value": 9.5,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box median"
-    },
-    "p90_deg": {
-     "value": 14.7,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box 90th percentile"
-    }
-   },
-   "lola_ground_sun_pct": {
-    "value": 42.3,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M, ground level, box median"
-   },
-   "lola_ground_earth_pct": {
-    "value": 30.5,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M_EARTH, ground level, box median"
-   },
-   "ice_stable": {
-    "surface_flag_frac": 0.0,
-    "no_ice_frac": 0.62,
-    "depth_m": {
-     "median": 0.5,
-     "p90": 0.8,
-     "min": 0.5,
-     "max": 0.8,
-     "n_px": 3
-    },
-    "source": "diviner_prp"
    }
   },
   "malapert_massif": {
    "diviner": {
-    "max_k": {
-     "value": 232.8,
-     "source": "diviner_prp",
-     "where": "annual maximum surface temperature, box median",
-     "range": [
-      191.3,
-      274.2
-     ]
-    },
     "min_k": {
-     "value": 55.0,
+     "value": 54.3,
      "source": "diviner",
-     "where": "winter minimum, box median (Williams 2019)",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
      "range": [
       48.0,
-      70.7
+      72.6
      ]
-    },
-    "avg_k": {
-     "value": 133.8,
-     "source": "diviner_prp",
-     "where": "annual mean at 2 cm depth, box median"
     }
-   },
-   "slope": {
-    "median_deg": {
-     "value": 9.9,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box median"
-    },
-    "p90_deg": {
-     "value": 13.8,
-     "source": "lola_slope",
-     "where": "LDSM_85S_40M box 90th percentile"
-    }
-   },
-   "lola_ground_sun_pct": {
-    "value": 40.6,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M, ground level, box median"
-   },
-   "lola_ground_earth_pct": {
-    "value": 100.0,
-    "source": "lola_illum",
-    "where": "AVGVISIB_85S_060M_EARTH, ground level, box median"
-   },
-   "ice_stable": {
-    "surface_flag_frac": 0.0,
-    "no_ice_frac": 0.75,
-    "depth_m": {
-     "median": 0.2,
-     "p90": 0.2,
-     "min": 0.1,
-     "max": 0.2,
-     "n_px": 2
-    },
-    "source": "diviner_prp"
    }
   }
  },
  "sampled": {
   "diviner_seasonal": {
    "shackleton_rim": {
-    "summer_max_k": {
-     "median": 282.1,
-     "p90": 292.3,
-     "min": 250.6,
-     "max": 296.0,
-     "n_px": 16
-    },
     "summer_min_k": {
-     "median": 77.4,
-     "p90": 80.3,
+     "median": 80.2,
+     "p90": 88.6,
      "min": 67.7,
-     "max": 82.4,
-     "n_px": 16
-    },
-    "summer_avg_k": {
-     "median": 173.8,
-     "p90": 184.5,
-     "min": 163.4,
-     "max": 204.6,
-     "n_px": 16
-    },
-    "winter_max_k": {
-     "median": 277.6,
-     "p90": 289.3,
-     "min": 232.4,
-     "max": 293.2,
-     "n_px": 16
+     "max": 95.1,
+     "n_px": 20
     },
     "winter_min_k": {
-     "median": 66.7,
+     "median": 64.9,
      "p90": 70.5,
-     "min": 61.8,
-     "max": 74.7,
-     "n_px": 16
-    },
-    "winter_avg_k": {
-     "median": 124.9,
-     "p90": 136.9,
-     "min": 108.7,
-     "max": 152.4,
-     "n_px": 16
+     "min": 61.2,
+     "max": 75.1,
+     "n_px": 20
     }
    },
    "shackleton_floor": {
-    "summer_max_k": {
-     "median": 95.9,
-     "p90": 96.8,
-     "min": 93.5,
-     "max": 97.9,
-     "n_px": 20
-    },
     "summer_min_k": {
      "median": 43.4,
      "p90": 45.3,
      "min": 40.3,
      "max": 46.2,
-     "n_px": 20
-    },
-    "summer_avg_k": {
-     "median": 73.8,
-     "p90": 74.2,
-     "min": 73.1,
-     "max": 74.3,
-     "n_px": 20
-    },
-    "winter_max_k": {
-     "median": 67.6,
-     "p90": 71.0,
-     "min": 64.8,
-     "max": 74.7,
      "n_px": 20
     },
     "winter_min_k": {
@@ -773,394 +501,78 @@
      "min": 30.0,
      "max": 40.3,
      "n_px": 20
-    },
-    "winter_avg_k": {
-     "median": 49.4,
-     "p90": 49.8,
-     "min": 48.8,
-     "max": 49.9,
-     "n_px": 20
     }
    },
    "connecting_ridge": {
-    "summer_max_k": {
-     "median": 232.8,
-     "p90": 239.0,
-     "min": 224.1,
-     "max": 239.8,
-     "n_px": 16
-    },
     "summer_min_k": {
-     "median": 69.5,
-     "p90": 71.8,
-     "min": 64.5,
-     "max": 72.3,
-     "n_px": 16
-    },
-    "summer_avg_k": {
-     "median": 151.3,
-     "p90": 161.2,
-     "min": 144.1,
-     "max": 162.9,
-     "n_px": 16
-    },
-    "winter_max_k": {
-     "median": 217.3,
-     "p90": 227.4,
-     "min": 206.5,
-     "max": 231.1,
+     "median": 68.1,
+     "p90": 74.0,
+     "min": 60.9,
+     "max": 74.8,
      "n_px": 16
     },
     "winter_min_k": {
-     "median": 61.7,
-     "p90": 62.8,
-     "min": 60.4,
-     "max": 63.1,
-     "n_px": 16
-    },
-    "winter_avg_k": {
-     "median": 118.5,
-     "p90": 123.4,
-     "min": 112.3,
-     "max": 124.8,
+     "median": 60.8,
+     "p90": 63.3,
+     "min": 55.0,
+     "max": 65.4,
      "n_px": 16
     }
    },
    "de_gerlache_rim": {
-    "summer_max_k": {
-     "median": 244.1,
-     "p90": 265.5,
-     "min": 220.2,
-     "max": 274.6,
-     "n_px": 16
-    },
     "summer_min_k": {
-     "median": 83.5,
+     "median": 79.0,
      "p90": 101.0,
-     "min": 75.6,
+     "min": 73.0,
      "max": 107.1,
      "n_px": 16
     },
-    "summer_avg_k": {
-     "median": 184.0,
-     "p90": 193.9,
-     "min": 166.3,
-     "max": 197.2,
-     "n_px": 16
-    },
-    "winter_max_k": {
-     "median": 215.2,
-     "p90": 252.0,
-     "min": 195.9,
-     "max": 264.3,
-     "n_px": 16
-    },
     "winter_min_k": {
-     "median": 61.2,
-     "p90": 69.5,
+     "median": 63.5,
+     "p90": 70.4,
      "min": 51.6,
-     "max": 71.9,
-     "n_px": 16
-    },
-    "winter_avg_k": {
-     "median": 109.0,
-     "p90": 115.3,
-     "min": 95.2,
-     "max": 118.0,
+     "max": 72.1,
      "n_px": 16
     }
    },
    "malapert_massif": {
-    "summer_max_k": {
-     "median": 244.6,
-     "p90": 265.0,
-     "min": 204.1,
-     "max": 268.1,
-     "n_px": 16
-    },
     "summer_min_k": {
-     "median": 66.6,
-     "p90": 69.2,
+     "median": 67.2,
+     "p90": 71.2,
      "min": 59.5,
-     "max": 70.7,
-     "n_px": 16
-    },
-    "summer_avg_k": {
-     "median": 139.9,
-     "p90": 157.7,
-     "min": 129.1,
-     "max": 167.4,
-     "n_px": 16
-    },
-    "winter_max_k": {
-     "median": 229.4,
-     "p90": 257.8,
-     "min": 186.5,
-     "max": 259.5,
+     "max": 72.6,
      "n_px": 16
     },
     "winter_min_k": {
-     "median": 55.0,
-     "p90": 68.7,
+     "median": 54.3,
+     "p90": 64.6,
      "min": 48.0,
-     "max": 70.2,
-     "n_px": 16
-    },
-    "winter_avg_k": {
-     "median": 128.3,
-     "p90": 148.6,
-     "min": 89.4,
-     "max": 150.7,
+     "max": 66.2,
      "n_px": 16
     }
-   }
-  },
-  "diviner_prp": {
-   "shackleton_rim": {
-    "n_triangles": 8,
-    "annual_avg_2cm_k": {
-     "median": 145.5,
-     "p90": 156.4,
-     "min": 126.1,
-     "max": 162.0,
-     "n_px": 8
-    },
-    "annual_max_k": {
-     "median": 257.3,
-     "p90": 278.7,
-     "min": 230.7,
-     "max": 300.9,
-     "n_px": 8
-    },
-    "ice_stable_depth_m": null,
-    "ice_surface_flag_frac": 0.0,
-    "no_ice_frac": 1.0
-   },
-   "shackleton_floor": {
-    "n_triangles": 8,
-    "annual_avg_2cm_k": {
-     "median": 50.4,
-     "p90": 54.4,
-     "min": 49.4,
-     "max": 55.0,
-     "n_px": 8
-    },
-    "annual_max_k": {
-     "median": 82.6,
-     "p90": 88.3,
-     "min": 76.7,
-     "max": 91.7,
-     "n_px": 8
-    },
-    "ice_stable_depth_m": null,
-    "ice_surface_flag_frac": 1.0,
-    "no_ice_frac": 0.0
-   },
-   "connecting_ridge": {
-    "n_triangles": 6,
-    "annual_avg_2cm_k": {
-     "median": 134.2,
-     "p90": 137.4,
-     "min": 127.3,
-     "max": 138.8,
-     "n_px": 6
-    },
-    "annual_max_k": {
-     "median": 235.6,
-     "p90": 241.5,
-     "min": 222.4,
-     "max": 241.7,
-     "n_px": 6
-    },
-    "ice_stable_depth_m": null,
-    "ice_surface_flag_frac": 0.0,
-    "no_ice_frac": 1.0
-   },
-   "de_gerlache_rim": {
-    "n_triangles": 8,
-    "annual_avg_2cm_k": {
-     "median": 128.7,
-     "p90": 140.0,
-     "min": 109.8,
-     "max": 145.7,
-     "n_px": 8
-    },
-    "annual_max_k": {
-     "median": 233.9,
-     "p90": 248.0,
-     "min": 207.3,
-     "max": 256.8,
-     "n_px": 8
-    },
-    "ice_stable_depth_m": {
-     "median": 0.5,
-     "p90": 0.8,
-     "min": 0.5,
-     "max": 0.8,
-     "n_px": 3
-    },
-    "ice_surface_flag_frac": 0.0,
-    "no_ice_frac": 0.62
-   },
-   "malapert_massif": {
-    "n_triangles": 8,
-    "annual_avg_2cm_k": {
-     "median": 133.8,
-     "p90": 159.0,
-     "min": 93.1,
-     "max": 160.5,
-     "n_px": 8
-    },
-    "annual_max_k": {
-     "median": 232.8,
-     "p90": 271.6,
-     "min": 191.3,
-     "max": 274.2,
-     "n_px": 8
-    },
-    "ice_stable_depth_m": {
-     "median": 0.2,
-     "p90": 0.2,
-     "min": 0.1,
-     "max": 0.2,
-     "n_px": 2
-    },
-    "ice_surface_flag_frac": 0.0,
-    "no_ice_frac": 0.75
-   }
-  },
-  "slope_deg": {
-   "shackleton_rim": {
-    "median": 18.8,
-    "p90": 25.3,
-    "min": 2.4,
-    "max": 37.8,
-    "n_px": 538
-   },
-   "shackleton_floor": {
-    "median": 3.6,
-    "p90": 6.6,
-    "min": 0.4,
-    "max": 43.1,
-    "n_px": 683
-   },
-   "connecting_ridge": {
-    "median": 9.1,
-    "p90": 13.4,
-    "min": 2.3,
-    "max": 22.0,
-    "n_px": 612
-   },
-   "de_gerlache_rim": {
-    "median": 9.5,
-    "p90": 14.7,
-    "min": 0.4,
-    "max": 22.2,
-    "n_px": 329
-   },
-   "malapert_massif": {
-    "median": 9.9,
-    "p90": 13.8,
-    "min": 0.6,
-    "max": 26.5,
-    "n_px": 156
-   }
-  },
-  "ground_sun_pct": {
-   "shackleton_rim": {
-    "median": 38.7,
-    "p90": 51.2,
-    "min": 0.0,
-    "max": 87.1,
-    "n_px": 324
-   },
-   "shackleton_floor": {
-    "median": 0.0,
-    "p90": 0.0,
-    "min": 0.0,
-    "max": 0.0,
-    "n_px": 361
-   },
-   "connecting_ridge": {
-    "median": 38.6,
-    "p90": 46.0,
-    "min": 0.0,
-    "max": 52.7,
-    "n_px": 342
-   },
-   "de_gerlache_rim": {
-    "median": 42.3,
-    "p90": 50.1,
-    "min": 0.0,
-    "max": 77.3,
-    "n_px": 361
-   },
-   "malapert_massif": {
-    "median": 40.6,
-    "p90": 47.3,
-    "min": 4.1,
-    "max": 76.7,
-    "n_px": 361
-   }
-  },
-  "ground_earth_pct": {
-   "shackleton_rim": {
-    "median": 44.2,
-    "p90": 49.7,
-    "min": 0.0,
-    "max": 53.7,
-    "n_px": 324
-   },
-   "shackleton_floor": {
-    "median": 0.0,
-    "p90": 0.0,
-    "min": 0.0,
-    "max": 0.0,
-    "n_px": 361
-   },
-   "connecting_ridge": {
-    "median": 15.4,
-    "p90": 28.9,
-    "min": 0.0,
-    "max": 32.3,
-    "n_px": 342
-   },
-   "de_gerlache_rim": {
-    "median": 30.5,
-    "p90": 61.0,
-    "min": 0.0,
-    "max": 61.2,
-    "n_px": 361
-   },
-   "malapert_massif": {
-    "median": 100.0,
-    "p90": 100.0,
-    "min": 0.0,
-    "max": 100.0,
-    "n_px": 361
    }
   },
   "half_box_m": 500.0,
   "coords": {
    "shackleton_rim": [
-    -89.68,
-    -166.0
+    -89.686,
+    197.063
    ],
    "shackleton_floor": [
     -89.67,
     129.78
    ],
    "connecting_ridge": [
-    -89.44,
-    -141.8
+    -89.421,
+    219.317
    ],
    "de_gerlache_rim": [
-    -88.71,
-    -68.7
+    -88.707,
+    291.403
    ],
    "malapert_massif": [
-    -85.98,
-    -1.67
+    -85.992,
+    358.515
    ]
   }
  }

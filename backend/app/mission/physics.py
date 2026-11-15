@@ -145,8 +145,40 @@ def array_area_m2() -> float:
     return peak_w / (p["solar_constant_w_m2"]["value"] * p["cell_efficiency"]["value"])
 
 
+NAV = Path(__file__).resolve().parents[2] / "data" / "sites_physics.json"
+
+
+@lru_cache(maxsize=None)
+def nav_place(site_id: str) -> dict:
+    """The landing-site navigator's numbers for a site (data/sites_physics.json: LOLA sunlight, Earth view, slopes,
+    the drive to ice; Diviner yearly average and maximum temperature). The one table for what both features show."""
+    if not NAV.exists():
+        return {}
+    return next((p for p in json.loads(NAV.read_text())["places"] if p.get("id") == site_id), {})
+
+
+@lru_cache(maxsize=None)
 def site_phys(site_id: str) -> dict:
-    return table()["sites"].get(site_id, {})
+    """A site's physics: the navigator's table, plus the Diviner night minimum (physics.json, sampled at the
+    navigator's spot). Temperatures in K; slopes are the ice drive's (LOLA), as the navigator shows them."""
+    nav, own = nav_place(site_id), table()["sites"].get(site_id, {})
+    out: dict = {}
+    t = nav.get("temp_c")
+    dv = {}
+    if t:
+        dv["avg_k"] = {"value": t["value"] + 273.15, "source": "diviner_prp"}
+        dv["max_k"] = {"value": t["range"][1] + 273.15, "source": "diviner_prp"}
+    if (own.get("diviner") or {}).get("min_k"):
+        dv["min_k"] = own["diviner"]["min_k"]
+    if nav.get("sunlight_pct", {}).get("value") == 0:
+        dv["psr"] = True
+    if dv:
+        out["diviner"] = dv
+    d = nav.get("drive_to_ice") or {}
+    if d:
+        out["slope"] = {"median_deg": {"value": d["mean_slope_deg"], "source": "lola_slope"},
+                        "p90_deg": {"value": d["steep_slope_deg"], "source": "lola_slope"}, "km": d.get("km")}
+    return out
 
 
 def outside_k(m, in_sun: bool | None = None) -> float | None:
@@ -197,7 +229,7 @@ def _power(m, env) -> dict:
                                " is lost (pretend)."], "lola_illum",
                      "Power here = rim panels × cable efficiency",
                      f"P = P_rim × {eff:g} = {kw(S.SOLAR_GEN * m.array_eff * env['sun_frac']):.1f} kW", pretend=True)
-    psun = env["sun_elev_deg"] - s["horizon_deg"]      # the Sun above (or below) the site's own ridge line
+    psun = env["sun_elev_deg"] - S._horizon(m.site_id, "sun", m.t_h)   # the Sun above (or below) the LOLA skyline
     lit = env["sun_frac"] * m.array_eff
     eq = (f"P = {val('power.solar_constant_w_m2.value'):g} W/m² × {array_area_m2():.0f} m² × "
           f"{val('power.cell_efficiency.value') * 100:.0f}% × {lit * 100:.0f}% lit = {kw(S.SOLAR_GEN * lit):.1f} kW")
@@ -206,12 +238,12 @@ def _power(m, env) -> dict:
         return _card("power", ["Arrays at ", (_f(lit * 100), "%"), ": a micrometeorite hit them. The rover can fix it."],
                      "horizons", formula, eq)
     if env["sun_frac"] <= 0:
-        return _card("power", ["No sunlight: the Sun is ", (_f(abs(psun), 1), "°"), " below the ridge line (JPL Horizons). "
+        return _card("power", ["No sunlight: the Sun is ", (_f(abs(psun), 1), "°"), " below the skyline (JPL Horizons, LOLA). "
                                "Only the backup runs."], "horizons", formula, eq)
     if env["sun_frac"] < 1:
-        return _card("power", ["Panels make ", (_f(lit * 100), "%"), " now: the Sun sits on the ridge, its disk partly "
+        return _card("power", ["Panels make ", (_f(lit * 100), "%"), " now: the Sun sits on the skyline, its disk partly "
                                "hidden (JPL Horizons)."], ["horizons", "sunfact"], formula, eq)
-    return _card("power", ["Full Sun, just ", (_f(psun, 1), "°"), " above the ridge (JPL Horizons). Upright panels "
+    return _card("power", ["Full Sun, just ", (_f(psun, 1), "°"), " above the skyline (JPL Horizons, LOLA). Upright panels "
                            "catch the low Sun."], ["horizons", "vsat"], formula, eq)
 
 
@@ -316,11 +348,12 @@ def _rover(m, env) -> dict:
     vmax = val("rover.viper_max_slope_deg.value")
     charge = S.ROVER_POWER
     eq = (f"trip = {charge:g}% × {model()['battery_kwh']['value']:g} kWh = {kwh(charge):.1f} kWh; "
-          f"slope route +{S.ROUTES['slope']['power']:g}% = +{kwh(S.ROUTES['slope']['power']):.1f} kWh; "
+          f"steep drive +{S.site(m.site_id).get('rover_slope_power', 0):g}%, crater-slope route +{S.ROUTES['slope']['power']:g}% "
+          f"= +{kwh(S.site(m.site_id).get('rover_slope_power', 0) + S.ROUTES['slope']['power']):.1f} kWh; "
           f"water = {w:g}% of the soil mass; NASA's VIPER is built for slopes up to {vmax:g}°")
     formula = "Water you get = soil dug × its water share"
     if m.rover["busy"] and slope:
-        parts = ["Crater slopes here reach about ", (_f(slope), "°"), " (LRO LOLA). Climbing them costs battery."]
+        parts = ["The drive to ice has slopes up to about ", (_f(slope), "°"), " (LRO LOLA). Climbing costs battery."]
         return _card("rover", parts, ["lola_slope", "lcross"], formula, eq)
     parts = ["LCROSS found about ", (_f(w, 1), "%"), " water in dark polar crater soil. The rover digs it out."]
     return _card("rover", parts, ["lcross", "lola_slope"], formula, eq)
@@ -422,7 +455,11 @@ def numbers(m) -> list[dict]:
         t = outside_k(m)
         parts = ["Your heaters used ", (_f(kwh(L["heater"]), 1), "kWh"), " against ground at about ", (_f(c_of_k(t)), "°C"), "."]
         out.append(_line("heat", parts, "diviner", f"E_heat = Σ P_heat × 1 h = {kwh(L['heater']):.1f} kWh; ground {t:.0f} K"))
-    if L.get("solar"):
+    if L and kwh(L.get("solar", 0)) < 0.5:   # a mission spent in the dark: the Sun stayed behind the LOLA skyline
+        parts = ["Your panels made almost nothing: the Sun stayed behind the skyline. The outpost used ",
+                 (_f(kwh(L["load"])), "kWh"), "."]
+        out.append(_line("solar", parts, "horizons", f"E_used = Σ P_load × 1 h = {kwh(L['load']):.0f} kWh; panels ≈ 0 kWh"))
+    elif L.get("solar"):
         parts = ["Your panels made ", (_f(kwh(L["solar"])), "kWh"), "; the outpost used ", (_f(kwh(L["load"])), "kWh"), "."]
         out.append(_line("solar", parts, "horizons",
                          f"E = Σ {val('power.solar_constant_w_m2.value'):g} W/m² × {array_area_m2():.0f} m² × "

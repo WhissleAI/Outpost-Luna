@@ -4,20 +4,23 @@
 `physics.json` carries a `source` id, which matches a row below (`sources.json` holds the same list as data), and a
 `where` that says where in the source it comes from.
 
-**How sites were sampled.** Each site is sampled in a box of ±500 m around its coordinates in
-`data/mission/sites.json`. The box values are reduced to a median, a 90th percentile, a minimum and a maximum.
+**One table per quantity.** Each site's sunlight, Earth view, slopes, drive to ice and Diviner yearly average and
+maximum temperature come from the landing-site navigator's `data/sites_physics.json` (`pipeline/site_physics.py`;
+sources in `data/SOURCES.md`). The cards, the debrief and the navigator all read that one table. `physics.json` adds
+only what the navigator does not have: the Diviner night minimum, sampled in a ±500 m box (median) around the
+navigator's own spot for each site, and the curated NASA values below.
 
 ## NASA data
 
 | id | Source | URL | Use in the game |
 |---|---|---|---|
-| `diviner` | LRO Diviner seasonal polar temperatures (Williams et al. 2019, 240 m maps made by the Diviner team from PDS data) | https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/ | Each site's winter night minimum feeds the Heaters card ("Dark ground here drops to about −206 °C"). |
-| `diviner_prp` | LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650) | https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/ | Each site's annual maximum surface temperature (sunlit ground) and the shadowed floor's yearly mean, about 50 K. Also the ice-stability depth: none within 2.9 m at the rims, 0.1–0.8 m at Malapert and de Gerlache. |
+| `diviner` | LRO Diviner seasonal polar temperatures (Williams et al. 2019, 240 m maps made by the Diviner team from PDS data) | https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/ | The winter night minimum at each site's spot: the Heaters card in the dark ("Dark ground here drops to about −208 °C") and Engineer's Outside reading. |
+| `diviner_prp` | LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650), via the navigator's table | https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/ | Sunlit ground (the yearly maximum) and the shadowed floor's yearly average, about −223 °C, on the Heaters card: the same numbers the navigator shows. |
 | `diviner_team` | LRO Diviner team: seasonal polar data products | https://www.diviner.ucla.edu/single-post/2020/07/20/new-diviner-seasonal-polar-data-products | 110 K is cold enough to trap ice for a billion years. |
 | `crater` | LRO CRaTER quiet-time cosmic rays (Schwadron et al. 2012, JGR 117) | https://prediccs.sr.unh.edu/papers/schwadron2011JE003978.pdf | Cross-check of the Chang'e 4 baseline: 11.7 cGy/yr = 0.0134 mGy/h, × Q 4.3 = 0.057 mSv/h. This matches Chang'e 4's 0.057 mSv/h, so the baseline stays. Used in the Dose card and its Engineer equation. |
 | `crater_events` | LRO CRaTER team: solar particle event list | https://crater-web.sr.unh.edu/data/craterProducts/events/events.txt | Real storm peaks, e.g. January 2012 at 61.8 mGy/h, thousands of times the quiet rate. Used in the storm Dose card. The game's ×1.25–×8 storms are labelled "scaled for the game". |
-| `lola_slope` | LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0) | http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/ | Slopes per site, shown on the Commander route choice ("Steep, about 25°") and the Rover card. Track-gap fill pixels (DN 0) are excluded. |
-| `lola_illum` | LRO LOLA average illumination and Earth visibility, 60 m (PGDA product 69; Mazarico et al. 2011 method) | https://pgda.gsfc.nasa.gov/products/69 | Ground-level sunlight % per site, kept as a cross-check (see "Findings"). Not shown to kids. |
+| `lola_slope` | LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0), via the navigator's table | http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/ | The ice drive's mean and steep slopes: Commander's route choice ("Flatter, about 11°" / "Steep, about 22°" at the Shackleton rim) and the Rover card. |
+| `lola_illum` | LRO LOLA average illumination and Earth visibility (NASA PGDA product 69), via the navigator | https://pgda.gsfc.nasa.gov/products/69 | The navigator's yearly sunlight and Earth view per site; the sim's skyline (`*_terrain_deg`) sets the panels' light that the Solar power card explains. |
 | `horizons` | JPL Horizons API | https://ssd-api.jpl.nasa.gov/doc/horizons.html | The Sun's height above each site's ridge line, which drives the Solar power card and the debrief's night and energy lines. |
 | `lend` | LRO LEND polar hydrogen (NTRS 20180004020) | https://ntrs.nasa.gov/citations/20180004020 | Average polar soil is only about 0.13% water-equivalent. That is why the rover goes into the dark craters. |
 | `bvad` | NASA Life Support Baseline Values and Assumptions Document (NTRS 20210024855), Table 3-31 | https://ntrs.nasa.gov/citations/20210024855 | Oxygen use is 0.9 kg per person per day (0.895 nominal; range 0.61–1.08). Used in the Life support card. |
@@ -54,10 +57,7 @@
 
 - **Radiation baseline:** confirmed. CRaTER's quiet-time cosmic rays, converted with Chang'e 4's measured quality factor, give the same 0.057 mSv/h as Chang'e 4. The baseline is unchanged.
 - **Real storms are far bigger than the game's.** CRaTER measured peaks of 47–62 mGy/h in the January and March 2012 storms, behind thin shielding. The game multiplies the quiet rate by 1.25–8. The game keeps its multipliers, labels them as scaled, and the storm card says real storms are thousands of times the quiet rate.
-- **Sunlight at ground level is lower than the picker shows.**
-  - The LOLA maps give 38–42% sunlight at ground level for the sunlit sites.
-  - The site picker's yearly figures (73–86%, Bussey/Gläser) are for the best-lit points, a few metres up.
-  - Mazarico 2011 found that about 10 m of height "dramatically improves" sunlight.
-  - Both stay labelled as they are. The power cards never quote a year figure.
-- **Malapert coordinates:** sampled at `sites.json`'s (−85.98, −1.67), the same point the sim uses.
+- **Sunlight:** at each site's exact coordinates the LOLA maps give only 38–42% sunlight at ground level; the
+  navigator now uses the best-lit flat spot within 1 km (e.g. 87% at the Shackleton rim), and so does this table.
+- **Coordinates:** every site is sampled at the navigator's spot (`sites_physics.json`), the place the sim flies.
 - **Not verified:** CRaTER doses for the 10 September 2017 storm (not in the event list); the full text of the LAMP frost paper; a NASA figure for lunar battery depth of discharge. None of these is used.

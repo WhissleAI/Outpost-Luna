@@ -38,19 +38,32 @@ def test_every_number_cites_a_listed_source():
         assert sid in t["sources"], sid
 
 
-def test_site_tables_are_physical():
-    t = physics.table()["sites"]
-    assert set(t) == set(SITES)
-    for sid, s in t.items():
-        d = s["diviner"]
+def test_site_tables_are_physical_and_shared_with_the_navigator():
+    """One table per quantity: the navigator's sites_physics.json for sunlight, slopes and the Diviner yearly
+    average / maximum; physics.json only adds the Diviner night minimum, sampled at the navigator's own spot."""
+    t = physics.table()
+    assert set(t["sites"]) == set(SITES)
+    for sid in SITES:
+        assert set(t["sites"][sid]) == {"diviner"} and set(t["sites"][sid]["diviner"]) == {"min_k"}, sid
+        nav = physics.nav_place(sid)
+        assert tuple(t["sampled"]["coords"][sid]) == (nav["spot"]["lat"], nav["spot"]["lon"]), sid
+        d = physics.site_phys(sid)["diviner"]
         assert 20 < d["min_k"]["value"] < d["avg_k"]["value"] < d["max_k"]["value"] < 400, sid
-        assert 0 <= s["slope"]["median_deg"]["value"] <= s["slope"]["p90_deg"]["value"] < 45, sid
-    floor = t["shackleton_floor"]
-    assert floor["diviner"].get("psr") and floor["diviner"]["avg_k"]["value"] < physics.val("ice.ice_cold_trap_k.value")
-    assert floor["lola_ground_sun_pct"]["value"] == 0
+        assert d["max_k"]["value"] == pytest.approx(nav["temp_c"]["range"][1] + 273.15)
+        sl = physics.site_phys(sid)["slope"]
+        assert (sl["median_deg"]["value"], sl["p90_deg"]["value"]) == (nav["drive_to_ice"]["mean_slope_deg"],
+                                                                       nav["drive_to_ice"]["steep_slope_deg"])
+    floor = physics.site_phys("shackleton_floor")["diviner"]
+    assert floor.get("psr") and floor["avg_k"]["value"] < physics.val("ice.ice_cold_trap_k.value")
     # CRaTER, converted with Chang'e 4's quality factor, agrees with the baseline the sim uses
     base = sim.radiation()["baseline"]["dose_rate_msv_per_h"]
     assert abs(physics.val("radiation.crater_quiet_gcr.msv_per_h.value") - base) < 0.01
+
+
+def test_heaters_card_and_navigator_quote_the_same_temperature():
+    m = sim.new_mission("h", "shackleton_floor", 1, level="commander")
+    t = physics.nav_place("shackleton_floor")["temp_c"]["value"]
+    assert f"{t}" in sim.to_state(m)["why"]["heaters"]["text"].replace("−", "-")
 
 
 def _missions():
@@ -146,8 +159,10 @@ def test_debrief_numbers_are_cause_and_effect_with_sources():
     # a sheltered storm reports the dose it saved
     m = sim.new_mission("s", "shackleton_rim", 4, level="commander")
     st = next(s for s in m.storms if s.event.get("sep"))
-    while m.t_h < st.start_h:
+    while m.t_h < st.start_h and not m.over:
+        m.power, m.life = 100.0, 100.0     # keep the outpost alive to the storm: this test is about the storm ledger
         sim.step(m, 1)
+    assert not m.over
     m.rover["busy"] = False
     sim.apply_command(m, {"type": "shelter", "on": True})
     sim.step(m, 6)

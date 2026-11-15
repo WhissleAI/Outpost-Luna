@@ -18,10 +18,11 @@ uv run --with tifffile==2025.5.10 python -m pipeline.physics_data
 
 The app never calls NASA. `SOURCES.md` lists every source with its URL, its licence and its use.
 
-- **Sampled per site.** Each site is sampled in a box of ±500 m from:
-  - the LRO Diviner seasonal temperature maps and the Diviner Polar Resource Product;
-  - the LRO LOLA slope map;
-  - the LOLA illumination and Earth-visibility maps.
+- **One table per quantity.** Each site's sunlight, Earth view, slopes, drive to ice and Diviner yearly average and
+  maximum temperature come from the landing-site navigator's `backend/data/sites_physics.json`
+  (docs/SITE_NAVIGATOR.md). `physics.py` reads them from there (`site_phys()`), so a card, the debrief and the
+  navigator always quote the same number. `physics.json` adds only the Diviner night minimum (Williams 2019 seasonal
+  maps), sampled at the navigator's spot for each site.
 - **Curated.** Published NASA values, each with its location in the source:
   - DSNE regolith properties;
   - BVAD oxygen use;

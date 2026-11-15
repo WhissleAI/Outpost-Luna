@@ -111,13 +111,13 @@
   "title": "Williams et al. 2019, Seasonal polar temperatures on the Moon (LRO Diviner maps)",
   "url": "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/",
   "licence": "journal paper: numbers cited only; maps by the Diviner team from PDS data",
-  "use": "Night and winter ground temperature at each site: the heaters card"
+  "use": "Night minimum at each site's spot: the Heaters card in the dark"
  },
  "diviner_prp": {
   "title": "LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650)",
   "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
   "licence": "NASA PDS archive, open (cite the data set)",
-  "use": "Annual max and mean temperature, ice-stability depth at each site"
+  "use": "Sunlit maximum and shadowed-floor average (via the navigator's sites_physics.json)"
  },
  "diviner_team": {
   "title": "LRO Diviner team: new seasonal polar data products",
@@ -129,13 +129,13 @@
   "title": "LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0)",
   "url": "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/",
   "licence": "NASA PDS archive, open (cite the data set)",
-  "use": "Slopes at each site: the rover card, the route choice"
+  "use": "Ice-drive slopes: the route choice and the Rover card (via the navigator's sites_physics.json)"
  },
  "lola_illum": {
   "title": "LRO LOLA average illumination and Earth visibility (NASA PGDA product 69)",
   "url": "https://pgda.gsfc.nasa.gov/products/69",
   "licence": "NASA PDS archive, open (cite the data set)",
-  "use": "Ground-level sunlight % per site (a cross-check; see SOURCES.md)"
+  "use": "Yearly sunlight and Earth view (the navigator); the sim's skyline sets panel light"
  },
  "lcross": {
   "title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330",

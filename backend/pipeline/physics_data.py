@@ -4,12 +4,11 @@
 
 Run at BUILD time only; the app reads the small JSON and never calls NASA. Two kinds of numbers:
 
-  * Sampled here, per outpost site (a ~1 km box around each site's coordinates in data/mission/sites.json):
-      - LRO Diviner seasonal polar temperatures (Williams et al. 2019; 240 m GeoTIFFs from the Diviner team)
-      - LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0): annual max / mean temperature, ice-stability
-        depth (read with HTTP range requests: the table is 605 MB)
-      - LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0)
-      - LRO LOLA average illumination and Earth visibility, 60 m (PGDA product 69, Mazarico et al. 2011 method)
+  * Sampled here, per outpost site: the LRO Diviner seasonal polar NIGHT minimum (Williams et al. 2019; 240 m
+    GeoTIFFs from the Diviner team), in a ~1 km box around the site's spot. The spot is the landing-site navigator's
+    (data/sites_physics.json, pipeline/site_physics.py), so every number about a site comes from the same place.
+    The navigator's table is the one source for each site's sunlight, Earth view, slopes, drive to ice and yearly
+    average / maximum temperature (Diviner Polar Resource Product); physics.py reads those from it, never twice.
   * Curated (CURATED below): published NASA values (DSNE, the Lunar Surface Data Book, NTRS reports, nasa.gov pages,
     the CRaTER team's event list), each with its source id and where it sits in that source. backend/data/physics/
     SOURCES.md lists every source with its URL and its use.
@@ -37,13 +36,14 @@ R_M = 1737400.0
 HALF_M = 500.0
 
 DIVINER = "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/additional_maps/polar_south_80_{s}_{q}-float.tif"
-PRP = "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/dlre_prp_south.tab"
-LOLA = "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/LDSM_85S_40M.IMG"
-ILLUM = "http://imbrium.mit.edu/EXTRAS/ILLUMINATION/IMG/{name}.IMG"
+NAV_JSON = ROOT / "data" / "sites_physics.json"
 
 
 def site_coords() -> dict:
-    return {s["id"]: (s["lat"], s["lon"]) for s in json.loads(SITES_JSON.read_text())["sites"]}
+    """Each outpost site's spot: the navigator's (sites_physics.json), else the site's own coordinates."""
+    spots = {p["id"]: (p["spot"]["lat"], p["spot"]["lon"]) for p in json.loads(NAV_JSON.read_text())["places"]
+             if p.get("kind") == "site" and p.get("spot")} if NAV_JSON.exists() else {}
+    return {s["id"]: spots.get(s["id"], (s["lat"], s["lon"])) for s in json.loads(SITES_JSON.read_text())["sites"]}
 
 
 def download(url: str, dest: Path) -> Path:
@@ -81,7 +81,7 @@ def sample_diviner(cache: Path, sites: dict) -> dict:
     import tifffile
     out: dict = {k: {} for k in sites}
     for season in ("summer", "winter"):
-        for q in ("max", "min", "avg"):
+        for q in ("min",):
             f = download(DIVINER.format(s=season, q=q), cache / "diviner" / f"polar_south_80_{season}_{q}-float.tif")
             a = tifffile.imread(f)
             cx = DIV_X0 + (np.arange(a.shape[1]) + 0.5) * DIV_PX
@@ -92,71 +92,6 @@ def sample_diviner(cache: Path, sites: dict) -> dict:
                 rows = np.where(np.abs(cy - y) <= HALF_M)[0]
                 out[sid][f"{season}_{q}_k"] = stats(a[np.ix_(rows, cols)].ravel().astype(float))
     return out
-
-
-# ---------------------------------------------------------------- Diviner Polar Resource Product (range requests)
-PRP_REC, PRP_NCOL, PRP_NPER, PRP_X0 = 210, 1200, 2400, 299.52036
-PRP_DX = 599.04072 / 1200
-
-
-def sample_prp(sites: dict) -> dict:
-    out = {}
-    R = R_M / 1000
-
-    def xy(lat, lon):
-        c = R * math.cos(math.radians(lat))
-        return c * math.cos(math.radians(lon)), c * math.sin(math.radians(lon))
-    with httpx.Client(timeout=120) as cl:
-        for sid, (lat, lon) in sites.items():
-            sx, sy = xy(lat, lon)
-            ic, jr = int(round((PRP_X0 - sx) / PRP_DX)), int(round((sy + PRP_X0) / PRP_DX)) * 2
-            rows = []
-            for col in range(max(ic - 4, 0), min(ic + 5, PRP_NCOL)):
-                lo, hi = col * PRP_NPER + max(jr - 12, 0), col * PRP_NPER + min(jr + 12, PRP_NPER - 1)
-                txt = cl.get(PRP, headers={"Range": f"bytes={PRP_REC * (lo + 1)}-{PRP_REC * (hi + 2) - 1}"}).text
-                for line in txt.splitlines():
-                    f = line.replace(",", " ").split()
-                    if len(f) != 15:
-                        continue
-                    clon, clat, calt, tavg, tmax, ice = map(float, f[9:15])
-                    tx, ty = xy(clat, clon)
-                    if abs(tx - sx) <= HALF_M / 1000 and abs(ty - sy) <= HALF_M / 1000:
-                        rows.append((calt, tavg, tmax, ice))
-            a = np.array(rows) if rows else np.zeros((0, 4))
-            ice = a[:, 3] if len(a) else a
-            out[sid] = {"n_triangles": len(rows), "annual_avg_2cm_k": stats(a[:, 1]) if len(a) else None,
-                        "annual_max_k": stats(a[:, 2]) if len(a) else None,
-                        # ice_depth: -999 = no stable ice within 2.87 m; -1 (undocumented) only where max T <= ~101 K
-                        "ice_stable_depth_m": stats(ice[ice >= 0]) if len(a) and (ice >= 0).any() else None,
-                        "ice_surface_flag_frac": round(float((ice == -1).mean()), 2) if len(a) else None,
-                        "no_ice_frac": round(float((ice <= -998).mean()), 2) if len(a) else None}
-    return out
-
-
-# ---------------------------------------------------------------- LOLA IMG rasters (int16, N x N)
-def sample_img(path: Path, n: int, scale_m: float, sf: float, off: float, sites: dict, nodata=None) -> dict:
-    a = np.memmap(path, dtype="<i2", mode="r", shape=(n, n))
-    out = {}
-    for sid, (lat, lon) in sites.items():
-        x, y = stereo_xy(lat, lon)
-        i, j, h = x / scale_m + n / 2 + 0.5, -y / scale_m + n / 2 + 0.5, HALF_M / scale_m
-        i0, i1, j0, j1 = int(math.floor(i - h)), int(math.ceil(i + h)), int(math.floor(j - h)), int(math.ceil(j + h))
-        raw = np.asarray(a[j0 - 1:j1, i0 - 1:i1], dtype=float).ravel()
-        if nodata is not None:
-            raw = raw[raw != nodata]      # LDSM: DN 0 (45.0 deg) is track-gap fill
-        out[sid] = stats(raw * sf + off)
-    return out
-
-
-def sample_lola(cache: Path, sites: dict) -> dict:
-    slope = download(LOLA, cache / "lola" / "LDSM_85S_40M.IMG")
-    sun = download(ILLUM.format(name="AVGVISIB_85S_060M_201608"), cache / "lola" / "AVGVISIB_85S_060M_201608.IMG")
-    earth = download(ILLUM.format(name="AVGVISIB_85S_060M_201608_EARTH"), cache / "lola" / "AVGVISIB_85S_060M_201608_EARTH.IMG")
-    # sizes and scalings from the PDS labels (.LBL): LDSM 40 m, 7584 px, DN * 0.0015 + 45 deg; AVGVISIB 60 m, 5058 px,
-    # visibility fraction = DN * 0.00004 (x100 here: percent of the time)
-    return {"slope_deg": sample_img(slope, 7584, 40, 0.0015, 45.0, sites, nodata=0),
-            "ground_sun_pct": sample_img(sun, 5058, 60, 0.004, 0.0, sites),
-            "ground_earth_pct": sample_img(earth, 5058, 60, 0.004, 0.0, sites)}
 
 
 # ---------------------------------------------------------------- curated NASA values (each with its source id)
@@ -248,32 +183,14 @@ def main():
     if a.offline:
         sampled = old.get("sampled") or {}
     else:
-        print("sampling Diviner, the Diviner PRP and LOLA at", ", ".join(sites), file=sys.stderr)
-        sampled = {"diviner_seasonal": sample_diviner(cache, sites), "diviner_prp": sample_prp(sites),
-                   **sample_lola(cache, sites), "half_box_m": HALF_M, "coords": sites}
+        print("sampling the Diviner night minimum at", ", ".join(sites), file=sys.stderr)
+        sampled = {"diviner_seasonal": sample_diviner(cache, sites), "half_box_m": HALF_M, "coords": sites}
     per_site = {}
     for sid in sites:
-        dv, prp = sampled["diviner_seasonal"][sid], sampled["diviner_prp"][sid]
-        psr = (sampled["ground_sun_pct"][sid] or {}).get("max", 1) == 0
-        d = {"max_k": V(prp["annual_max_k"]["median"], "diviner_prp", "annual maximum surface temperature, box median",
-                        range=[prp["annual_max_k"]["min"], prp["annual_max_k"]["max"]]),
-             "min_k": V(dv["winter_min_k"]["median"], "diviner", "winter minimum, box median (Williams 2019)",
-                        range=[dv["winter_min_k"]["min"], dv["summer_min_k"]["max"]]),
-             "avg_k": V(prp["annual_avg_2cm_k"]["median"], "diviner_prp", "annual mean at 2 cm depth, box median")}
-        if psr:
-            d["psr"] = True
-        s = sampled["slope_deg"][sid]
-        per_site[sid] = {
-            "diviner": d,
-            "slope": {"median_deg": V(s["median"], "lola_slope", "LDSM_85S_40M box median"),
-                      "p90_deg": V(s["p90"], "lola_slope", "LDSM_85S_40M box 90th percentile")},
-            "lola_ground_sun_pct": V(sampled["ground_sun_pct"][sid]["median"], "lola_illum",
-                                     "AVGVISIB_85S_060M, ground level, box median"),
-            "lola_ground_earth_pct": V(sampled["ground_earth_pct"][sid]["median"], "lola_illum",
-                                       "AVGVISIB_85S_060M_EARTH, ground level, box median"),
-            "ice_stable": {"surface_flag_frac": prp["ice_surface_flag_frac"], "no_ice_frac": prp["no_ice_frac"],
-                           "depth_m": prp["ice_stable_depth_m"], "source": "diviner_prp"},
-        }
+        dv = sampled["diviner_seasonal"][sid]
+        per_site[sid] = {"diviner": {"min_k": V(dv["winter_min_k"]["median"], "diviner",
+                                                "winter night minimum, box median (Williams 2019), at the navigator's spot",
+                                                range=[dv["winter_min_k"]["min"], dv["summer_min_k"]["max"]])}}
     sources = json.loads((OUT.parent / "sources.json").read_text())
     doc = {"note": "Built by backend/pipeline/physics_data.py; sources in SOURCES.md. The app never calls NASA.",
            "sources": sources, "outpost_model": OUTPOST_MODEL, **CURATED, "sites": per_site, "sampled": sampled}
