@@ -19,9 +19,9 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, watchedEnough, youtubeSrc } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc } from "./commands.js";
 
-export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, watchedEnough, youtubeSrc };
+export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
@@ -45,6 +45,22 @@ export async function isAvailable(id) {
     if (s === "online" && typeof navigator !== "undefined" && navigator.onLine === false) return "offline";
     return s === "cached" || s === "online" ? s : "offline";
   } catch (e) { return "offline"; }
+}
+
+/**
+ * After the player failed: is that because we are offline ("offline") or something else ("error": the embed refused,
+ * an unknown id, a backend hiccup)? navigator.onLine first, then one quick backend check. Never throws.
+ */
+export async function diagnose(id) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return "offline";
+  try {
+    const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const t = ac ? setTimeout(() => ac.abort(), 4000) : 0;
+    const r = await fetch(`/api/video/${encodeURIComponent(id)}/available`, ac ? { signal: ac.signal } : {});
+    clearTimeout(t);
+    if (!r.ok) return "error";
+    return (await r.json()).status === "offline" ? "offline" : "error";
+  } catch (e) { return "error"; }
 }
 
 /** Every video the catalog lists, for the credits (About → Videos). */
@@ -76,7 +92,8 @@ export function initVideo(o = {}) {
   // gamepad and gestures still move focus and select inside the overlay; Esc / B close it through keys.js)
   onIntent("*", (args, ev) => {
     if (!cur) return false;
-    const c = ev.name === "stop" && ev.source !== "voice" ? "pause" : INTENT_CMD[ev.name];   // open palm = pause
+    // open palm = pause; thumbs down ("No thanks") = close, so a gesture can always get out of the overlay
+    const c = ev.name === "stop" && ev.source !== "voice" ? "pause" : ev.name === "no" && ev.source === "voice" ? null : INTENT_CMD[ev.name];
     if (c) { cur.cmd(c); return true; }
     return ev.source === "voice";
   }, { priority: 100 });
@@ -106,7 +123,7 @@ export async function openVideo(id, { context = "" } = {}) {
   const status = v ? await isAvailable(id) : "offline";
   const fb = v && v.fallback ? await getVideo(v.fallback) : null;
   const fbOk = fb ? (await isAvailable(fb.id)) === "cached" : false;
-  return new Promise(resolve => run({ v: v || { id, title: "Video", credit: "", duration_s: 0 }, status, fb: fbOk ? fb : null, context, resolve }));
+  return new Promise(resolve => run({ v: v || { id, title: "Video", credit: "", duration_s: 0, missing: true }, status, fb: fbOk ? fb : null, context, resolve }));
 }
 
 function run({ v, status, fb, context, resolve }) {
@@ -120,7 +137,7 @@ function run({ v, status, fb, context, resolve }) {
     const stage = dlg.querySelector(".vid-stage"), bar = dlg.querySelector(".vid-bar");
     dlg.querySelector("#vidTitle").textContent = item.title;
     dlg.querySelector(".vid-credit").textContent = item.credit ? `Video: ${item.credit}${kind === "youtube" ? " · YouTube" : ""}` : "";
-    if (kind === "offline") { player = null; offlineCard(stage, bar, item); return; }
+    if (kind === "offline" || kind === "error") { player = null; offlineCard(stage, bar, item, kind); return; }
     player = kind === "file" ? filePlayer(stage, bar, item) : youtubePlayer(stage, bar, item);
     detach = floor ? floor.attachMedia({ get paused() { return player ? player.paused : true; }, get ended() { return player ? player.ended : true; },
       duck: l => player && player.duck(l), unduck: () => player && player.unduck(), text: () => (player ? player.text() : "") }) : () => {};
@@ -154,13 +171,13 @@ function run({ v, status, fb, context, resolve }) {
     el.addEventListener("play", () => { paint(); if (!started) { started = true; if (floor) floor.mediaPlayback("start", "video:" + item.id); } });
     el.addEventListener("pause", paint);
     el.addEventListener("ended", () => { ended = true; paint(); });
-    el.addEventListener("error", () => { extra.offline = true; mount("offline", v); });   // not saved and the network went: the card
+    el.addEventListener("error", () => { if (!closed && player && player.el === el) failed(item.id); });   // not saved and the network went: the card
     el.addEventListener("click", () => (el.paused ? el.play() : el.pause()));
     pp.onclick = () => (el.paused || el.ended ? el.play() : el.pause());
     const cc = bar.querySelector("[data-cc]"); if (cc) cc.onclick = () => showCaptions(cc.getAttribute("aria-pressed") !== "true");
     el.play().catch(() => paint());
     pp.focus({ preventScroll: true });
-    return {
+    return { el,
       play: () => el.play().catch(() => {}), pause: () => el.pause(), toggle: () => (el.paused ? el.play().catch(() => {}) : el.pause()),
       duck: l => { vol = l; el.volume = l; }, unduck: () => { vol = 1; el.volume = 1; },
       dispose: () => { removeEventListener("outpost:mute", onMute); el.pause(); el.removeAttribute("src"); el.load(); },
@@ -182,7 +199,9 @@ function run({ v, status, fb, context, resolve }) {
       <span class="vid-time" aria-hidden="true"><span data-t>0:00</span> / ${fmt(item.duration_s)}</span>
       <button type="button" class="btn vid-x" data-close>${icon("close")}<span>Close</span></button>`;
     const fr = stage.querySelector("iframe"), pp = bar.querySelector("[data-pp]"), tEl = bar.querySelector("[data-t]");
-    let state = -1, last = 0, ready = false;
+    let state = -1, last = 0, ready = false, heard = false;
+    // the frame never answered (no network, or blocked): after a while, ask what is wrong and show the right card
+    const quiet = setTimeout(() => { if (!heard) failed(item.id, { onlyOffline: true }); }, 15000);
     const send = (func, args = []) => { try { fr.contentWindow.postMessage(JSON.stringify({ event: "command", func, args, id: 1, channel: "widget" }), YT_ORIGIN); } catch (e) { /* */ } };
     const paint = () => { const p = state === 1 || state === 3; pp.innerHTML = `${icon(p ? "pause" : "play")}<span>${p ? "Pause" : "Play"}</span>`; pp.setAttribute("aria-label", p ? "Pause" : "Play"); };
     const onMsg = e => {
@@ -190,7 +209,8 @@ function run({ v, status, fb, context, resolve }) {
       let m; try { m = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (x) { return; }
       if (!m || !m.event) return;
       if (m.event === "onReady" || (m.event === "initialDelivery" && !ready)) { ready = true; send("playVideo"); }
-      if (m.event === "onError") { extra.error = m.info; dlg.dataset.yterror = String(m.info); }
+      heard = true;
+      if (m.event === "onError") { extra.error = m.info; dlg.dataset.yterror = String(m.info); if (state !== 1) failed(item.id); return; }
       const info = m.info && typeof m.info === "object" ? m.info : {};
       const s = m.event === "onStateChange" ? m.info : info.playerState;
       if (typeof s === "number" && s !== state) {
@@ -217,23 +237,35 @@ function run({ v, status, fb, context, resolve }) {
     return {
       play: () => send("playVideo"), pause: () => send("pauseVideo"), toggle: () => send(state === 1 || state === 3 ? "pauseVideo" : "playVideo"),
       duck: l => send("setVolume", [Math.round(l * 100)]), unduck: () => send("setVolume", [100]),
-      dispose: () => { removeEventListener("message", onMsg); removeEventListener("outpost:mute", onYtMute); fr.src = "about:blank"; },
+      dispose: () => { clearTimeout(quiet); removeEventListener("message", onMsg); removeEventListener("outpost:mute", onYtMute); fr.src = "about:blank"; },
       get paused() { return state !== 1 && state !== 3; }, get ended() { return state === 0; },
       text: () => "",
     };
   }
 
-  // ---- offline / not saved: the NASA still, the line, and the NASA video we have instead ----
-  function offlineCard(stage, bar, item) {
-    extra.offline = true;
+  /** The player failed: the offline card only when we really are offline, else "This video won't play here". */
+  function failed(id, { onlyOffline = false } = {}) {
+    const p = player;
+    diagnose(id).then(why => {
+      if (closed || player !== p) return;   // closed, or something else mounted meanwhile
+      if (onlyOffline && why !== "offline") return;
+      mount(why, v);
+    });
+  }
+
+  // ---- offline / not saved (or won't play): the NASA still, the line, and the NASA video we have instead ----
+  function offlineCard(stage, bar, item, kind = "offline") {
+    if (!stage || !bar) return;   // never write anywhere but inside our own overlay
+    if (kind === "offline") extra.offline = true; else { delete extra.offline; extra.failed = true; }
+    dlg.dataset.card = kind;
     const poster = item.poster_src || (fb && fb.poster_src);
     stage.innerHTML = `<div class="vid-off" role="status">
         ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}" onerror="this.remove()">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
-        <p class="vid-off-line">${esc(OFFLINE_LINE)}</p></div>`;
+        <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}</p></div>`;
     bar.innerHTML = `${fb ? `<button type="button" class="btn-primary" data-fb>${icon("play")}<span>Watch NASA's ${esc(lengthLabel(fb.duration_s))} video instead</span></button>` : ""}
       <button type="button" class="${fb ? "btn" : "btn-primary"} vid-x" data-close>${icon("close")}<span>Close</span></button>`;
     const b = bar.querySelector("[data-fb]");
-    if (b) b.onclick = () => { delete extra.offline; extra.fallback = fb.id; mount("file", fb); };
+    if (b) b.onclick = () => { delete extra.offline; delete dlg.dataset.card; extra.fallback = fb.id; mount("file", fb); };
     (b || bar.querySelector("[data-close]")).focus({ preventScroll: true });
   }
 
@@ -246,7 +278,7 @@ function run({ v, status, fb, context, resolve }) {
     detach();
     dlg.removeEventListener("close", onClose);
     if (dlg.open) dlg.close();
-    dlg.innerHTML = ""; delete dlg.dataset.ytstate; delete dlg.dataset.yterror;
+    dlg.innerHTML = ""; delete dlg.dataset.ytstate; delete dlg.dataset.yterror; delete dlg.dataset.card;
     cur = null; changed();
     try { if (before && before.isConnected) before.focus({ preventScroll: true }); } catch (e) { /* */ }
     const secs = Math.round(seconds * 10) / 10;
@@ -269,7 +301,7 @@ function run({ v, status, fb, context, resolve }) {
       if (c === "pause") player.pause(); else if (c === "play") player.play(); else if (c === "toggle") player.toggle();
     } };
   if (!dlg.open) dlg.showModal();
-  const kind = v.source === "youtube" ? (status === "online" ? "youtube" : "offline")
+  const kind = v.missing ? "error" : v.source === "youtube" ? (status === "online" ? "youtube" : "offline")
     : status === "cached" || status === "online" ? "file" : "offline";
   mount(kind, v);
   changed();

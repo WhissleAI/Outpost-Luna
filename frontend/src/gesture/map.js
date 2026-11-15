@@ -53,7 +53,7 @@ export const SCREEN_MAP = Object.freeze({
     fist: "Look around", head: "Look around", lean: "Lean in opens, sit back closes",
   },
   video: {       // hooks for the video overlay (another branch): same meanings, the overlay handles the intents
-    palm: "Pause or play", thumbs_up: "Yes, watch the next one", thumbs_down: "No thanks",
+    palm: "Pause or play", thumbs_up: "Yes, watch the next one", thumbs_down: "No thanks, close the video",
     swipe_left: "Next clip", swipe_right: "Previous clip", point: "Press a button",
   },
   settings: {    // the Settings sheet (and other dialogs)

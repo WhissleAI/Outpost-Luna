@@ -49,6 +49,8 @@ YT_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 UA = "OutpostLuna/1.0 (NASA Space Apps; offline video cache)"
 PROBE = {"nasa": "https://images-api.nasa.gov/", "youtube": "https://www.youtube-nocookie.com/"}
 PROBE_TTL_S = 20.0
+PROBE_FAIL_TTL_S = 5.0     # a failed probe is retried soon: a blip must not pin "offline" for long
+PROBE_TIMEOUTS_S = (3.0, 6.0)
 MISSION_QUIET_S = 20.0      # a mission clock tick within this long pauses the background prefetch
 
 
@@ -356,13 +358,20 @@ def online(kind: str = "nasa") -> bool:
     if settings.video_offline:
         return False
     at, ok = _probe.get(kind, (0.0, False))
-    if time.monotonic() - at < PROBE_TTL_S:
+    if time.monotonic() - at < (PROBE_TTL_S if ok else PROBE_FAIL_TTL_S):
         return ok
-    try:
-        httpx.head(PROBE[kind], timeout=3.0, headers={"User-Agent": UA})
-        ok = True
-    except httpx.HTTPError:
-        ok = False
+    ok = False
+    # [vidfix] a slow answer is not "offline": a timeout (busy machine, slow Wi-Fi) gets one more, longer try; only a
+    # refused / unresolvable connection, or two timeouts, says offline. Any HTTP answer at all (even 4xx/5xx) is online.
+    for t in PROBE_TIMEOUTS_S:
+        try:
+            httpx.head(PROBE[kind], timeout=t, headers={"User-Agent": UA})
+            ok = True
+            break
+        except httpx.TimeoutException:
+            continue
+        except httpx.HTTPError:
+            break
     _probe[kind] = (time.monotonic(), ok)
     return ok
 
