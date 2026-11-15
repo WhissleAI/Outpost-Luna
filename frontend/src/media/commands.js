@@ -16,7 +16,7 @@ export function videoCommand(text) {
 }
 /** The router's nav intents for the video screen → the overlay's command. */
 export const INTENT_CMD = Object.freeze({ video_pause: "pause", video_play: "play", video_skip: "skip", video_stop: "stop",
-  stop: "stop", time_toggle: "toggle", time_pause: "pause", time_resume: "play" });
+  stop: "stop", no: "stop", time_toggle: "toggle", time_pause: "pause", time_resume: "play" });
 
 /** The button's length: "Watch (2 min)", "Watch (15 sec)". */
 export function lengthLabel(seconds) {
@@ -26,6 +26,8 @@ export function lengthLabel(seconds) {
 export const watchLabel = v => `Watch (${lengthLabel(v && v.duration_s)})`;
 export const NEEDS_NET = "Needs internet";
 export const OFFLINE_LINE = "Needs internet. Ask a grown-up to connect.";
+/** The player failed while we ARE online (YouTube error 2/5/100/101/150/153, an unknown id): not "Needs internet". */
+export const NO_PLAY_LINE = "This video won't play here.";
 
 /** watched = the kid saw most of it: the end, or at least 70% of its length. */
 export function watchedEnough(seconds, duration, ended) {
