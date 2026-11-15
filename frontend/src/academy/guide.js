@@ -20,6 +20,7 @@ export const DO = {
   choice: "Tap an answer, or say it", command: "Tap an order, or say it",
   keywords: "Say the order back, or type it", vocab_match: "Tap the meaning, or say it",
   vocab_fill: "Tap the missing word, or say it", vocab_say: "Say the word out loud", vocab_listen: "Listen, then tap the word, or say it",
+  video: "Guess first. Then tap Watch, or Skip",
 };
 /** The first time a kind of step appears: one line on how it works (spoken once too). */
 export const INTRO = {
@@ -28,6 +29,7 @@ export const INTRO = {
   globe_side: "New: you can spin the Moon. Drag it, or tap a side.", compare: "New: two outposts. Pick one, then see the numbers.",
   predict: "New: a guess. There's no wrong guess here.", earth_view: "New: imagine standing there and looking up.",
   command: "New: give an order. Tap a button, or say it.", keywords: "New: radio practice. Say the order back.",
+  video: "New: a NASA video. Guess first, then watch.",
 };
 export const doLine = st => (st && (st.do || DO[(st.accept || {}).type])) || "";
 

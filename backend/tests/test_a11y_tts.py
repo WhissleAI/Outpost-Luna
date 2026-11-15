@@ -1,4 +1,4 @@
-"""a11y: speed → Steer rate/pace, vocab steering, word-timing passthrough + cache (docs/ACCESSIBILITY.md)."""
+"""a11y: speed → the OS voice rate/pace, vocab steering, word-timing passthrough + cache (docs/ACCESSIBILITY.md)."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -33,34 +33,34 @@ def test_vocab_markup_wraps_the_word_once():
 
 
 @pytest.fixture
-def steer(monkeypatch, tmp_path):
+def os_calls(monkeypatch, tmp_path):
     calls = []
 
     async def fake(text, style, place):
         calls.append((text, style))
         return b"RIFFfake", "0-300,300-700"
 
-    monkeypatch.setattr(tts, "_steer", fake)
+    monkeypatch.setattr(tts, "_os_tts", fake)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "c")
-    monkeypatch.setattr(settings, "tts_engine", "steer")
+    monkeypatch.setattr(settings, "tts_engine", "os")
     return calls
 
 
-def test_word_timings_pass_through_and_are_cached(steer):
+def test_word_timings_pass_through_and_are_cached(os_calls):
     with TestClient(app) as c:
         a = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
         b = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
     assert a.headers["x-tts-words"] == b.headers["x-tts-words"] == "0-300,300-700"
     assert b.headers["x-tts-cache"] == "hit" and "X-TTS-Words" in a.headers["access-control-expose-headers"]
-    assert len(steer) == 1
+    assert len(os_calls) == 1
 
 
-def test_speed_changes_the_request_and_the_cache_key(steer):
+def test_speed_changes_the_request_and_the_cache_key(os_calls):
     with TestClient(app) as c:
         c.get("/api/tts", params={"text": "Hello cadet.", "voice": "capcom"})
         r = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "capcom", "speed": 1.5})
     assert r.headers["x-tts-cache"] == "miss" and "pace=" in r.headers["x-tts-speed"]
-    (_, s1), (_, s2) = steer
+    (_, s1), (_, s2) = os_calls
     assert s2["controls"]["rate"] > s1["controls"]["rate"] and s2["pace"] > 1 and "pace" not in s1
 
 

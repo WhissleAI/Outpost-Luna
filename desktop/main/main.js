@@ -12,6 +12,7 @@ const { spawn } = require("child_process");
 const S = require("./supervisor");
 const P = require("./permissions");
 const K = require("./keys");   // [keys] the app menu + no accidental reload (docs/KEYBOARD.md §Desktop)
+const G = require("./gate");   // [media] links out of a NASA video open behind the grown-up gate (docs/MEDIA.md)
 
 const RES = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..", "resources");
 const USER = app.getPath("userData");                   // ~/Library/Application Support/Outpost Luna, %APPDATA%\Outpost Luna
@@ -23,6 +24,9 @@ const MODELS = path.join(RES, "models");
 const pids = new S.PidFile(path.join(USER, "children.json"));
 const portsFile = path.join(USER, "ports.json");
 const START_TIMEOUT_MS = 240000;
+
+// Silent runs (tests, demos next to someone): OUTPOST_MUTE_AUDIO=1 mutes every page, like --mute-audio.
+if (process.env.OUTPOST_MUTE_AUDIO === "1") app.commandLine.appendSwitch("mute-audio");
 
 const kids = {};            // name -> { proc, port, restarts: [timestamps] }
 let quitting = false, splash = null, win = null, ports = null;
@@ -54,9 +58,8 @@ function envFor(name) {
       ARCTAG_LIB: path.join(RES, "native", LIB),
       ARCTAG_MODEL_DIR: path.join(MODELS, "arctag"),
       ARC_META_WEIGHTS: path.join(MODELS, "arc-v1.1"),
-      STEER_TTS_MODEL: path.join(MODELS, "steer-tts-edge"),
-      STEER_DIRECTOR: path.join(MODELS, "steer-tts-edge", "director.bin"),
       EMBED_MODEL_DIR: path.join(MODELS, "minilm"),
+      VOICE_PACK_DIR: path.join(RES, "app", "backend", "data", "voice_pack"),   // the recorded fixed lines (docs/VOICE_PACK.md)
     });
   }
   const origin = `http://127.0.0.1:${ports.backend}`;
@@ -67,7 +70,7 @@ function envFor(name) {
     FRONTEND_DIST: path.join(RES, "app", "frontend"),
     MODEL_SERVER_URL: `http://127.0.0.1:${ports.models}`,
     CORS_ORIGINS: origin,
-    TTS_ENGINE: "steer",
+    TTS_ENGINE: "os",   // the OS's own offline voices (model_server/app/tts_os.py); no Deepgram key in the app
   });
 }
 
@@ -128,9 +131,12 @@ async function waitHealthy() {
 }
 
 // Offline by construction + mic / camera for our own origin only (permissions.js; docs/GESTURES.md for the camera).
+// The one way out: a NASA video's YouTube embed (permissions.allowYouTube). It plays from the loopback origin as it is
+// (measured in Electron 44: no error 153), so no Referer is set; OUTPOST_YT_REFERER=1 turns that fallback on.
 function lockDownSession(origin) {
-  P.lockDownSession(session.defaultSession, origin, { log, systemPreferences });
+  P.lockDownSession(session.defaultSession, origin, { log, systemPreferences, referer: process.env.OUTPOST_YT_REFERER === "1" });
 }
+const gate = G.createGate({ makeWindow: (o) => new BrowserWindow(o), file: path.join(__dirname, "gate.html"), log });
 
 function createSplash() {
   splash = new BrowserWindow({ width: 460, height: 300, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
@@ -143,7 +149,12 @@ function createMain(origin) {
   win = new BrowserWindow({ width: 1440, height: 900, minWidth: 960, minHeight: 640, show: false, backgroundColor: "#05070d",
     title: "Outpost Luna", webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
   K.installKeys({ Menu, win, packaged: app.isPackaged, appName: "Outpost Luna" });   // [keys]
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url) && !url.startsWith(origin)) shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    const kind = G.classifyOpen(url, origin);
+    if (kind === "youtube") gate(win, url).then((ok) => { if (ok) shell.openExternal(url); });   // [media] grown-up gate
+    else if (kind === "external") shell.openExternal(url);
+    return { action: "deny" };
+  });
   win.webContents.on("will-navigate", (e, url) => { if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); } });
   win.once("ready-to-show", () => {
     win.show();

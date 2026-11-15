@@ -179,3 +179,53 @@ Three full first missions were played from the screen only (`frontend/tools/play
 | After a storm | A held CAPCOM "Go to shelter / Set shields to 40" offer arrived hours of sim time late (held on the voice floor for up to 30 s at 4× warp), while the card said "Crew out of the shelter". | The session drops held storm decisions when no storm or warning is on (`Session._overtaken`). The cabin drops a stale storm or night-mode offer (`staleOffer`). |
 | Commander life support check | "Recycler up" set 40% when the recycler was already at 40%. It did nothing, and the check came back every 12 h, four times. | The option is a real raise ("Recycler to 50%"). Past 60% only the ice run is offered. |
 | An ice run open when a storm came | "Send the rover for ice" during the storm, then a risky-order confirm hidden behind an open panel | The ice run waits out storms and warnings. A Cadet offer returns the seat view once answered. The Now card shows a pending yes/no first. |
+
+## 9. The cabin layout (fix/mission-ui-polish)
+
+The owner played at 1440×879 and found four problems:
+- The Now card floated over the windshield and the gauges ("this covered everything").
+- Its text collided with the clock strip, and "1x" and "Skip ahead" showed twice.
+- The Steer left/right choice had one ring round both buttons ("like i can't control").
+- Monospace and sans fonts were mixed.
+
+**Layout.** The glass carries only what belongs to the view: the alert strip, the view tabs (top-right), the rover
+pill and the story moments. A story banner ("Day 1 / On our own") has the glass's centre to itself, and the rover pill
+steps aside while it shows. The sky readout ("Sun up · Earth below") sits in the deck after the clock, because the
+bottom of the glass is behind the consoles. During a storm, Up from the seat goes straight to the alert strip's main
+action ("Shelter the crew"). The cabin has two fixed places:
+1. **The deck**: one overhead bar with the clock (Day, time, shift and site), the clock state (a lamp and its word:
+   Running 2× / Paused / On hold: your choice), Pause/Play, the speed, Skip ahead, the goals (days, science, ice) and
+   the mission log. Each control is shown once. The Now panel never repeats a deck control: it lights the deck's
+   button and names its key ("Skip ahead is in the clock bar (E)").
+2. **The Now panel**: a side display docked on the left wall, under the deck, clear of the windshield and the gauges.
+   It has a title, the step, step dots, the countdown, "Lesson N helps here", read-outs and the buttons. A choice puts
+   each option on its own numbered button and says what to say ("Say “left” or “right”, or press 1 or 2."). It fits
+   itself to the wall above the Habitat console by dropping details in three levels (read-outs and hint, then the meta
+   row, then everything but the step and its buttons). It folds to one line (⌃), and that is remembered.
+
+- When a panel is open, the Now panel keeps its step and buttons and drops the rest.
+- On a wide window the glass's alert strip starts where the Now panel ends.
+- Paused dims the glass a little, and the clock digits stop glowing.
+
+**Type.** Sans for words, tabular figures for numbers; mono only on the instrument read-outs.
+
+**Mute** (top bar, right after Settings): every sound off (voice, chimes, crew clips, media, YouTube embeds), captions
+and text kept, mic untouched. The state persists in prefs. Keys: Shift+M (M is the mic). Voice: "mute" / "unmute".
+
+**Checks**
+- `frontend/tools/mission_ui.py` is the overlap test. At 1280×720, 1440×879, 1440×900, 1920×1080 and 1024×640 it
+  drives the app to the owner's moment (the Steer choice, with a fixed storm schedule). It then asserts:
+  - no two HUD elements intersect, including inside the deck;
+  - the deck and the Now panel are clear of the windshield centre, the gauges and the consoles;
+  - nothing is clipped or off-screen;
+  - every control is shown once;
+  - no window text (tabs, rover pill, alert strip, story banner) is covered by a 3D console; the check runs again with
+    a story banner forced on;
+  - the top bar has the Mute button next to Settings and no overlaps.
+
+  Screenshots go to `docs/img/mission-ui/`.
+- `frontend/tools/choice_card.py` checks the choice card by mouse (hover and click), keyboard (one ring on one button,
+  the arrow moves, Enter presses, the card doesn't rebuild under focus), the number key, a controller (D-pad + A) and
+  voice ("right").
+- Every Playwright tool imports `frontend/tools/silent.py`, so runs are muted (audio-output flags plus a muting init
+  script, with the app's Mute on) and headless.

@@ -46,9 +46,10 @@ export function rng(seed = 1) {
 
 /**
  * A hand: pose name, centre of the wrist (cx, cy normalised), scale s (normalised wrist → middle knuckle, ~0.12 at
- * arm's length), side "right" | "left", rot (radians, + = clockwise on screen), noise (normalised).
+ * arm's length), side "right" | "left", rot (radians, + = clockwise on screen), noise (normalised), pitch (radians,
+ * + = knuckles tipped toward the camera), twist (radians, + = the pinky side turned away; MediaPipe-style z).
  */
-export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot = 0, aspect = 4 / 3, noise = 0, rand = Math.random, score = 0.95 } = {}) {
+export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot = 0, pitch = 0, twist = 0, aspect = 4 / 3, noise = 0, rand = Math.random, score = 0.95 } = {}) {
   const P = POSES[pose]; if (!P) throw new Error("unknown pose " + pose);
   let pts;
   if (pose === "pinch") {
@@ -60,10 +61,14 @@ export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot =
       MCP.ring, ...finger("ring", !!P.f[2]), MCP.pinky, ...finger("pinky", !!P.f[3])];
   }
   const m = side === "left" ? -1 : 1, c = Math.cos(rot), sn = Math.sin(rot);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch), ct = Math.cos(twist), st = Math.sin(twist);
   const lm = pts.map(([x, y], i) => {
-    const X = x * m, Y = y, rx = X * c + Y * sn, ry = -X * sn + Y * c;
+    // pitch tips the hand about the wrist's x axis, twist turns it about its own long axis; depth goes into z
+    const depth = -y * sp + x * st;
+    const X = x * ct * m, Y = y * cp, rx = X * c + Y * sn, ry = -X * sn + Y * c;
     const j = () => (noise ? (rand() - 0.5) * 2 * noise : 0);
-    return [+(cx + rx * s / aspect + j()).toFixed(5), +(cy - ry * s + j()).toFixed(5), +(i ? -0.02 : 0).toFixed(3)];
+    const z = (i ? -0.02 : 0) + (pitch || twist ? depth * s / aspect : 0);
+    return [+(cx + rx * s / aspect + j()).toFixed(5), +(cy - ry * s + j()).toFixed(5), +z.toFixed(4)];
   });
   return { lm, side, score };
 }
@@ -130,7 +135,19 @@ export function sequences() {
     relaxed_hand: { expect: [], note: "a half-open resting hand", frames: still("relaxed", 1500) },
     point_moving: { expect: [], note: "a pointing finger that keeps moving never dwells",
       frames: seq(1500, (i, t, k) => ({ hands: [hand("point", { cx: 0.25 + 0.5 * k, noise: N, rand: R })] })) },
+    // ----- the fist as a joystick: grab, lean / move one way and hold, open the hand (8 directions) -----
+    ...Object.fromEntries(Object.entries(FIST_DIRS).map(([d, v]) => [`fist_spin_${d}`, { expect: ["grab_start", "grab_move", "grab_end"],
+      note: `fist grabs, leans ${d.replace("_", "-")} and holds, then the hand opens`, dir: v, frames: fistSpin(v, R, N) }])),
     other_face_bigger_later: { expect: [], note: "head events only; a second, smaller face never drives the view",
       frames: seq(600, () => ({ faces: [face({ w: 0.2 }), face({ cx: 0.85, w: 0.08, yaw: 0.8 })] })) },
   };
+}
+
+/** The 8 stick directions: [x, y], x > 0 = the kid's right, y > 0 = down. */
+export const FIST_DIRS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1], up_left: [-0.71, -0.71], up_right: [0.71, -0.71], down_left: [-0.71, 0.71], down_right: [0.71, 0.71] };
+/** A fist that grabs at (0.5, 0.62), moves 0.75 hand-lengths and leans (roll / pitch) towards v, holds, then opens. */
+export function fistSpin(v, R = rng(11), N = 0.003, { holdMs = 900, s = 0.12, aspect = 4 / 3 } = {}) {
+  const at = k => ({ cx: 0.5 + v[0] * 0.75 * s / aspect * k, cy: 0.62 + v[1] * 0.75 * s * k, rot: v[0] * 0.3 * k, pitch: -v[1] * 0.3 * k });
+  const f = (pose, k) => ({ hands: [hand(pose, { ...at(k), s, noise: N, rand: R })] });
+  return chain(seq(450, () => f("fist", 0)), seq(300, (i, t, k) => f("fist", ease(k))), seq(holdMs, () => f("fist", 1)), seq(350, () => f("palm", 1)));
 }

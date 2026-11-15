@@ -1,4 +1,4 @@
-"""Regression for the packaged-app loop, with real audio: the app's own TTS (GET /api/tts, Steer) streamed back into
+"""Regression for the packaged-app loop, with real audio: the app's own TTS (GET /api/tts, the OS voice) streamed back into
 /ws/listen (the Arc ear) while the session knows it is speaking -> no reply. Needs a running stack:
 
     HANDSFREE_LIVE=http://127.0.0.1:8330 uv run pytest tests/test_handsfree_live.py -s

@@ -1,3 +1,7 @@
+import os
+
+os.environ.setdefault("VIDEO_PREFETCH", "0")   # NASA video: tests never start the background download (app/video.py)
+
 import pytest
 
 from app import models_client
@@ -23,3 +27,46 @@ def no_safety_tagger(monkeypatch):
     async def none(text):
         return []
     monkeypatch.setattr(safety, "tagger_read", none)
+
+
+# What GET /v1/tts/voices returns on a Mac with two premium voices (the model server ranks them; app/voices.py reads
+# them). Tests never reach a model server for the voice list.
+FAKE_VOICES = {
+    "engine": "say", "timing": "estimated", "locale": "en-US", "default": "com.apple.voice.Tara.premium",
+    "roles": {"guide": "com.apple.voice.Tara.premium", "capcom": "com.apple.voice.Aman.premium",
+              "houston": "com.apple.voice.Aman.premium", "story": "com.apple.voice.Tara.premium"},
+    "voices": [
+        {"id": "com.apple.voice.Tara.premium", "name": "Tara", "locale": "en-IN", "gender": "female",
+         "quality": "premium", "desc": "Premium · India · female", "rank": 0, "picker": True},
+        {"id": "com.apple.voice.Aman.premium", "name": "Aman", "locale": "en-IN", "gender": "male",
+         "quality": "premium", "desc": "Premium · India · male", "rank": 1, "picker": True},
+        {"id": "com.apple.voice.compact.en-US.Samantha", "name": "Samantha", "locale": "en-US", "gender": "female",
+         "quality": "compact", "desc": "Compact · US · female", "rank": 2, "picker": True},
+        {"id": "com.apple.eloquence.en-US.Reed", "name": "Reed", "locale": "en-US", "gender": "",
+         "quality": "eloquence", "desc": "Basic · US", "rank": 3, "picker": False},
+    ],
+}
+
+
+@pytest.fixture(autouse=True)
+def os_voice_catalog(monkeypatch):
+    """The Settings voice list as a model server on a Mac would give it; no network."""
+    from app import voices
+
+    async def no_refresh():
+        return None
+    monkeypatch.setattr(voices, "refresh", no_refresh)
+    monkeypatch.setattr(voices, "refresh_sync", lambda: None)
+    voices.set_catalog(FAKE_VOICES)
+    yield
+    voices.set_catalog(None)
+
+
+@pytest.fixture(autouse=True)
+def no_voice_pack(monkeypatch, request):
+    """Tests run without the recorded voice pack (docs/VOICE_PACK.md) unless marked `voice_pack`: the checked-in pack
+    must not change what other tests expect (CAPCOM speaks in the guide voice while the pack is on)."""
+    if "voice_pack" in request.keywords:
+        return
+    from app import tts
+    monkeypatch.setattr(tts, "pack_version", lambda: "")

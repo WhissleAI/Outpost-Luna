@@ -2,6 +2,7 @@
 ; Offline test profile for macOS sandbox-exec: everything allowed except network to anything but loopback.
 ;   sandbox-exec -f desktop/scripts/offline.sb "/Applications/Outpost Luna.app/Contents/MacOS/Outpost Luna"
 ; Children inherit the sandbox, so the model server and backend are offline too. DNS lookups fail as well.
+; NASA video (docs/MEDIA.md) must still work here: saved videos play, the rest show the "Needs internet" card.
 (allow default)
 (deny network-outbound)
 (allow network-outbound (remote ip "localhost:*"))

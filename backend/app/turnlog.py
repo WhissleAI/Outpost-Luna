@@ -35,6 +35,7 @@ from pathlib import Path
 from .gazetteer import norm
 
 VERSION = 1
+GESTURE_S = 2.0          # round 8: a gesture this close before a turn is logged with it
 CAP_BYTES = 5_000_000          # the whole log (two files); each file rotates at half
 REPEAT_S = 10.0
 NEG_S = 6.0
@@ -145,6 +146,7 @@ class SessionLog:
         self.t0: float | None = None
         self.last: dict | None = None          # the last logged turn: {id, words, ts, outcome, final, confirm}
         self.last_tap: tuple | None = None     # (id, ts)
+        self.last_gesture: tuple | None = None  # round 8: (gesture name, ts): voice and gesture co-occur
 
     def on(self) -> bool:
         return bool((getattr(self.sess, "prefs", None) or {}).get("improve"))
@@ -177,7 +179,12 @@ class SessionLog:
                       "options": [redact(o) for o in (ctx.step_options or [])][:6],
                       "lesson_id": (self.sess.screen or {}).get("lesson_id"), "step": (self.sess.screen or {}).get("step")},
             "audio": {"speaking": bool(ctx.speaking), "playing": bool(ctx.playing), "on_air": ctx.on_air,
-                      "echo_share": round(echo, 2), "n_recent": len(ctx.recent or [])},
+                      "echo_share": round(echo, 2), "n_recent": len(ctx.recent or []),
+                      # round 8: what is playing (guide / capcom / crew / video): a video's audio leaks into the mic
+                      "kind": ((getattr(self.sess, "belief", None) or {}).get("playing") or {}).get("kind")},
+            # round 8: a hand gesture within GESTURE_S before the turn (voice + gesture co-occur, feat/gestures-v2)
+            "gesture": self.last_gesture[0] if self.last_gesture and
+            self.sess.clock() - self.last_gesture[1] <= GESTURE_S else None,
             "filter": [ctx.dd_min, ctx.dd_strong],
             "mode": (self.sess.belief or {}).get("mode"), "mission": bool((self.sess.belief or {}).get("mission_id")),
             "router": {"outcome": rt.get("outcome"), "reason": rt.get("reason"), "intent": rt.get("intent")},
@@ -220,6 +227,9 @@ class SessionLog:
         if not self.on() or not event or event in ("screen", "barge_in", "kid_done"):
             return
         now = self.sess.clock()
+        if event == "gesture":
+            self.last_gesture = (str(target or "")[:24] or None, now)
+            return
         key = (event, target)
         if self.last_tap and self.last_tap[0] == key and now - self.last_tap[1] <= RETAP_S and \
                 self.last is not None and now - self.last["ts"] <= AFTER_TURN_S:

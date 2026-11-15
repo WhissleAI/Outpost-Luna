@@ -10,14 +10,50 @@ DATA = Path(__file__).resolve().parents[2] / "data"
 COURSE = DATA / "academy" / "course.json"
 ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
-                "predict", "globe_side", "terminator", "compare", "route", "earth_view")   # globe steps: grade.py
+                "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
+                "video")   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal; never blocks
+PREP_MAX_STEPS = 3      # a mission-prep task: 3 spoken steps or fewer
+PREP_END = "Tell me when it's ready."   # how a prep task's last line ends: never the trigger word "done" (the open mic
+                                        # would hear our own "done" back, docs/COPY.md); the button still says Done
 GLOBE_DO = ("fly", "side", "pole", "sun", "zoom", "pair", "earth", "route")   # step.globe.do (client directive)
 NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
+VIDEO_HINT = "Tap Watch, or say skip."
+
+
+def _video_media() -> dict:
+    """The catalog's videos by source (backend/data/video/catalog.json, the one list; app/video.py validates it).
+    "cached": NASA files kept after the first online launch, so they play offline. "online": NASA-channel YouTube
+    embeds, stream only. A step on an online video still passes offline: the reveal is said and the lesson goes on."""
+    cat = json.loads((DATA / "video" / "catalog.json").read_text())
+    return {"cached": tuple(v["id"] for v in cat if v.get("source") == "nasa_file"),
+            "online": tuple(v["id"] for v in cat if v.get("source") == "youtube")}
+
+
+VIDEO_MEDIA = _video_media()
+VIDEO_IDS = frozenset(VIDEO_MEDIA["cached"] + VIDEO_MEDIA["online"])
+
+
+def video_step(s: dict) -> dict:
+    """A video step as written in course.json, {"type": "video", "media": id, "say": predict prompt, "reveal": line},
+    in the shape every other step has: prompt = say, accept = {type: video, media}, success = reveal. Watching or
+    skipping both pass (never block a lesson on media); the reveal is said either way."""
+    if s.get("type") != "video" or "accept" in s:
+        return s
+    return {**s, "prompt": s.get("say", ""), "accept": {"type": "video", "media": s.get("media")},
+            "success": s.get("reveal", ""), "hint": s.get("hint") or VIDEO_HINT, "fail": s.get("fail") or VIDEO_HINT}
+
+
+def normalize(c: dict) -> dict:
+    for l in c.get("lessons", []):
+        l["steps"] = [video_step(s) for s in l.get("steps", [])]
+    return c
+
+
 @lru_cache(maxsize=1)
 def course() -> dict:
-    return json.loads(COURSE.read_text())
+    return normalize(json.loads(COURSE.read_text()))
 
 
 def lesson(lesson_id: str) -> dict | None:
@@ -47,6 +83,8 @@ def public() -> dict:
         if a["type"] == "earth_view":
             acc["place"] = a["place"]
             acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
+        if a["type"] == "video":
+            acc["media"] = a.get("media")
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -65,6 +103,25 @@ def longest_dark_h(site_id: str) -> int:
         cur = 0 if elev > e["horizon_deg"] else cur + 1
         best = max(best, cur)
     return best
+
+
+def check_video_step(s: dict, ids: set[str] | None = None) -> list[str]:
+    """A video step names a catalog video (backend/data/video/catalog.json) and has its predict line and its reveal."""
+    if (s.get("accept") or {}).get("type") != "video" and s.get("type") != "video":
+        return []
+    if ids is None:
+        from .. import video
+        ids = {v["id"] for v in video.catalog()}
+    out = []
+    m = s.get("media") or (s.get("accept") or {}).get("media")
+    if m not in ids:
+        out.append(f"video step: media {m!r} is not in the video catalog")
+    for k in ("say", "reveal"):
+        if not str(s.get(k) or "").strip():
+            out.append(f"video step needs {k}")
+        elif len(str(s[k]).split()) > 20:
+            out.append(f"video step {k} over 20 spoken words")
+    return out
 
 
 def _check_globe_step(s: dict, a: dict) -> list[str]:
@@ -107,6 +164,35 @@ def _check_globe_step(s: dict, a: dict) -> list[str]:
     return out
 
 
+def check_prep(p: dict) -> list[str]:
+    """A mission-prep task (lesson.prep): a hands-on job before the lesson, adapted from a NASA activity.
+    {id, title, steps: [<= 3 spoken lines], grown_up: bool, source: {title, url}}. The last line ends PREP_END and no
+    line says "done" (the kid answers Done by voice, a thumbs-up or a tap; Skip always works). The source is credited
+    in data only."""
+    out = []
+    for k in ("id", "title", "steps", "source"):
+        if not p.get(k):
+            out.append(f"prep missing {k}")
+    if len(str(p.get("title", "")).split()) > 6:
+        out.append("prep title over 6 words")
+    steps = p.get("steps") or []
+    if not 1 <= len(steps) <= PREP_MAX_STEPS:
+        out.append(f"prep needs 1 to {PREP_MAX_STEPS} spoken steps")
+    for t in steps:
+        if len(str(t).split()) > 20:
+            out.append(f"prep step over 20 words: {t!r}")
+    if steps and not str(steps[-1]).rstrip().endswith(PREP_END):
+        out.append(f"prep's last step must end with {PREP_END!r}")
+    if any(re.search(r"\bdone\b", str(t), re.I) for t in steps):
+        out.append("prep never speaks the trigger word 'done'")
+    if not isinstance(p.get("grown_up"), bool):
+        out.append("prep.grown_up must be true or false")
+    src = p.get("source") or {}
+    if not (src.get("title") and str(src.get("url", "")).startswith("https://")):
+        out.append("prep source needs {title, https url}")
+    return out
+
+
 def check() -> list[str]:
     """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data."""
     probs: list[str] = []
@@ -142,11 +228,35 @@ def check() -> list[str]:
                 if calc_vals and any(float(plain) < float(v) / 24 for v in calc_vals):  # "more than 6 days"
                     continue
                 probs.append(f"{lid}: number {n} not in {f.get('from')}: {f['text']!r}")
-        for i, s in enumerate(l.get("steps", [])):
+        if l.get("prep") is not None:
+            probs += [f"{lid}: {p}" for p in check_prep(l["prep"])]
+        if l.get("track", "core") not in ("core", "explorer"):
+            probs.append(f"{lid}: track must be core or explorer")
+        if l.get("track") == "explorer" and not (isinstance(l.get("unlock_after_missions"), int)
+                                                 and l["unlock_after_missions"] >= 1):
+            probs.append(f"{lid}: an explorer lesson needs unlock_after_missions >= 1")
+        if l.get("track") == "explorer" and l.get("ride"):
+            probs.append(f"{lid}: the check ride is core")
+        pv = l.get("patch_video")
+        if pv is not None and not (pv.get("media") in VIDEO_IDS and pv.get("line") and len(pv["line"].split()) <= 12):
+            probs.append(f"{lid}: patch_video needs a known media id and a line of 12 words or fewer")
+        cl = l.get("clip") or {}
+        if cl.get("note") and len(cl["note"].split()) > 12:
+            probs.append(f"{lid}: clip note over 12 words")
+        steps = l.get("steps", [])
+        graded = [s for s in steps if (s.get("accept") or {}).get("type") != "video"]
+        if steps and not graded:
+            probs.append(f"{lid}: a lesson needs at least one step that isn't a video")
+        for i, s in enumerate(steps):
             for k in ("prompt", "accept", "hint", "success", "fail"):
                 if not s.get(k):
                     probs.append(f"{lid}[{i}]: missing {k}")
             a = s.get("accept") or {}
+            if a.get("type") == "video" or s.get("type") == "video":
+                probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
+                if l.get("ride"):
+                    probs.append(f"{lid}[{i}]: no videos in the check ride (it runs on the live sim)")
+                continue
             if a.get("type") not in ACCEPT_TYPES:
                 probs.append(f"{lid}[{i}]: bad accept type {a.get('type')!r}")
             if a.get("type") == "choice" and a.get("answer") not in {o["id"] for o in a.get("options", [])}:
@@ -155,6 +265,7 @@ def check() -> list[str]:
                 from .vocab import check_step
                 probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
             probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
+            probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
         pl = l.get("place")   # the Moon-map pin for this lesson (UX: data-driven map)
         if isinstance(pl, str):
             from .grade import where

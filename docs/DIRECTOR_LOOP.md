@@ -184,3 +184,10 @@ On a PASS, the old weights are copied to `runs/<date>/weights_before/` for rollb
 - **Rules fixes shrink what is left for the model.** When the router learns a class (for example
   `grade.plausible` silencing lesson chatter), the rules column rises and the model's room on that class shrinks.
   The gate still checks it never falls below.
+
+## 7. Round 8: coverage and collection
+
+- The capability × flow inventory and the round-8 plan and gate are in `docs/DIRECTOR_COVERAGE.md`:
+  `director_model/coverage.json`, `make director-coverage`, `make director-r8`.
+- Real data is collected with the kit in `docs/DIRECTOR_COLLECTION.md`: a 15-minute guided, consented, local session
+  (`make director-collect`), imported with `collect_import.py`.

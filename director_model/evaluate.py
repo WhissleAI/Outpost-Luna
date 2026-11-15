@@ -58,7 +58,10 @@ SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40
         "test_gold"]
 # round 6: today's real failure classes (gen_sessions.py cls_set; pools.CLASSES) and the imported real turns
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
-              "cls_roomtalk", "test_log"]
+              "cls_roomtalk", "test_log",
+              # round 8 (pools_r8.py): the capabilities added since round 7
+              "cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
+              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending"]
 
 
 class NumpyModel:

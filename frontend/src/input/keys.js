@@ -42,7 +42,7 @@ export function keyAction(ev, c = {}) {
   const l = k.length === 1 ? k.toLowerCase() : "";
   if (c.lettered && "abcd".includes(l) && l) return { intent: "pick", args: { n: "abcd".indexOf(l) + 1 } };
   switch (l) {
-    case "m": return { intent: "mic", args: {} };
+    case "m": return ev.shift ? { intent: "mute", args: {} } : { intent: "mic", args: {} };   // Shift+M: the top bar's Mute
     case "h": return { intent: "help", args: {} };
     case "s": return { intent: "settings", args: {} };
     case "c": return { intent: "captions", args: {} };
@@ -75,7 +75,7 @@ export function screenName(s) {
 }
 const SCREEN_TITLE = { home: "Home", map: "Moon map", lesson: "Lesson", lesson_moon: "Lesson on the Moon", patch: "Patch earned", ride: "Check ride",
   picker: "Site picker", tour: "Cabin tour", cabin_seat: "Cabin, seat view", cabin_panel: "Cabin, panel open", debrief: "Debrief", library: "Library", settings: "Settings", app: "Outpost Luna" };
-const GLOBAL_ROWS = [["← ↑ → ↓", "Move"], ["Enter", "Select"], ["Space", "Tap: select. Hold: talk"], ["Esc", "Back"], ["M", "Mic on or off"],
+const GLOBAL_ROWS = [["← ↑ → ↓", "Move"], ["Enter", "Select"], ["Space", "Tap: select. Hold: talk"], ["Esc", "Back"], ["M", "Mic on or off"], ["Shift+M", "Sound on or off"],
   ["/", "Type instead"], ["S", "Settings"], ["C", "Captions"], ["H", "These keys"]];
 const SCREEN_ROWS = {
   home: [["1–3", "Pick a call sign"], ["/", "Type your own"]],

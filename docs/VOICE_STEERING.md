@@ -1,67 +1,61 @@
-# Voice steering: Steer TTS Edge, steered by the Director
+# Voice steering: the OS's own offline voices, steered by the Director
 
-Every spoken line in Outpost Luna (Academy, Mission and the Moon library) is rendered by **Steer TTS Edge**,
-Whissle's own on-device TTS. The Director picks *how* each line is said, not only *what* is said: a style tag, numeric
-prosody controls, emphasis on key words, and Steer's performance director for multi-sentence lines.
+Every spoken line in Outpost Luna (Academy, Mission and the Moon library) is rendered by **the operating system's own
+offline voice** (macOS `say`; Windows WinRT SpeechSynthesis, SAPI as the fallback). The Director picks *how* each line
+is said, not only *what*: a style with a tag, numeric controls, emphasis and a situation. The OS voices honour the
+rate (with the kid's speed) and pauses; the rest of the style is kept for the cache key, the slow / alarm rules and any
+richer engine, and is dropped cleanly by the model server. Steer TTS Edge, the engine this was first written for, is
+gone (owner decision 2026-11-14); this file keeps the policy.
 
 ## 1. The engine
 
 | | |
 | --- | --- |
-| Model | `WhissleAI/steer-tts-edge` (int4 acoustic model + int4 vocoder, ~12 MB, ONNX Runtime CPU, 24 kHz mono) |
-| Package | `steertts-edge` (`OnnxTTS`, `Director`): a path dependency on `../../steer-tts/edge` in `model_server/pyproject.toml`. Elsewhere: `uv add "steertts-edge[hub] @ git+https://github.com/WhissleAI/steer-tts#subdirectory=edge"` |
-| Where it loads | **only in the model server** (`model_server/app/tts_steer.py`), at startup, behind `STEER_TTS=on\|off` |
-| Model files | `STEER_TTS_MODEL` (default: the Hugging Face cache snapshot, `hf download WhissleAI/steer-tts-edge`) |
-| Director | `STEER_DIRECTOR` (default: `director.bin` next to the model, else `steer-tts/c/models/steer-tts-edge/director.bin`). It must be **format 2** (what `steertts_edge.Director` reads). The format-3 files shipped in the Steer apps fail with "unsupported director model version"; the server then runs without plans and says so in `/health` |
-| Threads | `STEER_THREADS` (default 2) |
-| Health | `GET /health` → `models.steer_tts: {loaded, error, director, director_error, voices, load_s, rss_added_mb}` |
+| Where it runs | **only in the model server** (`model_server/app/tts_os.py`; rules in `os_voices.py`), behind `OS_TTS=on\|off` and `OS_TTS_ENGINE=auto\|say\|winrt\|sapi` |
+| Nothing to download | macOS: `/usr/bin/say`. Windows: WinRT (pywinrt 3.2.1 wheels in the model server's lock, `sys_platform == 'win32'`), then SAPI through comtypes |
+| Voices | this machine's, ranked (docs/VOICES.md "The OS voices"); persona roles mapped onto them |
+| Warm-up | "Ready." rendered at startup in the guide's voice (`/health` `warm_ms`) |
+| Health | `GET /health` → `models.tts: {loaded, error, engine, timing, voice, voice_name, voices, roles, locale, load_s, warm_ms}` |
 
-`POST /v1/tts` on the model server:
+`POST /v1/tts` on the model server (the request shape the backend always sent):
 
 ```json
-{"text": "Copy, commander. Shields to *40* percent.", "voice": "voice_0213", "tag": "confidence",
- "controls": {"rate": 0.3}, "guidance": null, "markup": true,
+{"text": "Copy, commander. Shields to *40* percent.", "voice": "capcom", "tag": "confidence",
+ "controls": {"rate": 1.3, "pause": -1.5}, "markup": true, "pace": 1.0,
  "perform": {"genre": "children", "strength": 0.7, "para_index": 0, "para_len": 3, "next": "That leaves less for life support."}}
 ```
 
-→ `audio/wav` (16-bit PCM; WAV because the browser decodes it with no codec delay and no extra dependency). Headers:
-`X-Steer-Voice`, `X-Steer-Tag`, `X-Steer-Ctrl` (the controls actually used), `X-Steer-Ms`, `X-Steer-RTF`,
-`X-Steer-Pause-Ms`. `GET /v1/tts/voices` lists the 200 voices, 51 tags, 12 controls and the director's genres.
+→ `audio/wav` (24 kHz mono 16-bit). Headers: `X-TTS-Voice` (the OS voice id), `X-TTS-Voice-Name`, `X-TTS-Engine`
+(`say` / `winrt` / `sapi`), `X-TTS-Timing` (`os` / `estimated`), `X-TTS-Words`, `X-TTS-Ms`, `X-TTS-RTF`, `X-TTS-Rate`,
+`X-TTS-Pause-Ms`, `X-TTS-Pace`. `voice` is a role (`guide`, `capcom`, `houston`, `story`) or an installed voice id; an
+unknown or blocked id falls back to the guide's voice. Repeated lines come from a small in-memory cache, and the backend
+caches every line on disk.
 
-**The performance director.** For multi-sentence text, `director.bin` plans every sentence (rate, loudness, pitch level,
-pitch range, ending, pause) for the `children` genre. Because the floor plays one sentence at a time, the client sends
-each sentence's place (`i`, `n`, `next`), and the model server plans that sentence in context and appends the planned
-pause (capped at 700 ms) when another sentence follows. The plan fills only the controls the style did not name:
-**explicit controls win per key** (as Steer's own `--perform --ctrl`), so a storm alert stays fast and loud whatever
-the plan says, while the plan still shapes pitch, range and endings across the sentences.
-
-**Sentence streaming.** Not as a chunked HTTP response: the floor already splits text into sentences and prefetches
-the next one while the current one plays, so per-sentence calls give the same time to first audio.
+**Sentence streaming.** The floor splits text into sentences and prefetches the next one while the current one plays,
+so per-sentence calls give the time to first audio of one sentence (~1.3 s with a Siri system voice, ~0.8 s with a
+premium voice on the build Mac). A sentence with a next one ends on a 220 ms gap.
 
 ## 2. The fallback chain
 
-`GET|POST /api/tts` (backend, `backend/app/tts.py`), `TTS_ENGINE=steer|deepgram` (default `steer`):
+`GET|POST /api/tts` (backend, `backend/app/tts.py`), `TTS_ENGINE=os|deepgram` (default `os`; an old `steer` value means
+`os`):
 
-1. **Steer** (model server `/v1/tts`, timeout `TTS_TIMEOUT_S`=8 s) → `audio/wav`, `X-TTS-Engine: steer`.
-2. **Deepgram Aura-2** (when `DEEPGRAM_API_KEY` is set) → `audio/mpeg`, `X-TTS-Engine: deepgram`, `X-TTS-Fallback`
-   says why Steer was skipped. Aura can't steer: it gets the persona voice only.
+1. **The OS voice** (model server `/v1/tts`, timeout `TTS_TIMEOUT_S`=8 s) → `audio/wav`, `X-TTS-Engine: os`.
+2. **Deepgram Aura-2** (when `DEEPGRAM_API_KEY` is set; never in the desktop app) → `audio/mpeg`,
+   `X-TTS-Engine: deepgram`, `X-TTS-Fallback` says why the OS voice was skipped. It gets the persona voice only.
 3. **The browser voice**: 503 (no engine configured) or 502 (engines failed) with `{"fallback":"browser"}`; `floor.js`
    speaks with `speechSynthesis`, sentence by sentence.
 
-The disk cache (`data/tts_cache/`) keys on engine + voice + text + the canonical JSON of the style + the sentence's
-place, so a re-steered line never replays a stale rendering. The browser cache keys on the URL, which holds the style
-too. `/api/tts?text=&voice=` keeps working: no style → the persona's default style.
+The disk cache (`tts_cache/`) keys on engine + the concrete OS voice (the system voice also names the voice behind it)
++ text + the canonical JSON of the style + the sentence's place, so a re-steered line or a newly picked voice never
+replays a stale rendering. `/api/tts?text=&voice=` keeps working: no style → the persona's default style.
 
 ## 3. Voices
 
-Chosen from `voices.json` (200 voices with gender, pitch register, pace and median f0):
-
-| Persona | Steer voice | Profile | Why |
-| --- | --- | --- | --- |
-| **guide** | `voice_0644` | female, mid register, average pace, 195 Hz | Warm and clear without being sing-song; average pace leaves room to slow down for explanations |
-| **CAPCOM** | `voice_0213` | male, mid register, fast pace, 118 Hz | Crisp, confident mission control; naturally a bit faster, so readbacks sound like radio procedure |
-| **story** | `voice_0602` | male, high register, slow pace, 196 Hz | The hardware speaking in first person must not sound like the guide or CAPCOM: a high male voice that takes its time |
-| **houston** | `voice_0272` | male, low register, average pace, 109 Hz | "Houston here": a deeper, steadier voice from Earth, distinct from CAPCOM on the Moon |
+Personas are roles (`steering.VOICES`); the model server maps them onto this machine's voices
+(`os_voices.assign_roles`): the guide gets the best voice, CAPCOM a different good one (the other gender first),
+Houston a third, the story voice a fourth, each falling back when fewer good voices are installed. Details, the ranking
+and the build Mac's list: docs/VOICES.md.
 
 Deepgram fallback: guide=`aura-2-thalia-en`, capcom/houston=`aura-2-orion-en`, story=`aura-2-iris-en`.
 
@@ -73,7 +67,7 @@ pins each row.
 **Persona base** — guide `interest`; CAPCOM `confidence`, rate +0.3; story `nostalgia`, rate −0.5, f0_med +0.4;
 houston `enunciated`, rate +1.2 (was −0.2: 2.1 words/s; §4d).
 
-**Situations** (controls are z-scores against the voice's own neutral speech; tags alone are weak on Steer, so each row
+**Situations** (controls are z-scores against the voice's own neutral speech; tags alone are weak style switches, so each row
 pairs its tag with controls that carry the effect):
 
 | Situation | When | Tag | Controls |
@@ -103,7 +97,7 @@ pairs its tag with controls that carry the effect):
    pause +0.5); good news stays good news, just slower; an excited kid doesn't hype a calm line (night, guard, retry).
 2. **A question to the kid** (text ends with `?`) → f0_end ≥ +1.5 (rising).
 3. **Emphasis**: in readbacks, alerts, failure, night and explanations, the first 3 distinct numbers; in any line, the
-   place name when the Director resolved one. Sent as `style.emph`; the backend wraps them in Steer markup (`*40*`,
+   place name when the Director resolved one. Sent as `style.emph`; the backend wraps them in emphasis markup (`*40*`,
    `<emph>Mare Tranquillitatis</emph>`) just before rendering, so captions stay clean and sentence splitting is not
    affected.
 4. **Safety**: never `anger`, `contempt`, `disgust`, `sarcasm`, `panic`, `disappointment` (nor `irritation`,
@@ -124,57 +118,59 @@ pairs its tag with controls that carry the effect):
 
 ## 4b. Accessibility steering: speed, the `vocab` situation, vocabulary emphasis, word timings
 
+> **2026-11: the OS voices speak at their own pace.** The baseline below is now `rate 0, pause 0`. At 1× (±8 %) the
+> model server passes no `say -r` (WinRT rate 1, SAPI 0). Another pace uses `-r` relative to the voice's measured
+> native words/min. A negative `pause` never shortens the voice's own pauses. The gap cap is 1.0 s (1.2 s at 0.75×
+> and on slow lines). Loudness is one clean gain with a −1 dBTP ceiling and no limiter. The rows and numbers below
+> describe the Steer era. Details: docs/VOICE_PACK.md, "The OS voice at its own pace".
+
 **Speaking pace preference.** The kid's caption-bar speed (0.75× / 1× / 1.25× / 1.5×, `a11y.js`, stored on the device
 only) goes to `/api/tts?speed=` (or rides on the say style as `speed`, from the Settings `rate`).
 `steering.delivery(controls, speed)` adds the 1× delivery baseline (§4d) and then `speed_steer(speed)`. "1×" is the
 new, faster default:
 
-| speed | `rate` offset from `speed_steer` (z, 4 per octave) | baseline `pause` (z) | inner-gap cap | Steer `pace` | measured words/s (10 voices + guide, CAPCOM, story; Houston is the steadiest at every speed) |
+| speed | `rate` offset from `speed_steer` (z, 4 per octave) | baseline `pause` (z) | inner-gap cap | `pace` | measured words/s (Steer era; re-measure on the OS voices) |
 | --- | --- | --- | --- | --- | --- |
 | 0.75× | −1.66 | +0.5 | 0.45 s | 0.85 | 2.5–2.9 (slower than the old 1×, 2.8–3.2) |
 | **1×** | 0 | −1.5 | 0.25 s | 1 | **3.3–3.8** (Houston 3.0) |
 | 1.25× | +1.29 | −1.5 | 0.25 s | 1.13 | 3.8–4.3 |
 | 1.5× | +2.34 | −1.5 | 0.25 s | 1.25 | 3.9–4.4 |
 
-These rate offsets sit on top of the baseline's +1.0 and are clamped at ±2.5. The slope was 2 per octave; it is now
-4, because the model server build running here **ignores `pace`**: it returns no `X-Steer-Pace` header, and pace 1.3
-gives audio of exactly the same length. So rate carries the whole setting, and 1.25× and 1.5× nearly meet at the clamp. Once the
-model server runs the code in this repo, which applies `pace`, 1.5× gets faster again. Re-measure then; if 1.5× is too
-fast, lower the pace exponent in `speed_steer`.
-
-`rate` keeps it an articulation change in the voice's own style (a storm alert stays faster than a calm line at every
-speed); `pace` carries the rest, since rate z-scores saturate. The model server accepts `pace` (0.6–1.6) on `/v1/tts`
-and reports it in `X-Steer-Pace` (once the running build has it). Crew audio is a recording: it gets `playbackRate` (pitch preserved) instead.
-Measured in Chrome: the same 10-word line took 3.86 s of caption time at 1× and 2.69 s at 1.5×.
+These rate offsets sit on top of the baseline's +1.0 and are clamped at ±2.5. The model server turns rate and pace into
+one multiplier, `pace · 2^(rate/4)` (macOS `say -r` = 165 wpm × it; WinRT `SpeakingRate` = it; SAPI `Rate` =
+10·log3(it)), so 0.75× is ~0.76× and 1.5× ~1.9× of the plain voice, and a storm alert stays faster than a calm line
+at every speed. At 1× a premium macOS voice speaks ~3.5 words/s, the brisk pace kids heard before. Crew audio is a
+recording: it gets `playbackRate` (pitch preserved) instead.
 
 **`vocab` situation** — `enunciated`, rate −1.0, pause +0.6, f0_iqr +0.3: slower, clear gaps, a little more melody,
 for new words and younger kids. Used by every Space-words attempt reply that isn't a pass, by "Hear it" on a glossary
 card, and by the vocab step buttons.
 
 **Per-word vocabulary emphasis.** `style_for(..., vocab=[terms])` keeps the lesson's terms that occur in the line
-(`style.vocab`, ≤ 3); `/api/tts` wraps each in `<slow><emph>term</emph></slow>` (×1.4 × 1.2 duration, +2.5 st, +4 dB on
-just that word) before rendering (`steering.apply_markup`: vocab first, then the usual number/place emphasis). The
-Academy attempt route adds the step's term to every vocab step reply.
+(`style.vocab`, ≤ 3); `/api/tts` wraps each in `<slow><emph>term</emph></slow>` (`steering.apply_markup`: vocab first,
+then the usual number/place emphasis). The OS voices cannot stress one word, so the model server strips the markup;
+the `vocab` situation's slower rate and longer pauses carry the effect.
 
-**Word timings (real, not estimated).** `steertts_edge` has no aligner, but its duration predictor is the alignment:
-`OnnxTTS.mel()` expands each phone into `dur` mel frames (`tok = repeat(arange(N), dur)`, HOP 256 @ 24 kHz) before the
-decoder. `tts_steer.py` wraps the instance's `_dec`/`_render` to capture `tok` per segment (markup renders one segment
-per style span), recovers per-phone frames with `bincount`, folds phones into words with `to_phonemes()`' word index,
-and maps spoken words onto the display words (each display token takes as many spoken words as it normalises to:
-"40" → "forty"; on a mismatch, proportional over the real start/end). The reply carries
-`X-Steer-Words: startMs-endMs,…` per display word; `/api/tts` validates it, caches it next to the WAV (`.words`) and
-returns it as `X-TTS-Words` (exposed for CORS). Deepgram and the browser voice have no timings: the caption bar
-estimates from the audio length and syllables, or follows `speechSynthesis` boundary events.
+**Word timings.** Per display word (the line without markup, split on whitespace), as `startMs-endMs,…`:
+- **Windows (WinRT): real.** The voice's word-boundary cues (`IncludeWordBoundaryMetadata`: start time, duration and
+  character position), mapped onto the display words by position, then by text in order (`os_voices.map_cues`).
+- **macOS (`say`) and SAPI: estimated, anchored on the audio.** `os_voices.estimate_timings` finds the speech span and
+  the inner silences (10 ms frames, −32 dB of the loudest), spreads the words over it by syllables + characters with
+  nominal punctuation pauses, then snaps every comma / sentence break to the nearest real silence, so errors cannot
+  build up along a long line. Inserted `[[slnc]]` pauses are known exactly.
+The model server returns `X-TTS-Words`; `/api/tts` validates it, re-maps it after capping long silences, caches it next
+to the WAV (`.words`) and returns it as `X-TTS-Words` (exposed for CORS). Deepgram and the browser voice have no
+timings: the caption bar estimates from the audio length and syllables, or follows `speechSynthesis` boundary events.
 
 ## 4c. Settings: the kid's voice, rate and expressiveness
 
-See `VOICES.md`: say styles carry `steer_voice`, `speed`, `expr` and `volume`, and `/api/tts` applies them
+See `VOICES.md`: say styles carry `tts_voice`, `speed`, `expr` and `volume`, and `/api/tts` applies them
 (`steering.apply_prefs`, `with_expressiveness`, `delivery`, `tts.finish`).
 
 ## 4d. Louder and faster: the delivery baseline and the master stage
 
-Steer sounded low and slow. Raw renders measured −23.8 to −26.0 LUFS, 2.4–3.2 words/s, with long phrase gaps. Every
-`/api/tts` Steer render now goes through three stages: native controls first, then two DSP steps
+Steer (the first engine) sounded low and slow. Raw renders measured −23.8 to −26.0 LUFS, 2.4–3.2 words/s, with long phrase gaps. Every
+`/api/tts` render (now the OS voice) goes through three stages: native controls first, then two DSP steps
 (`tts.speak` → `steering.delivery` → `tts.finish` → `app/loudness.py`).
 
 **1. Native controls (the delivery baseline, `steering.BASE_CONTROLS`)**, added on top of every style at 1×:
@@ -228,47 +224,26 @@ ceiling; a smooth limiter gain; the alarm and volume offsets; every persona thro
 as mastered; the gap cap with remapped word timings; the faster default rate; slow lines kept slow; and the crew-clip
 gains.
 
-## 5. Measured (M-series Mac, CPU, 2 threads, warm)
+## 5. Measured (build Mac, macOS 26.2, M-series, warm, cache miss, per sentence)
 
-| | |
-| --- | --- |
-| Model + director load | 0.5 s |
-| Render, short CAPCOM line (~2.6 s audio) | ~115 ms on the model server; RTF ≈ 0.033 |
-| **Time to first audio**, short CAPCOM line, uncached, through the backend (`GET /api/tts` with style) | **median 139 ms** (128–147 ms, 8 lines) |
-| Cache hit | < 1 ms |
-| RSS: steertts_edge + onnxruntime import | +23 MB |
-| RSS: model + director loaded | +72 MB (≈ 95 MB with the import) |
-| RSS after 20 long renders | +186 MB over the import (activation arenas are off, but the allocator keeps some pages) |
-| In the full model server (Arc Tagger + Arc Meta already loaded) | `/health` reported +19 MB at load |
-
-**Listen-proxy check** (6 samples rendered through `/api/tts` with Director styles, measured with Steer's own
-`steertts.measure` — raw units: rate phones/s, loud dB, f0 semitones, f0_end st/s):
-
-| Sample | Style | rate | loud | f0_med | f0_iqr | f0_end |
-| --- | --- | --- | --- | --- | --- | --- |
-| calm (night, low power) | serenity, rate −0.5, loud −0.4 | 4.83 | −8.00 | 5.26 | 6.72 | −7.50 |
-| alert (storm) | determined, rate +0.6, loud +0.8 | **5.53** | **−6.02** | 4.89 | 5.66 | −6.42 |
-| explain | enunciated, rate −0.8 (guide) | 4.51 | −1.64 | 11.81 | 2.65 | −2.22 |
-| badge | pride, loud +0.5, f0_iqr +1 | 5.31 | −8.12 | 8.22 | 8.32 | 10.92 |
-| story | nostalgia, rate −0.5 (story voice) | 4.58 | −5.64 | 7.99 | 4.11 | 0.98 |
-| question | f0_end +1.5 (guide) | 6.38 | −0.06 | 13.70 | 3.92 | **36.04** |
-
-Same text, same voice: the alert is 14% faster and 2 dB louder than the calm line; the question ends with a strong
-rise. Different voices aren't comparable on absolute loudness/pitch.
+| voice | first audio (1-sentence render) | 3 sentences, each | words/s at 1× |
+| --- | --- | --- | --- |
+| Your Mac's system voice (Siri) | 1.28 s | 1.3–1.6 s | ~3.4 |
+| Tara (Premium) | 0.80 s | 0.8–1.0 s | ~3.7 |
+| cache hit (any) | ~1 ms | | |
 
 ## 6. Run it
 
 ```bash
-cd model_server && uv run uvicorn app.main:app --port 8200          # STEER_TTS=on by default
-cd backend && uv run uvicorn app.main:app --port 8100                # TTS_ENGINE=steer by default
-curl -s localhost:8200/health | jq .models.steer_tts
-curl -so line.wav "localhost:8100/api/tts?voice=capcom&text=Copy,%20commander." -D - | grep -i x-tts
+cd model_server && uv run uvicorn app.main:app --port 8200          # OS_TTS=on by default
+curl -s localhost:8200/health | jq .models.tts
+curl -s localhost:8200/v1/tts/voices | jq '.roles, [.voices[] | {id, desc}]'
+curl -s localhost:8200/v1/tts -H 'content-type: application/json' -d '{"text":"Copy, commander.","voice":"capcom"}' -D - -o /tmp/l.wav
 ```
 
 ## 7. Gaps
 
-- The Academy attempt API doesn't receive the kid's emotion yet (the turn path does), so Academy lines are steered by
-  outcome, not affect.
-- Client-written mission lines (mission start, debrief) use the persona default style.
-- The director is calibrated for its paired voice; on the four persona voices its plans are approximate.
-- The format-3 `director.bin` from the Steer apps needs a newer `steertts_edge` to load.
+- No per-word emphasis, pitch or loudness steering on the OS voices (markup stripped; tag / f0 / loud ignored).
+- macOS word timings are estimates (good at phrase breaks, approximate inside a phrase); Windows has real ones.
+- The Siri system voice is ~1.5× slower to render than a premium voice; the next follow-up is a pre-rendered voice pack
+  for the fixed lines (`tts_os.PACK_LOOKUP`).

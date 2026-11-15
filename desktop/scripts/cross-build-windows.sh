@@ -57,6 +57,7 @@ step "3/8 frontend dependencies"
 (cd frontend && npm ci --no-audit --no-fund && node tools/fetch_vision.mjs)
 
 step "4/8 embedded Python for Windows + win_amd64 packages + VC++ runtime + app code (frontend build included)"
+uv run --no-project python backend/tools/voice_pack_check.py --allow-empty   # the voice pack ships to Windows too
 uv run --no-project python desktop/scripts/build_python.py --target win-x64
 
 step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
@@ -96,6 +97,7 @@ EXE=$(ls -t desktop/dist/*.exe | head -1)
 
 step "8/8 structural checks (the installer cannot run here)"
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/dist/win-unpacked/resources
+uv run --no-project python desktop/scripts/win_bundle_check.py speech desktop/dist/win-unpacked/resources   # WinRT + SAPI speech packages
 if [ -n "$SEVENZ" ]; then
   # The NSIS installer holds the app as app-64.7z: unpack both and check that what the user installs is the same tree.
   X="$ROOT/desktop/build/installer-check"; rm -rf "$X"; mkdir -p "$X"

@@ -1,4 +1,4 @@
-"""Offline smoke test of a running Outpost Luna backend (the desktop app's, or any): voice ask -> answer -> Steer TTS,
+"""Offline smoke test of a running Outpost Luna backend (the desktop app's, or any): voice ask -> answer -> the OS voice,
 a Flight School lesson, and a mission shift. Uses only the bundled backend deps (httpx, websockets).
 
     resources/python/bin/python3 desktop/scripts/smoke.py --base http://127.0.0.1:47310 [--pcm backend/tests/fixtures/bullseye_16k.s16le]
@@ -68,10 +68,18 @@ async def main():
     async with httpx.AsyncClient(base_url=a.base, timeout=60) as c:
         h = (await c.get("/api/health")).json()
         ms = h.get("model_server", {}).get("models", {})
-        ok(h.get("ok") and all(ms.get(k, {}).get("loaded") for k in ("arc_tagger", "arc_meta", "steer_tts", "embedder")),
+        ok(h.get("ok") and all(ms.get(k, {}).get("loaded") for k in ("arc_tagger", "arc_meta", "tts", "embedder")),
            f"health: models {sorted(k for k, v in ms.items() if v.get('loaded') or v.get('available'))}")
 
-        # 1. voice ask -> answer -> Steer TTS
+        tts = ms.get("tts", {})
+        ok(tts.get("engine") in ("say", "winrt", "sapi") and tts.get("voices", 0) > 0,
+           f"OS voice: engine {tts.get('engine')}, default {tts.get('voice')} ({tts.get('voice_name')}), "
+           f"{tts.get('voices')} voices, timing {tts.get('timing')}, warm-up {tts.get('warm_ms')} ms, roles {tts.get('roles')}")
+        vs = (await c.get("/api/voices")).json()
+        ok(isinstance(vs, list) and vs and vs[0]["id"] == tts.get("voice"),
+           f"Settings voices: {[(v['name'], v['desc']) for v in vs][:6]}")
+
+        # 1. voice ask -> answer -> the OS voice
         text, lat, msgs = await voice_turn(a.base, Path(a.pcm).read_bytes())
         ear = next((m for m in msgs if m.get("t") == "ear"), {})
         ok(ear.get("ear") == "arc", f"ear is the local Arc ear ({ear})")
@@ -84,9 +92,32 @@ async def main():
         t = time.perf_counter()
         r = await c.post("/api/tts", json={"text": str(say)[:300], "voice": "guide"})
         tts_ms = (time.perf_counter() - t) * 1000
-        ok(r.status_code == 200 and r.headers.get("content-type", "").startswith("audio/wav"),
-           f"Steer TTS: {r.status_code} {r.headers.get('content-type')} {len(r.content)} B in {tts_ms:.0f} ms "
-           f"(engine {r.headers.get('x-tts-engine') or r.headers.get('x-steer-voice')})")
+        ok(r.status_code == 200 and r.headers.get("content-type", "").startswith("audio/wav")
+           and r.headers.get("x-tts-engine") == "os",
+           f"OS voice TTS: {r.status_code} {r.headers.get('content-type')} {len(r.content)} B in {tts_ms:.0f} ms "
+           f"(engine {r.headers.get('x-tts-engine')}, voice {r.headers.get('x-tts-voice')})")
+        # word timings that fit the audio: one per display word, in order, ending inside the clip
+        import io
+        import wave
+        with wave.open(io.BytesIO(r.content)) as w:
+            dur_ms = w.getnframes() / w.getframerate() * 1000
+        times = [tuple(int(x) for x in p.split("-")) for p in (r.headers.get("x-tts-words") or "").split(",") if p]
+        n_words = len(str(say)[:300].split())
+        ok(len(times) == n_words and all(a <= b for a, b in times) and all(times[i][1] <= times[i + 1][0] + 1
+           for i in range(len(times) - 1)) and times and times[-1][1] <= dur_ms + 1,
+           f"word timings: {len(times)}/{n_words} words, last ends {times[-1][1] if times else '-'} ms of {dur_ms:.0f} ms")
+
+        # 1b. the recorded voice pack (docs/VOICE_PACK.md): a scripted line plays the clip, word timings included
+        vp = ms.get("voice_pack", {})
+        if vp.get("clips"):
+            line = "Each pin on the Moon is a lesson."
+            r = await c.post("/api/tts", json={"text": line, "voice": "capcom"})
+            times = [tuple(int(x) for x in p.split("-")) for p in (r.headers.get("x-tts-words") or "").split(",") if p]
+            ok(r.status_code == 200 and r.headers.get("x-tts-engine") == "pack" and len(times) == len(line.split()),
+               f"voice pack: {vp.get('clips')} clips ({vp.get('voice')}); scripted line -> engine "
+               f"{r.headers.get('x-tts-engine')}, {len(times)} word timings")
+        else:
+            print(f"  -    voice pack: none in this build ({vp})")
 
         # 2. Flight School: the course, one lesson step graded (keyword or paraphrase via the local embedder)
         course = (await c.get("/api/academy/course")).json()

@@ -73,6 +73,8 @@ Step "3/8 frontend dependencies"
 Push-Location frontend; Run npm ci --no-audit --no-fund; Run node tools/fetch_vision.mjs; Pop-Location   # + camera-gesture runtime/models (sha256-pinned)
 
 Step "4/8 embedded Python + backend/model-server deps + app code (frontend build included)"
+# the recorded voice pack (backend\data\voice_pack, docs/VOICE_PACK.md) ships inside the app code: Windows kids hear it too
+Run uv run --no-project python backend\tools\voice_pack_check.py --allow-empty
 Run uv run --no-project python desktop\scripts\build_python.py
 
 Step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
@@ -105,6 +107,7 @@ if (-not $exe) { Die "no installer in desktop\dist" }
 # Every .dll / .pyd import resolves inside the app or in Windows itself, so a PC without the VC++ Redistributable
 # (or without Visual Studio, unlike this one) still starts the model server.
 Run uv run --no-project python desktop\scripts\win_bundle_check.py dlls desktop\dist\win-unpacked\resources
+Run uv run --no-project python desktop\scripts\win_bundle_check.py speech desktop\dist\win-unpacked\resources
 Write-Host ("Installer: {0}  ({1:N0} MB, {2:N0} s)" -f $exe.FullName, ($exe.Length / 1MB), ((Get-Date) - $T0).TotalSeconds) -ForegroundColor Green
 Write-Host "Unpacked app (run it without installing): $Root\desktop\dist\win-unpacked\Outpost Luna.exe"
 Write-Host "Smoke test: start the app, then:  `$env:PYTHONPATH='desktop\resources\site\backend'; desktop\resources\python\python.exe desktop\scripts\smoke.py"

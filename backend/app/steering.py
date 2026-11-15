@@ -1,28 +1,32 @@
-"""Voice steering: every `say` decision carries `style:{voice, steer_voice, tag, controls, emph, markup, perform}`.
+"""Voice steering: every `say` decision carries `style:{voice, tts_voice, tag, controls, emph, markup, perform}`.
 
-Steer TTS Edge takes a style tag (51), numeric controls (12, z-scores against the voice's own neutral speech) and inline
-markup. The Director picks them from the situation with one small table plus a few rules (docs/VOICE_STEERING.md):
+The style is engine-neutral: a persona, a tag naming the intent, numeric controls (z-scores: rate, pause, loud, f0_*)
+and emphasis markup. The Director picks them from the situation with one small table plus a few rules
+(docs/VOICE_STEERING.md):
 
-    persona  -> base voice + tag          (CAPCOM confident, guide warm, the hardware's story nostalgic)
+    persona  -> voice role + tag          (CAPCOM confident, guide warm, the hardware's story nostalgic)
     situation -> tag + controls           (storm alert, all clear, night on low power, hard word, awe, badge, retry …)
     kid affect -> overrides               (frustrated/confused: slower, calmer, more pauses; excited: match it)
     a question -> rising ending           (f0_end up)
     readbacks -> emphasis                 (key numbers and the place name, as inline *markup*)
     safety    -> never anger, contempt, disgust, sarcasm, panic or disappointment toward a kid
 
-Tags alone are weak style switches on Steer (docs/request.md: "combine a tag with explicit controls"), so every row
-pairs its tag with controls that carry the effect.
+The speech engine is the operating system's own offline voice (model_server/app/tts_os.py). It honours `rate` (with the
+kid's speed) and a positive `pause`; the tag, the pitch / loudness controls and the markup have no OS equivalent and are
+dropped there (loudness is mastered by the backend, app/loudness.py). The table stays: it documents the intent, keeps
+the cache keys and the slow / alarm rules, and is what a richer engine would read.
 """
 from __future__ import annotations
 
 import re
 
-# Persona -> Steer voice (voices.json of WhissleAI/steer-tts-edge; why each, in docs/VOICE_STEERING.md).
+# Persona -> voice role. The model server maps each role onto this machine's best installed OS voices (a different
+# voice for CAPCOM than for the guide when two good ones are installed; GET /v1/tts/voices "roles", docs/VOICES.md).
 VOICES: dict[str, str] = {
-    "guide": "voice_1085",     # Aurora: crisp, clearest in noise (Arc-ear WER 0.00 clean / 0.12 noisy); owner choice 2026-11-13. Beacon (voice_0644) stays selectable.
-    "capcom": "voice_0213",    # male, mid register, fast pace (118 Hz): crisp mission control
-    "story": "voice_0602",     # male, high register, slow pace (196 Hz): distinct first-person hardware voice
-    "houston": "voice_0272",   # male, low register, average pace (109 Hz): Earth on the radio, "Houston here"
+    "guide": "guide",
+    "capcom": "capcom",
+    "story": "story",
+    "houston": "houston",
 }
 PERSONAS = tuple(VOICES)
 
@@ -95,7 +99,8 @@ def emphasis(text: str, places: list[str] | None = None, numbers: bool = True) -
 
 
 def apply_emphasis(text: str, emph: list[str] | None) -> str:
-    """Wrap each emphasized word/phrase in Steer markup (`*word*`, one level, first occurrence per item)."""
+    """Wrap each emphasized word/phrase in emphasis markup (`*word*`, one level, first occurrence per item). The OS
+    voices strip it (model_server/app/os_voices.strip_markup); captions never show it."""
     for w in emph or []:
         if not w:
             continue
@@ -154,7 +159,7 @@ def style_for(voice: str = "guide", text: str = "", situation: str | None = None
         st["tag"] = PERSONA_BASE[persona]["tag"]
     st["controls"] = {k: round(max(-CONTROL_LIMIT, min(CONTROL_LIMIT, float(v))), 2) for k, v in st["controls"].items()}
     emph = emphasis(text, places, numbers=situation in NUMBER_SITUATIONS)
-    out = {"voice": persona, "steer_voice": VOICES[persona], "tag": st["tag"], "controls": st["controls"],
+    out = {"voice": persona, "tts_voice": VOICES[persona], "tag": st["tag"], "controls": st["controls"],
            "perform": dict(PERFORM)}
     if situation:
         out["situation"] = situation
@@ -206,18 +211,23 @@ def lesson_situation(status: str, badge: bool = False) -> str:
 # ---- a11y: speaking pace + vocabulary emphasis (docs/VOICE_STEERING.md §4b, docs/ACCESSIBILITY.md) -------------------
 SPEEDS = (0.75, 1.0, 1.25, 1.5)       # the kid's caption-bar speed setting
 SPEED_RANGE = (0.6, 1.6)
-# rate z per octave of speed. 3 (was 2): the model server build in use ignores `pace`, so rate carries the setting;
-# 0.75x = rate -1.25 on top of the faster baseline (below) = slower than the old 1x.
+# rate z per octave of speed: the model server maps rate z and pace to the OS voice's rate as pace * 2 ** (z / 4)
+# (model_server/app/os_voices.rate_factor), so 0.75x lands below the old 1x and 1.5x about 1.5x the 1x rate.
 SPEED_RATE_SLOPE = 4.0
 
-# ---- the delivery baseline (docs/VOICE_STEERING.md §4d): Steer sounded low and slow --------------------------------
-# Native controls first, added on top of every style at 1x: shorter phrase pauses (pause z), a faster articulation rate,
-# a little more vocal energy (loud z). Then the backend caps long silences and loudness-normalises (app/loudness.py).
-# Measured on the two eval lines: 2.96 -> 3.59 words/s (guide), 2.81 -> 3.37 (Nebula), WER unchanged (docs/VOICES.md).
-BASE_CONTROLS = {"rate": 1.0, "pause": -1.5, "loud": 0.4}
+# ---- the delivery baseline (docs/VOICE_STEERING.md §4d): the voice's own pace, clear, loud enough --------------------
+# Added on top of every style at 1x. Then the backend cuts only pathological silences and loudness-normalises with a
+# clean gain (app/loudness.py).
+# OS voices (2026-11): NO rate or pause baseline. A forced rate and trimmed pauses made Siri / premium voices sound
+# processed (the owner: "like Steer"; 4.06 s vs the voice's own 5.0 s on a sample line), so at 1x the voice speaks at
+# its own pace with its own phrasing (model_server/app/tts_os.py passes no `say -r` there). `loud` stays for an engine
+# that has it.
+BASE_CONTROLS = {"rate": 0.0, "pause": 0.0, "loud": 0.4}
 SLOW_SITUATIONS = frozenset({"explain", "vocab"})   # slower on purpose: no baseline rate / pause, gentle gap cap
-SLOW_PAUSE = 0.5          # at 0.75x and below: a little more pause than Steer's natural (comfortable, not choppy)
-GAP_FAST_S, GAP_SLOW_S, GAP_KEEP_S =0.25, 0.45, 0.6  # inner silence cap at >= 1x, at <= 0.75x, on slow lines
+SLOW_PAUSE = 0.5          # at 0.75x and below: a little more pause than the voice's natural (comfortable, not choppy)
+# Inner-silence cap at >= 1x, at <= 0.75x, on slow lines: only a pathological silence is cut. The OS voices' own pauses
+# (~0.2-0.7 s) are never shortened (they were capped at 0.25 s before 2026-11).
+GAP_FAST_S, GAP_SLOW_S, GAP_KEEP_S = 1.0, 1.2, 1.2
 
 
 def delivery(controls: dict | None, speed: float | None = None, slow: bool = False) -> tuple[dict, float, float]:
@@ -247,8 +257,8 @@ def delivery(controls: dict | None, speed: float | None = None, slow: bool = Fal
 
 def speed_steer(speed: float | None) -> tuple[float, float]:
     """The kid's speed (0.75×–1.5×) → (rate z-offset, pace). `rate` is added on top of the Director's style so the
-    voice still sounds like itself (an articulation change, not a tape speed-up); `pace` (Steer's global duration
-    divisor) carries the rest, since rate z-scores are clamped at ±2.5. 1× → (0, 1)."""
+    voice still sounds like itself; `pace` (a plain speed multiplier) carries the rest, since rate z-scores are clamped
+    at ±2.5. The model server turns both into the OS voice's rate. 1× → (0, 1)."""
     import math
     try:
         s = float(speed or 1.0)
@@ -336,26 +346,42 @@ def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, e
 
 
 def pref_voice(persona: str, prefs: dict | None) -> str | None:
-    """The Steer voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice
-    is the guide's; CAPCOM, Houston and the story voice stay distinct unless the kid picked one voice for all."""
+    """The OS voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice is
+    the guide's, CAPCOM's and the story's together (one character voice, as the default roles: docs/VOICES.md);
+    Houston keeps its own radio voice unless the kid picked one voice for all."""
     p = prefs or {}
     v = p.get("voice")
     if not v:
         return None
-    if persona == "guide" or p.get("voice_all"):
+    if persona in ("guide", "capcom", "story") or p.get("voice_all"):
         return v
     return None
 
 
+def pack_allowed(prefs: dict | None) -> bool:
+    """The recorded voice pack (docs/VOICE_PACK.md) may speak fixed lines: the Settings toggle is on and the kid kept
+    the default guide voice (no voice picked, or the default one picked explicitly)."""
+    p = prefs or {}
+    if p.get("pack") is False:
+        return False
+    v = p.get("voice")
+    if not v:
+        return True
+    from . import voices
+    return v == voices.roles().get("guide")
+
+
 def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | None:
-    """A say's style with the Settings attached declaratively (`steer_voice`, `speed`, `expr`, `volume`). /api/tts resolves them
+    """A say's style with the Settings attached declaratively (`tts_voice`, `speed`, `expr`, `volume`). /api/tts resolves them
     (tts.clean_style + speed_steer), so one place applies them, for session lines and client-written lines alike."""
     if not prefs or style is None:
         return style
     out = dict(style)
     v = pref_voice(persona, prefs)
     if v:
-        out["steer_voice"] = v
+        out["tts_voice"] = v
+    if not pack_allowed(prefs):
+        out["pack"] = False
     rate = prefs.get("rate")
     if rate is not None and abs(float(rate) - 1.0) > 1e-3:
         out["speed"] = float(rate)

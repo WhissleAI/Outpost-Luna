@@ -7,14 +7,16 @@ model server 1.26), and the app code itself.
 Output (all under desktop/resources/, gitignored):
     python/                 the interpreter (bin/python3 on macOS / Linux, python.exe on Windows)
     site/backend/           backend deps (uv export --frozen of backend/uv.lock)
-    site/models/            model-server deps (model_server/uv.lock) + arc-transcriber and steertts-edge wheels
+    site/models/            model-server deps (model_server/uv.lock, incl. the Windows-only WinRT speech + comtypes
+                            packages on a Windows target) + the arc-transcriber wheel
     app/backend/            backend/app + backend/data (minus media and caches; media is added by electron-builder)
     app/model_server/       model_server/app
     app/frontend/           frontend/dist (npm run build)
     app/launch.py           the child-process entry point (desktop/runtime/launch.py)
 
-The wheels for arc-transcriber and steertts-edge come from desktop/vendor/wheels/ (see docs/DESKTOP.md); with --build-wheels
-they are built from the local checkouts first. Caches stay in desktop/build/.
+The arc-transcriber wheel comes from desktop/vendor/wheels/ (see docs/DESKTOP.md); with --build-wheels it is built from
+the local checkout first. Speech uses the OS's own voices (model_server/app/tts_os.py): nothing to bundle on macOS
+(/usr/bin/say); on Windows the pinned pywinrt packages come from the lock like any other dependency. Caches stay in desktop/build/.
 
 Cross-build (docs/BUILD_WINDOWS.md, "Cross-build on a Mac"): `--target win-x64` on macOS / Linux lays out the Windows
 tree instead: python-build-standalone's x86_64-pc-windows-msvc build (sha256-checked against the release's SHA256SUMS),
@@ -46,11 +48,14 @@ WIN = sys.platform == "win32"     # the TARGET is Windows (this machine, or --ta
 # Cross-build targets: the uv platform for wheels and python-build-standalone's download for the interpreter.
 TARGETS = {"win-x64": {"uv_platform": "x86_64-pc-windows-msvc", "os": "windows", "arch": "x86_64"}}
 CROSS: dict | None = None         # set by --target
-VENDORED = ("arc-transcriber", "steertts-edge")
+VENDORED = ("arc-transcriber",)
 LOCAL_SRC = {  # dev-machine checkouts, for --build-wheels (the paths model_server/pyproject.toml uses)
     "arc-transcriber": ROOT / "../../../../dv3work/arc/arc_transcriber",
-    "steertts-edge": ROOT / "../steer-tts/edge",
 }
+# The OS-voice engine's Windows packages (model_server/pyproject.toml): a Windows tree must hold every one of them.
+WIN_SPEECH = ("winrt/_winrt", "winrt/_winrt_windows_media_speechsynthesis", "winrt/_winrt_windows_media_core",
+              "winrt/_winrt_windows_storage_streams", "winrt/_winrt_windows_foundation",
+              "winrt/_winrt_windows_foundation_collections", "comtypes/__init__.py")
 
 
 def run(*cmd, **kw):
@@ -185,6 +190,14 @@ def install_site(py: Path, project: str, target: Path, extra: list[Path]):
         check_cross_site(target)
 
 
+def check_win_speech(site: Path) -> None:
+    """The Windows OS-voice engine's packages are in the tree (pywinrt's .pyd per namespace, comtypes for SAPI)."""
+    missing = [m for m in WIN_SPEECH if not (list(site.glob(m + "*.pyd")) or (site / m).exists())]
+    if missing:
+        sys.exit(f"{site.name}: the Windows speech packages are missing {missing} (model_server/pyproject.toml)")
+    print(f"{site.name}: Windows speech packages present (WinRT SpeechSynthesis + comtypes/SAPI)", flush=True)
+
+
 def check_cross_site(site: Path) -> None:
     """A cross-built site folder must hold only Windows binaries: no .so / .dylib, and every wheel tag win_amd64 or
     pure (an sdist built on this Mac for a package with C code would otherwise slip in as a macOS binary)."""
@@ -230,7 +243,7 @@ SITE_DROP_PATHS = ["torch/include", "torch/share", "torch/_inductor/codegen/cuda
                    "caffe2", "functorch/csrc", "torchgen/packaged", "scipy/datasets"]
 SITE_DROP_GLOBS = ["**/*.pyi", "**/*.a", "**/*.lib", "**/*.pdb", "torch/lib/*.lib"]
 # Installers and dev tools nothing imports at run time (checked with `python -X importtime` on both children through
-# desktop/scripts/smoke.py, plus a grep of the app, arc_audio and steertts_edge; docs/DESKTOP.md "What the build drops").
+# desktop/scripts/smoke.py, plus a grep of the app and arc_audio; docs/DESKTOP.md "What the build drops").
 #   pip / setuptools / pkg_resources / _distutils_hack / wheel: install-time only (the bundle never installs anything);
 #     the interpreter's own copies too, with distutils-precedence.pth, which imported _distutils_hack at every start.
 #   pygments: optional for rich (pretty tracebacks of the CLIs typer and huggingface_hub ship; unused under uvicorn).
@@ -310,7 +323,7 @@ def stage_app(skip_frontend: bool):
     # data: read-only in the bundle. media is mapped by electron-builder (Moon map + the trimmed clips, trim_media.py);
     # cache/ and tts_cache/ are rebuilt in the per-user folder (CACHE_DIR).
     shutil.copytree(ROOT / "backend/data", app / "backend/data",
-                    ignore=shutil.ignore_patterns("media", "cache", "tts_cache", ".DS_Store", ".env"))
+                    ignore=shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", ".DS_Store", ".env"))
     shutil.copytree(ROOT / "model_server/app", app / "model_server/app", ignore=APP_IGNORE)
     shutil.copy2(DESK / "runtime/launch.py", app / "launch.py")
     if not skip_frontend:
@@ -321,16 +334,14 @@ def stage_app(skip_frontend: bool):
     shutil.copytree(dist, app / "frontend")
     # Camera gestures: the vision runtime + models ship inside the app (frontend/tools/fetch_vision.mjs; docs/GESTURES.md)
     for must in ("backend/app/director_model/weights.json", "backend/app/director_model/weights.npz",
-                 "backend/data/places.json", "backend/data/index/clips.json", "backend/data/voices.json",
-                 "backend/data/ear_vocab.json",
+                 "backend/data/places.json", "backend/data/index/clips.json",
+                 "backend/data/ear_vocab.json", "model_server/app/tts_os.py", "model_server/app/os_voices.py",
+                 "model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
+                 "backend/data/video/catalog.json",
                  "frontend/vision/vision_wasm_module_internal.js", "frontend/vision/vision_wasm_module_internal.wasm",
                  "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"):
         if not (app / must).exists():
             sys.exit(f"bundle is missing {must}")
-    # Settings voices (docs/VOICES.md): every curated voice needs its offline preview clip in the bundle.
-    for v in json.loads((app / "backend/data/voices.json").read_text(encoding="utf-8"))["voices"]:
-        if not (app / "backend/data/voice_previews" / f"{v['id']}.wav").exists():
-            sys.exit(f"bundle is missing the preview for {v['id']}")
     # Never ship a key: fail the build if any .env slipped in.
     leaked = [p for p in RES.rglob(".env*") if p.is_file()]
     if leaked:
@@ -371,6 +382,8 @@ def main():
         py = python_exe(py_dir)
         install_site(py, "backend", RES / "site/backend", [])
         install_site(py, "model_server", RES / "site/models", extra)
+        if WIN:
+            check_win_speech(RES / "site/models")
         if WIN:
             install_msvc_runtime(py_dir, py)
         trim(py_dir, [RES / "site/backend", RES / "site/models"])

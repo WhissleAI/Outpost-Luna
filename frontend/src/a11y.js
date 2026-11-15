@@ -1,15 +1,17 @@
 // Accessibility: settings, the settings panel (#a11yBtn), voice-only operation, audio description, visual alerts,
 // captions/transcripts, keyboard + ARIA helpers (docs/ACCESSIBILITY.md).
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
-import { TOUR } from "./story.js";
+import { TOUR, MOON_BASE } from "./story.js";
+import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
+import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
 export const SPEEDS = [0.75, 1, 1.25, 1.5];
 export const DEFAULTS = Object.freeze({
-  speed: 1,              // TTS speed: Steer rate + pace (server); crew audio playbackRate
+  speed: 1,              // TTS speed: the OS voice's rate (server); crew audio playbackRate
   contrast: false,       // high-contrast theme
   textScale: 1,          // 1 – 1.5
   reducedMotion: false,  // also on when the OS asks
@@ -171,13 +173,14 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         <button type="button" class="btn-quiet a11y-vbar" data-vbar-reset>Reset voice bar position</button>`,
       cadets: PA ? `<ul class="set-cadets">${PA.listProfiles().map(p => `<li class="${p.active ? "is-active" : ""}">
           <span class="set-av" aria-hidden="true">${escH((p.callsign || "?").slice(0, 1).toUpperCase())}</span>
-          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of 7 patches`}</small></span>
+          <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of ${O.patchTotal || 9} patches`}</small></span>
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
+        <button type="button" class="btn" data-video="moon_base_6mo">${escH(MOON_BASE.help)}</button>
         <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
         <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
           <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
@@ -212,7 +215,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         <label class="set-voice"><input type="radio" name="p-voice" data-p="voice" value="${escH(v.id)}" ${PA.value.voice === v.id || (!PA.value.voice && i === 0) ? "checked" : ""}>
           <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
           ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
-        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: CAPCOM and Houston keep their own voices</small></span></label>
+        <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: Houston keeps its own radio voice</small></span></label>
+        <label class="a11y-sw"><input type="checkbox" data-pb="pack" ${PA.value.pack !== false ? "checked" : ""}><span><b>Use the recorded guide voice for story lines</b><small>Lessons, the tour and mission lines play a studio recording. Only with the default voice at normal speed.</small></span></label>
+        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}
         ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
     });
@@ -236,6 +241,14 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const vb = e.target.closest("[data-vbar-reset]");
     if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
       setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }
+    const vb2 = e.target.closest("[data-video]");
+    if (vb2) {   // a NASA video from Help (the first-mission Moon Base video); offline or no player: say so on the button
+      const id = vb2.dataset.video;
+      isAvailable(id).then(st => {
+        if (st !== "offline") { open(false); openVideo(id, { context: "help" }); return; }
+        vb2.textContent = OFFLINE_LINE; vb2.disabled = true;
+      });
+    }
     if (e.target.closest("[data-cabin-tour]")) { open(false); if (setMode && document.body.dataset.mode !== "mission") setMode("mission"); dispatchEvent(new CustomEvent("outpost:tour")); }
     if (e.target.id === "a11yPlaceGo") pickPlace(panel.querySelector("#a11yPlace").value);
     const sw = e.target.closest("[data-prof-switch]"); if (sw && PA) PA.switchProfile(sw.dataset.profSwitch);

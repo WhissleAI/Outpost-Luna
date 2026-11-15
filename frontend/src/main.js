@@ -13,6 +13,7 @@ import { createVoice } from "./voice.js";
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
+import { installMissionLearning } from "./mission_learning.js";   // Moon Base offer + debrief Learn more (outside mission/ui.js)
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP } from "./story.js";
@@ -31,6 +32,10 @@ import { initVoiceBar } from "./voicebar.js";
 import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
+// ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
+import "./media/video.css";
+import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
+import { fillCredits } from "./media/video_ui.js";
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
 import { emitIntent, onIntent } from "./input/intents.js";
@@ -38,7 +43,8 @@ import { installDefaultIntents, installKeyboardIntents, cabinPanel } from "./inp
 import { lookTarget } from "./gesture/bind.js";
 import { initGestures } from "./gesture/ui.js";
 import "./input/keys.css";   // [keys]
-import { installKeys } from "./input/keys.js";   // [keys] the keyboard as a TV remote (docs/KEYBOARD.md)
+import { installKeys } from "./input/keys.js";
+import { installMute, setMuted, toggleMute } from "./mute.js";   // the top bar's Mute (next to Settings)   // [keys] the keyboard as a TV remote (docs/KEYBOARD.md)
 import { installGamepad } from "./input/gamepad.js";   // [keys]
 import { REPEAT_MS } from "./input/spatial.js";   // [keys]
 // ---- end [input] ----
@@ -111,6 +117,11 @@ async function boot() {
   // [session] the socket, its decision handlers, and the hooks the mission UI calls.
   let session = null;
   const useSession = () => !!(session && session.connected);
+  // [media] a video starts clean: no guide line, no crew clip, nothing queued from the session (docs/MEDIA.md)
+  initVideo({ stopOthers: () => { cancelNudge(); cancelTour(); stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); } });
+  // body[data-video=1] while a video is up: the gestures layer's "video" coach mark and help card read it (gesture/ui.js)
+  onVideoChange(() => { document.body.dataset.video = videoOpen() ? "1" : ""; pushScreen(true); });
+  $("aboutBtn").addEventListener("click", () => { fillCredits(); });
   const missionUI = createMissionUI({
     globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
@@ -132,6 +143,11 @@ async function boot() {
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
+  const missionLearning = installMissionLearning({
+    missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking(),
+    lessons: () => academyUI.lessons(),
+    openLesson: id => { setMode("academy"); setTimeout(() => academyUI.nav("lesson", id), 400); },
+  });
   const missions = createMissions({ globe, placeById, places, say: t => guideSay(t), onFound: f => { turn.lastPlace = f.id; } });
 
   // ---- [a11y] settings + voice commands + audio description, captions, highlights ----
@@ -150,6 +166,7 @@ async function boot() {
   // Settings v1 (prefs.js): voice, sound, listening, display, level, cadet profiles. The session gets the steering bits.
   const prefs = createPrefs({ globe });
   (window.__outpost = window.__outpost || {}).prefsApi = prefs;
+  installMute();   // every screen: Flight School, Mission, Library, the cabin
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
   // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint
@@ -182,6 +199,11 @@ async function boot() {
   async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
     if (vbar && vbar.handleText(text)) { $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }   // "move the voice bar to the top"
+    { const w = text.toLowerCase().replace(/[^a-z ]/g, "").trim();   // the top bar's Mute by voice or typing (no session needed)
+      if (/^(mute|mute (the )?(sound|audio|app)|sound off|be quiet)$/.test(w)) { setMuted(true); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }
+      if (/^(unmute|unmute (the )?(sound|audio|app)|sound on)$/.test(w)) { setMuted(false); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; } }
+    // [media] a video is up: pause / play / skip / stop run here; nothing else is a turn until it closes
+    if (videoOpen()) { videoVoice(text); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }
     const heard = source === "voice";
     // [hands-free] One router for every turn (backend/app/turn_router.py): with a live session, every turn (spoken or
     // typed, in every screen) goes up the socket with the current screen; the Director answers with nav / answer /
@@ -413,6 +435,7 @@ async function boot() {
   const handlers = {
     // The floor manager is the only audio owner: say decisions go to floor.say() with the contract priority.
     say: async d => {
+      if (videoOpen()) return false;   // [media] never over a video (the router keeps quiet on the video screen)
       if (d.delay_ms) { await missionUI.houston(d.text, +d.delay_ms, d.style); return true; }
       if (!floor) return guideSay(d.text, { voice: d.voice === "story" ? STORY_VOICE : d.voice === "capcom" ? CAPCOM_VOICE : undefined, style: d.style });
       if (player.active && (d.priority ?? 3) <= 3) player.stop(true);
@@ -421,7 +444,7 @@ async function boot() {
       voice.show("idle");
       return ok;
     },
-    play: async d => { const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
+    play: async d => { if (videoOpen()) return; const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
     stop: () => { stopSpeaking(); if (player.active) player.stop(true); },
     card: d => { if (missionUI.active) missionUI.showCard(d, sendRaw); else card.show({ title: d.title, asked: d.asked, say: d.body, claims: d.claims, arc: readoutLine({ readout: d.readout, source: d.source, action: d.action }) }); },
     hud: d => missionUI.applyRemote(d.state),
@@ -451,6 +474,7 @@ async function boot() {
     },
     nav: d => runNav(d.intent, d.arg, d.text),
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
+      if (videoOpen()) return;   // [media]
       const r = d.r || {}, my = ++turn.seq;
       if (missionUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
       if (academyUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
@@ -475,7 +499,7 @@ async function boot() {
   (function warm(t0 = performance.now()) {
     const bar = $("askbar");
     fetch("/api/health").then(r => r.json()).then(h => {
-      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.steer_tts || {};
+      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.tts || {};
       const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
       bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
       bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);
@@ -495,6 +519,7 @@ async function boot() {
   new MutationObserver(dupCheck).observe($("aPanel"), { childList: true, subtree: true });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function shellNav(intent, arg, text) {
+    if (intent === "mute_sound" || intent === "unmute_sound") { setMuted(intent === "mute_sound"); return; }
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
     if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }
@@ -506,6 +531,7 @@ async function boot() {
     if (intent === "library") { setMode("cadet"); return; }
     if (intent === "go_mission") { setMode("mission"); return; }
     if (academyUI.active && academyUI.nav(intent, arg)) return;
+    if (missionUI.active && missionLearning.nav(intent, arg)) return;   // the first-mission Moon Base card, if it's up
     if (missionUI.active && missionUI.nav(intent, arg)) return;
     const mode = document.body.dataset.mode;
     if (intent === "lesson" || intent === "map") { setMode("academy"); setTimeout(() => academyUI.nav(intent, arg), 400); return; }
@@ -518,9 +544,10 @@ async function boot() {
   // [hands-free] The router needs the screen the kid is looking at (server-relayed ear turns arrive before the client's).
   let lastScreen = "";
   function screenFrame() {
+    const vn = videoNow(); if (vn) return { screen: "video", video: vn.id };   // [media] the router takes only pause / play / skip / stop
     const m = document.body.dataset.mode;
     if (m === "cadet") return { screen: "library" };
-    const f = m === "academy" ? academyUI.screen() : missionUI.screen();
+    const f = m === "academy" ? academyUI.screen() : (missionLearning.screen() || missionUI.screen());
     return f || { screen: m === "academy" ? "map" : "brief" };
   }
   function pushScreen(force) {
@@ -553,6 +580,7 @@ async function boot() {
   // [gestures] Settings → Camera & gestures registers itself (settingsSections); the camera chip sits next to the gear.
   initGestures({
     screen: screenFrame, inCabin, isSpeaking, cabinPanel,
+    onGesture: id => { if (useSession()) session.ui("gesture", { id }); },   // round 8: {"t":"ui","event":"gesture","id"}
     indicatorBefore: $("a11yBtn"), addObstacle: sel => vbar && vbar.addObstacle && vbar.addObstacle(sel),
     announce: t => { if (a11y) a11y.describe(t, { quiet: true }); },
   });

@@ -18,3 +18,4 @@ dev = ["pytest==8.3.4"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = ["voice_pack: run with the recorded voice pack on (tests/conftest.py no_voice_pack)"]

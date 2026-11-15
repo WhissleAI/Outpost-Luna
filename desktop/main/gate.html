@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Ask a grown-up</title>
+<!-- The grown-up gate (gate.js): a YouTube link from a video opens in the web browser only after a 3-second hold.
+     The answer is the page title: "go" or "no" (main.js watches page-title-updated; no IPC, no preload). -->
+<style>
+  :root { --bg:#05070d; --fg:#e8ecf5; --dim:#8b93a7; --accent:#7cc4ff; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; user-select:none; }
+  main { height:100%; box-sizing:border-box; padding:28px; display:flex; flex-direction:column; justify-content:center; gap:14px; }
+  h1 { margin:0; font-size:22px; }
+  p { margin:0; color:var(--dim); }
+  .row { display:flex; gap:12px; margin-top:8px; }
+  button { font:inherit; font-weight:600; min-height:52px; padding:0 22px; border-radius:12px; border:1px solid #2a3142; background:#141a26; color:var(--fg); cursor:pointer; }
+  #hold { position:relative; overflow:hidden; background:#1d2a44; border-color:#33507f; }
+  #fill { position:absolute; inset:0 auto 0 0; width:0; background:rgba(124,196,255,.35); }
+  #hold span { position:relative; }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask a grown-up</h1>
+  <p>This opens YouTube in your web browser. A grown-up can hold the button for 3 seconds.</p>
+  <div class="row">
+    <button id="hold" type="button"><i id="fill"></i><span>Hold to open YouTube</span></button>
+    <button id="no" type="button" autofocus>Not now</button>
+  </div>
+</main>
+<script>
+(() => {
+  const HOLD_MS = 3000, hold = document.getElementById("hold"), fill = document.getElementById("fill");
+  let t0 = 0, raf = 0;
+  const answer = (a) => { document.title = a; };
+  const tick = () => { const p = Math.min(1, (performance.now() - t0) / HOLD_MS); fill.style.width = (p * 100) + "%"; if (p >= 1) { answer("go"); return; } raf = requestAnimationFrame(tick); };
+  const start = (e) => { if (e.repeat || t0) return; t0 = performance.now(); raf = requestAnimationFrame(tick); };
+  const stop = () => { cancelAnimationFrame(raf); t0 = 0; fill.style.width = "0"; };
+  hold.addEventListener("pointerdown", start); hold.addEventListener("pointerup", stop); hold.addEventListener("pointerleave", stop);
+  hold.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); start(e); } });
+  hold.addEventListener("keyup", (e) => { if (e.key === "Enter" || e.key === " ") stop(); });
+  document.getElementById("no").onclick = () => answer("no");
+  addEventListener("keydown", (e) => { if (e.key === "Escape") answer("no"); });
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ shadow hook the runtime uses (app.director_model.runtime.Shadow with a sink): th
 serving code, and the rule Director + session policy produce the teacher labels.
 
 Run in the backend env, with a private model server (real Arc Tagger + MiniLM embedder) on :8290:
-  cd model_server && EMBED_MODEL_DIR=... STEER_TTS=off ARC_EAR=off ARC_META=off uv run uvicorn app.main:app --port 8290
+  cd model_server && EMBED_MODEL_DIR=... OS_TTS=off ARC_EAR=off ARC_META=off uv run uvicorn app.main:app --port 8290
   uv run --project backend python director_model/gen_sessions.py --out director_model/data/ds --train 1500 ...
 
 Sources (one session = one browser session; one step per event):
@@ -164,6 +164,20 @@ def kind_script(rng, split, seed, hf_p: float = 0.0):
 
 CLASS_W = {"chatter": 3, "echo": 3, "offer": 2, "panel": 2, "help": 2, "mode": 1, "globe": 3, "mishear": 2,
            "roomtalk": 2}
+# round 8 (pools_r8.py): the capabilities added since round 7; mixed into hands-free sessions with --r8-p
+CLASS_W8 = {"video_ctrl": 2, "video_echo": 3, "prep": 2, "prep_roomtalk": 3, "voice_echo_os": 3, "gesture_cooccur": 1,
+            "lesson_new": 2, "offers_new": 1}
+R8 = {"p": 0.0, "cov": 0.0}
+_GAPS: list = []
+
+
+def gap_cells() -> list[dict]:
+    """The coverage inventory's cells with a gap (director_model/coverage.json), for the coverage sweep."""
+    if not _GAPS:
+        f = HERE / "coverage.json"
+        if f.exists():
+            _GAPS.extend(c for c in json.loads(f.read_text())["cells"] if c.get("gap"))
+    return _GAPS
 
 
 def logged_items(split: str) -> list[dict]:
@@ -171,6 +185,9 @@ def logged_items(split: str) -> list[dict]:
     if "logged" not in _LOGGED:
         f = HERE / "data" / "real_turns.json"
         _LOGGED["logged"] = json.loads(f.read_text())["items"] if f.exists() else []
+        c = HERE / "data" / "collected_turns.json"     # round 8: the collection kit's sessions (collect_import.py)
+        if c.exists():
+            _LOGGED["logged"] += json.loads(c.read_text())["items"]
     return [dict(x) for x in _LOGGED["logged"] if x.get("split") == split]
 
 
@@ -185,7 +202,18 @@ def handsfree_script(rng: random.Random, split: str, seed: int) -> dict:
     logged = logged_items(split)
     for _ in range(rng.randint(8, 14)):
         r = rng.random()
-        if r < 0.7:
+        sub = random.Random(seed * 17 + len(items))        # own stream: older sessions keep their items
+        if r < 0.7 and R8["cov"] and gap_cells() and sub.random() < R8["cov"]:
+            import pools_r8 as P8
+            it = P8.cell_item(sub.choice(gap_cells()), rng, split)
+            if it is not None:
+                items.append(it)
+                continue
+        if r < 0.7 and R8["p"] and random.Random(seed * 13 + len(items)).random() < R8["p"]:
+            import pools_r8 as P8
+            c8 = list(CLASS_W8)
+            items.append(P8.cls_item(rng.choices(c8, [CLASS_W8[c] for c in c8])[0], rng, split))
+        elif r < 0.7:
             items.append(P.cls_item(rng.choices(cl, [CLASS_W[c] for c in cl])[0], rng, split))
         elif r < 0.8 and logged:
             items.append(rng.choice(logged))
@@ -198,9 +226,36 @@ def handsfree_script(rng: random.Random, split: str, seed: int) -> dict:
     return {"mode": "mission", "site": rng.choice(SITES), "seed": seed, "role": None, "items": items, "hf": True}
 
 
+COV_ITEMS = 12
+
+
+def coverage_script(seed: int, split: str) -> dict | None:
+    """Round 8: a sweep session over the coverage gap cells (coverage.json), round-robin so every cell gets its share:
+    COV_ITEMS turns, each in its own screen frame. None when there is no inventory yet."""
+    import pools_r8 as P8
+    cells = gap_cells()
+    if not cells:
+        return None
+    rng = random.Random(seed * 31 + 3)
+    items = []
+    for j in range(COV_ITEMS):
+        it = P8.cell_item(cells[(seed * COV_ITEMS + j) % len(cells)], rng, split)
+        if it is not None:
+            items.append(it)
+    return {"mode": "mission", "site": rng.choice(SITES), "seed": seed, "role": None, "items": items, "hf": True,
+            "cov": True}
+
+
 def class_set_items(cls: str, n: int, seed: int) -> list[dict]:
     rng = random.Random(seed)
+    if cls in R8_CLASSES:
+        import pools_r8 as P8
+        return [P8.cls_item(cls, rng, "test") for _ in range(n)]
     return [P.cls_item(cls, rng, "test") for _ in range(n)]
+
+
+R8_CLASSES = ("video_ctrl", "video_echo", "prep", "prep_roomtalk", "voice_echo_os", "gesture_cooccur", "lesson_new",
+              "offers_new")      # pools_r8.CLASSES_R8
 
 
 def set_script(items: list[dict], mode: str, seed: int, site: str | None = None) -> dict:
@@ -292,6 +347,12 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         if op == "tap":
             await sess.handle({"t": "ui", "event": "tap_place", "id": it["id"]})
             continue
+        if it.get("gesture"):        # round 8: a hand gesture runs while the kid speaks (feat/gestures-v2)
+            await sess.handle({"t": "ui", "event": "gesture", "id": it["gesture"]})
+        video_on = op == "video_leak"
+        if video_on:                 # round 8: a video plays; its audio leaks into the mic (no words are reported)
+            await sess.handle({"t": "playback", "kind": "video", "state": "start", "id": f"V{tid}", "text": ""})
+            clock.t += rng.uniform(0.5, 3.0)
         if op == "lesson":
             lesson_step = (it["lesson_id"], it["step"])
             await sess.handle({"t": "lesson", "lesson_id": it["lesson_id"], "step": it["step"], "status": it["status"]})
@@ -352,13 +413,17 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             d = real[0].get(real[1], it["text"], rng, fk)
             rd = real_stream(d) if d else None
         if op == "echo2" and noise is not None and real is not None:
-            d = real[0].get("app", it["lines"][0], rng)     # the line in the app's own voice, through the real ear
+            grp = "app_os" if (it.get("audio") or {}).get("kind") == "os_voice" else "app"   # round 8: OS / Nora voices
+            d = real[0].get(grp, it["lines"][0], rng) or (real[0].get("app", it["lines"][0], rng) if grp != "app" else None)
             if d and d.get("hyp"):
                 hy = FX.words_of(d["hyp"])
                 k = min(len(hy), len(cw))
                 a0 = int(round(len(hy) * (len(FX.words_of(it["lines"][0])) - len(cw)) / max(1, len(FX.words_of(it["lines"][0])))))
                 if k:
                     it = {**it, "heard": " ".join(hy[max(0, min(a0, len(hy) - k)):][:k])}
+        if op == "video_leak" and real is not None and noise is not None and rd is None:
+            d = real[0].get("video", it["text"], rng)   # the NASA narration / music through the real ear
+            rd = real_stream(d) if d else None
         if rd is not None:
             hw, al = rd[0], None
         elif "heard" in it and noise is not None:
@@ -425,6 +490,9 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                                    "text": pend_line[2]})
             clock.t += 1.0
             await sess.handle({"t": "playback", "kind": "guide", "state": "end", "id": f"L{tid}b"})
+        if video_on:
+            clock.t += rng.uniform(0.3, 2.0)
+            await sess.handle({"t": "playback", "kind": "video", "state": "end", "id": f"V{tid}"})
         if playing is not None and playing["id"] in sess.pending:
             await sess.handle({"t": "playback", "kind": "guide", "state": "interrupted", "id": playing["id"]})
         await play_pending(sess, clock, rng)
@@ -508,7 +576,9 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
         g = gold_turn(ann, clean, meta_base["mode"])
         y["act"][i] = FX.ACTS.index(g["act"])
         fr_it = it.get("frame")
-        gold_nav = FX.nav_label(" ".join(ann["clean"]), fr_it) if g["act"] == "navigate" else "none"
+        gold_nav = ((it.get("gold") or {}).get("nav") or FX.nav_label(" ".join(ann["clean"]), fr_it)) \
+            if g["act"] == "navigate" else "none"     # round 8: an explicit gold intent (the router may not know it yet)
+        gold_nav = gold_nav if gold_nav in FX.NAV_INTENTS else "other"
         if g["act"] == "navigate" and gold_nav == "none":
             gold_nav = "other"
         y["nav"][i] = FX.NAV_INTENTS.index(gold_nav)
@@ -638,9 +708,17 @@ async def main():
     ap.add_argument("--hf-p", type=float, default=0.3, help="share of train/val sessions that are hands-free round-6 "
                     "scripts (screen frames, today's failure classes, imported real turns); 0 = rounds 1-5")
     ap.add_argument("--cls-n", type=int, default=160, help="turns per round-6 class set (cls_*)")
+    ap.add_argument("--cov-sessions", type=int, default=0, help="round 8: train sessions of the coverage sweep "
+                    "(train_cov.npz; train.py reads it with train)")
+    ap.add_argument("--cov-heldout", type=int, default=0, help="round 8: held-out turns per gap cell (cls_coverage)")
+    ap.add_argument("--cov-p", type=float, default=0.0, help="round 8: share of the hands-free class items that sweep "
+                    "a coverage gap cell (coverage.json): every screen x intent gets data")
+    ap.add_argument("--r8-p", type=float, default=0.35, help="round 8: share of the hands-free class items drawn from "
+                    "pools_r8 (video, prep, OS-voice echo, gestures, new lessons and offers)")
     ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
                     "in train / val (outcome signals as weak labels)")
     a = ap.parse_args()
+    R8["p"], R8["cov"] = a.r8_p, a.cov_p
     if a.merge:
         merge(Path(a.out), a.merge)
         return
@@ -682,6 +760,20 @@ async def main():
         save(out, name, ss)
 
     await gen("train", "train", a.train, 10_000 + a.seed * 1_000_000, "half", "train")
+    if a.cov_sessions and (not only or "train_cov" in only):     # round 8: the coverage sweep (train)
+        ss = []
+        si, sn = (int(x) for x in a.shard.split("/")) if a.shard else (0, 1)
+        for k in range(a.cov_sessions):
+            if k % sn != si:
+                continue
+            sc = coverage_script(2_000_000 + k, "train")
+            if sc and sc["items"]:
+                rng = random.Random(2_000_000 + k)
+                nz = (em, rng.random() < 0.5, rng.uniform(0.5, 1.5)) if rng.random() < 0.6 else None
+                real = (RE, "train", a.real_p) if RE is not None else None
+                ss.append(await make(sc, 2_000_000 + k, nz, True, rng.random() < 0.85, "train_cov", "train", real,
+                                     a.repeat_p))
+        save(out, f"train_cov_s{si}" if a.shard else "train_cov", ss)
     if a.shard:
         print(f"shard done in {time.time() - t0:.0f} s")
         return
@@ -730,6 +822,21 @@ async def main():
 
     for ci, cls in enumerate(P.CLASSES):
         await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 990_000 + 1000 * ci))
+    for ci, cls in enumerate(R8_CLASSES):      # round 8: seeds after round 6's, so those sets never change
+        await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 995_000 + 1000 * ci))
+    if a.cov_heldout and (not only or "cls_coverage" in only):   # round 8: every gap cell, held-out phrases
+        import pools_r8 as P8
+        rng = random.Random(999_000)
+        # merged capabilities only: a pending feature's cells are held out in its own cls_* set (report-only)
+        its = [x for c in gap_cells() if not c.get("pending")
+               for x in (P8.cell_item(c, rng, "test") for _ in range(a.cov_heldout)) if x]
+        await cls_set("cls_coverage", its)
+    if a.cov_heldout and (not only or "cls_coverage_pending" in only):   # the unmerged features' cells: report-only
+        import pools_r8 as P8
+        rng = random.Random(999_500)
+        its = [x for c in gap_cells() if c.get("pending")
+               for x in (P8.cell_item(c, rng, "test") for _ in range(a.cov_heldout)) if x]
+        await cls_set("cls_coverage_pending", its)
     logged = logged_items("test")
     if logged:
         for x in logged:

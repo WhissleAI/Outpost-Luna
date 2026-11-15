@@ -69,7 +69,7 @@ export function createTour({ host, cockpit, say, hush = () => {}, callsign = () 
       if (!c.isConnected || c.hidden || !active()) return;
       dockRaf = requestAnimationFrame(place);
       const hb = host.getBoundingClientRect();
-      const hud = [...document.querySelectorAll(".cb-hole .cb-top, .cb-hole .cb-sky, .cb-glass > .cb-top, .cb-glass > .cb-sky")]
+      const hud = [...document.querySelectorAll(".cb-deck, .cb-hole .cb-sky, .cb-glass > .cb-sky")]
         .filter(n => n.getClientRects().length).map(n => n.getBoundingClientRect());
       const below = hud.length ? Math.max(...hud.map(r => r.bottom)) - hb.top + 10 : 16;
       const top = Math.round(Math.max(8, Math.min(below, hb.height - c.offsetHeight - 96)));

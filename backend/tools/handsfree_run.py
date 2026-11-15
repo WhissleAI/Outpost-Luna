@@ -12,7 +12,7 @@ does what frontend/src/main.js does with the decisions: `nav` moves the screens,
 
     in-process (CI):   backend/tests/test_handsfree_run.py
     live server:       uv run python tools/handsfree_run.py --base http://127.0.0.1:8330 [--audio]
-                       --audio renders each kid line with Steer /v1/tts on the model server and feeds the PCM to
+                       --audio renders each kid line with the OS voice (/v1/tts on the model server) and feeds the PCM to
                        /ws/listen (the Arc ear), so the turns come from real speech recognition.
 Prints a short transcript and the count of spoken "I don't know that one yet".
 """
@@ -82,6 +82,8 @@ def answer_for(step: dict, gaz=None, vocab=None) -> str:
         if q and acc.get("all"):
             return "Copy. " + q[0].replace("Commander, ", "").rstrip(".")
         return " ".join(g[0] for g in groups) or "copy"
+    if k == "video":
+        return "skip this one"   # a video step: the voice-only kid skips it (the reveal is said either way)
     if k.startswith("vocab_"):
         t = (vocab.term(acc["term"]) if vocab else None) or {}
         return t.get("explain", acc["term"]) if k == "vocab_match" else acc["term"]
@@ -115,7 +117,9 @@ class Client:
         return self.course["lessons"]
 
     def next_lesson(self):
-        return next((l for l in self.lessons() if l["badge"]["id"] not in self.badges), None)
+        # explorer lessons (track "explorer") open only after missions (frontend/src/explorer.js); this run flies none first
+        return next((l for l in self.lessons() if l["badge"]["id"] not in self.badges
+                     and l.get("track", "core") != "explorer"), None)
 
     def frame(self) -> dict:
         if self.mode == "mission":
@@ -405,7 +409,7 @@ async def script(c: Client, shifts: int = 3):
     await c.say("call me Nova")
     await c.say("start")
     guard = 0
-    while not c.qualified and guard < 80:   # every lesson by voice, then the check ride
+    while not c.qualified and guard < 200:  # every lesson by voice, then the check ride
         guard += 1
         if c.view == "patch":
             await c.noise()
@@ -548,14 +552,14 @@ class Live:
 
     async def turn_audio(self, text: str) -> list[dict]:
         await asyncio.sleep(0.6)                 # a kid's reaction time after our line
-        """Render the line with Steer TTS (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
+        """Render the line with the OS voice (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
         import io
         import wave
 
         import httpx
         import numpy as np
         import websockets
-        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # Steer TTS, a kid-ish voice
+        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # the OS voice for the story role
         r.raise_for_status()
         w = wave.open(io.BytesIO(r.content))
         sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)

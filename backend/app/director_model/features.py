@@ -28,7 +28,9 @@ from ..mission import nlu
 ACTS = ["wait", "answer", "command", "confirm_yes", "confirm_no", "ask_clarify", "guard", "alert", "nudge", "ignore",
         "navigate"]          # navigate (round 6): a router navigation intent (appended: older weights have 10 acts)
 CMD_TYPES = ["none", "allocate", "dispatch", "shelter_on", "shelter_off", "query", "call_houston", "end_shift", "rule",
-             "confirm", "cancel"]
+             "confirm", "cancel",
+             "power_save"]   # round 8: appended (gameplay: night mode); older heads are 11 wide and decode their prefix
+CMD_TYPES_R5 = CMD_TYPES[:11]    # the nlu_* features keep the round-5 list (they sit mid-vector); newer -> nlu_other
 AMOUNTS = ["na", "percent", "delta_up", "delta_down", "little_up", "little_down", "all", "half", "none"]
 LOADS = ["na", *nlu.LOADS]
 TASKS = ["na", *nlu.TASKS]
@@ -64,8 +66,13 @@ ROUTE_WHY = ["echo", "filler", "speaking", "not_directed", "too_short", "chatter
 NAV_INTENTS = ["none", "accept_offer", "decline_offer", "back", "map", "academy", "library", "go_mission",
                "take_command", "panel_power", "panel_comm", "panel_habitat", "panel_rover", "panel_radiation",
                "panel_back", "a11y", "cabin_tour", "skip_tour", "repeat", "slower", "faster", "settings", "debrief",
-               "fly_again", "new_site", "view_orbit", "view_rover", "view_site", "start", "other"]
-NAV_ACTIONABLE = set(NAV_INTENTS[1:-1])      # what the model may run on its own (no arg it cannot know: lesson, site)
+               "fly_again", "new_site", "view_orbit", "view_rover", "view_site", "start", "other",
+               # round 8 (appended; no shipped weights carry a nav head yet): the live mission clock and task card
+               # (merged rc/7), the video controls (feat/media-v1) and the hands-on prep tasks (feat/learning-v1)
+               "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "next",
+               "video_play", "video_pause", "video_stop", "video_skip", "video_watch",
+               "prep_done", "prep_skip", "prep_wait", "prep_help"]
+NAV_ACTIONABLE = set(NAV_INTENTS[1:]) - {"other", "task_choice"}   # what the model may run alone (no arg it cannot know)
 K, W = 8, 16                       # hashed newest K words (bag); last W words for the span pointer heads
 WF = 6                             # per-word features (step_tokens)
 
@@ -222,6 +229,9 @@ def _handsfree(sess, ev: dict, text: str, now: float) -> dict:
     return {"frame": {"screen": screen, "step_type": scr.get("step_type"), "offer": scr.get("offer"),
                       "options": list(scr.get("step_options") or [])},
             "route": ev.get("route"), "on_air": on_air, "speaking": speaking, "line_gap": gap, "recent": recent[-4:],
+            # round 8: a video is playing (its audio leaks into the mic); a hand gesture within 2 s (voice + gesture)
+            "video_on": ((getattr(sess, "belief", None) or {}).get("playing") or {}).get("kind") == "video",
+            "gesture_now": bool(getattr(sess, "last_gesture", None)) and now - sess.last_gesture[1] <= 2.0,
             **_round7(sess, ev, text, now)}
 
 
@@ -306,7 +316,7 @@ FEATS: list[str] = (
        "lx_pronoun", "lx_correction", "lx_miscon", "lx_tour", "lx_sound", "lx_crew", "echo_share", "gaz_match",
        "gaz_artifact", "last_stop", "lx_whq", "lx_explain"]
     # the mission NLU rules on these words (the rules as evidence, not as the answer)
-    + ["nlu_n", "nlu_clarify", "nlu_conf"] + [f"nlu_{c}" for c in CMD_TYPES[1:]]
+    + ["nlu_n", "nlu_clarify", "nlu_conf"] + [f"nlu_{c}" for c in CMD_TYPES_R5[1:]]
     # Arc Tagger read-out (turn end only; tag_avail = 0 elsewhere or with no model server)
     + ["tag_avail", "tag_q", "tag_cmd", "tag_stmt", "tag_dd", "tag_mentions", "tag_numbers", "tag_pii", "tag_hard_pii",
        "tag_complete"]
@@ -336,6 +346,8 @@ FEATS: list[str] = (
     # outcome signals (DIRECTOR_LOOP.md §2, now as features): this turn repeats the last one, the last one was ignored /
     # navigated / acted, it came within 10 s
     + ["rep_prev", "prev_ignored", "prev_acted", "prev_recent", "neg_now"]
+    # ---- round 8: appended ----
+    + ["nlu_other", "gesture_now", "video_on"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
@@ -444,7 +456,7 @@ def step_feats(rec: dict, prev: dict | None) -> np.ndarray:
     s("nlu_clarify", nv["clarify"])
     s("nlu_conf", nv["conf"])
     if nv["type"]:
-        s(f"nlu_{nv['type']}", 1)
+        s(f"nlu_{nv['type']}" if nv["type"] in CMD_TYPES_R5[1:] else "nlu_other", 1)
     rd = rec.get("read")
     if rd:
         s("tag_avail", 1)
@@ -549,6 +561,8 @@ NEG = re.compile(r"^(?:no|nope|stop|not that|no no|wait no|go back|back|cancel|w
 
 
 def _round7_feats(rec: dict, ws: list[str], s):
+    s("video_on", bool(rec.get("video_on")))
+    s("gesture_now", bool(rec.get("gesture_now")))
     h = rec.get("hot")
     if h:
         s("hot_avail", 1)

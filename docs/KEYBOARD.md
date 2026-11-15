@@ -28,6 +28,7 @@ Code:
 | <kbd>Space</kbd> held (≥ 0.26 s) | voice.js push-to-talk | Hold to talk, unchanged. With nothing selectable focused, Space is talk at once, as before. |
 | <kbd>Esc</kbd>, <kbd>Backspace</kbd> (when not typing) | `back` | In order: close the help sheet, Settings, About, the calibration, a glossary card, the lesson brief, the answer card (in the cabin, only when focus is on it) or Find it. Then close an open cabin panel (`panel_back`). Then the screen's own back: lesson → map, patch → map, Library → where you were, debrief → cabin or picker. **Never quits.** |
 | <kbd>M</kbd> | `mic` | Turns the mic on or off. |
+| <kbd>Shift</kbd>+<kbd>M</kbd> | `mute` | The top bar's **Mute** (next to Settings): every sound off or back on. Captions and text stay. Output only; the mic is unchanged. Voice: "mute" / "unmute". |
 | <kbd>H</kbd> or <kbd>?</kbd> | `help` | Opens the help sheet with every key for **this** screen, plus the controller's buttons when one is connected. |
 | <kbd>1</kbd>–<kbd>4</kbd> (up to <kbd>9</kbd>), and <kbd>A</kbd>–<kbd>D</kbd> | `pick {n}` | Picks an answer. Works on lesson answers, vocab options, order buttons, call-sign chips, site rows, the cabin's offer buttons and the card's buttons. A–D work only while lettered answers are on screen. |
 | <kbd>N</kbd> / <kbd>P</kbd> | `next` / `prev` | Next / previous: next step or lesson, the next site, the window view, the panel, the tour stop. |
@@ -36,7 +37,8 @@ Code:
 | <kbd>C</kbd> | `captions` | Turns captions on or off, with a toast. While lettered answers are up, C is answer C. |
 | <kbd>V</kbd> | `view_next` | Cycles the cabin window view: Orbit → Site → Rover → Earth. |
 | <kbd>O</kbd> | `panel_open` | Opens the lit cabin panel. |
-| <kbd>T</kbd> | `task_step` | Cabin: does the Now card's step (its first button). <kbd>Y</kbd> does too when no yes/no waits. |
+| <kbd>T</kbd> | `task_step` | Cabin: does the Now panel's step (its button wears a **T**). <kbd>Y</kbd> does too when no yes/no waits. |
+| <kbd>1</kbd>–<kbd>4</kbd> | `pick {n}` | Cabin: picks a choice on the Now panel (each option wears its number; the panel also says the word to say, e.g. "Say “left” or “right”"). |
 | <kbd>K</kbd> | `time_toggle` | Cabin: pauses or runs the mission clock (docs/GAMEPLAY.md). |
 | <kbd>W</kbd> | `time_warp` | Cabin: time warp 1x → 2x → 4x. |
 | <kbd>E</kbd> | `skip_event` | Cabin: skip to the next event. |
@@ -125,14 +127,14 @@ instead of "Enter".
 | X / Square | `mic` |
 | Y / Triangle | `help` |
 | LB / RB (L1 / R1) | `prev` / `next` |
-| Right stick | Outside the cabin: `rotate` (turns the Moon). In the cabin: `look`, which looks around and lights the aimed panel, the same as the head gesture. |
+| Right stick | Outside the cabin: `spin` (spins the Moon at a rate, with easing and a little momentum: the same rate control as the camera fist, docs/GESTURES.md §Fist spin). In the cabin: `look`, which looks around and lights the aimed panel, the same as the head gesture. |
 | Start / Options | `settings` |
 
 **Left-handed controller** (Settings) swaps the sticks.
 
 ## Focus you can see from the sofa
 
-While keys or a pad are in use (`html[data-input=keys|pad]`; the first trusted pointer move or click switches back):
+While keys or a pad are in use (`html[data-input=keys|pad]`; the first trusted pointer move or click switches back; camera gestures set `gesture` and wear the same ring):
 - **The ring.** The focused control grows to 1.04× and wears a two-tone ring, the theme's background then `--color-focus` at `--focus-width`, plus a soft glow and a slow brightness pulse. The two tones mean one always contrasts, on the Moon, on light glass or on the cabin's dark panels. Dark surfaces (the route pins, the cabin, the reticle) use a fixed light-blue variant. The ring uses the `scale` property, so it composes with the pins' own `transform`.
 - **Less motion** (Settings, or the OS setting): no grow, no pulse, no transition.
 - **High contrast**: a 4 px yellow ring between black rings.
@@ -190,7 +192,7 @@ still work.
 | | Replay a lesson | "lesson 1" | point at a pin, then Replay | arrows to the pin, Enter, Enter | pin, Replay |
 | | Change call sign | — | point at the chip | arrows to the chip, Enter | the chip |
 | **Lesson: choice / predict / earth view** | Answer | the answer, "option 2" | point at an answer | 1–4, A–D, arrows + Enter | an answer |
-| **Lesson: turn the Moon** | Answer | "show me the far side" | fist + drag, then point at Check | 1 / 2 (near / far), or Shift+arrows on the Moon then Check this view | Near / Far, drag + Check |
+| **Lesson: turn the Moon** | Answer | "show me the far side" | fist and lean (spin), then point at Check | 1 / 2 (near / far), or Shift+arrows on the Moon then Check this view | Near / Far, drag + Check |
 | **Lesson: tap / find / terminator / route** | Tap the Moon | name the place | point + dwell on the Moon | Moon reticle: arrows hop, Shift+arrows turn, Enter taps | tap the Moon |
 | **Lesson: compare** | Pick a site | name it, "option 1" | point at a card or pin | 1 / 2, arrows to a card or pin | a card or pin |
 | **Lesson: keywords / command / vocab say / fill** | Answer | say it | — | / then type, Enter; orders: 1–5 | the order buttons |
@@ -207,20 +209,20 @@ still work.
 | **Cabin, seat** | Light a panel | — | turn your head | arrows | hover |
 | | Open it | "open the comm panel" | lean in | Enter, O | click the panel |
 | | Window view | "show me the rover", "zoom out" | swipe | V, N / P | Orbit / Site / Rover / Earth |
-| | Look around | — | head, fist + drag | right stick (pad) | move the mouse |
+| | Look around | — | head, fist and lean | right stick (pad) | move the mouse |
 | **Cabin, panel** | Use a control | the order ("shields to 40") | point + dwell | arrows + Enter; knob ← → | click |
 | | Next / previous panel | "open the rover panel" | swipe | N / P | — |
 | | Back to the seat | "back to my seat" | sit back | Esc, Backspace | Seat |
 | **Storm / alert strip** | Shelter, Shields 40 | "everyone to the shelter", "shields to 40" | point | arrows to the strip, Enter | the buttons |
 | **Confirm (risky order)** | Yes / No | "yes" / "no" | thumbs up / down | Y / N (N means no while it waits) | Yes / No |
-| **Houston** | Call Houston | "call Houston" | raise a hand (phase 2) | Comm panel → Call Houston, Enter | Call Houston |
+| **Houston** | Call Houston | "call Houston" | — (raise hand removed: an open hand is always stop) | Comm panel → Call Houston, Enter | Call Houston |
 | **End shift** | End shift | "end shift" | — | pedestal → End shift, Enter | End shift |
 | | Finish mission | "debrief" | — | pedestal → Finish mission, Enter | Finish mission |
 | **Debrief** | Fly again | "fly again", "yes" | thumbs up | Y, Enter on Fly again | Fly again |
 | | Another site | "new site" | — | arrows to Another site, Enter | Another site |
 | | Close | "go back" | — | Esc, Backspace | × |
 | **Library** | Pick a place | "where did Apollo 11 land?" | point at the Moon | Moon reticle: arrows hop, Enter | tap the Moon or a marker |
-| | Turn the Moon | "show me the far side" | fist + drag | Shift+arrows, right stick | drag, Near / Far side |
+| | Turn the Moon | "show me the far side" | fist and lean (spin; twist zooms) | Shift+arrows, right stick | drag, Near / Far side |
 | | Tour, next / previous stop | "next" | swipe | Enter on Tour, N / P | Tour, Next |
 | | Close the card | — | — | Esc | × |
 | | Hear the crew | "play it" | point | arrows to Hear the crew, Enter | Hear the crew |
@@ -255,3 +257,18 @@ Results on `rc/2` with the story merge (2026-11-14):
 - backend pytest: 746 passed.
 
 Screenshots of the focus states are in `docs/img/keys/`.
+
+## The cabin's deck and Now panel (fix/mission-ui-polish)
+
+- **The deck** is one bar across the top of the cabin. It holds the clock, the clock state (Running 2× / Paused /
+  On hold: your choice), Pause/Play, the speed (1× 2× 4×), Skip ahead, the window views and the goals. Each control is
+  shown once.
+- **Keys.** <kbd>K</kbd> pause/run, <kbd>W</kbd> speed, <kbd>E</kbd> skip. The arrows reach every deck control
+  (spatial focus). Space is not the pause key: a tap of Space is *select* and holding it is push-to-talk, so it stays
+  free for talking.
+- **The Now panel** is docked on the left wall. One focus ring sits on one button at a time: the old glow drew one ring
+  round both choices, which looked like a single control. The arrows move between the options. <kbd>Enter</kbd> or a
+  tap of <kbd>Space</kbd> presses the focused one. <kbd>1</kbd>–<kbd>4</kbd> pick, and <kbd>T</kbd> does a plain step.
+  The fold button (⌃) shrinks the panel to its one line.
+- **Controller** (unchanged): View/Share pause/run, RT/R2 skip, LT/L2 speed. The D-pad and A work the Now panel's
+  buttons like any other control.

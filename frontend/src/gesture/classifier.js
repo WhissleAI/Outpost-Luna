@@ -11,35 +11,24 @@
 // Events (push() returns the events of that frame, in order):
 //   palm_hold · thumbs_up · thumbs_down · swipe_left · swipe_right
 //   point {x, y, progress} (cursor 0..1 in screen space, dwell progress 0..1) · point_end · select {x, y}
-//   grab_start {x, y} · grab_move {dx, dy} · grab_end
+//   grab_start {x, y, stick} · grab_move {dx, dy, stick: {x, y, z}} · grab_end {how: "open" | "lost" | "other"}
+//     stick: the fist as a joystick from where it grabbed (gesture/spin.js), calibrated, One-Euro filtered, -1.5..1.5
+//     (x > 0 = the kid's right, y > 0 = down, z = twist). dx / dy: the palm's move since the last frame.
 //   head {x, y, lean} (look -1..1, lean = face size / neutral) · lean_in {x, y} · lean_back
-//   phase 2 (opts.phase2): raise_hand · zoom {factor} · zoom_end
+//   phase 2 (opts.phase2): zoom {factor} · zoom_end
 //
 // Robustness (docs/GESTURES.md §Robustness): only the largest (nearest) hand and face count; a hand must be stable for
 // `stableFrames` frames before anything fires; finger states use hysteresis; every discrete gesture has a hold time,
-// a cooldown and must be released before it fires again; swipes are one step each and the return stroke is ignored.
+// a cooldown and must be released before it fires again; swipes are one step each and the return stroke is ignored;
+// after any discrete gesture no other one fires for crossCooldownMs; while the fist holds nothing else fires; the hand
+// that opens out of a fist is never a stop or a swipe (afterGrabQuietMs). Every tuning number is in gesture/tuning.js.
+import { DEFAULTS } from "./tuning.js";
+import { fistReading, rawStick, calibrated, oneEuro } from "./spin.js";
+export { DEFAULTS };
 
 const WRIST = 0, THUMB = [1, 2, 3, 4], INDEX = [5, 6, 7, 8], MIDDLE = [9, 10, 11, 12], RING = [13, 14, 15, 16], PINKY = [17, 18, 19, 20];
 const FINGERS = [INDEX, MIDDLE, RING, PINKY];
 
-export const DEFAULTS = Object.freeze({
-  sensitivity: 1,        // 0.6 strict … 1.4 loose (Settings slider)
-  handed: "right",       // tie-break when two hands are the same size
-  headLook: true,
-  phase2: false,         // two-hand zoom + raise hand (flagged)
-  stableFrames: 3,       // a hand must be seen this many frames in a row before it can act
-  minHandScore: 0.6,
-  minHandScale: 0.045,   // wrist→middle-knuckle length (normalised); smaller = too far away / someone behind
-  palmHoldMs: 500, palmCooldownMs: 1000, palmMaxSpeed: 1.6,    // speed in hand-lengths per second
-  thumbHoldMs: 350, thumbCooldownMs: 1200,
-  swipeWindowMs: 450, swipeMinDx: 0.2, swipeMinScales: 1.6, swipeCooldownMs: 700, swipeReturnMs: 1200,
-  dwellMs: 800, dwellRadius: 0.035, dwellRearm: 0.07, pointSmoothing: 0.45,
-  pointBox: [0.18, 0.15, 0.82, 0.75],   // the part of the camera image that maps to the whole screen (x0, y0, x1, y1)
-  grabHoldMs: 150, grabReleaseMs: 200,
-  lostMs: 250,           // a hand missing this long ends point / grab
-  leanIn: 1.22, leanInExit: 1.12, leanBack: 1.06, leanHoldMs: 400, leanBackHoldMs: 500,
-  lookDead: 0.08, raiseHoldMs: 800,
-});
 
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
 const len = v => Math.hypot(v[0], v[1]);
@@ -107,12 +96,22 @@ export function createGestureClassifier(opts = {}) {
       thumbFired: null, thumbCool: -1e9,
       swipeCool: -1e9, lastSwipe: null, lastSwipeT: -1e9,
       pointing: false, cursor: null, dwellAt: null, dwellT: 0, dwellLocked: false,
-      grabbing: false, grabFrom: null, grabLostT: null,
+      grabbing: false, grabFrom: null, grabLostT: null, grabN: null, openFrames: 0, stick: null, quietUntil: -1e9, discreteT: -1e9,
       face: null, neutral: null, faceT: -1e9, look: [0, 0], leaning: false, leanT: null, leanedIn: false, backT: null,
-      raiseT: null, raiseFired: false, zoom0: null,
+      zoom0: null,
     });
   }
+  // One Euro filters: the point cursor (x, y) and the fist stick (x, y, z)
+  const F = {};
+  const mkFilters = () => {
+    F.px = oneEuro(cfg.pointFilter); F.py = oneEuro(cfg.pointFilter);
+    F.sx = oneEuro(cfg.fistFilter); F.sy = oneEuro(cfg.fistFilter); F.sz = oneEuro(cfg.fistFilter);
+  };
+  mkFilters();
   reset();
+  /** Discrete gestures share one short cooldown, so one movement never fires two different things. */
+  const canFire = t => t - S.discreteT >= cfg.crossCooldownMs;
+  const fired = t => { S.discreteT = t; };
 
   const k = () => clamp(cfg.sensitivity, 0.6, 1.4);
   const holdMul = () => 1 / Math.sqrt(k());
@@ -160,27 +159,26 @@ export function createGestureClassifier(opts = {}) {
     if (S.pose !== "palm") S.palmFired = false;
     if (S.pose !== "thumbs_up" && S.pose !== "thumbs_down") S.thumbFired = null;
 
-    // swipe: an open hand moving fast sideways. Checked first: a moving palm must never count as a held palm.
+    // the fist grab first: while it holds, nothing else can fire (a thumb popping out is not a yes)
+    grabStep(hp, primary, aspect, t, held, emit);
+    if (S.grabbing) return out;
+
+    // swipe: an open hand moving fast sideways. Checked next: a moving palm must never count as a held palm.
     const sw = swipeStep(t, emit);
     if (sw) return out;
 
     // open palm held still → stop
-    if (S.pose === "palm" && stable && !S.palmFired && t >= S.palmCool && Math.min(held, t - S.stillSince) >= cfg.palmHoldMs * holdMul()) {
-      // phase 2: a palm raised above the head is "raise hand" (call Houston), not stop
-      if (cfg.phase2 && raisedAboveHead(hp)) {
-        if (Math.min(held, t - S.stillSince) >= cfg.raiseHoldMs * holdMul()) { S.palmFired = true; S.palmCool = t + cfg.palmCooldownMs; emit("raise_hand"); }
-      } else { S.palmFired = true; S.palmCool = t + cfg.palmCooldownMs; emit("palm_hold"); }
+    if (S.pose === "palm" && stable && !S.palmFired && t >= S.palmCool && t >= S.quietUntil && canFire(t) && Math.min(held, t - S.stillSince) >= cfg.palmHoldMs * holdMul()) {
+      S.palmFired = true; S.palmCool = t + cfg.palmCooldownMs; fired(t); emit("palm_hold");
     }
 
     // thumbs up / down → yes / no
-    if ((S.pose === "thumbs_up" || S.pose === "thumbs_down") && stable && S.thumbFired !== S.pose && t >= S.thumbCool && held >= cfg.thumbHoldMs * holdMul()) {
-      S.thumbFired = S.pose; S.thumbCool = t + cfg.thumbCooldownMs; emit(S.pose);
+    if ((S.pose === "thumbs_up" || S.pose === "thumbs_down") && stable && S.thumbFired !== S.pose && t >= S.thumbCool && canFire(t) && held >= cfg.thumbHoldMs * holdMul()) {
+      S.thumbFired = S.pose; S.thumbCool = t + cfg.thumbCooldownMs; fired(t); emit(S.pose);
     }
 
     // point + dwell → cursor + select
     pointStep(hp, t, stable, emit);
-    // fist + drag → grab
-    grabStep(hp, t, held, emit);
     // phase 2: both hands pinching → zoom
     if (cfg.phase2) zoomStep(all, aspect, emit);
     return out;
@@ -193,7 +191,7 @@ export function createGestureClassifier(opts = {}) {
   }
 
   function swipeStep(t, emit) {
-    if (t < S.swipeCool) return false;
+    if (t < S.swipeCool || t < S.quietUntil) return false;
     const h = S.hist.filter(p => t - p.t <= cfg.swipeWindowMs);
     if (h.length < 3) return false;
     // most of the window with an open hand (a swipe is made with a flat hand)
@@ -209,7 +207,8 @@ export function createGestureClassifier(opts = {}) {
     // the return stroke (hand coming back the other way) is not a swipe
     if (S.lastSwipe && S.lastSwipe !== dir && t - S.lastSwipeT < cfg.swipeReturnMs) { S.lastSwipeT = t; return true; }
     S.lastSwipe = dir; S.lastSwipeT = t;
-    emit("swipe_" + dir);
+    if (!canFire(t)) return true;
+    fired(t); emit("swipe_" + dir);
     return true;
   }
 
@@ -219,8 +218,9 @@ export function createGestureClassifier(opts = {}) {
   }
   function pointStep(hp, t, stable, emit) {
     if (S.pose !== "point" || !stable) { if (S.pointing && S.pose !== "point") endPoint(emit); return; }
-    const raw = mapCursor(hp.tip), a = cfg.pointSmoothing;
-    S.cursor = S.cursor ? [S.cursor[0] + (raw[0] - S.cursor[0]) * (1 - a), S.cursor[1] + (raw[1] - S.cursor[1]) * (1 - a)] : raw;
+    const raw = mapCursor(hp.tip);
+    if (!S.pointing) { F.px.reset(); F.py.reset(); }
+    S.cursor = [clamp(F.px(raw[0], t / 1000), 0, 1), clamp(F.py(raw[1], t / 1000), 0, 1)];
     S.pointing = true;
     const c = S.cursor;
     if (!S.dwellAt || Math.hypot(c[0] - S.dwellAt[0], c[1] - S.dwellAt[1]) > (S.dwellLocked ? cfg.dwellRearm : cfg.dwellRadius * Math.sqrt(k()))) {
@@ -229,31 +229,51 @@ export function createGestureClassifier(opts = {}) {
     const need = cfg.dwellMs * holdMul();
     const progress = S.dwellLocked ? 0 : clamp((t - S.dwellT) / need, 0, 1);
     emit("point", { x: c[0], y: c[1], progress });
-    if (!S.dwellLocked && progress >= 1) { S.dwellLocked = true; emit("select", { x: S.dwellAt[0], y: S.dwellAt[1] }); }
+    if (!S.dwellLocked && progress >= 1 && canFire(t)) { S.dwellLocked = true; fired(t); emit("select", { x: S.dwellAt[0], y: S.dwellAt[1] }); }
   }
   function endPoint(emit) { if (!S.pointing) return; S.pointing = false; S.cursor = null; S.dwellAt = null; S.dwellLocked = false; emit("point_end"); }
 
-  function grabStep(hp, t, held, emit) {
-    if (S.pose === "fist") {
-      S.grabLostT = null;
-      if (!S.grabbing && held >= cfg.grabHoldMs) { S.grabbing = true; S.grabFrom = hp.palm.slice(); emit("grab_start", { x: hp.palm[0], y: hp.palm[1] }); return; }
-      if (S.grabbing) {
-        const dx = hp.palm[0] - S.grabFrom[0], dy = hp.palm[1] - S.grabFrom[1];
-        if (Math.abs(dx) + Math.abs(dy) > 0.002) { S.grabFrom = hp.palm.slice(); emit("grab_move", { dx, dy }); }
+  // The fist: a joystick with hysteresis. It grabs after a fist held grabHoldMs (and grabEnterFrames frames) and sets
+  // the neutral pose there; it stays grabbed while the hand stays fist-like (at most one finger out: a flickering
+  // finger or a thumb popping out never lets go); it releases on an open hand for grabReleaseFrames frames in a row,
+  // on anything else for grabReleaseMs, or when the hand is gone for lostMs.
+  function grabStep(hp, hand, aspect, t, held, emit) {
+    const n4 = hp.ext.slice(1).filter(Boolean).length;
+    if (!S.grabbing) {
+      if (S.pose === "fist" && held >= cfg.grabHoldMs && S.poseFrames >= cfg.grabEnterFrames) {
+        if (S.pointing) endPoint(emit);
+        S.grabbing = true; S.grabN = fistReading(hand, aspect); S.grabFrom = hp.palm.slice(); S.openFrames = 0; S.grabLostT = null;
+        F.sx.reset(); F.sy.reset(); F.sz.reset(); S.stick = { x: 0, y: 0, z: 0 };
+        emit("grab_start", { x: hp.palm[0], y: hp.palm[1], stick: { ...S.stick } });
       }
-    } else if (S.grabbing) {
-      if (S.grabLostT == null) S.grabLostT = t;
-      if (t - S.grabLostT >= cfg.grabReleaseMs || S.pose === "palm" || S.pose === "open") endGrab(emit);
+      return;
     }
+    if (n4 >= 3) {   // an open hand: release after a few frames (one stray frame is not a release)
+      if (++S.openFrames >= cfg.grabReleaseFrames) endGrab(emit, t, "open");
+      return;
+    }
+    S.openFrames = 0;
+    if (n4 >= 2) {   // neither fist nor open: hold the last stick a moment, then let go
+      if (S.grabLostT == null) S.grabLostT = t;
+      if (t - S.grabLostT >= cfg.grabReleaseMs) endGrab(emit, t, "other");
+      return;
+    }
+    S.grabLostT = null;
+    const cal = cfg.spinCal, raw = rawStick(fistReading(hand, aspect), S.grabN, cfg, cal ? cal.pitchSign : 1), c = calibrated(raw, cal), ts = t / 1000;
+    S.stick = { x: F.sx(c.x, ts), y: F.sy(c.y, ts), z: F.sz(c.z, ts) };
+    const dx = hp.palm[0] - S.grabFrom[0], dy = hp.palm[1] - S.grabFrom[1];
+    S.grabFrom = hp.palm.slice();
+    emit("grab_move", { dx, dy, stick: { ...S.stick } });
   }
-  function endGrab(emit) { if (!S.grabbing) return; S.grabbing = false; S.grabFrom = null; S.grabLostT = null; emit("grab_end"); }
-
-  function endHand(emit) { endPoint(emit); endGrab(emit); if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; }
-
-  function raisedAboveHead(hp) {
-    const f = S.face;
-    return f ? hp.palm[1] < f.box.y : hp.palm[1] < 0.12;
+  function endGrab(emit, t, how = "lost") {
+    if (!S.grabbing) return;
+    S.grabbing = false; S.grabFrom = null; S.grabLostT = null; S.grabN = null; S.stick = null; S.openFrames = 0;
+    // the hand that opens out of a fist is a release, never a stop or a swipe
+    S.palmFired = true; if (t != null) S.quietUntil = t + cfg.afterGrabQuietMs;
+    emit("grab_end", { how });
   }
+
+  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; }
 
   function zoomStep(all, aspect, emit) {
     if (all.length < 2) { if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } return; }
@@ -269,7 +289,7 @@ export function createGestureClassifier(opts = {}) {
   function headStep(frame, emit) {
     const f = primaryFace(frame.faces);
     S.face = f;
-    if (!f || (f.score ?? 1) < 0.5 || !f.kp || f.kp.length < 3) return;
+    if (!f || (f.score ?? 1) < cfg.minFaceScore || !f.kp || f.kp.length < 3) return;
     const t = frame.t, eyeR = f.kp[0], eyeL = f.kp[1], nose = f.kp[2];
     const eyeMid = [(eyeR[0] + eyeL[0]) / 2, (eyeR[1] + eyeL[1]) / 2], eyeD = Math.hypot(eyeL[0] - eyeR[0], eyeL[1] - eyeR[1]) || 1e-3;
     const yaw = (nose[0] - eyeMid[0]) / eyeD;                       // ≈ 0 facing the screen, ± when turning
@@ -299,11 +319,11 @@ export function createGestureClassifier(opts = {}) {
 
   return {
     push, reset,
-    configure(o) { cfg = { ...cfg, ...o }; },
+    configure(o) { cfg = { ...cfg, ...o }; if ("pointFilter" in o || "fistFilter" in o) mkFilters(); },
     /** Calibration: the current face is the neutral pose (Settings → "Show me your hand"). */
     setNeutral(face) { const f = face || S.face; if (f) { const kp = f.kp; const eyeMid = [(kp[0][0] + kp[1][0]) / 2, (kp[0][1] + kp[1][1]) / 2]; const eyeD = Math.hypot(kp[1][0] - kp[0][0], kp[1][1] - kp[0][1]) || 1e-3; S.neutral = { x: f.box.x + f.box.w / 2, y: f.box.y + f.box.h / 2, w: f.box.w, yaw: (kp[2][0] - eyeMid[0]) / eyeD }; } },
     get config() { return { ...cfg }; },
     get pose() { return S.pose; },
-    get state() { return { pose: S.pose, pointing: S.pointing, grabbing: S.grabbing, leaning: S.leanedIn, look: S.look.slice(), handSeen: S.seen }; },
+    get state() { return { pose: S.pose, pointing: S.pointing, grabbing: S.grabbing, stick: S.stick ? { ...S.stick } : null, leaning: S.leanedIn, look: S.look.slice(), handSeen: S.seen }; },
   };
 }

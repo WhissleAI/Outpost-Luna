@@ -4,6 +4,7 @@ cross-build, or the teammate's Windows build).
     python desktop/scripts/win_bundle_check.py dlls     <resources>              every .dll/.pyd's imports resolve
     python desktop/scripts/win_bundle_check.py manifest <resources> [--out f]   the bundle's manifest (JSON)
     python desktop/scripts/win_bundle_check.py compare  <mac Resources> <win resources>   parity report; exit 1 on a gap
+    python desktop/scripts/win_bundle_check.py speech   <win resources>              the WinRT / SAPI speech packages
 
 <resources> is `desktop/resources`, `desktop/dist/win-unpacked/resources`, or an unpacked installer's `resources`.
 
@@ -14,8 +15,8 @@ Anything else would fail on a clean PC with "DLL load failed" / WinError 126, th
 on a machine without the Visual C++ Redistributable.
 
 compare: the Mac .app's Contents/Resources against the Windows resources, by area: app code (byte-for-byte, except
-the .pyc bytecode), models (sha256 vs desktop/models.lock.json), media, vision assets, voices and their previews,
-Director weights, the native Arc Tagger library, and the top-level packages of both site folders (platform-specific
+the .pyc bytecode), models (sha256 vs desktop/models.lock.json), media, vision assets, the OS-voice engine (and on
+Windows its WinRT / SAPI packages), Director weights, the native Arc Tagger library, and the top-level packages of both site folders (platform-specific
 packages such as uvloop / colorama are listed, not failed).
 """
 from __future__ import annotations
@@ -169,7 +170,10 @@ MUST = {
     "vision assets": ["frontend/vision/vision_wasm_module_internal.js", "frontend/vision/vision_wasm_module_internal.wasm",
                       "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"],
     "story / places / clips data": ["backend/data/places.json", "backend/data/index/clips.json", "backend/data/clip_loudness.json"],
-    "voices": ["backend/data/voices.json"],
+    "OS voice engine": ["model_server/app/tts_os.py", "model_server/app/os_voices.py"],
+    "voice pack (Siri Voice 1 clips)": ["model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
+                                        "backend/data/voice_pack/index.json"],
+    "NASA video catalog": ["backend/data/video/catalog.json"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "crew clip time map": ["backend/data/media/trim.json"],
     "frontend": ["frontend/index.html"],
@@ -190,9 +194,8 @@ def compare(mac: Path, win: Path) -> int:
     for area, must in MUST.items():
         miss = [m for m in must if m not in wm["app"]]
         row(area, not miss, "all present" if not miss else f"missing {miss}")
-    voices = json.loads((win / "app/backend/data/voices.json").read_text(encoding="utf-8"))["voices"]
-    nov = [v["id"] for v in voices if f"backend/data/voice_previews/{v['id']}.wav" not in wm["app"]]
-    row("voice previews", not nov, f"{len(voices) - len(nov)}/{len(voices)} curated voices have a preview" + (f"; missing {nov}" if nov else ""))
+    speech = speech_packages(win / "site/models")
+    row("Windows speech (WinRT + SAPI)", all(speech.values()), ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in speech.items()))
     media = [k for k in wm["app"] if k.startswith("backend/data/media/audio/")]
     row("NASA crew clips", len(media) == len([k for k in mm["app"] if k.startswith("backend/data/media/audio/")]),
         f"{len(media)} clips (mac {len([k for k in mm['app'] if k.startswith('backend/data/media/audio/')])})")
@@ -222,12 +225,26 @@ def compare(mac: Path, win: Path) -> int:
 
 
 # Packages a lock pulls in on one OS only (environment markers): a difference here is expected, not a gap.
-PLATFORM_ONLY = {"uvloop", "colorama", "pywin32", "win32-setctime"}
+PLATFORM_ONLY = {"uvloop", "colorama", "pywin32", "win32-setctime", "comtypes", "winrt-runtime",
+                 "winrt-windows-media-speechsynthesis", "winrt-windows-media-core", "winrt-windows-storage-streams",
+                 "winrt-windows-foundation", "winrt-windows-foundation-collections"}
+# The Windows OS-voice engine (model_server/app/tts_os.py): pywinrt's native modules + comtypes for the SAPI fallback.
+SPEECH_MODULES = {"WinRT runtime": "winrt/_winrt.*.pyd",
+                  "WinRT SpeechSynthesis": "winrt/_winrt_windows_media_speechsynthesis.*.pyd",
+                  "WinRT Media.Core (word cues)": "winrt/_winrt_windows_media_core.*.pyd",
+                  "WinRT Storage.Streams": "winrt/_winrt_windows_storage_streams.*.pyd",
+                  "WinRT Foundation": "winrt/_winrt_windows_foundation.*.pyd",
+                  "WinRT Foundation.Collections": "winrt/_winrt_windows_foundation_collections.*.pyd",
+                  "comtypes (SAPI)": "comtypes/__init__.py"}
+
+
+def speech_packages(site: Path) -> dict[str, bool]:
+    return {k: any(site.glob(g)) for k, g in SPEECH_MODULES.items()}
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("dlls", "manifest", "compare"))
+    ap.add_argument("cmd", choices=("dlls", "manifest", "compare", "speech"))
     ap.add_argument("paths", nargs="+", type=Path)
     ap.add_argument("--out", type=Path)
     a = ap.parse_args()
@@ -239,6 +256,11 @@ def main():
             print(f"  MISSING {dll:28s} imported by {importer}")
         print(f"{n} DLL/PYD files; {'every import resolves' if not miss else f'{len(miss)} unresolved import(s)'}")
         sys.exit(1 if miss else 0)
+    if a.cmd == "speech":
+        got = speech_packages(a.paths[0] / "site/models")
+        for k, v in got.items():
+            print(f"  {'OK  ' if v else 'MISS'} {k}")
+        sys.exit(0 if all(got.values()) else 1)
     if a.cmd == "manifest":
         m = json.dumps(manifest(a.paths[0]), indent=1, sort_keys=True)
         a.out.write_text(m) if a.out else print(m)

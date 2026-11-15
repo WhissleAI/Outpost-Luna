@@ -43,6 +43,15 @@ backend:         ## Run only the backend
 frontend:        ## Run only the frontend dev server
 	cd frontend && npm run dev
 
+voice-pack-lines: ## Voice pack: inventory every fixed line -> backend/data/voice_pack/lines.json (+ lines_live.md)
+	cd backend && uv run python tools/voice_pack_lines.py
+
+voice-pack:      ## Voice pack: record missing/changed lines with the macOS System voice (must be Siri Voice 1; docs/VOICE_PACK.md)
+	cd model_server && uv run python tools/voice_pack_record.py
+
+voice-pack-check: ## Voice pack: list manifest lines without a clip (exit 1 if any)
+	python3 backend/tools/voice_pack_check.py
+
 test:            ## Run all tests
 	cd model_server && uv run pytest -q
 	cd backend && uv run pytest -q
@@ -64,14 +73,16 @@ EMBED_MODEL_DIR ?= $(CURDIR)/model_server/models/minilm
 DM_REAL_BUDGET ?= 3500
 DM_REAL_PROCS ?= 6
 
-director-real-ear: ## Render (in memory, no audio on disk) the generator's kid turns with Steer TTS + decode them with the REAL Arc ear (cached; NEW_EAR=1 re-decodes)
+STEER_EDGE ?= $(CURDIR)/../steer-tts/edge
+
+director-real-ear: ## Research only: render (in memory) the generator's kid turns with 200 Steer TTS voices (STEER_EDGE checkout; not an app dependency) + decode them with the REAL Arc ear (cached; NEW_EAR=1 re-decodes)
 	@if [ "$(NEW_EAR)" = "1" ]; then rm -rf director_model/cache/real_ear/dec; fi
 	uv run --project backend python director_model/real_ear.py jobs --budget $(DM_REAL_BUDGET) $(DM_REAL_ARGS)
-	cd model_server && EAR_PARTIAL_EVERY_S=0.9 uv run python ../director_model/real_ear.py decode --procs $(DM_REAL_PROCS) --threads 2
+	cd model_server && EAR_PARTIAL_EVERY_S=0.9 uv run --with "$(STEER_EDGE)" python ../director_model/real_ear.py decode --procs $(DM_REAL_PROCS) --threads 2
 	uv run --project backend python director_model/real_ear.py stats
 
 director-retrain: director-real-ear ## Rebuild the learned Director: real Arc decodes, refit ASR errors, regenerate sessions, train, evaluate, export (director_model/RETRAIN.md)
-	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) OS_TTS=off ARC_EAR=off ARC_META=off \
 	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
 	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
 	uv run --project backend python director_model/ear_errors.py build
@@ -98,7 +109,7 @@ director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate 
 	@if [ -n "$(LOG)" ]; then python3 director_model/import_logs.py --log $(LOG); fi
 	@if [ "$(DL_EAR)" = "1" ]; then $(MAKE) director-real-ear DM_REAL_ARGS="--hf-p 0.3 --cls-n 160"; fi
 	python3 director_model/loop.py preflight
-	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) OS_TTS=off ARC_EAR=off ARC_META=off \
 	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
 	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
 	MODEL_SERVER_URL=http://127.0.0.1:$(DM_PORT) uv run --project backend python director_model/gen_sessions.py \
@@ -110,6 +121,15 @@ director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate 
 	python3 director_model/evaluate.py --data $(DM_DATA) --weights backend/app/director_model --out $(DL_RUN)/eval_shipped.json
 	python3 director_model/loop.py gate --run $(DL_RUN) --data $(DM_DATA) --export; st=$$?; test $$st = 0 -o $$st = 3
 	cd backend && uv run pytest -q tests/test_director_model.py tests/test_director_loop.py
+
+director-r8: ## Round 8 end to end: coverage inventory -> real-ear decodes (kids, OS-voice / Nora echo, video audio) -> generate (+ coverage sweep) -> train m + xl -> evaluate -> gate (unmerged features report only). No export. docs/DIRECTOR_COVERAGE.md
+	MS_PORT=$(or $(MS_PORT),8298) PROCS=$(or $(PROCS),3) bash director_model/run_r8.sh
+
+director-coverage: ## Rebuild director_model/coverage.json (the capability x flow inventory) and print the summary
+	uv run --project backend python director_model/coverage.py
+
+director-collect: ## The collection kit: one guided, consented, local recording session (docs/DIRECTOR_COLLECTION.md); OUT=folder
+	python3 director_model/collect.py --out $(or $(OUT),~/Desktop/director_sessions)
 
 # ---- Desktop app (docs/DESKTOP.md): one offline installer, Electron + embedded Python + every model ----
 desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
@@ -136,4 +156,4 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

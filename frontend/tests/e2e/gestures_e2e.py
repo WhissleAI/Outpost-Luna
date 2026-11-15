@@ -5,8 +5,12 @@ Chromium with a fake camera (--use-fake-device-for-media-stream). Checks:
   1. camera off by default; no camera request until Settings turns it on
   2. Settings -> Camera & gestures -> on: the bundled WASM + models load in the worker and frames flow (fps, ms)
   3. nothing is fetched from anywhere but the app's own origin
-  4. landmark streams injected on each screen emit the right intents, and the screens react
-  5. the indicator's one-click off stops the camera; keyboard intents work with the camera off
+  4. the first-time calibration (hand, fist left / right / up / down, head) runs on injected landmarks and is saved
+  5. landmark streams injected on each screen emit the right intents, and the screens react
+  6. fist spin, played in real time: in all 8 directions the Moon turns that way at a rate, the stick indicator and
+     the heading arrow show it, and opening the hand releases with a little momentum that stops by itself
+  7. the coach mark and the "Gestures" help card; a gesture shows the keys' focus ring (html[data-input=gesture])
+  8. the indicator's one-click off stops the camera; keyboard intents work with the camera off
 
     cd frontend && npm run build
     (backend on :8390 serving frontend/dist)  uv run --no-project --with playwright==1.58.0 python tests/e2e/gestures_e2e.py --base http://127.0.0.1:8390
@@ -23,6 +27,13 @@ import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from silent import LAUNCH_ARGS, silence  # noqa: E402  (owner rule: test runs make no sound)
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures" / "gestures"
 results: list[tuple[bool, str]] = []
@@ -55,6 +66,22 @@ def inject(page, name, shift=0):
     return page.evaluate("([fs, dt]) => window.__outpost.gestures.inject(fs.map(f => ({...f, t: f.t + dt}))).map(e => e.type)", [frames, shift])
 
 
+_cursor = [0]
+
+
+def inject_next(page, name):
+    """Inject a fixture right after the previous one (contiguous time, as a camera would see it)."""
+    frames = fixture(name)
+    base = _cursor[0] or 1_000_000
+    shift = base - frames[0]["t"]
+    _cursor[0] = frames[-1]["t"] + shift + 33
+    return page.evaluate("([fs, dt]) => window.__outpost.gestures.inject(fs.map(f => ({...f, t: f.t + dt}))).map(e => e.type)", [frames, shift])
+
+
+def inject_paced(page, name):
+    return page.evaluate("fs => window.__outpost.gestures.injectPaced(fs)", fixture(name))
+
+
 def screen(page):
     return page.evaluate("""() => { const a = document.getElementById('aPanel'); return {mode: document.body.dataset.mode, aview: document.body.dataset.aview || '',
         lesson: !!(a && !a.hidden && a.querySelector('.a-prompt')), cabin: document.body.dataset.cabin || ''}; }""")
@@ -65,14 +92,17 @@ def main():
     ap.add_argument("--base", default="http://127.0.0.1:8390")
     ap.add_argument("--shots", default="")
     ap.add_argument("--seconds", type=float, default=6.0, help="how long to run the real camera path")
+    ap.add_argument("--min-frames", type=int, default=20, help="camera frames that must flow through the worker (lower it on a loaded machine)")
+    ap.add_argument("--frames-timeout", type=float, default=30.0, help="seconds to wait for them")
     a = ap.parse_args()
     base = a.base.rstrip("/")
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=exe, args=["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--enable-unsafe-swiftshader"])
+        b = p.chromium.launch(executable_path=exe, args=[*LAUNCH_ARGS, "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--enable-unsafe-swiftshader"])
         ctx = b.new_context(viewport={"width": 1440, "height": 900})
         # the first-mission cabin tour (story) owns next / yes while it runs: these checks are about the cabin itself
         ctx.add_init_script("try { localStorage.setItem('outpost-callsign', 'Nova'); localStorage.setItem('outpost-tour-done:Nova', '1'); } catch (e) {}")
+        silence(ctx)
         page = ctx.new_page()
         foreign, cam_requests = [], []
         page.on("request", lambda r: foreign.append(r.url) if not (r.url.startswith(base) or r.url.startswith(base.replace("http", "ws")) or r.url.startswith(("data:", "blob:"))) else None)
@@ -106,18 +136,38 @@ def main():
             print("   state:", page.evaluate("() => [window.__outpost.gestures.stats, document.querySelector('.gx-state') && document.querySelector('.gx-state').textContent]"))
             print("   console:\n     " + "\n     ".join(logs[-15:]))
             ok(False, "camera + vision worker started")
+        # ---- 4. the first-time calibration: offered once, on injected landmarks (palm, fist + 4 tilts, head) ----
+        page.wait_for_selector(".gx-calib", timeout=5000)
+        ok(True, "first time on: the calibration opens by itself (skippable)")
+        step = lambda: page.evaluate("() => (document.querySelector('.gx-calib-step') || {}).textContent || ''")
+        inject_next(page, "palm_hold")
+        ok("fist" in step().lower(), f"calibration: open hand -> 'Make a fist' ({step()!r})")
+        seen_steps = []
+        for i, d in enumerate(["left", "right", "up", "down"]):
+            inject_next(page, f"fist_spin_{d}")
+            seen_steps.append(step())
+        ok(all(w in seen_steps[i].lower() for i, w in enumerate(["right", "up", "down", "look"])), f"calibration: tilt left, right, up, down ({seen_steps})")
+        inject_next(page, "lean_in_back")
+        page.wait_for_function("() => !document.querySelector('.gx-calib')", timeout=5000)
+        cal = page.evaluate("() => window.__outpost.gestures.calibration")
+        stored = page.evaluate("() => JSON.parse(localStorage.getItem('outpost-gestures-spin') || 'null')")
+        ok(cal and cal["v"] == 1 and stored == cal and all(0.8 < cal[k] < 2.0 for k in ("left", "right", "up", "down")) and cal["pitchSign"] == 1,
+           f"calibration measured each direction and saved it on this device: {cal}")
+        ok(page.evaluate("() => /Fist tuned for you/.test(document.querySelector('.gx-state').textContent) && !!document.getElementById('gxCalib') && /Recalibrate/.test(document.getElementById('gxCalib').textContent) && !!document.getElementById('gxInvert')"),
+           "Settings: 'Fist tuned for you', Recalibrate, Flip the spin")
         t0 = time.time()
         try:
-            page.wait_for_function("() => window.__outpost.gestures.stats.frames > 20", timeout=30000)
+            page.wait_for_function(f"() => window.__outpost.gestures.stats.frames > {a.min_frames}", timeout=int(a.frames_timeout * 1000))
         except Exception:
             print("   state:", page.evaluate("() => [window.__outpost.gestures.stats, (v => v && [v.readyState, v.videoWidth, v.paused])(document.querySelector('.gx-video'))]"))
             print("   console:\n     " + "\n     ".join(l for l in logs[-25:] if "GL Driver" not in l))
             ok(False, "frames flow through the worker")
         page.wait_for_timeout(int(a.seconds * 1000))
         stats = page.evaluate("() => window.__outpost.gestures.stats")
-        print("   stats:", json.dumps(stats), f"(first 20 frames in {time.time() - t0:.1f}s)")
-        ok(stats["frames"] > 20 and stats["fps"] > 0, f"bundled models run in the worker: {stats['fps']} fps, {stats['inferMs']} ms/frame, {stats['delegate']}, load {stats['loadMs']} ms")
+        print("   stats:", json.dumps(stats), f"(first {a.min_frames} frames in {time.time() - t0:.1f}s)")
+        ok(stats["frames"] > a.min_frames and stats["fps"] >= 0, f"bundled models run in the worker: {stats['fps']} fps, {stats['inferMs']} ms/frame, {stats['delegate']}, load {stats['loadMs']} ms")
         ok(not page.evaluate("() => document.getElementById('gxIndicator').hidden"), "indicator visible while the camera is on")
+
         page.keyboard.press("Escape")
         if a.shots:
             page.wait_for_timeout(400)
@@ -125,6 +175,10 @@ def main():
 
         # ---- 4. per-screen intents (landmark injection) ----
         spied(page)
+        # every coach mark shown from here on (the map and the Library are both Moon screens: the first one gets it,
+        # and which one wins depends on whether an earlier coach card is still up, so the check below accepts either)
+        page.evaluate("""() => { window.__coaches = []; const seen = c => { if (!c.hidden && c.dataset.mode === 'coach') window.__coaches.push({screen: c.dataset.screen, text: c.textContent}); };
+            new MutationObserver(() => { const c = document.querySelector('.gx-card'); if (c) seen(c); }).observe(document.body, {subtree: true, attributes: true, attributeFilter: ['hidden'], childList: true}); }""")
         # Flight School map: swipe left = next -> the next lesson opens
         page.evaluate("() => document.getElementById('modeAcademy').click()")
         page.wait_for_timeout(1200)
@@ -148,6 +202,7 @@ def main():
         inject(page, "point_dwell", 50_000_000)
         page.wait_for_timeout(300)
         ok(any(e["name"] == "select" for e in spied(page)), "lesson: point + dwell -> select")
+        ok(page.evaluate("() => document.documentElement.dataset.input") == "gesture", "a gesture drives like the remote: html[data-input=gesture] (the keys' focus ring)")
         tgt = page.evaluate("""() => { const b = [...document.querySelectorAll('#aPanel button')].find(x => x.offsetParent); if (!b) return null;
             const r = b.getBoundingClientRect(); window.__clicked = null; b.addEventListener('click', () => { window.__clicked = b.textContent.trim(); }, {once: true});
             return {x: r.left + r.width / 2, y: r.top + r.height / 2, label: b.textContent.trim()}; }""")
@@ -155,14 +210,54 @@ def main():
             page.evaluate("t => window.__outpost.intents.emitIntent('select', {x: t.x, y: t.y}, 'gesture')", tgt)
             page.wait_for_timeout(200)
             ok(page.evaluate("() => window.__clicked") == tgt["label"], f"select taps the button under the cursor ({tgt['label']!r})")
-        # Library: fist + drag -> rotate (the Moon turns)
+        # Library: the coach mark, the help card, then the fist spins the Moon in all 8 directions
         page.evaluate("() => document.getElementById('libraryBtn').click()")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(1600)
+        coach = page.evaluate("() => { const c = document.querySelector('.gx-card'); return c && !c.hidden ? {mode: c.dataset.mode, screen: c.dataset.screen, text: c.textContent} : null; }")
+        if not (coach and coach["mode"] == "coach" and coach["screen"] == "moon"):   # shown already, on the map
+            coach = next((c for c in page.evaluate("() => window.__coaches") if c["screen"] == "moon"), None)
+            if coach:
+                coach["mode"] = "coach"
+        ok(coach and coach["mode"] == "coach" and coach["screen"] == "moon" and "Fist and lean" in coach["text"], f"Moon screens: first-use coach mark ({coach and coach['text'][:60]!r})")
+        page.click("#gxHelpBtn")
+        helpc = page.evaluate("() => { const c = document.querySelector('.gx-card'); return c && !c.hidden ? {mode: c.dataset.mode, text: c.textContent} : null; }")
+        ok(helpc and helpc["mode"] == "help" and "Spin the Moon that way" in helpc["text"] and "Zoom in or out" in helpc["text"], "Gestures help card lists this screen's gestures")
+        page.click(".gx-card [data-close]")
         spied(page)
         inject(page, "grab_drag", 60_000_000)
         page.wait_for_timeout(200)
-        rot = [e for e in spied(page) if e["name"] == "rotate"]
-        ok(rot and any(e["args"].get("phase") == "move" for e in rot), f"library: fist + drag -> rotate ({len(rot)} moves)")
+        sp = [e for e in spied(page) if e["name"] == "spin"]
+        ok(sp and any(e["args"].get("phase") == "move" for e in sp) and sp[-1]["args"].get("phase") == "end" and not any(e["name"] == "rotate" for e in spied(page)),
+           f"library: fist -> spin (rate), not follow ({len(sp)} spin intents)")
+        page.wait_for_timeout(1500)
+        # the sign of "the surface moves right" in longitude (the same convention as a drag)
+        ref = page.evaluate("""() => { const g = window.__outpost.globe; g.halt(); const a = g.centerLatLon(); g.rotateBy(0.02, 0); const b = g.centerLatLon(); g.rotateBy(-0.02, 0);
+            return Math.sign(((b.lon - a.lon + 540) % 360) - 180); }""")
+        DIRS = {"left": (-1, 0), "right": (1, 0), "up": (0, -1), "down": (0, 1), "up_left": (-1, -1), "up_right": (1, -1), "down_left": (-1, 1), "down_right": (1, 1)}
+        for d, (vx, vy) in DIRS.items():
+            page.evaluate("() => { const g = window.__outpost.globe; g.flyTo(0, 0, 3.6); }")
+            page.wait_for_function("() => { const c = window.__outpost.globe.centerLatLon(); return Math.abs(c.lat) < 1 && Math.abs(((c.lon + 540) % 360) - 180) < 1 && window.__outpost.gestures.spin().speed === 0; }", timeout=6000)
+            page.wait_for_timeout(300)
+            c0 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
+            # mid-hold: the stick indicator and the heading arrow are up
+            r = page.evaluate("""fs => { const probe = new Promise(res => setTimeout(() => res({grab: window.__outpost.gestures.spin(),
+                stick: !document.getElementById('gxStick').hidden && document.getElementById('gxStick').classList.contains('is-grabbed'),
+                heading: !document.getElementById('gxHeading').hidden}), 1250));
+                return window.__outpost.gestures.injectPaced(fs).then(evs => probe.then(p => ({evs, probe: p}))); }""", fixture(f"fist_spin_{d}"))
+            evs, probe = r["evs"], r["probe"]
+            c1 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
+            page.wait_for_function("() => window.__outpost.gestures.spin().speed === 0", timeout=4000)
+            c2 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
+            dlat, dlon = c1["lat"] - c0["lat"], ((c1["lon"] - c0["lon"] + 540) % 360) - 180
+            coast = abs(c2["lat"] - c1["lat"]) + abs(((c2["lon"] - c1["lon"] + 540) % 360) - 180)
+            # off-axis drift: under 3 deg, or under 8% of the turn (real-time paced frames integrate a little longer on a
+            # loaded machine: a 66 deg turn right with 3.3 deg of drift still reads as "right")
+            good = (vy == 0 and abs(dlat) < max(3, 0.08 * abs(dlon)) or vy != 0 and (dlat > 5 if vy > 0 else dlat < -5)) and \
+                (vx == 0 and abs(dlon) < max(3, 0.08 * abs(dlat)) or vx != 0 and dlon * ref * vx > 5)
+            ok(good and "grab_start" in evs and "grab_end" in evs, f"fist spin {d}: the Moon turned that way (dlat {dlat:+.1f}, dlon {dlon:+.1f})")
+            ok(probe["grab"]["grabbed"] and probe["grab"]["speed"] > 0.3 and probe["stick"] and probe["heading"], f"fist spin {d}: stick indicator + heading arrow while held ({probe})")
+            ok(0.2 < coast < 30, f"fist spin {d}: opening the hand releases with a little momentum ({coast:.1f} deg), then stops")
+        ok(page.evaluate("() => document.getElementById('gxStick').hidden && document.getElementById('gxHeading').hidden"), "released: indicator and arrow gone")
         # thumbs up / down -> yes / no
         inject(page, "thumbs_up", 70_000_000)
         inject(page, "thumbs_down", 80_000_000)

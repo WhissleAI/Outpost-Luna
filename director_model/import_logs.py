@@ -150,6 +150,11 @@ def to_item(t: dict, act: str, conf: float, why: str) -> dict:
         it["dd"] = (max(0.0, dd - 0.02), min(1.0, dd + 0.02))
     if act == "command":
         it["gold"] = {"act": "command"}      # the Command itself comes from the clean teacher at generation
+    rt = t.get("router") or {}
+    if act == "navigate" and rt.get("outcome") == "navigate" and rt.get("intent"):
+        it["gold"]["nav"] = rt["intent"]       # round 8: which navigation (the nav head's label)
+    if t.get("gesture"):
+        it["gesture"] = t["gesture"]          # round 8: replayed as a gesture next to the turn
     return it
 
 

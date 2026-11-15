@@ -3,7 +3,7 @@
 
     y, info = master(x, sr, target_lufs=-14.0, gain_db=0.0)
 
-Steer renders speech at roughly -17 to -21 LUFS with ~4 dB of spread between voices. `master` brings every line to the
+TTS voices render at roughly -17 to -25 LUFS with several dB of spread between voices. `master` brings every line to the
 same integrated loudness (the target, plus the kid's volume gain and the alarm offset), then a look-ahead limiter
 holds the true peak under -1 dBTP without hard clipping. The limiter only moves gain on the few peaks the make-up gain
 pushes over the ceiling; its gain ramps over the look-ahead window (no step = no click / distortion).
@@ -146,8 +146,10 @@ def cap_gaps(x: np.ndarray, sr: int, max_gap_s: float = 0.28, lead_s: float = 0.
 
 
 def master(x: np.ndarray, sr: int, target_lufs: float = TARGET_LUFS, gain_db: float = 0.0,
-           ceiling_db: float = CEILING_DBTP) -> tuple[np.ndarray, dict]:
-    """Loudness-normalise to target_lufs + gain_db, then limit to ceiling_db true peak."""
+           ceiling_db: float = CEILING_DBTP, limiter: bool = True) -> tuple[np.ndarray, dict]:
+    """Loudness-normalise to target_lufs + gain_db, then limit to ceiling_db true peak. limiter=False (the OS voices):
+    one clean gain only, no limiting at all; when the gain would push a peak over the ceiling, the gain stops there
+    (the line plays a little under target instead of being squashed)."""
     x = np.asarray(x, np.float64)
     before = lufs(x, sr)
     if not math.isfinite(before):
@@ -155,6 +157,12 @@ def master(x: np.ndarray, sr: int, target_lufs: float = TARGET_LUFS, gain_db: fl
     gain_db = max(MIN_GAIN_DB, min(MAX_GAIN_DB, float(gain_db)))
     want = target_lufs + gain_db
     g = want - before
+    if not limiter:
+        tp0 = true_peak_db(x)
+        g = min(g, ceiling_db - 0.05 - tp0) if math.isfinite(tp0) else g
+        y = x * 10 ** (g / 20)
+        return y, {"lufs_in": round(before, 2), "lufs": round(lufs(y, sr), 2), "tp": round(true_peak_db(y), 2),
+                   "gain_db": round(g, 2), "limiter": False}
     for _ in range(4):                    # limiting costs a little loudness: re-measure and make it up
         y = limit(x * 10 ** (g / 20), sr, ceiling_db)
         got = lufs(y, sr)

@@ -8,7 +8,7 @@ checked file by file, but **not yet run on a Windows PC** (see below).
 Outpost Luna.app / Outpost Luna.exe
  └─ Electron main process (desktop/main/main.js)
      ├─ splash "Warming up the models…" until both health checks pass
-     ├─ python launch.py models  --port 47210   model_server (Arc Tagger, Arc v1.1 Mini ear + metadata, Steer TTS, MiniLM)
+     ├─ python launch.py models  --port 47210   model_server (Arc Tagger, Arc v1.1 Mini ear + metadata, the OS voice, MiniLM)
      ├─ python launch.py backend --port 47310   backend (API + /media + the built frontend at /)
      └─ BrowserWindow -> http://127.0.0.1:47310/
 ```
@@ -31,15 +31,16 @@ library (CMake) -> Electron + electron-builder -> print the installer path. Cach
 HF cache and checkouts when it has every file, else downloads the public model package (119 MB tar of exactly
 `desktop/resources/models`), checks its sha256 (`c9cb030d…`, pinned in the script), then checks every file against
 `desktop/models.lock.json`. Hugging Face is not used: `WhissleAI/arc-tagger` only has v0.4.x (the app ships v0.3 from
-Head Start) and `WhissleAI/steer-tts-edge`'s history was squashed to v2.x (the v1 graphs steertts-edge 1.3.0 needs are
-gone). To change a model: gather it, `--write-lock`, `--pack`, upload the tar as `outpost-luna-models-v2.tar`, and update
+Head Start). The v1 package still holds the retired `steer-tts-edge/` folder: `gather_models.py` skips it when
+unpacking (`DROPPED`), so the sha256 pin stays valid and the bundle no longer ships it; the next package (v2) can leave
+it out. Speech needs no model: the app speaks with the OS's own voices ("Speech" below). To change a model: gather it, `--write-lock`, `--pack`, upload the tar as `outpost-luna-models-v2.tar`, and update
 `PACKAGE` in `gather_models.py` (URL, sha256, size).
 
 The pieces, also runnable on their own:
 
 | target | what it does |
 |---|---|
-| `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` and `steertts-edge` wheels; trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
+| `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` wheel (on a Windows target also the pinned pywinrt + comtypes speech packages, checked present); trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
 | `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 48 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
 | `make desktop-models` | `desktop/scripts/gather_models.py`: every weight into `desktop/resources/models/` (local, else the public package), checked against `desktop/models.lock.json` |
@@ -50,7 +51,7 @@ The pieces, also runnable on their own:
 A full build needs about 6 GB free (media 0.5 GB + its trimmed copy 0.18 GB, resources 1.0 GB, unpacked app 1.5 GB,
 dmg 0.65 GB, caches);
 `build-mac.sh` deletes the unpacked app once the dmg is made. The vendored wheels `desktop/vendor/wheels/
-arc_transcriber-1.2.1` (145 KB) and `steertts_edge-1.3.0` (54 KB) are committed (CC-BY-NC-4.0, NOTICE inside).
+arc_transcriber-1.2.1` (145 KB) is committed (CC-BY-NC-4.0, NOTICE inside).
 
 PyInstaller was not used: two separate servers with torch, onnxruntime and ctypes-loaded native libraries are simpler as
 a plain relocatable interpreter plus `--target` folders; nothing is frozen, so tracebacks and the logs stay readable.
@@ -63,7 +64,7 @@ below: 1.9 GB and ~1.0 GB):
 | path | size | contents |
 |---|---|---|
 | `python/` | 39 MB | CPython 3.11 (python-build-standalone), trimmed (no pip / setuptools) |
-| `site/models/` | 728 MB | torch 2.11 CPU (333), transformers 5.19 (115), onnxruntime (42), scipy (68), numpy 1.26, sympy, fastapi/uvicorn, arc-transcriber 1.2.1, steertts-edge 1.3.0, … |
+| `site/models/` | 728 MB | torch 2.11 CPU (333), transformers 5.19 (115), onnxruntime (42), scipy (68), numpy 1.26, sympy, fastapi/uvicorn, arc-transcriber 1.2.1, … (on Windows also winrt-* 3.2.1 and comtypes 1.4.17 for speech) |
 | `site/backend/` | 47 MB | fastapi, uvicorn, httpx, websockets, rapidfuzz, numpy 2.x |
 | `app/backend/app` | 1.1 MB | backend code, incl. `director_model/weights.json` + `weights.npz` (learned Director, numpy only) |
 | `app/backend/data` | 9 MB | places, facts, glossary, index (clips + moments), transcripts, mission and academy data (read-only) |
@@ -74,7 +75,6 @@ below: 1.9 GB and ~1.0 GB):
 | `models/arc-v1.1/mini` | 68 MB | Arc v1.1 Mini: `model.q4.safetensors`, `heads.safetensors`, `tags.json`, `config.json`, `moonshine-streaming-tiny/` |
 | `models/minilm` | 22 MB | all-MiniLM-L6-v2 `model.int8.onnx` + `tokenizer.json` (the fp32 `model.onnx` is not shipped) |
 | `models/arctag` | 12 MB | Arc Tagger v0.3 `arctag_int8.onnx`, `arctag_meta.json`, `tokenizer.json` |
-| `models/steer-tts-edge` | 12 MB | Steer TTS Edge v1: `onnx/{enc,dec,voc}.onnx`, `spkproj.safetensors`, `front/`, `voices.*`, `config.json`, `director.bin` |
 | `native/libarctag.dylib` | 0.2 MB | built from `desktop/vendor/arctag` |
 | Electron framework | ~300 MB | Electron 44.10.0 |
 
@@ -138,7 +138,7 @@ The env vars the shell sets for the children (also usable by hand):
 
 | model server | backend |
 |---|---|
-| `ARCTAG_LIB`, `ARCTAG_MODEL_DIR`, `ARC_META_WEIGHTS`, `STEER_TTS_MODEL`, `STEER_DIRECTOR`, `EMBED_MODEL_DIR` | `DATA_DIR`, `CACHE_DIR`, `FRONTEND_DIST`, `MODEL_SERVER_URL`, `CORS_ORIGINS`, `TTS_ENGINE=steer` |
+| `ARCTAG_LIB`, `ARCTAG_MODEL_DIR`, `ARC_META_WEIGHTS`, `EMBED_MODEL_DIR` (speech: `OS_TTS`, `OS_TTS_ENGINE`, `OS_TTS_LOCALE` keep their defaults) | `DATA_DIR`, `CACHE_DIR`, `FRONTEND_DIST`, `MODEL_SERVER_URL`, `CORS_ORIGINS`, `TTS_ENGINE=os` |
 
 Both get `HF_HUB_OFFLINE=1`, `TRANSFORMERS_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`, `PYTHONNOUSERSITE=1`,
 `PYTHONDONTWRITEBYTECODE=1`, and an environment built from an allow-list (PATH, HOME, TEMP, …), so **no API key from the
@@ -150,7 +150,8 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
 
 - **Ear:** `/ws/listen` uses the local Arc ear. Deepgram is only a fallback when the ear is down *and* a key is set; with
   no key it sends `{"t":"error"}` and closes (fails closed).
-- **TTS:** Steer TTS Edge on the model server; the Deepgram fallback needs a key, otherwise the browser voice.
+- **TTS:** the OS's own offline voices through the model server (macOS `say`; Windows WinRT, then SAPI); the app has
+  no Deepgram key, so if the OS voice fails the browser voice speaks.
 - **NASA data:** baked into `backend/data` (no NASA API calls at run time; `NASA_API_KEY` is only for the offline pipeline).
 - **Renderer:** every request that is not our backend origin (or `data:`, `blob:`) is cancelled by
   `session.webRequest` and logged as `blocked` in `main.log`. Today that means the Google Fonts stylesheet in
@@ -165,6 +166,25 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
 - **Gesture models:** the MediaPipe WASM runtime and the two models (19.5 MB) are in `app/frontend/vision/`, served
   from our own origin. `build_python.py` fails the build if any is missing; `smoke.py` checks they are served with
   the right sizes.
+
+## Speech
+
+The app speaks with the operating system's own offline voices (docs/VOICES.md "The OS voices"); nothing is bundled
+for it on macOS, and on Windows only the pywinrt / comtypes packages. The model server picks the engine at startup,
+ranks this machine's voices, maps the guide / CAPCOM / Houston / story roles onto them and renders "Ready." to warm up;
+`/health` → `models.tts` says which engine, voice and warm-up time. The Electron main process waits only for the two
+`/health` answers, never for a speech model, and the voice bar shows "Warming up" until `models.tts.loaded` (or 3 min).
+Settings → Voice lists the voices and tells parents where to download clearer ones.
+
+### Re-tested with the OS voices, 2026-11-14 (macOS 26.2, from the mounted dmg, machine under load ~8)
+
+| | |
+|---|---|
+| installer | **604 MB** (`Outpost Luna-0.1.0-arm64.dmg`, 633,453,400 bytes; Steer's model folder and wheel gone) |
+| cold start to window | 17.7 s (models healthy at 17.2 s); the model server's speech warm-up ("Ready.") 2.6 s inside that |
+| speech | engine `say`; default (guide) "Your Mac's system voice" = Aaron (Siri); CAPCOM Tara (Premium), Houston Aman (Premium); 25 voices ranked |
+| first audio | one sentence: 1.6 s (Siri system voice), 1.5–1.7 s (Tara premium) under load; idle 1.3 s / 0.8 s. Cache hit ~3 ms |
+| smoke.py | ALL PASS (health incl. `tts`, Settings voices, ear, answer, OS-voice TTS 200 `audio/wav`, 11/11 word timings ending at 4,560 of 4,601 ms, Flight School, mission, gesture assets) |
 
 ## Process supervision
 
@@ -193,7 +213,7 @@ so this test run used `--no-sandbox`; a normal launch keeps it), no keys in the 
 | RAM, steady after a voice turn | **~1.23 GB** total: model server 578 MB, backend 101 MB, Electron main + helpers ~550 MB |
 | voice ask (`say "show me the giant bullseye"`, 16 kHz) | Arc ear heard *"show me the giant bull's eye."*; turn end 0.56 s after speech end |
 | answer | `/api/ask` 73 ms: "The Sea of Rains, Mare Imbrium, is about 1,146 km across." |
-| Steer TTS | 200 `audio/wav`, 330 KB, 376 ms |
+| TTS (then Steer) | 200 `audio/wav`, 330 KB, 376 ms |
 | Flight School | course (8 lessons); lesson `moon` step graded; check ride started |
 | Mission cabin | shift started at Shackleton Rim, `shields +5` order, shift advanced, debrief |
 | quit | both children got SIGTERM and exited; `children.json` emptied; no stray processes |

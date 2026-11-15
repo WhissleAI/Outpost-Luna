@@ -5,7 +5,6 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 HEADSTART = Path.home() / "Desktop/work/whissle/headstart"
-STEER_REPO = Path(__file__).resolve().parents[3] / "steer-tts"          # sibling checkout (live_assist/steer-tts)
 # The native Arc Tagger library's file name on this OS (desktop/vendor/arctag builds all three).
 ARCTAG_LIB_NAME = {"darwin": "libarctag.dylib", "win32": "arctag.dll"}.get(sys.platform, "libarctag.so")
 
@@ -32,7 +31,7 @@ def hf_snapshot(repo: str, has: str, prefer: str | None = None) -> Path | None:
 class Settings(BaseSettings):
     """Model server settings. Read from the environment, then ../.env (shared with the backend).
 
-    Every weight path can be set by env var (ARCTAG_LIB, ARCTAG_MODEL_DIR, STEER_TTS_MODEL, STEER_DIRECTOR; ARC_META_WEIGHTS
+    Every weight path can be set by env var (ARCTAG_LIB, ARCTAG_MODEL_DIR; ARC_META_WEIGHTS
     in arcmeta.py; EMBED_MODEL_DIR in embed.py). The desktop app sets all of them to its bundled copies (docs/DESKTOP.md);
     the defaults below are the developer checkout's (`make dev`)."""
 
@@ -48,27 +47,19 @@ class Settings(BaseSettings):
     # Live dedicated handles for WS /v1/tag/stream (one per connection). Over the cap, new connections close with 1013.
     tag_stream_max: int = 16
 
-    # Steer TTS Edge (POST /v1/tts). on|off; fails open with the reason in /health.
-    steer_tts: str = "on"
-    # The edge package directory (config.json, voices.*, onnx/). Default: the Hugging Face cache snapshot.
-    steer_tts_model: Path | None = None
-    # Steer's performance director (director.bin, format 2 as steertts_edge reads). Default: next to the model, then
-    # the steer-tts repo's c/models copy.
-    steer_director: Path | None = None
-    steer_threads: int = 2
-
-    def steer_model_dir(self) -> Path | None:
-        if self.steer_tts_model:
-            return self.steer_tts_model if (self.steer_tts_model / "config.json").exists() else None
-        return hf_snapshot("WhissleAI/steer-tts-edge", "config.json")
-
-    def steer_director_path(self) -> Path | None:
-        model = self.steer_model_dir()
-        for p in (self.steer_director, model / "director.bin" if model else None,
-                  STEER_REPO / "c/models/steer-tts-edge/director.bin"):
-            if p and p.exists():
-                return p
-        return None
+    # Speech (POST /v1/tts): the operating system's own offline voices (app/tts_os.py). on|off; fails open with the
+    # reason in /health. Engine: auto (macOS say; Windows WinRT, then SAPI) | say | winrt | sapi.
+    os_tts: str = "on"
+    os_tts_engine: str = "auto"
+    # The kid's locale for ranking voices (e.g. en-GB). Default: the OS's own.
+    os_tts_locale: str | None = None
+    # Words per minute at 1x before the style's rate (macOS `say -r`); WinRT speaking-rate multiplier at 1x.
+    os_tts_wpm: int = 165
+    os_tts_winrt_rate: float = 1.0
+    # The recorded voice pack (app/voice_pack.py, docs/VOICE_PACK.md): fixed lines pre-recorded with Siri Voice 1. on|off.
+    # The folder defaults to the backend's data/voice_pack (dev checkout and the desktop bundle alike).
+    voice_pack: str = "on"
+    voice_pack_dir: Path = Path(__file__).resolve().parents[2] / "backend" / "data" / "voice_pack"
 
 
 settings = Settings()

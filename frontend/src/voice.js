@@ -8,6 +8,7 @@
 import { createListener as defaultListener } from "./listen.js";
 import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen, BARGE } from "./floor.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";
+import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
 export { spaceAction, micErrorText };
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
@@ -206,8 +207,9 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (airNow()) gated.air = true;                         // one of our lines started during the turn
     // Only the echo tail (our line already ended): the reply the screen waits for gets through, as on the server.
     const f = frameNow() || {};
-    const awaited = !gated.air && !isFiller(gated.text) && (takesOffer(gated.text, f.offer) || stepOpen(f)) &&
-      !turnIsEcho({ text: gated.text, frame: f, onAir: false, refs: refsNow() });
+    const awaited = (f.screen === "video" && !!videoCommand(gated.text)) ||   // [media] "pause" while a video plays
+      (!gated.air && !isFiller(gated.text) && (takesOffer(gated.text, f.offer) || stepOpen(f)) &&
+      !turnIsEcho({ text: gated.text, frame: f, onAir: false, refs: refsNow() }));
     const pass = awaited || shouldBargeIn({ started: true, text: gated.text, refs: refsNow(), dd: turnDD });
     if (!pass) { if (m.t === "turn" && m.state === "end") gated = null; return; }   // echo / chatter: drop it
     const text = gated.text; turnAir = gated.air; gated = null;
