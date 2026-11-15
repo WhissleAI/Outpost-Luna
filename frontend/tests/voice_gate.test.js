@@ -27,6 +27,7 @@ globalThis.fetch = () => new Promise(res => fetches.push(() => res({ status: 200
 
 const { createFloor } = await import("../src/floor.js");
 const { createVoice } = await import("../src/voice.js");
+const { BARGE_TUNING } = await import("../src/barge.js");
 
 const tick = () => new Promise(r => setTimeout(r, 0));
 async function settle(n = 6) { for (let k = 0; k < n; k++) await tick(); }
@@ -116,8 +117,79 @@ test("the gate is not deaf: a clearly directed answer still barges into the sequ
   await releaseFetch(); endAudio(); await settle();
   hear("a dark flat sea of lava", 0.9);
   await settle();
+  assert.equal(barges, 0, "held inside the line's first LINE_GRACE_MS (the onset echo burst), not dropped");
+  await new Promise(r => setTimeout(r, BARGE_TUNING.LINE_GRACE_MS + 30)); await settle();
   assert.equal(barges, 1);
   assert.deepEqual(turns, ["a dark flat sea of lava"]);
   while (fetches.length) await releaseFetch();
   assert.equal(await done, false, "the kid's barge-in stopped CAPCOM");
+});
+
+// Owner bug (Flight School Radiation step 5): the line was cut by our own voice / noise. The fixes, end to end.
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function finishAll() { for (let k = 0; k < 20 && (fetches.length || (audios.length && !audios[audios.length - 1].paused)); k++) { if (fetches.length) await releaseFetch(); else { endAudio(); await settle(); } } }
+
+test("barge-in: our own line spelled back by the ear ('m s v') never stops it, and lands in the barge log", async () => {
+  const keep = { ...BARGE_TUNING }; Object.assign(BARGE_TUNING, { LINE_GRACE_MS: 0, RESUME_GRACE_MS: 0 });
+  try {
+    const done = floor.say("Doctors count radiation in mSv. So what is an mSv?", { voice: "capcom" });
+    await releaseFetch();
+    hear("doctors count radiation in m s v", 0.95);
+    hear("so what is an m s v", 0.95);
+    await settle();
+    assert.equal(barges, 0);
+    await finishAll();
+    assert.equal(await done, true, "the line completed");
+    assert.ok((window.__outpost.bargeLog.counts["held:echo"] || 0) >= 2);
+  } finally { Object.assign(BARGE_TUNING, keep); }
+});
+
+test("barge-in: a stop word interrupts; outpost:barge names the line; a stop is never resumed", async () => {
+  const keep = { ...BARGE_TUNING }; Object.assign(BARGE_TUNING, { LINE_GRACE_MS: 0, RESUME_GRACE_MS: 0, RECOVER_MS: 60 });
+  const fired = []; const de = globalThis.dispatchEvent; globalThis.dispatchEvent = e => { fired.push(e); return true; };
+  try {
+    const done = floor.say("Doctors count radiation in mSv. So what is an mSv?", { voice: "capcom" });
+    await releaseFetch();
+    hear("Stop.", 0.2);   // a stop word even when Arc rates it as not directed
+    await settle();
+    assert.equal(barges, 1);
+    assert.equal(await done, false);
+    const ev = fired.find(e => e.type === "outpost:barge");
+    assert.ok(ev && ev.detail.reason === "command" && ev.detail.lineText.startsWith("Doctors"));
+    const starts = events.filter(e => e.state === "start").length;
+    await wait(200); while (fetches.length) await releaseFetch();
+    assert.equal(events.filter(e => e.state === "start").length, starts, "nothing said again after 'stop'");
+  } finally { Object.assign(BARGE_TUNING, keep); globalThis.dispatchEvent = de; }
+});
+
+test("barge-in: a false interruption (no actionable turn) says the interrupted sentence again, once", async () => {
+  const keep = { ...BARGE_TUNING }; Object.assign(BARGE_TUNING, { LINE_GRACE_MS: 0, RESUME_GRACE_MS: 0, RECOVER_MS: 60 });
+  try {
+    const done = floor.say("Doctors count radiation in mSv. So what is an mSv?", { voice: "capcom" });
+    await releaseFetch();
+    hear("the rover is parked by the crater", 0.9);   // a real-looking turn the app does nothing with
+    await settle();
+    assert.equal(barges, 1); assert.equal(await done, false);
+    const starts = () => events.filter(e => e.kind === "guide" && e.state === "start").length, s0 = starts();
+    await wait(250); while (fetches.length) await releaseFetch();
+    assert.equal(starts(), s0 + 1, "the interrupted sentence is said again");
+    assert.equal(events.filter(e => e.state === "start").pop().text, "Doctors count radiation in mSv. So what is an mSv?");
+    hear("the rover is parked by the big crater", 0.9);   // cut again: stays cut
+    await settle(); await wait(250); while (fetches.length) await releaseFetch();
+    assert.equal(starts(), s0 + 1, "a resumed line that is cut again is not said a third time");
+    assert.equal(window.__outpost.bargeLog.counts["resume:barge:speech"], 1);
+  } finally { Object.assign(BARGE_TUNING, keep); }
+});
+
+test("barge-in: muted, our line plays silently and open-mic speech never stops it", async () => {
+  window.__outpost = { ...(window.__outpost || {}), levels: { master: 1, alarms: 1, muted: true } };
+  try {
+    const done = floor.say("Doctors count radiation in mSv. So what is an mSv?", { voice: "capcom" });
+    await releaseFetch();
+    hear("go to the map please", 0.9);
+    await settle();
+    assert.deepEqual(turns, ["go to the map please"], "the turn is still heard");
+    await finishAll();
+    assert.equal(await done, true, "the silent line (captions) ran to its end");
+  } finally { delete window.__outpost.levels; }
 });

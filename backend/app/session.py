@@ -22,6 +22,7 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from . import barge as barge_
 from . import director, models_client, steering, turnlog
 from . import safety as safety_
 from . import turn_router as router_
@@ -403,17 +404,26 @@ class Session:
             k["emotion"] = m["label"]
 
     def _is_barge(self, words: str) -> bool:
-        """§3 rule 2, server side: ≥ 2 words, not an echo of what's playing, device-directed when Arc says so."""
+        """§3 rule 2, server side, from the ear relay's words while we play. The client makes the fast call (frontend
+        barge.js decideBarge; it posts ui barge_in when it accepts), so this one is conservative: a stop / skip word
+        (barge.py STOP / NAV), or >= 3 words once Arc has rated them device-directed (the filter floor); never an echo of what is playing or of
+        our last few lines (fuzzy: spelled-out letters, the spoken form), never inside the line's first
+        barge.LINE_GRACE_S (the speaker-to-mic echo burst)."""
         ws = _words(words)
-        if len(ws) < 2 or router_.is_filler(words):
+        if not ws or router_.is_filler(words):
             return False
-        playing = set(_words((self.belief["playing"] or {}).get("text") or ""))
-        if playing and sum(w in playing for w in ws) / len(ws) >= ECHO_SHARE:
+        playing = self.belief["playing"] or {}
+        refs = [x for x in [playing.get("text") or ""] + self.spoken.recent() if x]
+        if router_.echo_of(words, refs, ECHO_SHARE):
             return False
-        if router_.echo_of(words, self.spoken.recent()):   # any of our last few lines, not only the one playing
+        since = playing.get("since")
+        if since is not None and self.clock() - since < barge_.LINE_GRACE_S:
             return False
         dd = self.belief["kid"]["device_directed"]
-        return dd is None or float(dd) >= self.filter_thresholds()[0]
+        lo = self.filter_thresholds()[0]
+        if barge_.is_command(words):
+            return barge_.is_stop(words) or dd is None or float(dd) >= lo
+        return len(ws) >= 3 and dd is not None and float(dd) >= lo
 
     async def set_floor(self, holder: str):
         if self.belief["floor"] != holder:

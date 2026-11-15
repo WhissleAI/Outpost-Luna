@@ -45,12 +45,26 @@ A turn or an event can produce **several decisions**. Each has `id`, `priority` 
 2. **The kid always wins.**
    - **Hold Space** (anywhere except a text box; a focused button is blurred first) → the guide stops within 200 ms and
      crew audio ducks to 15%.
-   - **Open-mic speech** while audio plays counts as barge-in only when ALL hold:
-     - Flux `StartOfTurn`;
-     - ≥ 2 words heard;
-     - the words are **not** an echo of what we're playing (fewer than 60% of them appear in the current guide or crew
-       text);
-     - when Arc is available, `device_directed` ≥ 0.5.
+   - **Open-mic speech** while audio plays counts as barge-in only for a real, intentional interruption
+     (`frontend/src/barge.js` `decideBarge`, tuning in `BARGE_TUNING`). ALL must hold:
+     - the ear's turn has **words** (never a turn start, VAD or energy alone): ≥ 2 real words, or one short command
+       (`stop`, `wait`, `pause`, `quiet`, `be quiet`, `never mind`, `hold on`, `skip`, `next`, `go back`, …);
+       two words need a command or `device_directed` ≥ the filter's strong level;
+     - the words are **not** an echo of what we're playing or said in the last few seconds (fuzzy, `floor.js isEcho`
+       = `turn_router.echo_of`: spelled-out letters collapsed, each line's spoken form, near-miss spellings, ≥ 60 % of
+       the content words);
+     - `device_directed` ≥ the filter's floor (0.5 normal), and Arc rated the turn at all when the ear sends Arc
+       metadata (noise and far-off chatter get no rating). The stop words skip both;
+     - louder than our own voice coming back: ≥ 4 mic frames (≈ 320 ms) above 1.8 × the leak we expect (the playing
+       sentence's decoded output envelope × the speaker-to-mic coupling, the median mic/output ratio while we play) and
+       3 × the room floor (ducked-reference gating, `voice.js track` / `turnEnergy`; without an envelope, crew clips and
+       the browser voice, 1.8 × the p90 of the mic while that audio plays);
+     - ≥ 350 ms of speech, and not in a line's first 600 ms or a sentence's first 300 ms (held, then re-checked).
+   - A barge-in with no actionable turn (an echo or filler after all, the router ignored it, or nothing came of it
+     1.5 s on) says the interrupted sentence again, once (`floor.resumeInterrupted`); never after a command.
+   - **Mute**: our voice plays silently, so open-mic speech is not gated and never stops the silent line.
+   - Every stop path and every held turn is counted in `window.__outpost.bargeLog` (`bargelog.js`); every barge-in
+     fires `outpost:barge` `{reason, text, playing, lineId, lineText, resumable}` so a flow can offer Resume.
 3. **Never talk over the kid.** While the kid holds the floor, new `say` decisions wait; a newer turn cancels older,
    unplayed decisions.
 4. **After an interruption:** if the kid's turn has no request, crew audio resumes and the guide doesn't repeat

@@ -37,7 +37,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from . import loudness, steering
+from . import loudness, narration, steering
 from .config import settings
 
 router = APIRouter()
@@ -298,6 +298,10 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
     text = " ".join(text.split())
     if not text:
         return JSONResponse({"error": "empty text"}, status_code=422)
+    # The narration rule (narration.py): every engine speaks the spoken form ("mSv" -> "millisieverts"); the word
+    # timings are mapped back onto the display words, which the captions show.
+    display, text = text, narration.spoken(text)
+    next_text = narration.spoken(next_text) if next_text else next_text
     reasons: list[str] = []
     engines = ["deepgram"] if settings.tts_engine == "deepgram" else ["os", "deepgram"]   # "steer" (old .env) = os
     if "os" in engines and isinstance(style, dict) and style.get("tts_engine") == "steer":
@@ -366,6 +370,7 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
                 made_by = res[2] if len(res) > 2 and res[2] in ("pack", "say", "winrt", "sapi") else "os"
                 headers["X-TTS-Engine"] = "pack" if made_by == "pack" else "os"
                 audio, words, info = finish(audio, st, clean_words(words), last=not place.get("next"))
+                words = narration.display_timings(display, text, words)
                 if info and info.get("lufs") is not None:
                     headers["X-TTS-Loudness"] = f"{info['lufs']} LUFS {info['tp']} dBTP"
             else:

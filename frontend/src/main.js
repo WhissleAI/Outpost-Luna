@@ -110,7 +110,7 @@ async function boot() {
   });
   const voice = createVoice({
     onTurn: (text, o = {}) => ask(text, "voice", o),
-    onBargeIn: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); player.duck(); if (useSession()) { session.dropAll(); session.ui("barge_in"); } },
+    onBargeIn: (o = {}) => { cancelNudge(); cancelTour(); if (isSpeaking() && !o.keepGuide) stopSpeaking("barge:" + (o.reason || "speech")); player.duck(); if (useSession()) { session.dropAll(); session.ui("barge_in"); } },
     onKidDone: () => { player.unduck(); if (useSession()) session.ui("kid_done"); },
     onEmotion: label => { turn.emotion = label; },
     isOutputBusy: () => isSpeaking() || player.active,
@@ -120,7 +120,7 @@ async function boot() {
   let session = null;
   const useSession = () => !!(session && session.connected);
   // [media] a video starts clean: no guide line, no crew clip, nothing queued from the session (docs/MEDIA.md)
-  initVideo({ stopOthers: () => { cancelNudge(); cancelTour(); stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); } });
+  initVideo({ stopOthers: () => { cancelNudge(); cancelTour(); stopSpeaking("video"); if (player.active) player.stop(true); if (useSession()) session.dropAll(); } });
   // body[data-video=1] while a video is up: the gestures layer's "video" coach mark and help card read it (gesture/ui.js)
   onVideoChange(() => { if (videoOpen()) document.body.dataset.video = "1"; else delete document.body.dataset.video; pushScreen(true); });
   $("aboutBtn").addEventListener("click", () => { fillCredits(); });
@@ -138,7 +138,7 @@ async function boot() {
   });
   // Academy: lessons before the mission; the check ride qualifies the cadet for Mission mode.
   const academyUI = createAcademyUI({
-    globe, placeById, player, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, repeat: o.repeat, source: "academy" }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking(),
+    globe, placeById, player, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, repeat: o.repeat, source: "academy" }) /* floor.say, CAPCOM voice, steered */, stop: () => stopSpeaking("academy_stop"),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     goMission: () => setMode("mission"),
     openLibrary: id => { setMode("cadet"); const a = placeById(id); if (a) setTimeout(() => (a.kind === "artifact" ? onArtifact(a) : onTap(a)), 300); },
@@ -146,7 +146,7 @@ async function boot() {
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
   const missionLearning = installMissionLearning({
-    missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking(),
+    missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking("mission_stop"),
     lessons: () => academyUI.lessons(),
     openLesson: id => { setMode("academy"); setTimeout(() => academyUI.nav("lesson", id), 400); },
   });
@@ -175,7 +175,7 @@ async function boot() {
   prefs.on(() => sendPrefs());
   // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint
   addEventListener("outpost:lesson-result", e => { if (prefs.value.improve && useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
-  initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking(); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
+  initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking("highlight_crew"); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
   /** The guide speaks (card text is the caption). Never over crew audio: the moment ends first. */
@@ -284,7 +284,7 @@ async function boot() {
 
   /** "▶ Hear the crew" when the server has a kid-safe moment for this place. */
   function offerCrew(token, f, moment) {
-    const add = m => m && card.addAction(token, { label: "Hear the crew", hot: true, onClick: () => { stopSpeaking(); player.play(m); } });
+    const add = m => m && card.addAction(token, { label: "Hear the crew", hot: true, onClick: () => { stopSpeaking("hear_crew"); player.play(m); } });
     if (moment) add(moment);
     else if (f) api.moments(f.id).then(ms => add(ms[0]));
   }
@@ -312,7 +312,7 @@ async function boot() {
   function voiceActions(a) {
     return (a.voices || []).filter(v => v && v.clip_id).map(v => ({
       label: "Hear " + (v.who || "the crew"), hot: true,
-      onClick: () => { cancelTour(); stopSpeaking(); player.play({ clip_id: v.clip_id, t0: v.t0, t1: v.t1, speaker: v.who || "crew", places: [a.id], jargon: [] }); },
+      onClick: () => { cancelTour(); stopSpeaking("tap_crew"); player.play({ clip_id: v.clip_id, t0: v.t0, t1: v.t1, speaker: v.who || "crew", places: [a.id], jargon: [] }); },
     }));
   }
   function focusArtifact(a) { if (a.id !== turn.lastPlace) chime(); globe.showFeature(a); turn.lastPlace = a.id; }
@@ -377,8 +377,8 @@ async function boot() {
   }
   function tourActions() {
     return [
-      { label: "Next stop", hot: true, onClick: () => { if (!tour.active) return; stopSpeaking(); tourStep(++tour.id, tour.i + 1); } },
-      { label: "Stop", onClick: () => { stopSpeaking(); cancelTour(); } },
+      { label: "Next stop", hot: true, onClick: () => { if (!tour.active) return; stopSpeaking("tour_next"); tourStep(++tour.id, tour.i + 1); } },
+      { label: "Stop", onClick: () => { stopSpeaking("tour_stop"); cancelTour(); } },
     ];
   }
   async function tourStep(my, i) {
@@ -394,7 +394,7 @@ async function boot() {
     tour.timer = setTimeout(() => tourStep(my, i + 1), Math.max(400, TOUR_MS - (performance.now() - t0)));
   }
   // Space always cancels a tour (even when a card button has focus).
-  addEventListener("keydown", e => { if (e.code === "Space" && tour.active && !(e.target && e.target.closest && e.target.closest("input, textarea"))) { stopSpeaking(); cancelTour(); } }, true);
+  addEventListener("keydown", e => { if (e.code === "Space" && tour.active && !(e.target && e.target.closest && e.target.closest("input, textarea"))) { stopSpeaking("space_tour"); cancelTour(); } }, true);
 
   function onTap(p) {
     if (missionUI.active) return;   // the globe is a map of the outpost in mission mode
@@ -449,7 +449,7 @@ async function boot() {
       return ok;
     },
     play: async d => { if (videoOpen()) return; const m = normMoment(d.moment || { clip_id: d.clip_id, t0: d.t0, t1: d.t1, jargon: d.explain }); if (m) await player.play(m); },
-    stop: () => { stopSpeaking(); if (player.active) player.stop(true); },
+    stop: () => { stopSpeaking("session_cancel"); if (player.active) player.stop(true); },
     card: d => { if (missionUI.active) missionUI.showCard(d, sendRaw); else card.show({ title: d.title, asked: d.asked, say: d.body, claims: d.claims, arc: readoutLine({ readout: d.readout, source: d.source, action: d.action }) }); },
     hud: d => missionUI.applyRemote(d.state),
     alert: d => missionUI.active && missionUI.alert(d),
@@ -547,7 +547,7 @@ async function boot() {
   }
   // test hooks (tests/e2e/robustness_e2e.py): drive a screen the way the router would, and start a crew clip
   try { Object.assign((window.__outpost = window.__outpost || {}), { shellNav, hear: t => ask(t, "voice", { dd: 1 }),
-    playCrew: async () => { const ms = await api.moments(null); if (ms[0]) { stopSpeaking(); player.play(ms[0]); return true; } return false; } }); } catch (e) { /* */ }
+    playCrew: async () => { const ms = await api.moments(null); if (ms[0]) { stopSpeaking("play_crew"); player.play(ms[0]); return true; } return false; } }); } catch (e) { /* */ }
   // [hands-free] The router needs the screen the kid is looking at (server-relayed ear turns arrive before the client's).
   let lastScreen = "";
   function screenFrame() {
@@ -569,7 +569,7 @@ async function boot() {
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";
   installDefaultIntents({
     nav: shellNav, globe, inCabin, a11y, ask: t => ask(t), mission: missionUI, lookTarget,   // the cabin: missionUI.intent()
-    stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
+    stopAll: () => { cancelNudge(); cancelTour(); if (isSpeaking()) stopSpeaking("stop_all"); if (player.active) player.stop(true); if (useSession()) session.dropAll(); },
   });
   installKeyboardIntents();
   // [keys] arrows / Enter / Esc / letters and game controllers emit the same intents (docs/KEYBOARD.md)
@@ -578,7 +578,7 @@ async function boot() {
     setMode: () => { document.documentElement.dataset.input = "pad"; },
     onConnect: on => { keys.padConnected(on); keys.toast(on ? "Controller connected" : "Controller disconnected"); } });
   // Library tour: next / previous stop (swipe, Alt+arrows, or "next" by voice) while a tour runs.
-  const tourStepBy = d => { if (!tour.active) return false; stopSpeaking(); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
+  const tourStepBy = d => { if (!tour.active) return false; stopSpeaking("tour_step"); const i = Math.max(0, tour.i + d); tourStep(++tour.id, i); return true; };
   onIntent("next", () => tourStepBy(1), { priority: 10 });
   onIntent("prev", () => tourStepBy(-1), { priority: 10 });
   // [story] "What do I do?" outside a lesson: one spoken line for the screen (Mission answers its own screens first).
@@ -616,7 +616,7 @@ async function boot() {
     });
   }
 
-  $("cardClose").addEventListener("click", () => { if (tour.active) { cancelTour(); card.hide(); } if (isSpeaking()) stopSpeaking(); if (player.active) player.stop(true); });   // [qa] closing the card ends what it was saying
+  $("cardClose").addEventListener("click", () => { if (tour.active) { cancelTour(); card.hide(); } if (isSpeaking()) stopSpeaking("card_close"); if (player.active) player.stop(true); });   // [qa] closing the card ends what it was saying
   $("askForm").addEventListener("submit", e => { e.preventDefault(); ask($("q").value); });
   CHIPS.forEach(c => { const b = document.createElement("button"); b.type = "button"; b.textContent = c; b.onclick = () => ask(c); $("chips").append(b); });
   $("nearBtn").onclick = () => globe.flyTo(0, 0, 3.6);
@@ -625,7 +625,7 @@ async function boot() {
   $("hwBtn").onclick = e => { const on = globe.toggleHardware(); e.currentTarget.setAttribute("aria-pressed", on); };
   // Client tour of every piece of hardware, oldest first (the Director can also start a tour with action "tour").
   $("tourBtn").onclick = () => {
-    if (tour.active) { stopSpeaking(); cancelTour(); return; }
+    if (tour.active) { stopSpeaking("tour_cancel"); cancelTour(); return; }
     // [qa] 36 stops was ~4 minutes: a short tour of firsts, oldest first (the rest stay a tap away on the globe)
     const all = places.filter(p => p.kind === "artifact"), pick = TOUR_IDS.map(id => all.find(a => a.id === id)).filter(Boolean);
     const hw = (pick.length >= 4 ? pick : all).sort((a, b) => String(a.landed).localeCompare(String(b.landed)));
@@ -647,7 +647,7 @@ async function boot() {
     globe.setDecor(m === "cadet");   // place dots + hardware belong to the Library; Flight School draws its own route
     // Suspend the screen we leave: its speech, tour / nudge timers, crew audio and its cards (the card belongs to the
     // screen it was shown on). Flight School keeps its lesson and resumes it on the way back (academyUI.exit/enter).
-    cancelTour(); cancelNudge(); stopSpeaking(); card.hide();
+    cancelTour(); cancelNudge(); stopSpeaking("mode_switch"); card.hide();
     if (useSession()) session.dropAll();
     if (session) session.hello({ mode: m, mission_id: m === "mission" ? (missionUI.context() || {}).id || null : null });   // [session]
     if (m !== "academy") academyUI.exit();

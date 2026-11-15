@@ -33,6 +33,8 @@
 //   crewPlayback(state, id)   player.js reports crew start / end / interrupted
 //   holder, guideBusy, guideText, guideSentence, crewText   (the echo check reads the last three)
 import { fadeTo } from "./sound.js";
+import { spokenForm } from "./narration.js";
+import { logBarge } from "./bargelog.js";
 
 // ---------- pure helpers (unit-tested in tests/floor.test.js) ----------
 
@@ -72,14 +74,56 @@ export function normWords(text) {
   return String(text || "").toLowerCase().replace(/[’']/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").filter(Boolean);
 }
 
-/** The heard words are an echo of what we're playing when ≥ 60% of them appear in any of the reference texts. */
+/** Spelled-out letters collapse into one token ("m s v" → "msv", "l r o" → "lro"): TTS engines read an abbreviation
+ *  as letters and the ear writes them back one by one, so the echo of "mSv" is "m s v". */
+export function echoWords(words) {
+  const out = [];
+  for (let i = 0; i < words.length;) {
+    let j = i; while (j < words.length && words[j].length === 1 && /\p{L}/u.test(words[j])) j++;
+    if (j - i >= 2) { out.push(words.slice(i, j).join("")); i = j; } else { out.push(words[i]); i++; }
+  }
+  return out;
+}
+function lev(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+/** One heard word is in a reference: exactly, as a near-miss spelling (both ≥ 5 letters: 1 edit, ≥ 8: 2), or as the
+ *  tail / head of a word ≥ 3 letters longer ("sieverts" in "millisieverts"; ≥ 5 letters). */
+function wordIn(w, ref) {
+  if (ref.has(w)) return true;
+  if (w.length < 5) return false;
+  for (const r of ref) {
+    if (r.length < 5) continue;
+    if (lev(w, r) <= (Math.min(w.length, r.length) >= 8 ? 2 : 1)) return true;
+    if (r.length >= w.length + 3 && (r.endsWith(w) || r.startsWith(w))) return true;
+  }
+  return false;
+}
+const refWords = r => new Set([...echoWords(normWords(r)), ...echoWords(normWords(spokenForm(r)))]);
+// Function words carry no evidence either way ("a radiation dose" over "…what is a millisievert?" is the kid): the share
+// is over the content words when there are any. Mirrors turn_router.FUNCTION_WORDS.
+const FUNCTION_WORDS = new Set(("a an the to of in on at is are was be it its this that these those so what and or but " +
+  "for with as do does did can will would just").split(" "));
+/** The heard words are an echo of what we're playing when ≥ 60% of them appear in any of the reference texts (fuzzy:
+ *  spelled-out letters collapsed, each line's spoken form too, near-miss spellings; mirrors turn_router.echo_of), or
+ *  when ≥ 4 words repeat 75% of a line word for word ("so what is an n f c" over "So what is an mSv?"). */
 export function isEcho(heard, refs, threshold = 0.6) {
-  const w = normWords(heard);
-  if (!w.length) return true;
-  const ref = new Set(); (refs || []).forEach(r => normWords(r).forEach(x => ref.add(x)));
+  const all = echoWords(normWords(heard));
+  if (!all.length) return true;
+  // (a near-verbatim test, threshold ≥ 0.8, keeps every word: "shields to 40" is not "Shields now get 40 percent")
+  const content = threshold < 0.8 ? all.filter(x => !FUNCTION_WORDS.has(x)) : [], w = content.length ? content : all;
+  const ref = new Set(); (refs || []).forEach(r => refWords(r).forEach(x => ref.add(x)));
   if (!ref.size) return false;
-  const hits = w.filter(x => ref.has(x)).length;
-  return hits / w.length >= threshold;
+  const hits = w.filter(x => wordIn(x, ref)).length;
+  if (hits / w.length >= threshold) return true;
+  return threshold < 0.8 && all.length >= 4 && all.filter(x => wordIn(x, ref)).length / all.length >= 0.75;
 }
 
 // Mirrors backend/app/turn_router.py nav_intent + answers_offer: the words that take a pending spoken offer (the screen
@@ -116,21 +160,19 @@ export function turnIsEcho({ text, frame, onAir, refs, oldRefs = [] }) {
   if (stepOpen(f)) {
     // a step answer often repeats the prompt's words ("I heard you"); older lines are never used here
     const readback = f.step_type === "keywords" || f.step_type === "vocab_say";
-    return onAir && isEcho(text, refs, readback ? 0.85 : 0.6);
+    if (onAir) return isEcho(text, refs, readback ? 0.85 : 0.6);
+    // the ear-lag tail: a near-verbatim replay (≥ 85%) of the line that just ended is its echo, not an
+    // answer ("so what is an m s v" right after "So what is an mSv?"); a readback step repeats the line on purpose
+    // (≥ 4 words; never when it names one of the step's options: "I heard you" is the answer the prompt itself says)
+    const q = " " + normWords(text).join(" ") + " ";
+    const namesOption = (f.step_options || []).some(o => { const k = normWords(o).join(" "); return k && q.includes(" " + k + " "); });
+    return !readback && !namesOption && echoWords(normWords(text)).length >= 4 && isEcho(text, refs, 0.85);
   }
   return isEcho(text, refs) || (normWords(text).length >= 3 && isEcho(text, oldRefs, 0.85));
 }
 
-/**
- * Open-mic barge-in while audio plays (§3 rule 2): Flux StartOfTurn, ≥ 2 words, not an echo of the guide/crew
- * text, and Arc device_directed ≥ 0.5 when Arc sent one.
- */
 /** Settings → Listening → "Ignore other voices" (mirrors the server's filter levels): [ignore below, needed during speech]. */
 export const BARGE = { relaxed: [0.35, 0.55], normal: [0.5, 0.7], strict: [0.65, 0.85] };
-function bargeThresholds() {
-  const f = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter;
-  return BARGE[f] || BARGE.normal;
-}
 /** The voice pack may speak fixed lines: Settings' toggle is on and no other voice was picked (the default voice picked
  *  explicitly still counts as the default). Mirrors backend/app/steering.py pack_allowed. */
 export function packAllowed(P, def = typeof window !== "undefined" && window.__outpost ? window.__outpost.defaultVoice : "") {
@@ -155,22 +197,10 @@ export function prefStyle(style, voice, speed) {
   if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;
   return Object.keys(out).length ? out : style;
 }
-export function shouldBargeIn({ started, text, refs, dd }) {
-  if (!started) return false;
-  const w = normWords(text);
-  if (w.length < 2 || isFiller(text)) return false;
-  if (isEcho(text, refs)) return false;
-  const [lo, hi] = bargeThresholds();
-  if (dd != null && dd < lo) return false;
-  if (w.length === 2 && !CONTROL.test(w.join(" ")) && !(dd != null && dd >= hi)) return false;   // 2 words: a control word or clearly to us
-  return true;
-}
-
 // Mirrors backend/app/turn_router.py FILLER / NONLEX: a turn made only of these is never for us ("Oh.", "Mm-mm.").
 const FILLER = new Set(("oh ohh ooh oo o ah ahh aah a uh uhh um umm hm hmm hmmm mm mmm mhm mmhm mmhmm er erm eh huh ha haha hah " +
   "heh hehe wow whoa oops ugh aw aww yay la na shh psst tsk pfft boo ow ouch hey hi hello so well like and but the i you it").split(" "));
 const NONLEX = /^(?:[aeiou]*h+[aeiou]*h*|u+[mh]+|h+m+|m+[mh]*|a+[hw]+|o+[ho]*|e+[rh]+m*|h+u+h+|h+a+(?:h+a+)*|[mn]+|s+h+|p+s+t+|z+)$/;
-const CONTROL = /^(stop|wait|stop please|wait please|hold on|go back|say again|next please|stop talking|be quiet)$/;
 /** Only non-lexical sounds and fillers. */
 export function isFiller(text) {
   const w = normWords(text);
@@ -235,7 +265,22 @@ export function nearSame(a, b) {
 }
 
 const levels = () => (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1, alarms: 1 };
-export function createFloor({ ttsUrl = "/api/tts" } = {}) {
+/** The output envelope of a clip: RMS per ENV_MS of the decoded audio (the ducked reference the barge-in check holds
+ *  the mic against: voice.js). Decoded at 16 kHz in an OfflineAudioContext (no device, no gesture); null when the
+ *  browser can't (the check then falls back to the mic level while we play). */
+export const ENV_MS = 80;
+export async function envelopeOf(blob) {
+  const OAC = typeof OfflineAudioContext !== "undefined" ? OfflineAudioContext : null;
+  if (!OAC || !blob || typeof blob.arrayBuffer !== "function") return null;
+  try {
+    const buf = await new OAC(1, 16000, 16000).decodeAudioData(await blob.arrayBuffer());
+    const x = buf.getChannelData(0), n = Math.round(buf.sampleRate * ENV_MS / 1000), env = new Float32Array(Math.ceil(x.length / n));
+    for (let k = 0; k < env.length; k++) { let sum = 0, c = 0; for (let i = k * n; i < Math.min(x.length, (k + 1) * n); i++, c++) sum += x[i] * x[i]; env[k] = c ? Math.sqrt(sum / c) : 0; }
+    return env;
+  } catch (e) { return null; }
+}
+
+export function createFloor({ ttsUrl = "/api/tts", envelope = envelopeOf } = {}) {
   const subs = {};
   const emit = (ev, data) => (subs[ev] || []).slice().forEach(fn => { try { fn(data); } catch (e) { console.error(e); } });
   const on = (ev, fn) => { (subs[ev] = subs[ev] || []).push(fn); return () => off(ev, fn); };
@@ -292,7 +337,9 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       if (r.status === 503) { server = false; return null; }
       if (!r.ok) return null;
       // [a11y] word timings (X-TTS-Words, "startMs-endMs,…" per display word) for the caption bar (caption.js)
-      return { url: URL.createObjectURL(await r.blob()), words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "" };
+      const blob = await r.blob();
+      const envP = Promise.resolve().then(() => (envelope ? envelope(blob, text) : null)).catch(() => null);   // never delays the line
+      return { url: URL.createObjectURL(blob), words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "", envP };
     } catch (e) { return null; } finally { if (t) clearTimeout(t); }
   }
   function playUrl(url, tok) {
@@ -327,7 +374,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     const gap = 60 - (performance.now() - lastCancel); if (gap > 0) await sleep(gap);   // Chrome drops speak() right after cancel()
     if (tok.cancelled) return "stop";
     return new Promise(res => {
-      const u = new SpeechSynthesisUtterance(text), v = pickVoice(), p = VOICE_PARAMS[voice] || VOICE_PARAMS.guide;
+      const u = new SpeechSynthesisUtterance(spokenForm(text)), v = pickVoice(), p = VOICE_PARAMS[voice] || VOICE_PARAMS.guide;
       if (v) u.voice = v; u.rate = p.rate * speed; u.pitch = p.pitch; u.volume = Math.min(1, levels().master);   // [qa] Volume applies to the browser voice too
       u.onboundary = e => { if (e.name === "word" || e.name == null) emit("boundary", { id: tok.id, charIndex: e.charIndex, text }); };   // [a11y]
       let done = false;
@@ -362,20 +409,21 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     try { return await say_(text, opts, tok0); } finally { queued.delete(tok0); rec.end = performance.now(); }
   }
   const said_ = [];
-  async function say_(text, { voice = "guide", priority = 3, id, style } = {}, tok0) {
+  async function say_(text, { voice = "guide", priority = 3, id, style, resumed = false } = {}, tok0) {
     const sentences = sayLines(text);
     if (!sentences.length) return false;
     if (!VOICE_PARAMS[voice]) voice = "guide";
-    const tok = { id: id || "g" + nextId++, text: sentences.join(" "), sentence: "", speaking: false, cancelled: false, stop: null, yield: false, priority };
+    const tok = { id: id || "g" + nextId++, text: sentences.join(" "), sentence: "", speaking: false, cancelled: false, stop: null, yield: false, priority,
+      sentences, index: 0, voice, style, resumed };
     tok0.tok = tok;
     const prev = cur;
     if (prev && !prev.cancelled) {
       if (priority <= 2) { prev.yield = true; await waitFor(() => cur !== prev || prev.cancelled || prev.finished, tok); }
-      else if (priority === 3) cancel(prev);
+      else if (priority === 3) cancel(prev, "replaced", tok.text);
     }
     if (priority >= 4) await waitFor(() => holder === "none" && (!cur || cur.finished || cur.cancelled), tok);
     if (tok.cancelled) return false;
-    if (cur && cur !== tok && !cur.finished && !cur.cancelled && priority <= 3) cancel(cur);
+    if (cur && cur !== tok && !cur.finished && !cur.cancelled && priority <= 3) cancel(cur, "replaced", tok.text);
     cur = tok; pending.add(tok);
     try {
       await waitFor(() => !kid, tok);                                   // §3.3: never talk over the kid
@@ -403,9 +451,12 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       const got = await next, url = got && got.url;   // [a11y] fetchTTS → {url, words, engine}
       next = i + 1 < n ? get(i + 1) : null;   // prefetch while this one plays
       if (tok.cancelled) { if (url) URL.revokeObjectURL(url); break; }
-      tok.sentence = sentences[i]; tok.speaking = true;
-      if (!started) { started = true; playback("guide", "start", tok.id, tok.text); }
+      tok.sentence = sentences[i]; tok.speaking = true; tok.index = i;
+      const t = performance.now(); sentenceAt = t; if (!started) { lineAt = t; started = true; playback("guide", "start", tok.id, tok.text); }
+      tok.started = true;
       recompute();
+      env = null; const mine = got;
+      if (got && got.envP) got.envP.then(e => { if (playingGot === mine) env = e; }); playingGot = mine;
       emit("sentence", { id: tok.id, index: i, text: sentences[i], voice, words: got ? got.words : "", engine: got ? got.engine : "browser", audio: url ? el() : null, speed });
       let r = url ? await playUrl(url, tok) : "error";
       if (url) {
@@ -415,7 +466,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       }
       if (r === "error" && !tok.cancelled) r = await speakSynth(sentences[i], voice, tok);
       if (r === "stop" || tok.cancelled) break;
-      if (tok.yield) { tok.cancelled = true; break; }                   // a critical alert takes the floor after this sentence
+      if (tok.yield) { tok.cancelled = true; logBarge({ kind: "stop", reason: "yield", text: tok.text, playing: false }); break; }   // a critical alert takes the floor after this sentence
     }
     if (next) next.then(u => u && u.url && URL.revokeObjectURL(u.url));
     tok.speaking = false;
@@ -425,19 +476,42 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
     return full;
   }
 
-  function cancel(tok) {
+  // The line a stop cut (the sentence it was in, and the rest): voice.js says it again after a false barge-in.
+  let interrupted = null;
+  function remember(tok, reason) {
+    if (!tok || tok.finished || !tok.sentences) return;
+    interrupted = { id: tok.id, text: tok.text, sentences: tok.sentences.slice(tok.index || 0), voice: tok.voice, style: tok.style, priority: tok.priority,
+      resumed: !!tok.resumed, started: !!tok.started, reason, at: performance.now() };
+  }
+  function cancel(tok, reason = "cancel", by = "") {
     if (!tok || tok.cancelled) return;
+    const playing = !!tok.speaking;
+    if (tok === cur) remember(tok, reason);
     tok.cancelled = true;
     if (tok.stop) tok.stop();
+    if (playing || reason !== "cancel") logBarge({ kind: "stop", reason, text: tok.sentence || tok.text, by, playing });
     recompute();
   }
-  /** Stop the guide now: the current sentence and every say() waiting for the floor. */
-  function stopGuide() {
-    pending.forEach(cancel);
+  /** Stop the guide now: the current sentence and every say() waiting for the floor. `reason` lands in the barge log. */
+  function stopGuide(reason = "unspecified") {
+    const playing = holder === "guide" || !!(cur && cur.speaking);
+    if (cur && !cur.cancelled && !cur.finished) remember(cur, reason);
+    const was = [...pending].filter(t => !t.cancelled);
+    pending.forEach(t => { if (!t.cancelled) { t.cancelled = true; if (t.stop) t.stop(); } });
     if (synth && (synth.speaking || synth.pending)) { synth.cancel(); lastCancel = performance.now(); }
     if (guideEl && !guideEl.paused) guideEl.pause();
+    if (was.length || playing) logBarge({ kind: "stop", reason, text: (cur && (cur.sentence || cur.text)) || "", playing });
     recompute();
   }
+  /** Say the interrupted sentence (and the rest of its line) again, once: a resumed line that is cut again stays cut. */
+  function resumeInterrupted({ maxAgeMs = 8000 } = {}) {
+    const li = interrupted; interrupted = null;
+    if (!li || li.resumed || !li.sentences.length || performance.now() - li.at > maxAgeMs) return Promise.resolve(false);
+    logBarge({ kind: "resume", reason: li.reason, text: li.sentences[0], playing: false });
+    return say(li.sentences, { voice: li.voice, style: li.style, priority: Math.min(3, li.priority ?? 3), repeat: true, resumed: true, source: "resume" });
+  }
+  let lineAt = -1e9, sentenceAt = -1e9;   // when the current line / sentence started playing (performance.now())
+  let env = null, playingGot = null;       // the playing sentence's output envelope (envelopeOf), or null
 
   // ----- crew -----
   function attachCrew(audioEl, hooks = {}) {
@@ -453,7 +527,26 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   function mediaPlayback(state, id, text = "") { if (state !== "start") ducked = false; playback("crew", state, id, text); recompute(); }
 
   return {
-    on, off, say, stopGuide, duck, unduck, attachCrew, crewPlayback, attachMedia, mediaPlayback,
+    on, off, say, stopGuide, resumeInterrupted, duck, unduck, attachCrew, crewPlayback, attachMedia, mediaPlayback,
+    /** The line a stop cut ({sentences, voice, reason, at, resumed}), or null. */
+    get interrupted() { return interrupted; },
+    clearInterrupted() { interrupted = null; },
+    /** ms since the current guide line / sentence started playing (the barge-in grace windows, barge.js). */
+    get lineMs() { return performance.now() - lineAt; },
+    /** What we are putting out right now (the ducked reference): the loudest envelope value over the last `lagMs` of
+     *  the guide sentence playing (the mic hears the speaker a little late, and the room rings on). 0 when no guide
+     *  audio plays; null when unknown (crew / video audio, the browser voice, an envelope that didn't decode). */
+    outputLevel(lagMs = 240) {
+      const crewOn = crewPlaying();
+      if (!(cur && cur.speaking)) return crewOn ? null : 0;
+      if (!env || !guideEl || guideEl.paused || crewOn) return null;
+      const t = (guideEl.currentTime || 0) * 1000, a = Math.max(0, Math.floor((t - lagMs) / ENV_MS)), b = Math.min(env.length - 1, Math.floor(t / ENV_MS));
+      let m = 0; for (let k = a; k <= b; k++) m = Math.max(m, env[k]);
+      return b < a ? 0 : m;
+    },
+    get sentenceMs() { return performance.now() - sentenceAt; },
+    /** Muted (the top bar's Mute): our voices play silently, so the mic can't hear them and there is nothing to barge. */
+    get muted() { return !!levels().muted; },
     setKid(v) { v = !!v; if (v !== kid) { kid = v; recompute(); } },
     get holder() { return holder; },
     get guideBusy() { return [...pending].some(t => !t.cancelled && !t.finished); },
@@ -488,5 +581,5 @@ export const CAPCOM_VOICE = { voice: "capcom" };
 export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3, style: opts.style, repeat: opts.repeat, source: opts.source }) : Promise.resolve(false); }
 /** The style of the first `say` decision in a Director / Academy response (voice steering), if any. */
 export const sayStyle = r => ((r && r.decisions) || []).find(d => d.t === "say" && d.style)?.style;
-export function stopSpeaking() { if (floor) floor.stopGuide(); }
+export function stopSpeaking(reason = "unspecified") { if (floor) floor.stopGuide(reason); }
 export function isSpeaking() { return !!(floor && floor.guideBusy); }

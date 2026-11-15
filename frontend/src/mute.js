@@ -30,7 +30,7 @@ export function setMuted(on, { quiet = false } = {}) {
   const api = window.__outpost && window.__outpost.prefsApi;
   if (api && api.value.muted !== !!on) api.update({ muted: !!on });
   if (on) {
-    try { stopSpeaking(); } catch (e) { /* no floor yet */ }
+    try { stopSpeaking("mute"); } catch (e) { /* no floor yet */ }
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* no synth */ }
   }
   applyMedia(!!on);
