@@ -785,6 +785,36 @@ It deliberately ignores TTS audio. That changes both the Director's inputs and h
 4. **Gate:** unchanged. The round-8 class sets carry over on real audio, plus `test_log`. Rules fixes land first (the
    section above), so the model is gated against the better rules.
 
+
+**Addendum: what the new ear (PR #20, not merged yet) changes for the Director.**
+
+- **These features go to 0 or empty under the new ear:** `ear_conf`, `ear_alts`, `ear_rescored`, `ear_tier_step` /
+  `ear_tier_screen`, `ear_alt_hot`. The new ear has no n-best and no hot tiers.
+  - Keep them in the layout: it is append-only.
+  - Train round 9 with them at 0, so the model cannot lean on them.
+  - The hot-list *match* features computed from the words (`hot_step` / `hot_screen` / `*_sa`) still work.
+- **`device_directed` changes meaning.** It is now the new model's head, remapped (raw 0.05 → 0.5) and much more
+  conservative: directed ≥ 0.5 on 63 % of SLURP device commands, 2 % of crew talk, 1 of 16 room-noise clips.
+  - The `dd` feature's distribution shifts. Retrain on the new head's values only; do not mix in Arc Mini dd.
+  - Re-fit the router's `DD_MIN` / `DD_STRONG` against the new head. At 63 % recall on real commands, a 0.5 gate drops
+    about a third of real kid commands.
+  - Round 7's and this round's live runs already show the cost of a strict dd gate: "Right now" and "say again" were
+    rated not directed. That makes the exact-answer exemptions (`turn_router.exact_option`) more important.
+- **New inputs on the final words:** `names` (linked / abstain / not_in_list, with the entity) and `spoken`.
+  - Append features `name_linked` / `name_abstain` / `name_not_in_list` (counts per tier: step / names / screen),
+    `name_link_p`, and `entity_kind` one-hots (place, site, crew, mission, spacecraft). They replace the sound-alike
+    guesswork with the ear's own linker.
+  - In the router and grader, a `linked` name of the step's option or place counts as that answer before
+    `soundalike.repair` runs.
+- **Port the real-ear path.** `director_model/real_ear.py` and `make director-real-ear` still import arc_audio + torch.
+  Port them to libarc, through the `model_server/app` ear in #20, so decodes match the shipped ear. The same applies to
+  `collect_import.py decode` and `ear_hot_eval.py`.
+- **Keep the echo classes.** The new model transcribes the Nora / OS-voice echo (30 / 30) despite the notes, so
+  `cls_voice_echo_os` and `cls_echo` stay real negatives. Re-decode them with the new ear.
+- **Real voices only.** TTS kid turns are unusable with the new ear. Round 9's train / test audio comes from the
+  collection kit plus the re-recorded ear eval. Synthetic text (the coverage sweep) stays on the error-model path. The
+  NASA video audio and the app's own echo stay rendered, since they are not kid voices.
+
 ### Live run (`tools/handsfree_run.py --audio`, merged app code, r4 s in shadow; private :8298 model server + :8338 backend)
 
 Kid lines are rendered by the backend's OS voice (`say -o`, silent) and streamed into `/ws/listen` (the Arc ear with
