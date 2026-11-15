@@ -69,6 +69,63 @@ First launch downloads **510 MB** (required) and then 375 MB more in the backgro
 
 The camera-gesture models (8 MB) stay in the installer: the frontend serves them from its own origin.
 
+## Asset updates (no app build)
+
+Models and packs update without a new installer. The manifest has two copies with the same content, written together
+by `scripts/asset_manifest.py` (used by `asset_pack.py` and `upload_assets.py`; a test checks they match):
+
+- `site/assets/manifest.json` is **published** by `bash scripts/publish_site.sh` to
+  <https://whissleai.github.io/Outpost-Luna/assets/manifest.json>, the URL installed apps check (git is the control).
+- `desktop/assets.manifest.json` is **bundled**: the first-run source and the offline fallback.
+
+Schema 2: the manifest carries `version` and `published_at`; each asset `id`, `version` (bumped on every new sha256),
+`url` (https, `dl=1`), `sha256`, `size`, `required`, `min_app` / `max_app` (app versions it works with), `requires`
+(`[{id, min_version}]`, other assets it needs), `licence`, `files`. In the bundled copy `min_version` makes an app build
+replace an older install in the foreground (an app that needs a newer ear).
+
+The flow (`desktop/main/updates.js`):
+
+1. **Check.** 30 s after the window opens, and from Settings -> Storage & updates -> Check for updates, the app fetches
+   the remote manifest (8 s timeout) and caches it in `assets/remote-manifest.json`. Offline means nothing changes.
+2. **Stage.** Each installed asset whose version or sha changed, fits this app (`min_app` / `max_app`, `requires`) and
+   is not older is downloaded in the background into `assets/.dl` (resumable). The download is paced and pauses while a
+   mission runs or a video streams (`GET /api/assets/busy`). It is sha256-checked, unpacked into `assets/.pending/<id>`
+   and size-checked. Settings shows "Update ready: restart".
+3. **Swap on the next launch**, before the children start (nothing has the files open, on Windows too): `<id>` moves
+   to `.prev/<id>` and the staged copy is renamed into place, marked *trial*.
+4. **Confirm or roll back.** Once the model server answers, each trial asset must pass its load check (ear:
+   `arc_ear.available`; tagger and embedder: `loaded`; voice: clips > 0). A pass keeps it and deletes `.prev`. A fail,
+   or the model server dying with a trial asset in place, renames `.prev/<id>` back, restarts the model server, logs
+   `assets: ROLLBACK <id> vN -> vM (...)` in `main.log`, and never offers that sha256 again.
+
+Integrity and security:
+- https only, and every entry needs a sha256;
+- a manifest that does not parse or validate is ignored as a whole, as is one with any URL outside the allow-list
+  (dropbox.com, dropboxusercontent.com, huggingface.co, github.com / github.io / githubusercontent.com);
+- a remote entry never changes where an asset is installed: `env` / `subdir` always come from the bundled manifest;
+- **future hardening:** sign the manifest (e.g. minisign) and ship the public key in the app.
+
+Offline / airgapped: the offline-pack zip carries its own `assets.manifest.json`. Importing a pack whose asset version
+is newer (and fits this app) replaces the installed one; an older or same pack changes nothing.
+
+Settings -> **Storage & updates** (`frontend/src/storage_ui.js`) lists each download's version and size, the total, the
+update state, and has **Check for updates**. The backend relays the desktop's state: `GET /api/assets` reads
+`ASSETS_STATE_FILE`, and `POST /api/assets/check` touches `ASSETS_CHECK_FILE`, which the main process watches. A dev
+checkout answers `{managed: false}` and the section is hidden.
+
+### How to ship an asset update
+
+1. Build it: `make asset-pack` (all assets) or `uv run --project backend python scripts/asset_pack.py --only ear
+   --no-zip`. A changed tar gets a new sha256, the next `version` and `url: null` in both manifest copies. Set
+   `min_app` / `max_app` / `requires` by hand when the asset needs a particular app.
+2. Upload it: `DROPBOX_TOKEN_FILE=<file holding the token> python3 scripts/upload_assets.py --only <file>.tar`. This
+   uploads, makes the public `dl=1` link, verifies it anonymously and writes the URL into both copies.
+3. Check: `git diff site/assets/manifest.json`, then commit (through a PR, like any change).
+4. Publish: `bash scripts/publish_site.sh`. Installed apps pick it up on their next online launch and use it on the
+   launch after that.
+
+A new offline zip (`make asset-pack` without `--no-zip`) also needs uploading, so airgapped installs can get the update.
+
 The pieces, also runnable on their own:
 
 | target | what it does |

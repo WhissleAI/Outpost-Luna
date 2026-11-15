@@ -148,6 +148,7 @@ from .academy.routes import router as academy_router; app.include_router(academy
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
+from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 
 @app.get("/api/turnlog")
 def turnlog_stats():

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "pack": "v2",
  "note": "First-run assets for Outpost Luna (scripts/asset_pack.py; downloaded by desktop/main/assets.js).",
  "folder": "/Outpost Luna/assets/v2/",
@@ -248,7 +248,11 @@
       "sha256": "d68e86adca1aacf1d46cdd91ea24dfae0d902c9548544f71e23543e1eab4f902"
      }
     ]
-   }
+   },
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "tagger",
@@ -287,7 +291,11 @@
      "path": "tokenizer.json",
      "size": 553846
     }
-   ]
+   ],
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "embedder",
@@ -317,7 +325,11 @@
      "path": "tokenizer.json",
      "size": 466247
     }
-   ]
+   ],
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "voice",
@@ -3897,7 +3909,11 @@
      "path": "lines.json",
      "size": 200281
     }
-   ]
+   ],
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "crew",
@@ -4219,7 +4235,11 @@
      "path": "trim.json",
      "size": 41421
     }
-   ]
+   ],
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "videos",
@@ -4329,7 +4349,11 @@
      "path": "water_extraction.vtt",
      "size": 2702
     }
-   ]
+   ],
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": []
   }
  ],
  "offline_pack": {
@@ -4337,5 +4361,8 @@
   "url": "https://www.dropbox.com/scl/fi/h88nx83klw5i6s6a70ku1/outpost-luna-assets-v2.zip?rlkey=v4446k5cn0csua1a046jl1rn5&dl=1",
   "sha256": "aa0961fbcd6caf7efffe78ff443710a560a885b1afc9f53c74249f0b436d5e8d",
   "size": 884664442
- }
+ },
+ "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
+ "published_at": "2026-11-15T17:25:02Z",
+ "version": "2026.11.15.1725"
 }
