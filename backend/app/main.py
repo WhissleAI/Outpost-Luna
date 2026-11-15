@@ -193,6 +193,9 @@ class MediaFiles(StaticFiles):
 
 
 app.mount("/media", MediaFiles(settings.media_dirs()), name="media")
+# Settings: the Steer voices' previews (pre-rendered, offline), before the frontend's catch-all mount.
+app.mount(_voices.STEER_PREVIEW_PREFIX, StaticFiles(directory=_voices.steer_previews_dir(), check_dir=False),
+          name="steer_voice_previews")
 if settings.frontend_dist.exists():
     app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
 

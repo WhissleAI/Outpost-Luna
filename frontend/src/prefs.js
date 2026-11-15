@@ -9,6 +9,8 @@
 export const PREF_DEFAULTS = Object.freeze({
   voice: "",                 // "" = the default voice (guide, CAPCOM and the story); else an id from GET /api/voices
   voice_all: false,          // true = Houston uses the chosen voice too
+  engine: "os",              // Settings → Voice: "os" (the computer's own voice, default) | "steer" (Steer TTS, optional download)
+  steer_voice: "",           // with engine "steer": "" = Aurora (the default Steer voice); else an id from GET /api/voices?engine=steer
   pack: true,                // "Use the recorded guide voice for story lines": the voice pack (docs/VOICE_PACK.md)
   expressiveness: 0.5,       // 0 calm … 1 lively
   volume: 1,                 // master, 0–2 (1 = 100% = the −14 LUFS target): sent to the server; crew audio follows it here
@@ -27,6 +29,19 @@ export function moreVoicesHint(ua = typeof navigator !== "undefined" ? navigator
   if (/Windows/.test(ua)) return "Parents can download clearer Windows voices: Settings → Time & language → Speech → Manage voices.";
   if (/Mac OS X|Macintosh/.test(ua)) return "Parents can download clearer macOS voices: System Settings → Accessibility → Spoken Content → System voice → Manage Voices.";
   return "";
+}
+/** Settings → Voice, the engine choice: the computer's voice (default) or Steer TTS. Steer is an optional download:
+ *  until it is ready its option is disabled, with a "Get" button (missing) or "Downloading Steer voice…". Pure. */
+export function engineChoiceHtml(P, steer, esc = x => String(x)) {
+  const st = (steer && steer.state) || "missing", ready = st === "ready";
+  const note = ready ? "Whissle's expressive voice, with exact captions" : st === "downloading" ? "Downloading Steer voice…"
+    : st === "off" ? "Not available on this computer" : "A small download (13 MB)";
+  const opt = (v, label, small, on, dis) => `<label class="set-voice"><input type="radio" name="p-engine" data-p="engine" value="${v}" ${on ? "checked" : ""} ${dis ? "disabled" : ""}>
+    <span><b>${esc(label)}</b><small>${esc(small)}</small></span></label>`;
+  return `<fieldset class="set-seg" data-engine-state="${esc(st)}"><legend>Speech engine</legend><div class="set-vlist">
+    ${opt("os", "Your computer's voice (Siri / Windows)", "The default", P.engine !== "steer" || !ready, false)}
+    ${opt("steer", "Steer TTS (Whissle)", note, P.engine === "steer" && ready, !ready)}
+    ${st === "missing" ? `<button type="button" class="btn-quiet" data-get-steer>Get the Steer voice</button>` : ""}</div></fieldset>`;
 }
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
@@ -47,6 +62,8 @@ export function normalizePrefs(x) {
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
   pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
   if (typeof s.voice_all === "boolean") o.voice_all = s.voice_all;
+  pick("engine", ["os", "steer"]);
+  if (typeof s.steer_voice === "string") o.steer_voice = s.steer_voice.slice(0, 32);
   o.pack = s.pack !== false;          // on unless explicitly turned off
   o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
   o.muted = s.muted === true;
@@ -86,7 +103,8 @@ export function createPrefs({ globe = null } = {}) {
     dispatchEvent(new CustomEvent("outpost:prefs", { detail: P }));
   }
   /** What the session needs (main.js sends it on the socket). */
-  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false, rate: Math.max(0.6, Math.min(1.6, rate)),
+  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false,
+    engine: P.engine === "steer" ? "steer" : "os", steer_voice: P.steer_voice || null, rate: Math.max(0.6, Math.min(1.6, rate)),
     volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true });
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
@@ -104,6 +122,22 @@ export function createPrefs({ globe = null } = {}) {
   loadVoices().then(vs => {
     if (P.voice && vs.length && !vs.some(v => v.id === P.voice)) { update({ voice: "" }); dispatchEvent(new CustomEvent("outpost:voice-missing")); }
   });
+  // ---- Steer TTS, the optional engine (GET /api/tts/engines, GET /api/voices?engine=steer, POST /api/tts/engines/steer) ----
+  let steerVoices = null;
+  async function loadSteerVoices() {
+    if (steerVoices && steerVoices.length) return steerVoices;
+    try { const r = await fetch("/api/voices?engine=steer"); steerVoices = r.ok ? (await r.json()) : []; } catch (e) { steerVoices = []; }
+    return Array.isArray(steerVoices) ? steerVoices : [];
+  }
+  async function steerState() {
+    try { const r = await fetch("/api/tts/engines"); return r.ok ? ((await r.json()).steer || { state: "missing" }) : { state: "missing" }; }
+    catch (e) { return { state: "missing" }; }
+  }
+  /** The kid asked for Steer: the desktop downloads it now (the backend drops a request file for the main process). */
+  async function requestSteer() {
+    try { const r = await fetch("/api/tts/engines/steer", { method: "POST" }); return r.ok ? await r.json() : { state: "missing" }; }
+    catch (e) { return { state: "missing" }; }
+  }
   let preview = null;
   function previewVoice(v) {
     if (!v || !v.preview_url) return;
@@ -145,6 +179,6 @@ export function createPrefs({ globe = null } = {}) {
 
   return {
     get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire, setApplied, get applied() { return applied; },
-    loadVoices, previewVoice, listProfiles, switchProfile, addProfile, resetProgress,
+    loadVoices, loadSteerVoices, steerState, requestSteer, previewVoice, listProfiles, switchProfile, addProfile, resetProgress,
   };
 }

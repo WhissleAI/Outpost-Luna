@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # watches the check-request file; GET /api/assets / POST /api/assets/check (app/assets_api.py). Unset in a dev checkout.
     assets_state_file: Path | None = None
     assets_check_file: Path | None = None
+    # The desktop app's per-user assets folder (desktop/main/assets.js): the backend asks for an optional asset there
+    # (.want/<id>, the Steer voice when the kid picks it) and reads whether it is downloading (.active/<id>).
+    assets_dir: Path | None = None
 
 
     def media_dirs(self) -> list[Path]:
