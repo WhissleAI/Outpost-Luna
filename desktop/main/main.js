@@ -323,12 +323,23 @@ async function runUpdates(why) {
 /** Children healthy: keep the updates that loaded, roll back the ones that did not (then restart the model server). */
 async function confirmUpdates() {
   if (!updater.trials().length) return;
-  const h = await S.getJson(`http://127.0.0.1:${ports.models}/health`);
-  const r = updater.confirm(h || {});
+  const h = (await S.getJson(`http://127.0.0.1:${ports.models}/health`)) || {};
+  const bad = updater.failing(h);
+  if (bad.length) {
+    // Stop both children BEFORE the rollback renames: Windows keeps open / memory-mapped files (the ear's weights, the
+    // voice clips, the crew audio) locked, so a folder in use cannot be moved. Then start them on the previous copies.
+    log(`assets: ${bad.join(", ")} failed the load check; stopping the children to roll back`);
+    for (const name of ["models", "backend"]) {
+      const k = kids[name];
+      if (k && k.proc) { const p = k.proc; k.proc = null; await S.killTree(p.pid); }
+    }
+  }
+  const r = updater.confirm(h);
   writeSummary();
-  if (r.rolled.length && kids.models && kids.models.proc) {
-    log(`assets: restarting the model server on the previous ${r.rolled.join(", ")}`);
-    S.killTree(kids.models.proc.pid);      // the exit handler starts it again
+  if (bad.length) {
+    log(`assets: restarting on the previous ${r.rolled.join(", ") || "(none)"}`);
+    startChild("models");
+    startChild("backend");
   }
 }
 

@@ -199,3 +199,18 @@ test("the bundled manifest lists the required assets with sizes and sha256s", ()
   assert.equal(ear.fallback.kind, "files");
   assert.ok(A.requiredBytes(m) > 400e6);
 });
+
+test("Windows: a rename held by an antivirus scan (EPERM) is retried; clearAll empties the assets folder", async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "assets-win-"));
+  fs.mkdirSync(path.join(d, "a"));
+  const real = fs.promises.rename;
+  let n = 0;
+  fs.promises.rename = async (a, b) => { if (++n < 3) { const e = new Error("busy"); e.code = "EPERM"; throw e; } return real(a, b); };
+  try { await A.renameRetry(path.join(d, "a"), path.join(d, "b")); } finally { fs.promises.rename = real; }
+  assert.equal(n, 3);
+  assert.ok(fs.existsSync(path.join(d, "b")));
+  fs.writeFileSync(path.join(d, "state.json"), "{}");
+  assert.equal(A.clearAll(d), 2);
+  assert.deepEqual(fs.readdirSync(d), []);
+  fs.rmSync(d, { recursive: true, force: true });
+});

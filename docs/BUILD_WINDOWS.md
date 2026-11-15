@@ -22,6 +22,9 @@ winget install --id astral-sh.uv -e               # Python toolchain; it fetches
 winget install --id Kitware.CMake -e
 # a C compiler for the Arc Tagger library (about 2 GB; takes a while):
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+# clang for libarc, the ear (it needs C11 atomics and GCC builtins that plain cl.exe lacks):
+winget install --id LLVM.LLVM -e
+winget install --id Ninja-build.Ninja -e
 ```
 
 Close and reopen PowerShell afterwards so the new tools are on `PATH`. Check:
@@ -207,12 +210,39 @@ no restart needed. A camera already in use by another app (Teams, Zoom) gives th
 | `model package sha256 mismatch` | re-run (it re-downloads); if it persists the package link changed: report it |
 | `assets without a download link` | run `make asset-pack asset-upload` on the Mac that owns the Dropbox folder, commit `desktop/assets.manifest.json` |
 | CMake: `arctag.dll was not produced` | send the CMake output; try the other compiler route |
+| CMake: `libarc needs clang` / `arc.dll was not produced` | install LLVM + Ninja (§1); with only Visual Studio, add its "C++ Clang tools for Windows" component (the script then uses `-T ClangCL`) |
+| `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | send `models.log`: libarc loads the onnxruntime wheel's `onnxruntime.dll` by path (`site\models\onnxruntime\capi\`) |
 | LLVM route: `unresolved external symbol __cpu_model` / `__cpu_indicator_init` | use the Visual Studio route (it builds the portable kernels), or the cross-built `arctag.dll` (§8) |
 | `DLL imports that resolve nowhere on a clean Windows` (step 4 or 8) | send the list: a package started needing a DLL the app does not ship |
 | splash says the backend or model server "keeps stopping" | send `%APPDATA%\Outpost Luna\logs\*.log` |
 | `models.log`: `DLL load failed` / `WinError 126` on `import torch` | send `models.log`; as a check, installing the "Microsoft Visual C++ Redistributable (x64)" should make it go away (it must not be needed: the app ships those DLLs) |
 | `models.log`: `this x86_64 CPU does not report AVX2 + FMA` | a CPU older than ~2013 with a mingw / clang `arctag.dll`; the MSVC build does not need AVX2. Report the CPU |
 | antivirus quarantines `python.exe` or a `.pyd` | allow the `desktop\` folder (or the install folder) and re-run |
+
+## 5.4 First run, the ear, updates: check on a real PC
+
+The installer no longer carries the models or the media: the app downloads them on first launch into
+`%APPDATA%\Outpost Luna\assets\` (docs/DESKTOP.md "First run: assets"). Check each line on a real Windows PC:
+
+- **First-run download.** On a fresh account (or after deleting `%APPDATA%\Outpost Luna`), the "Getting Outpost Luna
+  ready" screen shows ~510 MB and progress; the app opens when the ear, tagger, embedder and voice are in. Then:
+  - "Continue later" mid-download, start again: it resumes (does not restart from 0);
+  - network off at first launch: the offline message, then "Import offline pack…" with `outpost-luna-assets-v2.zip`
+    from a USB stick installs everything without network;
+  - crew audio and videos keep downloading in the background after the window opens;
+  - Windows Defender / another antivirus scanning the new files does not break the install (renames are retried).
+- **The ear, with a REAL voice** (not TTS played into the mic). Ask "show me Tycho" and "take me to the Sea of
+  Tranquility": the card opens on the right place. `models.log` shows `arc_ear` available with backend `onnxruntime
+  1.32.0`; `/health` `models.arc_ear.rss_after_load_mb` about 1 GB. Note the turn-end delay you feel.
+- **Steer switch** (with the Steer PR, feat/steer-optional): Settings -> Voice -> "Steer TTS (Whissle)" downloads the
+  Steer voice ("Downloading Steer voice…"), then answers in Steer with captions in step; switching back works mid-session.
+- **Update + rollback.** Point the app at a test manifest (`OUTPOST_ASSETS_MANIFEST_URL=<https URL>`, on an allowed host, docs/DESKTOP.md
+  "Asset updates"), with a newer `voice` entry: Settings -> Storage says "Update ready (restart)"; after a restart
+  the new version is in use. Then publish a deliberately broken `ear` update: after the restart `main.log` shows
+  `assets: ROLLBACK ear ...` and the app still listens (the previous ear is back). Both swaps happen with the app's
+  python.exe processes stopped (Windows locks files in use).
+- **Quit** leaves no python.exe; `%APPDATA%\Outpost Luna\assets\` holds only `ear tagger embedder voice crew videos`
+  (+ `state.json`, the cached manifest, and `.prev\` after an update).
 
 ## 7. What to report back
 
@@ -236,6 +266,9 @@ Short checklist (Slack or the PR). Copy it, fill in each line:
 [ ] quit: no python.exe left in Task Manager?
 [ ] RAM after one voice question (Outpost Luna + its python.exe processes): ___ MB
 [ ] main.log lines with "blocked", "FAIL", "exited", "windows privacy":
+[ ] §5.4 first run: download ___ min for ___ MB; resume works?  offline pack import works?
+[ ] §5.4 ear with a real voice: "show me Tycho" opened Tycho?  turn-end delay feel: ___
+[ ] §5.4 Steer switch works (download state, captions)?   update + rollback seen in main.log?
 ```
 
 ## 8. Alternative: cross-build the installer on a Mac
