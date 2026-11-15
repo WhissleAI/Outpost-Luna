@@ -131,3 +131,12 @@ test("the no-session words mirror the router's FLOW_NAV; the pause caption says 
   assert.equal(pauseCaption("gesture"), "Paused: hand signal");
   assert.ok(flowEvents().some(e => e.event === "pause" && e.source === "gesture"), "every pause is in the flow log with its source");
 });
+
+test("a focused control keeps the arrows and Enter (a paused card never traps focus)", async () => {
+  const { focusedControl } = await import("../src/flows.js");
+  const body = {};
+  const btn = { matches: s => /button/.test(s) };
+  assert.equal(focusedControl({ body, activeElement: body }), false, "nothing focused: arrows step the flow");
+  assert.equal(focusedControl({ body, activeElement: btn }), true, "a button focused: arrows move focus");
+  assert.equal(focusedControl(null), false);
+});
