@@ -56,7 +56,7 @@ New Arc Tagger: point the model server at the new tagger (`ARCTAG_LIB`, `ARCTAG_
 `tag_*` features and the rules teacher pick up the new model automatically.
 
 ```
-cd model_server && EMBED_MODEL_DIR=<minilm dir> STEER_TTS=off ARC_EAR=off ARC_META=off \
+cd model_server && EMBED_MODEL_DIR=<minilm dir> OS_TTS=off ARC_EAR=off ARC_META=off \
     uv run uvicorn app.main:app --host 127.0.0.1 --port 8290
 MODEL_SERVER_URL=http://127.0.0.1:8290 uv run --project backend python director_model/gen_sessions.py \
     --out director_model/data/ds --train 3000 --val 300 --test 300
