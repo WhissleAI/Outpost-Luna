@@ -213,4 +213,45 @@ test("Windows: a rename held by an antivirus scan (EPERM) is retried; clearAll e
   assert.equal(A.clearAll(d), 2);
   assert.deepEqual(fs.readdirSync(d), []);
   fs.rmSync(d, { recursive: true, force: true });
+
+test("steer: the fallback takes its files out of a bigger tar (the v1 model package) and adds its licence", async () => {
+  const model = { "steer-tts-edge/config.json": Buffer.from('{"v":1}'), "steer-tts-edge/onnx/enc.onnx": crypto.randomBytes(9000) };
+  const big = tar({ "models/arctag/x.onnx": crypto.randomBytes(5000), "models/steer-tts-edge/config.json": model["steer-tts-edge/config.json"],
+    "models/steer-tts-edge/onnx/enc.onnx": model["steer-tts-edge/onnx/enc.onnx"] });
+  const lic = "SteerTTS licence\n";
+  const files = [...Object.entries(model).map(([p, b]) => ({ path: p, size: b.length })), { path: "LICENSE", size: lic.length }];
+  const { srv, base } = await serve({ "/v1.tar": big });
+  try {
+    const dir = tmp();
+    const a = { id: "steer", title: "Steer voice", required: false, file: "s.tar", url: null, sha256: "0".repeat(64), size: 1,
+      env: "STEER_TTS_MODEL", subdir: "steer-tts-edge", files,
+      fallback: { kind: "tar_members", url: base + "/v1.tar", file: "v1.tar", size: big.length, sha256: sha(big),
+        members: Object.entries(model).map(([p, b]) => ({ from: `models/${p}`, path: p, size: b.length, sha256: sha(b) })),
+        inline: [{ path: "LICENSE", text: lic }] } };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
+    await store.download("steer");
+    assert.deepEqual(fs.readFileSync(path.join(dir, "steer/steer-tts-edge/onnx/enc.onnx")), model["steer-tts-edge/onnx/enc.onnx"]);
+    assert.equal(fs.readFileSync(path.join(dir, "steer/LICENSE"), "utf8"), lic);
+    assert.ok(!fs.existsSync(path.join(dir, "steer/models")));      // only the listed members
+    assert.equal(store.envPaths().STEER_TTS_MODEL, path.join(dir, "steer", "steer-tts-edge"));
+  } finally { srv.close(); }
+});
+
+test("steer: an on-demand ask (.want/<id>) is listed until installed; .active marks a running download", async () => {
+  const { tarBuf, asset } = fixture();
+  const { srv, base } = await serve({ "/s.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, id: "steer", required: false, url: base + "/s.tar" };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
+    assert.deepEqual(store.wanted(), []);
+    store.want("steer");                                            // what the backend does when the kid picks Steer
+    assert.deepEqual(store.wanted(), ["steer"]);
+    const p1 = store.download("steer"), p2 = store.download("steer");
+    assert.equal(p1, p2);                                           // the background loop and the ask share one download
+    assert.ok(fs.existsSync(path.join(dir, ".active/steer")));
+    await p1;
+    assert.ok(!fs.existsSync(path.join(dir, ".active/steer")) && !fs.existsSync(path.join(dir, ".want/steer")));
+    assert.deepEqual(store.wanted(), []);
+  } finally { srv.close(); }
 });

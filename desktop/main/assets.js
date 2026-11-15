@@ -93,8 +93,9 @@ function octal(buf, a, b) {
   return s ? parseInt(s, 8) : 0;
 }
 
-/** Extract a ustar archive (regular files + directories; anything else is skipped) into dest. -> [{path, size}] */
-async function extractTar(tarPath, dest) {
+/** Extract a ustar archive (regular files + directories; anything else is skipped) into dest. -> [{path, size}]
+ *  map(name) -> the path to write it at, or null to skip that member (a fallback that takes a few files of a bigger tar). */
+async function extractTar(tarPath, dest, map = null) {
   const fh = await fsp.open(tarPath, "r");
   const out = [];
   try {
@@ -110,8 +111,9 @@ async function extractTar(tarPath, dest) {
       const size = octal(hdr, 124, 136);
       const type = String.fromCharCode(hdr[156] || 48);
       const full = prefix ? `${prefix}/${name}` : name;
-      if (type === "0" || type === "\0") {
-        const rel = safeRel(full);
+      const mapped = map ? map(safeRel(full)) : safeRel(full);
+      if ((type === "0" || type === "\0") && mapped) {
+        const rel = safeRel(mapped);
         const to = path.join(dest, ...rel.split("/"));
         await fsp.mkdir(path.dirname(to), { recursive: true });
         const w = await fsp.open(to, "w");
@@ -126,7 +128,7 @@ async function extractTar(tarPath, dest) {
           }
         } finally { await w.close(); }
         out.push({ path: rel, size });
-      } else if (type === "5") {
+      } else if (type === "5" && !map) {
         await fsp.mkdir(path.join(dest, ...safeRel(full).split("/")), { recursive: true });
       }
       pos += Math.ceil(size / 512) * 512;
@@ -350,8 +352,64 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     await commit(a, staging);
   }
 
-  async function download(a, opts = {}) {
+  /** A fallback that takes this asset's files out of a bigger published tar (the Steer voice: the v1 model package,
+   *  models/steer-tts-edge/...): download it (resume + its own sha256), extract only the listed members, check each
+   *  member's sha256, add the small inline files (licence / notice), then install as usual. */
+  async function fromTarMembers(a, { onProgress, signal }) {
+    const fb = a.fallback;
+    const part = path.join(dl, fb.file + ".part");
+    await withRetry(`${a.id} (fallback)`, async () => {
+      await downloadTo(fb.url, part, { size: fb.size, signal, fetchImpl,
+        onBytes: (n) => onProgress && onProgress({ id: a.id, phase: "download", done: n, total: fb.size }) });
+      if (fb.sha256 && (await sha256File(part)) !== fb.sha256) { await fsp.rm(part, { force: true }); throw new Error(`${a.id}: fallback sha256 mismatch`); }
+    }, signal);
+    onProgress && onProgress({ id: a.id, phase: "install", done: fb.size, total: fb.size });
+    const want = new Map(fb.members.map((m) => [safeRel(m.from), m]));
+    const staging = path.join(dir, ".staging", a.id);
+    await fsp.rm(staging, { recursive: true, force: true });
+    await fsp.mkdir(staging, { recursive: true });
+    await extractTar(part, staging, (name) => (want.has(name) ? want.get(name).path : null));
+    for (const m of fb.members) {
+      const f = path.join(staging, ...safeRel(m.path).split("/"));
+      if (!fs.existsSync(f) || (m.sha256 && (await sha256File(f)) !== m.sha256)) throw new Error(`${a.id}: ${m.path} missing or damaged in the fallback tar`);
+    }
+    for (const t of fb.inline || []) {
+      const f = path.join(staging, ...safeRel(t.path).split("/"));
+      await fsp.mkdir(path.dirname(f), { recursive: true });
+      await fsp.writeFile(f, t.text, "utf8");
+    }
+    await commit(a, staging);
+    await fsp.rm(part, { force: true });
+  }
+
+  // On-demand: anything (the backend, when the kid picks the Steer voice) asks for an optional asset by creating
+  // <assets>/.want/<id>; the main process polls wanted() and downloads it at once. <assets>/.active/<id> exists while
+  // an asset downloads, so the backend can show "Downloading Steer voice…".
+  const flag = (kind, id) => path.join(dir, kind, id);
+  function want(id) { fs.mkdirSync(path.join(dir, ".want"), { recursive: true }); fs.writeFileSync(flag(".want", id), ""); }
+  function wanted() {
+    try { return fs.readdirSync(path.join(dir, ".want")).filter((id) => byId[id] && check(byId[id]) !== "installed"); }
+    catch { return []; }
+  }
+
+  const inflight = new Map();   // id -> its running download (the background loop and an on-demand ask share it)
+  function download(a, opts = {}) {
     if (typeof a === "string") a = byId[a];
+    if (!inflight.has(a.id)) inflight.set(a.id, downloadTracked(a, opts).finally(() => inflight.delete(a.id)));
+    return inflight.get(a.id);
+  }
+
+  async function downloadTracked(a, opts) {
+    fs.mkdirSync(path.join(dir, ".active"), { recursive: true });
+    fs.writeFileSync(flag(".active", a.id), "");
+    try { return await downloadOne(a, opts); }
+    finally {
+      fs.rmSync(flag(".active", a.id), { force: true });
+      if (check(a) === "installed") fs.rmSync(flag(".want", a.id), { force: true });
+    }
+  }
+
+  async function downloadOne(a, opts = {}) {
     const need = (a.size || 0) + (a.unpacked_size || a.size || 0);
     const free = freeBytes(dir);
     if (free !== null && free < need) {
@@ -367,6 +425,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
       }
     }
     if (a.fallback && a.fallback.kind === "files") return fromFiles(a, opts);
+    if (a.fallback && a.fallback.kind === "tar_members") return fromTarMembers(a, opts);
     throw new Error(`${a.id}: no download link yet (import the offline pack)`);
   }
 
@@ -440,7 +499,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     return out;
   }
 
-  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState, writeState };
+  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState, writeState, want, wanted };
 }
 
 /** "1.10" vs "1.9": numeric dotted compare (updates.js has the same rule). */

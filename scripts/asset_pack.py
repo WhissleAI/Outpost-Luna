@@ -13,6 +13,8 @@ Assets (id -> what, where it is installed under <per-user data>/assets/<id>/, re
     tagger     Arc Tagger v0.3 int8 + tokenizer + meta + LICENSE + NOTICE     required   ARCTAG_MODEL_DIR
     embedder   all-MiniLM-L6-v2 int8 ONNX + tokenizer + NOTICE (Apache-2.0)    required   EMBED_MODEL_DIR
     voice      the recorded Nora voice pack (clips/, index.json, lines.json)   required   VOICE_PACK_DIR
+    steer      Steer TTS Edge v1 (steer-tts-edge/ + director.bin, LICENSE,  optional   STEER_TTS_MODEL=<steer>/steer-tts-edge
+               NOTICE; CC BY-NC 4.0): the optional second voice engine
     crew       trimmed Artemis II crew audio (audio/*.mp3, trim.json), NASA    optional   MEDIA_AUDIO_DIR
     videos     the pinned NASA videos (<id>.mp4/.vtt/.jpg), NASA               optional   VIDEO_PACK_DIR
 
@@ -25,6 +27,9 @@ uploads it again. Sources (env overrides in brackets):
     embedder  [EMBED_MODEL_DIR] default model_server/models/minilm (model_server/tools/export_embedder.py)
     voice     backend/data/voice_pack
     crew      backend/data/media/desktop (make media-desktop)
+    steer     [STEER_SRC] a steer-tts-edge folder (default: the WhissleAI/steer-tts-edge HF snapshot) + director.bin
+              [STEER_DIRECTOR] (default: ../steer-tts/c/models/steer-tts-edge) + ../steer-tts LICENSE and edge/NOTICE.
+              Every file must match STEER_V1_LOCK (the v1 model package's), which is also the download fallback
     videos    [VIDEO_CACHE_SRC] an app video cache folder whose files match the catalog's sha256, else nasa.gov
 Stdlib only, except the videos' SRT -> WebVTT conversion, which reuses backend/app/video.py (run under the backend env).
 """
@@ -163,12 +168,54 @@ def src_videos():
     return out
 
 
+# Steer TTS Edge v1, exactly as the public v1 model package carries it (models/steer-tts-edge/ in
+# outpost-luna-models-v1.tar): the pins below come from that package's lock (desktop/models.lock.json before 7ea1bad).
+STEER_V1 = {"file": "outpost-luna-models-v1.tar", "size": 119352320,
+            "sha256": "c9cb030dd01a3ac3987b1ad9323e185e3b18020c6d2b5805b91db7e232bfc707",
+            "url": "https://www.dropbox.com/scl/fi/h1pbtl1w9jxe0cn6ie247/outpost-luna-models-v1.tar"
+                   "?rlkey=wkqo5r8dh2ednpb9agzdjz3yk&dl=1"}
+STEER_V1_LOCK = {
+    "config.json": "2f80669c353aebb15ecdf170c6f8c18b92608c92ae9bfb776ade2dc39c4da44b",
+    "director.bin": "54a2abfef01ff47893cb923093a16f8fe0cd95f3c32d25b7f16cb8b223b6a630",
+    "front/cmudict.lex": "4538056fbaeae707e3ae2f7095df5e42c19c53f14a5ce8f6d1e41465b9b1ddc7",
+    "front/front.json.xz": "1175db253f517b3fe66097aabc97f17825161e5c718839ae4698c660044213d4",
+    "front/gru.npz": "af855a5d9d2796e631a05d38aa08303fdb33a68f078540fa8b5d7942a9afb62e",
+    "front/oov_cache.lex": "3b9c6fa35ba1a121bc185a65b49816d1188a14d0a13ba7b83ca32e767b2f3b75",
+    "onnx/dec.onnx": "f4ac36d4a9661dbc3ef722e21735c0821ef7e70cf07dbc9fbd498cf12ac1686d",
+    "onnx/enc.onnx": "cfdf6b47874e0af50b94662e66641881b395ca207e8cb4c618db298b83a7493d",
+    "onnx/spkproj.safetensors": "d75fd8d5bd8c0e6fb90acbb43ee72742076525074d8dcfb60e5c433a8a367912",
+    "onnx/voc.onnx": "5df9264dbc582cdcbfc2b5e3c7763d797120bb47f3cc14d52ca8a7cc3abb76d0",
+    "voices.json": "cf143e0133edec5207f9d2e700b3ee88b501c7040919b3c002796da096360713",
+    "voices.safetensors": "a6f22f5b552d85c127664d2a3bc2ef463151f208342de44245c1308fad416978",
+}
+STEER_FILES = ["config.json", "director.bin", "front/cmudict.lex", "front/front.json.xz", "front/gru.npz",
+               "front/oov_cache.lex", "onnx/dec.onnx", "onnx/enc.onnx", "onnx/spkproj.safetensors", "onnx/voc.onnx",
+               "voices.json", "voices.safetensors"]
+STEER_REPO = ROOT.parent / "steer-tts"
+
+
+def src_steer():
+    hf = Path.home() / ".cache/huggingface/hub/models--WhissleAI--steer-tts-edge/snapshots"
+    snaps = sorted(hf.glob("*/config.json")) if hf.exists() else []
+    base = Path(os.environ.get("STEER_SRC", snaps[-1].parent if snaps else ROOT / "model_server/models/steer-tts-edge"))
+    director = Path(os.environ.get("STEER_DIRECTOR", base / "director.bin"))
+    if not director.exists():
+        director = STEER_REPO / "c/models/steer-tts-edge/director.bin"
+    out = [(f"steer-tts-edge/{rel}", director if rel == "director.bin" else (base / rel).resolve()) for rel in STEER_FILES]
+    for rel, p in out:
+        want = STEER_V1_LOCK.get(rel.split("/", 1)[1])
+        if not p.exists() or (want and sha256_file(p) != want):
+            sys.exit(f"steer: {p} missing or not the v1 file (sha256); set STEER_SRC / STEER_DIRECTOR")
+    return out + [("LICENSE", STEER_REPO / "LICENSE"), ("NOTICE", STEER_REPO / "edge/NOTICE")]
+
+
 # id, title, required, source, licence files, env var + subfolder the app points at
 ASSETS = [
     ("ear", "Speech model (Arc Transcriber Space)", True, src_ear, ["LICENSE", "NOTICE"], "ARC_SPACE_DIR", "nft2"),
     ("tagger", "Safety tagger (Arc Tagger)", True, src_tagger, ["LICENSE", "NOTICE"], "ARCTAG_MODEL_DIR", ""),
     ("embedder", "Knowledge search (MiniLM)", True, src_embedder, ["NOTICE"], "EMBED_MODEL_DIR", ""),
     ("voice", "Nora's recorded voice", True, src_voice, [], "VOICE_PACK_DIR", ""),
+    ("steer", "Steer voice (Whissle)", False, src_steer, ["LICENSE", "NOTICE"], "STEER_TTS_MODEL", "steer-tts-edge"),
     ("crew", "Artemis II crew audio", False, src_crew, ["NOTICE"], "MEDIA_AUDIO_DIR", ""),
     ("videos", "NASA videos", False, src_videos, ["NOTICE"], "VIDEO_PACK_DIR", ""),
 ]
@@ -222,6 +269,16 @@ def build(only: set[str] | None) -> dict:
         a = {"id": aid, **keep, "title": title, "required": req, "file": fname, "url": url, "sha256": sha, "size": size,
              "unpacked_size": sum(x["size"] for x in listing), "n_files": len(listing), "env": env, "subdir": sub,
              "licence": lic, "files": listing}
+        if aid == "steer":   # until the Dropbox upload: its files out of the public v1 model package
+            src = dict(files)
+            a["version"], a["min_app"] = "1", "0.1.0"
+            a["fallback"] = {"kind": "tar_members", **STEER_V1,
+                             "members": [{"from": f"models/{x['path']}", "path": x["path"], "size": x["size"],
+                                          "sha256": sha256_file(src[x["path"]])}
+                                         for x in listing if x["path"].startswith("steer-tts-edge/")],
+                             "inline": [{"path": x["path"], "text": src[x["path"]].read_text(encoding="utf-8")}
+                                        for x in listing if not x["path"].startswith("steer-tts-edge/")]}
+            a["note"] = "Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded."
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
             a["fallback"] = {"kind": "files", "base": HF,
