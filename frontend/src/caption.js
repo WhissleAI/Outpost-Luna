@@ -3,8 +3,9 @@
 import { maskProfanity } from "./profanity.js";
 //
 // Timing sources, best first:
-//   1. Steer TTS word timings: /api/tts returns X-TTS-Words ("startMs-endMs,…" per display word), taken from Steer's
-//      own duration predictor (model_server/app/tts_steer.py). floor.js passes them on its "sentence" event.
+//   1. Server word timings: /api/tts returns X-TTS-Words ("startMs-endMs,…" per display word) for the OS voice
+//      (model_server/app/tts_os.py): the voice's own word boundaries on Windows, an estimate anchored on the audio's
+//      pauses on macOS. floor.js passes them on its "sentence" event.
 //   2. The browser voice: speechSynthesis "boundary" events (floor.js re-emits them as "boundary").
 //   3. Deepgram / no timings: an estimate from the audio's duration, weighted by each word's syllables.
 //   Crew audio: player.js already renders a karaoke line from the clip index's word timings (#npLine); we mirror it.
@@ -125,7 +126,7 @@ export function initCaptions({ floor, settings = () => ({}) } = {}) {
     cur = { id: e.id, words, times: times.length === words.length ? times : [], audio: e.audio, k: -2,
       mode: e.audio ? (times.length === words.length ? "timed" : "estimate") : "boundary" };
     cur.spans = render(words, e.voice);
-    bar.dataset.timing = cur.mode;           // "timed" = Steer's own word timings
+    bar.dataset.timing = cur.mode;           // "timed" = the server's word timings (X-TTS-Words)
     spEl.textContent = e.speed && e.speed !== 1 ? e.speed + "×" : "";
     log(e.voice, e.text);
     cancelAnimationFrame(raf); raf = 0;

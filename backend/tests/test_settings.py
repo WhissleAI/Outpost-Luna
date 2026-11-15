@@ -1,9 +1,7 @@
 """Settings (docs/VOICES.md): GET /api/voices + previews, prefs on the session (voice, rate, expressiveness, filter,
 level), the filter levels in the router, and level passed through to the mission sim and the Academy."""
 import asyncio
-import io
 import json
-import wave
 
 import pytest
 from fastapi.testclient import TestClient
@@ -57,58 +55,52 @@ def sess(world):
 
 
 @pytest.fixture
-def steer(monkeypatch, tmp_path):
+def os_calls(monkeypatch, tmp_path):
     calls = []
 
     async def fake(text, style, place):
         calls.append({"text": text, **style})
         return b"RIFFfake", ""
 
-    monkeypatch.setattr(tts, "_steer", fake)
+    monkeypatch.setattr(tts, "_os_tts", fake)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "c")
-    monkeypatch.setattr(settings, "tts_engine", "steer")
+    monkeypatch.setattr(settings, "tts_engine", "os")
     return calls
 
 
 def other_voice() -> str:
-    """A curated voice that is not any persona's own."""
-    return next(v for v in voices.ids() if v not in steering.VOICES.values())
+    """An installed voice that is not the guide's (the role's) own."""
+    return next(v for v in voices.ids() if v != voices.resolve("guide"))
 
 
-# ---- the curated voices ---------------------------------------------------------------------------------------------
+# ---- the OS voices ----------------------------------------------------------------------------------------------------
 def test_voices_api_shape():
     with TestClient(app) as c:
         r = c.get("/api/voices")
     assert r.status_code == 200
     vs = r.json()
-    assert isinstance(vs, list) and len(vs) == 10
+    assert isinstance(vs, list) and [v["id"] for v in vs] == [v["id"] for v in voices.curated()]
     assert all(set(v) == {"id", "name", "desc", "preview_url"} for v in vs)
-    assert len({v["id"] for v in vs}) == 10 and len({v["name"] for v in vs}) == 10
-    assert all(len(v["desc"].split()) == 6 for v in vs)
+    assert vs[0]["id"] == voices.resolve("guide")                  # best first: the default guide voice
+    assert "com.apple.eloquence.en-US.Reed" not in {v["id"] for v in vs}   # low-quality voices stay out of the picker
     assert all(v["preview_url"] == f"/api/voices/preview/{v['id']}.wav" for v in vs)
-    assert steering.VOICES["guide"] in {v["id"] for v in vs}      # the default guide voice is one of them
 
 
-def test_voices_json_carries_the_scores():
-    data = json.loads((settings.data_dir / "voices.json").read_text())
-    assert data["default"] == steering.VOICES["guide"]
-    for v in data["voices"]:
-        s = v["scores"]
-        assert {"wer", "wer_noisy", "rms_dbfs", "peak_dbfs", "clip_pct", "dur_s", "words_per_s", "f0_med_hz",
-                "f0_iqr_st", "f0_range_st"} <= set(s)
-        assert s["wer"] <= 0.10 and s["clip_pct"] == 0
-
-
-def test_previews_are_served_small_and_offline():
+def test_previews_render_on_demand_through_the_tts_cache(os_calls):
     with TestClient(app) as c:
-        for v in c.get("/api/voices").json():
-            r = c.get(v["preview_url"])
-            assert r.status_code == 200 and r.headers["content-type"].startswith("audio/")
-            w = wave.open(io.BytesIO(r.content))
-            assert (w.getframerate(), w.getnchannels(), w.getsampwidth()) == (16000, 1, 2)
-            assert 0.8 <= w.getnframes() / 16000 <= 2.6
+        v = c.get("/api/voices").json()[1]
+        r = c.get(v["preview_url"])
+        assert r.status_code == 200 and r.headers["x-tts-voice"] == v["id"]
+        assert c.get(v["preview_url"]).headers["x-tts-cache"] == "hit"
         assert c.get("/api/voices/preview/voice_9999.wav").status_code == 404
         assert c.get("/api/voices/preview/../voices.json").status_code == 404
+    assert len(os_calls) == 1 and os_calls[0]["tts_voice"] == v["id"] and os_calls[0]["text"] == voices.PREVIEW_LINE
+
+
+def test_roles_and_unknown_ids():
+    assert voices.allowed("capcom") and voices.allowed(other_voice())
+    assert not voices.allowed("voice_1085") and not voices.allowed(None) and not voices.allowed("com.apple.voice.Nope")
+    assert voices.resolve("capcom") == "com.apple.voice.Aman.premium" and voices.resolve("x") == "x"
 
 
 # ---- prefs on the session ----------------------------------------------------------------------------------------------
@@ -126,13 +118,13 @@ def test_default_prefs_leave_decisions_unchanged(sess):
 def test_prefs_voice_goes_to_the_guide_only(sess):
     v = other_voice()
     run(sess.handle({"type": "prefs", "voice": v, "rate": 1.25, "expressiveness": 0.9}))
-    assert say(sess, "guide")["style"]["steer_voice"] == v
-    assert say(sess, "capcom")["style"]["steer_voice"] == steering.VOICES["capcom"]
-    assert say(sess, "houston")["style"]["steer_voice"] == steering.VOICES["houston"]
+    assert say(sess, "guide")["style"]["tts_voice"] == v
+    assert say(sess, "capcom")["style"]["tts_voice"] == steering.VOICES["capcom"]     # its role, resolved in /api/tts
+    assert say(sess, "houston")["style"]["tts_voice"] == steering.VOICES["houston"]
     run(sess.handle({"type": "prefs", "voice_all": True}))      # partial update: the voice stays
     assert sess.prefs["voice"] == v
     for p in ("guide", "capcom", "houston", "story"):
-        assert say(sess, p)["style"]["steer_voice"] == v
+        assert say(sess, p)["style"]["tts_voice"] == v
 
 
 def test_prefs_reject_unknown_values(sess):
@@ -144,38 +136,38 @@ def test_prefs_reject_unknown_values(sess):
     assert sess.prefs["rate"] == steering.SPEED_RANGE[1]
 
 
-def test_tts_request_carries_the_voice_and_rate(sess, steer):
+def test_tts_request_carries_the_voice_and_rate(sess, os_calls):
     v = other_voice()
     run(sess.handle({"type": "prefs", "voice": v, "rate": 1.25}))
     d = say(sess, "guide", "The rover found ice near the south pole.")
     run(tts.speak(d["text"], d["voice"], d["style"]))
-    body = steer[-1]
+    body = os_calls[-1]
     want, pace, _ = steering.delivery(steering.style_for("guide", d["text"])["controls"], 1.25)
-    assert body["steer_voice"] == v
+    assert body["tts_voice"] == v
     assert body["pace"] == pace and body["controls"]["rate"] == want["rate"]   # baseline + the rate setting
     # CAPCOM keeps its voice but gets the rate
     d = say(sess, "capcom", "Copy, commander. Shields to 40.")
     run(tts.speak(d["text"], d["voice"], d["style"]))
-    assert steer[-1]["steer_voice"] == steering.VOICES["capcom"] and steer[-1]["pace"] == pace
+    assert os_calls[-1]["tts_voice"] == voices.resolve("capcom") and os_calls[-1]["pace"] == pace
 
 
-def test_explicit_speed_query_wins_over_settings(steer):
+def test_explicit_speed_query_wins_over_settings(os_calls):
     st = {**steering.style_for("guide", "Hello."), "speed": 1.5}
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Hello.", "voice": "guide", "style": json.dumps(st), "speed": 0.75})
-    assert r.status_code == 200 and steer[-1]["pace"] == steering.speed_steer(0.75)[1]
+    assert r.status_code == 200 and os_calls[-1]["pace"] == steering.speed_steer(0.75)[1]
 
 
-def test_client_written_line_with_settings_only(steer):
+def test_client_written_line_with_settings_only(os_calls):
     """A client-written line can send only the Settings as its style: the persona default style, with them."""
     v = other_voice()
     with TestClient(app) as c:
         c.get("/api/tts", params={"text": "Badge earned!", "voice": "guide",
-                                  "style": json.dumps({"steer_voice": v, "speed": 1.25})})
+                                  "style": json.dumps({"tts_voice": v, "speed": 1.25})})
         c.get("/api/tts", params={"text": "Badge earned!", "voice": "guide",
-                                  "style": json.dumps({"steer_voice": "voice_9999"})})
-    assert steer[0]["steer_voice"] == v and steer[0]["tag"] == steering.PERSONA_BASE["guide"]["tag"]
-    assert steer[1]["steer_voice"] == steering.VOICES["guide"]          # not curated: the persona's own voice
+                                  "style": json.dumps({"tts_voice": "voice_9999"})})
+    assert os_calls[0]["tts_voice"] == v and os_calls[0]["tag"] == steering.PERSONA_BASE["guide"]["tag"]
+    assert os_calls[1]["tts_voice"] == voices.resolve("guide")           # not installed: the persona's own voice
 
 
 @pytest.mark.parametrize("e", [0.0, 0.25, 0.5, 0.75, 1.0])
@@ -189,13 +181,13 @@ def test_expressiveness_mapping(e):
     assert tag == ("contentment" if e < 0.25 else "pride")
 
 
-def test_expressiveness_reaches_the_engine_and_never_calms_an_alarm(sess, steer):
+def test_expressiveness_reaches_the_engine_and_never_calms_an_alarm(sess, os_calls):
     run(sess.handle({"type": "prefs", "expressiveness": 0.0}))
     alarm = director.decision("say", text="Storm is here! Into the shelter.", voice="capcom", situation="storm_alert")
     run(sess.emit([alarm]))
     d = sess.outbox[-1]
     run(tts.speak(d["text"], d["voice"], d["style"]))
-    body = steer[-1]
+    body = os_calls[-1]
     base = steering.SITUATIONS["storm_alert"]
     want, _, _ = steering.delivery(base["controls"])          # the 1x delivery baseline, expressiveness aside
     assert body["tag"] == base["tag"] and body["controls"]["rate"] == want["rate"]
@@ -350,3 +342,22 @@ def test_level_on_mission_start_and_academy_attempt():
         b = c.post("/api/academy/attempt", json={"lesson_id": les["id"], "step": 0, "input": {"text": "hmm"}})
     assert a.status_code == b.status_code == 200
     assert a.json()["status"] == b.json()["status"]       # no behaviour change from the level (yet)
+
+
+def test_switching_the_macs_system_voice_renders_new_audio(os_calls):
+    """The system voice (`say` with no -v) is one id whatever voice the parent picked: the cache key names that voice."""
+    from conftest import FAKE_VOICES
+    sysv = {"id": "system", "name": "Your Mac's system voice", "desc": "Nora (Siri)", "quality": "siri",
+            "system_voice": "com.apple.siri.natural.Nora", "picker": True}
+    voices.set_catalog({**FAKE_VOICES, "roles": {**FAKE_VOICES["roles"], "guide": "system"},
+                        "voices": [sysv, *FAKE_VOICES["voices"]]})
+    assert voices.cache_tag("system") == "system@com.apple.siri.natural.Nora"
+    assert voices.cache_tag("com.apple.voice.Tara.premium") == "com.apple.voice.Tara.premium"
+    with TestClient(app) as c:
+        a = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+        voices.set_catalog({**FAKE_VOICES, "roles": {**FAKE_VOICES["roles"], "guide": "system"},
+                            "voices": [{**sysv, "system_voice": "com.apple.siri.natural.Aaron"}, *FAKE_VOICES["voices"]]})
+        b = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+        c2 = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+    assert a.headers["x-tts-voice"] == "system" and a.headers["x-tts-cache"] == "miss"
+    assert b.headers["x-tts-cache"] == "miss" and c2.headers["x-tts-cache"] == "hit" and len(os_calls) == 2

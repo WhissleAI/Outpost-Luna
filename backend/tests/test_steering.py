@@ -2,7 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import steering, tts
+from app import steering, tts, voices
 from app.config import settings
 from app.director import decision, decisions_for
 from app.main import app
@@ -28,10 +28,10 @@ def test_situation_table(situation, tag, check):
     assert st["tag"] == tag and check(st["controls"])
 
 
-def test_personas_have_distinct_steer_voices():
+def test_personas_have_distinct_tts_voices():
     assert len(set(steering.VOICES.values())) == 4
     assert S("capcom")["tag"] == "confidence" and S("capcom")["controls"]["rate"] > 0
-    assert S("story")["steer_voice"] == steering.VOICES["story"]
+    assert S("story")["tts_voice"] == steering.VOICES["story"]
     assert S("guide", "A crater.", situation="story")["voice"] == "story"   # a hardware story speaks as the hardware
 
 
@@ -85,7 +85,7 @@ def test_controls_are_clamped():
 # ---- the Director carries style -----------------------------------------------------------------------------------------
 def test_every_say_decision_has_style():
     d = decision("say", text="Hello cadet.", voice="guide")
-    assert d["style"]["steer_voice"] == steering.VOICES["guide"] and "situation" not in d
+    assert d["style"]["tts_voice"] == steering.VOICES["guide"] and "situation" not in d
 
 
 def test_decisions_for_maps_actions_to_situations():
@@ -110,35 +110,36 @@ def test_academy_attempt_styles():
 # ---- /api/tts: engine selection, fallback, cache key ---------------------------------------------------------------------
 @pytest.fixture
 def engines(monkeypatch, tmp_path):
-    calls = {"steer": [], "deepgram": [], "steer_ok": True}
+    calls = {"os": [], "deepgram": [], "os_ok": True}
 
-    async def steer(text, style, place):
-        calls["steer"].append((text, style, place))
-        if not calls["steer_ok"]:
-            raise RuntimeError("steer tts 503: not loaded")
+    async def os_tts(text, style, place):
+        calls["os"].append((text, style, place))
+        if not calls["os_ok"]:
+            raise RuntimeError("os tts 503: not loaded")
         return b"RIFFfake-wav:" + style["tag"].encode()
 
     async def dg(model, text):
         calls["deepgram"].append((model, text))
         return b"ID3fake-mp3"
 
-    monkeypatch.setattr(tts, "_steer", steer)
+    monkeypatch.setattr(tts, "_os_tts", os_tts)
     monkeypatch.setattr(tts, "_synth", dg)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "c")
-    monkeypatch.setattr(settings, "tts_engine", "steer")
+    monkeypatch.setattr(settings, "tts_engine", "os")
     monkeypatch.setattr(settings, "deepgram_api_key", "k")
     return calls
 
 
-def test_steer_is_default_engine_and_returns_wav(engines):
+def test_os_voice_is_default_engine_and_returns_wav(engines):
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Copy that.", "voice": "capcom"})
     assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
-    assert r.headers["x-tts-engine"] == "steer" and r.headers["x-tts-voice"] == steering.VOICES["capcom"]
-    assert engines["steer"][0][1]["tag"] == "confidence" and not engines["deepgram"]
+    assert r.headers["x-tts-engine"] == "os" and r.headers["x-tts-voice"] == voices.resolve("capcom")
+    assert voices.resolve("capcom") != steering.VOICES["capcom"]          # the role became this machine's voice
+    assert engines["os"][0][1]["tag"] == "confidence" and not engines["deepgram"]
 
 
-def test_style_param_reaches_steer_and_keys_the_cache(engines):
+def test_style_param_reaches_the_engine_and_keys_the_cache(engines):
     import json
     calm = json.dumps(S("capcom", "Shields up.", situation="night_low_power"))
     alert = json.dumps(S("capcom", "Shields up.", situation="storm_alert"))
@@ -149,38 +150,38 @@ def test_style_param_reaches_steer_and_keys_the_cache(engines):
         p = c.post("/api/tts", json={"text": "Shields up.", "voice": "capcom", "style": json.loads(alert)})
     assert a.headers["x-tts-cache"] == b.headers["x-tts-cache"] == "miss"     # a new style = a new rendering
     assert a2.headers["x-tts-cache"] == p.headers["x-tts-cache"] == "hit"
-    assert [s["tag"] for _, s, _ in engines["steer"]] == ["serenity", "determined"]
-    k1 = tts.cache_path("v", "t", {"tag": "relief"}, "steer")
-    assert k1 != tts.cache_path("v", "t", {"tag": "pride"}, "steer") and k1.suffix == ".wav"
+    assert [s["tag"] for _, s, _ in engines["os"]] == ["serenity", "determined"]
+    k1 = tts.cache_path("v", "t", {"tag": "relief"}, "os")
+    assert k1 != tts.cache_path("v", "t", {"tag": "pride"}, "os") and k1.suffix == ".wav"
 
 
-def test_sentence_place_goes_to_the_director(engines):
+def test_sentence_place_reaches_the_engine(engines):
     with TestClient(app) as c:
         c.get("/api/tts", params={"text": "One.", "voice": "guide", "i": 0, "n": 2, "next": "Two."})
-    assert engines["steer"][0][2] == {"para_index": 0, "para_len": 2, "next": "Two."}
+    assert engines["os"][0][2] == {"para_index": 0, "para_len": 2, "next": "Two."}
 
 
-def test_steer_down_falls_back_to_deepgram(engines):
-    engines["steer_ok"] = False
+def test_os_voice_down_falls_back_to_deepgram(engines):
+    engines["os_ok"] = False
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Copy.", "voice": "capcom"})
     assert r.status_code == 200 and r.headers["x-tts-engine"] == "deepgram"
-    assert r.headers["content-type"] == "audio/mpeg" and "steer" in r.headers["x-tts-fallback"]
+    assert r.headers["content-type"] == "audio/mpeg" and "os" in r.headers["x-tts-fallback"]
 
 
 def test_both_down_tells_the_browser(engines, monkeypatch):
-    engines["steer_ok"] = False
+    engines["os_ok"] = False
     monkeypatch.setattr(settings, "deepgram_api_key", "")
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Copy."})
     assert r.status_code == 502 and r.json()["fallback"] == "browser"
 
 
-def test_engine_deepgram_skips_steer(engines, monkeypatch):
+def test_engine_deepgram_skips_the_os_voice(engines, monkeypatch):
     monkeypatch.setattr(settings, "tts_engine", "deepgram")
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Copy.", "voice": "houston"})
-    assert r.headers["x-tts-engine"] == "deepgram" and not engines["steer"]
+    assert r.headers["x-tts-engine"] == "deepgram" and not engines["os"]
 
 
 def test_old_query_shape_still_works(engines):

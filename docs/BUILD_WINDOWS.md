@@ -155,12 +155,25 @@ no restart needed. A camera already in use by another app (Teams, Zoom) gives th
 
    (If you built it yourself, `desktop\resources\python\python.exe` with `PYTHONPATH=desktop\resources\site\backend`
    works too.) Expected: a list of `PASS` lines ending in `ALL PASS`: the local speech ear hears "show me the giant
-   bull's eye", answers, speaks with Steer TTS, grades a Flight School step, runs a mission shift, and finds every
+   bull's eye", answers, speaks with the Windows voice (and checks its word timings against the audio), grades a Flight School step, runs a mission shift, and finds every
    gesture model both served and on disk. If the app chose other ports (see `%APPDATA%\Outpost Luna\ports.json`), add
    `--base http://127.0.0.1:<backend port>`.
-5. **Voice.** Hold **Space** (or the talk button) and ask "where did Apollo 11 land?". You should hear an answer in the
-   default voice. Then **Settings → Voice**: play two or three voice previews (each is a short offline clip), pick one,
-   and ask again: the answer uses the new voice. Volume and speed changes apply to the next line.
+5. **Voice (the Windows voices).** The app speaks with Windows' own offline voices: WinRT SpeechSynthesis (the
+   "OneCore" voices: Zira, David, Mark …), with SAPI as the fallback; nothing is downloaded. Check, and note for §7:
+   - **Which engine and voice were picked.** Open `http://127.0.0.1:47210/health` in a browser (the model server; see
+     `ports.json` if it chose another port): `models.tts` shows `engine` (expect `winrt`; `sapi` means WinRT failed to
+     start: send `models.log`), `voice` / `voice_name` (the guide), `roles` (CAPCOM should be a different voice if two
+     English voices are installed), `voices` (how many), `timing` (expect `os`) and `warm_ms`.
+     `http://127.0.0.1:47210/v1/tts/voices` lists them all, best first.
+   - **Latency.** Hold **Space** (or the talk button) and ask "where did Apollo 11 land?". Note how long from the end of
+     your question to the first word you hear, and whether there are gaps between sentences. The smoke test prints
+     the server's time for one line (`OS voice TTS: … in ___ ms`).
+   - **Captions.** Settings → Read → Captions on. While the guide speaks, the highlighted word should move with the
+     voice (on Windows the timings come from the voice itself). Note if it runs ahead or behind.
+   - **Settings → Voice**: the list shows this PC's English voices, best first, with "Parents can download clearer
+     Windows voices: Settings → Time & language → Speech → Manage voices." Play two or three previews, pick one, ask
+     again: the answer uses the new voice. Volume and speed changes apply to the next line. Optional: add a voice in
+     Windows Settings (as the hint says) and, within 30 s, it appears in the list.
 6. **Keyboard** (docs/KEYBOARD.md). With the mouse untouched: arrows move the focus ring, Enter selects, Esc goes back,
    `?` opens the key help, **Alt+→ / Alt+←** next / previous, **Alt+Y / Alt+N** yes / no, **Alt+.** stops speech.
    Pressing **Alt** alone must do nothing (there is no menu bar to open). The shell keys: **F5**, **Ctrl+R** and
@@ -211,7 +224,10 @@ Short checklist (Slack or the PR). Copy it, fill in each line:
 [ ] SmartScreen: "Run anyway" worked?  Any firewall dialog? (should be none)  Any console window? (should be none)
 [ ] cold start to Flight School: 1st ___ s, 2nd ___ s, with network blocked ___ s
 [ ] smoke.py: ALL PASS?  (paste the output if not)
-[ ] voice: answer heard?  voice previews play?  changing the voice changes the answer?
+[ ] voice: /health models.tts engine ___ (winrt?)  guide voice ___  CAPCOM voice ___  voices ___  timing ___  warm_ms ___
+[ ] voice: question end -> first word heard ___ s;  smoke "OS voice TTS ... in ___ ms";  gaps between sentences? ___
+[ ] captions: highlighted word in step with the voice?  (ahead / behind / fine)
+[ ] voice: previews play?  changing the voice changes the answer?  the "Manage voices" hint shown?
 [ ] keyboard: arrows/Enter/Esc, Alt shortcuts, F5 and Ctrl+R do nothing, Ctrl+= zooms, F11 full screen?
 [ ] cockpit: cabin builds and turns smoothly?  panel opens, order works?
 [ ] controller (if you have one): toast shown, A/B/D-pad work?
@@ -250,8 +266,11 @@ Step 8 then checks the result without running it (`desktop/scripts/win_bundle_ch
   bundle or in Windows itself; this is the check that found the missing `MSVCP140.dll` (now shipped).
 - the installer is unpacked with 7-Zip and its payload compared file by file with `dist/win-unpacked`;
 - `compare` (with `MAC_APP`): the Mac `.app`'s `Contents/Resources` against the Windows `resources`: app code, models
-  (sha256 vs `models.lock.json`), media, vision assets, voices and previews, Director weights, the native library,
-  and both site folders' packages.
+  (sha256 vs `models.lock.json`), media, vision assets, the OS-voice engine, Director weights, the native library,
+  and both site folders' packages;
+- `speech`: the Windows speech packages are in `site/models` (pywinrt 3.2.1's `_winrt*.pyd` for SpeechSynthesis,
+  Media.Core (word cues), Storage.Streams, Foundation, Foundation.Collections, and comtypes for the SAPI fallback).
+  `build_python.py --target win-x64` refuses a tree without them.
 
 `desktop/resources/` holds one platform's build at a time: after a cross-build, `build-mac.sh` rebuilds it for the Mac
 (and the other way round). The script deletes its intermediates (the unpacked app, the Python tree's caches) and keeps

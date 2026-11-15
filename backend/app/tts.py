@@ -3,16 +3,18 @@
 GET  /api/tts?text=…&voice=guide|capcom|story|houston[&style=<json>][&i=&n=&next=]  → audio, cached on disk by hash
 POST /api/tts {text, voice, style?, i?, n?, next?}                                      → the same
 
-Engines (TTS_ENGINE=steer|deepgram, default steer):
-  steer     Steer TTS Edge on the model server (POST /v1/tts): Whissle's on-device TTS, steered per line by the
-            Director's `style` (tag, controls, emphasis markup, performance director). → audio/wav
+Engines (TTS_ENGINE=os|deepgram, default os):
+  os        The operating system's own offline voice on the model server (POST /v1/tts; macOS `say`, Windows WinRT /
+            SAPI): the persona's role (or the kid's chosen voice) at the style's rate and pauses. → audio/wav + word
+            timings
   deepgram  Deepgram Aura-2 over REST. → audio/mpeg
-Fallback chain: steer → deepgram (when DEEPGRAM_API_KEY is set) → 503 {"fallback":"browser"} (speechSynthesis).
+Fallback chain: os → deepgram (when DEEPGRAM_API_KEY is set) → 503 {"fallback":"browser"} (speechSynthesis).
 
 `style` is the `say.style` the Director sent (backend/app/steering.py); without one the persona's default style is
-used, so `/api/tts?text=&voice=` keeps working. `i`/`n`/`next` place the sentence in its text, for the director's plan
-(the client splits long text into sentences and asks for one at a time, prefetching the next). The cache key holds the
-engine, the voice, the text and the style, so a re-steered line never plays a stale rendering.
+used, so `/api/tts?text=&voice=` keeps working. `i`/`n`/`next` place the sentence in its text (the client splits long
+text into sentences and asks for one at a time, prefetching the next; a sentence with a next one ends on a short gap).
+The cache key holds the engine, the concrete OS voice, the text and the style, so a re-steered line or a newly
+installed voice never plays a stale rendering.
 
 The browser plays this as in-page audio, so Chrome's echo canceller can subtract it from the mic.
 """
@@ -46,11 +48,11 @@ VOICES: dict[str, str] = {
     "story": "aura-2-iris-en",      # young, cheerful
     "houston": "aura-2-orion-en",
 }
-MEDIA = {"steer": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
+MEDIA = {"os": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
 
 CACHE_DIR: Path | None = None     # tests point this elsewhere; default data_dir/tts_cache (gitignored)
-PREF_KEYS = ("steer_voice", "speed", "expr", "volume")
-MASTER_VERSION = 2                # in the cache key: bump when the delivery baseline or the mastering changes
+PREF_KEYS = ("tts_voice", "speed", "expr", "volume")
+MASTER_VERSION = 3                # in the cache key: bump when the delivery baseline or the mastering changes
 
 
 def cache_dir() -> Path:
@@ -67,7 +69,7 @@ def cache_path(model: str, text: str, style: dict | None = None, engine: str = "
 
 def clean_style(voice: str, text: str, style: dict | None) -> dict:
     """The client's style (from the Director) made safe, or the persona default. Only what reaches the engine.
-    Settings ride on the style (docs/VOICES.md): `steer_voice` (a curated or persona voice id), `speed` (the rate
+    Settings ride on the style (docs/VOICES.md): `tts_voice` (an installed OS voice id or a persona role), `speed` (the rate
     setting, applied in speak()), `expr` (expressiveness 0–1, steering.with_expressiveness) and `volume` (the master
     volume, 1 = the loudness target; applied in speak())."""
     prefs = {k: style[k] for k in PREF_KEYS if k in style} if isinstance(style, dict) else {}
@@ -88,7 +90,7 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
             ctrl[str(k)] = round(max(-steering.CONTROL_LIMIT, min(steering.CONTROL_LIMIT, float(v))), 2)
         except (TypeError, ValueError):
             continue
-    out = {"voice": persona, "steer_voice": steering.VOICES[persona], "tag": tag, "controls": ctrl}
+    out = {"voice": persona, "tts_voice": steering.VOICES[persona], "tag": tag, "controls": ctrl}
     if style.get("situation") in steering.SITUATIONS:       # picks the loudness target and the slow-line baseline
         out["situation"] = style["situation"]
     emph = [str(w)[:40] for w in (style.get("emph") or []) if str(w).strip()][:4]
@@ -105,8 +107,8 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
                           "strength": max(0.0, min(1.0, float(perf.get("strength", 0.7))))}
     # ---- Settings (docs/VOICES.md) ----
     from . import voices
-    if voices.allowed(prefs.get("steer_voice")):
-        out["steer_voice"] = prefs["steer_voice"]
+    if voices.allowed(prefs.get("tts_voice")):
+        out["tts_voice"] = prefs["tts_voice"]
     if "expr" in prefs:
         e = steering.clamp_expr(prefs["expr"])
         out["tag"], out["controls"], p2 = steering.with_expressiveness(out["tag"], out["controls"], out.get("perform"), e)
@@ -163,7 +165,7 @@ def _remap_words(words: str, keep) -> str:
 
 
 def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, dict | None]:
-    """The final stage for every Steer render (§4d): cap long silences (the delivery baseline's gap), then
+    """The final stage for every OS-voice render (§4d): cap long silences (the delivery baseline's gap), then
     loudness-normalise to the target (+2 LU for alarms, + the kid's volume) under a -1 dBTP look-ahead limiter.
     Fails open: audio that isn't 16-bit WAV goes out as it came."""
     try:
@@ -186,12 +188,12 @@ async def _synth(model: str, text: str) -> bytes:
     return r.content
 
 
-async def _steer(text: str, style: dict, place: dict) -> tuple[bytes, str]:
-    """One Steer TTS Edge render on the model server → (wav, word timings header). Raises on any failure (the caller
-    falls back)."""
+async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str]:
+    """One OS-voice render on the model server → (wav, word timings header). Raises on any failure (the caller falls
+    back). The model server strips the emphasis markup and uses the rate / pause controls (model_server/app/tts_os.py)."""
     marked = bool(style.get("emph") or style.get("vocab"))
     body = {"text": steering.apply_markup(text, style.get("emph"), style.get("vocab")) if marked else text,
-            "voice": style["steer_voice"], "tag": style["tag"], "controls": style["controls"] or None,
+            "voice": style["tts_voice"], "tag": style["tag"], "controls": style["controls"] or None,
             "markup": marked}
     if style.get("pace", 1.0) != 1.0:
         body["pace"] = style["pace"]
@@ -202,8 +204,8 @@ async def _steer(text: str, style: dict, place: dict) -> tuple[bytes, str]:
     async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s) as c:
         r = await c.post("/v1/tts", json=body)
     if r.status_code != 200 or not r.content:
-        raise RuntimeError(f"steer tts {r.status_code}: {r.text[:160]}")
-    return r.content, r.headers.get("X-Steer-Words", "")
+        raise RuntimeError(f"os tts {r.status_code}: {r.text[:160]}")
+    return r.content, r.headers.get("X-TTS-Words", "")
 
 
 # ---- a11y: word timings for captions (docs/ACCESSIBILITY.md) -----------------------------------------------------------
@@ -234,9 +236,12 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
     if not text:
         return JSONResponse({"error": "empty text"}, status_code=422)
     reasons: list[str] = []
-    engines = ["steer", "deepgram"] if settings.tts_engine == "steer" else ["deepgram"]
+    engines = ["deepgram"] if settings.tts_engine == "deepgram" else ["os", "deepgram"]   # "steer" (old .env) = os
+    from . import voices
+    if "os" in engines:
+        await voices.refresh()
     for engine in engines:
-        if engine == "steer":
+        if engine == "os":
             st = clean_style(voice, text, style)
             speed = speed if speed is not None else st.pop("speed", None)   # an explicit ?speed= wins over Settings
             st.pop("speed", None)
@@ -246,7 +251,8 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             if pace != 1.0:
                 st["pace"] = pace
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}
-            model, key = st["steer_voice"], {**st, **{k: v for k, v in place.items() if v is not None},
+            st["tts_voice"] = voices.resolve(st["tts_voice"])     # the role -> this machine's voice for it
+            model, key = st["tts_voice"], {**st, "voice_tag": voices.cache_tag(st["tts_voice"]), **{k: v for k, v in place.items() if v is not None},
                                              "master": MASTER_VERSION}
         else:
             if not settings.deepgram_api_key:
@@ -269,8 +275,8 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             return Response(p.read_bytes(), media_type=media,
                             headers={**headers, "X-TTS-Cache": "hit", **({"X-TTS-Words": w} if w else {})})
         try:
-            if engine == "steer":
-                res = await _steer(text, st, place)
+            if engine == "os":
+                res = await _os_tts(text, st, place)
                 audio, words = res if isinstance(res, tuple) else (res, "")
                 audio, words, info = finish(audio, st, clean_words(words), last=not place.get("next"))
                 if info and info.get("lufs") is not None:

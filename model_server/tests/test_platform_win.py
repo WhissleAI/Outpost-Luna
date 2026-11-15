@@ -39,18 +39,13 @@ def test_library_name_per_os(monkeypatch):
 def test_desktop_env_paths_win_over_dev_defaults(monkeypatch, tmp_path):
     """The desktop app sets every weight path by env var (main.js envFor); nothing falls back to a home-folder default."""
     models = tmp_path / "Outpost Luna" / "resources" / "models"
-    (models / "steer-tts-edge").mkdir(parents=True)
-    (models / "steer-tts-edge" / "config.json").write_text("{}")
-    (models / "steer-tts-edge" / "director.bin").write_bytes(b"\0")
     monkeypatch.setenv("ARCTAG_LIB", str(tmp_path / "native" / "arctag.dll"))
     monkeypatch.setenv("ARCTAG_MODEL_DIR", str(models / "arctag"))
-    monkeypatch.setenv("STEER_TTS_MODEL", str(models / "steer-tts-edge"))
-    monkeypatch.setenv("STEER_DIRECTOR", str(models / "steer-tts-edge" / "director.bin"))
+    monkeypatch.setenv("OS_TTS_ENGINE", "winrt")
     s = config.Settings(_env_file=None)
     assert s.arctag_lib == Path(tmp_path / "native" / "arctag.dll")
     assert s.arctag_model_dir == models / "arctag"
-    assert s.steer_model_dir() == models / "steer-tts-edge"
-    assert s.steer_director_path() == models / "steer-tts-edge" / "director.bin"
+    assert s.os_tts == "on" and s.os_tts_engine == "winrt"     # speech needs no model path: the OS's own voices
 
 
 def test_health_memory_probe_works_without_posix_resource_module(monkeypatch):

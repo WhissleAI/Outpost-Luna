@@ -3,7 +3,7 @@
 
     y, info = master(x, sr, target_lufs=-14.0, gain_db=0.0)
 
-Steer renders speech at roughly -17 to -21 LUFS with ~4 dB of spread between voices. `master` brings every line to the
+TTS voices render at roughly -17 to -25 LUFS with several dB of spread between voices. `master` brings every line to the
 same integrated loudness (the target, plus the kid's volume gain and the alarm offset), then a look-ahead limiter
 holds the true peak under -1 dBTP without hard clipping. The limiter only moves gain on the few peaks the make-up gain
 pushes over the ceiling; its gain ramps over the look-ahead window (no step = no click / distortion).

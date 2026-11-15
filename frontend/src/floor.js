@@ -2,8 +2,8 @@
 //
 // Channels
 //   guide    server speech, GET /api/tts?text=…&voice=guide|capcom|story|houston&style=…, one sentence at a time with
-//            the next one prefetched. `style` is the Director's say.style (Steer TTS steering, docs/VOICE_STEERING.md);
-//            each sentence also sends i/n/next so Steer's performance director plans it in context. The URL (and so the
+//            the next one prefetched. `style` is the Director's say.style (voice steering, docs/VOICE_STEERING.md);
+//            each sentence also sends i/n/next, so a sentence with a next one ends on a short gap. The URL (and so the
 //            browser and server caches) includes the style.
 //            prefetched, played as an in-page <audio> so the browser's echo canceller removes it from the mic.
 //            Fallback (no key / offline / 5xx): speechSynthesis, sentence by sentence, never cancel() right before
@@ -129,13 +129,13 @@ function bargeThresholds() {
   const f = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter;
   return BARGE[f] || BARGE.normal;
 }
-/** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen Steer voice
+/** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen OS voice
  *  (for the guide, or every voice when "use for everyone" is on), the speed and the liveliness. */
 export function prefStyle(style, voice, speed) {
   const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
   if (!P) return style;
   const out = { ...(style && typeof style === "object" ? style : {}) };
-  if (P.voice && (P.voice_all || voice === "guide")) out.steer_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
+  if (P.voice && (P.voice_all || voice === "guide")) out.tts_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
   if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;
@@ -198,7 +198,7 @@ const VOICE_PARAMS = {          // speechSynthesis fallback only
   houston: { rate: 0.98, pitch: 0.85 },
 };
 
-/** The /api/tts URL for one sentence: voice, the Director's style, and its place in the text (for Steer's director). */
+/** The /api/tts URL for one sentence: voice, the Director's style, and its place in the text. */
 export function ttsUrlFor(base, text, voice, style, i, n, next, speed) {
   const q = new URLSearchParams({ voice, text });
   if (speed && Math.abs(speed - 1) > 1e-3) q.set("speed", String(speed));   // [a11y] the kid's TTS speed (a11y.js)
@@ -231,7 +231,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
   let server = true;                        // false after a 503: this backend has no TTS, use the browser voice
   const synth = typeof window !== "undefined" ? window.speechSynthesis || null : null;
   let lastCancel = 0;
-  let speed = 1;                            // [a11y] TTS speed (0.75–1.5): Steer rate+pace on the server, rate here
+  let speed = 1;                            // [a11y] TTS speed (0.75–1.5): the OS voice's rate on the server, rate here
 
   let kid = false, holder = "none";
   let cur = null;                           // the say() that owns the guide channel: {id, text, sentence, stop, yield, done}
@@ -462,7 +462,7 @@ export const STORY_VOICE = { voice: "story" };
 export const CAPCOM_VOICE = { voice: "capcom" };
 /** Speak on the guide channel; resolves true when spoken to the end. Old {rate, pitch} options mean the guide voice. */
 export function speak(text, opts = {}) { return floor ? floor.say(text, { voice: opts.voice || "guide", priority: opts.priority ?? 3, style: opts.style, repeat: opts.repeat, source: opts.source }) : Promise.resolve(false); }
-/** The style of the first `say` decision in a Director / Academy response (Steer steering), if any. */
+/** The style of the first `say` decision in a Director / Academy response (voice steering), if any. */
 export const sayStyle = r => ((r && r.decisions) || []).find(d => d.t === "say" && d.style)?.style;
 export function stopSpeaking() { if (floor) floor.stopGuide(); }
 export function isSpeaking() { return !!(floor && floor.guideBusy); }

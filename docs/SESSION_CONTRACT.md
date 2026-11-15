@@ -84,16 +84,17 @@ Nothing above was changed; these were only added:
   resolved), `card.hint` (a heads-up card), `card.nudge` (a coaching card); `alert.source`; `play.moment` (the full
   moment). `ask.labels` (place names) on the old `/api/ask` `ask` object.
 
-## 6. Additive fields (voice steering, feat/steer-tts)
+## 6. Additive fields (voice steering)
 
 Nothing above was changed; these were only added (details: `docs/VOICE_STEERING.md`):
 - **`say.voice`** may also be `"houston"` (Houston's reply after the radio delay).
 - **`say.style`** on every `say` (session Director, `/api/ask` `decisions`, Academy attempt `decisions`):
-  `{voice, steer_voice, tag, controls:{rate?, loud?, f0_med?, f0_iqr?, f0_end?, pause?, …}, perform:{genre, strength},
+  `{voice, tts_voice, tag, controls:{rate?, loud?, f0_med?, f0_iqr?, f0_end?, pause?, …}, perform:{genre, strength},
   situation?, emph?:[words], markup?:true}`. The client passes it unchanged to `GET /api/tts?…&style=<json>` (plus
   `i`, `n`, `next`: the sentence's place) or `POST /api/tts {text, voice, style, i, n, next}`. A client-written line may
   send only `{situation}` or `{emotion}`; the server resolves it. The server re-checks the tag (never anger, contempt,
   disgust, sarcasm, panic or disappointment) and clamps the controls.
 - **Sim events**: `storm_end` → `alert:info` + `say` (all clear); `low_power` → also a calm `say`.
-- **`/api/tts`** replies carry `X-TTS-Engine: steer|deepgram`, `X-TTS-Style`, and `X-TTS-Fallback` when Steer was
-  skipped; Steer audio is `audio/wav`, Deepgram `audio/mpeg`.
+- **`/api/tts`** replies carry `X-TTS-Engine: os|deepgram`, `X-TTS-Voice` (the OS voice used), `X-TTS-Style`,
+  `X-TTS-Words`, and `X-TTS-Fallback` when the OS voice was skipped; OS-voice audio is `audio/wav`, Deepgram
+  `audio/mpeg`. `tts_voice` is a persona role or an installed OS voice id (`GET /api/voices`, docs/VOICES.md).

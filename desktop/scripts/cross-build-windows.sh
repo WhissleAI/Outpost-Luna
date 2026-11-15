@@ -96,6 +96,7 @@ EXE=$(ls -t desktop/dist/*.exe | head -1)
 
 step "8/8 structural checks (the installer cannot run here)"
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/dist/win-unpacked/resources
+uv run --no-project python desktop/scripts/win_bundle_check.py speech desktop/dist/win-unpacked/resources   # WinRT + SAPI speech packages
 if [ -n "$SEVENZ" ]; then
   # The NSIS installer holds the app as app-64.7z: unpack both and check that what the user installs is the same tree.
   X="$ROOT/desktop/build/installer-check"; rm -rf "$X"; mkdir -p "$X"

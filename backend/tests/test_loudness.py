@@ -17,7 +17,7 @@ CEIL = 10 ** (L.CEILING_DBTP / 20)
 
 def speechlike(seconds=2.4, level=0.05, seed=1, gap_at=None, gap_s=0.0, sr=SR):
     """Harmonic 'syllables' (f0 110-220 Hz, 6 harmonics, 180 ms on / 70 ms off) with peaky glottal pulses: a crest
-    factor like Steer's low voices. Optional long silence (gap_at s, gap_s long)."""
+    factor like a quiet voice. Optional long silence (gap_at s, gap_s long)."""
     rng = np.random.default_rng(seed)
     n = int(seconds * sr)
     t = np.arange(n) / sr
@@ -85,17 +85,17 @@ def test_gap_cap_and_word_timings():
 
 
 @pytest.fixture
-def steer(monkeypatch, tmp_path):
+def os_calls(monkeypatch, tmp_path):
     calls = []
 
     async def fake(text, style, place):
         calls.append({"text": text, **style})
-        quiet = speechlike(level=0.01, seed=len(calls), gap_at=0.6, gap_s=0.9)   # Steer-like: quiet, long gaps
+        quiet = speechlike(level=0.01, seed=len(calls), gap_at=0.6, gap_s=0.9)   # a quiet voice with long gaps
         return L.write_wav(quiet, SR), "0-200,300-500,1700-2000"
 
-    monkeypatch.setattr(tts, "_steer", fake)
+    monkeypatch.setattr(tts, "_os_tts", fake)
     monkeypatch.setattr(tts, "CACHE_DIR", tmp_path / "c")
-    monkeypatch.setattr(settings, "tts_engine", "steer")
+    monkeypatch.setattr(settings, "tts_engine", "os")
     return calls
 
 
@@ -105,7 +105,7 @@ def out_audio(r):
 
 
 @pytest.mark.parametrize("voice", ["guide", "capcom", "houston", "story"])
-def test_every_persona_lands_at_the_target(steer, voice):
+def test_every_persona_lands_at_the_target(os_calls, voice):
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Shields to forty percent. Then check the battery.", "voice": voice})
         hit = c.get("/api/tts", params={"text": "Shields to forty percent. Then check the battery.", "voice": voice})
@@ -113,11 +113,11 @@ def test_every_persona_lands_at_the_target(steer, voice):
     assert abs(L.lufs(x, sr) - L.TARGET_LUFS) <= 1.0
     assert np.abs(x).max() <= CEIL + 1e-4 and L.true_peak_db(x) <= L.CEILING_DBTP + 0.05
     assert "LUFS" in r.headers["x-tts-loudness"] and "X-TTS-Loudness" in r.headers["access-control-expose-headers"]
-    assert hit.headers["x-tts-cache"] == "hit" and hit.content == r.content and len(steer) == 1   # cached mastered
+    assert hit.headers["x-tts-cache"] == "hit" and hit.content == r.content and len(os_calls) == 1   # cached mastered
     assert len(x) / sr < 2.4 + 0.9 - 0.5                     # the 0.9 s gap was capped
 
 
-def test_alarm_lines_sit_two_lu_hotter(steer):
+def test_alarm_lines_sit_two_lu_hotter(os_calls):
     st = steering.style_for("capcom", "Storm is here! Into the shelter.", situation="storm_alert")
     with TestClient(app) as c:
         r = c.get("/api/tts", params={"text": "Storm is here! Into the shelter.", "voice": "capcom",
@@ -126,7 +126,7 @@ def test_alarm_lines_sit_two_lu_hotter(steer):
     assert abs(L.lufs(x, sr) - (L.TARGET_LUFS + L.ALARM_LUFS_OFFSET)) <= 1.0 and np.abs(x).max() <= CEIL + 1e-4
 
 
-def test_volume_setting_reaches_the_master(steer):
+def test_volume_setting_reaches_the_master(os_calls):
     with TestClient(app) as c:
         a = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
         b = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide", "style": json.dumps({"volume": 0.5})})
@@ -135,14 +135,14 @@ def test_volume_setting_reaches_the_master(steer):
     assert L.lufs(xb, sr) == pytest.approx(L.lufs(xa, sr) - 6.0, abs=1.0)
 
 
-def test_cache_key_carries_the_master_version(steer):
+def test_cache_key_carries_the_master_version(os_calls):
     st = tts.clean_style("guide", "Hi.", None)
-    k1 = tts.cache_path("v", "Hi.", {**st, "master": tts.MASTER_VERSION}, "steer")
-    k2 = tts.cache_path("v", "Hi.", st, "steer")
+    k1 = tts.cache_path("v", "Hi.", {**st, "master": tts.MASTER_VERSION}, "os")
+    k2 = tts.cache_path("v", "Hi.", st, "os")
     assert k1 != k2
 
 
-def test_default_rate_is_the_faster_baseline(steer):
+def test_default_rate_is_the_faster_baseline(os_calls):
     with TestClient(app) as c:
         c.get("/api/tts", params={"text": "The rover found ice.", "voice": "guide"})
         c.get("/api/tts", params={"text": "Albedo is how bright a surface is.", "voice": "guide",
@@ -150,7 +150,7 @@ def test_default_rate_is_the_faster_baseline(steer):
                                                                          situation="vocab", vocab=["albedo"]))})
         c.get("/api/tts", params={"text": "A crater is a hole.", "voice": "guide",
                                   "style": json.dumps({"situation": "explain"})})
-    normal, vocab, explain = steer
+    normal, vocab, explain = os_calls
     assert normal["controls"]["rate"] == steering.BASE_CONTROLS["rate"]          # 1x is faster than before (0)
     assert normal["controls"]["pause"] == steering.BASE_CONTROLS["pause"]        # shorter phrase pauses
     assert normal["controls"]["loud"] == steering.BASE_CONTROLS["loud"]
