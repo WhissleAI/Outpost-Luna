@@ -61,7 +61,11 @@ if (Test-Path $vswhere) {
   if ($vsClang) {
     $ver = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property installationVersion
     $year = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset -property catalog_productLineVersion
-    if ($ver -and $year) { $vsClangGen = "Visual Studio $($ver.Split('.')[0]) $year" }
+    $major = $(if ($ver) { $ver.Split('.')[0] } else { $null })
+    # CMake generator names: "Visual Studio 17 2022", "Visual Studio 18 2026". Only pin when both parts look right;
+    # otherwise CMAKE_GENERATOR_INSTANCE alone still points the default generator at the clang-cl instance.
+    if ($major -match '^\d{2}$' -and $year -match '^\d{4}$') { $vsClangGen = "Visual Studio $major $year" }
+    Write-Host "clang-cl Visual Studio: $vsClang ($(if ($vsClangGen) { $vsClangGen } else { 'generator from CMake' }))"
   }
 }
 $haveClang = (Have clang) -and (Have ninja)
