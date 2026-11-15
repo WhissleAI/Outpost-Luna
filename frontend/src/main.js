@@ -34,6 +34,7 @@ import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
 // ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
 import "./media/video.css";
+import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
 import { fillCredits } from "./media/video_ui.js";
 // ---- end [a11y] ----
@@ -167,6 +168,8 @@ async function boot() {
   const prefs = createPrefs({ globe });
   (window.__outpost = window.__outpost || {}).prefsApi = prefs;
   installMute();   // every screen: Flight School, Mission, Library, the cabin
+  // "Pretend tech": the first pick of something marked pretend says why, once (src/pretend.js)
+  installPretendExplain({ speak: t => speak(t, { priority: 2 }) });   // the guide's line is captioned like any other
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
   // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint

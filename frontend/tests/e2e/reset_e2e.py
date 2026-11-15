@@ -57,6 +57,13 @@ def files(c: Path, sub: str):
     return sorted(p.name for p in d.iterdir()) if d.exists() else []
 
 
+def stale(c: Path, sub: str, t0: float):
+    """Files in a cache folder written BEFORE t0 (the reset). The app speaks again right after it comes back (the
+    call-sign screen's line), which refills the spoken-line cache: only files from before the reset count."""
+    d = c / sub
+    return sorted(p.name for p in d.iterdir() if p.is_file() and p.stat().st_mtime < t0 - 0.5) if d.exists() else []
+
+
 def until(pg, expr, timeout=10000):
     end = time.time() + timeout / 1000
     while time.time() < end:
@@ -195,6 +202,7 @@ def main():
         hold(pg, "[data-reset-hold]", 1200)
         pg.wait_for_timeout(500)
         ok(set(before) <= set(pg.evaluate(APP_KEYS)), "a click or a 1.2 s hold does nothing")
+        t_reset = time.time()
         with pg.expect_navigation(timeout=15000):
             hold(pg, "[data-reset-hold]", 3400)
         until(pg, "() => window.__outpost && window.__outpost.a11y", 30000)
@@ -202,19 +210,23 @@ def main():
         left = [k for k in pg.evaluate(APP_KEYS) if k not in ("outpost-prefs",)]   # silent.py re-seeds its Mute pref
         ok(not [k for k in left if k in before], f"every app key from before is gone ({left})")
         ok(until(pg, "() => !!document.getElementById('aCsForm')", 15000), "the app comes back at first launch (the call-sign screen)")
-        ok(files(cache, "tts") == [] and files(cache, "turnlog") == [], "the spoken-line cache and the turn log are empty")
+        ok(stale(cache, "tts", t_reset) == [] and stale(cache, "turnlog", t_reset) == [],
+           f"the spoken-line cache and the turn log hold nothing from before the reset (after: {files(cache, 'tts')})")
         ok(files(cache, "video") and files(cache, "vectors"), f"the saved video and the vectors stay ({files(cache, 'video')}, {files(cache, 'vectors')})")
         ok(pg.evaluate("() => fetch('/api/video/catalog').then(r => r.ok)") and
            pg.evaluate("() => fetch('/media/img/moon4k.jpg', {method: 'HEAD'}).then(r => r.ok)"), "bundled assets still served (no re-download)")
 
         # ---- Reset everything ----
         seed_cache(cache)
+        time.sleep(1.0)
         ok(open_reset(pg, "all"), "Reset everything shows its confirm")
+        t_all = time.time()
         with pg.expect_navigation(timeout=15000):
             hold(pg, "[data-reset-hold]", 3400)
         until(pg, "() => window.__outpost && window.__outpost.a11y", 30000)
-        ok(all(files(cache, s) in ([], ["index.json"]) for s in ("tts", "turnlog", "video", "vectors")),
-           f"every cache is empty ({[files(cache, s) for s in ('tts', 'turnlog', 'video', 'vectors')]})")
+        ok(all(stale(cache, s, t_all) == [] for s in ("tts", "turnlog", "vectors")) and
+           not [n for n in files(cache, "video") if n != "index.json"],
+           f"every cache holds nothing from before the reset ({[stale(cache, s, t_all) for s in ('tts', 'turnlog', 'video', 'vectors')]})")
         ok(not errs, f"no page errors {errs[:2]}")
         b.close()
     bad = [w for c, w in results if not c]
