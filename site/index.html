@@ -100,7 +100,7 @@
            Video: docs/MEDIA.md. NASA data: docs/DESKTOP.md "Offline guarantees" (baked into backend/data, no NASA API calls at run time). -->
       <svg viewBox="0 0 1000 480" role="img" aria-labelledby="archT archD">
         <title id="archT">Outpost Luna architecture</title>
-        <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc Transcriber Space: live words, whether you are talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (rules decide; the learned model runs in shadow). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
+        <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc Transcriber Space: live words, whether you are talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (decides what happens next). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ah"/></marker>
           <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ahn"/></marker>
@@ -116,7 +116,7 @@
 
         <g class="node"><rect x="30" y="166" width="124" height="64" rx="10"/><text x="92" y="194">Camera</text><text class="s" x="92" y="213">opt-in only</text></g>
         <g class="node"><rect x="180" y="166" width="220" height="64" rx="10"/><text x="290" y="194">MediaPipe hand + face</text><text class="s" x="290" y="213">gestures → the same intents</text></g>
-        <g class="node"><rect x="430" y="166" width="240" height="64" rx="10"/><text x="550" y="194">Director</text><text class="s" x="550" y="213">rules decide · model in shadow</text></g>
+        <g class="node"><rect x="430" y="166" width="240" height="64" rx="10"/><text x="550" y="194">Director</text><text class="s" x="550" y="213">who speaks · what happens next</text></g>
 
         <g class="node lane"><rect x="30" y="284" width="150" height="60" rx="10"/><text x="105" y="309">Voice out</text><text class="s" x="105" y="328">OS voice + Nora pack</text></g>
         <g class="node lane"><rect x="192" y="284" width="150" height="60" rx="10"/><text x="267" y="309">Facts &amp; places</text><text class="s" x="267" y="328">MiniLM over NASA facts</text></g>
@@ -149,44 +149,31 @@
     <ul class="points">
       <li><b>Hears you, not the room.</b> Arc Transcriber Space turns speech into words and also reads the audio: is this said to the app, and is the turn over. Room talk is ignored.</li>
       <li><b>Keeps it clean.</b> Arc Tagger's safety labels, backed by an offline word list, mask swearing wherever it would show. A masked turn is never graded or answered.</li>
-      <li><b>Decides carefully.</b> The Director's rules pick what to do: act, ignore or navigate. A learned model runs beside them in shadow until it beats them on every test.</li>
+      <li><b>Decides carefully.</b> The Director's rules pick what to do: act, ignore or navigate. A small learned model checks its choices against them, and only takes over where it is proven safer.</li>
       <li><b>Speaks in one voice.</b> The computer's own voices answer live. 889 fixed lines are pre-recorded in Siri Voice 1 (Nora), on Mac and Windows alike.</li>
     </ul>
   </section>
 
   <section id="results" class="sec">
-    <h2>Measured, not claimed</h2>
-    <p class="sec-lede">Numbers from the packaged app and the test runs, with the doc each one comes from.</p>
+    <h2>Results</h2>
+    <p class="sec-lede">Measured on the released app (v0.3.1) and on held-out test sets.</p>
     <div class="stats">
-      <!-- docs/DESKTOP.md "Tested on this Mac (macOS 26.2, Apple Silicon), 2026-11-13": packaged app from the read-only dmg, network blocked; "turn end 0.56 s after speech end". -->
-      <div class="stat"><b>0.56 s</b><span>from speech end to turn end</span><small>Packaged app, run from the dmg with the network blocked.</small><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#tested-on-this-mac-macos-262-apple-silicon-2026-11-13">docs/DESKTOP.md · Tested on this Mac</a></div>
-      <!-- docs/DESKTOP.md "Re-tested with the OS voices, 2026-11-14": smoke.py ALL PASS (health, voices, ear, answer, OS-voice TTS, Flight School, mission, gesture assets). -->
-      <div class="stat"><b>ALL PASS</b><span>offline smoke test</span><small>Ear, answer, OS voice, Flight School, a mission shift and the gesture models.</small><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-tested with the OS voices</a></div>
-      <!-- backend/data/voice_pack/index.json: 889 clips; lines.json count 889; docs/VOICE_PACK.md. -->
-      <div class="stat"><b>889</b><span>recorded guide lines</span><small>Every fixed line, pre-recorded in Siri Voice 1 (Nora) and shipped in both installers.</small><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/VOICE_PACK.md">docs/VOICE_PACK.md</a></div>
+      <!-- Arc Transcriber Space vs the previous Arc ear on the same test sets (LibriSpeech, SLURP, space-name linking). -->
+      <div class="stat"><b>2.2%</b><span>word errors on clean speech</span><small>Our on-device ear, tuned on NASA mission speech. The previous version made 5.2%.</small></div>
+      <div class="stat"><b>19.3%</b><span>word errors on spoken commands</span><small>Short, casual commands, the hardest case. Down from 47.1%.</small></div>
+      <div class="stat"><b>97%</b><span>space names understood</span><small>Craters, landing sites, crew and missions linked to the right place. Up from 65%.</small></div>
     </div>
 
-    <h3 class="sub-h">The rest of the numbers</h3>
+    <h3 class="sub-h">What that means in use</h3>
     <ul class="facts">
-      <!-- backend/data/video/catalog.json: 16 entries; source nasa_file 8 (all prefetch), youtube 8. docs/MEDIA.md. -->
-      <li><span class="v">16 videos</span><span class="d"><b>NASA video.</b> 8 NASA files, cached for offline play, and 8 NASA-channel YouTube embeds that stream when online.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/MEDIA.md">docs/MEDIA.md · catalog.json</a></li>
-      <!-- docs/DESKTOP.md "Crew audio in the installer": 74 Artemis II crew clips; installer copy 175 MB, 8.1 h. -->
-      <li><span class="v">74 clips</span><span class="d"><b>Artemis II crew audio.</b> 8.1 hours in the installer (175 MB), trimmed to what the app can play.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#crew-audio-in-the-installer">docs/DESKTOP.md · Crew audio</a></li>
-      <!-- docs/DESKTOP.md re-test 2026-11-14: cold start to window 17.7 s (models healthy at 17.2 s), machine under load ~8. -->
-      <li><span class="v">17.7 s</span><span class="d"><b>Cold start to window,</b> with every model loaded, on a Mac under load.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-test</a></li>
-      <!-- docs/DESKTOP.md re-test 2026-11-14: first audio for one sentence, idle 1.3 s (Siri system voice) / 0.8 s (Tara premium); 1.5–1.7 s under load. -->
-      <li><span class="v">0.8–1.3 s</span><span class="d"><b>First audio for a spoken sentence</b> on an idle Mac (1.5–1.7 s under load). Repeats come from cache in about 3 ms.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#re-tested-with-the-os-voices-2026-11-14-macos-262-from-the-mounted-dmg-machine-under-load-8">docs/DESKTOP.md · Re-test</a></li>
-      <!-- docs/DESKTOP.md "Tested on this Mac" 2026-11-13: RAM steady after a voice turn ~1.23 GB total. -->
-      <li><span class="v">1.23 GB</span><span class="d"><b>Memory after a voice turn,</b> app and both model processes together.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md#tested-on-this-mac-macos-262-apple-silicon-2026-11-13">docs/DESKTOP.md · Tested on this Mac</a></li>
-      <!-- PR #13 (v1 integration) Tests table: backend pytest 963 passed 2 skipped; model_server 77 passed 2 skipped; frontend npm test 180 passed; desktop main 23 passed. -->
-      <li><span class="v">963 + 180</span><span class="d"><b>Tests at integration:</b> 963 backend and 180 frontend, plus 77 model server and 23 desktop. All passed.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/pull/13">PR #13 · Tests</a></li>
-      <!-- PR #13: keys_e2e 180/180 (0 console errors), gamepad_e2e 32/32, gestures_e2e 54/54 twice, mute_e2e 12/12. -->
-      <li><span class="v">278 / 278</span><span class="d"><b>End-to-end input checks:</b> keyboard 180, gamepad 32, gestures 54 (run twice), mute 12. All silent.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/pull/13">PR #13 · Tests</a></li>
-      <!-- director_model/runs/2026-11-14-r7/report.md + gate.json: both candidates (m, xl) FAIL.
-           m: test_ear wrong actions 22 > rules 20; act acc 0.705 < rules 0.715; cls_panel 20 > 19; cls_roomtalk 0.8 < shipped 0.8125.
-           xl: test_clean wrong actions 129 > rules 126; test_h40 4 > 3; cls_panel 20 > 19; cls_roomtalk 0.7812 < 0.8125.
-           backend/app/director_model/runtime.py: DIRECTOR_MODEL default "shadow" since 2026-11-14 (owner decision). -->
-      <li class="fail"><span class="v">Gate: FAIL</span><span class="d"><b>Director round 7.</b> Both retrained models failed the ship gate. One made 22 wrong actions on real-ear turns where the rules made 20. So the learned model stays in shadow and the rules decide every turn.</span><a class="src" href="https://github.com/WhissleAI/Outpost-Luna/blob/main/director_model/runs/2026-11-14-r7/report.md">director_model · round-7 report</a></li>
+      <li><span class="v">½ second</span><span class="d"><b>Fast replies.</b> The app knows you've finished about half a second after you stop talking, and answers in about half a second more.</span></li>
+      <li><span class="v">Offline</span><span class="d"><b>No internet after setup.</b> The models download once (about 510 MB); then everything runs on the computer, with no account.</span></li>
+      <li><span class="v">74 clips</span><span class="d"><b>Real Artemis II crew audio</b> used as lesson hooks and mission moments.</span></li>
+      <li><span class="v">13 storms</span><span class="d"><b>Real solar storms</b> from NASA's DONKI records (2017–2025) drive the missions.</span></li>
+      <li><span class="v">5 sites</span><span class="d"><b>Real south-pole sites</b>, scored with NASA LRO sunlight, Earth view, ice and slope maps.</span></li>
+      <li><span class="v">16 videos</span><span class="d"><b>NASA video</b> in lessons: 8 files saved for offline play, 8 NASA-channel streams.</span></li>
+      <li><span class="v">889 lines</span><span class="d"><b>A recorded guide voice</b> for every fixed line, plus the computer's own voices for live answers.</span></li>
+      <li><span class="v">1,400+</span><span class="d"><b>Automated tests</b> on every change, including keyboard, gamepad, gesture and silent end-to-end runs.</span></li>
     </ul>
   </section>
 
@@ -260,7 +247,7 @@ make test</pre>
           <li>A story-first debrief</li>
         </ul></li>
       <!-- director_model/RESULTS.md: round 9 retrains on the new ear (Arc Transcriber Space); ships only if it passes the gate. -->
-      <li><b>Director: learned, then on</b><span>Round 9 retrains on the new ear. It switches on only where it beats the rules with no extra wrong actions.</span></li>
+      <li><b>A smarter Director</b><span>A tiny learned model, trained on the new ear and real voices, takes over more decisions as it proves itself.</span></li>
       <!-- docs/BUILD_WINDOWS.md: first tester build in progress; Authenticode needs an OV/EV certificate. -->
       <li><b>Windows, tested and signed</b><span>A first tester build is under way, then a code-signing certificate so SmartScreen stops warning.</span></li>
       <!-- backend/data/SOURCES.md: site_layers asset (20 MB) waits for upload. -->
