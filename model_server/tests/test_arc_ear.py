@@ -198,3 +198,62 @@ def test_directed_head_is_mapped_onto_the_router_scale():
     assert f(0.05) == 0.5 and f(0.5) == 0.7          # knee -> DD_MIN, strong_at -> DD_STRONG (turn_router.py)
     xs = [f(i / 100) for i in range(101)]
     assert xs == sorted(xs)                           # monotonic
+
+
+# ---- "show me the south pole" -> "South North Pole" (0.3.0): a partial-span link that contradicts its neighbour ----
+def _w(*pairs):
+    return [{"w": w, "t0": a, "t1": b} for w, a, b in pairs]
+
+
+SOUTH = [{"text": "Show me the South Pole", "words": _w(("Show", 0.1, 0.3), ("me", 0.3, 0.4), ("the", 0.4, 0.5),
+                                                      ("South", 0.5, 0.8), ("Pole", 0.8, 1.1))}]
+
+
+def test_guard_abstains_a_tail_link_that_contradicts_the_word_before_it():
+    names = [{"t0": 0.8, "t1": 1.1, "heard": "Pole", "entity": "North Pole", "state": "linked", "p": 0.98, "tag": None}]
+    g = arc_ear.guard_names(names, SOUTH)
+    assert g[0]["state"] == "abstain"
+    assert arc_ear.display_text(SOUTH[0], g) == "Show me the South Pole"      # was "Show me the South North Pole"
+
+
+def test_guard_keeps_links_that_fit():
+    the_pole = [{"text": "Show me the Pole", "words": _w(("Show", 0.1, 0.3), ("me", 0.3, 0.4), ("the", 0.4, 0.5),
+                                                       ("Pole", 0.5, 0.8))}]
+    ok = [
+        ({"t0": 0.5, "t1": 0.8, "heard": "Pole", "entity": "North Pole", "state": "linked", "p": 0.9}, the_pole),  # stop word
+        ({"t0": 0.5, "t1": 1.1, "heard": "South Pole", "entity": "South Pole", "state": "linked", "p": 1.0}, SOUTH),  # whole
+        ({"t0": 0.5, "t1": 0.8, "heard": "Shackleton", "entity": "Shackleton crater", "state": "linked", "p": 0.97},
+         [{"text": "fly to Shackleton", "words": _w(("fly", 0.1, 0.3), ("to", 0.3, 0.5), ("Shackleton", 0.5, 0.8))}]),
+    ]
+    for n, utts in ok:
+        assert arc_ear.guard_names([n], utts)[0]["state"] == "linked", n
+
+
+def test_stream_final_shows_south_pole_and_does_not_link_north():
+    m = FakeModel(text="Show me the South Pole",
+                  names=[{"t0": 1.4, "t1": 1.65, "heard": "Pole", "entity": "North Pole", "state": "linked", "p": 0.97,
+                          "tag": None}])
+    es = arc_ear.EarStream(model=m, names=[{"name": "North Pole", "kind": "lunar_feature"}])
+    msgs = run(es, [0] * 3 + [1] * 14 + [0] * 10)
+    fin = [x for x in msgs if x["t"] == "words" and x["final"]][0]
+    assert fin["text"] == "Show me the South Pole"
+    assert [n["state"] for n in fin["names"]] == ["abstain"]
+
+
+def test_partials_come_often_enough_to_read_as_streaming():
+    # the old back-off (2x the decode cost, every 0.5 s) gave a 1.3 s command one partial at ~0.7 s and the next just
+    # before the final; with the defaults now a 1.1 s voiced stretch gets >= 3 partials
+    assert arc_ear.ear_settings.ear_partial_every_s <= 0.3 and arc_ear.ear_settings.ear_partial_backoff <= 1.5
+    m = FakeModel(by_len=lambda n: " ".join(["word"] * max(1, n // 6000)))
+    es = arc_ear.EarStream(model=m)
+    msgs = run(es, [0] * 3 + [1] * 14 + [0] * 10)
+    assert len([x for x in msgs if x["t"] == "words" and not x["final"]]) >= 3
+
+
+def test_guard_widens_a_head_link_over_the_rest_of_the_name():
+    utts = [{"text": "Tell me about Artemis two", "words": _w(("Tell", 0.1, 0.3), ("me", 0.3, 0.4), ("about", 0.4, 0.6),
+                                                             ("Artemis", 0.6, 1.0), ("two", 1.0, 1.2))}]
+    names = [{"t0": 0.6, "t1": 1.0, "heard": "Artemis", "entity": "Artemis II", "state": "linked", "p": 0.99}]
+    g = arc_ear.guard_names(names, utts)
+    assert g[0]["state"] == "linked" and g[0]["heard"] == "Artemis two" and g[0]["t1"] == 1.2
+    assert arc_ear.display_text(utts[0], g) == "Tell me about Artemis II"      # was "Tell me about Artemis II two"

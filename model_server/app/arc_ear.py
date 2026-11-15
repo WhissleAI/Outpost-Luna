@@ -4,8 +4,10 @@
 How a turn is heard (one EarStream per connection, the model shared under its lock):
   1. An energy VAD with an adaptive floor (classroom noise at a steady level reads as silence) opens a SEGMENT after
      EAR_ONSET_CHUNKS voiced chunks, with EAR_PREROLL_S of audio before it.
-  2. While the segment is open, a partial decode (no events) runs every EAR_PARTIAL_EVERY_S (backing off to twice its
-     own cost, and only on the first EAR_PARTIAL_MAX_S). The first non-empty partial starts the TURN.
+  2. While the segment is open, a partial decode (no events) runs every EAR_PARTIAL_EVERY_S (backing off to
+     EAR_PARTIAL_BACKOFF x its own cost, and only on the first EAR_PARTIAL_MAX_S). The first non-empty partial starts
+     the TURN. Each partial re-decodes the whole segment, so its cost grows with the turn: at 2x (the old back-off) a
+     1.3 s command got one partial at ~0.7 s and the next ~0.15 s before the final, which read as "no streaming".
   3. EAR_END_SILENCE_S of silence (or end_turn / stop, or EAR_MAX_TURN_S) closes it: one full decode gives the final
      words, the names linked to the screen's list, the sound events and the device-directed head.
 A segment whose final decode has no words is not a turn: noise, or synthetic speech the model chose not to transcribe
@@ -49,7 +51,8 @@ class EarSettings(BaseSettings):
     ear_end_silence_s: float = 0.5     # silence that closes a turn
     ear_onset_chunks: int = 2          # voiced 80 ms chunks in a row that open a segment
     ear_preroll_s: float = 0.3         # audio kept before the onset
-    ear_partial_every_s: float = 0.5   # partial decode cadence while a segment is open (0: no partials)
+    ear_partial_every_s: float = 0.3   # partial decode cadence while a segment is open (0: no partials)
+    ear_partial_backoff: float = 1.25  # ... or this x the last partial's decode cost, whichever is longer
     ear_partial_max_s: float = 8.0     # no partials past this much segment audio (the final still covers it all)
     ear_max_turn_s: float = 15.0       # a segment this long is closed as a turn
     ear_vad_margin_db: float = 6.0
@@ -89,6 +92,61 @@ def display_text(utt: dict, names: list[dict]) -> str:
         tail = "".join(c for c in toks[b][::-1] if c in ".,!?;:")[::-1] if toks[b] else ""
         toks[a:b + 1] = [n["entity"] + tail]
     return written(" ".join(t for t in toks if t))
+
+
+STOP_WORDS = frozenset("a an the to of in on at for and or me us my our this that it its is are was go show take fly "
+                       "see find look zoom where what".split())
+
+
+NUM_EQ = {"i": "1", "one": "1", "first": "1", "ii": "2", "two": "2", "second": "2", "iii": "3", "three": "3",
+          "third": "3", "iv": "4", "four": "4", "fourth": "4", "v": "5", "five": "5", "vi": "6", "six": "6",
+          "vii": "7", "seven": "7", "viii": "8", "eight": "8", "ix": "9", "nine": "9", "x": "10", "ten": "10",
+          "xi": "11", "eleven": "11", "xii": "12", "twelve": "12", "xiii": "13", "thirteen": "13", "xiv": "14",
+          "fourteen": "14", "xv": "15", "fifteen": "15", "xvi": "16", "sixteen": "16", "xvii": "17", "seventeen": "17"}
+
+
+def _toks(s: str) -> list[str]:
+    import re
+    return [NUM_EQ.get(t, t) for t in re.split(r"[^a-z0-9]+", (s or "").lower()) if t]
+
+
+def guard_names(names: list[dict], utts: list[dict]) -> list[dict]:
+    """Fix links that cover only PART of their list entry (the linker matched one word of a two-word name):
+      - the words next to it ARE the rest of the name ("Artemis" + "two" for "Artemis II"; numerals, Roman numerals
+        and number words count as the same): the link is widened over them, so the turn reads "Artemis II", not
+        "Artemis II two";
+      - the words next to it CONTRADICT the rest ("South" + "Pole" for "North Pole": 16/16 test clips linked "Pole"
+        -> "North Pole", the turn read "South North Pole" and flew north): the link becomes `abstain`, and the director
+        routes on the text ("south pole" is a gazetteer alias);
+      - a stop word next to it ("the Pole") or nothing at all: the link stays as it is."""
+    words = [w for u in utts for w in (u.get("words") or [])]
+    out = []
+    for n in names:
+        n = dict(n)
+        if n.get("state") == "linked" and n.get("entity"):
+            ent, heard = _toks(n["entity"]), _toks(n.get("heard") or "")
+            if heard and len(ent) > len(heard):
+                k, tail = len(heard), None
+                if ent[-k:] == heard:          # heard is the entry's tail: look at the words just before it
+                    miss, tail = ent[:-k], True
+                    near = [w for w in words if w["t1"] <= n["t0"] + 0.05][-len(miss):]
+                elif ent[:k] == heard:         # heard is the entry's head: look at the words just after it
+                    miss, tail = ent[k:], False
+                    near = [w for w in words if w["t0"] >= n["t1"] - 0.05][:len(miss)]
+                else:
+                    miss, near = [], []
+                said = [t for w in near for t in _toks(w["w"])]
+                if said and said == miss:
+                    if tail:
+                        n["t0"] = near[0]["t0"]
+                    else:
+                        n["t1"] = near[-1]["t1"]
+                    n["heard"] = " ".join([w["w"] for w in near] + [n.get("heard") or ""] if tail
+                                          else [n.get("heard") or ""] + [w["w"] for w in near]).strip()
+                elif said and not all(t in STOP_WORDS for t in said):
+                    n["state"] = "abstain"
+        out.append(n)
+    return out
 
 
 def app_dd(head: float | None, knee: float = 0.05, strong_at: float = 0.5) -> float | None:
@@ -212,7 +270,7 @@ class EarStream:
         if (not self.meta_only and self.cfg.ear_partial_every_s > 0 and self.audio_s >= self.next_partial_s
                 and seg_s <= self.cfg.ear_partial_max_s):
             out = self._decode(self._seg_audio(), partial=True)
-            self.next_partial_s = self.audio_s + max(self.cfg.ear_partial_every_s, 2 * out["_s"])
+            self.next_partial_s = self.audio_s + max(self.cfg.ear_partial_every_s, self.cfg.ear_partial_backoff * out["_s"])
             t = written(" ".join(u["text"] for u in out["utts"]).strip())
             if t:
                 if not self.turn_open:
@@ -231,6 +289,7 @@ class EarStream:
         out = self._decode(pcm, partial=False) if len(pcm) >= SR // 10 else {"utts": [], "names": [], "events": [],
                                                                             "_s": 0.0}
         utts = [u for u in out["utts"] if (u.get("text") or "").strip()]
+        out["names"] = guard_names(out["names"], utts)
         names = [{"heard": n["heard"], "entity": n["entity"], "state": n["state"], "p": n["p"], "tag": n["tag"],
                   "kind": _kind(self.names, n["entity"])} for n in out["names"]]
         spoken = " ".join(u["text"].strip() for u in utts).strip()

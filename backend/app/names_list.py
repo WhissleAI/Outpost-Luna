@@ -128,6 +128,11 @@ def catalogue() -> dict[str, list[dict]]:
         if generic(nm) and p["id"] != "north_pole":
             continue
         places.append(_entry(nm, "lunar_feature", PLACE_ALIASES.get(p["id"], []) + _paren(p["name"]), id=p["id"]))
+        if p["id"] == "shackleton":
+            # "south pole" is only an alias of Shackleton, and the ear's linker doesn't link aliases: without an entry
+            # of its own, "show me the south pole" linked "Pole" -> "North Pole" (16/16 test clips) and flew north.
+            # With this entry it links "South Pole" (p 1.0); the director resolves it to Shackleton (gazetteer alias).
+            places.append(_entry("South Pole", "lunar_feature", ["lunar south pole"], id="south_pole"))
     sites = []
     try:
         for s in json.loads((DATA / "mission/sites.json").read_text(encoding="utf-8")).get("sites") or []:

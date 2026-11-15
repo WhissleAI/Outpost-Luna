@@ -23,8 +23,8 @@ model server: app/nft2.py (ctypes) ──▶ libarc (arc_nft2_*) ──▶ ONNX 
   `ort_loader.c` loads the onnxruntime wheel's `libonnxruntime.*.dylib` / `onnxruntime.dll` by path (C API 23, served
   by the wheel's 1.32), so the installer carries one ONNX Runtime. Local changes are listed in its NOTICE.
 - **Turns** (`arc_ear.EarStream`): an energy VAD with an adaptive floor opens a segment (2 voiced 80 ms chunks, 0.3 s
-  pre-roll); a partial decode (no events) runs every 0.5 s on the open segment (backing off to 2x its cost, first 8 s
-  only) and the first non-empty partial is the turn `start`; 0.5 s of silence (or `end_turn` / `stop`, or 15 s) closes
+  pre-roll); a partial decode (no events) runs every 0.3 s on the open segment (backing off to 1.25x its cost, first 8 s
+  only; it was 0.5 s / 2x, which gave a 1.3 s command one partial and read as "no streaming") and the first non-empty partial is the turn `start`; 0.5 s of silence (or `end_turn` / `stop`, or 15 s) closes
   it with one full decode. Order: `turn start`, `arc`, `words final`, `turn end` (a client resets its per-turn read on
   `start`). A segment with no words is not a turn; its `arc` message still carries the sound events (`speech:false`,
   no device-directed read).
@@ -186,6 +186,17 @@ We know the vocabulary of every screen. The ear gets rich lists of it, weighted 
 
 Eval: `director_model/ear_hot_eval.py`. Every clip is rendered in memory with held-out kid-style Steer voices (half with
 babble) and decoded twice (Tier A only vs + the hot lists). Results are in `director_model/RESULTS.md`, round 7.
+
+## Partial-span links (0.3.0 fix)
+
+The linker sometimes links ONE word of a two-word list name. Before the fix, `display_text` swapped just that word:
+"show me the south pole" read "Show me the South **North Pole**" and routed north (16/16 test clips: "Pole" ->
+"North Pole", p 0.72-0.99), and "Artemis two" read "Artemis II two". `arc_ear.guard_names` now looks at the word
+next to the linked span: if it IS the rest of the name (numerals, Roman numerals and number words count as equal) the
+link is widened over it ("Artemis II"); if it CONTRADICTS the rest ("South" for "North") the link becomes `abstain`
+and the director routes on the text. The names list also has a "South Pole" entry of its own (`names_list.py`): the
+linker does not link aliases, and "south pole" was only an alias of Shackleton. Measured on 46 clips (4 + 2 `say`
+voices): every South Pole phrase links "South Pole" (p 1.0), North Pole stays north, "Artemis two" -> "Artemis II".
 
 ## Gaps
 
