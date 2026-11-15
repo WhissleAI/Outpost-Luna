@@ -104,6 +104,9 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
     return p
 
 
+# Decisions whose text is ours on screen (never "nav", which carries the kid's own words)
+SHOWN_TYPES = ("alert", "ask_confirm", "hud", "card", "toast")
+PREP_MISSING_LINE ="That's okay. You can skip this one, or use something else you have."
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
 _CACHE: dict = {}
@@ -190,6 +193,10 @@ class Session:
             if d["t"] == "say":
                 self.spoken.said(d.get("text") or "")
                 self._with_prefs(d)
+            elif d["t"] in SHOWN_TYPES:   # round 8: our text put on screen is an echo reference too (Spoken.shown)
+                for k in ("text", "ack", "line"):
+                    if isinstance(d.get(k), str):
+                        self.spoken.show(d[k])
             self.outbox.append(d)
             self.history.append({"out": d["t"], "id": d["id"], "text": d.get("text") or d.get("title"), "ts": self.clock()})
         del self.outbox[:-400]
@@ -513,6 +520,7 @@ class Session:
             speaking=heard and self.spoken.speaking(t0), playing=heard and self.spoken.playing_at(t0),
             on_air=heard and self.spoken.on_air(t0), recent=self.spoken.fresh(t0) if heard else [],
             older=self.spoken.older(t0) if heard else [],
+            shown=self.spoken.shown(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
     async def _note(self, rt: dict, text: str, safety: bool = False):
@@ -613,6 +621,8 @@ class Session:
             if b["floor"] == "kid":
                 b["floor"] = "none"
             # a11y nav with a canonical command (the voice bar): the client runs `text`, so send the canonical form
+            if rt.get("intent") == "prep_help" and rt.get("arg") == "missing":   # round 8: a gentle way out
+                await self.emit([decision("say", P_ANSWER, text=PREP_MISSING_LINE, voice="capcom")])
             run_text = rt["arg"] if rt.get("intent") == "a11y" and rt.get("arg") else text
             await self.emit([decision("nav", P_ANSWER, intent=rt.get("intent") or "answer", arg=rt.get("arg"),
                                       text=run_text, heard=text if run_text != text else None)])

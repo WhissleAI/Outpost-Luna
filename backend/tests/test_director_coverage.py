@@ -51,8 +51,9 @@ def test_every_cell_has_a_generator(seed):
     assert not none, f"cells the coverage sweep cannot generate: {none[:20]}"
 
 
-def test_pending_cells_name_their_branch():
+def test_merged_features_are_not_pending():
+    """Round 8 run: video, prep, gestures and the OS-voice echo are merged; a pending cell must name a live branch."""
     for c in INV["cells"]:
-        if c["screen"] in C.PENDING_SCREENS or c["intent"] in ("gesture+voice", "ignore:echo_os_voice",
+        if c["screen"] in ("video", "prep") or c["intent"] in ("gesture+voice", "ignore:echo_os_voice",
                                                                 "ignore:video_audio"):
-            assert c.get("pending"), c["cell"]
+            assert not c.get("pending"), c["cell"]

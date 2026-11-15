@@ -71,7 +71,8 @@ NAV_INTENTS = ["none", "accept_offer", "decline_offer", "back", "map", "academy"
                # (merged rc/7), the video controls (feat/media-v1) and the hands-on prep tasks (feat/learning-v1)
                "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "next",
                "video_play", "video_pause", "video_stop", "video_skip", "video_watch",
-               "prep_done", "prep_skip", "prep_wait", "prep_help"]
+               "prep_done", "prep_skip", "prep_wait", "prep_help",
+               "mute_sound", "unmute_sound"]
 NAV_ACTIONABLE = set(NAV_INTENTS[1:]) - {"other", "task_choice"}   # what the model may run alone (no arg it cannot know)
 K, W = 8, 16                       # hashed newest K words (bag); last W words for the span pointer heads
 WF = 6                             # per-word features (step_tokens)
@@ -348,6 +349,8 @@ FEATS: list[str] = (
     + ["rep_prev", "prev_ignored", "prev_acted", "prev_recent", "neg_now"]
     # ---- round 8: appended ----
     + ["nlu_other", "gesture_now", "video_on"]
+    # the router's merged screens (video overlay, Mission prep) and the video lesson step: their own slots, appended
+    + ["scr_video", "scr_prep", "st_video"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
@@ -561,7 +564,11 @@ NEG = re.compile(r"^(?:no|nope|stop|not that|no no|wait no|go back|back|cancel|w
 
 
 def _round7_feats(rec: dict, ws: list[str], s):
-    s("video_on", bool(rec.get("video_on")))
+    fr = rec.get("frame") or {}
+    s("scr_video", fr.get("screen") == "video")
+    s("scr_prep", fr.get("screen") == "prep")
+    s("st_video", fr.get("step_type") == "video")
+    s("video_on", bool(rec.get("video_on")) or fr.get("screen") == "video")
     s("gesture_now", bool(rec.get("gesture_now")))
     h = rec.get("hot")
     if h:

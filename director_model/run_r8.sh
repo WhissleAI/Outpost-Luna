@@ -17,7 +17,7 @@ PROCS=${PROCS:-3}
 MS_PORT=${MS_PORT:-8298}
 TRAIN=${TRAIN:-2400}
 COV=${COV:-1200}
-PENDING=${PENDING-cls_video_ctrl,cls_video_echo,cls_prep,cls_prep_roomtalk,cls_voice_echo_os,cls_gesture_cooccur,cls_lesson_new,cls_offers_new,cls_coverage_pending}
+PENDING=${PENDING-}          # every round-8 feature is merged: every class set gates
 export REAL_EAR_CACHE=${REAL_EAR_CACHE:-$PWD/director_model/cache/real_ear_r8}
 GEN="--out $DATA --train $TRAIN --val 200 --test 200 --hf-p 0.3 --cls-n 160 --r8-p 0.35 --cov-sessions $COV --cov-heldout 10"
 python3 director_model/loop.py preflight
@@ -31,7 +31,8 @@ python3 director_model/loop.py preflight
 echo "[model server :$MS_PORT] $(date +%T)"
 (cd model_server && EMBED_MODEL_DIR=${EMBED_MODEL_DIR:-$PWD/models/minilm} STEER_TTS=off ARC_EAR=off ARC_META=off OS_TTS=off \
   $MPY -m uvicorn app.main:app --host 127.0.0.1 --port "$MS_PORT" > /tmp/director-r8-ms.log 2>&1 & echo $! > /tmp/director-r8-ms.pid)
-trap 'kill $(cat /tmp/director-r8-ms.pid) 2>/dev/null || true' EXIT
+stop_ms() { kill $(lsof -tiTCP:"$MS_PORT" -sTCP:LISTEN 2>/dev/null) 2>/dev/null || true; }   # by port: the pid file can be stale
+trap stop_ms EXIT
 until curl -sf "localhost:$MS_PORT/health" >/dev/null; do sleep 2; done
 export MODEL_SERVER_URL=http://127.0.0.1:$MS_PORT
 echo "[gen] $(date +%T)"
@@ -43,7 +44,7 @@ $BPY director_model/gen_sessions.py $GEN --only "val,test_clean,test_asr,test_re
 for p in "${pids[@]}"; do wait "$p"; done
 $BPY director_model/gen_sessions.py --out "$DATA" --merge "$SHARDS"
 rm -f "$DATA"/train_s*.npz "$DATA"/train_s*.meta.jsonl
-kill "$(cat /tmp/director-r8-ms.pid)" 2>/dev/null || true
+stop_ms
 echo "[train] $(date +%T) m + xl"
 python3 director_model/train.py --data "$DATA" --out "$RUN/m/cand" --size m --threads 3 > "$RUN/train_m.log" 2>&1 &
 pm=$!

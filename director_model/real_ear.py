@@ -118,6 +118,9 @@ def cmd_jobs(a):
     budget = {"train": a.budget, "val": a.val_budget, "test": a.test_budget}
     plan = [("train", "train", a.train, 10_000 + a.seed * 1_000_000, "half"), ("val", "val", a.val, 500_000, "half"),
             ("test", "test", a.test, 900_000, "all")]
+    only = set(x for x in (a.classes or "").split(",") if x)   # --classes: only these class sets' jobs (a quick re-run)
+    if only:
+        plan = []
     for group, split, n, seed0, mode in plan:
         n0 = len([j for j in have.values() if j["group"] == group])
         texts: set = set()
@@ -135,10 +138,12 @@ def cmd_jobs(a):
     import pools as P
     n0 = len(new)
     for ci, cls in enumerate(P.CLASSES):
+        if only and cls not in only:
+            continue
         for it in G.class_set_items(cls, a.cls_n, 990_000 + 1000 * ci):
             if it.get("op") != "echo2" and it.get("text"):
                 add("test", it["text"], frame=it.get("frame") or {"screen": "cabin"})
-    for i, line in enumerate(P.CAPCOM_LINES + [x[0] for x in P.OFFERS.values()]):
+    for i, line in enumerate([] if only and "echo" not in only else P.CAPCOM_LINES + [x[0] for x in P.OFFERS.values()]):
         for v in APP_VOICES:
             add("app", line, var=APP_VOICES.index(v), voice=v, frame={"screen": "cabin"})
     print(f"round 6 class + app-voice jobs: {len(new) - n0}", flush=True)
@@ -146,6 +151,8 @@ def cmd_jobs(a):
     # pack through the speaker (group app_os), the video's narration and music leaking into the mic (group video)
     n0 = len(new)
     for ci, cls in enumerate(G.R8_CLASSES):
+        if only and cls not in only:
+            continue
         for it in G.class_set_items(cls, a.cls_n, 995_000 + 1000 * ci):
             au = it.get("audio") or {}
             if au.get("kind") == "os_voice":
@@ -304,7 +311,7 @@ def cmd_decode(a):
     if a.order == "test_first":
         todo.sort(key=lambda j: {"app": 0, "test": 0, "val": 1, "train": 2}[j["group"]])
     elif a.order == "mix":     # round 7: held-out first, but every 3rd job a train / val one (a cut-short run still
-        held = [j for j in todo if j["group"] in ("app", "test")]   # leaves train decodes with the ear's extras)
+        held = [j for j in todo if j["group"] not in ("val", "train")]   # test, app, app_os, video ...   # leaves train decodes with the ear's extras)
         va = [j for j in todo if j["group"] == "val"]
         tr = [j for j in todo if j["group"] == "train"]
         todo = []
@@ -376,6 +383,7 @@ if __name__ == "__main__":
     ap.add_argument("--order", default="test_first")
     ap.add_argument("--hf-p", type=float, default=0.3)
     ap.add_argument("--cls-n", type=int, default=160)
+    ap.add_argument("--classes", default="", help="jobs for these class sets only (comma list), nothing else")
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
     {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats}[a.cmd](a)
