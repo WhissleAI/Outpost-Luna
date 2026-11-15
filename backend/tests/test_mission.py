@@ -143,7 +143,8 @@ def careful(m):
         sim.apply_command(m, {"type": "shelter", "on": True})
     elif not storm_soon and m.shelter:
         sim.apply_command(m, {"type": "shelter", "on": False})
-    dark = env["sun_frac"] < 0.5 and not sim.site(m.site_id).get("power_from")
+    # a cabled site (the floor) has nights too: its rim arrays go dark on the real LOLA skyline (env "lit")
+    dark = not env["lit"] if sim.site(m.site_id).get("power_from") else env["sun_frac"] < 0.5
     if dark != m.power_save:
         sim.apply_command(m, {"type": "power_save", "on": dark})
         if dark:

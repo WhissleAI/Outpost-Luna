@@ -84,7 +84,9 @@ def test_skip_stops_at_the_next_event_and_never_jumps_a_storm():
 
 
 def test_sunset_soon_gives_six_hours_notice():
-    m = sim.new_mission("m", "malapert_massif", 0, level="cadet")
+    # Shackleton Rim: on the real LOLA skyline its first sunset is at hour 41 (Malapert starts the window in the dark and
+    # an idle crew there runs out of power before its first sunset; docs/SITE_NAVIGATOR.md)
+    m = sim.new_mission("m", "shackleton_rim", 0, level="cadet")
     evs = sim.advance(m, 20)
     soon = [e for e in evs if e["kind"] == "sunset_soon"]
     down = [e for e in evs if e["kind"] == "sunset"]
@@ -188,11 +190,15 @@ def test_night_prep_at_malapert_includes_the_long_night():
 
 
 def test_cadet_gets_fewer_tasks_than_commander():
+    # over 5 seeds: one seed can tie (a Commander-only repair against a storm the Commander band skips)
     def count(level):
-        m = sim.new_mission("m", "de_gerlache_rim", 7, level=level)
-        while not m.over:
-            sim.step(m, 1)
-        return len(m.gp["tasks"])
+        n = 0
+        for seed in range(7, 12):
+            m = sim.new_mission("m", "de_gerlache_rim", seed, level=level)
+            while not m.over:
+                sim.step(m, 1)
+            n += len(m.gp["tasks"])
+        return n
     assert count("cadet") < count("commander")
 
 

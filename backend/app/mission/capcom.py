@@ -157,7 +157,7 @@ def status(what: str, state: dict | None, mid: str | None = None) -> str:
         if p is not None:
             line = f"Battery at {_pct(p)}."
             if full:
-                line += " Sun's up, panels charging." if env.get("in_sun") else " It's dark. We're on battery."
+                line += " Sun's up, panels charging." if env.get("lit", env.get("in_sun")) else " It's dark. We're on battery."
             parts.append(line)
     if what in ("oxygen", "life_support", "all"):
         o = r.get("life_support_pct")

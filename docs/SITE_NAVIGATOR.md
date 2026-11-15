@@ -50,8 +50,10 @@ Picking a site and taking command flies it on its real numbers, through the sim'
 * **Ice run**: `rover_to_ice_h` = distance to surface-stable ice (Diviner) at VIPER's top speed, slower on slopes:
   Rim 7 h (2.9 km), Ridge 16 h (7.0 km), de Gerlache 17 h (7.2 km), Malapert 31 h (12.1 km); the floor has ice on site.
   `rover_slope_power` (+2 / +3 % battery) is the steep drive's cost.
-* The Shackleton floor's power comes by the pretend cable from the rim's arrays, which now really go dark at the start:
-  the state's `env.power_sun` tells the player (and `tools/strategy_sim.py`'s planner) when to use night mode.
+* The Shackleton floor's power comes by the pretend cable from the rim's arrays, which now really go dark (about two
+  days at the start). The floor plays that as its day / night: `env.lit` (the arrays see the Sun) drives sunrise /
+  sunset / sunset-in-6-hours events ("Sunset on the rim"), the night checklist task and the Power panel's Sun timeline;
+  `env.in_sun` (the Sun at the outpost) stays false on the floor. `env.power_sun` mirrors `lit` for the planner.
 * Balance (`tools/strategy_sim.py`, 6 seeds × 5 sites, Commander, shift clock): the planner survives 1.00 with
   both goals 0.90 (score 587, min 389); no fixed rule passes 0.33 survival; `tests/test_strategy.py` passes on all three
   clocks. The game is harder than before at the rim and ridge, because their real skylines cast real shadows.
