@@ -135,3 +135,11 @@ def test_exact_option_answer_passes_the_directed_gate():
     assert R.route("we have to leave right now ok", c)["outcome"] == "ignore"       # not the answer as written
     assert R.route("yes", ctx("lesson", step_type="earth_view", dd=0.2))["outcome"] == "ignore"
     assert R.route("Right now", ctx("cabin", dd=0.2))["outcome"] == "ignore"           # only on a step
+
+
+def test_exact_keyword_answer_passes_the_directed_gate():
+    """Round 8 live run: "say again" (the radio step's answer) was rated not directed every time; the kid was stuck."""
+    st = _step("keywords", lambda st: any("say again" in g for g in st["accept"].get("all", []) + st["accept"].get("any", [])))
+    c = ctx("lesson", step_type="keywords", step=st, dd=0.2)
+    assert R.route("say again", c)["outcome"] == "answer"
+    assert R.route("we should say again later tonight ok", c)["outcome"] == "ignore"

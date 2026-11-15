@@ -692,7 +692,17 @@ def exact_option(text: str, ctx: Ctx) -> bool:
     if ctx.step:
         from .academy.grade import step_options
         phrases += [w for _, say in step_options(ctx.step["accept"]) for w in say if w]
-    return any(norm(p) == q and (len(q.split()) >= 2 or len(q) >= 4) for p in phrases if p)
+    if any(norm(p) == q and (len(q.split()) >= 2 or len(q) >= 4) for p in phrases if p):
+        return True
+    # a keywords / command step has no options: a short turn (2-4 words) the step's grader passes on is its answer
+    # said as written (round 8 live run: "say again" on the radio step was rated not directed every time)
+    if ctx.step and ctx.step_type in ("keywords", "command") and 2 <= len(q.split()) <= 4:
+        try:
+            from .academy.grade import _grade
+            return bool(_grade(ctx.step, {"text": q})[0])
+        except Exception:  # noqa: BLE001
+            return False
+    return False
 
 
 def _names_option(text: str, ctx: Ctx) -> bool:
