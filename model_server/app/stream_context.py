@@ -3,18 +3,12 @@
 client -> {"t":"context","mission":{...State subset...},"names":[...],"terms":[...],"telemetry":{...}|[...]}
 server -> {"t":"context_ack","v":n,"names":k,"terms":k,"names_to_arc":bool,"terms_to_arc":false,"at_audio_s":s}
 
-Ear mode (/v1/stream?ear=arc, arc_ear.EarStream, decoder loaded): names, terms and topic go to the decoder's context
-memory (Stream.set_context: names + terms fill the prompt's ~40-token list slot in order, so put the likeliest first)
-and names also to the linker (set_names). The ack then says terms_to_arc / topic_to_arc true.
-
-What reaches Arc v1.1 in metadata mode (external-transcript mode, see arcmeta.MetaStream):
-  names     -> Stream.set_names(): the name linker / snap checks the external words' name spans against this list.
-               (MetaStream's summary does not emit Arc's `names` records yet, so the effect is not visible downstream.)
-  terms     -> recorded only. Arc's terms/topic/previous_text are *decoder* context (Stream.set_context), and the decoder
-               is not loaded here (load_decoder=False): the call would be a no-op.
-  mission / telemetry -> recorded only, time-aligned to the audio fed so far (`at_audio_s`). No Arc head reads them.
-The latest context is attached to every emitted `arc` message as `context` (version, counts, the latest telemetry
-frame), so a consumer can join model output with the game state it was heard in.
+names: the screen's names list for Arc Transcriber Space ([{"name","kind","aliases"}], most relevant first; plain strings
+are taken as kind "place"). They go to the stream's EarStream.set_names (ear and metadata modes alike) and are used from
+the next decode: RNNT biasing, the decoder's kb prompt (the first ~10-15) and linking (the `names` on the final words).
+terms / topic: recorded only (this model's context has no free-term slot). mission / telemetry: recorded only,
+time-aligned to the audio fed so far (`at_audio_s`). The latest context is attached to every emitted `arc` message as
+`context` (version, counts, the latest telemetry frame).
 """
 from __future__ import annotations
 
@@ -52,10 +46,10 @@ class StreamContext:
         if isinstance(msg.get("names"), list):
             self.names = [n for n in msg["names"] if isinstance(n, (str, dict))][:MAX_NAMES]
             self.names_to_arc = False
-            s = getattr(ms, "s", None)   # the arc_audio Stream inside arcmeta.MetaStream
-            if s is not None and callable(getattr(s, "set_names", None)):
+            sn = getattr(ms, "set_names", None)
+            if callable(sn):
                 try:
-                    s.set_names(self.names)
+                    sn(self.names)
                     self.names_to_arc = True
                 except Exception:  # noqa: BLE001 (context never breaks the stream)
                     self.names_to_arc = False
@@ -63,23 +57,9 @@ class StreamContext:
             self.terms = [str(x) for x in msg["terms"]][:MAX_NAMES]
         if isinstance(msg.get("topic"), str):
             self.topic = msg["topic"][:80] or None
-        hot_n = None
-        sh = getattr(ms, "set_hot", None)                 # ear mode, round 7: the screen's tiered hot lists
-        if callable(sh) and msg.get("hot") is not None:
-            try:
-                hot_n = sh(msg["hot"])
-            except Exception:  # noqa: BLE001
-                hot_n = 0
-        dec = getattr(ms, "set_decoder_context", None)   # ear mode only: the decoder is loaded
-        if callable(dec) and any(k in msg for k in ("names", "terms", "topic")):
-            try:
-                self.terms_to_arc = bool(dec(names=self.names, terms=self.terms, topic=self.topic))
-            except Exception:  # noqa: BLE001
-                self.terms_to_arc = False
         return {"t": "context_ack", "v": self.v, "names": len(self.names), "terms": len(self.terms),
                 "names_to_arc": self.names_to_arc, "terms_to_arc": self.terms_to_arc,
-                "topic_to_arc": self.terms_to_arc and bool(self.topic), "at_audio_s": at,
-                **({"hot": hot_n} if hot_n is not None else {})}
+                "topic_to_arc": False, "at_audio_s": at}
 
     def decorate(self, out: dict | None) -> dict | None:
         if out and out.get("t") == "arc" and self.v:

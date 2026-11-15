@@ -82,11 +82,11 @@ def collect_until_end(ws):
     return out
 
 
-def test_arc_ear_relays_unchanged_and_sends_tier_a(servers):
+def test_arc_ear_relays_unchanged_and_sends_the_names_list(servers):
     with TestClient(app) as c, c.websocket_connect("/ws/listen") as ws:
         assert ws.receive_json() == {"t": "ready"}
         assert ws.receive_json()["ear"] == "arc"
-        ack0 = ws.receive_json()                                 # Tier A context ack
+        ack0 = ws.receive_json()                                 # the names list's context ack
         ws.send_text(json.dumps({"t": "context", "names": ["Malapert"], "terms": ["shields"]}))
         ack1 = ws.receive_json()
         ws.send_bytes(bytes(2560))
@@ -96,9 +96,14 @@ def test_arc_ear_relays_unchanged_and_sends_tier_a(servers):
     assert ack0["t"] == ack1["t"] == "context_ack"
     assert out == ARC_TURN[:5]                                   # relayed unchanged, in order
     assert servers["flux"] == 0 and "ear=arc" in servers["arc_q"][0]
-    tier, client = servers["arc_ctx"]
-    assert "Shackleton" in tier["names"] and "Apollo 16 rover" in tier["names"]
-    assert client["names"][0] == "Malapert" and "Shackleton" in client["names"] and client["terms"] == ["shields"]
+    first, client = servers["arc_ctx"][:2]
+    names = [n["name"] for n in first["names"]]
+    assert len(names) <= 40 and "Sea of Tranquility" in names and "Reid Wiseman" in names and "Artemis II" in names
+    assert all(n.get("kind") for n in first["names"])            # Arc Transcriber Space needs a kind on every entry
+    art = next(n for n in first["names"] if n["name"] == "Artemis II")
+    assert "Artemis 2" in art["aliases"]                          # Roman numerals aliased
+    assert client["names"][0] == {"name": "Malapert", "kind": "place"} and "terms" not in client
+    assert "Sea of Tranquility" in [n["name"] for n in client["names"]]
 
 
 def test_arc_full_falls_back_to_deepgram_with_key(servers, monkeypatch):
@@ -130,8 +135,10 @@ def test_model_server_down_without_key_sends_error(servers, monkeypatch):
 
 
 def test_arc_context_merge_and_url(monkeypatch):
-    m = listen.arc_context({"t": "context", "names": ["Shackleton"], "terms": ["rover"]}, ("Shackleton", "Cabeus", "Rover"))
-    assert m["names"] == ["Shackleton", "Cabeus"] and m["terms"] == ["rover"]
+    base = [{"name": "Shackleton", "kind": "lunar_feature"}, {"name": "Cabeus", "kind": "lunar_feature"}]
+    m = listen.arc_context({"t": "context", "names": ["Shackleton"], "terms": ["rover"]}, base)
+    assert m["names"] == [{"name": "Shackleton", "kind": "place"}, {"name": "Cabeus", "kind": "lunar_feature"}]
+    assert "terms" not in m
     assert listen.arc_context({"t": "context", "mission": {"a": 1}}, ("X",)) == {"t": "context", "mission": {"a": 1}}
     monkeypatch.setattr(settings, "model_stream_url", "ws://h:1/v1/stream")
     assert listen.arc_ear_url() == "ws://h:1/v1/stream?ear=arc&domain=assistant"

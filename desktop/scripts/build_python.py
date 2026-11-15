@@ -8,14 +8,15 @@ Output (all under desktop/resources/, gitignored):
     python/                 the interpreter (bin/python3 on macOS / Linux, python.exe on Windows)
     site/backend/           backend deps (uv export --frozen of backend/uv.lock)
     site/models/            model-server deps (model_server/uv.lock, incl. the Windows-only WinRT speech + comtypes
-                            packages on a Windows target) + the arc-transcriber wheel
+                            packages on a Windows target). No torch / transformers: the ear is libarc (C) + ONNX
+                            Runtime, built separately (desktop/vendor/libarc -> resources/native)
     app/backend/            backend/app + backend/data (minus media and caches; media is added by electron-builder)
     app/model_server/       model_server/app
     app/frontend/           frontend/dist (npm run build)
     app/launch.py           the child-process entry point (desktop/runtime/launch.py)
 
-The arc-transcriber wheel comes from desktop/vendor/wheels/ (see docs/DESKTOP.md); with --build-wheels it is built from
-the local checkout first. Speech uses the OS's own voices (model_server/app/tts_os.py): nothing to bundle on macOS
+Vendored wheels (none today: the arc-transcriber wheel went with the torch ear) would come from desktop/vendor/wheels/;
+with --build-wheels they are built from the local checkouts in LOCAL_SRC first. Speech uses the OS's own voices (model_server/app/tts_os.py): nothing to bundle on macOS
 (/usr/bin/say); on Windows the pinned pywinrt packages come from the lock like any other dependency. Caches stay in desktop/build/.
 
 Cross-build (docs/BUILD_WINDOWS.md, "Cross-build on a Mac"): `--target win-x64` on macOS / Linux lays out the Windows
@@ -48,10 +49,8 @@ WIN = sys.platform == "win32"     # the TARGET is Windows (this machine, or --ta
 # Cross-build targets: the uv platform for wheels and python-build-standalone's download for the interpreter.
 TARGETS = {"win-x64": {"uv_platform": "x86_64-pc-windows-msvc", "os": "windows", "arch": "x86_64"}}
 CROSS: dict | None = None         # set by --target
-VENDORED = ("arc-transcriber",)
-LOCAL_SRC = {  # dev-machine checkouts, for --build-wheels (the paths model_server/pyproject.toml uses)
-    "arc-transcriber": ROOT / "../../../../dv3work/arc/arc_transcriber",
-}
+VENDORED: tuple[str, ...] = ()
+LOCAL_SRC: dict[str, Path] = {}  # dev-machine checkouts, for --build-wheels (the paths model_server/pyproject.toml uses)
 # The OS-voice engine's Windows packages (model_server/pyproject.toml): a Windows tree must hold every one of them.
 WIN_SPEECH = ("winrt/_winrt", "winrt/_winrt_windows_media_speechsynthesis", "winrt/_winrt_windows_media_core",
               "winrt/_winrt_windows_storage_streams", "winrt/_winrt_windows_foundation",
@@ -253,12 +252,11 @@ SITE_DROP_GLOBS = ["**/*.pyi", "**/*.a", "**/*.lib", "**/*.pdb", "torch/lib/*.li
 #     refuses to start without it on macOS / Linux (torch/__init__.py _manager_path), though the app never shares tensors.
 #   numpy/f2py (Fortran wrapper generator) and each site folder's bin/ (console scripts with a build-machine shebang).
 #   onnxruntime/{transformers,quantization,tools}: ONNX model optimizer / quantizer / converter CLIs; `import
-#     onnxruntime` never loads them. onnxruntime/capi/libonnxruntime.*.dylib (34 MB, macOS): the C-API library for C
-#     callers; the Python binding (onnxruntime_pybind11_state.so) is self-contained (`otool -L` lists no link to it)
-#     and lsof shows it unmapped while a session runs. The Windows onnxruntime.dll is left alone.
+#     onnxruntime` never loads them. onnxruntime/capi/libonnxruntime.*.dylib / onnxruntime.dll STAY: libarc (the ear,
+#     model_server/app/nft2.py) loads that C-API library at run time; it is the app's only ONNX Runtime for C.
 UNUSED_PACKAGES = ["pip", "setuptools", "pkg_resources", "_distutils_hack", "wheel", "pygments", "networkx", "hf_xet"]
 UNUSED_FILES = ["distutils-precedence.pth", "torch/bin/protoc*", "numpy/f2py", "bin", "onnxruntime/transformers",
-                "onnxruntime/quantization", "onnxruntime/tools", "onnxruntime/capi/libonnxruntime.*.dylib"]
+                "onnxruntime/quantization", "onnxruntime/tools"]
 HEADERS = {".h", ".hpp", ".hxx", ".cuh", ".inl", ".tcc"}
 
 
@@ -320,10 +318,17 @@ def stage_app(skip_frontend: bool):
     app = RES / "app"
     shutil.rmtree(app, ignore_errors=True)
     shutil.copytree(ROOT / "backend/app", app / "backend/app", ignore=APP_IGNORE)
-    # data: read-only in the bundle. media is mapped by electron-builder (Moon map + the trimmed clips, trim_media.py);
-    # cache/ and tts_cache/ are rebuilt in the per-user folder (CACHE_DIR).
-    shutil.copytree(ROOT / "backend/data", app / "backend/data",
-                    ignore=shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", ".DS_Store", ".env"))
+    # data: read-only in the bundle. media/img (the Moon map) is mapped by electron-builder; cache/ and tts_cache/ are
+    # rebuilt in the per-user folder (CACHE_DIR). The recorded voice pack's clips + index.json, the crew audio and the
+    # videos are first-run assets (desktop/assets.manifest.json, VOICE_PACK_DIR etc.): only lines.json stays here.
+    base_ignore = shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", "turnlog", ".DS_Store", ".env")
+
+    def data_ignore(d, names):
+        out = set(base_ignore(d, names))
+        if Path(d).name == "voice_pack":
+            out |= {n for n in names if n != "lines.json"}
+        return out
+    shutil.copytree(ROOT / "backend/data", app / "backend/data", ignore=data_ignore)
     shutil.copytree(ROOT / "model_server/app", app / "model_server/app", ignore=APP_IGNORE)
     shutil.copy2(DESK / "runtime/launch.py", app / "launch.py")
     if not skip_frontend:

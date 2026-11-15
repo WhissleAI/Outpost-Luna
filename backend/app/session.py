@@ -356,8 +356,9 @@ class Session:
         ptt = self.ptt_only()
         if t == "words":
             k["words"] = m.get("text") or ""
-            if m.get("final"):     # round 7: the ear's n-best / confidence / hot-list match ride on the final words
-                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored") if m.get(x) is not None}
+            if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
+                # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
+                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken") if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -488,6 +489,12 @@ class Session:
         les = content.lesson(lid)
         steps = (les or {}).get("steps") or []
         return steps[i] if 0 <= i < len(steps) else None
+
+    def ear_names(self) -> list[dict]:
+        """The ear's names list for the screen the kid is on (names_list.py; /ws/listen sends it to Arc Transcriber
+        Space on every change): <= 40 {"name", "kind", "aliases"}, most relevant first."""
+        from .names_list import screen_names
+        return screen_names({**self.screen, "screen": self.screen_name()}, self.open_step(), self.belief.get("last_place"))
 
     def hot_words(self) -> dict:
         """The ear's tiered hot lists for the screen the kid is on (round 7, hotlist.py; /ws/listen sends them to the
@@ -649,6 +656,9 @@ class Session:
 
         resolved = self.resolve_referent(text) if b["mission_id"] else text
         read = summarize(await models_client.tag(resolved, "assistant"))
+        names = (k.get("ear") or {}).get("names") if source in OPEN_MIC or source == "ptt" else None
+        if names:   # the ear's names for THIS turn: director._link routes on names[i].entity, not on the raw words
+            read = {**read, "ear_names": names}
         out = None
         if self.dm is not None:
             with contextlib.suppress(Exception):
