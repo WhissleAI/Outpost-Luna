@@ -165,4 +165,3 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 }
 .mx-do{display:flex;align-items:center;gap:8px;font-size:var(--text-sm);color:var(--color-text);margin:4px 0 8px}
 .mx-do::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--color-accent)}
-.mx-pretend{margin-left:var(--space-1);padding:0 4px;border-radius:var(--radius-sm);border:1px dashed var(--color-line-strong);font-size:var(--text-xs);color:var(--color-text-2)}   /* [qa] PRETEND_TECH tag on the picker */

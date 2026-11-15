@@ -428,8 +428,6 @@ body:has(.cb-offer) .card .card-actions{display:none}
 html[data-motion="reduce"] .is-cue{animation:none}
 @media (prefers-reduced-motion:reduce){.is-cue{animation:none}}
 /* invented hardware is labelled, small (docs/ACCURACY_AUDIT.md) */
-.cb-pretend{display:inline-block;margin-left:var(--space-1);padding:0 5px;border-radius:var(--radius-sm);border:1px dashed currentColor;font-family:var(--font-ui);
-  font-size:10px;font-weight:var(--weight-semibold);letter-spacing:.02em;text-transform:none;opacity:.8;vertical-align:middle}
 .cb-shl{font-size:var(--text-xs);font-weight:var(--weight-semibold);color:var(--cb-text-2);margin-right:var(--space-1)}
 .cb-al-src{color:inherit;text-decoration:underline;text-underline-offset:2px}
 /* gestures: the panel a lean-in would open */
@@ -489,7 +487,6 @@ html[data-motion="reduce"] .is-point{animation:none}
 .cb-hole.has-alert>.cb-top{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
 .cb-hole.has-alert>.cb-sky,.cb-hole.has-alert>.cb-rover{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2) + 56px)}
 .cb-glass.has-alert .cb-top{top:calc(var(--space-4) + var(--alert-h, var(--control-md)) + var(--space-2))}
-.cb-al-b .cb-pretend{margin-left:4px}
 
 /* the tour card: one beat, one Next, a quiet Skip */
 .m-tour{position:absolute;z-index:30;left:50%;transform:translateX(-50%);width:min(520px,calc(100% - 32px));box-sizing:border-box;

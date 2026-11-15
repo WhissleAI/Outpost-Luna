@@ -8,6 +8,7 @@
 // clock(c) (the live clock's controls), card(c) (the Now task card), moment(beat), missionLog(entries).
 // Every control is a <button> (or role=slider) whose aria-label states its state. An order that changes a control
 // (by voice or by click) animates that control (.is-moved). Colours and sizes come from tokens.css only.
+import { pretendLabel } from "../pretend.js";   // the "pretend tech" mark
 import "../cabin.css";
 import * as story from "../story.js";
 const { callSign } = story;
@@ -18,8 +19,8 @@ import { createTerrainView } from "./terrain.js";
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-/** Invented hardware gets a small tag (docs/ACCURACY_AUDIT.md): the copy owner's words when they land. */
-const pretend = () => `<span class="cb-pretend" title="Not real NASA hardware">${esc(story.PRETEND_TECH || "Pretend tech")}</span>`;
+/** Invented hardware gets a small mark glued to its label (src/pretend.js, docs/ACCURACY_AUDIT.md). */
+const pretend = label => pretendLabel(label);
 const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, +v || 0));
 const deg = v => `${v >= 0 ? "+" : "−"}${Math.abs(+v || 0).toFixed(1)}°`;
 const PAGES = [["PWR", "Power"], ["LIFE", "Life support"], ["RAD", "Radiation"], ["COMM", "Comms"]];
@@ -129,7 +130,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-info" id="cbInfoRad"></div>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
-            <span class="cb-shl">Shields ${pretend()}</span>
+            <span class="cb-shl">${pretend("Shields")}</span>
             <button type="button" class="cb-mini" id="cbShMinus" aria-label="Shields down 10">−</button>
             <div class="cb-knob" id="cbKnob" role="slider" tabindex="0" aria-label="Shield power" aria-valuemin="0" aria-valuemax="60" aria-valuenow="0">
               <svg viewBox="0 0 80 80" aria-hidden="true"><circle class="k-track" cx="40" cy="40" r="32" pathLength="100"/><circle class="k-val" id="cbKval" cx="40" cy="40" r="32" pathLength="100"/></svg>
@@ -276,12 +277,12 @@ export function createCabin(root, o = {}) {
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50;
     const sunCh = e.next_sun_change_h != null ? row(e.in_sun ? "Sunset in" : "Sunrise in", `${Math.round(e.next_sun_change_h)} h`, e.in_sun && e.next_sun_change_h <= 6 ? "is-warn" : "") : "";
     if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
-      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${esc(n)}${k === "shields" || k === "greenhouse" ? ` ${pretend()}` : ""}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
+      <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${k === "shields" || k === "greenhouse" ? pretend(n) : esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
-      ${row("Air system", Math.round(L.life_support) + "%")}${row(`Greenhouse ${pretend()}`, Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
+      ${row("Air system", Math.round(L.life_support) + "%")}${row(pretend("Greenhouse"), Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
       return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
-      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(`Shields ${pretend()}`, Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
+      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(pretend("Shields"), Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
     return `${big("Comms", e.earth_visible ? "Open" : "Closed", "", false)}
       ${row(e.earth_visible ? "Radio delay" : "Next window", e.earth_visible ? `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way` : `${e.next_comm_window_h ?? "?"} h`)}
       <ol class="du-log">${logLines.slice(-3).map(l => `<li><b>${esc(l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM")}</b> ${esc(l.text)}</li>`).join("")}</ol>`;
@@ -343,7 +344,7 @@ export function createCabin(root, o = {}) {
   function paintInfo(s) {
     const r = s.resources, e = s.env || {}, L = s.loads, rv = s.rover || {}, lim = r.dose_limit_msv || 50;
     const hab = q("#cbInfoHab"); if (hab) hab.innerHTML = irow("Life support", Math.round(r.life_support_pct) + "%", mbar(r.life_support_pct, 100, r.life_support_pct < 25 ? "is-warn" : ""))
-      + irow(`Greenhouse ${pretend()}`, Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0)) + irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0));
+      + irow(pretend("Greenhouse"), Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0)) + irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0));
     const obj = q("#cbObj"), O0 = s.objectives || null;
     const O = Array.isArray(O0) ? O0 : O0 ? Object.entries(O0).filter(([, v]) => v && typeof v === "object" && "goal" in v)
       .map(([k, v]) => ({ text: `${k === "ice" ? "Ice" : k === "science" ? "Science" : k} ${Math.round(v.got || 0)} / ${v.goal}`, done: !!v.met })) : null;
@@ -432,7 +433,7 @@ export function createCabin(root, o = {}) {
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
     el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
-      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n, fake], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${esc(n)}${fake ? ` ${pretend()}` : ""}</button>`).join("")}</span>` : ""}`;
+      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n, fake], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${fake ? pretend(n) : esc(n)}</button>`).join("")}</span>` : ""}`;
     // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
     requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
     el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }

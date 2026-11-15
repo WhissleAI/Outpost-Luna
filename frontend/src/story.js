@@ -19,6 +19,8 @@ export const SOURCES_LINE = "Built on NASA open data, plus a few science papers.
 /** Tag for game-only hardware (powered radiation shields, greenhouse, rim-to-floor cable, rim relay). Tooltip: 10 words. */
 export const PRETEND_TECH = "Pretend tech";
 export const PRETEND_TECH_TIP = "Made up for the game. Real crews don't have this.";
+/** Said (and captioned) the first time a kid picks something marked pretend tech. ≤ 20 words, docs/COPY.md. */
+export const PRETEND_EXPLAIN = "Real bases use thick walls and water for shielding. Our shields are pretend.";
 
 /** The May 2024 storm, told truthfully: Earth saw a magnetic storm (auroras); the Moon's hazard is the particles. */
 export const STORM = {

@@ -75,6 +75,18 @@ MEASURE = """(HUD) => {
       if (r.left < -1 || r.top < -1 || r.right > innerWidth + 1 || r.bottom > innerHeight + 1) out.clipped.push(['viewport', e.className || e.tagName, e.textContent.trim().slice(0, 30)]);
     } else if (e.scrollWidth > e.clientWidth + 2 && cs.textOverflow !== 'ellipsis') out.clipped.push(['box', e.className || e.tagName, e.textContent.trim().slice(0, 30)]);
   }));
+  // [pretend-tech] nothing inside a button may cross its border: badges, tags, number keys, the pretend-tech mark
+  out.crossing = [];
+  document.querySelectorAll('button, [role=option]').forEach(b => {
+    if (!vis(b)) return; const B = b.getBoundingClientRect(); if (B.width < 2) return;
+    // on a 3D console (CSS-projected at an angle) screen rects skew: compare in the button's own layout instead
+    if (b.closest('.c3-panel, .c3')) { if (b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1) out.crossing.push([(b.id || b.className.split(' ')[0]), 'overflow', b.textContent.trim().slice(0, 30)]); return; }
+    b.querySelectorAll('.pt-mark, .pt-glue, kbd, .a-key, small, em, span').forEach(c => {
+      if (!vis(c)) return; const r = c.getBoundingClientRect(); if (!r.width) return;
+      if (r.left < B.left - 1 || r.right > B.right + 1 || r.top < B.top - 1 || r.bottom > B.bottom + 1)
+        out.crossing.push([(b.id || b.className.split(' ')[0] || b.tagName), (c.className && c.className.baseVal === undefined ? c.className : c.tagName), b.textContent.trim().slice(0, 30)]);
+    });
+  });
   // controls shown once
   const count = s => [...document.querySelectorAll(s)].filter(vis).length;
   out.dupes = { pause: count('#cbPlay'), speed: count('.cb-warps'), skip: [...document.querySelectorAll('button')].filter(b => vis(b) && /skip ahead/i.test(b.textContent)).length };
@@ -89,6 +101,7 @@ def hits(a, b, pad=2):
 
 def findings(m):
     out = []
+    out += [f"crosses its button border: {b} > {c} ('{t}')" for b, c, t in m.get("crossing", [])]
     keys = list(m["hud"])
     for i, a in enumerate(keys):
         for b in keys[i + 1:]:

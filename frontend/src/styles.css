@@ -401,3 +401,9 @@ body:not([data-mode="cadet"]) .mcard{display:none}
 
 /* [qa] QA-53: no "Hold to talk" while the voice is starting or off */
 .askbar.is-warming .hint,.askbar.is-voiceoff .hint{visibility:hidden}
+
+/* "Pretend tech" (src/pretend.js, docs/ACCURACY_AUDIT.md): a small muted-amber sparkle glued to the label's last word.
+   Inline and line-height 0: it never changes a button's height, never crosses its border, never wraps on its own. */
+.pt-glue{white-space:nowrap}
+.pt-mark{display:inline-flex;align-items:center;margin-left:.25em;vertical-align:-.12em;line-height:0;color:var(--color-warning);opacity:.85;cursor:help}
+.pt-mark svg{width:.95em;height:.95em;min-width:12px;min-height:12px}

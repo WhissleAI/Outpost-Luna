@@ -1,5 +1,6 @@
 // Mission Trainer UI: briefing (pick a site), HUD (3 resources, loads, environment, rover, End shift), events,
 // CAPCOM card, Houston delay, debrief. Talks to the backend through client.js, or the local mock (labelled "Sample data").
+import { pretendLabel } from "../pretend.js";   // the "pretend tech" mark
 import { createMissionClient } from "./client.js";
 import { sayStyle, stopSpeaking } from "../floor.js";
 import { parseCommand } from "./mock.js";
@@ -271,7 +272,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
           aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${iceLabel(s)}">
-          <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>${s.power_from ? `Power by cable from the rim <span class="mx-pretend" title="${esc(PRETEND_TECH_TIP)}">${esc(PRETEND_TECH)}</span>` : `About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)`}</small>` : ""}</b>
+          <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>${s.power_from ? `Power by cable from the ${pretendLabel("rim")}` : `About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)`}</small>` : ""}</b>
           <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
           <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Here" : s.rover_to_ice_h ? `${s.rover_to_ice_h}<small> h</small>` : "No"}</span>

@@ -7,6 +7,7 @@
 //
 // Steps render through a registry, STEP_RENDERERS[accept.type] = {html(step, ctx) → string, wire?(el, ctx)}, exported
 // and attached to window.__outpost.stepRenderers so other modules can register new step types without editing this file.
+import { pretendLabel } from "../pretend.js";   // the "pretend tech" mark (shields)
 import "../school.css";
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
@@ -59,7 +60,7 @@ export const STEP_RENDERERS = {
   tap: { html: () => "" },
   intent: { html: () => "" },
   command: {
-    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}">${icon(ico, { size: 18 })}<span>${esc(label)}</span>${ico === "shield" ? `<span class="cb-pretend" title="${esc(PRETEND_TECH_TIP)}">${esc(PRETEND_TECH)}</span>` : ""}</button>`).join("")}</div>`,
+    html: () => `<div class="a-orders" role="group" aria-label="Orders">${ORDERS.map(([ico, label, words]) => `<button type="button" class="a-order" data-say="${esc(words)}">${icon(ico, { size: 18 })}<span>${ico === "shield" ? pretendLabel(label) : esc(label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-order").forEach(b => b.onclick = () => ctx.answer({ text: b.dataset.say }, b)),
   },
 };
