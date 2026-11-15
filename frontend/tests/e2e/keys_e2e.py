@@ -495,9 +495,14 @@ def main():
         press("n", 2500)
         ok(js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''") != stop0, "library: N goes to the next tour stop")
         press("Escape", 600)
+        # [flows] the first Esc pauses the tour; the paused card must not trap arrow / D-pad focus (owner bug after #39):
+        # with a button focused, Left / Right move focus instead of stepping the tour, so arrows leave the card
+        ok(js("() => /Paused:/.test(document.body.innerText)"), "library: the first Esc pauses the tour")
+        stop1 = js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''")
 
         # ---------------- About, help, captions, mic ----------------
         ok(press_until(["ArrowUp", "ArrowRight"], "() => document.activeElement.id === 'aboutBtn'", n=8), "top bar: arrows reach About")
+        ok(js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''") == stop1, "library: arrows over a paused tour move focus, not the tour")
         press("Enter", 900)
         ok(js("() => document.getElementById('about').open"), "About opens")
         press("ArrowDown", 400)

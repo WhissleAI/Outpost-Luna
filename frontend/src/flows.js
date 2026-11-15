@@ -46,6 +46,11 @@ export function registerFlow(def) {
 }
 export function currentFlow() { return flows.find(f => safe(f.active)) || null; }
 export const isPaused = f => !!(f && safe(f.paused));
+/** A real control has keyboard focus (then arrows and Enter belong to it, not to the flow). */
+export function focusedControl(doc = typeof document !== "undefined" ? document : null) {
+  const el = doc && doc.activeElement;
+  return !!(el && el !== doc.body && el.matches && el.matches("button, a[href], input, select, [role=button]"));
+}
 /** The router's view of the flow on screen: running / paused, or nothing. */
 export function flowFrame() {
   const f = currentFlow();
@@ -103,12 +108,14 @@ export function installFlowIntents() {
   on("move", (f, a, ev) => {
     if (!f.keys || !["keyboard", "gamepad"].includes(ev.source)) return false;
     if (a.dir !== "left" && a.dir !== "right") return false;
+    // with a control focused (Resume, Next, ×, a chip…) the arrows move focus like everywhere else, so a paused card never
+    // traps it: they can leave to the top bar. With nothing focused they step the flow (the card's own buttons still do).
+    if (focusedControl()) return false;
     return run(f, a.dir === "right" ? "next" : "prev", ev.source);
   });
   on("select", (f, a, ev) => {
     if (a.x != null || !isPaused(f) || !["keyboard", "gamepad"].includes(ev.source)) return false;
-    const el = document.activeElement;
-    if (el && el !== document.body && el.matches && el.matches("button, a[href], input, select, [role=button]")) return false;   // the focused control
+    if (focusedControl()) return false;   // the focused control
     return run(f, "resume", ev.source);
   });
 }
