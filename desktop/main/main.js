@@ -212,6 +212,7 @@ function resetApp(r, origin) {
     session: session.defaultSession, fs, userData: USER, log,
     confirm: async (token) => { const j = await S.getJson(`${origin}/api/reset/confirm?token=${encodeURIComponent(token)}`); return j && j.level; },
     stopChildren: stopAll,
+    clearAssets: () => AS.clearAll(store.dir),   // "Reset everything": the first-run downloads go; the next launch fetches them
     relaunch: () => app.relaunch(), exit: (c) => app.exit(c),
   }).then((o) => { if (!o.done) resetting = false; }, (e) => { log("reset failed:", e.message); app.relaunch(); app.exit(0); });
 }
@@ -319,9 +320,11 @@ function watchWanted() {
   }, 2000);
 }
 
-/** After the UI is up: the optional assets (Steer voice, crew audio, videos), quietly; a failure waits for the next launch. */
+/** After the UI is up: the optional assets (crew audio, videos), quietly; a failure waits for the next launch. An
+ *  `on_demand` asset (the Steer voice) is never fetched here: only when the kid picks it in Settings (watchWanted). */
 async function fetchOptional() {
-  const todo = store.status().filter((x) => !x.required && x.state !== "installed").map((x) => x.id);
+  const onDemand = new Set(store.manifest.assets.filter((x) => x.on_demand).map((x) => x.id));
+  const todo = store.status().filter((x) => !x.required && !onDemand.has(x.id) && x.state !== "installed").map((x) => x.id);
   for (const id of todo) {
     if (quitting) return;
     try { await store.ensure([id]); log(`assets: ${id} installed`); }

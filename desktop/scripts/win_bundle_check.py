@@ -234,16 +234,6 @@ SPEECH_MODULES = {"WinRT runtime": "winrt/_winrt.*.pyd",
                   "WinRT Foundation.Collections": "winrt/_winrt_windows_foundation_collections.*.pyd",
                   "comtypes (SAPI)": "comtypes/__init__.py",
                   "steertts_edge (Steer TTS, the optional engine)": "steertts_edge/__init__.py"}
-# The bundled Steer TTS Edge model (desktop/scripts/gather_models.py STEER_FILES) + its licence files.
-STEER_MODEL_FILES = ("config.json", "director.bin", "voices.json", "voices.safetensors", "onnx/enc.onnx", "onnx/dec.onnx",
-                     "onnx/voc.onnx", "front/gru.npz", "LICENSE", "NOTICE")
-
-
-def steer_model(res: Path) -> dict[str, bool]:
-    d = res / "models/steer-tts-edge"
-    return {f"Steer model {f}": (d / f).is_file() for f in STEER_MODEL_FILES}
-
-
 def speech_packages(site: Path) -> dict[str, bool]:
     return {k: any(site.glob(g)) for k, g in SPEECH_MODULES.items()}
 
@@ -263,7 +253,7 @@ def main():
         print(f"{n} DLL/PYD files; {'every import resolves' if not miss else f'{len(miss)} unresolved import(s)'}")
         sys.exit(1 if miss else 0)
     if a.cmd == "speech":
-        got = {**speech_packages(a.paths[0] / "site/models"), **steer_model(a.paths[0])}
+        got = speech_packages(a.paths[0] / "site/models")   # the Steer MODEL is an on-demand asset on 0.3, not bundled
         for k, v in got.items():
             print(f"  {'OK  ' if v else 'MISS'} {k}")
         sys.exit(0 if all(got.values()) else 1)

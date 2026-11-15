@@ -50,8 +50,13 @@ def test_reset_everything_also_clears_the_video_and_vector_caches(tmp_cache):
     assert [n for n in left["video"] if n.endswith(".mp4")] == []
 
 
-def test_the_downloaded_assets_hook_exists_for_first_run_downloads():
-    assert R.reset_downloaded_assets() == []   # TODO(feat/arc-space): deletes the first-run downloads
+def test_the_downloaded_assets_are_handed_to_the_desktop_shell(monkeypatch, tmp_path):
+    from app.config import settings
+    assert R.reset_downloaded_assets() == []                      # a dev checkout: no per-user downloads
+    (tmp_path / "ear").mkdir()
+    monkeypatch.setattr(settings, "assets_dir", tmp_path)
+    assert R.reset_downloaded_assets() == [str(tmp_path)]         # the shell deletes it after stopping the children
+    assert (tmp_path / "ear").exists()                            # the backend itself deletes nothing
 
 
 def test_only_our_own_page_may_ask_and_the_desktop_token_is_one_use(tmp_cache):

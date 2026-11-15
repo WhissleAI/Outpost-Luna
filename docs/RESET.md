@@ -67,14 +67,16 @@ It erases what the app saved on this computer, at one of two levels.
 - Windows: `%APPDATA%\Outpost Luna\` (Electron's `userData`). Nothing of ours is in `%LOCALAPPDATA%` except the
   installed program, which a reset never touches.
 
-## First-run downloads (feat/arc-space)
+## First-run downloads
 
-Two hooks, both returning nothing today:
-- `reset_downloaded_assets()` in `backend/app/reset.py`;
-- `downloadedAssetDirs()` in `desktop/main/reset.js`.
-
-When the first-run download lands, they return the per-user folders it filled. Reset everything then deletes them, so
-the next launch downloads again. Both are marked `TODO(feat/arc-space first-run download)`.
+"Reset everything" deletes the first-run downloads (`<userData>/assets/`: the ear, tagger, embedder, voice pack, crew
+audio, videos, the Steer voice, staged updates, rollback copies, the cached remote manifest). The next launch runs the
+first-run download again (or "Import offline pack").
+- `desktop/main/reset.js`: `downloadedAssetDirs()` adds `<userData>/assets` to the `all` plan, and `performReset`
+  calls `clearAssets` (main.js: `assets.clearAll(store.dir)`, which also covers an `OUTPOST_ASSETS_DIR` override)
+  after the children are stopped (Windows file locks).
+- `backend/app/reset.py`: `reset_downloaded_assets()` reports `settings.assets_dir` but deletes nothing itself (the
+  model server has those files open, and the reset can still be refused).
 
 ## Tests
 

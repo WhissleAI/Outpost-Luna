@@ -51,10 +51,13 @@ def _rm_tree_contents(d: Path) -> int:
 
 
 def reset_downloaded_assets() -> list[str]:
-    """TODO(feat/arc-space first-run download): delete the assets the first-run flow downloaded into the per-user data
-    folder (models, voice pack, crew audio), so the next launch downloads them again. Today every asset is bundled
-    read-only inside the app, so there is nothing per-user to delete. Return the paths removed."""
-    return []
+    """The first-run downloads (the desktop's per-user assets folder, settings.assets_dir) for "Reset everything". The
+    backend does NOT delete them itself: the model server has the ear, tagger and embedder open (on Windows they can't
+    be deleted) and the reset may still be refused. The desktop shell deletes the folder after stopping both children
+    (desktop/main/reset.js: assets.clearAll + the folder), and the next launch runs the first-run download again.
+    Returns the folders handed to the shell ([] in a dev checkout)."""
+    d = getattr(settings, "assets_dir", None)
+    return [str(d)] if d else []
 
 
 def clear_memory() -> dict:

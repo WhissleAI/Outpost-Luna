@@ -250,7 +250,7 @@
     ]
    },
    "version": "1",
-   "min_app": "0.1.0",
+   "min_app": "0.3.0",
    "max_app": null,
    "requires": []
   },
@@ -4082,9 +4082,10 @@
      }
     ]
    },
-   "note": "Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded.",
+   "note": "On demand: downloaded when Steer TTS is picked in Settings -> Voice. Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded: the public v1 model package is the source (fallback tar_members).",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "on_demand": true
   },
   {
    "id": "crew",
@@ -4534,6 +4535,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-15T17:44:06Z",
- "version": "2026.11.15.1744"
+ "published_at": "2026-11-15T19:09:43Z",
+ "version": "2026.11.15.1909"
 }

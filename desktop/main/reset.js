@@ -14,6 +14,9 @@
 //   children.json    KEPT (the supervisor's pid file)
 //   cache/           the backend's CACHE_DIR: tts/ turnlog/ (start); video/ vectors/ (all)
 //   hf/              HF_HOME (all)
+//   assets/          the first-run downloads (assets.js: the ear, tagger, embedder, voice pack, crew audio, videos, the
+//                    Steer voice, staged updates, rollback copies, the cached remote manifest) (all): the next launch
+//                    runs the first-run download again
 //   Local Storage, IndexedDB, Session Storage, …   Chromium's: cleared through session.clearStorageData
 "use strict";
 const path = require("path");
@@ -38,10 +41,12 @@ function plan(level, userData, platform = process.platform) {
   return { storages: STORAGES, delete: del, keep: KEEP.map((k) => P.join(userData, k)) };
 }
 
-/** TODO(feat/arc-space first-run download): the per-user folders the first-run download fills (models, the voice pack,
- *  crew audio). "Reset everything" deletes them so the next launch downloads them again. Today every asset is bundled
- *  read-only in the app, so there are none. */
-function downloadedAssetDirs(userData, platform = process.platform) { void userData; void platform; return []; }
+/** The per-user folder the first-run download fills (assets.js assetsDir: <userData>/assets). "Reset everything"
+ *  deletes it, so the next launch downloads the assets again. */
+function downloadedAssetDirs(userData, platform = process.platform) {
+  const P = platform === "win32" ? path.win32 : path.posix;
+  return [P.join(userData, "assets")];
+}
 
 /** "<origin>/__outpost/reset?level=…&token=…" → {level, token}, or null for any other URL. */
 function parseResetUrl(url, origin) {
@@ -57,7 +62,8 @@ function parseResetUrl(url, origin) {
  * Resolves the summary; never deletes anything unless the backend confirmed the same level.
  */
 async function performReset({ level, token }, deps) {
-  const { session, fs, userData, platform = process.platform, confirm, stopChildren, relaunch, exit, log = () => {} } = deps;
+  const { session, fs, userData, platform = process.platform, confirm, stopChildren, relaunch, exit, log = () => {},
+    clearAssets = null } = deps;   // clearAssets: assets.clearAll(store.dir) (the assets folder may be OUTPOST_ASSETS_DIR)
   const ok = await confirm(token);
   if (ok !== level) { log("reset refused: not confirmed by the backend"); return { done: false }; }
   const p = plan(level, userData, platform);
@@ -66,6 +72,9 @@ async function performReset({ level, token }, deps) {
   await session.clearStorageData({ storages: p.storages });
   if (session.clearCache) await session.clearCache();
   const deleted = [], failed = [];
+  if (level === "all" && clearAssets) {
+    try { const n = clearAssets(); deleted.push(`assets (${n} entries)`); } catch (e) { failed.push(`assets: ${e.code || e.message}`); }
+  }
   for (const d of p.delete) {
     try { fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); deleted.push(d); }
     catch (e) { failed.push(`${d}: ${e.code || e.message}`); }
