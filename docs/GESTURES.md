@@ -41,6 +41,7 @@ Phase 1 is on when the camera is on. Phase 2 is behind **Extra gestures (try-out
 |---|---|---|---|
 | **Open palm, held still 0.5 s** | `stop` | all five fingers out, pointing up, spread; the palm has moved less than 1.6 hand-lengths/s for 0.5 s | fires once per showing; a 1 s cooldown; a waving palm never fires (tested); the end pose of a swipe is not a stop |
 | **Thumbs up / down** | `yes` / `no` | four fingers curled, thumb straight and vertical, above / below the fist; held 0.35 s | once per showing; a 1.2 s cooldown (a quick up-then-down is one yes) |
+| **Show 1, 2, 3 or 4 fingers, held still 0.5 s** | `pick` {n} | index (1); index + middle spread in a V (2); index + middle + ring, or thumb + index + middle (3); all four with the thumb tucked (4). The same count for 6 frames, held 0.5 s with the hand still | once per showing (lower the hand or change the count to go again); a 1 s cooldown; the counts a hand passes through on the way to 3 never fire; a relaxed hand (two fingers together) is not 2; a fist never counts; the open hand with the thumb out is stop, never a count. **1 vs point:** a still index is "1" only when the point cursor is NOT on a control; on a control it is point and hold (the dwell presses it), and right after a "1" the same still index's dwell presses nothing. See §Answers |
 | **Swipe left / right, open hand** | `next` / `prev` | an open hand moves ≥ 20 % of the frame (and ≥ 1.6 hand-lengths) sideways within 0.45 s, mostly straight (dx ≥ 2·dy, ≥ 75 % of the path) | one swipe is one step (a 0.7 s cooldown); the return stroke within 1.2 s is ignored; a fist sweep is a drag, not a swipe |
 | **Point + dwell 0.8 s** | `point` {x, y, progress}, then `select` {x, y} | index finger out, the other three curled; the cursor (smoothed) stays within 3.5 % of the screen | the ring fills over 0.8 s; it selects once, then re-arms only after the cursor moves 7 % away |
 | **Fist, then lean it** (a joystick) | `spin` {phase, x, y, z} | four fingers curled for 0.25 s (4 frames) grabs and sets the neutral pose; moving or leaning the fist away from it spins the Moon that way, faster the further you lean; twisting it zooms | stays grabbed through a flickering finger or a thumb popping out; releases on an open hand (3 frames), 0.3 s of anything else, or the hand gone 0.25 s; nothing else fires while it holds; the opening hand is not a stop or a swipe for 0.7 s. See §Fist spin |
@@ -138,8 +139,9 @@ One meaning per gesture, everywhere (`gesture/map.js`). A blank cell does nothin
 | Gesture → intent | Moon (map, Library, Home) | Lesson, check ride | Menus (brief, site picker, debrief, patch, call sign) | Cabin (seat or panel) | Video overlay (hook) | Settings |
 |---|---|---|---|---|---|---|
 | **Open hand, still** → `stop` | stop the voice and the Moon | stop the voice | stop the voice | stop the voice and the clock | pause / play | stop the voice |
-| **Thumbs up** → `yes` | take the offer | — (never an answer) | the big button (take command, fly again) | confirm / do the Now card's step | watch the next one | — |
-| **Thumbs down** → `no` | no thanks | — | no thanks | cancel | no thanks | — |
+| **Thumbs up** → `yes` | take the offer | yes, on any answer that has a yes (Yes, Watch, Done) | the big button (take command, fly again) | confirm / do the Now card's step | watch the next one | — |
+| **Thumbs down** → `no` | no thanks | no, on any answer that has a no (No, Skip) | no thanks | cancel | no thanks, close the video | — |
+| **Show 1–4 fingers** → `pick` {n} | — | answer 1–4 (the badges show the numbers while the camera is on) | option 1–4 | choice 1–4 on the Now card | — | — |
 | **Swipe left** → `next` | start the next lesson | next, after you answer | next | next view / next panel | next clip | — |
 | **Swipe right** → `prev` | back | back | back | previous view / panel | previous clip | back |
 | **Point and hold** → `point`, `select` | pick a pin or a place on the Moon | pick an answer or a place | press a button | press a control | press a button | press any switch or button |
@@ -164,7 +166,9 @@ on what a dwell will press); `select` focuses and clicks it. A key press or a mo
 **Video overlay hooks** (another branch builds the overlay; no video code here). The gestures already emit the intents;
 while the overlay is open it sets `body[data-video=1]` (the help card and coach mark then show the video column) and
 registers its handlers at priority 10, e.g. `onIntent("stop", () => videoOpen ? (togglePause(), true) : false, {priority: 10})`,
-and the same for `next` / `prev` / `yes` / `no`. Open hand = pause keeps "same gesture, same meaning".
+and the same for `next` / `prev` / `yes` / `no`. Open hand = pause keeps "same gesture, same meaning". Thumbs down ("No thanks")
+closes the overlay, so a gesture can always get out of it. The overlay deletes `body[data-video]` when it closes; never
+look it up with `closest()` (a click handler that did matched `<body>`: see docs/ROBUSTNESS.md).
 
 **Removed or merged in this round.**
 - **Fist + drag (follow)** → **fist + lean (rate)**. The fist no longer drags the surface 1:1; it is a joystick. The
@@ -172,6 +176,30 @@ and the same for `next` / `prev` / `yes` / `no`. Open hand = pause keeps "same g
 - **The controller's right stick** on the Moon sends `spin` too (it sent per-frame `rotate` deltas), so stick and fist share one feel.
 - **Raise hand = call Houston (phase 2) removed.** It made an open palm mean two things depending on its height; an open hand now always means stop. "Call Houston" is a voice line.
 - **The cabin fist** now looks around with the same spring-back as the head and the controller (it accumulated drag deltas before).
+
+## Answers: thumbs and fingers on any choice
+
+`input/choices.js`. Gestures answer like taps, on every screen with a choice: a lesson's answers, the video step's
+Watch / Skip, the prep card's Done / Skip, the mission's Now card, offers and confirms, the wipe confirm.
+
+- **Thumbs up = yes, thumbs down = no**, by what the option *means*, never its position. First an explicit hook on the
+  button (`data-yes` / `data-no`, or `data-intent="yes|no"`), then a small word list on its label (yes: Yes, Do it,
+  Watch, Done, I did it, Start, Shelter now, Take…; no: No, No thanks, Skip, Not now, Decline, Cancel, Wait…).
+  "Go back" and "Start over" are never a yes.
+- **No yes / no option** (e.g. "Steer left / Steer right"): thumbs pick nothing and the hint chip says "Point at an
+  answer, or hold up fingers". One exception: a thumbs up while the point cursor has focused an option presses that
+  option ("yes, that one").
+- **Fingers pick option N**, the same lists and order as the number keys (`input/keys.js`). The lesson's badges show
+  numbers while the camera is on (`body[data-camera=on]`), also on the Yes / No / Sometimes row and on A–D answers.
+- **Exactly like a tap:** the chosen button wears the focus ring for 300 ms (`.is-gesture-pick`), then it is clicked:
+  the same grading, the same feedback.
+- **Never behind a sheet:** nothing is answered while a dialog, Settings or the calibration is up.
+- **With the camera on**, the lesson's do-line names the gesture ("Thumbs up for yes, down for no, or 3 fingers";
+  "Make a fist and turn it, or point at Far side"). The coach mark for a lesson is thumbs up, show fingers, and point.
+
+Tested: `tests/choices.test.js` (the word list, the hooks, finger counts with hysteresis, 1 vs point) and
+`tests/e2e/answers_e2e.py` (on L1: thumbs up answers Yes, thumbs down No, three fingers Sometimes; the far side by
+click, Enter, the 2 key, voice, point-and-hold and fist spin; thumbs on Steer left / right show the hint).
 
 ## Gesture → intent → what each screen does
 

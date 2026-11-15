@@ -5,6 +5,7 @@
 //
 // Off by default. Turning it on is an explicit choice in Settings (or "turn on the camera", which opens Settings).
 // Frames never leave the device and are never stored; settings live in localStorage on this device only.
+import { installChoiceGestures } from "../input/choices.js";   // [answers] thumbs = yes / no, fingers = option n
 import "./gestures.css";
 import { emitIntent, recentIntents } from "../input/intents.js";
 import { spinState, configureSpin } from "../input/defaults.js";
@@ -85,12 +86,17 @@ export function initGestures(ctx = {}) {
   // ---------- gesture events → intents ----------
   function context() {
     const p = ctx.cabinPanel ? ctx.cabinPanel() : null;
-    return { cabin: !!(ctx.inCabin && ctx.inCabin()), panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2 };
+    // pointingAtControl: the point cursor is on a button / control, so a still index is "point and hold", not "1"
+    return { cabin: !!(ctx.inCabin && ctx.inCabin()), panel: p, vw: innerWidth, vh: innerHeight, phase2: S.phase2,
+      pointingAtControl: !!(hover && hover.tagName !== "CANVAS") };
   }
   // a hand gesture drives like the keys / remote: the same focus ring (keys.css, html[data-input=gesture])
-  const DRIVES = new Set(["palm_hold", "thumbs_up", "thumbs_down", "swipe_left", "swipe_right", "point", "select", "grab_start"]);
+  const DRIVES = new Set(["palm_hold", "thumbs_up", "thumbs_down", "swipe_left", "swipe_right", "point", "select", "grab_start", "fingers"]);
+  let fingerPickT = -1e9;   // a "1" just picked: the same still index's dwell must not also press what is under it
   function handle(ev) {
     if (calib) { calib.event(ev); return; }
+    if (ev.type === "select" && !hover && performance.now() - fingerPickT < 1200) return;
+    if (ev.type === "fingers" && ev.n === 1 && !(hover && hover.tagName !== "CANVAS")) fingerPickT = performance.now();
     if (DRIVES.has(ev.type)) document.documentElement.dataset.input = "gesture";
     if (ev.type === "point") showCursor(ev);
     if (ev.type === "point_end") hideCursor();
@@ -135,7 +141,9 @@ export function initGestures(ctx = {}) {
     clearTimeout(toastT); toastT = setTimeout(() => { toast.hidden = true; }, 900);
   }
   let hintKey = "", hintT = 0;
+  let hintHold = 0;   // a one-off hint (showHint) stays up this long before the screen's own hint comes back
   function paintHint() {
+    if (performance.now() < hintHold) return;
     if (!engine.running || calib) { hint.hidden = true; hintKey = ""; return; }
     const frame = (ctx.screen && ctx.screen()) || {};
     const confirm = [...document.querySelectorAll("#card button")].some(b => b.offsetParent && /^(yes|no)$/i.test(b.textContent.trim()));
@@ -148,6 +156,15 @@ export function initGestures(ctx = {}) {
     hintT = setTimeout(() => { hint.hidden = true; }, 6000);
   }
   setInterval(paintHint, 500);
+  /** A one-off hint from an answer gesture that had nothing to do ("Point at an answer, or hold up fingers"). */
+  function showHint(text) {
+    hintKey = text; clearTimeout(hintT); hintHold = performance.now() + 3500;
+    hint.innerHTML = icon("hand") + `<span>${esc(text)}</span>`; hint.hidden = false;
+    live.textContent = ""; requestAnimationFrame(() => { live.textContent = text; });
+    hintT = setTimeout(() => { hint.hidden = true; hintKey = ""; }, 3500);
+  }
+  // thumbs up / down answer any yes / no choice; fingers pick option n (input/choices.js)
+  installChoiceGestures({ hint: showHint });
 
   // ---------- the fist: stick indicator (grab, direction, speed) + the Moon's heading arrow ----------
   let spinRaf = 0;

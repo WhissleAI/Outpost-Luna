@@ -23,6 +23,9 @@ export function gestureIntents(ev, ctx = {}) {
     case "palm_hold": return [[GESTURES.palm.intent, {}]];
     case "thumbs_up": return [[GESTURES.thumbs_up.intent, {}]];
     case "thumbs_down": return [[GESTURES.thumbs_down.intent, {}]];
+    // show N fingers: pick option N (the number keys' intent). "1" is only sent when gesture/ui.js says the index is
+    // not pointing at a control (ctx.pointingAtControl)
+    case "fingers": return ev.n === 1 && ctx.pointingAtControl ? [] : [["pick", { n: ev.n, fingers: true }]];
     // a swipe to the left pulls the next thing in (as on a phone); to the right brings the previous one back
     case "swipe_left": return [[GESTURES.swipe_left.intent, {}]];
     case "swipe_right": return [[GESTURES.swipe_right.intent, {}]];
@@ -44,6 +47,6 @@ export function gestureIntents(ev, ctx = {}) {
 
 /** Short feedback shown (and announced) when a gesture made an intent, so a kid knows it worked. No emoji. */
 export const FEEDBACK = {
-  stop: "Stop", yes: "Yes", no: "No", next: "Next", prev: "Back", select: "Picked",
+  stop: "Stop", yes: "Yes", no: "No", next: "Next", prev: "Back", select: "Picked", pick: "Picked",
   panel_open: "Opening panel", panel_back: "Back to your seat",
 };

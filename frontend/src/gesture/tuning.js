@@ -14,6 +14,8 @@ export const DEFAULTS = Object.freeze({
   minHandScale: 0.045,   // wrist→middle-knuckle length (normalised); smaller = too far away / someone behind
   palmHoldMs: 500, palmCooldownMs: 1000, palmMaxSpeed: 1.6,    // speed in hand-lengths per second
   thumbHoldMs: 350, thumbCooldownMs: 1200,
+  // show N fingers → pick option N (1–4): the same count for fingersFrames frames, held (and the hand still) this long [webcam]
+  fingersHoldMs: 500, fingersFrames: 6, fingersCooldownMs: 1000,
   swipeWindowMs: 450, swipeMinDx: 0.2, swipeMinScales: 1.6, swipeCooldownMs: 700, swipeReturnMs: 1200,
   dwellMs: 800, dwellRadius: 0.035, dwellRearm: 0.07,
   pointFilter: { minCutoff: 1.4, beta: 6, dCutoff: 1 },   // One Euro on the cursor: steady when still, quick when moving [webcam]

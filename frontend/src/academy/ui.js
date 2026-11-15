@@ -52,7 +52,7 @@ const ORDERS = [["heater", "Heaters up", "more power to the heaters"], ["shield"
 /** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done, stop} */
 export const STEP_RENDERERS = {
   choice: {
-    html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${"ABCD"[k]}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`,
+    html: (st) => `<div class="a-choices">${st.accept.options.map((o, k) => `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" data-n="${k + 1}" aria-hidden="true">${"ABCD"[k]}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`,
     wire: (el, ctx) => el.querySelectorAll(".a-choice").forEach(b => b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)),
   },
   keywords: { html: () => "" },
@@ -755,6 +755,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine(OFFER.nextStep); } return true; }
     // [media] a video step: "watch" plays it here, "skip" moves on (the server never has to grade those words)
     if (L.steps[i].accept.type === "video" && stepState.video) { const w = videoStepWord(text); if (w) { stepState.video[w](); return true; } }
+    // [owner bug] the far side step: "far side" / "near side" by voice turns the Moon first, exactly like the button
+    // (academy/globe_steps.js grades after the turn); anything else still goes to the server's grader
+    if (L.steps[i].accept.type === "globe_side") {
+      const far = /\b(far|four side|back side|dark side|other side)\b/.test(t), near = /\b(near|front|this side)\b/.test(t);
+      const b = far !== near && panel.querySelector(`.g-side[data-c="${far ? "far" : "near"}"]`);
+      if (b && !b.disabled) { b.click(); return true; }
+    }
     // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }
@@ -774,5 +781,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
 
   ui.whatNow = whatNow;
+  // test hook (tests/e2e/answers_e2e.py, robustness_e2e.py; only when the page sets window.__outpostTest): jump the open
+  // lesson to step n, fresh, as if the kid had just arrived there
+  try { if (window.__outpostTest) (window.__outpost = window.__outpost || {}).academyTest = {
+    step: n => { if (view !== "lesson" || !L || !L.steps[n]) return false; i = n; misses = 0; waitingNext = false; feedback = null; stepKey = ""; freshStep(); render(); return true; },
+    get where() { return { view, lesson: L && L.id, step: i, waitingNext }; } }; } catch (e) { /* */ }
   return ui;
 }

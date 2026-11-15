@@ -10,10 +10,12 @@ const MCP = { index: [-0.32, 0.95], middle: [0, 1.0], ring: [0.28, 0.95], pinky:
 const LEN = { index: 0.92, middle: 1.0, ring: 0.92, pinky: 0.72 };
 const DIR = { index: [-0.12, 1], middle: [0, 1], ring: [0.1, 1], pinky: [0.22, 1] };
 
-function finger(name, extended) {
+// fingers shown to count: spread like a V (the classifier needs the tips apart; a relaxed hand keeps them together)
+const VEE = { index: [-0.42, 1], middle: [0.05, 1], ring: [0.4, 1], pinky: [0.6, 1] };
+function finger(name, extended, vee = false) {
   const [mx, my] = MCP[name], L = LEN[name];
   if (extended) {
-    const [dx, dy] = DIR[name], n = Math.hypot(dx, dy);
+    const [dx, dy] = (vee ? VEE : DIR)[name], n = Math.hypot(dx, dy);
     return [0.45, 0.75, 1.0].map(f => [mx + dx / n * L * f, my + dy / n * L * f]);
   }
   // curled: up a little, then folded back down onto the palm
@@ -36,6 +38,7 @@ const POSES = {
   thumbs_down: { f: [0, 0, 0, 0], t: "down" },
   pinch: { f: [1, 0, 0, 0], t: "pinch" },
   relaxed: { f: [1, 1, 0, 0], t: "tuck" },   // a half-open resting hand: not a gesture
+  two: { f: [1, 1, 0, 0], t: "tuck", v: true }, three: { f: [1, 1, 1, 0], t: "tuck", v: true }, four: { f: [1, 1, 1, 1], t: "tuck", v: true },
 };
 
 /** Mulberry32: deterministic noise. */
@@ -57,8 +60,8 @@ export function hand(pose, { cx = 0.5, cy = 0.7, s = 0.12, side = "right", rot =
     pts = [[0, 0], [-0.35, 0.25], [-0.55, 0.5], [tip[0] - 0.15, tip[1] - 0.2], [tip[0] - 0.05, tip[1] - 0.08], MCP.index, ...idx,
       MCP.middle, ...finger("middle", false), MCP.ring, ...finger("ring", false), MCP.pinky, ...finger("pinky", false)];
   } else {
-    pts = [[0, 0], ...thumb(P.t), MCP.index, ...finger("index", !!P.f[0]), MCP.middle, ...finger("middle", !!P.f[1]),
-      MCP.ring, ...finger("ring", !!P.f[2]), MCP.pinky, ...finger("pinky", !!P.f[3])];
+    pts = [[0, 0], ...thumb(P.t), MCP.index, ...finger("index", !!P.f[0], P.v), MCP.middle, ...finger("middle", !!P.f[1], P.v),
+      MCP.ring, ...finger("ring", !!P.f[2], P.v), MCP.pinky, ...finger("pinky", !!P.f[3], P.v)];
   }
   const m = side === "left" ? -1 : 1, c = Math.cos(rot), sn = Math.sin(rot);
   const cp = Math.cos(pitch), sp = Math.sin(pitch), ct = Math.cos(twist), st = Math.sin(twist);

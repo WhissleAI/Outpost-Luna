@@ -31,8 +31,8 @@ O.stepRenderers.video = ctx => {
   const state = ctx.state || {};
   return {
     html: `<div class="vs-row">
-        <button type="button" class="btn-primary vs-watch" data-watch>${icon("play")}<span data-label>Watch</span></button>
-        <button type="button" class="btn vs-skip" data-skip>Skip</button></div>
+        <button type="button" class="btn-primary vs-watch" data-watch data-yes>${icon("play")}<span data-label>Watch</span></button>
+        <button type="button" class="btn vs-skip" data-skip data-no>Skip</button></div>
       <p class="vs-note" data-note hidden></p>`,
     bind(el) {
       const watch = el.querySelector("[data-watch]"), skip = el.querySelector("[data-skip]"), note = el.querySelector("[data-note]");

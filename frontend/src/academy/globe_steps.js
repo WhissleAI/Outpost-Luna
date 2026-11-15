@@ -20,7 +20,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 /** Buttons for options, numbered so "option 2" works by voice and Tab/Enter by keyboard. */
 export function optionsHtml(options, cls = "") {
   return `<div class="a-choices g-opts ${cls}" role="group" aria-label="Answers">${(options || []).map((o, k) =>
-    `<button type="button" class="a-choice" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${k + 1}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`;
+    `<button type="button" class="a-choice" data-c="${esc(o.id)}"${o.id === "yes" ? " data-yes" : o.id === "no" ? " data-no" : ""}><span class="a-key" aria-hidden="true">${k + 1}</span><span>${esc(o.label)}</span></button>`).join("")}</div>`;
 }
 function bindOptions(root, ctx) {
   root.querySelectorAll(".a-choice").forEach(b => (b.onclick = () => ctx.answer({ choice: b.dataset.c }, b)));
@@ -93,7 +93,9 @@ O.stepRenderers.globe_side = ctx => withDirective(ctx, {
     if (v) v.onclick = () => { if (ctx.globe && !busy) { done = true; ctx.answer({ view: ctx.globe.centerLatLon() }, v); } };
     // turned by hand (drag, fist spin, the stick): grade when the wanted side has faced the kid for 700 ms
     if (!ctx.locked && ctx.globe && ctx.globe.centerLatLon && want) {
-      const sideOf = c => { const lon = Math.abs((((+c.lon + 180) % 360) + 360) % 360 - 180); return lon > 110 ? "far" : lon < 70 ? "near" : "limb"; };
+      // "mostly in view": a margin past the grader's own line (far > 110°, near < 70°), so a turn that just grazes it
+      // keeps turning instead of being graded on the limb
+      const sideOf = c => { const lon = Math.abs((((+c.lon + 180) % 360) + 360) % 360 - 180); return lon > 125 ? "far" : lon < 55 ? "near" : "limb"; };
       const start = sideOf(ctx.globe.centerLatLon());
       let since = 0;
       const iv = setInterval(() => {
