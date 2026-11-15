@@ -286,22 +286,26 @@ def env_at(m: Mission, t: float) -> dict:
     psun = _eph_at(psite, "sun_elev_deg", t)
     sun_frac = max(0.0, min(1.0, (psun - _horizon(psite, "sun", t)) / 0.5 + 0.5)) * eff
     in_sun = (sun > _horizon(m.site_id, "sun", t)) if not s.get("power_from") else False
+    # lit: the solar arrays that feed this outpost see the Sun. A cabled site's arrays are on its power site's rim, which
+    # has its own nights on the real LOLA skyline (docs/SITE_NAVIGATOR.md): the day / night cycle the crew plays.
+    lit = in_sun if not s.get("power_from") else psun > _horizon(psite, "sun", t)
     cs = site(_comm_site(s))
     earth = _eph_at(m.site_id, "earth_elev_deg", t)
     cearth = _eph_at(cs["id"], "earth_elev_deg", t)
     earth_visible = cearth > _horizon(cs["id"], "earth", t)
     storm = next((st for st in m.storms if st.active(t)), None)
-    return {"sun_elev_deg": round(sun, 3), "in_sun": in_sun, "sun_frac": sun_frac,
+    return {"sun_elev_deg": round(sun, 3), "in_sun": in_sun, "lit": lit, "sun_frac": sun_frac,
             "earth_elev_deg": round(earth, 3), "earth_visible": earth_visible, "storm": storm}
 
 
 @lru_cache(maxsize=None)
 def sky_table(site_id: str) -> tuple[tuple[bool, ...], tuple[bool, ...]]:
-    """(in_sun, earth_visible) for every whole mission hour 0..MISSION_H at a site: env_at's own rule, computed once.
-    Sun and Earth depend only on the site (Horizons), never on the mission, so the table is exact."""
+    """(lit, earth_visible) for every whole mission hour 0..MISSION_H at a site: env_at's own rule, computed once.
+    lit = the outpost's solar arrays see the Sun (its own Sun; a cabled site's rim arrays). Sun and Earth depend only on
+    the site (Horizons + the LOLA skyline), never on the mission, so the table is exact."""
     probe = Mission(id="sky", site_id=site_id, seed=0)
     rows = [env_at(probe, t) for t in range(MISSION_H + 1)]
-    return tuple(r["in_sun"] for r in rows), tuple(r["earth_visible"] for r in rows)
+    return tuple(r["lit"] for r in rows), tuple(r["earth_visible"] for r in rows)
 
 
 def _sky(m: Mission, key: int, t: float) -> bool:
@@ -335,9 +339,7 @@ def _table_at(m: Mission, key: str, t: float):
 def next_sun_change_h(m: Mission, t: float) -> int | None:
     """Hours until the Sun next rises or sets at the outpost (Horizons), or None if it doesn't in this mission.
     The Sun Tracker strip on the Power panel; also what a planner reads before night mode."""
-    if site(m.site_id).get("power_from"):
-        return None
-    if float(t).is_integer() and 0 <= t <= MISSION_H:
+    if float(t).is_integer() and 0 <= t <= MISSION_H:   # a cabled site: when its rim arrays go dark or light up
         return _table_at(m, "sun", t)
     now = _sky(m, 0, t)
     for k in range(1, MISSION_H - int(t) + 1):
@@ -470,20 +472,22 @@ def _emit(m: Mission, out: list, kind: str, text: str, source=None, real_date=No
 def _hour_events(m: Mission, t: int, env_before: dict, out: list):
     env = env_at(m, m.t_h)
     s = site(m.site_id)
-    if env_before["in_sun"] != env["in_sun"] and not s.get("power_from"):
-        _emit(m, out, "sunrise" if env["in_sun"] else "sunset",
-              "Sunrise. Solar arrays charging." if env["in_sun"] else
-              "Sunset. Batteries only until the Sun returns.",
+    cabled = bool(s.get("power_from"))
+    if env_before["lit"] != env["lit"]:
+        _emit(m, out, "sunrise" if env["lit"] else "sunset",
+              ("Sunrise on the rim. Arrays charging." if cabled else "Sunrise. Solar arrays charging.")
+              if env["lit"] else ("Sunset on the rim. Batteries only now." if cabled else
+                                  "Sunset. Batteries only until the Sun returns."),
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
     if env_before["earth_visible"] != env["earth_visible"]:
         _emit(m, out, "comm_open" if env["earth_visible"] else "comm_closed",
               "Earth is up. You can call Houston." if env["earth_visible"] else
               "Earth has set. No radio until it rises.",
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
-    if not env["in_sun"] and env_before["in_sun"] and m.power_save and not s.get("power_from"):
+    if not env["lit"] and env_before["lit"] and m.power_save:
         _good(m, "night_ready", "Night mode on before sunset.")
     # six hours' notice of a sunset (Horizons): the night power-down checklist starts here
-    if env["in_sun"] and not s.get("power_from") and m.t_h + SUNSET_NOTICE_H <= MISSION_H and \
+    if env["lit"] and m.t_h + SUNSET_NOTICE_H <= MISSION_H and \
             not _sky(m, 0, m.t_h + SUNSET_NOTICE_H) and _sky(m, 0, m.t_h + SUNSET_NOTICE_H - 1):
         _emit(m, out, "sunset_soon", f"Sunset in {SUNSET_NOTICE_H} hours. Plan for the dark.",
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"},
@@ -972,7 +976,7 @@ def to_state(m: Mission) -> dict:
         "loads": dict(m.loads),
         "env": {"sun_elev_deg": env["sun_elev_deg"], "in_sun": env["in_sun"], "earth_elev_deg": env["earth_elev_deg"],
                 "earth_visible": env["earth_visible"], "next_comm_window_h": next_comm_window_h(m, m.t_h),
-                "power_sun": env["sun_frac"] > 0,   # the arrays that feed this outpost see the Sun (a cabled site's rim)
+                "power_sun": env["lit"],   # the arrays that feed this outpost see the Sun (a cabled site's rim)
                 "comm_delay_s": COMM_DELAY_S,
                 "next_sun_change_h": next_sun_change_h(m, m.t_h),
                 "comm_closes_in_h": comm_closes_in_h(m, m.t_h),

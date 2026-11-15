@@ -53,7 +53,8 @@ def test_compare_by_name_tap_or_choice_and_shows_the_data():
            "options": [{"id": "malapert_massif", "label": "Malapert Massif", "say": ["malapert"]},
                        {"id": "shackleton_rim", "label": "Shackleton Rim", "say": ["rim"]}]}
     ok, extra = G(acc, {"text": "malapert"})
-    assert ok and extra["data"]["malapert_massif"]["earth_days"] == 9.5
+    # the days come from the sim's own window (real LOLA skyline): Malapert sees Earth on 7 of 10 days, the rim on 4.5
+    assert ok and extra["data"]["malapert_massif"]["earth_days"] == sim.public_site(sim.site("malapert_massif"))["window_earth_days"] == 7.0
     assert extra["data"]["shackleton_rim"]["ice_km"] == 10
     assert G(acc, {"tap": {"lat": -86, "lon": -2}})[0]
     assert not G(acc, {"choice": "shackleton_rim"})[0]

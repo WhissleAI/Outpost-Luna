@@ -233,7 +233,7 @@ def _engineer_night_steps(m) -> list:
 def _night_prep(m):
     sun_h = sim.next_sun_change_h(m, m.t_h)
     env = sim.env_at(m, m.t_h)
-    deadline = m.t_h + sun_h if env["in_sun"] and sun_h else m.t_h + 6
+    deadline = m.t_h + sun_h if env["lit"] and sun_h else m.t_h + 6
     if m.engineer:
         steps = _engineer_night_steps(m)
     else:
@@ -248,7 +248,7 @@ def _night_prep(m):
     if m.rover["busy"]:
         steps.append(_order("rover", "Rover home before dark", "rover:return", HOME, lambda m, t: _rover_home(m),
                             "Rover heading home before dark."))
-    sun_key = m.t_h + (sun_h or 0) if env["in_sun"] else ("dark", m.t_h // 24)
+    sun_key = m.t_h + (sun_h or 0) if env["lit"] else ("dark", m.t_h // 24)
     return dict(title="Night power-down", lesson="power", panel="power", level="caution", priority=80,
                 deadline_h=deadline, key=("night", sun_key), say="Sunset is coming. Time for the night checklist.",
                 steps=steps)
@@ -371,7 +371,8 @@ def _calm(m) -> bool:
 
 
 def _has_sun_cycle(m) -> bool:
-    return not sim.site(m.site_id).get("power_from")
+    """The outpost's arrays have nights in this mission (a cabled site: its rim arrays, on the real skyline)."""
+    return not all(sim.sky_table(m.site_id)[0])
 
 
 TRIGGERS = [
@@ -379,7 +380,7 @@ TRIGGERS = [
     ("first_power", _first_power, lambda m: m.t_h == 0 and not m.acted.get("allocate")),
     ("storm_prep", _storm_prep, lambda m: _warning(m) is not None and not _storm(m)),
     ("night_prep", _night_prep, lambda m: _has_sun_cycle(m) and not m.power_save and (
-        (lambda e, h: (e["in_sun"] and h is not None and h <= sim.SUNSET_NOTICE_H) or not e["in_sun"])(
+        (lambda e, h: (e["lit"] and h is not None and h <= sim.SUNSET_NOTICE_H) or not e["lit"])(
             sim.env_at(m, m.t_h), sim.next_sun_change_h(m, m.t_h)))),
     ("low_power", _low_power, lambda m: m.difficulty == "commander" and m.power < 20 and not m.power_save),
     ("all_clear", _all_clear, lambda m: m.shelter and not _storm(m) and _warning(m) is None),
@@ -388,7 +389,7 @@ TRIGGERS = [
     ("repair", _repair, lambda m: m.array_eff < 1),
     ("comm_window", _comm_window, lambda m: sim.env_at(m, m.t_h)["earth_visible"] and m.t_h > 0 and
      (m.science - m.science_sent >= 3 or m.houston_calls == 0)),
-    ("sunrise", _sunrise, lambda m: _has_sun_cycle(m) and m.power_save and sim.env_at(m, m.t_h)["in_sun"] and
+    ("sunrise", _sunrise, lambda m: _has_sun_cycle(m) and m.power_save and sim.env_at(m, m.t_h)["lit"] and
      (sim.next_sun_change_h(m, m.t_h) or 99) > sim.SUNSET_NOTICE_H),
     ("ice_run", _ice_run, lambda m: not sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
      _calm(m) and m.t_h >= 2 and m.power > 35),
@@ -517,7 +518,7 @@ def _key_of(m, kind):
         return ("prep", sid)
     if kind == "night_prep":
         e, h = sim.env_at(m, m.t_h), sim.next_sun_change_h(m, m.t_h)
-        return ("night", m.t_h + (h or 0)) if e["in_sun"] else ("dark", m.t_h // 24)
+        return ("night", m.t_h + (h or 0)) if e["lit"] else ("dark", m.t_h // 24)
     if kind == "sunrise":
         return ("sunrise", m.t_h // 12)
     if kind == "first_power":

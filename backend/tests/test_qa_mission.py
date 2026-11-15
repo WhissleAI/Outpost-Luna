@@ -2,11 +2,14 @@
 from app.mission import sim
 
 SITE = "connecting_ridge"
+# an idle crew lives long enough to sit through storms here (at the ridge it now runs out of power in the first, real,
+# 58-hour dark of the LOLA skyline, before any storm)
+STORM_SITE = "de_gerlache_rim"
 
 
 def test_every_shift_inside_a_storm_is_marked_storm_active():
     """A 12-24 h storm spans 2-4 shifts; the chart shades all of them, not just the shift it started in."""
-    m = sim.new_mission("qa", SITE, 1)
+    m = sim.new_mission("qa", STORM_SITE, 1)
     while not m.over:
         sim.advance(m, 1)
     marked = [s for s in m.shifts if s["storm_active"]]
