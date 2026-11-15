@@ -7,7 +7,7 @@ import { gestureIntents } from "../src/gesture/bind.js";
 import { pinchFeatures, pinchThresholds, isPinch, createZoomer, createSpinner, shapeAxis } from "../src/gesture/spin.js";
 import { PINCH, ZOOM, SPIN } from "../src/gesture/tuning.js";
 import { validCal, measurePinch } from "../src/gesture/calibration.js";
-import { GESTURES, SCREEN_MAP, helpRows, coachRows } from "../src/gesture/map.js";
+import { GESTURES, SCREEN_MAP, helpRows, coachRows, ZOOM_SCREENS } from "../src/gesture/map.js";
 import { frameDistance } from "../src/globe.js";
 import { hand, seq, chain, rng, FIST_DIRS, fistSpin, pinchSlide } from "./fixtures/gestures/synth.mjs";
 
@@ -202,4 +202,36 @@ test("selecting a place eases the zoom to frame it (small craters closer, seas f
   assert.ok(crater < mid && mid < sea, `${crater} < ${mid} < ${sea}`);
   assert.ok(crater >= 2.2 && sea <= 3.4);
   assert.equal(frameDistance({ kind: "artifact", km: 0.01 }), 2.3);
+});
+
+// ---------- 0.3.1 owner bug: the zoom slider showed everywhere and a sliding pinch dropped ----------
+test("the pinch only arms where something zooms (Moon, site map); its end always goes through", () => {
+  const start = { type: "pinch_start", x: 0.5, y: 0.6 }, move = { type: "pinch_move", z: 0.6 }, end = { type: "pinch_end", how: "open" };
+  for (const zoomable of [false]) {
+    assert.deepEqual(gestureIntents(start, { zoomable }), [], "no start on a lesson / card / menu / Settings");
+    assert.deepEqual(gestureIntents(move, { zoomable }), [], "no slide there either");
+  }
+  assert.equal(gestureIntents(start, { zoomable: true })[0][0], "zoom_rate");
+  assert.equal(gestureIntents(move, { zoomable: true })[0][1].rate, 0.6);
+  assert.deepEqual(gestureIntents(start, { zoomable: true, cabin: true }), [], "never in the cabin");
+  for (const ctx of [{ zoomable: false }, { zoomable: true }, { cabin: true }]) assert.equal(gestureIntents(end, ctx)[0][1].phase, "end", "end always releases");
+  assert.ok(ZOOM_SCREENS.has("moon") && ZOOM_SCREENS.has("sites"));
+  for (const k of ["lesson", "menu", "settings", "video", "cabin"]) assert.ok(!ZOOM_SCREENS.has(k), k);
+});
+
+test("an edge-on pinch (hand turned sideways / resting) never arms the zoom", () => {
+  const ev = run(seq(1500, () => ({ hands: [hand("pinch1", { twist: 1.4 })] })));
+  assert.equal(ev.filter(e => e.type === "pinch_start").length, 0, types(ev).slice(0, 8).join(","));
+  const ok = run(seq(1500, () => ({ hands: [hand("pinch1")] })));
+  assert.equal(ok.filter(e => e.type === "pinch_start").length, 1, "a pinch to the camera still arms");
+});
+
+test("a sliding pinch that blurs for a few frames stays one zoom (release grace)", () => {
+  const R = rng(7);
+  const frames = chain(seq(500, () => ({ hands: [hand("pinch1")] })),
+    seq(1200, i => ({ hands: [hand("pinch1", { gap: i % 5 < 3 ? 0.45 : 0, cy: 0.7 - 0.004 * i, noise: 0.002, rand: R })] })));
+  const ev = run(frames);
+  assert.equal(ev.filter(e => e.type === "pinch_start").length, 1, "one start");
+  assert.ok(ev.filter(e => e.type === "pinch_end").length <= 1, "no release and re-grab mid-slide");
+  assert.ok(PINCH.releaseFrames >= 5 && PINCH.slideRange <= 0.6 && PINCH.idleHideMs >= 2000);
 });

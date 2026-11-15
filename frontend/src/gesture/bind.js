@@ -16,6 +16,8 @@ export function lookTarget(x, y = 0) {
  * ctx: { cabin: the Mission cabin is up, panel: the open cabin panel (null / "seat" = the seat view),
  *        vw, vh: the viewport in CSS px (point / select are in px), phase2 }
  */
+const zoomable = ctx => (ctx.zoomable == null ? !ctx.cabin : !!ctx.zoomable && !ctx.cabin);
+
 export function gestureIntents(ev, ctx = {}) {
   const vw = ctx.vw || 1, vh = ctx.vh || 1, px = (x, y) => ({ x: Math.round(x * vw), y: Math.round(y * vh) });
   const atSeat = !ctx.panel || ctx.panel === "seat";
@@ -38,9 +40,11 @@ export function gestureIntents(ev, ctx = {}) {
     case "grab_move": { const s = ev.stick || { x: 0, y: 0 }; return [["spin", { phase: "move", x: s.x, y: s.y }]]; }
     case "grab_end": return [["spin", { phase: "end", x: 0, y: 0, how: ev.how || "lost" }]];
     // the pinch and slide: a zoom rate (input/defaults.js eases it), + = closer. The cabin has no zoom.
-    case "pinch_start": return ctx.cabin ? [] : [["zoom_rate", { phase: "start", rate: 0 }]];
-    case "pinch_move": return ctx.cabin ? [] : [["zoom_rate", { phase: "move", rate: ev.z }]];
-    case "pinch_end": return ctx.cabin ? [] : [["zoom_rate", { phase: "end", rate: 0, how: ev.how || "lost" }]];
+    // Only where something zooms (the 3D Moon, the site map): never on lessons, cards, menus, Settings, videos or the
+    // cabin. ctx.zoomable comes from the gesture UI's screen key; without it, anything but the cabin (older callers).
+    case "pinch_start": return zoomable(ctx) ? [["zoom_rate", { phase: "start", rate: 0 }]] : [];
+    case "pinch_move": return zoomable(ctx) ? [["zoom_rate", { phase: "move", rate: ev.z }]] : [];
+    case "pinch_end": return [["zoom_rate", { phase: "end", rate: 0, how: ev.how || "lost" }]];   // always: never leave a zoom held
     case "head": return ctx.cabin ? [["look", { x: ev.x, y: ev.y }]] : [];
     case "lean_in": return ctx.cabin && atSeat ? [["panel_open", { panel: lookTarget(ev.x, ev.y) }]] : [];
     case "lean_back": return ctx.cabin && !atSeat ? [["panel_back", {}]] : [];

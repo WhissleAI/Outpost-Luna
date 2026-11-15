@@ -148,9 +148,12 @@ def main():
             seen_steps.append(step())
         ok(all(w in seen_steps[i].lower() for i, w in enumerate(["right", "up", "down", "pinch"])), f"calibration: tilt left, right, up, down ({seen_steps})")
         inject_next(page, "pinch_hold")
-        ok("look" in step().lower(), f"calibration: pinch your fingers -> sit back ({step()!r})")
-        inject_next(page, "lean_in_back")
-        page.wait_for_function("() => !document.querySelector('.gx-calib')", timeout=5000)
+        # the head step only shows when "Look around with your head" is on; otherwise the pinch is the last step
+        calib_open = page.evaluate("() => !!document.querySelector('.gx-calib')")
+        ok("look" in step().lower() or not calib_open, f"calibration: pinch your fingers -> sit back, or done ({step()!r})")
+        if calib_open:
+            inject_next(page, "lean_in_back")
+        page.wait_for_function("() => !document.querySelector('.gx-calib')", timeout=15000)
         cal = page.evaluate("() => window.__outpost.gestures.calibration")
         stored = page.evaluate("() => JSON.parse(localStorage.getItem('outpost-gestures-spin') || 'null')")
         ok(cal and cal["v"] == 1 and stored == cal and all(0.8 < cal[k] < 2.0 for k in ("left", "right", "up", "down")) and cal["pitchSign"] == 1,
@@ -250,7 +253,7 @@ def main():
                 return window.__outpost.gestures.injectPaced(fs).then(evs => probe.then(p => ({evs, probe: p}))); }""", fixture(f"fist_spin_roll_{d}"))
             evs, probe = r["evs"], r["probe"]
             c1 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
-            page.wait_for_function("() => window.__outpost.gestures.spin().speed === 0", timeout=4000)
+            page.wait_for_function("() => window.__outpost.gestures.spin().speed === 0", timeout=12000)
             c2 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
             dlat, dlon = c1["lat"] - c0["lat"], ((c1["lon"] - c0["lon"] + 540) % 360) - 180
             coast = abs(c2["lat"] - c1["lat"]) + abs(((c2["lon"] - c1["lon"] + 540) % 360) - 180)

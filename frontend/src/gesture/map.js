@@ -70,6 +70,9 @@ export const SCREEN_MAP = Object.freeze({
 });
 
 /** Which column of SCREEN_MAP is up. frame: main.js screenFrame(); flags from the shell. */
+/** The screens where the pinch and slide zooms something (the 3D Moon, the landing-site map). */
+export const ZOOM_SCREENS = new Set(["moon", "sites"]);
+
 export function screenKey(frame = {}, { cabin = false, settings = false, video = false } = {}) {
   if (video) return "video";
   if (settings) return "settings";

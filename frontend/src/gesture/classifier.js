@@ -334,6 +334,7 @@ export function createGestureClassifier(opts = {}) {
       if (!S.pinchFrom || Math.hypot((f.mid[0] - S.pinchFrom.x) * aspect, f.mid[1] - S.pinchFrom.y) / (f.scale || 1e-3) > PINCH.stillRange) {
         S.pinchFrom = { x: f.mid[0], y: f.mid[1], t };
       }
+      if ((hp.facing ?? 1) < PINCH.minFacing) { S.pinchFrom = null; return; }   // edge-on / resting hand: not a deliberate pinch
       if (S.poseFrames >= PINCH.holdFrames && t - S.pinchFrom.t >= PINCH.holdMs && held >= PINCH.holdMs) {
         S.pinching = true; S.pinchY0 = f.mid[1]; S.pinchOff = 0; S.pinchZ = 0; F.pz.reset();
         emit("pinch_start", { x: f.mid[0], y: f.mid[1] });
