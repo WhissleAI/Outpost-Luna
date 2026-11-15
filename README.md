@@ -5,8 +5,8 @@ Astronaut Mission Trainer"**. Inspired by NASA's Artemis program and built on NA
 endorsed by NASA. (Formerly `ask-the-moon`.)
 
 **One story.** Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near the south
-pole, hasn't happened yet. The kid trains to help run **Outpost Luna**, a south-pole base for the crews who come after.
-1. **Flight School (Academy).** The kid picks a call sign (kept on the device, never sent). Short lessons in tracks
+pole, hasn't happened yet. You train to help run **Outpost Luna**, a south-pole base for the crews who come after.
+1. **Flight School (Academy).** You pick a call sign (kept on the device, never sent). Short lessons in tracks
    (Foundations, Outpost systems, Field skills) with CAPCOM as mentor: a story beat, 2–4 voice/tap steps, a patch.
    Taught with real Artemis II crew audio and the hardware left on the Moon.
 2. **Check ride.** The first solo shift, in a simplified cockpit on the real simulator with the real May 2024 storm.
