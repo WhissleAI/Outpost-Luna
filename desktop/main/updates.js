@@ -264,8 +264,8 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
         const home = store.home(id), prev = path.join(prevDir, id);
         fs.mkdirSync(prevDir, { recursive: true });
         fs.rmSync(prev, { recursive: true, force: true });
-        if (fs.existsSync(home)) fs.renameSync(home, prev);
-        fs.renameSync(src, home);
+        if (fs.existsSync(home)) AS.renameRetrySync(home, prev);
+        AS.renameRetrySync(src, home);
         const s = readState();
         s[id] = { version: r.version || "1", sha256: r.sha256, size: r.size, files: r.files || [],
           installed_at: new Date().toISOString(), trial: true, prev: s[id] || null };
@@ -296,8 +296,8 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
     }
     const bad = path.join(dir, `.failed-${id}`);
     fs.rmSync(bad, { recursive: true, force: true });
-    if (fs.existsSync(home)) fs.renameSync(home, bad);
-    fs.renameSync(prev, home);
+    if (fs.existsSync(home)) AS.renameRetrySync(home, bad);
+    AS.renameRetrySync(prev, home);
     fs.rmSync(bad, { recursive: true, force: true });
     s._rejected = s._rejected || {};
     s._rejected[id] = [...new Set([...(s._rejected[id] || []), cur.sha256])];
@@ -308,6 +308,10 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
   }
 
   /** The children are up: keep each trial asset whose load check passed, roll back the others. -> {kept, rolled} */
+  /** The trial assets that failed their load check (nothing changes): main.js stops the children first (Windows keeps
+   * open / memory-mapped files locked, so a folder in use cannot be renamed), then calls confirm(). */
+  function failing(health) { return trials().filter((id) => !healthOk(id, health)); }
+
   function confirm(health) {
     const kept = [], rolled = [];
     for (const id of trials()) {
@@ -341,7 +345,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
       update: { ...status, ready: pendingIds() } };
   }
 
-  return { check, plan, stage, run, applyPending, confirm, rollback, rollbackTrials, trials, summary, cached, status,
+  return { check, plan, stage, run, applyPending, confirm, failing, rollback, rollbackTrials, trials, summary, cached, status,
     pendingIds, cacheFile };
 }
 

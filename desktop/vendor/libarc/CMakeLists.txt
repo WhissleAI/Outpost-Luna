@@ -1,5 +1,6 @@
 # libarc as one shared library for the Outpost Luna ear (Arc Transcriber Space, model_server/app/nft2.py):
-#   macOS libarc.dylib, Windows arc.dll (MSVC) or libarc.dll (mingw-w64), Linux libarc.so.
+#   macOS libarc.dylib, Windows arc.dll (clang / clang-cl) or libarc.dll (mingw-w64), Linux libarc.so.
+# Needs a GCC/Clang-compatible compiler (C11 atomics, __builtin_popcountll, target attributes): not plain cl.exe.
 # ONNX Runtime is NOT linked: ort_loader.c loads the Python onnxruntime wheel's library at run time (see NOTICE), so
 # only its 1.23.2 C API headers (third_party/onnxruntime/include) are needed to build.
 #   cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release && cmake --build desktop/build/libarc
@@ -33,6 +34,9 @@ else()
   target_link_libraries(arc PRIVATE Threads::Threads m ${CMAKE_DL_LIBS})
 endif()
 
+if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+  message(FATAL_ERROR "libarc needs clang (LLVM clang + Ninja, or Visual Studio -T ClangCL) or mingw-w64, not cl.exe")
+endif()
 if(MSVC)
   target_compile_options(arc PRIVATE /O2 /W3)
 else()

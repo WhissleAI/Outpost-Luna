@@ -27,6 +27,27 @@ const UA = "OutpostLuna-desktop (first-run assets)";
 const NET_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ENETUNREACH", "EHOSTUNREACH",
   "ETIMEDOUT", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_SOCKET", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
 
+/** Rename with retries: on Windows an antivirus scan or the search indexer can hold a just-written file for a moment
+ * (EPERM / EBUSY / EACCES); the same rename succeeds a few hundred ms later. POSIX renames succeed or fail at once. */
+const RETRY_CODES = new Set(["EPERM", "EBUSY", "EACCES", "ENOTEMPTY"]);
+function sleepSync(ms) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms); }
+function renameRetrySync(a, b, tries = 8) {
+  for (let i = 0; ; i++) {
+    try { return fs.renameSync(a, b); } catch (e) {
+      if (!RETRY_CODES.has(e.code) || i >= tries - 1) throw e;
+      sleepSync(100 * (i + 1));
+    }
+  }
+}
+async function renameRetry(a, b, tries = 8) {
+  for (let i = 0; ; i++) {
+    try { return await fsp.rename(a, b); } catch (e) {
+      if (!RETRY_CODES.has(e.code) || i >= tries - 1) throw e;
+      await new Promise((r) => setTimeout(r, 100 * (i + 1)));
+    }
+  }
+}
+
 function loadManifest(file) {
   const m = JSON.parse(fs.readFileSync(file, "utf8"));
   if (!m || !Array.isArray(m.assets)) throw new Error(`bad asset manifest: ${file}`);
@@ -218,7 +239,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     fs.mkdirSync(dir, { recursive: true });
     const tmp = statePath + ".tmp";
     fs.writeFileSync(tmp, JSON.stringify(s, null, 1));
-    fs.renameSync(tmp, statePath);
+    renameRetrySync(tmp, statePath);
   }
   const home = (id) => path.join(dir, id);
 
@@ -252,8 +273,8 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     }
     const dst = home(a.id), old = path.join(dir, `.old-${a.id}`);
     await fsp.rm(old, { recursive: true, force: true });
-    if (fs.existsSync(dst)) await fsp.rename(dst, old);
-    await fsp.rename(staging, dst);
+    if (fs.existsSync(dst)) await renameRetry(dst, old);
+    await renameRetry(staging, dst);
     await fsp.rm(old, { recursive: true, force: true });
     const s = readState();
     s[a.id] = { version: String(a.version || "1"), sha256: a.sha256, size: a.size, files: a.files || [],
@@ -318,14 +339,14 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
           onBytes: (n) => onProgress && onProgress({ id: a.id, phase: "download", done: before + n, total }) });
         if (f.sha256 && (await sha256File(part)) !== f.sha256) { await fsp.rm(part, { force: true }); throw new Error(`${rel}: sha256 mismatch`); }
       }, signal);
-      await fsp.rename(part, done);
+      await renameRetry(part, done);
       before += f.size;
     }
     onProgress && onProgress({ id: a.id, phase: "install", done: total, total });
     const staging = path.join(dir, ".staging", a.id);
     await fsp.rm(staging, { recursive: true, force: true });
     await fsp.mkdir(path.dirname(staging), { recursive: true });
-    await fsp.rename(base, staging);
+    await renameRetry(base, staging);
     await commit(a, staging);
   }
 
@@ -430,9 +451,20 @@ function cmpVersion(a, b) {
   return 0;
 }
 
+/** Remove every downloaded asset (the per-user assets folder: installs, .part downloads, staged updates, rollback
+ * copies, the cached remote manifest). Settings -> "Reset everything" (another branch: /api/reset?level=all + userData
+ * deletion) calls this with the children STOPPED (Windows file locks); the next launch is a first run again.
+ * TODO(reset-everything): wire main.js's reset handler to clearAll(store.dir) once both branches are merged. */
+function clearAll(dir) {
+  if (!dir || !fs.existsSync(dir)) return 0;
+  let n = 0;
+  for (const e of fs.readdirSync(dir)) { fs.rmSync(path.join(dir, e), { recursive: true, force: true }); n++; }
+  return n;
+}
+
 function requiredBytes(manifest) {
   return manifest.assets.filter((a) => a.required).reduce((s, a) => s + a.size, 0);
 }
 
-module.exports = { REQUIRED_IDS, loadManifest, assetsDir, createStore, extractTar, readZipEntries, downloadTo,
+module.exports = { REQUIRED_IDS, renameRetry, renameRetrySync, clearAll, loadManifest, assetsDir, createStore, extractTar, readZipEntries, downloadTo,
   isNetworkError, freeBytes, sha256File, requiredBytes, safeRel, cmpVersion };

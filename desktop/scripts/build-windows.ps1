@@ -94,12 +94,15 @@ $dll = @("desktop\build\arctag\Release\arctag.dll", "desktop\build\arctag\arctag
 if (-not $dll) { Die "arctag.dll was not produced (see the CMake output above)" }
 New-Item -ItemType Directory -Force desktop\resources\native | Out-Null
 Copy-Item $dll desktop\resources\native\arctag.dll -Force
-# libarc (the ear): same compiler; ONNX Runtime is the Python wheel's onnxruntime.dll, loaded by path at run time
-if ($useClang) {
+# libarc (the ear). ONNX Runtime is the Python wheel's onnxruntime.dll, loaded by path at run time (nothing to link).
+# libarc needs a GCC/Clang-compatible C compiler (C11 atomics, __builtin_popcountll, target attributes): plain MSVC
+# (cl.exe) cannot build it. Order: LLVM clang + Ninja; else Visual Studio's clang-cl toolset (-T ClangCL, the
+# "C++ Clang tools for Windows" component). Install either: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e
+if ((Have clang) -and (Have ninja)) {
   Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
-} else {
-  Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64
-}
+} elseif ($vs) {
+  Run cmake -S desktop\vendor\libarc -B desktop\build\libarc -A x64 -T ClangCL
+} else { Die "libarc needs clang: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e" }
 Run cmake --build desktop\build\libarc --config Release
 $dll = @("desktop\build\libarc\Release\arc.dll", "desktop\build\libarc\arc.dll", "desktop\build\libarc\libarc.dll") |
   Where-Object { Test-Path $_ } | Select-Object -First 1
