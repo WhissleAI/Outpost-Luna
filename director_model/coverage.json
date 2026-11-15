@@ -69,7 +69,9 @@
   "unmute_sound",
   "view_orbit",
   "view_rover",
-  "view_site"
+  "view_site",
+  "zoom_in",
+  "zoom_out"
  ],
  "step_types": [
   "choice",
@@ -88,9 +90,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 384,
+  "cells": 402,
   "covered": 73,
-  "gap": 311,
+  "gap": 329,
   "pending": 0,
   "by_kind": {
    "answer": {
@@ -119,7 +121,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 252,
+    "cells": 270,
     "covered": 20,
     "pending": 0
    },
@@ -510,6 +512,32 @@
    "intent": "nav:view_site",
    "kind": "navigate",
    "probe": "back to the outpost",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:zoom_in",
+   "screen": "brief",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:zoom_out",
+   "screen": "brief",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1512,6 +1540,32 @@
    ]
   },
   {
+   "cell": "callsign|nav:zoom_in",
+   "screen": "callsign",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "callsign|nav:zoom_out",
+   "screen": "callsign",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "callsign|question",
    "screen": "callsign",
    "intent": "question",
@@ -1867,6 +1921,32 @@
    ]
   },
   {
+   "cell": "debrief|nav:zoom_in",
+   "screen": "debrief",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "debrief|nav:zoom_out",
+   "screen": "debrief",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "debrief|question",
    "screen": "debrief",
    "intent": "question",
@@ -2210,6 +2290,32 @@
    ]
   },
   {
+   "cell": "lesson_done|nav:zoom_in",
+   "screen": "lesson_done",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson_done|nav:zoom_out",
+   "screen": "lesson_done",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "lesson_done|question",
    "screen": "lesson_done",
    "intent": "question",
@@ -2527,6 +2633,32 @@
    "intent": "nav:unmute_sound",
    "kind": "navigate",
    "probe": "unmute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson|nav:zoom_in",
+   "screen": "lesson",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson|nav:zoom_out",
+   "screen": "lesson",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -3174,6 +3306,32 @@
    ]
   },
   {
+   "cell": "library|nav:zoom_in",
+   "screen": "library",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "library|nav:zoom_out",
+   "screen": "library",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "library|question",
    "screen": "library",
    "intent": "question",
@@ -3530,6 +3688,32 @@
    ]
   },
   {
+   "cell": "map|nav:zoom_in",
+   "screen": "map",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "map|nav:zoom_out",
+   "screen": "map",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "map|question",
    "screen": "map",
    "intent": "question",
@@ -3870,6 +4054,32 @@
    "intent": "nav:unmute_sound",
    "kind": "navigate",
    "probe": "unmute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "patch|nav:zoom_in",
+   "screen": "patch",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "patch|nav:zoom_out",
+   "screen": "patch",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -4294,6 +4504,32 @@
    "intent": "nav:unmute_sound",
    "kind": "navigate",
    "probe": "unmute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "ride|nav:zoom_in",
+   "screen": "ride",
+   "intent": "nav:zoom_in",
+   "kind": "navigate",
+   "probe": "closer",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "ride|nav:zoom_out",
+   "screen": "ride",
+   "intent": "nav:zoom_out",
+   "kind": "navigate",
+   "probe": "farther",
    "train": 0,
    "heldout": 0,
    "gap": [

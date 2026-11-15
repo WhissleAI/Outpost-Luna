@@ -159,6 +159,12 @@ NAV: list[tuple[str, re.Pattern]] = [
                               r"where s the rover)$")),
     ("view_site", re.compile(r"^(?:zoom in|outpost view|site view|back to the (?:outpost|base|site)|show (?:me )?the "
                              r"(?:outpost|base|site))$")),
+    # The Moon's zoom (not the cabin: there "zoom in / out" are the window views above). An eased step on the client.
+    ("zoom_in", re.compile(r"^(?:zoom in|zoom (?:in )?closer|(?:get |go |come |move |fly )?closer|(?:a )?(?:bit|little) closer|"
+                           r"zoom in (?:a (?:bit|little)|more)|(?:go |get )?nearer|make it bigger)$")),
+    ("zoom_out", re.compile(r"^(?:zoom out|zoom (?:back )?out (?:a (?:bit|little)|more)|(?:go |get |move |fly )?(?:farther|further)"
+                            r"(?: away| out)?|(?:a )?(?:bit|little) (?:farther|further)(?: away)?|back out|zoom back out|"
+                            r"make it smaller)$")),
     ("start", re.compile(r"^(?:start|begin|let s start|lets start|start (?:the )?lesson|start learning|let s begin|"
                          r"start (?:flight school|the academy)|continue|resume)$")),
     ("next", re.compile(r"^(?:next|next one|next please|next lesson|next step|go on|keep going|move on|"
@@ -487,6 +493,8 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue
         if intent == "recenter" and ctx.screen != "cabin":
             continue
+        if intent in ("zoom_in", "zoom_out") and ctx.screen == "cabin":
+            continue                 # the cabin has no Moon zoom: its "zoom in / out" are the window views
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue
         if intent in CLOCK_INTENTS:

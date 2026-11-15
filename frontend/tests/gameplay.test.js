@@ -100,9 +100,14 @@ test("inputs: keys, controller and the router's intents all reach the clock and 
   const pad = pressed => ({ buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i), value: pressed.includes(i) ? 1 : 0 })), axes: [0, 0, 0, 0] });
   const r = createPadReader();
   r.step(readPad(pad([])), 0);
-  assert.deepEqual(r.step(readPad(pad([BTN.rt])), 16).map(a => a.intent), ["skip_event"]);
-  assert.deepEqual(r.step(readPad(pad([BTN.back])), 32).map(a => a.intent), ["time_toggle"]);
-  assert.deepEqual(r.step(readPad(pad([BTN.lt])), 48).map(a => a.intent), ["time_warp"]);
+  // the triggers also report their travel as a zoom (used outside the cabin; installGamepad gates it): {zoom, start/end}
+  const rt = r.step(readPad(pad([BTN.rt])), 16);
+  assert.deepEqual(rt.filter(a => a.intent).map(a => a.intent), ["skip_event"]);
+  assert.deepEqual(rt.filter(a => "zoom" in a), [{ zoom: 1, start: true }], "RT: zoom in");
+  assert.deepEqual(r.step(readPad(pad([BTN.back])), 32).filter(a => a.intent || a.end).map(a => a.intent || "zoom_end"), ["time_toggle", "zoom_end"]);
+  const lt = r.step(readPad(pad([BTN.lt])), 48);
+  assert.deepEqual(lt.filter(a => a.intent).map(a => a.intent), ["time_warp"]);
+  assert.deepEqual(lt.filter(a => "zoom" in a), [{ zoom: -1, start: true }], "LT: zoom out");
   for (const n of ["skip_event", "time_pause", "time_resume", "time_warp", "task_choice"]) assert.ok(ROUTER_INTENTS.has(n), n);
 });
 

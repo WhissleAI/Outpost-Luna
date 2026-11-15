@@ -11,7 +11,7 @@ import { hintFor, spokenSummary, CHEATSHEET } from "../src/gesture/guide.js";
 import { sequences, hand, face, seq, chain } from "./fixtures/gestures/synth.mjs";
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "gestures");
-const CONTINUOUS = new Set(["point", "point_end", "head", "grab_move"]);
+const CONTINUOUS = new Set(["point", "point_end", "head", "grab_move", "pinch_move"]);
 /** Discrete events, plus one grab_move per run of moves (so "grab_start, grab_move, grab_end" reads as a drag). */
 function discrete(events, keep = []) {
   const out = [];
@@ -139,8 +139,8 @@ test("gesture → intent table", () => {
   assert.deepEqual(gestureIntents({ type: "swipe_left" }), [["next", {}]]);
   assert.deepEqual(gestureIntents({ type: "swipe_right" }), [["prev", {}]]);
   assert.deepEqual(gestureIntents({ type: "select", x: 0.5, y: 0.25 }, { vw, vh }), [["select", { x: 500, y: 200 }]]);
-  assert.deepEqual(gestureIntents({ type: "grab_move", dx: 0.1, dy: 0, stick: { x: 0.5, y: -0.2, z: 0 } }), [["spin", { phase: "move", x: 0.5, y: -0.2, z: 0 }]]);
-  assert.deepEqual(gestureIntents({ type: "grab_end", how: "open" }), [["spin", { phase: "end", x: 0, y: 0, z: 0, how: "open" }]]);
+  assert.deepEqual(gestureIntents({ type: "grab_move", dx: 0.1, dy: 0, stick: { x: 0.5, y: -0.2, z: 0 } }), [["spin", { phase: "move", x: 0.5, y: -0.2 }]]);
+  assert.deepEqual(gestureIntents({ type: "grab_end", how: "open" }), [["spin", { phase: "end", x: 0, y: 0, how: "open" }]]);
   // head intents only in the cabin; lean in opens the looked-at panel only from the seat; lean back only from a panel
   assert.deepEqual(gestureIntents({ type: "head", x: 0.4, y: 0 }, { cabin: false }), []);
   assert.deepEqual(gestureIntents({ type: "head", x: 0.4, y: 0 }, { cabin: true }), [["look", { x: 0.4, y: 0 }]]);

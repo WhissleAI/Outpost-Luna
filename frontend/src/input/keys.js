@@ -217,6 +217,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   setInterval(() => { if (html.dataset.input === "keys" || html.dataset.input === "pad") paintHint(); }, 250);
 
   // ---- the keydown source ----
+  let zoomKey = null;        // the +/- key being held (zoom_rate until its keyup)
   let beforeInput = null;   // where focus was before "/" (Esc in the text box goes back there)
   addEventListener("keydown", e => {
     if (e.defaultPrevented || e.isComposing) return;
@@ -233,14 +234,20 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
       return;
     }
     if (a.act === "select_step") { e.preventDefault(); const n = t.selectedIndex + a.d; if (n >= 0 && n < t.options.length) { t.selectedIndex = n; t.dispatchEvent(new Event("change", { bubbles: true })); } return; }
-    if (a.act === "zoom") { if (spatial.zoom(a.f)) e.preventDefault(); return; }
+    // +/- zoom at the same rate as the pinch and slide while held (zoom_rate, input/defaults.js); a quick tap still
+    // zooms a tap step. On the Moon (any screen showing it); the cabin ignores it.
+    if (a.act === "zoom") { e.preventDefault(); zoomKey = e.key; emitIntent("zoom_rate", { phase: "start", rate: a.f > 1 ? 1 : -1, tap: true }, "keyboard"); return; }
     if (a.intent === "move" && !gate.ok(e.repeat, REPEAT_MS[S.repeat])) { e.preventDefault(); return; }
     // Enter on a text field submits (native); Enter on a native <select> / summary keeps its own behaviour
     if (a.intent === "select" && t && t.tagName === "SELECT") return;
     e.preventDefault();
     emitIntent(a.intent, a.args, "keyboard");
   });
-  addEventListener("keyup", e => { if (KEY_DIR[e.key]) gate.reset(); });
+  addEventListener("keyup", e => {
+    if (KEY_DIR[e.key]) gate.reset();
+    if (zoomKey && (e.key === zoomKey || "=+-_".includes(e.key))) { zoomKey = null; emitIntent("zoom_rate", { phase: "end", rate: 0 }, "keyboard"); }
+  });
+  addEventListener("blur", () => { if (zoomKey) { zoomKey = null; emitIntent("zoom_rate", { phase: "end", rate: 0 }, "keyboard"); } });
 
   // ---- Space: a tap on a focused control selects it; held, it is hold-to-talk (voice.js, unchanged) ----
   // Runs in the capture phase, before voice.js. A tap swallows the key; a hold re-sends it to voice.js from the body.

@@ -33,10 +33,14 @@ export function gestureIntents(ev, ctx = {}) {
     case "point_end": return [["point", { end: true }]];
     case "select": return [["select", px(ev.x, ev.y)]];
     // the fist is a joystick: spin {x, y, z} is a rate (input/defaults.js turns it into the Moon's speed, or the
-    // cabin's look offset). x > 0 = the kid's right, y > 0 = down, z = twist (zoom).
-    case "grab_start": return [["spin", { phase: "start", x: 0, y: 0, z: 0 }]];
-    case "grab_move": { const s = ev.stick || { x: 0, y: 0, z: 0 }; return [["spin", { phase: "move", x: s.x, y: s.y, z: s.z || 0 }]]; }
-    case "grab_end": return [["spin", { phase: "end", x: 0, y: 0, z: 0, how: ev.how || "lost" }]];
+    // cabin's look offset). x > 0 = the kid's right, y > 0 = down. The fist never zooms.
+    case "grab_start": return [["spin", { phase: "start", x: 0, y: 0 }]];
+    case "grab_move": { const s = ev.stick || { x: 0, y: 0 }; return [["spin", { phase: "move", x: s.x, y: s.y }]]; }
+    case "grab_end": return [["spin", { phase: "end", x: 0, y: 0, how: ev.how || "lost" }]];
+    // the pinch and slide: a zoom rate (input/defaults.js eases it), + = closer. The cabin has no zoom.
+    case "pinch_start": return ctx.cabin ? [] : [["zoom_rate", { phase: "start", rate: 0 }]];
+    case "pinch_move": return ctx.cabin ? [] : [["zoom_rate", { phase: "move", rate: ev.z }]];
+    case "pinch_end": return ctx.cabin ? [] : [["zoom_rate", { phase: "end", rate: 0, how: ev.how || "lost" }]];
     case "head": return ctx.cabin ? [["look", { x: ev.x, y: ev.y }]] : [];
     case "lean_in": return ctx.cabin && atSeat ? [["panel_open", { panel: lookTarget(ev.x, ev.y) }]] : [];
     case "lean_back": return ctx.cabin && !atSeat ? [["panel_back", {}]] : [];

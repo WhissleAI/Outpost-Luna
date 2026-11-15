@@ -144,3 +144,19 @@ def test_help_never_eats_an_answer():
     for text in ["say again", "help the crew", "orientale then ohm", "I don't know that one yet"]:
         r = route(text, ctx("lesson", step_type="keywords"))
         assert r.get("intent") != "a11y", (text, r)
+
+
+@pytest.mark.parametrize("screen", ["map", "library", "lesson", "patch"])
+def test_zoom_words_zoom_the_moon(screen):
+    """Voice zoom (docs/GESTURES.md §Zoom): an eased step on the Moon, on every screen that shows it."""
+    c = ctx(screen, **{k: v for k, v in SCREENS[screen].items()})
+    for t in ["zoom in", "closer", "get closer", "a bit closer", "zoom in more"]:
+        assert route(t, c)["intent"] == "zoom_in", t
+    for t in ["zoom out", "farther", "further away", "zoom out a bit", "back out"]:
+        assert route(t, c)["intent"] == "zoom_out", t
+
+
+def test_zoom_words_in_the_cabin_stay_window_views():
+    assert route("zoom out", ctx("cabin"))["intent"] == "view_orbit"
+    assert route("zoom in", ctx("cabin"))["intent"] == "view_site"
+    assert route("closer", ctx("cabin")).get("intent") != "zoom_in"

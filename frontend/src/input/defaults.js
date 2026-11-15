@@ -2,13 +2,19 @@
 // priority 10 (input/intents.js) and win; these are the fallbacks that make every intent do something sensible on
 // today's screens without the screen knowing which device sent it. docs/GESTURES.md §"The input bus".
 import { onIntent, emitIntent } from "./intents.js";
-import { createSpinner, shapeStick } from "../gesture/spin.js";
+import { createSpinner, createZoomer, shapeStick } from "../gesture/spin.js";
+import { ZOOM } from "../gesture/tuning.js";
 
 // The Moon's spin (fist, right stick): one spinner for the app, so every device feels the same. spinState() is what
 // the gesture UI paints (the stick indicator, the heading arrow on the Moon).
 const spinner = createSpinner();
 let spinView = { grabbed: false, vx: 0, vy: 0, speed: 0, stick: null, source: null };
 export function spinState() { return { ...spinView }; }
+// The zoom: one zoomer for the pinch and slide, held +/- keys, the controller's triggers and voice steps, so every
+// device zooms at the same rates (tuning.js ZOOM). zoomState() is what the gesture UI's zoom indicator paints.
+const zoomer = createZoomer();
+let zoomView = { held: false, rate: 0, input: 0, source: null };
+export function zoomState() { return { ...zoomView, rate: zoomer.rate }; }
 export function configureSpin(o) { spinner.configure(o); }
 
 const visible = el => !!(el && !el.hidden && el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");
@@ -60,7 +66,7 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
   const cabin = (name, arg) => !!(inCabin() && mission && mission.intent && mission.intent(name, arg));
   const atSeat = () => { const p = cabinPanel(); return !p || p === "seat"; };
 
-  on("stop", () => { stopAll(); if (globe && globe.halt) globe.halt(); spinner.halt(); spinView = { ...spinView, grabbed: false, vx: 0, vy: 0, speed: 0, stick: null }; return true; });
+  on("stop", () => { stopAll(); if (globe && globe.halt) globe.halt(); spinner.halt(); zoomer.halt(); spinView = { ...spinView, grabbed: false, vx: 0, vy: 0, speed: 0, stick: null }; zoomView = { ...zoomView, held: false, input: 0 }; return true; });
   on("mute", () => { import("../mute.js").then(m => m.toggleMute()); return true; });   // Shift+M: the top bar's Mute
 
   // yes / no: the cabin's pending confirm, then a visible confirm (data-intent="yes|no", or a Yes / No card), then the offer
@@ -89,18 +95,22 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
   // spin: the fist (or the right stick) as a joystick. On the Moon it is a rate: the further you lean, the faster the
   // Moon turns that way, easing in, with a little momentum when you let go (gesture/spin.js, tuning.js SPIN). In the
   // cabin it is the look offset (springs back to the middle on release), like the head and the controller.
+  // One animation loop drives both the spin and the zoom, every display frame (the camera runs at 10-30 fps).
   let raf = 0, lastT = 0;
   const frame = now => {
     const dt = lastT ? (now - lastT) / 1000 : 1 / 60; lastT = now;
     const d = spinner.step(dt, { distance: globe && globe.distance ? globe.distance : undefined });
     if (globe && (d.dx || d.dy)) globe.rotateBy(d.dx / Math.PI, d.dy / Math.PI);
-    if (globe && d.zoom !== 1 && globe.zoomBy) globe.zoomBy(d.zoom);
     spinView = { ...spinView, grabbed: d.grabbed, vx: d.vx, vy: d.vy, speed: d.speed };
-    if (spinner.active && !inCabin()) raf = requestAnimationFrame(frame); else { raf = 0; lastT = 0; if (!spinner.grabbed) spinner.halt(); }
+    const z = zoomer.step(dt);
+    if (globe && globe.zoomBy && Math.abs(z.factor - 1) > 1e-6) globe.zoomBy(z.factor);
+    if ((spinner.active || zoomer.active) && !inCabin()) raf = requestAnimationFrame(frame);
+    else { raf = 0; lastT = 0; if (!spinner.grabbed) spinner.halt(); if (!zoomer.held) zoomer.halt(); }
   };
+  const run = () => { if (!raf && (spinner.active || zoomer.active)) { lastT = 0; raf = requestAnimationFrame(frame); } };
   on("spin", (a, ev) => {
     const end = a.phase === "end";
-    spinView = { ...spinView, stick: end ? null : { x: +a.x || 0, y: +a.y || 0, z: +a.z || 0 }, source: ev ? ev.source : null };
+    spinView = { ...spinView, stick: end ? null : { x: +a.x || 0, y: +a.y || 0 }, source: ev ? ev.source : null };
     if (inCabin()) {
       spinner.halt();
       const s = end ? { x: 0, y: 0 } : shapeStick({ x: Math.max(-1, Math.min(1, a.x || 0)), y: Math.max(-1, Math.min(1, a.y || 0)) }, { expo: 1 });
@@ -111,9 +121,24 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
     if (a.phase === "start" && globe.halt) globe.halt();   // grabbing stops a fly-to in progress
     spinner.set(end ? null : a);
     spinView.grabbed = !end;
-    if (!raf && spinner.active) { lastT = 0; raf = requestAnimationFrame(frame); }
+    run();
     return true;
   });
+  // zoom_rate: the pinch and slide, a held +/- key, the controller's triggers ({rate} -1..1, + = closer). On the Moon
+  // only (the cabin's "zoom" is its window views). tap: a quick key press still zooms a tap step.
+  on("zoom_rate", (a, ev) => {
+    if (inCabin() || !globe || !globe.zoomBy) return false;
+    const end = a.phase === "end";
+    if (a.phase === "start" && globe.halt) globe.halt();
+    zoomer.set(end ? null : +a.rate || 0, { tap: !!a.tap });
+    zoomView = { held: !end, input: end ? 0 : +a.rate || 0, source: ev ? ev.source : null };
+    run();
+    return true;
+  });
+  // voice: "zoom in" / "closer", "zoom out" / "farther": an eased step (the cabin keeps its own: window views)
+  const zoomStep = f => { if (inCabin() || !globe || !globe.zoomBy) return false; zoomer.nudge(f); run(); return true; };
+  on("zoom_in", () => zoomStep(ZOOM.voiceStep));
+  on("zoom_out", () => zoomStep(1 / ZOOM.voiceStep));
   // head: look around, and light up the panel the head is aimed at (the one a lean opens)
   let lit = null;
   on("look", a => {

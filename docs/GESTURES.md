@@ -44,8 +44,9 @@ Phase 1 is on when the camera is on. Phase 2 is behind **Extra gestures (try-out
 | **Show 1, 2, 3 or 4 fingers, held still 0.5 s** | `pick` {n} | index (1); index + middle spread in a V (2); index + middle + ring, or thumb + index + middle (3); all four with the thumb tucked (4). The same count for 6 frames, held 0.5 s with the hand still | once per showing (lower the hand or change the count to go again); a 1 s cooldown; the counts a hand passes through on the way to 3 never fire; a relaxed hand (two fingers together) is not 2; a fist never counts; the open hand with the thumb out is stop, never a count. **1 vs point:** a still index is "1" only when the point cursor is NOT on a control; on a control it is point and hold (the dwell presses it), and right after a "1" the same still index's dwell presses nothing. See §Answers |
 | **Swipe left / right, open hand** | `next` / `prev` | an open hand moves ≥ 20 % of the frame (and ≥ 1.6 hand-lengths) sideways within 0.45 s, mostly straight (dx ≥ 2·dy, ≥ 75 % of the path) | one swipe is one step (a 0.7 s cooldown); the return stroke within 1.2 s is ignored; a fist sweep is a drag, not a swipe |
 | **Point + dwell 0.8 s** | `point` {x, y, progress}, then `select` {x, y} | index finger out, the other three curled; the cursor (smoothed) stays within 3.5 % of the screen | the ring fills over 0.8 s; it selects once, then re-arms only after the cursor moves 7 % away |
-| **Fist, then lean it** (a joystick) | `spin` {phase, x, y, z} | four fingers curled for 0.25 s (4 frames) grabs and sets the neutral pose; moving or leaning the fist away from it spins the Moon that way, faster the further you lean; twisting it zooms | stays grabbed through a flickering finger or a thumb popping out; releases on an open hand (3 frames), 0.3 s of anything else, or the hand gone 0.25 s; nothing else fires while it holds; the opening hand is not a stop or a swipe for 0.7 s. See §Fist spin |
+| **Fist, then lean it** (a joystick) | `spin` {phase, x, y} | four fingers curled for 0.25 s (4 frames) grabs and sets the neutral pose; moving or leaning the fist away from it turns the Moon that way, faster the further you lean. **It never zooms** | stays grabbed through a flickering finger or a thumb popping out; releases on an open hand (3 frames), 0.3 s of anything else, or the hand gone 0.25 s; nothing else fires while it holds; the opening hand is not a stop or a swipe for 0.7 s. See §Fist spin |
 | **Head pose** (cabin) | `look` {x, y}; `panel_open` {panel}; `panel_back` | from face position plus turn, against a neutral pose (calibration, or the first second, drifting slowly); lean in = face ≥ 1.22× neutral width for 0.4 s; back = ≤ 1.06× for 0.5 s | 8 % dead zone in the middle; the aimed panel lights up and a lean opens it (left: habitat up, rover down; centre: power; right: radiation up, comm down), only from the seat; a face back after 2 s away re-anchors the neutral pose; lean-back only from a panel; off with **Look around with your head** |
+| **Pinch, then slide** (the zoom) | `zoom_rate` {phase, rate} | thumb tip on a part-bent index, held still 0.25 s (5 frames), engages; then sliding the pinched hand up zooms in, down zooms out, faster the further you slide; letting go stops it | never while a fist holds or within 0.5 s of one letting go; never a point, a count of 1, a fist or a thumbs up (distance + reach + angle, with hysteresis); nothing else fires while it holds; not in the cabin. See §Zoom |
 | *Phase 2:* two-hand pinch / spread | `zoom` {factor} | both hands pinching (thumb tip at index tip); the distance between them changes > 3 % | off by default |
 
 **Robustness.**
@@ -66,7 +67,7 @@ that neutral pose** is the stick:
 
 - **x** (longitude): moving the fist sideways (in hand-lengths) plus leaning it left / right (the bone's angle in the image);
 - **y** (latitude): moving it up / down plus tilting the knuckles toward / away from the screen (MediaPipe z; toward the screen = up, like pushing a joystick forward; the calibration flips it for a kid who tilts the other way);
-- diagonals are both at once; **z**: twisting it like a doorknob.
+- diagonals are both at once. Twisting the fist (the doorknob roll) is ignored: **the fist never zooms**.
 
 The stick goes through a radial dead zone and a gain curve, and sets a target speed. The Moon eases toward it (limited
 acceleration), so a jumpy fist never jolts it. **Opening the hand** releases: half the speed carries on and decays to a
@@ -76,9 +77,9 @@ stop within about a second (≈ 5–8° of coast in the e2e).
 fist right, the surface turns right; fist down, the north comes into view). **Settings → Camera & gestures → Flip the
 spin** reverses it, for kids who think of it as flying a camera.
 
-**Twist = zoom** (a knob: clockwise, as the kid sees it, zooms in, with either hand). We chose zoom over turning about the
-view axis because rolling the Moon would put north off the top and lose kids; zoom is the thing a knob does. It has a
-bigger dead zone than the stick, so a twist must be meant. The two-hand pinch (phase 2) and the +/- keys still zoom.
+**No zoom on the fist** (0.1.2 owner feedback: "with the fist move control, i end up zooming in/out"). Twist used to
+zoom, and the wrist rolls naturally while a fist leans, so the Moon zoomed during a spin. The fist now only turns;
+zoom is its own gesture (§Zoom).
 
 **Zoomed in turns slower**, in proportion to the camera's distance, so close up the fist still steers precisely.
 
@@ -112,15 +113,54 @@ the Moon itself moves every display frame from the spinner, so a 10–30 fps cam
 | `fistPosRange` | 1.0 hand-length | movement that counts as full stick (before calibration) |
 | `fistRollRange` | 0.45 rad (≈ 26°) | lean that counts as full |
 | `fistPitchRange` | 0.5 rad (≈ 29°) | tilt that counts as full |
-| `fistTwistRange` | 0.6 rad | twist that counts as full |
 | `fistFilter` | minCutoff 1.0, beta 0.8 | One Euro on the stick |
 | `SPIN.dead` | 0.15 | radial dead zone |
 | `SPIN.expo` | 1.6 | gain curve: speed ∝ ((|stick| − dead) / (1 − dead))^1.6 |
 | `SPIN.maxSpeed` | 1.4 rad/s (≈ 80°/s) | at full stick, at the default distance |
 | `SPIN.easeTau` / `maxAccel` | 0.12 s / 5 rad/s² | easing toward the target speed |
 | `SPIN.releaseCarry` / `decayTau` / `stopBelow` | 0.5 / 0.35 s / 0.02 rad/s | the release momentum |
-| `SPIN.twistDead` / `zoomRate` | 0.35 / 0.7 per s | twist zoom |
+| `PINCH.on` / `off` | 0.22 / 0.38 hand-lengths | pinch starts / lets go (calibrated: on = 1.6 × the kid's pinch, 0.12–0.3; off = 1.7 × on) |
+| `PINCH.minIndexReach` / `minThumbReach` / `maxTipCos` | 0.45 / 0.6 / 0.5 | the pinch's shape (stay: 0.38 / 0.5) |
+| `PINCH.holdMs` / `holdFrames` / `stillRange` | 250 ms / 5 / 0.25 hand-lengths | a still pinch engages |
+| `PINCH.releaseFrames` / `afterFistMs` | 3 / 500 ms | release; the quiet after a fist |
+| `PINCH.slideRange` | 0.8 hand-lengths | slide that counts as full rate |
+| `ZOOM.dead` / `expo` / `maxRate` | 0.15 / 1.4 / 0.9 ln per s (≈ 2.5×/s) | zoom dead zone, gain, max rate |
+| `ZOOM.easeTau` / `stopTau` | 0.1 s / 0.08 s | ease in; stop on release (no coast) |
+| `ZOOM.tapStep` / `voiceStep` / `stepMs` | 1.25 / 1.6 / 350 ms | a key tap; a voice step; their easing |
 | `SPIN.refDistance` | 3.6 | the distance where maxSpeed applies (closer = slower, 0.25–1.5×) |
+
+## Zoom: pinch and slide
+
+One deliberate gesture, which can't fire during a spin:
+
+1. **Pinch** your thumb tip to your index tip (the other fingers curled or relaxed) and hold it still for 0.25 s. A
+   small zoom track appears beside the joystick ring ("Slide up or down to zoom"), with a soft tick.
+2. **Slide** the pinched hand **up to zoom in, down to zoom out**. The slide from where it engaged is a rate, like the
+   spin: a dead zone, a gain curve and a max rate (≈ 2.5× a second), eased.
+3. **Let go** (open the pinch) to stop. The rate dies within ~0.2 s: no coasting zoom.
+
+**What a pinch is, and is not.** Three features, in hand-lengths, with hysteresis (harder to start than to keep):
+- the thumb tip to the index tip under 0.22 to start, kept until over 0.38 (calibrated per kid, below);
+- the index part-bent: its tip is at least 0.45 from its knuckle (a fist folds it to about 0.3), and the thumb is out
+  (its tip at least 0.6 from its base; a fist tucks it to about 0.4);
+- the thumb and the index tips point at each other (the angle between them over 60°).
+
+So a raised index with the thumb tucked is a count of 1 or a point (tips 1.3 apart), never a pinch; a thumbs up has the
+tips a hand apart; a fist fails the reach. While a pinch engages or holds, nothing else fires: no point dwell, no
+finger count, no stop. It never engages while a fist holds (a pinch shape inside a held fist is still the fist) or
+within 0.5 s of a fist letting go, and making a fist ends a pinch first: never zoom and spin at once. The cabin has no
+Moon zoom (its "zoom in / out" are the window views), so a pinch there does nothing.
+
+**The same zoom everywhere.**
+- **Keys:** <kbd>+</kbd> / <kbd>−</kbd> held zoom at the pinch's max rate; a quick tap still zooms one eased step (×1.25).
+- **Controller:** RT/R2 zooms in and LT/L2 zooms out, as far as you press them (outside the cabin; in the cabin they keep the clock).
+- **Voice:** "zoom in", "closer", "a bit closer"; "zoom out", "farther", "further away", "back out": an eased ×1.6 step (`turn_router.py` `zoom_in` / `zoom_out`, never in the cabin).
+- **Selecting a place** eases the zoom to frame it (`globe.frameDistance`): small craters come closer (2.2), big seas fit the view (up to 3.4), whatever the kid zoomed to before.
+
+All of them go through one zoomer (`gesture/spin.js createZoomer`, `input/defaults.js zoom_rate`), so they feel the same.
+
+**Why not the two-hand pinch?** It stays behind **Extra gestures (try-out)**. It needs both hands up and in frame, which
+is tiring for a kid and often fails at a laptop's field of view; one hand that can also stay on the desk is easier.
 
 ## Calibration
 
@@ -132,7 +172,9 @@ the defaults, which are tuned to feel right without it). **Settings → Camera &
 3. "Now tilt it left… right… up… down." → each step ends when the fist has gone at least 30 % of the default range that
    way and stayed 0.45 s (a skipped or never-reached direction keeps the default, after 3.5 s at most). An arrow in the
    self-view shows which way.
-4. "Sit back and look at the screen." → the neutral head pose.
+4. "Pinch your thumb and finger." → the kid's pinch distance (the median over a 0.4 s hold). The pinch then starts
+   under 1.6× that (0.12–0.3) and lets go over 1.7× the start. **Skip** skips just this step (the defaults apply).
+5. "Sit back and look at the screen." → the neutral head pose.
 
 Each direction's range is 85 % of the kid's biggest tilt that way, clamped to 0.35–2.2× the default, so full speed is a
 comfortable tilt for that kid. If the kid's "up" tips the knuckles away from the screen, the tilt sign flips. It is
@@ -152,8 +194,8 @@ One meaning per gesture, everywhere (`gesture/map.js`). A blank cell does nothin
 | **Swipe left** → `next` | start the next lesson | next, after you answer | next | next view / next panel | next clip | — |
 | **Swipe right** → `prev` | back | back | back | previous view / panel | previous clip | back |
 | **Point and hold** → `point`, `select` | pick a pin or a place on the Moon | pick an answer or a place | press a button | press a control | press a button | press any switch or button |
-| **Fist and lean** → `spin` | spin the Moon that way | spin the Moon to find it | spin the Moon (site picker) | look around | — | — |
-| **Twist the fist** → `spin` z | zoom | zoom | — | — | — | — |
+| **Fist and lean** → `spin` | turn the Moon | turn the Moon to find it | turn the Moon (site picker) | look around | — | — |
+| **Pinch and slide** → `zoom_rate` | zoom (up closer, down farther) | zoom | — | — | — | — |
 | **Turn head** → `look` | — | — | — | look around, light the aimed panel | — | — |
 | **Lean in / sit back** → `panel_open` / `panel_back` | — | — | — | open the aimed panel / back to the seat | — | — |
 | *Two-hand pinch (phase 2)* → `zoom` | zoom | zoom | — | — | — | — |
@@ -244,7 +286,7 @@ The camera-off column shows the same action without the camera. Nothing in the a
 | **Cabin, seat view** | stop CAPCOM / Houston | confirm / cancel a risky order (`missionUI.intent("confirm" / "cancel")`) | **window view** ORBIT → SITE → ROVER → EARTH (and back) | press any console control | **look around** (parallax) | turn = look around and light up the aimed panel; **lean in = open it** | "rover view", "open the comm panel", tap |
 | **Cabin, panel open** | stop | confirm / cancel | **next / previous panel** (habitat → rover → power → displays → radiation → comm → shift) | press controls on the panel | look around | **sit back = back to the seat** | "back to my seat", Esc, tap |
 | **Debrief** | stop | **fly again** / no | — | press Fly again / Another site | — | — | "fly again" / tap |
-| **Library** (explorer) | stop the story or tour, the flight and the spin | — | *request:* next / previous tour stop | press a ghost marker or a place | **spin the Moon** (lean the fist; twist zooms) | — | tap / ask |
+| **Library** (explorer) | stop the story or tour, the flight and the spin | — | *request:* next / previous tour stop | press a ghost marker or a place | **turn the Moon** (lean the fist; pinch and slide zooms) | — | tap / ask |
 | **Settings** | — | — | — | press any control (the ring works on switches) | — | — | keyboard / tap |
 | **Answer card** | stop | the card's Yes / No | — | press **Hear the crew** | turn the Moon | — | tap / voice |
 
@@ -337,7 +379,8 @@ A full dmg (`build-mac.sh`) was not built for this check: it needs at least 6 GB
 ## Testing
 
 - **Unit** (`npm test`, `node --test`):
-  - `tests/spin.test.js`: the rate-control math (dead zone, gain curve, max speed, easing, distance scaling, invert, release momentum and its decay, twist zoom); the One Euro filter; the fist reading (lean, tilt, twist); all 8 directions through the classifier; fist hysteresis (a flickering finger or a popping thumb never lets go or says yes; a brief fist never grabs; a lost hand releases); the after-release quiet (no stop, no swipe); the cross cooldown; low-confidence hands and faces; the calibration (per-direction ranges, the tilt sign, timeouts) and its storage (validation, junk, blocked storage); the gesture → action map (same gesture, same intent everywhere, ≤ 6-word copy, the video hook, screen keys, help rows, coach marks).
+  - `tests/spin_zoom.test.js` (the clean zoom): no zoom during a fist spin in all 8 directions with the wrist rolled ±0.5 rad (the owner's report); the pinch pose vs a count of 1, a point, a fist, thumbs and counts 2–4, both hands, three tilts; pinch hysteresis (half-open never starts, flicker never releases); calibrated thresholds; pinch and slide up / down zooms, a still or brief or wandering pinch doesn't, letting go stops; never during or 0.5 s after a fist; a pinch never dwells or picks; no zoom in the cabin; the zoomer (dead zone, gain, max rate, no coast, key tap step, held rate, eased voice steps); the stored pinch; the map / help / coach copy; framing a selected place.
+  - `tests/spin.test.js`: the rate-control math (dead zone, gain curve, max speed, easing, distance scaling, invert, release momentum and its decay); the One Euro filter; the fist reading (lean, tilt, twist); all 8 directions through the classifier; fist hysteresis (a flickering finger or a popping thumb never lets go or says yes; a brief fist never grabs; a lost hand releases); the after-release quiet (no stop, no swipe); the cross cooldown; low-confidence hands and faces; the calibration (per-direction ranges, the tilt sign, timeouts) and its storage (validation, junk, blocked storage); the gesture → action map (same gesture, same intent everywhere, ≤ 6-word copy, the video hook, screen keys, help rows, coach marks).
   - `tests/gestures.test.js`: every gesture's true positives; the false positives (a brief palm or thumb, a slow drift, an up-down wave, a waving palm, a far person's thumbs-up, a flickering hand, a relaxed hand, a moving point, a second face); cooldowns; the return stroke; sensitivity; dwell re-arm; grab deltas; head and lean; phase 2; handedness; the intent table; hint copy (≤ 6 words, no emoji); classifier speed.
   - `tests/intents.test.js`: bus priority, consumption, the wildcard, async handlers, throwing handlers, the intent-only log.
 - **Fixtures:** `tests/fixtures/gestures/*.json` are MediaPipe-shaped landmark sequences, synthesised by `synth.mjs` (canonical hand proportions plus seeded noise; regenerate with `node tests/fixtures/gestures/make_fixtures.mjs`). A real recording in the same shape (`{name, expect, frames:[{t, aspect, hands:[{lm, side, score}], faces:[{box, kp, score}]}]}`) can be dropped in, and the tests pick it up. Note: the thresholds are tuned on synthetic hands plus the fake-camera run, not yet on a panel of real kids' hands. Recording 10 kids' sessions is the next step.
@@ -414,10 +457,13 @@ Everything above was tuned and tested on synthetic landmarks (canonical hand pro
 Chromium's fake camera. Before calling it done, someone should try it with a real webcam and a few kids, and tune in
 `gesture/tuning.js`:
 
-1. **Fist depth signals (pitch, twist).** These come from MediaPipe's z, which is the noisiest coordinate. Check that
-   tilting the knuckles toward / away from the screen reads as up / down, and that the calibration's sign flip catches
-   kids who do it the other way. If the z is too noisy, set `fistTiltWeight` lower (position still steers) or
-   `SPIN.twistZoom: false`.
+1. **Fist depth signal (pitch).** It comes from MediaPipe's z, the noisiest coordinate. Check that tilting the knuckles
+   toward / away from the screen reads as up / down, and that the calibration's sign flip catches kids who do it the
+   other way. If the z is too noisy, set `fistTiltWeight` lower (position still steers). Twist no longer does anything.
+1b. **The pinch** (`PINCH`): do real kids' pinches start under 0.22 hand-lengths and stay under 0.38 while they slide?
+   Does a fist ever pass `minIndexReach` 0.45 / `minThumbReach` 0.6 (it must not)? Does a relaxed "OK" pinch pass the
+   angle gate (`maxTipCos` 0.5)? Is 0.25 s to engage quick enough, and `slideRange` 0.8 hand-lengths a comfortable
+   full-speed slide? Is ~2.5×/s (`ZOOM.maxRate`) too fast for a kid? Does the zoom track read clearly by the ring?
 2. **Ranges and feel**: `fistPosRange`, `fistRollRange`, `SPIN.dead`, `SPIN.expo`, `SPIN.maxSpeed`, the momentum
    (`releaseCarry`, `decayTau`). Does a relaxed fist sit in the dead zone? Is full speed a comfortable lean?
 3. **Grab / release hysteresis** at a real 15–30 fps with motion blur: `grabHoldMs`, `grabReleaseFrames`, `grabReleaseMs`.

@@ -10,7 +10,9 @@ import { sequences } from "./synth.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const KEEP = ["palm_hold", "thumbs_up", "thumbs_down", "swipe_left", "swipe_right", "swipe_left_return", "point_dwell", "grab_drag",
   "lean_in_back", "brief_palm", "moving_palm", "background_person", "slow_drift",
-  "fist_spin_left", "fist_spin_right", "fist_spin_up", "fist_spin_down", "fist_spin_up_left", "fist_spin_up_right", "fist_spin_down_left", "fist_spin_down_right"];
+  "fist_spin_left", "fist_spin_right", "fist_spin_up", "fist_spin_down", "fist_spin_up_left", "fist_spin_up_right", "fist_spin_down_left", "fist_spin_down_right",
+  ...["left", "right", "up", "down", "up_left", "up_right", "down_left", "down_right"].map(d => "fist_spin_roll_" + d),
+  "pinch_slide_up", "pinch_slide_down", "pinch_hold"];
 const r4 = v => Math.round(v * 1e4) / 1e4;
 const all = sequences();
 for (const name of KEEP) {

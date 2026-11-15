@@ -8,8 +8,8 @@ export const CHEATSHEET = [
   { id: "fingers", icon: "hand", name: "Show 1, 2, 3 or 4 fingers", does: "Picks answer 1 to 4, like the number keys. Hold still a moment." },
   { id: "swipe", icon: "swipe", name: "Swipe with an open hand", does: "Swipe left for next, right for back." },
   { id: "point", icon: "pointer", name: "Point and hold", does: "Picks what the ring is on. Works on any button and the Moon." },
-  { id: "grab", icon: "grab", name: "Make a fist, then lean it", does: "Spins the Moon that way: lean more to go faster. Open your hand to stop. In the cabin it looks around." },
-  { id: "twist", icon: "grab", name: "Twist your fist", does: "Zooms the Moon in or out while you hold it." },
+  { id: "grab", icon: "grab", name: "Make a fist, then lean it", does: "Turns the Moon that way: lean more to go faster. Open your hand to stop. In the cabin it looks around." },
+  { id: "pinch", icon: "zoom", name: "Pinch, then slide up or down", does: "Pinch thumb and finger, hold still, then slide up to zoom in, down to zoom out. Let go to stop." },
   { id: "head", icon: "head", name: "Move your head (cabin)", does: "Look around. Lean in to open a panel, sit back to return." },
 ];
 export const CHEATSHEET_PHASE2 = [
@@ -30,7 +30,7 @@ export function hintFor(frame = {}, { confirm = false, speaking = false, headLoo
   if (s === "brief") return { icon: "thumbs-up", text: "Thumbs up to take command" };
   if (s === "debrief") return { icon: "thumbs-up", text: "Thumbs up to fly again" };
   if (s === "cabin") return headLook ? { icon: "head", text: "Lean in to open a panel" } : { icon: "swipe", text: "Swipe to change the view" };
-  if (s === "library") return { icon: "grab", text: "Make a fist to spin" };
+  if (s === "library") return { icon: "grab", text: "Fist turns, pinch zooms" };
   if (speaking) return { icon: "hand", text: "Open hand to stop" };
   return null;
 }
@@ -38,7 +38,7 @@ export function hintFor(frame = {}, { confirm = false, speaking = false, headLoo
 /** One sentence for "What can I do?" when the camera is on. */
 export function spokenSummary({ cabin = false } = {}) {
   return "With the camera: open hand to stop, thumbs up for yes, thumbs down for no, show fingers to pick an answer, swipe for next or back, point and hold to press"
-    + (cabin ? ", and lean in to open a panel." : ", and make a fist and lean it to spin the Moon.");
+    + (cabin ? ", and lean in to open a panel." : ", make a fist and lean it to turn the Moon, and pinch and slide up or down to zoom.");
 }
 
 /** A friendly line for a camera getUserMedia failure (engine.js). Windows has no per-app camera prompt: the switch is

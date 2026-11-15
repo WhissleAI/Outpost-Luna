@@ -11,7 +11,9 @@
 // Events (push() returns the events of that frame, in order):
 //   palm_hold · thumbs_up · thumbs_down · swipe_left · swipe_right · fingers {n: 1..4, x, y}
 //   point {x, y, progress} (cursor 0..1 in screen space, dwell progress 0..1) · point_end · select {x, y}
-//   grab_start {x, y, stick} · grab_move {dx, dy, stick: {x, y, z}} · grab_end {how: "open" | "lost" | "other"}
+//   grab_start {x, y, stick} · grab_move {dx, dy, stick: {x, y}} · grab_end {how: "open" | "lost" | "other"}
+//     (the fist only turns: it never zooms, whatever the wrist does)
+//   pinch_start {x, y} · pinch_move {z} (the slide: -1..1, + = up = closer) · pinch_end {how}: the one-hand zoom
 //     stick: the fist as a joystick from where it grabbed (gesture/spin.js), calibrated, One-Euro filtered, -1.5..1.5
 //     (x > 0 = the kid's right, y > 0 = down, z = twist). dx / dy: the palm's move since the last frame.
 //   head {x, y, lean} (look -1..1, lean = face size / neutral) · lean_in {x, y} · lean_back
@@ -22,8 +24,8 @@
 // a cooldown and must be released before it fires again; swipes are one step each and the return stroke is ignored;
 // after any discrete gesture no other one fires for crossCooldownMs; while the fist holds nothing else fires; the hand
 // that opens out of a fist is never a stop or a swipe (afterGrabQuietMs). Every tuning number is in gesture/tuning.js.
-import { DEFAULTS } from "./tuning.js";
-import { fistReading, rawStick, calibrated, oneEuro } from "./spin.js";
+import { DEFAULTS, PINCH } from "./tuning.js";
+import { fistReading, rawStick, calibrated, oneEuro, pinchFeatures, pinchThresholds, isPinch } from "./spin.js";
 export { DEFAULTS };
 
 const WRIST = 0, THUMB = [1, 2, 3, 4], INDEX = [5, 6, 7, 8], MIDDLE = [9, 10, 11, 12], RING = [13, 14, 15, 16], PINKY = [17, 18, 19, 20];
@@ -44,9 +46,11 @@ export const handScale = P => len(sub(P[MIDDLE[0]], P[WRIST]));
 /**
  * One frame's static hand pose. `prev` (the last finger states) gives hysteresis.
  * Returns { pose, ext: [thumb, index, middle, ring, pinky], scale, palm: [x, y] (normalised, not aspect-corrected),
- *           thumbDir: "up" | "down" | "side", pinch }.
+ *           thumbDir: "up" | "down" | "side", pinch, pf: the pinch features }.
+ * pp: { was: it was a pinch last frame (hysteresis), th: {on, off} thresholds }. The pinch pose wins over everything
+ * else: thumb tip on the index tip, the index part-bent (not folded like a fist, not straight like a count of 1).
  */
-export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1) {
+export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1, pp = null) {
   const P = pts(hand, aspect), s = handScale(P) || 1e-6, W = P[WRIST];
   void sens;   // kept in the signature; pose geometry does not depend on sensitivity
   // finger: tip distance from the wrist over knuckle distance from the wrist. Straight ≈ 1.9, curled ≈ 1.0.
@@ -66,8 +70,10 @@ export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1) {
   const up = P[MIDDLE[3]][1] < W[1] - 0.9 * s;    // fingers point up (y grows downwards)
   const spread = len(sub(P[INDEX[3]], P[PINKY[3]])) / s > 0.55;
   const pinch = len(sub(P[THUMB[3]], P[INDEX[3]])) / s < 0.3;
+  const pf = pinchFeatures(hand, aspect), isP = isPinch(pf, !!(pp && pp.was), (pp && pp.th) || undefined);
   let pose = "none";
-  if (n4 === 4 && ext[0] && up && spread) pose = "palm";
+  if (isP) pose = "pinch";
+  else if (n4 === 4 && ext[0] && up && spread) pose = "palm";
   else if (n4 >= 3) pose = "open";
   else if (ext[1] && !ext[2] && !ext[3] && !ext[4]) pose = "point";
   else if (n4 === 0 && ext[0] && thumbDir === "up" && P[THUMB[3]][1] < Math.min(...FINGERS.map(f => P[f[1]][1]))) pose = "thumbs_up";
@@ -81,12 +87,12 @@ export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1) {
   const [th, ix, md, rg, pk] = ext;
   const tipGap = (a, b) => len(sub(P[a[3]], P[b[3]])) / s;
   const vee = tipGap(INDEX, MIDDLE) > 0.55;
-  const count = !th && ix && !md && !rg && !pk ? 1 : !th && ix && md && !rg && !pk && vee ? 2
+  const count = isP ? 0 : !th && ix && !md && !rg && !pk ? 1 : !th && ix && md && !rg && !pk && vee ? 2
     : ((ix && md && rg && !pk && !th && tipGap(INDEX, RING) > 0.6) || (th && ix && md && !rg && !pk && vee)) ? 3
     : !th && ix && md && rg && pk && spread ? 4 : 0;
   const C = [WRIST, 5, 9, 13, 17].map(i => P[i]);
   const palm = [C.reduce((a, p) => a + p[0], 0) / 5 / aspect, C.reduce((a, p) => a + p[1], 0) / 5];
-  return { pose, ext, count, scale: s, palm, thumbDir, pinch, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
+  return { pose, ext, count, scale: s, palm, thumbDir, pinch, pf, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
 }
 
 /** The face that counts: the largest (nearest) one. Never identifies anyone: only box + six points. */
@@ -110,13 +116,14 @@ export function createGestureClassifier(opts = {}) {
       grabbing: false, grabFrom: null, grabLostT: null, grabN: null, openFrames: 0, stick: null, quietUntil: -1e9, discreteT: -1e9,
       face: null, neutral: null, faceT: -1e9, look: [0, 0], leaning: false, leanT: null, leanedIn: false, backT: null,
       zoom0: null,
+      pinchWas: false, pinching: false, pinchY0: 0, pinchFrom: null, pinchOff: 0, pinchQuietUntil: -1e9, pinchZ: 0,
     });
   }
   // One Euro filters: the point cursor (x, y) and the fist stick (x, y, z)
   const F = {};
   const mkFilters = () => {
     F.px = oneEuro(cfg.pointFilter); F.py = oneEuro(cfg.pointFilter);
-    F.sx = oneEuro(cfg.fistFilter); F.sy = oneEuro(cfg.fistFilter); F.sz = oneEuro(cfg.fistFilter);
+    F.sx = oneEuro(cfg.fistFilter); F.sy = oneEuro(cfg.fistFilter); F.pz = oneEuro(PINCH.filter);
   };
   mkFilters();
   reset();
@@ -157,7 +164,8 @@ export function createGestureClassifier(opts = {}) {
     if (S.side && primary.side && primary.side !== S.side) { endHand(emit); S.seen = 0; S.ext = null; S.hist = []; }
     S.side = primary.side || S.side;
     S.seen++; S.lastSeenT = t;
-    const hp = handPose(primary, aspect, S.ext, cfg.sensitivity);
+    const hp = handPose(primary, aspect, S.ext, cfg.sensitivity, { was: S.pinchWas, th: pinchThresholds(cfg.spinCal && cfg.spinCal.pinch) });
+    S.pinchWas = hp.pose === "pinch";
     S.ext = hp.ext;
     if (hp.pose !== S.pose) { S.pose = hp.pose; S.poseSince = t; S.poseFrames = 1; } else S.poseFrames++;
     S.hist.push({ t, x: hp.palm[0], y: hp.palm[1], s: hp.scale, pose: hp.pose });
@@ -173,6 +181,10 @@ export function createGestureClassifier(opts = {}) {
     // the fist grab first: while it holds, nothing else can fire (a thumb popping out is not a yes)
     grabStep(hp, primary, aspect, t, held, emit);
     if (S.grabbing) return out;
+
+    // the pinch and slide (zoom): while it engages or holds, nothing else fires (a pinch is not a point, a 1 or a stop)
+    if (!(cfg.phase2 && all.length >= 2)) pinchStep(hp, t, held, emit, aspect);
+    if (S.pinching || S.pose === "pinch") return out;
 
     // swipe: an open hand moving fast sideways. Checked next: a moving palm must never count as a held palm.
     const sw = swipeStep(t, emit);
@@ -270,7 +282,8 @@ export function createGestureClassifier(opts = {}) {
       if (S.pose === "fist" && held >= cfg.grabHoldMs && S.poseFrames >= cfg.grabEnterFrames) {
         if (S.pointing) endPoint(emit);
         S.grabbing = true; S.grabN = fistReading(hand, aspect); S.grabFrom = hp.palm.slice(); S.openFrames = 0; S.grabLostT = null;
-        F.sx.reset(); F.sy.reset(); F.sz.reset(); S.stick = { x: 0, y: 0, z: 0 };
+        if (S.pinching) endPinch(emit, t, "fist");
+        F.sx.reset(); F.sy.reset(); S.stick = { x: 0, y: 0 };
         emit("grab_start", { x: hp.palm[0], y: hp.palm[1], stick: { ...S.stick } });
       }
       return;
@@ -287,7 +300,7 @@ export function createGestureClassifier(opts = {}) {
     }
     S.grabLostT = null;
     const cal = cfg.spinCal, raw = rawStick(fistReading(hand, aspect), S.grabN, cfg, cal ? cal.pitchSign : 1), c = calibrated(raw, cal), ts = t / 1000;
-    S.stick = { x: F.sx(c.x, ts), y: F.sy(c.y, ts), z: F.sz(c.z, ts) };
+    S.stick = { x: F.sx(c.x, ts), y: F.sy(c.y, ts) };
     const dx = hp.palm[0] - S.grabFrom[0], dy = hp.palm[1] - S.grabFrom[1];
     S.grabFrom = hp.palm.slice();
     emit("grab_move", { dx, dy, stick: { ...S.stick } });
@@ -296,11 +309,45 @@ export function createGestureClassifier(opts = {}) {
     if (!S.grabbing) return;
     S.grabbing = false; S.grabFrom = null; S.grabLostT = null; S.grabN = null; S.stick = null; S.openFrames = 0;
     // the hand that opens out of a fist is a release, never a stop or a swipe
-    S.palmFired = true; if (t != null) S.quietUntil = t + cfg.afterGrabQuietMs;
+    S.palmFired = true; if (t != null) { S.quietUntil = t + cfg.afterGrabQuietMs; S.pinchQuietUntil = t + PINCH.afterFistMs; }
     emit("grab_end", { how });
   }
 
-  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; S.fCount = 0; S.fFired = 0; }
+  // The pinch and slide: a still pinch (holdMs, holdFrames, wandering under stillRange) engages and sets the neutral
+  // height; then the slide up / down from there is the zoom rate (up = closer). It releases when the pinch opens for
+  // releaseFrames frames, or the hand is gone. Never while a fist holds, nor within afterFistMs of one letting go.
+  function pinchStep(hp, t, held, emit, aspect = 4 / 3) {
+    const f = hp.pf;
+    if (!S.pinching) {
+      if (S.pose !== "pinch") { S.pinchFrom = null; return; }
+      if (S.pointing) endPoint(emit);
+      if (t < S.pinchQuietUntil) { S.pinchFrom = null; return; }
+      if (!S.pinchFrom || Math.hypot((f.mid[0] - S.pinchFrom.x) * aspect, f.mid[1] - S.pinchFrom.y) / (f.scale || 1e-3) > PINCH.stillRange) {
+        S.pinchFrom = { x: f.mid[0], y: f.mid[1], t };
+      }
+      if (S.poseFrames >= PINCH.holdFrames && t - S.pinchFrom.t >= PINCH.holdMs && held >= PINCH.holdMs) {
+        S.pinching = true; S.pinchY0 = f.mid[1]; S.pinchOff = 0; S.pinchZ = 0; F.pz.reset();
+        emit("pinch_start", { x: f.mid[0], y: f.mid[1] });
+      }
+      return;
+    }
+    if (S.pose !== "pinch") {
+      if (++S.pinchOff >= PINCH.releaseFrames) endPinch(emit, t, "open");
+      return;
+    }
+    S.pinchOff = 0;
+    const raw = -((f.mid[1] - S.pinchY0) / (f.scale || 1e-3)) / PINCH.slideRange;   // up (y smaller) = + = closer
+    S.pinchZ = Math.max(-1.5, Math.min(1.5, F.pz(raw, t / 1000)));
+    emit("pinch_move", { z: S.pinchZ });
+  }
+  function endPinch(emit, t, how = "lost") {
+    if (!S.pinching) return;
+    S.pinching = false; S.pinchFrom = null; S.pinchOff = 0; S.pinchZ = 0;
+    S.palmFired = true; if (t != null) S.quietUntil = t + cfg.afterGrabQuietMs;   // the opening hand is not a stop or a swipe
+    emit("pinch_end", { how });
+  }
+
+  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); endPinch(emit, S.lastSeenT, "lost"); S.pinchWas = false; if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; S.fCount = 0; S.fFired = 0; }
 
   function zoomStep(all, aspect, emit) {
     if (all.length < 2) { if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } return; }
@@ -351,6 +398,6 @@ export function createGestureClassifier(opts = {}) {
     setNeutral(face) { const f = face || S.face; if (f) { const kp = f.kp; const eyeMid = [(kp[0][0] + kp[1][0]) / 2, (kp[0][1] + kp[1][1]) / 2]; const eyeD = Math.hypot(kp[1][0] - kp[0][0], kp[1][1] - kp[0][1]) || 1e-3; S.neutral = { x: f.box.x + f.box.w / 2, y: f.box.y + f.box.h / 2, w: f.box.w, yaw: (kp[2][0] - eyeMid[0]) / eyeD }; } },
     get config() { return { ...cfg }; },
     get pose() { return S.pose; },
-    get state() { return { pose: S.pose, pointing: S.pointing, grabbing: S.grabbing, stick: S.stick ? { ...S.stick } : null, leaning: S.leanedIn, look: S.look.slice(), handSeen: S.seen }; },
+    get state() { return { pose: S.pose, pointing: S.pointing, grabbing: S.grabbing, pinching: S.pinching, pinchZ: S.pinchZ, stick: S.stick ? { ...S.stick } : null, leaning: S.leanedIn, look: S.look.slice(), handSeen: S.seen }; },
   };
 }
