@@ -54,8 +54,6 @@ function envFor(name) {
       ARCTAG_LIB: path.join(RES, "native", LIB),
       ARCTAG_MODEL_DIR: path.join(MODELS, "arctag"),
       ARC_META_WEIGHTS: path.join(MODELS, "arc-v1.1"),
-      STEER_TTS_MODEL: path.join(MODELS, "steer-tts-edge"),
-      STEER_DIRECTOR: path.join(MODELS, "steer-tts-edge", "director.bin"),
       EMBED_MODEL_DIR: path.join(MODELS, "minilm"),
     });
   }
@@ -67,7 +65,7 @@ function envFor(name) {
     FRONTEND_DIST: path.join(RES, "app", "frontend"),
     MODEL_SERVER_URL: `http://127.0.0.1:${ports.models}`,
     CORS_ORIGINS: origin,
-    TTS_ENGINE: "steer",
+    TTS_ENGINE: "os",   // the OS's own offline voices (model_server/app/tts_os.py); no Deepgram key in the app
   });
 }
 

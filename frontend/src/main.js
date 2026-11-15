@@ -475,7 +475,7 @@ async function boot() {
   (function warm(t0 = performance.now()) {
     const bar = $("askbar");
     fetch("/api/health").then(r => r.json()).then(h => {
-      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.steer_tts || {};
+      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.tts || {};
       const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
       bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
       bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);

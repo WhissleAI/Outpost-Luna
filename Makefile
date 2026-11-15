@@ -64,14 +64,16 @@ EMBED_MODEL_DIR ?= $(CURDIR)/model_server/models/minilm
 DM_REAL_BUDGET ?= 3500
 DM_REAL_PROCS ?= 6
 
-director-real-ear: ## Render (in memory, no audio on disk) the generator's kid turns with Steer TTS + decode them with the REAL Arc ear (cached; NEW_EAR=1 re-decodes)
+STEER_EDGE ?= $(CURDIR)/../steer-tts/edge
+
+director-real-ear: ## Research only: render (in memory) the generator's kid turns with 200 Steer TTS voices (STEER_EDGE checkout; not an app dependency) + decode them with the REAL Arc ear (cached; NEW_EAR=1 re-decodes)
 	@if [ "$(NEW_EAR)" = "1" ]; then rm -rf director_model/cache/real_ear/dec; fi
 	uv run --project backend python director_model/real_ear.py jobs --budget $(DM_REAL_BUDGET) $(DM_REAL_ARGS)
-	cd model_server && EAR_PARTIAL_EVERY_S=0.9 uv run python ../director_model/real_ear.py decode --procs $(DM_REAL_PROCS) --threads 2
+	cd model_server && EAR_PARTIAL_EVERY_S=0.9 uv run --with "$(STEER_EDGE)" python ../director_model/real_ear.py decode --procs $(DM_REAL_PROCS) --threads 2
 	uv run --project backend python director_model/real_ear.py stats
 
 director-retrain: director-real-ear ## Rebuild the learned Director: real Arc decodes, refit ASR errors, regenerate sessions, train, evaluate, export (director_model/RETRAIN.md)
-	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) OS_TTS=off ARC_EAR=off ARC_META=off \
 	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
 	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
 	uv run --project backend python director_model/ear_errors.py build
@@ -98,7 +100,7 @@ director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate 
 	@if [ -n "$(LOG)" ]; then python3 director_model/import_logs.py --log $(LOG); fi
 	@if [ "$(DL_EAR)" = "1" ]; then $(MAKE) director-real-ear DM_REAL_ARGS="--hf-p 0.3 --cls-n 160"; fi
 	python3 director_model/loop.py preflight
-	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) STEER_TTS=off ARC_EAR=off ARC_META=off \
+	cd model_server && (EMBED_MODEL_DIR=$(EMBED_MODEL_DIR) OS_TTS=off ARC_EAR=off ARC_META=off \
 	  uv run uvicorn app.main:app --host 127.0.0.1 --port $(DM_PORT) > /tmp/director-ms.log 2>&1 & echo $$! > /tmp/director-ms.pid)
 	until curl -sf localhost:$(DM_PORT)/health >/dev/null; do sleep 2; done
 	MODEL_SERVER_URL=http://127.0.0.1:$(DM_PORT) uv run --project backend python director_model/gen_sessions.py \

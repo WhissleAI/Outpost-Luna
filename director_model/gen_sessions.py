@@ -3,7 +3,7 @@ shadow hook the runtime uses (app.director_model.runtime.Shadow with a sink): th
 serving code, and the rule Director + session policy produce the teacher labels.
 
 Run in the backend env, with a private model server (real Arc Tagger + MiniLM embedder) on :8290:
-  cd model_server && EMBED_MODEL_DIR=... STEER_TTS=off ARC_EAR=off ARC_META=off uv run uvicorn app.main:app --port 8290
+  cd model_server && EMBED_MODEL_DIR=... OS_TTS=off ARC_EAR=off ARC_META=off uv run uvicorn app.main:app --port 8290
   uv run --project backend python director_model/gen_sessions.py --out director_model/data/ds --train 1500 ...
 
 Sources (one session = one browser session; one step per event):

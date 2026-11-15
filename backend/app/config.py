@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     model_server_url: str = "http://127.0.0.1:8200"
     model_timeout_s: float = 2.0
     deepgram_api_key: str = ""
-    # Guide-channel TTS: steer (Steer TTS Edge on the model server, falls back to deepgram) | deepgram
-    tts_engine: str = "steer"
+    # Guide-channel TTS: os (the OS's own offline voice on the model server, falls back to deepgram) | deepgram
+    tts_engine: str = "os"
     tts_timeout_s: float = 8.0
     flux_url: str = "wss://api.deepgram.com/v2/listen"
     model_stream_url: str = ""  # default: model_server_url as ws:// + /v1/stream

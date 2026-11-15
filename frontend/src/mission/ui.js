@@ -696,7 +696,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (cockpit) cockpit.calling(false);
     if (!alive(g)) return;   // QA-20: Houston never answers over another mode
     capcom({ say: line, eyebrow: "Houston" }); radio("houston", line);
-    await say(line, style || { voice: "houston" });   // Houston speaks in its own (Steer) voice
+    await say(line, style || { voice: "houston" });   // Houston speaks in its own voice
   }
 
   // ---------- voice ----------

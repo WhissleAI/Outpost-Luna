@@ -19,6 +19,13 @@ export const PREF_DEFAULTS = Object.freeze({
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12)
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
 });
+/** Settings → Voice: where a parent downloads clearer voices on this OS (the app speaks with the OS's own offline
+ *  voices, docs/VOICES.md). "" on any other OS. */
+export function moreVoicesHint(ua = typeof navigator !== "undefined" ? navigator.userAgent : "") {
+  if (/Windows/.test(ua)) return "Parents can download clearer Windows voices: Settings → Time & language → Speech → Manage voices.";
+  if (/Mac OS X|Macintosh/.test(ua)) return "Parents can download clearer macOS voices: System Settings → Accessibility → Spoken Content → System voice → Manage Voices.";
+  return "";
+}
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
 /** The keys that belong to one cadet. */
@@ -48,7 +55,7 @@ export function createPrefs({ globe = null } = {}) {
   const root = document.documentElement;
 
   // ---- effects ----
-  // Master volume: the server renders every Steer line at it (prefs.volume), so the guide's <audio> stays at 1; the
+  // Master volume: the server renders every voice line at it (prefs.volume), so the guide's <audio> stays at 1; the
   // crew audio (player.js, Web Audio) and the chimes (sound.js) read window.__outpost.levels.master.
   function applyTheme() {
     if (P.theme === "system") delete root.dataset.theme; else root.dataset.theme = P.theme;

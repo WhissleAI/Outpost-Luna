@@ -240,7 +240,7 @@ async def direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, cont
     if p is not None:
         ctx["place_name"] = p.name
     out["decisions"] = decisions_for(out, text, ctx)
-    out.pop("style_hint", None)            # carried on the say decision (the Steer TTS policy reads it), not the contract
+    out.pop("style_hint", None)            # carried on the say decision (the voice-steering policy reads it), not the contract
     out.pop("hint", None)                  # on the card decision only (the client shows TRY when source is "none")
     brain = out.pop("brain", None)
     if brain and out.get("readout") is not None:
@@ -616,7 +616,7 @@ STYLE_HINT = {"ask": "question", "houston": "alert", "fly": "story", "play": "st
 NO = {"t": "typed", "text": "no"}
 
 
-# The local brain's template hints -> a Steer situation when the rules name none.
+# The local brain's template hints -> a voice-steering situation when the rules name none.
 _HINT_SITUATION = {"explain": "explain", "story": "story", "question": None, "alert": "storm_warning"}
 
 

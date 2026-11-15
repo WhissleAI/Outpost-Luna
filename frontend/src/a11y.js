@@ -4,12 +4,13 @@
 import { TOUR } from "./story.js";
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
+import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
 export const SPEEDS = [0.75, 1, 1.25, 1.5];
 export const DEFAULTS = Object.freeze({
-  speed: 1,              // TTS speed: Steer rate + pace (server); crew audio playbackRate
+  speed: 1,              // TTS speed: the OS voice's rate (server); crew audio playbackRate
   contrast: false,       // high-contrast theme
   textScale: 1,          // 1 – 1.5
   reducedMotion: false,  // also on when the OS asks
@@ -213,6 +214,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span><b>${escH(v.name)}</b><small>${escH(v.desc || "")}</small></span>
           ${v.preview_url ? `<button type="button" class="btn-icon" data-preview="${escH(v.id)}" aria-label="Hear ${escH(v.name)}"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg></button>` : ""}</label>`).join("")}</div></fieldset>
         <label class="a11y-sw"><input type="checkbox" data-pb="voice_all" ${PA.value.voice_all ? "checked" : ""}><span><b>Use this voice for everyone</b><small>Off: CAPCOM and Houston keep their own voices</small></span></label>
+        ${moreVoicesHint() ? `<p class="set-help">${escH(moreVoicesHint())}</p>` : ""}
         ${ap ? `<p class="set-help set-applied" role="status">In use: ${escH(vname(ap.voice || ""))}${ap.voice_all ? " for every voice" : ""}${ap.expressiveness != null ? ` · ${ap.expressiveness <= 0.25 ? "calm" : ap.expressiveness >= 0.75 ? "lively" : "balanced"}` : ""}</p>` : ""}`;
       box.querySelectorAll("[data-preview]").forEach(b => b.onclick = e => { e.preventDefault(); PA.previewVoice(vs.find(v => v.id === b.dataset.preview)); });
     });

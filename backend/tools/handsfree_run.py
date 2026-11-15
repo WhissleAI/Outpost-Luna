@@ -12,7 +12,7 @@ does what frontend/src/main.js does with the decisions: `nav` moves the screens,
 
     in-process (CI):   backend/tests/test_handsfree_run.py
     live server:       uv run python tools/handsfree_run.py --base http://127.0.0.1:8330 [--audio]
-                       --audio renders each kid line with Steer /v1/tts on the model server and feeds the PCM to
+                       --audio renders each kid line with the OS voice (/v1/tts on the model server) and feeds the PCM to
                        /ws/listen (the Arc ear), so the turns come from real speech recognition.
 Prints a short transcript and the count of spoken "I don't know that one yet".
 """
@@ -548,14 +548,14 @@ class Live:
 
     async def turn_audio(self, text: str) -> list[dict]:
         await asyncio.sleep(0.6)                 # a kid's reaction time after our line
-        """Render the line with Steer TTS (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
+        """Render the line with the OS voice (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
         import io
         import wave
 
         import httpx
         import numpy as np
         import websockets
-        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # Steer TTS, a kid-ish voice
+        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # the OS voice for the story role
         r.raise_for_status()
         w = wave.open(io.BytesIO(r.content))
         sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)

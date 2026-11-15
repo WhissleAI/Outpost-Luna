@@ -1,7 +1,7 @@
 // Settings v1 prefs (frontend/src/prefs.js): stored values are normalized, never trusted.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizePrefs, PREF_DEFAULTS, PROFILE_KEYS } from "../src/prefs.js";
+import { normalizePrefs, PREF_DEFAULTS, PROFILE_KEYS, moreVoicesHint } from "../src/prefs.js";
 import { BARGE, shouldBargeIn } from "../src/floor.js";
 
 test("prefs: defaults, clamps and option lists", () => {
@@ -37,4 +37,13 @@ test("prefs: 'Help improve the voice guide' is off by default and only an explic
 // [qa] QA-17: every per-cadet store is in the profile (camera & gestures, the mission tier), so switching cadets swaps them.
 test("prefs: a cadet profile also carries the gesture settings and the mission tier", () => {
   for (const k of ["outpost-gestures", "outpost-tier"]) assert.ok(PROFILE_KEYS.includes(k), k);
+});
+
+test("prefs: the more-voices hint names the OS's own voice settings, never Siri", () => {
+  const mac = moreVoicesHint("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Electron/33");
+  const win = moreVoicesHint("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Electron/33");
+  assert.match(mac, /macOS voices/); assert.match(mac, /Spoken Content → System voice → Manage Voices/);
+  assert.match(win, /Windows voices/); assert.match(win, /Time & language → Speech → Manage voices/);
+  assert.equal(moreVoicesHint("Mozilla/5.0 (X11; Linux x86_64)"), "");
+  for (const s of [mac, win]) { assert.ok(!/siri/i.test(s)); assert.ok(s.split(/\s+/).length <= 20, s); }
 });

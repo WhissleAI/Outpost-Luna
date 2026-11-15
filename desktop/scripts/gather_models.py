@@ -9,12 +9,13 @@
 Layout (what the Electron main process points the model server at; docs/DESKTOP.md):
     arctag/            Arc Tagger v0.3 int8 graph + tokenizer + meta          -> ARCTAG_MODEL_DIR
     arc-v1.1/mini/     Arc v1.1 Mini (heads, trunk, Moonshine Streaming tiny) -> ARC_META_WEIGHTS
-    steer-tts-edge/    Steer TTS Edge v1 (onnx/, front/, voices, config) + director.bin -> STEER_TTS_MODEL / STEER_DIRECTOR
     minilm/            all-MiniLM-L6-v2 int8 ONNX + tokenizer                -> EMBED_MODEL_DIR
 
-The package is the one source every build can reach: a tar of exactly this folder, pinned by sha256 below, and every
-file is then checked again against desktop/models.lock.json. Hugging Face is not used: two of the four models (Arc Tagger
-v0.3, Steer TTS Edge v1) are no longer on the Hub in the versions the app runs.
+The package is the one source every build can reach: a tar of this folder, pinned by sha256 below, and every file is
+then checked again against desktop/models.lock.json. Hugging Face is not used: Arc Tagger v0.3 is no longer on the Hub in
+the version the app runs. Speech needs no model: the app uses the OS's own voices (model_server/app/tts_os.py). The v1
+package still carries the retired steer-tts-edge/ folder; it is skipped when unpacking (DROPPED), so the package's
+sha256 pin stays valid and the bundle no longer ships it.
 """
 from __future__ import annotations
 
@@ -36,7 +37,7 @@ BUILD = ROOT / "desktop/build"
 LOCK = ROOT / "desktop/models.lock.json"
 HOME = Path.home()
 
-# The public model package (v1 = models.lock.json as committed). A new package needs a new URL, sha256 and lock file.
+# The public model package (v1). A new package needs a new URL, sha256 and lock file.
 PACKAGE = {
     "name": "outpost-luna-models-v1.tar",
     "url": "https://www.dropbox.com/scl/fi/h1pbtl1w9jxe0cn6ie247/outpost-luna-models-v1.tar"
@@ -62,7 +63,6 @@ def snap(repo: str, rev: str | None = None) -> Path | None:
 
 
 HEADSTART = HOME / "Desktop/work/whissle/headstart"
-STEER_REPO = Path(os.environ.get("STEER_REPO", ROOT.parent / "steer-tts"))   # sibling checkout
 ARC_REV = "6f637153ea4953d81811e68168cd29572316d32b"
 MINILM_NOTICE = ("all-MiniLM-L6-v2 (sentence-transformers), Apache License 2.0, https://huggingface.co/sentence-transformers/"
                  "all-MiniLM-L6-v2. Exported to ONNX and int8-quantised by model_server/tools/export_embedder.py.\n")
@@ -70,8 +70,8 @@ MINILM_NOTICE = ("all-MiniLM-L6-v2 (sentence-transformers), Apache License 2.0, 
 
 def local_sources() -> dict[str, list[tuple[str, Path]]] | None:
     """dest folder -> [(dest relative path, source)], or None when this machine does not have them all."""
-    arc, steer = snap("WhissleAI/arc-v1.1", ARC_REV), snap("WhissleAI/steer-tts-edge")
-    if arc is None or steer is None:
+    arc = snap("WhissleAI/arc-v1.1", ARC_REV)
+    if arc is None:
         return None
     tag = Path(os.environ.get("ARCTAG_MODEL_DIR", HEADSTART / "models/arctag"))
     minilm = Path(os.environ.get("EMBED_MODEL_DIR", ROOT / "model_server/models/minilm"))
@@ -79,8 +79,6 @@ def local_sources() -> dict[str, list[tuple[str, Path]]] | None:
         "arctag": [(f, tag / f) for f in ("arctag_int8.onnx", "arctag_meta.json", "tokenizer.json", "LICENSE", "NOTICE")],
         "arc-v1.1": [("LICENSE", arc / "LICENSE"), ("NOTICE", arc / "NOTICE")]
                     + [(p.relative_to(arc).as_posix(), p) for p in sorted((arc / "mini").rglob("*")) if p.is_file()],
-        "steer-tts-edge": [(p.relative_to(steer).as_posix(), p) for p in sorted(steer.rglob("*")) if p.is_file()]
-                          + [("director.bin", STEER_REPO / "c/models/steer-tts-edge/director.bin")],
         "minilm": [("model.int8.onnx", minilm / "model.int8.onnx"), ("tokenizer.json", minilm / "tokenizer.json")],
     }
     return out if all(src.exists() for files in out.values() for _, src in files) else None
@@ -121,6 +119,10 @@ def download(url: str, dst: Path):
     print(f"  downloaded {n / 1e6:.0f} MB in {time.time() - t:.0f} s", flush=True)
 
 
+# Folders the v1 package still holds that the app no longer uses: never unpacked, never bundled.
+DROPPED = ("steer-tts-edge",)   # Steer TTS Edge: replaced by the OS's own voices
+
+
 def gather_package():
     """Download (or reuse desktop/build/<name>, or DESKTOP_MODELS_TAR), check its sha256, unpack into resources/."""
     tar = Path(os.environ.get("DESKTOP_MODELS_TAR", BUILD / PACKAGE["name"]))
@@ -143,7 +145,8 @@ def gather_package():
             if not (m.isfile() or m.isdir()) or m.name.startswith("/") or ".." in Path(m.name).parts \
                     or Path(m.name).parts[0] != "models":
                 sys.exit(f"unexpected entry in the model package: {m.name}")
-        t.extractall(RES)
+        keep = [m for m in t.getmembers() if not (len(Path(m.name).parts) > 1 and Path(m.name).parts[1] in DROPPED)]
+        t.extractall(RES, members=keep)
     if os.environ.get("DESKTOP_KEEP_MODELS_TAR", "1") == "0":
         tar.unlink()
 
