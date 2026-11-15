@@ -778,34 +778,6 @@ def pack() -> dict:
     return entry
 
 
-MANIFESTS = [BACKEND.parent / "desktop" / "assets.manifest.json", BACKEND.parent / "site" / "assets" / "manifest.json"]
-
-
-def manifest(entry: dict | None = None) -> list[str]:
-    """0.3 line: put the optional `site_layers` asset into both first-run manifests (scripts/asset_manifest.py's copies),
-    as the LAST entry, in its own block. The url stays null until the tar is uploaded (scripts/upload_assets.py); the
-    app works without it ("Map layers downloading…"). A changed sha256 drops a stale url. No manifest (0.2): no-op."""
-    entry = entry or json.loads((LAYERS_OUT.parent / "site_layers.asset.json").read_text())
-    done = []
-    for f in MANIFESTS:
-        if not f.exists():
-            continue
-        doc = json.loads(f.read_text())
-        old = next((a for a in doc["assets"] if a["id"] == "site_layers"), None)
-        url = old.get("url") if old and old.get("sha256") == entry["sha256"] else None
-        new = {"id": "site_layers", "title": "Landing-site map layers (NASA LRO)", "required": False,
-               "file": entry["file"], "url": url, "sha256": entry["sha256"], "size": entry["size"],
-               "unpacked_size": entry["unpacked_size"], "n_files": entry["n_files"], "env": "SITE_LAYERS_DIR",
-               "subdir": "", "licence": ["NOTICE"], "files": entry["files"], "version": "1", "min_app": "0.3.0",
-               "max_app": None, "requires": [],
-               "note": "Optional: the site navigator's polar map layers (backend/pipeline/site_physics.py layers; "
-                       "docs/SITE_NAVIGATOR.md). The app works without them."}
-        doc["assets"] = [a for a in doc["assets"] if a["id"] != "site_layers"] + [new]
-        f.write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
-        done.append(str(f))
-    return done
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("step", nargs="?", default="all", choices=["all", "fetch", "numbers", "layers", "clean"])
@@ -819,7 +791,7 @@ def main():
         engine(numbers())
     if a.step in ("all", "layers"):
         layers()
-        print("manifests:", manifest(pack()) or "none (0.2 line)", file=sys.stderr)
+        pack()   # the first-run asset itself is built by scripts/asset_pack.py --only site_layers
 
 
 if __name__ == "__main__":

@@ -99,7 +99,8 @@ def layers_state() -> dict:
     if (d / "layers.json").exists() and all((d / f"{i}.png").exists() for i in LAYER_IDS):
         return {"state": "ready", **json.loads((d / "layers.json").read_text())}
     assets = os.environ.get("ASSETS_DIR")
-    busy = bool(assets) and ((Path(assets) / ".active" / ASSET_ID).exists() or (Path(assets) / ".want" / ASSET_ID).exists())
+    # .active/<id> exists while the desktop downloads it; a bare .want (asked for, no link yet / offline) is not progress
+    busy = bool(assets) and (Path(assets) / ".active" / ASSET_ID).exists()
     return {"state": "downloading" if busy else "missing", "managed": bool(assets)}
 
 

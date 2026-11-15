@@ -77,9 +77,11 @@ The router (`backend/app/turn_router.py`) reads `site_layer` / `site_query` / `s
 * `make site-layers`: the 5 PNGs + `layers.json` + `NOTICE` → `backend/data/cache/site_layers` (served in dev), the
   deterministic `outpost-luna-site-layers.tar` + `site_layers.asset.json` (sha256, size, files), then the raster
   cache is deleted.
-* Desktop: `SITE_LAYERS_DIR` points the backend at the layers. 0.2: both build scripts build them and
-  electron-builder bundles them (~20 MB). 0.3: the optional `site_layers` asset in the first-run manifest
-  (POST `/api/sites/layers/want` asks for it on demand).
+* Desktop (0.3, Mac and Windows alike): the optional first-run asset `site_layers` (20.4 MB tar, 7 files) in both
+  manifest copies, built by `make site-layers && python3 scripts/asset_pack.py --only site_layers --no-zip`, installed
+  under `<assets>/site_layers`, `SITE_LAYERS_DIR` for the backend. The main process fetches optional assets in the
+  background; POST `/api/sites/layers/want` also asks for it. Its `url` is null until `scripts/upload_assets.py`
+  uploads the tar: until then the map says "Map layers download when you're online" and everything else works.
 
 ## Checks
 

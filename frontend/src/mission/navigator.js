@@ -208,7 +208,7 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
   function showDownloading() {
     if (!mapEl) { mapEl = document.createElement("div"); mapEl.className = "nv-map is-pending"; panel.parentNode.insertBefore(mapEl, panel); }
     const st = data && data.layers ? data.layers.state : "missing";
-    mapEl.innerHTML = `<p class="nv-pending" role="status">${ic("map", 16)}${st === "downloading" ? "Map layers downloading…" : "Map layers are not on this computer yet."}</p>`;
+    mapEl.innerHTML = `<p class="nv-pending" role="status">${ic("map", 16)}${st === "downloading" ? "Map layers downloading…" : data && data.layers && data.layers.managed ? "Map layers download when you're online." : "Map layers are not on this computer yet."}</p>`;
     mapEl.hidden = false; onMapChange(false); watch();
     if (st === "missing" && data && data.layers && data.layers.managed) fetch("/api/sites/layers/want", { method: "POST" }).catch(() => {});
     clearTimeout(pollT);

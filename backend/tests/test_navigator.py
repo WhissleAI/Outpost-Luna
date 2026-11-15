@@ -96,6 +96,9 @@ def test_layers_state_without_the_asset(tmp_path, monkeypatch):
     monkeypatch.setenv("ASSETS_DIR", str(tmp_path))
     assert client.post("/api/sites/layers/want").json() == {"ok": True, "managed": True}
     assert (tmp_path / ".want" / "site_layers").exists()
+    assert nav.layers_state() == {"state": "missing", "managed": True}     # asked for, not yet moving
+    (tmp_path / ".active").mkdir()
+    (tmp_path / ".active" / "site_layers").write_text("")
     assert nav.layers_state()["state"] == "downloading"
 
 
