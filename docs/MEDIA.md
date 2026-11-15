@@ -38,6 +38,15 @@ const { watched, seconds } = await openVideo("psr", { context: "debrief" });   /
 - `offline: true` means it could not play. `skipped: true` means the kid said or tapped skip. `fallback: id` means the
   kid watched the NASA alternative.
 - Use `watchLabel(v)` for the button text, or `"Needs internet"` when `isAvailable` says `offline`.
+- `failed: true` means the player failed while we were online (a YouTube error such as 101/150/153, or an unknown id).
+  The overlay then shows **"This video won't play here."**, never "Needs internet": `diagnose(id)` checks
+  `navigator.onLine` and asks the backend once (4 s) before calling anything offline. An embed that never answers is
+  checked after 15 s. The backend's own probe (`video.online()`) retries a timeout once with a longer wait, counts any
+  HTTP answer as online, and remembers a failure for 5 s only.
+- The card always renders inside the overlay (`.vid-stage` / `.vid-bar`) with a Close button. Esc, the Close button,
+  voice "stop" and a thumbs down close it; an open palm pauses. Opening the overlay closes Settings and stops a gestures
+  calibration (`outpost:modal-open`), and Settings opened by voice closes the video, so no sheet is ever left inert
+  under the video's `<dialog>`.
 
 ## Lesson step (course.json)
 

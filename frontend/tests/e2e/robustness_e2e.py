@@ -133,6 +133,13 @@ class Run:
             self.wait(200)
         return False
 
+    def click(self, sel, double=False):
+        """A real (trusted) mouse click at the control's centre. Playwright's own click waits for the element to be
+        "stable" over animation frames, which the 3D cabin starves under SwiftShader; this is the same input."""
+        self.pg.wait_for_selector(sel, state="visible", timeout=8000)
+        box = self.js("s => { const q = document.querySelector(s).getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }", sel)
+        (self.pg.mouse.dblclick if double else self.pg.mouse.click)(box[0], box[1])
+
     def modal_open(self):
         return self.js("() => !!document.querySelector('dialog[open]') || !!document.querySelector('.a11y-panel:not([hidden])') || !!document.querySelector('.gx-calib')")
 
@@ -150,7 +157,7 @@ class Run:
             # a modal is up: the gear is inert / covered behind it, so the kid would say "settings"
             self.js("() => window.__outpost.shellNav('settings', null, 'settings')")
         else:
-            self.pg.click("#a11yBtn", timeout=8000, no_wait_after=True)
+            self.click("#a11yBtn")
         return self.until("() => !!document.querySelector('.a11y-panel:not([hidden])')", 3000)
 
     def close_settings(self):
@@ -163,7 +170,7 @@ class Run:
         if self.modal_open():
             self.js("t => window.__outpost.shellNav(t === 'mission' ? 'go_mission' : t, null, t)", tab)   # by voice
         else:
-            self.pg.click("#" + ids[tab], timeout=8000, no_wait_after=True)
+            self.click("#" + ids[tab])
         self.wait(700)
 
 
@@ -254,10 +261,10 @@ def settings(r):
 def calibration(r):
     if not r.open_settings():
         return False
-    r.pg.click('[data-sec="camera"]', timeout=8000, no_wait_after=True)
+    r.click('[data-sec="camera"]')
     r.pg.wait_for_selector("#gxEnabled", timeout=4000)
     if not r.js("() => document.getElementById('gxEnabled').checked"):
-        r.pg.check("#gxEnabled", no_wait_after=True)
+        r.click("#gxEnabled")
     r.until("() => window.__outpost.gestures.active", 30000)
     if not r.until("() => !!document.querySelector('.gx-calib')", 4000):
         r.js("() => window.__outpost.gestures.calibrate && window.__outpost.gestures.calibrate()")
@@ -326,10 +333,10 @@ def ch_camera_on(r):
         r.js("() => window.__outpost.gestures.enable()")   # behind a modal: the shortest real path (Settings is covered)
     else:
         r.open_settings()
-        r.pg.click('[data-sec="camera"]', timeout=8000, no_wait_after=True)
+        r.click('[data-sec="camera"]')
         r.pg.wait_for_selector("#gxEnabled", timeout=4000)
         if not r.js("() => document.getElementById('gxEnabled').checked"):
-            r.pg.check("#gxEnabled", no_wait_after=True)
+            r.click("#gxEnabled")
     r.until("() => window.__outpost.gestures.active", 30000)
     r.until("() => !!document.querySelector('.gx-calib')", 2500)
     # the first-time calibration may open by itself: it is a modal too (checked by the health check), then skipped
@@ -347,7 +354,7 @@ def ch_settings(r):
         raise RuntimeError("Settings did not open")
     secs = r.js("() => [...document.querySelectorAll('.a11y-panel .set-nav [data-sec]')].map(b => b.dataset.sec)")
     for s in secs:
-        r.pg.click(f'.a11y-panel [data-sec="{s}"]', timeout=8000, no_wait_after=True)
+        r.click(f'.a11y-panel [data-sec="{s}"]')
         r.wait(150)
         # every switch, choice and slider in the section (never a button: no resets, no profile changes)
         r.js("""() => { const p = document.querySelector('.a11y-panel');
@@ -372,7 +379,7 @@ def ch_mute_btn(r):
         if r.modal_open():
             r.js("() => document.getElementById('muteBtn').click()")   # inert behind a modal: the shortcut's path
         else:
-            r.pg.click("#muteBtn", timeout=8000, no_wait_after=True)
+            r.click("#muteBtn")
         r.wait(300)
 
 
@@ -381,7 +388,7 @@ def ch_theme(r):
         if r.modal_open():
             r.js("() => document.getElementById('themeBtn').click()")
         else:
-            r.pg.click("#themeBtn", timeout=8000, no_wait_after=True)
+            r.click("#themeBtn")
         r.wait(300)
 
 
@@ -459,9 +466,11 @@ def ch_double(r):
     # a double press of whatever is focused, and of the tab buttons
     r.pg.keyboard.press("Enter")
     r.pg.keyboard.press("Enter")
-    r.wait(400)
+    r.wait(1200)   # a double Enter can open something (the next step's video): let it land before looking
     if not r.modal_open():
-        r.pg.dblclick("#modeAcademy", timeout=8000, no_wait_after=True)
+        r.click("#modeAcademy", double=True)
+    else:
+        r.js("() => document.getElementById('modeAcademy').dispatchEvent(new MouseEvent('dblclick', {bubbles: true}))")
         r.wait(600)
 
 
@@ -496,7 +505,7 @@ def final_checks(r):
             continue
         if not r.until(f"() => document.body.dataset.mode === '{want}'", 4000):
             out.append(f"tab {t} did not switch (mode {r.js('() => document.body.dataset.mode')})")
-    if not r.until("() => !/is-speaking|is-thinking/.test(document.getElementById('askbar').className)", 15000):
+    if not r.until("() => !/is-speaking|is-thinking/.test(document.getElementById('askbar').className)", 40000):   # a long debrief line is legit (floor.js: 2.5 s + 0.5 s a word)
         out.append("voice bar stuck: " + r.js("() => document.getElementById('askbar').className"))
     return out
 
