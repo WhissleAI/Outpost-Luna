@@ -2,7 +2,8 @@
 // mic error copy, and the mic worklet's 16 kHz resampler. No DOM needed.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { splitSentences, normWords, isEcho, shouldBargeIn, spaceAction, micErrorText } from "../src/floor.js";
+import { splitSentences, normWords, isEcho, spaceAction, micErrorText } from "../src/floor.js";
+import { shouldBargeIn } from "../src/barge.js";
 import { WORKLET } from "../src/listen.js";
 
 test("splitSentences: sentence ends, decimals kept, tiny fragments folded, long text capped", () => {
@@ -34,7 +35,8 @@ test("isEcho: ≥ 60% of heard words in what we play", () => {
 test("shouldBargeIn: start + ≥2 words + not echo + device_directed ≥ 0.5 when present", () => {
   const refs = ["Copy. Shields are at forty percent. The storm arrives in two hours."];
   assert.equal(shouldBargeIn({ started: true, text: "the storm arrives", refs }), false);            // echo
-  assert.equal(shouldBargeIn({ started: true, text: "stop", refs }), false);                          // 1 word
+  assert.equal(shouldBargeIn({ started: true, text: "stop", refs }), true);                           // a stop command
+  assert.equal(shouldBargeIn({ started: true, text: "rover", refs }), false);                         // 1 word, not a command
   assert.equal(shouldBargeIn({ started: false, text: "send the rover now", refs }), false);           // no StartOfTurn
   assert.equal(shouldBargeIn({ started: true, text: "send the rover now", refs }), true);
   assert.equal(shouldBargeIn({ started: true, text: "send the rover now", refs, dd: 0.3 }), false);   // chatter
@@ -52,8 +54,10 @@ test("open-mic barge-in over a fake listener sequence: echo ignored, real words 
   } return null; };
   assert.equal(run([{ t: "turn", state: "start" }, { t: "words", text: "here is the hardware" }, { t: "words", text: "here is the hardware people left" },
     { t: "turn", state: "end", text: "here is the hardware people left" }]), null);
-  assert.equal(run([{ t: "turn", state: "start" }, { t: "words", text: "wait" }, { t: "words", text: "wait show me apollo eleven" }]),
-    "wait show me apollo eleven");
+  // "wait" alone is a stop command: it interrupts at once (the rest of the turn is heard as the kid's turn)
+  assert.equal(run([{ t: "turn", state: "start" }, { t: "words", text: "wait" }, { t: "words", text: "wait show me apollo eleven" }]), "wait");
+  assert.equal(run([{ t: "turn", state: "start" }, { t: "words", text: "show" }, { t: "words", text: "show me apollo eleven" }]),
+    "show me apollo eleven");
 });
 
 // Fake DOM targets: closest(sel) answers from a small selector → element table.

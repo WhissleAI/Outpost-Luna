@@ -527,7 +527,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
 
   // ---------- first-mission cabin tour (tour.js) ----------
-  const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking(), callsign: () => callSign.get(),
+  const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking("mission_tour_hush"), callsign: () => callSign.get(),
     onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowCard(state, mclock.state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
   function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(levelNow()); return true; }

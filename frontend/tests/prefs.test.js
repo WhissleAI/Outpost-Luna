@@ -2,7 +2,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { normalizePrefs, PREF_DEFAULTS, PROFILE_KEYS, moreVoicesHint } from "../src/prefs.js";
-import { BARGE, shouldBargeIn } from "../src/floor.js";
+import { BARGE } from "../src/floor.js";
+import { shouldBargeIn } from "../src/barge.js";
 
 test("prefs: defaults, clamps and option lists", () => {
   assert.deepEqual(normalizePrefs(null), { ...PREF_DEFAULTS });

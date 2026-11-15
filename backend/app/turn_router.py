@@ -28,6 +28,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
+from . import narration
 from . import safety as safety_
 from .gazetteer import norm
 
@@ -285,16 +286,81 @@ def is_exclaim(text: str) -> bool:
     return bool(EXCLAIM_PHRASE.match(q))
 
 
+# Function words carry no evidence either way ("a radiation dose" over "...what is a millisievert?" is the kid).
+# Mirrors frontend floor.js FUNCTION_WORDS.
+FUNCTION_WORDS = set(("a an the to of in on at is are was be it its this that these those so what and or but for with as "
+                      "do does did can will would just").split())
+
+
+def echo_words(ws: list[str]) -> list[str]:
+    """Spelled-out letters collapse into one token ("m s v" -> "msv"): a TTS engine reads an abbreviation as letters and
+    the ear writes them back one by one (frontend floor.js echoWords)."""
+    out, i = [], 0
+    while i < len(ws):
+        j = i
+        while j < len(ws) and len(ws[j]) == 1 and ws[j].isalpha():
+            j += 1
+        if j - i >= 2:
+            out.append("".join(ws[i:j]))
+            i = j
+        else:
+            out.append(ws[i])
+            i += 1
+    return out
+
+
+def _lev(a: str, b: str) -> int:
+    if abs(len(a) - len(b)) > 2:
+        return 3
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i]
+        for j in range(1, len(b) + 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1])))
+        prev = cur
+    return prev[-1]
+
+
+def word_in(w: str, ref: set[str]) -> bool:
+    """A heard word is in a reference: exactly, a near-miss spelling (both >= 5 letters: 1 edit, >= 8: 2), or the
+    tail / head of a word >= 3 letters longer ("sieverts" in "millisieverts")."""
+    if w in ref:
+        return True
+    if len(w) < 5:
+        return False
+    for r in ref:
+        if len(r) < 5:
+            continue
+        if _lev(w, r) <= (2 if min(len(w), len(r)) >= 8 else 1):
+            return True
+        if len(r) >= len(w) + 3 and (r.endswith(w) or r.startswith(w)):
+            return True
+    return False
+
+
+def ref_words(line: str) -> set[str]:
+    """A line's words as the mic can hear them: as written and as spoken (narration.py), letters collapsed."""
+    return set(echo_words(words(line))) | set(echo_words(words(narration.spoken(line))))
+
+
 def echo_of(text: str, recent: list[str], share: float = ECHO_SHARE) -> bool:
-    """>= `share` of the heard words appear in ONE of our recent lines (or in all of them together for 1-2 words)."""
-    ws = words(text)
+    """>= `share` of the heard words appear in ONE of our recent lines (or in all of them together for 1-2 words).
+    Fuzzy like the client's isEcho (floor.js): spelled-out letters, the spoken form, near-miss spellings."""
+    ws = echo_words(words(text))
     if not ws or not recent:
         return False
-    refs = [set(words(r)) for r in recent if r]
-    if any(sum(w in r for w in ws) / len(ws) >= share for r in refs if r):
+    every_word = ws
+    if share < 0.8:   # the share is over the content words when there are any; a near-verbatim test keeps them all
+        ws = [w for w in ws if w not in FUNCTION_WORDS] or ws
+    refs = [ref_words(r) for r in recent if r]
+    if any(sum(word_in(w, r) for w in ws) / len(ws) >= share for r in refs if r):
+        return True
+    # >= 4 words repeating 75% of a line word for word ("so what is an n f c" over "So what is an mSv?")
+    if share < 0.8 and len(every_word) >= 4 and \
+            any(sum(word_in(w, r) for w in every_word) / len(every_word) >= 0.75 for r in refs if r):
         return True
     every = set().union(*refs) if refs else set()
-    return len(ws) <= 3 and all(w in every for w in ws)
+    return len(ws) <= 3 and all(word_in(w, every) for w in ws)
 
 
 def echo(text: str, ctx: "Ctx") -> bool:
@@ -315,8 +381,12 @@ def echo(text: str, ctx: "Ctx") -> bool:
         return ctx.speaking and echo_of(text, ctx.recent, 0.85)
     if ctx.screen in ("lesson", "ride"):
         # a step answer often repeats the prompt's words ("I heard you", "where day meets night"): only a line still
-        # playing makes it an echo; older lines are never used here
-        return air and echo_of(text, ctx.recent)
+        # playing makes it an echo; older lines are never used here. In the ear-lag tail, a near-verbatim replay
+        # (>= 4 words, >= 85%) of the line that just ended is still its echo ("so what is an m s v" right after "So
+        # what is an mSv?"), unless it names one of the step's options (floor.js turnIsEcho, the same rule).
+        if air:
+            return echo_of(text, ctx.recent)
+        return len(echo_words(words(text))) >= 4 and not _names_option(text, ctx) and echo_of(text, ctx.recent, OLD_SHARE)
     if echo_of(text, ctx.recent):
         return True
     return len(words(text)) >= 3 and echo_of(text, ctx.older, OLD_SHARE)

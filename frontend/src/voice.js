@@ -2,11 +2,16 @@
 // The mic opens after the first gesture and stays open. Holding Space marks the turn "for the guide"; on release
 // (after a 500 ms tail so the last word lands) or on the server's turn end, the app asks.
 // Barge-in follows docs/SESSION_CONTRACT.md §3 rule 2: Space always wins; open-mic speech while the guide or the crew
-// is playing wins only when it isn't an echo of what we're playing (shouldBargeIn in floor.js).
+// is playing wins only for a real, intentional interruption (barge.js decideBarge: words not energy, not an echo,
+// directed, loud enough over the speaker leak, sustained, outside the grace windows). A barge-in that produced no
+// actionable turn says the interrupted sentence again, once (BARGE_TUNING.RECOVER_MS). Every stop and every held turn
+// lands in window.__outpost.bargeLog (bargelog.js).
 // Drives the .askbar state classes, #listenState, #liveWords, #spaceHint and the #micLevel meter.
 // (floor.css is imported by main.js, so this module loads under `node --test`: tests/voice_gate.test.js)
 import { createListener as defaultListener } from "./listen.js";
-import { floor as defaultFloor, shouldBargeIn, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen, BARGE } from "./floor.js";
+import { floor as defaultFloor, spaceAction, micErrorText, isFiller, normWords, takesOffer, turnIsEcho, stepOpen, BARGE } from "./floor.js";
+import { decideBarge, isCommand, saysStop, BARGE_TUNING, energyNeed } from "./barge.js";
+import { logBarge } from "./bargelog.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
 export { spaceAction, micErrorText };
@@ -26,7 +31,8 @@ const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo referen
 /**
  * @param {object} o
  * @param {(text:string)=>Promise} o.onTurn   the kid finished a turn
- * @param {()=>void} o.onBargeIn              the kid started talking (the floor already stopped the guide, ducked the crew)
+ * @param {(o:{keepGuide:boolean, reason:string})=>void} o.onBargeIn  the kid started talking (the floor already stopped the
+ *                                            guide, ducked the crew; keepGuide: muted, the silent line keeps its captions)
  * @param {()=>void} o.onKidDone              the kid stopped without asking
  * @param {(label:string)=>void} o.onEmotion
  * @param {()=>boolean} [o.isOutputBusy]      extra "audio is playing" signal (the floor's holder is the main one)
@@ -54,7 +60,51 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   // Smoothed, and silent below the room's noise floor (a hum never moves it); "hot" has hysteresis so it can't blink.
   let lvl = 0, hot = false;
   const NOISE_FLOOR = 0.12;
+  // Mic energy for the barge-in check (ducked-reference gating). The ear turns our own voice leaking back from the
+  // speakers into confident nonsense and Arc rates it device-directed, so the words can't tell it from the kid; the
+  // level can. Each 80 ms mic frame is compared with what we are putting out at that moment (floor.outputLevel: the
+  // playing sentence's decoded envelope) times the speaker-to-mic coupling (the median mic/output ratio while we play,
+  // kept across lines: it is a property of the room and the device, not of the line). A frame is the kid's when it is
+  // ENERGY_LEAK_X louder than that expected leak, and above the room floor. A turn heard while we play needs
+  // ENERGY_FRAMES such frames (~320 ms) in its window. Where no envelope exists (crew clips, video, the browser voice)
+  // the expected leak is the loud end (p90) of the mic level while that audio plays.
+  const mic = [];   // [{t, rms, kid}] the last 6 s of 80 ms frames
+  let room = 0, leakPrior = 0, line = null;   // line: {frames, barged} while one of our lines plays
+  const ratios = [];   // mic / output while our audio is loud: the coupling is their median
+  const p90 = xs => { const v = xs.map(f => f.rms).sort((a, b) => a - b); return v.length ? v[Math.min(v.length - 1, Math.floor(v.length * 0.9))] : 0; };
+  const coupling = () => { if (ratios.length < 6) return null; const v = ratios.slice().sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  if (floor) floor.on("playback", e => {
+    if (!e || (e.kind !== "guide" && e.kind !== "crew")) return;
+    if (e.state === "start") { line = { frames: [], barged: false }; return; }
+    if (line && !line.barged && !muted() && line.frames.length >= 8) { const x = p90(line.frames); leakPrior = leakPrior ? leakPrior * 0.7 + x * 0.3 : x; }
+    line = null;
+  });
+  function track(rms) {
+    const t = performance.now(), busy = outputBusy();
+    const out = busy && floor && floor.outputLevel ? floor.outputLevel() : null;
+    if (out != null && out > 0.02) { ratios.push(rms / out); if (ratios.length > 150) ratios.shift(); }
+    const c = coupling(), T = BARGE_TUNING;
+    // kid: true / false against the envelope; null when there's no envelope (the p90 fallback decides)
+    const kid = out == null || !busy ? null : c == null ? false : rms >= Math.max(T.ENERGY_ABS_MIN, room * T.ENERGY_FLOOR_X, T.ENERGY_LEAK_X * c * out);
+    mic.push({ t, rms, kid }); while (mic.length && t - mic[0].t > 6000) mic.shift();
+    if (line && busy) { line.frames.push({ t, rms }); if (line.frames.length > 400) line.frames.shift(); }
+    else if (!busy && !gated && !kidTalking && !ptt.held) room = !room ? rms : rms < room ? room * 0.7 + rms * 0.3 : room * 0.995 + rms * 0.005;
+  }
+  /** The turn's energy: {turn: the loudest 3-frame mean in the window, need (fallback), loud: the kid's frames}.
+   *  null when no mic levels came (tests with a fake ear). */
+  function turnEnergy(g) {
+    const now = performance.now();
+    const win = mic.filter(f => f.t >= (g.ended ? g.t0 - 800 : now - 1000));
+    if (!mic.length || !win.length) return null;
+    const pre = line ? line.frames.filter(f => f.t < g.t0 - 300) : [];
+    const need = energyNeed(Math.max(leakPrior, pre.length >= 4 ? p90(pre) : 0), room);
+    const top = win.map(f => f.rms).sort((a, b) => b - a).slice(0, 3);
+    const loud = win.filter(f => (f.kid == null ? f.rms >= need : f.kid)).length;
+    return { turn: top.reduce((a, b) => a + b, 0) / top.length, need, loud, coupling: coupling() };
+  }
   function level(rms) {
+    track(rms);
+    if (gated && !gated.timer) check();   // the energy test runs per frame: no waiting for the ear's next message
     let v = Math.min(1, Math.sqrt(Math.max(0, rms)) * 2.2);   // perceptual-ish: quiet speech still moves the bar
     v = v < NOISE_FLOOR ? 0 : (v - NOISE_FLOOR) / (1 - NOISE_FLOOR);
     lvl = lvl * 0.75 + v * 0.25;
@@ -124,12 +174,56 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   }
 
   // ----- the floor -----
-  function bargeIn() {
+  const muted = () => !!(floor && floor.muted);
+  /** The kid takes the floor. `reason`: ptt | webspeech | turn_start (nothing playing) | speech | command | awaited. */
+  function bargeIn(reason = "speech", text = "", g = null) {
     kidTalking = true;
-    if (floor) { floor.setKid(true); floor.stopGuide(); floor.duck(0.15); }
-    onBargeIn();
+    const playing = !!floor && (floor.holder === "guide" || floor.holder === "crew" || floor.guideBusy || !!isOutputBusy());
+    const keep = muted() && reason !== "ptt";   // Mute: our line plays silently (captions), nothing to barge into
+    if (floor) { floor.setKid(true); if (!keep) floor.stopGuide("barge:" + reason); floor.duck(0.15); }
+    if (playing) {
+      const en = g ? turnEnergy(g) : null;
+      logBarge({ kind: "barge", reason, text, energy: en ? +en.turn.toFixed(4) : null, need: en ? +en.need.toFixed(4) : null, loud: en ? en.loud : null,
+        ms: g ? Math.round(performance.now() - g.t0) : 0, playing: !keep, dd: turnDD, muted: keep });
+      if (!keep && reason !== "ptt" && reason !== "webspeech") armRecover(text);
+    }
+    // Hook for the flow code (tours, lessons): which line a barge-in cut, so a flow can offer Resume. Fired for every
+    // barge-in, with playing=false when nothing of ours was audible.
+    try {
+      const li = floor && floor.interrupted;
+      dispatchEvent(new CustomEvent("outpost:barge", { detail: { reason, text, playing: playing && !keep,
+        lineId: li ? li.id : null, lineText: li ? li.text : "", resumable: !!(li && !li.resumed) } }));
+    } catch (e) { /* no window / CustomEvent (tests) */ }
+    onBargeIn({ keepGuide: keep, reason });
   }
+  // ----- a false interruption: say the interrupted sentence again (once) -----
+  let recov = null, playStarts = 0;
+  if (floor) floor.on("playback", e => { if (e && e.state === "start") playStarts++; });
+  const frameKey = () => { const f = frameNow() || {}; return [f.screen, f.lesson_id, f.step, f.offer, f.step_type].join("|"); };
+  function armRecover(text) {
+    if (recov) clearTimeout(recov.timer);
+    recov = null;
+    if (!floor || !floor.resumeInterrupted || isCommand(text) || saysStop(text)) return;   // "stop", "skip", "next": the kid meant it
+    recov = { at: performance.now(), text, frame: frameKey(), plays: playStarts, endAt: 0, dropped: false, outcome: null, answered: false, timer: 0 };
+    recov.timer = setTimeout(tickRecover, BARGE_TUNING.RECOVER_MS);
+  }
+  function tickRecover() {
+    const r = recov; if (!r) return;
+    const now = performance.now();
+    const drop = () => { recov = null; };
+    if (now - r.at > BARGE_TUNING.RECOVER_MAX_MS) return drop();
+    if (playStarts !== r.plays || frameKey() !== r.frame) return drop();     // the turn did something: a reply, a new step
+    if (r.outcome && r.outcome !== "ignore") return drop();
+    if (r.final && saysStop(r.final)) return drop();                       // "… Stop." at the end of the turn: keep quiet
+    const open = kidTalking || ptt.held || !!gated;
+    if (!open && r.endAt && (r.dropped || r.outcome === "ignore" || r.answered || now - r.endAt >= BARGE_TUNING.RECOVER_MS)) {
+      recov = null; floor.resumeInterrupted({ maxAgeMs: BARGE_TUNING.RECOVER_MAX_MS }); return;
+    }
+    r.timer = setTimeout(tickRecover, 150);
+  }
+  const recEnd = (how, text = "") => { if (!recov || recov.endAt) return; recov.endAt = performance.now(); recov.final = text; if (how === "dropped") recov.dropped = true; };
   function kidDone() {
+    recEnd("dropped");
     kidTalking = false;
     if (floor) { floor.setKid(false); floor.unduck(); }      // no request: the crew comes back, the guide doesn't repeat
     onKidDone(); idle();
@@ -146,6 +240,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     const onAir = turnAir || airNow(); turnAir = false;
     if (!ptt.held && !pttTurn && (isFiller(text) || turnIsEcho({ text, frame: frameNow(), onAir, refs: refsNow(),
       oldRefs: saidRefs(3000, ECHO_LINES_MS) }))) { if (exp) wordsEl.textContent = ""; kidDone(); return; }   // filler / echo: no state change at all
+    recEnd("asked", text);
     const viaPtt = pttTurn; pttTurn = false;
     // "Thinking" waits for the router (decided()): an ignored turn goes back to "Listening" with no flash. A decision
     // that already arrived (the server's ear relay can beat the client's own turn end) is used at once.
@@ -164,6 +259,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     }
     const done = r => {   // no session (POST /api/ask): no decision will come; the answer is over, so the turn is too
       if (r === "session") return;
+      if (recov) recov.answered = true;
       if (pending) { clearTimeout(pending.timer); pending = null; }
       if (state === "thinking") idle();
     };
@@ -183,10 +279,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   // On air: a line of ours is playing right now (no tail). A turn keeps the value it had at its start.
   // floor.onAir also covers a queued multi-line say between its lines (the next line's audio still loading): the
   // whole CAPCOM sequence is one on-air span, so the ear never slips into the gap (the server's Spoken `more` hold).
-  const airNow = () => { const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!(floor && floor.onAir) || !!isOutputBusy(); };
+  const airNow = () => { if (muted()) return false; const h = floor ? floor.holder : "none"; return h === "guide" || h === "crew" || !!(floor && floor.onAir) || !!isOutputBusy(); };
   const frameNow = () => { try { return screen() || null; } catch (e) { return null; } };
   let turnAir = false;
   const outputBusy = () => {
+    if (muted()) return false;   // Mute: nothing audible, so nothing for the mic to hear back and nothing to barge into
     const h = floor ? floor.holder : "none";
     return h === "guide" || h === "crew" || !!(floor && floor.onAir) || isOutputBusy() || performance.now() < recent.until;
   };
@@ -198,39 +295,76 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const refsNow = () => [...liveRefs(), ...recent.refs, ...saidRefs(0, 3000)];
   // Lines older than 3 s (turnIsEcho's oldRefs): only a near-verbatim repeat of ≥ 3 words is an echo.
 
-  // An open-mic turn heard while audio plays: held back until it passes the barge-in check (or ends as an echo).
-  let gated = null, turnDD = null, turnSafety = null, pttTurn = false;
+  // An open-mic turn heard while audio plays: held back until it passes the barge-in check (barge.js decideBarge), or
+  // dropped at its end (echo, room talk, noise). A check that waits on a timing window runs again when it ends.
+  let gated = null, turnDD = null, turnSafety = null, pttTurn = false, idleStart = false;
+  let arcSeen = false;   // this ear sends Arc metadata: a turn it never rated (noise, far-off chatter) can't interrupt
   function gate(m) {
-    if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) { gated = { text: m.text || "", air: airNow() }; return; }
+    if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) {
+      if (gated) clearTimeout(gated.timer);
+      gated = { text: m.text || "", air: airNow(), t0: performance.now(), ended: false, timer: 0 };
+      check(); return;
+    }
     if (!gated) return;                                     // words of a turn whose start we didn't see while busy
     if (m.text) gated.text = m.text;
     if (airNow()) gated.air = true;                         // one of our lines started during the turn
+    if (m.t === "turn" && m.state === "end") gated.ended = true;
+    check();
+  }
+  function check() {
+    const g = gated; if (!g) return;
+    clearTimeout(g.timer); g.timer = 0;
     // Only the echo tail (our line already ended): the reply the screen waits for gets through, as on the server.
     const f = frameNow() || {};
-    const awaited = (f.screen === "video" && !!videoCommand(gated.text)) ||   // [media] "pause" while a video plays
-      (!gated.air && !isFiller(gated.text) && (takesOffer(gated.text, f.offer) || stepOpen(f)) &&
-      !turnIsEcho({ text: gated.text, frame: f, onAir: false, refs: refsNow() }));
-    const pass = awaited || shouldBargeIn({ started: true, text: gated.text, refs: refsNow(), dd: turnDD });
-    if (!pass) { if (m.t === "turn" && m.state === "end") gated = null; return; }   // echo / chatter: drop it
-    const text = gated.text; turnAir = gated.air; gated = null;
-    turnAsked = false; finalBuf = ""; interim = text;
-    bargeIn(); set("hearing"); showWords();
-    if (m.t === "turn" && m.state === "end") askTurn(text);
+    const awaited = !!g.text && ((f.screen === "video" && !!videoCommand(g.text)) ||   // [media] "pause" while a video plays
+      (!g.air && !isFiller(g.text) && (takesOffer(g.text, f.offer) || stepOpen(f)) &&
+      !turnIsEcho({ text: g.text, frame: f, onAir: false, refs: refsNow() })));
+    const en = awaited ? null : turnEnergy(g);
+    const d = awaited ? { act: "barge", reason: "awaited" } : decideBarge({ text: g.text, refs: refsNow(), dd: turnDD, final: g.ended,
+      speechMs: performance.now() - g.t0, sinceLineMs: floor ? floor.lineMs : Infinity, sinceSentenceMs: floor ? floor.sentenceMs : Infinity, energy: en,
+      rated: !arcSeen || turnDD != null });
+    if (typeof window !== "undefined" && window.__bargeTrace) window.__bargeTrace({ d, text: g.text, en, dd: turnDD });   // harness only
+    if (d.act === "barge") {
+      const text = g.text; turnAir = g.air; gated = null;
+      turnAsked = false; finalBuf = ""; interim = text;
+      if (line) line.barged = true;
+      bargeIn(d.reason, text, g); set("hearing"); showWords();
+      if (g.ended) askTurn(text);
+      return;
+    }
+    if (d.act === "wait" && d.retryMs) { g.timer = setTimeout(() => { if (gated === g) check(); }, d.retryMs); return; }
+    if (g.ended) {                                          // echo / chatter / noise: dropped, the line plays on
+      gated = null;
+      if (g.text || d.reason !== "no_words") logBarge({ kind: "held", reason: d.reason, text: g.text, energy: en ? +en.turn.toFixed(4) : null, loud: en ? en.loud : null,
+        need: en ? +en.need.toFixed(4) : null, ms: Math.round(performance.now() - g.t0), playing: outputBusy(), dd: turnDD });
+    }
   }
 
   const listener = createListener({
     message(m) {
       if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
-      else if (m.t === "arc") { if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
+      else if (m.t === "arc") { arcSeen = true; if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
       else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
       else if (m.t === "words" || m.t === "turn") {
         if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; }
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
+        // A turn that began in silence and has no real word yet when one of our lines starts: from now on it is gated
+        // like any turn heard while we play (it must not take the floor and cut the new line).
+        if (idleStart && !kidTalking && !ptt.held && outputBusy()) {
+          idleStart = false; gated = { text: turnText(), air: true, t0: performance.now(), ended: false, timer: 0 };
+        }
         if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
-        if (m.t === "words") { if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || ""; showWords(); }
-        else if (m.state === "start") { turnAir = airNow(); turnAsked = false; bargeIn(); set("hearing"); }
+        if (m.t === "words") {
+          if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || "";
+          if (idleStart && !isFiller(turnText())) { idleStart = false; bargeIn("turn_start", turnText()); set("hearing"); }
+          showWords();
+        }
+        // Nothing playing: the turn takes the floor at its first real word (a hum or a noise "start" never does: it
+        // would hold back the next line and cancel what the session has queued).
+        else if (m.state === "start") { turnAir = airNow(); turnAsked = false; finalBuf = ""; interim = m.text || "";
+          if (isFiller(m.text || "")) idleStart = true; else { idleStart = false; bargeIn("turn_start", m.text || ""); set("hearing"); } }
         else if (m.state === "resumed") { kidTalking = true; if (floor) floor.setKid(true); turnAsked = false; set("hearing"); }
-        else if (m.state === "end") { if (ptt.held) return; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
+        else if (m.state === "end") { if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
       else if (m.t === "error") { console.warn("ear error:", m.message); note("Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
@@ -247,7 +381,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     rec.onresult = e => {
       interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalBuf += r[0].transcript + " "; else interim += r[0].transcript; }
-      showWords(); if (!kidTalking) bargeIn();
+      showWords(); if (!kidTalking) bargeIn("webspeech", turnText());
     };
     rec.onstart = () => { srOn = true; set("hearing"); };
     rec.onend = () => { srOn = false; askTurn(turnText()); };
@@ -289,8 +423,9 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (act === "blur" && document.activeElement && document.activeElement.blur) document.activeElement.blur();
     if (e.repeat || ptt.held) return;
     ptt.held = true; pttTurn = true; if (ptt.tail) { clearTimeout(ptt.tail); ptt.tail = null; }
-    gated = null;
-    bargeIn(); turnAsked = false; finalBuf = ""; interim = ""; wordsEl.textContent = "";
+    if (gated) clearTimeout(gated.timer);
+    gated = null; idleStart = false;
+    bargeIn("ptt"); turnAsked = false; finalBuf = ""; interim = ""; wordsEl.textContent = "";
     if (mode !== "ws" && !wsBroken) await startAlwaysOn();
     set("hearing");
     if (mode !== "ws" && ptt.held) srStart();
@@ -315,6 +450,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
      *  "Thinking", no words); anything else shows "Thinking" until the reply speaks. */
     decided(outcome, text) {
       const q = keyOf(text), now = Date.now();
+      if (recov && !recov.outcome) recov.outcome = outcome;
       decisions.push({ q, outcome, at: now });
       while (decisions.length > 8 || (decisions[0] && now - decisions[0].at > DISPLAY.DECIDED_MS)) decisions.shift();
       if (pending && (!q || pending.q === q || pending.q.includes(q) || q.includes(pending.q))) resolve(outcome);

@@ -125,9 +125,33 @@ def test_kid_start_mid_say_cancels_unplayed(sess):
     run(sess.handle({"t": "turn", "state": "start", "text": ""}))
     run(sess.handle({"t": "words", "text": "status"}))               # 1 word: not yet a barge-in
     assert "cancel" not in kinds(sess.outbox)
+    run(sess.handle({"t": "words", "text": "wait stop the rover"}))   # Arc's read not in yet: the client decides
+    assert "cancel" not in kinds(sess.outbox)
+    run(sess.handle({"t": "arc", "device_directed": 0.9}))
+    run(sess.handle({"t": "words", "text": "wait stop the rover"}))   # still inside the line's first 600 ms
+    assert "cancel" not in kinds(sess.outbox)
+    sess.clock_obj.t += 1.0
     run(sess.handle({"t": "words", "text": "wait stop the rover"}))
     c = next(d for d in sess.outbox if d["t"] == "cancel")
     assert said[0] in c["ids"] and sess.belief["floor"] == "kid"
+
+
+def test_server_barge_in_stop_word_and_echo(sess):
+    """The session's own check is conservative: a stop word interrupts (past the grace window), our own line spelled
+    back ("m s v") never does, room talk Arc rates as not directed never does."""
+    sess.pending["s1"] = {"t": "say", "id": "s1", "priority": 3, "text": "Doctors count radiation in mSv. So what is an mSv?"}
+    run(sess.on_playback({"kind": "guide", "state": "start", "id": "s1"}))
+    sess.clock_obj.t += 1.0
+    run(sess.handle({"t": "turn", "state": "start", "text": ""}))
+    run(sess.handle({"t": "words", "text": "so what is an m s v"}))
+    run(sess.handle({"t": "arc", "device_directed": 0.95}))
+    run(sess.handle({"t": "words", "text": "doctors count radiation in m s v"}))
+    assert "cancel" not in kinds(sess.outbox)
+    run(sess.handle({"t": "arc", "device_directed": 0.1}))
+    run(sess.handle({"t": "words", "text": "can you pass the salt"}))
+    assert "cancel" not in kinds(sess.outbox)
+    run(sess.handle({"t": "words", "text": "Stop."}))
+    assert sess.belief["floor"] == "kid"
 
 
 def test_echo_of_our_own_line_is_not_a_barge_in(sess):

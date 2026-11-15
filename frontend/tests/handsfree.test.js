@@ -1,7 +1,8 @@
 // Hands-free: the client side of the echo / filler gate (mirrors backend/app/turn_router.py).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isFiller, normWords, shouldBargeIn, takesOffer, turnIsEcho } from "../src/floor.js";
+import { isFiller, normWords, takesOffer, turnIsEcho } from "../src/floor.js";
+import { shouldBargeIn } from "../src/barge.js";
 
 test("isFiller: hums, fillers and non-lexical turns", () => {
   for (const t of ["Oh.", "Mm-mm.", "um", "hmm", "Uh-huh.", "Mm.", "Ah!", "uh, um", "ooh", ""]) assert.equal(isFiller(t), true, t);
