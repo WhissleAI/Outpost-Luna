@@ -1,13 +1,7 @@
 {
- "1280x720": [
-  "overlap: views x moment"
- ],
- "1440x879": [
-  "overlap: views x moment"
- ],
+ "1280x720": [],
+ "1440x879": [],
  "1440x900": [],
  "1920x1080": [],
- "1024x640": [
-  "the story banner did not show"
- ]
+ "1024x640": []
 }

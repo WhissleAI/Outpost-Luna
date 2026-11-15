@@ -182,8 +182,12 @@ def main(base, shots, tag, sizes):
             m = pg.evaluate(MEASURE, HUD)
             f = findings(m) + ([] if got else ["never reached the steer choice"])
             # again with a story banner up (day start, comm gap, storm): it has its own slot, never text on text
-            pg.evaluate("() => window.__cabinTest && window.__cabinTest.moment('On our own')")
-            pg.wait_for_timeout(1200)
+            # the app's reduced-motion mode: no fade, so a busy machine's slow animation can't hide the banner from the check
+            pg.evaluate("() => { document.documentElement.dataset.motion = 'reduce'; window.__cabinTest && window.__cabinTest.moment('On our own'); }")
+            for _ in range(20):   # its fade-in (about half a second; slower on a busy machine): measure it fully shown
+                pg.wait_for_timeout(250)
+                if pg.evaluate("() => { const e = document.getElementById('cbMoment'); return !!(e && !e.hidden && +getComputedStyle(e).opacity > 0.95); }"):
+                    break
             mb = pg.evaluate(MEASURE, HUD)
             if "moment" not in mb["hud"]:
                 f.append("the story banner did not show")
