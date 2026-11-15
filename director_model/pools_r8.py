@@ -234,6 +234,9 @@ NAV_SAY = {
     "time_pause": ["pause the clock", "pause", "freeze time", "stop the clock"],
     "time_resume": ["start the clock", "resume the clock", "unpause", "run the clock"],
     "time_warp": ["time warp", "warp speed", "speed up time", "time warp four"],
+    # the cabin's "Why?" cards (docs/PHYSICS.md): a gauge named, or a bare "why"
+    "why": ["why is power low", "why is the battery dropping", "how come the dose is rising", "explain the heaters",
+            "why is the air going down", "why are the shields pretend", "why is the rover slow", "why"],
     "cabin_tour": ["show me around", "give me the tour", "replay the tour"],
     "skip_tour": ["skip the tour", "end the tour", "i've got it"],
     "repeat": ["say that again", "repeat that", "what did you say", "come again"],

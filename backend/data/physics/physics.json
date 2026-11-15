@@ -1,0 +1,579 @@
+{
+ "note": "Built by backend/pipeline/physics_data.py; sources in SOURCES.md. The app never calls NASA.",
+ "sources": {
+  "horizons": {
+   "title": "JPL Horizons API (Sun and Earth over each site)",
+   "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Sun height above the ridge line: panel power, day and night"
+  },
+  "sunfact": {
+   "title": "NASA Sun Fact Sheet",
+   "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "The Sun's disk is about half a degree wide: why panels fade as it sets"
+  },
+  "vsat": {
+   "title": "NASA: Vertical solar array technologies for the lunar surface (VSAT)",
+   "url": "https://www.nasa.gov/technology/nasa-industry-to-mature-vertical-solar-array-technologies-for-lunar-surface/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Polar panels stand upright to catch the low Sun"
+  },
+  "tsi": {
+   "title": "NASA GSFC: Solar irradiance (TSIS-1, SORCE)",
+   "url": "https://earth.gsfc.nasa.gov/climate/projects/solar-irradiance/science",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "1361 W/m² of sunlight: the Engineer panel equation"
+  },
+  "sst_soa": {
+   "title": "NASA Small Spacecraft Technology State of the Art: Power",
+   "url": "https://www.nasa.gov/smallsat-institute/sst-soa/power-subsystems/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "30% multi-junction cells and 150-270 Wh/kg Li-ion: panel area and battery"
+  },
+  "sh_tcs": {
+   "title": "Schunk et al. 2022, NASA MSFC Surface Habitat thermal and power (NTRS 20210026557)",
+   "url": "https://ntrs.nasa.gov/citations/20210026557",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "10-15 kW array and 155-540 kWh night energy: anchors the outpost's kW and kWh"
+  },
+  "fsp": {
+   "title": "NASA Fission Surface Power",
+   "url": "https://www.nasa.gov/exploration-systems-development-mission-directorate/fission-surface-power/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "40 kW reactor: context for the backup generator"
+  },
+  "databook": {
+   "title": "NASA Lunar Surface Data Book, M2M-30044 (NTRS 20250002845)",
+   "url": "https://ntrs.nasa.gov/citations/20250002845",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Sun at most 7.5 degrees up at the pole; 150 h darkness; LCROSS 'about five percent'"
+  },
+  "dsne": {
+   "title": "NASA DSNE, SLS-SPEC-159 Rev H (NTRS 20205007447)",
+   "url": "https://ntrs.nasa.gov/citations/20205007447",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Regolith thermal properties and reference temperatures"
+  },
+  "outpost_model": {
+   "title": "Outpost Luna game scale (docs/PHYSICS.md)",
+   "url": "https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/PHYSICS.md",
+   "licence": "game rule",
+   "use": "Game percent to kW and kWh: 250 kWh battery from a 15 kW array"
+  },
+  "game": {
+   "title": "Outpost Luna game rule",
+   "url": "https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/PHYSICS.md",
+   "licence": "game rule",
+   "use": "Pretend shields; heater duty scale"
+  },
+  "li_ion": {
+   "title": "NASA Small Spacecraft Technology State of the Art: Energy storage",
+   "url": "https://www.nasa.gov/smallsat-institute/sst-soa/power-subsystems/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Li-ion specific energy (150-270 Wh/kg)"
+  },
+  "bvad": {
+   "title": "NASA Life Support Baseline Values and Assumptions Document (NTRS 20210024855)",
+   "url": "https://ntrs.nasa.gov/citations/20210024855",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "0.9 kg of oxygen per person per day: the life support card"
+  },
+  "donki": {
+   "title": "NASA CCMC DONKI (real solar particle events)",
+   "url": "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "The storms you shelter from"
+  },
+  "artemis1_shelter": {
+   "title": "DLR: Orion radiation protection, Artemis I findings",
+   "url": "https://www.dlr.de/en/latest/news/2024/orion-spacecraft-radiation-protection-tested-initial-findings-from-artemis-i-moon-mission",
+   "licence": "DLR news, cited",
+   "use": "Shelter cuts storm dose about 4x"
+  },
+  "change4": {
+   "title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface (Chang'e 4 LND)",
+   "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/",
+   "licence": "journal paper: numbers cited only (CC BY-NC)",
+   "use": "Quiet-Moon dose 0.057 mSv/h, quality factor 4.3; CRaTER over the same days"
+  },
+  "crater": {
+   "title": "Schwadron et al. 2012, Lunar radiation environment from LRO CRaTER, JGR 117",
+   "url": "https://prediccs.sr.unh.edu/papers/schwadron2011JE003978.pdf",
+   "licence": "journal paper: numbers cited only",
+   "use": "CRaTER quiet-time cosmic rays 11.7 cGy/yr: cross-checks the Chang'e 4 baseline"
+  },
+  "crater_events": {
+   "title": "LRO CRaTER team: solar particle event list",
+   "url": "https://crater-web.sr.unh.edu/data/craterProducts/events/events.txt",
+   "licence": "LRO CRaTER team data",
+   "use": "Real storm peaks (Jan, Mar 2012): thousands of times the quiet rate"
+  },
+  "diviner": {
+   "title": "Williams et al. 2019, Seasonal polar temperatures on the Moon (LRO Diviner maps)",
+   "url": "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/",
+   "licence": "journal paper: numbers cited only; maps by the Diviner team from PDS data",
+   "use": "Night minimum at each site's spot: the Heaters card in the dark"
+  },
+  "diviner_prp": {
+   "title": "LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650)",
+   "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
+   "licence": "NASA PDS archive, open (cite the data set)",
+   "use": "Sunlit maximum and shadowed-floor average (via the navigator's sites_physics.json)"
+  },
+  "diviner_team": {
+   "title": "LRO Diviner team: new seasonal polar data products",
+   "url": "https://www.diviner.ucla.edu/single-post/2020/07/20/new-diviner-seasonal-polar-data-products",
+   "licence": "Diviner team page, cited",
+   "use": "110 K: cold enough to trap ice"
+  },
+  "lola_slope": {
+   "title": "LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0)",
+   "url": "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/",
+   "licence": "NASA PDS archive, open (cite the data set)",
+   "use": "Ice-drive slopes: the route choice and the Rover card (via the navigator's sites_physics.json)"
+  },
+  "lola_illum": {
+   "title": "LRO LOLA average illumination and Earth visibility (NASA PGDA product 69)",
+   "url": "https://pgda.gsfc.nasa.gov/products/69",
+   "licence": "NASA PDS archive, open (cite the data set)",
+   "use": "Yearly sunlight and Earth view (the navigator); the sim's skyline sets panel light"
+  },
+  "lcross": {
+   "title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330",
+   "url": "https://doi.org/10.1126/science.1186986",
+   "licence": "journal paper: numbers cited only",
+   "use": "5.6% water by mass in polar crater soil: the ice card and debrief"
+  },
+  "lend": {
+   "title": "LRO LEND polar hydrogen (NTRS 20180004020)",
+   "url": "https://ntrs.nasa.gov/citations/20180004020",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Average polar soil is only ~0.1% water: why the rover drives into the dark"
+  },
+  "viper": {
+   "title": "NASA VIPER in depth",
+   "url": "https://science.nasa.gov/mission/viper/in-depth/",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "450 kg, 450 W: a real polar rover for scale"
+  },
+  "viper_ntrs": {
+   "title": "Bluethmann 2024, VIPER rover (NTRS 20240013903)",
+   "url": "https://ntrs.nasa.gov/citations/20240013903",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "5.4 kWh battery, 15 degree slope limit"
+  },
+  "a15_report": {
+   "title": "Apollo 15 Mission Report (NTRS 19720021182)",
+   "url": "https://ntrs.nasa.gov/citations/19720021182",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "The Apollo rover used about 67 Wh per km"
+  },
+  "regolith_shield": {
+   "title": "NASA NTRS 19890004839, Solar-flare shielding with regolith at a lunar-base site",
+   "url": "https://ntrs.nasa.gov/citations/19890004839",
+   "licence": "NASA, public (credit NASA; no endorsement implied)",
+   "use": "Real shielding is mass (the pretend shields card)"
+  }
+ },
+ "outpost_model": {
+  "array_kw": {
+   "value": 15,
+   "source": "sh_tcs",
+   "where": "top of the NASA Surface Habitat's 10-15 kW solar array"
+  },
+  "battery_kwh": {
+   "value": 250,
+   "source": "outpost_model",
+   "where": "array_kw / sim.SOLAR_GEN (6 %/h): game scale",
+   "derived": true
+  },
+  "heater_full_duty_share_pct": {
+   "value": 20,
+   "source": "game",
+   "where": "game rule: a 20% heater share = heaters on all the time (100% duty)"
+  }
+ },
+ "power": {
+  "solar_constant_w_m2": {
+   "value": 1361,
+   "source": "tsi",
+   "where": "NASA GSFC solar irradiance: TSIS-1 1361.6 ± 0.3 W/m² (2019 minimum)"
+  },
+  "cell_efficiency": {
+   "value": 0.3,
+   "source": "sst_soa",
+   "where": "NASA SST State of the Art §3.2.1, Table 3-1: multi-junction nominal 30% (29.5-32.2% beginning of life)"
+  },
+  "li_ion_wh_kg": {
+   "value": [
+    150,
+    270
+   ],
+   "source": "sst_soa",
+   "where": "NASA SST State of the Art §3.4.1: commercial Li-ion 150-270 Wh/kg"
+  },
+  "habitat_array_kw": {
+   "value": [
+    10,
+    15
+   ],
+   "source": "sh_tcs",
+   "where": "NASA MSFC Surface Habitat (crew of 4): solar array 10-15 kW"
+  },
+  "habitat_night_kwh": {
+   "value": [
+    155,
+    540
+   ],
+   "source": "sh_tcs",
+   "where": "Surface Habitat survive-the-night energy, 155 kWh nominal to 540 kWh with no mitigation"
+  },
+  "fsp_kw": {
+   "value": 40,
+   "source": "fsp",
+   "where": "NASA Fission Surface Power: at least 40 kW"
+  },
+  "south_pole_max_sun_deg": {
+   "value": 7.5,
+   "source": "databook",
+   "where": "Lunar Surface Data Book §6.3.1"
+  },
+  "sun_disk_deg": {
+   "value": 0.53,
+   "source": "sunfact",
+   "where": "NASA Sun fact sheet: apparent diameter from Earth 31.6'-32.7' (the Moon is as far from the Sun)"
+  }
+ },
+ "life": {
+  "o2_kg_per_person_day": {
+   "value": 0.9,
+   "source": "bvad",
+   "where": "NASA BVAD (NASA/TP-2015-218570/REV2) Table 3-31: oxygen consumed 0.895 kg/CM-d nominal; Table 4-1 range 0.61-1.08"
+  }
+ },
+ "radiation": {
+  "crater_quiet_gcr": {
+   "mgy_per_h": {
+    "value": 0.0134,
+    "source": "crater",
+    "where": "Schwadron et al. 2012: 11.7 cGy/yr at the 2009 solar minimum peak, at the lunar surface, in water"
+   },
+   "msv_per_h": {
+    "value": 0.057,
+    "source": "crater",
+    "where": "0.0134 mGy/h × <Q> 4.3 (Chang'e 4 LND's measured quality factor, Zhang 2020) = 0.057 mSv/h: the same as Chang'e 4's 57.1 µSv/h",
+    "derived": true
+   },
+   "on_change4_day_ugy_per_h": {
+    "value": 13.29,
+    "source": "change4",
+    "where": "Zhang 2020: CRaTER 13.29 µGy/h on 2 Feb 2019 (water, surface) vs LND 13.2 µGy/h"
+   }
+  },
+  "crater_sep_events": [
+   {
+    "id": "C12-020",
+    "dates": "2012-01-20/2012-02-07",
+    "peak_mgy_per_h": 61.8,
+    "total_gy": 1.85,
+    "source": "crater_events"
+   },
+   {
+    "id": "C12-064",
+    "dates": "2012-03-04/2012-03-19",
+    "peak_mgy_per_h": 46.7,
+    "total_gy": 1.34,
+    "source": "crater_events"
+   },
+   {
+    "id": "C14-005",
+    "dates": "2014-01-05/2014-01-10",
+    "peak_mgy_per_h": 19.5,
+    "total_gy": 0.5,
+    "source": "crater_events"
+   }
+  ],
+  "sep_note": "CRaTER's event list gives thin-shield doses (skin-like); detector and medium are not stated. The game's storm multipliers (x1.25 to x8) are far below these peaks: scaled for the game."
+ },
+ "ice": {
+  "lcross_water_wt_pct": {
+   "value": 5.6,
+   "source": "lcross",
+   "where": "Colaprete et al. 2010: 5.6 ± 2.9% by mass at the Cabeus impact site; the Lunar Surface Data Book §3.2.5 gives 'on the order of five percent'",
+   "range": [
+    2.7,
+    8.5
+   ]
+  },
+  "lend_polar_weh_wt_pct": {
+   "value": 0.13,
+   "source": "lend",
+   "where": "NTRS 20180004020: poleward of 88 deg ~140 ppmw = 0.13 ± 0.02 wt% WEH"
+  },
+  "ice_cold_trap_k": {
+   "value": 110,
+   "source": "diviner_team",
+   "where": "Diviner team: surfaces below 110 K cold-trap water for a billion years"
+  }
+ },
+ "regolith": {
+  "conductivity_surface_w_mk": {
+   "value": [
+    0.0009,
+    0.0015
+   ],
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.2-1, 0-2 cm"
+  },
+  "conductivity_deep_w_mk": {
+   "value": [
+    0.01,
+    0.015
+   ],
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.2-1, 2-15 cm"
+  },
+  "density_g_cm3": {
+   "value": 1.58,
+   "source": "dsne",
+   "where": "DSNE Rev H §3.4.2.3.1: 1.58 ± 0.05 g/cm³ in the top 30 cm"
+  },
+  "specific_heat_j_kgk": {
+   "value": {
+    "100K": 287,
+    "200K": 564,
+    "300K": 773
+   },
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.2.2-1"
+  },
+  "emissivity": {
+   "value": [
+    0.95,
+    0.98
+   ],
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.1.1-1, south pole"
+  }
+ },
+ "rover": {
+  "viper_mass_kg": {
+   "value": 450,
+   "source": "viper",
+   "where": "NASA VIPER in depth: 450 kg"
+  },
+  "viper_peak_w": {
+   "value": 450,
+   "source": "viper",
+   "where": "NASA VIPER in depth: peak power 450 W"
+  },
+  "viper_battery_wh": {
+   "value": 5420,
+   "source": "viper_ntrs",
+   "where": "NTRS 20240013903: battery 5,420 Wh (start of life, 0 C)"
+  },
+  "viper_max_slope_deg": {
+   "value": 15,
+   "source": "viper_ntrs",
+   "where": "NTRS 20240013903: slopes up to 15 deg (requirement)"
+  },
+  "lrv_wh_per_km": {
+   "value": 67,
+   "source": "a15_report",
+   "where": "Apollo 15 Mission Report §8.2: 1.87 Ah/km × 36 V nominal",
+   "derived": true
+  }
+ },
+ "temperature_reference": {
+  "equator_noon_k": {
+   "value": 391,
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.3-1"
+  },
+  "equator_predawn_k": {
+   "value": 96,
+   "source": "dsne",
+   "where": "DSNE Rev H Table 3.4.6.3-1"
+  },
+  "coldest_psr_k": {
+   "value": 18,
+   "source": "databook",
+   "where": "Lunar Surface Data Book §4.8"
+  }
+ },
+ "sites": {
+  "shackleton_rim": {
+   "diviner": {
+    "min_k": {
+     "value": 64.9,
+     "source": "diviner",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
+     "range": [
+      61.2,
+      95.1
+     ]
+    }
+   }
+  },
+  "shackleton_floor": {
+   "diviner": {
+    "min_k": {
+     "value": 37.2,
+     "source": "diviner",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
+     "range": [
+      30.0,
+      46.2
+     ]
+    }
+   }
+  },
+  "connecting_ridge": {
+   "diviner": {
+    "min_k": {
+     "value": 60.8,
+     "source": "diviner",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
+     "range": [
+      55.0,
+      74.8
+     ]
+    }
+   }
+  },
+  "de_gerlache_rim": {
+   "diviner": {
+    "min_k": {
+     "value": 63.5,
+     "source": "diviner",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
+     "range": [
+      51.6,
+      107.1
+     ]
+    }
+   }
+  },
+  "malapert_massif": {
+   "diviner": {
+    "min_k": {
+     "value": 54.3,
+     "source": "diviner",
+     "where": "winter night minimum, box median (Williams 2019), at the navigator's spot",
+     "range": [
+      48.0,
+      72.6
+     ]
+    }
+   }
+  }
+ },
+ "sampled": {
+  "diviner_seasonal": {
+   "shackleton_rim": {
+    "summer_min_k": {
+     "median": 80.2,
+     "p90": 88.6,
+     "min": 67.7,
+     "max": 95.1,
+     "n_px": 20
+    },
+    "winter_min_k": {
+     "median": 64.9,
+     "p90": 70.5,
+     "min": 61.2,
+     "max": 75.1,
+     "n_px": 20
+    }
+   },
+   "shackleton_floor": {
+    "summer_min_k": {
+     "median": 43.4,
+     "p90": 45.3,
+     "min": 40.3,
+     "max": 46.2,
+     "n_px": 20
+    },
+    "winter_min_k": {
+     "median": 37.2,
+     "p90": 38.6,
+     "min": 30.0,
+     "max": 40.3,
+     "n_px": 20
+    }
+   },
+   "connecting_ridge": {
+    "summer_min_k": {
+     "median": 68.1,
+     "p90": 74.0,
+     "min": 60.9,
+     "max": 74.8,
+     "n_px": 16
+    },
+    "winter_min_k": {
+     "median": 60.8,
+     "p90": 63.3,
+     "min": 55.0,
+     "max": 65.4,
+     "n_px": 16
+    }
+   },
+   "de_gerlache_rim": {
+    "summer_min_k": {
+     "median": 79.0,
+     "p90": 101.0,
+     "min": 73.0,
+     "max": 107.1,
+     "n_px": 16
+    },
+    "winter_min_k": {
+     "median": 63.5,
+     "p90": 70.4,
+     "min": 51.6,
+     "max": 72.1,
+     "n_px": 16
+    }
+   },
+   "malapert_massif": {
+    "summer_min_k": {
+     "median": 67.2,
+     "p90": 71.2,
+     "min": 59.5,
+     "max": 72.6,
+     "n_px": 16
+    },
+    "winter_min_k": {
+     "median": 54.3,
+     "p90": 64.6,
+     "min": 48.0,
+     "max": 66.2,
+     "n_px": 16
+    }
+   }
+  },
+  "half_box_m": 500.0,
+  "coords": {
+   "shackleton_rim": [
+    -89.686,
+    197.063
+   ],
+   "shackleton_floor": [
+    -89.67,
+    129.78
+   ],
+   "connecting_ridge": [
+    -89.421,
+    219.317
+   ],
+   "de_gerlache_rim": [
+    -88.707,
+    291.403
+   ],
+   "malapert_massif": [
+    -85.992,
+    358.515
+   ]
+  }
+ }
+}

@@ -142,6 +142,9 @@ NAV: list[tuple[str, re.Pattern]] = [
                              r"(?:time|speed)|(?:normal|slow) (?:time|speed)|time (?:normal|slow)|"
                              r"(?:time ?warp|warp|time|clock)(?: speed)? (?:one|two|four|1|2|4)(?: x| times)?|"
                              r"(?:one|two|four|1|2|4)(?: x| times) (?:time|speed|warp))$")),
+    # The cabin's "Why?" cards (docs/PHYSICS.md), cabin only: "why is power low?", "how come the dose is rising?",
+    # "explain the heaters". why_gauge() names the gauge; a bare "why?" opens the card for the Now job's gauge.
+    ("why", re.compile(r"^(?:why|how come|explain|tell me why|what s the physics)\b.*$")),
     # The cabin tour (mission/tour.js): replay it, or skip it.
     ("cabin_tour", re.compile(r"^(?:show me around|give me (?:a|the) tour|(?:start |replay |do )?(?:the )?(?:cabin )?tour|"
                               r"show me the cabin|what s in (?:the|this) cabin|teach me the cabin)$")),
@@ -251,6 +254,26 @@ def warp_of(q: str) -> int | None:
     for w in q.split():
         if w in _WARP_WORDS:
             return _WARP_WORDS[w]
+    return None
+
+
+# The "Why?" card a turn asks about: gauge -> the words that name it (first match wins; "battery" before "power").
+WHY_GAUGES = (("battery", r"battery|batteries|charge|charging|energy|kilowatt"),
+              ("heaters", r"heaters?|heat|heating|cold|freez\w*|temperature|warm"),
+              ("shields", r"shields?"),
+              ("dose", r"dose|radiation|sieverts?|msv|rays|particles|storm"),
+              ("life_support", r"air|oxygen|life support|breath\w*|recycler|water"),
+              ("rover", r"rover|ice|drive|driving|slope"),
+              ("power", r"power|solar|panels?|arrays?|sun|sunlight|light"))
+WHY_BARE = {"why", "why is that", "why is it", "tell me why", "how come", "explain", "explain that", "explain it",
+            "what s the physics", "why did that happen"}
+
+
+def why_gauge(q: str) -> str | None:
+    """The gauge a "why" turn names ("why is power low" -> power), or None."""
+    for g, rx in WHY_GAUGES:
+        if re.search(rf"\b(?:{rx})\b", q):
+            return g
     return None
 
 
@@ -624,6 +647,13 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             if arg:
                 return intent, arg
             continue
+        if intent == "why":
+            if ctx.screen != "cabin" or ctx.offer == "tour":
+                continue
+            g = why_gauge(q)
+            if g or q in WHY_BARE:
+                return "why", g
+            continue                 # "why is the sky black": a question for the brain, not a gauge card
         if intent in CLOCK_INTENTS:
             if ctx.screen != "cabin" or ctx.offer == "tour":
                 continue

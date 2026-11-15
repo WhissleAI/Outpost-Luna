@@ -19,7 +19,7 @@ export const PREF_DEFAULTS = Object.freeze({
   filter: "normal",          // background-voice filter: "relaxed" | "normal" | "strict"
   theme: "system",           // "system" | "light" | "dark"
   graphics: "high",          // "high" | "low"
-  level: "cadet",            // "cadet" (7–9) | "commander" (10–12)
+  level: "cadet",            // "cadet" (7–9) | "commander" (10–12) | "engineer" (Commander in real units, docs/PHYSICS.md)
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
   muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
 });
@@ -61,7 +61,7 @@ export function normalizePrefs(x) {
   [["expressiveness", 0, 1], ["volume", 0, 2], ["alarms", 0, 1]].forEach(([k, lo, hi]) => { const v = num(s[k], lo, hi); if (v != null) o[k] = v; });
   const pick = (k, opts) => { if (opts.includes(s[k])) o[k] = s[k]; };
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
-  pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
+  pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander", "engineer"]);
   o.voice = ""; o.voice_all = false;   // the OS voice list and "use this voice for everyone" are gone: the OS picks
   pick("engine", ["os", "steer"]);
   if (typeof s.steer_voice === "string") o.steer_voice = s.steer_voice.slice(0, 32);

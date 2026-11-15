@@ -401,7 +401,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // One say through the floor's line queue (rc-polish): the hello and the first tour beat (or the objective) play as
     // one on-air span, so the ear's hard mute covers the whole run. The card shows at once; it never waits on the voice.
     const hello = CAPCOM.missionStart(callSign.spoken(), site.name);
-    if (touring) tour.start(level, { lead: hello });         // first mission: CAPCOM shows the cabin first
+    if (touring) tour.start(band(level), { lead: hello });         // first mission: CAPCOM shows the cabin first
     else {
       const ob = nowCard(state, mclock.state);
       if (ob) capcom({ say: ob.text });                       // the objective on the strip too
@@ -553,9 +553,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking("mission_tour_hush"), callsign: () => callSign.get(),
     onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowCard(state, mclock.state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
-  function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(levelNow()); return true; }
+  function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(band(levelNow())); return true; }
   addEventListener("outpost:tour", () => { if (!replayTour()) { try { localStorage.removeItem("outpost-tour-done:" + (callSign.get() || "cadet")); } catch (e) { /* blocked */ } } });
   const levelNow = () => (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
+  /** Engineer flies Commander's band (the same missions, in real units): the tour and the hints follow the band. */
+  const band = l => (l === "engineer" ? "commander" : l);
   /** "What do I do?": one spoken line for this screen (the cabin's comes from the objective). */
   function whatNow() {
     if (screen === "hud") return state ? nowSpoken(state, mclock.state) : null;
@@ -584,6 +586,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       onDebrief: () => showDebrief(),
       onClock: a => { const [k, v] = String(a).split(":"); clockAction(k, v); },
       onTask: b => taskButton(b),
+      onWhy: c => sayWhy(c),
     });
     mclock.attach(); cockpit.clock(mclock.state);
     dockIn();
@@ -610,6 +613,28 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const tgt = rv.busy ? TARGETS[rv.task] : null, total = rv.task === "collect_ice" ? 10 : rv.task === "explore" ? 8 : 5;
     globe.mission.setRover(tgt, tgt ? Math.sin(Math.PI * (1 - (rv.eta_h || 0) / total)) : 0);
     syncSurface();
+  }
+  // ---------- "Why?" cards (docs/PHYSICS.md): the physics behind a gauge, one number, its source ----------
+  /** The gauge a bare "why?" (or the I key) is about: the lit panel, then the Now job, then what is alarming. */
+  const PANEL_GAUGE = { power: "battery", displays: "battery", habitat: "life_support", radiation: "dose", rover: "rover", comm: "power" };
+  const TASK_GAUGE = { storm_prep: "dose", storm_hit: "dose", all_clear: "dose", night_prep: "heaters", sunrise: "power", low_power: "battery",
+    life_check: "life_support", ice_run: "rover", repair: "power", first_power: "shields", comm_window: "battery", science: "dose" };
+  function whyGauge() {
+    const lit = cockpit && (cockpit.highlighted || (cockpit.panel && cockpit.panel !== "seat" ? cockpit.panel : null));
+    if (lit && PANEL_GAUGE[lit]) return PANEL_GAUGE[lit];
+    const t = state && state.task; if (t && TASK_GAUGE[t.kind]) return TASK_GAUGE[t.kind];
+    const a = (state && state.alerts) || [];
+    if (a.some(x => /dose|storm/.test(x))) return "dose";
+    if (a.includes("low_power")) return "battery";
+    if (a.includes("life_support_low")) return "life_support";
+    return "power";
+  }
+  /** CAPCOM reads the card (<= 20 words, numbers with their units); the caption shows the on-screen form. */
+  function sayWhy(c) { if (!c) return; radio("capcom", c.text); Promise.resolve(say(c.say)).catch(() => {}); }
+  function openWhy(gauge, from) {
+    if (screen !== "hud" || !cockpit || !cockpit.why) return false;
+    const c = cockpit.why(gauge || whyGauge(), from); if (!c) return false;
+    sayWhy(c); return true;
   }
   /** Radio log lines survive re-renders of the cockpit. */
   function radio(who, text) { if (!text) return; if (who === "kid") nudge.heard(); logHistory.push({ who, text }); logHistory = logHistory.slice(-12); if (cockpit && screen === "hud") cockpit.log(who, text); }
@@ -887,20 +912,25 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const srcLabel = s => { const t = String((s && s.title) || "").trim(); if (!t) return "Source";
       const dk = t.match(/^DONKI\s+(\d{4}-\d{2}-\d{2})/); if (dk) return `NASA DONKI, ${dk[1]}`;
       return t.split(/[,(]|:\s/)[0].trim() || "Source"; };
+    // [physics] story first, then the numbers behind it (cause -> effect, with sources), then the grade
+    const nums = (d.numbers || []).filter(n => n && n.text).slice(0, 5), eng = !!(d.engineer || state.engineer);
+    const scoreHtml = `<dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div>${d.stars != null ? `<div><dt>Stars</dt><dd class="mx-stars" aria-label="${d.stars} of 3 stars">${[0, 1, 2].map(k => `<span class="${k < d.stars ? "is-on" : ""}">${ic("star", 20)}</span>`).join("")}</dd></div>` : ""}</dl>
+        ${breakdown(d)}`;
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}
         <button class="mx-x" id="mDbClose" type="button" aria-label="${esc(DEBRIEF.close)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
       <div class="mx-db-top">
         <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
-        <dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div>${d.stars != null ? `<div><dt>Stars</dt><dd class="mx-stars" aria-label="${d.stars} of 3 stars">${[0, 1, 2].map(k => `<span class="${k < d.stars ? "is-on" : ""}">${ic("star", 20)}</span>`).join("")}</dd></div>` : ""}</dl>
-        ${breakdown(d)}
+        ${nums.length ? "" : scoreHtml}
       </div>
       <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
         <ol>${story.beats.map(b => `<li>${esc(b)}</li>`).join("")}</ol>
         <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
+      ${nums.length ? `<section class="mx-nums" aria-label="${esc(DEBRIEF.numbersTitle)}"><h3>${esc(DEBRIEF.numbersTitle)}</h3>
+        <ul>${nums.map(n => `<li><span>${esc(n.text)}${eng && n.eq ? `<code class="mx-eq">${esc(n.eq)}</code>` : ""}</span>${n.source ? srcLink(n.source, srcLabel(n.source)) : ""}</li>`).join("")}</ul></section>` : ""}
       ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
-      <ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>
+      ${nums.length ? `<div class="mx-grade-row">${scoreHtml}</div>` : `<ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>`}
       <div class="mx-foot">
         <button type="button" class="mx-go" id="mAgain">${esc(paused ? DEBRIEF.resume : DEBRIEF.choiceAgain)}</button>
         <button type="button" class="mx-link" id="mNewSite">${esc(DEBRIEF.choiceNew)}</button>
@@ -921,8 +951,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const spoken = cs => (head === "Mission over" && saidOver && !paused) ? line(cs).replace(/^Mission over\.\s*/, "") : line(cs);
     // three short lines: the result, the story's turning point, then what to try and the one offer
     radio("capcom", line(callSign.shown()));
-    Promise.resolve(say([spoken(callSign.spoken()), ...(paused ? [] : [story.beats[1]]),
-      paused ? `${story.end} ${OFFER.resume}` : `${story.tryLine} ${OFFER.flyAgain}`])).catch(() => {});   // one on-air span
+    // story first: the turning point and its biggest number, then the grade, then what to try and the one offer
+    const top = !paused && nums.length && nums[0].say ? [nums[0].say] : [];
+    Promise.resolve(say(paused ? [spoken(callSign.spoken()), `${story.end} ${OFFER.resume}`]
+      : nums.length ? [story.beats[1], ...top, spoken(callSign.spoken()), `${story.tryLine} ${OFFER.flyAgain}`]
+        : [spoken(callSign.spoken()), story.beats[1], `${story.tryLine} ${OFFER.flyAgain}`])).catch(() => {});   // one on-air span
   }
 
   /** QA-26: a paused mission is never wiped by accident. Fly again / a new site from a paused debrief asks first. */
@@ -1019,6 +1052,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (intent === "time_resume") return clockAction("play");
       if (intent === "time_warp") return clockAction("warp", arg || undefined);
       if (intent === "task_choice") return pickChoice(arg);
+      if (intent === "why") return openWhy(arg, "voice");
       if (["accept_offer", "yes"].includes(intent) && !pending && doTaskStep()) return true;
     }
     if (intent === "help") { const t = whatNow(); if (!t) return false; if (screen === "hud") radio("capcom", t); say(t); return true; }
@@ -1066,6 +1100,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       case "time_toggle": return clockAction("toggle");
       case "time_warp": return clockAction("warp", arg && arg.warp);
       case "skip_event": skipEvent(); return true;
+      case "why": return openWhy(arg && (arg.gauge || arg.arg), "key");
       default: return nav(name, arg);
     }
   }
@@ -1086,6 +1121,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     time_toggle: () => screen === "hud" ? clockAction("toggle") : false,
     time_warp: a => screen === "hud" ? clockAction("warp", a && a.warp) : false,
     skip_event: () => screen === "hud" && !(state && state.over) ? (skipEvent(), true) : false,
+    why: (a, ev) => screen === "hud" ? openWhy(a && (a.gauge || a.arg), ev && ev.source === "voice" ? "voice" : "key") : false,   // "why is power low?", the I key
     // an open palm (stop) also holds the clock; it never consumes the intent (speech still stops)
     stop: () => { if (screen === "hud" && mclock.running) clockAction("pause"); return false; },
   };

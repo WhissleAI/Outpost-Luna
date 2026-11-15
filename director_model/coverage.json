@@ -73,6 +73,7 @@
   "view_orbit",
   "view_rover",
   "view_site",
+  "why",
   "zoom_in",
   "zoom_out"
  ],
@@ -93,9 +94,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 405,
+  "cells": 406,
   "covered": 73,
-  "gap": 332,
+  "gap": 333,
   "pending": 0,
   "by_kind": {
    "answer": {
@@ -124,7 +125,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 273,
+    "cells": 274,
     "covered": 20,
     "pending": 0
    },
@@ -1231,6 +1232,19 @@
    "intent": "nav:view_site",
    "kind": "navigate",
    "probe": "back to the outpost",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "cabin|nav:why",
+   "screen": "cabin",
+   "intent": "nav:why",
+   "kind": "navigate",
+   "probe": "why is power low",
    "train": 0,
    "heldout": 0,
    "gap": [

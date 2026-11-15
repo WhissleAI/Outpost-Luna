@@ -763,3 +763,37 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 .c3[data-panel="seat"] .du-head{flex-direction:column;align-items:flex-start;gap:var(--space-1);min-width:0}
 .c3[data-panel="seat"] .du-head b{white-space:nowrap;max-width:100%}
 .c3[data-panel="seat"] .du-head b small{font-size:var(--text-lg)}
+
+/* ---- "Why?" (docs/PHYSICS.md): a small (i) on each gauge, and the explainer card it opens ---- */
+.cb-whyb{display:inline-grid;place-items:center;flex:none;width:22px;height:22px;margin:-4px 0 -4px 6px;padding:0;vertical-align:middle;
+  border:1px solid transparent;border-radius:50%;background:none;color:var(--cb-text-2);cursor:pointer;line-height:0}
+.cb-whyb .ic{width:14px;height:14px}
+.cb-whyb:hover,.cb-whyb.is-open{color:var(--color-on-space);border-color:var(--cb-line);background:var(--color-panel)}
+.du-head span{display:inline-flex;align-items:center}
+.du-row span{display:inline-flex;align-items:center}
+.cb-swl,.cb-shl,.cb-rv h3{display:inline-flex;align-items:center}
+/* the seat view shows the gauges big: the (i) grows with them so a tap still lands */
+.c3[data-panel="seat"] .du-head .cb-whyb{width:32px;height:32px}
+.c3[data-panel="seat"] .du-head .cb-whyb .ic{width:20px;height:20px}
+.m-cabin .cb>.cb-why{position:absolute;z-index:6;width:min(360px,calc(100% - var(--now-w, 320px) - 3 * var(--rail, 12px)));box-sizing:border-box;
+  display:flex;flex-direction:column;gap:6px;padding:var(--space-2) var(--space-3) var(--space-3);border-radius:var(--radius-lg);
+  background:color-mix(in srgb,var(--color-panel) 96%,transparent);border:1px solid var(--cb-line);color:var(--color-on-space);
+  box-shadow:0 8px 24px color-mix(in srgb,#000 40%,transparent)}
+.m-cabin .cb>.cb-why[hidden]{display:none}
+.cb-why header{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}
+.cb-why header b{font-size:var(--text-sm);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--cb-text-2)}
+.cb-why-x{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:50%;background:none;color:var(--cb-text-2);cursor:pointer}
+.cb-why-x:hover{color:var(--color-on-space);background:var(--color-panel-2)}
+.cb-why p{margin:0}
+.cb-why-text{font-size:var(--text-md);line-height:var(--leading-snug)}
+.cb-why-f{font-size:var(--text-sm);color:var(--cb-text-2)}
+.cb-why-eq{font-family:var(--font-mono);font-size:var(--text-xs);line-height:1.5;color:var(--color-phosphor);overflow-wrap:anywhere}
+.cb-why-src{font-size:var(--text-xs);color:var(--cb-text-2)}
+.cb-why-src a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.cb-why p[hidden]{display:none}
+.cb-rvrow{display:flex;align-items:center;gap:var(--space-1);min-width:0}
+/* [qa] reduced motion: the screen-docked story banner (.cb-hole>.cb-moment sets its own animation-name) never fades */
+html[data-motion="reduce"] .m-cabin .cb-hole>.cb-moment{animation:none}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb-hole>.cb-moment{animation:none}}
+html[data-motion="reduce"] .m-cabin .cb-hole>.cb-rover,html[data-motion="reduce"] .m-cabin .cb-glass>.cb-rover{transition:none}   /* ...and the rover pill steps aside at once */
+@media (prefers-reduced-motion:reduce){.m-cabin .cb-hole>.cb-rover,.m-cabin .cb-glass>.cb-rover{transition:none}}

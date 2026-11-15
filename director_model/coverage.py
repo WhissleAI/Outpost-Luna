@@ -53,7 +53,8 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "task_choice": "the ridge", "mute_sound": "mute", "unmute_sound": "unmute", "recenter": "look forward",
           "zoom_in": "closer", "zoom_out": "farther",
           # the landing-site navigator (docs/SITE_NAVIGATOR.md), the picker screen only
-          "site_layer": "show sunlight", "site_query": "which site has the most ice", "site_preset": "ice first"}
+          "site_layer": "show sunlight", "site_query": "which site has the most ice", "site_preset": "ice first",
+          "why": "why is power low"}   # the cabin's "Why?" cards (docs/PHYSICS.md)
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],

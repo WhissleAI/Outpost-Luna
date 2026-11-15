@@ -49,6 +49,9 @@ HOUSTON_POWER = 2.0
 HOUSTON_SCIENCE = 2.0     # crew time on the call
 DOSE_LIMIT = 50.0
 DIFFICULTIES = ("cadet", "commander")
+# Settings levels: the two difficulty bands, plus Engineer (Commander's missions, shown in real units with power-budget
+# and duty-cycle choices and the debrief's equations; docs/PHYSICS.md). Engineer plays the Commander band.
+LEVELS = DIFFICULTIES + ("engineer",)
 WARN_LEAD_H = {"cadet": 12, "commander": 6}   # Houston's warning: hours before the particles arrive
 SCIENCE_GOAL = 120.0      # mission objective: science sent home
 ICE_GOAL = 1              # mission objective: ice runs finished
@@ -178,10 +181,15 @@ class Mission:
     shift_was_low: bool = False                   # battery under 20% when this shift began (the low_power event)
     acted: dict = field(default_factory=dict)     # order type -> count (the objective reacts to what the kid did)
     gp: dict = field(default_factory=dict)        # gameplay.py: tasks, story beats, the mission log
+    phys: dict = field(default_factory=dict)      # physics.py ledger: energy made and used, nights, storms (debrief)
 
     @property
     def difficulty(self) -> str:
         return self.level if self.level in DIFFICULTIES else "commander"
+
+    @property
+    def engineer(self) -> bool:
+        return self.level == "engineer"
 
     # Convenience API for the Director / registry (contract: State and command result shapes).
     def state(self) -> dict:
@@ -202,8 +210,8 @@ def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
     difficulty = difficulty or level or "commander"   # `difficulty` is the older name for `level`
-    if difficulty not in DIFFICULTIES:
-        raise ValueError(f"level must be one of {DIFFICULTIES}")
+    if difficulty not in LEVELS:
+        raise ValueError(f"level must be one of {LEVELS}")
     m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=difficulty)
     _schedule(m)
     m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
@@ -232,9 +240,12 @@ def _schedule(m: Mission) -> None:
 def set_level(m: Mission, level: str) -> None:
     """Settings prefs.level -> the difficulty band. Before the first shift the whole band applies (storms re-picked);
     after that the schedule stays and only warnings, the relay and grading follow the new level."""
-    if level not in DIFFICULTIES or level == m.level:
+    if level not in LEVELS or level == m.level:
         return
+    band = m.difficulty
     m.level = level
+    if m.difficulty == band:   # Commander <-> Engineer: the same missions, only the view and the choices change
+        return
     if m.t_h == 0 and not any(e["kind"] in EVENT_KINDS for e in m.events):
         _schedule(m)
 
@@ -383,6 +394,7 @@ def _step_hour(m: Mission, out_events: list):
         p = 1.0
     else:
         p = max(0.0, min(1.0, (m.power + gen) / draw)) if draw > 0 else 1.0
+    power_before = m.power
     m.power = max(0.0, min(100.0, m.power + gen - draw * p))
     L = m.loads
     tend = 0.5 if (m.power_save or m.shelter) else 1.0   # grow lights dimmed at night; untended from the shelter
@@ -401,6 +413,8 @@ def _step_hour(m: Mission, out_events: list):
         m.science_sent += max(0.0, sent)
     r = dose_rate(m, t, env)
     m.dose += r
+    r_open = r / radiation()["game"]["shelter_factor_storm"] if (m.shelter and env["storm"]) else r
+    physics.account(m, env, gen, draw, p, r, r_open, power_before)   # the debrief's ledger (reads only)
     if env["storm"]:
         sid = env["storm"].event["id"]
         m.storm_dose[sid] = m.storm_dose.get(sid, 0.0) + r
@@ -807,6 +821,8 @@ def _execute(m: Mission, cmd: dict) -> dict:
         if m.power < charge:
             return {"ok": False, "say": "Not enough battery to charge the rover.", "readback": rb, "events": []}
         m.power -= charge
+        if m.phys:
+            m.phys["rover"] = m.phys.get("rover", 0.0) + charge
         m.science = max(0.0, m.science - 1.0)  # crew time driving instead of experiments
         rv.update(busy=True, task=task, eta_h=eta)
         if route:
@@ -978,6 +994,9 @@ def to_state(m: Mission) -> dict:
         "clock": {"mission_time_h": round(m.t_h + m.frac, 3), "frac": round(m.frac, 3), "hours_total": MISSION_H,
                   "shift_ends_in_h": SHIFT_H - m.t_h % SHIFT_H},
         "acted": dict(m.acted),
+        "engineer": m.engineer,
+        # the physics behind each gauge (physics.py): "Why?" cards, and the gauges in real units (Engineer mode)
+        "why": physics.why(m), "units": physics.units(m),
         **gameplay.view(m),
     }
 
@@ -1113,7 +1132,9 @@ def debrief(m: Mission) -> dict:
                       "science": round(m.science, 1), "science_sent": round(m.science_sent, 1)},
             "timeline": timeline, "lessons": lessons[:4], "data_used": data_used,
             "difficulty": m.difficulty, "level": m.level, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
-            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else "goals")}
+            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else "goals"),
+            # cause -> effect in real numbers, with sources (physics.py); Engineer also shows each line's equation
+            "numbers": physics.numbers(m), "engineer": m.engineer}
 
 
 TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md §6.7)
@@ -1126,3 +1147,4 @@ TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md 
 
 
 from . import gameplay  # noqa: E402  (the gameplay layer reads this module's API at call time)
+from . import physics  # noqa: E402  (the physics read-outs read this module's API at call time)

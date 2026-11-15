@@ -19,7 +19,7 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
-    level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): the difficulty band, ages 7-9 / 10-12
+    level: Literal["cadet", "commander", "engineer"] = "cadet"   # Settings (docs/VOICES.md): the band, ages 7-9 / 10-12; engineer = Commander in real units
 
 
 class CommandReq(BaseModel):

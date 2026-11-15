@@ -398,6 +398,7 @@ export const DEBRIEF = {
   grade: (cs, g, pts) => `Nice flying, ${cs}. Grade ${g}, ${pts} points.`,
   /** The story of the mission in three beats (mission/objective.js debriefStory picks them from the debrief). */
   storyTitle: "What happened",
+  numbersTitle: "What the numbers say",   // cause -> effect in real numbers, with sources (docs/PHYSICS.md)
   tryTitle: "Try next",
   start: (site, days) => `You ran ${site} for ${days} day${days === 1 ? "" : "s"}.`,
   stormSafe: n => `${n === 1 ? "A real solar storm hit" : `${n} real solar storms hit`}. Your crew stayed safe.`,
