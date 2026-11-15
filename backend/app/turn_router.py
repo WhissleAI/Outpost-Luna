@@ -105,6 +105,10 @@ NAV: list[tuple[str, re.Pattern]] = [
     # The cabin's Center view (the seat pose): "center", "look forward"
     ("recenter", re.compile(r"^(?:center|centre|recenter|recentre|look forward|look ahead|face forward|"
                             r"(?:center|centre|reset) (?:the |my )?view)$")),
+    # Settings → Reset (docs/RESET.md): voice only OPENS the confirm view (a11y.js parseCommand); a 3-second hold resets
+    ("a11y", re.compile(r"^(?:reset|reset (?:the |my )?(?:whole )?(?:app|game|progress|outpost luna)|"
+                        r"(?:reset|start over|erase) (?:everything|it all|all)|erase (?:my )?progress|"
+                        r"start the (?:whole )?(?:app|game) over)$")),
     # The top bar's Mute (every screen; output only, the mic stays as it is)
     ("mute_sound", re.compile(r"^(?:mute|mute (?:the )?(?:sound|audio|app|voices?)|sound off|turn (?:the )?sound off|be quiet)$")),
     ("unmute_sound", re.compile(r"^(?:unmute|unmute (?:the )?(?:sound|audio|app|voices?)|sound on|turn (?:the )?sound (?:back )?on)$")),

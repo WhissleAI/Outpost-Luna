@@ -6,7 +6,8 @@ import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // He
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
-import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
+import { onIntent } from "./input/intents.js";
+import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset Outpost Luna (docs/RESET.md)   // [robustness] Settings is modal for gestures, keys and the controller too
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -65,6 +66,9 @@ export function parseCommand(text) {
   if (/^(audio description|stop describing)( off)?$/.test(t) && /off|stop/.test(t)) return { cmd: "describe", arg: false };
   if (/^(say (that|it) again|repeat (that|it)|read (that|it) again)$/.test(t)) return { cmd: "repeat" };
   if (/^(open )?(accessibility|settings)( settings)?$/.test(t)) return { cmd: "panel" };
+  // voice can only OPEN the reset confirm; the 3-second hold is the only way to do it
+  if (/^(reset|start over|erase) (everything|it all|all)$|^(reset|erase) (the )?(whole )?(app|game|outpost luna) (and )?(downloads|everything)$/.test(t)) return { cmd: "reset", arg: "all" };
+  if (/^(reset|reset (the |my )?(whole )?(app|game|progress|outpost luna)|start the (whole )?(app|game) over|erase (my )?(progress|everything))$/.test(t)) return { cmd: "reset", arg: "start" };
   let m = t.match(/^(?:press|tap|click|choose|pick|select) (?:the )?(.+?)(?: button)?$/);
   if (m) return { cmd: "press", arg: m[1] };
   m = t.match(/^(?:option|answer|number) (\d|one|two|three|four)$/);
@@ -136,8 +140,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
   // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
   const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
-    ["cadets", "Cadets"], ["help", "Help"]];
-  let section = "voice", resetArmed = false;
+    ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset Outpost Luna"]];   // reset: the danger zone, last
+  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {};
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -192,6 +196,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
           <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
         <p class="a11y-note">Saved on this device only.</p>`,
+      reset: resetView ? confirmHtml(resetView) : zoneHtml(),
     };
     // Sections other modules add (e.g. "Camera & gestures" from the gestures agent): window.__outpost.settingsSections =
     // [{id, title, after?, html() → string, bind?(el)}]. A section with nothing to show is not listed.
@@ -208,6 +213,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <h3 id="set-h">${escH(order.find(s => s[0] === section)[1])}</h3>${body[section]}</section>
       </div>`;
     fillTranscript();
+    unbindReset(); unbindReset = () => {};
+    if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
     if (section === "voice" && PA) PA.loadVoices().then(vs => {
       const box = panel.querySelector("#setVoices"); if (!box || !vs.length) return;
@@ -257,7 +264,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   panel.addEventListener("click", e => {
     const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
-    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
+    const ro = e.target.closest("[data-reset-open]"); if (ro) { resetView = ro.dataset.resetOpen; renderPanel(); return; }
+    const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; resetView = null; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
     const vb = e.target.closest("[data-vbar-reset]");
     if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
       setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }
@@ -435,6 +443,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       case "describe": set({ describe: c.arg }); reply(`Audio description ${c.arg ? "on" : "off"}.`); break;
       case "repeat": { const last = (O.transcript || []).filter(e => e.who !== "describe" && e.who !== "kid").slice(-1)[0]; if (last && say) say(last.text, {}); break; }
       case "panel": open(true); break;
+      case "reset": section = "reset"; resetView = c.arg; if (panel.hidden) open(true); else renderPanel(); { const cb = panel.querySelector("[data-reset-cancel]"); if (cb) cb.focus(); } reply("A grown-up can hold the button for 3 seconds. Or press Cancel."); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;
