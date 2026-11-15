@@ -45,7 +45,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   message(FATAL_ERROR "libarc needs clang (LLVM clang + Ninja, or Visual Studio -T ClangCL) or mingw-w64, not cl.exe")
 endif()
 if(MSVC)
-  target_compile_options(arc PRIVATE /O2 /W3)
+  # clang-cl (Visual Studio -T ClangCL): the AVX2/FMA kernels need /arch:AVX2 here (found by a Windows tester,
+  # 2026-11-15). Windows builds therefore need an AVX2 CPU (Intel 2013+ / AMD 2015+). The clang + Ninja path below is unchanged.
+  target_compile_options(arc PRIVATE /O2 /W3 /arch:AVX2)
 else()
   target_compile_options(arc PRIVATE -O2 -Wall -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable)
 endif()
