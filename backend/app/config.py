@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     media_audio_dir: Path | None = None    # crew audio: audio/*.mp3 + trim.json (served as /media/audio/*)
     video_pack_dir: Path | None = None     # the pinned NASA videos: <id>.mp4 / .vtt / .jpg, copied into the video cache
     voice_pack_dir: Path | None = None     # the recorded voice pack (index.json, clips/): default data_dir/voice_pack
+    # Asset updates (desktop/main/updates.js, docs/DESKTOP.md "Asset updates"): the desktop writes its summary here and
+    # watches the check-request file; GET /api/assets / POST /api/assets/check (app/assets_api.py). Unset in a dev checkout.
+    assets_state_file: Path | None = None
+    assets_check_file: Path | None = None
 
 
     def media_dirs(self) -> list[Path]:

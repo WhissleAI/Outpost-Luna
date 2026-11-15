@@ -177,7 +177,7 @@ function abortError() { const e = new Error("cancelled"); e.name = "AbortError";
  * Download url into part (resuming what is there). Returns the file's size. Throws on HTTP errors (e.status) and
  * network errors (isNetworkError). onBytes(n) after each chunk with the total so far.
  */
-async function downloadTo(url, part, { size, signal, onBytes, fetchImpl = globalThis.fetch } = {}) {
+async function downloadTo(url, part, { size, signal, onBytes, pace, fetchImpl = globalThis.fetch } = {}) {
   await fsp.mkdir(path.dirname(part), { recursive: true });
   let have = 0;
   try { have = (await fsp.stat(part)).size; } catch { /* none */ }
@@ -199,6 +199,7 @@ async function downloadTo(url, part, { size, signal, onBytes, fetchImpl = global
       if (!w.write(chunk)) await new Promise((res) => w.once("drain", res));
       n += chunk.length;
       onBytes && onBytes(n);
+      if (pace) await pace();          // background updates: a rest per chunk, a pause while the app is busy
     }
   } catch (e) {
     if (e.name !== "AbortError") e.midstream = true;   // the link works; the connection dropped: resume, don't give up
@@ -221,12 +222,18 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
   }
   const home = (id) => path.join(dir, id);
 
-  /** installed | missing | corrupt (cheap: state + every file's size, no hashing). */
+  /**
+   * installed | missing | corrupt | outdated (cheap: state + every file's size, no hashing). An installed asset may be
+   * another version than the manifest's (an update swapped in, updates.js): its own file list (state) is checked.
+   * outdated: older than this build's min_version for it, replaced in the foreground like a missing one.
+   */
   function check(a) {
     const st = readState()[a.id];
     if (!st || !fs.existsSync(home(a.id))) return "missing";
-    if (st.sha256 !== a.sha256) return "corrupt";   // a different version: replace it
-    for (const f of a.files || []) {
+    const files = st.files || (st.sha256 === a.sha256 ? a.files : null);
+    if (!files) return "corrupt";   // an old state record of another version, without its file list: replace it
+    if (a.min_version && cmpVersion(st.version || "1", a.min_version) < 0) return "outdated";
+    for (const f of files) {
       try { if (fs.statSync(path.join(home(a.id), ...f.path.split("/"))).size !== f.size) return "corrupt"; }
       catch { return "corrupt"; }
     }
@@ -249,8 +256,10 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     await fsp.rename(staging, dst);
     await fsp.rm(old, { recursive: true, force: true });
     const s = readState();
-    s[a.id] = { sha256: a.sha256, size: a.size, installed_at: new Date().toISOString() };
+    s[a.id] = { version: String(a.version || "1"), sha256: a.sha256, size: a.size, files: a.files || [],
+      installed_at: new Date().toISOString() };
     writeState(s);
+    fs.rmSync(path.join(dir, ".prev", a.id), { recursive: true, force: true });   // a repair supersedes any rollback copy
   }
 
   async function installTar(a, tar) {
@@ -351,13 +360,39 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     return done;
   }
 
-  /** The offline pack: a zip holding the asset tars (matched by file name + sha256). -> ids installed. */
-  async function importOfflinePack(zipPath, { onProgress, signal } = {}) {
+  /** The offline pack's own manifest (assets.manifest.json inside the zip), or null. */
+  async function packManifest(zipPath, entries) {
+    const e = entries.find((x) => path.posix.basename(x.name) === "assets.manifest.json");
+    if (!e || e.compSize > 8 << 20) return null;
+    const chunks = [];
+    const src = fs.createReadStream(zipPath, { start: e.dataStart, end: e.dataStart + e.compSize - 1 });
+    for await (const c of e.method === 8 ? src.pipe(zlib.createInflateRaw()) : src) chunks.push(c);
+    try { const m = JSON.parse(Buffer.concat(chunks).toString("utf8")); return m && Array.isArray(m.assets) ? m : null; }
+    catch { return null; }
+  }
+
+  /**
+   * The offline pack: a zip holding asset tars + its manifest (matched by file name + sha256). Installs what is
+   * missing, and replaces an installed asset when the pack's version is newer and fits this app (opts.appVersion):
+   * so a newer pack updates an airgapped install. A pack without versions (v2 as first published) counts as "1".
+   * -> ids installed.
+   */
+  async function importOfflinePack(zipPath, { onProgress, signal, appVersion = null } = {}) {
     const entries = await readZipEntries(zipPath);
+    const inner = await packManifest(zipPath, entries);
+    const innerBy = Object.fromEntries(((inner && inner.assets) || []).map((x) => [x.id, x]));
     const got = [];
-    for (const a of manifest.assets) {
+    for (const base of manifest.assets) {
+      const pk = innerBy[base.id];
+      // the pack's entry (its version, files) when it has one; env / subdir always from this build's manifest
+      const a = pk && /^[0-9a-f]{64}$/.test(String(pk.sha256)) ? { ...pk, env: base.env, subdir: base.subdir } : base;
       const e = entries.find((x) => path.posix.basename(x.name) === a.file);
-      if (!e || check(a) === "installed") continue;
+      if (!e) continue;
+      const st = readState()[a.id];
+      const state = check(base);
+      const newer = st && cmpVersion(a.version || "1", st.version || "1") > 0 && st.sha256 !== a.sha256 &&
+        (!appVersion || ((!a.min_app || cmpVersion(appVersion, a.min_app) >= 0) && (!a.max_app || cmpVersion(appVersion, a.max_app) <= 0)));
+      if (state === "installed" && !newer) continue;
       if (signal && signal.aborted) throw abortError();
       const part = path.join(dl, a.file + ".import");
       await fsp.mkdir(dl, { recursive: true });
@@ -384,7 +419,15 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     return out;
   }
 
-  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState };
+  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState, writeState };
+}
+
+/** "1.10" vs "1.9": numeric dotted compare (updates.js has the same rule). */
+function cmpVersion(a, b) {
+  const p = (v) => String(v == null ? "0" : v).trim().replace(/^v/i, "").split(/[-+]/)[0].split(".").map((x) => parseInt(x, 10) || 0);
+  const x = p(a), y = p(b);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; }
+  return 0;
 }
 
 function requiredBytes(manifest) {
@@ -392,4 +435,4 @@ function requiredBytes(manifest) {
 }
 
 module.exports = { REQUIRED_IDS, loadManifest, assetsDir, createStore, extractTar, readZipEntries, downloadTo,
-  isNetworkError, freeBytes, sha256File, requiredBytes, safeRel };
+  isNetworkError, freeBytes, sha256File, requiredBytes, safeRel, cmpVersion };

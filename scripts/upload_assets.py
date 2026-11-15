@@ -11,6 +11,8 @@ For every asset tar and the offline zip in desktop/build/assets (desktop/assets.
   2. else upload with the chunked upload_session API (start / append_v2 / finish, 32 MB pieces, overwrite);
   3. create_shared_link_with_settings (public; shared_link_already_exists -> list_shared_links) and store it as dl=1;
   4. verify ANONYMOUSLY (no token): HEAD gives the size, and the first MB equals the local file's.
+Then both manifest copies are written (desktop/assets.manifest.json + site/assets/manifest.json); to ship the update
+to installed apps, commit and run `bash scripts/publish_site.sh` (docs/DESKTOP.md "How to ship an asset update").
 Stdlib only. Deletes nothing.
 """
 from __future__ import annotations
@@ -26,9 +28,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import asset_manifest  # scripts/asset_manifest.py: the two manifest copies + schema 2
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get("ASSET_OUT", ROOT / "desktop/build/assets"))
-MANIFEST = ROOT / "desktop/assets.manifest.json"
+MANIFEST = ROOT / "desktop/assets.manifest.json"   # + site/assets/manifest.json: asset_manifest.write() keeps both
 API, CONTENT = "https://api.dropboxapi.com/2/", "https://content.dropboxapi.com/2/"
 CHUNK = 32 << 20
 UA = "outpost-luna-asset-upload"
@@ -160,7 +164,8 @@ def main():
     ap.add_argument("--verify-only", action="store_true")
     ap.add_argument("--only", help="comma-separated file names")
     a = ap.parse_args()
-    m = json.loads(MANIFEST.read_text())
+    m = asset_manifest.read()
+    prev = json.loads(json.dumps(m))
     folder = (a.folder or m.get("folder") or "/Outpost Luna/assets/v2/").rstrip("/") + "/"
     items = m["assets"] + [m["offline_pack"]]
     if a.only:
@@ -177,7 +182,7 @@ def main():
             if not a.verify_only:
                 upload(tok, p, folder + it["file"])
                 it["url"] = public_link(tok, folder + it["file"])
-                MANIFEST.write_text(json.dumps(m, indent=1) + "\n")    # after each file: a later failure keeps the rest
+                asset_manifest.write(m, prev)   # after each file: a later failure keeps the rest
             if it.get("url"):
                 verify(it["url"], p)
         except DropboxError as e:
@@ -185,7 +190,8 @@ def main():
             print(f"  {it['file']}: FAILED: {e}", flush=True)
             if "401" in str(e):
                 break
-    MANIFEST.write_text(json.dumps(m, indent=1) + "\n")
+    if not a.verify_only:
+        asset_manifest.write(m, prev)
     if failed:
         sys.exit(f"{len(failed)} failed: {', '.join(failed)}")
     print("all assets uploaded and verified; links are in desktop/assets.manifest.json")

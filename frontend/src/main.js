@@ -37,6 +37,7 @@ import "./media/video.css";
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
 import { fillCredits } from "./media/video_ui.js";
+import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
 import { emitIntent, onIntent } from "./input/intents.js";

@@ -42,9 +42,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+import asset_manifest  # scripts/asset_manifest.py: the two manifest copies + schema 2
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = Path(os.environ.get("ASSET_OUT", ROOT / "desktop/build/assets"))
-MANIFEST = ROOT / "desktop/assets.manifest.json"
+MANIFEST = ROOT / "desktop/assets.manifest.json"   # + site/assets/manifest.json (asset_manifest.py writes both)
 PACK = "v2"
 OFFLINE_ZIP = f"outpost-luna-assets-{PACK}.zip"
 EAR_REPO = "WhissleAI/arc-transcriber-space"
@@ -200,7 +202,7 @@ def write_tar(dst: Path, files: list[tuple[str, Path | bytes]]) -> list[dict]:
 
 def build(only: set[str] | None) -> dict:
     OUT.mkdir(parents=True, exist_ok=True)
-    old = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {"assets": []}
+    old = asset_manifest.read()
     old_by = {a["id"]: a for a in old.get("assets", [])}
     assets = []
     for aid, title, req, src, lic, env, sub in ASSETS:
@@ -214,8 +216,10 @@ def build(only: set[str] | None) -> dict:
         fname = f"outpost-luna-{PACK}-{stem}.tar"
         listing = write_tar(OUT / fname, files)
         sha, size = sha256_file(OUT / fname), (OUT / fname).stat().st_size
-        url = prev.get("url") if prev and prev.get("sha256") == sha else None
-        a = {"id": aid, "title": title, "required": req, "file": fname, "url": url, "sha256": sha, "size": size,
+        same = prev and prev.get("sha256") == sha
+        url = prev.get("url") if same else None
+        keep = {k: prev[k] for k in ("version", "min_app", "max_app", "requires", "min_version") if prev and k in prev}
+        a = {"id": aid, **keep, "title": title, "required": req, "file": fname, "url": url, "sha256": sha, "size": size,
              "unpacked_size": sum(x["size"] for x in listing), "n_files": len(listing), "env": env, "subdir": sub,
              "licence": lic, "files": listing}
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
@@ -226,7 +230,7 @@ def build(only: set[str] | None) -> dict:
         assets.append(a)
         print(f"  {aid:9s} {size / 1e6:8.1f} MB  {len(listing):4d} files  {sha[:12]}  {'url kept' if url else 'NEW (upload)'}"
               f"  {time.time() - t:.0f} s", flush=True)
-    m = {"schema": 1, "pack": PACK,
+    m = {"schema": asset_manifest.SCHEMA, "pack": PACK,
          "note": "First-run assets for Outpost Luna (scripts/asset_pack.py; downloaded by desktop/main/assets.js).",
          "folder": f"/Outpost Luna/assets/{PACK}/", "assets": assets,
          "offline_pack": old.get("offline_pack") or {"file": OFFLINE_ZIP, "url": None, "sha256": None, "size": None}}
@@ -275,7 +279,7 @@ def main():
         print(f"ear model ready: {Path(os.environ.get('ARC_SPACE_SRC', ROOT / 'model_server/models/arc-space'))}/nft2")
         return
     if a.check:
-        sys.exit(1 if check(json.loads(MANIFEST.read_text())) else 0)
+        sys.exit(1 if check(asset_manifest.read()) else 0)
     print(f"asset pack {PACK} -> {OUT}", flush=True)
     m = build(set(a.only.split(",")) if a.only else None)
     if not a.no_zip:
@@ -283,8 +287,8 @@ def main():
         print(f"  offline   {m['offline_pack']['size'] / 1e6:8.1f} MB  {OFFLINE_ZIP}")
     req = sum(x["size"] for x in m["assets"] if x["required"])
     print(f"  required download {req / 1e6:.0f} MB, optional {sum(x['size'] for x in m['assets'] if not x['required']) / 1e6:.0f} MB")
-    MANIFEST.write_text(json.dumps(m, indent=1) + "\n")
-    print(f"wrote {MANIFEST.relative_to(ROOT)}")
+    asset_manifest.write(m, old)    # bumps the version of every asset whose sha256 changed; both copies
+    print(f"wrote {MANIFEST.relative_to(ROOT)} + {asset_manifest.PUBLISHED.relative_to(ROOT)} (publish: bash scripts/publish_site.sh)")
 
 
 if __name__ == "__main__":

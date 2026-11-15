@@ -149,6 +149,7 @@ from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
 app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
+from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 
 @app.get("/api/turnlog")
 def turnlog_stats():

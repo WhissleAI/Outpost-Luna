@@ -8,6 +8,9 @@
 //      NASA videos are not in the installer. The REQUIRED ones (ear, tagger, embedder, voice) are downloaded (or imported
 //      from the offline pack) on a first-run screen before the children start; the optional ones follow in the
 //      background once the UI is up. Every launch re-checks the installed files' sizes and repairs what is damaged.
+//   6. asset updates without an app build (updates.js, docs/DESKTOP.md "Asset updates"): updates staged by an earlier
+//      run are swapped in before the children start and confirmed (or rolled back) by the model server's health;
+//      once the UI is up the remote manifest is checked and changed assets are staged in the background.
 "use strict";
 const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu, ipcMain } = require("electron");
 const fs = require("fs");
@@ -19,6 +22,7 @@ const K = require("./keys");   // [keys] the app menu + no accidental reload (do
 const R = require("./reset");   // Settings → Reset Outpost Luna (docs/RESET.md)
 const G = require("./gate");   // [media] links out of a NASA video open behind the grown-up gate (docs/MEDIA.md)
 const AS = require("./assets"); // first-run assets
+const U = require("./updates"); // asset updates (remote manifest, staged swap, rollback)
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
 if (process.env.OUTPOST_USER_DATA) app.setPath("userData", process.env.OUTPOST_USER_DATA);
@@ -31,6 +35,8 @@ const LIB = { darwin: "libarctag.dylib", win32: "arctag.dll" }[process.platform]
 const ARC_LIB = { darwin: "libarc.dylib", win32: "arc.dll" }[process.platform] || "libarc.so";   // libarc (the ear)
 const MANIFEST = app.isPackaged ? path.join(RES, "assets.manifest.json") : path.join(__dirname, "..", "assets.manifest.json");
 let store = null;           // assets.createStore(...), set in whenReady
+let updater = null;         // updates.createUpdater(...), set in whenReady
+const APP_VERSION = app.getVersion();
 const pids = new S.PidFile(path.join(USER, "children.json"));
 const portsFile = path.join(USER, "ports.json");
 const START_TIMEOUT_MS = 240000;
@@ -88,6 +94,9 @@ function envFor(name) {
     MEDIA_AUDIO_DIR: a.MEDIA_AUDIO_DIR,   // crew audio (optional asset; served once it is installed)
     VIDEO_PACK_DIR: a.VIDEO_PACK_DIR,     // the pinned NASA videos (optional asset; copied into the video cache)
     VOICE_PACK_DIR: a.VOICE_PACK_DIR,
+    // Settings -> About / Storage: GET /api/assets reads the summary, POST /api/assets/check asks for a check
+    ASSETS_STATE_FILE: path.join(store.dir, "summary.json"),
+    ASSETS_CHECK_FILE: path.join(store.dir, "check-request"),
     // the pinned videos come from the asset pack: no second download of the same files from nasa.gov
     ...(vids && vids.url ? { VIDEO_PREFETCH: "0" } : {}),
   });
@@ -107,6 +116,10 @@ function startChild(name) {
     pids.remove(proc.pid);
     log(`${name} exited code=${code} signal=${signal}`);
     if (quitting || k.proc !== proc) return;
+    if (name === "models" && updater && updater.trials().length) {   // a fresh update may be what killed it
+      const back = updater.rollbackTrials(`the model server stopped (code ${code})`);
+      if (back.length) writeSummary();
+    }
     const now = Date.now();
     k.restarts = k.restarts.filter((t) => now - t < 60000);
     if (k.restarts.length >= 3) return fail(`The ${name === "models" ? "model server" : "backend"} keeps stopping.`);
@@ -253,7 +266,7 @@ async function importPack() {
   frBusy = true;
   frSend({ busy: true, problem: false, message: "Importing the offline pack…" });
   try {
-    const got = await store.importOfflinePack(r.filePaths[0], { onProgress: (p) => { progress[p.id] = p.done; if (Math.random() < 0.05) frSend(); } });
+    const got = await store.importOfflinePack(r.filePaths[0], { appVersion: APP_VERSION, onProgress: (p) => { progress[p.id] = p.done; if (Math.random() < 0.05) frSend(); } });
     log(`assets: imported ${got.join(", ") || "nothing new"} from ${r.filePaths[0]}`);
     frSend({ busy: false, message: requiredReady() ? "Ready." : "That pack did not have everything. Try again online, or another pack." , problem: !requiredReady() });
   } catch (e) {
@@ -299,6 +312,49 @@ async function fetchOptional() {
   }
 }
 
+// ---- asset updates (updates.js) -------------------------------------------------------------------------------------
+function writeSummary() {
+  if (!updater) return;
+  try {
+    const f = path.join(store.dir, "summary.json");
+    fs.writeFileSync(f + ".tmp", JSON.stringify(updater.summary()));
+    fs.renameSync(f + ".tmp", f);
+  } catch (e) { log("assets: summary not written:", e.message); }
+}
+
+/** The backend says a mission or a video is on: background downloads wait (like the video prefetch). */
+async function backendBusy() {
+  if (!ports) return false;
+  const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/assets/busy`);
+  return !!(b && b.busy);
+}
+
+let updating = false;
+async function runUpdates(why) {
+  if (updating || quitting) return;
+  updating = true;
+  log(`assets: update check (${why})`);
+  const tick = setInterval(writeSummary, 3000);
+  try { await updater.run(); } finally { clearInterval(tick); updating = false; writeSummary(); }
+}
+
+/** Children healthy: keep the updates that loaded, roll back the ones that did not (then restart the model server). */
+async function confirmUpdates() {
+  if (!updater.trials().length) return;
+  const h = await S.getJson(`http://127.0.0.1:${ports.models}/health`);
+  const r = updater.confirm(h || {});
+  writeSummary();
+  if (r.rolled.length && kids.models && kids.models.proc) {
+    log(`assets: restarting the model server on the previous ${r.rolled.join(", ")}`);
+    S.killTree(kids.models.proc.pid);      // the exit handler starts it again
+  }
+}
+
+function watchCheckRequests() {
+  const f = path.join(store.dir, "check-request");
+  fs.watchFile(f, { interval: 2000 }, (cur, prev) => { if (cur.mtimeMs && cur.mtimeMs !== prev.mtimeMs) runUpdates("Settings"); });
+}
+
 async function stopAll() {
   quitting = true;
   await Promise.all(Object.values(kids).map((k) => k.proc && S.killTree(k.proc.pid)));
@@ -315,9 +371,17 @@ if (!app.requestSingleInstanceLock()) {
     log(`Outpost Luna ${app.getVersion()} (${process.platform} ${process.arch}); resources ${RES}; data ${USER}`);
     createSplash();
     if (!fs.existsSync(PY)) return fail(`Embedded Python missing: ${PY}`);
-    try { store = AS.createStore({ dir: AS.assetsDir(USER), manifest: AS.loadManifest(MANIFEST), log }); }
-    catch (e) { return fail(`Asset list missing or damaged: ${e.message}`); }
+    try {
+      const bundled = AS.loadManifest(MANIFEST), dir = AS.assetsDir(USER);
+      let remote = null;   // the last remote manifest a check cached: newer compatible entries win (updates.js)
+      try { remote = JSON.parse(fs.readFileSync(path.join(dir, "remote-manifest.json"), "utf8")); } catch { /* none */ }
+      store = AS.createStore({ dir, manifest: U.effectiveManifest(bundled, remote, APP_VERSION), log });
+      updater = U.createUpdater({ store, bundled, appVersion: APP_VERSION, log, busy: backendBusy,
+        remoteUrl: process.env.OUTPOST_ASSETS_MANIFEST_URL || U.REMOTE_URL });
+      updater.applyPending();   // what an earlier run staged: swapped in now, before anything has the files open
+    } catch (e) { return fail(`Asset list missing or damaged: ${e.message}`); }
     await requiredAssets();
+    writeSummary();
     const reaped = await pids.reap(LAUNCH);
     if (reaped.length) log(`reaped stale children ${reaped.join(", ")}`);
     ports = await choosePorts();
@@ -326,7 +390,13 @@ if (!app.requestSingleInstanceLock()) {
     status("Warming up the models…");
     startChild("models");
     startChild("backend");
-    if (await waitHealthy()) { createMain(origin); setTimeout(fetchOptional, 20000); }
+    if (await waitHealthy()) {
+      createMain(origin);
+      await confirmUpdates();
+      setTimeout(fetchOptional, 20000);
+      setTimeout(() => runUpdates("launch"), 30000);   // non-blocking, after the UI is up; offline: nothing changes
+      watchCheckRequests();
+    }
   });
   app.on("window-all-closed", () => app.quit());
   let stopped = false;
