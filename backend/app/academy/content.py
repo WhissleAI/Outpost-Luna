@@ -96,11 +96,13 @@ def public() -> dict:
 
 
 def longest_dark_h(site_id: str) -> int:
-    """Longest run of hours with the Sun below the site's effective horizon (JPL Horizons ephemeris)."""
+    """Longest run of hours with the Sun below the site's horizon (JPL Horizons ephemeris; the LOLA terrain horizon
+    at the Sun's azimuth when the ephemeris has it, as the sim uses, else the one effective angle)."""
     e = json.loads((DATA / "mission" / f"ephemeris_{site_id}.json").read_text())
+    hz = e.get("sun_terrain_deg") or [e["horizon_deg"]] * len(e["sun_elev_deg"])
     best = cur = 0
-    for elev in e["sun_elev_deg"]:
-        cur = 0 if elev > e["horizon_deg"] else cur + 1
+    for elev, h in zip(e["sun_elev_deg"], hz):
+        cur = 0 if elev > h else cur + 1
         best = max(best, cur)
     return best
 

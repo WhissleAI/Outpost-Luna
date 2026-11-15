@@ -20,6 +20,12 @@ ear-model:       ## The ear's model (Arc Transcriber Space nft2/, pinned revisio
 data:            ## Download NASA media (Moon map + crew clips)
 	uv run --no-project --with pillow==11.3.0 python backend/pipeline/fetch_media.py
 
+site-physics:    ## Landing-site navigator numbers from NASA LRO + Horizons -> backend/data/sites_physics.json (+ sites.json engine fields)
+	cd backend && uv run python -m pipeline.site_physics fetch && uv run python -m pipeline.site_physics numbers
+
+site-layers:     ## The navigator's polar map layers + the site-layers tar/sha256 (backend/data/cache), then drop the raster cache
+	cd backend && uv run python -m pipeline.site_physics fetch && uv run python -m pipeline.site_physics layers && uv run python -m pipeline.site_physics clean
+
 media-desktop:   ## Trimmed mono crew clips for the desktop installer -> backend/data/media/desktop (after `make data`)
 	cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media
 
@@ -169,4 +175,4 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: ear-model asset-pack asset-upload desktop-libarc voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: site-physics site-layers ear-model asset-pack asset-upload desktop-libarc voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

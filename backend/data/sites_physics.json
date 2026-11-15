@@ -1,0 +1,1574 @@
+{
+ "schema": 1,
+ "built": "2026-11-15",
+ "note": "Built by backend/pipeline/site_physics.py from NASA LRO (LOLA, Diviner) products and JPL Horizons; every field names its source. See backend/data/SOURCES.md.",
+ "sources": {
+  "illum": {
+   "label": "LOLA illumination (NASA LRO)",
+   "title": "LRO LOLA average solar illumination, south pole (Mazarico et al. 2011 method; PDS product AVGVISIB_*_201608)",
+   "url": "https://pgda.gsfc.nasa.gov/products/69",
+   "doi": "https://doi.org/10.1016/j.icarus.2010.10.030"
+  },
+  "earth": {
+   "label": "LOLA Earth visibility (NASA LRO)",
+   "title": "LRO LOLA average Earth visibility, south pole (PDS product AVGVISIB_*_201608_EARTH)",
+   "url": "https://pgda.gsfc.nasa.gov/products/69"
+  },
+  "psr": {
+   "label": "LOLA shadow map (NASA LRO)",
+   "title": "LRO LOLA permanently shadowed regions, south pole (PDS product LPSR_*_201608)",
+   "url": "https://pgda.gsfc.nasa.gov/products/69"
+  },
+  "slope": {
+   "label": "LOLA slope (NASA LRO)",
+   "title": "LRO LOLA gridded slope, south pole (PDS LDSM_85S_40M, LDSM_75S_120M)",
+   "url": "https://pds-geosciences.wustl.edu/missions/lro/lola.htm"
+  },
+  "dem": {
+   "label": "LOLA topography (NASA LRO)",
+   "title": "LRO LOLA gridded topography (PDS LDEM_75S_120M)",
+   "url": "https://pds-geosciences.wustl.edu/missions/lro/lola.htm"
+  },
+  "diviner": {
+   "label": "Diviner temperatures (NASA LRO)",
+   "title": "LRO Diviner South Polar Resource Product (Paige et al. 2010, Science 330:479; PDS LRO-L-DLRE-5-PRP-V2.0)",
+   "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
+   "doi": "https://doi.org/10.1126/science.1187726"
+  },
+  "horizons": {
+   "label": "JPL Horizons + LOLA terrain",
+   "title": "JPL Horizons Sun and Earth positions (hourly, 2026) against the LOLA terrain horizon (LDEM_75S_120M), computed by this pipeline",
+   "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"
+  },
+  "artemis2024": {
+   "label": "NASA, Oct 2024",
+   "title": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)",
+   "url": "https://www.nasa.gov/news-release/nasa-provides-update-on-artemis-iii-moon-landing-regions/"
+  },
+  "artemis2022": {
+   "label": "NASA, Aug 2022",
+   "title": "NASA Identifies Candidate Regions for Landing Next Americans on Moon (Aug 2022)",
+   "url": "https://www.nasa.gov/news-release/nasa-identifies-candidate-regions-for-landing-next-americans-on-moon/"
+  },
+  "criteria": {
+   "label": "NASA, LPSC 2026",
+   "title": "George et al., Artemis III site selection update: downselection from thirteen to nine candidate regions (NASA NTRS 20250011660)",
+   "url": "https://ntrs.nasa.gov/citations/20250011660"
+  },
+  "lroc": {
+   "label": "LROC NAC mosaics",
+   "title": "LROC NAC low-Sun controlled mosaics of the Artemis III candidate regions (Henriksen et al. 2023); centre from the product name",
+   "url": "https://data.lroc.im-ldi.com/lroc/rdr_product_select"
+  },
+  "regionmap": {
+   "label": "NASA region map",
+   "title": "Position read off NASA's map of the 9 regions (NTRS 20250011660, Image 1), georeferenced on 6 LROC centres; about +/-5 km",
+   "url": "https://ntrs.nasa.gov/citations/20250011660"
+  },
+  "viper": {
+   "label": "NASA VIPER",
+   "title": "NASA VIPER mission overview: top speed 0.72 km/h (0.45 mph); drives on slopes up to 15 deg (NASA, VIPER lunar operations)",
+   "url": "https://ntrs.nasa.gov/api/citations/20230011558/downloads/VIPER%20Mission%20Overview%20Presentation-%20CATIE%20Expo.pdf"
+  }
+ },
+ "criteria": {
+  "source": "criteria",
+  "items": [
+   {
+    "id": "power",
+    "label": "Power",
+    "field": "sunlight_pct",
+    "why": "Solar illumination for the whole surface stay"
+   },
+   {
+    "id": "comms",
+    "label": "Talk to Earth",
+    "field": "earth_pct",
+    "why": "Direct-to-Earth radio: more Earth visibility is preferred"
+   },
+   {
+    "id": "ice",
+    "label": "Ice access",
+    "field": "ice_km",
+    "why": "Close enough to permanently shadowed ground for a moonwalk or a drive"
+   },
+   {
+    "id": "safety",
+    "label": "Safe landing",
+    "field": "slope_deg",
+    "why": "Low slopes for a safe landing"
+   }
+  ]
+ },
+ "places": [
+  {
+   "id": "shackleton_rim",
+   "name": "Shackleton Crater Rim",
+   "kind": "site",
+   "lat": -89.68,
+   "lon": -166.0,
+   "spot": {
+    "lat": -89.686,
+    "lon": 197.063,
+    "x_m": -2790,
+    "y_m": -9090,
+    "offset_km": 0.55
+   },
+   "sunlight_pct": {
+    "value": 87,
+    "range": [
+     16,
+     87
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 1 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 64,
+    "unit": "hours",
+    "range": [
+     2.7,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 54,
+    "range": [
+     0,
+     54
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 11.0,
+    "range": [
+     8.1,
+     27.6
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.3,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 2.9,
+    "unit": "km",
+    "range": [
+     0.2,
+     2.9
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -162,
+    "range": [
+     -162,
+     -60
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 89,
+    "year_earth_pct": 52,
+    "longest_no_earth_h": 320,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 2.9,
+    "mean_slope_deg": 11.1,
+    "steep_slope_deg": 21.7,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 7,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "dropped_2022",
+   "was_2022": "Peak Near Shackleton",
+   "playable": true
+  },
+  {
+   "id": "shackleton_floor",
+   "name": "Shackleton Crater Floor",
+   "kind": "site",
+   "lat": -89.67,
+   "lon": 129.78,
+   "spot": {
+    "lat": -89.67,
+    "lon": 129.78,
+    "x_m": 7690,
+    "y_m": -6403,
+    "offset_km": 0.0
+   },
+   "sunlight_pct": {
+    "value": 0,
+    "range": [
+     0,
+     0
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 1 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 8761,
+    "unit": "hours",
+    "range": [
+     365.0,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 0,
+    "range": [
+     0,
+     0
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 4.1,
+    "range": [
+     1.9,
+     8.2
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.0,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 0.1,
+    "unit": "km",
+    "range": [
+     0.1,
+     0.1
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -223,
+    "range": [
+     -223,
+     -188
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 0,
+    "year_earth_pct": 0,
+    "longest_no_earth_h": 8761,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 0.1,
+    "mean_slope_deg": 4.1,
+    "steep_slope_deg": 4.1,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 0,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "studied",
+   "playable": true
+  },
+  {
+   "id": "connecting_ridge",
+   "name": "Connecting Ridge",
+   "kind": "site",
+   "lat": -89.44,
+   "lon": -141.8,
+   "spot": {
+    "lat": -89.421,
+    "lon": 219.317,
+    "x_m": -11130,
+    "y_m": -13590,
+    "offset_km": 0.67
+   },
+   "sunlight_pct": {
+    "value": 60,
+    "range": [
+     19,
+     60
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 1 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 325,
+    "unit": "hours",
+    "range": [
+     13.5,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 32,
+    "range": [
+     0,
+     32
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 7.5,
+    "range": [
+     4.8,
+     13.3
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.2,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 7.0,
+    "unit": "km",
+    "range": [
+     0.7,
+     7.0
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -143,
+    "range": [
+     -143,
+     -50
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 61,
+    "year_earth_pct": 29,
+    "longest_no_earth_h": 471,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 7.0,
+    "mean_slope_deg": 11.0,
+    "steep_slope_deg": 18.6,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 16,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "dropped_2022",
+   "was_2022": "Connecting Ridge",
+   "playable": true
+  },
+  {
+   "id": "de_gerlache_rim",
+   "name": "de Gerlache Crater Rim",
+   "kind": "site",
+   "lat": -88.71,
+   "lon": -68.7,
+   "spot": {
+    "lat": -88.707,
+    "lon": 291.403,
+    "x_m": -36510,
+    "y_m": 14310,
+    "offset_km": 0.12
+   },
+   "sunlight_pct": {
+    "value": 71,
+    "range": [
+     34,
+     71
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 1 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 212,
+    "unit": "hours",
+    "range": [
+     8.8,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 47,
+    "range": [
+     0,
+     61
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 6.0,
+    "range": [
+     4.7,
+     19.6
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.3,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 7.2,
+    "unit": "km",
+    "range": [
+     0.2,
+     7.2
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -162,
+    "range": [
+     -162,
+     -62
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 77,
+    "year_earth_pct": 51,
+    "longest_no_earth_h": 324,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 7.2,
+    "mean_slope_deg": 11.9,
+    "steep_slope_deg": 19.9,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 17,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "playable": true
+  },
+  {
+   "id": "malapert_massif",
+   "name": "Malapert Massif",
+   "kind": "site",
+   "lat": -85.98,
+   "lon": -1.67,
+   "spot": {
+    "lat": -85.992,
+    "lon": 358.515,
+    "x_m": -3150,
+    "y_m": 121530,
+    "offset_km": 0.55
+   },
+   "sunlight_pct": {
+    "value": 66,
+    "range": [
+     32,
+     66
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 1 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 166,
+    "unit": "hours",
+    "range": [
+     6.9,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 64,
+    "range": [
+     0,
+     100
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 8.0,
+    "range": [
+     5.3,
+     14.0
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 2.1,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 12.1,
+    "unit": "km",
+    "range": [
+     0.1,
+     12.1
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -180,
+    "range": [
+     -180,
+     -82
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 72,
+    "year_earth_pct": 73,
+    "longest_no_earth_h": 192,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 12.1,
+    "mean_slope_deg": 13.7,
+    "steep_slope_deg": 22.9,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 31,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "playable": true
+  },
+  {
+   "id": "a3_peak_near_cabeus_b",
+   "name": "Peak near Cabeus B",
+   "kind": "region",
+   "lat": -83.6,
+   "lon": -68.8,
+   "spot": {
+    "lat": -83.6,
+    "lon": 291.279,
+    "x_m": -181020,
+    "y_m": 70500,
+    "offset_km": 0.27
+   },
+   "sunlight_pct": {
+    "value": 58,
+    "range": [
+     17,
+     58
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_75S_120M_201608"
+   },
+   "longest_dark_h": {
+    "value": 354,
+    "unit": "hours",
+    "range": [
+     14.8,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 60,
+    "range": [
+     0,
+     97
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_75S_120M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 6.1,
+    "range": [
+     6.1,
+     24.8
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_75S_120M"
+   },
+   "psr_km": {
+    "value": 0.5,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 16.6,
+    "unit": "km",
+    "range": [
+     0.9,
+     16.6
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -125,
+    "range": [
+     -125,
+     -24
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 60,
+    "year_earth_pct": 57,
+    "longest_no_earth_h": 290,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 16.6,
+    "mean_slope_deg": 15.6,
+    "steep_slope_deg": 26.2,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 48,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "lroc",
+    "product": "NAC_ROI_CABEUSPKLO1_P836S2912"
+   }
+  },
+  {
+   "id": "a3_haworth",
+   "name": "Haworth",
+   "kind": "region",
+   "lat": -86.72,
+   "lon": -22.0,
+   "spot": {
+    "lat": -86.804,
+    "lon": 338.334,
+    "x_m": -35790,
+    "y_m": 90090,
+    "offset_km": 2.61
+   },
+   "sunlight_pct": {
+    "value": 51,
+    "range": [
+     14,
+     51
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 413,
+    "unit": "hours",
+    "range": [
+     17.2,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 65,
+    "range": [
+     0,
+     69
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 5.2,
+    "range": [
+     3.3,
+     14.6
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.2,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 2.1,
+    "unit": "km",
+    "range": [
+     0.5,
+     2.1
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -152,
+    "range": [
+     -152,
+     -48
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 53,
+    "year_earth_pct": 63,
+    "longest_no_earth_h": 256,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 2.1,
+    "mean_slope_deg": 6.7,
+    "steep_slope_deg": 9.6,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 4,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "regionmap"
+   }
+  },
+  {
+   "id": "a3_malapert_massif",
+   "name": "Malapert Massif",
+   "kind": "region",
+   "lat": -86.0,
+   "lon": 0.3,
+   "spot": {
+    "lat": -86.001,
+    "lon": 2.027,
+    "x_m": 4290,
+    "y_m": 121230,
+    "offset_km": 3.66
+   },
+   "sunlight_pct": {
+    "value": 75,
+    "range": [
+     25,
+     75
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 476,
+    "unit": "hours",
+    "range": [
+     19.8,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 57,
+    "range": [
+     0,
+     100
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 11.4,
+    "range": [
+     7.4,
+     25.3
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.3,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 10.8,
+    "unit": "km",
+    "range": [
+     0.1,
+     10.8
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -159,
+    "range": [
+     -159,
+     -74
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 74,
+    "year_earth_pct": 52,
+    "longest_no_earth_h": 317,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 10.8,
+    "mean_slope_deg": 13.0,
+    "steep_slope_deg": 23.0,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 27,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "lroc",
+    "product": "NAC_ROI_MALAPERTLO1_P860S0003"
+   },
+   "site": "malapert_massif"
+  },
+  {
+   "id": "a3_mons_mouton_plateau",
+   "name": "Mons Mouton Plateau",
+   "kind": "region",
+   "lat": -84.3,
+   "lon": 30.6,
+   "spot": {
+    "lat": -84.292,
+    "lon": 31.141,
+    "x_m": 89580,
+    "y_m": 148260,
+    "offset_km": 1.65
+   },
+   "sunlight_pct": {
+    "value": 52,
+    "range": [
+     9,
+     52
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_75S_120M_201608"
+   },
+   "longest_dark_h": {
+    "value": 398,
+    "unit": "hours",
+    "range": [
+     16.6,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 100,
+    "range": [
+     42,
+     100
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_75S_120M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 5.4,
+    "range": [
+     2.7,
+     13.1
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_75S_120M"
+   },
+   "psr_km": {
+    "value": 1.0,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 3.8,
+    "unit": "km",
+    "range": [
+     2.6,
+     3.8
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -132,
+    "range": [
+     -132,
+     -34
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 54,
+    "year_earth_pct": 100,
+    "longest_no_earth_h": 0,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 3.8,
+    "mean_slope_deg": 6.6,
+    "steep_slope_deg": 10.2,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 7,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "lroc",
+    "product": "NAC_ROI_MOUTNPLTLO1_P843S0306"
+   }
+  },
+  {
+   "id": "a3_mons_mouton",
+   "name": "Mons Mouton",
+   "kind": "region",
+   "lat": -85.29,
+   "lon": 30.94,
+   "spot": {
+    "lat": -85.292,
+    "lon": 32.111,
+    "x_m": 75930,
+    "y_m": 120990,
+    "offset_km": 2.92
+   },
+   "sunlight_pct": {
+    "value": 57,
+    "range": [
+     15,
+     57
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 383,
+    "unit": "hours",
+    "range": [
+     16.0,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 63,
+    "range": [
+     22,
+     97
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 4.4,
+    "range": [
+     4.2,
+     15.1
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 1.5,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 3.7,
+    "unit": "km",
+    "range": [
+     0.1,
+     3.7
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -189,
+    "range": [
+     -189,
+     -112
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 59,
+    "year_earth_pct": 71,
+    "longest_no_earth_h": 198,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 3.7,
+    "mean_slope_deg": 11.8,
+    "steep_slope_deg": 20.0,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 9,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "regionmap"
+   }
+  },
+  {
+   "id": "a3_nobile_rim_1",
+   "name": "Nobile Rim 1",
+   "kind": "region",
+   "lat": -85.3,
+   "lon": 36.61,
+   "spot": {
+    "lat": -85.297,
+    "lon": 36.829,
+    "x_m": 85530,
+    "y_m": 114210,
+    "offset_km": 0.55
+   },
+   "sunlight_pct": {
+    "value": 59,
+    "range": [
+     6,
+     59
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 461,
+    "unit": "hours",
+    "range": [
+     19.2,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 76,
+    "range": [
+     0,
+     76
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 7.2,
+    "range": [
+     4.0,
+     24.7
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 1.2,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 5.0,
+    "unit": "km",
+    "range": [
+     0.3,
+     5.0
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -154,
+    "range": [
+     -154,
+     -47
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 62,
+    "year_earth_pct": 73,
+    "longest_no_earth_h": 185,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 5.0,
+    "mean_slope_deg": 12.4,
+    "steep_slope_deg": 17.4,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 12,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "regionmap"
+   }
+  },
+  {
+   "id": "a3_nobile_rim_2",
+   "name": "Nobile Rim 2",
+   "kind": "region",
+   "lat": -83.9,
+   "lon": 58.7,
+   "spot": {
+    "lat": -83.925,
+    "lon": 59.254,
+    "x_m": 158460,
+    "y_m": 94260,
+    "offset_km": 1.94
+   },
+   "sunlight_pct": {
+    "value": 52,
+    "range": [
+     14,
+     52
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_75S_120M_201608"
+   },
+   "longest_dark_h": {
+    "value": 372,
+    "unit": "hours",
+    "range": [
+     15.5,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 70,
+    "range": [
+     0,
+     74
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_75S_120M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 2.0,
+    "range": [
+     2.0,
+     18.1
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_75S_120M"
+   },
+   "psr_km": {
+    "value": 2.8,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 7.4,
+    "unit": "km",
+    "range": [
+     2.4,
+     7.4
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -147,
+    "range": [
+     -147,
+     -42
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 52,
+    "year_earth_pct": 68,
+    "longest_no_earth_h": 222,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 7.4,
+    "mean_slope_deg": 7.7,
+    "steep_slope_deg": 17.5,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 14,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "lroc",
+    "product": "NAC_ROI_NOBILE02LO1_P839S0587"
+   }
+  },
+  {
+   "id": "a3_de_gerlache_rim_2",
+   "name": "de Gerlache Rim 2",
+   "kind": "region",
+   "lat": -88.5,
+   "lon": -66.7,
+   "spot": {
+    "lat": -88.509,
+    "lon": 292.02,
+    "x_m": -41910,
+    "y_m": 16950,
+    "offset_km": 1.05
+   },
+   "sunlight_pct": {
+    "value": 62,
+    "range": [
+     17,
+     62
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 258,
+    "unit": "hours",
+    "range": [
+     10.8,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 61,
+    "range": [
+     0,
+     61
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 8.5,
+    "range": [
+     7.5,
+     21.6
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 0.3,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 3.8,
+    "unit": "km",
+    "range": [
+     0.2,
+     3.8
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -141,
+    "range": [
+     -141,
+     -40
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 72,
+    "year_earth_pct": 59,
+    "longest_no_earth_h": 275,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 3.8,
+    "mean_slope_deg": 10.7,
+    "steep_slope_deg": 17.2,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 9,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "lroc",
+    "product": "NAC_ROI_DEGERRIMLO1_P885S2933"
+   },
+   "site": "de_gerlache_rim"
+  },
+  {
+   "id": "a3_slater_plain",
+   "name": "Slater Plain",
+   "kind": "region",
+   "lat": -86.92,
+   "lon": 126.84,
+   "spot": {
+    "lat": -86.928,
+    "lon": 126.438,
+    "x_m": 74970,
+    "y_m": -55350,
+    "offset_km": 0.69
+   },
+   "sunlight_pct": {
+    "value": 51,
+    "range": [
+     4,
+     51
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years (hourly) at the best-lit spot flatter than 10 deg within 7.5 km; range: 10th percentile to the best nearby",
+    "source": "illum",
+    "product": "AVGVISIB_85S_060M_201608"
+   },
+   "longest_dark_h": {
+    "value": 388,
+    "unit": "hours",
+    "range": [
+     16.2,
+     null
+    ],
+    "basis": "longest stretch in 2026 with no part of the Sun above the LOLA terrain horizon, seen from 2 m up at the spot",
+    "source": "horizons"
+   },
+   "earth_pct": {
+    "value": 27,
+    "range": [
+     0,
+     45
+    ],
+    "unit": "% of the time",
+    "basis": "average over 18.6 years at the spot (any part of Earth's disc in view); range over the area (10th-90th percentile)",
+    "source": "earth",
+    "product": "AVGVISIB_85S_060M_201608_EARTH"
+   },
+   "slope_deg": {
+    "value": 6.0,
+    "range": [
+     3.7,
+     18.8
+    ],
+    "unit": "degrees",
+    "basis": "mean slope within 250 m of the spot; range over the area (10th-90th percentile)",
+    "source": "slope",
+    "product": "LDSM_85S_40M"
+   },
+   "psr_km": {
+    "value": 1.0,
+    "unit": "km",
+    "basis": "straight-line distance to the nearest permanently shadowed ground",
+    "source": "psr"
+   },
+   "ice_km": {
+    "value": 2.7,
+    "unit": "km",
+    "range": [
+     0.8,
+     2.7
+    ],
+    "basis": "straight-line distance to the nearest ground cold enough (Diviner) for water ice to last right at the surface; range starts at ice buried under at most 1 m. Where ice CAN last, not a detection",
+    "source": "diviner"
+   },
+   "temp_c": {
+    "value": -143,
+    "range": [
+     -143,
+     -47
+    ],
+    "unit": "deg C",
+    "basis": "Diviner: yearly average to yearly maximum surface temperature at the spot",
+    "source": "diviner"
+   },
+   "check": {
+    "year_sun_pct": 51,
+    "year_earth_pct": 35,
+    "longest_no_earth_h": 435,
+    "note": "2026 only (JPL Horizons vs the LOLA horizon): a cross-check of the 18.6-year LOLA averages"
+   },
+   "drive_to_ice": {
+    "km": 2.7,
+    "mean_slope_deg": 3.1,
+    "steep_slope_deg": 6.1,
+    "source": "slope"
+   },
+   "rover_to_ice_h": 5,
+   "rover_basis": {
+    "game_rule": true,
+    "source": "viper",
+    "basis": "hours one way to the ice: the straight-line distance at NASA VIPER's top speed (0.72 km/h), slower on slopes (half speed at 15 deg, VIPER's design limit)"
+   },
+   "status": "nasa_2024",
+   "position": {
+    "source": "regionmap"
+   }
+  }
+ ]
+}

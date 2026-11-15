@@ -94,6 +94,7 @@ function envFor(name) {
     TTS_ENGINE: "os",   // the OS's own offline voices (model_server/app/tts_os.py); no Deepgram key in the app
     MEDIA_AUDIO_DIR: a.MEDIA_AUDIO_DIR,   // crew audio (optional asset; served once it is installed)
     VIDEO_PACK_DIR: a.VIDEO_PACK_DIR,     // the pinned NASA videos (optional asset; copied into the video cache)
+    SITE_LAYERS_DIR: a.SITE_LAYERS_DIR,   // the site navigator's polar map layers (optional asset, docs/SITE_NAVIGATOR.md)
     VOICE_PACK_DIR: a.VOICE_PACK_DIR,
     // Settings -> About / Storage: GET /api/assets reads the summary, POST /api/assets/check asks for a check
     ASSETS_STATE_FILE: path.join(store.dir, "summary.json"),

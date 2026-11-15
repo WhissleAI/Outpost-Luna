@@ -57,6 +57,9 @@
   "recenter",
   "repeat",
   "settings",
+  "site_layer",
+  "site_preset",
+  "site_query",
   "skip_event",
   "skip_tour",
   "slower",
@@ -90,9 +93,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 402,
+  "cells": 405,
   "covered": 73,
-  "gap": 329,
+  "gap": 332,
   "pending": 0,
   "by_kind": {
    "answer": {
@@ -121,7 +124,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 270,
+    "cells": 273,
     "covered": 20,
     "pending": 0
    },
@@ -426,6 +429,45 @@
    "gap": [
     "train 0 < 40",
     "held-out 7 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:site_layer",
+   "screen": "brief",
+   "intent": "nav:site_layer",
+   "kind": "navigate",
+   "probe": "show sunlight",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:site_preset",
+   "screen": "brief",
+   "intent": "nav:site_preset",
+   "kind": "navigate",
+   "probe": "ice first",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:site_query",
+   "screen": "brief",
+   "intent": "nav:site_query",
+   "kind": "navigate",
+   "probe": "which site has the most ice",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
    ]
   },
   {

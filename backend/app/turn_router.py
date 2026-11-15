@@ -92,6 +92,19 @@ WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seve
 
 # Navigation intents: (intent, pattern over the normalised text). First match wins; the screen decides if it applies.
 _N = r"(?:please )?"
+# The site navigator's words (docs/SITE_NAVIGATOR.md): layer, query and preset names -> the client's ids.
+LAYER_OF = (("sunlight", r"sunlight|sun|sunshine|sunny|light|lighting|solar"),
+            ("slope", r"slopes?|steep(?:ness)?|terrain|hills?"),
+            ("ice", r"ice|water|shadows?|cold|cold traps?|permanent shadows?"),
+            ("earth", r"earth(?: view)?|earth visibility|radio|comms?"))
+_LAYER_WORDS = "|".join(rx for _, rx in LAYER_OF)
+QUERY_OF = (("ice", r"ice|water|icy|iciest"), ("sunlight", r"sun|sunny|sunniest|sunlight|light|power|solar|brightest"),
+            ("earth", r"earth|radio|talk|comms?|signal|houston"), ("slope", r"flat|flattest|flatter|safe|safest|slope|steep|land"),
+            ("best", r"best|top|winner|highest|score"))
+_QUERY_WORDS = "|".join(rx for _, rx in QUERY_OF)
+PRESET_OF = (("power_first", r"power|sun|sunlight|solar"), ("ice_first", r"ice|water"),
+             ("comms_first", r"comms?|radio|earth|talking"), ("safety_first", r"safety|safe landing|landing|terrain|flat"))
+_PRESET_WORDS = "|".join(rx for _, rx in PRESET_OF)
 NAV: list[tuple[str, re.Pattern]] = [
     # frontend/src/a11y.js parseCommand (the client runs them): where am I, options, text size, contrast, press X, option N
     ("a11y", re.compile(r"^(?:where am i|what screen is this|what s on (?:the )?screen|describe (?:the )?screen|"
@@ -166,6 +179,17 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("zoom_out", re.compile(r"^(?:zoom out|zoom (?:back )?out (?:a (?:bit|little)|more)|(?:go |get |move |fly )?(?:farther|further)"
                             r"(?: away| out)?|(?:a )?(?:bit|little) (?:farther|further)(?: away)?|back out|zoom back out|"
                             r"make it smaller)$")),
+    # The landing-site navigator (docs/SITE_NAVIGATOR.md), the picker only: a map layer ("show sunlight", "the ice
+    # map", "hide the layers"), a question about the numbers ("which site has the most ice?") and the weights ("ice
+    # first"). nav_intent() fills the arg (layer_of / query_of / preset_of).
+    ("site_layer", re.compile(rf"^(?:(?:show|show me|turn on|switch to|let me see|i want to see|see|display|put on|what "
+                              rf"about) )?(?:the )?(?:map of (?:the )?)?(?:{_LAYER_WORDS})(?: (?:map|layer|view|overlay|"
+                              rf"colou?rs?))?(?: map| layer)?$|^(?:hide|clear|remove|turn off|no|close) (?:the )?(?:map )?"
+                              rf"(?:layers?|overlays?|colou?rs?|map)$|^(?:just )?(?:the )?plain map$")),
+    ("site_query", re.compile(rf"^(?:which|where)\b.*\b(?:{_QUERY_WORDS})\b.*$|^what (?:s |is )?(?:the )?(?:site|place|"
+                              rf"spot|one|region|outpost)\b.*\b(?:{_QUERY_WORDS})\b.*$")),
+    ("site_preset", re.compile(rf"^(?:(?:put|go|make it|set it to|set) )?(?:{_PRESET_WORDS}) first$|^(?:make it )?"
+                               rf"(?:balanced|balance it|all equal|even)$")),
     ("start", re.compile(r"^(?:start|begin|let s start|lets start|start (?:the )?lesson|start learning|let s begin|"
                          r"start (?:flight school|the academy)|continue|resume)$")),
     ("next", re.compile(r"^(?:next|next one|next please|next lesson|next step|go on|keep going|move on|"
@@ -193,6 +217,32 @@ VBAR_RESET = re.compile(r"^(?:reset|restore) (?:the |my )?(?:voice|mic|microphon
 
 
 CLOCK_INTENTS = ("skip_event", "time_pause", "time_resume", "time_warp")
+SITE_INTENTS = ("site_layer", "site_query", "site_preset")
+
+
+def _first_of(table, q: str, default=None):
+    for k, rx in table:
+        if re.search(rf"\b(?:{rx})\b", q):
+            return k
+    return default
+
+
+def region_names() -> list[tuple[str, str]]:
+    """NASA's 9 Artemis III regions (sites_physics.json), pickable on the navigator only ("pick Haworth")."""
+    try:
+        from .mission import navigator
+        return [(p["id"], p["name"]) for p in navigator.places() if p["kind"] == "region" and not p.get("site")]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def site_arg(intent: str, q: str) -> str | None:
+    """The navigator intent's arg: a layer id (or "off"), a query field, a preset id."""
+    if intent == "site_layer":
+        return "off" if re.match(r"^(?:hide|clear|remove|turn off|no|close|just|the plain|plain)\b", q) else _first_of(LAYER_OF, q)
+    if intent == "site_query":
+        return _first_of(QUERY_OF, q)
+    return _first_of(PRESET_OF, q, "balanced")
 _WARP_WORDS = {"one": 1, "1": 1, "normal": 1, "slow": 1, "two": 2, "2": 2, "double": 2, "four": 4, "4": 4, "quad": 4}
 
 
@@ -567,6 +617,13 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
             continue                 # the cabin has no Moon zoom: its "zoom in / out" are the window views
         if intent in ("cabin_tour", "skip_tour") and ctx.screen != "cabin":
             continue
+        if intent in SITE_INTENTS:
+            if ctx.screen != "brief":
+                continue
+            arg = site_arg(intent, q)
+            if arg:
+                return intent, arg
+            continue
         if intent in CLOCK_INTENTS:
             if ctx.screen != "cabin" or ctx.offer == "tour":
                 continue
@@ -586,11 +643,11 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         return "next", None
     m = PICK.match(q)
     if m and ctx.sites and ctx.screen in ("brief", "debrief", "cabin", "map", "patch", "library"):
-        sid = _match_title(m.group(1), ctx.sites)
+        sid = _match_title(m.group(1), ctx.sites + (region_names() if ctx.screen == "brief" else []))
         if sid:
             return "pick_site", sid
     if ctx.screen == "brief" and ctx.sites:
-        sid = _match_title(q, ctx.sites)
+        sid = _match_title(q, ctx.sites + region_names())
         if sid and len(q.split()) <= 4:
             return "pick_site", sid
     if ctx.lessons and ctx.screen in ("map", "patch", "lesson_done", "library", "brief", "debrief"):

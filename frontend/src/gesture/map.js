@@ -51,6 +51,10 @@ export const SCREEN_MAP = Object.freeze({
     palm: "Stop the voice", thumbs_up: "Yes, the big button", thumbs_down: "No thanks", fingers: "Pick option 1 to 4",
     swipe_left: "Next", swipe_right: "Go back", point: "Press a button", fist: "Turn the Moon",
   },
+  sites: {      // the landing-site navigator (mission/navigator.js): the south-pole map beside the site list
+    palm: "Stop the voice", thumbs_up: "Yes: pick it, then fly", thumbs_down: "No thanks", fingers: "Pick option 1 to 4",
+    swipe_left: "Next site", swipe_right: "Previous site", point: "Point at a site", fist: "Move the map", pinch: "Zoom the map",
+  },
   cabin: {       // Mission cabin (the seat view and an open panel)
     palm: "Stop the voice and the clock", thumbs_up: "Yes, confirm or do it", thumbs_down: "No, cancel", fingers: "Pick a choice on the card",
     swipe_left: "Next view or panel", swipe_right: "Previous view or panel", point: "Press a control",
@@ -72,7 +76,8 @@ export function screenKey(frame = {}, { cabin = false, settings = false, video =
   if (cabin) return "cabin";
   const s = frame.screen;
   if (s === "lesson" || s === "lesson_done" || s === "ride" || s === "prep") return "lesson";   // prep: learning v1
-  if (s === "brief" || s === "debrief" || s === "patch" || s === "callsign") return "menu";
+  if (s === "brief") return "sites";
+  if (s === "debrief" || s === "patch" || s === "callsign") return "menu";
   return "moon";
 }
 
@@ -89,6 +94,7 @@ export const COACH = Object.freeze({
   moon: ["fist", "pinch", "point"],
   lesson: ["thumbs_up", "fingers", "point"],
   menu: ["thumbs_up", "point", "swipe_left"],
+  sites: ["fist", "pinch", "thumbs_up"],
   cabin: ["lean", "swipe_left", "thumbs_up"],
   video: ["palm", "swipe_left"],
   settings: ["point"],

@@ -464,7 +464,7 @@
      }
     },
     {
-     "text": "Its longest dark spell in that window lasted 157 hours, more than 6 days.",
+     "text": "Its longest dark spell in that window lasted 74 hours, more than 3 days.",
      "from": [
       "mission/ephemeris_malapert_massif.json"
      ],
@@ -567,7 +567,7 @@
       ]
      },
      "hint": "Malapert goes dark early in our mission.",
-     "success": "Shackleton Rim. Sun all 10 days in our model.",
+     "success": "Shackleton Rim. Sun 7.5 of 10 days in our model.",
      "fail": "Not that one."
     },
     {
@@ -585,7 +585,7 @@
       "place": "malapert_massif"
      },
      "hint": "The heaters need more power. Tap Heaters up.",
-     "success": "Copy. That dark spell lasted 157 hours.",
+     "success": "Copy. That dark spell lasted 74 hours.",
      "fail": "Negative."
     }
    ],
@@ -635,7 +635,7 @@
      }
     },
     {
-     "text": "In our model of April 2026, Earth was up 93% of the time at Malapert and 45% at Shackleton Rim.",
+     "text": "In our model of April 2026, Earth was up 71% of the time at Malapert and 44% at Shackleton Rim.",
      "from": [
       "mission/sites.json"
      ],
@@ -776,7 +776,7 @@
       ]
      },
      "hint": "Malapert sits on the side facing Earth.",
-     "success": "Malapert. Earth was up 9.5 of 10 days.",
+     "success": "Malapert. Earth was up 7 of 10 days.",
      "fail": "Not that one."
     },
     {

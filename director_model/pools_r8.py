@@ -262,7 +262,13 @@ NAV_SAY = {
     "decline_offer": ["no", "no thanks", "not now", "maybe later"],
     "pick_site": ["pick malapert massif", "go to shackleton rim", "land at the connecting ridge",
                   "choose de gerlache"],
-    "task_choice": ["the ridge", "the crater", "left", "shelter now"], "lesson": ["lesson one", "lesson two"]}
+    "task_choice": ["the ridge", "the crater", "left", "shelter now"], "lesson": ["lesson one", "lesson two"],
+    # the landing-site navigator (docs/SITE_NAVIGATOR.md): map layers, questions about the numbers, the weights
+    "site_layer": ["show sunlight", "show me the ice", "the slope map", "earth view", "hide the layers",
+                   "show the sunlight map", "turn on the ice layer"],
+    "site_query": ["which site has the most ice", "which site is the sunniest", "where can we talk to earth the most",
+                   "which one is flattest", "which site is best", "what site has the most sun"],
+    "site_preset": ["ice first", "power first", "radio first", "safety first", "make it balanced", "sunlight first"]}
 CELL_SCREEN_OFFER = {"accept_offer": ["next_lesson", "mission", "fly_again", "tour"],
                      "decline_offer": ["next_lesson", "mission", "fly_again"], "task_choice": ["task"]}
 

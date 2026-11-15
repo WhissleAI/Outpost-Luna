@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.academy.grade import compare_data  # noqa: E402  (QA-28: compare lines quote the numbers the cards show)
 from app.academy.content import VIDEO_HINT  # noqa: E402  (a video step's hint line, docs/MEDIA.md)
+from app.academy.content import longest_dark_h  # noqa: E402
 
 OUT = Path(__file__).resolve().parents[1] / "data" / "academy" / "course.json"
 C = "learning/concepts.json"
@@ -31,6 +32,8 @@ ZHANG = src("Zhang et al. 2020, First measurements of the radiation dose on the 
 
 # One source of truth for the compare steps' numbers: the sim's window days and distances, exactly as the result
 # cards show them after the answer (grade.compare_data).
+SITES_JSON = {s["id"]: s for s in json.loads((Path(__file__).resolve().parents[1] / "data" / "mission" / "sites.json").read_text())["sites"]}
+DARK_H = longest_dark_h("malapert_massif")   # the sim's own rule (real LOLA skyline), app/academy/content.py
 SITE = compare_data({"options": [{"id": "malapert_massif"}, {"id": "shackleton_rim"}]})
 
 
@@ -298,7 +301,8 @@ LESSONS = [
                   "https://www.nasa.gov/wp-content/uploads/2026/01/artemis-ii-houston-we-have-you-loud-and-clear-1.mp3")),
          fact("The Moon is about 384,400 km away, so a radio call takes about 1.3 seconds each way.", C,
               S_CONCEPT["light_time"]),
-         fact("In our model of April 2026, Earth was up 93% of the time at Malapert and 45% at Shackleton Rim.",
+         fact(f"In our model of April 2026, Earth was up {SITES_JSON['malapert_massif']['earth_visible_pct']}% of the "
+              f"time at Malapert and {SITES_JSON['shackleton_rim']['earth_visible_pct']}% at Shackleton Rim.",
               "mission/sites.json", HORIZONS),
      ],
      "steps": [
@@ -344,8 +348,9 @@ LESSONS = [
               S_CONCEPT["pole_sun"]),
          fact("Averaged over a year, Shackleton's rim gets sunlight about 86% of the time and Malapert about 73%.",
               C, S_CONCEPT["sun_year"]),
-         fact("In our model of April 2026, Malapert was in sunlight 35% of the time.", "mission/sites.json", HORIZONS),
-         fact("Its longest dark spell in that window lasted 157 hours, more than 6 days.",
+         fact(f"In our model of April 2026, Malapert was in sunlight {SITES_JSON['malapert_massif']['window_sunlit_pct']}% "
+              "of the time.", "mission/sites.json", HORIZONS),
+         fact(f"Its longest dark spell in that window lasted {DARK_H} hours, more than {DARK_H // 24} days.",
               "mission/ephemeris_malapert_massif.json", HORIZONS,
               calc={"kind": "longest_dark_h", "site": "malapert_massif"}),
      ],
@@ -373,7 +378,7 @@ LESSONS = [
               globe={"do": "pair", "places": ["shackleton_rim", "malapert_massif"]}),
          step("Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
               {"type": "command", "expect": {"type": "allocate", "to": "heaters", "more": True}},
-              "Copy. That dark spell lasted 157 hours.", "Negative.",
+              f"Copy. That dark spell lasted {DARK_H} hours.", "Negative.",
               "The heaters need more power. Tap Heaters up.",
               globe={"do": "fly", "place": "malapert_massif"}),
      ]},

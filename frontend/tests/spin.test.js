@@ -236,7 +236,7 @@ test("map: screen keys, help rows and coach marks", () => {
   assert.equal(screenKey({ screen: "library" }), "moon");
   assert.equal(screenKey({ screen: "map" }), "moon");
   assert.equal(screenKey({ screen: "lesson", step_type: "tap" }), "lesson");
-  assert.equal(screenKey({ screen: "brief" }), "menu");
+  assert.equal(screenKey({ screen: "brief" }), "sites");   // the landing-site navigator (docs/SITE_NAVIGATOR.md)
   assert.equal(screenKey({ screen: "cabin" }, { cabin: true }), "cabin");
   assert.equal(screenKey({ screen: "map" }, { settings: true }), "settings");
   assert.equal(screenKey({ screen: "cabin" }, { cabin: true, video: true }), "video");

@@ -81,7 +81,7 @@ export const PICKER = {
   why: "Sun means power. Earth means radio. Pick your trade-off.",
   recommended: "shackleton_rim",
   recTag: "Best first pick",
-  recLine: "For a first mission, try Shackleton Rim: Sun all 10 days.",
+  recLine: "For a first mission, try Shackleton Rim: most sunlight, ice nearby.",
 };
 
 // ---------- First mission: CAPCOM's cabin tour (mission/tour.js) ----------
