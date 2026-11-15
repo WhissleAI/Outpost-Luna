@@ -541,6 +541,9 @@ async function boot() {
     }
     if (intent === "back" && mode === "cadet") { setMode(lastMode); return; }
   }
+  // test hooks (tests/e2e/robustness_e2e.py): drive a screen the way the router would, and start a crew clip
+  try { Object.assign((window.__outpost = window.__outpost || {}), { shellNav, hear: t => ask(t, "voice", { dd: 1 }),
+    playCrew: async () => { const ms = await api.moments(null); if (ms[0]) { stopSpeaking(); player.play(ms[0]); return true; } return false; } }); } catch (e) { /* */ }
   // [hands-free] The router needs the screen the kid is looking at (server-relayed ear turns arrive before the client's).
   let lastScreen = "";
   function screenFrame() {

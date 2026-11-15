@@ -73,7 +73,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       tvHost = document.createElement("div"); tvHost.className = "tv"; tv = createTerrainView(tvHost, { reduced: reducedMotion });
       window.__cabinViews = { get tv() { return tv; }, get view() { return curView; } };   // test hook (fps, view)
     }
-    if (import.meta.env && import.meta.env.DEV && !window.__cabinTest) window.__cabinTest = {   // dev-only: force sim states for screenshots
+    if (((import.meta.env && import.meta.env.DEV) || window.__outpostTest) && !window.__cabinTest) window.__cabinTest = {   // dev (or a test run that sets window.__outpostTest): force sim states
       // a forced storm holds across state updates (the live clock steps the sim every second; a plain write was lost)
       storm(on) { if (!state) return; testForce = on ? { storm: { active: true, name: "Real solar particle storm, 2024-05-09 (huge auroras on Earth)", real_date: "2024-05-09", source: "DONKI", severity: 3, sep: true } } : null;
         state.env.storm = on ? testForce.storm : { active: false }; state.alerts = on ? ["dose_rate_high"] : []; render(); },
