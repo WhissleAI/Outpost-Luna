@@ -1,9 +1,95 @@
-# Local ear: Arc v1.1 Mini
+# Local ear: Arc Transcriber Space
+
+The ear is **Arc Transcriber Space** (`WhissleAI/arc-transcriber-space`, folder `nft2/`, revision `176d324`, CC BY-NC 4.0)
+on **libarc** (C, `desktop/vendor/libarc`) + ONNX Runtime. One model gives the words, the turns, the names linked to the
+screen's list, sound events and a device-directed head. It replaced Arc v1.1 Mini on torch + transformers (and the
+round-7 hot-list logits processor); the model server no longer depends on torch, transformers or arc_audio.
+Deepgram Flux (cloud) stays an option (`EAR=deepgram`) and the fallback when the ear is down and a key exists.
+
+## Architecture
+
+```
+browser mic ──PCM16 80 ms──▶ backend /ws/listen ──▶ model server WS /v1/stream?ear=arc  (app/arc_ear.py)
+                               │  1st frame + every screen change: {"t":"context","names":[{name,kind,aliases}] <= 40}
+                               ◀── turn / words / arc / context_ack (relayed unchanged; posted to the session)
+model server: app/nft2.py (ctypes) ──▶ libarc (arc_nft2_*) ──▶ ONNX Runtime = the onnxruntime wheel's C library
+```
+
+- **Setup (dev):** `make desktop-libarc ear-model` (libarc for this OS; the model, ~460 MB, into
+  `model_server/models/arc-space`). Env: `ARC_SPACE_DIR` (the `nft2/` folder), `ARC_LIB` (libarc), `ARC_THREADS` (4).
+  The desktop app downloads both on first run (docs/DESKTOP.md "First run: assets").
+- **libarc**: the upstream C code (arc_transcriber `c/`, commit bfffb19), built as one shared library with CMake
+  (`libarc.dylib`; `arc.dll` with clang / mingw-w64: it needs C11 atomics and GCC builtins). It links no ONNX Runtime:
+  `ort_loader.c` loads the onnxruntime wheel's `libonnxruntime.*.dylib` / `onnxruntime.dll` by path (C API 23, served
+  by the wheel's 1.32), so the installer carries one ONNX Runtime. Local changes are listed in its NOTICE.
+- **Turns** (`arc_ear.EarStream`): an energy VAD with an adaptive floor opens a segment (2 voiced 80 ms chunks, 0.3 s
+  pre-roll); a partial decode (no events) runs every 0.5 s on the open segment (backing off to 2x its cost, first 8 s
+  only) and the first non-empty partial is the turn `start`; 0.5 s of silence (or `end_turn` / `stop`, or 15 s) closes
+  it with one full decode. Order: `turn start`, `arc`, `words final`, `turn end` (a client resets its per-turn read on
+  `start`). A segment with no words is not a turn; its `arc` message still carries the sound events (`speech:false`,
+  no device-directed read).
+- **Final words**: `text` = written form (digits, "40%") with every LINKED name in the list's spelling ("artemis two"
+  -> "Artemis II"); `spoken` = the model's spoken form; `names` = `[{heard, entity, state, p, tag, kind}]`.
+- **Routing on names** (`director._link`): `linked` -> that place (`ear_link`); `abstain` -> the gazetteer's candidates
+  for `heard`, asked as "did you mean A or B?"; `not_in_list` -> `heard` searched in the whole gazetteer. The router
+  and the Academy grader see the text with the canonical names, so "go to Mare Tranquillitatis" and lesson answers
+  that are place names work on the text too.
+- **Names lists** (`backend/app/names_list.py`): a catalogue from places.json, artifacts.json, mission/sites.json and
+  the crew lists, every entry with a `kind` and aliases for what is not said as written (Roman numerals "Artemis II"
+  -> "Artemis 2" / "Artemis two"; Latin and English "Sea of Tranquility" + "Mare Tranquillitatis"; "LCROSS" -> "L
+  cross"; "S-IVB" -> "S 4 B"; "ALSEP" -> "al sep"; parenthesised names; ASCII spellings). `screen_names(frame, step,
+  last_place)` picks <= 40, most relevant first: the open step's options / places, the place being looked at, then
+  the screen's world (Moon screens: the gazetteer, the Artemis II crew and craft, sites, hardware; cabin / brief /
+  debrief: the mission sites, Houston, CAPCOM, crew; lessons: the step's names, then places). `session.ear_names()`
+  builds it; `/ws/listen` sends it at the start and whenever it changes (it takes effect from the next decode).
+- **device_directed**: the model's directed head is conservative (real device commands from SLURP: 32% >= 0.5, 67%
+  >= 0.05; crew talk 11% of clips >= 0.05). The ear maps it onto the router's scale (`app_dd`: head 0.05 -> 0.5 =
+  `DD_MIN`, 0.5 -> 0.7 = `DD_STRONG`; `EAR_DD_KNEE`, `EAR_DD_STRONG_AT`) and also sends the raw `directed_head`.
+  **Calibrate on real kids' sessions** before trusting the not-directed gate.
+- **Safety stays with Arc Tagger.** The model's tags.json lists `safety.profanity.*` / `safety.pii.*` (word level) and
+  `safety.toxicity.*` (not for the `assistant` domain), but libarc's result surfaces no safety read and there are no
+  `child.*` care tags: profanity / toxicity / care keep coming from Arc Tagger (`app/safety.py`).
+- **Echo**: the model is trained to ignore synthetic (Kokoro-style) TTS, but the app's own voices ARE transcribed when
+  they reach the mic (Nora voice pack 30/30, macOS OS voice 10/10 clean clips). The router's echo check
+  (`turn_router.echo_of` against the lines we just spoke) stays the defence.
+- **/health** `models.arc_ear`: `available`, `model`, `revision`, `backend` (`onnxruntime 1.32.0`), `load_s`,
+  `rss_after_load_mb`, `rss_now_mb`.
+
+## Old ear vs new ear (`model_server/tools/ear_compare.py`, real audio only)
+
+Same clips, fed in 80 ms chunks, 1.5 s of silence after each; one model in memory at a time; Mac (arm64), 4 threads,
+on a heavily loaded machine (load average 40-160), so absolute latencies are pessimistic and noisy.
+
+| | Arc v1.1 Mini (torch) | Arc Transcriber Space (libarc) |
+|---|---|---|
+| WER, LibriSpeech test-clean (40 utts, human refs) | 5.2% | **2.2%** |
+| WER, SLURP commands to a device (60, headset + far-field, human refs) | 47.1% | **19.3%** |
+| WER, Artemis II crew audio (45 segments; ref = Deepgram nova-3, a machine ref) | 26.8% | **15.4%** |
+| Name links, crew segments (34 names said; list = said + 20 decoys) | 64.7% correct, 35.3% missed, 2 extra | **97.1% correct**, 0% abstain, 2.9% missed, 3 extra links |
+| Room noise (16 real beds: cabin, cafe, room; -30 dBFS): false turns | 16/16 | **1/16** |
+| Room noise: false device-directed (>= 0.5) | 3/16 | **1/16** (after the wordless-segment gate) |
+| Device-directed >= 0.5 on SLURP (real device commands) | 98.3% | 63.3% (mapped; raw head 31.7%) |
+| Device-directed >= 0.5 on crew talk (not to a device) | 97.8% | **2.2%** |
+| Echo: Nora voice pack / OS voice clips transcribed | 30/30, 10/10 | 30/30, 10/10 |
+| Turn end (VAD speech end -> final), p50 / p90 | 1276 / 2187 ms | **1105 / 2087 ms** (847 / 953 ms on a rerun) |
+| First words (onset -> first partial), p50 / p90 | **739 / 854 ms** | 1059 / 1673 ms |
+| Real-time factor (compute / audio, with partials) | 1.13 | **0.50** |
+| Load time | 6.0 s | 5.6 s (0.9-3.3 s warm) |
+| RSS after load / peak (whole process) | 939 / 1075 MB | 955 / 985 MB |
+
+Notes: the old ear's name check is text-based (the list's name or alias in its words); the new one is the model's own
+link (`entity`). The first partial comes later than before (a whole-segment decode every 0.5 s instead of streaming
+partials): a 2-word barge-in is heard ~0.3 s later. The torch-free model server also drops ~440 MB of site-packages
+(torch 379 MB, transformers 59 MB) from the installer.
+
+# History: Arc v1.1 Mini (replaced)
+
+
 
 Arc is the ear by default (`EAR=arc`). One local model gives the words, the turns and the metadata. Deepgram Flux
 (cloud) remains available as an option (`EAR=deepgram`) and as the fallback when the Arc ear is down or full and a key exists.
 
-## Architecture
+## Architecture (Arc v1.1 Mini)
 
 ```
 browser mic ──PCM16 80 ms──▶ backend /ws/listen ──▶ model server WS /v1/stream?ear=arc

@@ -17,8 +17,9 @@ tools/ear_compare.py), so the backend's echo check (turn_router.echo_of against 
 Messages (the shapes the browser takes from the Deepgram Flux relay, docs/SESSION_CONTRACT.md, plus names):
   {"t":"turn","state":"start","text"}       the first non-empty partial (or the final, when no partial had words)
   {"t":"words","text","final":false}        the turn so far, written form; a later partial may revise earlier words
-  {"t":"arc", ...}                          per closed segment, BEFORE its final words: device_directed (the head's
-                                            p), directed (its thresholded flag), audio_events, speech, names, rtf
+  {"t":"arc", ...}                          per closed segment, BEFORE its final words: device_directed (the head
+                                            re-mapped onto the router's scale, app_dd), directed_head (raw), directed
+                                            (the model's own 0.5 flag), audio_events, speech, names, rtf
   {"t":"words","text","final":true,"spoken","names":[...],"tags":[...],"conf":null,"alts":[]}
                                             text = written form with linked names in the list's spelling ("Artemis
                                             II", "Apollo 12"); spoken = the model's spoken form; names = [{heard,
@@ -53,6 +54,12 @@ class EarSettings(BaseSettings):
     ear_max_turn_s: float = 15.0       # a segment this long is closed as a turn
     ear_vad_margin_db: float = 6.0
     ear_max_names: int = 40            # the names list cap (the model card: <= 30-50, most relevant first)
+    # device_directed for the app = the model's directed head, re-mapped onto the router's scale (DD_MIN 0.5 "talking
+    # to someone else" below, DD_STRONG 0.7): head EAR_DD_KNEE -> 0.5 and head EAR_DD_STRONG_AT -> 0.7. The raw head is
+    # conservative: real device-directed commands (SLURP) are >= 0.5 only 32% of the time, >= 0.05 67%, while crew talk
+    # is >= 0.05 in 11% of clips (tools/ear_compare.py). To be calibrated on real kids' sessions (docs/LOCAL_EAR.md).
+    ear_dd_knee: float = 0.05
+    ear_dd_strong_at: float = 0.5
 
 
 ear_settings = EarSettings()
@@ -82,6 +89,19 @@ def display_text(utt: dict, names: list[dict]) -> str:
         tail = "".join(c for c in toks[b][::-1] if c in ".,!?;:")[::-1] if toks[b] else ""
         toks[a:b + 1] = [n["entity"] + tail]
     return written(" ".join(t for t in toks if t))
+
+
+def app_dd(head: float | None, knee: float = 0.05, strong_at: float = 0.5) -> float | None:
+    """The directed head (0..1) on the router's scale: [0, knee] -> [0, 0.5], [knee, strong_at] -> [0.5, 0.7],
+    [strong_at, 1] -> [0.7, 1]. Monotonic, so the order of turns is kept; only where the thresholds bite moves."""
+    if head is None:
+        return None
+    h = min(1.0, max(0.0, float(head)))
+    if h <= knee:
+        return round(0.5 * h / knee, 3)
+    if h <= strong_at:
+        return round(0.5 + 0.2 * (h - knee) / (strong_at - knee), 3)
+    return round(0.7 + 0.3 * (h - strong_at) / (1 - strong_at), 3)
 
 
 class Vad:
@@ -224,7 +244,8 @@ class EarStream:
         if not self.meta_only and not self.turn_open and text:
             msgs += self._start(text)     # before the arc read: a client resets its per-turn read on "start"
         msgs.append({"t": "arc", "at": round(self.audio_s, 2),
-                     "device_directed": round(max(dh), 3) if dh else None,
+                     "device_directed": app_dd(max(dh), self.cfg.ear_dd_knee, self.cfg.ear_dd_strong_at) if dh else None,
+                     "directed_head": round(max(dh), 3) if dh else None,
                      "directed": any(dflag) if dflag else None, "command_complete": None, "speaker": None,
                      "act": top("act"), "intent": top("intent"), "utt_open": False, "speech": bool(spoken),
                      "audio_events": arcmeta.audio_events(out["events"]), "bio_events": [], "cc_events": [],
