@@ -199,7 +199,7 @@ export function initGestures(ctx = {}) {
     else card.querySelector("[data-close]").focus({ preventScroll: true });
     return true;
   }
-  function hideCard() { clearTimeout(cardT); const was = !card.hidden && card.dataset.mode === "help"; card.hidden = true; if (was) $("gxHelpBtn").focus({ preventScroll: true }); }
+  function hideCard() { clearTimeout(cardT); const was = !card.hidden && card.dataset.mode === "help"; card.hidden = true; const hb = $("gxHelpBtn"); if (was && hb && hb.isConnected && !hb.closest("[hidden]")) hb.focus({ preventScroll: true }); }   // [robustness] the button can be gone (Settings closed)
   card.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); hideCard(); } });
   $("gxHelpBtn").onclick = () => (card.hidden || card.dataset.mode !== "help" ? showCard("help") : hideCard());
   let lastKey = "";
@@ -416,6 +416,8 @@ export function initGestures(ctx = {}) {
     // Esc closes it wherever focus is (it is not a native modal: focus can wander off it)
     const onEsc = e => { if (e.key === "Escape" && calib) { e.preventDefault(); e.stopPropagation(); finish(false); } };
     addEventListener("keydown", onEsc, true);
+    // it is modal: focus that wanders out (a shortcut, a re-render behind it) comes back to it
+    dlg.addEventListener("focusout", () => setTimeout(() => { if (calib && dlg.isConnected && !dlg.contains(document.activeElement)) { const b = dlg.querySelector("[data-skip]"); if (b) b.focus({ preventScroll: true }); } }, 0));
     dlg.querySelector("[data-skip]").focus();
   }
 
