@@ -64,8 +64,17 @@ def tour(page):
     return page.evaluate(TOUR)
 
 
+_last_heard: dict = {}
+
+
 def hear(page, text):
+    # the session drops the same turn text from the same source within 1 s as a duplicate (session._dup): a real kid
+    # never says "stop" twice that fast, so keep the test's identical turns at least 1.2 s apart
+    gap = time.time() - _last_heard.get(text, 0)
+    if gap < 1.2:
+        time.sleep(1.2 - gap)
     page.evaluate("t => window.__outpost.hear(t)", text)
+    _last_heard[text] = time.time()
 
 
 def last_log(page, flow=None):
