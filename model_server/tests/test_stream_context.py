@@ -2,25 +2,22 @@
 from app.stream_context import StreamContext
 
 
-class FakeArcStream:
+class FakeMeta:
+    """An EarStream stand-in: set_names takes the list."""
+
     def __init__(self):
         self.names = None
+        self.audio_s = 3.25
 
     def set_names(self, names):
         self.names = names
-
-
-class FakeMeta:
-    def __init__(self):
-        self.s = FakeArcStream()
-        self.audio_s = 3.25
 
 
 def test_names_reach_arc_and_terms_are_recorded():
     ms, ctx = FakeMeta(), StreamContext()
     ack = ctx.update({"t": "context", "names": ["Shackleton", {"name": "Houston"}], "terms": ["mSv"],
                       "mission": {"power_pct": 72}}, ms)
-    assert ms.s.names == ["Shackleton", {"name": "Houston"}]
+    assert ms.names == ["Shackleton", {"name": "Houston"}]
     assert ack == {"t": "context_ack", "v": 1, "names": 2, "terms": 1, "names_to_arc": True, "terms_to_arc": False,
                    "topic_to_arc": False, "at_audio_s": 3.25}
     out = ctx.decorate({"t": "arc", "act": None})

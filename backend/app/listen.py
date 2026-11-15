@@ -1,8 +1,9 @@
 """Live kid speech: browser mic -> the ear (words + turns) and Arc metadata + emotion.
 
-EAR=arc (default, local): one model-server stream, ws://.../v1/stream?ear=arc, gives words, turns and metadata from Arc
-    v1.1 Mini's own decoder (model_server/app/arc_ear.py). Its messages are relayed unchanged. The lunar Tier A list
-    (keyterms.tier_a) is sent as context first; a client context frame's names/terms go in front of it.
+EAR=arc (default, local): one model-server stream, ws://.../v1/stream?ear=arc, gives words, turns, names and metadata
+    from Arc Transcriber Space (model_server/app/arc_ear.py). Its messages are relayed unchanged. The session screen's
+    NAMES LIST (names_list.py: <= 40 {"name","kind","aliases"}, most relevant first) is sent as context first and again
+    on every screen change; a client context frame's names go in front of it.
 EAR=deepgram: Deepgram Flux (cloud) for words + turns, the model-server stream for metadata only (the original path).
 If the Arc ear isn't available (model server down / full / decoder off), the session falls back to Deepgram when a
 DEEPGRAM_API_KEY is set, else sends `error` so the browser falls back to Web Speech push-to-talk.
@@ -38,7 +39,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from . import session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
-from .keyterms import base_keyterms, tier_a
+from .keyterms import base_keyterms
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -56,17 +57,17 @@ class EarSettings(BaseSettings):
 
     ear: str = "arc"               # arc | deepgram
     ear_connect_s: float = 2.0     # model server connect + {"t":"ear"} handshake
-    ear_tier_a: bool = True        # send the lunar Tier A list as Arc context at session start
-    ear_hot: bool = True           # round 7: send the session screen's hot lists ({"t":"context","hot"}) on every change
-    ear_hot_every_s: float = 0.25  # how often the relay checks the session's screen for new hot lists
+    ear_names: bool = True         # send the screen's names list ({"t":"context","names"}) at the start + on every change
+    ear_names_every_s: float = 0.25   # how often the relay checks the session's screen for a new list
 
 
 ear_settings = EarSettings()
 
 
-@lru_cache(maxsize=1)
-def tier_a_names() -> tuple[str, ...]:
-    return tuple(tier_a(Gazetteer(settings.data_dir / "places.json"), settings.data_dir / "glossary.json"))
+def default_names() -> list[dict]:
+    """Before the session is known: the Moon map's list."""
+    from .names_list import screen_names
+    return screen_names({"screen": "map"})
 
 
 @lru_cache(maxsize=1)
@@ -122,12 +123,15 @@ def context_message(d: dict) -> dict:
     return out
 
 
-def arc_context(d: dict, base: tuple[str, ...] = ()) -> dict:
-    """context_message() for the Arc ear: the client's names/terms first (what's on screen now), then the Tier A list."""
+def arc_context(d: dict, base: list | tuple = ()) -> dict:
+    """context_message() for the Arc ear: the client's names first (what's on screen now), then the screen's list.
+    A client's plain-string names become {"name": s, "kind": "place"} (the model needs a kind); capped at 40."""
     out = context_message(d)
-    if base and ("names" in out or "terms" in out):
-        seen = {str(x.get("name") if isinstance(x, dict) else x).lower() for x in out.get("names", []) + out.get("terms", [])}
-        out["names"] = (out.get("names", []) + [n for n in base if n.lower() not in seen])[:200]
+    out.pop("terms", None)        # Arc Transcriber Space has no free-term slot
+    if "names" in out:
+        mine = [x if isinstance(x, dict) else {"name": str(x), "kind": "place"} for x in out["names"]]
+        seen = {str(x.get("name")).lower() for x in mine}
+        out["names"] = (mine + [n for n in base if str(n.get("name")).lower() not in seen])[:40]
     return out
 
 
@@ -184,9 +188,9 @@ async def listen(ws: WebSocket):
 
 async def run_arc(ws: WebSocket, send, sid: dict, arc):
     """EAR=arc: audio + context to the model server's Arc ear; its words / turn / arc / emotion / context_ack back."""
-    base = tier_a_names() if ear_settings.ear_tier_a else ()
+    base = default_names() if ear_settings.ear_names else []
     if base:
-        await arc.send(json.dumps({"t": "context", "names": list(base)}))
+        await arc.send(json.dumps({"t": "context", "names": base}))
     relay = ("words", "turn", "arc", "emotion", "context_ack")
 
     async def from_arc():
@@ -198,21 +202,22 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
 
     task = asyncio.create_task(from_arc())
 
-    async def hot_loop():
-        """Round 7: the session's screen -> the ear's tiered hot lists (hotlist.py), sent whenever they change."""
-        last = None
+    async def names_loop():
+        """The session's screen -> the ear's names list (names_list.py), sent whenever it changes."""
+        nonlocal base
+        last = base
         while True:
             with contextlib.suppress(Exception):
                 s = sessions.get(sid["id"], create=False) if sid["id"] else None
-                hot = s.hot_words() if s is not None else None
-                if hot is not None and hot != last:
-                    await arc.send(json.dumps({"t": "context", "hot": hot}))
-                    last = hot
-            await asyncio.sleep(ear_settings.ear_hot_every_s)
+                names = s.ear_names() if s is not None else None
+                if names and names != last:
+                    await arc.send(json.dumps({"t": "context", "names": names}))
+                    last = base = names
+            await asyncio.sleep(ear_settings.ear_names_every_s)
 
-    hot_task = asyncio.create_task(hot_loop()) if ear_settings.ear_hot else None
+    hot_task = asyncio.create_task(names_loop()) if ear_settings.ear_names else None
     await send({"t": "ready"})
-    await send({"t": "ear", "ear": "arc", "model": "arc-v1.1 mini"})
+    await send({"t": "ear", "ear": "arc", "model": "arc-transcriber-space nft2"})
     try:
         while True:
             msg = await ws.receive()

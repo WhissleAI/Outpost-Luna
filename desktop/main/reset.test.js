@@ -11,9 +11,9 @@ const WIN = "C:\\Users\\kid\\AppData\\Roaming\\Outpost Luna";
 
 test("plan: Start over deletes the spoken-line cache and the turn log only; Reset everything the whole cache and hf", () => {
   assert.deepStrictEqual(R.plan("start", MAC, "darwin").delete, [`${MAC}/cache/tts`, `${MAC}/cache/turnlog`]);
-  assert.deepStrictEqual(R.plan("all", MAC, "darwin").delete, [`${MAC}/cache`, `${MAC}/hf`]);
+  assert.deepStrictEqual(R.plan("all", MAC, "darwin").delete, [`${MAC}/cache`, `${MAC}/hf`, `${MAC}/assets`]);
   assert.deepStrictEqual(R.plan("start", WIN, "win32").delete, [`${WIN}\\cache\\tts`, `${WIN}\\cache\\turnlog`]);
-  assert.deepStrictEqual(R.plan("all", WIN, "win32").delete, [`${WIN}\\cache`, `${WIN}\\hf`]);
+  assert.deepStrictEqual(R.plan("all", WIN, "win32").delete, [`${WIN}\\cache`, `${WIN}\\hf`, `${WIN}\\assets`]);
   for (const [u, p] of [[MAC, "darwin"], [WIN, "win32"]]) for (const lv of R.LEVELS) {
     const pl = R.plan(lv, u, p);
     assert.ok(pl.delete.every((d) => !/logs|ports\.json|children\.json/.test(d)), "never the logs, ports or pid file");
@@ -78,5 +78,18 @@ for (const platform of ["darwin", "win32"]) {
     const bad = await R.performReset({ level: "all", token: "t4" }, g.deps);
     assert.ok(bad.done && bad.failed.length === 1 && /EBUSY/.test(bad.failed[0]));
     assert.ok(g.calls.includes("relaunch") && g.calls.includes("exit 0"));
+  });
+
+  test(`performReset (${platform}): Reset everything clears the first-run downloads (assets.clearAll), after the children stop`, async () => {
+    const f = fakes(platform, { confirmLevel: "all" });
+    f.deps.clearAssets = () => { f.calls.push("clearAssets"); return 7; };
+    const out = await R.performReset({ level: "all", token: "t5" }, f.deps);
+    assert.ok(out.done && out.deleted.includes("assets (7 entries)"));
+    const order = f.calls.filter((c) => !c.startsWith("log")).map((c) => c.split(" ")[0]);
+    assert.ok(order.indexOf("stop") < order.indexOf("clearAssets"), order.join(","));
+    const g = fakes(platform);                              // Start over never touches the downloads
+    g.deps.clearAssets = () => { g.calls.push("clearAssets"); return 1; };
+    await R.performReset({ level: "start", token: "t6" }, g.deps);
+    assert.ok(!g.calls.includes("clearAssets"));
   });
 }

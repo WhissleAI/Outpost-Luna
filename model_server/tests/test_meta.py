@@ -1,4 +1,5 @@
-"""Arc v1.1 Mini audio metadata: POST /v1/meta and WS /v1/stream. Skips when the weights or crew clips are missing."""
+"""Arc Transcriber Space metadata: POST /v1/meta and WS /v1/stream (metadata-only). Skips when the model, libarc or the
+crew clips are missing (real crew audio: the model is trained to ignore synthetic TTS)."""
 import io
 import json
 import time
@@ -20,7 +21,7 @@ CLIP_S = 30
 def client():
     with TestClient(app) as c:
         if not c.get("/health").json()["models"]["arc_meta"]["loaded"]:
-            pytest.skip(f"Arc v1.1 Mini not loaded: {arcmeta.STATE['error']}")
+            pytest.skip(f"Arc Transcriber Space not loaded: {arcmeta.STATE['error']}")
         yield c
 
 
@@ -45,7 +46,7 @@ def clip():
 
 def test_health_lists_models_and_rss(client):
     h = client.get("/health").json()
-    assert h["models"]["arc_meta"]["model"] == "arc-v1.1 mini"
+    assert h["models"]["arc_meta"]["model"] == arcmeta.MODEL and h["models"]["arc_ear"]["backend"].startswith("onnxruntime")
     assert h["models"]["emotion"]["enabled"] is False and h["models"]["emotion"]["reason"]
     assert h["rss_mb"]["now"] > 0
 
@@ -71,7 +72,9 @@ def test_meta_whole_clip(client, clip):
     for u in us:
         assert {"t0", "t1", "speaker", "act", "intent", "device_directed", "audio_events", "bio_events", "awe"} <= set(u)
         assert u["t0"] <= u["t1"] and 0 <= u["awe"] <= 1
-    assert any(u["act"] for u in us)
+    assert all(u["device_directed"] is not None for u in us)
+    assert sum(bool(u["transcript"]) for u in us) >= 3              # the model's own words, per utterance
+    assert max(u["device_directed"] for u in us) < 0.5              # the crew talk to each other, not to a device
     assert max(u["awe"] for u in us) >= 0.5         # "that looks cool!", "There's some lofted dust!"
 
 
@@ -101,9 +104,10 @@ def test_stream(client, clip):
         wall = time.perf_counter() - t
     arc = [m for m in got if m["t"] == "arc"]
     assert arc and wall < 12
-    assert any(m["device_directed"] is not None for m in arc)
-    assert any(m["speaker"] for m in arc)
-    assert {"command_complete", "device_directed", "speaker", "audio_events", "bio_events"} <= set(arc[-1])
+    assert any(m["device_directed"] is not None for m in arc) and any(m["speech"] for m in arc)
+    assert not [m for m in got if m["t"] in ("words", "turn")]      # metadata only
+    assert arc[-1]["final"] is True
+    assert {"command_complete", "device_directed", "speaker", "audio_events", "bio_events", "names"} <= set(arc[0])
 
 
 def test_stream_admission_cap(client, monkeypatch):

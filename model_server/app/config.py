@@ -32,7 +32,7 @@ def hf_snapshot(repo: str, has: str, prefer: str | None = None) -> Path | None:
 class Settings(BaseSettings):
     """Model server settings. Read from the environment, then ../.env (shared with the backend).
 
-    Every weight path can be set by env var (ARCTAG_LIB, ARCTAG_MODEL_DIR; ARC_META_WEIGHTS
+    Every weight path can be set by env var (ARCTAG_LIB, ARCTAG_MODEL_DIR; ARC_SPACE_DIR and ARC_LIB
     in arcmeta.py; EMBED_MODEL_DIR in embed.py; STEER_TTS_MODEL, STEER_DIRECTOR for the optional Steer engine). The desktop app sets all of them to its bundled copies (docs/DESKTOP.md);
     the defaults below are the developer checkout's (`make dev`)."""
 

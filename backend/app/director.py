@@ -212,11 +212,31 @@ def _bridge(m: dict) -> str:
 
 
 def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, list[tuple[Place, float]]]:
-    """-> (place, how, ask_candidates). ask_candidates is set when the fuzzy link is in the ask band."""
+    """-> (place, how, ask_candidates). ask_candidates is set when the fuzzy link is in the ask band.
+
+    The ear's names come first (read["ear_names"], Arc Transcriber Space linking what was said to the screen's names
+    list): `linked` -> that entry's place; `abstain` (unsure, or only generic words) -> the gazetteer's candidates for
+    what was heard, asked as "did you mean ...?" when two are close; `not_in_list` -> what was heard is searched in the
+    whole gazetteer, like an Arc Tagger mention."""
+    ear = [n for n in read.get("ear_names") or [] if isinstance(n, dict)]
+    for n in ear:
+        if n.get("state") == "linked" and n.get("entity"):
+            p = gaz.match_text(n["entity"])
+            if p:
+                return p, "ear_link", []
     p = gaz.match_text(target)
     if p:
         return p, "alias", []
-    mentions = [m for m in read.get("mentions", []) if norm(m) and norm(m) in target]
+    for n in ear:
+        h = norm(n.get("heard") or "")
+        if n.get("state") == "abstain" and h:
+            cands = [c for c in gaz.candidates(h) if c[1] >= ASK_LO]
+            if len(cands) >= 2:
+                return None, "ask", cands[:2]
+            if cands and cands[0][1] >= ACCEPT:
+                return cands[0][0], "ear_heard", []
+    mentions = [norm(n["heard"]) for n in ear if n.get("state") == "not_in_list" and norm(n.get("heard") or "")]
+    mentions += [m for m in read.get("mentions", []) if norm(m) and norm(m) in target]
     if not read.get("available"):  # no Arc: fuzzy the longer words of the text itself
         mentions += [w for w in target.split() if len(w) >= 5]
     for m in mentions:
