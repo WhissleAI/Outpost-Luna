@@ -26,7 +26,7 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 MAX_STEP = 48
-SCHEMA = 4                   # bump when the way the lists are built changes (it is part of the version)
+SCHEMA = 5                   # bump when the way the lists are built changes (it is part of the version)
 MAX_SCREEN = 260
 MAX_NAMES = 320               # the Moon screens and the picker: every place, crew member and piece of hardware
 
@@ -46,6 +46,10 @@ NAV = ["next", "start", "go back", "go to the map", "patch map", "go to mission"
        "say that again", "slower", "faster", "skip tour", "show me around"]
 HELP = ["help", "what do I do", "what can I say", "where am I", "I'm stuck", "give me a hint", "voice bar",
         "move the voice bar", "reset the voice bar"]
+VIDEO_WORDS = ["pause", "play", "stop", "skip", "watch", "skip the video", "pause the video", "play the video",
+               "stop the video", "keep going"]
+PREP_WORDS = ["done", "skip", "wait", "hold on", "help", "flour", "flashlight", "cookie", "marble", "bowl", "crater",
+              "ejecta", "regolith", "phases", "eclipse", "feather", "hammer", "gravity", "dust"]
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]           # session.CALLSIGNS (frontend story.js)
 CREW_NOW = ["Reid Wiseman", "Victor Glover", "Christina Koch", "Jeremy Hansen", "CAPCOM", "Houston"]
@@ -88,7 +92,8 @@ def source_hash() -> str:
     for f in SOURCES:
         p = DATA / f
         h.update(p.read_bytes() if p.exists() else b"")
-    h.update(json.dumps([SCHEMA, ORDERS, ORDER_WORDS, PANELS, NAV, HELP, CALLSIGNS, CREW_NOW]).encode())   # + the lists kept here
+    h.update(json.dumps([SCHEMA, ORDERS, ORDER_WORDS, PANELS, NAV, HELP, CALLSIGNS, CREW_NOW, VIDEO_WORDS,
+                         PREP_WORDS]).encode())   # + the lists kept here
     return h.hexdigest()[:12]
 
 
@@ -168,8 +173,9 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += _bias_words(step_vocab(step, list(fr.get("step_options") or []), aliases=False))
         wide += V["lessons"].get(fr.get("lesson_id") or "", []) + V["places"] + V["glossary"] + V["crew"] + \
             V["hardware"][:40]
-    elif screen == "video":      # the video overlay (docs/MEDIA.md): its four controls only
-        st += ["pause", "play", "skip", "stop"]
+    elif screen == "video":      # the video overlay (docs/MEDIA.md): its four controls first, then round 8's phrasings
+        st += ["pause", "play", "skip", "stop"] + [w for w in VIDEO_WORDS if w not in ("pause", "play", "skip", "stop")]
+        wide += V["places"] + V["crew"]
     elif screen == "cabin":
         st += V["orders"] + V["panels"] + V["sites"]
         wide += ORDER_WORDS + V["places"] + V["crew"] + V["hardware"][:60] + V["glossary"]
@@ -181,8 +187,11 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
         st += V["callsigns"] + ["call me", "surprise me", "you pick"]
         wide += V["crew"]
     elif screen == "debrief":
-        st += ["fly again", "another site"] + V["sites"]
+        st += ["fly again", "another site", "learn more"] + V["sites"]
         wide += V["orders"] + V["places"]
+    elif screen == "prep":        # round 8 (feat/learning-v1): the hands-on Mission prep tasks
+        st += PREP_WORDS
+        wide += V["glossary"]
     else:          # the Moon screens: map, patch, lesson_done, library -> the whole gazetteer and the hardware
         # Names ARE what these screens are about: places, crew and hardware get their own strong tier here (round-7
         # ear eval: name recall 0.47 -> 0.60 with the strong weights vs 0.49 with the light screen ones)

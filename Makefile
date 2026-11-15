@@ -122,6 +122,15 @@ director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate 
 	python3 director_model/loop.py gate --run $(DL_RUN) --data $(DM_DATA) --export; st=$$?; test $$st = 0 -o $$st = 3
 	cd backend && uv run pytest -q tests/test_director_model.py tests/test_director_loop.py
 
+director-r8: ## Round 8 end to end: coverage inventory -> real-ear decodes (kids, OS-voice / Nora echo, video audio) -> generate (+ coverage sweep) -> train m + xl -> evaluate -> gate (unmerged features report only). No export. docs/DIRECTOR_COVERAGE.md
+	MS_PORT=$(or $(MS_PORT),8298) PROCS=$(or $(PROCS),3) bash director_model/run_r8.sh
+
+director-coverage: ## Rebuild director_model/coverage.json (the capability x flow inventory) and print the summary
+	uv run --project backend python director_model/coverage.py
+
+director-collect: ## The collection kit: one guided, consented, local recording session (docs/DIRECTOR_COLLECTION.md); OUT=folder
+	python3 director_model/collect.py --out $(or $(OUT),~/Desktop/director_sessions)
+
 # ---- Desktop app (docs/DESKTOP.md): one offline installer, Electron + embedded Python + every model ----
 desktop-python:  ## Desktop: embedded CPython + backend/model-server deps + app code -> desktop/resources
 	uv run --no-project python desktop/scripts/build_python.py

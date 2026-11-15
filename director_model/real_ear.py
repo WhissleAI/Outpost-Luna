@@ -142,6 +142,22 @@ def cmd_jobs(a):
         for v in APP_VOICES:
             add("app", line, var=APP_VOICES.index(v), voice=v, frame={"screen": "cabin"})
     print(f"round 6 class + app-voice jobs: {len(new) - n0}", flush=True)
+    # round 8 (pools_r8.py): the new classes' kid turns in their screens, the app's lines in the OS voices / the Nora
+    # pack through the speaker (group app_os), the video's narration and music leaking into the mic (group video)
+    n0 = len(new)
+    for ci, cls in enumerate(G.R8_CLASSES):
+        for it in G.class_set_items(cls, a.cls_n, 995_000 + 1000 * ci):
+            au = it.get("audio") or {}
+            if au.get("kind") == "os_voice":
+                for v in range(2):
+                    add("app_os", au["line"], var=v, frame=it.get("frame"))
+                    have[key_of("app_os", au["line"] + "#" + frame_key(it.get("frame")), v)]["audio"] = au
+            elif au.get("kind") in ("file", "music"):
+                add("video", it["text"], frame=it.get("frame"))
+                have[key_of("video", it["text"] + "#" + frame_key(it.get("frame")), 0)]["audio"] = au
+            elif it.get("text"):
+                add("test", it["text"], frame=it.get("frame") or {"screen": "cabin"})
+    print(f"round 8 class / OS-voice / video jobs: {len(new) - n0}", flush=True)
     with open(JOBS, "a") as f:
         for j in new:
             f.write(json.dumps(j) + "\n")
@@ -160,16 +176,27 @@ def iter_audio(jobs):
 
     import numpy as np
     from scipy.signal import fftconvolve, resample_poly
-    from steertts_edge import OnnxTTS
-    d = glob.glob(str(Path.home() / ".cache/huggingface/hub/models--WhissleAI--steer-tts-edge/snapshots/*/"))[0]
-    tts = OnnxTTS.from_pretrained(d)
-    tsr = int(getattr(tts, "sample_rate", 0) or 24000)
-    by_f0 = sorted(tts.voices, key=lambda v: -tts.voice_stats(v)["f0_med"])
+    import render_r8
+    try:     # Steer TTS Edge: the kid voices (feat/os-voices removes it: then the OS voices, pitched up, stand in)
+        from steertts_edge import OnnxTTS
+        d = glob.glob(str(Path.home() / ".cache/huggingface/hub/models--WhissleAI--steer-tts-edge/snapshots/*/"))[0]
+        tts = OnnxTTS.from_pretrained(d)
+    except Exception:  # noqa: BLE001
+        tts = None
+    tsr = int(getattr(tts, "sample_rate", 0) or 24000) if tts else SR
+    by_f0 = sorted(tts.voices, key=lambda v: -tts.voice_stats(v)["f0_med"]) if tts else []
     groups = {"test": [v for i, v in enumerate(by_f0) if i % 5 == 0], "val": [v for i, v in enumerate(by_f0) if i % 5 == 1],
               "train": [v for i, v in enumerate(by_f0) if i % 5 > 1]}
     bab_pool: list = []
     for j in jobs:
         rng = np.random.default_rng(j["seed"])
+        if j.get("audio") or tts is None:          # round 8: OS voices / the voice pack / NASA audio / music
+            x, meta = render_r8.render(j if j.get("audio") else {**j, "audio": {"kind": "say_kid"}}, rng)
+            if x is None:
+                print("render skip", j["text"][:40], meta, flush=True)
+                continue
+            yield j, (np.clip(x, -1, 1) * 32767).astype("<i2").tobytes(), meta
+            continue
         if j.get("voice") in tts.voices:       # the app's own voice (echo): as the app says it, no kid jitter
             v, vi, ctrl = j["voice"], -1, {}
         else:
