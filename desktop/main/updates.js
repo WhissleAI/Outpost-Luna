@@ -223,7 +223,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
       throw new Error(`${r.id}: update sha256 mismatch (refused)`);
     }
     const tmp = path.join(pendDir, r.id + ".unpack");
-    await fsp.rm(tmp, { recursive: true, force: true });
+    await fsp.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.mkdir(tmp, { recursive: true });
     await AS.extractTar(part, tmp);
     for (const f of r.files || []) {
@@ -231,7 +231,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
       if (!s || s.size !== f.size) throw new Error(`${r.id}: ${f.path} missing or wrong size in the update`);
     }
     const dst = path.join(pendDir, r.id);
-    await fsp.rm(dst, { recursive: true, force: true });
+    await fsp.rm(dst, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.rename(tmp, dst);
     await fsp.writeFile(path.join(pendDir, r.id + ".json"), JSON.stringify(r));
     await fsp.rm(part, { force: true });
@@ -266,7 +266,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
         if (!fs.existsSync(src) || !appCompatible(r, appVersion)) throw new Error("not applicable");
         const home = store.home(id), prev = path.join(prevDir, id);
         fs.mkdirSync(prevDir, { recursive: true });
-        fs.rmSync(prev, { recursive: true, force: true });
+        fs.rmSync(prev, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
         if (fs.existsSync(home)) AS.renameRetrySync(home, prev);
         AS.renameRetrySync(src, home);
         const s = readState();
@@ -278,7 +278,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
         log(`assets: swapped in ${id} v${r.version || "?"} (previous kept for rollback)`);
       } catch (e) {
         log(`assets: staged ${id} dropped (${e.message})`);
-        fs.rmSync(src, { recursive: true, force: true });
+        fs.rmSync(src, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
         fs.rmSync(metaPath, { force: true });
       }
     }
@@ -298,10 +298,10 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
       return false;
     }
     const bad = path.join(dir, `.failed-${id}`);
-    fs.rmSync(bad, { recursive: true, force: true });
+    fs.rmSync(bad, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (fs.existsSync(home)) AS.renameRetrySync(home, bad);
     AS.renameRetrySync(prev, home);
-    fs.rmSync(bad, { recursive: true, force: true });
+    fs.rmSync(bad, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     s._rejected = s._rejected || {};
     s._rejected[id] = [...new Set([...(s._rejected[id] || []), cur.sha256])];
     s[id] = cur.prev;
@@ -322,7 +322,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
         const s = readState();
         delete s[id].trial; delete s[id].prev;
         writeState(s);
-        fs.rmSync(path.join(prevDir, id), { recursive: true, force: true });
+        fs.rmSync(path.join(prevDir, id), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
         kept.push(id);
         log(`assets: update ${id} v${s[id].version} confirmed`);
       } else if (rollback(id, "failed its load check")) rolled.push(id);

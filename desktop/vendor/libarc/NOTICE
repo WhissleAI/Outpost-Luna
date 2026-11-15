@@ -12,7 +12,9 @@ Local changes for Outpost Luna (desktop/vendor/libarc):
   Python onnxruntime wheel's libonnxruntime / onnxruntime.dll), set with arc_ort_set_library() or ARC_ORT_LIB, so
   libarc links no ONNX Runtime and the installer carries one copy of it. The C API version used is 23 (ONNX Runtime
   1.23 headers); newer runtimes serve older API versions.
-- compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c.
+- compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c, and arc_u8io.h / arc_u8io.c
+  (force-included on Windows): fopen / open / rename / remove take UTF-8 paths through _wfopen / _wopen (binary) /
+  MoveFileExW / _wremove, so a model folder under a non-ASCII user name opens.
 
 third_party/onnxruntime/include: ONNX Runtime 1.23.2 C API headers (Microsoft, MIT License, third_party/onnxruntime/LICENSE).
 

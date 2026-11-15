@@ -69,3 +69,23 @@ def test_health_memory_probe_works_without_posix_resource_module(monkeypatch):
 
     monkeypatch.setattr(sys, "platform", "linux")   # any failure is swallowed, never raised
     assert main._rss_mb()["now"] > 0
+
+
+def test_windows_ear_finds_the_onnxruntime_wheels_dll(monkeypatch, tmp_path):
+    """libarc (the ear) loads ONNX Runtime by path: on Windows it is onnxruntime.dll in the wheel's capi folder."""
+    import importlib.util
+    import types
+
+    import app.nft2 as nft2
+    pkg = tmp_path / "C" / "Users" / "Zoë" / "Outpost Luna" / "resources" / "site" / "models" / "onnxruntime"
+    (pkg / "capi").mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "capi" / "onnxruntime.dll").write_bytes(b"MZ")
+    (pkg / "capi" / "libonnxruntime.1.23.2.dylib").write_bytes(b"x")    # the other OS's name must not be picked
+    monkeypatch.delenv("ARC_ORT_LIB", raising=False)
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: types.SimpleNamespace(origin=str(pkg / "__init__.py")))
+    monkeypatch.setattr(sys, "platform", "win32")
+    got = nft2.ort_library()
+    assert got == pkg / "capi" / "onnxruntime.dll"
+    # the path crosses into C as UTF-8; libarc's Windows shim (compat/win/arc_u8io.h) and ort_loader.c widen it
+    assert str(got).encode() == str(got).encode("utf-8") and "Zoë".encode() in str(got).encode()

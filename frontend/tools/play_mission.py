@@ -18,6 +18,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import sys
 import time
 
@@ -93,7 +94,8 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
             nonlocal shots_taken
             if shots and shots_taken < 40:
                 shots_taken += 1
-                pg.screenshot(path=os.path.join(shots, f"{tag}-{shots_taken:02d}-{name}.jpg"), type="jpeg", quality=60, timeout=300000)
+                safe = re.sub(r'[<>:"/\\|?*]', "", name)   # a valid file name on Windows too (git can't check out "?")
+                pg.screenshot(path=os.path.join(shots, f"{tag}-{shots_taken:02d}-{safe}.jpg"), type="jpeg", quality=60, timeout=300000)
 
         click(pg, "#mStart")
         pg.wait_for_selector(".cb-now, .m-tour", timeout=60000)
