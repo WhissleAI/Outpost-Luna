@@ -43,6 +43,15 @@ backend:         ## Run only the backend
 frontend:        ## Run only the frontend dev server
 	cd frontend && npm run dev
 
+voice-pack-lines: ## Voice pack: inventory every fixed line -> backend/data/voice_pack/lines.json (+ lines_live.md)
+	cd backend && uv run python tools/voice_pack_lines.py
+
+voice-pack:      ## Voice pack: record missing/changed lines with the macOS System voice (must be Siri Voice 1; docs/VOICE_PACK.md)
+	cd model_server && uv run python tools/voice_pack_record.py
+
+voice-pack-check: ## Voice pack: list manifest lines without a clip (exit 1 if any)
+	python3 backend/tools/voice_pack_check.py
+
 test:            ## Run all tests
 	cd model_server && uv run pytest -q
 	cd backend && uv run pytest -q
@@ -138,4 +147,4 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

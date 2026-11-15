@@ -118,18 +118,50 @@ def test_repeated_lines_come_from_memory(client):
     assert a.content == b.content and b.headers["x-tts-memo"] == "hit" and len(client.engine.calls) == n + 1
 
 
-def test_voice_pack_seam_is_asked_first(client, monkeypatch):
+def test_voice_pack_answers_only_when_asked_at_1x_in_the_guide_voice(client, monkeypatch):
     asked = []
 
-    def pack(voice, key, factor):
-        asked.append((voice, key))
-        return tone_wav(0.8, sr=22050) if key == "all clear commander" else None
+    def pack(key):
+        asked.append(key)
+        pcm = ov.read_wav(tone_wav(0.8, sr=22050))[0]
+        return {"pcm": pcm, "sr": 22050, "words": "10-200,220-400,420-700", "voice": "com.apple.siri.natural.Nora",
+                "voice_name": "Siri Voice 1 (Nora)"} if key == "all clear commander" else None
     monkeypatch.setattr(tts_os, "PACK_LOOKUP", pack)
     n = len(client.engine.calls)
-    r = client.post("/v1/tts", json={"text": "All clear, *Commander*."})
+    r = client.post("/v1/tts", json={"text": "All clear, *Commander*.", "pack": True})
     assert r.status_code == 200 and r.headers["x-tts-engine"] == "pack" and len(client.engine.calls) == n
-    client.post("/v1/tts", json={"text": "Something new."})
-    assert len(client.engine.calls) == n + 1 and asked[0] == ("com.apple.voice.Tara.premium", "all clear commander")
+    assert r.headers["x-tts-words"] == "10-200,220-400,420-700" and r.headers["x-tts-voice-name"] == "Siri Voice 1 (Nora)"
+    assert abs(len(pcm(r.content)[0]) / SR - 0.8) < 0.01
+    nx = client.post("/v1/tts", json={"text": "All clear, Commander.", "pack": True, "perform": {"next": "Go."}})
+    assert len(pcm(nx.content)[0]) - len(pcm(r.content)[0]) == int(SR * tts_os.TAIL_S)   # the end gap, as live
+    for body in ({"text": "All clear, Commander."},                                    # not asked for
+                 {"text": "All clear, Commander.", "pack": True, "pace": 1.25},        # the kid's pace: live
+                 {"text": "All clear, Commander.", "pack": True, "voice": "capcom"},   # not the guide's voice
+                 {"text": "All clear, Commander.", "pack": True, "controls": {"pause": 0.6}}):   # slow line
+        assert client.post("/v1/tts", json=body).headers["x-tts-engine"] == "say"
+    client.post("/v1/tts", json={"text": "Something new.", "pack": True})
+    assert asked[-1] == "something new" and client.engine.calls[-1][0] == ["Something new."]
+
+
+def test_voice_pack_module_reads_a_fixture_pack(tmp_path, monkeypatch):
+    import json
+    import soundfile as sf
+    from app import voice_pack as vp
+    (tmp_path / "clips").mkdir()
+    x = ov.read_wav(tone_wav(1.2, sr=22050))[0]
+    sf.write(str(tmp_path / "clips/a.mp3"), x, 22050, format="MP3", subtype="MPEG_LAYER_III")
+    (tmp_path / "index.json").write_text(json.dumps({"voice": "com.apple.siri.natural.Nora", "voice_name": "Nora",
+                                                     "clips": {"ready": {"file": "clips/a.mp3", "words": "0-500"},
+                                                               "gone": {"file": "clips/missing.mp3"}}}))
+    monkeypatch.setattr(settings, "voice_pack_dir", tmp_path)
+    monkeypatch.setattr(settings, "voice_pack", "on")
+    vp.STATE["mtime"] = None
+    hit = vp.lookup("ready")
+    assert hit["sr"] == 22050 and abs(len(hit["pcm"]) / 22050 - 1.2) < 0.06 and hit["words"] == "0-500"
+    assert vp.lookup("gone") is None and vp.lookup("nope") is None
+    assert vp.health()["voice_pack"]["clips"] == 2
+    monkeypatch.setattr(settings, "voice_pack", "off")
+    assert vp.lookup("ready") is None
 
 
 def test_voices_list_roles_and_health(client):
@@ -171,13 +203,41 @@ def test_say_command_line_rate_pauses_and_system_voice(monkeypatch):
     monkeypatch.setattr(tts_os.shutil, "which", lambda n: "/usr/bin/say")
     monkeypatch.setattr(tts_os.subprocess, "run", run)
     e = tts_os.SayEngine()
+    monkeypatch.setattr(e, "native_wpm", lambda v: 180.0)                      # the voice's measured own rate
     x, sr, cues, info = e.render(["One.", "Two."], "com.apple.voice.Tara.premium", 1.2, 300, False)
     cmd, text = calls[-1]
     assert cmd[:3] == ["say", "-v", "com.apple.voice.Tara.premium"] and cmd[cmd.index("-r") + 1] == str(info["wpm"])
-    assert info["wpm"] == round(settings.os_tts_wpm * 1.2) and f"--data-format=LEI16@{SR}" in cmd
+    assert info["wpm"] == round(180 * 1.2) and f"--data-format=LEI16@{SR}" in cmd   # relative to the native rate
     assert text == b"One. [[slnc 300]] Two." and sr == SR and cues is None
     e.render(["Hi."], ov.SYSTEM_ID, 1.0, 0, False)
     assert "-v" not in calls[-1][0]                                            # the system voice: no -v at all
+
+
+def test_no_rate_flag_at_1x_pace(monkeypatch):
+    """At the kid's 1x pace (and small persona / situation nudges) `say` gets no -r: the voice's own rate and phrasing.
+    A forced rate made Siri sound processed (4.06 s vs its own 5.0 s on a sample line)."""
+    calls = []
+
+    def run(cmd, **kw):
+        calls.append(cmd)
+        open(cmd[cmd.index("-o") + 1], "wb").write(tone_wav(1.0))
+        return types.SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(tts_os.shutil, "which", lambda n: "/usr/bin/say")
+    monkeypatch.setattr(tts_os.subprocess, "run", run)
+    e = tts_os.SayEngine()
+    for f in (1.0, ov.rate_factor({}, 1.0), ov.rate_factor({"rate": 0.3}, 1.0), ov.rate_factor({"rate": -0.2}, 1.0)):
+        _, _, _, info = e.render(["Hello there."], ov.SYSTEM_ID, f, 0, True)
+        assert "-r" not in calls[-1] and info["wpm"] == "native"
+    e.render(["Hello there."], ov.SYSTEM_ID, ov.rate_factor({}, 1.5), 0, False)   # the kid's 1.5x: relative -r
+    assert "-r" in calls[-1]
+    assert calls[-2][calls[-2].index("-o") + 1] != calls[-1][calls[-1].index("-o") + 1]
+
+
+def test_negative_pause_never_tightens(client):
+    client.post("/v1/tts", json={"text": "One, two. Three.", "controls": {"pause": -1.5}})
+    _, _, factor, pause = client.engine.calls[-1]
+    assert pause == 0 and factor == 1.0
 
 
 def test_system_voice_pref_read_and_made_the_default(monkeypatch):

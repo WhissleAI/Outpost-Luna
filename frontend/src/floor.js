@@ -129,13 +129,20 @@ function bargeThresholds() {
   const f = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter;
   return BARGE[f] || BARGE.normal;
 }
+/** The voice pack may speak fixed lines: Settings' toggle is on and no other voice was picked (the default voice picked
+ *  explicitly still counts as the default). Mirrors backend/app/steering.py pack_allowed. */
+export function packAllowed(P, def = typeof window !== "undefined" && window.__outpost ? window.__outpost.defaultVoice : "") {
+  if (!P || P.pack === false) return !P;
+  return !P.voice || P.voice === def;
+}
 /** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen OS voice
  *  (for the guide, or every voice when "use for everyone" is on), the speed and the liveliness. */
 export function prefStyle(style, voice, speed) {
   const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
   if (!P) return style;
   const out = { ...(style && typeof style === "object" ? style : {}) };
-  if (P.voice && (P.voice_all || voice === "guide")) out.tts_voice = P.voice;   // CAPCOM, Houston and the story keep their own voices unless voice_all
+  if (P.voice && (P.voice_all || voice !== "houston")) out.tts_voice = P.voice;   // guide, CAPCOM and the story together; Houston keeps its own unless voice_all
+  if (!packAllowed(P)) out.pack = false;   // the recorded guide voice for fixed lines (docs/VOICE_PACK.md)
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;
   if (P.volume != null && Math.abs(P.volume - 1) > 1e-3) out.volume = P.volume;

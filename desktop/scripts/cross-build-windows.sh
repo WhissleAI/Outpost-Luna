@@ -57,6 +57,7 @@ step "3/8 frontend dependencies"
 (cd frontend && npm ci --no-audit --no-fund && node tools/fetch_vision.mjs)
 
 step "4/8 embedded Python for Windows + win_amd64 packages + VC++ runtime + app code (frontend build included)"
+uv run --no-project python backend/tools/voice_pack_check.py --allow-empty   # the voice pack ships to Windows too
 uv run --no-project python desktop/scripts/build_python.py --target win-x64
 
 step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"

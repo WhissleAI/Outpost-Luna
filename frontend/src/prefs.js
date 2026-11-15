@@ -7,8 +7,9 @@
 // the other cadet's, and reloads the app (so every module starts clean).
 
 export const PREF_DEFAULTS = Object.freeze({
-  voice: "",                 // "" = the default CAPCOM voice; else an id from GET /api/voices
-  voice_all: false,          // true = every voice (CAPCOM, Houston, the story) uses the chosen voice
+  voice: "",                 // "" = the default voice (guide, CAPCOM and the story); else an id from GET /api/voices
+  voice_all: false,          // true = Houston uses the chosen voice too
+  pack: true,                // "Use the recorded guide voice for story lines": the voice pack (docs/VOICE_PACK.md)
   expressiveness: 0.5,       // 0 calm … 1 lively
   volume: 1,                 // master, 0–2 (1 = 100% = the −14 LUFS target): sent to the server; crew audio follows it here
   alarms: 1,                 // alarm chimes
@@ -45,6 +46,7 @@ export function normalizePrefs(x) {
   pick("listen", ["handsfree", "ptt"]); pick("filter", ["relaxed", "normal", "strict"]); pick("theme", ["system", "light", "dark"]);
   pick("graphics", ["high", "low"]); pick("level", ["cadet", "commander"]);
   if (typeof s.voice_all === "boolean") o.voice_all = s.voice_all;
+  o.pack = s.pack !== false;          // on unless explicitly turned off
   o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
   return o;
 }
@@ -82,7 +84,7 @@ export function createPrefs({ globe = null } = {}) {
     dispatchEvent(new CustomEvent("outpost:prefs", { detail: P }));
   }
   /** What the session needs (main.js sends it on the socket). */
-  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, rate: Math.max(0.6, Math.min(1.6, rate)),
+  const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false, rate: Math.max(0.6, Math.min(1.6, rate)),
     volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true });
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
@@ -94,6 +96,7 @@ export function createPrefs({ globe = null } = {}) {
     if (voices) return voices;
     try { const r = await fetch("/api/voices"); voices = r.ok ? (await r.json()) : []; if (!Array.isArray(voices)) voices = voices.voices || []; }
     catch (e) { voices = []; }
+    try { (window.__outpost = window.__outpost || {}).defaultVoice = (voices[0] && voices[0].id) || ""; } catch (e) { /* tests */ }
     return voices;
   }
   loadVoices().then(vs => {

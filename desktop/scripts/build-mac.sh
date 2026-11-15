@@ -70,6 +70,8 @@ step "3/8 frontend dependencies"
 (cd frontend && npm ci --no-audit --no-fund && node tools/fetch_vision.mjs)   # + camera-gesture runtime/models (sha256-pinned)
 
 step "4/8 embedded Python + backend/model-server deps + app code (frontend build included)"
+# the recorded voice pack (backend/data/voice_pack, docs/VOICE_PACK.md) ships inside the app code: every line needs a clip
+uv run --no-project python backend/tools/voice_pack_check.py --allow-empty
 uv run --no-project python desktop/scripts/build_python.py
 
 step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"

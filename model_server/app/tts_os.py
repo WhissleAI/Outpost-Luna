@@ -1,8 +1,9 @@
 """Speech from the operating system's own offline voices, behind the model server: POST /v1/tts, GET /v1/tts/voices.
 
 Engines (OS_TTS_ENGINE=auto picks the first that works on this machine):
-    say     macOS: /usr/bin/say renders to a temp WAV (24 kHz mono 16-bit); rate from the kid's pace (`-r` words/min),
-            extra sentence pauses as `[[slnc ms]]`. Word timings are estimated (os_voices.estimate_timings).
+    say     macOS: /usr/bin/say renders to a temp WAV (24 kHz mono 16-bit). At the voice's own pace no `-r` at all
+            (a forced rate ruins Siri / premium prosody); another pace -> `-r` relative to the voice's measured native
+            words/min. Extra sentence pauses as `[[slnc ms]]`; the voice's own pauses are never shortened. Word timings are estimated (os_voices.estimate_timings).
     winrt   Windows 10/11: Windows.Media.SpeechSynthesis (the OneCore voices) through pywinrt, with real word-boundary
             cues (IncludeWordBoundaryMetadata). In-process, no PowerShell.
     sapi    Windows fallback: SAPI 5 (SAPI.SpVoice through comtypes, in-process). Word timings estimated.
@@ -39,6 +40,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import os_voices as ov
+from . import voice_pack
 from .config import settings
 
 router = APIRouter()
@@ -50,9 +52,10 @@ STATE: dict = {"engine": None, "error": None, "voices": [], "roles": {}, "locale
                "listed_at": 0.0, "lock": threading.Lock()}
 _MEMO: collections.OrderedDict = collections.OrderedDict()
 MEMO_MAX = 96
-# The voice-pack seam (a follow-up: fixed lines pre-rendered at build time with the system voice). A callable
-# (voice id, os_voices.pack_key(text), rate factor) -> WAV bytes or None, asked before the engine renders.
-PACK_LOOKUP = None
+# The voice pack (app/voice_pack.py, docs/VOICE_PACK.md): fixed lines pre-recorded with Siri Voice 1. A callable
+# os_voices.pack_key(text) -> {pcm, sr, words, voice, voice_name} or None, asked before the engine renders when the
+# request opts in (`pack`), the kid's pace is 1x, the line has no inserted pauses and the voice is the default guide's.
+PACK_LOOKUP = voice_pack.lookup
 
 
 # ================================================================================================= engines
@@ -69,6 +72,7 @@ class SayEngine:
         if sys.platform != "darwin" or not shutil.which("say"):
             raise RuntimeError("macOS `say` not available")
         self.pool = ThreadPoolExecutor(2, thread_name_prefix="say")
+        self._native: dict = {}
 
     def list_voices(self) -> tuple[list[dict], str]:
         try:
@@ -81,26 +85,43 @@ class SayEngine:
         return voices + [ov.system_voice_entry(system_voice_id(), voices)], loc
 
     def render(self, sentences: list[str], voice: str, factor: float, pause_ms: int, tight: bool):
-        wpm = int(max(90, min(360, round(settings.os_tts_wpm * factor))))
+        # At the voice's own pace (factor within NATIVE_BAND of 1) `say` gets NO -r: Siri / premium voices lose their
+        # prosody under a forced rate. Otherwise -r is relative to the voice's measured native rate (native_wpm).
+        wpm = None if ov.is_native_rate(factor) else int(max(90, min(360, round(self.native_wpm(voice) * factor))))
         sep = f" [[slnc {pause_ms}]] " if pause_ms else " "
+        data = self._say(sep.join(sentences), voice, wpm)
+        pcm, sr = ov.read_wav(data)
+        return pcm, sr, None, {"wpm": wpm or "native"}
+
+    def _say(self, text: str, voice: str, wpm: int | None) -> bytes:
         fd, path = tempfile.mkstemp(suffix=".wav", prefix="outpost-tts-")
         os.close(fd)
         try:
             pick = [] if voice == ov.SYSTEM_ID else ["-v", voice]     # no -v: the Spoken Content system voice
-            r = subprocess.run(["say", *pick, "-r", str(wpm), "-o", path, "--file-format=WAVE",
-                                f"--data-format=LEI16@{SR}"], input=sep.join(sentences).encode(), capture_output=True,
-                               timeout=60)
+            rate = ["-r", str(wpm)] if wpm else []
+            r = subprocess.run(["say", *pick, *rate, "-o", path, "--file-format=WAVE", f"--data-format=LEI16@{SR}"],
+                               input=text.encode(), capture_output=True, timeout=60)
             if r.returncode != 0:
                 raise RuntimeError(f"say failed ({r.returncode}): {r.stderr.decode(errors='replace')[:200]}")
             with open(path, "rb") as f:
-                data = f.read()
+                return f.read()
         finally:
             try:
                 os.unlink(path)
             except OSError:
                 pass
-        pcm, sr = ov.read_wav(data)
-        return pcm, sr, None, {"wpm": wpm}
+
+    def native_wpm(self, voice: str) -> float:
+        """The voice's own speaking rate (words/min of speech), measured once per voice (and per system voice behind
+        "system") by rendering CALIBRATION with no -r. Falls back to OS_TTS_WPM."""
+        key = (voice, system_voice_id() if voice == ov.SYSTEM_ID else None)
+        if key not in self._native:
+            try:
+                pcm, sr = ov.read_wav(self._say(ov.CALIBRATION, voice, None))
+                self._native[key] = ov.measure_wpm(ov.CALIBRATION, pcm, sr) or float(settings.os_tts_wpm)
+            except Exception:  # noqa: BLE001
+                return float(settings.os_tts_wpm)
+        return self._native[key]
 
 
 def system_voice_id() -> str | None:
@@ -201,10 +222,10 @@ class WinRTEngine:
             s.voice = self.info[voice]
         o = s.options
         o.include_word_boundary_metadata = True
-        o.speaking_rate = float(max(0.5, min(6.0, factor * settings.os_tts_winrt_rate)))
+        o.speaking_rate = float(max(0.5, min(6.0, (1.0 if ov.is_native_rate(factor) else factor) * settings.os_tts_winrt_rate)))
         try:   # Windows 10 1709+: shorter pauses at punctuation for the brisk delivery
             from winrt.windows.media.speechsynthesis import SpeechPunctuationSilence
-            o.punctuation_silence = SpeechPunctuationSilence.MIN if tight else SpeechPunctuationSilence.DEFAULT
+            o.punctuation_silence = SpeechPunctuationSilence.DEFAULT   # natural pauses, never shortened
         except Exception:  # noqa: BLE001
             pass
         stream = s.synthesize_text_to_stream_async(text).get()
@@ -303,7 +324,8 @@ class SapiEngine:
             st.Open(path, SSFM_CREATE_FOR_WRITE, False)
             if voice in self.tokens:
                 self.voice.Voice = self.tokens[voice]
-            self.voice.Rate = int(max(-10, min(10, round(10 * math.log(max(factor, 0.1)) / math.log(3)))))
+            self.voice.Rate = 0 if ov.is_native_rate(factor) else \
+                int(max(-10, min(10, round(10 * math.log(max(factor, 0.1)) / math.log(3)))))
             self.voice.AudioOutputStream = st
             try:
                 self.voice.Speak(text, SVSF_IS_NOT_XML)
@@ -343,7 +365,7 @@ def refresh_catalog(force: bool = False) -> None:
     raw, loc = eng.list_voices()
     kid = ov.norm_locale(settings.os_tts_locale or loc)
     ranked = ov.rank(raw, kid)
-    STATE["voices"], STATE["roles"], STATE["locale"] = ranked, ov.assign_roles(ranked), kid
+    STATE["voices"], STATE["roles"], STATE["locale"] = ranked, ov.assign_roles(ranked, kid), kid
     STATE["by_id"] = {v["id"]: v for v in ranked}
     STATE["listed_at"] = time.monotonic()
 
@@ -393,6 +415,10 @@ def load() -> None:
 
 
 def health() -> dict:
+    return {**_health(), **voice_pack.health()}
+
+
+def _health() -> dict:
     eng, roles = STATE["engine"], STATE["roles"]
     g = (STATE.get("by_id") or {}).get(roles.get("guide")) if roles else None
     return {"tts": {"loaded": eng is not None, "error": STATE["error"], "engine": eng.name if eng else None,
@@ -421,6 +447,7 @@ class TTSRequest(BaseModel):
     markup: bool = False                         # markup is always stripped
     perform: Perform | None = None               # only `next` is used (the end gap)
     pace: float = Field(1.0, ge=0.5, le=2.0, description="The kid's speed (>1 faster)")
+    pack: bool = Field(False, description="May a recorded voice-pack clip answer (the backend decides: docs/VOICE_PACK.md)")
 
 
 def render(req: TTSRequest, memo: bool = True) -> tuple[bytes, dict]:
@@ -433,22 +460,16 @@ def render(req: TTSRequest, memo: bool = True) -> tuple[bytes, dict]:
     sentences = ov.split_sentences(plain) or [plain]
     factor = ov.rate_factor(req.controls, req.pace)
     pause = ov.sentence_pause_ms(req.controls)
-    tight = float((req.controls or {}).get("pause", 0) or 0) < 0
+    tight = False      # a negative `pause` never shortens an OS voice's own pauses (only a positive one adds silence)
     tail = TAIL_S if (req.perform and req.perform.next) else 0.0
     key = json.dumps([eng.name, v["id"], v.get("system_voice"), plain, factor, pause, tight, tail])
+    if PACK_LOOKUP is not None and pack_ok(req, v, pause):
+        hit = PACK_LOOKUP(ov.pack_key(plain))
+        if hit:
+            return pack_reply(hit, words, v, sentences, tail)
     if memo and key in _MEMO:
         _MEMO.move_to_end(key)
         return _MEMO[key][0], {**_MEMO[key][1], "memo": "hit"}
-    if PACK_LOOKUP is not None and not pause and not tail:
-        wav = PACK_LOOKUP(v["id"], ov.pack_key(plain), factor)
-        if wav:
-            pcm, sr = ov.read_wav(wav)
-            pcm = ov.resample(pcm, sr, SR)
-            times = ov.estimate_timings(words, pcm, SR, rate=factor)
-            return ov.write_wav(pcm, SR), {"voice": v["id"], "voice_name": ov.voice_name(v), "engine": "pack",
-                                           "timing": "estimated", "rate": factor, "pause_ms": 0,
-                                           "sentences": len(sentences), "words": ov.words_header(times),
-                                           "dur_s": len(pcm) / SR, "memo": "pack"}
     # the word after which each sentence ends (for the inserted pauses)
     inserted, n = {}, 0
     for s in sentences[:-1]:
@@ -475,6 +496,28 @@ def render(req: TTSRequest, memo: bool = True) -> tuple[bytes, dict]:
         while len(_MEMO) > MEMO_MAX:
             _MEMO.popitem(last=False)
     return wav, {**info, "memo": "miss"}
+
+
+def pack_ok(req: TTSRequest, v: dict, pause: int) -> bool:
+    """A pack clip may answer: the caller opted in, the kid's pace is 1x (a clip is never time-stretched: any other pace
+    renders live), no extra sentence pauses (slow explain / vocab lines), and the voice is this machine's default guide
+    voice (a kid who picked another voice hears that voice, live)."""
+    return bool(req.pack) and abs(float(req.pace or 1.0) - 1.0) < 1e-3 and not pause and \
+        v["id"] == (STATE.get("roles") or {}).get("guide")
+
+
+def pack_reply(hit: dict, words: list[str], v: dict, sentences: list[str], tail: float) -> tuple[bytes, dict]:
+    """A clip in the live reply's shape: 24 kHz mono WAV, the end gap when a sentence follows, word timings (the
+    recorded ones when they cover the same display words, else estimated on the clip)."""
+    pcm = ov.resample(hit["pcm"], hit["sr"], SR)
+    stored = ov.parse_words(hit.get("words") or "")
+    times = stored if stored and len(stored) == len(words) else ov.estimate_timings(words, pcm, SR)
+    if tail:
+        pcm = np.concatenate([pcm, np.zeros(int(SR * tail), np.int16)])
+    return ov.write_wav(pcm, SR), {"voice": v["id"], "voice_name": hit.get("voice_name") or ov.voice_name(v),
+                                   "engine": "pack", "timing": "estimated", "rate": 1.0,
+                                   "pause_ms": round(tail * 1000) if tail else 0, "sentences": len(sentences),
+                                   "words": ov.words_header(times), "dur_s": len(pcm) / SR, "memo": "pack"}
 
 
 @router.post("/v1/tts")

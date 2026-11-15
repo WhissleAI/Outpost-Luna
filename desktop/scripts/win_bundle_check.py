@@ -171,6 +171,8 @@ MUST = {
                       "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"],
     "story / places / clips data": ["backend/data/places.json", "backend/data/index/clips.json", "backend/data/clip_loudness.json"],
     "OS voice engine": ["model_server/app/tts_os.py", "model_server/app/os_voices.py"],
+    "voice pack (Siri Voice 1 clips)": ["model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
+                                        "backend/data/voice_pack/index.json"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "crew clip time map": ["backend/data/media/trim.json"],
     "frontend": ["frontend/index.html"],

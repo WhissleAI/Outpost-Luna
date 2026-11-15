@@ -57,7 +57,7 @@ SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlin
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
                  "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
-                 "improve": False}   # improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
+                 "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
 LEVELS = ("cadet", "commander")
 LISTEN = ("handsfree", "ptt")
 OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
@@ -75,6 +75,8 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
             p["voice"] = v
     if "voice_all" in m:
         p["voice_all"] = bool(m.get("voice_all"))
+    if "pack" in m:       # Settings "Use the recorded guide voice for story lines" (on by default)
+        p["pack"] = m.get("pack") is not False
     if "rate" in m:
         try:
             r = float(m["rate"])

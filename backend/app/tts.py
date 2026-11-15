@@ -51,8 +51,9 @@ VOICES: dict[str, str] = {
 MEDIA = {"os": ("audio/wav", ".wav"), "deepgram": ("audio/mpeg", ".mp3")}
 
 CACHE_DIR: Path | None = None     # tests point this elsewhere; default data_dir/tts_cache (gitignored)
-PREF_KEYS = ("tts_voice", "speed", "expr", "volume")
-MASTER_VERSION = 3                # in the cache key: bump when the delivery baseline or the mastering changes
+PREF_KEYS = ("tts_voice", "speed", "expr", "volume", "pack")
+PACK_PERSONAS = ("guide", "capcom")   # the recorded voice pack covers these (docs/VOICE_PACK.md); Houston, story: live
+MASTER_VERSION = 4                # in the cache key: bump when the delivery baseline or the mastering changes
 
 
 def cache_dir() -> Path:
@@ -127,7 +128,31 @@ def clean_style(voice: str, text: str, style: dict | None) -> dict:
         vol = None
     if vol is not None and vol == vol and abs(vol - 1.0) > 1e-3:
         out["volume"] = round(max(0.0, min(2.0, vol)), 2)
+    if prefs.get("pack") is False:
+        out["pack"] = False
     return out
+
+
+# ---- the recorded voice pack (docs/VOICE_PACK.md) ----------------------------------------------------------------------
+def pack_version() -> str:
+    """Changes whenever the pack's index changes (a re-recorded clip must not be shadowed by the TTS cache)."""
+    try:
+        st = (settings.data_dir / "voice_pack" / "index.json").stat()
+        return f"{st.st_mtime_ns:x}-{st.st_size:x}"
+    except OSError:
+        return ""
+
+
+def use_pack(st: dict, pace: float) -> bool:
+    """A line may come from the voice pack: the Settings toggle is on (and no other voice was picked: the client and
+    the session send pack=false then), the persona is the guide or CAPCOM, the kid's pace is 1x (a clip is never
+    time-stretched; any other pace is rendered live), the line is not a slow explain / vocab line, and a pack exists.
+    CAPCOM keeps no separate voice while the pack speaks: its live lines use the guide voice too, so the character
+    never switches voices between a recorded line and a live one."""
+    from . import voices
+    return (st.get("pack") is not False and st.get("voice") in PACK_PERSONAS and abs(pace - 1.0) < 1e-3
+            and st.get("situation") not in steering.SLOW_SITUATIONS and not st.get("vocab")
+            and st.get("tts_voice") in ("guide", "capcom", voices.roles().get("guide")) and bool(pack_version()))
 
 
 def gain_for_volume(volume: float | None) -> float:
@@ -165,8 +190,9 @@ def _remap_words(words: str, keep) -> str:
 
 
 def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, dict | None]:
-    """The final stage for every OS-voice render (§4d): cap long silences (the delivery baseline's gap), then
-    loudness-normalise to the target (+2 LU for alarms, + the kid's volume) under a -1 dBTP look-ahead limiter.
+    """The final stage for every OS-voice render (§4d): cut only pathological silences (the voice's own pauses stay),
+    then one clean gain to the loudness target (+2 LU for alarms, + the kid's volume) with a -1 dBTP true-peak ceiling:
+    no limiter or compressor on the OS voices (a peaky line plays slightly under target instead).
     Fails open: audio that isn't 16-bit WAV goes out as it came."""
     try:
         x, sr = loudness.read_wav(audio)
@@ -174,7 +200,7 @@ def finish(audio: bytes, st: dict, words: str, last: bool) -> tuple[bytes, str, 
         return audio, words, None
     y, kept = loudness.cap_gaps(x, sr, max_gap_s=st.get("gap_s", steering.GAP_FAST_S),
                                 tail_s=0.05 if last else 0.22, with_mask=True)
-    y, info = loudness.master(y, sr, target_lufs(st), gain_for_volume(st.get("volume")))
+    y, info = loudness.master(y, sr, target_lufs(st), gain_for_volume(st.get("volume")), limiter=False)
     return loudness.write_wav(y, sr), _remap_words(words, (sr, kept)), info
 
 
@@ -188,7 +214,7 @@ async def _synth(model: str, text: str) -> bytes:
     return r.content
 
 
-async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str]:
+async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str, str]:
     """One OS-voice render on the model server → (wav, word timings header). Raises on any failure (the caller falls
     back). The model server strips the emphasis markup and uses the rate / pause controls (model_server/app/tts_os.py)."""
     marked = bool(style.get("emph") or style.get("vocab"))
@@ -199,13 +225,15 @@ async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str]:
         body["pace"] = style["pace"]
     if style.get("guidance"):
         body["guidance"] = style["guidance"]
+    if style.get("pack_on"):
+        body["pack"] = True
     if style.get("perform"):
         body["perform"] = {**style["perform"], **{k: v for k, v in place.items() if v is not None}}
     async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s) as c:
         r = await c.post("/v1/tts", json=body)
     if r.status_code != 200 or not r.content:
         raise RuntimeError(f"os tts {r.status_code}: {r.text[:160]}")
-    return r.content, r.headers.get("X-TTS-Words", "")
+    return r.content, r.headers.get("X-TTS-Words", ""), r.headers.get("X-TTS-Engine", "os")
 
 
 # ---- a11y: word timings for captions (docs/ACCESSIBILITY.md) -----------------------------------------------------------
@@ -215,6 +243,11 @@ WORDS_RE = re.compile(r"^(\d+-\d+)(,\d+-\d+)*$")
 def words_path(p: Path) -> Path:
     """The word-timing sidecar next to a cached rendering."""
     return p.with_suffix(".words")
+
+
+def engine_path(p: Path) -> Path:
+    """Which engine made a cached OS rendering ("pack" for a voice-pack clip), for X-TTS-Engine on a cache hit."""
+    return p.with_suffix(".engine")
 
 
 def clean_words(raw: str | None) -> str:
@@ -251,6 +284,10 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
             if pace != 1.0:
                 st["pace"] = pace
             place = {"para_index": i, "para_len": n, "next": " ".join((next_text or "").split())[:MAX_CHARS] or None}
+            if use_pack(st, pace):
+                st["pack_on"] = pack_version()
+                st["tts_voice"] = "guide"                       # CAPCOM speaks in the guide voice with the pack
+            st.pop("pack", None)
             st["tts_voice"] = voices.resolve(st["tts_voice"])     # the role -> this machine's voice for it
             model, key = st["tts_voice"], {**st, "voice_tag": voices.cache_tag(st["tts_voice"]), **{k: v for k, v in place.items() if v is not None},
                                              "master": MASTER_VERSION}
@@ -270,14 +307,19 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
         if reasons:
             headers["X-TTS-Fallback"] = "; ".join(reasons)[:200]
         if p.exists():
-            wp = words_path(p)
+            wp, ep = words_path(p), engine_path(p)
             w = clean_words(wp.read_text()) if wp.exists() else ""
+            if ep.exists():
+                headers["X-TTS-Engine"] = ep.read_text().strip()[:16] or engine
             return Response(p.read_bytes(), media_type=media,
                             headers={**headers, "X-TTS-Cache": "hit", **({"X-TTS-Words": w} if w else {})})
         try:
             if engine == "os":
                 res = await _os_tts(text, st, place)
-                audio, words = res if isinstance(res, tuple) else (res, "")
+                res = res if isinstance(res, tuple) else (res, "")
+                audio, words = res[0], res[1]
+                made_by = res[2] if len(res) > 2 and res[2] in ("pack", "say", "winrt", "sapi") else "os"
+                headers["X-TTS-Engine"] = "pack" if made_by == "pack" else "os"
                 audio, words, info = finish(audio, st, clean_words(words), last=not place.get("next"))
                 if info and info.get("lufs") is not None:
                     headers["X-TTS-Loudness"] = f"{info['lufs']} LUFS {info['tp']} dBTP"
@@ -290,6 +332,8 @@ async def speak(text: str, voice: str = "guide", style: dict | None = None, i: i
         words = clean_words(words)
         if words:
             words_path(p).write_text(words)
+        if engine == "os":
+            engine_path(p).write_text(headers["X-TTS-Engine"])
         return Response(audio, media_type=media,
                         headers={**headers, "X-TTS-Cache": "miss", **({"X-TTS-Words": words} if words else {})})
     no_engine = all(r.startswith("deepgram: DEEPGRAM_API_KEY") for r in reasons)

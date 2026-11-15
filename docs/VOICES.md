@@ -23,9 +23,10 @@ and the ack shows what is in force. `prefs` may also ride on `hello` as `hello.p
 
 | field | values | default | effect |
 | --- | --- | --- | --- |
-| `voice` | an id from `/api/voices` (or `null` / `"default"`) | `null` (the guide's role: this machine's best voice) | the guide's OS voice |
-| `voice_all` | bool | `false` | `true`: CAPCOM, Houston and the story voice use it too; otherwise they keep their own voices |
-| `rate` | 0.6–1.6 (UI: 0.75 / 1 / 1.25 / 1.5) | 1 = the new, faster default | `steering.delivery`: the 1× baseline (rate +1.0, pause −1.5) plus 4 rate z per octave; 0.75× is slower than the old 1× (VOICE_STEERING.md §4d) |
+| `voice` | an id from `/api/voices` (or `null` / `"default"`) | `null` (the guide's role: this machine's best voice) | the OS voice of the guide, CAPCOM and the story |
+| `voice_all` | bool | `false` | `true`: Houston uses it too; otherwise Houston keeps its own radio voice |
+| `pack` | bool | `true` | the recorded guide voice for fixed lines (docs/VOICE_PACK.md); only with the default voice at 1× |
+| `rate` | 0.6–1.6 (UI: 0.75 / 1 / 1.25 / 1.5) | 1 = the voice's own pace | `steering.delivery`: no baseline at 1× (the voice's own rate and pauses, no `say -r`; docs/VOICE_PACK.md) plus 4 rate z per octave; 0.75× is slower than the old 1× (VOICE_STEERING.md §4d) |
 | `expressiveness` | 0–1 | 0.5 (today's delivery) | carried on the style (melody range, calmer tags at the low end, below); the OS voices have no such control, so today it does not change how they sound |
 | `filter` | `relaxed` / `normal` / `strict` | `normal` | the router's device-directed thresholds (below) |
 | `level` | `cadet` / `commander` | `cadet` | passed through to the Director, mission sim and Academy; no behaviour change yet |
@@ -97,7 +98,7 @@ picker}]}`. The backend (`app/voices.py`) caches that for 30 s and serves the `p
 
 | OS | engine | voices it can use | word timings |
 | --- | --- | --- | --- |
-| macOS | `/usr/bin/say` to a temp WAV (24 kHz mono 16-bit), `-r` words/min from the rate, `[[slnc ms]]` for extra sentence pauses | NSSpeechSynthesizer's list (`com.apple.voice.*` premium / enhanced / standard / compact, `com.apple.eloquence.*`), plus **the Spoken Content system voice** (`say` with no `-v`) | estimated: the rendered speech span spread over the words by syllables and characters, with punctuation pauses, and every comma / sentence break snapped to the nearest real silence in the audio (`os_voices.estimate_timings`) |
+| macOS | `/usr/bin/say` to a temp WAV (24 kHz mono 16-bit), no `-r` at 1× (the voice's own pace), else `-r` relative to its measured native words/min, `[[slnc ms]]` for extra sentence pauses | NSSpeechSynthesizer's list (`com.apple.voice.*` premium / enhanced / standard / compact, `com.apple.eloquence.*`), plus **the Spoken Content system voice** (`say` with no `-v`) | estimated: the rendered speech span spread over the words by syllables and characters, with punctuation pauses, and every comma / sentence break snapped to the nearest real silence in the audio (`os_voices.estimate_timings`) |
 | Windows 10 / 11 | WinRT `Windows.Media.SpeechSynthesis` in-process (pywinrt 3.2.1), `SpeakingRate` from the rate | the OneCore voices (Zira, David, Mark …; "Natural" ones if Windows exposes them) | real: the voice's word-boundary cues (`IncludeWordBoundaryMetadata`), mapped to the caption words by character position |
 | Windows fallback | SAPI 5 (`SAPI.SpVoice` via comtypes, late-bound), when WinRT will not start | the desktop SAPI voices | estimated, as on macOS |
 
@@ -118,26 +119,36 @@ by name and by file id) and any id outside the engine's allowlist. One entry per
 Settings shows at most 12 and leaves the Eloquence voices (Eddy, Flo, Reed, Rocko, Sandy, Shelley, Grandma, Grandpa) out
 unless fewer than three better voices exist.
 
-**Roles** (`os_voices.assign_roles`): the guide gets the best voice; CAPCOM a different good voice (at most one quality
-tier lower; the other gender first); Houston a third, else CAPCOM's; the story voice a fourth, else the guide's. One
-voice installed → every role uses it. The backend's personas (`steering.VOICES`) are these role names.
+**Roles** (`os_voices.assign_roles`):
 
-On the build Mac (macOS 26.2, Siri system voice, two premium voices installed):
+- **When the system voice is good** (Siri, premium or enhanced), the guide, CAPCOM **and** the story all use `system`.
+  Flight School and the Mission talk through CAPCOM, and the recorded voice pack (docs/VOICE_PACK.md) is the system
+  voice too. With one shared voice, a character never flips between a live line and a recorded one.
+- **Houston** gets a distinct good voice only if one exists in the kid's locale family: the kid's locale, then en-US,
+  then en-GB. It is never the voice behind `system`. With no such voice, Houston uses `system` as well.
+- **Otherwise**, the ranking applies: the guide gets the best voice. CAPCOM gets a different good voice (at most one
+  quality tier lower, the other gender first). Houston gets a third voice, else CAPCOM's. The story voice gets a
+  fourth, else the guide's.
+
+With one voice installed, every role uses it. The backend's personas (`steering.VOICES`) are these role names.
+**Settings:** a picked voice applies to the guide, CAPCOM and the story together (`steering.pref_voice`,
+`floor.js prefStyle`). "Use this voice for everyone" adds Houston.
+
+On the build Mac (macOS 26.2, Siri system voice Nora, two en-IN premium voices installed, kid locale en-US):
 
 | rank | id | Settings name | desc | role |
 | --- | --- | --- | --- | --- |
-| 0 | `system` | Your Mac's system voice | Aaron (Siri) | guide, story |
-| 1 | `com.apple.voice.Tara.premium` | Tara | Premium · India · female | CAPCOM |
-| 2 | `com.apple.voice.Aman.premium` | Aman | Premium · India · male | Houston |
+| 0 | `system` | Your Mac's system voice | Nora (Siri) | guide, CAPCOM, story, Houston (no good en-US / en-GB voice) |
+| 1 | `com.apple.voice.Tara.premium` | Tara | Premium · India · female | |
+| 2 | `com.apple.voice.Aman.premium` | Aman | Premium · India · male | (Houston for an en-IN kid) |
 | 3–8 | Samantha (US), Daniel (UK), Karen (AU), Moira (IE), Rishi (IN), Tessa (ZA) | | Compact | |
 | 9– | 16 Eloquence voices (US, UK) | not in Settings | Basic | |
 
-**Rate and pauses.** The style's `rate` z-score (with the 1× baseline +1.0 and the kid's speed, `steering.delivery`)
-and `pace` become one multiplier, `pace · 2^(rate/4)` (`os_voices.rate_factor`): macOS `-r` = 165 wpm × that
-(`OS_TTS_WPM`), WinRT `SpeakingRate` = that, SAPI `Rate` = 10·log3(that). A positive `pause` adds up to 500 ms between
+**Rate and pauses.** The style's `rate` z-score (with the kid's speed, `steering.delivery`)
+and `pace` become one multiplier, `pace · 2^(rate/4)` (`os_voices.rate_factor`): macOS `-r` = the voice's measured native wpm × that (no `-r` within ±8 % of 1×; `OS_TTS_WPM` only as a fallback), WinRT `SpeakingRate` = that, SAPI `Rate` = 10·log3(that). A positive `pause` adds up to 500 ms between
 sentences; a sentence with a next one ends on a 220 ms gap. The tag, pitch / loudness controls, guidance and emphasis
 markup have no OS equivalent: markup is stripped, the rest ignored (no errors). Loudness is still mastered by the
-backend (−14 LUFS, −1 dBTP).
+backend: −14 LUFS with one clean gain and a −1 dBTP ceiling, no limiter. The voice's own pauses are never shortened.
 
 **Latency** (this Mac, warm, per sentence, cache miss; the floor plays sentence 1 while sentence 2 renders): the Siri
 system voice 1.2–1.6 s (so ~1.3 s to first audio), a premium voice 0.8–1.0 s, compact ~0.8 s. A repeated line is a

@@ -73,6 +73,8 @@ Step "3/8 frontend dependencies"
 Push-Location frontend; Run npm ci --no-audit --no-fund; Run node tools/fetch_vision.mjs; Pop-Location   # + camera-gesture runtime/models (sha256-pinned)
 
 Step "4/8 embedded Python + backend/model-server deps + app code (frontend build included)"
+# the recorded voice pack (backend\data\voice_pack, docs/VOICE_PACK.md) ships inside the app code: Windows kids hear it too
+Run uv run --no-project python backend\tools\voice_pack_check.py --allow-empty
 Run uv run --no-project python desktop\scripts\build_python.py
 
 Step "5/8 models (local HF cache if complete, else the public package; sha256 + models.lock.json)"
