@@ -8,7 +8,7 @@ in the top bar (`#a11yBtn`, or <kbd>Alt</kbd>+<kbd>A</kbd>). They are saved in t
 Code: `frontend/src/a11y.js` (settings, commands, audio description, alerts), `caption.js` (caption bar),
 `highlight.js` (key-span marks, glossary cards), `academy/vocab.js` (Space words), `a11y.css`; server side
 `backend/app/tts.py` (speed, word timings), `steering.py` (§4b of docs/VOICE_STEERING.md),
-`model_server/app/tts_steer.py` (word timings, pace).
+`model_server/app/tts_os.py` + `os_voices.py` (the OS voice, word timings, rate).
 
 ## The voice bar
 
@@ -36,7 +36,7 @@ The voice bar (mic, state, caption, typing) can be moved: drag its grip, or focu
 | Feature | How |
 | --- | --- |
 | **Captions for every voice** | The caption bar shows every guide, CAPCOM, story and Houston sentence, highlighting the word being spoken, plus the crew audio (mirrored from the karaoke line, which uses the clip index's word timings). On by default. |
-| **Word-synchronous timing** | Real timings from Steer TTS's duration predictor (`X-TTS-Words`), not an estimate. Fallbacks: syllable-weighted estimate over the audio length (Deepgram), `speechSynthesis` word boundaries (browser voice). The bar's `data-timing` says which (`timed` / `estimate` / `boundary` / `crew`). |
+| **Word-synchronous timing** | Server word timings (`X-TTS-Words`): real word-boundary cues from the Windows voice; on macOS an estimate anchored on the rendered audio's pauses (docs/VOICE_STEERING.md §4b). Fallbacks: syllable-weighted estimate over the audio length (Deepgram), `speechSynthesis` word boundaries (browser voice). The bar's `data-timing` says which (`timed` / `estimate` / `boundary` / `crew`). |
 | **Transcripts** | Everything said (guide, CAPCOM, crew moments, your own turns, descriptions) in Settings → Transcript. |
 | **Visual alerts** | With every alert: a flashing red screen edge plus a banner with a ⚠ icon and the alert text (mission banners, alert steps). |
 | **Vibration** | `navigator.vibrate([180, 80, 180])` on alerts where supported (phones, tablets). |
@@ -66,8 +66,8 @@ caption line length (24–80 characters, default 42, at most 4 lines), syllable 
 
 ### Speed
 
-Voice speed 0.75× / 1× / 1.25× / 1.5× (settings, or "faster"/"slower"). Steer voices: `rate` on top of the Director's
-style plus `pace` (docs/VOICE_STEERING.md §4b); the browser voice: `utterance.rate`; crew recordings: `playbackRate`
+Voice speed 0.75× / 1× / 1.25× / 1.5× (settings, or "faster"/"slower"). The OS voice: `rate` on top of the Director's
+style plus `pace`, turned into the voice's own rate (docs/VOICE_STEERING.md §4b); the browser voice: `utterance.rate`; crew recordings: `playbackRate`
 with pitch preserved. The caption bar shows the speed.
 
 ### Highlighting
@@ -92,7 +92,8 @@ Sources: `/api/glossary`, `/api/places`, and the Arc Tagger read-out `mentions` 
    ```
 Unit tests: `frontend/tests/a11y.test.js` (settings persistence incl. blocked storage, commands, caption timing,
 highlight tokenizing), `backend/tests/test_a11y_tts.py` (speed → rate/pace, vocab steering, timing passthrough + cache),
-`model_server/tests/test_tts_steer.py` (real word timings, markup, pace).
+`model_server/tests/test_os_voices.py` + `test_tts_os.py` (timing estimates snapped to pauses, WinRT cues, markup,
+rate).
 
 Screenshots: `docs/img/a11y-caption-word-sync.jpg`, `docs/img/a11y-high-contrast-150.jpg`, `docs/img/a11y-settings-panel.jpg`.
 

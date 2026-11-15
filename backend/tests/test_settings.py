@@ -342,3 +342,22 @@ def test_level_on_mission_start_and_academy_attempt():
         b = c.post("/api/academy/attempt", json={"lesson_id": les["id"], "step": 0, "input": {"text": "hmm"}})
     assert a.status_code == b.status_code == 200
     assert a.json()["status"] == b.json()["status"]       # no behaviour change from the level (yet)
+
+
+def test_switching_the_macs_system_voice_renders_new_audio(os_calls):
+    """The system voice (`say` with no -v) is one id whatever voice the parent picked: the cache key names that voice."""
+    from conftest import FAKE_VOICES
+    sysv = {"id": "system", "name": "Your Mac's system voice", "desc": "Nora (Siri)", "quality": "siri",
+            "system_voice": "com.apple.siri.natural.Nora", "picker": True}
+    voices.set_catalog({**FAKE_VOICES, "roles": {**FAKE_VOICES["roles"], "guide": "system"},
+                        "voices": [sysv, *FAKE_VOICES["voices"]]})
+    assert voices.cache_tag("system") == "system@com.apple.siri.natural.Nora"
+    assert voices.cache_tag("com.apple.voice.Tara.premium") == "com.apple.voice.Tara.premium"
+    with TestClient(app) as c:
+        a = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+        voices.set_catalog({**FAKE_VOICES, "roles": {**FAKE_VOICES["roles"], "guide": "system"},
+                            "voices": [{**sysv, "system_voice": "com.apple.siri.natural.Aaron"}, *FAKE_VOICES["voices"]]})
+        b = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+        c2 = c.get("/api/tts", params={"text": "Hello cadet.", "voice": "guide"})
+    assert a.headers["x-tts-voice"] == "system" and a.headers["x-tts-cache"] == "miss"
+    assert b.headers["x-tts-cache"] == "miss" and c2.headers["x-tts-cache"] == "hit" and len(os_calls) == 2
