@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
-from . import arcmeta, embed, tts_os
+from . import arcmeta, embed, tts_os, tts_steer
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings
@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
     arcmeta.load()   # ARC_META=mini|off; fails open, reason in /health
     tts_os.load()      # OS_TTS=on|off: the OS's own voices, warmed up; fails open, reason in /health
     embed.load()     # EMBED=on|off; fails open, reason in /health
+    tts_steer.ensure()   # STEER_TTS=on|off, the optional engine: loads now if its asset is there, else on first use
     yield
     if STATE["tagger"]:
         STATE["tagger"].close()
@@ -42,6 +43,7 @@ app = FastAPI(title="Outpost Luna model server", version="0.1.0", lifespan=lifes
 app.include_router(tag_stream.router)  # WS /v1/tag/stream
 from .routes_meta import router as meta_router  # noqa: E402
 app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream
+app.include_router(tts_steer.router)  # POST /v1/tts/steer, GET /v1/tts/steer/voices (the optional Steer engine)
 app.include_router(tts_os.router)  # POST /v1/tts, GET /v1/tts/voices (the OS's offline voices)
 app.include_router(embed.router)  # POST /v1/embed
 
@@ -68,7 +70,7 @@ def health():
         "models": {"arc_tagger": {"loaded": tg is not None, "error": STATE["tagger_error"],
                                   "domains": sorted(tg.pools) if tg else [],
                                   "pool_size": settings.arctag_pool_size},
-                   **arcmeta.health(), **tts_os.health(), **embed.health()},
+                   **arcmeta.health(), **tts_os.health(), **tts_steer.health(), **embed.health()},
         "load_s": STATE["loaded_s"],
         "rss_mb": _rss_mb(),
     }
