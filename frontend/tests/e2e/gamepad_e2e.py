@@ -114,7 +114,10 @@ def main():
         ok("pin" in act()["cls"], "D-pad up: a lesson pin")
         l0 = act()["l"]
         js("() => window.__axes([0, 0.95, 0, 0])"); pg.wait_for_timeout(120); js("() => window.__axes([0, 0, 0, 0])"); pg.wait_for_timeout(900)
-        ok("pin" in act()["cls"] and act()["l"] != l0, "left stick: moves to the next pin down the route")
+        # learning v1 put two explorer pins and a Mission prep button on the map, so "the next thing down" from a pin
+        # can be the next pin or the lesson card's button: the stick must move focus to one of them
+        nx = act()
+        ok(("pin" in nx["cls"] and nx["l"] != l0) or nx["id"] in ("aPrepMap", "aStart"), "left stick: moves focus down (the next pin or the card)")
         seen()
         js("() => window.__axes([0, 0, 0.8, 0])"); pg.wait_for_timeout(500); js("() => window.__axes([0, 0, 0, 0])"); pg.wait_for_timeout(300)
         ok(any(s == "spin:gamepad" for s in seen()), "right stick: spins the Moon (spin, the fist's rate control)")
@@ -127,6 +130,9 @@ def main():
         tap(X, 1200)
         ok(js("() => document.getElementById('mic').getAttribute('aria-label')") != m0, "X: mic on / off")
         tap(RB, 2500)
+        if pg.query_selector("#aPrepDone") is not None:   # learning v1: Mission prep first; A takes Done
+            ok(act()["id"] == "aPrepDone", "RB (next): Mission prep first, focus on Done")
+            tap(A, 2500)
         ok(pg.query_selector("#aInput") is not None, "RB (next) on the map: the next lesson opens")
         ok(js("() => !!document.activeElement && document.activeElement.id === 'moonFocus'"), "a Moon step: focus on the Moon reticle")
         tap(RIGHT, 1600)
@@ -150,6 +156,9 @@ def main():
         ok(js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site") != s0, "picker: RB picks the next site")
         tap(LB, 900)
         tap(A, 4000)
+        if pg.query_selector("#mlSkip") is not None:   # learning v1: the first mission offers NASA's Moon Base video once
+            ok(act()["id"] == "mlWatch", "first mission: the Moon Base card, focus on Watch")
+            tap(B, 4000)                                # B = no: skip it, the mission starts
         wait_js(pg, "() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000)
         pg.wait_for_timeout(1500)
         if js("() => !!document.querySelector('.m-tour:not([hidden])')"):   # the first-mission cabin tour (story)

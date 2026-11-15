@@ -232,7 +232,7 @@ PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|buil
 @dataclass
 class Ctx:
     """What the router knows about the app at this turn (session.belief + the client's screen frame)."""
-    screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library|video
+    screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library|video|prep
     step_type: str | None = None       # the lesson step's accept.type (choice, keywords, command, tap, intent, vocab_*)
     step_options: list[str] = field(default_factory=list)   # choice labels (an answer that names one is an answer)
     step: dict | None = None           # the open course step (content.lesson(lesson_id).steps[i]): what a try sounds like
@@ -512,6 +512,26 @@ def video_command(text: str) -> str | None:
     return next((name for name, rx in VIDEO_CMDS if rx.match(q)), None)
 
 
+# Mission prep (learning v1, docs/LEARNING_DESIGN.md §11.4): a hands-on task away from the screen. The kid says done,
+# skip, wait or asks for help; our own prep lines never say "done", so a heard "done" is the kid's.
+PREP_CMDS = (
+    ("prep_done", re.compile(r"^(?:done|done done|i m done|we re done|i did it|we did it|did it|finished|i m finished|"
+                             r"we re finished|all done|ok done|okay done|it s ready|it s done|ready|yes|yeah|yep|"
+                             r"yes we did it|thumbs up)$")),
+    ("prep_skip", re.compile(r"^(?:skip|skip it|skip this|skip this one|can we skip it|no|no thanks|not now|"
+                             r"next one|next one please|we don t have (?:any |the )?\w+|maybe later|later)$")),
+    ("prep_wait", re.compile(r"^(?:wait|hold on|hang on|one sec|one second|just a sec|give me a minute|give us a minute|"
+                             r"not yet|we re still doing it|still going|almost)$")),
+    ("prep_help", re.compile(r"^(?:help|help me|i need help|what do i do|what do we do|how do (?:i|we) do this|"
+                             r"say it again|say that again|again|repeat|what was it|what s next)$")),
+)
+
+
+def prep_command(text: str) -> str | None:
+    q = re.sub(r"^(?:okay |ok |um |uh |so |please |capcom |hey )+|(?: please| now| capcom)+$", "", norm(text or "")).strip()
+    return next((name for name, rx in PREP_CMDS if rx.match(q)), None)
+
+
 def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     """-> {"outcome": ignore|navigate|answer|order|question, "reason", "intent"?, "arg"?, "notice"?}."""
     raw = (text or "").strip()
@@ -535,6 +555,13 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None
+    if ctx.screen == "prep":             # Mission prep: done / skip / wait / help; a real question still works
+        cmd = prep_command(raw)
+        if cmd:
+            return out("navigate", "prep", intent=cmd, arg=None)
+        if clear_question(raw, dd, act, ctx.dd_strong):
+            return out("question", "question")
+        return out("ignore", "prep", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
     nav = nav_intent(raw, ctx)
     fz = nav_fuzzy(raw, ctx) if heard and not nav else None
     air = ctx.on_air if ctx.on_air is not None else bool(ctx.recent)

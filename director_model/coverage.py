@@ -32,7 +32,10 @@ BACKEND = HERE.parent / "backend"
 OUT = HERE / "coverage.json"
 TARGET = {"train": 40, "heldout": 8}     # per cell: generated train items, held-out items (class sets / test splits)
 MODE_SCREEN = {"mission": "cabin", "cadet": "library", "academy": "lesson"}
-PENDING_SCREENS = {"video": "feat/media-v1", "prep": "feat/learning-v1"}
+# Screens the router has beyond features.SCREENS (no one-hot slot: the shipped weights keep their layout). Both branches
+# are merged on integ/v1, so their cells are real, not pending.
+ROUTER_SCREENS = {"video": "feat/media-v1", "prep": "feat/learning-v1"}
+PENDING_SCREENS: dict = {}
 # A phrase per router intent: the inventory probes nav_intent() with it on every screen. A new intent without a probe
 # fails backend/tests/test_director_coverage.py.
 PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_pause": "pause the clock",
@@ -48,9 +51,11 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "panel_radiation": "open the radiation panel", "panel_back": "back to my seat",
           "accept_offer": "yes", "decline_offer": "no thanks", "pick_site": "pick malapert massif",
           "task_choice": "the ridge"}
-PENDING_INTENTS = {"video_play": "feat/media-v1", "video_pause": "feat/media-v1", "video_stop": "feat/media-v1",
-                   "video_skip": "feat/media-v1", "video_watch": "feat/media-v1", "prep_done": "feat/learning-v1",
-                   "prep_skip": "feat/learning-v1", "prep_wait": "feat/learning-v1", "prep_help": "feat/learning-v1"}
+# The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
+# video-step answer (step:video), not a router intent on the video screen.
+SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],
+                  "prep": ["prep_done", "prep_skip", "prep_wait", "prep_help"]}
+PENDING_INTENTS = {"video_watch": "feat/media-v1 (lesson step answer, not a router intent)"}
 OFFERS = ["next_lesson", "next_step", "mission", "take_command", "fly_again", "tour", "task", "briefing_video",
           "learn_more"]
 
@@ -110,7 +115,6 @@ def capabilities() -> dict:
         for sc in ("lesson", "ride"):
             for outcome in ("answer", "wrong"):
                 add(sc, f"step:{t}:{outcome}", "lesson")
-    add("lesson", "step:video:answer", "lesson", pending="feat/learning-v1")
     for c in FX.CMD_TYPES[1:]:
         add("cabin", "cmd:" + c, "order")
     for screen in FX.SCREENS:
@@ -119,13 +123,15 @@ def capabilities() -> dict:
             add(screen, "ignore:" + neg, "ignore")
     for screen in ("cabin", "library"):
         add(screen, "guard:pii", "guard")
-    for screen, br in PENDING_SCREENS.items():
+    for screen in ROUTER_SCREENS:
+        for intent in SCREEN_INTENTS[screen]:
+            add(screen, "nav:" + intent, "navigate")
         for intent, b in PENDING_INTENTS.items():
             if intent.startswith(screen):
                 add(screen, "nav:" + intent, "navigate", pending=b)
         for neg in ("chatter", "echo", "roomtalk"):
-            add(screen, "ignore:" + neg, "ignore", pending=br)
-        add(screen, "question", "answer", pending=br)
+            add(screen, "ignore:" + neg, "ignore", pending=PENDING_SCREENS.get(screen))
+        add(screen, "question", "answer", pending=PENDING_SCREENS.get(screen))
     add("video", "ignore:video_audio", "ignore", pending="feat/media-v1")
     for screen in FX.SCREENS:
         add(screen, "ignore:echo_os_voice", "ignore", pending="feat/os-voices + feat/voice-pack")

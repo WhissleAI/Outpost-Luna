@@ -67,7 +67,7 @@ export function screenKey(frame = {}, { cabin = false, settings = false, video =
   if (settings) return "settings";
   if (cabin) return "cabin";
   const s = frame.screen;
-  if (s === "lesson" || s === "lesson_done" || s === "ride") return "lesson";
+  if (s === "lesson" || s === "lesson_done" || s === "ride" || s === "prep") return "lesson";   // prep: learning v1
   if (s === "brief" || s === "debrief" || s === "patch" || s === "callsign") return "menu";
   return "moon";
 }

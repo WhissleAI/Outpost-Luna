@@ -137,7 +137,8 @@ def main():
             press("ArrowUp", 900)
             pin = act()
             ok("pin" in pin["cls"], f"map: Up moves onto a lesson pin ({pin['label'][:30]})")
-            press_until(["ArrowDown", "ArrowLeft"], "() => document.activeElement.classList.contains('pin') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=3)
+            # (learning v1: locked explorer pins are on the map too; Enter on one shows when it opens, not a Start button)
+            press_until(["ArrowDown", "ArrowLeft", "ArrowRight"], "() => document.activeElement.classList.contains('pin') && !document.activeElement.classList.contains('is-locked') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=4)
             pin2 = act()
             ok("pin" in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically")
             shot("02-map-pin")
@@ -188,6 +189,12 @@ def main():
                         if until("() => !!(document.querySelector('#aNext') || document.querySelector('.a-badge'))", 4000, "-"):
                             break
                     return "moon"
+                if t == "video":   # a NASA video step (media-v1): never block; skip it by typing, like a kid saying "skip"
+                    press("/", 200)
+                    until("() => document.activeElement && document.activeElement.id === 'q'", 6000, "q focus")
+                    kb.type("skip")
+                    press("Enter", 300)
+                    return "typed skip"
                 if t == "command" and answer_for(st, vocab=_Vocab()) in ORDERS and visible_q(".a-order"):
                     press(str(ORDERS.index(answer_for(st, vocab=_Vocab())) + 1), 200)
                     return "order"
@@ -198,9 +205,16 @@ def main():
                 return "typed"
 
             lesson_shots = set()
-            for li, L in enumerate(COURSE["lessons"]):
+            # learning v1: the 6 core lessons and the ride (explorer lessons open after missions, so the walk skips them)
+            WALK = [l for l in COURSE["lessons"] if l.get("track", "core") == "core"]
+            for li, L in enumerate(WALK):
                 if li == 0:
                     press("n", 1500)   # N on the map: start the next lesson
+                # Mission prep (learning v1) comes first the first time a lesson opens: its Done is focused; Enter
+                until("() => !!(document.querySelector('#aInput') || document.querySelector('#aPrepDone'))", 20000, "lesson or prep")
+                if js("() => !!document.querySelector('#aPrepDone')"):
+                    ok(act()["id"] == "aPrepDone", f"{L['id']}: Mission prep, focus is on Done")
+                    press("Enter", 1200)
                 ok(until("() => !!document.querySelector('#aInput')", 20000), f"{L['id']}: lesson opens")
                 for k, st in enumerate(L["steps"]):
                     pg.wait_for_timeout(900)
@@ -238,7 +252,7 @@ def main():
                     ok(until("() => !!document.querySelector('.mp-card')", 10000), "patch: Esc goes back to the map")
                     press("n", 1500)
                     continue
-                if li < len(COURSE["lessons"]) - 1:
+                if li < len(WALK) - 1:
                     ok(act()["id"] in ("aNextLesson", "aMap"), "patch: focus is on Next lesson")
                     press("y" if li % 2 else "n", 1500)   # Y takes the offer; N is next
                 if li == 1:   # a Moon step screenshot on lesson 3's compare step comes later; here: the ride below
@@ -266,6 +280,9 @@ def main():
            and js("() => [...document.querySelectorAll('.mx-site')].indexOf(document.activeElement)") != r0, "picker: Up / Down walk the rows (the focused row is picked)")
         shot("05-picker")
         press("y", 3000)
+        if js("() => !!document.querySelector('#mlSkip')"):   # learning v1: the first mission offers the Moon Base video once
+            ok(act()["id"] == "mlWatch", "first mission: the Moon Base card, focus on Watch")
+            press("Escape", 3000)                          # Esc = no: skip it, the mission starts
         ok(until("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000), "picker: Y takes command → the 3D cabin")
 
         # ---------------- the cabin ----------------

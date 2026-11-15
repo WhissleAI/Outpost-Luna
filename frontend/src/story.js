@@ -356,6 +356,8 @@ export const PREP = {
   /** spoken when the kid says something else on the prep card */
   ask: "Tell me when it's ready. Or tap Skip.",
   doneSay: "Nice work. Now the lesson.",
+  /** "wait", "hold on": the card stays up */
+  waitSay: "Take your time. Tell me when it's ready.",
   skipSay: "No problem. On to the lesson.",
 };
 

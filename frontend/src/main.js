@@ -118,7 +118,8 @@ async function boot() {
   const useSession = () => !!(session && session.connected);
   // [media] a video starts clean: no guide line, no crew clip, nothing queued from the session (docs/MEDIA.md)
   initVideo({ stopOthers: () => { cancelNudge(); cancelTour(); stopSpeaking(); if (player.active) player.stop(true); if (useSession()) session.dropAll(); } });
-  onVideoChange(() => pushScreen(true));
+  // body[data-video=1] while a video is up: the gestures layer's "video" coach mark and help card read it (gesture/ui.js)
+  onVideoChange(() => { document.body.dataset.video = videoOpen() ? "1" : ""; pushScreen(true); });
   $("aboutBtn").addEventListener("click", () => { fillCredits(); });
   const missionUI = createMissionUI({
     globe, card, placeById, say: (t, style, o = {}) => guideSay(t, { voice: CAPCOM_VOICE, style, priority: o.priority }) /* audio floor: CAPCOM voice, Director style; priority 4 = proactive (waits, never cuts a readback) */,
@@ -573,6 +574,7 @@ async function boot() {
   // [gestures] Settings → Camera & gestures registers itself (settingsSections); the camera chip sits next to the gear.
   initGestures({
     screen: screenFrame, inCabin, isSpeaking, cabinPanel,
+    onGesture: id => { if (useSession()) session.ui("gesture", { id }); },   // round 8: {"t":"ui","event":"gesture","id"}
     indicatorBefore: $("a11yBtn"), addObstacle: sel => vbar && vbar.addObstacle && vbar.addObstacle(sel),
     announce: t => { if (a11y) a11y.describe(t, { quiet: true }); },
   });

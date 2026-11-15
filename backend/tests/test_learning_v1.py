@@ -223,3 +223,20 @@ def test_mission_lesson_numbers_follow_the_course():
     callbacks = dict(re.findall(r'lesson: "(\w+)", n: (\d+)', STORY.read_text()))
     assert callbacks and all(gameplay.LESSON_NO[l] == int(n) for l, n in callbacks.items()), callbacks
     assert sim.MISSION_H > 0   # the sim module still imports with the course-driven numbers
+
+
+# ---- the router's prep screen (integ/v1: director round 8) ------------------------------------------------------------
+@pytest.mark.parametrize("text,want", [("done!", "prep_done"), ("we did it", "prep_done"), ("skip this one", "prep_skip"),
+                                       ("we don't have flour", "prep_skip"), ("hold on", "prep_wait"),
+                                       ("i need help", "prep_help"), ("say it again", "prep_help")])
+def test_router_prep_screen_takes_done_skip_wait_help(text, want):
+    from app import turn_router as R
+    out = R.route(text, R.Ctx(screen="prep", offer="prep_task", source="voice"))
+    assert out["outcome"] == "navigate" and out["intent"] == want, out
+
+
+def test_router_prep_screen_ignores_room_talk_and_answers_questions():
+    from app import turn_router as R
+    ctx = R.Ctx(screen="prep", offer="prep_task", source="voice")
+    assert R.route("it looks like a crater", ctx)["outcome"] == "ignore"
+    assert R.route("what is regolith made of", ctx)["outcome"] == "question"

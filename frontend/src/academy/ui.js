@@ -238,7 +238,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.className = `pin a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${sel && sel.id === l.id ? " is-sel" : ""}`;
       b.dataset.l = l.id;
       const no = l.ride || isExplorer(l) ? "" : String(lessonNo(l).n);
-      if (!open(l)) b.classList.add("is-locked");
+      if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it to read when it opens (spatial nav skips it)
       b.setAttribute("aria-label", `${no ? no + ". " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, ${EXPLORER.locked(l.unlock_after_missions)}` : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label">${no ? `<b>${no}</b>` : ""}${esc(l.title)}</span>`;
       b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
@@ -254,7 +254,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       : sel ? `<div class="mp-card"><span class="mp-patch">${patch(sel.id, { earned: selDone, size: 64 })}</span>
           <div class="mp-copy"><p class="eyebrow">${esc(sel === nx ? UI.nextUp : sel.ride ? UI.ride : isExplorer(sel) ? EXPLORER.eyebrow : UI.lesson(lessonNo(sel).n, lessonNo(sel).of))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
             <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(open(sel) ? (LESSON_BLURB[sel.id] || sel.brief) : EXPLORER.locked(sel.unlock_after_missions))}</p></div>
-          ${open(sel) ? `${sel.prep && !has(sel.badge.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}
+          ${open(sel) ? `${sel.prep && !has(sel.badge.id) && prepSeen(sel.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}
           <button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button>` : ""}</div>` : "";
     panel.innerHTML = `
       <header class="mp-top">
@@ -683,7 +683,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") return { screen: "callsign" };
     if (view === "map") { const nx = nextLesson(); return { screen: "map", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
     if (view === "badge") { const nx = nextLesson(); return { screen: "patch", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
-    if (view === "prep" && L) return { screen: "lesson", step_type: "prep", step_options: [PREP.done.replace("!", ""), PREP.skip], offer: "prep" };
+    // the router's prep screen (turn_router.PREP_CMDS): done / skip / wait / help
+    if (view === "prep" && L) return { screen: "prep", offer: "prep_task", lesson_id: L.id };
     if (view !== "lesson" || !L) return { screen: "map" };
     if (waitingNext) return { screen: "lesson_done", offer: "next_step" };
     const acc = L.steps[i].accept;
@@ -696,9 +697,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") return false;
     const nx = nextLesson();
     if (intent === "lesson") { if (lessons().some(l => l.id === arg)) { stop(); openLesson(arg); return true; } return false; }
-    if (view === "prep") {   // Mission prep: yes / next / a thumbs-up is Done; no is Skip
-      if (["next", "start", "accept_offer", "yes"].includes(intent)) { prepDone(true); return true; }
-      if (["decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
+    if (view === "prep") {   // Mission prep: the router's prep_* intents; yes / next / a thumbs-up is Done; no is Skip
+      if (["prep_done", "next", "start", "accept_offer", "yes"].includes(intent)) { prepDone(true); return true; }
+      if (["prep_skip", "decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
+      if (intent === "prep_wait") { say(PREP.waitSay); return true; }
+      if (intent === "prep_help" || intent === "repeat_step") { say(L.prep.steps); return true; }
     }
     if (view === "lesson" && L && !waitingNext && L.steps[i].accept.type === "video" && stepState.video) {   // [media] next skips
       if (["next", "decline_offer", "no"].includes(intent)) { stepState.video.skip(); return true; }

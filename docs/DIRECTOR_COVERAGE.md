@@ -168,3 +168,17 @@ shipped r4 s weights were run on the new sets. This is the gap the branches and 
 1. Add the screen / intents to `features.SCREENS` / the router.
 2. Run `make director-coverage`, so the test passes again.
 3. Drop the set from `PENDING`.
+
+## 6. On integ/v1 (all round-8 branches merged)
+
+- **Router.** The `video` screen (media-v1, `turn_router.VIDEO_CMDS`) and the new `prep` screen
+  (`turn_router.PREP_CMDS`: `prep_done` / `prep_skip` / `prep_wait` / `prep_help`; a real question still answers;
+  anything else is ignored). The Academy sends `{"screen": "prep", "offer": "prep_task"}` while a Mission prep card is
+  up and runs the four intents.
+- **Gestures.** The client posts `{"t": "ui", "event": "gesture", "id": <classifier event>}` for each discrete gesture
+  (`gesture/ui.js` `onGesture`, wired in `main.js`), so `session.last_gesture` and the `gesture_now` feature are live.
+- **Features.** `features.SCREENS` is unchanged: `video` and `prep` have no one-hot slot (the shipped weights keep
+  their layout); `video_on`, `gesture_now` and the `video_*` / `prep_*` nav intents carry them.
+- **Inventory.** `coverage.py` lists `video` and `prep` as real router screens (`ROUTER_SCREENS`), not pending;
+  `video_watch` stays pending (on a lesson's video step "watch" is the step's answer, not a router intent). The
+  class-set pendings (`pools_r8.PENDING`, echo / gesture cells) are unchanged: they gate on real-ear data, not on a merge.

@@ -97,6 +97,8 @@ export function initGestures(ctx = {}) {
     if (ev.type === "grab_start") { tick("grab"); paintSpinSoon(); }
     if (ev.type === "grab_end") tick("release");
     if (ev.type !== "point" && ev.type !== "point_end" && ev.type !== "head" && ev.type !== "grab_move" && !card.hidden && card.dataset.mode === "coach") hideCard();
+    // round 8: tell the session a discrete gesture happened, so the Director sees voice + gesture together
+    if (DRIVES.has(ev.type) && ev.type !== "point" && ctx.onGesture) { try { ctx.onGesture(ev.type); } catch (e) { /* no session */ } }
     for (const [name, args] of gestureIntents(ev, context())) {
       emitIntent(name, args, "gesture").then(ok => {
         if (FEEDBACK[name] && ok) feedback(FEEDBACK[name], name);
