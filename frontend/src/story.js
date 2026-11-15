@@ -107,7 +107,7 @@ export const TOUR = {
     { show: "panel:comm", text: "Comm: call Houston when Earth is in view." },
     { show: "lamps", text: "Warning lights. Red means act now. Amber means get ready." },
     { show: "goals", text: "Your goal: ten safe days. Send science home. Bring back ice." },
-    { show: "start", text: "First job: raise the shields. Then press Play to start time." },
+    { show: "start", text: "First job: raise the shields. Time starts when you do." },
   ],
   commander: [
     { show: "window", text: "Window up top. Three screens below. Five panels around you." },

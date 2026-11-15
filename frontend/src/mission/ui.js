@@ -718,7 +718,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
 
   function applyState(s, keepPrev) { if (!s) return; if (testForce && s.env) { s.env.storm = testForce.storm; s.alerts = [...new Set([...(s.alerts || []), "dose_rate_high"])]; }
-    if (!keepPrev && state) prev = prev || state; state = s; render(); pushContext(); }
+    if (!keepPrev && state) prev = prev || state; state = s;
+    // [polish wave 2] time plays itself: the first order of the mission starts the clock (no separate "press Play" job)
+    if (screen === "hud" && !mclock.started && !tour.active && !s.over && (s.mission_time_h || 0) === 0 && s.acted && s.acted.allocate) mclock.play();
+    render(); pushContext(); }
 
   /** A Flight School lesson coming back as a real event: CAPCOM reminds the kid (once per kind per mission). */
   const reminded = new Set();

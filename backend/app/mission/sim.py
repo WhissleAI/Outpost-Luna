@@ -1100,7 +1100,7 @@ def debrief(m: Mission) -> dict:
         "survived": (f"Your crew made it through all 10 days at {s['name']} with {m.dose:.0f} of {DOSE_LIMIT:.0f} mSv."
                      if obj["met"] == 2 else
                      f"Your crew was safe for 10 days, but sent home {obj['science']['got']:.0f} of "
-                     f"{SCIENCE_GOAL:.0f} science and made {m.ice_runs} ice runs."),
+                     f"{SCIENCE_GOAL:.0f} science and made {m.ice_runs} ice run{'' if m.ice_runs == 1 else 's'}."),
         "life_support_out": "Life support ran out: the crew needed more power for recycling, the greenhouse, or ice.",
         "power_out": "The batteries stayed empty for two shifts, so nothing could run.",
         "dose_limit": "The crew got too much radiation: a solar storm hit while they were not sheltered enough.",
