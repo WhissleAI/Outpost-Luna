@@ -83,7 +83,6 @@ export function createCabin(root, o = {}) {
         <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}×</button>`).join("")}</span>
         <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
       </div>`}
-      <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
       ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
     </header>
     <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
@@ -97,6 +96,7 @@ export function createCabin(root, o = {}) {
       <div class="cb-glass" data-view="site">
         <div class="cb-tint" aria-hidden="true"></div>
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
+        <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
         <div class="cb-rover" id="cbRover" hidden></div>
         <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
@@ -161,7 +161,7 @@ export function createCabin(root, o = {}) {
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
   // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
-  const HUD = [".cb-alert", ".cb-rover", ".cb-sky", ".cb-moment"];
+  const HUD = [".cb-alert", ".cb-views", ".cb-rover", ".cb-sky", ".cb-moment"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -514,6 +514,7 @@ export function createCabin(root, o = {}) {
     const W = l => String(l).toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !["to", "the", "an", "or", "and"].includes(w));
     return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
   }
+  const DECKHINT = { skip: "Skip ahead is in the clock bar (E).", warp: "Time warp is in the clock bar (W).", play: "Play is in the clock bar (K)." };
   const NOWSAY = ws => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${ws.map((_, i) => i + 1).join(" or ")}.`;
   /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
   function card(c, { ack = null, cadet = false } = {}) {
@@ -527,9 +528,11 @@ export function createCabin(root, o = {}) {
     // second; re-rendering the buttons that often replaced them mid-click, so a real mouse click could be lost.
     const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, !!left]);
     if (key === cardKey) {
+      requestAnimationFrame(fitNow);
       const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
       q("#cbNowMore").querySelectorAll(".cb-now-ro").forEach((n, i) => { const r = (c.readouts || [])[i]; if (r) n.lastChild.textContent = " " + r.v; });
-      q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));   // latest task object
+      const own2 = (c.buttons || []).filter(b => !b.clock);
+      q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own2[+b.dataset.b], c));   // latest task object
       return;
     }
     cardKey = key;
@@ -538,27 +541,33 @@ export function createCabin(root, o = {}) {
     const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em><span> ${esc(r.v)}</span></span>`).join("");
     // a choice: each option is its own button with its number and the word to say; anything else: one hot button (T)
     const words = sayWords((c.buttons || []).map(b => b.label));
-    const btns = (c.buttons || []).map((b, i) => `<button type="button" class="cb-now-b${i || c.choice ? "" : " is-hot"}" data-b="${i}" ${i === 0 && !c.choice ? 'data-intent="yes"' : ""}
+    const own = (c.buttons || []).filter(b => !b.clock);   // Play / Skip ahead / the speed are the deck's, shown once there
+    const deckHint = (c.buttons || []).some(b => b.clock) ? `<p class="cb-now-say">${esc(DECKHINT[(c.buttons.find(b => b.clock) || {}).clock] || "")}</p>` : "";
+    const btns = own.map((b, i) => `<button type="button" class="cb-now-b${i || c.choice ? "" : " is-hot"}" data-b="${i}" ${i === 0 && !c.choice ? 'data-intent="yes"' : ""}
       aria-keyshortcuts="${c.choice ? i + 1 : "T"}"><kbd aria-hidden="true">${c.choice ? i + 1 : "T"}</kbd><span class="cb-now-bl">${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</span></button>`).join("");
     const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words))}</p>` : "";
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
       <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
       ${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
-      ${btns ? `<div class="cb-now-btns${c.choice ? " is-choice" : ""}" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}${sayLine}`;
-    q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(c.buttons[+b.dataset.b], c));
+      ${btns ? `<div class="cb-now-btns${c.choice ? " is-choice" : ""}" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}${sayLine}${deckHint}`;
+    q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own[+b.dataset.b], c));
     fitNow();
   }
   /** The Now panel lives on the wall above the Habitat console: when the wall is short (a small window), it drops its
    *  details (read-outs, the hint, then the meta row and the say line) so it never sits on the console. The step and
    *  its buttons always stay. */
   function fitNow() {
-    const el = q("#cbNow"); if (!el || el.hidden) return;
-    el.classList.remove("is-tight", "is-tighter");
+    const el = q("#cbNow"), hole = root.querySelector(".cb-hole");
+    // the window's own strips start where the Now panel ends (a wide window at 1024 px reaches under the panel)
+    if (hole) { const nr = el && !el.hidden ? el.getBoundingClientRect() : null, hr = hole.getBoundingClientRect();
+      const clear = nr && nr.bottom > hr.top && nr.right > hr.left ? Math.ceil(nr.right - hr.left + 8) : 0;
+      hole.style.setProperty("--now-clear", clear + "px"); }
+    if (!el || el.hidden) return;
+    el.classList.remove("is-tight", "is-tighter", "is-tightest");
     const hab = q('.c3-panel[data-panel="habitat"]') || q('.c3-panel[data-panel="rover"]');
     if (!hab || !c3 || (c3.panel && c3.panel !== "seat")) return;
     const room = () => hab.getBoundingClientRect().top - 40 - el.getBoundingClientRect().bottom;   // 40: the console's label chip
-    if (room() < 0) el.classList.add("is-tight");
-    if (room() < 0) el.classList.add("is-tighter");
+    for (const c of ["is-tight", "is-tighter", "is-tightest"]) { if (room() >= 0) break; el.classList.add(c); }
   }
   addEventListener("resize", () => requestAnimationFrame(fitNow));
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },

@@ -117,3 +117,23 @@ test("Mission before the check ride: a Cadet, the path, and a practice shift (ne
   for (const t of [G.say("Nova"), G.doneSay("Nova")]) assert.ok(words(t) <= 20, t);
   for (const t of [G.practice, G.ride, G.again]) assert.match(t, /^(Try|Fly|Practice)/);   // QA-69: a verb first
 });
+
+test("Houston is relayed by CAPCOM in one voice: \"Houston says: ...\", 20 words or fewer", async () => {
+  const { houstonRelay } = await import("../src/mission/objective.js");
+  const long = "Houston here. Your words took 1.3 seconds to reach us. Active region on the Sun. A storm is likely in the next two days.";
+  const r = houstonRelay(long);
+  assert.match(r, /^Houston says: /); assert.doesNotMatch(r, /Houston here/); assert.ok(words(r) <= 20, r);
+  assert.equal(houstonRelay("Houston here. We copy you, Commander."), "Houston says: We copy you, Commander.");
+});
+
+test("Mute: Shift+M (M stays the mic), a pref that persists, and the router's words", async () => {
+  const { keyAction } = await import("../src/input/keys.js");
+  assert.equal(keyAction({ key: "m" }, {}).intent, "mic");
+  assert.equal(keyAction({ key: "M", shift: true }, {}).intent, "mute");
+  const { normalizePrefs, PREF_DEFAULTS } = await import("../src/prefs.js");
+  assert.equal(PREF_DEFAULTS.muted, false);
+  assert.equal(normalizePrefs({ muted: true }).muted, true);
+  assert.equal(normalizePrefs({ muted: "yes" }).muted, false);
+  const { ROUTER_INTENTS } = await import("../src/input/defaults.js");
+  assert.ok(ROUTER_INTENTS.has("mute_sound") && ROUTER_INTENTS.has("unmute_sound"));
+});

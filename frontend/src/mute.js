@@ -63,7 +63,7 @@ export function installMute() {
     const b = document.createElement("button");
     b.type = "button"; b.className = "btn-icon"; b.id = "muteBtn";
     b.onclick = () => toggleMute();
-    nav.insertBefore(b, gear || nav.firstChild);
+    if (gear) gear.after(b); else nav.prepend(b);   // right next to the Settings gear
     const live = document.createElement("span"); live.id = "muteLive"; live.className = "sr-only"; live.setAttribute("role", "status"); live.setAttribute("aria-live", "polite");
     nav.append(live);
   }

@@ -714,14 +714,26 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 .m-cabin .cb:has(.c3:not([data-panel="seat"])) .cb-now :is(.cb-now-meta,.cb-now-ros,.cb-now-hint,.cb-now-ack){display:none}
 
 /* narrower windows: the deck drops words before it drops controls */
-@media (max-width:1360px){.m-cabin .cb-deck .cb-views .cb-view span{display:none}.m-cabin .cb-deck .cb-views .cb-view{min-width:var(--control-sm)}}
-@media (max-width:1200px){.m-cabin .cb-deck .cb-prog .pg em{display:none}.m-cabin .cb-logbtn span{display:none}}
-@media (max-width:1100px){.m-cabin .cb-deck .cb-clock small{display:none}.m-cabin .cb-state{min-width:0}.m-cabin .cb-skip span{display:none}}
-@media (max-width:1024px){.m-cabin{--now-w:224px;--deck-h:48px}.m-cabin .cb-deck{gap:var(--space-2)}.m-cabin .cb-deck .cb-prog .pg:not(:first-child){display:none}}
+/* the view tabs ride on the glass (top-right); the sky readout moves to the glass's bottom-right, clear of the Now panel */
+.m-cabin .cb-hole>.cb-views{left:auto;right:var(--inset);top:var(--inset)}
+.m-cabin .cb-glass>.cb-views{position:absolute;z-index:4;right:var(--space-4);top:var(--space-4)}
+.m-cabin .cb-hole.has-alert>.cb-views{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
+.m-cabin .cb-hole>.cb-sky{left:auto;right:var(--inset);top:auto;bottom:calc(var(--inset) * .6)}
+.m-cabin .cb-glass>.cb-sky{left:auto;right:var(--space-4)}
+.m-cabin .cb-view{gap:6px;padding:0 var(--space-2)}
+/* narrower windows: words win over icons (a kid reads "Rover", not a glyph); the deck drops the long site name first */
+@media (max-width:1366px){.m-cabin .cb-view svg{display:none}.m-cabin .cb-view{min-width:0}}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-clock small{display:none}.m-cabin .cb-logbtn span{display:none}}
+@media (max-width:1100px){.m-cabin .cb-state{min-width:0}.m-cabin .cb-deck{gap:var(--space-2)}.m-cabin .cb-deck .cb-prog{gap:4px}}
+@media (max-width:1024px){.m-cabin{--now-w:224px;--deck-h:48px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
 @media (max-height:700px){.m-cabin .cb-now-ros,.m-cabin .cb-now-hint{display:none}}
 
 /* two options side by side; the Now panel drops details when the wall above the Habitat console is short (fitNow) */
 .m-cabin .cb-now-btns.is-choice:has(.cb-now-b:nth-child(2):last-child){display:grid;grid-template-columns:1fr 1fr}
 .m-cabin .cb-now-btns.is-choice .cb-now-b{justify-content:flex-start}
 .m-cabin .cb-now.is-tight :is(.cb-now-ros,.cb-now-hint,.cb-now-lesson){display:none}
-.m-cabin .cb-now.is-tighter :is(.cb-now-meta,.cb-now-say,.cb-now-ack){display:none}
+.m-cabin .cb-now.is-tighter :is(.cb-now-meta,.cb-now-ack){display:none}
+.m-cabin .cb-now.is-tightest :is(.cb-now-say,.cb-now-head){display:none}
+
+/* the alert strip on the glass starts right of the Now panel when the window reaches under it (fitNow sets --now-clear) */
+.m-cabin .cb-hole>.cb-alert{left:max(var(--inset),var(--now-clear,0px))}

@@ -9,21 +9,12 @@ import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
 import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE } from "../story.js";
-import { nowCard, nowSpoken, nudgeLine, debriefStory } from "./objective.js";
+import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./objective.js";
 import { createTour, tourDone } from "./tour.js";
 import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
 
-/** CAPCOM's relay of a Houston line: "Houston says: ..." within the 20-word spoken budget (the card keeps the full line). */
-export function houstonRelay(line) {
-  const body = String(line || "").replace(/^\s*Houston here[.,!]?\s*/i, "").trim();
-  const sentences = body.match(/[^.!?]+[.!?]*/g) || [body];
-  let out = [];
-  for (const s of sentences) { const next = [...out, s.trim()]; if (next.join(" ").split(/\s+/).length > 17 && out.length) break; out = next; }
-  let text = out.join(" ").trim();
-  const w = text.split(/\s+/); if (w.length > 17) text = w.slice(0, 17).join(" ").replace(/[,;:]$/, "") + ".";
-  return `Houston says: ${text}`;
-}
+
 
 /** Story beats CAPCOM says from the client when no session Director is connected (the session says them otherwise). */
 const SPOKEN_BEATS = new Set(["settle", "comm_gap", "first_dark", "ice_return", "final_downlink"]);
@@ -83,8 +74,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       window.__cabinViews = { get tv() { return tv; }, get view() { return curView; } };   // test hook (fps, view)
     }
     if (import.meta.env && import.meta.env.DEV && !window.__cabinTest) window.__cabinTest = {   // dev-only: force sim states for screenshots
-      storm(on) { if (!state) return; state.env.storm = on ? { active: true, name: "Real solar particle storm, 2024-05-09 (huge auroras on Earth, G5)", real_date: "2024-05-09", source: "DONKI", severity: 3, sep: true } : { active: false };
-        state.alerts = on ? ["dose_rate_high"] : []; render(); },
+      // a forced storm holds across state updates (the live clock steps the sim every second; a plain write was lost)
+      storm(on) { if (!state) return; testForce = on ? { storm: { active: true, name: "Real solar particle storm, 2024-05-09 (huge auroras on Earth)", real_date: "2024-05-09", source: "DONKI", severity: 3, sep: true } } : null;
+        state.env.storm = on ? testForce.storm : { active: false }; state.alerts = on ? ["dose_rate_high"] : []; render(); },
       sky(sun, earth) { if (!state) return; Object.assign(state.env, { sun_elev_deg: sun, in_sun: sun > 0, earth_elev_deg: earth, earth_visible: earth > 0 }); testSky = true; render(); },
       rover(task, eta) { if (!state) return; state.rover = { ...(state.rover || {}), busy: !!task, task, eta_h: eta }; render(); },
       shelter(on) { if (!state) return; state.shelter = !!on; render(); },
@@ -105,7 +97,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     };
     return tv;
   }
-  let fakeDebrief = null, windows = null;   // dev-only: a debrief payload for screenshots of every outcome
+  let fakeDebrief = null, windows = null, testForce = null;   // testForce: dev-only (window.__cabinTest.storm)   // dev-only: a debrief payload for screenshots of every outcome
   function fakeDb(outcome, extra) {
     const tl = []; for (let i = 1; i <= 40; i++) { const st = i >= 14 && i <= 16;
       tl.push({ t_h: i * 6, power: Math.max(5, 100 - (outcome === "failed" ? i * 2.4 : i * .4) - (st ? 8 : 0)), life_support: Math.max(4, 80 - (outcome === "failed" ? i * 1.9 : i * .3)),
@@ -354,7 +346,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // [qa] QA-54: one mission per press (a double click, or a click while saying "take command"); a failed start says so
     if (starting) return; starting = true;
     document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = true; });
-    siteSeed = seed ?? Math.floor(Math.random() * 1e9);
+    // dev-only: tools/*.py may fix the storm schedule (window.__missionSeed) so a check reaches the same moment
+    siteSeed = seed ?? ((import.meta.env && import.meta.env.DEV && window.__missionSeed != null) ? +window.__missionSeed : Math.floor(Math.random() * 1e9));
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
     const level = isPractice ? "cadet" : (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
     let st = null;
@@ -669,7 +662,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     say(r.say);
   }
 
-  function applyState(s, keepPrev) { if (!s) return; if (!keepPrev && state) prev = prev || state; state = s; render(); pushContext(); }
+  function applyState(s, keepPrev) { if (!s) return; if (testForce && s.env) { s.env.storm = testForce.storm; s.alerts = [...new Set([...(s.alerts || []), "dose_rate_high"])]; }
+    if (!keepPrev && state) prev = prev || state; state = s; render(); pushContext(); }
 
   /** A Flight School lesson coming back as a real event: CAPCOM reminds the kid (once per kind per mission). */
   const reminded = new Set();
@@ -731,6 +725,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (/^((start|resume|run|unpause)( the)? (clock|time)|resume|unpause|play)$/.test(w)) { radio("kid", text); return clockAction("play"); }
     { const m = w.match(/^(time ?warp|warp)( speed)?( (one|two|four|1|2|4))?( x| times)?$/); if (m) { radio("kid", text); return clockAction("warp", { one: 1, two: 2, four: 4 }[m[4]] || (m[4] ? +m[4] : undefined)); } }
     if (/^(do it|go|ok do it|lets do it)$/.test(w) && doTaskStep()) { radio("kid", text); return true; }
+    { const c = nowCard(state, mclock.state);   // a choice: the option the words name ("left", "the ridge", "shelter now")
+      if (c && c.choice && w && w.split(" ").length <= 4) {
+        const hit = c.buttons.filter(b => { const lw = b.label.toLowerCase(); return w.split(" ").some(x => x.length > 2 && lw.split(/[^a-z]+/).includes(x) &&
+          !c.buttons.every(o => o.label.toLowerCase().split(/[^a-z]+/).includes(x))); });
+        if (hit.length === 1) { radio("kid", text); taskButton(hit[0]); return true; } } }
     radio("kid", text);
     if (panelWord(text)) return true;
     const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));

@@ -144,6 +144,20 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
                 pg.wait_for_timeout(400)
                 continue
             if not n["buttons"]:
+                # the Now panel points at a deck control (Skip ahead / Play / the speed): a kid presses the glowing one
+                lit = pg.evaluate("() => { const e = document.querySelector('.cb-deck .is-point'); if (!e) return null; const b = e.matches('button') ? e : e.querySelector('button:not([aria-pressed=\"true\"])') || e.querySelector('button'); if (!b) return null; b.dataset.lit = '1'; return b.textContent.trim(); }")
+                if lit:
+                    before = pg.evaluate(LOOK)
+                    act = click(pg, "[data-lit='1']", 0)
+                    pg.evaluate("() => document.querySelectorAll('[data-lit]').forEach(e => delete e.dataset.lit)")
+                    pg.wait_for_timeout(900)
+                    after = pg.evaluate(LOOK)
+                    na = after["now"] or {}
+                    log.append({"t": round(time.time() - t0), "clock": hour, "task": n["title"] or "Now", "should": n["text"], "meta": n["meta"],
+                                "buttons": [lit], "glow": v["glow"], "obvious": bool(v["glowClear"]), "glow_on_screen": v["glowClear"],
+                                "action": f"{act}: {lit} (deck)", "reacted": after["clock"] != before["clock"] or (na.get("text") != n["text"]),
+                                "ack": na.get("ack") or "", "next": na.get("text") or "", "progress": after["prog"], "moment_shown": after["moment"]})
+                    continue
                 pg.wait_for_timeout(400)
                 last_key = key
                 continue

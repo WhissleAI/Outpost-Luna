@@ -153,3 +153,14 @@ the turn-based shifts left them lost. The mission now runs on a live clock, with
 a Now **task card**, which replaces the strip's static line. The objective table in §4 is now the fallback (no task
 open), using "Skip ahead" and "Time warp?" in place of "End shift". The first job reacts to any power change ("Power
 set. Good.", then "Now press Play to start the clock."). See docs/GAMEPLAY.md.
+
+## 10. Houston is relayed by CAPCOM (owner decision)
+
+The app speaks in one voice (CAPCOM, guide and story), so a "Houston here" line in that same voice sounded like one
+person talking to themselves. CAPCOM now **relays** Houston:
+- A short radio squelch and beep plays first (`sound.radioBeep`; silent under the top bar's Mute).
+- Then CAPCOM says "Houston says: …" (`houstonRelay`: "Houston here" is dropped and the line kept to 20 words or
+  fewer).
+- The card's eyebrow still says **Houston**, and the radio log entry is still `who: "houston"`, so it is clear where
+  the message came from.
+- No separate Houston voice is used.

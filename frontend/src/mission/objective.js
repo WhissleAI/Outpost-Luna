@@ -161,3 +161,14 @@ export function debriefStory(d = {}, st = {}) {
 }
 
 function firstSentence(t) { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return (m ? m[0] : String(t || "")).trim(); }
+
+/** CAPCOM's relay of a Houston line: "Houston says: ..." within the 20-word spoken budget (the card keeps the full line). */
+export function houstonRelay(line) {
+  const body = String(line || "").replace(/^\s*Houston here[.,!]?\s*/i, "").trim();
+  const sentences = body.match(/[^.!?]+[.!?]*/g) || [body];
+  let out = [];
+  for (const s of sentences) { const next = [...out, s.trim()]; if (next.join(" ").split(/\s+/).length > 17 && out.length) break; out = next; }
+  let text = out.join(" ").trim();
+  const w = text.split(/\s+/); if (w.length > 17) text = w.slice(0, 17).join(" ").replace(/[,;:]$/, "") + ".";
+  return `Houston says: ${text}`;
+}

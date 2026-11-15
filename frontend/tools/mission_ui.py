@@ -31,7 +31,8 @@ SIZES = "1280x720,1440x879,1440x900,1920x1080,1024x640"
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
   localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'cadet', graphics:'low'}));
-  localStorage.setItem('outpost-tour-done:Comet','1'); window.__hourMs = 700; }catch(e){}"""
+  localStorage.setItem('outpost-tour-done:Comet','1'); window.__hourMs = 700; window.__missionSeed = 2; }catch(e){}"""
+# seed 2 at Shackleton Rim (Cadet): the first storm is at hour 62, so the ice run's boulders come first, every run
 
 # The HUD elements a kid reads in the seat view. Selectors that don't exist in a build are simply skipped.
 HUD = {
@@ -49,7 +50,7 @@ MEASURE = """(HUD) => {
   // the top bar: the Mute button sits next to Settings; nothing in the bar overlaps (the brand, the sections, the icons)
   out.topbar = [...document.querySelectorAll('.topbar .brand, .topbar .modes, .topnav > button')].filter(vis).map(e => [e.id || e.className.split(' ')[0], ...R(e)]);
   out.mute = (() => { const m = document.getElementById('muteBtn'), g = document.getElementById('a11yBtn');
-    return m && vis(m) ? { pressed: m.getAttribute('aria-pressed'), label: m.getAttribute('aria-label'), nextToSettings: !!(g && m.nextElementSibling === g) } : null; })();
+    return m && vis(m) ? { pressed: m.getAttribute('aria-pressed'), label: m.getAttribute('aria-label'), nextToSettings: !!(g && (m.nextElementSibling === g || m.previousElementSibling === g)) } : null; })();
   // the consoles (3D panels): the Now panel may not sit on them
   out.consoles = [...document.querySelectorAll('.c3-panel')].filter(vis).map(e => [e.dataset.panel, ...R(e)]);
   // inside the deck, its own groups must not collide either (the owner's "1x 13 h" over "1x")
@@ -139,16 +140,18 @@ def to_steer(pg):
     pg.evaluate("document.getElementById('mStart').click()")
     pg.wait_for_selector(".cb-now-btns .cb-now-b")
     pg.wait_for_timeout(1200)
-    for _ in range(40):
+    for _ in range(120):
         c = pg.evaluate("() => window.__outpost.missionUI.card")
         if c and c.get("choice") and "teer" in (c.get("text") or ""):
             return True
         if c and c.get("buttons"):
             b = c["buttons"][0]
-            if b.get("clock") == "skip" or "Time warp" in b.get("label", ""):
+            if b.get("clock") == "play":
+                pg.evaluate("document.getElementById('cbPlay').click()")   # the deck's Play (the card points at it)
+            elif b.get("clock"):
                 pg.wait_for_timeout(700)   # let the drive run to the boulder field
             else:
-                pg.evaluate("document.querySelector('.cb-now-btns .cb-now-b').click()")
+                pg.evaluate("(() => { const e = document.querySelector('.cb-now-btns .cb-now-b'); if (e) e.click(); })()")
         pg.wait_for_timeout(700)
     return False
 
@@ -164,6 +167,9 @@ def main(base, shots, tag, sizes):
             pg.goto(base)
             got = to_steer(pg)
             pg.wait_for_timeout(1500)
+            if pg.evaluate("() => { const c = document.querySelector('.c3'); return !!(c && c.dataset.panel && c.dataset.panel !== 'seat'); }"):
+                pg.keyboard.press("Escape")   # a Cadet offer opened a panel: the kid goes back to the seat, where the HUD is measured
+                pg.wait_for_timeout(1500)
             m = pg.evaluate(MEASURE, HUD)
             f = findings(m) + ([] if got else ["never reached the steer choice"])
             bad[f"{vw}x{vh}"] = f

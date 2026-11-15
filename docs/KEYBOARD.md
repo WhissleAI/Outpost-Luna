@@ -28,6 +28,7 @@ Code:
 | <kbd>Space</kbd> held (≥ 0.26 s) | voice.js push-to-talk | Hold to talk, unchanged. With nothing selectable focused, Space is talk at once, as before. |
 | <kbd>Esc</kbd>, <kbd>Backspace</kbd> (when not typing) | `back` | In order: close the help sheet, Settings, About, the calibration, a glossary card, the lesson brief, the answer card (in the cabin, only when focus is on it) or Find it. Then close an open cabin panel (`panel_back`). Then the screen's own back: lesson → map, patch → map, Library → where you were, debrief → cabin or picker. **Never quits.** |
 | <kbd>M</kbd> | `mic` | Turns the mic on or off. |
+| <kbd>Shift</kbd>+<kbd>M</kbd> | `mute` | The top bar's **Mute** (next to Settings): every sound off or back on. Captions and text stay. Output only; the mic is unchanged. Voice: "mute" / "unmute". |
 | <kbd>H</kbd> or <kbd>?</kbd> | `help` | Opens the help sheet with every key for **this** screen, plus the controller's buttons when one is connected. |
 | <kbd>1</kbd>–<kbd>4</kbd> (up to <kbd>9</kbd>), and <kbd>A</kbd>–<kbd>D</kbd> | `pick {n}` | Picks an answer. Works on lesson answers, vocab options, order buttons, call-sign chips, site rows, the cabin's offer buttons and the card's buttons. A–D work only while lettered answers are on screen. |
 | <kbd>N</kbd> / <kbd>P</kbd> | `next` / `prev` | Next / previous: next step or lesson, the next site, the window view, the panel, the tour stop. |
@@ -36,7 +37,8 @@ Code:
 | <kbd>C</kbd> | `captions` | Turns captions on or off, with a toast. While lettered answers are up, C is answer C. |
 | <kbd>V</kbd> | `view_next` | Cycles the cabin window view: Orbit → Site → Rover → Earth. |
 | <kbd>O</kbd> | `panel_open` | Opens the lit cabin panel. |
-| <kbd>T</kbd> | `task_step` | Cabin: does the Now card's step (its first button). <kbd>Y</kbd> does too when no yes/no waits. |
+| <kbd>T</kbd> | `task_step` | Cabin: does the Now panel's step (its button wears a **T**). <kbd>Y</kbd> does too when no yes/no waits. |
+| <kbd>1</kbd>–<kbd>4</kbd> | `pick {n}` | Cabin: picks a choice on the Now panel (each option wears its number; the panel also says the word to say, e.g. "Say “left” or “right”"). |
 | <kbd>K</kbd> | `time_toggle` | Cabin: pauses or runs the mission clock (docs/GAMEPLAY.md). |
 | <kbd>W</kbd> | `time_warp` | Cabin: time warp 1x → 2x → 4x. |
 | <kbd>E</kbd> | `skip_event` | Cabin: skip to the next event. |
@@ -255,3 +257,18 @@ Results on `rc/2` with the story merge (2026-11-14):
 - backend pytest: 746 passed.
 
 Screenshots of the focus states are in `docs/img/keys/`.
+
+## The cabin's deck and Now panel (fix/mission-ui-polish)
+
+- **The deck** is one bar across the top of the cabin. It holds the clock, the clock state (Running 2× / Paused /
+  On hold: your choice), Pause/Play, the speed (1× 2× 4×), Skip ahead, the window views and the goals. Each control is
+  shown once.
+- **Keys.** <kbd>K</kbd> pause/run, <kbd>W</kbd> speed, <kbd>E</kbd> skip. The arrows reach every deck control
+  (spatial focus). Space is not the pause key: a tap of Space is *select* and holding it is push-to-talk, so it stays
+  free for talking.
+- **The Now panel** is docked on the left wall. One focus ring sits on one button at a time: the old glow drew one ring
+  round both choices, which looked like a single control. The arrows move between the options. <kbd>Enter</kbd> or a
+  tap of <kbd>Space</kbd> presses the focused one. <kbd>1</kbd>–<kbd>4</kbd> pick, and <kbd>T</kbd> does a plain step.
+  The fold button (⌃) shrinks the panel to its one line.
+- **Controller** (unchanged): View/Share pause/run, RT/R2 skip, LT/L2 speed. The D-pad and A work the Now panel's
+  buttons like any other control.
