@@ -226,6 +226,8 @@ NAV_SAY = {
     "mute_sound": ["mute", "mute the sound", "sound off", "turn the sound off", "be quiet"],     # the top bar's Mute
     "unmute_sound": ["unmute", "sound on", "turn the sound back on", "unmute the app"],
     "recenter": ["center", "look forward", "center the view", "reset view", "look ahead"],                # Center view
+    "zoom_in": ["zoom in", "closer", "get closer", "a bit closer", "zoom in more"],                         # the Moon zoom (not the cabin)
+    "zoom_out": ["zoom out", "farther", "further away", "zoom out a bit", "back out"],
     "a11y": ["what do i do", "help me", "where am i", "what can i say", "i'm stuck", "give me a hint",
              "move the voice bar to the top", "reset the voice bar"],
     "skip_event": ["skip to the next event", "fast forward", "skip ahead", "jump to the next job"],

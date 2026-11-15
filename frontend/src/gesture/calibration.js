@@ -14,7 +14,10 @@ export function validCal(c, T = CALIBRATION) {
   if (!c || typeof c !== "object" || c.v !== T.version) return null;
   const ok = ["left", "right", "up", "down"].every(k => Number.isFinite(c[k]) && c[k] >= T.minRange && c[k] <= T.maxRange);
   if (!ok || (c.pitchSign !== 1 && c.pitchSign !== -1)) return null;
-  return { v: c.v, left: c.left, right: c.right, up: c.up, down: c.down, pitchSign: c.pitchSign, at: c.at || 0 };
+  const out = { v: c.v, left: c.left, right: c.right, up: c.up, down: c.down, pitchSign: c.pitchSign, at: c.at || 0 };
+  // the kid's pinch (thumb to index, hand-lengths), from "Pinch your fingers"; optional (skippable), dropped if odd
+  if (Number.isFinite(c.pinch) && c.pinch >= T.pinchMin && c.pinch <= T.pinchMax) out.pinch = c.pinch;
+  return out;
 }
 export function loadSpinCal(storage = globalThis.localStorage) {
   try { return validCal(JSON.parse(storage.getItem(SPIN_CAL_KEY) || "null")); } catch (e) { return null; }
@@ -30,6 +33,14 @@ export function clearSpinCal(storage = globalThis.localStorage) { try { storage.
  * "tilt it <dir>" step and says when the step is done (moved ≥ minMove that way and held stepHoldMs, or stepMaxMs
  * passed); result() is the calibration to store. Directions never reached keep the default (1).
  */
+/** The pinch step's measurement: the median thumb to index distance over the hold (hand-lengths), or null. */
+export function measurePinch(ds, T = CALIBRATION) {
+  const v = ds.filter(d => Number.isFinite(d) && d > 0).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = v[Math.floor(v.length / 2)];
+  return m >= T.pinchMin && m <= T.pinchMax ? +m.toFixed(3) : null;
+}
+
 export function createFistCalibration(opts = {}) {
   const C = { ...DEFAULTS, ...CALIBRATION, ...opts };
   let neutral = null;

@@ -42,9 +42,11 @@ export const INTENTS = Object.freeze({
   prev: "previous step / panel / view / pin (swipe right)",
   point: "a hover cursor at {x, y} in CSS px (index finger)", select: "select what is at {x, y} (point + dwell)",
   rotate: "drag-rotate {dx, dy, phase}: the surface follows (a drag)", look: "look around {x, y} in -1..1 (head pose)",
-  spin: "steer the view at a rate {phase: start|move|end, x, y, z} in -1..1: the Moon spins that way, z zooms; the cabin looks (fist, right stick)",
+  spin: "steer the view at a rate {phase: start|move|end, x, y} in -1..1: the Moon spins that way; the cabin looks (fist, right stick). Never zooms",
   panel_open: "open the highlighted / looked-at panel {panel?} (lean in)",
-  zoom: "zoom by {factor} (phase 2: two-hand pinch, +/- keys)", call_houston: "call Houston (voice; the cabin asks Houston)",
+  zoom: "zoom by {factor} (phase 2: two-hand pinch)",
+  zoom_rate: "zoom at a rate {phase: start|move|end, rate: -1..1, + = closer, tap?} (pinch and slide, held +/- keys, controller triggers)",
+  zoom_in: "zoom a step closer (voice: 'zoom in', 'closer')", zoom_out: "zoom a step farther (voice: 'zoom out', 'farther')", call_houston: "call Houston (voice; the cabin asks Houston)",
   help: "what can I do? (keys / controller: the help sheet of every key)",
   // [keys] the keyboard as a TV remote and game controllers (docs/KEYBOARD.md)
   move: "spatial focus {dir: left|right|up|down, shift?} (arrows, D-pad, left stick)",
@@ -53,7 +55,7 @@ export const INTENTS = Object.freeze({
 });
 
 /** Continuous intents: delivered like the others but kept out of the log (they fire at frame rate). */
-export const CONTINUOUS = new Set(["point", "rotate", "spin", "look", "zoom"]);
+export const CONTINUOUS = new Set(["point", "rotate", "spin", "look", "zoom", "zoom_rate"]);
 export const SOURCES = ["voice", "tap", "keyboard", "gesture", "gamepad", "typed", "system"];
 
 export function createIntentBus({ logSize = 50, now = () => Date.now() } = {}) {

@@ -15,6 +15,16 @@ const v2ll = v => {
 };
 /** Angular distance in degrees between two {lat, lon}. */
 export const angDist = (a, b) => Math.acos(Math.min(1, ll2v(a.lat, a.lon).normalize().dot(ll2v(b.lat, b.lon).normalize()))) * 180 / Math.PI;
+/**
+ * The camera distance that frames a place: its diameter fills about a third of the view (38° field), clamped so a small
+ * crater is never closer than 2.2 and a sea never farther than 3.4 (the default view is 3.6). Hardware markers: 2.3.
+ */
+export function frameDistance(f) {
+  if (!f) return 2.5;
+  if (f.kind === "artifact") return 2.3;
+  const diam = (f.km || 0) / MOON_KM;   // radians across
+  return Math.max(2.2, Math.min(3.4, 1.9 + diam * 2.2));
+}
 /** A feature's angular radius in degrees. */
 export const angRadius = f => (f.km / 2) / MOON_KM * 180 / Math.PI;
 
@@ -97,8 +107,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   /** End the current flight (it lands where it is) and settle its promise. */
   function endFly() { const f = fly; fly = null; if (f && f.done) f.done(); }
 
+  // selecting a place eases the zoom to frame it (the flight eases the distance with the turn): small craters come
+  // closer, the big seas fit the view, whatever the kid zoomed to before (frameDistance)
   function showFeature(f, { dist } = {}) {
-    highlight(f); flyTo(f.lat, f.lon, dist || (f.kind === "artifact" ? 2.3 : f.km > 800 ? 3.2 : 2.5));
+    highlight(f); flyTo(f.lat, f.lon, dist || frameDistance(f));
     if (!mi.on && !sunLock) sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
   }
   // ---------- Flight School globe verbs (docs/LEARNING_DESIGN.md §3) ----------

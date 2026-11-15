@@ -5,7 +5,7 @@ Chromium with a fake camera (--use-fake-device-for-media-stream). Checks:
   1. camera off by default; no camera request until Settings turns it on
   2. Settings -> Camera & gestures -> on: the bundled WASM + models load in the worker and frames flow (fps, ms)
   3. nothing is fetched from anywhere but the app's own origin
-  4. the first-time calibration (hand, fist left / right / up / down, head) runs on injected landmarks and is saved
+  4. the first-time calibration (hand, fist left / right / up / down, pinch, head) runs on injected landmarks and is saved
   5. landmark streams injected on each screen emit the right intents, and the screens react
   6. fist spin, played in real time: in all 8 directions the Moon turns that way at a rate, the stick indicator and
      the heading arrow show it, and opening the hand releases with a little momentum that stops by itself
@@ -146,13 +146,16 @@ def main():
         for i, d in enumerate(["left", "right", "up", "down"]):
             inject_next(page, f"fist_spin_{d}")
             seen_steps.append(step())
-        ok(all(w in seen_steps[i].lower() for i, w in enumerate(["right", "up", "down", "look"])), f"calibration: tilt left, right, up, down ({seen_steps})")
+        ok(all(w in seen_steps[i].lower() for i, w in enumerate(["right", "up", "down", "pinch"])), f"calibration: tilt left, right, up, down ({seen_steps})")
+        inject_next(page, "pinch_hold")
+        ok("look" in step().lower(), f"calibration: pinch your fingers -> sit back ({step()!r})")
         inject_next(page, "lean_in_back")
         page.wait_for_function("() => !document.querySelector('.gx-calib')", timeout=5000)
         cal = page.evaluate("() => window.__outpost.gestures.calibration")
         stored = page.evaluate("() => JSON.parse(localStorage.getItem('outpost-gestures-spin') || 'null')")
         ok(cal and cal["v"] == 1 and stored == cal and all(0.8 < cal[k] < 2.0 for k in ("left", "right", "up", "down")) and cal["pitchSign"] == 1,
            f"calibration measured each direction and saved it on this device: {cal}")
+        ok(cal and 0.02 < cal.get("pinch", 0) < 0.2, f"calibration measured the pinch distance ({cal and cal.get('pinch')} hand-lengths)")
         ok(page.evaluate("() => /Fist tuned for you/.test(document.querySelector('.gx-state').textContent) && !!document.getElementById('gxCalib') && /Recalibrate/.test(document.getElementById('gxCalib').textContent) && !!document.getElementById('gxInvert')"),
            "Settings: 'Fist tuned for you', Recalibrate, Flip the spin")
         t0 = time.time()
@@ -218,10 +221,10 @@ def main():
             coach = next((c for c in page.evaluate("() => window.__coaches") if c["screen"] == "moon"), None)
             if coach:
                 coach["mode"] = "coach"
-        ok(coach and coach["mode"] == "coach" and coach["screen"] == "moon" and "Fist and lean" in coach["text"], f"Moon screens: first-use coach mark ({coach and coach['text'][:60]!r})")
+        ok(coach and coach["mode"] == "coach" and coach["screen"] == "moon" and "Turn the Moon" in coach["text"] and "Pinch and slide" in coach["text"], f"Moon screens: first-use coach mark ({coach and coach['text'][:60]!r})")
         page.click("#gxHelpBtn")
         helpc = page.evaluate("() => { const c = document.querySelector('.gx-card'); return c && !c.hidden ? {mode: c.dataset.mode, text: c.textContent} : null; }")
-        ok(helpc and helpc["mode"] == "help" and "Spin the Moon that way" in helpc["text"] and "Zoom in or out" in helpc["text"], "Gestures help card lists this screen's gestures")
+        ok(helpc and helpc["mode"] == "help" and "Turn the Moon" in helpc["text"] and "Zoom: slide up or down" in helpc["text"], "Gestures help card lists this screen's gestures")
         page.click(".gx-card [data-close]")
         spied(page)
         inject(page, "grab_drag", 60_000_000)
@@ -239,11 +242,12 @@ def main():
             page.wait_for_function("() => { const c = window.__outpost.globe.centerLatLon(); return Math.abs(c.lat) < 1 && Math.abs(((c.lon + 540) % 360) - 180) < 1 && window.__outpost.gestures.spin().speed === 0; }", timeout=6000)
             page.wait_for_timeout(300)
             c0 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
+            z0 = page.evaluate("() => window.__outpost.globe.distance")
             # mid-hold: the stick indicator and the heading arrow are up
             r = page.evaluate("""fs => { const probe = new Promise(res => setTimeout(() => res({grab: window.__outpost.gestures.spin(),
                 stick: !document.getElementById('gxStick').hidden && document.getElementById('gxStick').classList.contains('is-grabbed'),
                 heading: !document.getElementById('gxHeading').hidden}), 1250));
-                return window.__outpost.gestures.injectPaced(fs).then(evs => probe.then(p => ({evs, probe: p}))); }""", fixture(f"fist_spin_{d}"))
+                return window.__outpost.gestures.injectPaced(fs).then(evs => probe.then(p => ({evs, probe: p}))); }""", fixture(f"fist_spin_roll_{d}"))
             evs, probe = r["evs"], r["probe"]
             c1 = page.evaluate("() => window.__outpost.globe.centerLatLon()")
             page.wait_for_function("() => window.__outpost.gestures.spin().speed === 0", timeout=4000)
@@ -257,7 +261,47 @@ def main():
             ok(good and "grab_start" in evs and "grab_end" in evs, f"fist spin {d}: the Moon turned that way (dlat {dlat:+.1f}, dlon {dlon:+.1f})")
             ok(probe["grab"]["grabbed"] and probe["grab"]["speed"] > 0.3 and probe["stick"] and probe["heading"], f"fist spin {d}: stick indicator + heading arrow while held ({probe})")
             ok(0.2 < coast < 30, f"fist spin {d}: opening the hand releases with a little momentum ({coast:.1f} deg), then stops")
+            z2 = page.evaluate("() => window.__outpost.globe.distance")
+            ok(abs(z2 - z0) < 1e-3 and "pinch_start" not in evs, f"spin with wrist roll ±0.5 rad ({d}): zoom unchanged ({z0:.3f} -> {z2:.3f})")
         ok(page.evaluate("() => document.getElementById('gxStick').hidden && document.getElementById('gxHeading').hidden"), "released: indicator and arrow gone")
+
+        # ---- the one-hand zoom: pinch and slide (up = closer, down = farther), rate-controlled; letting go stops it ----
+        def settle_at(dist):
+            page.evaluate(f"() => window.__outpost.globe.flyTo(0, 0, {dist})")
+            page.wait_for_function(f"() => Math.abs(window.__outpost.globe.distance - {dist}) < 0.01 && window.__outpost.gestures.zoom().rate === 0", timeout=6000)
+            page.wait_for_timeout(200)
+            return page.evaluate("() => window.__outpost.globe.distance")
+        for name, closer in (("pinch_slide_up", True), ("pinch_slide_down", False)):
+            d0 = settle_at(3.0)
+            r = page.evaluate("""fs => { const probe = new Promise(res => setTimeout(() => res({z: window.__outpost.gestures.zoom(),
+                ind: !document.getElementById('gxZoom').hidden, text: document.querySelector('.gx-zoom-text').textContent}), 1250));
+                return window.__outpost.gestures.injectPaced(fs).then(evs => probe.then(p => ({evs, probe: p}))); }""", fixture(name))
+            page.wait_for_timeout(350)
+            d1 = page.evaluate("() => window.__outpost.globe.distance")
+            page.wait_for_timeout(500)
+            d2 = page.evaluate("() => window.__outpost.globe.distance")
+            moved = d1 < d0 * 0.85 if closer else d1 > d0 * 1.15
+            ok(moved and "pinch_start" in r["evs"] and "pinch_end" in r["evs"], f"{name}: the Moon zoomed {'in' if closer else 'out'} ({d0:.2f} -> {d1:.2f})")
+            p = r["probe"]
+            ok(p["ind"] and p["z"]["held"] and (p["z"]["rate"] > 0.2 if closer else p["z"]["rate"] < -0.2), f"{name}: zoom indicator up while held ({p})")
+            ok(abs(d2 - d1) < 0.02 and page.evaluate("() => document.getElementById('gxZoom').hidden"), f"{name}: letting go stops the zoom ({d1:.3f} -> {d2:.3f}), indicator gone")
+        # the same rates from the keys (+/- held, a tap is a step) and an eased step from voice
+        page.evaluate("() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }")
+        d0 = settle_at(3.0)
+        page.keyboard.down("="); page.wait_for_timeout(800); page.keyboard.up("=")
+        page.wait_for_timeout(400)
+        d1 = page.evaluate("() => window.__outpost.globe.distance")
+        ok(d1 < d0 / 1.4, f"+ held 0.8 s zooms in at a rate, well past a tap's x1.25 ({d0:.2f} -> {d1:.2f}, x{d0 / d1:.2f})")
+        d0 = settle_at(3.0)
+        page.keyboard.press("-"); page.wait_for_timeout(600)
+        d1 = page.evaluate("() => window.__outpost.globe.distance")
+        ok(1.15 < d1 / d0 < 1.45, f"- tapped: one eased step out (x{d1 / d0:.2f})")
+        d0 = settle_at(3.0)
+        page.evaluate("() => window.__outpost.intents.emitIntent('zoom_in', {}, 'voice')"); page.wait_for_timeout(700)
+        d1 = page.evaluate("() => window.__outpost.globe.distance")
+        page.evaluate("() => window.__outpost.intents.emitIntent('zoom_out', {}, 'voice')"); page.wait_for_timeout(700)
+        d2 = page.evaluate("() => window.__outpost.globe.distance")
+        ok(1.4 < d0 / d1 < 1.8 and abs(d2 - d0) < 0.05, f"voice 'zoom in' / 'zoom out': eased steps ({d0:.2f} -> {d1:.2f} -> {d2:.2f})")
         # thumbs up / down -> yes / no
         inject(page, "thumbs_up", 70_000_000)
         inject(page, "thumbs_down", 80_000_000)

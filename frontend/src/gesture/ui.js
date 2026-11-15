@@ -8,15 +8,15 @@
 import { installChoiceGestures } from "../input/choices.js";   // [answers] thumbs = yes / no, fingers = option n
 import "./gestures.css";
 import { emitIntent, recentIntents } from "../input/intents.js";
-import { spinState, configureSpin } from "../input/defaults.js";
+import { spinState, configureSpin, zoomState } from "../input/defaults.js";
 import { tick } from "../sound.js";
 import { createGestureEngine } from "./engine.js";
 import { gestureIntents, FEEDBACK } from "./bind.js";
 import { CHEATSHEET, CHEATSHEET_PHASE2, hintFor, spokenSummary } from "./guide.js";
 import { screenKey, helpRows, coachRows } from "./map.js";
-import { createFistCalibration, loadSpinCal, saveSpinCal } from "./calibration.js";
+import { createFistCalibration, loadSpinCal, saveSpinCal, measurePinch } from "./calibration.js";
 import { CALIBRATION } from "./tuning.js";
-import { fistReading } from "./spin.js";
+import { fistReading, pinchFeatures } from "./spin.js";
 import { icon } from "./icons.js";
 import { handPose } from "./classifier.js";
 
@@ -54,6 +54,7 @@ export function initGestures(ctx = {}) {
     <div class="gx-hint" id="gxHint" hidden aria-hidden="true"></div>
     <div class="gx-stick" id="gxStick" hidden aria-hidden="true"><svg viewBox="-40 -40 80 80"><circle class="gx-stick-ring" r="34"/><circle class="gx-stick-dead" r="6"/>
       <path class="gx-stick-arrow" d="M0 -14 L0 -14"/><circle class="gx-stick-knob" r="11"/></svg><span class="gx-stick-text"></span></div>
+    <div class="gx-zoom" id="gxZoom" hidden aria-hidden="true"><span class="gx-zoom-plus">+</span><span class="gx-zoom-track"><i class="gx-zoom-knob"></i></span><span class="gx-zoom-minus">−</span><span class="gx-zoom-text"></span></div>
     <div class="gx-heading" id="gxHeading" hidden aria-hidden="true"><svg viewBox="-60 -60 120 120"><g class="gx-chev"><path d="M18 -16 L34 0 L18 16"/><path d="M38 -16 L54 0 L38 16"/></g></svg></div>
     <div class="gx-toast" id="gxToast" hidden aria-hidden="true"></div>
     <div class="gx-live" role="status" aria-live="polite" id="gxLive"></div>`;
@@ -65,7 +66,7 @@ export function initGestures(ctx = {}) {
   document.body.append(root, cursor, card);
   const $ = id => root.querySelector("#" + id);
   const ind = $("gxIndicator"), prev = $("gxPreview"), skel = $("gxSkel"), hint = $("gxHint"), toast = $("gxToast"), live = $("gxLive");
-  const stickEl = $("gxStick"), headingEl = $("gxHeading");
+  const stickEl = $("gxStick"), headingEl = $("gxHeading"), zoomEl = $("gxZoom");
   let spinCal = loadSpinCal();
   configureSpin({ invert: !!S.invertSpin });
   const view = prev.querySelector(".gx-view");
@@ -102,7 +103,9 @@ export function initGestures(ctx = {}) {
     if (ev.type === "point_end") hideCursor();
     if (ev.type === "grab_start") { tick("grab"); paintSpinSoon(); }
     if (ev.type === "grab_end") tick("release");
-    if (ev.type !== "point" && ev.type !== "point_end" && ev.type !== "head" && ev.type !== "grab_move" && !card.hidden && card.dataset.mode === "coach") hideCard();
+    if (ev.type === "pinch_start") { tick("grab"); paintZoomSoon(); }
+    if (ev.type === "pinch_end") tick("release");
+    if (ev.type !== "point" && ev.type !== "point_end" && ev.type !== "head" && ev.type !== "grab_move" && ev.type !== "pinch_move" && !card.hidden && card.dataset.mode === "coach") hideCard();
     // round 8: tell the session a discrete gesture happened, so the Director sees voice + gesture together
     if (DRIVES.has(ev.type) && ev.type !== "point" && ctx.onGesture) { try { ctx.onGesture(ev.type); } catch (e) { /* no session */ } }
     for (const [name, args] of gestureIntents(ev, context())) {
@@ -192,6 +195,22 @@ export function initGestures(ctx = {}) {
       headingEl.style.opacity = Math.min(1, 0.25 + st.speed / 1.2).toFixed(2);
     } else headingEl.hidden = true;
     if (on || !headingEl.hidden) spinRaf = requestAnimationFrame(paintSpin);
+  }
+
+  // ---------- the pinch and slide: a small zoom indicator beside the joystick ring (+ up, − down, the knob = the rate) ----------
+  let zoomRaf = 0;
+  function paintZoomSoon() { if (!zoomRaf) zoomRaf = requestAnimationFrame(paintZoom); }
+  function paintZoom() {
+    zoomRaf = 0;
+    const z = zoomState(), on = z.held && z.source === "gesture";
+    zoomEl.hidden = !on;
+    if (on) {
+      const k = Math.max(-1, Math.min(1, z.input));
+      zoomEl.querySelector(".gx-zoom-knob").style.transform = `translateY(${(-k * 26).toFixed(1)}px)`;
+      zoomEl.classList.toggle("is-in", z.rate > 0.02); zoomEl.classList.toggle("is-out", z.rate < -0.02);
+      zoomEl.querySelector(".gx-zoom-text").textContent = Math.abs(k) < 0.15 ? "Slide up or down to zoom" : "Let go to stop";
+      zoomRaf = requestAnimationFrame(paintZoom);
+    }
   }
 
   // ---------- the "Gestures" help card + the first-use coach mark per screen ----------
@@ -376,9 +395,10 @@ export function initGestures(ctx = {}) {
       { id: "right", text: "Now tilt it right.", icon: "grab", dir: "right" },
       { id: "up", text: "Now tilt it up.", icon: "grab", dir: "up" },
       { id: "down", text: "Now tilt it down.", icon: "grab", dir: "down" },
+      { id: "pinch", text: "Pinch your thumb and finger.", icon: "zoom", pinch: true },
       { id: "head", text: "Sit back and look at the screen.", icon: "head", until: f => f.faces.length > 0, hold: 900 },
     ];
-    let i = 0, since = null, scale = null, spun = false, anchor = null; const t0 = performance.now(), BUDGET = 30000;
+    let i = 0, since = null, scale = null, spun = false, anchor = null, pinchDs = [], pinchD = null; const t0 = performance.now(), BUDGET = 30000;
     const show = () => {
       const st = steps[i]; stepEl.innerHTML = icon(st.icon) + " " + esc(st.text);
       dirEl.dataset.dir = st.dir || ""; bar.style.width = ((i / steps.length) * 100).toFixed(0) + "%";
@@ -389,7 +409,12 @@ export function initGestures(ctx = {}) {
       if (!calib) return;
       clearInterval(tickT); removeEventListener("keydown", onEsc, true); removeEventListener("focusin", onFocusIn, true); calib = null;
       if (ok && scale) { set({ minHandScale: Math.max(0.03, +(scale * 0.45).toFixed(3)) }); }
-      if (spun) { const c = fc.result(); if (saveSpinCal(c)) spinCal = loadSpinCal(); }
+      // the fist ranges (or the stored ones, or the defaults) plus the pinch distance when it was measured
+      if (spun || pinchD) {
+        const c = spun ? fc.result() : (spinCal ? { ...spinCal } : { v: 1, left: 1, right: 1, up: 1, down: 1, pitchSign: 1, at: Date.now() });
+        if (pinchD) c.pinch = pinchD; else if (spinCal && spinCal.pinch) c.pinch = spinCal.pinch;
+        if (saveSpinCal(c)) spinCal = loadSpinCal();
+      }
       engine.configure({ ...(S.minHandScale ? { minHandScale: S.minHandScale } : {}), spinCal });
       view.prepend(engine.video); view.append(skel); dlg.remove();
       if (ctx.announce) ctx.announce(ok ? "All set. Your gestures are ready." : spun ? "Saved what we tuned." : "Calibration stopped. The standard settings work fine.");
@@ -405,6 +430,16 @@ export function initGestures(ctx = {}) {
           const r = fc.feed(st.dir, fistReading(f.hands[0], f.aspect), t);
           dirEl.style.setProperty("--gx-k", r.progress.toFixed(2));
           if (r.done) { spun = true; next(); }
+          return;
+        }
+        if (st.pinch) {   // a loose pinch held still: its thumb to index distance is what we measure
+          if (!f.hands.length) { since = null; pinchDs = []; return; }
+          const pf = pinchFeatures(f.hands[0], f.aspect);
+          if (pf.d < CALIBRATION.pinchLoose && pf.idxReach >= 0.35) {
+            if (since == null) { since = t; pinchDs = []; }
+            pinchDs.push(pf.d);
+            if (t - since >= CALIBRATION.pinchHoldMs) { pinchD = measurePinch(pinchDs); next(); }
+          } else { since = null; pinchDs = []; }
           return;
         }
         const hit = st.until(f);
@@ -429,7 +464,7 @@ export function initGestures(ctx = {}) {
     };
     const tickT = setInterval(() => { if (performance.now() - t0 >= BUDGET && calib) finish(i >= steps.length - 1); }, 250);
     dlg.querySelector("[data-close]").onclick = () => finish(i >= 2);
-    dlg.querySelector("[data-skip]").onclick = () => { if (steps[i] && steps[i].dir) { next(); } else finish(false); };
+    dlg.querySelector("[data-skip]").onclick = () => { if (steps[i] && (steps[i].dir || steps[i].pinch)) { next(); } else finish(false); };   // a tilt or the pinch: skip just that step
     // Esc closes it wherever focus is (it is not a native modal: focus can wander off it)
     const onEsc = e => { if (e.key === "Escape" && calib) { e.preventDefault(); e.stopPropagation(); finish(false); } };
     addEventListener("keydown", onEsc, true);
@@ -477,6 +512,7 @@ export function initGestures(ctx = {}) {
       return out.map(e => e.type);
     },
     spin: () => spinState(),
+    zoom: () => zoomState(),
     get calibration() { return spinCal; },
     showHelp: () => showCard("help"),
     recent: recentIntents,
