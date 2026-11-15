@@ -48,7 +48,7 @@ Only an install folder longer than about 120 characters would need long paths.
 
 ## 2. Get the code
 
-The repo is private: you need read access to `WhissleAI/ask-the-moon` on GitHub (ask Karan).
+The repo is public: `WhissleAI/ask-the-moon` on GitHub. No account or token is needed to clone it.
 
 ```powershell
 mkdir C:\src -Force; cd C:\src
