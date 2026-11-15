@@ -1,6 +1,6 @@
 # Code guide for the Arc team
 
-This guide is for reading the Ask the Moon code to see exactly where and how Arc Transcriber and Arc Tagger are called,
+This guide is for reading the Outpost Luna code to see exactly where and how Arc Transcriber and Arc Tagger are called,
 what we do with their outputs, and where new capabilities (lunar domain, list context, multi-stream) would plug in.
 
 Read with:

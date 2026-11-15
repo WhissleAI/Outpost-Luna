@@ -48,11 +48,11 @@ Only an install folder longer than about 120 characters would need long paths.
 
 ## 2. Get the code
 
-The repo is public: `WhissleAI/ask-the-moon` on GitHub. No account or token is needed to clone it.
+The repo is public: `WhissleAI/Outpost-Luna` on GitHub. No account or token is needed to clone it.
 
 ```powershell
 mkdir C:\src -Force; cd C:\src
-git clone https://github.com/WhissleAI/ask-the-moon.git atm
+git clone https://github.com/WhissleAI/Outpost-Luna.git atm
 cd atm
 ```
 

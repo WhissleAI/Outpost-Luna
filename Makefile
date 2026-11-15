@@ -1,4 +1,4 @@
-# Ask the Moon: one set of commands for all three parts.
+# Outpost Luna: one set of commands for all three parts.
 #   frontend/      Vite + three.js           :5173  (dev)
 #   backend/       FastAPI app API            :8100
 #   model_server/  FastAPI, owns the models   :8200

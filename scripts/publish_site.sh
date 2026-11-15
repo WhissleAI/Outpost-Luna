@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish site/ to the gh-pages branch, which GitHub Pages serves at https://whissleai.github.io/ask-the-moon/.
+# Publish site/ to the gh-pages branch, which GitHub Pages serves at https://whissleai.github.io/Outpost-Luna/.
 #
 #   bash scripts/publish_site.sh            # copy site/ from the current checkout, commit, push
 #   DRY_RUN=1 bash scripts/publish_site.sh  # build the commit locally, do not push
