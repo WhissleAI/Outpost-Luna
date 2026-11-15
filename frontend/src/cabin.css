@@ -795,3 +795,5 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 /* [qa] reduced motion: the screen-docked story banner (.cb-hole>.cb-moment sets its own animation-name) never fades */
 html[data-motion="reduce"] .m-cabin .cb-hole>.cb-moment{animation:none}
 @media (prefers-reduced-motion:reduce){.m-cabin .cb-hole>.cb-moment{animation:none}}
+html[data-motion="reduce"] .m-cabin .cb-hole>.cb-rover,html[data-motion="reduce"] .m-cabin .cb-glass>.cb-rover{transition:none}   /* ...and the rover pill steps aside at once */
+@media (prefers-reduced-motion:reduce){.m-cabin .cb-hole>.cb-rover,.m-cabin .cb-glass>.cb-rover{transition:none}}
