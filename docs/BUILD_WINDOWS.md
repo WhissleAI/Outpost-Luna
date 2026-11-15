@@ -192,7 +192,20 @@ no restart needed. A camera already in use by another app (Teams, Zoom) gives th
    the self-view shows your hand's skeleton. Hold an open hand still for half a second: "Stop". Thumbs up: "Yes".
    Swipe an open hand sideways: next / back. In the cabin, lean in towards the screen: the aimed panel opens. The models
    are inside the app (`resources\app\frontend\vision\`), so this works with Wi-Fi off.
-10. Quit the app (close the window). In Task Manager, no `python.exe` from Outpost Luna should remain. Start it again:
+10. **Answers by gesture and the far side** (camera on). Flight School → Know your Moon. On "Could you see Earth in the
+    sky?" (Yes / No / Sometimes) a thumbs up answers Yes; on a retry, three fingers held still picks Sometimes. The
+    answer badges show 1 2 3 while the camera is on. On "Turn the Moon to show the far side", pressing **Far side**
+    (or saying "far side", or a fist turned to the side) turns the Moon round, then passes. Esc closes a NASA video;
+    with a video open, turning the camera on in Settings must not blank the window (the PR #19 bug).
+11. **Settings → Reset Outpost Luna** (docs/RESET.md). Fly a lesson first. Then Settings → Reset Outpost Luna →
+    **Start over**: the sheet lists what goes; a click does nothing; Esc backs out; holding **Hold to start over** for
+    3 seconds (mouse, or Enter held, or a controller's A held) closes the app and it starts again by itself at the
+    call-sign screen, without downloading anything. Then **Reset everything**: the same, and
+    `%APPDATA%\Outpost Luna\cache` and `hf` are gone afterwards (logs, `ports.json` and `children.json` stay).
+    `main.log` must say `reset start: … relaunching` / `reset all: …` and must NOT say `could not delete` (that would be
+    a Windows file lock: send the line). The installed program in `%LOCALAPPDATA%\Programs\Outpost Luna` is never
+    touched; nothing else of ours should be in `%LOCALAPPDATA%`.
+12. Quit the app (close the window). In Task Manager, no `python.exe` from Outpost Luna should remain. Start it again:
     it must reach Flight School the same way (and `main.log` may say `reaped stale children` only after a crash).
 
 ## 6. Common errors
@@ -236,6 +249,9 @@ Short checklist (Slack or the PR). Copy it, fill in each line:
 [ ] controller (if you have one): toast shown, A/B/D-pad work?
 [ ] camera: privacy switches on?  "Camera on" + skeleton seen?  open hand = Stop, thumbs up = Yes?  "On. N frames a second": N = ___
             CPU % with camera on ___ / off ___   "Turn off" turns the webcam light off?
+[ ] gestures answer: thumbs up = Yes, 3 fingers = Sometimes, badges 1 2 3 shown?  Far side button turns the Moon, passes?
+[ ] reset: Start over relaunches at the call sign, nothing re-downloads?  Reset everything removes cache\ and hf\?
+            logs kept?  main.log "reset … relaunching", no "could not delete"?  window came back by itself?
 [ ] quit: no python.exe left in Task Manager?
 [ ] RAM after one voice question (Outpost Luna + its python.exe processes): ___ MB
 [ ] main.log lines with "blocked", "FAIL", "exited", "windows privacy":

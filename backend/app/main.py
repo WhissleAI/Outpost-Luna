@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import knowledge, models_client, video
+from . import knowledge, models_client, reset, video
 from .listen import router as listen_router
 from .config import settings
 from .gazetteer import Gazetteer
@@ -147,6 +147,7 @@ from .session import router as session_router; app.include_router(session_router
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
+app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 
 @app.get("/api/turnlog")

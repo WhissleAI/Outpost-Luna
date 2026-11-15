@@ -12,6 +12,7 @@ const { spawn } = require("child_process");
 const S = require("./supervisor");
 const P = require("./permissions");
 const K = require("./keys");   // [keys] the app menu + no accidental reload (docs/KEYBOARD.md §Desktop)
+const R = require("./reset");   // Settings → Reset Outpost Luna (docs/RESET.md)
 const G = require("./gate");   // [media] links out of a NASA video open behind the grown-up gate (docs/MEDIA.md)
 
 const RES = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..", "resources");
@@ -155,7 +156,12 @@ function createMain(origin) {
     else if (kind === "external") shell.openExternal(url);
     return { action: "deny" };
   });
-  win.webContents.on("will-navigate", (e, url) => { if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); } });
+  win.webContents.on("will-navigate", (e, url) => {
+    // Settings → Reset: the page asked the backend (which returned a one-time token), now the shell does its part
+    const r = R.parseResetUrl(url, origin);
+    if (r) { e.preventDefault(); resetApp(r, origin); return; }
+    if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
+  });
   win.once("ready-to-show", () => {
     win.show();
     if (splash && !splash.isDestroyed()) splash.close();
@@ -163,6 +169,18 @@ function createMain(origin) {
   });
   win.on("closed", () => { win = null; });
   win.loadURL(origin + "/");
+}
+
+let resetting = false;
+function resetApp(r, origin) {
+  if (resetting) return;
+  resetting = true;
+  R.performReset(r, {
+    session: session.defaultSession, fs, userData: USER, log,
+    confirm: async (token) => { const j = await S.getJson(`${origin}/api/reset/confirm?token=${encodeURIComponent(token)}`); return j && j.level; },
+    stopChildren: stopAll,
+    relaunch: () => app.relaunch(), exit: (c) => app.exit(c),
+  }).then((o) => { if (!o.done) resetting = false; }, (e) => { log("reset failed:", e.message); app.relaunch(); app.exit(0); });
 }
 
 async function stopAll() {
