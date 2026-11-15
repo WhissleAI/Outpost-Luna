@@ -443,7 +443,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       case "describe": set({ describe: c.arg }); reply(`Audio description ${c.arg ? "on" : "off"}.`); break;
       case "repeat": { const last = (O.transcript || []).filter(e => e.who !== "describe" && e.who !== "kid").slice(-1)[0]; if (last && say) say(last.text, {}); break; }
       case "panel": open(true); break;
-      case "reset": section = "reset"; resetView = c.arg; if (panel.hidden) open(true); else renderPanel(); { const cb = panel.querySelector("[data-reset-cancel]"); if (cb) cb.focus(); } reply("A grown-up can hold the button for 3 seconds. Or press Cancel."); break;
+      case "reset": section = "reset"; resetView = c.arg; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const cb = panel.querySelector("[data-reset-cancel]"); if (cb) cb.focus(); } reply("A grown-up can hold the button for 3 seconds. Or press Cancel."); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;

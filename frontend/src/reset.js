@@ -106,15 +106,20 @@ export function confirmHtml(level) {
 export function bindConfirm(root, { onCancel, doReset = runReset, holdMs = HOLD_MS }) {
   const box = root.querySelector(".rs-confirm"); if (!box) return () => {};
   const level = box.dataset.level, hold = box.querySelector("[data-reset-hold]"), fill = box.querySelector(".rs-fill"), status = box.querySelector(".rs-status");
-  let t0 = 0, raf = 0, fired = false, padRaf = 0;
+  let t0 = 0, raf = 0, timer = 0, fired = false, padRaf = 0;
   const paint = p => { fill.style.width = `${Math.round(p * 100)}%`; };
-  const tick = () => {
-    const p = Math.min(1, (performance.now() - t0) / holdMs); paint(p);
-    if (p >= 1) { stop(true); fire(); return; }
-    raf = requestAnimationFrame(tick);
+  // the fill is painted on animation frames; the 3 s itself is a timer (a busy 3D cabin can starve frames, and a
+  // hold that really lasted 3 s must count even if no frame landed near the end)
+  const tick = () => { if (!t0) return; paint(Math.min(1, (performance.now() - t0) / holdMs)); raf = requestAnimationFrame(tick); };
+  const start = () => {
+    if (fired || t0) return;
+    t0 = performance.now(); hold.classList.add("is-holding"); raf = requestAnimationFrame(tick);
+    timer = setTimeout(() => { if (t0) { paint(1); stop(true); fire(); } }, holdMs);
   };
-  const start = () => { if (fired || t0) return; t0 = performance.now(); hold.classList.add("is-holding"); raf = requestAnimationFrame(tick); };
-  const stop = (keep = false) => { cancelAnimationFrame(raf); t0 = 0; hold.classList.remove("is-holding"); if (!keep) paint(0); };
+  const stop = (keep = false) => {
+    if (t0 && !fired && !keep && performance.now() - t0 >= holdMs) { paint(1); clearTimeout(timer); cancelAnimationFrame(raf); t0 = 0; fire(); return; }
+    clearTimeout(timer); cancelAnimationFrame(raf); t0 = 0; hold.classList.remove("is-holding"); if (!keep) paint(0);
+  };
   const fire = () => { if (fired) return; fired = true; status.textContent = LEVELS[level].done; hold.disabled = true; Promise.resolve(doReset(level)).catch(() => { status.textContent = "That didn't work. Try again."; fired = false; hold.disabled = false; paint(0); }); };
   hold.addEventListener("pointerdown", e => { e.preventDefault(); start(); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => hold.addEventListener(ev, () => { if (!fired) stop(); }));

@@ -174,6 +174,7 @@ MUST = {
     "voice pack (Siri Voice 1 clips)": ["model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
                                         "backend/data/voice_pack/index.json"],
     "NASA video catalog": ["backend/data/video/catalog.json"],
+    "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "crew clip time map": ["backend/data/media/trim.json"],
     "frontend": ["frontend/index.html"],

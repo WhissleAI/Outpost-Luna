@@ -387,7 +387,7 @@ export function initGestures(ctx = {}) {
     const next = () => { i++; since = null; if (steps[i]) show(); else { stepEl.textContent = "All set."; bar.style.width = "100%"; setTimeout(() => finish(true), 600); } };
     const finish = ok => {
       if (!calib) return;
-      clearInterval(tickT); removeEventListener("keydown", onEsc, true); calib = null;
+      clearInterval(tickT); removeEventListener("keydown", onEsc, true); removeEventListener("focusin", onFocusIn, true); calib = null;
       if (ok && scale) { set({ minHandScale: Math.max(0.03, +(scale * 0.45).toFixed(3)) }); }
       if (spun) { const c = fc.result(); if (saveSpinCal(c)) spinCal = loadSpinCal(); }
       engine.configure({ ...(S.minHandScale ? { minHandScale: S.minHandScale } : {}), spinCal });
@@ -433,8 +433,12 @@ export function initGestures(ctx = {}) {
     // Esc closes it wherever focus is (it is not a native modal: focus can wander off it)
     const onEsc = e => { if (e.key === "Escape" && calib) { e.preventDefault(); e.stopPropagation(); finish(false); } };
     addEventListener("keydown", onEsc, true);
-    // it is modal: focus that wanders out (a shortcut, a re-render behind it) comes back to it
-    dlg.addEventListener("focusout", () => setTimeout(() => { if (calib && dlg.isConnected && !dlg.contains(document.activeElement)) { const b = dlg.querySelector("[data-skip]"); if (b) b.focus({ preventScroll: true }); } }, 0));
+    // it is modal: focus that goes anywhere else (a shortcut, Settings re-rendering underneath and refocusing one of
+    // its buttons, even when focus was on <body> first) comes straight back to it
+    const back = () => { if (calib && dlg.isConnected && !dlg.contains(document.activeElement)) { const b = dlg.querySelector("[data-skip]"); if (b) b.focus({ preventScroll: true }); } };
+    const onFocusIn = e => { if (calib && dlg.isConnected && !dlg.contains(e.target)) setTimeout(back, 0); };
+    addEventListener("focusin", onFocusIn, true);
+    dlg.addEventListener("focusout", () => setTimeout(back, 0));
     dlg.querySelector("[data-skip]").focus();
   }
 

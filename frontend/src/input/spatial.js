@@ -288,8 +288,12 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   const shown = sel => [...doc.querySelectorAll(sel)].find(e => !e.hidden && e.getClientRects().length) || null;
   function scope() {
     const help = shown("#keysHelp"); if (help) return { id: "help", roots: [help] };
-    const set = shown(".a11y-panel"); if (set) return { id: "settings", roots: [set] };
+    // [robustness] what is on top wins: the gestures calibration opens over Settings (from its Camera section), and a
+    // native <dialog> sits in the top layer above everything; Settings was checked first, so a key press (Shift+M)
+    // pulled focus down into the sheet underneath the calibration
+    const cal = shown(".gx-calib"); if (cal) return { id: "modal", roots: [cal] };
     const dlg = [...doc.querySelectorAll("dialog[open]")].pop(); if (dlg) return { id: "dialog", roots: [dlg] };
+    const set = shown(".a11y-panel"); if (set) return { id: "settings", roots: [set] };
     const modal = shown(".gx-calib, [role=dialog][aria-modal=true]"); if (modal) return { id: "modal", roots: [modal] };
     const gl = shown(".hl-card"); if (gl && gl.contains(doc.activeElement)) return { id: "glossary", roots: [gl] };
     // the first-mission cabin tour (mission/tour.js): its card holds focus (Next, Skip tour) until it ends
