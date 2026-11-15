@@ -153,8 +153,9 @@ export function isTextField(el) {
 
 const FOCUSABLE = "button, a[href], input:not([type=hidden]), select, textarea, summary, [tabindex]";
 /** Never a spatial target (Tab still reaches them): the voice bar grip (its arrows move the bar), the skip link, the
- *  hardware ghosts and the picker's leader-line labels (the Moon reticle and the site rows cover them). */
-const SKIP = ".vs-grip, .skip-link, .ghost, .mx-pin, .gx-grip, .sr-only, .key-hint, .key-legend";
+ *  hardware ghosts, the picker's leader-line labels (the Moon reticle and the site rows cover them) and the site
+ *  picker's NASA source links (Up from Take command goes straight to the site rows; Tab and a click still open a source). */
+const SKIP = ".vs-grip, .skip-link, .ghost, .mx-pin, .gx-grip, .sr-only, .key-hint, .key-legend, .nv-detail a, .nv-crit a";
 const REGIONS = [".topbar", "#keysHelp", ".set-nav", ".set-sec", ".a11y-panel", "dialog", ".hl-card", "#card", "#missionCard", ".route", "#aPanel", "#mPanel", "#mDebrief",
   ".hud", ".nowplaying", "#askbar", "#mCabin", ".moon-focus", ".gx-ui"];
 /** The cabin's console panels, in reading order (the head-look layout of docs/GESTURES.md). */
