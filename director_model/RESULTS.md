@@ -784,3 +784,23 @@ It deliberately ignores TTS audio. That changes both the Director's inputs and h
      real speakers per priority cell.
 4. **Gate:** unchanged. The round-8 class sets carry over on real audio, plus `test_log`. Rules fixes land first (the
    section above), so the model is gated against the better rules.
+
+### Live run (`tools/handsfree_run.py --audio`, merged app code, r4 s in shadow; private :8298 model server + :8338 backend)
+
+Kid lines are rendered by the backend's OS voice (`say -o`, silent) and streamed into `/ws/listen` (the Arc ear with
+the hot lists). Noise is mixed in at every screen.
+
+- **Run 1: stuck at the radio step.** The kid's "say again" (the keywords step's answer, said as written) was rated
+  not directed by Arc every time.
+  - Fixed in this PR (`turn_router.exact_option`): on a keywords / command step, a 2–4 word turn the step's grader
+    passes on gets past the device-directed gate.
+- **Run 2: aborted.** It hit the machine's memory pressure (7.5 GB swap): the ear handshake timed out (2 s), and
+  `/ws/listen` closed. Run 3 used `EAR_CONNECT_S=12`.
+- **Run 3: `HANDSFREE RESULT: PASS`.**
+  - 241 kid turns, 134 of them noise.
+  - Every lesson passed; the cadet qualified; the mission was flown.
+  - Cabin tour 12 / 12 beats by voice. Voice clock control: 3 skips, 5 job steps, pause / resume / warp.
+  - 0 replies to noise. "I don't know that one yet" spoken 0 times.
+  - Noise routing: 81 filler, 27 not directed, 21 echo, 1 speaking.
+- **Still seen:** the HUD line "Sample logged. Science +2." heard back is routed as a cabin order 3 times. It gets no
+  reply, but it is not caught as an echo (as in round 7).
