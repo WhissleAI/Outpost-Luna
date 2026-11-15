@@ -28,7 +28,19 @@ class Settings(BaseSettings):
     video_cache_mb: int = 1024
     video_prefetch: bool = True
     video_offline: bool = False
+    # First-run assets (desktop/main/assets.js, docs/DESKTOP.md "First run: assets"): the desktop app installs these into
+    # the per-user folder after the app is built, so they are not under data_dir. None (dev): data_dir's own copies.
+    media_audio_dir: Path | None = None    # crew audio: audio/*.mp3 + trim.json (served as /media/audio/*)
+    video_pack_dir: Path | None = None     # the pinned NASA videos: <id>.mp4 / .vtt / .jpg, copied into the video cache
+    voice_pack_dir: Path | None = None     # the recorded voice pack (index.json, clips/): default data_dir/voice_pack
 
+
+    def media_dirs(self) -> list[Path]:
+        """Where /media/* is looked up, in order: the installed crew-audio asset (desktop), then data_dir/media."""
+        return ([self.media_audio_dir] if self.media_audio_dir else []) + [self.data_dir / "media"]
+
+    def voice_pack(self) -> Path:
+        return self.voice_pack_dir or self.data_dir / "voice_pack"
 
     def vector_cache(self) -> Path:
         return self.cache_dir / "vectors" if self.cache_dir else self.data_dir / "cache"

@@ -218,7 +218,7 @@ no restart needed. A camera already in use by another app (Teams, Zoom) gives th
 | path / "file name too long" / `FileNotFoundError` deep inside `torch` | clone to `C:\src\atm` or enable long paths (§1) |
 | media step fails with HTTP 403 / timeouts | re-run; NASA's CDN is rate-limited at times |
 | `model package sha256 mismatch` | re-run (it re-downloads); if it persists the package link changed: report it |
-| `models differ from models.lock.json` | delete `desktop\resources\models` and `desktop\build\outpost-luna-models-v1.tar`, re-run |
+| `assets without a download link` | run `make asset-pack asset-upload` on the Mac that owns the Dropbox folder, commit `desktop/assets.manifest.json` |
 | CMake: `arctag.dll was not produced` | send the CMake output; try the other compiler route |
 | LLVM route: `unresolved external symbol __cpu_model` / `__cpu_indicator_init` | use the Visual Studio route (it builds the portable kernels), or the cross-built `arctag.dll` (§8) |
 | `DLL imports that resolve nowhere on a clean Windows` (step 4 or 8) | send the list: a package started needing a DLL the app does not ship |
@@ -285,7 +285,7 @@ Step 8 then checks the result without running it (`desktop/scripts/win_bundle_ch
   bundle or in Windows itself; this is the check that found the missing `MSVCP140.dll` (now shipped).
 - the installer is unpacked with 7-Zip and its payload compared file by file with `dist/win-unpacked`;
 - `compare` (with `MAC_APP`): the Mac `.app`'s `Contents/Resources` against the Windows `resources`: app code, models
-  (sha256 vs `models.lock.json`), media, vision assets, the OS-voice engine, Director weights, the native library,
+  (none bundled: the first-run asset manifest instead), media, vision assets, the OS-voice engine, Director weights, the native library,
   and both site folders' packages;
 - `speech`: the Windows speech packages are in `site/models` (pywinrt 3.2.1's `_winrt*.pyd` for SpeechSynthesis,
   Media.Core (word cues), Storage.Streams, Foundation, Foundation.Collections, and comtypes for the SAPI fallback).

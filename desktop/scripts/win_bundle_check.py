@@ -15,7 +15,8 @@ Anything else would fail on a clean PC with "DLL load failed" / WinError 126, th
 on a machine without the Visual C++ Redistributable.
 
 compare: the Mac .app's Contents/Resources against the Windows resources, by area: app code (byte-for-byte, except
-the .pyc bytecode), models (sha256 vs desktop/models.lock.json), media, vision assets, the OS-voice engine (and on
+the .pyc bytecode), the first-run asset manifest (no models / crew audio / voice clips bundled: they download on first
+launch, desktop/assets.manifest.json), media, vision assets, the OS-voice engine (and on
 Windows its WinRT / SAPI packages), Director weights, the native Arc Tagger library, and the top-level packages of both site folders (platform-specific
 packages such as uvloop / colorama are listed, not failed).
 """
@@ -171,12 +172,11 @@ MUST = {
                       "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"],
     "story / places / clips data": ["backend/data/places.json", "backend/data/index/clips.json", "backend/data/clip_loudness.json"],
     "OS voice engine": ["model_server/app/tts_os.py", "model_server/app/os_voices.py"],
-    "voice pack (Siri Voice 1 clips)": ["model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
-                                        "backend/data/voice_pack/index.json"],
+    "voice pack (manifest; clips are a first-run asset)": ["model_server/app/voice_pack.py",
+                                                           "backend/data/voice_pack/lines.json"],
     "NASA video catalog": ["backend/data/video/catalog.json"],
     "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
-    "crew clip time map": ["backend/data/media/trim.json"],
     "frontend": ["frontend/index.html"],
     "launcher": ["launch.py"],
 }
@@ -196,12 +196,9 @@ def compare(mac: Path, win: Path) -> int:
         miss = [m for m in must if m not in wm["app"]]
         row(area, not miss, "all present" if not miss else f"missing {miss}")
     speech = speech_packages(win / "site/models")
-    row("Windows speech (WinRT + SAPI + Steer)", all(speech.values()), ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in speech.items()))
-    st = steer_model(win)
-    row("Steer TTS Edge model", all(st.values()), "all present" if all(st.values()) else f"missing {[k for k, v in st.items() if not v]}")
-    media = [k for k in wm["app"] if k.startswith("backend/data/media/audio/")]
-    row("NASA crew clips", len(media) == len([k for k in mm["app"] if k.startswith("backend/data/media/audio/")]),
-        f"{len(media)} clips (mac {len([k for k in mm['app'] if k.startswith('backend/data/media/audio/')])})")
+    row("Windows speech (WinRT + SAPI + Steer runtime)", all(speech.values()), ", ".join(f"{k} {'ok' if v else 'MISSING'}" for k, v in speech.items()))
+    row("first-run asset manifest", (win / "assets.manifest.json").exists(),
+        "resources/assets.manifest.json " + ("present" if (win / "assets.manifest.json").exists() else "MISSING"))
     mu, wu = unhashed(mm["app"]), unhashed(wm["app"])
     only_mac = sorted(set(mu) - set(wu))
     only_win = sorted(set(wu) - set(mu))
@@ -209,11 +206,8 @@ def compare(mac: Path, win: Path) -> int:
     diff = sorted(k for k in set(mu) & set(wu) if mm["app"][mu[k]] != wm["app"][wu[k]])
     row("app files (vs mac)", not only_mac, f"{len(wm['app'])} files; only on mac {len(only_mac)} {only_mac[:6]}; "
         f"only on win {len(only_win)} {only_win[:6]}; same file, different size {len(diff)} {diff[:6]}")
-    lock = json.loads((ROOT / "desktop/models.lock.json").read_text(encoding="utf-8"))
-    lock_bad = sorted(k for k in set(lock) | set(wm["models"]) if lock.get(k, {}).get("sha256") != wm["models"].get(k))
-    row("models vs models.lock.json", not lock_bad, f"{len(wm['models'])} files, sha256 " + ("all match" if not lock_bad else f"differ: {lock_bad[:6]}"))
-    row("models vs mac", mm["models"] == wm["models"], "identical sha256 set" if mm["models"] == wm["models"] else "differ")
-    row("native Arc Tagger", "arctag.dll" in wm["native"], f"win {wm['native']}, mac {mm['native']}")
+    row("no bundled models", not wm["models"], "none (first-run assets)" if not wm["models"] else f"{len(wm['models'])} files still bundled")
+    row("native Arc Tagger + libarc", {"arctag.dll", "arc.dll"} <= set(wm["native"]), f"win {wm['native']}, mac {mm['native']}")
     row("embedded python", "python.exe" in wm["python"] and "Lib" in wm["python"], f"win {len(wm['python'])} entries incl. python.exe, Lib, DLLs")
     for s in ("backend", "models"):
         av = dict(x.split("==") for x in mm["packages"].get(s, []))

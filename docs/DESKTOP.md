@@ -1,12 +1,15 @@
 # Outpost Luna desktop app
 
-One installable app that runs with **no internet**: the Electron shell, an embedded CPython, the backend, the model
-server and every model weight ship inside the installer. macOS arm64 is built and tested. Windows x64 is built and
+One installable app that runs with **no internet** once it is set up: the installer holds the Electron shell, an
+embedded CPython, the backend, the model server and the native libraries; the models, the recorded voice, the crew audio
+and the NASA videos are **first-run assets**, downloaded once on first launch (or imported from the offline pack; see
+"First run: assets"). macOS arm64 is built and tested. Windows x64 is built and
 checked file by file, but **not yet run on a Windows PC** (see below).
 
 ```
 Outpost Luna.app / Outpost Luna.exe
  └─ Electron main process (desktop/main/main.js)
+     ├─ first launch only: "Getting Outpost Luna ready" until the required assets are in (main/assets.js)
      ├─ splash "Warming up the models…" until both health checks pass
      ├─ python launch.py models  --port 47210   model_server (Arc Tagger, Arc v1.1 Mini ear + metadata, the OS voice, MiniLM)
      ├─ python launch.py backend --port 47310   backend (API + /media + the built frontend at /)
@@ -23,18 +26,48 @@ Builds run locally (no CI). One command per OS, from a fresh clone, with no acco
 | Windows x64 (not yet run on Windows) | `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` | `desktop\dist\Outpost Luna Setup <version>.exe`; step-by-step in [BUILD_WINDOWS.md](BUILD_WINDOWS.md) |
 | Windows x64, cross-built on a Mac | `bash desktop/scripts/cross-build-windows.sh` | the same installer, checked structurally only ([BUILD_WINDOWS.md §8](BUILD_WINDOWS.md)) |
 
-Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov,
-then the installer's trimmed copy of the crew clips, `backend/pipeline/trim_media.py`) -> frontend deps -> embedded Python + app code (`build_python.py`) -> models (`gather_models.py`) -> Arc Tagger native
-library (CMake) -> Electron + electron-builder -> print the installer path. Caches stay in `desktop/build/`.
+Both scripts run the same 8 steps: check prerequisites -> NASA media (`backend/pipeline/fetch_media.py`, from nasa.gov;
+only the Moon map ships) -> frontend deps -> embedded Python + app code (`build_python.py`) -> check that every required
+asset in `desktop/assets.manifest.json` has a download link (nothing is bundled) -> native libraries (CMake: Arc Tagger
+`libarctag`, and `libarc`, the ear) -> Electron + electron-builder -> print the installer path. Caches stay in `desktop/build/`.
 
-**Models: one public package for every build.** `gather_models.py` (default `--from auto`) copies from this machine's
-HF cache and checkouts when it has every file, else downloads the public model package (119 MB tar of exactly
-`desktop/resources/models`), checks its sha256 (`c9cb030d…`, pinned in the script), then checks every file against
-`desktop/models.lock.json`. Hugging Face is not used: `WhissleAI/arc-tagger` only has v0.4.x (the app ships v0.3 from
-Head Start). The v1 package still holds the retired `steer-tts-edge/` folder: `gather_models.py` skips it when
-unpacking (`DROPPED`), so the sha256 pin stays valid and the bundle no longer ships it; the next package (v2) can leave
-it out. Speech needs no model: the app speaks with the OS's own voices ("Speech" below). To change a model: gather it, `--write-lock`, `--pack`, upload the tar as `outpost-luna-models-v2.tar`, and update
-`PACKAGE` in `gather_models.py` (URL, sha256, size).
+## First run: assets
+
+`desktop/assets.manifest.json` lists every downloadable asset: one deterministic ustar `.tar` each, with its public
+Dropbox link (`dl=1`), sha256, size, every file inside (path + size) and its licence files. `make asset-pack`
+(`scripts/asset_pack.py`) builds the tars + the offline zip and rewrites the manifest; `make asset-upload`
+(`scripts/upload_assets.py`, `DROPBOX_TOKEN_FILE=<file>`, never committed) uploads them to `/Outpost Luna/assets/v2/`
+with the chunked upload-session API, makes public links and checks each one anonymously.
+
+| id | what | required | download | installed as |
+|---|---|---|---|---|
+| `ear` | Arc Transcriber Space `nft2/` + LICENSE + NOTICE (CC BY-NC 4.0) | yes | 461 MB | `ARC_SPACE_DIR` |
+| `tagger` | Arc Tagger v0.3 int8 + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
+| `embedder` | all-MiniLM-L6-v2 int8 ONNX (Apache-2.0) | yes | 23 MB | `EMBED_MODEL_DIR` |
+| `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
+| `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
+| `videos` | the 8 pinned NASA videos + captions + posters | no | 199 MB | `VIDEO_PACK_DIR` (copied into the video cache) |
+
+First launch downloads **510 MB** (required) and then 375 MB more in the background; the offline zip
+(`outpost-luna-assets-v2.zip`) is all six, 885 MB. The flow (`desktop/main/assets.js`, `firstrun.html`):
+
+- Everything goes to `<userData>/assets/<id>/` (`~/Library/Application Support/Outpost Luna/assets`,
+  `%APPDATA%\Outpost Luna\assets`); `state.json` records what is installed.
+- Downloads resume from `assets/.dl/<file>.part` with HTTP Range, are checked against the manifest's sha256, unpacked
+  into `.staging/<id>`, every file's size checked, then renamed into place (the old copy moved aside first). A failed
+  check never installs. Three tries with backoff; the ear can also come straight from Hugging Face at the pinned
+  revision (`fallback`) when its link fails.
+- The first-run screen shows each required asset's progress, **Try again**, **Continue later** (quits; the `.part`
+  files stay and resume next launch) and **Import offline pack…** (a `.zip` from Dropbox or a USB stick: its tars are
+  matched by name + sha256 and installed with no network). With no network it says so and offers the pack.
+- The children start as soon as the required four are in. `crew` and `videos` download in the background after the
+  window opens; until then the crew clips and videos are simply not available, and a failure is retried next launch.
+  With the `videos` asset the backend's own nasa.gov prefetch is off (`VIDEO_PREFETCH=0`); unpinned videos still stream.
+- Every launch re-checks each installed asset's file sizes (no hashing) and re-downloads only a damaged one.
+- Free disk is checked before each download (tar + unpacked size).
+- Tests and demos: `OUTPOST_USER_DATA=<folder>` (whole data folder) or `OUTPOST_ASSETS_DIR=<folder>`.
+
+The camera-gesture models (8 MB) stay in the installer: the frontend serves them from its own origin.
 
 The pieces, also runnable on their own:
 
@@ -43,7 +76,8 @@ The pieces, also runnable on their own:
 | `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` wheel (on a Windows target also the pinned pywinrt + comtypes speech packages, checked present); trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
 | `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 48 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
-| `make desktop-models` | `desktop/scripts/gather_models.py`: every weight into `desktop/resources/models/` (local, else the public package), checked against `desktop/models.lock.json` |
+| `make asset-pack` / `make asset-upload` | the first-run assets (above) |
+| `make desktop-libarc` | CMake build of `desktop/vendor/libarc` (libarc + the Arc Transcriber Space backend; ONNX Runtime loaded at run time from the Python wheel) -> `libarc.dylib` / `arc.dll` |
 | `make desktop-arctag` | CMake build of `desktop/vendor/arctag` (arc-tagger-c sources, native backend only) -> `libarctag.dylib` / `arctag.dll` |
 | `make desktop-run` | run the shell against `desktop/resources` without packaging |
 | `make desktop-clean` | delete `desktop/resources`, `desktop/build`, `desktop/dist` |

@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import threading
 import time
 from pathlib import Path
@@ -403,12 +404,40 @@ def busy() -> bool:
     return now - _streamed[0] < STREAM_QUIET_S or now - registry.LAST_ACTIVE[0] < MISSION_QUIET_S
 
 
+def from_pack(v: dict, kind: str, pinned: bool = False) -> bool:
+    """The desktop's installed video asset (settings.video_pack_dir, desktop/main/assets.js) has this file: copy it
+    into the cache instead of downloading it. A video must match the catalog's size and sha256."""
+    if not settings.video_pack_dir:
+        return False
+    c, n = cache(), names(v)[kind]
+    src = Path(settings.video_pack_dir) / n
+    if not src.is_file():
+        return False
+    if kind == "video" and ((v.get("bytes") and src.stat().st_size != v["bytes"])
+                            or (v.get("sha256") and file_sha256(src) != v["sha256"])):
+        return False
+    with c.name_lock(n):
+        if not c.has(n):
+            c.root.mkdir(parents=True, exist_ok=True)
+            tmp = c.path(n).with_name(n + ".part")
+            shutil.copyfile(src, tmp)
+            os.replace(tmp, c.path(n))
+            c.add(n, pinned)
+    return True
+
+
+def pack_has(v: dict) -> bool:
+    return bool(settings.video_pack_dir) and (Path(settings.video_pack_dir) / names(v)["video"]).is_file()
+
+
 def fetch_captions(v: dict, pinned: bool = False, client: httpx.Client | None = None) -> bool:
     """Captions for v as WebVTT in the cache (SRT converted once). False when it has none (or they are empty)."""
     c, n = cache(), names(v)["captions"]
     if c.has(n):
         if pinned:
             c.pin(n)
+        return True
+    if from_pack(v, "captions", pinned):
         return True
     if not v.get("captions_url"):
         return False
@@ -426,7 +455,7 @@ def fetch_captions(v: dict, pinned: bool = False, client: httpx.Client | None = 
 
 def fetch_poster(v: dict, pinned: bool = False, client: httpx.Client | None = None) -> bool:
     c, n = cache(), names(v)["poster"]
-    if c.has(n):
+    if c.has(n) or from_pack(v, "poster", pinned):
         return True
     if not v.get("poster_url"):
         return False
@@ -439,6 +468,10 @@ def fetch_poster(v: dict, pinned: bool = False, client: httpx.Client | None = No
 
 def fetch_video(v: dict, pace=None, client: httpx.Client | None = None) -> Path:
     pinned = bool(v.get("prefetch"))
+    if from_pack(v, "video", pinned):
+        fetch_captions(v, pinned, client)
+        fetch_poster(v, pinned, client)
+        return cache().path(names(v)["video"])
     p = cache().download(v["file_url"], names(v)["video"], size=v.get("bytes"), sha256=v.get("sha256"),
                          pinned=pinned, pace=pace, client=client)
     fetch_captions(v, pinned, client)
@@ -488,7 +521,7 @@ _stop = threading.Event()
 async def prefetch_task(delay_s: float = 15.0, retry_s: float = 300.0) -> None:
     """Started by the app (main.py lifespan): after the app has settled, prefetch the pinned files; offline, try again
     every few minutes (the first ONLINE launch is the one that downloads). Never raises."""
-    if not settings.video_prefetch:
+    if not settings.video_prefetch and not settings.video_pack_dir:
         return
     try:
         await asyncio.sleep(delay_s)
@@ -498,7 +531,7 @@ async def prefetch_task(delay_s: float = 15.0, retry_s: float = 300.0) -> None:
                 STATE.update(state="done", total=sum(1 for v in catalog() if v.get("prefetch")), error=None)
                 STATE["done"] = STATE["total"]
                 return
-            if await asyncio.to_thread(online, "nasa"):
+            if all(pack_has(v) for v in todo) or (settings.video_prefetch and await asyncio.to_thread(online, "nasa")):
                 out = await asyncio.to_thread(prefetch_all, _stop)
                 if out["state"] in ("done", "stopped"):
                     return
