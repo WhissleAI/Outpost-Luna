@@ -1,6 +1,8 @@
 # Reset Outpost Luna
 
-Settings → **Reset Outpost Luna** is the danger zone, the last item in the Settings list and set apart from the rest.
+Settings → **Reset** is the danger zone. It is always the last item in the Settings sidebar, below Help, after a thin
+divider; it turns the warning colour only when it is hovered or selected. Cadets links to it too ("Start over with a
+new cadet? Reset"). Keyboard (Alt+A, the arrows, Enter) and a controller (D-pad, A) reach it like any other section.
 It erases what the app saved on this computer, at one of two levels.
 
 | | Start over | Reset everything |
@@ -27,8 +29,9 @@ It erases what the app saved on this computer, at one of two levels.
 
   A click, or a hold shorter than 3 s, does nothing.
 - **Esc or Cancel always backs out.**
-- **Voice can open it but never finish it.** "Reset", "reset the app" or "reset everything" opens the confirm view;
-  the router sends these to the client's a11y handler. Only the hold resets.
+- **Voice can open it but never finish it.** "Reset", "reset the app" or "reset everything" opens the Reset panel
+  with both options, and the one asked for has focus. The router sends these phrases to the client's a11y handler.
+  Only the hold resets.
 
 ## How it works
 
@@ -83,8 +86,10 @@ the next launch downloads again. Both are marked `TODO(feat/arc-space first-run 
   - nothing happens without the backend's confirmation;
   - an EBUSY lock is retried, then reported.
 - **frontend:** `tests/reset.test.js`: the keys cleared; the copy; the backend first, then the desktop hand-over;
-  voice only opens the view.
+  voice only opens the panel.
 - **e2e:** `tests/e2e/reset_e2e.py`:
+  - finding it: Reset is the last sidebar item below Help, with a divider and no warning colour at rest; the Cadets
+    link goes there; the keyboard and a controller reach it; voice "reset" opens the panel; none of these erases;
   - make progress, then Start over: the app comes back at the call-sign screen, the spoken-line cache and turn log
     are gone, and the saved video, the vectors and the bundled media stay;
   - Reset everything: every cache is empty.

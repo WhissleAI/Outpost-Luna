@@ -6,8 +6,8 @@ import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // He
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 import { moreVoicesHint } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
-import { onIntent } from "./input/intents.js";
-import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset Outpost Luna (docs/RESET.md)   // [robustness] Settings is modal for gestures, keys and the controller too
+import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
+import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset (docs/RESET.md)
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -140,7 +140,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
   // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
   const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
-    ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset Outpost Luna"]];   // reset: the danger zone, last
+    ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset"]];   // reset: the danger zone, always last (docs/RESET.md)
   let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {};
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
@@ -182,6 +182,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
+        <p class="set-help rs-link">Start over with a new cadet? <button type="button" class="btn-link" data-sec-go="reset">Reset</button></p>
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
@@ -203,6 +204,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const extraSecs = (O.settingsSections || []).filter(x => x && x.id && x.title && typeof x.html === "function");
     extraSecs.forEach(x => { try { body[x.id] = x.html(); } catch (e) { body[x.id] = ""; } });
     const order = SECTIONS.slice(); extraSecs.forEach(x => { const k = order.findIndex(s => s[0] === (x.after || "listen")); order.splice(k < 0 ? order.length - 1 : k + 1, 0, [x.id, x.title]); });
+    { const r = order.findIndex(s => s[0] === "reset"); if (r >= 0 && r !== order.length - 1) order.push(order.splice(r, 1)[0]); }   // Reset stays last
     const shown = order.filter(([id]) => body[id]);
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
@@ -264,6 +266,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   panel.addEventListener("click", e => {
     const PA = O.prefsApi;
     if (e.target.closest("[data-close]")) open(false);
+    const go = e.target.closest("[data-sec-go]"); if (go) { section = go.dataset.secGo; resetView = null; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); return; }
     const ro = e.target.closest("[data-reset-open]"); if (ro) { resetView = ro.dataset.resetOpen; renderPanel(); return; }
     const s = e.target.closest("[data-sec]"); if (s) { section = s.dataset.sec; resetArmed = false; resetView = null; renderPanel(); const f = panel.querySelector(`[data-sec="${section}"]`); if (f) f.focus(); }
     const vb = e.target.closest("[data-vbar-reset]");
@@ -443,7 +446,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       case "describe": set({ describe: c.arg }); reply(`Audio description ${c.arg ? "on" : "off"}.`); break;
       case "repeat": { const last = (O.transcript || []).filter(e => e.who !== "describe" && e.who !== "kid").slice(-1)[0]; if (last && say) say(last.text, {}); break; }
       case "panel": open(true); break;
-      case "reset": section = "reset"; resetView = c.arg; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const cb = panel.querySelector("[data-reset-cancel]"); if (cb) cb.focus(); } reply("A grown-up can hold the button for 3 seconds. Or press Cancel."); break;
+      // voice opens the Reset panel itself (both options); it never confirms. The option asked for gets focus.
+      case "reset": section = "reset"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`); if (b) b.focus(); } reply("Here's Reset. A grown-up can choose Start over or Reset everything."); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;
