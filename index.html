@@ -58,7 +58,7 @@
   <section id="app" class="sec">
     <h2>One story, four steps</h2>
     <!-- Source: docs/STORY.md §1 (the arc), README.md, backend/data/academy/course.json (6 core + 2 explorer lessons + check ride), backend/data/mission/sites.json (5 sites). -->
-    <p class="sec-lede">Artemis II flew its crew around the Moon in April 2026. The kid trains to help run Outpost Luna, a pretend base near the south pole for the crews who come after.</p>
+    <p class="sec-lede">Artemis II flew its crew around the Moon in April 2026. You train to help run Outpost Luna, a pretend base near the south pole for the crews who come after.</p>
     <ol class="stages">
       <li><span class="n">01</span><h3>Flight School</h3><p>6 core lessons and 2 explorer lessons. Each is a story beat, a few voice or tap steps, and a patch.</p></li>
       <li><span class="n">02</span><h3>Check ride</h3><p>One solo shift at Shackleton Rim, through the real May 2024 solar storm. Pass to earn the Mission Commander patch.</p></li>
@@ -90,15 +90,15 @@
       </ul>
       <div class="scroll">
       <!-- Names and sizes: desktop/models.lock.json + docs/DESKTOP.md "What is in the bundle":
-           Arc v1.1 Mini 68 MB (models/arc-v1.1/mini), Arc Tagger v0.3 arctag_int8.onnx 12 MB, all-MiniLM-L6-v2 int8 22 MB.
-           device_directed / command_complete come from Arc v1.1 Mini's audio heads (model_server/app/arcmeta.py);
+           Arc Transcriber Space nft2 (first-run asset, libarc + ONNX Runtime), Arc Tagger v0.3 arctag_int8.onnx 12 MB, all-MiniLM-L6-v2 int8 22 MB.
+           device_directed comes from Arc Transcriber Space (model_server/app/arc_ear.py);
            safety / intent / entities from Arc Tagger (model_server/app/arctag.py EMIT; backend/app/safety.py masks swearing).
            Director: backend/app/director_model/runtime.py, DIRECTOR_MODEL default "shadow" (owner 2026-11-14).
            Voice out: docs/VOICES.md (macOS say, Windows WinRT then SAPI) + docs/VOICE_PACK.md (Nora pack).
            Video: docs/MEDIA.md. NASA data: docs/DESKTOP.md "Offline guarantees" (baked into backend/data, no NASA API calls at run time). -->
       <svg viewBox="0 0 1000 480" role="img" aria-labelledby="archT archD">
         <title id="archT">Outpost Luna architecture</title>
-        <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc v1.1 Mini: live words, whether the kid is talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (rules decide; the learned model runs in shadow). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
+        <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc Transcriber Space: live words, whether you are talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (rules decide; the learned model runs in shadow). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
         <defs>
           <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ah"/></marker>
           <marker id="ahn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="ahn"/></marker>
@@ -109,7 +109,7 @@
         <text class="zl" x="728" y="36">Online, only when available</text>
 
         <g class="node"><rect x="30" y="56" width="124" height="64" rx="10"/><text x="92" y="84">Mic</text><text class="s" x="92" y="103">open or hold Space</text></g>
-        <g class="node acc"><rect x="180" y="56" width="220" height="64" rx="10"/><text x="290" y="84">Arc ear · v1.1 Mini</text><text class="s" x="290" y="103">words · to the app? · turn end</text></g>
+        <g class="node acc"><rect x="180" y="56" width="220" height="64" rx="10"/><text x="290" y="84">Arc ear · Transcriber Space</text><text class="s" x="290" y="103">words · to the app? · turn end</text></g>
         <g class="node acc"><rect x="430" y="56" width="240" height="64" rx="10"/><text x="550" y="84">Arc Tagger v0.3</text><text class="s" x="550" y="103">safety mask · intent · places</text></g>
 
         <g class="node"><rect x="30" y="166" width="124" height="64" rx="10"/><text x="92" y="194">Camera</text><text class="s" x="92" y="213">opt-in only</text></g>
@@ -145,8 +145,8 @@
       <figcaption>Purple = Whissle models. Teal = on-device lanes, all offline. Amber = online and optional: NASA video files download once and then play offline; only the YouTube embeds need a connection. NASA data is fetched when the app is built, never while it runs.</figcaption>
     </figure>
     <ul class="points">
-      <li><b>Hears the kid, not the room.</b> Arc v1.1 Mini turns speech into words and also reads the audio: is this said to the app, and is the turn over. Room talk is ignored.</li>
-      <li><b>Keeps it kid-safe.</b> Arc Tagger's safety labels, backed by an offline word list, mask swearing wherever it would show. A masked turn is never graded or answered.</li>
+      <li><b>Hears you, not the room.</b> Arc Transcriber Space turns speech into words and also reads the audio: is this said to the app, and is the turn over. Room talk is ignored.</li>
+      <li><b>Keeps it clean.</b> Arc Tagger's safety labels, backed by an offline word list, mask swearing wherever it would show. A masked turn is never graded or answered.</li>
       <li><b>Decides carefully.</b> The Director's rules pick what to do: act, ignore or navigate. A learned model runs beside them in shadow until it beats them on every test.</li>
       <li><b>Speaks in one voice.</b> The computer's own voices answer live. 889 fixed lines are pre-recorded in Siri Voice 1 (Nora), on Mac and Windows alike.</li>
     </ul>
@@ -191,15 +191,15 @@
   <section id="privacy" class="sec two">
     <div>
       <h2>Private by default</h2>
-      <p class="sec-lede">Built for kids: no account, no cloud model, nothing uploaded.</p>
+      <p class="sec-lede">Private by design: no account, no cloud model, nothing uploaded.</p>
     </div>
     <!-- Sources: docs/DESKTOP.md "Offline guarantees" and "Where things go at run time"; docs/VOICES.md (listen: handsfree / ptt);
-         docs/GESTURES.md "Privacy and kids"; docs/DIRECTOR_LOOP.md §1 (turn log); README.md (call sign kept on the device, never sent). -->
+         docs/GESTURES.md (privacy); docs/DIRECTOR_LOOP.md §1 (turn log); README.md (call sign kept on the device, never sent). -->
     <dl class="priv">
       <div><dt>Runs on the computer</dt><dd>The ear, the tagger, the Director, the embedder and the voices all run locally. The app window may only talk to its own local servers; anything else is blocked, apart from the NASA YouTube player.</dd></div>
       <div><dt>The mic: open or push-to-talk</dt><dd>Hands-free listening by default, or push-to-talk (hold Space) in Settings. Audio is never stored.</dd></div>
-      <div><dt>The camera is opt-in</dt><dd>Off until a kid or parent turns on gestures in Settings, with a "Camera on" chip and a Turn off button while it runs. Frames are read on the computer and never saved or sent. No face recognition.</dd></div>
-      <div><dt>No account</dt><dd>The kid picks a call sign. It and all progress stay on the device.</dd></div>
+      <div><dt>The camera is opt-in</dt><dd>Off until you turn on gestures in Settings, with a "Camera on" chip and a Turn off button while it runs. Frames are read on the computer and never saved or sent. No face recognition.</dd></div>
+      <div><dt>No account</dt><dd>You pick a call sign. It and all progress stay on the device.</dd></div>
       <div><dt>Turn log: opt-in, text only</dt><dd>Off by default. If a family turns on "Help improve the voice guide", the app keeps a small text log with names redacted. It is never uploaded, and "Delete what's saved" erases it.</dd></div>
     </dl>
   </section>
@@ -259,7 +259,7 @@ make test</pre>
           <li>A phase scrubber</li>
         </ul></li>
       <!-- docs/DIRECTOR_COLLECTION.md: 15-minute guided, consented, local session (make director-collect); docs/DIRECTOR_COVERAGE.md round 8. -->
-      <li><b>Director round 8 with real kids' voices</b><span>A 15-minute guided session, with a parent's consent, recorded and kept on the family's computer. It can ship only if it passes the gate.</span></li>
+      <li><b>Director: more real voices</b><span>A 15-minute guided, consented session, recorded and kept on the user's own computer. It can ship only if it passes the gate.</span></li>
       <!-- docs/DESKTOP.md "Windows": NSIS installer is unsigned; Authenticode needs an OV/EV certificate. -->
       <li><b>Windows, run and signed</b><span>A first run on a real PC, then a code-signing certificate so SmartScreen stops warning.</span></li>
     </ul>
