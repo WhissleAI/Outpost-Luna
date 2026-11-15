@@ -91,3 +91,11 @@ While a video plays it joins the floor's crew channel, so the ear is gated and d
 `video` screen (`turn_router.VIDEO_CMDS`). Other voice intents and session `say` / `play` / `answer` decisions are
 dropped until the overlay closes. On a keyboard or remote, Esc or B closes the overlay; K or the controller's Back
 button pauses and plays.
+
+## Mute (integ/v1)
+
+The top bar's Mute (`frontend/src/mute.js`: the button, Shift+M, voice "mute" / "unmute") covers the player too:
+our `<video>` opens muted while the app is muted and follows `outpost:mute` while it plays; the YouTube embed opens
+with `mute=1` and gets the IFrame API's `mute` / `unMute` on `outpost:mute`. `frontend/tests/e2e/mute_e2e.py` checks
+it, with the voice floor and Web Audio.
+

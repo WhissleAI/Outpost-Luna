@@ -16,6 +16,10 @@ import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from silent import LAUNCH_ARGS, silence  # noqa: E402  (owner rule: test runs make no sound)

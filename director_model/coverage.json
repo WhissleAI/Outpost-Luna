@@ -44,6 +44,7 @@
   "lesson",
   "library",
   "map",
+  "mute_sound",
   "new_site",
   "next",
   "panel_back",
@@ -64,6 +65,7 @@
   "time_pause",
   "time_resume",
   "time_warp",
+  "unmute_sound",
   "view_orbit",
   "view_rover",
   "view_site"
@@ -85,9 +87,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 374,
+  "cells": 394,
   "covered": 70,
-  "gap": 304,
+  "gap": 324,
   "pending": 26,
   "by_kind": {
    "answer": {
@@ -116,7 +118,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 242,
+    "cells": 262,
     "covered": 19,
     "pending": 11
    },
@@ -377,6 +379,19 @@
    ]
   },
   {
+   "cell": "brief|nav:mute_sound",
+   "screen": "brief",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "brief|nav:new_site",
    "screen": "brief",
    "intent": "nav:new_site",
@@ -473,6 +488,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:unmute_sound",
+   "screen": "brief",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -870,6 +898,19 @@
    ]
   },
   {
+   "cell": "cabin|nav:mute_sound",
+   "screen": "cabin",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "cabin|nav:new_site",
    "screen": "cabin",
    "intent": "nav:new_site",
@@ -1112,6 +1153,19 @@
    "intent": "nav:time_warp",
    "kind": "navigate",
    "probe": "time warp",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "cabin|nav:unmute_sound",
+   "screen": "cabin",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1386,6 +1440,19 @@
    ]
   },
   {
+   "cell": "callsign|nav:mute_sound",
+   "screen": "callsign",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "callsign|nav:new_site",
    "screen": "callsign",
    "intent": "nav:new_site",
@@ -1469,6 +1536,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "callsign|nav:unmute_sound",
+   "screen": "callsign",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1752,6 +1832,19 @@
    ]
   },
   {
+   "cell": "debrief|nav:mute_sound",
+   "screen": "debrief",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "debrief|nav:new_site",
    "screen": "debrief",
    "intent": "nav:new_site",
@@ -1848,6 +1941,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "debrief|nav:unmute_sound",
+   "screen": "debrief",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -2083,6 +2189,19 @@
    ]
   },
   {
+   "cell": "lesson_done|nav:mute_sound",
+   "screen": "lesson_done",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "lesson_done|nav:new_site",
    "screen": "lesson_done",
    "intent": "nav:new_site",
@@ -2166,6 +2285,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson_done|nav:unmute_sound",
+   "screen": "lesson_done",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -2383,6 +2515,19 @@
    ]
   },
   {
+   "cell": "lesson|nav:mute_sound",
+   "screen": "lesson",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "lesson|nav:new_site",
    "screen": "lesson",
    "intent": "nav:new_site",
@@ -2470,6 +2615,19 @@
    "heldout": 0,
    "gap": [
     "train 21 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson|nav:unmute_sound",
+   "screen": "lesson",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
     "held-out 0 < 8"
    ]
   },
@@ -2989,6 +3147,19 @@
    ]
   },
   {
+   "cell": "library|nav:mute_sound",
+   "screen": "library",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "library|nav:new_site",
    "screen": "library",
    "intent": "nav:new_site",
@@ -3085,6 +3256,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "library|nav:unmute_sound",
+   "screen": "library",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -3348,6 +3532,19 @@
    ]
   },
   {
+   "cell": "map|nav:mute_sound",
+   "screen": "map",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "map|nav:new_site",
    "screen": "map",
    "intent": "nav:new_site",
@@ -3444,6 +3641,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "map|nav:unmute_sound",
+   "screen": "map",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -3672,6 +3882,19 @@
    ]
   },
   {
+   "cell": "patch|nav:mute_sound",
+   "screen": "patch",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "patch|nav:new_site",
    "screen": "patch",
    "intent": "nav:new_site",
@@ -3768,6 +3991,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "patch|nav:unmute_sound",
+   "screen": "patch",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -4084,6 +4320,19 @@
    ]
   },
   {
+   "cell": "ride|nav:mute_sound",
+   "screen": "ride",
+   "intent": "nav:mute_sound",
+   "kind": "navigate",
+   "probe": "mute",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "ride|nav:new_site",
    "screen": "ride",
    "intent": "nav:new_site",
@@ -4167,6 +4416,19 @@
    "intent": "nav:take_command",
    "kind": "navigate",
    "probe": "take command",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "ride|nav:unmute_sound",
+   "screen": "ride",
+   "intent": "nav:unmute_sound",
+   "kind": "navigate",
+   "probe": "unmute",
    "train": 0,
    "heldout": 0,
    "gap": [

@@ -137,7 +137,9 @@ function run({ v, status, fb, context, resolve }) {
       ${item.captions_src ? `<button type="button" class="btn vid-cc" data-cc aria-pressed="true">${icon("captions")}<span>Captions</span></button>` : ""}
       <button type="button" class="btn vid-x" data-close>${icon("close")}<span>Close</span></button>`;
     const el = stage.querySelector("video");
-    if (window.__outpost && window.__outpost.muteVideos) el.muted = true;   // silent test runs and demos
+    if (appMuted()) el.muted = true;   // the top bar's Mute (mute.js), silent test runs and demos
+    const onMute = e => { el.muted = !!(e.detail && e.detail.muted) || !!(window.__outpost && window.__outpost.muteVideos); };
+    addEventListener("outpost:mute", onMute);
     const pp = bar.querySelector("[data-pp]"), tEl = bar.querySelector("[data-t]"), prog = bar.querySelector("[data-prog]");
     let last = 0, vol = 1;
     const showCaptions = on => { const t = el.textTracks && el.textTracks[0]; if (t) t.mode = on ? "showing" : "hidden"; const b = bar.querySelector("[data-cc]"); if (b) b.setAttribute("aria-pressed", String(!!on)); };
@@ -161,15 +163,18 @@ function run({ v, status, fb, context, resolve }) {
     return {
       play: () => el.play().catch(() => {}), pause: () => el.pause(), toggle: () => (el.paused ? el.play().catch(() => {}) : el.pause()),
       duck: l => { vol = l; el.volume = l; }, unduck: () => { vol = 1; el.volume = 1; },
-      dispose: () => { el.pause(); el.removeAttribute("src"); el.load(); },
+      dispose: () => { removeEventListener("outpost:mute", onMute); el.pause(); el.removeAttribute("src"); el.load(); },
       get paused() { return el.paused; }, get ended() { return el.ended; },
       text: () => { const t = el.textTracks && el.textTracks[0], c = t && t.activeCues; return c && c.length ? [...c].map(x => x.text).join(" ") : ""; },
     };
   }
 
+  /** Start muted: the top bar's Mute (prefs.muted, mute.js) or a silent run (window.__outpost.muteVideos). */
+  function appMuted() { const O = window.__outpost || {}; return !!(O.muteVideos || (O.prefs && O.prefs.muted)); }
+
   // ---- the YouTube embed (youtube-nocookie; the IFrame API's postMessage protocol, no extra script in our page) ----
   function youtubePlayer(stage, bar, item) {
-    const silent = !!(window.__outpost && window.__outpost.muteVideos);   // silent test runs and demos: start muted
+    const silent = appMuted();   // the top bar's Mute, silent test runs and demos: start muted
     const src = youtubeSrc(item.youtube_id, location.origin) + (silent ? "&mute=1" : "");
     stage.innerHTML = `<iframe class="vid-yt" src="${esc(src)}" title="${esc(item.title)} (YouTube)" referrerpolicy="strict-origin-when-cross-origin"
       allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
@@ -206,10 +211,13 @@ function run({ v, status, fb, context, resolve }) {
     fr.addEventListener("load", () => { listen(); setTimeout(listen, 600); setTimeout(listen, 1500); });
     pp.onclick = () => send(state === 1 || state === 3 ? "pauseVideo" : "playVideo");
     pp.focus({ preventScroll: true });
+    // the top bar's Mute while the embed plays: the IFrame API's mute / unMute (a silent run stays muted)
+    const onYtMute = e => send((e.detail && e.detail.muted) || (window.__outpost && window.__outpost.muteVideos) ? "mute" : "unMute");
+    addEventListener("outpost:mute", onYtMute);
     return {
       play: () => send("playVideo"), pause: () => send("pauseVideo"), toggle: () => send(state === 1 || state === 3 ? "pauseVideo" : "playVideo"),
       duck: l => send("setVolume", [Math.round(l * 100)]), unduck: () => send("setVolume", [100]),
-      dispose: () => { removeEventListener("message", onMsg); fr.src = "about:blank"; },
+      dispose: () => { removeEventListener("message", onMsg); removeEventListener("outpost:mute", onYtMute); fr.src = "about:blank"; },
       get paused() { return state !== 1 && state !== 3; }, get ended() { return state === 0; },
       text: () => "",
     };

@@ -19,6 +19,7 @@ export const PREF_DEFAULTS = Object.freeze({
   graphics: "high",          // "high" | "low"
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12)
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
+  muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
 });
 /** Settings → Voice: where a parent downloads clearer voices on this OS (the app speaks with the OS's own offline
  *  voices, docs/VOICES.md). "" on any other OS. */
@@ -48,6 +49,7 @@ export function normalizePrefs(x) {
   if (typeof s.voice_all === "boolean") o.voice_all = s.voice_all;
   o.pack = s.pack !== false;          // on unless explicitly turned off
   o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
+  o.muted = s.muted === true;
   return o;
 }
 
@@ -68,7 +70,7 @@ export function createPrefs({ globe = null } = {}) {
   }
   function apply(changed) {
     const O = (window.__outpost = window.__outpost || {});
-    O.prefs = P; O.levels = { master: P.volume, alarms: P.alarms };
+    O.prefs = P; O.levels = { master: P.muted ? 0 : P.volume, alarms: P.alarms, muted: !!P.muted };   // Mute: Web Audio and the browser voice at 0
     root.dataset.listen = P.listen; root.dataset.graphics = P.graphics;
     if (changed ? "theme" in changed : P.theme !== "system") applyTheme();
     if (globe && globe.setQuality && (!changed || "graphics" in changed)) globe.setQuality(P.graphics);

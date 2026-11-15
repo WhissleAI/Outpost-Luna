@@ -8,7 +8,7 @@
 // Nothing here ever blocks the mission: every path ends in the mission's own action.
 import { MOON_BASE, LEARN_MORE, EXPLORER, callSign } from "./story.js";
 import { isAvailable as videoState, openVideo as playVideo, getVideo, watchLabel } from "./media/video.js";   // docs/MEDIA.md
-import { pickLearnMore, playable } from "./learn_more.js";
+import { pickLearnMore } from "./learn_more.js";
 import { markMissionFlown, missionsFlown, newlyUnlocked } from "./explorer.js";
 import { icon } from "./assets/icons.js";
 import "./mission_learning.css";
@@ -39,7 +39,9 @@ export function installMissionLearning({ missionUI, say, stop = () => {}, lesson
 
   async function offerThen(proceed) {
     const st = await videoState("moon_base_6mo");
-    if (!playable(st) || !onPicker()) { proceed(); return; }   // no video now: straight on, and ask again next time
+    // only a saved copy (moon_base_6mo is pinned: downloaded on the first online launch): it starts at once, offline
+    // too, and a run without the cache (tests: VIDEO_PREFETCH=0) never meets the card. Otherwise straight on.
+    if (st !== "cached" || !onPicker()) { proceed(); return; }
     set(seenKey(), "1");
     const el = document.createElement("div");
     el.className = "ml-offer"; el.setAttribute("role", "dialog"); el.setAttribute("aria-labelledby", "mlOfferTitle");

@@ -307,7 +307,7 @@ export function createFloor({ ttsUrl = "/api/tts" } = {}) {
       const failed = () => fin(heard || (a.currentTime || 0) > 0.25 ? "end" : "error");
       a.onended = () => fin("end"); a.onerror = failed;
       tok.stop = () => { a.pause(); fin("stop"); };
-      a.volume = 1; a.src = url;
+      a.volume = 1; a.muted = !!levels().muted; a.src = url;   // the top bar's Mute (mute.js): the text still shows
       a.play().catch(failed);      // autoplay blocked / decode error before any sound → browser voice for this sentence
     });
   }

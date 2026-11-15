@@ -61,6 +61,7 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
   const atSeat = () => { const p = cabinPanel(); return !p || p === "seat"; };
 
   on("stop", () => { stopAll(); if (globe && globe.halt) globe.halt(); spinner.halt(); spinView = { ...spinView, grabbed: false, vx: 0, vy: 0, speed: 0, stick: null }; return true; });
+  on("mute", () => { import("../mute.js").then(m => m.toggleMute()); return true; });   // Shift+M: the top bar's Mute
 
   // yes / no: the cabin's pending confirm, then a visible confirm (data-intent="yes|no", or a Yes / No card), then the offer
   const confirmBtn = kind => [...document.querySelectorAll(`[data-intent="${kind}"]`)].find(visible)
@@ -142,7 +143,7 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
 export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", "decline_offer", "repeat", "slower", "faster", "settings",
   "a11y", "answer", "academy", "library", "go_mission", "lesson", "map", "take_command", "pick_site", "debrief", "fly_again",
   "new_site", "view_orbit", "view_site", "view_rover", "view_earth", "panel_power", "panel_comm", "panel_habitat", "panel_rover",
-  "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice"]);
+  "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "mute_sound", "unmute_sound"]);
 
 /** Keyboard source: Alt+→ / Alt+← next / previous, Alt+Y / Alt+N yes / no, Alt+. stop. Never while typing in a field. */
 export function installKeyboardIntents() {

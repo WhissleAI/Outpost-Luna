@@ -22,6 +22,10 @@ import sys
 import time
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
 
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
@@ -76,7 +80,7 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
     log, seen_keys, shots_taken = [], set(), 0
     t0 = time.time()
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=chromium(), args=["--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
+        b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
         pg = b.new_page(viewport={"width": vw, "height": vh})
         pg.set_default_timeout(120000)
         pg.add_init_script(SEED % (level, graphics, "0" if real_first_shift else fast_ms))
@@ -140,6 +144,20 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
                 pg.wait_for_timeout(400)
                 continue
             if not n["buttons"]:
+                # the Now panel points at a deck control (Skip ahead / Play / the speed): a kid presses the glowing one
+                lit = pg.evaluate("() => { const e = document.querySelector('.cb-deck .is-point'); if (!e) return null; const b = e.matches('button') ? e : e.querySelector('button:not([aria-pressed=\"true\"])') || e.querySelector('button'); if (!b) return null; b.dataset.lit = '1'; return b.textContent.trim(); }")
+                if lit:
+                    before = pg.evaluate(LOOK)
+                    act = click(pg, "[data-lit='1']", 0)
+                    pg.evaluate("() => document.querySelectorAll('[data-lit]').forEach(e => delete e.dataset.lit)")
+                    pg.wait_for_timeout(900)
+                    after = pg.evaluate(LOOK)
+                    na = after["now"] or {}
+                    log.append({"t": round(time.time() - t0), "clock": hour, "task": n["title"] or "Now", "should": n["text"], "meta": n["meta"],
+                                "buttons": [lit], "glow": v["glow"], "obvious": bool(v["glowClear"]), "glow_on_screen": v["glowClear"],
+                                "action": f"{act}: {lit} (deck)", "reacted": after["clock"] != before["clock"] or (na.get("text") != n["text"]),
+                                "ack": na.get("ack") or "", "next": na.get("text") or "", "progress": after["prog"], "moment_shown": after["moment"]})
+                    continue
                 pg.wait_for_timeout(400)
                 last_key = key
                 continue

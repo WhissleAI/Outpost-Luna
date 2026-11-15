@@ -15,6 +15,10 @@ import os
 import time
 
 from playwright.sync_api import sync_playwright
+import os as _os, sys as _sys  # noqa: E401
+_d = _os.path.dirname(_os.path.abspath(__file__))
+_sys.path[:0] = [_d, _os.path.join(_d, "..", "..", "tools")]
+import silent  # noqa: E402,F401  (owner rule: every browser run is muted and headless; frontend/tools/silent.py)
 
 ALL = ["home", "map", "map_mid", "lesson_choice", "lesson_tap", "lesson_keywords", "lesson_command", "lesson_feedback",
        "vocab_listen", "vocab_match", "vocab_say", "vocab_fill", "patch", "ride", "brief", "cabin", "storm", "cabin_orbit",

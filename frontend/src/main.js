@@ -43,7 +43,8 @@ import { installDefaultIntents, installKeyboardIntents, cabinPanel } from "./inp
 import { lookTarget } from "./gesture/bind.js";
 import { initGestures } from "./gesture/ui.js";
 import "./input/keys.css";   // [keys]
-import { installKeys } from "./input/keys.js";   // [keys] the keyboard as a TV remote (docs/KEYBOARD.md)
+import { installKeys } from "./input/keys.js";
+import { installMute, setMuted, toggleMute } from "./mute.js";   // the top bar's Mute (next to Settings)   // [keys] the keyboard as a TV remote (docs/KEYBOARD.md)
 import { installGamepad } from "./input/gamepad.js";   // [keys]
 import { REPEAT_MS } from "./input/spatial.js";   // [keys]
 // ---- end [input] ----
@@ -165,6 +166,7 @@ async function boot() {
   // Settings v1 (prefs.js): voice, sound, listening, display, level, cadet profiles. The session gets the steering bits.
   const prefs = createPrefs({ globe });
   (window.__outpost = window.__outpost || {}).prefsApi = prefs;
+  installMute();   // every screen: Flight School, Mission, Library, the cabin
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
   // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint
@@ -197,6 +199,9 @@ async function boot() {
   async function ask(raw, source, opts = {}) {
     const text = (raw || "").trim(); if (!text) return;
     if (vbar && vbar.handleText(text)) { $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }   // "move the voice bar to the top"
+    { const w = text.toLowerCase().replace(/[^a-z ]/g, "").trim();   // the top bar's Mute by voice or typing (no session needed)
+      if (/^(mute|mute (the )?(sound|audio|app)|sound off|be quiet)$/.test(w)) { setMuted(true); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }
+      if (/^(unmute|unmute (the )?(sound|audio|app)|sound on)$/.test(w)) { setMuted(false); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; } }
     // [media] a video is up: pause / play / skip / stop run here; nothing else is a turn until it closes
     if (videoOpen()) { videoVoice(text); $("q").value = ""; voice.clearWords(); voice.show("idle"); return; }
     const heard = source === "voice";
@@ -514,6 +519,7 @@ async function boot() {
   new MutationObserver(dupCheck).observe($("aPanel"), { childList: true, subtree: true });
   /** [hands-free] Run a navigation intent the router chose (screen-first, then app-wide). */
   async function shellNav(intent, arg, text) {
+    if (intent === "mute_sound" || intent === "unmute_sound") { setMuted(intent === "mute_sound"); return; }
     const a11yCmd = { repeat: "say that again", slower: "slower", faster: "faster", settings: "settings" }[intent];
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
     if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }

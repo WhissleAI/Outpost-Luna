@@ -657,7 +657,8 @@ credited in `source`, never on screen.
 ### 11.5 Story beats and copy
 
 - First mission only, on "Take command": "NASA plans a real base near here. Ours is pretend. Let's run it." with
-  `moon_base_6mo` (Watch or Skip; when it can't play, the mission just starts). Settings → Help replays it.
+  `moon_base_6mo`, offered only when the saved copy is on this computer (it is a pinned download, so it starts at once,
+  offline too); otherwise the mission just starts. Watch or Skip. Settings → Help replays it.
 - Debrief "Learn more" (`frontend/src/learn_more.js`): `dose_limit` → `moon_weather` (`solar_eruptions` when online),
   `power_out` → a fact card, `life_support_out` → `water_extraction`, `survived` → `meet_crew`; a fact card whenever the
   video can't play.

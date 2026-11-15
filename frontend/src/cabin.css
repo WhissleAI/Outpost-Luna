@@ -604,3 +604,148 @@ html[data-motion="reduce"] .is-point{animation:none}
 html[data-motion="reduce"] .cb-moment,html[data-motion="reduce"] .cb-now-ack{animation:none}
 @media (prefers-reduced-motion:reduce){.cb-moment,.cb-now-ack{animation:none}}
 @media (max-width:900px){.cb-held{display:none}.cb-tbtn span{display:none}.cb-prog .pg em{display:none}}
+
+/* ---------- mission UI polish (fix/mission-ui-polish, docs/GAMEPLAY.md §9) ----------
+   The owner's 1440x879 play: the Now card floated over the windshield and the gauges, and its text collided with the
+   clock strip. Now the glass carries only what belongs to the view (the alert strip, the sky readout, the rover pill,
+   story moments). The cabin has two fixed places:
+     1. the DECK: one overhead bar with the clock, the clock state (running / paused / on hold), Play-Pause, the speed,
+        Skip ahead, the window views and the goals; each control once;
+     2. the NOW panel: a side display docked on the left wall, under the deck, clear of the windshield and the gauges;
+        it folds to one line.
+   Type: sans for words, tabular figures for numbers (.num); mono stays on the instrument read-outs only. */
+.m-cabin{--deck-h:56px;--rail:12px;--now-w:clamp(232px,21vw,320px)}
+.m-cabin .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* 1. the deck */
+.m-cabin .cb-deck{position:absolute;z-index:6;top:var(--rail);left:var(--rail);right:var(--rail);min-height:var(--deck-h);box-sizing:border-box;
+  display:flex;align-items:center;gap:var(--space-3);padding:6px var(--space-3);border-radius:var(--radius-lg);
+  background:color-mix(in srgb,var(--color-panel) 92%,transparent);border:1px solid var(--cb-line);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--color-on-space) 8%,transparent),0 8px 24px color-mix(in srgb,var(--color-space) 50%,transparent);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.m-cabin .cb-deck .cb-clock{position:static;flex:0 0 auto;text-shadow:none;min-width:0}
+.m-cabin .cb-deck .cb-clock b{font-size:var(--text-lg);white-space:nowrap}
+.m-cabin .cb-deck .cb-clock b .cb-hh{color:var(--color-phosphor);font-weight:var(--weight-semibold);margin-left:4px}
+.m-cabin .cb-deck .cb-clock small{font-family:var(--font-ui);font-size:var(--text-xs);color:var(--cb-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:24ch}
+.m-cabin .cb-deck .cb-time{position:static;margin:0;flex:0 0 auto;gap:4px;padding:3px;background:var(--color-display);border-radius:var(--radius-md)}
+.m-cabin .cb-deck .cb-views{position:static;margin-left:auto;flex:0 0 auto;background:var(--color-display)}
+.m-cabin .cb-deck .cb-prog{position:static;flex:0 0 auto;font-family:var(--font-ui)}
+.m-cabin .cb-deck .cb-prog .pg{background:var(--color-display)}
+.m-cabin .cb-deck .cb-prog .pg em{font-family:var(--font-ui)}
+.m-cabin .cb-deck .cb-prog .pg b{font-family:var(--font-ui)}
+.m-cabin .cb-tbtn{min-height:var(--control-sm);font-family:var(--font-ui)}
+.m-cabin .cb-tbtn:active:not(:disabled){transform:scale(.96)}
+.m-cabin .cb-warp{font-family:var(--font-ui);font-variant-numeric:tabular-nums;font-size:var(--text-sm)}
+.m-cabin .cb-skip span,.m-cabin .cb-play span{white-space:nowrap}
+/* the clock state: a lamp and its word, never colour alone */
+.m-cabin .cb-state{display:inline-flex;align-items:center;gap:6px;min-width:9.5em;padding:0 var(--space-2);font-size:var(--text-sm);font-weight:var(--weight-semibold);
+  color:var(--cb-text-2);white-space:nowrap}
+.m-cabin .cb-state i{width:10px;height:10px;border-radius:50%;background:var(--cb-text-2);flex:0 0 auto}
+.m-cabin .cb-time[data-state="run"] .cb-state{color:var(--color-phosphor)}
+.m-cabin .cb-time[data-state="run"] .cb-state i{background:var(--color-phosphor);box-shadow:0 0 8px var(--color-phosphor);animation:cbRun 1.6s var(--ease-in-out) infinite}
+.m-cabin .cb-time[data-state="held"] .cb-state{color:var(--color-lamp-caution)}
+.m-cabin .cb-time[data-state="held"] .cb-state i{background:var(--color-lamp-caution)}
+.m-cabin .cb-time[data-state="paused"] .cb-state{color:var(--color-on-space)}
+.m-cabin .cb-time[data-state="paused"] .cb-state i{background:none;border-radius:1px;width:10px;height:10px;box-shadow:inset 3px 0 0 var(--color-on-space),inset -3px 0 0 var(--color-on-space)}
+@keyframes cbRun{50%{opacity:.45}}
+.m-cabin .cb-held{min-width:0;padding:0;font-family:var(--font-ui);font-size:inherit;color:inherit}
+/* paused: the whole cabin says so (the glass dims a little and the clock's digits stop glowing) */
+.m-cabin .cb[data-clock="paused"] .cb-deck .cb-clock b .cb-hh{color:var(--color-on-space)}
+.m-cabin .cb[data-clock="paused"] .cb-glass .cb-tint{opacity:1;background:color-mix(in srgb,var(--color-space) 22%,transparent)}
+
+/* 2. the Now panel: a side display on the left wall */
+.m-cabin .cb>.cb-now{position:absolute;z-index:5;left:var(--rail);right:auto;bottom:auto;top:calc(var(--rail) * 2 + var(--deck-h));transform:none;
+  width:var(--now-w);max-width:var(--now-w);box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;gap:6px;
+  padding:var(--space-2) var(--space-3) var(--space-3);border-radius:var(--radius-lg);white-space:normal;pointer-events:auto;
+  background:color-mix(in srgb,var(--color-panel) 94%,transparent);border:1px solid var(--cb-line);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--color-on-space) 8%,transparent),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent);
+  font-family:var(--font-ui);font-size:var(--text-sm);line-height:1.35}
+.m-cabin .cb>.cb-now[hidden]{display:none}
+.m-cabin .cb>.cb-now.is-caution{border-color:var(--color-lamp-caution)}
+.m-cabin .cb>.cb-now.is-warn{border-color:var(--color-lamp-warning);box-shadow:0 0 0 1px var(--color-lamp-warning),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent)}
+.m-cabin .cb-now-head{display:flex;align-items:center;gap:var(--space-2);min-height:28px}
+.m-cabin .cb-now-head .cb-now-l{font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-phosphor);flex:0 0 auto}
+.m-cabin .cb-now.is-caution .cb-now-l{color:var(--color-lamp-caution)} .m-cabin .cb-now.is-warn .cb-now-l{color:var(--color-lamp-warning)}
+.m-cabin .cb-now-head .cb-now-title{flex:1 1 auto;min-width:0;font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--cb-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-cabin .cb-now-head .cb-now-title::after{content:none}
+.m-cabin .cb-now-fold{flex:0 0 auto;display:grid;place-items:center;width:32px;height:28px;border:0;border-radius:var(--radius-sm);background:none;color:var(--cb-text-2)}
+.m-cabin .cb-now-fold:hover{background:color-mix(in srgb,var(--color-on-space) 10%,transparent);color:var(--color-on-space)}
+.m-cabin .cb-now-step{margin:0;font-size:var(--text-md);font-weight:var(--weight-semibold);color:var(--color-on-space);line-height:1.3}
+.m-cabin .cb-now.is-folded .cb-now-more{display:none}
+.m-cabin .cb-now-meta,.m-cabin .cb-now-steps em,.m-cabin .cb-now-left{font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+.m-cabin .cb-now-ros{font-family:var(--font-ui);gap:2px var(--space-3)}
+.m-cabin .cb-now-ro em{font-family:var(--font-ui)} .m-cabin .cb-now-ro>span{font-family:var(--font-mono)}
+.m-cabin .cb-now-btns{display:flex;flex-direction:column;gap:var(--space-2);margin-top:2px}
+.m-cabin .cb-now-b{position:relative;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--space-2);text-align:left;
+  min-height:var(--control-md);padding:6px var(--space-3);border-radius:var(--radius-md);border:1px solid var(--cb-line);
+  background:color-mix(in srgb,var(--color-on-space) 7%,transparent);color:var(--color-on-space);font-size:var(--text-md);font-weight:var(--weight-semibold);
+  transition:background var(--dur-fast),border-color var(--dur-fast),transform var(--dur-fast)}
+.m-cabin .cb-now-b:hover{background:color-mix(in srgb,var(--color-on-space) 16%,transparent);border-color:var(--color-on-space-2)}
+.m-cabin .cb-now-b:active{transform:scale(.98)}
+.m-cabin .cb-now-b.is-hot{background:var(--color-accent-strong);border-color:var(--color-accent-strong);color:#fff}
+.m-cabin .cb-now-b.is-hot:hover{filter:brightness(1.12)}
+.m-cabin .cb-now-bl{display:flex;flex-direction:column;min-width:0}
+.m-cabin .cb-now-bl small{font-size:var(--text-xs);font-weight:var(--weight-regular);color:var(--cb-text-2)}
+.m-cabin .cb-now-b.is-hot .cb-now-bl small{color:rgba(255,255,255,.85)}
+.m-cabin .cb-now-b kbd{flex:0 0 auto;display:grid;place-items:center;min-width:22px;height:22px;padding:0 4px;border-radius:var(--radius-sm);
+  border:1px solid currentColor;font-family:var(--font-ui);font-size:var(--text-xs);font-weight:var(--weight-semibold);opacity:.75}
+/* ONE focus ring per control (the old glow drew one ring round both choices) */
+.m-cabin .cb-now-b:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px;box-shadow:none}
+.m-cabin .cb-now .is-point{outline:none;animation:cbHot 1.8s var(--ease-in-out) infinite;box-shadow:0 0 0 0 color-mix(in srgb,var(--color-accent-strong) 70%,transparent)}
+@keyframes cbHot{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--color-accent-strong) 0%,transparent)}}
+.m-cabin .cb-now-say{margin:0;font-size:var(--text-xs);color:var(--cb-text-2)}
+.m-cabin .cb-now-hint{font-size:var(--text-sm)}
+.m-cabin .cb.is-focus .c3-panel:not(.is-focus):not([data-alarm]):not(.is-open){opacity:.72;filter:saturate(.75)}
+.m-cabin .cb.is-focus .c3-panel[data-panel="displays"]{opacity:1;filter:none}
+html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"] .m-cabin .cb-state i{animation:none}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb-now .is-point,.m-cabin .cb-state i{animation:none}}
+
+/* the mission log opens under the deck, at the right */
+.m-cabin .cb>.cb-mlog{position:absolute;z-index:7;right:var(--rail);left:auto;top:calc(var(--rail) * 2 + var(--deck-h));width:min(360px,40%);max-height:60%}
+
+/* the glass keeps its own read-outs: sans words, tabular numbers */
+.m-cabin .cb-sky{font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+.m-cabin .cb-rover{font-family:var(--font-ui);font-variant-numeric:tabular-nums}
+
+/* no WebGL (the flat cabin): the grid starts under the deck, and the Now panel sits on the window's left edge */
+.m-cabin .cb:not(.is-3d){padding-top:calc(var(--rail) * 2 + var(--deck-h))}
+
+/* a panel opened (the camera dollies in): the Now panel keeps its step and buttons, drops the details */
+.m-cabin .cb:has(.c3:not([data-panel="seat"])) .cb-now :is(.cb-now-meta,.cb-now-ros,.cb-now-hint,.cb-now-ack){display:none}
+
+/* narrower windows: the deck drops words before it drops controls */
+/* the view tabs ride on the glass (top-right); the sky readout moves to the glass's bottom-right, clear of the Now panel */
+.m-cabin .cb-hole>.cb-views{left:auto;right:var(--inset);top:var(--inset)}
+.m-cabin .cb-glass>.cb-views{position:absolute;z-index:4;right:var(--space-4);top:var(--space-4)}
+.m-cabin .cb-hole.has-alert>.cb-views{top:calc(var(--inset) * .5 + var(--alert-h, var(--control-md)) + var(--space-2))}
+.m-cabin .cb-hole>.cb-sky{left:auto;right:var(--inset);top:auto;bottom:calc(var(--inset) * .6)}
+.m-cabin .cb-glass>.cb-sky{left:auto;right:var(--space-4)}
+.m-cabin .cb-view{gap:6px;padding:0 var(--space-2)}
+/* narrower windows: words win over icons (a kid reads "Rover", not a glyph); the deck drops the long site name first */
+@media (max-width:1366px){.m-cabin .cb-view svg{display:none}.m-cabin .cb-view{min-width:0}}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-clock small{display:none}.m-cabin .cb-logbtn span{display:none}}
+@media (max-width:1100px){.m-cabin .cb-state{min-width:0}.m-cabin .cb-deck{gap:var(--space-2)}.m-cabin .cb-deck .cb-prog{gap:4px}}
+@media (max-width:1024px){.m-cabin{--now-w:224px;--deck-h:48px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
+@media (max-height:700px){.m-cabin .cb-now-ros,.m-cabin .cb-now-hint{display:none}}
+
+/* two options side by side; the Now panel drops details when the wall above the Habitat console is short (fitNow) */
+.m-cabin .cb-now-btns.is-choice:has(.cb-now-b:nth-child(2):last-child){display:grid;grid-template-columns:1fr 1fr}
+.m-cabin .cb-now-btns.is-choice .cb-now-b{justify-content:flex-start}
+.m-cabin .cb-now.is-tight :is(.cb-now-ros,.cb-now-hint,.cb-now-lesson){display:none}
+.m-cabin .cb-now.is-tighter :is(.cb-now-meta,.cb-now-ack){display:none}
+.m-cabin .cb-now.is-tightest :is(.cb-now-say,.cb-now-head){display:none}
+
+/* the alert strip on the glass starts right of the Now panel when the window reaches under it (fitNow sets --now-clear) */
+.m-cabin .cb-hole>.cb-alert{left:max(var(--inset),var(--now-clear,0px))}
+
+/* the sky readout lives in the deck, after the clock; a story moment has the glass's centre to itself */
+.m-cabin .cb-deck .cb-sky{position:static;flex:0 0 auto;display:flex;flex-direction:column;gap:0;font-size:var(--text-xs);line-height:1.3;text-shadow:none;color:var(--color-on-space)}
+.m-cabin .cb-deck .cb-sky span{white-space:nowrap}
+.m-cabin .cb-hole.has-moment>.cb-rover,.m-cabin .cb-glass.has-moment>.cb-rover{opacity:0;transition:opacity var(--dur-base)}
+.m-cabin .cb-hole>.cb-rover,.m-cabin .cb-glass>.cb-rover{transition:opacity var(--dur-base)}
+.m-cabin .cb-hole>.cb-moment{max-width:60%;width:max-content}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-sky{display:none}}
+/* the story banner hangs just under the view tabs (never on them), centred, and fades in and out in place */
+.m-cabin .cb-hole>.cb-moment{top:calc(var(--inset) + var(--control-md) + var(--space-3));transform:translateX(-50%);animation-name:cbMomentTop;max-height:calc(100% - var(--inset) * 2 - var(--control-md));overflow:hidden}
+.m-cabin .cb-hole>.cb-moment b{font-size:clamp(22px,2.4vw,var(--text-2xl))}
+@keyframes cbMomentTop{0%{opacity:0;transform:translate(-50%,6px)}10%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,-6px)}}

@@ -50,7 +50,7 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "panel_habitat": "open the habitat panel", "panel_rover": "open the rover panel",
           "panel_radiation": "open the radiation panel", "panel_back": "back to my seat",
           "accept_offer": "yes", "decline_offer": "no thanks", "pick_site": "pick malapert massif",
-          "task_choice": "the ridge"}
+          "task_choice": "the ridge", "mute_sound": "mute", "unmute_sound": "unmute"}
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],

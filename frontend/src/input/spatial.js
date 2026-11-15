@@ -392,6 +392,14 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
   function seatMove(dir, a) {
     const cab = doc.getElementById("mCabin"); if (!cab) return false;
+    // a choice on the Now panel (Steer left / Steer right): the arrows / D-pad step between its options first, and leave
+    // the group only past its ends (keys and controller both arrive here as `move`)
+    const grp = a && a.closest && a.closest(".cb-now-btns");
+    if (grp) { const bs = [...grp.querySelectorAll("button")].filter(visible), i = bs.indexOf(a), n = bs[i + (dir === "right" || dir === "down" ? 1 : -1)];
+      if (i >= 0 && n) { focusEl(n); onMove(); return true; } }
+    // an alert on the window (a storm): Up from the seat goes to its main action first ("Shelter the crew")
+    if (a === seatEl && dir === "up") { const hot = cab.querySelector(".cb-alert:not([hidden]) .cb-al-b.is-hot");
+      if (hot && visible(hot)) { seatEl.hidden = true; focusEl(hot); onMove(); return true; } }
     const fromEl = a === seatEl ? panelEl(seatPanel) : a;
     if (!fromEl) return focusSeat();
     const from = fromEl.getBoundingClientRect();
@@ -402,7 +410,11 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     ];
     // the top bar is the edge here too: reached only when nothing in the cabin lies that way
     const inCab = items.map((it, i) => ({ ...it, i })).filter(it => !(it.el && it.el.closest(".topbar")) || (a && a.closest && a.closest(".topbar")));
-    const j = pickBest(from, inCab, dir), k = j >= 0 ? inCab[j].i : pickBest(from, items, dir); if (k < 0) return false;
+    // sideways from a control (the alert strip, the deck, the Now panel): a control in the same row wins over a 3D console,
+    // whose projected box can reach up into that row (Left from "Set shields" used to jump to a console, not "Shelter")
+    const row = a !== seatEl && (dir === "left" || dir === "right") ? inCab.filter(it => it.el && inBeam(from, it.rect, dir)) : [];
+    const r = row.length ? pickBest(from, row, dir) : -1;
+    const j = r >= 0 ? -1 : pickBest(from, inCab, dir), k = r >= 0 ? row[r].i : j >= 0 ? inCab[j].i : pickBest(from, items, dir); if (k < 0) return false;
     if (items[k].panel) focusSeat(items[k].panel); else { seatEl.hidden = true; focusEl(items[k].el); }
     onMove();
     return true;
@@ -435,7 +447,10 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     // the cabin camera moved (a panel opened by voice, a click, Esc): follow it
     if (in3d() && !(sc.seat || sc.id.startsWith("panel:"))) { was3d = true; lastPanel = cabinPanel() || "seat"; }   // a sheet or the tour is up: leave its focus alone
     else if (in3d()) {
-      if (!was3d) { was3d = true; lastPanel = cabinPanel() || "seat"; if (lastPanel === "seat") { focusSeat(); return; } }   // the cabin just appeared: the seat
+      // the cabin just appeared (or keys just started in it): the seat, unless focus already sits on a cabin control
+      // (a kid who clicked "Steer left" and then pressed an arrow keeps that button)
+      if (!was3d) { was3d = true; lastPanel = cabinPanel() || "seat"; const cab = doc.getElementById("mCabin");
+        if (lastPanel === "seat" && !(a && a !== doc.body && a !== seatEl && cab && cab.contains(a) && visible(a))) { focusSeat(); return; } }
       const p = cabinPanel() || "seat";
       if (p !== lastPanel) { const was = lastPanel; lastPanel = p; if (p === "seat") { focusSeat(was !== "seat" ? (was === "power" ? "displays" : was) : null); return; } restore(); return; }
     } else { lastPanel = "seat"; was3d = false; }

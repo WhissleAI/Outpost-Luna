@@ -1,12 +1,19 @@
 """Silent test runs (owner rule): no sound from the browser, ever. Every e2e here imports this.
 
-chrome-headless-shell ignores --mute-audio, so on top of the launch flags every page gets an init script that mutes
-media elements, keeps every AudioContext suspended and turns speechSynthesis off, and the app's own volume is 0.
-After a run, `pmset -g assertions | grep -i "playing audio"` must show nothing from it.
+There is ONE silent helper: frontend/tools/silent.py (the mission-UI tools import it too). Loading it patches
+Playwright for the whole process (launch flags, a mute init script on every page and context, the app's own Mute pref
+kept on). This module re-exports its pieces under the names the e2e tests use. After a run,
+`pmset -g assertions | grep -i "playing audio"` must show nothing from it.
 """
-LAUNCH_ARGS = ["--mute-audio", "--disable-audio-output"]
-MUTE_JS = """(()=>{const P=HTMLMediaElement.prototype;Object.defineProperty(P,'muted',{get(){return true},set(){}});Object.defineProperty(P,'volume',{get(){return 0},set(){}});const AC=window.AudioContext||window.webkitAudioContext;if(AC){AC.prototype.resume=function(){return Promise.resolve()};const C=function(...a){const c=new AC(...a);try{c.suspend()}catch(e){};return c};C.prototype=AC.prototype;window.AudioContext=window.webkitAudioContext=C}if(window.speechSynthesis){window.speechSynthesis.speak=()=>{}}})();
-try { const k = 'outpost-prefs', p = JSON.parse(localStorage.getItem(k) || '{}') || {}; if (p.volume !== 0) { p.volume = 0; p.alarms = 0; localStorage.setItem(k, JSON.stringify(p)); } } catch (e) {}"""
+import importlib.util
+from pathlib import Path
+
+_spec = importlib.util.spec_from_file_location("outpost_silent", Path(__file__).resolve().parents[2] / "tools" / "silent.py")
+_silent = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_silent)
+
+LAUNCH_ARGS = list(_silent.SILENT_ARGS)
+MUTE_JS = _silent.SILENT_INIT
 
 
 def silence(ctx):

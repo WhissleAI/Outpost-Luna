@@ -205,6 +205,8 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
 # One item for any inventory cell (director_model/coverage.json): the generator fills the cells with a gap, so every
 # screen x intent has training data, not only the ones the scripted flows happen to visit.
 NAV_SAY = {
+    "mute_sound": ["mute", "mute the sound", "sound off", "turn the sound off", "be quiet"],     # the top bar's Mute
+    "unmute_sound": ["unmute", "sound on", "turn the sound back on", "unmute the app"],
     "a11y": ["what do i do", "help me", "where am i", "what can i say", "i'm stuck", "give me a hint",
              "move the voice bar to the top", "reset the voice bar"],
     "skip_event": ["skip to the next event", "fast forward", "skip ahead", "jump to the next job"],
