@@ -4082,7 +4082,9 @@
      }
     ]
    },
-   "note": "Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded."
+   "note": "Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded.",
+   "max_app": null,
+   "requires": []
   },
   {
    "id": "crew",
@@ -4532,6 +4534,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-15T17:25:02Z",
- "version": "2026.11.15.1725"
+ "published_at": "2026-11-15T17:44:06Z",
+ "version": "2026.11.15.1744"
 }
