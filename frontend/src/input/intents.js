@@ -39,9 +39,10 @@ export const INTENTS = Object.freeze({
   yes: "yes / confirm (thumbs up)", no: "no / cancel (thumbs down)",
   prev: "previous step / panel / view / pin (swipe right)",
   point: "a hover cursor at {x, y} in CSS px (index finger)", select: "select what is at {x, y} (point + dwell)",
-  rotate: "drag-rotate {dx, dy, phase} (fist + drag)", look: "look around {x, y} in -1..1 (head pose)",
+  rotate: "drag-rotate {dx, dy, phase}: the surface follows (a drag)", look: "look around {x, y} in -1..1 (head pose)",
+  spin: "steer the view at a rate {phase: start|move|end, x, y, z} in -1..1: the Moon spins that way, z zooms; the cabin looks (fist, right stick)",
   panel_open: "open the highlighted / looked-at panel {panel?} (lean in)",
-  zoom: "zoom by {factor} (phase 2: two-hand pinch)", call_houston: "call Houston (phase 2: raise hand)",
+  zoom: "zoom by {factor} (phase 2: two-hand pinch, +/- keys)", call_houston: "call Houston (voice; the cabin asks Houston)",
   help: "what can I do? (keys / controller: the help sheet of every key)",
   // [keys] the keyboard as a TV remote and game controllers (docs/KEYBOARD.md)
   move: "spatial focus {dir: left|right|up|down, shift?} (arrows, D-pad, left stick)",
@@ -50,7 +51,7 @@ export const INTENTS = Object.freeze({
 });
 
 /** Continuous intents: delivered like the others but kept out of the log (they fire at frame rate). */
-export const CONTINUOUS = new Set(["point", "rotate", "look", "zoom"]);
+export const CONTINUOUS = new Set(["point", "rotate", "spin", "look", "zoom"]);
 export const SOURCES = ["voice", "tap", "keyboard", "gesture", "gamepad", "typed", "system"];
 
 export function createIntentBus({ logSize = 50, now = () => Date.now() } = {}) {

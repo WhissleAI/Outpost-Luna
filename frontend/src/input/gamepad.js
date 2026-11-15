@@ -1,7 +1,7 @@
 // Game controllers (PlayStation, Xbox, generic "standard" mapping) as one more remote (docs/KEYBOARD.md §Controller).
 // Off until a controller connects ("Controller connected" toast); then a rAF poll maps it to the SAME intents the keys
 // emit: D-pad / left stick → move, A/Cross → select, B/Circle → back, X/Square → mic, Y/Triangle → help,
-// shoulders → prev / next, right stick → turn the Moon (rotate) or look around the cabin (look). In the cabin the live
+// shoulders → prev / next, right stick → spin the Moon (spin, the same rate control as the fist) or look around the cabin (look). In the cabin the live
 // mission clock: View/Select/Share → pause or run, RT/R2 → skip to next event, LT/L2 → time warp (docs/GAMEPLAY.md).
 // Settings → Keyboard & controller → Left-handed swaps the sticks. The pure part (readPad, createPadReader) is unit-tested.
 import { emitIntent } from "./intents.js";
@@ -62,7 +62,7 @@ export function installGamepad({ settings = () => ({}), repeatMs = () => 150, in
     acts.forEach(a => {
       if (a.intent) { emitIntent(a.intent, a.args, "gamepad"); return; }
       if (inCabin()) emitIntent("look", { x: a.look.x, y: a.look.y }, "gamepad");   // the stick is the look offset; centre recentres
-      else if (!a.end) emitIntent("rotate", { phase: "move", dx: a.look.x * 0.012, dy: a.look.y * 0.012 }, "gamepad");
+      else emitIntent("spin", { phase: a.end ? "end" : "move", x: a.look.x, y: a.look.y }, "gamepad");   // the same rate feel as the fist
     });
     raf = requestAnimationFrame(frame);
   }

@@ -18,9 +18,13 @@ import glob
 import json
 import os
 import sys
+from pathlib import Path
 import time
 
 from playwright.sync_api import sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from silent import LAUNCH_ARGS, silence  # noqa: E402  (owner rule: test runs make no sound)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
@@ -56,13 +60,14 @@ def main():
     errs = []
     t0 = time.time()
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=exe, args=["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required", "--enable-unsafe-swiftshader"])
+        b = p.chromium.launch(executable_path=exe, args=[*LAUNCH_ARGS, "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required", "--enable-unsafe-swiftshader"])
         ctx = b.new_context(viewport={"width": 1280, "height": 800})
         # a fresh cadet; count trusted pointer events (there must be none)
         ctx.add_init_script("""try { if (!sessionStorage.getItem('keys-e2e')) { localStorage.clear(); sessionStorage.setItem('keys-e2e', '1'); } } catch (e) {}
           window.__ptr = 0; ['pointerdown', 'mousedown', 'click'].forEach(t => addEventListener(t, e => { if (e.isTrusted && e.detail !== 0 && e.pointerId !== 77) window.__ptr++; }, true));""")
         if a.start == "mission":
             ctx.add_init_script("""try { localStorage.setItem('outpost-callsign', 'Nova'); localStorage.setItem('atm-academy', JSON.stringify({badges: ['scout','history','radio','sun','storm','ice','commander'], qualified: true})); } catch (e) {}""")
+        silence(ctx)
         pg = ctx.new_page()
         pg.on("console", lambda m: m.type == "error" and not any(x in m.text for x in IGNORE) and errs.append(m.text))
         pg.on("pageerror", lambda e: errs.append(str(e)))

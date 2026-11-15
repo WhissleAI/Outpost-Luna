@@ -24,6 +24,17 @@ export function chime(alarm = false) {
   });
 }
 
+/** A soft haptic-like tick (gestures: grab = a low "tock", release = a higher "tick"). ~40 ms, quiet, Volume-scaled. */
+export function tick(kind = "grab") {
+  const a = ac(); if (!a) return;
+  const L = (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1 };
+  const t = a.currentTime + 0.005, o = a.createOscillator(), g = a.createGain();
+  const [f0, f1] = kind === "release" ? [1250, 900] : [520, 330];
+  o.type = "triangle"; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + 0.04);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07 * L.master, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.05);
+}
+
 /** Smoothly move an <audio> element's volume to `to` over `ms`. */
 export function fadeTo(el, to, ms = 180) {
   return new Promise(res => {

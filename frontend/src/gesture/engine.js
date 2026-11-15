@@ -15,6 +15,7 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
   video.muted = true; video.playsInline = true; video.setAttribute("aria-hidden", "true");
   let stream = null, worker = null, ready = false, busy = false, running = false, faceWanted = classifierOptions.headLook !== false;
   let fpsIdx = 1, lastSent = 0, rvfc = 0, raf = 0;
+  let muted = false;
   const stats = { fps: 0, inferMs: 0, delegate: null, loadMs: 0, frames: 0, width: 0, height: 0, targetFps: FPS_STEPS[1], state: "off" };
   let fpsCount = 0, fpsT = performance.now(), msAvg = 0;
 
@@ -30,6 +31,7 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
 
   function handleResult(m) {
     busy = false;
+    if (muted) return;   // tests: injected landmarks are playing; the camera's frames would interleave with them
     msAvg = msAvg ? msAvg * 0.85 + m.ms * 0.15 : m.ms; stats.inferMs = Math.round(msAvg * 10) / 10;
     fpsCount++; stats.frames++;
     const now = performance.now();
@@ -55,10 +57,24 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
       worker.postMessage({ t: "frame", bitmap, ts: Math.round(now) }, [bitmap]);
     } catch (e) { busy = false; }
   }
+  // one pump chain at a time; a watchdog restarts it if a frame callback is ever dropped (moving the <video> in the DOM,
+  // as the calibration dialog does when it borrows the self-view, can drop a pending requestVideoFrameCallback)
+  let lastPump = 0, watchdog = 0;
   function schedule() {
     if (!running) return;
+    lastPump = performance.now();
+    if (rvfc && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(rvfc);
+    cancelAnimationFrame(raf); rvfc = raf = 0;
     if (video.requestVideoFrameCallback) rvfc = video.requestVideoFrameCallback(() => pump());
     else raf = requestAnimationFrame(() => pump());
+  }
+  function startWatchdog() {
+    clearInterval(watchdog);
+    watchdog = setInterval(() => {
+      if (!running) { clearInterval(watchdog); return; }
+      if (video.paused && video.srcObject) video.play().catch(() => {});
+      if (performance.now() - lastPump > 600) schedule();
+    }, 500);
   }
 
   function startWorker() {
@@ -94,12 +110,12 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
     try { if (!worker) await startWorker(); }
     catch (e) { await stop(); status("error", { error: "Gestures couldn't start: " + e.message }); return false; }
     worker.postMessage({ t: "config", face: faceWanted });
-    status("on"); schedule();
+    status("on"); schedule(); startWatchdog();
     return true;
   }
 
   async function stop() {
-    running = false; ready = ready && !!worker;
+    running = false; ready = ready && !!worker; clearInterval(watchdog);
     if (rvfc && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(rvfc);
     cancelAnimationFrame(raf); rvfc = raf = 0;
     if (stream) stream.getTracks().forEach(t => t.stop());
@@ -121,6 +137,8 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
       classifier.configure(o);
       if ("headLook" in o || "face" in o) { faceWanted = o.face ?? o.headLook; if (worker) worker.postMessage({ t: "config", face: faceWanted }); }
     },
+    /** Tests: ignore the camera's frames while injected ones play in real time (ui.js injectPaced). */
+    mute(on) { muted = !!on; },
     /** Tests and the calibration replay: push landmark frames straight into the classifier (no camera). */
     inject(frames) {
       const all = [];

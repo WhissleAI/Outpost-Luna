@@ -3,7 +3,7 @@
 A stub pad (standard mapping) replaces navigator.getGamepads; a `gamepadconnected` event turns the controller layer on.
 Checks: off until connected (no poll, no toast); "Controller connected"; the D-pad / left stick move focus; A selects,
 B goes back, X toggles the mic, Y opens the help sheet with the controller's buttons, RB / LB are next / prev, the right
-stick turns the Moon (rotate) and looks around the cabin (look); the cabin seat by D-pad; zero keyboard, zero mouse.
+stick spins the Moon (spin) and looks around the cabin (look); the cabin seat by D-pad; zero keyboard, zero mouse.
 
     uv run --no-project --with playwright==1.58.0 python frontend/tests/e2e/gamepad_e2e.py --base http://127.0.0.1:5297
 """
@@ -13,8 +13,12 @@ import argparse
 import glob
 import os
 import sys
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from silent import LAUNCH_ARGS, silence  # noqa: E402  (owner rule: test runs make no sound)
 
 STUB = """
 (() => {
@@ -65,6 +69,7 @@ def wait_js(pg, expr, timeout=20000):
 def run_page(b, base, seed):
     ctx = b.new_context(viewport={"width": 1280, "height": 800})
     ctx.add_init_script(STUB + seed)
+    silence(ctx)
     pg = ctx.new_page()
     pg.on("pageerror", lambda e: print("PAGEERR", str(e)[:300]))
     pg.goto(base + "/")
@@ -79,7 +84,7 @@ def main():
     base = ap.parse_args().base.rstrip("/")
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
     with sync_playwright() as p:
-        b = p.chromium.launch(executable_path=exe, args=["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--enable-unsafe-swiftshader"])
+        b = p.chromium.launch(executable_path=exe, args=[*LAUNCH_ARGS, "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--enable-unsafe-swiftshader"])
 
         # ---------------- Flight School map + a lesson ----------------
         pg = run_page(b, base, "")
@@ -112,7 +117,7 @@ def main():
         ok("pin" in act()["cls"] and act()["l"] != l0, "left stick: moves to the next pin down the route")
         seen()
         js("() => window.__axes([0, 0, 0.8, 0])"); pg.wait_for_timeout(500); js("() => window.__axes([0, 0, 0, 0])"); pg.wait_for_timeout(300)
-        ok(any(s == "rotate:gamepad" for s in seen()), "right stick: turns the Moon (rotate)")
+        ok(any(s == "spin:gamepad" for s in seen()), "right stick: spins the Moon (spin, the fist's rate control)")
         tap(Y, 600)
         ok(js("() => !document.getElementById('keysHelp').hidden"), "Y: the help sheet")
         ok("Controller" in js("() => document.getElementById('keysHelp').textContent"), "help lists the controller's buttons")

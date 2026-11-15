@@ -1,14 +1,19 @@
 # Camera gestures
 
 The camera is an input like voice, tap and keys: an open hand stops, a thumbs up says yes, a swipe goes to the next
-thing, pointing picks, a fist turns the Moon, and in the cabin your head looks around and leaning in opens a panel. It
+thing, pointing picks, a fist steers (lean it and the Moon spins that way), and in the cabin your head looks around and
+leaning in opens a panel. It
 is off until a kid (or a parent) turns it on, it runs entirely on the computer, and the app works the same without it.
 
 Code:
 - `frontend/src/input/intents.js`: the one input bus.
 - `input/defaults.js`: the shell's default handlers and the keyboard source.
+- `gesture/tuning.js`: **every tuning constant, in one place** (classifier, fist spin, calibration).
 - `gesture/classifier.js`: landmarks to gestures. Pure, so it is unit-tested.
-- `gesture/bind.js`: gestures to intents.
+- `gesture/spin.js`: the fist as a joystick: reading, stick, dead zone, gain curve, rate control, momentum, One Euro. Pure.
+- `gesture/calibration.js`: the fist calibration and its local storage. Pure.
+- `gesture/map.js`: **the one gesture → action map** (what each gesture means, per screen), the coach marks and the help card.
+- `gesture/bind.js`: classifier events to intents (follows `map.js`).
 - `gesture/engine.js`: the camera, frame pacing and the classifier.
 - `gesture/worker.js`: MediaPipe, in a Web Worker.
 - `gesture/ui.js` and `gestures.css`: the indicator, self-view, cursor, hints, Settings and calibration.
@@ -26,7 +31,7 @@ Code:
 | **Only the nearest person** | The largest hand and the largest face count. Hands under 45 % of the kid's calibrated hand size (people behind) are ignored. A second face never drives the view (tested). |
 | **Offline** | The WASM runtime and the models are in the app, served from its own origin. There is no CDN at run time. Electron's request filter cancels any other host, so a CDN load would fail rather than leak. |
 | **Electron** | `desktop/main/permissions.js` (unit-tested): the permission handler grants `media` (audio + video) to the app's own origin only. On macOS the first camera request goes through `systemPreferences.askForMediaAccess("camera")`. `NSCameraUsageDescription` is in `Info.plist` (`desktop/electron-builder.yml`), and `com.apple.security.device.camera` is in the entitlements. Windows: camera consent is the system privacy switch (docs/BUILD_WINDOWS.md §5). |
-| **Settings stay local** | They are kept in `localStorage` on this device: on/off, camera, preview, sensitivity, head-look, hand, phase 2, the self-view position and the calibrated hand size. |
+| **Settings stay local** | They are kept in `localStorage` on this device: on/off, camera, preview, sensitivity, head-look, hand, phase 2, flip the spin, the self-view position, the calibrated hand size, which screens' coach marks were shown (`outpost-gestures`), and the fist calibration (`outpost-gestures-spin`: four ranges and a sign, never landmarks). |
 
 ## Gestures
 
@@ -38,17 +43,135 @@ Phase 1 is on when the camera is on. Phase 2 is behind **Extra gestures (try-out
 | **Thumbs up / down** | `yes` / `no` | four fingers curled, thumb straight and vertical, above / below the fist; held 0.35 s | once per showing; a 1.2 s cooldown (a quick up-then-down is one yes) |
 | **Swipe left / right, open hand** | `next` / `prev` | an open hand moves ≥ 20 % of the frame (and ≥ 1.6 hand-lengths) sideways within 0.45 s, mostly straight (dx ≥ 2·dy, ≥ 75 % of the path) | one swipe is one step (a 0.7 s cooldown); the return stroke within 1.2 s is ignored; a fist sweep is a drag, not a swipe |
 | **Point + dwell 0.8 s** | `point` {x, y, progress}, then `select` {x, y} | index finger out, the other three curled; the cursor (smoothed) stays within 3.5 % of the screen | the ring fills over 0.8 s; it selects once, then re-arms only after the cursor moves 7 % away |
-| **Fist, then move** | `rotate` {phase, dx, dy} | four fingers and the thumb curled for 0.15 s, then the palm moves | ends on an open hand or 0.2 s without a fist |
+| **Fist, then lean it** (a joystick) | `spin` {phase, x, y, z} | four fingers curled for 0.25 s (4 frames) grabs and sets the neutral pose; moving or leaning the fist away from it spins the Moon that way, faster the further you lean; twisting it zooms | stays grabbed through a flickering finger or a thumb popping out; releases on an open hand (3 frames), 0.3 s of anything else, or the hand gone 0.25 s; nothing else fires while it holds; the opening hand is not a stop or a swipe for 0.7 s. See §Fist spin |
 | **Head pose** (cabin) | `look` {x, y}; `panel_open` {panel}; `panel_back` | from face position plus turn, against a neutral pose (calibration, or the first second, drifting slowly); lean in = face ≥ 1.22× neutral width for 0.4 s; back = ≤ 1.06× for 0.5 s | 8 % dead zone in the middle; the aimed panel lights up and a lean opens it (left: habitat up, rover down; centre: power; right: radiation up, comm down), only from the seat; a face back after 2 s away re-anchors the neutral pose; lean-back only from a panel; off with **Look around with your head** |
 | *Phase 2:* two-hand pinch / spread | `zoom` {factor} | both hands pinching (thumb tip at index tip); the distance between them changes > 3 % | off by default |
-| *Phase 2:* raise hand, 0.8 s | `call_houston` | an open palm above the top of the face box | off by default (then a raised palm is just `stop`) |
 
 **Robustness.**
 - Every hand must be seen for 3 frames in a row before it can act.
 - Finger states use hysteresis: a finger counts as straight above 1.62 and as curled again below 1.45 (tip-to-wrist distance over knuckle-to-wrist distance).
+- A hand under 0.6 confidence, or a face under 0.6, is "not present": nothing acts on it.
+- After any discrete gesture (stop, yes, no, swipe, select), no other discrete gesture fires for 0.35 s, so one movement is one action.
+- The point cursor goes through a One Euro filter (steady when still, quick when moving) instead of a fixed smoothing.
 - **Sensitivity** (Careful · Normal · Quick) scales hold times by 1/√k and swipe distance by 1/k. It never changes the pose geometry.
-- **Calibration** ("Show me your hand", at most 10 s) asks for an open hand, then a thumbs up, then "sit back and look at the screen". It records the kid's hand size (later hands under 45 % of it are ignored) and the neutral head pose.
+- **Calibration** (at most 30 s, skippable; see §Calibration) records the kid's hand size (later hands under 45 % of it are ignored), the fist's comfortable range per direction, and the neutral head pose.
 - **Left / right hand** breaks a tie when two hands are about the same size.
+
+## Fist spin
+
+The fist is a joystick (rate control), not a drag. Making a fist **grabs** the Moon and remembers the pose at that
+moment: where the hand is and how the fist is held (the wrist → middle-knuckle bone). From then on the **offset from
+that neutral pose** is the stick:
+
+- **x** (longitude): moving the fist sideways (in hand-lengths) plus leaning it left / right (the bone's angle in the image);
+- **y** (latitude): moving it up / down plus tilting the knuckles toward / away from the screen (MediaPipe z; toward the screen = up, like pushing a joystick forward; the calibration flips it for a kid who tilts the other way);
+- diagonals are both at once; **z**: twisting it like a doorknob.
+
+The stick goes through a radial dead zone and a gain curve, and sets a target speed. The Moon eases toward it (limited
+acceleration), so a jumpy fist never jolts it. **Opening the hand** releases: half the speed carries on and decays to a
+stop within about a second (≈ 5–8° of coast in the e2e).
+
+**Which way.** The surface moves the way the fist leans, as if you pushed the globe's skin (the same as a mouse drag:
+fist right, the surface turns right; fist down, the north comes into view). **Settings → Camera & gestures → Flip the
+spin** reverses it, for kids who think of it as flying a camera.
+
+**Twist = zoom** (a knob: clockwise, as the kid sees it, zooms in, with either hand). We chose zoom over turning about the
+view axis because rolling the Moon would put north off the top and lose kids; zoom is the thing a knob does. It has a
+bigger dead zone than the stick, so a twist must be meant. The two-hand pinch (phase 2) and the +/- keys still zoom.
+
+**Zoomed in turns slower**, in proportion to the camera's distance, so close up the fist still steers precisely.
+
+**In the cabin** the same fist looks around: the stick is the look offset (no momentum), and it springs back to the
+middle on release, the same as the head and the controller's right stick. The controller's right stick on the Moon now
+sends the same `spin` intent, so the fist and the stick feel the same.
+
+**Feedback.** While the fist holds, a small joystick ring at the bottom centre shows the grab (bright knob), the
+direction and the speed (the arrow), with "Lean your fist to spin" until it moves and "Open your hand to stop" once it
+does. Chevrons at the Moon's centre point where it is heading, brighter when faster, and they fade out with the
+momentum. A soft low "tock" on grab and a higher "tick" on release (`sound.js tick()`, scaled by Volume).
+
+**Filtering.** The stick goes through a One Euro filter (jitter out, little lag) at the landmark rate (30 fps or less);
+the Moon itself moves every display frame from the spinner, so a 10–30 fps camera still turns it smoothly.
+
+### Tuning (all in `gesture/tuning.js`)
+
+| Constant | Value | What |
+|---|---|---|
+| `grabHoldMs` / `grabEnterFrames` | 250 ms / 4 | a fist held this long grabs |
+| `grabReleaseFrames` | 3 | an open hand for this many frames releases |
+| `grabReleaseMs` | 300 ms | neither fist nor open hand for this long releases |
+| `afterGrabQuietMs` | 700 ms | after a release the open hand is not a stop or a swipe |
+| `fistPosRange` | 1.0 hand-length | movement that counts as full stick (before calibration) |
+| `fistRollRange` | 0.45 rad (≈ 26°) | lean that counts as full |
+| `fistPitchRange` | 0.5 rad (≈ 29°) | tilt that counts as full |
+| `fistTwistRange` | 0.6 rad | twist that counts as full |
+| `fistFilter` | minCutoff 1.0, beta 0.8 | One Euro on the stick |
+| `SPIN.dead` | 0.15 | radial dead zone |
+| `SPIN.expo` | 1.6 | gain curve: speed ∝ ((|stick| − dead) / (1 − dead))^1.6 |
+| `SPIN.maxSpeed` | 1.4 rad/s (≈ 80°/s) | at full stick, at the default distance |
+| `SPIN.easeTau` / `maxAccel` | 0.12 s / 5 rad/s² | easing toward the target speed |
+| `SPIN.releaseCarry` / `decayTau` / `stopBelow` | 0.5 / 0.35 s / 0.02 rad/s | the release momentum |
+| `SPIN.twistDead` / `zoomRate` | 0.35 / 0.7 per s | twist zoom |
+| `SPIN.refDistance` | 3.6 | the distance where maxSpeed applies (closer = slower, 0.25–1.5×) |
+
+## Calibration
+
+The first time the camera is turned on, a short calibration opens by itself (it is offered once; **Skip for now** keeps
+the defaults, which are tuned to feel right without it). **Settings → Camera & gestures → Recalibrate** runs it again.
+
+1. "Hold up your open hand." → the hand size (people behind are ignored below 45 % of it).
+2. "Make a fist. Keep it still." → the neutral fist (0.4 s, moving under 0.15 hand-lengths).
+3. "Now tilt it left… right… up… down." → each step ends when the fist has gone at least 30 % of the default range that
+   way and stayed 0.45 s (a skipped or never-reached direction keeps the default, after 3.5 s at most). An arrow in the
+   self-view shows which way.
+4. "Sit back and look at the screen." → the neutral head pose.
+
+Each direction's range is 85 % of the kid's biggest tilt that way, clamped to 0.35–2.2× the default, so full speed is a
+comfortable tilt for that kid. If the kid's "up" tips the knuckles away from the screen, the tilt sign flips. It is
+stored as `outpost-gestures-spin` (`{v, left, right, up, down, pitchSign, at}`); anything invalid is ignored. Steps run
+on the landmark clock, so injected landmarks calibrate exactly like a camera (the e2e does).
+
+## The map: gesture × screen → action
+
+One meaning per gesture, everywhere (`gesture/map.js`). A blank cell does nothing on that screen.
+
+| Gesture → intent | Moon (map, Library, Home) | Lesson, check ride | Menus (brief, site picker, debrief, patch, call sign) | Cabin (seat or panel) | Video overlay (hook) | Settings |
+|---|---|---|---|---|---|---|
+| **Open hand, still** → `stop` | stop the voice and the Moon | stop the voice | stop the voice | stop the voice and the clock | pause / play | stop the voice |
+| **Thumbs up** → `yes` | take the offer | — (never an answer) | the big button (take command, fly again) | confirm / do the Now card's step | watch the next one | — |
+| **Thumbs down** → `no` | no thanks | — | no thanks | cancel | no thanks | — |
+| **Swipe left** → `next` | start the next lesson | next, after you answer | next | next view / next panel | next clip | — |
+| **Swipe right** → `prev` | back | back | back | previous view / panel | previous clip | back |
+| **Point and hold** → `point`, `select` | pick a pin or a place on the Moon | pick an answer or a place | press a button | press a control | press a button | press any switch or button |
+| **Fist and lean** → `spin` | spin the Moon that way | spin the Moon to find it | spin the Moon (site picker) | look around | — | — |
+| **Twist the fist** → `spin` z | zoom | zoom | — | — | — | — |
+| **Turn head** → `look` | — | — | — | look around, light the aimed panel | — | — |
+| **Lean in / sit back** → `panel_open` / `panel_back` | — | — | — | open the aimed panel / back to the seat | — | — |
+| *Two-hand pinch (phase 2)* → `zoom` | zoom | zoom | — | — | — | — |
+
+**Discoverable.**
+- **Coach mark:** the first time a screen comes up with the camera on, a small card at the top right shows the two or
+  three gestures worth learning there ("Try this here"); it goes by itself after 8 s or on any gesture, and never
+  shows again for that screen (remembered on this device).
+- **Gestures help card:** the **Gestures** button on the camera chip lists everything that works on the current screen.
+  It sits outside the gesture overlay, so point + dwell can press its Close.
+- The hint chip still gives one line per screen ("Make a fist to spin" in the Library).
+
+**Blended with voice and keys.** A hand gesture switches the shell to `html[data-input=gesture]`, which wears the same
+TV focus ring as keys and the remote (`input/keys.css`). The point cursor focuses the control under it (so the ring is
+on what a dwell will press); `select` focuses and clicks it. A key press or a mouse move switches the ring back.
+
+**Video overlay hooks** (another branch builds the overlay; no video code here). The gestures already emit the intents;
+while the overlay is open it sets `body[data-video=1]` (the help card and coach mark then show the video column) and
+registers its handlers at priority 10, e.g. `onIntent("stop", () => videoOpen ? (togglePause(), true) : false, {priority: 10})`,
+and the same for `next` / `prev` / `yes` / `no`. Open hand = pause keeps "same gesture, same meaning".
+
+**Removed or merged in this round.**
+- **Fist + drag (follow)** → **fist + lean (rate)**. The fist no longer drags the surface 1:1; it is a joystick. The
+  `rotate` intent stays on the bus for anything that wants a drag, but no gesture sends it.
+- **The controller's right stick** on the Moon sends `spin` too (it sent per-frame `rotate` deltas), so stick and fist share one feel.
+- **Raise hand = call Houston (phase 2) removed.** It made an open palm mean two things depending on its height; an open hand now always means stop. "Call Houston" is a voice line.
+- **The cabin fist** now looks around with the same spring-back as the head and the controller (it accumulated drag deltas before).
 
 ## Gesture → intent → what each screen does
 
@@ -86,7 +209,7 @@ The camera-off column shows the same action without the camera. Nothing in the a
 | **Cabin, seat view** | stop CAPCOM / Houston | confirm / cancel a risky order (`missionUI.intent("confirm" / "cancel")`) | **window view** ORBIT → SITE → ROVER → EARTH (and back) | press any console control | **look around** (parallax) | turn = look around and light up the aimed panel; **lean in = open it** | "rover view", "open the comm panel", tap |
 | **Cabin, panel open** | stop | confirm / cancel | **next / previous panel** (habitat → rover → power → displays → radiation → comm → shift) | press controls on the panel | look around | **sit back = back to the seat** | "back to my seat", Esc, tap |
 | **Debrief** | stop | **fly again** / no | — | press Fly again / Another site | — | — | "fly again" / tap |
-| **Library** (explorer) | stop the story or tour, and the flight | — | *request:* next / previous tour stop | press a ghost marker or a place | **turn the Moon** | — | tap / ask |
+| **Library** (explorer) | stop the story or tour, the flight and the spin | — | *request:* next / previous tour stop | press a ghost marker or a place | **spin the Moon** (lean the fist; twist zooms) | — | tap / ask |
 | **Settings** | — | — | — | press any control (the ring works on switches) | — | — | keyboard / tap |
 | **Answer card** | stop | the card's Yes / No | — | press **Hear the crew** | turn the Moon | — | tap / voice |
 
@@ -179,6 +302,7 @@ A full dmg (`build-mac.sh`) was not built for this check: it needs at least 6 GB
 ## Testing
 
 - **Unit** (`npm test`, `node --test`):
+  - `tests/spin.test.js`: the rate-control math (dead zone, gain curve, max speed, easing, distance scaling, invert, release momentum and its decay, twist zoom); the One Euro filter; the fist reading (lean, tilt, twist); all 8 directions through the classifier; fist hysteresis (a flickering finger or a popping thumb never lets go or says yes; a brief fist never grabs; a lost hand releases); the after-release quiet (no stop, no swipe); the cross cooldown; low-confidence hands and faces; the calibration (per-direction ranges, the tilt sign, timeouts) and its storage (validation, junk, blocked storage); the gesture → action map (same gesture, same intent everywhere, ≤ 6-word copy, the video hook, screen keys, help rows, coach marks).
   - `tests/gestures.test.js`: every gesture's true positives; the false positives (a brief palm or thumb, a slow drift, an up-down wave, a waving palm, a far person's thumbs-up, a flickering hand, a relaxed hand, a moving point, a second face); cooldowns; the return stroke; sensitivity; dwell re-arm; grab deltas; head and lean; phase 2; handedness; the intent table; hint copy (≤ 6 words, no emoji); classifier speed.
   - `tests/intents.test.js`: bus priority, consumption, the wildcard, async handlers, throwing handlers, the intent-only log.
 - **Fixtures:** `tests/fixtures/gestures/*.json` are MediaPipe-shaped landmark sequences, synthesised by `synth.mjs` (canonical hand proportions plus seeded noise; regenerate with `node tests/fixtures/gestures/make_fixtures.mjs`). A real recording in the same shape (`{name, expect, frames:[{t, aspect, hands:[{lm, side, score}], faces:[{box, kp, score}]}]}`) can be dropped in, and the tests pick it up. Note: the thresholds are tuned on synthetic hands plus the fake-camera run, not yet on a panel of real kids' hands. Recording 10 kids' sessions is the next step.
@@ -187,14 +311,24 @@ A full dmg (`build-mac.sh`) was not built for this check: it needs at least 6 GB
   2. Settings turns it on, and the bundled models run in the worker;
   3. no vision asset comes from off-origin;
   4. on each screen, injected landmark streams emit the right intents and the screen reacts: map swipe opens a lesson; palm → stop; noise → nothing; point → select taps the button under it; Library fist → rotate; thumbs → yes / no; brief thumbs-up → the cabin; cabin swipe → the next window view; head → look;
-  5. one-click off releases the camera.
+  5. the first-time calibration opens by itself and, on injected palm / fist-tilt / face landmarks, measures and saves every direction;
+  6. **fist spin in all 8 directions, played in real time** (`injectPaced`): the Moon's centre moves the right way in latitude and longitude, the stick indicator and the heading arrow are up while it holds, and opening the hand coasts a few degrees and stops by itself;
+  7. the coach mark on the Library, the Gestures help card, and `html[data-input=gesture]` after a gesture;
+  8. one-click off releases the camera.
 
-  Result: 21/21 pass on the merged app (ux-v3 + ux-mission). It also checks the chip is in the top bar, and that in the 3D cabin a lean opens the aimed panel and sitting back returns to the seat.
+  Result (gestures-v2): **54/54** pass. The machine was heavily loaded by other jobs (load ≈ 36), so the fake-camera
+  inference ran at ~9 s a frame; `--min-frames` / `--frames-timeout` lower the frame-flow bar on such a machine without
+  touching the gesture checks, which run on injected landmarks.
   ```
   cd frontend && npm run build    # then a backend serving frontend/dist on :8390
-  uv run --no-project --with playwright==1.58.0 python tests/e2e/gestures_e2e.py --base http://127.0.0.1:8390
+  uv run --no-project --with playwright==1.58.0 python tests/e2e/gestures_e2e.py --base http://127.0.0.1:8390 [--min-frames 4 --frames-timeout 90]
   ```
-- `window.__outpost.gestures.inject(frames)` drives the classifier without a camera (tests, demos).
+  The browser runs headless with Chromium's fake camera (never the real one) and makes no sound: `tests/e2e/silent.py`
+  adds `--mute-audio --disable-audio-output`, an init script that mutes media, keeps every AudioContext suspended and
+  turns speechSynthesis off, and sets the app's volume to 0 (chrome-headless-shell ignores `--mute-audio` alone).
+- `window.__outpost.gestures.inject(frames)` drives the classifier without a camera (tests, demos);
+  `injectPaced(frames)` plays them in real time (the rate control and its animation need wall-clock time), muting the
+  camera's own frames meanwhile. `gestures.spin()` is the spinner's state; `gestures.calibration` the stored calibration.
   `window.__outpost.intents.recent()` lists the last intents.
 
 ## Integration with the UX branches
@@ -238,3 +372,21 @@ handler never consumes the intent. A **thumbs up** does the Now card's step: its
 `data-intent="yes"`, so the shell's `yes` default presses it when no confirm is pending. **Point + dwell** picks a
 choice. Controller: View/Share pauses or runs the clock, RT/R2 skips to the next event, LT/L2 warps time.
 See docs/GAMEPLAY.md §6.
+
+## Needs a human with a webcam
+
+Everything above was tuned and tested on synthetic landmarks (canonical hand proportions plus seeded jitter) and
+Chromium's fake camera. Before calling it done, someone should try it with a real webcam and a few kids, and tune in
+`gesture/tuning.js`:
+
+1. **Fist depth signals (pitch, twist).** These come from MediaPipe's z, which is the noisiest coordinate. Check that
+   tilting the knuckles toward / away from the screen reads as up / down, and that the calibration's sign flip catches
+   kids who do it the other way. If the z is too noisy, set `fistTiltWeight` lower (position still steers) or
+   `SPIN.twistZoom: false`.
+2. **Ranges and feel**: `fistPosRange`, `fistRollRange`, `SPIN.dead`, `SPIN.expo`, `SPIN.maxSpeed`, the momentum
+   (`releaseCarry`, `decayTau`). Does a relaxed fist sit in the dead zone? Is full speed a comfortable lean?
+3. **Grab / release hysteresis** at a real 15–30 fps with motion blur: `grabHoldMs`, `grabReleaseFrames`, `grabReleaseMs`.
+4. **The One Euro settings** (`fistFilter`, `pointFilter`): jitter vs lag on a real camera.
+5. **Calibration timing** with a real kid: are 0.45 s holds and 30 % minimum tilt right? Is the arrow clear?
+6. **Spin direction default** (surface follows the fist) vs Flip: ask kids which feels right.
+7. Whether the coach mark's 8 s and its corner placement are noticed without getting in the way.

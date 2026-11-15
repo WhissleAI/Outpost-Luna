@@ -114,10 +114,10 @@ test("head: look follows the head; lean in / back; only the largest face counts"
   assert.deepEqual(discrete(run(chain(away, seq(700, () => ({ faces: [face({ w: 0.31 })] }))))), ["lean_in"]);
 });
 
-test("phase 2 is off by default; when on, raise hand and two-hand pinch work", () => {
+test("phase 2 is off by default; when on, two-hand pinch zooms (raise hand was removed: a palm is always stop)", () => {
   const raise = seq(1500, () => ({ hands: [hand("palm", { cy: 0.22, s: 0.1 })], faces: [face({ cy: 0.45, w: 0.2 })] }));
   assert.deepEqual(discrete(run(raise)), ["palm_hold"], "off: a raised palm is just stop");
-  assert.deepEqual(discrete(run(raise, { phase2: true })), ["raise_hand"]);
+  assert.deepEqual(discrete(run(raise, { phase2: true })), ["palm_hold"], "on: still just stop (same gesture, same meaning)");
   const pinch = seq(800, (i, t, k) => ({ hands: [hand("pinch", { cx: 0.35 - 0.1 * k, side: "right" }), hand("pinch", { cx: 0.65 + 0.1 * k, side: "left" })] }));
   const z = run(pinch, { phase2: true }).filter(e => e.type === "zoom");
   assert.ok(z.length && z.every(e => e.factor > 1), "spreading the hands zooms in");
@@ -138,7 +138,8 @@ test("gesture → intent table", () => {
   assert.deepEqual(gestureIntents({ type: "swipe_left" }), [["next", {}]]);
   assert.deepEqual(gestureIntents({ type: "swipe_right" }), [["prev", {}]]);
   assert.deepEqual(gestureIntents({ type: "select", x: 0.5, y: 0.25 }, { vw, vh }), [["select", { x: 500, y: 200 }]]);
-  assert.deepEqual(gestureIntents({ type: "grab_move", dx: 0.1, dy: 0 }), [["rotate", { phase: "move", dx: 0.1, dy: 0 }]]);
+  assert.deepEqual(gestureIntents({ type: "grab_move", dx: 0.1, dy: 0, stick: { x: 0.5, y: -0.2, z: 0 } }), [["spin", { phase: "move", x: 0.5, y: -0.2, z: 0 }]]);
+  assert.deepEqual(gestureIntents({ type: "grab_end", how: "open" }), [["spin", { phase: "end", x: 0, y: 0, z: 0, how: "open" }]]);
   // head intents only in the cabin; lean in opens the looked-at panel only from the seat; lean back only from a panel
   assert.deepEqual(gestureIntents({ type: "head", x: 0.4, y: 0 }, { cabin: false }), []);
   assert.deepEqual(gestureIntents({ type: "head", x: 0.4, y: 0 }, { cabin: true }), [["look", { x: 0.4, y: 0 }]]);
@@ -146,7 +147,7 @@ test("gesture → intent table", () => {
   assert.deepEqual(gestureIntents({ type: "lean_in", x: 0 }, { cabin: true, panel: "comm" }), []);
   assert.deepEqual(gestureIntents({ type: "lean_back" }, { cabin: true, panel: "power" }), [["panel_back", {}]]);
   assert.deepEqual(gestureIntents({ type: "lean_back" }, { cabin: true, panel: "seat" }), []);
-  assert.deepEqual(gestureIntents({ type: "raise_hand" }, { phase2: false }), []);
+  assert.deepEqual(gestureIntents({ type: "raise_hand" }, { phase2: true }), [], "raise hand is gone");
   // the 3D cabin: habitat (upper) + rover (lower) left, power (DU1) centre, radiation (upper) + comm (lower) right
   assert.deepEqual([lookTarget(-0.5, -0.2), lookTarget(-0.5, 0.4), lookTarget(0, 0.5), lookTarget(0.5, 0), lookTarget(0.5, 0.4)],
     ["habitat", "rover", "power", "radiation", "comm"]);
