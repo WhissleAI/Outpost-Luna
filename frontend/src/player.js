@@ -46,7 +46,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     });
   }
   function resume() {
-    if (!P || !P.held || P.explaining) return;
+    if (!P || !P.held || P.explaining || P.userPaused) return;   // [flows] a kid's pause is never undone by the floor
     P.held = false; audio.volume = 0; audio.play().catch(() => {}); fadeTo(audio, 1, 250);
   }
   if (floor) floor.attachCrew(audio, { text: momentText, pauseAtSentenceEnd, resume });
@@ -76,6 +76,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   $("npStop").onclick = () => stop();
   bar.addEventListener("click", e => {
     if (!P || e.target.closest("#npStop") || !audio.paused || P.explaining) return;
+    if (P.userPaused) { userResume("tap"); return; }
     bar.classList.remove("is-blocked"); audio.play().catch(() => bar.classList.add("is-blocked"));
   });
 
@@ -127,7 +128,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   }
 
   function onTime() {
-    if (!P || P.explaining) return;
+    if (!P || P.explaining || P.userPaused) return;
     const t = clipTime(), W = P.clip.words;
     if (t >= P.t1) { stop(false, true); return; }
     // karaoke: current word i, current line li
@@ -168,14 +169,37 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     await speak(line, { rate: 0.9, pitch: 1.0 });
     if (P !== my) return;
     lineEl.classList.remove("is-explain"); my.explaining = false;
-    if (isKidTalking()) return;      // the kid barged in: they get the floor
+    if (isKidTalking() || my.userPaused) return;      // the kid barged in: they get the floor
     chime(); audio.volume = 0; try { await audio.play(); } catch (e) { /* user can resume */ } fadeTo(audio, 1, 250);
+  }
+
+  // [flows] a kid's pause (open hand, "stop", Alt+.): the clip holds where it is; the bar says so and a tap, "continue",
+  // a thumbs up or Enter plays on from there (flows.js). The ✕ still ends it.
+  const pausedEl = () => { let n = document.getElementById("npPaused"); if (!n) { n = document.createElement("span"); n.id = "npPaused"; n.className = "np-paused"; whoEl.after(n); } return n; };
+  function userPause(why) {
+    if (!P || P.userPaused) return false;
+    P.userPaused = true; P.held = false;
+    bar.classList.add("is-paused"); pausedEl().textContent = (why || "Paused") + " · tap to resume";
+    if (!audio.paused) fadeTo(audio, 0, 150).then(() => { if (P && P.userPaused) audio.pause(); });
+    if (floor) floor.crewPlayback("interrupted", P.m.clip_id);
+    return true;
+  }
+  function userResume() {
+    if (!P || !P.userPaused) return false;
+    P.userPaused = false; bar.classList.remove("is-paused"); pausedEl().textContent = "";
+    // a little run-up: back to the start of the line it stopped in, so the sentence is heard whole
+    const t = clipTime(), back = (P.lines[Math.max(0, P.li)] || [P.a])[0], t0 = P.clip.words[back] ? P.clip.words[back][0] : t;
+    if (t - t0 < 8 && t0 >= P.m.t0 - 0.3) audio.currentTime = toFileTime(P.clip.segs, t0);
+    audio.volume = 0; audio.play().catch(() => bar.classList.add("is-blocked")); fadeTo(audio, 1, 250);
+    if (floor) floor.crewPlayback("start", P.m.clip_id);
+    return true;
   }
 
   /** End the moment (fade out). `quiet` skips the end callback (another moment or answer is taking over). */
   function stop(quiet, natural) { seq++; halt(quiet, natural); }
   function halt(quiet, natural) {
-    const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked");
+    const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked", "is-paused");
+    { const n = document.getElementById("npPaused"); if (n) n.textContent = ""; }
     if (was && floor) floor.crewPlayback(natural ? "end" : "interrupted", was.m.clip_id);
     if (!audio.paused) fadeTo(audio, 0, 200).then(() => { audio.pause(); audio.volume = 1; });
     if (was && !quiet) onEnd();
@@ -184,8 +208,10 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   audio.addEventListener("ended", () => { if (P) stop(false, true); });
 
   return {
-    play, stop,
+    play, stop, pause: userPause, resume: userResume,
+    replay: () => (P ? play(P.m) : false),
     get active() { return !!P; },
+    get paused() { return !!(P && P.userPaused); },
     /** context.playing for /api/ask */
     get playing() { return P && !audio.paused ? { clip_id: P.m.clip_id, t: +clipTime().toFixed(2) } : null; },
     /** Barge-in: crew to 15% (the floor tracks it, so unduck after a no-request turn restores it). */

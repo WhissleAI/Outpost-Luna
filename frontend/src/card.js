@@ -61,7 +61,8 @@ export function createCard() {
     (e.actions || []).forEach(a => actions.append(button(a)));
     actions.hidden = !actions.childElementCount;
     arc.textContent = e.arc || ""; arc.hidden = !e.arc;
-    prevBtn.hidden = !prev; prevBtn.textContent = showingPrev ? "Latest" : "Previous";
+    prevBtn.hidden = !prev || !!e.tour;   // [flows] a tour card has its own Previous (the stop before)
+    prevBtn.textContent = showingPrev ? "Latest" : "Previous";
     prevBtn.setAttribute("aria-pressed", showingPrev);
     card.hidden = false;
   }

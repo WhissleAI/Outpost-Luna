@@ -23,7 +23,8 @@ def load_glossary(path: Path) -> dict:
     if not path.exists():
         return {}
     terms = json.loads(path.read_text())["terms"]
-    return {norm(f): (k, v["explain"]) for k, v in terms.items() for f in v.get("forms", [k])}
+    # crew_jargon false: an everyday word our own lines use (rover, ice); never a reason to pause crew audio
+    return {norm(f): (k, v["explain"]) for k, v in terms.items() if v.get("crew_jargon", True) for f in v.get("forms", [k])}
 
 
 def load_facts(path: Path) -> dict:

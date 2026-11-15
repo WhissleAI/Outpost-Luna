@@ -54,7 +54,11 @@ PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_
           "zoom_in": "closer", "zoom_out": "farther",
           # the landing-site navigator (docs/SITE_NAVIGATOR.md), the picker screen only
           "site_layer": "show sunlight", "site_query": "which site has the most ice", "site_preset": "ice first",
-          "why": "why is power low"}   # the cabin's "Why?" cards (docs/PHYSICS.md)
+          "why": "why is power low",   # the cabin's "Why?" cards (docs/PHYSICS.md)
+          # flows (turn_router.FLOW_NAV, frontend/src/flows.js): probed with a flow on screen (FLOW_STATE)
+          "resume": "keep going", "pause": "pause the tour"}
+# The flow state a flow intent's probe needs (Ctx.flow): resume a paused flow, pause a running one.
+FLOW_STATE = {"resume": "paused", "pause": "running"}
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],
@@ -72,7 +76,7 @@ def _setup():
 
 def router_intents() -> list[str]:
     from app import turn_router as R
-    names = [n for n, _ in R.NAV] + ["panel_" + p for p in sorted(set(R.PANELS.values()))] + \
+    names = [n for n, _ in R.NAV] + [n for n, _ in R.FLOW_NAV] + ["panel_" + p for p in sorted(set(R.PANELS.values()))] + \
         ["panel_back", "accept_offer", "decline_offer", "pick_site", "task_choice"]
     return sorted(set(names))
 
@@ -88,10 +92,11 @@ def nav_cells() -> dict:
             q = PROBES.get(intent)
             if not q:
                 continue
-            for offer in ([None] + OFFERS if intent in ("accept_offer", "decline_offer", "next", "task_choice")
+            for offer in ([None] + OFFERS if intent in ("accept_offer", "decline_offer", "next", "task_choice", "pause")
                           else [None]):
                 opts = ["The ridge", "The crater"] if offer == "task" else []
-                ctx = R.Ctx(screen=screen, offer=offer, step_options=opts, lessons=S._lessons(), sites=S._sites())
+                ctx = R.Ctx(screen=screen, offer=offer, step_options=opts, lessons=S._lessons(), sites=S._sites(),
+                            flow=FLOW_STATE.get(intent))
                 nv = R.nav_intent(q, ctx)
                 if nv and nv[0] == intent:
                     out[(screen, "nav:" + intent)] = q

@@ -1,12 +1,12 @@
 {
-  "_note": "Kid explanations (<= 12 words) for words the Artemis II crew uses. 'forms' are spellings to match in transcripts.",
+  "_note": "Kid explanations (<= 20 words, spoken-ready) for words the crew and our own lines use. 'forms' are spellings to match. 'source': a NASA page for a term no crew clip says (vocab.py prefers the crew recording). 'crew_jargon': false keeps an everyday word (rover, ice) from pausing crew audio to explain it (moments.py).",
   "terms": {
     "albedo": {"explain": "How bright or dark a surface is in sunlight.", "forms": ["albedo"]},
     "ejecta": {"explain": "Rock and dust thrown out when something smashes into the Moon.", "forms": ["ejecta"]},
     "regolith": {"explain": "The Moon's dusty, rocky soil.", "forms": ["regolith"]},
     "limb": {"explain": "The edge of the Moon as we see it.", "forms": ["limb", "limbs"]},
     "terminator": {"explain": "The line between the Moon's day side and night side.", "forms": ["terminator"]},
-    "mare": {"explain": "A dark, flat 'sea' of old cooled lava.", "forms": ["mare", "maria"]},
+    "mare": {"explain": "A dark, flat 'sea' of old cooled lava.", "forms": ["dark plain", "dark plains", "mare", "maria"]},
     "rays": {"explain": "Bright streaks of splashed rock spreading out from a crater.", "forms": ["ray", "rays"]},
     "basin": {"explain": "A giant crater, hundreds of kilometers wide.", "forms": ["basin", "basins"]},
     "plateau": {"explain": "A big raised area of land with a flat top.", "forms": ["plateau", "plateaus"]},
@@ -25,6 +25,17 @@
     "pillowing": {"explain": "Soft, puffy-looking rounded shapes, like pillows.", "forms": ["pillowing"]},
     "blanketing": {"explain": "A layer of thrown-out rock covering the ground.", "forms": ["blanketing", "blanket"]},
     "orbit": {"explain": "Going around and around something in space.", "forms": ["orbit", "orbiting"]},
-    "far side": {"explain": "The Moon's side that always faces away from Earth.", "forms": ["far side", "farside"]}
+    "far side": {"explain": "The Moon's side that always faces away from Earth.", "forms": ["far side", "farside"]},
+    "near side": {"explain": "The Moon's side that always faces Earth: the face we see every night.", "forms": ["near side", "nearside"], "source": {"title": "NASA Science: Moon facts", "url": "https://science.nasa.gov/moon/facts/"}, "crew_jargon": false},
+    "rille": {"explain": "A long, winding groove on the Moon, often cut by flowing lava.", "forms": ["rille", "rilles"], "source": {"title": "NASA Science: what the Moon is made of", "url": "https://science.nasa.gov/moon/composition/"}, "crew_jargon": false},
+    "impact": {"explain": "A space rock smashing into the Moon. Every crater is an old impact.", "forms": ["impact", "impacts"], "source": {"title": "NASA Science: lunar craters", "url": "https://science.nasa.gov/moon/lunar-craters/"}, "crew_jargon": false},
+    "phase": {"explain": "How much of the Moon's sunny side we can see from Earth.", "forms": ["phase", "phases", "moon phase", "moon phases"], "source": {"title": "NASA Science: Moon phases", "url": "https://science.nasa.gov/moon/moon-phases/"}, "crew_jargon": false},
+    "eclipse": {"explain": "When the Sun, Earth and Moon line up and one blocks the other's light.", "forms": ["eclipse", "eclipses"], "source": {"title": "NASA Science: eclipses", "url": "https://science.nasa.gov/eclipses/"}, "crew_jargon": false},
+    "solar storm": {"explain": "A burst of fast particles from the Sun. Astronauts take shelter until it passes.", "forms": ["solar storm", "solar storms", "radiation storm", "radiation storms"], "source": {"title": "NASA: space weather", "url": "https://www.nasa.gov/space-weather/"}, "crew_jargon": false},
+    "millisievert": {"explain": "A unit for how much space radiation your body gets. Smaller numbers are safer.", "forms": ["millisievert", "millisieverts", "msv"], "source": {"title": "NASA: space radiation", "url": "https://www.nasa.gov/humans-in-space/space-radiation/"}, "crew_jargon": false},
+    "shelter": {"explain": "A safe room with thick walls that blocks space radiation during a solar storm.", "forms": ["shelter"], "source": {"title": "NASA: space radiation", "url": "https://www.nasa.gov/humans-in-space/space-radiation/"}, "crew_jargon": false},
+    "rover": {"explain": "A car or a robot that drives across the Moon's surface.", "forms": ["rover", "rovers"], "source": {"title": "NASA Science: the VIPER rover", "url": "https://science.nasa.gov/mission/viper/"}, "crew_jargon": false},
+    "permanently shadowed region": {"explain": "A deep crater floor the Sun never reaches. It is so cold that ice stays frozen.", "forms": ["permanently shadowed region", "permanently shadowed regions", "shadowed crater", "shadowed craters"], "source": {"title": "NASA Science: water and ice on the Moon", "url": "https://science.nasa.gov/moon/moon-water-and-ices/"}, "crew_jargon": false},
+    "ice": {"explain": "Frozen water. Moon ice could give astronauts water, air and rocket fuel.", "forms": ["ice"], "source": {"title": "NASA Science: water and ice on the Moon", "url": "https://science.nasa.gov/moon/moon-water-and-ices/"}, "crew_jargon": false}
   }
 }

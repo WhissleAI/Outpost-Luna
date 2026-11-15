@@ -16,8 +16,13 @@ def test_every_glossary_term_has_a_real_source():
     T = vocab.terms()
     assert len(T) >= 25
     for t in T.values():
-        assert t["explain"] and t["source"]["url"].startswith("https://www.nasa.gov/"), t["term"]
-        assert t["source"]["clip_id"] and t["source"]["t"] >= 0
+        assert t["explain"] and len(t["explain"].split()) <= 20, t["term"]
+        if t["source"]["kind"] == "crew":   # the crew recording that says it
+            assert t["source"]["url"].startswith("https://www.nasa.gov/"), t["term"]
+            assert t["source"]["clip_id"] and t["source"]["t"] >= 0
+        else:                               # [flows] an everyday word our lines use: a NASA page (glossary.json source)
+            assert t["source"]["kind"] == "nasa" and t["source"]["title"], t["term"]
+            assert t["source"]["url"].startswith(("https://www.nasa.gov/", "https://science.nasa.gov/")), t["term"]
 
 
 def test_space_words_are_woven_into_the_lessons():

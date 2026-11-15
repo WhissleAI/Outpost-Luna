@@ -200,6 +200,40 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("back", re.compile(r"^(?:go back|back|previous|go back please|take me back)$")),
     ("end_shift", re.compile(r"^(?:end|finish|next) (?:the |my |this )?shift$")),
 ]
+# Flows (frontend/src/flows.js): a multi-step flow on screen (the Library tour, the cabin tour, a crew clip, a paused
+# mission clock / debrief) sends flow_state "running" | "paused" in its screen frame (Ctx.flow). Then these words are
+# the flow's own, on every screen, before anything else reads them (owner bug, fix/flow-resume: "continue" did nothing
+# on a stopped Library tour). Without a flow on screen they keep their old meanings (start / next / back / repeat).
+FLOW_NAV: list[tuple[str, re.Pattern]] = [
+    ("resume", re.compile(r"^(?:continue|resume|keep going|go on|carry on|unpause|play|keep playing|go ahead|start again|"
+                          r"(?:continue|resume|restart) (?:the )?(?:tour|clip|story|mission|video))$")),
+    ("pause", re.compile(r"^(?:stop|stop it|stop talking|pause|pause it|wait|wait a (?:sec|second|minute)|hold on|hang on|"
+                         r"one sec|one second|(?:stop|pause) (?:the )?(?:tour|clip|story))$")),
+    ("repeat", re.compile(r"^(?:again|repeat|repeat that|say (?:that|it) again|one more time)$")),
+    ("next", re.compile(r"^(?:next|next one|next stop|skip|skip it)$")),
+    ("back", re.compile(r"^(?:back|go back|previous|previous one|previous stop|last one)$")),
+]
+
+
+def flow_intent(q: str, ctx: "Ctx") -> tuple[str, str | None] | None:
+    """A flow word while a flow is on screen (Ctx.flow): resume / pause / repeat / next / back. In the cabin only the
+    cabin tour (offer "tour") takes next / back / pause; the paused clock takes only resume (the rest are cabin words)."""
+    if not ctx.flow:
+        return None
+    q = re.sub(r"^(?:okay |ok |um |uh |so |hey |capcom |please )+|(?: please| now| capcom)+$", "", q).strip()
+    for intent, pat in FLOW_NAV:
+        if not pat.match(q):
+            continue
+        if intent == "resume" and ctx.flow != "paused":
+            return None          # running: "keep going" changes nothing (and "play" stays a cabin / lesson word)
+        if intent == "pause" and ctx.flow != "running":
+            return None
+        if ctx.screen == "cabin" and ctx.offer != "tour" and intent != "resume":
+            return None
+        return intent, None
+    return None
+
+
 # 3D cabin panels (frontend mission/ui.js nav: panel_power | panel_comm | panel_habitat | panel_back; rover and radiation
 # are routed too). Panel navigation must never reach the mission NLU: "open the comm panel" once turned the radio OFF.
 PANELS = {"power": "power", "energy": "power", "battery": "power", "comm": "comm", "comms": "comm",
@@ -346,6 +380,7 @@ class Ctx:
     unsafe: bool = False               # [P0] Arc Tagger's safety tags flagged the turn (profanity, toxicity, child.*): safety.py
     dd_min: float = DD_MIN             # the Settings filter (FILTERS): below this, talking to someone else
     dd_strong: float = DD_STRONG       # barge-in while we speak / a yes-no question / a notice needs this much
+    flow: str | None = None            # a flow on screen (frontend flows.js): "running" | "paused" | None
 
 
 def words(text: str) -> list[str]:
@@ -609,6 +644,9 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     vb = voicebar_intent(q)
     if vb:
         return "a11y", vb                      # on every screen; the client runs `arg` (voicebar.handleText)
+    fl = flow_intent(q, ctx)
+    if fl:
+        return fl                              # a running / paused flow's own words (flows.js)
     if ctx.screen == "cabin":
         pn = panel_intent(q)
         if pn:
@@ -804,7 +842,9 @@ PREP_CMDS = (
     ("prep_wait", re.compile(r"^(?:wait|hold on|hang on|one sec|one second|just a sec|give me a minute|give us a minute|"
                              r"not yet|we re still doing it|still going|almost)$")),
     ("prep_help", re.compile(r"^(?:help|help me|i need help|what do i do|what do we do|how do (?:i|we) do this|"
-                             r"say it again|say that again|again|repeat|what was it|what s next)$")),
+                             r"say it again|say that again|again|repeat|what was it|what s next|"
+                             # [flows] back from a pause: the task again ("continue" was ignored on the prep screen)
+                             r"continue|resume|keep going|go on|carry on|i m back|we re back|okay we re back)$")),
 )
 
 
@@ -865,7 +905,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     if ctx.unsafe or safety_.has_profanity(raw):
         return out("ignore", "safety")
     if heard and is_filler(raw) and not _option_key(raw, ctx) and not (ctx.offer and offer_reply(raw)) and \
-            not (ctx.screen in ("video", "prep") and (video_command(raw, fuzzy=False) or prep_command(raw))):
+            not (ctx.screen in ("video", "prep") and (video_command(raw, fuzzy=False) or prep_command(raw))) and \
+            not flow_intent(norm(raw), ctx):
         return out("ignore", "filler")     # ("stop it", "wait" are filler elsewhere, but controls on these screens)
     if ctx.screen == "video":            # the video overlay is up: pause / play / skip / stop, nothing else
         cmd = video_command(raw, fuzzy=False)

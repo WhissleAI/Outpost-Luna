@@ -129,6 +129,7 @@ html[data-contrast="high"] :where(.mpanel,.apanel,.card,.dock,.caption-bar,.a11y
 html[data-contrast="high"] :focus-visible{outline:4px solid var(--color-focus)!important;outline-offset:2px}
 html[data-contrast="high"] .apanel.is-home{background:#000}
 .a11y-vbanner[hidden],.a11y-panel[hidden],.hl-card[hidden]{display:none!important}
+.hl-card{max-height:calc(100dvh - 2 * var(--space-4));overflow:auto}   /* [owner bug] always fully on screen */
 .set-note{margin:0;color:var(--color-text-2);font-size:var(--text-sm)}   /* [qa] "Up to 6 cadets." */
 /* Settings → Reset Outpost Luna (reset.js, docs/RESET.md): the danger zone, last in the list and set apart */
 /* last, below Help, after a thin divider; the warning colour only when hovered or selected */

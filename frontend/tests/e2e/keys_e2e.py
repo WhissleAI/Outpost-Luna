@@ -301,8 +301,11 @@ def main():
             ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour .t-eye').textContent !== %s" % json.dumps(b0)), "tour: Enter advances it")
             press("ArrowLeft", 500)
             ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour').contains(document.activeElement)"), "tour: arrows stay on the tour card (Next, Skip tour)")
+            # [flows] the first Esc pauses the tour (Paused, Resume focused); the second one skips it
+            press("Escape", 1000)
+            ok(js("() => { const c = document.querySelector('.m-tour:not([hidden])'); return !!c && c.classList.contains('is-paused') && document.activeElement && document.activeElement.dataset.t === 'resume'; }"), "tour: Esc pauses it (Resume focused)")
             press("Escape", 1500)
-            ok(js("() => !document.querySelector('.m-tour:not([hidden])')"), "tour: Esc skips the tour")
+            ok(js("() => !document.querySelector('.m-tour:not([hidden])')"), "tour: a second Esc skips the tour")
         until("() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000, "seat focus")
         ok(act()["id"] == "seatFocus", "seat: focus is on a console panel")
 

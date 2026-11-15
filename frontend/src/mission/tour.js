@@ -29,8 +29,8 @@ export const tourBeats = level => (level === "commander" ? TOUR.commander : TOUR
  * @param {() => string} o.callsign   the stored call sign (the key the tour is remembered under)
  * @param {(done:boolean)=>void} o.onEnd  after the last beat (true) or a skip (false)
  */
-export function createTour({ host, cockpit, say, hush = () => {}, callsign = () => "", onEnd = () => {} }) {
-  let beats = [], i = -1, el = null, keyOff = null;
+export function createTour({ host, cockpit, say, hush = () => {}, callsign = () => "", onEnd = () => {}, log = () => {} }) {
+  let beats = [], i = -1, el = null, keyOff = null, paused = false, why = "";
   const active = () => i >= 0;
   function card() {
     if (el && el.isConnected) return el;
@@ -42,13 +42,19 @@ export function createTour({ host, cockpit, say, hush = () => {}, callsign = () 
     const c = card(); c.hidden = false;
     c.className = "m-tour is-docked";
     dock(c);
-    c.innerHTML = `<p class="t-eye">${esc(TOUR.title)} · ${esc(TOUR.step(i + 1, beats.length))}</p>
-      <p class="t-text" aria-live="polite">${esc(b.text)}</p>
+    // [flows] paused (an open hand, "stop", a question): the beat stays, with why, Resume (focused), Back and Next
+    c.classList.toggle("is-paused", paused);
+    c.innerHTML = `<p class="t-eye">${esc(paused ? "Paused" : TOUR.title)} · ${esc(TOUR.step(i + 1, beats.length))}</p>
+      <p class="t-text" aria-live="polite">${esc(b.text)}</p>${paused ? `<p class="t-why">${esc(why)}</p>` : ""}
       <div class="t-row"><span class="t-dots" aria-hidden="true">${beats.map((_, k) => `<i class="${k === i ? "is-on" : ""}"></i>`).join("")}</span>
         <span class="t-acts"><button type="button" class="t-skip" data-t="skip">${esc(TOUR.skip)}</button>
-        <button type="button" class="t-next" data-t="next">${esc(last ? TOUR.done : TOUR.next)}</button></span></div>`;
-    c.querySelector('[data-t="next"]').onclick = () => next();
-    c.querySelector('[data-t="skip"]').onclick = () => end(false);
+        ${i > 0 ? `<button type="button" class="t-skip" data-t="prev">Back</button>` : ""}
+        ${paused ? `<button type="button" class="t-skip" data-t="next">${esc(last ? TOUR.done : TOUR.next)}</button><button type="button" class="t-next" data-t="resume">Resume</button>`
+    : `<button type="button" class="t-next" data-t="next">${esc(last ? TOUR.done : TOUR.next)}</button>`}</span></div>`;
+    c.querySelector('[data-t="next"]').onclick = () => next("button");
+    c.querySelector('[data-t="skip"]').onclick = () => end(false, "button");
+    const pv = c.querySelector('[data-t="prev"]'); if (pv) pv.onclick = () => prev("button");
+    const rs = c.querySelector('[data-t="resume"]'); if (rs) rs.onclick = () => resume("button");
     if (ck) {
       if (ck.seat && ck.panel) ck.seat();
       if (ck.point) ck.point(b.show === "start" ? "start" : b.show);
@@ -56,6 +62,7 @@ export function createTour({ host, cockpit, say, hush = () => {}, callsign = () 
       const lk = LOOK[b.show] || [0, 0]; if (ck.look) ck.look(lk[0], lk[1], { hold: true });   // held until the next beat
     }
     requestAnimationFrame(() => { const n = c.querySelector(".t-next"); if (n) n.focus({ preventScroll: true }); });
+    if (paused) return;   // a paused beat is shown, not spoken
     // a list goes through the floor's line queue as one on-air span (the hello + the first beat)
     Promise.resolve(say(lead ? [lead, b.text] : b.text)).catch(() => {});
   }
@@ -78,23 +85,32 @@ export function createTour({ host, cockpit, say, hush = () => {}, callsign = () 
     place();
   }
   function start(level, { lead = null } = {}) {
-    beats = tourBeats(level); i = 0;
+    beats = tourBeats(level); i = 0; paused = false;
     if (!keyOff) { const k = e => { if (!active() || e.key !== "Enter" || e.altKey || e.ctrlKey || e.metaKey) return;
         const t = e.target; if (t && t.closest && t.closest("input, textarea, select, [contenteditable=true]")) return;
         if (t && t.closest && t.closest("button") && !t.closest(".m-tour")) return;   // Enter on another control presses it
-        e.preventDefault(); next(); };
+        e.preventDefault();
+        const own = t && t.closest && t.closest(".m-tour button"); if (own) { own.click(); return; }   // the focused tour button
+        if (paused) resume("keyboard"); else next("keyboard"); };
       addEventListener("keydown", k, true); keyOff = () => removeEventListener("keydown", k, true); }
     show(lead);
   }
-  function next() { if (!active()) return false; hush(); if (i + 1 >= beats.length) { end(true); return true; } i++; show(); return true; }
-  function end(done) {
+  function next(src) { if (!active()) return false; log("next", src); hush(); paused = false; if (i + 1 >= beats.length) { end(true); return true; } i++; show(); return true; }
+  /** [flows] Back: the beat before, spoken. */
+  function prev(src) { if (!active()) return false; if (i === 0) return true; log("prev", src); hush(); paused = false; i--; show(); return true; }
+  /** [flows] Pause: the line stops, the card says why and offers Resume. */
+  function pause(reason, src) { if (!active() || paused) return active(); log("pause", src); hush(); paused = true; why = reason || "Paused"; show(); return true; }
+  /** [flows] Resume / again: this beat's line from the start. */
+  function resume(src) { if (!active()) return false; log(paused ? "resume" : "repeat", src); hush(); paused = false; show(); return true; }
+  function end(done, src) {
     if (!active()) return false;
+    log(done ? "done" : "close", src);
     if (!done) hush();   // skipped: the beat stops now (the last beat has already been heard through)
-    i = -1; if (el) { el.hidden = true; el.innerHTML = ""; }
+    i = -1; paused = false; if (el) { el.hidden = true; el.innerHTML = ""; }
     if (keyOff) { keyOff(); keyOff = null; }
     const ck = cockpit(); if (ck) { if (ck.look) ck.look(0, 0); if (ck.point) ck.point(null); if (ck.focus) ck.focus(null); }
     markTourDone(callsign());
     onEnd(!!done); return true;
   }
-  return { start, next, end, get active() { return active(); }, get beat() { return active() ? beats[i] : null; }, get index() { return i; }, get count() { return beats.length; } };
+  return { start, next, prev, pause, resume, end, get paused() { return active() && paused; }, get active() { return active(); }, get beat() { return active() ? beats[i] : null; }, get index() { return i; }, get count() { return beats.length; } };
 }

@@ -38,8 +38,8 @@ export const EVENT_GESTURE = Object.freeze({
 /** What each gesture does on each screen, in kid words (≤ 6 words). A gesture missing from a screen does nothing there. */
 export const SCREEN_MAP = Object.freeze({
   moon: {        // Flight School map, the Library, Home: the Moon fills the screen
-    palm: "Stop the voice and the Moon", thumbs_up: "Yes, take the offer", thumbs_down: "No thanks",
-    swipe_left: "Start the next lesson", swipe_right: "Go back", point: "Pick a pin or a place",
+    palm: "Pause the voice or tour", thumbs_up: "Yes, or resume the tour", thumbs_down: "No thanks",
+    swipe_left: "Next lesson or tour stop", swipe_right: "Go back", point: "Pick a pin or a place",
     fist: "Turn the Moon", pinch: "Zoom: slide up or down", pinch2: "Zoom",
   },
   lesson: {      // a lesson step, the check ride
@@ -56,12 +56,12 @@ export const SCREEN_MAP = Object.freeze({
     swipe_left: "Next site", swipe_right: "Previous site", point: "Point at a site", fist: "Move the map", pinch: "Zoom the map",
   },
   cabin: {       // Mission cabin (the seat view and an open panel)
-    palm: "Stop the voice and the clock", thumbs_up: "Yes, confirm or do it", thumbs_down: "No, cancel", fingers: "Pick a choice on the card",
+    palm: "Stop the voice and the clock", thumbs_up: "Yes, confirm, or resume", thumbs_down: "No, cancel", fingers: "Pick a choice on the card",
     swipe_left: "Next view or panel", swipe_right: "Previous view or panel", point: "Press a control",
     fist: "Look around", head: "Look around", lean: "Lean in opens, sit back closes",
   },
   video: {       // hooks for the video overlay (another branch): same meanings, the overlay handles the intents
-    palm: "Pause or play", thumbs_up: "Yes, watch the next one", thumbs_down: "No thanks, close the video",
+    palm: "Pause the video", thumbs_up: "Yes, play after a pause", thumbs_down: "No thanks, close the video",
     swipe_left: "Next clip", swipe_right: "Previous clip", point: "Press a button",
   },
   settings: {    // the Settings sheet (and other dialogs)

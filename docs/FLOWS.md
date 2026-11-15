@@ -63,7 +63,9 @@ Owners:
 | Library | the Library tab, or "library" | `library` |
 | Place or hardware card | tap a place or a marker, or ask | (todo shot) |
 | Crew audio playing | "Hear the crew" | (todo shot) |
-| Tour | Tour | (todo shot) |
+| Tour | Tour (or the Director's `tour` answer) | (todo shot) |
+| Tour paused | an open hand, "stop", Esc, Pause, a question, a tap, a video: the card says **Paused · stop N of 8** and why, with Resume (focused), Previous, Next, Close tour | (todo shot) |
+| Crew audio paused | an open hand or "stop" while a crew clip plays: the bar says Paused, tap to resume | (todo shot) |
 | Find it | Find it | (todo shot) |
 
 ## Settings (v1, built)
@@ -130,3 +132,27 @@ Fly again (cabin) / New site (picker)
 `env.storm_warning` / `env.storm_forecast` (`lead_h`/`eta_h`, `confidence`/`probability`), `env.storm.ends_in_h`,
 `score_breakdown` / `breakdown` on the debrief, `window_sun_days` / `window_earth_days` and `nasa_candidate` on sites.
 Each renders when present and is invisible when absent.
+
+## Pause and resume (every multi-step flow)
+
+`frontend/src/flows.js` (fix/flow-resume). Owner bug, 0.1.2: the Library tour "got stopped in between and then saying
+continue also didn't work, no way to resume the tour". A stop now PAUSES a flow; nothing but Close (or leaving the
+screen) ends it. Every pause and resume is logged with its source in `window.__outpost.flowLog`
+(`{flow, event: start|step|pause|hold|resume|next|prev|repeat|close|done, source: voice|gesture|keyboard|barge|
+barge_ignored|question|router|tap|video|crew|button, step, of}`).
+
+| flow | paused state | resume | step | close |
+|---|---|---|---|---|
+| Library tour | card: Paused · stop N of 8, "Paused: <why>", Resume (focused) · Previous · Next · Close tour; any other card shows "Resume tour" | "continue" / "keep going" / "go on" / "resume", thumbs up, Enter / Space on Resume, the Tour button, Resume | "next" / swipe left / → / N; "go back" / "previous" / swipe right / ← / P; "again" replays the stop | Close tour, ✕, Esc twice, leaving the Library |
+| barge-in during the tour | held (not paused): the line stops while the kid talks | by itself after ~1.8 s when the turn was not for us (filler, echo, room talk); a real question pauses it | | |
+| Cabin tour (first mission) | the beat card: Paused, why, Back · Next · Resume (focused) · Skip tour | the same words, thumbs up, Enter, Resume | next / back / again | Skip tour, "skip the tour", Esc twice |
+| Crew clip | the now-playing bar: Paused · tap to resume (the clip holds where it is) | "continue", thumbs up, Enter, a tap on the bar (it backs up to the start of the line) | "again" plays it from the start | ✕ |
+| Mission clock (cabin) | the Now card's paused state | "continue" / "keep going" (router `resume`), thumbs up, ▶ | | |
+| Paused mission (debrief) | "Mission paused" debrief | "continue" / "resume" / yes → back to the cabin | | Fly again / New site (asks first) |
+| Lesson / check ride | a step waits for its answer; "stop" only stops the voice | "continue" / "resume" asks the question again (it was a dead end) | "next" after the answer | Back to the map |
+| Mission prep | the task card | "continue" / "keep going" / "I'm back" says the task again (they were ignored) | | skip |
+| Video | the player's Pause | "play" / "continue", a thumbs up (new), ▶ | skip | stop / ✕ / thumbs down |
+
+Router: `turn_router.FLOW_NAV` reads these words only while the screen frame carries `flow_state` (running | paused,
+from `flows.flowFrame()`), so "continue" on the map still starts the next lesson. Keys: Esc on a running flow pauses it,
+on a paused one it is the usual back (close); ← / → step a flow with steps; Enter with nothing focused resumes.

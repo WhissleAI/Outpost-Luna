@@ -223,6 +223,9 @@ def cls_item(cls: str, rng: random.Random, split: str) -> dict:
 # One item for any inventory cell (director_model/coverage.json): the generator fills the cells with a gap, so every
 # screen x intent has training data, not only the ones the scripted flows happen to visit.
 NAV_SAY = {
+    # flows (turn_router.FLOW_NAV): said while a tour / crew clip / paused mission is on screen (frame flow_state)
+    "resume": ["continue", "keep going", "go on", "resume", "carry on", "resume the tour", "unpause"],
+    "pause": ["stop", "pause", "wait", "hold on", "stop talking", "pause the tour", "hang on"],
     "mute_sound": ["mute", "mute the sound", "sound off", "turn the sound off", "be quiet"],     # the top bar's Mute
     "unmute_sound": ["unmute", "sound on", "turn the sound back on", "unmute the app"],
     "recenter": ["center", "look forward", "center the view", "reset view", "look ahead"],                # Center view
@@ -272,7 +275,7 @@ NAV_SAY = {
     "site_query": ["which site has the most ice", "which site is the sunniest", "where can we talk to earth the most",
                    "which one is flattest", "which site is best", "what site has the most sun"],
     "site_preset": ["ice first", "power first", "radio first", "safety first", "make it balanced", "sunlight first"]}
-CELL_SCREEN_OFFER = {"accept_offer": ["next_lesson", "mission", "fly_again", "tour"],
+CELL_SCREEN_OFFER = {"accept_offer": ["next_lesson", "mission", "fly_again", "tour"], "pause": ["tour"],
                      "decline_offer": ["next_lesson", "mission", "fly_again"], "task_choice": ["task"]}
 
 
@@ -318,6 +321,8 @@ def cell_item(cell: dict, rng: random.Random, split: str) -> dict | None:
         offer = rng.choice(CELL_SCREEN_OFFER[nav]) if nav in CELL_SCREEN_OFFER else None
         opts = ["The ridge", "The crater", "Left", "Shelter now"] if offer == "task" else []
         fr = _frame(sc, offer=offer, options=opts)
+        if nav in ("resume", "pause"):
+            fr["flow_state"] = "paused" if nav == "resume" else "running"
         if sc in ("lesson", "ride"):
             L, i = rng.choice(P.lesson_steps())
             fr = {**P.step_frame(L, i), "offer": offer, "screen": sc}

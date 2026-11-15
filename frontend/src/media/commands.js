@@ -16,7 +16,8 @@ export function videoCommand(text) {
 }
 /** The router's nav intents for the video screen → the overlay's command. */
 export const INTENT_CMD = Object.freeze({ video_pause: "pause", video_play: "play", video_skip: "skip", video_stop: "stop",
-  stop: "stop", no: "stop", time_toggle: "toggle", time_pause: "pause", time_resume: "play" });
+  stop: "stop", no: "stop", time_toggle: "toggle", time_pause: "pause", time_resume: "play",
+  resume: "play", pause: "pause" });   // [flows] the router's flow words
 
 /** The button's length: "Watch (2 min)", "Watch (15 sec)". */
 export function lengthLabel(seconds) {

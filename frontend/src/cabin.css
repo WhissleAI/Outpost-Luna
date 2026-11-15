@@ -493,6 +493,8 @@ html[data-motion="reduce"] .is-point{animation:none}
   padding:var(--space-4) var(--space-5);border-radius:var(--radius-lg);background:var(--color-panel);color:var(--color-on-space);
   border:1px solid var(--color-glass-line);box-shadow:var(--shadow-3)}
 .m-tour[hidden]{display:none}
+.m-tour .t-why{margin:var(--space-1) 0 0;font-size:var(--text-xs);color:var(--color-phosphor)}
+.m-tour.is-paused .t-eye{color:var(--color-lamp-caution, var(--color-phosphor))}
 .m-tour.is-high{top:var(--space-4)} .m-tour.is-low{bottom:calc(84px + var(--space-6))}
 .m-tour.is-docked{top:var(--space-4)}   /* follows the HUD every frame (tour.js dock): no transition to lag behind it */
 .m-tour .t-eye{margin:0 0 var(--space-1);font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-phosphor)}

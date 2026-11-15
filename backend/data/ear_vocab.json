@@ -1,5 +1,5 @@
 {
- "v": "f93c58f206af",
+ "v": "eca710231b8e",
  "places": [
   "Shackleton",
   "de Gerlache",
@@ -259,7 +259,18 @@
   "pillowing",
   "blanketing",
   "orbit",
-  "far side"
+  "far side",
+  "near side",
+  "rille",
+  "impact",
+  "phase",
+  "eclipse",
+  "solar storm",
+  "millisievert",
+  "shelter",
+  "rover",
+  "permanently shadowed region",
+  "ice"
  ],
  "sites": [
   "Shackleton Crater Rim",

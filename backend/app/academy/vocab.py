@@ -64,7 +64,8 @@ def terms() -> dict[str, dict]:
             if src:
                 break
         out[term] = {"term": term, "explain": v["explain"], "forms": forms,
-                     "source": src or {"kind": "glossary", "title": "Outpost Luna glossary", "url": ""}}
+                     "source": src or ({"kind": "nasa", **v["source"]} if (v.get("source") or {}).get("url")
+                                       else {"kind": "glossary", "title": "Outpost Luna glossary", "url": ""})}
     return out
 
 

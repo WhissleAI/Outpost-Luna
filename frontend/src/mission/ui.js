@@ -2,6 +2,7 @@
 // CAPCOM card, Houston delay, debrief. Talks to the backend through client.js, or the local mock (labelled "Sample data").
 import { pretendLabel } from "../pretend.js";   // the "pretend tech" mark
 import { createMissionClient } from "./client.js";
+import { registerFlow, flowLog, pauseCaption } from "../flows.js";   // [flows] pause / resume
 import { sayStyle, stopSpeaking } from "../floor.js";
 import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
@@ -551,6 +552,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
 
   // ---------- first-mission cabin tour (tour.js) ----------
   const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking("mission_tour_hush"), callsign: () => callSign.get(),
+    log: (event, source) => flowLog({ flow: "cabin_tour", event, source: source || "flow", step: tour ? tour.index : -1 }),
     onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = nowCard(state, mclock.state); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
   function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(band(levelNow())); return true; }
@@ -1136,6 +1138,19 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     m.onIntent("a11y", a => { const t = String((a && a.text) || "").toLowerCase().replace(/[^a-z ]/g, "").trim();
       if (screen !== "hud" || !/^(what can i (do|say)|help me|what are my options|options)$/.test(t)) return false; return nav("help") === true; }, { priority: 10 });
   }).catch(() => {});
+  // [flows] the cabin tour, a paused mission clock and a paused mission's debrief: pause / resume for every device
+  const fl = (flow, event, source) => flowLog({ flow, event, source });
+  registerFlow({ name: "cabin_tour", rank: 20,   // tour.js logs each step itself (its buttons and Enter too)
+    active: () => tour.active, paused: () => tour.paused,
+    pause: src => tour.pause(pauseCaption(src), src), resume: src => tour.resume(src),
+    next: src => tour.next(src), prev: src => tour.prev(src), repeat: src => tour.resume(src),
+    close: src => tour.end(false, src) });
+  registerFlow({ name: "mission_clock", rank: 40, keys: false,
+    active: () => screen === "hud" && !tour.active && !!state && !state.over && mclock.started && mclock.paused, paused: () => true,
+    pause: () => true, resume: src => { fl("mission_clock", "resume", src); return clockAction("play") !== false; } });
+  registerFlow({ name: "mission_paused", rank: 40, keys: false,
+    active: () => screen === "debrief" && !!state && !state.over && !pendingWipe, paused: () => true,   // a wipe confirm owns yes
+    pause: () => true, resume: src => { fl("mission_paused", "resume", src); showHud(); return true; } });
   // next / prev on the picker moves the selection: say the new site so a hands-free kid knows what "take command" will fly
   function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing();
     Promise.resolve(say(site.name.split(" (")[0] + ".")).catch(() => {}); }

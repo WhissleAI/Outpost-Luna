@@ -339,6 +339,10 @@ body[data-mode="cadet"] .card{left:auto;right:var(--gut)}
 .nowplaying.is-blocked{cursor:pointer}
 .nowplaying.is-blocked .np-meta::after{content:"· tap to play"}
 .nowplaying.is-blocked .np-eq i{animation:none}
+.nowplaying.is-paused{cursor:pointer}
+.nowplaying.is-paused .np-eq i{animation:none}
+.np-paused{color:var(--color-lamp-info);font-weight:var(--weight-semibold)}
+.np-paused:empty{display:none}
 .np-stop{flex:none;width:var(--control-sm);height:var(--control-sm);border-radius:50%;border:0;background:rgba(255,255,255,.1);color:var(--color-on-space);display:grid;place-items:center}
 .np-stop:hover{background:rgba(255,255,255,.18)}
 .np-stop svg{width:14px;height:14px}
