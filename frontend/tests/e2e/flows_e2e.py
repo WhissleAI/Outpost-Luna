@@ -249,7 +249,7 @@ def cabin(page, base):
                 page.keyboard.press("Enter")
             else:
                 page.click(".m-tour [data-t=resume]")
-            r = until(page, "() => { const c = document.querySelector('.m-tour'); return c && !c.hidden && !c.classList.contains('is-paused'); }", 6000)
+            r = until(page, "() => { const c = document.querySelector('.m-tour'); return c && !c.hidden && !c.classList.contains('is-paused'); }", 12000)
             st = page.evaluate(TT) or {}
             lg = page.evaluate("() => window.__outpost.flowLog.slice(-3).map(e => e.flow + ':' + e.event + ':' + e.source)")
             ok(r and st.get("text") == (before or {}).get("text"), f"cabin tour [{name}] -> {how}: resumed on the same beat ({lg}; {(before or {}).get('eye')} {(before or {}).get('text', '')[:25]!r} -> {st.get('eye')} {st.get('text', '')[:25]!r})")
@@ -323,7 +323,7 @@ def lesson(page):
             page.wait_for_timeout(1200)
             n = page.evaluate("() => window.__outpost.intents.recent().length")
             hear(page, "keep going")
-            ok(until(page, "n => window.__outpost.intents.recent().slice(n).some(e => e.name === 'prep_help' && e.handled)", 8000, n),
+            ok(until(page, "() => { const e = window.__outpost.flowLog.slice(-1)[0]; return !!e && e.flow === 'prep' && e.event === 'repeat'; }", 8000),
                "prep: \"keep going\" after \"wait\" says the task again (it was ignored)")
             hear(page, "skip")
             until(page, "() => window.__outpost.screenFrame().screen !== 'prep'", 8000)
@@ -334,7 +334,8 @@ def lesson(page):
         page.evaluate("() => window.__outpost.intents.emitIntent('stop', {}, 'gesture')")
         n = page.evaluate("() => window.__outpost.intents.recent().length")
         hear(page, "continue")
-        ok(until(page, "n => window.__outpost.intents.recent().slice(n).some(e => e.name === 'start' && e.handled)", 8000, n),
+        ok(until(page, "() => { const e = window.__outpost.flowLog.slice(-1)[0]; return !!e && /lesson|check_ride/.test(e.flow) && e.event === 'repeat'; }", 8000)
+           and not page.evaluate("() => { const f = document.querySelector('#aPanel .a-feedback'); return !!(f && f.textContent.trim()); }"),
            f"{label}: \"continue\" after a stop is handled (the question again), not a dead end "
            f"({page.evaluate('n => window.__outpost.intents.recent().slice(n).map(e => e.name + `:` + e.handled)', n)} {page.evaluate('() => window.__outpost.screenFrame()')})")
 

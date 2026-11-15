@@ -9,6 +9,7 @@
 // and attached to window.__outpost.stepRenderers so other modules can register new step types without editing this file.
 import { pretendLabel } from "../pretend.js";   // the "pretend tech" mark (shields)
 import "../school.css";
+import { flowLog } from "../flows.js";   // [flows] a lesson's "continue" is logged like the other flows
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
@@ -694,6 +695,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // lesson_id + step: the router looks up the step to tell a real try from room talk (grade.plausible)
     return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || []).map(o => o.label), lesson_id: L.id, step: i };
   }
+  /** [flows] "continue" / "resume" in a lesson (often after "stop" cut the question off): the question again. */
+  function reAsk(source) { flowLog({ flow: L && L.ride ? "check_ride" : "lesson", event: "repeat", source, step: i }); say(L.steps[i].prompt, undefined, { repeat: true }); }
   /** A navigation intent. True when the Academy ran it. */
   function nav(intent, arg) {
     if (!ui.active) return false;
@@ -703,8 +706,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "prep") {   // Mission prep: the router's prep_* intents; yes / next / a thumbs-up is Done; no is Skip
       if (["prep_done", "next", "start", "accept_offer", "yes"].includes(intent)) { prepDone(true); return true; }
       if (["prep_skip", "decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
-      if (intent === "prep_wait") { say(PREP.waitSay); return true; }
-      if (intent === "prep_help" || intent === "repeat_step") { say(L.prep.steps); return true; }
+      if (intent === "prep_wait") { flowLog({ flow: "prep", event: "pause", source: "voice" }); say(PREP.waitSay); return true; }
+      if (intent === "prep_help" || intent === "repeat_step") { flowLog({ flow: "prep", event: "repeat", source: "voice" }); say(L.prep.steps); return true; }
     }
     if (view === "lesson" && L && !waitingNext && L.steps[i].accept.type === "video" && stepState.video) {   // [media] next skips
       if (["next", "decline_offer", "no"].includes(intent)) { stepState.video.skip(); return true; }
@@ -715,7 +718,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (["next", "start", "accept_offer"].includes(intent)) {
       if (view === "lesson" && waitingNext) { next(); return true; }
       // [flows] "continue" / "resume" in a lesson (often after "stop" cut the question off): the question again
-      if (view === "lesson" && intent === "start") { say(L.steps[i].prompt, undefined, { repeat: true }); return true; }
+      if (view === "lesson" && intent === "start") { reAsk("voice"); return true; }
       // [audit2] "next" before the step is answered did nothing at all: say why, and how (the hint shows on the card)
       if (view === "lesson" && intent === "next") { const t = help(); if (t) say(`${SCHOOL.answerFirst} ${t}`); return true; }
       if (view === "badge" || view === "map") {
@@ -751,10 +754,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "prep") {   // "done", "finished", "yes" / "skip", "no", "not now"
       if (/\b(done|did it|finished|all done|ready|yes|yeah|next)\b/.test(t)) { prepDone(true); return true; }
       if (/\b(skip|no|nope|not now|later)\b/.test(t)) { prepDone(false); return true; }
+      if (/^(continue|resume|keep going|go on|carry on|i m back|we re back)$/.test(t)) { flowLog({ flow: "prep", event: "repeat", source: "typed" }); say(L.prep.steps); return true; }
       say(PREP.ask); return true;
     }
     if (view !== "lesson") return false;
     if (waitingNext) { if (NEXT_WORDS.test(t)) next(); else if (!nagged) { nagged = true; speakLine(OFFER.nextStep); } return true; }
+    // [flows] no session (POST /api/ask): "continue" after a stop asks the question again, never grades it as an answer
+    if (/^(continue|resume|keep going|go on|carry on)$/.test(t)) { reAsk("typed"); return true; }
     // [media] a video step: "watch" plays it here, "skip" moves on (the server never has to grade those words)
     if (L.steps[i].accept.type === "video" && stepState.video) { const w = videoStepWord(text); if (w) { stepState.video[w](); return true; } }
     // [owner bug] the far side step: "far side" / "near side" by voice turns the Moon first, exactly like the button
