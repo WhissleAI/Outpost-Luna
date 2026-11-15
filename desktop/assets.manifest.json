@@ -4532,7 +4532,7 @@
    "title": "Landing-site map layers (NASA LRO)",
    "required": false,
    "file": "outpost-luna-v2-site_layers.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/gy8o9a16sc0gekjumqlax/outpost-luna-v2-site_layers.tar?rlkey=cpkr2baabu20a20cztks0jbne&dl=1",
    "sha256": "a2e35dc68e7760f1153c347ffa0ba9121c3eed9c543aac457297f13a958d8721",
    "size": 20439040,
    "unpacked_size": 20423515,
