@@ -38,7 +38,7 @@ OUT = ROOT / "frontend" / "public" / "terrain"
 SITES = ROOT / "backend" / "data" / "mission" / "sites.json"
 BASE = "https://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/"
 R_M = 1737400.0
-UA = {"User-Agent": "ask-the-moon-terrain-build/1.0"}
+UA = {"User-Agent": "outpost-luna-terrain-build/1.0"}
 
 # level -> (product, native m/px, native lines (= samples), projection offset, output px, decimation)
 LEVELS = {

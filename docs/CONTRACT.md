@@ -1,4 +1,4 @@
-# Ask the Moon backend API contract
+# Outpost Luna backend API contract
 
 Backend: FastAPI in `backend/app/` (`main.py`). The Director is `director.py`, the claim check `claims.py`,
 Moon Moments `moments.py`. Fact sheet `backend/data/facts.json`, glossary `backend/data/glossary.json`.

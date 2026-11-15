@@ -2,7 +2,7 @@
 
 A voice-first trainer for kids 7–12, built for NASA Space Apps 2026 (Nov 14–15) on the challenge **"Build a Junior
 Astronaut Mission Trainer"**. Inspired by NASA's Artemis program and built on NASA open data. Not affiliated with or
-endorsed by NASA. (Repo name `ask-the-moon` is the project's earlier name.)
+endorsed by NASA. (Formerly `ask-the-moon`.)
 
 **One story.** Artemis II flew its crew around the Moon in April 2026. Artemis III, the first landing near the south
 pole, hasn't happened yet. The kid trains to help run **Outpost Luna**, a south-pole base for the crews who come after.
@@ -24,14 +24,14 @@ The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with
 small button inside the app, used by the lessons.
 
 ## Download for Mac
-**[Download Outpost Luna for Mac](https://github.com/WhissleAI/ask-the-moon/releases/latest)** (Apple silicon, 647 MB,
+**[Download Outpost Luna for Mac](https://github.com/WhissleAI/Outpost-Luna/releases/latest)** (Apple silicon, 647 MB,
 about 1.5 GB once installed). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
 it. It runs with no internet, no account and no keys: every model and the NASA crew audio are inside the app. The NASA
 video files download once when the computer is online; the NASA YouTube clips need a connection. Each release lists the
 DMG's SHA-256.
 
 Windows: build it from source with one command ([docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)). Website:
-<https://whissleai.github.io/ask-the-moon/> (source in `site/`, published with `scripts/publish_site.sh`).
+<https://whissleai.github.io/Outpost-Luna/> (source in `site/`, published with `scripts/publish_site.sh`).
 
 ## Layout: three services
 

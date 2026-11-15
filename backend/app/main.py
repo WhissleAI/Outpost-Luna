@@ -1,4 +1,4 @@
-"""Ask the Moon backend. Owns the app's data and decisions; calls the model server for model output."""
+"""Outpost Luna backend. Owns the app's data and decisions; calls the model server for model output."""
 from __future__ import annotations
 
 import asyncio
@@ -36,7 +36,7 @@ async def _warm_brain():
     await nlu._bank_vecs()
 
 
-app = FastAPI(title="Ask the Moon backend", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Outpost Luna backend", version="0.2.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","), allow_methods=["*"],
                    allow_headers=["*"])
 

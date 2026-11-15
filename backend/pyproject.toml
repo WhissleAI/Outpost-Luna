@@ -1,7 +1,7 @@
 [project]
 name = "moon-backend"
 version = "0.1.0"
-description = "Ask the Moon backend: places, crew moments, and the turn resolver (start of the Director)."
+description = "Outpost Luna backend: places, crew moments, and the turn resolver (start of the Director)."
 requires-python = ">=3.11"
 dependencies = [
   "fastapi==0.115.6",

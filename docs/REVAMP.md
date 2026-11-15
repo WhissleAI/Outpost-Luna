@@ -1,4 +1,4 @@
-# Ask the Moon v2: Arc-first revamp
+# Outpost Luna v2: Arc-first revamp
 
 Status: plan, 2026-11-13 (Space Apps is Nov 14–15). Nothing in this document is built yet.
 
@@ -29,7 +29,7 @@ with a gazetteer linker, a few rules, and Arc's audio metadata.
 
 ## 2. The idea in one line
 
-**Ask the Moon v2 is a voice guide that knows when to talk and when to let the astronauts talk.** A kid asks. The
+**Outpost Luna v2 is a voice guide that knows when to talk and when to let the astronauts talk.** A kid asks. The
 guide either answers in one short sentence, or says "listen to this" and plays the real Artemis II moment, or
 both. During a crew clip it can pause after a hard word ("albedo means how bright it is") and resume. Everything
 it says has been checked against a list of facts with sources.
@@ -173,10 +173,10 @@ v1.1 Mini gives bio events and audio events at RTF 0.10 (Head Start, `ARC_META=m
 moment's **awe**, which drives the Awe Map and the ranking. Live it gives `command_complete` and speaker turns to
 the Director, and lets us tell the kid's voice from a classmate's.
 
-## 4. One model host for Head Start, Ask the Moon and Steer
+## 4. One model host for Head Start, Outpost Luna and Steer
 
 Today Head Start loads its models inside its own process (`server/app.py` startup: Arc, EmbeddingGemma, tagger
-handles). If Ask the Moon does the same, a laptop running both demos holds two copies of everything. The fix is a
+handles). If Outpost Luna does the same, a laptop running both demos holds two copies of everything. The fix is a
 single local daemon, **`whissle-host`**, that owns the models. Apps connect to it over HTTP and WebSocket and never
 load weights themselves.
 
@@ -226,12 +226,12 @@ Rules:
 - **Admission cap, fail open.** Like prod's `WHISSLE_META_MAX_CONCURRENT`: past N sessions a new stream gets words
   plus the tagger only, with no Arc audio or emotion. The voice keeps working.
 - **Head Start keeps an in-process mode** (`MODELS=local`) so its evals stay reproducible. `MODELS=host` makes it a
-  client. Ask the Moon is host-only from day one.
+  client. Outpost Luna is host-only from day one.
 - **Memory on one laptop:** two apps in-process ≈ 2 × (1.0 Arc Mini + EmbeddingGemma + tagger), and twice that again
   if both load the Transcriber. With the host it's one copy, and the 3.3 GB Transcriber exists only during batch
   jobs. Measure the real numbers with `/v1/health` once it's built; this table is from Head Start's figures.
 
-### 4.3 What each signal does in Ask the Moon
+### 4.3 What each signal does in Outpost Luna
 
 | Signal | From | Used for |
 |---|---|---|
@@ -312,7 +312,7 @@ screen shows the source chips and the tagger read-out.
 
 | | Weekend (Nov 14–15) | Later |
 |---|---|---|
-| Server | Stand up `whissle-host` (§4) from Head Start's `tagger.py`, `ear.py` (Flux), `arcmeta.py`, `embed.py`; Ask the Moon's server becomes a thin FastAPI app (Director, fact sheet, answers) that talks to the host | Head Start switches to `MODELS=host`; Steer and other demos join |
+| Server | Stand up `whissle-host` (§4) from Head Start's `tagger.py`, `ear.py` (Flux), `arcmeta.py`, `embed.py`; Outpost Luna's server becomes a thin FastAPI app (Director, fact sheet, answers) that talks to the host | Head Start switches to `MODELS=host`; Steer and other demos join |
 | Offline | Deepgram batch on all 59 flyby clips (plus launch/splashdown for SoundID); tagger; linker against a ~1,500-name subset of the IAU gazetteer (all named craters > 20 km, maria, basins, landing sites); moments; fact sheet; hand review of low-confidence links | Full 9k gazetteer; Apollo Lunar Surface Journal audio; NASA image captions in the same index |
 | Live | Flux ear + tagger frame + `eager+arc` endpointing; Director rules from §3.5; claim-checked answers; `PAUSE_EXPLAIN` in Listen Along | Arc verify for unsure names; barge-in tuning; multilingual |
 | Product | Explore + Listen Along + Missions, source chips, privacy guard | Talk Like an Astronaut, Awe Map, Classroom, SoundID |

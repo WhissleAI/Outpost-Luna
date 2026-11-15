@@ -3,7 +3,7 @@
 2026-11-13 · Whissle · For the Arc modelling team (Arc Transcriber, Arc Tagger). Share as-is; every number in here was
 measured on our data or read from the source linked next to it.
 
-> **v3: Mission Trainer + multi-stream → see [`ARC_MULTISTREAM_PLAN.md`](ARC_MULTISTREAM_PLAN.md).** Ask the Moon is
+> **v3: Mission Trainer + multi-stream → see [`ARC_MULTISTREAM_PLAN.md`](ARC_MULTISTREAM_PLAN.md).** Outpost Luna is
 > now also a NASA Space Apps 2026 *Junior Astronaut Mission Trainer* (kids 7–12 command a lunar outpost by voice while
 > real telemetry flows; contract in [`MISSION_CONTRACT.md`](MISSION_CONTRACT.md)). That plan makes Arc read telemetry,
 > events, game state, context lists and dialogue state next to 1..N audio streams, with masks for missing streams. It
@@ -58,7 +58,7 @@ still talking:
 **Why local.**
 - **Comms:** deep-space links run with seconds to minutes of delay and blackouts; Artemis II lost signal behind the Moon.
 - **Privacy:** kids' audio must not leave the device.
-- **One host, many apps:** a single local model host already serves Ask the Moon and Head Start, which only works if
+- **One host, many apps:** a single local model host already serves Outpost Luna and Head Start, which only works if
   the models are small.
 - **Today's sizes:** Arc Tagger 26 MB at ~0.1 ms per word; Arc v1.1 Mini ~1 GB RAM.
 
@@ -266,7 +266,7 @@ arrives, T1 = ≤ 3 words later, T2 = at utterance end.
 
 ## 6. App intents and slots
 
-These are the requests Ask the Moon must understand. Proposed as `intent.moon.*` in the `space` domain. Every one of them
+These are the requests Outpost Luna must understand. Proposed as `intent.moon.*` in the `space` domain. Every one of them
 gets synthetic training data (section 9) and a held-out spoken test set.
 
 | Group | Intent | Slots | Examples |

@@ -1,11 +1,11 @@
 # Arc as a multi-stream model: audio + telemetry + events + state, on-device
 
-2026-11-13 · Whissle · For the Arc modelling team (Arc Transcriber, Arc Tagger) and the Ask the Moon app team.
+2026-11-13 · Whissle · For the Arc modelling team (Arc Transcriber, Arc Tagger) and the Outpost Luna app team.
 
 **In one paragraph.** Arc today hears one audio stream (or reads one word stream) and outputs a transcript plus tags.
 Next, it should also read the streams that sit next to the audio in any operations room: numeric telemetry, discrete
 events, app/game state, context lists and the conversation so far, across one or more audio channels. It should mask
-whichever streams are missing and output tags that use all of them. The driving product is **Ask the Moon → Junior
+whichever streams are missing and output tags that use all of them. The driving product is **Outpost Luna → Junior
 Astronaut Mission Trainer** (NASA Space Apps 2026): kids 7–12 command a lunar south-pole outpost by voice while real
 data drives the world (power, life support, radiation dose, solar storms from DONKI, Sun/Earth positions from JPL
 Horizons). The broader target is space operations: crew + mission-control loops + spacecraft telemetry. Everything
@@ -175,7 +175,7 @@ contributes exactly one `E_absent[stream]` token to memory, never zeros (so "no 
 
 | Situation | Mask behaviour |
 | --- | --- |
-| Stream never connected (plain Ask the Moon explorer, no mission) | `m_s = 0` for S3–S5; model = today's Arc + lists |
+| Stream never connected (plain Outpost Luna explorer, no mission) | `m_s = 0` for S3–S5; model = today's Arc + lists |
 | Stream disconnects mid-session | last values kept in slot table with `stale` flag; after `3 × period` → `m_s = 0` |
 | Late frame | inserted at true `ts` (§2.2) |
 | Channel never seen in training | definition-keyed embedding (§2.4); if no definition, dropped |
@@ -695,7 +695,7 @@ dose_rate, sun_elev_deg, earth_elev_deg) and `state` (comm, loads, alerts); cont
 ```
 
 Rule: every message keeps `at`/`ts` in session time; every field is optional; clients ignore unknown fields (today's
-Head Start/Ask the Moon clients already fail open).
+Head Start/Outpost Luna clients already fail open).
 
 ---
 

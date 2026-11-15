@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
         STATE["tagger"].close()
 
 
-app = FastAPI(title="Ask the Moon model server", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Outpost Luna model server", version="0.1.0", lifespan=lifespan)
 app.include_router(tag_stream.router)  # WS /v1/tag/stream
 from .routes_meta import router as meta_router  # noqa: E402
 app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream
