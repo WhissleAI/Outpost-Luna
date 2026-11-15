@@ -87,6 +87,10 @@ export function createCabin(root, o = {}) {
       ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
     </header>
     <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
+    <div class="cb-viewbar" aria-label="Window">
+      <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
+      ${o.mode === "ride" ? "" : `<button type="button" class="cb-center" id="cbCenter" aria-keyshortcuts="R" title="Center view (R)">${ic("site", 16)}<span>Center view</span></button>`}
+    </div>
     <section class="cb-now" id="cbNow" hidden aria-label="Now">
       <div class="cb-now-head"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span>
         <button type="button" class="cb-now-fold" id="cbNowFold" aria-expanded="true" aria-controls="cbNowMore" aria-label="Fold the Now panel">${ic("chevron-up", 16)}</button></div>
@@ -97,7 +101,6 @@ export function createCabin(root, o = {}) {
       <div class="cb-glass" data-view="site">
         <div class="cb-tint" aria-hidden="true"></div>
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
-        <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
         <div class="cb-rover" id="cbRover" hidden></div>
       </div>
@@ -161,7 +164,7 @@ export function createCabin(root, o = {}) {
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
   // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
-  const HUD = [".cb-alert", ".cb-views", ".cb-rover", ".cb-moment"];
+  const HUD = [".cb-alert", ".cb-rover", ".cb-moment"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -213,6 +216,12 @@ export function createCabin(root, o = {}) {
     if (!quiet) cb.onView(v);
   }
   root.querySelectorAll(".cb-view").forEach(b => b.onclick = () => setView(b.dataset.view));
+  if (q("#cbCenter")) q("#cbCenter").onclick = () => { if (c3) c3.recenter(); setView("site"); cb.onCenter && cb.onCenter(); };
+  const offT = setInterval(() => { const cab = root.querySelector(".cb"); if (!cab || !c3) return; const p = c3.pose;
+    const off = Math.abs(p.yaw) > 0.02 || Math.abs(p.pitch) > 0.02 || (p.panel && p.panel !== "seat");
+    // back at the seat after a look or a dolly: re-fit the Now panel against where the consoles really are
+    if (!off && !p.moving && cab.dataset.offcentre === "1") fitNow();
+    cab.dataset.offcentre = off ? "1" : ""; }, 300);
 
   // ---- display softkeys ----
   root.querySelectorAll(".cb-sk[data-page]").forEach(b => b.onclick = () => { pages[+b.dataset.du] = b.dataset.page; paintDus(); });
@@ -576,9 +585,9 @@ export function createCabin(root, o = {}) {
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
     openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
-    look: (dx, dy) => c3 && c3.look(dx, dy), highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
+    look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { escOff(); escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
+    dispose() { clearInterval(offT); escOff(); escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
     setWindows(w) { wins = w || null; if (st) paintInfo(st); },

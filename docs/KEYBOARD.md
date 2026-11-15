@@ -35,6 +35,7 @@ Code:
 | <kbd>Y</kbd> / <kbd>N</kbd> | `yes` / `no` | Yes / no to a confirm. **N is "no" only while a yes / no waits**, and "next" otherwise. Y also takes the screen's offer, like saying "yes". |
 | <kbd>S</kbd> | `settings` | Opens Settings. |
 | <kbd>C</kbd> | `captions` | Turns captions on or off, with a toast. While lettered answers are up, C is answer C. |
+| <kbd>R</kbd> | `recenter` | Cabin: **Center view**. The camera goes back to the seat pose (any panel closes, any look offset goes, the window shows the site). Voice: "center", "look forward", "reset view". |
 | <kbd>V</kbd> | `view_next` | Cycles the cabin window view: Orbit → Site → Rover → Earth. |
 | <kbd>O</kbd> | `panel_open` | Opens the lit cabin panel. |
 | <kbd>T</kbd> | `task_step` | Cabin: does the Now panel's step (its button wears a **T**). <kbd>Y</kbd> does too when no yes/no waits. |

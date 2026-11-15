@@ -33,6 +33,7 @@ export const INTENTS = Object.freeze({
   skip_event: "skip to the next event (E)", time_pause: "pause the mission clock", time_resume: "run the mission clock",
   time_warp: "time warp {warp?: 1|2|4}; none = the next speed (W)", time_toggle: "pause / run the mission clock (K)",
   task_step: "do the Now card's step (T)", task_choice: "pick a choice on the Now card (arg: its label)",
+  recenter: "cabin: Center view, the seat pose (R, voice 'center'; a gesture may emit it)",
   mute: "sound on / off: the top bar's Mute (Shift+M)", mute_sound: "sound off (voice: mute)", unmute_sound: "sound on (voice: unmute)",
   skip_tour: "end the cabin tour", cabin_tour: "replay the cabin tour ('show me around')",
   // device-neutral intents that gestures (and keys) make

@@ -230,6 +230,9 @@ Short checklist (Slack or the PR). Copy it, fill in each line:
 [ ] voice: previews play?  changing the voice changes the answer?  the "Manage voices" hint shown?
 [ ] keyboard: arrows/Enter/Esc, Alt shortcuts, F5 and Ctrl+R do nothing, Ctrl+= zooms, F11 full screen?
 [ ] cockpit: cabin builds and turns smoothly?  panel opens, order works?
+[ ] cabin camera: turn your head far left / right, then cover the webcam: back to the centre view within ~1 s?
+            R and the Center view button (top right, under the clock bar) re-centre?  Ctrl+R does nothing?
+            view tabs (Orbit / Site / Rover / Earth) always on screen?  any grey surface across the windshield?
 [ ] controller (if you have one): toast shown, A/B/D-pad work?
 [ ] camera: privacy switches on?  "Camera on" + skeleton seen?  open hand = Stop, thumbs up = Yes?  "On. N frames a second": N = ___
             CPU % with camera on ___ / off ___   "Turn off" turns the webcam light off?

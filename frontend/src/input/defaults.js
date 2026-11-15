@@ -125,6 +125,8 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
   });
   on("panel_open", a => (inCabin() ? cabin("panel_open", a.panel || lit || "power") : false));
   on("panel_back", () => (inCabin() ? cabin("panel_back") : false));
+  // Center view: the seat pose (R, voice "center" / "look forward", the Center view button; a gesture can emit it too)
+  on("recenter", () => (inCabin() ? cabin("recenter") : false));
   on("zoom", a => { if (globe && globe.zoomBy) { globe.zoomBy(a.factor); return true; } return false; });
   on("call_houston", () => { if (inCabin() && ask) { ask("call Houston"); return true; } return false; });
   on("help", () => { if (a11y) { a11y.handleText("what can I do"); return true; } return false; });
@@ -143,7 +145,7 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
 export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", "decline_offer", "repeat", "slower", "faster", "settings",
   "a11y", "answer", "academy", "library", "go_mission", "lesson", "map", "take_command", "pick_site", "debrief", "fly_again",
   "new_site", "view_orbit", "view_site", "view_rover", "view_earth", "panel_power", "panel_comm", "panel_habitat", "panel_rover",
-  "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "mute_sound", "unmute_sound"]);
+  "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "mute_sound", "unmute_sound", "recenter"]);
 
 /** Keyboard source: Alt+→ / Alt+← next / previous, Alt+Y / Alt+N yes / no, Alt+. stop. Never while typing in a field. */
 export function installKeyboardIntents() {

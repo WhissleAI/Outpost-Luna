@@ -188,8 +188,9 @@ The owner played at 1440×879 and found four problems:
 - The Steer left/right choice had one ring round both buttons ("like i can't control").
 - Monospace and sans fonts were mixed.
 
-**Layout.** The glass carries only what belongs to the view: the alert strip, the view tabs (top-right), the rover
-pill and the story moments. A story banner ("Day 1 / On our own") has the glass's centre to itself, and the rover pill
+**Layout.** The glass carries only what belongs to the view: the alert strip, the rover pill and the story moments.
+The view tabs and **Center view** (R) are screen-docked on the right wall under the deck, so they stay on screen
+whatever the camera does; the look is bounded and springs back to the seat (docs/GESTURES.md). A story banner ("Day 1 / On our own") has the glass's centre to itself, and the rover pill
 steps aside while it shows. The sky readout ("Sun up · Earth below") sits in the deck after the clock, because the
 bottom of the glass is behind the consoles. During a storm, Up from the seat goes straight to the alert strip's main
 action ("Shelter the crew"). The cabin has two fixed places:
