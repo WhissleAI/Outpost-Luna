@@ -111,3 +111,28 @@ test("a locked (answered) step ignores its buttons", async () => {
   await e.nodes["[data-watch]"].onclick(); e.nodes["[data-skip]"].onclick();
   assert.equal(opened, 0); assert.deepEqual(sent, []);
 });
+
+test("[vidfix] no click handler's closest() can match a state attribute on <body> / <html>", async () => {
+  // The owner's stuck screen: main.js marks body[data-video] while a video is up; a11y.js's Help handler did
+  // e.target.closest("[data-video]"), so a click anywhere in Settings matched <body> and wrote "Needs internet…" over
+  // the whole app. Guard the class: every body/html dataset key the app writes must never be a closest() target.
+  const fs = await import("node:fs"), path = await import("node:path");
+  const root = new URL("../src/", import.meta.url).pathname, files = [];
+  const walk = d => { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) walk(p); else if (p.endsWith(".js")) files.push(p); } };
+  walk(root);
+  const src = files.map(f => [f, fs.readFileSync(f, "utf8")]);
+  const kebab = k => k.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
+  const keys = new Set();
+  for (const [, s] of src) for (const m of s.matchAll(/(?:body|documentElement)\.dataset\.([a-zA-Z]+)\s*=/g)) keys.add(kebab(m[1]));
+  assert.ok(keys.has("video") && keys.has("mode"), [...keys].join(","));
+  for (const [f, s] of src) for (const m of s.matchAll(/closest\(\s*["'`]([^"'`]*)["'`]/g)) {
+    for (const k of keys) assert.ok(!new RegExp(`(^|[\\s,>~+])\\[data-${k}(?=[\\]=~|^$*])`).test(m[1]), `${path.basename(f)}: closest("${m[1]}") can match <body data-${k}>`);
+  }
+});
+
+test("[vidfix] the overlay: thumbs down closes it; a failed player is not called offline when we are online", async () => {
+  assert.equal(C.INTENT_CMD.no, "stop");
+  assert.equal(C.INTENT_CMD.stop, "stop");
+  assert.notEqual(C.NO_PLAY_LINE, C.OFFLINE_LINE);
+  assert.doesNotMatch(C.NO_PLAY_LINE, /internet/i);
+});

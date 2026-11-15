@@ -180,7 +180,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
-        <button type="button" class="btn" data-video="moon_base_6mo">${escH(MOON_BASE.help)}</button>
+        <button type="button" class="btn" data-help-video="moon_base_6mo">${escH(MOON_BASE.help)}</button>
         <details class="a11y-transcript"><summary>Transcript</summary><ol id="a11yTranscript"></ol></details>
         <details><summary>Voice and keyboard commands</summary><ul class="a11y-help">
           <li>“Where am I?” · “What can I do?” · “Press Next” · “Option 2”</li>
@@ -241,9 +241,12 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const vb = e.target.closest("[data-vbar-reset]");
     if (vb && O.voiceBar) { O.voiceBar.reset(); vb.textContent = "Voice bar is back at the bottom"; vb.disabled = true;   // [audit2] it gave no sign it worked
       setTimeout(() => { if (vb.isConnected) { vb.textContent = "Reset voice bar position"; vb.disabled = false; } }, 2200); }
-    const vb2 = e.target.closest("[data-video]");
-    if (vb2) {   // a NASA video from Help (the first-mission Moon Base video); offline or no player: say so on the button
-      const id = vb2.dataset.video;
+    // [vidfix] data-help-video, a BUTTON inside the panel: the old closest on data-video matched <body data-video>
+    // (main.js marks an open video overlay on body), so after any video every click in Settings (the Camera & gestures
+    // switch) "found" the body and wrote "Needs internet…" into body.textContent: the whole app gone, unstyled, stuck.
+    const vb2 = e.target.closest("button[data-help-video]");
+    if (vb2 && panel.contains(vb2)) {   // a NASA video from Help (the first-mission Moon Base video); offline or no player: say so on the button
+      const id = vb2.dataset.helpVideo;
       isAvailable(id).then(st => {
         if (st !== "offline") { open(false); openVideo(id, { context: "help" }); return; }
         vb2.textContent = OFFLINE_LINE; vb2.disabled = true;
