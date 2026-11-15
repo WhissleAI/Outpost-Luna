@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Outpost Luna works</title>
+<meta name="description" content="A step-by-step visual guide to Outpost Luna: first run and model download, Flight School, the Mission cabin, the Moon Library and Settings.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How Outpost Luna works">
+<meta property="og:description" content="Step by step, with marked-up screenshots of the real app.">
+<meta property="og:url" content="https://whissleai.github.io/Outpost-Luna/guide.html">
+<meta property="og:image" content="https://whissleai.github.io/Outpost-Luna/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0e16">
+<link rel="icon" type="image/png" href="assets/icon-64.png?v=2">
+<link rel="apple-touch-icon" href="assets/icon-180.png?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css?v=3">
+<script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <a class="brand" href="./" aria-label="Outpost Luna home">
+    <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
+    Outpost Luna</a>
+  <nav aria-label="Sections">
+    <a href="./">Home</a><a href="guide.html" aria-current="page">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+  </nav>
+  <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+  </button>
+</header>
+
+<main id="main">
+  <section class="hero guide-hero">
+    <p class="eyebrow">Guide · version 0.3.1</p>
+    <h1>How Outpost Luna <em>works</em></h1>
+    <p class="lede">Every picture below is a screenshot of the real app. The numbered dots match the notes under each picture.</p>
+    <nav class="toc" aria-label="On this page">
+      <a href="#first-run"><b>1</b> First run</a>
+      <a href="#flight-school"><b>2</b> Flight School</a>
+      <a href="#mission"><b>3</b> Mission</a>
+      <a href="#library"><b>4</b> Library</a>
+      <a href="#settings"><b>5</b> Settings</a>
+    </nav>
+  </section>
+
+  <!-- ============================================================ 1. FIRST RUN -->
+  <!-- Sources: desktop/main/firstrun.html + main.js (fetchRequired, OFFLINE_MSG, "Continue later" keeps every .part),
+       desktop/assets.manifest.json (sizes), desktop/main/splash.html. Windows rendered headlessly from the real HTML. -->
+  <section id="first-run" class="sec">
+    <p class="kicker">Step 1</p>
+    <h2>Install and first run</h2>
+    <p class="sec-lede">Download the Mac app (246 MB), drag it to Applications and open it. The first time, it downloads its models once. After that it runs with no internet.</p>
+
+    <div class="trio">
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/firstrun-downloading.jpg" width="1120" height="940" loading="lazy" alt="The first-run window: Getting Outpost Luna ready, downloading the Moon (510 MB), with a progress bar for each of four models.">
+          <span class="mk" style="--x:8%;--y:25.8%" aria-hidden="true">1</span>
+          <span class="mk" style="--x:94%;--y:44%" aria-hidden="true">2</span>
+          <span class="mk" style="--x:83%;--y:72%" aria-hidden="true">3</span>
+        </div>
+        <figcaption>Downloading the models</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/firstrun-offline.jpg" width="1120" height="940" loading="lazy" alt="The first-run window when offline: Outpost Luna isn't ready yet, with Try again, Import offline pack and Continue later buttons.">
+          <span class="mk" style="--x:7%;--y:76%" aria-hidden="true">4</span>
+        </div>
+        <figcaption>No internet? Use the offline pack</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/splash.jpg" width="920" height="600" loading="lazy" alt="The start-up screen: Outpost Luna, warming up the models.">
+          <span class="mk" style="--x:80%;--y:73%" aria-hidden="true">5</span>
+        </div>
+        <figcaption>Every launch after that</figcaption>
+      </figure>
+    </div>
+    <ol class="key">
+      <li><b>One download, about 510 MB.</b> The speech model, the safety tagger, the knowledge search and the recorded voice.</li>
+      <li><b>Progress for each part.</b> Every file is checked before it is installed.</li>
+      <li><b>Continue later.</b> A stopped download picks up where it left off at the next launch.</li>
+      <li><b>Import offline pack.</b> No network? Load the 885 MB offline pack from a USB stick instead.</li>
+      <li><b>Warming up the models.</b> A few seconds on each launch, then the app opens. The Artemis II crew audio and NASA videos (about 375 MB) download in the background.</li>
+    </ol>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/home.jpg" width="1600" height="1000" loading="lazy" alt="The welcome screen: Nobody's landed at the pole yet. Train for the crews who will. A call-sign field with suggestions and a Start button.">
+        <span class="mk" style="--x:28%;--y:34%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:26%;--y:53%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:20%;--y:65.4%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:28.6%;--y:95.3%" aria-hidden="true">4</span>
+      </div>
+      <figcaption>The welcome screen</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>The story.</b> Nobody has landed at the south pole yet. You train for the crews who will.</li>
+      <li><b>Pick a call sign.</b> Type one or tap a suggestion. It stays on this computer.</li>
+      <li><b>Start.</b> Or say "start".</li>
+      <li><b>The voice bar.</b> Always at the bottom. Talk, or type instead.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ 2. FLIGHT SCHOOL -->
+  <!-- Sources: backend/data/academy/course.json (6 core + 2 explorer + check ride = 9 patches), frontend/src/academy/ui.js. -->
+  <section id="flight-school" class="sec">
+    <p class="kicker">Step 2</p>
+    <h2>Flight School</h2>
+    <p class="sec-lede">Short spoken lessons with CAPCOM. Each one ends with a patch. There are 9: 6 core lessons, 2 explorer lessons and the check ride.</p>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/fs-map.jpg" width="1600" height="1000" loading="lazy" alt="The Flight School map: lesson patches on the 3D Moon, a progress chip reading Flight School 2 of 9 with the call sign, and a Next up card for Phases and eclipses.">
+        <span class="mk" style="--x:40%;--y:2.8%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:94.2%;--y:6.8%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:19%;--y:9.7%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:54%;--y:36%" aria-hidden="true">4</span>
+        <span class="mk" style="--x:43%;--y:78.3%" aria-hidden="true">5</span>
+        <span class="mk" style="--x:68%;--y:65%" aria-hidden="true">6</span>
+        <span class="mk" style="--x:31%;--y:95.3%" aria-hidden="true">7</span>
+      </div>
+      <figcaption>The Flight School map</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>Three places.</b> Flight School, Mission and Library. Switch any time.</li>
+      <li><b>Settings, sound, light or dark, and About.</b></li>
+      <li><b>Your progress.</b> Patches earned out of 9, and your call sign.</li>
+      <li><b>Lesson patches on the Moon.</b> Each sits where its story happens. Tap one, or say its name.</li>
+      <li><b>Next up.</b> Continue goes straight to the next lesson.</li>
+      <li><b>Mission prep.</b> Optional hands-on activities for a table at home.</li>
+      <li><b>The mic.</b> Hold Space to talk, or switch on hands-free in Settings. "Type instead" always works.</li>
+    </ol>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/fs-lesson.jpg" width="1600" height="1000" loading="lazy" alt="A lesson card beside the Moon: Phases and eclipses, lesson 2 of 6, step 1 of 5. Why does the Moon seem to change shape each month? Three numbered answers.">
+        <span class="mk" style="--x:73.2%;--y:10.2%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:73.5%;--y:27%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:73.5%;--y:35.8%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:73.5%;--y:40.3%" aria-hidden="true">4</span>
+        <span class="mk" style="--x:73.5%;--y:53%" aria-hidden="true">5</span>
+        <span class="mk" style="--x:29%;--y:89.1%" aria-hidden="true">6</span>
+      </div>
+      <figcaption>A lesson step: guess first</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>Where you are.</b> Lesson and step. Map goes back; Brief recaps the lesson.</li>
+      <li><b>CAPCOM asks.</b> One question at a time.</li>
+      <li><b>Guess first.</b> There is no wrong guess. The guess comes before the answer on purpose.</li>
+      <li><b>Real Artemis II crew audio.</b> Hear the crew talk about the same thing.</li>
+      <li><b>Answer any way.</b> Say it, tap it, or press 1, 2 or 3.</li>
+      <li><b>Captions.</b> Every spoken line is also shown as text.</li>
+    </ol>
+
+    <div class="pair narrow">
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/fs-lesson-why.jpg" width="410" height="640" loading="lazy" alt="After a guess: the chosen answer is marked Your guess, and a note explains: We see more or less of its sunny half. It's not Earth's shadow. A Next button.">
+          <span class="mk" style="--x:3.5%;--y:35%" aria-hidden="true">1</span>
+          <span class="mk" style="--x:90%;--y:67%" aria-hidden="true">2</span>
+        </div>
+        <figcaption>Then see why</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/fs-lesson-video.jpg" width="410" height="420" loading="lazy" alt="A NASA video step: Here's a whole month in 15 seconds. Watch the bright part grow, then shrink. Watch (15 sec) and Skip buttons, credited to NASA Goddard Scientific Visualization Studio.">
+          <span class="mk" style="--x:9%;--y:76%" aria-hidden="true">3</span>
+          <span class="mk" style="--x:96%;--y:80%" aria-hidden="true">4</span>
+        </div>
+        <figcaption>Then watch it happen</figcaption>
+      </figure>
+    </div>
+    <ol class="key">
+      <li><b>Your guess stays marked.</b></li>
+      <li><b>The explanation.</b> One or two plain sentences.</li>
+      <li><b>A short NASA video.</b> Guess first, then watch, or skip.</li>
+      <li><b>The source.</b> Every video and fact names where it came from.</li>
+    </ol>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/fs-checkride.jpg" width="1600" height="1000" loading="lazy" alt="The check ride: the mission cabin at day 6, 18:00, with a lesson card asking: Earth is up over the rim. Can you call Houston now?">
+        <span class="mk" style="--x:15%;--y:8.5%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:83.8%;--y:15%" aria-hidden="true">2</span>
+      </div>
+      <figcaption>The check ride</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>A first solo shift in the real cabin.</b></li>
+      <li><b>Still a lesson.</b> CAPCOM asks, you decide. Pass it to earn the Mission Commander patch and unlock missions.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ 3. MISSION -->
+  <!-- Sources: frontend/src/mission/ui.js + cabin.js + navigator; backend/data/sites_physics.json (LOLA, Diviner, JPL Horizons);
+       docs/KEYBOARD.md (K, W, E, T, R, V). Storm shown with the cabin's test hook replaying the real 2024-05-09 DONKI record. -->
+  <section id="mission" class="sec">
+    <p class="kicker">Step 3</p>
+    <h2>Mission: run the outpost for 10 days</h2>
+    <p class="sec-lede">Pick a real south-pole site, then keep the crew powered, breathing and safe from solar storms.</p>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/m-brief.jpg" width="1600" height="1000" loading="lazy" alt="Choose your landing site: a south-pole map with a Sunlight layer and scored sites, and a panel for Shackleton Crater Rim listing sunlight, longest dark, Earth in view, ice, slope and ground temperature, each with a NASA source link.">
+        <span class="mk" style="--x:27.5%;--y:10.1%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:47%;--y:58.8%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:38.5%;--y:78%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:97.6%;--y:18.6%" aria-hidden="true">4</span>
+        <span class="mk" style="--x:96%;--y:39%" aria-hidden="true">5</span>
+        <span class="mk" style="--x:73%;--y:60%" aria-hidden="true">6</span>
+        <span class="mk" style="--x:73%;--y:93.3%" aria-hidden="true">7</span>
+      </div>
+      <figcaption>The briefing: choose your landing site</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>NASA map layers.</b> Sunlight, slope, ice and Earth view, from the LRO orbiter's LOLA and Diviner maps.</li>
+      <li><b>Real candidate sites.</b> Each pin has a score. Tap one, or say "pick Malapert".</li>
+      <li><b>What the colours mean,</b> and the NASA data product behind them.</li>
+      <li><b>What matters most to you.</b> Balanced, power, ice, radio or a safe landing.</li>
+      <li><b>The site's score.</b></li>
+      <li><b>The real numbers.</b> Sunlight, longest dark, Earth in view, ice, slope, temperature. Each links to its NASA source.</li>
+      <li><b>Take command.</b> Starts the mission at this site.</li>
+    </ol>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/m-cabin.jpg" width="1600" height="1000" loading="lazy" alt="The mission cabin: a clock bar with day and time, Play, speed and Skip ahead; a Now panel with the next task; the window onto the outpost; power, life support and dose gauges; and panels for the habitat, radiation, rover, shift and radio.">
+        <span class="mk" style="--x:17.3%;--y:8.5%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:32%;--y:13.2%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:57%;--y:13.2%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:20.5%;--y:28.5%" aria-hidden="true">4</span>
+        <span class="mk" style="--x:71%;--y:15.8%" aria-hidden="true">5</span>
+        <span class="mk" style="--x:28.7%;--y:53%" aria-hidden="true">6</span>
+        <span class="mk" style="--x:6%;--y:55%" aria-hidden="true">7</span>
+        <span class="mk" style="--x:96%;--y:58%" aria-hidden="true">8</span>
+        <span class="mk" style="--x:65.5%;--y:75%" aria-hidden="true">9</span>
+        <span class="mk" style="--x:93%;--y:79.5%" aria-hidden="true">10</span>
+        <span class="mk" style="--x:56%;--y:95.8%" aria-hidden="true">11</span>
+      </div>
+      <figcaption>The cabin</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>Mission clock.</b> Day, time, shift and site, plus whether the Sun and Earth are up.</li>
+      <li><b>Time.</b> Play or pause (K), 1×, 2× or 4× (W), and Skip ahead to the next event (E).</li>
+      <li><b>Goals and log.</b> Days survived, science and ice brought home.</li>
+      <li><b>Now.</b> The one task that matters next. Press its button, press T, or say it.</li>
+      <li><b>Window views.</b> Orbit, Site, Rover and Earth. Center view (R) looks straight ahead again.</li>
+      <li><b>Gauges.</b> Power, life support and radiation dose. The (i) on each says why it is moving.</li>
+      <li><b>Habitat.</b> Heaters and the science lab.</li>
+      <li><b>Radiation.</b> The storm shelter and the shield power knob.</li>
+      <li><b>Shift.</b> Caution and warning lights, the master alarm, and End shift.</li>
+      <li><b>Radio.</b> Call Houston, when Earth is in view.</li>
+      <li><b>CAPCOM and your orders.</b> Every line as text, and a box to type an order, like "shields to 40".</li>
+    </ol>
+    <p class="note-p">The first time in the cabin, a short tour points at each part. Skip it any time.</p>
+
+    <div class="pair">
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/m-panel.jpg" width="1600" height="1000" loading="lazy" alt="A cabin panel up close: the Power display with battery, panels and sunset time, a power budget for shields, greenhouse, rover, heaters, air, science and radio, and Night, Shields minus 5 and plus 5 buttons.">
+          <span class="mk" style="--x:44%;--y:28%" aria-hidden="true">1</span>
+          <span class="mk" style="--x:69.5%;--y:48%" aria-hidden="true">2</span>
+          <span class="mk" style="--x:44%;--y:66%" aria-hidden="true">3</span>
+        </div>
+        <figcaption>Open a panel</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/m-storm.jpg" width="1600" height="1000" loading="lazy" alt="A solar particle storm: a banner names the real event with Shelter the crew and Set shields to 40 buttons; the radiation panel shows a red alert and the master alarm is lit.">
+          <span class="mk" style="--x:24.5%;--y:23%" aria-hidden="true">4</span>
+          <span class="mk" style="--x:73%;--y:45.5%" aria-hidden="true">5</span>
+          <span class="mk" style="--x:34%;--y:75%" aria-hidden="true">6</span>
+        </div>
+        <figcaption>A real solar storm arrives</figcaption>
+      </figure>
+    </div>
+    <ol class="key">
+      <li><b>Power up close.</b> Battery, panels, and hours until sunset. The (i) explains each number with NASA data.</li>
+      <li><b>The power budget.</b> Where the outpost's power goes.</li>
+      <li><b>Quick moves.</b> Night mode, and shields up or down by 5.</li>
+      <li><b>The storm banner.</b> It names the real NASA DONKI event this storm replays. Shelter the crew, or raise the shields.</li>
+      <li><b>Radiation alert.</b> The dose rate jumps; the panel turns red.</li>
+      <li><b>Caution and warning.</b> The storm light and the master alarm.</li>
+    </ol>
+    <p class="note-p">After 10 days, or if the crew runs out of power or air, the debrief tells the story of the mission, the real data behind each event, and one thing to try next time.</p>
+  </section>
+
+  <!-- ============================================================ 4. LIBRARY -->
+  <!-- Sources: frontend/src/explorer.js / main.js (Places, Hardware, Near side, Far side, Tour, Find it), backend/data/artifacts.json (NSSDCA). -->
+  <section id="library" class="sec">
+    <p class="kicker">Step 4</p>
+    <h2>The Moon Library</h2>
+    <p class="sec-lede">The whole Moon to explore: landing sites, craters and the hardware people left there. Ask out loud and the Moon turns to show you.</p>
+
+    <figure class="ann wide">
+      <div class="shot">
+        <img src="assets/guide/lib-card.jpg" width="1600" height="1000" loading="lazy" alt="The Library: the Moon turned to the Apollo 11 landing site, with a card for the Apollo 11 Lunar Module Eagle: its story, crew and NSSDCA source links.">
+        <span class="mk" style="--x:6.9%;--y:14.6%" aria-hidden="true">1</span>
+        <span class="mk" style="--x:18.8%;--y:14.6%" aria-hidden="true">2</span>
+        <span class="mk" style="--x:28.8%;--y:14.6%" aria-hidden="true">3</span>
+        <span class="mk" style="--x:50%;--y:46%" aria-hidden="true">4</span>
+        <span class="mk" style="--x:96%;--y:8.6%" aria-hidden="true">5</span>
+        <span class="mk" style="--x:97%;--y:55%" aria-hidden="true">6</span>
+        <span class="mk" style="--x:44%;--y:95.3%" aria-hidden="true">7</span>
+      </div>
+      <figcaption>"Where did Apollo 11 land?"</figcaption>
+    </figure>
+    <ol class="key">
+      <li><b>Places and Hardware.</b> Show or hide each kind of pin.</li>
+      <li><b>Near side and Far side.</b> Turn the Moon to either face.</li>
+      <li><b>Tour and Find it.</b> A guided tour, or a game of finding places.</li>
+      <li><b>The Moon flies to the answer.</b></li>
+      <li><b>A card for what you asked.</b> Its story, in its own words.</li>
+      <li><b>Sources.</b> Each card links to NASA's NSSDCA records.</li>
+      <li><b>Ask anything about the Moon.</b> Say it or type it.</li>
+    </ol>
+  </section>
+
+  <!-- ============================================================ 5. SETTINGS -->
+  <!-- Sources: frontend/src/a11y.js (SECTIONS), prefs.js (Steer: "Get the Steer voice (13 MB)" -> "Downloading Steer voice…"),
+       docs/GESTURES.md (privacy rules), docs/RESET.md. -->
+  <section id="settings" class="sec">
+    <p class="kicker">Step 5</p>
+    <h2>Settings</h2>
+    <p class="sec-lede">Open with the gear, or press S. Everything is saved on this computer only.</p>
+
+    <div class="pair">
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/set-voice.jpg" width="840" height="640" loading="lazy" alt="Settings, Voice: Your computer's voice is selected; Steer TTS (Whissle) shows Downloading Steer voice. Options for the recorded guide voice, speed and expressiveness.">
+          <span class="mk" style="--x:21%;--y:12%" aria-hidden="true">1</span>
+          <span class="mk" style="--x:44.6%;--y:20.5%" aria-hidden="true">2</span>
+          <span class="mk" style="--x:79%;--y:20.5%" aria-hidden="true">3</span>
+          <span class="mk" style="--x:62%;--y:60%" aria-hidden="true">4</span>
+        </div>
+        <figcaption>Voice</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/set-camera.jpg" width="840" height="640" loading="lazy" alt="Settings, Camera and gestures: Use the camera for gestures is off. Options to show a small self-view, look around with your head, sensitivity, which hand you use, and extra gestures.">
+          <span class="mk" style="--x:26.3%;--y:24.7%" aria-hidden="true">5</span>
+          <span class="mk" style="--x:26.3%;--y:38%" aria-hidden="true">6</span>
+          <span class="mk" style="--x:68%;--y:58%" aria-hidden="true">7</span>
+        </div>
+        <figcaption>Camera and gestures</figcaption>
+      </figure>
+    </div>
+    <ol class="key">
+      <li><b>Every section.</b> Voice, sound, listening, captions, display, camera, keyboard and controller, videos, storage and reset.</li>
+      <li><b>Your computer's voice.</b> The default: Siri on a Mac, the best Windows voice on a PC.</li>
+      <li><b>Steer TTS, Whissle's expressive voice.</b> Tap "Get the Steer voice (13 MB)" once; it downloads in the background.</li>
+      <li><b>Speed and expressiveness.</b></li>
+      <li><b>The camera is off until you turn it on.</b> Pictures stay on this computer; they are never saved or sent.</li>
+      <li><b>A small self-view and head look.</b> In the cabin, turn your head to look around.</li>
+      <li><b>Sensitivity and your hand.</b> A thumbs up says yes, an open hand stops, a fist spins the Moon.</li>
+    </ol>
+
+    <div class="pair">
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/set-listen.jpg" width="840" height="640" loading="lazy" alt="Settings, Listening: how to talk, hands-free or hold to talk; ignore other voices, relaxed, normal or strict; and an option to help improve the voice guide.">
+          <span class="mk" style="--x:47%;--y:21%" aria-hidden="true">8</span>
+          <span class="mk" style="--x:47%;--y:42%" aria-hidden="true">9</span>
+        </div>
+        <figcaption>Listening</figcaption>
+      </figure>
+      <figure class="ann">
+        <div class="shot">
+          <img src="assets/guide/set-reset.jpg" width="840" height="640" loading="lazy" alt="Settings, Reset: Start over erases progress and settings and keeps downloads; Reset everything also erases downloads and saved videos.">
+          <span class="mk" style="--x:44%;--y:26.5%" aria-hidden="true">10</span>
+          <span class="mk" style="--x:50%;--y:39%" aria-hidden="true">11</span>
+        </div>
+        <figcaption>Reset</figcaption>
+      </figure>
+    </div>
+    <ol class="key" start="8">
+      <li><b>How to talk.</b> Hands-free (the mic listens all the time) or hold Space to talk.</li>
+      <li><b>Ignore other voices.</b> Strict ignores more room chatter.</li>
+      <li><b>Start over.</b> Erases progress and settings; downloads stay.</li>
+      <li><b>Reset everything.</b> Also removes the downloaded models and videos. The next launch downloads them again.</li>
+    </ol>
+  </section>
+
+  <section id="inputs" class="sec">
+    <h2>Talk, tap, keys or gestures</h2>
+    <!-- docs/KEYBOARD.md, docs/GESTURES.md -->
+    <div class="points">
+      <div><b>Voice</b><span>Hold Space and talk, or turn on hands-free. Say "yes", "next", "stop", or ask a question.</span></div>
+      <div><b>Keys</b><span>Arrows move, Enter selects, Esc goes back, H shows every key. Shift+M mutes.</span></div>
+      <div><b>Game controller</b><span>The D-pad and buttons do the same things as the arrows, Enter and Esc.</span></div>
+      <div><b>Gestures</b><span>Thumbs up or down for yes or no, an open hand to stop, 1 to 4 fingers to pick, a fist to spin the Moon.</span></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Ready to try it?</h2>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">Download for Mac</a>
+      <a class="btn" href="./#windows">Build for Windows</a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <p><b>Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. Outpost Luna is a pretend outpost for learning.</b></p>
+  <p>Screenshots: Outpost Luna 0.3.1. Moon imagery: NASA/GSFC/Arizona State University (LRO). Site maps: NASA LRO LOLA and Diviner. Lesson video: NASA/Goddard Scientific Visualization Studio.</p>
+  <div class="row">
+    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
+    <span><a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
+  </div>
+</footer>
+<script>
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const r = document.documentElement;
+    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    r.dataset.theme = cur === "dark" ? "light" : "dark";
+    try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
+  });
+</script>
+</body>
+</html>
