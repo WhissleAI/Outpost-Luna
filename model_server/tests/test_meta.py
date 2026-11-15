@@ -1,5 +1,5 @@
 """Arc Transcriber Space metadata: POST /v1/meta and WS /v1/stream (metadata-only). Skips when the model, libarc or the
-crew clips are missing (real crew audio: the model ignores TTS on purpose)."""
+crew clips are missing (real crew audio: the model is trained to ignore synthetic TTS)."""
 import io
 import json
 import time

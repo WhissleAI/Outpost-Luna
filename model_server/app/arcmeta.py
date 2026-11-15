@@ -7,8 +7,8 @@ One model, loaded once at startup (ARC_EAR=on, the default; ARC_EAR=off or ARC_M
   offline   POST /v1/meta (backend/pipeline/build_audio_meta.py): per-utterance events, device-directed and awe
 
 It replaced Arc v1.1 Mini on torch + transformers (and the round-7 hot-list logits processor): ~0.85 GB of RAM instead of
-~2.3 GB, a ~2 s load, and no torch in the installer. The model ignores TTS on purpose (the app's own Nora / OS voice
-leaking into the mic is not transcribed), so test it with real voices.
+~2.3 GB, a ~2 s load, and no torch in the installer. The model is trained to ignore synthetic (Kokoro-style) TTS, so test it
+with real voices; the app's own Siri/Nora voices are still transcribed (the router's echo check handles those).
 
 Emotion: none (the model has no emotion head). Age / gender are never emitted: this is a kids' app.
 """

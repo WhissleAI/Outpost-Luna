@@ -16,9 +16,10 @@ does what frontend/src/main.js does with the decisions: `nav` moves the screens,
                        non-letters -> "_", e.g. call_me_nova.wav, shields_to_40.wav; any rate, mono) are streamed into
                        /ws/listen (the Arc Transcriber Space ear), so those turns come from real speech recognition;
                        the other lines are text-injected (as without --audio) and counted.
-                       --tts-audio: the old path (each line rendered with the OS voice). Arc Transcriber Space is built
-                       NOT to transcribe TTS (the app's own voice in the mic), so these turns are expected to be heard
-                       as nothing: the run then checks the echo rejection (no turn from TTS) instead of the flow.
+                       --tts-audio: the old path (each line rendered with the OS voice and streamed to the ear). Arc
+                       Transcriber Space is trained to ignore synthetic (Kokoro-style) voices; the macOS Siri / OS
+                       voices measured 40/40 transcribed (model_server/tools/ear_compare.py), but a line it ignores is
+                       counted ("TTS lines not heard") and the flow goes on by text for it.
 Prints a short transcript and the count of spoken "I don't know that one yet".
 """
 from __future__ import annotations
@@ -564,8 +565,8 @@ class Live:
         if kid and self.tts_audio:
             ds = await self.turn_audio(text)
             if any(d.get("t") == "heard" for d in ds):
-                self.tts_heard += 1          # the ear transcribed our own TTS: echo rejection failed for this line
-            # the flow goes on by text, so one run checks both the echo rejection and the whole hands-free script
+                return ds
+            self.tts_heard += 1              # (counts the lines the ear did NOT hear; the flow goes on by text)
         if kid:
             self.injected_lines += 1
         await self.ws.send(json.dumps({"t": "turn", "state": "start", "text": ""}))
@@ -647,9 +648,7 @@ async def main_live(a):
     print(f"cabin tour: {c.toured} of {len(tour_beats('cadet'))} beats by voice")
     if a.audio or a.tts_audio:
         print(f"ear: {t.real_lines} lines from real recordings, {t.injected_lines} text-injected"
-              + (f"; TTS lines the ear transcribed (echo rejection misses): {t.tts_heard}" if a.tts_audio else ""))
-        if a.tts_audio and t.tts_heard:
-            fails.append(f"ear transcribed {t.tts_heard} TTS lines")
+              + (f"; TTS lines not heard by the ear (text-injected instead): {t.tts_heard}" if a.tts_audio else ""))
     print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
     if fails:
         raise SystemExit(1)
