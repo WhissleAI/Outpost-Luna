@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import random
 
-from . import sim
+from . import physics, sim
 
 
 
@@ -198,13 +198,48 @@ def _storm_prep(m):
                 deadline_h=m.t_h + int(w["eta_h"]), key=("prep", sid), say=None, steps=steps)
 
 
+# ---- Engineer (docs/PHYSICS.md): the same tasks, with the power budget and the heaters' duty cycle as real choices ----
+DUTIES = (25, 50, 75)      # heater duty cycle options, % of the time on (physics.heater_duty: 20% share = 100% duty)
+
+
+def _budget(m) -> dict:
+    """The night's power budget in kW and how long the battery lasts on each choice (physics.py outpost model)."""
+    full = sim.draw_per_h(m) / (sim.POWER_SAVE_DRAW if m.power_save else 1.0)
+    out = {}
+    for k, d in (("night", full * sim.POWER_SAVE_DRAW), ("full", full)):
+        net = d - sim.BACKUP_GEN
+        out[k] = {"kw": physics.kw(d), "lasts_h": (int(m.power / net) if net > 0 else None)}
+    return out
+
+
+def _lasts(b) -> str:
+    return f"lasts {b['lasts_h']} h" if b["lasts_h"] is not None else "lasts all night"
+
+
+def _engineer_night_steps(m) -> list:
+    b, dark = _budget(m), _night_len(m, m.t_h)
+    budget = _choice("budget", f"Night budget: dark for {dark} h. Which load?" if dark else "Night budget: which load?",
+                     [{"id": "night", "label": "Night mode", "hint": f"{b['night']['kw']:.1f} kW, {_lasts(b['night'])}"},
+                      {"id": "full", "label": "Full power", "hint": f"{b['full']['kw']:.1f} kW, {_lasts(b['full'])}"}],
+                     hint="Energy = power × time")
+    rated = physics.heater_rated_kw()
+    names = {25: "Low", 50: "Half", 75: "High"}
+    duty = _choice("duty", "Heater duty cycle?",
+                   [{"id": str(d), "label": f"{names[d]} {d}%", "hint": f"{rated * d / 100:.2f} kW average"} for d in DUTIES],
+                   hint=f"Heater {rated:.1f} kW when on")
+    return [budget, duty]
+
+
 def _night_prep(m):
     sun_h = sim.next_sun_change_h(m, m.t_h)
     env = sim.env_at(m, m.t_h)
     deadline = m.t_h + sun_h if env["in_sun"] and sun_h else m.t_h + 6
-    steps = [_order("night", "Night mode on", "night", {"type": "power_save", "on": True},
-                    lambda m, t: m.power_save, "Night mode on. Good.")]
-    if True:   # below 5% in the dark the water lines freeze: every level gets this step
+    if m.engineer:
+        steps = _engineer_night_steps(m)
+    else:
+        steps = [_order("night", "Night mode on", "night", {"type": "power_save", "on": True},
+                        lambda m, t: m.power_save, "Night mode on. Good.")]
+        # below 5% in the dark the water lines freeze: every level gets this step
         steps.append(_order("heaters", "Heaters to 10", "load:heaters", ALLOC("heaters", 10),
                             lambda m, t: m.loads["heaters"] >= 10, "Heaters on. The water lines stay warm."))
     if _night_len(m, m.t_h) >= 48:   # a long night (Malapert): the recycler needs the spare power
@@ -227,6 +262,16 @@ def _sunrise(m):
 
 
 def _low_power(m):
+    if m.engineer:   # a power-budget call: what each cut saves, in kW
+        full = sim.draw_per_h(m)
+        sci = physics.kw(full * physics.load_share(m, "science") * (1 - 5 / max(5, m.loads["science"])))
+        night = physics.kw(full * (1 - sim.POWER_SAVE_DRAW))
+        return dict(title="Save power", lesson="power", panel="power", level="caution", priority=75, cool_h=12,
+                    say="Battery low. Pick a cut.",
+                    steps=[_choice("cut", f"Battery {m.power:.0f}%. Which cut?",
+                                   [{"id": "science", "label": "Science down", "hint": f"saves {sci:.1f} kW"},
+                                    {"id": "night", "label": "Night mode", "hint": f"saves {night:.1f} kW"}],
+                                   hint="Cut the biggest load first")])
     return dict(title="Save power", lesson="power", panel="power", level="caution", priority=75, cool_h=12,
                 say="Battery low. Cut science, or turn on night mode.",
                 steps=[_order("cut", "Science down to 5", "load:science", ALLOC("science", 5),
@@ -270,9 +315,13 @@ def _ice_run(m):
     rng = random.Random(f"{m.site_id}:{m.seed}:steer:{runs}")
     good = rng.choice(["left", "right"])
     if m.difficulty == "commander":
+        sl = (physics.site_phys(m.site_id).get("slope") or {})   # LRO LOLA slopes at this site (physics.json)
+        flat, steep = (sl.get("median_deg") or {}).get("value"), (sl.get("p90_deg") or {}).get("value")
         first = _choice("route", "Pick a route on the slope map",
-                        [{"id": "ridge", "label": "Ridge route", "hint": "Flat. 2 h longer, less battery"},
-                         {"id": "slope", "label": "Crater slope", "hint": "Steep. 2 h faster, more battery"}],
+                        [{"id": "ridge", "label": "Ridge route",
+                          "hint": (f"Flatter, about {flat:.0f}°. " if flat else "Flat. ") + "2 h longer, less battery"},
+                         {"id": "slope", "label": "Crater slope",
+                          "hint": (f"Steep, about {steep:.0f}°. " if steep else "Steep. ") + "2 h faster, more battery"}],
                         hint="LOLA slope map")
     else:
         first = _order("send", "Send the rover for ice", "rover:collect_ice", ROVER("collect_ice"),
@@ -626,6 +675,19 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
         return f"Logged. It was {right}: quiet Sun is under {QUIET_RATE:g}.", {}
     if k == "repair" and sid in ("check", "test"):
         return s["ack"], {}
+    if k == "night_prep" and sid == "budget":
+        b = _budget(m)
+        if choice == "night":
+            return order({"type": "power_save", "on": True}, f"Night mode: {b['night']['kw']:.1f} kW. {_lasts(b['night']).capitalize()}.")
+        return f"Full power: {b['full']['kw']:.1f} kW. {_lasts(b['full']).capitalize()}. Watch the battery.", {}
+    if k == "night_prep" and sid == "duty":
+        d = int(choice)
+        share = round(physics.model()["heater_full_duty_share_pct"]["value"] * d / 100)
+        return order(ALLOC("heaters", share), f"Heaters at {d}% duty: {physics.heater_rated_kw() * d / 100:.2f} kW.")
+    if k == "low_power" and sid == "cut":
+        if choice == "night":
+            return order({"type": "power_save", "on": True}, "Night mode on. Battery saved.")
+        return order(ALLOC("science", 5), "Science trimmed. Battery saved.")
     if k == "storm_prep" and sid == "decide":
         if choice == "shelter":
             return order({"type": "shelter", "on": True}, "Crew sheltered. Better safe.")

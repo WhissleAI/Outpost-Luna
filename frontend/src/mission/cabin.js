@@ -58,6 +58,12 @@ const SWITCHES = [
 ];
 const ROVER = [["collect_ice", "Ice", "ice"], ["explore", "Explore", "explore"], ["return", "Home", "outpost"]];
 const ic = (n, size = 18) => icon(n, { size });
+/** The "Why?" cards (docs/PHYSICS.md): one small button per gauge; the card's words come from the sim (state.why). */
+export const WHY = { power: "Solar power", battery: "Battery", life_support: "Life support", dose: "Radiation dose", heaters: "Heaters",
+  shields: "Shields", rover: "Rover and ice" };
+const whyBtn = id => `<button type="button" class="cb-whyb" data-why="${id}" aria-label="Why? ${esc(WHY[id])}" title="Why?">${icon("info", { size: 14 })}</button>`;
+/** Engineer mode (Settings → Level): gauges in real units, from state.units (physics.py). */
+const kw = v => `${(+v || 0).toFixed(Math.abs(+v || 0) < 10 ? 1 : 0)} kW`;
 const VIEW_ICON = { orbit: "orbit", site: "site", rover: "rover", earth: "earth" };
 
 export function createCabin(root, o = {}) {
@@ -72,7 +78,7 @@ export function createCabin(root, o = {}) {
               <button type="button" class="cb-toggle" data-sw="${id}" aria-pressed="false" aria-label="${esc(label)}"><i aria-hidden="true"></i></button>
               ${guarded ? `<button type="button" class="cb-guard" data-guard="${id}" aria-pressed="false" aria-label="${esc(label)} cover: closed">${ic("lock", 16)}</button>` : ""}
             </div>
-            <span class="cb-swl">${esc(label)}</span><span class="cb-swst" aria-hidden="true"></span>
+            <span class="cb-swl">${esc(label)}${id === "heaters" ? whyBtn("heaters") : ""}</span><span class="cb-swst" aria-hidden="true"></span>
           </div>`; };
   root.innerHTML = `
   <div class="cb">
@@ -121,7 +127,7 @@ export function createCabin(root, o = {}) {
       <div class="cb-grp" data-panel="rover" role="group" aria-label="Rover panel">
         <div class="cb-plate cb-rv"><h3>Rover</h3>
           <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
-          <span class="cb-rvst" id="cbRvSt"></span>
+          <div class="cb-rvrow"><span class="cb-rvst" id="cbRvSt"></span>${whyBtn("rover")}</div>
           <svg class="cb-route" id="cbRoute" viewBox="0 0 200 64" aria-hidden="true"></svg>
           <div class="cb-info" id="cbInfoRv"></div>
         </div>
@@ -130,7 +136,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-info" id="cbInfoRad"></div>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
-            <span class="cb-shl">${pretend("Shields")}</span>
+            <span class="cb-shl">${pretend("Shields")}${whyBtn("shields")}</span>
             <button type="button" class="cb-mini" id="cbShMinus" aria-label="Shields down 10">−</button>
             <div class="cb-knob" id="cbKnob" role="slider" tabindex="0" aria-label="Shield power" aria-valuemin="0" aria-valuemax="60" aria-valuenow="0">
               <svg viewBox="0 0 80 80" aria-hidden="true"><circle class="k-track" cx="40" cy="40" r="32" pathLength="100"/><circle class="k-val" id="cbKval" cx="40" cy="40" r="32" pathLength="100"/></svg>
@@ -157,6 +163,12 @@ export function createCabin(root, o = {}) {
       </div>
     </section>
 
+    <aside class="cb-why" id="cbWhy" hidden role="dialog" aria-modal="false" aria-labelledby="cbWhyT">
+      <header><b id="cbWhyT"></b><button type="button" class="cb-why-x" id="cbWhyX" aria-label="Close the Why card">${ic("close", 14)}</button></header>
+      <p class="cb-why-text" id="cbWhyText" aria-live="polite"></p>
+      <p class="cb-why-f" id="cbWhyF"></p><p class="cb-why-eq" id="cbWhyEq"></p>
+      <p class="cb-why-src" id="cbWhySrc"></p>
+    </aside>
     <section class="cb-commrow" aria-label="Radio">
       <div class="cb-capwrap"><p class="cb-caption" id="cbCap"><b id="cbCapWho">CAPCOM</b> <span id="cbCapTxt">Standing by.</span></p><div class="cb-capslot" id="cbCapSlot"></div></div>
       <div class="cb-askslot" id="cbAskSlot" role="group" aria-label="Talk to CAPCOM"></div>
@@ -268,28 +280,80 @@ export function createCabin(root, o = {}) {
     glassEl.classList.toggle("is-alarm", masterOn);
   }
 
+  // ---- "Why?" cards: tap a gauge's (i), press I, or ask "why is power low?" (docs/PHYSICS.md) ----
+  let whyId = null, whyT = null, whyFrom = null;
+  function whyCard(id) { return st && st.why && st.why[id] ? st.why[id] : null; }
+  function placeWhy() {
+    const el = q("#cbWhy"), vb = q(".cb-viewbar"), cab = q(".cb"); if (!el || el.hidden || !cab) return;
+    const C = cab.getBoundingClientRect(), V = vb && vb.getClientRects().length ? vb.getBoundingClientRect() : null;
+    el.style.top = `${Math.round((V ? V.bottom : C.top + 120) - C.top + 8)}px`;
+    el.style.right = `${Math.round(V ? C.right - V.right : 16)}px`;
+  }
+  function paintWhy() {
+    const el = q("#cbWhy"); if (!el || el.hidden || !whyId) return;
+    const c = whyCard(whyId); if (!c) { closeWhy(); return; }
+    q("#cbWhyT").innerHTML = c.pretend ? pretend(c.title) : esc(c.title);
+    if (q("#cbWhyText").textContent !== c.text) q("#cbWhyText").textContent = c.text;
+    const f = q("#cbWhyF"), eq = q("#cbWhyEq");
+    f.textContent = c.formula || ""; f.hidden = !c.formula;
+    eq.textContent = st && st.engineer && c.eng ? c.eng : ""; eq.hidden = !(st && st.engineer && c.eng);   // Engineer: the equation, with numbers
+    const srcs = c.sources && c.sources.length ? c.sources : c.source ? [c.source] : [];
+    q("#cbWhySrc").innerHTML = srcs.length ? "Source: " + srcs.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(" · ") : "";
+  }
+  function openWhy(id, from) {
+    const c = whyCard(id); if (!c) return null;
+    whyId = id; whyFrom = from; const el = q("#cbWhy"); el.hidden = false; el.dataset.why = id;
+    paintWhy(); placeWhy();
+    root.querySelectorAll(".cb-whyb.is-open").forEach(n => n.classList.remove("is-open"));
+    root.querySelectorAll(`.cb-whyb[data-why="${id}"]`).forEach(n => n.classList.add("is-open"));
+    clearTimeout(whyT); whyT = setTimeout(closeWhy, 20000);   // it goes away by itself; the kid can close it sooner
+    if (from === "key") requestAnimationFrame(() => { const x = q("#cbWhyX"); if (x) x.focus({ preventScroll: true }); });
+    return c;
+  }
+  function closeWhy() {
+    clearTimeout(whyT); const el = q("#cbWhy"); if (!el || el.hidden) return;
+    const back = root.querySelector(`.cb-whyb[data-why="${whyId}"]`), had = el.contains(document.activeElement);
+    el.hidden = true; whyId = null; root.querySelectorAll(".cb-whyb.is-open").forEach(n => n.classList.remove("is-open"));
+    // keyboard / controller: focus goes back to the (i) it came from (a tap or a voice ask leaves focus alone, so the
+    // seat view never dollies into a console just because a card closed)
+    if (had && back && whyFrom === "key") back.focus({ preventScroll: true });
+  }
+  q("#cbWhyX").onclick = () => closeWhy();
+  q("#cbWhy").addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeWhy(); } });
+  // capture on the root: a tap on (i) opens its card even in the seat view (where a tap on a console opens the console)
+  const onWhyTap = e => { const b = e.target.closest && e.target.closest("[data-why]"); if (!b || !root.contains(b)) return;
+    e.preventDefault(); e.stopPropagation(); const c = whyId === b.dataset.why ? (closeWhy(), null) : openWhy(b.dataset.why, e.detail === 0 ? "key" : "tap"); if (c) cb.onWhy && cb.onWhy(c, "tap"); };   // detail 0: Enter or a controller A
+  // [qa] root (#mCabin) outlives this cabin: both listeners go in dispose()
+  root.addEventListener("click", onWhyTap, true); addEventListener("resize", placeWhy);
+  const whyOff = () => { root.removeEventListener("click", onWhyTap, true); removeEventListener("resize", placeWhy); clearTimeout(whyT); };
+
   // ---- display pages ----
   const bar = (v, max = 100, limit = null) => `<span class="du-bar${limit != null && v / max >= limit ? " is-red" : ""}"><i style="width:${clamp(v / max * 100)}%"></i>${limit != null ? `<em style="left:${limit * 100}%"></em>` : ""}</span>`;
   const row = (k, v, cls = "") => `<div class="du-row ${cls}"><span>${k}</span><b>${v}</b></div>`;
-  const big = (name, val, unit, warn) => `<header class="du-head${warn ? " is-warn" : ""}"><span>${name}</span><b>${val}<small>${unit}</small></b></header>`;
+  const big = (name, val, unit, warn, why) => `<header class="du-head${warn ? " is-warn" : ""}"><span>${name}${why ? whyBtn(why) : ""}</span><b>${val}<small>${unit}</small></b></header>`;
   function page(p) {
     const s = st; if (!s) return "";
     const r = s.resources, e = s.env, L = s.loads, lim = r.dose_limit_msv || 50;
     const sunCh = e.next_sun_change_h != null ? row(e.in_sun ? "Sunset in" : "Sunrise in", `${Math.round(e.next_sun_change_h)} h`, e.in_sun && e.next_sun_change_h <= 6 ? "is-warn" : "") : "";
-    if (p === "PWR") return `${big("Power", Math.round(r.power_pct), "%", r.power_pct < 25)}${bar(r.power_pct)}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
+    const U = s.engineer && s.units ? s.units : null;   // Engineer: real units (W, kWh, K, % state of charge)
+    const panels = row(`Panels${whyBtn("power")}`, U ? kw(U.solar_kw) : s.units ? `${Math.round(s.units.lit_pct)}%` : (e.in_sun ? "Lit" : "Dark"));
+    if (p === "PWR") return `${U ? big("Battery", Math.round(U.battery_kwh), ` kWh · ${Math.round(r.power_pct)}%`, r.power_pct < 25, "battery") : big("Power", Math.round(r.power_pct), "%", r.power_pct < 25, "battery")}${bar(r.power_pct)}${panels}${U ? row("Load", kw(U.load_kw)) + row("Net", `${U.net_kw >= 0 ? "+" : "−"}${kw(Math.abs(U.net_kw))}`, U.net_kw < 0 ? "is-warn" : "") : ""}${sunCh}${s.power_save ? row("Night mode", "On") : ""}
       <div class="du-loads" role="listbox" aria-label="Power to each system">${LOADS.map(([k, n], i) => `<button type="button" role="option" class="du-load${i === sel ? " is-sel" : ""}" data-k="${k}" data-i="${i}" aria-selected="${i === sel}" aria-label="${esc(n)}: ${Math.round(L[k] || 0)} percent"><span>${k === "shields" || k === "greenhouse" ? pretend(n) : esc(n)}</span><i style="--w:${clamp(L[k])}%"></i><b>${Math.round(L[k] || 0)}</b></button>`).join("")}</div>`;
-    if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25)}${bar(r.life_support_pct)}
-      ${row("Air system", Math.round(L.life_support) + "%")}${row(pretend("Greenhouse"), Math.round(L.greenhouse) + "%")}${row("Heaters", Math.round(L.heaters) + "%")}`;
+    if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25, "life_support")}${bar(r.life_support_pct)}
+      ${row("Air system", Math.round(L.life_support) + "%")}${row(pretend("Greenhouse"), Math.round(L.greenhouse) + "%")}${row(`Heaters${whyBtn("heaters")}`, U ? `${kw(U.heater_kw)} · ${U.heater_duty_pct}% duty` : Math.round(L.heaters) + "%")}${U && U.outside_k != null ? row("Outside", `${U.outside_k} K · ${U.outside_c} °C`) : ""}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
-      return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7)}${bar(r.dose_msv, lim, .8)}
+      return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7, "dose")}${bar(r.dose_msv, lim, .8)}
       ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(pretend("Shields"), Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
     return `${big("Comms", e.earth_visible ? "Open" : "Closed", "", false)}
       ${row(e.earth_visible ? "Radio delay" : "Next window", e.earth_visible ? `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way` : `${e.next_comm_window_h ?? "?"} h`)}
       <ol class="du-log">${logLines.slice(-3).map(l => `<li><b>${esc(l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM")}</b> ${esc(l.text)}</li>`).join("")}</ol>`;
   }
   function paintDus() {
+    const fw = document.activeElement && document.activeElement.closest && document.activeElement.closest(".cb-screen [data-why]");
+    const fwKey = fw ? [fw.closest(".cb-screen").id, fw.dataset.why] : null;   // a focused "Why?" survives the re-render
     [0, 1, 2].forEach(d => {
       const scr = q("#cbDu" + d); scr.innerHTML = page(pages[d]); scr.dataset.page = pages[d];
+      if (fwKey && fwKey[0] === scr.id) { const n = scr.querySelector(`[data-why="${fwKey[1]}"]`); if (n) n.focus({ preventScroll: true }); }
 
       scr.querySelectorAll(".du-load").forEach(b => b.onclick = () => { sel = +b.dataset.i; paintDus(); const n = q(`#cbDu${d} .du-load[data-i="${sel}"]`); if (n) n.focus(); });
       const act = q("#cbAct" + d);
@@ -344,7 +408,8 @@ export function createCabin(root, o = {}) {
   function paintInfo(s) {
     const r = s.resources, e = s.env || {}, L = s.loads, rv = s.rover || {}, lim = r.dose_limit_msv || 50;
     const hab = q("#cbInfoHab"); if (hab) hab.innerHTML = irow("Life support", Math.round(r.life_support_pct) + "%", mbar(r.life_support_pct, 100, r.life_support_pct < 25 ? "is-warn" : ""))
-      + irow(pretend("Greenhouse"), Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0)) + irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0));
+      + irow(pretend("Greenhouse"), Math.round(L.greenhouse || 0) + "%", mbar(L.greenhouse || 0))
+      + (s.engineer && s.units ? irow("Heaters", `${kw(s.units.heater_kw)} · ${s.units.heater_duty_pct}%`, mbar(s.units.heater_duty_pct)) : irow("Heaters", Math.round(L.heaters || 0) + "%", mbar(L.heaters || 0)));
     const obj = q("#cbObj"), O0 = s.objectives || null;
     const O = Array.isArray(O0) ? O0 : O0 ? Object.entries(O0).filter(([, v]) => v && typeof v === "object" && "goal" in v)
       .map(([k, v]) => ({ text: `${k === "ice" ? "Ice" : k === "science" ? "Science" : k} ${Math.round(v.got || 0)} / ${v.goal}`, done: !!v.met })) : null;
@@ -411,7 +476,7 @@ export function createCabin(root, o = {}) {
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
     q("#cbEndSub").textContent = s.over ? "Mission over" : o.mode === "ride" ? `Shift ${s.shift} of 4` : `Jump to shift ${s.shift % 4 + 1}`;
     paintProg(s);
-    applyCue(false); paintInfo(s);
+    applyCue(false); paintInfo(s); paintWhy();
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 
@@ -588,7 +653,8 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); escOff(); escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
+    dispose() { clearInterval(offT); clearTimeout(momentT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+      escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
     setWindows(w) { wins = w || null; if (st) paintInfo(st); },
@@ -621,6 +687,8 @@ export function createCabin(root, o = {}) {
     /** The "what now" strip on the window: {text, level} or null (the full task card: card()). */
     objective(o) { card(o); },
     card: (c, opts) => card(c, opts),
+    /** Open the "Why?" card for a gauge (power | battery | life_support | dose | heaters | shields | rover); returns it. */
+    why: (id, from = "voice") => openWhy(id, from), whyClose: () => closeWhy(), get whyOpen() { return whyId; },
     clock: c => paintTime(c),
     /** The window's frame between whole hours (the live clock's `live` telemetry): the clock reads smoothly. */
     frame: f => { if (st && f && f.mission_time_h != null) paintClock(st, f.mission_time_h); },

@@ -1,0 +1,176 @@
+{
+ "horizons": {
+  "title": "JPL Horizons API (Sun and Earth over each site)",
+  "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Sun height above the ridge line: panel power, day and night"
+ },
+ "sunfact": {
+  "title": "NASA Sun Fact Sheet",
+  "url": "https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "The Sun's disk is about half a degree wide: why panels fade as it sets"
+ },
+ "vsat": {
+  "title": "NASA: Vertical solar array technologies for the lunar surface (VSAT)",
+  "url": "https://www.nasa.gov/technology/nasa-industry-to-mature-vertical-solar-array-technologies-for-lunar-surface/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Polar panels stand upright to catch the low Sun"
+ },
+ "tsi": {
+  "title": "NASA GSFC: Solar irradiance (TSIS-1, SORCE)",
+  "url": "https://earth.gsfc.nasa.gov/climate/projects/solar-irradiance/science",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "1361 W/m² of sunlight: the Engineer panel equation"
+ },
+ "sst_soa": {
+  "title": "NASA Small Spacecraft Technology State of the Art: Power",
+  "url": "https://www.nasa.gov/smallsat-institute/sst-soa/power-subsystems/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "30% multi-junction cells and 150-270 Wh/kg Li-ion: panel area and battery"
+ },
+ "sh_tcs": {
+  "title": "Schunk et al. 2022, NASA MSFC Surface Habitat thermal and power (NTRS 20210026557)",
+  "url": "https://ntrs.nasa.gov/citations/20210026557",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "10-15 kW array and 155-540 kWh night energy: anchors the outpost's kW and kWh"
+ },
+ "fsp": {
+  "title": "NASA Fission Surface Power",
+  "url": "https://www.nasa.gov/exploration-systems-development-mission-directorate/fission-surface-power/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "40 kW reactor: context for the backup generator"
+ },
+ "databook": {
+  "title": "NASA Lunar Surface Data Book, M2M-30044 (NTRS 20250002845)",
+  "url": "https://ntrs.nasa.gov/citations/20250002845",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Sun at most 7.5 degrees up at the pole; 150 h darkness; LCROSS 'about five percent'"
+ },
+ "dsne": {
+  "title": "NASA DSNE, SLS-SPEC-159 Rev H (NTRS 20205007447)",
+  "url": "https://ntrs.nasa.gov/citations/20205007447",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Regolith thermal properties and reference temperatures"
+ },
+ "outpost_model": {
+  "title": "Outpost Luna game scale (docs/PHYSICS.md)",
+  "url": "https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/PHYSICS.md",
+  "licence": "game rule",
+  "use": "Game percent to kW and kWh: 250 kWh battery from a 15 kW array"
+ },
+ "game": {
+  "title": "Outpost Luna game rule",
+  "url": "https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/PHYSICS.md",
+  "licence": "game rule",
+  "use": "Pretend shields; heater duty scale"
+ },
+ "li_ion": {
+  "title": "NASA Small Spacecraft Technology State of the Art: Energy storage",
+  "url": "https://www.nasa.gov/smallsat-institute/sst-soa/power-subsystems/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Li-ion specific energy (150-270 Wh/kg)"
+ },
+ "bvad": {
+  "title": "NASA Life Support Baseline Values and Assumptions Document (NTRS 20210024855)",
+  "url": "https://ntrs.nasa.gov/citations/20210024855",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "0.9 kg of oxygen per person per day: the life support card"
+ },
+ "donki": {
+  "title": "NASA CCMC DONKI (real solar particle events)",
+  "url": "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "The storms you shelter from"
+ },
+ "artemis1_shelter": {
+  "title": "DLR: Orion radiation protection, Artemis I findings",
+  "url": "https://www.dlr.de/en/latest/news/2024/orion-spacecraft-radiation-protection-tested-initial-findings-from-artemis-i-moon-mission",
+  "licence": "DLR news, cited",
+  "use": "Shelter cuts storm dose about 4x"
+ },
+ "change4": {
+  "title": "Zhang et al. 2020, First measurements of the radiation dose on the lunar surface (Chang'e 4 LND)",
+  "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7518862/",
+  "licence": "journal paper: numbers cited only (CC BY-NC)",
+  "use": "Quiet-Moon dose 0.057 mSv/h, quality factor 4.3; CRaTER over the same days"
+ },
+ "crater": {
+  "title": "Schwadron et al. 2012, Lunar radiation environment from LRO CRaTER, JGR 117",
+  "url": "https://prediccs.sr.unh.edu/papers/schwadron2011JE003978.pdf",
+  "licence": "journal paper: numbers cited only",
+  "use": "CRaTER quiet-time cosmic rays 11.7 cGy/yr: cross-checks the Chang'e 4 baseline"
+ },
+ "crater_events": {
+  "title": "LRO CRaTER team: solar particle event list",
+  "url": "https://crater-web.sr.unh.edu/data/craterProducts/events/events.txt",
+  "licence": "LRO CRaTER team data",
+  "use": "Real storm peaks (Jan, Mar 2012): thousands of times the quiet rate"
+ },
+ "diviner": {
+  "title": "Williams et al. 2019, Seasonal polar temperatures on the Moon (LRO Diviner maps)",
+  "url": "https://luna1.diviner.ucla.edu/~jpierre/diviner/level4_polar/",
+  "licence": "journal paper: numbers cited only; maps by the Diviner team from PDS data",
+  "use": "Night and winter ground temperature at each site: the heaters card"
+ },
+ "diviner_prp": {
+  "title": "LRO Diviner Polar Resource Product (PDS LRO-L-DLRE-5-PRP-V2.0, doi:10.17189/1520650)",
+  "url": "https://pds-geosciences.wustl.edu/lro/urn-nasa-pds-lro_diviner_derived1/data_derived_prp/",
+  "licence": "NASA PDS archive, open (cite the data set)",
+  "use": "Annual max and mean temperature, ice-stability depth at each site"
+ },
+ "diviner_team": {
+  "title": "LRO Diviner team: new seasonal polar data products",
+  "url": "https://www.diviner.ucla.edu/single-post/2020/07/20/new-diviner-seasonal-polar-data-products",
+  "licence": "Diviner team page, cited",
+  "use": "110 K: cold enough to trap ice"
+ },
+ "lola_slope": {
+  "title": "LRO LOLA slope map LDSM_85S_40M (PDS LRO-L-LOLA-4-GDR-V1.0)",
+  "url": "http://imbrium.mit.edu/DATA/LOLA_GDR/POLAR/IMG/",
+  "licence": "NASA PDS archive, open (cite the data set)",
+  "use": "Slopes at each site: the rover card, the route choice"
+ },
+ "lola_illum": {
+  "title": "LRO LOLA average illumination and Earth visibility (NASA PGDA product 69)",
+  "url": "https://pgda.gsfc.nasa.gov/products/69",
+  "licence": "NASA PDS archive, open (cite the data set)",
+  "use": "Ground-level sunlight % per site (a cross-check; see SOURCES.md)"
+ },
+ "lcross": {
+  "title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330",
+  "url": "https://doi.org/10.1126/science.1186986",
+  "licence": "journal paper: numbers cited only",
+  "use": "5.6% water by mass in polar crater soil: the ice card and debrief"
+ },
+ "lend": {
+  "title": "LRO LEND polar hydrogen (NTRS 20180004020)",
+  "url": "https://ntrs.nasa.gov/citations/20180004020",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Average polar soil is only ~0.1% water: why the rover drives into the dark"
+ },
+ "viper": {
+  "title": "NASA VIPER in depth",
+  "url": "https://science.nasa.gov/mission/viper/in-depth/",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "450 kg, 450 W: a real polar rover for scale"
+ },
+ "viper_ntrs": {
+  "title": "Bluethmann 2024, VIPER rover (NTRS 20240013903)",
+  "url": "https://ntrs.nasa.gov/citations/20240013903",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "5.4 kWh battery, 15 degree slope limit"
+ },
+ "a15_report": {
+  "title": "Apollo 15 Mission Report (NTRS 19720021182)",
+  "url": "https://ntrs.nasa.gov/citations/19720021182",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "The Apollo rover used about 67 Wh per km"
+ },
+ "regolith_shield": {
+  "title": "NASA NTRS 19890004839, Solar-flare shielding with regolith at a lunar-base site",
+  "url": "https://ntrs.nasa.gov/citations/19890004839",
+  "licence": "NASA, public (credit NASA; no endorsement implied)",
+  "use": "Real shielding is mass (the pretend shields card)"
+ }
+}

@@ -319,6 +319,54 @@ def to_steer(pg):
     return False
 
 
+# [physics] the "Why?" (i) buttons and the card they open (docs/PHYSICS.md): every gauge has one, none crowds its
+# label or row, and the open card sits clear of the Now panel, the deck and the view bar, inside the window.
+WHY_MEASURE = """() => {
+  const vis = e => !!(e && !e.hidden && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+  const R = e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
+  const ids = [...new Set([...document.querySelectorAll('.cb-whyb')].map(b => b.dataset.why))];
+  // in layout terms (the consoles are CSS-projected): the (i) never overflows its row, and never sits on its label
+  // (rows the seat view hides are checked when their panel is open: the tool opens each one)
+  const crowd = [...document.querySelectorAll('.cb-whyb')].filter(b => b.getClientRects().length).map(b => { const row = b.closest('.du-head, .du-row, .cb-swl, .cb-shl, .cb-rvrow');
+    return row && (row.scrollWidth > row.clientWidth + 1 || b.offsetWidth < 14) ? (b.dataset.why + ' in ' + row.className) : null; }).filter(Boolean);
+  const card = document.getElementById('cbWhy');
+  return { ids, crowd, card: card && vis(card) ? R(card) : null, now: vis(document.getElementById('cbNow')) ? R(document.getElementById('cbNow')) : null,
+    deck: vis(document.querySelector('.cb-deck')) ? R(document.querySelector('.cb-deck')) : null,
+    viewbar: vis(document.querySelector('.cb-viewbar')) ? R(document.querySelector('.cb-viewbar')) : null, vw: innerWidth, vh: innerHeight };
+}"""
+
+
+def why_checks(pg):
+    out = []
+    w = pg.evaluate(WHY_MEASURE)
+    out += [f"a Why? button crowds its row: {x}" for x in w["crowd"]]
+    shown = set()
+    for panel in ("displays", "habitat", "rover", "radiation"):   # each (i) is visible once its panel is open
+        pg.evaluate(f"() => window.__cabinTest && window.__cabinTest.panel('{panel}')")
+        pg.wait_for_timeout(1200)
+        shown |= set(pg.evaluate("() => [...document.querySelectorAll('.cb-whyb')].filter(b => b.getClientRects().length && b.offsetWidth >= 14).map(b => b.dataset.why)"))
+        out += [f"a Why? button crowds its row ({panel} open): {x}" for x in pg.evaluate(WHY_MEASURE)["crowd"]]
+    pg.evaluate("() => window.__cabinTest && window.__cabinTest.panel(null)")
+    pg.wait_for_timeout(1200)
+    miss = {"power", "battery", "life_support", "dose", "heaters", "shields", "rover"} - shown
+    if miss:
+        out.append(f"gauges with no visible Why? button: {sorted(miss)}")
+    pg.evaluate("() => window.__outpost.missionUI.nav('why', 'battery')")
+    pg.wait_for_timeout(400)
+    w = pg.evaluate(WHY_MEASURE)
+    c = w["card"]
+    if not c:
+        out.append("the Why? card did not open")
+    else:
+        if c[0] < 0 or c[1] < 0 or c[2] > w["vw"] or c[3] > w["vh"]:
+            out.append(f"the Why? card is off-screen: {c}")
+        for k in ("now", "deck", "viewbar"):
+            if w[k] and hits(c, w[k]):
+                out.append(f"the Why? card covers the {k}")
+    pg.evaluate("() => { const x = document.getElementById('cbWhyX'); if (x) x.click(); }")
+    return out
+
+
 def main(base, shots, tag, sizes, camera=True, navigator_only=False):
     bad = {}
     with sync_playwright() as p:
@@ -361,6 +409,7 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False):
             bad[f"{vw}x{vh}"] = f
             if shots:
                 pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}.jpg"), type="jpeg", quality=70, timeout=300000)
+            f += why_checks(pg)   # after the seat-view checks: it opens each panel, then comes back to the seat
             if camera:
                 cf, times = camera_checks(pg, f"{tag}-{vw}x{vh}", shots)
                 f += cf

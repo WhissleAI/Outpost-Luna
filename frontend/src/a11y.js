@@ -181,7 +181,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span class="set-cn"><b>${escH(p.callsign || "New cadet")}</b><small>${p.qualified ? "Qualified" : `${p.patches} of ${O.patchTotal || 9} patches`}</small></span>
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
-        ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"]])}
+        ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"], ["engineer", "Engineer · real units"]])}
         <p class="set-help rs-link">Start over with a new cadet? <button type="button" class="btn-link" data-sec-go="reset">Reset</button></p>
         <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>

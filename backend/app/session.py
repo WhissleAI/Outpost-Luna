@@ -59,7 +59,7 @@ SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlin
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "engine": "os", "steer_voice": None, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
                  "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
                  "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
-LEVELS = ("cadet", "commander")
+LEVELS = ("cadet", "commander", "engineer")   # engineer: Commander missions in real units (docs/PHYSICS.md)
 LISTEN = ("handsfree", "ptt")
 OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
 

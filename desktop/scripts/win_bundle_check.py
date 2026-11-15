@@ -186,6 +186,7 @@ MUST = {
     "ear (libarc binding) + Steer engine": ["model_server/app/nft2.py", "model_server/app/arc_ear.py",
                                             "model_server/app/tts_steer.py"],
     "first-run assets API": ["backend/app/assets_api.py"],
+    "NASA physics tables (docs/PHYSICS.md)": ["backend/data/physics/physics.json", "backend/app/mission/physics.py"],
     "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
     "NASA media (Moon map)": ["backend/data/media/img/moon4k.jpg"],
     "frontend": ["frontend/index.html"],
