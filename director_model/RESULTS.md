@@ -609,3 +609,178 @@ Room noise is mixed in at every screen.
 - **xl:** retrain with the cost-sensitive command loss (`--fp-exec`). It is the best raw model, and its gate failures are
   command fills.
 - **`test_log`:** from the first opted-in playtest.
+
+## Round 8 — 2026-11-15 (every capability: coverage sweep, video / prep / OS-voice echo / gestures / new lessons) — NOT SHIPPED (gate FAIL, both candidates)
+
+`make director-r8` was run end to end on main 4b4b7e1, after every round-8 branch had merged (video overlay, Mission
+prep, gestures, OS voices + the Nora voice pack, the new lessons). Nothing is pending: every class set gates.
+`DIRECTOR_MODEL` stays `shadow`. The shipped weights stay r4 s. No export or weight swap was prepared (owner: the ear
+is changing, see round 9 below).
+
+### Data
+
+- **Inventory:** 383 cells (`coverage.json`). The round-7 generator covered 73 of them. The run added the coverage
+  sweep: 1,200 train sessions, plus `cls_coverage` (10 per gap cell, 3,009 turns).
+- **Real Arc decodes with the hot lists:** 2,958 in total.
+  - Kid turns: train 900, val 302, test 1,239.
+  - The app's own lines: Steer app voices (78) and, new, the OS voices / Nora pack through a speaker→mic chain (308).
+  - NASA narration and music through the speaker (131).
+  - The first pass skipped the 439 OS-voice and video jobs (a decode-order bug, now fixed: `real_ear --order mix`
+    keeps every non-train group). They were decoded afterwards, and `cls_voice_echo_os` / `cls_video_echo` were
+    regenerated and re-scored with each model's fitted policy (`director_model/reeval.py`). The train set still saw
+    those two classes as text, not as real decodes.
+- **ds_r8:**
+  - train: 2,400 sessions / 231,368 steps, plus the sweep;
+  - val: 200;
+  - every test set;
+  - 17 class sets of about 160 turns, plus `cls_coverage`.
+- **Models:**
+  - m: 83,687 params, best step 2,200;
+  - xl: 743,069 params, false-command penalty 0.5, best step 2,600;
+  - F = 242.
+
+### Gate: FAIL for both candidates (`director_model/runs/2026-11-15-r8/report.md`)
+
+Guarded `on`: act accuracy / wrong actions. Raw act is the model alone. Every set gates.
+
+| set | turns | rules | **shipped r4 s** | m | xl | raw act: r4 s / m / xl |
+|---|---|---|---|---|---|---|
+| test_clean | 2001 | 0.787 / 132 | **0.792 / 132** | 0.788 / 121 | 0.789 / 129 | 0.927 / 0.944 / 0.956 |
+| test_asr | 1998 | 0.703 / 164 | **0.709 / 162** | 0.706 / 153 | 0.712 / 156 | 0.897 / 0.883 / 0.901 |
+| test_real | 920 | 0.589 / 67 | **0.590 / 67** | 0.588 / 69 | 0.586 / 64 | 0.841 / 0.812 / 0.800 |
+| test_ear | 200 | 0.720 / 20 | **0.720 / 19** | 0.720 / 22 | 0.715 / 13 | 0.720 / 0.820 / 0.800 |
+| test_h40 | 40 | 0.450 / 3 | **0.450 / 1** | 0.575 / 3 | 0.575 / 3 | 0.950 / 0.825 / 0.900 |
+| test_h40_asr | 40 | 0.400 / 4 | **0.400 / 3** | 0.475 / 4 | 0.450 / 3 | 0.900 / 0.750 / 0.800 |
+| test_q80 | 80 | 0.850 / 1 | **0.850 / 1** | 0.850 / 1 | 0.850 / 1 | 0.887 / 0.938 / 0.863 |
+| test_q80_asr | 80 | 0.812 / 0 | **0.812 / 0** | 0.812 / 0 | 0.812 / 0 | 0.812 / 0.925 / 0.863 |
+| test_gold | 19 | 0.789 / 3 | **0.789 / 3** | 0.789 / 3 | 0.789 / 3 | 0.842 / 0.895 / 0.895 |
+| cls_chatter | 160 | 0.912 / 2 | **0.912 / 2** | 0.919 / 2 | 0.925 / 2 | 0.456 / 0.838 / 0.750 |
+| cls_echo | 160 | 0.844 / 10 | **0.856 / 10** | 0.900 / 7 | 0.931 / 2 | 0.163 / 0.963 / 0.963 |
+| cls_offer | 160 | 0.700 / 3 | **0.700 / 3** | 0.700 / 3 | 0.700 / 3 | 0.000 / 0.812 / 0.562 |
+| cls_panel | 160 | 0.775 / 12 | **0.775 / 12** | 0.775 / 12 | 0.781 / 11 | 0.456 / 0.725 / 0.713 |
+| cls_help | 160 | 0.681 / 0 | **0.681 / 0** | 0.681 / 0 | 0.681 / 0 | 0.000 / 0.700 / 0.669 |
+| cls_mode | 159 | 0.805 / 1 | **0.805 / 1** | 0.805 / 1 | 0.805 / 1 | 0.000 / 0.761 / 0.623 |
+| cls_globe | 160 | 0.738 / 4 | **0.738 / 4** | 0.738 / 4 | 0.738 / 4 | 0.725 / 0.887 / 0.863 |
+| cls_mishear | 160 | 0.719 / 18 | **0.700 / 18** | 0.719 / 18 | 0.688 / 18 | 0.719 / 0.731 / 0.644 |
+| cls_roomtalk | 159 | 0.843 / 3 | **0.874 / 3** | 0.855 / 3 | 0.843 / 3 | 0.371 / 0.811 / 0.786 |
+| cls_video_ctrl | 160 | 0.419 / 17 | **0.419 / 17** | 0.419 / 17 | 0.419 / 17 | 0.000 / 0.456 / 0.600 |
+| cls_video_echo | 140 | 1.000 / 0 | **1.000 / 0** | 1.000 / 0 | 1.000 / 0 | 0.086 / 1.000 / 1.000 |
+| cls_prep | 160 | 0.569 / 0 | **0.569 / 0** | 0.569 / 0 | 0.569 / 0 | 0.037 / 0.225 / 0.250 |
+| cls_prep_roomtalk | 160 | 0.925 / 0 | **0.938 / 0** | 0.925 / 0 | 0.925 / 0 | 0.294 / 0.806 / 0.775 |
+| cls_voice_echo_os | 160 | 0.812 / 4 | **0.819 / 4** | 0.900 / 2 | 0.950 / 2 | 0.194 / 0.887 / 0.919 |
+| cls_gesture_cooccur | 160 | 0.812 / 0 | **0.812 / 0** | 0.812 / 0 | 0.812 / 0 | 0.156 / 0.881 / 0.925 |
+| cls_lesson_new | 160 | 0.725 / 2 | **0.725 / 2** | 0.725 / 2 | 0.713 / 2 | 0.719 / 0.894 / 0.900 |
+| cls_offers_new | 160 | 0.562 / 18 | **0.562 / 18** | 0.562 / 0 | 0.562 / 0 | 0.000 / 0.637 / 0.794 |
+| cls_coverage | 3009 | 0.840 / 49 | **0.840 / 49** | 0.845 / 47 | 0.844 / 46 | 0.117 / 0.643 / 0.627 |
+| **all sets** | | 8,407 right / 537 wrong | **8,437 / 531** | 8,463 / 494 | 8,477 / 483 | |
+
+Fitted policies (val):
+
+| model | cmd | veto | ignore | ask | answer_ignore | nav |
+|---|---|---|---|---|---|---|
+| m | 0.9 | 0.98 | 0.9 | 0.7 | 0.7 | off |
+| xl | 0.995 | 0.9 | 0.95 | 0.7 | 0.7 | off |
+
+Why each candidate fails, by how much:
+
+- **m:**
+  - test_real: wrong actions 69 vs rules 67 (+2); act accuracy 0.588 vs 0.589 (1 turn of 920);
+  - test_ear: wrong actions 22 vs 20 (+2);
+  - cls_roomtalk regresses vs r4 s: 0.855 vs 0.874 (3 turns);
+  - cls_prep_roomtalk regresses vs r4 s: 0.925 vs 0.938 (2 turns).
+- **xl:**
+  - test_real: act accuracy 0.586 vs 0.589 (3 turns);
+  - test_ear: 0.715 vs 0.720 (1 turn);
+  - cls_mishear: 0.688 vs rules 0.719 (5 turns) and vs r4 s 0.700 (2 turns);
+  - cls_roomtalk regresses vs r4 s: 0.843 vs 0.874 (5 turns);
+  - cls_prep_roomtalk regresses vs r4 s: 0.925 vs 0.938 (2 turns);
+  - cls_lesson_new: 0.713 vs 0.725 (2 turns).
+- **Overall, both beat r4 s:**
+  - m: 37 fewer wrong actions, 26 more right acts;
+  - xl: 48 fewer wrong actions, 40 more right acts.
+  - xl alone cuts wrong actions on test_ear (13 vs 19), cls_echo (2 vs 10), cls_voice_echo_os and cls_offers_new
+    (0 vs 18).
+- **The loss pattern repeats:** the room-talk classes, where r4 s's ignore fill already wins, and the real-ear mishear
+  class.
+
+### What the round shows
+
+1. **The merged features are mostly a rules story.**
+   - `cls_video_echo` is 1.000 for everyone: the video screen ignores everything but its four controls.
+   - `cls_gesture_cooccur` is 0.81 with 0 wrong actions.
+   - `cls_video_ctrl` is 0.42 with 17 wrong actions. `VIDEO_CMDS` is exact-match only:
+     - phrases it lacks are ignored: "play the video", "wait pause";
+     - the ear's tails are ignored: "play the video with lena hargrove", "next pause at 12 p m";
+     - "close the video" heard as "pause the video" pauses instead of closing (the 17 wrong).
+     Round 7's fuzzy navigation and sound-alikes don't reach the video screen yet.
+   - `cls_prep` is 0.57. "not yet", "we don't have flour" and "give me a minute" fall outside `PREP_CMDS`; "give me a
+     minute" even parses as an order.
+   - `cls_offers_new` is 0.56 with 18 wrong actions for the rules:
+     - "okay" / "not now" on the practice offer are ignored;
+     - a mishear ("between dallas and houston") becomes a Houston call.
+     The candidates cut those wrong actions to 0.
+   These are router fixes, not model fixes. They are the next rules work.
+2. **The models learned the new negatives.**
+   - Raw act on OS-voice echo: 0.89 / 0.92 for m / xl, vs 0.19 for r4 s.
+   - Raw act on echo: 0.96, vs 0.16 for r4 s.
+   - Guarded, xl gets voice_echo_os to 0.95 vs 0.82 for r4 s.
+   - The gate still fails on room talk, where the shipped weights already silence better than the new fits.
+3. **The coverage sweep works for the rules and the models alike.** On `cls_coverage` (3,009 turns over every gap
+   cell): rules 0.840 / 49 wrong, m 0.845 / 47, xl 0.844 / 46.
+
+### Next: rules fixes before any model round
+
+- **The video screen:** run round 7's fuzzy span matching and sound-alikes on `VIDEO_CMDS`, and add "play the video"
+  and "wait pause".
+- **Mission prep:** add "not yet" / "give me a minute" (wait) and "we don't have it" (skip) to `PREP_CMDS`. A "where's
+  the flour" question should get a short answer, not be ignored.
+- **The practice offer:** "okay" / "not now" should take or decline it, as they do the other offers.
+
+### Round 9 plan: the Director on Arc Transcriber Space (NFT2, feat/arc-space)
+
+The new ear outputs:
+
+- the transcript;
+- inline entity tags;
+- names linked to per-screen lists (linked / abstain / not_in_list);
+- sound events;
+- device-directed.
+
+It deliberately ignores TTS audio. That changes both the Director's inputs and how its data is made.
+
+1. **Features: map the new outputs onto the slots the Director already has, and append the rest.**
+   - Reused:
+     - transcript → the words / `nlu_*` / lexicon features;
+     - device-directed → `dd`;
+     - the per-screen lists → the round-7 hot-list tiers. The app already sends step / names / screen lists, and they
+       become the NFT2 names lists, most relevant first.
+   - Appended:
+     - `link_state` (linked / abstain / not_in_list) and `link_p` per tier. This replaces `hot_*_sa`: the ear's own
+       linker, instead of our sound-alike score after the fact;
+     - `n_entities` by type (lunar feature, site, crew, mission, number);
+     - `sound_event` flags (laughter, music, speech-over-speech, beep), which matter for room talk, video audio and
+       the Houston beep;
+     - `ear_kind` = nft2.
+   - The Arc Mini `ear_conf` / `ear_alts` features stay. They read 0 when the ear doesn't provide them, so the
+     append-only layout holds.
+2. **Data: real voices only.**
+   - TTS-rendered kid turns come back mostly empty from NFT2. The real-ear cache must be rebuilt from real speech:
+     - the collection kit's sessions;
+     - opted-in turn logs (text only, so they can't be re-decoded; keep them on the text path);
+     - the 40-line ear eval, re-recorded by people.
+   - Until then, round 9 trains on the fitted error model plus whatever real sessions exist. The gate's `test_log`
+     (collected sessions) becomes the primary held-out set.
+   - The negatives move to real audio:
+     - the NASA video audio, which is real speech, so NFT2 transcribes it: keep `cls_video_echo` on real audio;
+     - room talk and multi-kid chatter, from the collection kit's "noisy" prompts.
+   - The OS-voice / Nora echo becomes a check that NFT2 really returns nothing: an empty decode is the expected
+     result, and the set measures what leaks through.
+3. **The collection kit feeds it directly.**
+   - `collect_import.py decode` gets an `--ear nft2` path: `Arc.from_pretrained("WhissleAI/arc-transcriber-space")`,
+     with each clip's stored hot lists passed as the NFT2 names list (most relevant first).
+   - It stores the link states, entities and sound events per clip.
+   - The manifest's prompted labels stay the gold.
+   - Target: the ~15 priority sessions (`docs/DIRECTOR_COLLECTION.md` §4) before round 9's gate, so `test_log` has 3+
+     real speakers per priority cell.
+4. **Gate:** unchanged. The round-8 class sets carry over on real audio, plus `test_log`. Rules fixes land first (the
+   section above), so the model is gated against the better rules.
