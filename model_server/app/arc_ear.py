@@ -1,35 +1,41 @@
-"""Arc as the ear: words, turns and metadata from one local model (WS /v1/stream?ear=arc).
+"""The ear: words, turns, names, sound events and device-directed speech from Arc Transcriber Space
+(WS /v1/stream?ear=arc; the model is app/arcmeta.py's, on libarc + ONNX Runtime, app/nft2.py).
 
-Arc v1.1 Mini with its decoder loaded (arcmeta.load, ARC_EAR=on) runs the built-in transcript (`transcript="builtin"`),
-so one stream gives the words, the endpoint and the metadata heads. Each connection gets its own Arc stream (per-stream
-state; the weights are shared and loaded once).
+How a turn is heard (one EarStream per connection, the model shared under its lock):
+  1. An energy VAD with an adaptive floor (classroom noise at a steady level reads as silence) opens a SEGMENT after
+     EAR_ONSET_CHUNKS voiced chunks, with EAR_PREROLL_S of audio before it.
+  2. While the segment is open, a partial decode (no events) runs every EAR_PARTIAL_EVERY_S (backing off to twice its
+     own cost, and only on the first EAR_PARTIAL_MAX_S). The first non-empty partial starts the TURN.
+  3. EAR_END_SILENCE_S of silence (or end_turn / stop, or EAR_MAX_TURN_S) closes it: one full decode gives the final
+     words, the names linked to the screen's list, the sound events and the device-directed head.
+A segment whose final decode has no words is not a turn: noise, or the app's own TTS voice leaking into the mic (the
+model is built not to transcribe TTS playback). Its `arc` message still goes out (speech=false, the sound events), so
+room noise is visible downstream without ever taking the floor.
 
-Messages (the shapes the browser already takes from the Deepgram Flux relay, docs/SESSION_CONTRACT.md):
-  {"t":"words","text","final"}   the whole current turn so far, in written form ("shields to 40"); a later partial may
-                                 revise earlier words; final=true once per turn, with the decoded final transcript
-  {"t":"turn","state":"start"|"eager"|"end"|"resumed","text"}
-      start    first non-empty partial of a turn (Arc's first voiced words)
-      eager    silence >= EAGER_SILENCE_S and Arc's command_complete p >= EAGER_CC_P (the turn sounds finished)
-      resumed  voiced audio again after eager, before end
-      end      Arc closed the utterance (its own pause rule), or silence >= EAR_END_SILENCE_S (0.5 s) -> Stream.end_turn()
-  {"t":"arc",...}                metadata summary, as in metadata-only mode (arcmeta.MetaStream._summary)
+Messages (the shapes the browser takes from the Deepgram Flux relay, docs/SESSION_CONTRACT.md, plus names):
+  {"t":"turn","state":"start","text"}       the first non-empty partial (or the final, when no partial had words)
+  {"t":"words","text","final":false}        the turn so far, written form; a later partial may revise earlier words
+  {"t":"arc", ...}                          per closed segment, BEFORE its final words: device_directed (the head's
+                                            p), directed (its thresholded flag), audio_events, speech, names, rtf
+  {"t":"words","text","final":true,"spoken","names":[...],"tags":[...],"conf":null,"alts":[]}
+                                            text = written form with linked names in the list's spelling ("Artemis
+                                            II", "Apollo 12"); spoken = the model's spoken form; names = [{heard,
+                                            entity, state: linked|abstain|not_in_list, p, tag, kind}]
+  {"t":"turn","state":"end","text"}
 
-Round 7 (app/hotbias.py): a context message with `hot` ({"step","names","screen"}, the backend's per-screen lists)
-biases the decoder toward those words and rescores the final n-best; the final `words` message then also carries
-`alts` (the other beams, written form), `conf` (mean token probability of the chosen beam) and `hot` ({"tier", "hits"}:
-which list the words matched).
-
-Silence is an energy VAD per chunk with an adaptive floor (Arc's own segmenter rule: quiet = below floor + margin, the
-floor being the 10th percentile of the last ~24 s), so classroom noise at a steady level reads as silence.
+Names (docs/LOCAL_EAR.md "Names lists"): the backend sends the screen's list ({"t":"context","names":[{name, kind,
+aliases}]}, most relevant first, <= EAR_MAX_NAMES) on every screen change; it takes effect from the next decode.
 """
 from __future__ import annotations
 
+import collections
 import time
 
 import numpy as np
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import arcmeta, hotbias
+from . import arcmeta
+from .nft2 import normalize_entry
 
 SR = arcmeta.SR
 
@@ -37,37 +43,43 @@ SR = arcmeta.SR
 class EarSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
-    arc_ear: str = "on"              # on: load Arc's decoder so /v1/stream?ear=arc works (~+0 MB: it ships in mini/)
-    ear_eager_silence_s: float = 0.25
-    ear_eager_cc_p: float = 0.5
-    ear_end_silence_s: float = 0.5   # eval: 0.6 -> p50 958 ms, 0.5 -> 880 ms (docs/LOCAL_EAR.md)
-    ear_pause_s: float = 0.5          # Arc segmenter: pause that closes an utterance >= min_s
-    ear_short_pause_s: float = 0.6    # ... and one shorter than min_s
-    ear_partial_every_s: float = 0.3
+    ear_end_silence_s: float = 0.5     # silence that closes a turn
+    ear_onset_chunks: int = 2          # voiced 80 ms chunks in a row that open a segment
+    ear_preroll_s: float = 0.3         # audio kept before the onset
+    ear_partial_every_s: float = 0.5   # partial decode cadence while a segment is open (0: no partials)
+    ear_partial_max_s: float = 8.0     # no partials past this much segment audio (the final still covers it all)
+    ear_max_turn_s: float = 15.0       # a segment this long is closed as a turn
     ear_vad_margin_db: float = 6.0
-    ear_auto_prev: bool = False       # Arc context memory: feed back what was said earlier
+    ear_max_names: int = 40            # the names list cap (the model card: <= 30-50, most relevant first)
 
 
 ear_settings = EarSettings()
 
 
 def written(text: str) -> str:
+    """Spoken form -> written form (numbers as digits: "shields to forty percent" -> "shields to 40%")."""
     try:
-        from arc_audio.written import to_written
+        from .arc_text.written import to_written
         return to_written(text or "").strip()
     except Exception:  # noqa: BLE001
         return (text or "").strip()
 
 
-def with_written(out: dict) -> list[dict]:
-    """Final utterances with Arc's own written form attached (`written`): numbers as digits AND names linked to the
-    context list in the list's spelling ("Malapart" -> "Malapert", "captain" -> "CAPCOM"). transcript_written has one
-    entry per new transcript utterance; when the counts disagree, fall back to text-only written()."""
-    us = list(out.get("transcript") or [])
-    tw = list(out.get("transcript_written") or [])
-    if len(tw) == len(us):
-        return [dict(u, written=w.get("text") or "") for u, w in zip(us, tw)]
-    return us
+def display_text(utt: dict, names: list[dict]) -> str:
+    """An utterance's written form with each LINKED name's words replaced by the list entry ("artemis two" ->
+    "Artemis II"): the list's spelling is what the app routes and shows (the model card: route on names[].entity)."""
+    words = list(utt.get("words") or [])
+    if not words:
+        return written(utt.get("text") or "")
+    toks = [w["w"] for w in words]
+    for n in sorted((n for n in names if n.get("state") == "linked" and n.get("entity")), key=lambda n: -n["t0"]):
+        idx = [i for i, w in enumerate(words) if w["t0"] >= n["t0"] - 0.05 and w["t1"] <= n["t1"] + 0.05]
+        if not idx:
+            continue
+        a, b = idx[0], idx[-1]
+        tail = "".join(c for c in toks[b][::-1] if c in ".,!?;:")[::-1] if toks[b] else ""
+        toks[a:b + 1] = [n["entity"] + tail]
+    return written(" ".join(t for t in toks if t))
 
 
 class Vad:
@@ -84,231 +96,159 @@ class Vad:
         return db < max(-50.0, floor + self.margin) or db < -55.0
 
 
-class TurnTracker:
-    """Arc stream outputs + VAD -> words / turn messages. Pure logic (no model), unit-tested with fake outputs."""
+def _kind(names_list: list[dict], entity: str | None) -> str | None:
+    for n in names_list:
+        if n["name"] == entity:
+            return n.get("kind")
+    return None
 
-    def __init__(self, s=ear_settings):
-        self.cfg = s
-        self.in_turn = False
-        self.eager = False
-        self.text = ""             # current turn text (written form)
+
+class EarStream:
+    """One live ear. Not thread-safe: call it from one worker thread (routes_meta does); the model has its own lock.
+    metadata_only: emit only the `arc` messages (the Deepgram fallback's metadata stream)."""
+
+    def __init__(self, domain: str = "assistant", names=None, s: EarSettings = ear_settings, model=None,
+                 metadata_only: bool = False):
+        self.cfg, self.domain, self.meta_only = s, domain, metadata_only
+        self.m = model if model is not None else arcmeta.STATE["arc"]
+        self.vad = Vad(s.ear_vad_margin_db)
+        self.names: list[dict] = []
+        self.set_names(names or [])
+        self.audio_s = 0.0
+        self.compute_s = 0.0
+        self.pre: collections.deque = collections.deque()
+        self.pre_s = 0.0
+        self.voiced_run = 0
+        self.seg: list[np.ndarray] | None = None
+        self.seg_t0 = 0.0
         self.last_voice_s = 0.0
-        self.now = 0.0
-        self.cc = 0.0
-        self.turn_start_s = None
-        self.ends: list[dict] = []  # {"at","last_voice","reason"} for latency stats
-        self.annotate = None        # EarStream: adds the n-best / confidence / hot-list match to a final words message
+        self.next_partial_s = 0.0
+        self.turn_open = False
+        self.text = ""
+        self.ends: list[dict] = []      # per closed turn: {"at", "last_voice", "reason", "decode_ms"} (latency stats)
 
-    def _start(self, text: str) -> list[dict]:
-        self.in_turn, self.eager, self.turn_start_s = True, False, self.now
-        return [{"t": "turn", "state": "start", "text": text}]
+    # ---- context ----
+    def set_names(self, names) -> int:
+        out, seen = [], set()
+        for x in names or []:
+            n = normalize_entry(x)
+            if n and n["name"].lower() not in seen:
+                seen.add(n["name"].lower())
+                out.append(n)
+        self.names = out[: self.cfg.ear_max_names]
+        return len(self.names)
 
-    def on_audio(self, now_s: float, chunk_s: float, quiet: bool) -> list[dict]:
-        self.now = now_s
-        out = []
-        if not quiet:
-            self.last_voice_s = now_s
-            if self.in_turn and self.eager:
-                self.eager = False
-                out.append({"t": "turn", "state": "resumed", "text": self.text})
+    def set_decoder_context(self, names=None, terms=None, topic=None) -> bool:
+        """StreamContext hook: the context frame's names -> the list (terms / topic: not used by this model)."""
+        if names is not None:
+            self.set_names(names)
+        return bool(self.names)
+
+    # ---- decoding ----
+    def _decode(self, pcm: np.ndarray, partial: bool) -> dict:
+        t = time.perf_counter()
+        out = self.m.transcribe(pcm, domain=self.domain, no_events=partial, names=self.names)
+        dt = time.perf_counter() - t
+        self.compute_s += dt
+        out["_s"] = dt
         return out
 
-    def silence_s(self) -> float:
-        return max(0.0, self.now - self.last_voice_s)
+    def _seg_audio(self) -> np.ndarray:
+        return np.concatenate(self.seg) if self.seg else np.zeros(0, np.float32)
 
-    def on_arc(self, out: dict) -> list[dict]:
-        msgs = []
-        lv = ((out.get("live") or {}).get("utt") or {})
-        if lv.get("command_complete") is not None:
-            self.cc = float(lv["command_complete"])
-        for e in out.get("events") or []:
-            if e.get("tag") == arcmeta.CC and e.get("p") is not None:
-                self.cc = max(self.cc, float(e["p"]))
-        for u in with_written(out):
-            msgs += self.final(u, "arc_pause")
-        tp = out.get("transcript_partial")
-        if tp and not tp.get("final"):
-            t = written(tp.get("text", ""))
+    def _start(self, text: str) -> list[dict]:
+        self.turn_open = True
+        return [{"t": "turn", "state": "start", "text": text}]
+
+    def feed_all(self, pcm16: bytes) -> list[dict]:
+        x = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
+        dur = len(x) / SR
+        self.audio_s += dur
+        quiet = self.vad.quiet(x)
+        msgs: list[dict] = []
+        if self.seg is None:
+            self.pre.append(x)
+            self.pre_s += dur
+            while self.pre and self.pre_s - len(self.pre[0]) / SR >= self.cfg.ear_preroll_s + dur:
+                self.pre_s -= len(self.pre.popleft()) / SR
+            self.voiced_run = 0 if quiet else self.voiced_run + 1
+            if self.voiced_run >= max(1, self.cfg.ear_onset_chunks):
+                self.seg, self.seg_t0 = list(self.pre), self.audio_s - self.pre_s
+                self.pre.clear()
+                self.pre_s = 0.0
+                self.last_voice_s = self.audio_s
+                self.next_partial_s = self.audio_s + self.cfg.ear_partial_every_s
+            return msgs
+        self.seg.append(x)
+        if not quiet:
+            self.last_voice_s = self.audio_s
+        seg_s = self.audio_s - self.seg_t0
+        if self.audio_s - self.last_voice_s >= self.cfg.ear_end_silence_s:
+            return self._finish("silence")
+        if seg_s >= self.cfg.ear_max_turn_s:
+            return self._finish("max_turn")
+        if (not self.meta_only and self.cfg.ear_partial_every_s > 0 and self.audio_s >= self.next_partial_s
+                and seg_s <= self.cfg.ear_partial_max_s):
+            out = self._decode(self._seg_audio(), partial=True)
+            self.next_partial_s = self.audio_s + max(self.cfg.ear_partial_every_s, 2 * out["_s"])
+            t = written(" ".join(u["text"] for u in out["utts"]).strip())
             if t:
-                if not self.in_turn:
+                if not self.turn_open:
                     msgs += self._start(t)
                 if t != self.text:
                     self.text = t
                     msgs.append({"t": "words", "text": t, "final": False})
         return msgs
 
-    def final(self, u: dict, reason: str) -> list[dict]:
-        t = (u.get("written") or "").strip() or written(u.get("text", ""))
-        if not t and not self.in_turn:
-            return []
-        if not self.in_turn:
-            msgs = self._start(t)
-        else:
-            msgs = []
-        t = t or self.text
-        w = {"t": "words", "text": t, "final": True}
-        if self.annotate is not None:
-            try:
-                self.annotate(u, w)
-            except Exception:  # noqa: BLE001 (annotations never break a turn)
-                pass
-        msgs += [w, {"t": "turn", "state": "end", "text": t}]
-        self.ends.append({"at": round(self.now, 3), "last_voice": round(self.last_voice_s, 3), "reason": reason})
-        self.in_turn, self.eager, self.text, self.cc = False, False, "", 0.0
-        return msgs
-
-    def tick(self) -> tuple[list[dict], bool]:
-        """After a chunk: eager now? Returns (messages, end_turn_needed)."""
-        if not self.in_turn:
-            return [], False
-        sil = self.silence_s()
-        if sil >= self.cfg.ear_end_silence_s:
-            return [], True
-        if not self.eager and sil >= self.cfg.ear_eager_silence_s and self.cc >= self.cfg.ear_eager_cc_p:
-            self.eager = True
-            return [{"t": "turn", "state": "eager", "text": self.text}], False
-        return [], False
-
-    def force_end(self, out: dict, reason: str) -> list[dict]:
-        """Results of Stream.end_turn() / flush(): the final(s), or close the turn on the last partial text."""
-        msgs = []
-        us = [u for u in with_written(out) if (u.get("text") or "").strip()]
-        for u in us:
-            msgs += self.final(u, reason)
-        if not us and self.in_turn:
-            msgs += self.final({"text": self.text}, reason + "_partial")
-        return msgs
-
-
-class EarStream(arcmeta.MetaStream):
-    """One live Arc ear. Not thread-safe: call it from one worker thread only (routes_meta does)."""
-
-    def __init__(self, domain: str = "assistant", names=None, s=ear_settings):
-        self.domain = domain
-        self.last_key = None
-        self.compute_s = 0.0
-        self.audio_s = 0.0
-        self.vad = Vad(s.ear_vad_margin_db)
-        self.turns = TurnTracker(s)
-        self.turns.annotate = self._annotate
-        self.names, self.terms, self.topic = list(names or []), None, None
-        self.hot = {"step": [], "names": [], "screen": [], "v": None}
-        self.s = self._open(names)
-
-    def _open(self, names=None):
-        c = self.turns.cfg
-        return arcmeta.STATE["arc"].stream(
-            domain=self.domain, transcript="builtin", partials=True, fallback=None, events="all", names=names or None,
-            partial_every_s=c.ear_partial_every_s, auto_prev=c.ear_auto_prev,
-            segmenter=dict(pause_s=c.ear_pause_s, short_pause_s=c.ear_short_pause_s))
-
-    def set_decoder_context(self, names=None, terms=None, topic=None) -> bool:
-        """Context frame -> Arc. Stream.set_context fills the decoder prompt (names + terms, ~40 tokens, in order) and
-        set_names (StreamContext) the linker; the name-list snap and the decoder's name-bias trie are only built from
-        `names` in Arc.stream(), so they are rebuilt here too (that is what turns "Malapart" into "Malapert" in the
-        written final). The backend sends its Tier A list before any audio, so the worker is idle when the trie swaps."""
-        self.names, self.terms, self.topic = list(names or []), terms or None, topic or None
-        if not hasattr(self, "hot"):          # (a stream built without __init__: the unit tests' fake)
-            self.hot = {"step": [], "names": [], "screen": [], "v": None}
-        if any(self.hot[t] for t in hotbias.TIERS):
-            names = self._prompt_names()
-        self.s.set_context(names=names or None, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
-        if names and self.audio_s == 0 and hasattr(self, "domain"):
-            # before any audio (the backend's Tier A frame): reopen the Arc stream with the names, which is the only way
-            # to get the name linker's records + snap into transcript_written (set_names / a later kb swap don't)
-            self.s.close()
-            self.s = self._open(self.names)
-            self.s.set_context(names=names, terms=terms or None, topic=topic or None, auto_prev=self.turns.cfg.ear_auto_prev)
-            self._apply_hot()
-            return True
-        if names:
-            try:
-                from arc_audio.api import Arc
-                from arc_audio.kbsnap import KB
-                self.s.kb = KB(Arc._kb(names))
-                if getattr(self.s, "tr", None) is not None:
-                    self.s.a._set_bias(self.s.tr, names, True)
-            except Exception:  # noqa: BLE001 (context never breaks the stream)
-                pass
-        return True
-
-    # ---- round 7: the screen's hot lists (app/hotbias.py) --------------------------------------------------------------
-    def _prompt_names(self) -> list:
-        """The decoder prompt's list: the step list first (it holds ~10-12 phrases), then the names."""
-        k = hotbias.hot_settings.ear_hot_prompt
-        first = list(self.hot["step"][:k])
-        seen = {str(x).lower() for x in first}
-        return first + [n for n in self.names if str(n.get("name") if isinstance(n, dict) else n).lower() not in seen]
-
-    def set_hot(self, hot) -> int:
-        """{"step":[...],"screen":[...]} (or a bare list = step) -> bias + n-best rescoring. Returns the phrase count."""
-        if hotbias.hot_settings.ear_hot.strip().lower() != "on":
-            return 0
-        self.hot = hotbias.clean_lists(hot)
-        self._apply_hot()
-        self.s.set_context(names=self._prompt_names() or None, terms=self.terms, topic=self.topic,
-                           auto_prev=self.turns.cfg.ear_auto_prev)
-        return sum(len(self.hot[t]) for t in hotbias.TIERS)
-
-    def _apply_hot(self):
-        tr = getattr(self.s, "tr", None)
-        if tr is None or not any(self.hot[t] for t in hotbias.TIERS):
-            return
-        from arc_audio.api import Arc, bias_forms
-        hotbias.install(tr, arcmeta.STATE["arc"].tok, bias_forms(Arc._kb(self.names)) if self.names else [], self.hot)
-
-    def _annotate(self, u: dict, w: dict):
-        tr = getattr(self.s, "tr", None)
-        rec = (getattr(tr, "nbest", None) or {}).get((u.get("text") or "").strip())
-        if rec:
-            pick = rec["alts"][rec["pick"]]["text"] if rec["alts"] else None
-            seen, alts = {hotbias.norm(pick or "")}, []
-            for a in rec["alts"]:          # the other beams, minus case / punctuation variants of one another
-                k = hotbias.norm(a["text"])
-                if k and k not in seen:
-                    seen.add(k)
-                    alts.append(written(a["text"]))
-            w["alts"] = alts[:3]
-            w["conf"] = rec["conf"]
-            w["rescored"] = rec["pick"] != 0
-        if any(self.hot[t] for t in hotbias.TIERS):
-            w["hot"] = hotbias.match_info(w.get("text") or "", self.hot)
-
-    def add_words(self, words) -> None:   # no external words in ear mode
-        return None
-
-    def _timed(self, fn, *a):
-        t = time.perf_counter()
-        out = fn(*a)
-        self.compute_s += time.perf_counter() - t
-        return out
-
-    def feed_all(self, pcm16: bytes) -> list[dict]:
-        x = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
-        self.audio_s += len(x) / SR
-        msgs = self.turns.on_audio(self.audio_s, len(x) / SR, self.vad.quiet(x))
-        out = self._timed(self.s.feed, x)
-        msgs += self.turns.on_arc(out)
-        more, need_end = self.turns.tick()
-        msgs += more
-        if need_end:
-            msgs += self.turns.force_end(self._timed(self.s.end_turn), "silence")
-        m = self._summary(out)
-        if m:
-            msgs.append(m)
+    def _finish(self, reason: str) -> list[dict]:
+        pcm = self._seg_audio()
+        self.seg, self.voiced_run = None, 0
+        msgs: list[dict] = []
+        if len(pcm) < SR // 10 and not self.turn_open:
+            return msgs
+        out = self._decode(pcm, partial=False) if len(pcm) >= SR // 10 else {"utts": [], "names": [], "events": [],
+                                                                            "_s": 0.0}
+        utts = [u for u in out["utts"] if (u.get("text") or "").strip()]
+        names = [{"heard": n["heard"], "entity": n["entity"], "state": n["state"], "p": n["p"], "tag": n["tag"],
+                  "kind": _kind(self.names, n["entity"])} for n in out["names"]]
+        spoken = " ".join(u["text"].strip() for u in utts).strip()
+        text = " ".join(display_text(u, out["names"]) for u in utts).strip()
+        dh = [u["directed_head"] for u in out["utts"] if u.get("directed_head") is not None]
+        dflag = [u["directed"] for u in out["utts"] if u.get("directed") is not None]
+        top = lambda k: next((u[k] for u in out["utts"] if u.get(k)), None)  # noqa: E731
+        if not self.meta_only and not self.turn_open and text:
+            msgs += self._start(text)     # before the arc read: a client resets its per-turn read on "start"
+        msgs.append({"t": "arc", "at": round(self.audio_s, 2),
+                     "device_directed": round(max(dh), 3) if dh else None,
+                     "directed": any(dflag) if dflag else None, "command_complete": None, "speaker": None,
+                     "act": top("act"), "intent": top("intent"), "utt_open": False, "speech": bool(spoken),
+                     "audio_events": arcmeta.audio_events(out["events"]), "bio_events": [], "cc_events": [],
+                     "names": names, "rtf": round(self.compute_s / self.audio_s, 3) if self.audio_s else None})
+        if self.meta_only:
+            self.turn_open, self.text = False, ""
+            return msgs
+        if not text and self.turn_open:
+            text = self.text           # the final heard nothing the partials did: close on the partial text
+        if text:
+            msgs.append({"t": "words", "text": text, "final": True, "spoken": spoken, "names": names,
+                         "tags": [t for u in utts for t in u["tags"]], "conf": None, "alts": []})
+            msgs.append({"t": "turn", "state": "end", "text": text})
+            self.ends.append({"at": round(self.audio_s, 3), "last_voice": round(self.last_voice_s, 3),
+                              "reason": reason, "decode_ms": round(out["_s"] * 1000, 1)})
+        self.turn_open, self.text = False, ""
         return msgs
 
     def end_turn_all(self) -> list[dict]:
-        out = self._timed(self.s.end_turn)
-        msgs = self.turns.on_arc({k: v for k, v in out.items() if k != "transcript_partial"})
-        return msgs + self.turns.force_end({}, "end_turn")
+        """Push-to-talk released (or the client's end of speech): close the open segment now."""
+        if self.seg is None and not self.turn_open:
+            return []
+        if self.seg is None:
+            self.seg = []
+        return self._finish("end_turn")
 
     def flush_all(self) -> list[dict]:
-        out = self._timed(self.s.flush)
-        msgs = self.turns.on_arc({k: v for k, v in out.items() if k != "transcript_partial"})
-        msgs += self.turns.force_end({}, "stop")
-        m = self._summary(out, force=True)
-        if m:
-            m["final"] = True
-            msgs.append(m)
+        msgs = self._finish("stop") if self.seg is not None else []
         return msgs
+
+    def close(self) -> None:
+        self.seg = None

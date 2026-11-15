@@ -11,9 +11,14 @@ does what frontend/src/main.js does with the decisions: `nav` moves the screens,
 (POST /api/academy/attempt), every line it speaks is reported as playback (so the session hears its own voice).
 
     in-process (CI):   backend/tests/test_handsfree_run.py
-    live server:       uv run python tools/handsfree_run.py --base http://127.0.0.1:8330 [--audio]
-                       --audio renders each kid line with the OS voice (/v1/tts on the model server) and feeds the PCM to
-                       /ws/listen (the Arc ear), so the turns come from real speech recognition.
+    live server:       uv run python tools/handsfree_run.py --base http://127.0.0.1:8330 [--audio DIR] [--tts-audio]
+                       --audio DIR: kid lines that have a REAL recording in DIR (<slug>.wav, slug = the line lower-cased,
+                       non-letters -> "_", e.g. call_me_nova.wav, shields_to_40.wav; any rate, mono) are streamed into
+                       /ws/listen (the Arc Transcriber Space ear), so those turns come from real speech recognition;
+                       the other lines are text-injected (as without --audio) and counted.
+                       --tts-audio: the old path (each line rendered with the OS voice). Arc Transcriber Space is built
+                       NOT to transcribe TTS (the app's own voice in the mic), so these turns are expected to be heard
+                       as nothing: the run then checks the echo rejection (no turn from TTS) instead of the flow.
 Prints a short transcript and the count of spoken "I don't know that one yet".
 """
 from __future__ import annotations
@@ -512,9 +517,10 @@ class Live:
     GAP_S = 0.02          # from the last event we sent to the turn start (one WS hop; InProc uses the same)
     DRAIN_S = 1.2         # quiet time we wait for the decisions after a turn ends
 
-    def __init__(self, base: str, audio: bool = False, models: str | None = None):
+    def __init__(self, base: str, audio: str | None = None, models: str | None = None, tts_audio: bool = False):
         import httpx
-        self.base, self.audio, self.models = base.rstrip("/"), audio, models
+        self.base, self.audio, self.models, self.tts_audio = base.rstrip("/"), audio, models, tts_audio
+        self.real_lines, self.injected_lines, self.tts_heard = 0, 0, 0
         self.http = httpx.AsyncClient(base_url=self.base, timeout=30)
         self.sid = f"hf-{int(time.time())}"
         self.ws = None
@@ -542,27 +548,49 @@ class Live:
     async def wait(self, sec: float):
         await asyncio.sleep(min(sec, 2.0))       # our line "plays" (the playback events carry the timing)
 
+    def recording(self, text: str):
+        """A real recording of this kid line in --audio DIR, or None."""
+        from pathlib import Path
+        if not self.audio:
+            return None
+        p = Path(self.audio) / (re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_") + ".wav")
+        return p if p.exists() else None
+
     async def turn(self, text: str, dd: float) -> list[dict]:
-        if self.audio and not text.startswith(("Mm", "Oh", "um")) and dd >= 0.5:
-            return await self.turn_audio(text)
+        kid = not text.startswith(("Mm", "Oh", "um")) and dd >= 0.5
+        if kid and self.recording(text):
+            self.real_lines += 1
+            return await self.turn_audio(text, self.recording(text))
+        if kid and self.tts_audio:
+            ds = await self.turn_audio(text)
+            if any(d.get("t") == "heard" for d in ds):
+                self.tts_heard += 1          # the ear transcribed our own TTS: echo rejection failed for this line
+            # the flow goes on by text, so one run checks both the echo rejection and the whole hands-free script
+        if kid:
+            self.injected_lines += 1
         await self.ws.send(json.dumps({"t": "turn", "state": "start", "text": ""}))
         await self.ws.send(json.dumps({"t": "arc", "device_directed": dd}))
         await self.ws.send(json.dumps({"t": "turn", "state": "end", "text": text}))
         return await self.drain(self.DRAIN_S)
 
-    async def turn_audio(self, text: str) -> list[dict]:
+    async def turn_audio(self, text: str, path=None) -> list[dict]:
+        """Stream a line into /ws/listen (the Arc ear) as 16 kHz PCM16: a real recording (path), else the line rendered
+        with the OS voice (the backend's /api/tts; --tts-audio, an echo-rejection check)."""
         await asyncio.sleep(0.6)                 # a kid's reaction time after our line
-        """Render the line with the OS voice (the backend's /api/tts), resample to 16 kHz PCM16, stream it into /ws/listen (the Arc ear)."""
         import io
         import wave
 
-        import httpx
         import numpy as np
         import websockets
-        r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # the OS voice for the story role
-        r.raise_for_status()
-        w = wave.open(io.BytesIO(r.content))
-        sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)
+        if path is not None:
+            import soundfile as sf
+            x, sr = sf.read(str(path), dtype="float32", always_2d=True)
+            x = x.mean(axis=1) * 32767.0
+        else:
+            r = await self.http.get("/api/tts", params={"text": text, "voice": "story"})   # the OS voice, story role
+            r.raise_for_status()
+            w = wave.open(io.BytesIO(r.content))
+            sr, x = w.getframerate(), np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32)
         n = int(len(x) * 16000 / sr)
         pcm = np.interp(np.linspace(0, len(x) - 1, n), np.arange(len(x)), x).astype(np.int16)
         pcm = np.concatenate([np.zeros(4000, np.int16), pcm, np.zeros(24000, np.int16)])
@@ -594,7 +622,7 @@ def with_course(course: dict, full: dict) -> dict:
 
 
 async def main_live(a):
-    t = Live(a.base, a.audio, a.models)
+    t = Live(a.base, a.audio, a.models, a.tts_audio)
     await t.open()
     course = (await t.http.get("/api/academy/course")).json()
     full = __import__("app.academy.content", fromlist=["course"]).course()   # the answer keys (local data)
@@ -617,6 +645,11 @@ async def main_live(a):
              if bad]
     print(f"live clock: {c.skips} skips by voice, {c.task_steps_by_voice} job steps by voice, clock commands {c.clock_cmds}")
     print(f"cabin tour: {c.toured} of {len(tour_beats('cadet'))} beats by voice")
+    if a.audio or a.tts_audio:
+        print(f"ear: {t.real_lines} lines from real recordings, {t.injected_lines} text-injected"
+              + (f"; TTS lines the ear transcribed (echo rejection misses): {t.tts_heard}" if a.tts_audio else ""))
+        if a.tts_audio and t.tts_heard:
+            fails.append(f"ear transcribed {t.tts_heard} TTS lines")
     print(f"HANDSFREE RESULT: {'PASS' if not fails else 'FAIL (' + ', '.join(fails) + ')'}", flush=True)
     if fails:
         raise SystemExit(1)
@@ -626,6 +659,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default="http://127.0.0.1:8330")
     ap.add_argument("--models", default="http://127.0.0.1:8230")
-    ap.add_argument("--audio", action="store_true")
+    ap.add_argument("--audio", metavar="DIR", help="real recordings of the kid lines (<slug>.wav); others text-injected")
+    ap.add_argument("--tts-audio", action="store_true", help="also stream each line as OS-voice TTS: checks echo rejection")
     ap.add_argument("--shifts", type=int, default=3)
     asyncio.run(main_live(ap.parse_args()))
