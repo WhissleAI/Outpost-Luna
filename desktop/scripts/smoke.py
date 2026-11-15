@@ -107,6 +107,18 @@ async def main():
            for i in range(len(times) - 1)) and times and times[-1][1] <= dur_ms + 1,
            f"word timings: {len(times)}/{n_words} words, last ends {times[-1][1] if times else '-'} ms of {dur_ms:.0f} ms")
 
+        # 1b. the recorded voice pack (docs/VOICE_PACK.md): a scripted line plays the clip, word timings included
+        vp = ms.get("voice_pack", {})
+        if vp.get("clips"):
+            line = "Each pin on the Moon is a lesson."
+            r = await c.post("/api/tts", json={"text": line, "voice": "capcom"})
+            times = [tuple(int(x) for x in p.split("-")) for p in (r.headers.get("x-tts-words") or "").split(",") if p]
+            ok(r.status_code == 200 and r.headers.get("x-tts-engine") == "pack" and len(times) == len(line.split()),
+               f"voice pack: {vp.get('clips')} clips ({vp.get('voice')}); scripted line -> engine "
+               f"{r.headers.get('x-tts-engine')}, {len(times)} word timings")
+        else:
+            print(f"  -    voice pack: none in this build ({vp})")
+
         # 2. Flight School: the course, one lesson step graded (keyword or paraphrase via the local embedder)
         course = (await c.get("/api/academy/course")).json()
         lessons = course.get("lessons") or [le for tr in course.get("tracks", []) for le in tr.get("lessons", [])]

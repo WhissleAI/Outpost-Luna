@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # Words per minute at 1x before the style's rate (macOS `say -r`); WinRT speaking-rate multiplier at 1x.
     os_tts_wpm: int = 165
     os_tts_winrt_rate: float = 1.0
+    # The recorded voice pack (app/voice_pack.py, docs/VOICE_PACK.md): fixed lines pre-recorded with Siri Voice 1. on|off.
+    # The folder defaults to the backend's data/voice_pack (dev checkout and the desktop bundle alike).
+    voice_pack: str = "on"
+    voice_pack_dir: Path = Path(__file__).resolve().parents[2] / "backend" / "data" / "voice_pack"
 
 
 settings = Settings()

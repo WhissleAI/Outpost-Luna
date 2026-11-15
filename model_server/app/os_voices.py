@@ -175,13 +175,32 @@ def picker(ranked: list[dict]) -> list[dict]:
 ROLES = ("guide", "capcom", "houston", "story")
 
 
-def assign_roles(ranked: list[dict]) -> dict[str, str]:
-    """Persona -> voice id. The guide gets the best voice. CAPCOM gets a different good voice (one quality tier at most
+GOOD_QUALITY = ("siri", "premium", "enhanced")
+HOUSTON_LOCALES = ("en-US", "en-GB")
+
+
+def assign_roles(ranked: list[dict], kid_locale: str | None = None) -> dict[str, str]:
+    """Persona -> voice id.
+
+    A good system voice (Siri, premium or enhanced) at the top: the guide, CAPCOM and the story all speak in it, so a
+    character never flips voices (Flight School and Mission talk through CAPCOM; the recorded voice pack is the system
+    voice too: docs/VOICE_PACK.md). Houston, a separate radio voice, gets a distinct good voice in the kid's locale family
+    (the kid's own locale, then en-US, en-GB), never the voice behind the system voice; without one, it is the system
+    voice as well.
+
+    Otherwise (no good system voice: the ranking below): the guide gets the best voice. CAPCOM gets a different good voice (one quality tier at most
     below the guide's; another gender first), Houston a third, else CAPCOM's; the story voice a fourth, else the
     guide's. With one voice installed every role uses it."""
     if not ranked:
         return {}
     g = ranked[0]
+    if g.get("id") == SYSTEM_ID and g.get("quality") in GOOD_QUALITY:
+        fam = [l for l in (norm_locale(kid_locale), *HOUSTON_LOCALES) if l and l.startswith("en")]
+        cands = [v for v in ranked[1:] if v.get("quality") in GOOD_QUALITY and v["locale"] in fam
+                 and v["id"] != g.get("system_voice") and v["id"] != SYSTEM_ID]
+        cands.sort(key=lambda v: (fam.index(v["locale"]), -v["tier"], v["rank"] if "rank" in v else 0))
+        hou = cands[0]["id"] if cands else SYSTEM_ID
+        return {"guide": SYSTEM_ID, "capcom": SYSTEM_ID, "houston": hou, "story": SYSTEM_ID}
     good = [v for v in ranked[1:] if v["tier"] >= max(TIERS["compact"], g["tier"] - 1)]
     cap = next((v for v in good if v.get("gender") and g.get("gender") and v["gender"] != g["gender"]),
                good[0] if good else g)
@@ -219,6 +238,24 @@ def rate_factor(controls: dict | None, pace: float = 1.0) -> float:
     return round(max(0.5, min(2.2, p * 2 ** (z / RATE_Z_PER_OCTAVE))), 3)
 
 
+# Within this band of 1x the OS voice speaks at its own rate (no `say -r`, WinRT rate 1, SAPI 0): the persona and
+# situation nudges (CAPCOM +0.3 z ~ 1.05x) are not worth a forced rate, which degrades Siri / premium prosody audibly.
+NATIVE_BAND = 0.08
+CALIBRATION = ("The Moon always shows Earth the same face. Shackleton crater sits at the south pole, "
+               "and its rim gets sunlight on most days.")
+
+
+def is_native_rate(factor: float) -> bool:
+    return abs(float(factor) - 1.0) < NATIVE_BAND
+
+
+def measure_wpm(text: str, pcm: np.ndarray, sr: int) -> float | None:
+    """Words per minute of a rendering, over its speech span (leading / trailing silence excluded)."""
+    t0, t1, _ = silences(pcm, sr)
+    n = len(text.split())
+    return round(n / (t1 - t0) * 60, 1) if t1 - t0 > 0.5 and n else None
+
+
 def sentence_pause_ms(controls: dict | None) -> int:
     """Extra silence between sentences from the `pause` z-score: only a positive z adds (slow, explaining lines);
     a negative one is the voice's own pauses (the backend caps long gaps anyway)."""
@@ -231,8 +268,8 @@ def sentence_pause_ms(controls: dict | None) -> int:
 
 # ---- the voice-pack seam ---------------------------------------------------------------------------------------------
 def pack_key(text: str) -> str:
-    """A fixed line's lookup key (a pre-rendered voice pack would be keyed by it): markup stripped, lower case, letters,
-    digits and single spaces only."""
+    """A fixed line's voice-pack key (app/voice_pack.py): markup stripped, lower case, letters, digits, % and single
+    spaces only. backend/tools/voice_pack_lines.py keys the manifest with this same function."""
     return " ".join(re.sub(r"[^a-z0-9%]+", " ", strip_markup(text).lower()).split())
 
 
@@ -256,6 +293,18 @@ def display_words(text: str) -> list[str]:
 
 def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENT.split(text) if s.strip()]
+
+
+def parse_words(header: str) -> list[tuple[float, float]] | None:
+    """'start-end,…' (ms) -> [(start s, end s)]; None when malformed."""
+    try:
+        out = []
+        for p in str(header or "").split(","):
+            a, b = p.split("-")
+            out.append((int(a) / 1000, int(b) / 1000))
+        return out or None
+    except ValueError:
+        return None
 
 
 def words_header(times: list[tuple[float, float]]) -> str:

@@ -56,3 +56,13 @@ def os_voice_catalog(monkeypatch):
     voices.set_catalog(FAKE_VOICES)
     yield
     voices.set_catalog(None)
+
+
+@pytest.fixture(autouse=True)
+def no_voice_pack(monkeypatch, request):
+    """Tests run without the recorded voice pack (docs/VOICE_PACK.md) unless marked `voice_pack`: the checked-in pack
+    must not change what other tests expect (CAPCOM speaks in the guide voice while the pack is on)."""
+    if "voice_pack" in request.keywords:
+        return
+    from app import tts
+    monkeypatch.setattr(tts, "pack_version", lambda: "")

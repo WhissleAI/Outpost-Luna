@@ -47,3 +47,14 @@ test("prefs: the more-voices hint names the OS's own voice settings, never Siri"
   assert.equal(moreVoicesHint("Mozilla/5.0 (X11; Linux x86_64)"), "");
   for (const s of [mac, win]) { assert.ok(!/siri/i.test(s)); assert.ok(s.split(/\s+/).length <= 20, s); }
 });
+
+test("the recorded guide voice (voice pack) is on by default and only with the default voice", async () => {
+  const { packAllowed } = await import("../src/floor.js");
+  assert.equal(normalizePrefs({}).pack, true);
+  assert.equal(normalizePrefs({ pack: false }).pack, false);
+  assert.equal(normalizePrefs({ pack: "no" }).pack, true);
+  assert.equal(packAllowed({ pack: true, voice: "" }, "sys"), true);
+  assert.equal(packAllowed({ pack: true, voice: "sys" }, "sys"), true);        // the default, picked explicitly
+  assert.equal(packAllowed({ pack: true, voice: "other" }, "sys"), false);     // another voice: live lines
+  assert.equal(packAllowed({ pack: false, voice: "" }, "sys"), false);         // Settings toggle off
+});

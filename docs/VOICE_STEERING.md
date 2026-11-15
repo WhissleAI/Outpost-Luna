@@ -118,6 +118,12 @@ pairs its tag with controls that carry the effect):
 
 ## 4b. Accessibility steering: speed, the `vocab` situation, vocabulary emphasis, word timings
 
+> **2026-11: the OS voices speak at their own pace.** The baseline below is now `rate 0, pause 0`. At 1× (±8 %) the
+> model server passes no `say -r` (WinRT rate 1, SAPI 0). Another pace uses `-r` relative to the voice's measured
+> native words/min. A negative `pause` never shortens the voice's own pauses. The gap cap is 1.0 s (1.2 s at 0.75×
+> and on slow lines). Loudness is one clean gain with a −1 dBTP ceiling and no limiter. The rows and numbers below
+> describe the Steer era. Details: docs/VOICE_PACK.md, "The OS voice at its own pace".
+
 **Speaking pace preference.** The kid's caption-bar speed (0.75× / 1× / 1.25× / 1.5×, `a11y.js`, stored on the device
 only) goes to `/api/tts?speed=` (or rides on the say style as `speed`, from the Settings `rate`).
 `steering.delivery(controls, speed)` adds the 1× delivery baseline (§4d) and then `speed_steer(speed)`. "1×" is the

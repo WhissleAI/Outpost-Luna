@@ -115,12 +115,13 @@ def test_default_prefs_leave_decisions_unchanged(sess):
     assert sess.prefs == sessions.PREF_DEFAULTS and sess.level == "cadet"
 
 
-def test_prefs_voice_goes_to_the_guide_only(sess):
+def test_prefs_voice_goes_to_guide_capcom_and_story_together(sess):
     v = other_voice()
     run(sess.handle({"type": "prefs", "voice": v, "rate": 1.25, "expressiveness": 0.9}))
-    assert say(sess, "guide")["style"]["tts_voice"] == v
-    assert say(sess, "capcom")["style"]["tts_voice"] == steering.VOICES["capcom"]     # its role, resolved in /api/tts
-    assert say(sess, "houston")["style"]["tts_voice"] == steering.VOICES["houston"]
+    for p in ("guide", "capcom", "story"):                       # one character voice (docs/VOICES.md)
+        assert say(sess, p)["style"]["tts_voice"] == v
+    assert say(sess, "houston")["style"]["tts_voice"] == steering.VOICES["houston"]   # its role, resolved in /api/tts
+    assert say(sess, "capcom")["style"]["pack"] is False        # another voice picked: the voice pack stays off
     run(sess.handle({"type": "prefs", "voice_all": True}))      # partial update: the voice stays
     assert sess.prefs["voice"] == v
     for p in ("guide", "capcom", "houston", "story"):
@@ -205,7 +206,7 @@ def test_prefs_over_the_websocket(world):
         ack = ws.receive_json()
     assert ack == {"t": "prefs", "applied": {"voice": v, "voice_all": False, "rate": 0.75, "expressiveness": 0.2,
                                              "filter": "strict", "level": "commander", "listen": "handsfree", "volume": 1.0,
-                                             "improve": False}}
+                                             "improve": False, "pack": True}}
     s = sessions.get("ws-set-1", create=False)
     assert s.level == "commander" and s.filter_thresholds() == tr.FILTERS["strict"]
 

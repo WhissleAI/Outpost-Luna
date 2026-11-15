@@ -1,3 +1,4 @@
+import math
 """Louder and faster (docs/VOICE_STEERING.md §4d): BS.1770 loudness, the -1 dBTP look-ahead limiter, every /api/tts
 render at -14 LUFS (+2 LU for alarms, + the volume setting), the faster delivery baseline at 1x, slow lines kept slow,
 the gap cap with word timings remapped, and the crew-clip playback gains."""
@@ -114,7 +115,7 @@ def test_every_persona_lands_at_the_target(os_calls, voice):
     assert np.abs(x).max() <= CEIL + 1e-4 and L.true_peak_db(x) <= L.CEILING_DBTP + 0.05
     assert "LUFS" in r.headers["x-tts-loudness"] and "X-TTS-Loudness" in r.headers["access-control-expose-headers"]
     assert hit.headers["x-tts-cache"] == "hit" and hit.content == r.content and len(os_calls) == 1   # cached mastered
-    assert len(x) / sr < 2.4 + 0.9 - 0.5                     # the 0.9 s gap was capped
+    assert len(x) / sr > 2.4 + 0.9 - 0.2                     # the 0.9 s pause is the voice's own: never shortened
 
 
 def test_alarm_lines_sit_two_lu_hotter(os_calls):
@@ -142,7 +143,7 @@ def test_cache_key_carries_the_master_version(os_calls):
     assert k1 != k2
 
 
-def test_default_rate_is_the_faster_baseline(os_calls):
+def test_default_rate_is_the_voices_own(os_calls):
     with TestClient(app) as c:
         c.get("/api/tts", params={"text": "The rover found ice.", "voice": "guide"})
         c.get("/api/tts", params={"text": "Albedo is how bright a surface is.", "voice": "guide",
@@ -151,8 +152,8 @@ def test_default_rate_is_the_faster_baseline(os_calls):
         c.get("/api/tts", params={"text": "A crater is a hole.", "voice": "guide",
                                   "style": json.dumps({"situation": "explain"})})
     normal, vocab, explain = os_calls
-    assert normal["controls"]["rate"] == steering.BASE_CONTROLS["rate"]          # 1x is faster than before (0)
-    assert normal["controls"]["pause"] == steering.BASE_CONTROLS["pause"]        # shorter phrase pauses
+    assert normal["controls"]["rate"] == steering.BASE_CONTROLS["rate"] == 0     # 1x = the voice's own pace (no -r)
+    assert normal["controls"].get("pause", 0.0) >= 0                            # its own pauses, never shortened
     assert normal["controls"]["loud"] == steering.BASE_CONTROLS["loud"]
     assert normal.get("pace", 1.0) == 1.0
     assert vocab["controls"]["rate"] == steering.SITUATIONS["vocab"]["controls"]["rate"]       # slow on purpose
@@ -166,7 +167,7 @@ def test_speed_setting_is_centred_on_the_new_default():
     assert steering.delivery({}, 1.0)[0]["rate"] == steering.BASE_CONTROLS["rate"]
     slow, _, gap = steering.delivery({}, 0.75)
     assert slow["rate"] < 0 and slow["pause"] > 0 and gap > steering.GAP_FAST_S   # 0.75x: slower than the old 1x
-    assert steering.delivery({}, 1.5)[0]["rate"] == steering.CONTROL_LIMIT
+    assert steering.delivery({}, 1.5)[0]["rate"] == round(steering.SPEED_RATE_SLOPE * math.log2(1.5), 2)
 
 
 def test_crew_clips_carry_a_playback_gain():

@@ -215,14 +215,19 @@ SPEED_RANGE = (0.6, 1.6)
 # (model_server/app/os_voices.rate_factor), so 0.75x lands below the old 1x and 1.5x about 1.5x the 1x rate.
 SPEED_RATE_SLOPE = 4.0
 
-# ---- the delivery baseline (docs/VOICE_STEERING.md §4d): brisk, clear, loud enough ---------------------------------
-# Added on top of every style at 1x: shorter phrase pauses (pause z), a faster rate, a little more energy (loud z, for
-# an engine that has it). Then the backend caps long silences and loudness-normalises (app/loudness.py). With the OS
-# voices the 1x baseline is ~3.5 words/s (macOS premium voice, docs/VOICES.md), the pace kids heard before.
-BASE_CONTROLS = {"rate": 1.0, "pause": -1.5, "loud": 0.4}
+# ---- the delivery baseline (docs/VOICE_STEERING.md §4d): the voice's own pace, clear, loud enough --------------------
+# Added on top of every style at 1x. Then the backend cuts only pathological silences and loudness-normalises with a
+# clean gain (app/loudness.py).
+# OS voices (2026-11): NO rate or pause baseline. A forced rate and trimmed pauses made Siri / premium voices sound
+# processed (the owner: "like Steer"; 4.06 s vs the voice's own 5.0 s on a sample line), so at 1x the voice speaks at
+# its own pace with its own phrasing (model_server/app/tts_os.py passes no `say -r` there). `loud` stays for an engine
+# that has it.
+BASE_CONTROLS = {"rate": 0.0, "pause": 0.0, "loud": 0.4}
 SLOW_SITUATIONS = frozenset({"explain", "vocab"})   # slower on purpose: no baseline rate / pause, gentle gap cap
 SLOW_PAUSE = 0.5          # at 0.75x and below: a little more pause than the voice's natural (comfortable, not choppy)
-GAP_FAST_S, GAP_SLOW_S, GAP_KEEP_S =0.25, 0.45, 0.6  # inner silence cap at >= 1x, at <= 0.75x, on slow lines
+# Inner-silence cap at >= 1x, at <= 0.75x, on slow lines: only a pathological silence is cut. The OS voices' own pauses
+# (~0.2-0.7 s) are never shortened (they were capped at 0.25 s before 2026-11).
+GAP_FAST_S, GAP_SLOW_S, GAP_KEEP_S = 1.0, 1.2, 1.2
 
 
 def delivery(controls: dict | None, speed: float | None = None, slow: bool = False) -> tuple[dict, float, float]:
@@ -341,15 +346,29 @@ def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, e
 
 
 def pref_voice(persona: str, prefs: dict | None) -> str | None:
-    """The OS voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice
-    is the guide's; CAPCOM, Houston and the story voice stay distinct unless the kid picked one voice for all."""
+    """The OS voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice is
+    the guide's, CAPCOM's and the story's together (one character voice, as the default roles: docs/VOICES.md);
+    Houston keeps its own radio voice unless the kid picked one voice for all."""
     p = prefs or {}
     v = p.get("voice")
     if not v:
         return None
-    if persona == "guide" or p.get("voice_all"):
+    if persona in ("guide", "capcom", "story") or p.get("voice_all"):
         return v
     return None
+
+
+def pack_allowed(prefs: dict | None) -> bool:
+    """The recorded voice pack (docs/VOICE_PACK.md) may speak fixed lines: the Settings toggle is on and the kid kept
+    the default guide voice (no voice picked, or the default one picked explicitly)."""
+    p = prefs or {}
+    if p.get("pack") is False:
+        return False
+    v = p.get("voice")
+    if not v:
+        return True
+    from . import voices
+    return v == voices.roles().get("guide")
 
 
 def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | None:
@@ -361,6 +380,8 @@ def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | 
     v = pref_voice(persona, prefs)
     if v:
         out["tts_voice"] = v
+    if not pack_allowed(prefs):
+        out["pack"] = False
     rate = prefs.get("rate")
     if rate is not None and abs(float(rate) - 1.0) > 1e-3:
         out["speed"] = float(rate)

@@ -55,6 +55,7 @@ function envFor(name) {
       ARCTAG_MODEL_DIR: path.join(MODELS, "arctag"),
       ARC_META_WEIGHTS: path.join(MODELS, "arc-v1.1"),
       EMBED_MODEL_DIR: path.join(MODELS, "minilm"),
+      VOICE_PACK_DIR: path.join(RES, "app", "backend", "data", "voice_pack"),   // the recorded fixed lines (docs/VOICE_PACK.md)
     });
   }
   const origin = `http://127.0.0.1:${ports.backend}`;

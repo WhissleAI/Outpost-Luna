@@ -123,8 +123,17 @@ def test_a_siri_system_voice_is_the_default():
     r = ov.rank(MAC + [sysv], "en-US")
     assert r[0]["id"] == ov.SYSTEM_ID and r[0]["name"] == "Your Mac's system voice"
     assert ov.describe(r[0]) == "Nora (Siri)" and ov.voice_name(r[0]) == "Nora (Siri)"
-    roles = ov.assign_roles(r)
-    assert roles["guide"] == ov.SYSTEM_ID and roles["capcom"] != ov.SYSTEM_ID
+    roles = ov.assign_roles(r, "en-US")
+    # a good system voice: guide, CAPCOM and the story share it (no voice flip between live and recorded lines);
+    # Houston gets a distinct good voice in the kid's locale family (Ava, en-US enhanced), never Tara/Aman (en-IN)
+    assert roles == {"guide": ov.SYSTEM_ID, "capcom": ov.SYSTEM_ID, "story": ov.SYSTEM_ID,
+                     "houston": "com.apple.voice.enhanced.en-US.Ava"}
+    no_us = [v for v in MAC if "Ava" not in v["id"]]
+    r2 = ov.rank(no_us + [sysv], "en-US")
+    assert ov.assign_roles(r2, "en-US")["houston"] == ov.SYSTEM_ID       # only en-IN good voices: Houston = system too
+    r3 = ov.rank(no_us + [ov.system_voice_entry("com.apple.voice.Tara.premium", no_us)], "en-IN")
+    assert ov.assign_roles(r3, "en-IN") == {"guide": ov.SYSTEM_ID, "capcom": ov.SYSTEM_ID, "story": ov.SYSTEM_ID,
+                                            "houston": "com.apple.voice.Aman.premium"}   # en-IN kid; never Tara itself
 
 
 def test_a_premium_system_voice_is_the_default_a_compact_one_is_not():
@@ -132,6 +141,7 @@ def test_a_premium_system_voice_is_the_default_a_compact_one_is_not():
     assert prem[0]["id"] == ov.SYSTEM_ID and ov.describe(prem[0]) == "Tara (Premium)"
     comp = ov.rank(MAC + [ov.system_voice_entry("com.apple.voice.compact.en-US.Samantha", MAC)], "en-US")
     assert comp[0]["id"] == "com.apple.voice.Tara.premium"
+    assert ov.assign_roles(comp, "en-US")["capcom"] == "com.apple.voice.Aman.premium"   # not a good system voice: ranking
     assert ov.SYSTEM_ID in [v["id"] for v in comp]                           # still offered in Settings
     none = ov.rank(MAC + [ov.system_voice_entry(None, MAC)], "en-US")
     assert none[0]["id"] != ov.SYSTEM_ID and ov.SYSTEM_ID in [v["id"] for v in none]
