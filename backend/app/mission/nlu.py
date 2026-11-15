@@ -70,6 +70,9 @@ SHELTER_IN = re.compile(r"\b(shelter|hide|take cover|duck and cover|bunker|safe 
 SHELTER_OUT = re.compile(r"\b(leave|out of|come out|get out|exit|go outside|all clear)\b")
 HOUSTON = re.compile(r"\b(houston|mission control|call earth|call home|phone home|ground control|"
                      r"radio earth|message earth)\b")
+# Round 8 rules: Houston the city, not the radio ("between dallas and houston", a misheard offer reply): never a call.
+HOUSTON_PLACE = re.compile(r"\b(?:between \w+(?: \w+)? and houston|from \w+(?: \w+)? to houston|houston (?:and|to) \w+|"
+                           r"(?:in|near|at|to|from|of) houston(?: texas)?$|houston texas)\b")
 END_SHIFT = re.compile(r"^(end( the| this| my)? (shift|turn|day)|next( shift| turn)?|next please|go to sleep|sleep|"
                        r"advance( time)?|skip( ahead)?|fast forward|time to sleep|(we re )?done( for (now|today|the day|tonight))?|"
                        r"finish (the )?(shift|turn))( please)?$")
@@ -331,7 +334,7 @@ def clause(t: str, read: dict | None = None, prev: dict | None = None) -> tuple[
         return {"type": "query", "what": "comms"}, None   # "how long till we can call home" asks about the radio
     if COLD.search(t) and not NEGATION.search(t):
         return {"type": "allocate", "to": "heaters", "amount": {"kind": "delta", "value": 10}, "from": None}, None
-    if HOUSTON.search(t):
+    if HOUSTON.search(t) and not ("houston" in t and HOUSTON_PLACE.search(t) and not re.search(r"\bcall", t)):
         rest = HOUSTON.sub(" ", t)
         rest = re.sub(r"^\s*(hey|hi|hello|ok|okay|call|please|calling|this is (the )?(commander|base))\b", " ", rest)
         return {"type": "call_houston", "text": re.sub(r"\s+", " ", rest).strip()}, None

@@ -33,9 +33,10 @@ VIDEO_CTRL = {"video_pause": ["pause", "pause it", "pause the video", "stop it f
               "video_stop": ["stop", "stop the video", "close the video", "no more video", "turn it off"],
               "video_skip": ["skip", "skip it", "skip the video", "skip this", "next"]}
 PREP_SAY = {"prep_done": ["done", "done!", "i'm done", "we did it", "finished", "all done", "ok done", "it's ready"],
-            "prep_skip": ["skip", "skip this one", "we don't have flour", "can we skip it", "next one please"],
+            "prep_skip": ["skip", "skip this one", "can we skip it", "next one please"],
             "prep_wait": ["wait", "hold on", "one sec", "give me a minute", "not yet", "we're still doing it"],
-            "prep_help": ["i need help", "what do i do", "how do we do this", "help me", "say it again"],
+            "prep_help": ["i need help", "what do i do", "how do we do this", "help me", "say it again",
+                          "we don't have flour"],   # round 8 rules: a missing thing is help (a gentle "you can skip")
             "prep_where": ["where's the flour", "where is the flashlight", "where are the cookies", "do we need a bowl",
                            "what's a flashlight for"]}
 PREP_ROOM = ["ha ha ha", "oh no the flour went everywhere", "mom look", "can i eat the cookie", "it's on my shirt",

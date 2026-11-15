@@ -736,6 +736,47 @@ Why each candidate fails, by how much:
   the flour" question should get a short answer, not be ignored.
 - **The practice offer:** "okay" / "not now" should take or decline it, as they do the other offers.
 
+### Rules fixes: done (this PR), rules only, shadow and r4 s unchanged
+
+What changed in `backend/app/turn_router.py`, `session.py`, `mission/nlu.py`:
+
+- **Video.** Exact phrases first. Then the control word among the first 3 words of a turn of at most 8 words: close /
+  exit / done beat pause, "stop … for a sec" is a pause, pause beats skip. The fuzzy path is skipped when Arc says
+  "not for us". Narration (longer turns, or no control word up front) is never a command. A bare "next" counts only as
+  the exact phrase.
+- **Prep.** A missing thing ("we don't have flour", "I can't find the flashlight", "we're out of …") is `prep_help`
+  with arg `missing`. CAPCOM says "That's okay. You can skip this one, or use something else you have." More wait
+  phrases ("give me a minute", "one more minute"). A prep control inside a repeat or a tail ("i m done i m done",
+  "give me a minute to leave") now counts too. "Where's the flour" is still a question. The pool label moved from
+  skip to help.
+- **Offers.** The reply as said: "not now" had lost its "now" to the trailing-word strip. A short reply with the ear's
+  fillers ("okay so", "not like now") counts, and is not dropped as filler. A reply that opens a short turn counts
+  too ("ready all day ready olly", "not now but a late one minute"). It never counts with a negation or a question
+  word in it.
+- **Houston the city** ("between dallas and houston", "from dallas to houston") is never a `call_houston`.
+- **Shown-line echo.** Lines we said, or put on screen (alert / ask_confirm / hud / card / toast), up to 90 s back are
+  echo references, but only near-verbatim: ≥ 90 % of the heard words, covering ≥ 60 % of the line, numbers ignored
+  ("Sample logged. Science +2."). Our questions and offers are not references, because kids repeat them as answers.
+  The kid's own `nav` text never counts.
+
+Before / after, the same real-ear decodes (361 jobs) and the same sessions (`--cls-n 160`), rules column of
+`evaluate.py`. "Turns broken" counts turns whose act was right before and wrong after:
+
+| set | rules before | rules after | turns broken |
+|---|---|---|---|
+| cls_video_ctrl | 0.406 (wrong/50 0.11) | 0.888 (wrong/50 0.00) | 0 |
+| cls_prep | 0.449 | 0.823 | 0 |
+| cls_offers_new | 0.563 | 0.888 | 0 |
+| cls_offer | 0.850 | 0.856 | 0 |
+| cls_voice_echo_os | 0.813 | 0.813 | 0 |
+
+Both runs use the relabelled pool. Left over:
+
+- In prep, a question behind a word ("next where are the cookies") or ahead of a tail ("where s the flour oh it s
+  good").
+- In offers, "play no later next".
+- In the OS-voice echo set, 30 turns. The new ear (#20) decodes those differently, so they wait for round 9.
+
 ### Round 9 plan: the Director on Arc Transcriber Space (NFT2, feat/arc-space)
 
 The new ear outputs:

@@ -54,6 +54,7 @@
   "panel_radiation",
   "panel_rover",
   "pick_site",
+  "recenter",
   "repeat",
   "settings",
   "skip_event",
@@ -87,9 +88,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 383,
+  "cells": 384,
   "covered": 73,
-  "gap": 310,
+  "gap": 311,
   "pending": 0,
   "by_kind": {
    "answer": {
@@ -118,7 +119,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 251,
+    "cells": 252,
     "covered": 20,
     "pending": 0
    },
@@ -542,7 +543,7 @@
    "screen": "cabin",
    "intent": "cmd:call_houston",
    "kind": "order",
-   "train": 354,
+   "train": 355,
    "heldout": 28,
    "gap": []
   },
@@ -953,6 +954,19 @@
    "intent": "nav:pick_site",
    "kind": "navigate",
    "probe": "pick malapert massif",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "cabin|nav:recenter",
+   "screen": "cabin",
+   "intent": "nav:recenter",
+   "kind": "navigate",
+   "probe": "look forward",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1625,10 +1639,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 16,
+   "train": 23,
    "heldout": 8,
    "gap": [
-    "train 16 < 40"
+    "train 23 < 40"
    ]
   },
   {
@@ -1980,10 +1994,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 6,
+   "train": 9,
    "heldout": 2,
    "gap": [
-    "train 6 < 40",
+    "train 9 < 40",
     "held-out 2 < 8"
    ]
   },
@@ -2310,10 +2324,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 15,
+   "train": 18,
    "heldout": 2,
    "gap": [
-    "train 15 < 40",
+    "train 18 < 40",
     "held-out 2 < 8"
    ]
   },
@@ -2385,7 +2399,7 @@
    "intent": "nav:library",
    "kind": "navigate",
    "probe": "open the library",
-   "train": 47,
+   "train": 46,
    "heldout": 0,
    "gap": [
     "held-out 0 < 8"
@@ -3288,10 +3302,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 9,
+   "train": 11,
    "heldout": 17,
    "gap": [
-    "train 9 < 40"
+    "train 11 < 40"
    ]
   },
   {
@@ -3567,7 +3581,7 @@
    "screen": "patch",
    "intent": "ignore:roomtalk",
    "kind": "ignore",
-   "train": 81,
+   "train": 82,
    "heldout": 32,
    "gap": []
   },
@@ -3636,10 +3650,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 22,
+   "train": 26,
    "heldout": 19,
    "gap": [
-    "train 22 < 40"
+    "train 26 < 40"
    ]
   },
   {
@@ -3914,7 +3928,7 @@
    "intent": "nav:prep_done",
    "kind": "navigate",
    "train": 49,
-   "heldout": 28,
+   "heldout": 26,
    "gap": []
   },
   {
@@ -3922,8 +3936,8 @@
    "screen": "prep",
    "intent": "nav:prep_help",
    "kind": "navigate",
-   "train": 48,
-   "heldout": 34,
+   "train": 47,
+   "heldout": 33,
    "gap": []
   },
   {
@@ -3932,7 +3946,7 @@
    "intent": "nav:prep_skip",
    "kind": "navigate",
    "train": 48,
-   "heldout": 36,
+   "heldout": 37,
    "gap": []
   },
   {
@@ -3950,7 +3964,7 @@
    "intent": "question",
    "kind": "answer",
    "train": 47,
-   "heldout": 25,
+   "heldout": 27,
    "gap": []
   },
   {
@@ -4735,8 +4749,6 @@
   "cabin|nav:none",
   "cabin|other:barge_cmd_negation",
   "cabin|other:cls_mishear",
-  "debrief|nav:none",
-  "lesson_done|nav:none",
   "lesson|nav:none",
   "library|nav:none",
   "map|nav:none",
