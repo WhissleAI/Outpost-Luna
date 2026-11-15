@@ -53,7 +53,7 @@
     <ul class="points one">
       <li><b>Real mission speech.</b> Crew and mission control talk over radio loops, with noise, cross-talk and clipped phrasing. Clean read speech has none of this.</li>
       <li><b>The Moon's vocabulary.</b> Crater and mare names, landing sites, spacecraft and missions: Tycho, Shackleton, Sinus Medii, Orion, Artemis II. A general model writes "tie co" for Tycho.</li>
-      <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to what a curious kid asks the app.</li>
+      <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to the questions people ask the app.</li>
       <li><b>Long context.</b> Whole episodes keep earlier sentences and the names already mentioned, so the model learns to use context: what was just said, and the list of names on screen.</li>
     </ul>
   </section>
@@ -61,34 +61,41 @@
   <section id="corpus" class="sec">
     <h2>What is in the corpus</h2>
     <p class="sec-lede">Our advisor collected and cleaned the corpus: NASA audio with matching transcripts. <!-- TODO(user): name / credit line for the advisor, if they want one. --></p>
-    <!-- Source: the advisor's shared folder "nasa-hackathon" (12 archives). Numbers: filled from the data inventory (TODO). -->
+    <!-- Source: the advisor's shared folder "nasa-hackathon" (12 archives). Numbers: the ingest inventory (2026-11-15). -->
     <div class="tscroll">
     <table class="dtable">
-      <caption>Sources. Hours and segments are counted after cleaning.</caption>
+      <caption>Sources. 16 kHz mono audio in short segments (most 1.5–4 s), each with a lower-case spoken-form transcript.</caption>
       <thead><tr><th scope="col">Source</th><th scope="col">From</th><th scope="col">What it is</th><th scope="col" class="num">Episodes / recordings</th><th scope="col" class="num">Hours</th><th scope="col" class="num">Segments</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Artemis audio</th><td>NASA Artemis audio library</td><td>Artemis II crew and mission audio</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
-        <tr><th scope="row">Houston We Have a Podcast</th><td>NASA Johnson Space Center</td><td>Interviews with astronauts, flight controllers and engineers</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
-        <tr><th scope="row">Small Steps, Giant Leaps</th><td>NASA APPEL</td><td>Conversations about mission lessons and project work</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
-        <tr><th scope="row">Curious Universe</th><td>NASA</td><td>Stories about NASA science and exploration</td><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr>
+        <tr><th scope="row">Artemis audio</th><td>NASA Artemis audio library</td><td>Artemis II crew and mission audio</td><td class="num">98</td><td class="num">4.5</td><td class="num">5,811</td></tr>
+        <tr><th scope="row">Houston We Have a Podcast</th><td>NASA Johnson Space Center</td><td>Interviews with astronauts, flight controllers and engineers</td><td class="num">446</td><td class="num">356.6</td><td class="num">319,599</td></tr>
+        <tr><th scope="row">Small Steps, Giant Leaps</th><td>NASA APPEL</td><td>Conversations about mission lessons and project work</td><td class="num">184</td><td class="num">70.1</td><td class="num">63,284</td></tr>
+        <tr><th scope="row">Curious Universe</th><td>NASA</td><td>Stories about NASA science and exploration</td><td class="num">109</td><td class="num">38.0</td><td class="num">34,282</td></tr>
       </tbody>
-      <tfoot><tr><th scope="row" colspan="3">Total</th><td class="num todo">TODO</td><td class="num todo">TODO</td><td class="num todo">TODO</td></tr></tfoot>
+      <tfoot><tr><th scope="row" colspan="3">Total</th><td class="num">837</td><td class="num">≈469</td><td class="num">422,976</td></tr></tfoot>
     </table>
     </div>
 
     <h3 class="sub-h">Hours by source</h3>
-    <!-- Bars: width = hours / max hours. Fill --w (0–100%) from the inventory. -->
+    <!-- Bars: width = hours / 356.6 h (the largest source). -->
     <ul class="bars" aria-label="Hours of audio per source">
-      <li><span class="bl">Artemis audio</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
-      <li><span class="bl">Houston We Have a Podcast</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
-      <li><span class="bl">Small Steps, Giant Leaps</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
-      <li><span class="bl">Curious Universe</span><span class="bt"><i style="--w:0%"></i></span><span class="bv todo">TODO h</span></li>
+      <li><span class="bl">Artemis audio</span><span class="bt"><i style="--w:1.3%"></i></span><span class="bv">4.5 h</span></li>
+      <li><span class="bl">Houston We Have a Podcast</span><span class="bt"><i style="--w:100%"></i></span><span class="bv">356.6 h</span></li>
+      <li><span class="bl">Small Steps, Giant Leaps</span><span class="bt"><i style="--w:19.7%"></i></span><span class="bv">70.1 h</span></li>
+      <li><span class="bl">Curious Universe</span><span class="bt"><i style="--w:10.7%"></i></span><span class="bv">38.0 h</span></li>
     </ul>
+
+    <h3 class="sub-h">How it is split</h3>
+    <div class="stats">
+      <div class="stat"><b>436 h</b><span>for training</span><small>786 episodes, after the leak check.</small></div>
+      <div class="stat"><b>12.8 h</b><span>held out for testing</span><small>19 whole episodes that no model has seen.</small></div>
+      <div class="stat"><b>20.3 h</b><span>removed as possible leaks</span><small>32 episodes that touched a test set.</small></div>
+    </div>
 
     <h3 class="sub-h">Alongside it</h3>
     <ul class="facts">
-      <li><span class="v">Children</span><span class="d"><b>Children's read speech</b> from an openly licensed corpus (Apache-2.0), so the model also hears young voices. Speaker ids are anonymised.</span><span class="src">Open dataset</span></li>
-      <li><span class="v">Kid questions</span><span class="d"><b>Synthetic kids' space questions</b> ("why is Tycho so bright?"), with the app's own spoken answers mixed in as background. The model learns not to transcribe the app talking.</span><span class="src">Generated</span></li>
+      <li><span class="v">Read speech</span><span class="d"><b>Read speech</b> from an openly licensed corpus (Apache-2.0), so the model hears a wider range of voices. Speaker ids are anonymised.</span><span class="src">Open dataset</span></li>
+      <li><span class="v">Questions</span><span class="d"><b>Synthetic space questions</b> ("why is Tycho so bright?"), with the app's own spoken answers mixed in as background. The model learns not to transcribe the app talking.</span><span class="src">Generated</span></li>
       <li><span class="v">NASA</span><span class="d"><b>Other public NASA mission audio</b> (Apollo and NASA TV commentary) for older mission vocabulary.</span><span class="src">NASA open media</span></li>
     </ul>
   </section>
@@ -99,7 +106,7 @@
     <dl class="priv">
       <div><dt>Spoken-form transcripts</dt><dd>Text is written the way it is said: "apollo twelve", "nineteen sixty nine". This is the same normalization the app's names lists use, so what the model hears and what it links to line up.</dd></div>
       <div><dt>Entity tags</dt><dd>Mentions are tagged inline by type: lunar feature, site, celestial body, spacecraft, mission, crew, plus numbers, places and organisations.</dd></div>
-      <div><dt>Names lists</dt><dd>Most segments carry a names list like the one the app sends: names with their kind, in order of relevance. The model learns to link a mention to the right entry, and to say "not in the list" when it should. <!-- TODO(data): confirm share of segments with a list for the new corpus. --></dd></div>
+      <div><dt>Names lists</dt><dd>About 9 in 10 segments carry a names list like the one the app sends: names with their kind, in order of relevance. The model learns to link a mention to the right entry, and to say "not in the list" when it should.</dd></div>
       <div><dt>Context</dt><dd>Earlier text from the same episode and the names already mentioned travel with each segment, so the model learns to use context without depending on it.</dd></div>
       <div><dt>Sounds and channel</dt><dd>Radio beeps, static, music beds and cross-talk are labelled as events, not dropped. Who is speaking is kept anonymous.</dd></div>
     </dl>
@@ -112,12 +119,11 @@
       <p class="sec-lede">A score means something only if the model never saw the test audio.</p>
     </div>
     <ul class="points one">
-      <li><b>Split by recording, not by segment.</b> Held-out episodes and recordings are chosen first, and nothing from them goes into training, so the same voices and conversations never fall on both sides.</li>
-      <li><b>Checked against every test set.</b> Each candidate training segment is compared with the evaluation sets (Artemis, children's speech, kids' questions and Common Voice) by recording, by audio fingerprint and by transcript overlap. Anything that matches is removed. <span class="todo">TODO: confirm checks ran on this corpus; numbers removed per check.</span></li>
-      <li><b>Duplicates across sources.</b> The same interview can appear in more than one place. Repeats are found by transcript overlap and kept on one side only. <span class="todo">TODO: count.</span></li>
-      <li><b>General speech as a guard.</b> The model is also scored on the Common Voice English test set, to make sure space training doesn't cost it everyday speech.</li>
+      <li><b>Test recordings never enter.</b> All 15 recordings of our Artemis test set were skipped when the corpus was loaded, so they are not in the training data at all.</li>
+      <li><b>Whole episodes, checked against every test set.</b> Each episode's text is searched for every test sentence of 6 or more words. The test sets cover Artemis, Apollo, open read speech, synthetic space questions, held-out names and Common Voice. Any segment that equals a test sentence of 4 or more words also counts as a hit. One hit removes the whole episode. <strong>32 episodes (20.3 h) were removed:</strong> 9 Artemis recordings that rebroadcast test audio, and 23 podcast episodes that matched only common phrases, removed anyway to be safe.</li>
+      <li><b>A new held-out test set from the corpus.</b> About 2.5% of each podcast series is set aside, at least 2 episodes per series, chosen by a fixed hash. Only episodes with less than 5% 8-word overlap with any earlier training text qualify, so no model has seen them. <strong>19 episodes, 12.8 h, 10,410 segments</strong> (Houston We Have a Podcast 11, Small Steps, Giant Leaps 5, Curious Universe 3), frozen before training.</li>
+      <li><b>General speech as a guard.</b> The model is also scored on a fixed sample of the Common Voice English test set. Those test sentences are banned from training, so space training can't quietly cost it everyday speech.</li>
     </ul>
-    <!-- TODO: held-out hours / episodes per source from the inventory. -->
   </section>
 
   <section id="results" class="sec">
@@ -135,9 +141,8 @@
       <thead><tr><th scope="col">Set</th><th scope="col" class="num">Word error rate</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked wrong</th><th scope="col" class="num">Space-tag F1</th></tr></thead>
       <tbody>
         <tr><th scope="row">Artemis II crew audio</th><td class="num">13.4%</td><td class="num">94%</td><td class="num">97.1%</td><td class="num">0.0%</td><td class="num">0.88</td></tr>
-        <tr><th scope="row">Kids' space questions (synthetic)</th><td class="num">6.1%</td><td class="num">86%</td><td class="num">91.9%</td><td class="num">1.5%</td><td class="num">0.84</td></tr>
-        <tr><th scope="row">Children's read speech</th><td class="num">18.1%</td><td class="num">–</td><td class="num" colspan="2">2.0 false links per 100 utterances</td><td class="num">–</td></tr>
-        <tr><th scope="row">Common Voice English (test, 2,000 clips, no names list)</th><td class="num">17.5%</td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td></tr>
+        <tr><th scope="row">Space questions (synthetic)</th><td class="num">6.1%</td><td class="num">86%</td><td class="num">91.9%</td><td class="num">1.5%</td><td class="num">0.84</td></tr>
+        <tr><th scope="row">Open read speech</th><td class="num">18.1%</td><td class="num">–</td><td class="num" colspan="2">2.0 false links per 100 utterances</td><td class="num">–</td></tr>
       </tbody>
     </table>
     </div>

@@ -4526,6 +4526,57 @@
    "min_app": "0.1.0",
    "max_app": null,
    "requires": []
+  },
+  {
+   "id": "site_layers",
+   "title": "Landing-site map layers (NASA LRO)",
+   "required": false,
+   "file": "outpost-luna-v2-site_layers.tar",
+   "url": null,
+   "sha256": "a2e35dc68e7760f1153c347ffa0ba9121c3eed9c543aac457297f13a958d8721",
+   "size": 20439040,
+   "unpacked_size": 20423515,
+   "n_files": 7,
+   "env": "SITE_LAYERS_DIR",
+   "subdir": "",
+   "licence": [
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "NOTICE",
+     "size": 419
+    },
+    {
+     "path": "earth.png",
+     "size": 4017488
+    },
+    {
+     "path": "ice.png",
+     "size": 124289
+    },
+    {
+     "path": "layers.json",
+     "size": 3683
+    },
+    {
+     "path": "relief.png",
+     "size": 3699631
+    },
+    {
+     "path": "slope.png",
+     "size": 6850230
+    },
+    {
+     "path": "sunlight.png",
+     "size": 5727775
+    }
+   ],
+   "version": "1",
+   "min_app": "0.3.0",
+   "note": "Optional: the site navigator's polar map layers (NASA LRO LOLA + Diviner; backend/pipeline/site_physics.py). The app works without them.",
+   "max_app": null,
+   "requires": []
   }
  ],
  "offline_pack": {
@@ -4535,6 +4586,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-15T19:09:43Z",
- "version": "2026.11.15.1909"
+ "published_at": "2026-11-15T20:46:47Z",
+ "version": "2026.11.15.2046"
 }
