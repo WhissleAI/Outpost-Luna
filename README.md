@@ -24,7 +24,7 @@ The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with
 small button inside the app, used by the lessons.
 
 ## Download for Mac
-**[Download Outpost Luna for Mac](https://github.com/WhissleAI/Outpost-Luna/releases/latest)** (Apple silicon, 647 MB,
+**[Download Outpost Luna for Mac](https://www.dropbox.com/scl/fi/o7ywoe58gs7afy10fgolr/Outpost-Luna-0.1.0-arm64.dmg?rlkey=q3n2qkq2atguhbnnehkzqnff7&dl=1)** (Dropbox; mirror: [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest)) (Apple silicon, 647 MB,
 about 1.5 GB once installed). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
 it. It runs with no internet, no account and no keys: every model and the NASA crew audio are inside the app. The NASA
 video files download once when the computer is online; the NASA YouTube clips need a connection. Each release lists the
