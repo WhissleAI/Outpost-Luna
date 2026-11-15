@@ -59,7 +59,7 @@ def test_turn_start_words_arc_end_order():
     assert kinds[-3:] == [("arc", None, None), ("words", None, True), ("turn", "end", None)]
     fin = msgs[-2]
     assert fin["text"] == "set the shields to 40%" and fin["spoken"] == "set the shields to forty percent"
-    assert msgs[-3]["device_directed"] == 0.93 and msgs[-3]["directed"] is True and msgs[-3]["speech"] is True
+    assert msgs[-3]["directed_head"] == 0.93 and msgs[-3]["device_directed"] == arc_ear.app_dd(0.93) and msgs[-3]["directed"] is True and msgs[-3]["speech"] is True
     assert m.calls[-1]["partial"] is False and any(c["partial"] for c in m.calls[:-1])
     end = es.ends[0]
     assert end["reason"] == "silence" and 0.45 <= end["at"] - end["last_voice"] <= 0.6
@@ -190,3 +190,11 @@ def test_wordless_segment_has_no_device_directed_read():
     es = arc_ear.EarStream(model=FakeModel(text="", directed=0.9))
     arc = [x for x in run(es, [1] * 10 + [0] * 10) if x["t"] == "arc"]
     assert arc[0]["device_directed"] is None and arc[0]["directed"] is None and arc[0]["speech"] is False
+
+
+def test_directed_head_is_mapped_onto_the_router_scale():
+    f = arc_ear.app_dd
+    assert f(None) is None and f(0.0) == 0.0 and f(1.0) == 1.0
+    assert f(0.05) == 0.5 and f(0.5) == 0.7          # knee -> DD_MIN, strong_at -> DD_STRONG (turn_router.py)
+    xs = [f(i / 100) for i in range(101)]
+    assert xs == sorted(xs)                           # monotonic
