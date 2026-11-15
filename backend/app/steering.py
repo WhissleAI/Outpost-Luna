@@ -11,10 +11,13 @@ and emphasis markup. The Director picks them from the situation with one small t
     readbacks -> emphasis                 (key numbers and the place name, as inline *markup*)
     safety    -> never anger, contempt, disgust, sarcasm, panic or disappointment toward a kid
 
-The speech engine is the operating system's own offline voice (model_server/app/tts_os.py). It honours `rate` (with the
-kid's speed) and a positive `pause`; the tag, the pitch / loudness controls and the markup have no OS equivalent and are
-dropped there (loudness is mastered by the backend, app/loudness.py). The table stays: it documents the intent, keeps
-the cache keys and the slow / alarm rules, and is what a richer engine would read.
+Two engines read it (Settings -> Voice, prefs.engine):
+  os     the operating system's own offline voice (model_server/app/tts_os.py), the default. It honours `rate` (with the
+         kid's speed) and a positive `pause`; the tag, the pitch / loudness controls and the markup have no OS
+         equivalent and are dropped there (loudness is mastered by the backend, app/loudness.py).
+  steer  Steer TTS Edge (model_server/app/tts_steer.py), optional: the whole style is honoured (tags, the 12 controls,
+         emphasis markup, the performance director's per-sentence plan) and its word timings are the model's own.
+         Persona -> Steer voice: STEER_VOICES (the curated ones the kid can pick are data/voices.json).
 """
 from __future__ import annotations
 
@@ -29,6 +32,15 @@ VOICES: dict[str, str] = {
     "houston": "houston",
 }
 PERSONAS = tuple(VOICES)
+# Persona -> Steer TTS Edge voice (voices.json of WhissleAI/steer-tts-edge; why each, in docs/VOICE_STEERING.md). Used when
+# the kid picked the Steer engine (prefs.engine = "steer").
+STEER_VOICES: dict[str, str] = {
+    "guide": "voice_1085",     # Aurora: crisp, clearest in noise (Arc-ear WER 0.00 clean / 0.12 noisy); owner choice 2026-11-13
+    "capcom": "voice_0213",    # male, mid register, fast pace (118 Hz): crisp mission control
+    "story": "voice_0602",     # male, high register, slow pace (196 Hz): distinct first-person hardware voice
+    "houston": "voice_0272",   # male, low register, average pace (109 Hz): Earth on the radio, "Houston here"
+}
+ENGINES = ("os", "steer")
 
 # Tags never used toward a kid. A row or a caller asking for one gets the persona's tag instead.
 FORBIDDEN = frozenset({"anger", "contempt", "disgust", "sarcasm", "panic", "disappointment", "irritation",
@@ -345,6 +357,16 @@ def with_expressiveness(tag: str, controls: dict | None, perform: dict | None, e
     return tag, c, perform
 
 
+def steer_pref_voice(persona: str, prefs: dict | None) -> str:
+    """With the Steer engine: the kid's chosen Steer voice for the guide (and CAPCOM / the story, as with the OS voices;
+    Houston too when "use for everyone" is on), else the persona's own Steer voice."""
+    p = prefs or {}
+    v = p.get("steer_voice")
+    if v and (persona in ("guide", "capcom", "story") or p.get("voice_all")):
+        return v
+    return STEER_VOICES.get(persona, STEER_VOICES["guide"])
+
+
 def pref_voice(persona: str, prefs: dict | None) -> str | None:
     """The OS voice the kid's Settings choose for this persona, or None (the persona's own voice). The chosen voice is
     the guide's, CAPCOM's and the story's together (one character voice, as the default roles: docs/VOICES.md);
@@ -362,7 +384,7 @@ def pack_allowed(prefs: dict | None) -> bool:
     """The recorded voice pack (docs/VOICE_PACK.md) may speak fixed lines: the Settings toggle is on and the kid kept
     the default guide voice (no voice picked, or the default one picked explicitly)."""
     p = prefs or {}
-    if p.get("pack") is False:
+    if p.get("pack") is False or p.get("engine") == "steer":   # with Steer every line renders live in Steer
         return False
     v = p.get("voice")
     if not v:
@@ -380,6 +402,9 @@ def apply_prefs(style: dict | None, persona: str, prefs: dict | None) -> dict | 
     v = pref_voice(persona, prefs)
     if v:
         out["tts_voice"] = v
+    if prefs.get("engine") == "steer":
+        out["tts_engine"] = "steer"
+        out["steer_voice"] = steer_pref_voice(out.get("voice") or persona, prefs)
     if not pack_allowed(prefs):
         out["pack"] = False
     rate = prefs.get("rate")

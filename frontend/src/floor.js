@@ -135,6 +135,7 @@ function bargeThresholds() {
  *  explicitly still counts as the default). Mirrors backend/app/steering.py pack_allowed. */
 export function packAllowed(P, def = typeof window !== "undefined" && window.__outpost ? window.__outpost.defaultVoice : "") {
   if (!P || P.pack === false) return !P;
+  if (P.engine === "steer") return false;   // Steer selected: every line renders live in Steer
   return !P.voice || P.voice === def;
 }
 /** The kid's voice prefs on a line the client speaks itself (Academy replies, the badge, a11y): the chosen OS voice
@@ -143,7 +144,11 @@ export function prefStyle(style, voice, speed) {
   const P = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs;
   if (!P) return style;
   const out = { ...(style && typeof style === "object" ? style : {}) };
-  if (P.voice && (P.voice_all || voice !== "houston")) out.tts_voice = P.voice;   // guide, CAPCOM and the story together; Houston keeps its own unless voice_all
+  if (P.voice && voice !== "houston") out.tts_voice = P.voice;   // (old saved prefs only: the OS voice is picked by the OS now)
+  if (P.engine === "steer") {               // Settings → Voice: Steer TTS (the server falls back to the OS voice until it is ready)
+    out.tts_engine = "steer";
+    if (P.steer_voice) out.steer_voice = P.steer_voice;   // every role (Houston is relayed by CAPCOM)
+  }
   if (!packAllowed(P)) out.pack = false;   // the recorded guide voice for fixed lines (docs/VOICE_PACK.md)
   if (speed && Math.abs(speed - 1) > 1e-3) out.speed = speed;
   if (P.expressiveness != null && Math.abs(P.expressiveness - 0.5) > 1e-3) out.expr = P.expressiveness;

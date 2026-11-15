@@ -14,8 +14,7 @@ Output (all under desktop/resources/, gitignored):
     app/frontend/           frontend/dist (npm run build)
     app/launch.py           the child-process entry point (desktop/runtime/launch.py)
 
-The arc-transcriber wheel comes from desktop/vendor/wheels/ (see docs/DESKTOP.md); with --build-wheels it is built from
-the local checkout first. Speech uses the OS's own voices (model_server/app/tts_os.py): nothing to bundle on macOS
+Vendored wheels come from desktop/vendor/wheels/ (arc-transcriber, and steertts-edge: the optional Steer voice engine); with --build-wheels they are built from the local checkouts in LOCAL_SRC first. Speech uses the OS's own voices (model_server/app/tts_os.py): nothing to bundle on macOS
 (/usr/bin/say); on Windows the pinned pywinrt packages come from the lock like any other dependency. Caches stay in desktop/build/.
 
 Cross-build (docs/BUILD_WINDOWS.md, "Cross-build on a Mac"): `--target win-x64` on macOS / Linux lays out the Windows
@@ -48,9 +47,12 @@ WIN = sys.platform == "win32"     # the TARGET is Windows (this machine, or --ta
 # Cross-build targets: the uv platform for wheels and python-build-standalone's download for the interpreter.
 TARGETS = {"win-x64": {"uv_platform": "x86_64-pc-windows-msvc", "os": "windows", "arch": "x86_64"}}
 CROSS: dict | None = None         # set by --target
-VENDORED = ("arc-transcriber",)
+# steertts-edge: the optional Steer engine (model_server/app/tts_steer.py), py3-none-any: the same wheel on macOS and
+# Windows (pure Python + onnxruntime + numpy + safetensors from the lock). CC BY-NC 4.0, NOTICE inside the wheel.
+VENDORED = ("arc-transcriber", "steertts-edge")
 LOCAL_SRC = {  # dev-machine checkouts, for --build-wheels (the paths model_server/pyproject.toml uses)
     "arc-transcriber": ROOT / "../../../../dv3work/arc/arc_transcriber",
+    "steertts-edge": ROOT / "../steer-tts/edge",
 }
 # The OS-voice engine's Windows packages (model_server/pyproject.toml): a Windows tree must hold every one of them.
 WIN_SPEECH = ("winrt/_winrt", "winrt/_winrt_windows_media_speechsynthesis", "winrt/_winrt_windows_media_core",

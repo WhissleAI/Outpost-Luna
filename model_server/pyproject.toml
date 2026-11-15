@@ -17,6 +17,9 @@ dependencies = [
   "scipy>=1.17.1",
   "onnxruntime>=1.32.0",
   "tokenizers>=0.23.3",
+  # Steer TTS Edge, the optional second voice engine (app/tts_steer.py): pure Python + ONNX Runtime + numpy +
+  # safetensors (py3-none-any), so the same wheel runs on macOS and Windows. Vendored (CC BY-NC 4.0, NOTICE inside).
+  "steertts-edge",
   # Windows speech (app/tts_os.py): WinRT Windows.Media.SpeechSynthesis (OneCore voices, real word timings), SAPI 5
   # through comtypes as the fallback. macOS uses /usr/bin/say: nothing to install.
   "winrt-runtime==3.2.1; sys_platform == 'win32'",
@@ -36,3 +39,5 @@ pythonpath = ["."]
 
 [tool.uv.sources]
 arc-transcriber = { path = "../../../../../../dv3work/arc/arc_transcriber", editable = true }
+steertts-edge = { path = "../desktop/vendor/wheels/steertts_edge-1.3.0-py3-none-any.whl" }
+
