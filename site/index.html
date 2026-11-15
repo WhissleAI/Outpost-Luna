@@ -29,7 +29,7 @@
     <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
     Outpost Luna</a>
   <nav aria-label="Sections">
-    <a href="#how">How it works</a><a href="#results">Measured</a><a href="#privacy">Privacy</a><a href="#start">Get started</a><a href="guide.html">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+    <a href="#how">How it works</a><a href="#results">Results</a><a href="#privacy">Privacy</a><a href="#start">Get started</a><a href="guide.html">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
   </nav>
   <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
@@ -189,7 +189,7 @@
       <div><dt>The mic: open or push-to-talk</dt><dd>Hands-free listening by default, or push-to-talk (hold Space) in Settings. Audio is never stored.</dd></div>
       <div><dt>The camera is opt-in</dt><dd>Off until you turn on gestures in Settings, with a "Camera on" chip and a Turn off button while it runs. Frames are read on the computer and never saved or sent. No face recognition.</dd></div>
       <div><dt>No account</dt><dd>You pick a call sign. It and all progress stay on the device.</dd></div>
-      <div><dt>Turn log: opt-in, text only</dt><dd>Off by default. If a family turns on "Help improve the voice guide", the app keeps a small text log with names redacted. It is never uploaded, and "Delete what's saved" erases it.</dd></div>
+      <div><dt>Turn log: opt-in, text only</dt><dd>Off by default. If you turn on "Help improve the voice guide", the app keeps a small text log with names redacted. It is never uploaded, and "Delete what's saved" erases it.</dd></div>
     </dl>
   </section>
 
@@ -206,14 +206,14 @@
       <!-- Summarised from docs/BUILD_WINDOWS.md §1–§7. Windows has been built and checked structurally, not yet run on a Windows PC (docs/DESKTOP.md). -->
       <div class="path" id="windows">
         <h3>Windows <span class="tag">build from source</span></h3>
-        <p>Not yet run on a real PC: your first build is the test. Windows 10 or 11 (x64), 16 GB RAM, about 6 GB free.</p>
+        <p>One command builds the installer. Windows 10 or 11 (x64), 16 GB RAM, about 8 GB free.</p>
         <ol>
-          <li>Install Git, Node 22+, uv, CMake and VS 2022 Build Tools (C++). The winget lines are in the guide.</li>
+          <li>Install Git, Node 22+, uv, CMake and Visual Studio Build Tools with C++ and clang-cl. The winget lines are in the guide.</li>
           <li>Clone to a short path and build:
 <pre>git clone https://github.com/WhissleAI/Outpost-Luna.git C:\src\atm
 cd C:\src\atm
 powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1</pre></li>
-          <li>Run <code>desktop\dist\Outpost Luna Setup 0.1.0.exe</code>. It is unsigned, so SmartScreen asks: More info, then Run anyway.</li>
+          <li>Run <code>desktop\dist\Outpost Luna Setup 0.3.1.exe</code>. It is unsigned, so SmartScreen asks: More info, then Run anyway.</li>
           <li>Check the voice picked in Settings → Voice, the time from your question's end to the first word, and that captions follow the voice.</li>
           <li>Logs live in <code>%APPDATA%\Outpost Luna\logs</code>. Send them with the checklist.</li>
         </ol>
@@ -250,8 +250,6 @@ make test</pre>
       <li><b>A smarter Director</b><span>A tiny learned model, trained on the new ear and real voices, takes over more decisions as it proves itself.</span></li>
       <!-- docs/BUILD_WINDOWS.md: first tester build in progress; Authenticode needs an OV/EV certificate. -->
       <li><b>Windows, tested and signed</b><span>A first tester build is under way, then a code-signing certificate so SmartScreen stops warning.</span></li>
-      <!-- backend/data/SOURCES.md: site_layers asset (20 MB) waits for upload. -->
-      <li><b>NASA map layers for everyone</b><span>Sunlight, Earth view, ice and slope layers from LRO, downloaded on first run.</span></li>
     </ul>
   </section>
 </main>
