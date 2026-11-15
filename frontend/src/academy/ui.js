@@ -714,7 +714,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (intent === "repeat_step" && view === "lesson" && L) { say(L.steps[i].prompt, undefined, { repeat: true }); return true; }
     if (["next", "start", "accept_offer"].includes(intent)) {
       if (view === "lesson" && waitingNext) { next(); return true; }
-      if (view === "lesson" && intent === "start") return true;          // already in a lesson: nothing to start
+      // [flows] "continue" / "resume" in a lesson (often after "stop" cut the question off): the question again
+      if (view === "lesson" && intent === "start") { say(L.steps[i].prompt, undefined, { repeat: true }); return true; }
       // [audit2] "next" before the step is answered did nothing at all: say why, and how (the hint shows on the card)
       if (view === "lesson" && intent === "next") { const t = help(); if (t) say(`${SCHOOL.answerFirst} ${t}`); return true; }
       if (view === "badge" || view === "map") {

@@ -314,7 +314,8 @@ class Session:
         ev = m.get("event")
         self.history.append({"in": "ui", "event": ev, "ts": self.clock()})
         if ev == "screen":         # the client's screen frame (hands-free routing context)
-            new = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer", "lesson_id", "step") if k in m}
+            new = {k: m.get(k) for k in ("screen", "step_type", "step_options", "offer", "lesson_id", "step", "flow_state")
+                   if k in m}
             key = lambda s: (s.get("screen"), s.get("lesson_id"), s.get("step"))  # noqa: E731
             if key(new) != key(self.screen):
                 self.step_since = self.clock()      # when this step opened (turn_router.yesno_counts)
@@ -538,6 +539,7 @@ class Session:
             dd_min=dd_min, dd_strong=dd_strong,
             screen=self.screen_name(), step_type=self.screen.get("step_type"),
             step_options=list(self.screen.get("step_options") or []), offer=self.screen.get("offer"),
+            flow=self.screen.get("flow_state") if self.screen.get("flow_state") in ("running", "paused") else None,
             step=self.open_step(),
             step_age=(t0 - self.step_since) if self.step_since is not None else None,
             source=source if heard else "typed",

@@ -92,7 +92,9 @@ export function handPose(hand, aspect = 4 / 3, prev = null, sens = 1, pp = null)
     : !th && ix && md && rg && pk && spread ? 4 : 0;
   const C = [WRIST, 5, 9, 13, 17].map(i => P[i]);
   const palm = [C.reduce((a, p) => a + p[0], 0) / 5 / aspect, C.reduce((a, p) => a + p[1], 0) / 5];
-  return { pose, ext, count, scale: s, palm, thumbDir, pinch, pf, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
+  // facing: the knuckle row's width over the hand length (≈ 0.85 for a flat hand to the camera, small edge-on)
+  const facing = len(sub(P[INDEX[0]], P[PINKY[0]])) / s;
+  return { pose, ext, count, scale: s, palm, thumbDir, pinch, pf, facing, tip: [P[INDEX[3]][0] / aspect, P[INDEX[3]][1]] };
 }
 
 /** The face that counts: the largest (nearest) one. Never identifies anyone: only box + six points. */
@@ -108,7 +110,7 @@ export function createGestureClassifier(opts = {}) {
     Object.assign(S, {
       seen: 0, lastSeenT: -1e9, side: null, ext: null, pose: "none", poseSince: 0, poseFrames: 0,
       hist: [],                         // [{t, x, y, s}] palm centre history (swipe, speed)
-      palmFired: false, palmCool: -1e9, stillSince: 0,
+      palmFired: false, palmCool: -1e9, stillSince: 0, stillAt: null, armUntil: -1e9, armPending: false,
       thumbFired: null, thumbCool: -1e9,
       fCount: 0, fSince: 0, fFrames: 0, fFired: 0, fCool: -1e9,
       swipeCool: -1e9, lastSwipe: null, lastSwipeT: -1e9,
@@ -150,6 +152,8 @@ export function createGestureClassifier(opts = {}) {
   function push(frame) {
     const out = [], t = frame.t, aspect = frame.aspect || 4 / 3;
     const emit = (type, extra) => out.push({ type, t, ...(extra || {}) });
+    // the first frame after the camera turned on starts the no-stop window (a hand already up is not a stop)
+    if (S.armPending) { S.armPending = false; S.armUntil = t + cfg.palmArmMs; }
     const { primary, all } = pickHand(frame.hands, aspect);
 
     // ---------- head (the cabin's look-around and lean) ----------
@@ -170,7 +174,11 @@ export function createGestureClassifier(opts = {}) {
     if (hp.pose !== S.pose) { S.pose = hp.pose; S.poseSince = t; S.poseFrames = 1; } else S.poseFrames++;
     S.hist.push({ t, x: hp.palm[0], y: hp.palm[1], s: hp.scale, pose: hp.pose });
     while (S.hist.length && t - S.hist[0].t > Math.max(cfg.swipeWindowMs, 300)) S.hist.shift();
-    if (speed() > cfg.palmMaxSpeed * k() || S.seen === 1) S.stillSince = t;
+    // still: slow now (speed over the last frames) AND near where the hold began (a slow pass through the frame drifts)
+    const drift = S.stillAt ? Math.hypot(hp.palm[0] - S.stillAt[0], hp.palm[1] - S.stillAt[1]) / (hp.scale || 1e-3) : 0;
+    if (speed() > cfg.palmMaxSpeed * k() || S.seen === 1 || drift > cfg.palmMaxDrift * k() || t < S.armUntil) {
+      S.stillSince = t; S.stillAt = hp.palm.slice();
+    }
     if (S.seen < cfg.stableFrames) return out;     // not stable yet: nothing acts
     const held = t - S.poseSince, stable = S.poseFrames >= 2;
 
@@ -191,7 +199,8 @@ export function createGestureClassifier(opts = {}) {
     if (sw) return out;
 
     // open palm held still → stop
-    if (S.pose === "palm" && stable && !S.palmFired && t >= S.palmCool && t >= S.quietUntil && canFire(t) && Math.min(held, t - S.stillSince) >= cfg.palmHoldMs * holdMul()) {
+    if (S.pose === "palm" && (hp.facing ?? 1) < cfg.palmMinFacing) S.stillSince = t;   // edge-on: not a stop sign
+    if (S.pose === "palm" && stable && !S.palmFired && t >= S.palmCool && t >= S.armUntil && t >= S.quietUntil && canFire(t) && Math.min(held, t - S.stillSince) >= cfg.palmHoldMs * holdMul()) {
       S.palmFired = true; S.palmCool = t + cfg.palmCooldownMs; fired(t); emit("palm_hold");
     }
 
@@ -347,7 +356,7 @@ export function createGestureClassifier(opts = {}) {
     emit("pinch_end", { how });
   }
 
-  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); endPinch(emit, S.lastSeenT, "lost"); S.pinchWas = false; if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.side = null; S.palmFired = false; S.thumbFired = null; S.fCount = 0; S.fFired = 0; }
+  function endHand(emit) { endPoint(emit); endGrab(emit, S.lastSeenT, "lost"); endPinch(emit, S.lastSeenT, "lost"); S.pinchWas = false; if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } S.pose = "none"; S.hist = []; S.stillAt = null; S.side = null; S.palmFired = false; S.thumbFired = null; S.fCount = 0; S.fFired = 0; }
 
   function zoomStep(all, aspect, emit) {
     if (all.length < 2) { if (S.zoom0) { S.zoom0 = null; emit("zoom_end"); } return; }
@@ -393,6 +402,8 @@ export function createGestureClassifier(opts = {}) {
 
   return {
     push, reset,
+    /** The camera just turned on (engine.start): no open-hand stop for palmArmMs from the next frame. */
+    cameraOn() { S.armPending = true; },
     configure(o) { cfg = { ...cfg, ...o }; if ("pointFilter" in o || "fistFilter" in o) mkFilters(); },
     /** Calibration: the current face is the neutral pose (Settings → "Show me your hand"). */
     setNeutral(face) { const f = face || S.face; if (f) { const kp = f.kp; const eyeMid = [(kp[0][0] + kp[1][0]) / 2, (kp[0][1] + kp[1][1]) / 2]; const eyeD = Math.hypot(kp[1][0] - kp[0][0], kp[1][1] - kp[0][1]) || 1e-3; S.neutral = { x: f.box.x + f.box.w / 2, y: f.box.y + f.box.h / 2, w: f.box.w, yaw: (kp[2][0] - eyeMid[0]) / eyeD }; } },

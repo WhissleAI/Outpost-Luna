@@ -93,7 +93,9 @@ export function initVideo(o = {}) {
   onIntent("*", (args, ev) => {
     if (!cur) return false;
     // open palm = pause; thumbs down ("No thanks") = close, so a gesture can always get out of the overlay
-    const c = ev.name === "stop" && ev.source !== "voice" ? "pause" : ev.name === "no" && ev.source === "voice" ? null : INTENT_CMD[ev.name];
+    // [flows] a thumbs up (or Enter / "yes") on a paused video plays it again (the map's "continue" gesture)
+    const c = ev.name === "stop" && ev.source !== "voice" ? "pause" : ev.name === "no" && ev.source === "voice" ? null
+      : ev.name === "yes" && ev.source !== "voice" ? (cur.paused ? "play" : null) : INTENT_CMD[ev.name];
     if (c) { cur.cmd(c); return true; }
     return ev.source === "voice";
   }, { priority: 100 });
@@ -293,7 +295,7 @@ function run({ v, status, fb, context, resolve }) {
       <p class="vid-credit"></p></div>`;
   dlg.addEventListener("close", onClose);
   dlg.onclick = e => { if (e.target.closest("[data-close]")) finish("closed"); };
-  cur = { v, context, finish,
+  cur = { v, context, finish, get paused() { return !!(player && player.paused); },
     cmd(c) {
       if (c === "stop") return finish("closed");
       if (c === "skip") return finish("skip");

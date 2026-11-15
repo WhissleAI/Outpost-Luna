@@ -6,7 +6,7 @@ sprinkled into three other lessons. Every term is one the crew really says, and 
 
 ## Terms and sources
 
-The 25 terms come from `backend/data/glossary.json` (kid meaning, at most 12 words, plus spellings to match).
+The 36 terms come from `backend/data/glossary.json` (kid meaning, at most 20 words and spoken-ready, plus spellings to match).
 `backend/app/academy/vocab.py` finds, for each term, the first NASA Artemis II crew clip in `data/index/clips.json`
 where the crew says it, and records the clip title, its nasa.gov URL, the clip id and the second it is said. The
 glossary card (tap a dotted-underlined word anywhere) offers **Hear it** (Steer TTS, `vocab` style: slow, the word
@@ -40,6 +40,33 @@ stressed) and **Hear the crew say it** (the clip from 2 s before to 4 s after). 
 | blanketing | A layer of thrown-out rock covering the ground. | [Orientale South Ejecta: Texture and Distribution Observations](https://www.nasa.gov/wp-content/uploads/2026/10/art002a000024-clipped.mp3) at 3 s |
 | orbit | Going around and around something in space. | [Byrgius Alpha and Aristarchus Plateau: Regolith Comparison](https://www.nasa.gov/wp-content/uploads/2026/10/art002a000018.mp3) at 221 s |
 | far side | The Moon's side that always faces away from Earth. | [Orientale Basin: Ejecta Extent and Age Assessment](https://www.nasa.gov/wp-content/uploads/2026/10/art002a000019-reid-geologist.mp3) at 8 s |
+
+**Words our own lines use** (fix/flow-resume): everyday space words the guide, the course and the cabin say often. No
+crew clip says most of them, so each names a NASA page (`source` in glossary.json); `crew_jargon: false` keeps them
+from pausing crew audio to explain them (`moments.load_glossary`). `mare` also matches "dark plain(s)".
+
+| Term | Kid meaning | Source |
+| --- | --- | --- |
+| near side | The Moon's side that always faces Earth: the face we see every night. | [NASA Science: Moon facts](https://science.nasa.gov/moon/facts/) |
+| rille | A long, winding groove on the Moon, often cut by flowing lava. | [NASA Science: what the Moon is made of](https://science.nasa.gov/moon/composition/) |
+| impact | A space rock smashing into the Moon. Every crater is an old impact. | [NASA Science: lunar craters](https://science.nasa.gov/moon/lunar-craters/) |
+| phase | How much of the Moon's sunny side we can see from Earth. | [NASA Science: Moon phases](https://science.nasa.gov/moon/moon-phases/) |
+| eclipse | When the Sun, Earth and Moon line up and one blocks the other's light. | [NASA Science: eclipses](https://science.nasa.gov/eclipses/) |
+| solar storm | A burst of fast particles from the Sun. Astronauts take shelter until it passes. | [NASA: space weather](https://www.nasa.gov/space-weather/) |
+| millisievert | A unit for how much space radiation your body gets. Smaller numbers are safer. | [NASA: space radiation](https://www.nasa.gov/humans-in-space/space-radiation/) |
+| shelter | A safe room with thick walls that blocks space radiation during a solar storm. | [NASA: space radiation](https://www.nasa.gov/humans-in-space/space-radiation/) |
+| rover | A car or a robot that drives across the Moon's surface. | [NASA Science: the VIPER rover](https://science.nasa.gov/mission/viper/) |
+| permanently shadowed region | A deep crater floor the Sun never reaches. It is so cold that ice stays frozen. | [NASA Science: water and ice on the Moon](https://science.nasa.gov/moon/moon-water-and-ices/) |
+| ice | Frozen water. Moon ice could give astronauts water, air and rocket fuel. | [NASA Science: water and ice on the Moon](https://science.nasa.gov/moon/moon-water-and-ices/) |
+
+**Chips and marks** (`frontend/src/highlight.js`): a word is marked (dotted underline, role=button) and chipped under an
+answer ("ⓘ lava") only when the glossary has it; a resource word that is also a space word (ice, rover, shelter) opens
+its meaning. A chip or a mark opens the same small card (meaning, Hear it, source) on a click, Enter, controller A, a
+point-and-hold, or by voice ("what is lava?", "what does that mean?": the latest word on screen). It is centred on
+screen, scrolls inside if needed, and one Esc (or ✕) closes only it. Owner bug, 0.1.2: chips never opened anything:
+their `data-kind` / `data-ref` were set on a line that sat inside a comment. `tests/glossary.test.js` scans the course,
+places, facts, concepts and every fixed line for marked words and checks each has a definition;
+`tests/e2e/flows_e2e.py` (glossary) clicks every chip and mark on a card.
 
 ## Exercise types
 

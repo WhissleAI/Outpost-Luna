@@ -106,7 +106,7 @@ export function createGestureEngine({ onEvents = () => {}, onLandmarks = () => {
     }
     video.srcObject = stream;
     try { await video.play(); } catch (e) { /* autoplay of a muted stream is allowed; ignore */ }
-    running = true; classifier.reset();
+    running = true; classifier.reset(); classifier.cameraOn();
     try { if (!worker) await startWorker(); }
     catch (e) { await stop(); status("error", { error: "Gestures couldn't start: " + e.message }); return false; }
     worker.postMessage({ t: "config", face: faceWanted });

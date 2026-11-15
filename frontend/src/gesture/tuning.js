@@ -12,7 +12,14 @@ export const DEFAULTS = Object.freeze({
   minHandScore: 0.6,     // below this the hand is not "confidently present" and nothing acts
   minFaceScore: 0.6,     // the same for the face (head look, lean)
   minHandScale: 0.045,   // wrist→middle-knuckle length (normalised); smaller = too far away / someone behind
-  palmHoldMs: 500, palmCooldownMs: 1000, palmMaxSpeed: 1.6,    // speed in hand-lengths per second
+  // open hand = stop (owner bug, fix/flow-resume: a hand merely visible, or moving through the frame, stopped the Library
+  // tour). Stop needs a DELIBERATE open palm: facing the camera, held still for palmHoldMs, never in the first
+  // palmArmMs after the camera turns on, never while the hand travels (palmMaxSpeed per frame window AND palmMaxDrift
+  // over the whole hold, both in hand-lengths). [webcam]
+  palmHoldMs: 600, palmCooldownMs: 1000, palmMaxSpeed: 0.8,    // speed in hand-lengths per second
+  palmMaxDrift: 0.25,    // the palm centre may wander this far (hand-lengths) from where the hold began
+  palmArmMs: 1000,       // after the camera turns on (classifier.cameraOn()), no stop for this long
+  palmMinFacing: 0.55,   // knuckle width (index→pinky knuckle) / hand length: ≈ 0.85 facing the camera, < 0.5 edge-on
   thumbHoldMs: 350, thumbCooldownMs: 1200,
   // show N fingers → pick option N (1–4): the same count for fingersFrames frames, held (and the hand still) this long [webcam]
   fingersHoldMs: 500, fingersFrames: 6, fingersCooldownMs: 1000,

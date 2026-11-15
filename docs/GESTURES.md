@@ -39,7 +39,7 @@ Phase 1 is on when the camera is on. Phase 2 is behind **Extra gestures (try-out
 
 | Gesture | Intent | Fires when | Guards |
 |---|---|---|---|
-| **Open palm, held still 0.5 s** | `stop` | all five fingers out, pointing up, spread; the palm has moved less than 1.6 hand-lengths/s for 0.5 s | fires once per showing; a 1 s cooldown; a waving palm never fires (tested); the end pose of a swipe is not a stop |
+| **Open palm, facing the camera, held still 0.6 s** | `stop` | all five fingers out, pointing up, spread, the palm facing the camera (knuckle row ≥ 0.55 of the hand length; edge-on is not a stop); the palm moves under 0.8 hand-lengths/s AND stays within 0.25 hand-lengths of where the hold began, for 0.6 s | never in the first 1 s after the camera turns on (a hand already up is not a stop); fires once per showing; a 1 s cooldown; a waving palm, or a hand passing slowly through the frame, never fires (tested, tests/flows.test.js); the end pose of a swipe is not a stop. On a multi-step flow (the Library tour, the cabin tour, a crew clip) it PAUSES; a thumbs up resumes (docs/FLOWS.md §Pause and resume) |
 | **Thumbs up / down** | `yes` / `no` | four fingers curled, thumb straight and vertical, above / below the fist; held 0.35 s | once per showing; a 1.2 s cooldown (a quick up-then-down is one yes) |
 | **Show 1, 2, 3 or 4 fingers, held still 0.5 s** | `pick` {n} | index (1); index + middle spread in a V (2); index + middle + ring, or thumb + index + middle (3); all four with the thumb tucked (4). The same count for 6 frames, held 0.5 s with the hand still | once per showing (lower the hand or change the count to go again); a 1 s cooldown; the counts a hand passes through on the way to 3 never fire; a relaxed hand (two fingers together) is not 2; a fist never counts; the open hand with the thumb out is stop, never a count. **1 vs point:** a still index is "1" only when the point cursor is NOT on a control; on a control it is point and hold (the dwell presses it), and right after a "1" the same still index's dwell presses nothing. See §Answers |
 | **Swipe left / right, open hand** | `next` / `prev` | an open hand moves ≥ 20 % of the frame (and ≥ 1.6 hand-lengths) sideways within 0.45 s, mostly straight (dx ≥ 2·dy, ≥ 75 % of the path) | one swipe is one step (a 0.7 s cooldown); the return stroke within 1.2 s is ignored; a fist sweep is a drag, not a swipe |
@@ -106,6 +106,10 @@ the Moon itself moves every display frame from the spinner, so a 10–30 fps cam
 
 | Constant | Value | What |
 |---|---|---|
+| `palmHoldMs` | 600 ms | the open hand held still this long is a stop (fix/flow-resume; was 500) |
+| `palmMaxSpeed` / `palmMaxDrift` | 0.8 hand-lengths/s / 0.25 hand-lengths | "still": slow now, and near where the hold began (was 1.6, no drift limit) |
+| `palmArmMs` | 1000 ms | no stop in the first second after the camera turns on (`classifier.cameraOn()`) |
+| `palmMinFacing` | 0.55 | knuckle width / hand length: the palm faces the camera (≈ 0.85), not edge-on (< 0.5) |
 | `grabHoldMs` / `grabEnterFrames` | 250 ms / 4 | a fist held this long grabs |
 | `grabReleaseFrames` | 3 | an open hand for this many frames releases |
 | `grabReleaseMs` | 300 ms | neither fist nor open hand for this long releases |

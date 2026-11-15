@@ -24,7 +24,9 @@ export function buildMatcher({ terms = {}, places = {}, resources = RESOURCES, e
   const items = [];
   Object.entries(terms).forEach(([form, term]) => items.push({ s: form, kind: "term", ref: term }));
   Object.entries(places).forEach(([name, id]) => items.push({ s: name, kind: "place", ref: id }));
-  resources.forEach(r => items.push({ s: r, kind: "resource", ref: r }));
+  // a resource that is also a space word ("ice", "rover", "shelter") is the word: it opens its meaning
+  const termForms = new Set(Object.keys(terms).map(f => f.toLowerCase()));
+  resources.forEach(r => { if (!termForms.has(r.toLowerCase())) items.push({ s: r, kind: "resource", ref: r }); });
   extra.forEach(m => { if (m && !items.some(x => x.s.toLowerCase() === m.toLowerCase())) items.push({ s: m, kind: "place", ref: places[m] || "" }); });
   items.sort((a, b) => b.s.length - a.s.length);
   const by = new Map(items.map(x => [x.s.toLowerCase(), x]));
@@ -130,7 +132,10 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
     box.innerHTML = ""; box.hidden = !items.length;
     items.forEach(p => {
       const b = document.createElement("button"); b.type = "button"; b.className = `hl-chip hl-chip-${p.kind}`;
-      b.innerHTML = icon(p.kind === "term" ? "info" : "place", { size: 14 }) + " "; b.append(p.kind === "term" ? p.ref : p.text);   // [qa] icons, not glyphs b.dataset.kind = p.kind; b.dataset.ref = p.ref;
+      b.innerHTML = icon(p.kind === "term" ? "info" : "place", { size: 14 }) + " "; b.append(p.kind === "term" ? p.ref : p.text);   // [qa] icons, not glyphs
+      // [owner bug] these two sat at the end of the comment above, so every chip rendered without them and a click on
+      // "ⓘ lava" did nothing at all (activate() reads them)
+      b.dataset.kind = p.kind; b.dataset.ref = p.ref;
       b.setAttribute("aria-label", p.kind === "term" ? `What does ${p.ref} mean?` : `Fly to ${p.text}`);
       box.append(b);
     });
@@ -160,12 +165,13 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
     if (!cardEl) {
       cardEl = document.createElement("div"); cardEl.className = "hl-card"; cardEl.setAttribute("role", "dialog");
       cardEl.setAttribute("aria-modal", "false"); cardEl.setAttribute("aria-labelledby", "hlCardTitle"); document.body.append(cardEl);
-      cardEl.addEventListener("keydown", e => { if (e.key === "Escape") closeCard(); });
+      // one Esc closes one layer: the word card, not the answer card under it too (keys.js skips a handled key)
+      cardEl.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); closeCard(); } });
     }
     const src = t.source || {};
     cardEl.innerHTML = `<header><span class="eyebrow">Space word</span><button type="button" class="x" data-x aria-label="Close">&times;</button></header>
       <h3 id="hlCardTitle">${escH(t.term)}</h3><p>${escH(t.explain)}</p>
-      ${src.url ? `<p class="hl-src">Heard in: <a href="${escH(src.url)}" target="_blank" rel="noopener">${escH(src.title)}</a></p>` : ""}
+      ${src.url ? `<p class="hl-src">${src.kind === "crew" ? "Heard in" : "Source"}: <a href="${escH(src.url)}" target="_blank" rel="noopener">${escH(src.title)}</a></p>` : ""}
       <div class="hl-acts"><button type="button" class="pill hot" data-hear>Hear it</button>
       ${src.clip_id ? `<button type="button" class="pill" data-crew>Hear the crew</button>` : ""}</div>`;
     cardEl.hidden = false;
@@ -197,6 +203,23 @@ export function initHighlight({ api, say, playCrew, flyTo } = {}) {
       .observe(document.body, { childList: true, subtree: true, characterData: true });
   }
   load();
-  O.highlight = { markCaption, termCard, noteReadout, tokenize: t => tokenize(t, m), get glossary() { return glossary; }, rescan: () => scan(document.body) };
+  /** Voice / typed: "what is lava?", "what does regolith mean?", "what does that mean?" (the latest word on screen).
+   *  Opens the word's card and says its meaning. True when it was a glossary question we could answer. */
+  function define(text) {
+    const q = String(text || "").toLowerCase().replace(/[’']/g, "").replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+    let word = null;
+    if (/^(?:what does (?:that|this|it) (?:word )?mean|what is that word|what s that word|what does that word mean)$/.test(q)) {
+      const vis = [...document.querySelectorAll(".hl-term[data-ref], .hl-chip-term[data-ref]")].filter(e => e.getClientRects().length);
+      word = vis.length ? vis[vis.length - 1].dataset.ref : null;
+    } else {
+      const m = q.match(/^(?:what is|whats|what are|what does|tell me what|explain|define)(?: an?| the)? (.+?)(?: mean| means)?$/);
+      if (m) { const f = m[1].trim(); word = (lex.terms[f] || lex.terms[f.replace(/s$/, "")]) || null; }
+    }
+    if (!word || !glossary[word]) return false;
+    termCard(word, document.activeElement);
+    if (say) say(`${glossary[word].term}. ${glossary[word].explain}`, { situation: "vocab", vocab: [word] });
+    return true;
+  }
+  O.highlight = { markCaption, termCard, define, noteReadout, tokenize: t => tokenize(t, m), get glossary() { return glossary; }, rescan: () => scan(document.body) };
   return O.highlight;
 }
