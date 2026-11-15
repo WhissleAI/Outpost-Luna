@@ -671,7 +671,9 @@ export function createCabin(root, o = {}) {
       const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
         goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
         night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]',
-        play: "#cbPlay", skip: "#cbSkip", warp: ".cb-warps", task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
+        play: "#cbPlay", skip: "#cbSkip", warp: '.cb-warp[data-warp="4"]', task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
+      // [flows] "Time warp?" glows the 4× button, not the whole 1× / 2× / 4× group: a novice pressing the glowing group
+      // toggled between 1× and 2× forever (tools/play_mission.py at 1440×879: "All steady. Time warp?" never moved on)
       const nodes = sel ? [...root.querySelectorAll(sel)] : [];
       if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
       nodes.forEach(n => n.classList.add("is-point"));
