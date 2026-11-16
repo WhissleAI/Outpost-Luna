@@ -33,12 +33,18 @@ export function installMissionLearning({ missionUI, say, stop = () => {}, lesson
   const seenKey = () => "outpost-moonbase-seen:" + cs();
   const firstMission = () => get("outpost-first-mission:" + cs()) !== "1" && missionsFlown(callSign.get()) === 0;
   const onPicker = () => { const f = missionUI.active && missionUI.screen && missionUI.screen(); return !!(f && f.screen === "brief" && f.offer === "take_command"); };
-  const shouldOffer = () => !offer && get(seenKey()) !== "1" && firstMission() && onPicker();
+  const shouldOffer = () => !offer && !asking && get(seenKey()) !== "1" && firstMission() && onPicker();
   let offer = null;     // {el, done(watch)} while the card is up
   let bypass = false;
+  // [polish a] a second Take command (a double tap, or a tap plus "take command" by voice) while the video check is
+  // still in flight used to put up a second card: one stayed over the cabin for the whole mission with dead buttons
+  let asking = false;
 
   async function offerThen(proceed) {
-    const st = await videoState("moon_base_6mo");
+    if (asking || offer) return;
+    asking = true;
+    let st;
+    try { st = await videoState("moon_base_6mo"); } finally { asking = false; }
     // only a saved copy (moon_base_6mo is pinned: downloaded on the first online launch): it starts at once, offline
     // too, and a run without the cache (tests: VIDEO_PREFETCH=0) never meets the card. Otherwise straight on.
     if (st !== "cached" || !onPicker()) { proceed(); return; }
@@ -67,13 +73,16 @@ export function installMissionLearning({ missionUI, say, stop = () => {}, lesson
   // a tap on Take command (the mission UI's own onclick runs after, through `bypass`)
   document.addEventListener("click", e => {
     const b = e.target && e.target.closest && e.target.closest("#mStart");
-    if (!b || bypass || !shouldOffer()) return;
+    if (!b || bypass) return;
+    if (asking || offer) { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the first press is being answered
+    if (!shouldOffer()) return;
     e.preventDefault(); e.stopImmediatePropagation();
     offerThen(() => { bypass = true; try { b.click(); } finally { bypass = false; } });
   }, true);
 
   /** Voice / gestures / keys (main.js shellNav calls this before missionUI.nav). True when it took the intent. */
   function nav(intent, arg) {
+    if (asking && ["take_command", "start", "next", "accept_offer"].includes(intent)) return true;   // already on it
     if (offer) {
       if (["accept_offer", "yes", "next"].includes(intent)) { offer.done(true); return true; }
       if (["decline_offer", "no", "take_command", "start", "skip_tour", "back"].includes(intent)) { offer.done(false); return true; }
