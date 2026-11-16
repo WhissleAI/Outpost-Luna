@@ -335,15 +335,28 @@ Settings → Voice lists the voices and tells parents where to download clearer 
 
 ## Process supervision
 
-- Ports: last used (`ports.json`), else 47310 / 47210, 47311 / 47211, …, else OS-chosen. Keeping them stable keeps the UI
-  origin, and so its `localStorage` (settings, Flight School progress), the same across runs.
-  `OUTPOST_BACKEND_PORT` / `OUTPOST_MODELS_PORT` override.
+- Ports (#88): picked at every launch, never assumed. Preferred, in order: `OUTPOST_BACKEND_PORT` / `OUTPOST_MODELS_PORT`,
+  the last used (`ports.json`), 47310 / 47210, 47311 / 47211, 47312 / 47212; when all are taken, one the OS picks. The
+  children get theirs on the command line, the backend gets the model server's URL, the page is loaded from its own
+  origin. Keeping them stable keeps the UI origin, and so its `localStorage` (settings, Flight School progress), the
+  same across runs. Where the engine actually is: `engine.json` (docs/SECURITY.md).
+- Local access (#84, docs/SECURITY.md): a per-launch token; both children refuse other origins and calls without it.
 - Children are spawned `detached` (own process group) on POSIX; quitting sends SIGTERM to the group, then SIGKILL after
   4 s. On Windows, `taskkill /PID <pid> /T /F`.
 - `children.json` records the pids; the next start kills any still-running pid whose command line is our launcher
   (guards against pid reuse), then clears the file.
 - `launch.py` exits when its parent (Electron) dies: tested by crashing Electron, which left no Python behind.
-- A child that exits is restarted (up to 3 times a minute), then an error dialog points at the logs.
+- Supervision (#87, `main/engine.js`): a child that exits is restarted after 1, 2, 4, 8, 16 s (cap 30 s); 5 crashes in
+  a row without a healthy minute in between and the app gives up. Without the backend there is no page, so that is an
+  error dialog pointing at the logs; without the model server the page goes on by typing and the voice bar says
+  "Voice off · type". After launch both children answer a health check every 5 s; one that misses 4 in a row (hung,
+  not crashed) is killed and restarted the same way. While the model server is away the voice bar says "Ear
+  restarting…" (`frontend/src/engine.js`), and the mic reconnects by itself once it is back. In the model server, a
+  decode that runs past `EAR_DECODE_TIMEOUT_S` (20 s) is abandoned: the stream gets `{"t":"error","code":
+  "decode_timeout"}` and closes, and the hung model handle is dropped and loaded again (`app/decode_watchdog.py`).
+- `OUTPOST_HEADLESS=1`: no window is ever shown and the app stays out of the Dock (silent test runs; drive the page
+  over `--remote-debugging-port`). With `OUTPOST_USER_DATA` and `OUTPOST_*_PORT` a test run never touches an installed
+  app's data or ports.
 - Single instance: a second launch focuses the existing window.
 
 ## Tested on this Mac (macOS 26.2, Apple Silicon), 2026-11-13
@@ -365,7 +378,7 @@ so this test run used `--no-sandbox`; a normal launch keeps it), no keys in the 
 | Mission cabin | shift started at Shackleton Rim, `shields +5` order, shift advanced, debrief |
 | quit | both children got SIGTERM and exited; `children.json` emptied; no stray processes |
 
-Re-run: `PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/python3 desktop/scripts/smoke.py --base http://127.0.0.1:47310`.
+Re-run: `PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/python3 desktop/scripts/smoke.py` (the running app's address and token come from its `engine.json`).
 
 ## Signing and notarization (macOS)
 

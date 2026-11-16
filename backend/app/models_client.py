@@ -6,6 +6,7 @@ import asyncio
 import httpx
 
 from .config import settings
+from .local_guard import auth_headers
 
 _client: httpx.AsyncClient | None = None
 _loop = None
@@ -16,7 +17,8 @@ def client() -> httpx.AsyncClient:
     global _client, _loop
     loop = asyncio.get_running_loop()
     if _client is None or _loop is not loop:
-        _client = httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.model_timeout_s)
+        _client = httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.model_timeout_s,
+                                    headers=auth_headers())
         _loop = loop
     return _client
 

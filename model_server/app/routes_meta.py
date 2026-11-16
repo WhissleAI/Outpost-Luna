@@ -12,6 +12,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket,
 from fastapi.concurrency import run_in_threadpool
 
 from . import arc_ear, arcmeta
+from .decode_watchdog import DecodeTimeout, guarded
 from .stream_context import StreamContext
 
 router = APIRouter()
@@ -96,7 +97,7 @@ async def stream(ws: WebSocket):
                 if len(buf) >= 2560:          # >= 80 ms
                     n = len(buf) // 2 * 2
                     chunk, buf = buf[:n], buf[n:]
-                    for o in await loop.run_in_executor(pool, ms.feed_all, chunk):
+                    for o in await guarded(loop, pool, ms.feed_all, chunk):
                         await ws.send_json(ctx.decorate(o))
             elif m.get("text"):
                 try:
@@ -105,14 +106,14 @@ async def stream(ws: WebSocket):
                     continue
                 t = msg.get("t")
                 if t == "context":
-                    await ws.send_json(await loop.run_in_executor(pool, ctx.update, msg, ms))
+                    await ws.send_json(await guarded(loop, pool, ctx.update, msg, ms))
                 elif t == "words":
                     pass        # the external words are not needed: the model hears the audio itself
                 elif t == "end_turn":
-                    for o in await loop.run_in_executor(pool, ms.end_turn_all):
+                    for o in await guarded(loop, pool, ms.end_turn_all):
                         await ws.send_json(ctx.decorate(o))
                 elif t == "stop":
-                    outs = [o for o in await loop.run_in_executor(pool, ms.flush_all) if o.get("t") == "arc"]
+                    outs = [o for o in await guarded(loop, pool, ms.flush_all) if o.get("t") == "arc"]
                     outs = outs or [{"t": "arc", "at": round(ms.audio_s, 2), "device_directed": None, "speech": False,
                                      "audio_events": [], "bio_events": [], "names": [],
                                      "rtf": round(ms.compute_s / ms.audio_s, 3) if ms.audio_s else None}]
@@ -122,6 +123,9 @@ async def stream(ws: WebSocket):
                     break
     except WebSocketDisconnect:
         pass
+    except DecodeTimeout as e:
+        await _hung(ws, ms, str(e))
+        ms = None               # its worker is stuck: never queue close() behind it
     finally:
         if ms is not None:
             await loop.run_in_executor(pool, ms.close)
@@ -131,6 +135,18 @@ async def stream(ws: WebSocket):
             await ws.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+async def _hung(ws: WebSocket, stream, why: str) -> None:
+    """The decode watchdog fired (app/decode_watchdog.py): tell the client, reset the model handle, close (1011)."""
+    model = getattr(stream, "m", None)
+    reset = arcmeta.reset_after_hang(model, why)
+    try:
+        await ws.send_json({"t": "error", "code": "decode_timeout", "message": f"the ear stopped responding ({why})",
+                            "reset": reset})
+        await ws.close(code=1011)
+    except Exception:  # noqa: BLE001 (the client may be gone already)
+        pass
 
 
 def _ear_unavailable() -> str | None:
@@ -173,7 +189,7 @@ async def ear_stream(ws: WebSocket, domain: str):
                 if len(buf) >= 2560:          # >= 80 ms
                     n = len(buf) // 2 * 2
                     chunk, buf = buf[:n], buf[n:]
-                    await send_all(await loop.run_in_executor(pool, es.feed_all, chunk))
+                    await send_all(await guarded(loop, pool, es.feed_all, chunk))
             elif m.get("text"):
                 try:
                     msg = json.loads(m["text"])
@@ -181,14 +197,17 @@ async def ear_stream(ws: WebSocket, domain: str):
                     continue
                 t = msg.get("t")
                 if t == "context":
-                    await ws.send_json(await loop.run_in_executor(pool, ctx.update, msg, es))
+                    await ws.send_json(await guarded(loop, pool, ctx.update, msg, es))
                 elif t == "end_turn":
-                    await send_all(await loop.run_in_executor(pool, es.end_turn_all))
+                    await send_all(await guarded(loop, pool, es.end_turn_all))
                 elif t == "stop":
-                    await send_all(await loop.run_in_executor(pool, es.flush_all))
+                    await send_all(await guarded(loop, pool, es.flush_all))
                     break
     except WebSocketDisconnect:
         pass
+    except DecodeTimeout as e:
+        await _hung(ws, es, str(e))
+        es = None               # its worker is stuck: never queue close() behind it
     finally:
         if es is not None:
             await loop.run_in_executor(pool, es.close)

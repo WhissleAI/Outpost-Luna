@@ -50,7 +50,8 @@ meta_settings = MetaSettings()
 EMOTION_REASON = "Arc Transcriber Space has no emotion output."
 
 STATE: dict = {"arc": None, "error": None, "load_s": None, "sessions": 0, "decoder": False, "rss_mb": None,
-               "rss_delta_mb": None, "model_dir": None, "lib": None, "backend": None, "engine": None}
+               "rss_delta_mb": None, "model_dir": None, "lib": None, "backend": None, "engine": None,
+               "resets": 0, "last_reset": None}   # the decode watchdog (app/decode_watchdog.py, #87)
 _lock = threading.Lock()
 
 
@@ -134,7 +135,29 @@ def health() -> dict:
                     # sha256 check (app/nft2.py, app/model_verify.py)
                     "engine": STATE["engine"], "ort_wheel": _wheel_version()},
         "emotion": {"loaded": False, "enabled": False, "reason": EMOTION_REASON},
+        "watchdog": {"resets": STATE["resets"], "last_reset": STATE["last_reset"]},
     }
+
+
+def reset_after_hang(model, reason: str, reload=None) -> bool:
+    """The decode watchdog gave up on a call into `model` (app/decode_watchdog.py): drop that handle, so no new
+    session queues behind the stuck call, and load a fresh one in the background (the stuck thread keeps the old one
+    until it returns, if it ever does). False when `model` is no longer the live handle (another stream reset it)."""
+    with _lock:
+        if model is None or STATE["arc"] is not model:
+            return False
+        STATE["arc"] = None
+        STATE["error"] = f"reloading after a hung decode ({reason})"[:300]
+        STATE["resets"] += 1
+        STATE["last_reset"] = {"at": round(time.time()), "reason": reason[:200]}
+    threading.Thread(target=reload or _reload, name="arc-reload", daemon=True).start()
+    return True
+
+
+def _reload() -> None:
+    load()
+    if STATE["arc"] is not None:
+        STATE["error"] = None
 
 
 # ------------------------------------------------------------------------------------------------------------ events

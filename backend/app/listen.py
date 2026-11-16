@@ -40,6 +40,7 @@ from . import session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
 from .keyterms import base_keyterms
+from .local_guard import auth_headers
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -138,7 +139,8 @@ def arc_context(d: dict, base: list | tuple = ()) -> dict:
 async def open_arc_ear():
     """(connection, None) once the model server says {"t":"ear","available":true}; else (None, reason)."""
     try:
-        conn = await asyncio.wait_for(websockets.connect(arc_ear_url(), max_size=2 ** 22), ear_settings.ear_connect_s)
+        conn = await asyncio.wait_for(websockets.connect(arc_ear_url(), max_size=2 ** 22,
+                                                         additional_headers=auth_headers()), ear_settings.ear_connect_s)
     except Exception as e:  # noqa: BLE001
         return None, f"model server unreachable: {type(e).__name__}"
     try:
@@ -191,7 +193,7 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
     base = default_names() if ear_settings.ear_names else []
     if base:
         await arc.send(json.dumps({"t": "context", "names": base}))
-    relay = ("words", "turn", "arc", "emotion", "context_ack")
+    relay = ("words", "turn", "arc", "emotion", "context_ack", "error")   # error: the decode watchdog (#87)
 
     async def from_arc():
         async for raw in arc:
@@ -269,7 +271,7 @@ async def run_deepgram(ws: WebSocket, send, sid: dict, fallback_from: dict | Non
         return
     meta = None
     with contextlib.suppress(Exception):  # Arc metadata is optional
-        meta = await asyncio.wait_for(websockets.connect(model_stream_url()), 1.0)
+        meta = await asyncio.wait_for(websockets.connect(model_stream_url(), additional_headers=auth_headers()), 1.0)
 
     turn_open = False
     ended = asyncio.Event()

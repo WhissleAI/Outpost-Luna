@@ -10,6 +10,7 @@ import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
 import { createVoice } from "./voice.js";
+import { onEngine, askbarClasses } from "./engine.js";   // [#87] the desktop shell's ear state
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
@@ -608,6 +609,8 @@ async function boot() {
       if (!ready) setTimeout(() => warm(t0), performance.now() - t0 < 180000 ? 2000 : 30000);   // [qa] QA-57: back off once "Voice off"
     }).catch(() => { bar.classList.add("is-warming"); if (performance.now() - t0 < 180000) setTimeout(() => warm(t0), 2000); else { bar.classList.remove("is-warming"); bar.classList.add("is-voiceoff"); } });
   })();
+  // [#87] The desktop shell's engine state (engine.js): "Ear restarting…" / "Voice off · type" on the voice bar.
+  onEngine(st => { const bar = $("askbar"); for (const [c, on] of Object.entries(askbarClasses(st))) bar.classList.toggle(c, on); });
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
   new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
   // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the

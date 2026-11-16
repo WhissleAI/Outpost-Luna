@@ -1,14 +1,17 @@
 """Offline smoke test of a running Outpost Luna backend (the desktop app's, or any): voice ask -> answer -> the OS voice,
 a Flight School lesson, and a mission shift. Uses only the bundled backend deps (httpx, websockets).
 
-    resources/python/bin/python3 desktop/scripts/smoke.py --base http://127.0.0.1:47310 [--pcm backend/tests/fixtures/bullseye_16k.s16le]
+    resources/python/bin/python3 desktop/scripts/smoke.py [--base http://127.0.0.1:47310] [--pcm backend/tests/fixtures/bullseye_16k.s16le]
 (PYTHONPATH=desktop/resources/site/backend). Exit 1 on the first failure.
+The running app's address and per-launch token come from its discovery file (engine.json in the app data folder,
+docs/SECURITY.md); --engine points at another one (a test run's OUTPOST_USER_DATA), --base / --token override.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -20,16 +23,25 @@ FRAME = 2560  # 80 ms of PCM16 at 16 kHz
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def engine_file() -> Path:
+    """The desktop app's engine.json (desktop/main/engine.js): Electron's userData folder for "Outpost Luna"."""
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA", Path.home() / "AppData/Roaming")) / "Outpost Luna/engine.json"
+    if sys.platform == "darwin":
+        return Path.home() / "Library/Application Support/Outpost Luna/engine.json"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Outpost Luna/engine.json"
+
+
 def ok(cond, what):
     print(("PASS " if cond else "FAIL ") + what, flush=True)
     if not cond:
         sys.exit(1)
 
 
-async def voice_turn(base: str, pcm: bytes) -> tuple[str, float, list]:
+async def voice_turn(base: str, pcm: bytes, headers: dict) -> tuple[str, float, list]:
     url = base.replace("http", "ws", 1) + "/ws/listen"
     got = []
-    async with websockets.connect(url, max_size=None) as ws:
+    async with websockets.connect(url, max_size=None, additional_headers=headers) as ws:
         audio = pcm + bytes(16000 * 2 * 2)       # + 2 s of silence: the ear ends the turn
         t_end_speech = None
 
@@ -62,10 +74,20 @@ async def voice_turn(base: str, pcm: bytes) -> tuple[str, float, list]:
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="http://127.0.0.1:47310")
+    ap.add_argument("--base", default=None, help="default: the backend in engine.json")
+    ap.add_argument("--token", default=os.environ.get("LUNA_TOKEN"), help="default: the token in engine.json")
+    ap.add_argument("--engine", default=str(engine_file()), help="the running app's discovery file")
     ap.add_argument("--pcm", default=str(ROOT / "backend/tests/fixtures/bullseye_16k.s16le"))
     a = ap.parse_args()
-    async with httpx.AsyncClient(base_url=a.base, timeout=60) as c:
+    eng = {}
+    try:
+        eng = json.loads(Path(a.engine).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print(f"  -    no engine.json at {a.engine}: using --base / --token")
+    a.base = a.base or eng.get("backend") or "http://127.0.0.1:47310"
+    headers = {"X-Luna-Token": a.token or eng.get("token") or ""}
+    print(f"  -    backend {a.base}, token {'set' if headers['X-Luna-Token'] else 'none'}")
+    async with httpx.AsyncClient(base_url=a.base, timeout=60, headers=headers) as c:
         h = (await c.get("/api/health")).json()
         ms = h.get("model_server", {}).get("models", {})
         ok(h.get("ok") and all(ms.get(k, {}).get("loaded") for k in ("arc_tagger", "arc_meta", "tts", "embedder")),
@@ -80,7 +102,7 @@ async def main():
            f"Settings voices: {[(v['name'], v['desc']) for v in vs][:6]}")
 
         # 1. voice ask -> answer -> the OS voice
-        text, lat, msgs = await voice_turn(a.base, Path(a.pcm).read_bytes())
+        text, lat, msgs = await voice_turn(a.base, Path(a.pcm).read_bytes(), headers)
         ear = next((m for m in msgs if m.get("t") == "ear"), {})
         ok(ear.get("ear") == "arc", f"ear is the local Arc ear ({ear})")
         ok("bull" in text.lower(), f"heard {text!r}; turn end {lat * 1000:.0f} ms after speech end")

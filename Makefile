@@ -41,8 +41,9 @@ index:           ## Rebuild the crew index with Arc Tagger (needs `make models` 
 meta:            ## Arc audio metadata + awe peaks for every crew clip -> backend/data/index/audio_meta.json (needs `make models`)
 	cd backend && uv run python -m pipeline.build_audio_meta
 
-dev:             ## Run model server, backend and frontend together (Ctrl-C stops all)
-	uvx honcho@2.0.0 -f Procfile.dev start
+dev:             ## Run model server, backend and frontend together (Ctrl-C stops all); one per-run token (docs/SECURITY.md)
+	LUNA_TOKEN=$${LUNA_TOKEN:-$$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')} LUNA_DEV_COOKIE=1 \
+	  uvx honcho@2.0.0 -f Procfile.dev start
 
 models:          ## Run only the model server
 	cd model_server && uv run uvicorn app.main:app --host 127.0.0.1 --port 8200

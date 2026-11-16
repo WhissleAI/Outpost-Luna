@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import knowledge, models_client, reset, video
 from .listen import router as listen_router
+from .local_guard import LocalGuard, env_options as local_guard_options
 from .config import settings
 from .gazetteer import Gazetteer
 from .director import _voice as voice_moment, direct
@@ -39,6 +40,8 @@ async def _warm_brain():
 app = FastAPI(title="Outpost Luna backend", version="0.2.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","), allow_methods=["*"],
                    allow_headers=["*"])
+# [#84] outermost: Host + Origin + per-launch token on every request and WebSocket (app/local_guard.py, docs/SECURITY.md)
+app.add_middleware(LocalGuard, **local_guard_options(settings.cors_origins.split(",")))
 
 
 class Playing(BaseModel):

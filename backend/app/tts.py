@@ -39,6 +39,7 @@ from pydantic import BaseModel, Field
 
 from . import loudness, narration, steering
 from .config import settings
+from .local_guard import auth_headers
 
 router = APIRouter()
 
@@ -239,7 +240,7 @@ async def _os_tts(text: str, style: dict, place: dict) -> tuple[bytes, str, str]
         body["pack"] = True
     if style.get("perform"):
         body["perform"] = {**style["perform"], **{k: v for k, v in place.items() if v is not None}}
-    async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s) as c:
+    async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s, headers=auth_headers()) as c:
         r = await c.post("/v1/tts", json=body)
     if r.status_code != 200 or not r.content:
         raise RuntimeError(f"os tts {r.status_code}: {r.text[:160]}")
@@ -259,7 +260,7 @@ async def _steer(text: str, style: dict, place: dict) -> tuple[bytes, str]:
         body["guidance"] = style["guidance"]
     if style.get("perform"):
         body["perform"] = {**style["perform"], **{k: v for k, v in place.items() if v is not None}}
-    async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s) as c:
+    async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=settings.tts_timeout_s, headers=auth_headers()) as c:
         r = await c.post("/v1/tts/steer", json=body)
     if r.status_code != 200 or not r.content:
         raise RuntimeError(f"steer tts {r.status_code}: {r.text[:160]}")
