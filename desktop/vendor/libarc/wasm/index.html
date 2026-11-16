@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- libarc in the browser (issue #93 spike): the ear (Arc Transcriber Space) transcribes a golden clip with no install.
+     Served by serve.py (COOP/COEP headers, the model folder, the clip). docs/EMBEDDING.md "WebAssembly". -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>libarc wasm</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+  pre { white-space: pre-wrap; word-break: break-word; background: #f4f4f4; padding: 8px; }
+  @media (prefers-color-scheme: dark) { body { background: #111; color: #eee; } pre { background: #222; } }
+</style>
+</head>
+<body>
+<h1>libarc in the browser</h1>
+<p id="status">loading…</p>
+<pre id="out"></pre>
+<script type="module" src="main.mjs"></script>
+</body>
+</html>

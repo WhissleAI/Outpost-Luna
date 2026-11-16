@@ -18,6 +18,12 @@ Local changes for Outpost Luna (desktop/vendor/libarc):
 - compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c, and arc_u8io.h / arc_u8io.c
   (force-included on Windows): fopen / open / rename / remove take UTF-8 paths through _wfopen / _wopen (binary) /
   MoveFileExW / _wremove, so a model folder under a non-ASCII user name opens.
+- In-process embedding (issue #93, docs/EMBEDDING.md): CMakeLists.txt builds a static library too
+  (ARC_BUILD_STATIC); src/arc_onnx_pb.c / .h hold arc_nft2_ort.c's minimal ONNX protobuf editing, moved unchanged so
+  a second backend can use it; ort_linked.c (new) replaces ort_loader.c when ONNX Runtime is linked by the embedder;
+  src/arc_nft2_web.c (new) runs the five NFT2 graphs on onnxruntime-web (JavaScript) for the Emscripten build;
+  examples/transcribe.c and wasm/ (a test page, its loopback server and headless runner) are new. The public C API
+  (include/arc.h) is unchanged.
 
 third_party/onnxruntime/include: ONNX Runtime 1.23.2 C API headers (Microsoft, MIT License, third_party/onnxruntime/LICENSE).
 
