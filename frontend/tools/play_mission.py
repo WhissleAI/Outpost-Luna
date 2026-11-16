@@ -124,6 +124,15 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
                 pg.wait_for_timeout(2500)
                 shot("debrief")
                 break
+            if pg.evaluate(VIS, "#cbChapter"):   # [polish 2] a chapter card: read the stars, press its big button
+                txt = pg.evaluate("() => document.getElementById('cbChT').textContent")
+                if txt not in seen_keys:
+                    shot("chapter")
+                    seen_keys.add(txt)
+                log.append({"t": round(time.time() - t0), "moment": "chapter", "should": "Read the stars; Next chapter",
+                            "obvious": True, "action": click(pg, "#cbChGo"), "reacted": True, "seen": txt})
+                pg.wait_for_timeout(700)
+                continue
             if v["tour"]:
                 log.append({"t": round(time.time() - t0), "moment": "tour", "should": v["tour"], "obvious": bool(v["glow"]),
                             "action": click(pg, ".m-tour .t-next"), "reacted": True})

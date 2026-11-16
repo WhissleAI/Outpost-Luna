@@ -61,7 +61,7 @@ SUNSET_NOTICE_H = 6       # the sunset_soon event: hours of notice before the Su
 SKIP_MAX_H = 24           # "skip to next event" stops after a quiet day at most
 # What "skip to next event" stops on: the things a commander must see (dose_alert repeats every storm shift: not a stop)
 SKIP_STOPS = {"solar_storm", "storm_end", "storm_warning", "sunset", "sunrise", "sunset_soon", "comm_open", "comm_closed",
-              "low_power", "rover_back", "failure", "shelter_limit", "mission_complete", "task", "beat"}
+              "low_power", "rover_back", "failure", "shelter_limit", "mission_complete", "task", "beat", "chapter"}
 
 
 @lru_cache(maxsize=None)
@@ -182,6 +182,11 @@ class Mission:
     acted: dict = field(default_factory=dict)     # order type -> count (the objective reacts to what the kid did)
     gp: dict = field(default_factory=dict)        # gameplay.py: tasks, story beats, the mission log
     phys: dict = field(default_factory=dict)      # physics.py ledger: energy made and used, nights, storms (debrief)
+    # [polish 2] every input that changed the mission, in order: ("cmd", c) | ("step", dt) | ("skip",) |
+    # ("advance", n) | ("level", l). The sim is deterministic per (site, seed, inputs), so replaying a prefix rebuilds
+    # the mission at that point: Restart shift, and the chapter auto-save (registry.py) are both a replay.
+    journal: list = field(default_factory=list)
+    marks: dict = field(default_factory=lambda: {0: 0})   # shift index (t_h // SHIFT_H) -> journal length on entering it
 
     @property
     def difficulty(self) -> str:
@@ -200,6 +205,7 @@ class Mission:
 
     def apply(self, cmd: dict) -> dict:
         result = apply_command(self, cmd)
+        record(self, ("cmd", cmd))
         return {"state": to_state(self), "result": result}
 
 
@@ -237,11 +243,36 @@ def _schedule(m: Mission) -> None:
     m.failure_h = rng.randrange(60, 180) if m.difficulty == "commander" else 10 ** 6
 
 
+def record(m: Mission, entry: tuple) -> None:
+    """Journal one input (Mission.journal) and mark the first input seen in each shift (Restart shift goes back to it)."""
+    m.journal.append(entry)
+    m.marks.setdefault(m.t_h // SHIFT_H, len(m.journal))
+
+
+def replay(m: Mission, entry) -> None:
+    """Run one journaled input on `m` (and journal it again): the rebuild path for Restart shift and a saved game."""
+    k = entry[0]
+    if k == "cmd":
+        m.apply(dict(entry[1]))
+        return
+    if k == "step":
+        step(m, float(entry[1]))
+    elif k == "skip":
+        skip_to_event(m)
+    elif k == "advance":
+        advance(m, int(entry[1]))
+    elif k == "level":
+        set_level(m, entry[1])
+        return
+    record(m, tuple(entry))
+
+
 def set_level(m: Mission, level: str) -> None:
     """Settings prefs.level -> the difficulty band. Before the first shift the whole band applies (storms re-picked);
     after that the schedule stays and only warnings, the relay and grading follow the new level."""
     if level not in LEVELS or level == m.level:
         return
+    record(m, ("level", level))
     band = m.difficulty
     m.level = level
     if m.difficulty == band:   # Commander <-> Engineer: the same missions, only the view and the choices change

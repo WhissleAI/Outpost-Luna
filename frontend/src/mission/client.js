@@ -26,6 +26,11 @@ export async function createMissionClient() {
     /** Skip to next event. -> {state, events, say} */
     skip: id => post(`/api/mission/${enc(id)}/skip`, {}),
     debrief: id => j(`/api/mission/${enc(id)}/debrief`),
+    /** [polish 2] Back to the start of this shift (a replay on the server). -> {state, events, say} */
+    restartShift: id => post(`/api/mission/${enc(id)}/restart_shift`, {}),
+    /** [polish 2] The chapter auto-save: {saved: {site, site_name, chapter, day, level} | null}; resume() -> State. */
+    saved: () => j("/api/mission/saved"),
+    resume: () => post("/api/mission/resume", {}),
     /** Earth-up and Sun-up spans over the whole mission ([start_h, end_h]), by the sim's own rule. */
     windows: id => j(`/api/mission/${enc(id)}/windows`),
     /** WS /ws/mission/{mid} telemetry; reconnects with a back-off while subscribed (not for an unknown mission). */

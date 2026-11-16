@@ -96,3 +96,14 @@ Nothing above was removed. "end shift" now means: run to the next shift boundary
 - **State**: `clock`, `acted`, `ack`, `task`, `tasks_waiting`, `story`, `mission_log`, `progress`,
   `env.comm_closes_in_h`; `rover.route`.
 - **Command result**: `ack` when the order completed a task step ("Shields up. Good.").
+
+## Save, resume, restart, chapters (mission polish 2; docs/MISSION_POLISH_SPEC.md)
+- **Journal:** every input that changes a mission is journaled on the Mission: orders (`Mission.apply`), live-clock slices (`/step`), skips, shift ends and level changes. The sim is deterministic per (site, seed, inputs), so replaying the journal rebuilds the exact mission. `tests/test_mission_chapters.py` checks that a replay equals the live mission.
+- **Auto-save:** after every order, skip and shift end, and each whole mission hour the clock passes, the server writes `<cache_dir or data_dir>/saves/mission.json` (`MISSION_SAVE_DIR` overrides it). The file holds the site, seed, starting level and journal. It's written to a temp file and renamed, so a hard quit or a closed window loses at most the last game hour and never leaves half a file. A practice shift (`POST /start` with `practice: true`) is never saved.
+- `GET /api/mission/saved` returns `{saved: {site, site_name, day, chapter, level, t_h} | null}`. It's null for no save, a finished mission, or a corrupt or old file.
+- `POST /api/mission/resume` returns the State, rebuilt under a new id. A save that doesn't replay is moved to `mission.bad.json`, and the call returns 404. The hub then offers only New mission.
+- `POST /api/mission/{id}/restart_shift` returns `{state, events: [], say}`. It replays the mission's inputs up to the first one seen in the current shift, so the storms and tasks are the same.
+- **Chapters:** five chapters of 48 h each. At each end, a `chapter` event arrives with `chapter: {n, of, title, days, stars: {safe, powered, science}, count, capcom, last}`. The event stops a skip. `state.chapter` is `{n, of, title, done: [...]}`. The stars:
+  - Safe: the crew's dose in the chapter is at most 10 mSv, air never drops under 40%, and the crew is alive.
+  - Powered: the battery never drops under 20%.
+  - Science: at least 12 science is sent home in the chapter.

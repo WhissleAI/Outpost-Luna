@@ -88,7 +88,7 @@ const SCREEN_ROWS = {
   ride: [["1–5", "Pick an order"], ["N", "Next step"]],
   picker: [["↑ ↓", "Pick a site"], ["N or P", "Next or previous site"], ["Y", "Take command"]],
   tour: [["Enter or N", "Next"], ["Esc", "Skip tour"], ["← →", "Next or Skip tour button"]],
-  cabin_seat: [["R", "Center view"], ["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["W", "Time warp 1x, 2x, 4x"], ["E", "Skip to next event"], ["I", "Why? Explain a gauge"],
+  cabin_seat: [["R", "Center view"], ["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["Esc", "Pause menu: speed, restart shift, settings"], ["Hold F", "Fast-forward"], ["W", "Time speed 1x, 2x, 4x"], ["E", "Skip to next event"], ["I", "Why? Explain a gauge"],
     ["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
   cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"], ["T", "Do the Now job"], ["K", "Pause or run the clock"], ["E", "Skip to next event"], ["I", "Why? Explain this panel's gauge"]],
   debrief: [["Y", "Fly again"], ["Enter", "Select"]],
@@ -97,8 +97,8 @@ const SCREEN_ROWS = {
   app: [],
 };
 const PAD_ROWS = [["D-pad or Left-stick", "Move"], ["A or Cross", "Select"], ["B or Circle", "Back"], ["X or Square", "Mic"], ["Y or Triangle", "These keys"],
-  ["LB or RB", "Previous or next"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings"],
-  ["View or Share", "Cabin: pause or run the clock"], ["RT or R2", "Cabin: skip to next event"], ["LT or L2", "Cabin: time warp"]];
+  ["LB or RB", "Previous or next"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings (cabin: the pause menu)"],
+  ["View or Share", "Cabin: pause or run the clock"], ["RT or R2", "Cabin: tap to skip ahead, hold to fast-forward"], ["LT or L2", "Cabin: time speed"]];
 /** The help sheet's rows: [{title, rows}] for this screen, everywhere, and (when one is connected) the controller. */
 export function helpRows(screen, { pad = false } = {}) {
   const out = [];
