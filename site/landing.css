@@ -252,6 +252,7 @@ a:focus-visible, .btn:focus-visible, .theme:focus-visible { outline: 2px solid v
 
 /* Data page: final-results tables */
 .pend { color: var(--net); font-weight: 600; }
+.dtable td.best { color: var(--ink); font-weight: 700; }
 .pending-note { background: var(--net-soft); border: 1px solid var(--net); border-radius: 10px; padding: 10px 14px; color: var(--ink); font-size: 14.5px; margin: 0 0 18px; }
 .dtable tr.grp th { background: var(--card-2); font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em; }
 .dtable th.ind { padding-left: 28px; font-weight: 500; }

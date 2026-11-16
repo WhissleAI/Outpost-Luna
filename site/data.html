@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Outpost Luna · Data</title>
-<meta name="description" content="The NASA speech corpus behind Arc Transcriber Space, the speech model for Outpost Luna: real Artemis crew audio and NASA podcasts, how it is annotated, how test sets are kept out, and what the model measures.">
+<meta name="description" content="Arc Transcriber Space, the speech model for Outpost Luna, measured on a corpus of real NASA speech: Artemis crew audio and NASA podcasts. Train and test data, results per test set, and Arc tags.">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Outpost Luna · The NASA corpus behind Arc Transcriber Space">
-<meta property="og:description" content="Real Artemis crew audio and NASA podcasts: the data that teaches the model to hear the Moon.">
+<meta property="og:title" content="Outpost Luna · Arc Transcriber Space on real NASA speech">
+<meta property="og:description" content="Real Artemis crew audio and NASA podcasts: the benchmark for a model that hears the Moon.">
 <meta property="og:url" content="https://whissleai.github.io/Outpost-Luna/data.html">
 <meta property="og:image" content="https://whissleai.github.io/Outpost-Luna/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -38,9 +38,8 @@
   <section class="hero">
     <p class="eyebrow">Data report · Arc Transcriber Space</p>
     <h1>Teaching a model to <em>hear the Moon</em>.</h1>
-    <p class="lede">Arc Transcriber Space is the speech model built for Outpost Luna. Its core data is a corpus of real NASA speech: Artemis crew audio and NASA's own podcasts, where astronauts, flight controllers and scientists talk about the Moon in their own words. This page covers what is in it, how it is labelled, how test sets are kept out, and what the model measures.</p>
+    <p class="lede">Arc Transcriber Space is the speech model built for Outpost Luna. Its central benchmark is a corpus of real NASA speech that our advisor shared: Artemis crew audio and NASA's own podcasts, where astronauts, flight controllers and scientists talk about the Moon in their own words. This page covers what is in the corpus, how test sets are kept clean, and what the model measures on it and on every other test set.</p>
     <div class="cta">
-      <!-- BEFORE MERGE: the Hugging Face weights are still the earlier build. Publish the final model to WhissleAI/arc-transcriber-space (user approval) before this page goes live, or the link points at different weights than the results below. -->
       <a class="btn primary" href="https://huggingface.co/WhissleAI/arc-transcriber-space">The model on Hugging Face</a>
       <a class="btn" href="https://github.com/WhissleAI/arc_transcriber">Code: arc_transcriber</a>
     </div>
@@ -56,13 +55,13 @@
       <li><b>Real mission speech.</b> Crew and mission control talk over radio loops, with noise, cross-talk and clipped phrasing. Clean read speech has none of this.</li>
       <li><b>The Moon's vocabulary.</b> Crater and mare names, landing sites, spacecraft and missions: Tycho, Shackleton, Sinus Medii, Orion, Artemis II. A general model writes "tie co" for Tycho.</li>
       <li><b>Real people explaining it.</b> In the podcasts, NASA experts explain the Moon in plain language. That is close to the questions people ask the app.</li>
-      <li><b>Long context.</b> Whole episodes keep earlier sentences and the names already mentioned, so the model learns to use context: what was just said, and the list of names on screen.</li>
+      <li><b>Long, real conversations.</b> Whole episodes, hours of unscripted speech by people who are not reading a script: a hard, honest test of what the app will hear.</li>
     </ul>
   </section>
 
   <section id="corpus" class="sec">
     <h2>What is in the corpus</h2>
-    <p class="sec-lede">Our advisor collected and cleaned the corpus: NASA audio with matching transcripts. <!-- TODO(user): name / credit line for the advisor, if they want one. --></p>
+    <p class="sec-lede">Our advisor collected and cleaned the corpus: NASA audio with matching transcripts. Today it is our main test set; its training split is set aside for the next version of the model. <!-- TODO(user): name / credit line for the advisor, if they want one. --></p>
     <!-- Source: the advisor's shared folder "nasa-hackathon" (12 archives). Numbers: the ingest inventory (2026-11-15). -->
     <div class="tscroll">
     <table class="dtable">
@@ -91,40 +90,40 @@
 
   <section id="traintest" class="sec">
     <h2>Train and test data</h2>
-    <p class="sec-lede">Every source, what went into training and what was kept for testing. Test material was set aside first, and overlaps were removed before training.</p>
+    <p class="sec-lede">Every source, what is used for training and what is kept for testing. Test material was set aside first.</p>
     <!-- Sources: advisor-corpus ingest inventory and leak check (2026-11-15); training-index clip counts for the other sets; eval-set manifests. -->
     <div class="tscroll">
     <table class="dtable">
-      <caption>The advisor's NASA corpus. Hours of 16 kHz audio; episodes or recordings in brackets.</caption>
-      <thead><tr><th scope="col">Part</th><th scope="col" class="num">Train</th><th scope="col" class="num">Test (held out)</th><th scope="col" class="num">Removed as possible leaks</th></tr></thead>
+      <caption>The advisor's NASA corpus. Hours of 16 kHz audio; episodes or recordings in brackets. The current model was not trained on any of it.</caption>
+      <thead><tr><th scope="col">Part</th><th scope="col" class="num">Test (held out)</th><th scope="col" class="num">Training split, for the next version</th><th scope="col" class="num">Removed as possible leaks</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Houston We Have a Podcast</th><td class="num">328.8 h (415)</td><td class="num">10.3 h (11)</td><td class="num">17.5 h (20)</td></tr>
-        <tr><th scope="row">Small Steps, Giant Leaps</th><td class="num">66.9 h (177)</td><td class="num">1.7 h (5)</td><td class="num">1.5 h (2)</td></tr>
-        <tr><th scope="row">Curious Universe</th><td class="num">36.6 h (105)</td><td class="num">0.9 h (3)</td><td class="num">0.5 h (1)</td></tr>
-        <tr><th scope="row">Artemis audio</th><td class="num">3.7 h (89)</td><td class="num">15 recordings, 1,141 utterances*</td><td class="num">0.7 h (9)</td></tr>
+        <tr><th scope="row">Houston We Have a Podcast</th><td class="num">10.3 h (11)</td><td class="num">328.8 h (415)</td><td class="num">17.5 h (20)</td></tr>
+        <tr><th scope="row">Small Steps, Giant Leaps</th><td class="num">1.7 h (5)</td><td class="num">66.9 h (177)</td><td class="num">1.5 h (2)</td></tr>
+        <tr><th scope="row">Curious Universe</th><td class="num">0.9 h (3)</td><td class="num">36.6 h (105)</td><td class="num">0.5 h (1)</td></tr>
+        <tr><th scope="row">Artemis audio</th><td class="num">15 recordings, 1,141 utterances*</td><td class="num">3.7 h (89)</td><td class="num">0.7 h (9)</td></tr>
       </tbody>
-      <tfoot><tr><th scope="row">Total</th><td class="num">≈436 h (786)</td><td class="num">12.8 h (19) + Artemis</td><td class="num">20.3 h (32)</td></tr></tfoot>
+      <tfoot><tr><th scope="row">Total</th><td class="num">12.8 h (19) + Artemis</td><td class="num">≈436 h (786)</td><td class="num">20.3 h (32)</td></tr></tfoot>
     </table>
     </div>
-    <p class="note-p">* The Artemis test set is 15 whole recordings that were never loaded into the training data. The podcast test set is 19 whole episodes, 10,410 segments.</p>
+    <p class="note-p">* The Artemis test set is 15 whole recordings, kept out of every training set. The podcast test set is 19 whole episodes, 10,410 segments.</p>
 
     <div class="tscroll">
     <table class="dtable">
       <caption>The other sources</caption>
-      <thead><tr><th scope="col">Source</th><th scope="col">What it is</th><th scope="col" class="num">Train</th><th scope="col" class="num">Test</th><th scope="col">How overlap is prevented</th></tr></thead>
+      <thead><tr><th scope="col">Source</th><th scope="col">What it is</th><th scope="col" class="num">In training</th><th scope="col" class="num">Test</th><th scope="col">How overlap is prevented</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Common Voice (English)</th><td>Everyday read speech, many speakers</td><td class="num">69 h</td><td class="num">2,000 clips, 3.3 h</td><td>Test sample fixed first; the 30 training clips that repeat a test sentence were removed.</td></tr>
-        <tr><th scope="row">Open read speech</th><td>Openly licensed read speech (Apache-2.0)</td><td class="num">1,595 clips</td><td class="num">300 utterances</td><td>Separate held-out utterances; the advisor corpus was checked against them.</td></tr>
-        <tr><th scope="row">Space questions (synthetic)</th><td>Generated questions about the Moon, with app playback in the background</td><td class="num">60,768 clips</td><td class="num">300 utterances</td><td>Held-out generated questions; the advisor corpus was checked against them.</td></tr>
-        <tr><th scope="row">Artemis II crew audio</th><td>Crew lunar-observation audio</td><td class="num">1,998 clips</td><td class="num">1,141 utterances (300 for name tests)</td><td>Split by whole recording; the 15 test recordings are never used for training.</td></tr>
-        <tr><th scope="row">Apollo mission audio</th><td>Apollo air-to-ground and mission audio</td><td class="num">6,959 clips</td><td class="num">500 utterances</td><td>Held-out utterances; the advisor corpus was checked against them.</td></tr>
-        <tr><th scope="row">NASA TV and older podcast audio</th><td>Commentary and interviews</td><td class="num">22,006 clips</td><td class="num">–</td><td>Training only.</td></tr>
-        <tr><th scope="row">General children's speech</th><td>Openly available children's speech</td><td class="num">19,666 clips</td><td class="num">–</td><td>Training only.</td></tr>
+        <tr><th scope="row">Common Voice (English)</th><td>Everyday read speech, many speakers</td><td class="num todo">TODO: check</td><td class="num">2,000 clips, 3.3 h</td><td>A fixed 2,000-clip test sample; its sentences are kept out of training.</td></tr>
+        <tr><th scope="row">Open read speech</th><td>Openly licensed read speech (Apache-2.0)</td><td class="num todo">TODO: check</td><td class="num">300 utterances</td><td>Separate held-out utterances; the advisor corpus was checked against them.</td></tr>
+        <tr><th scope="row">Space questions (synthetic)</th><td>Generated questions about the Moon, with app playback in the background</td><td class="num">yes</td><td class="num">300 utterances</td><td>Held-out generated questions; the advisor corpus was checked against them.</td></tr>
+        <tr><th scope="row">Artemis II crew audio</th><td>Crew lunar-observation audio</td><td class="num">yes (other recordings)</td><td class="num">1,141 utterances (300 for name tests)</td><td>Split by whole recording; the 15 test recordings are never used for training.</td></tr>
+        <tr><th scope="row">Apollo mission audio</th><td>Apollo air-to-ground and mission audio</td><td class="num">yes</td><td class="num">500 utterances</td><td>Held-out utterances; the advisor corpus was checked against them.</td></tr>
+        <tr><th scope="row">NASA TV and older podcast audio</th><td>Commentary and interviews</td><td class="num">yes</td><td class="num">–</td><td>Training only.</td></tr>
+        <tr><th scope="row">General children's speech</th><td>Openly available children's speech</td><td class="num">22 h</td><td class="num">–</td><td>Training only.</td></tr>
         <tr><th scope="row">CREMA-D</th><td>Acted adult speech</td><td class="num">–</td><td class="num">600 clips</td><td>Test only, never trained on.</td></tr>
       </tbody>
     </table>
     </div>
-    <p class="note-p">Share of each source in the final training mix: <span class="todo">pending: filled in once the final model passes validation.</span></p>
+    <p class="note-p">Hours per training source: <span class="todo">TODO: being compiled.</span> <!-- TODO before merge: hours per training source for this model, and confirm the two "check" rows. --></p>
   </section>
 
   <section id="annotation" class="sec">
@@ -147,48 +146,49 @@
     </div>
     <ul class="points one">
       <li><b>Test recordings never enter.</b> All 15 recordings of our Artemis test set were skipped when the corpus was loaded, so they are not in the training data at all.</li>
-      <li><b>Whole episodes, checked against every test set.</b> Each episode's text is searched for every test sentence of 6 or more words. The test sets cover Artemis, Apollo, open read speech, synthetic space questions, held-out names and Common Voice. Any segment that equals a test sentence of 4 or more words also counts as a hit. One hit removes the whole episode. <strong>32 episodes (20.3 h) were removed:</strong> 9 Artemis recordings that rebroadcast test audio, and 23 podcast episodes that matched only common phrases, removed anyway to be safe.</li>
-      <li><b>A new held-out test set from the corpus.</b> About 2.5% of each podcast series is set aside, at least 2 episodes per series, chosen by a fixed hash. Only episodes with less than 5% 8-word overlap with any earlier training text qualify, so no model has seen them. <strong>19 episodes, 12.8 h, 10,410 segments</strong> (Houston We Have a Podcast 11, Small Steps, Giant Leaps 5, Curious Universe 3), frozen before training.</li>
-      <li><b>General speech as a guard.</b> The model is also scored on a fixed sample of the Common Voice English test set. Those test sentences are banned from training, so space training can't quietly cost it everyday speech.</li>
+      <li><b>Whole episodes, checked against every test set.</b> Each episode's text is searched for every test sentence of 6 or more words. The test sets cover Artemis, Apollo, open read speech, synthetic space questions, held-out names and Common Voice. Any segment that equals a test sentence of 4 or more words also counts as a hit. One hit removes the whole episode from the training split. <strong>32 episodes (20.3 h) were removed:</strong> 9 Artemis recordings that rebroadcast test audio, and 23 podcast episodes that matched only common phrases, removed anyway to be safe.</li>
+      <li><b>A new held-out test set from the corpus.</b> About 2.5% of each podcast series is set aside, at least 2 episodes per series, chosen by a fixed hash. Only episodes with less than 5% 8-word overlap with any earlier training text qualify, so the model has not seen them. <strong>19 episodes, 12.8 h, 10,410 segments</strong> (Houston We Have a Podcast 11, Small Steps, Giant Leaps 5, Curious Universe 3), frozen before training.</li>
+      <li><b>General speech as a guard.</b> The model is also scored on a fixed sample of the Common Voice English test set, so any cost to everyday speech from space tuning is measured and reported below.</li>
     </ul>
   </section>
 
   <section id="results" class="sec">
     <h2>Results for Arc Transcriber Space</h2>
-    <!-- Base = nvidia/stt_en_fastconformer_hybrid_large_streaming_multi, the model we started from. Final-model column: pending validation. -->
-    <p class="sec-lede">Word error rate on each test set: the final model next to the NVIDIA FastConformer model it started from. Lower is better.</p>
-    <p class="pending-note"><b>The final model is under validation.</b> Its numbers appear here once it passes every check.</p>
+    <!-- Base = nvidia/stt_en_fastconformer_hybrid_large_streaming_multi. Both: cache-aware streaming, same Whisper English normaliser, micro WER. Source: final results 2026-11-15. -->
+    <p class="sec-lede">Word error rate on each test set: Arc Transcriber Space next to the NVIDIA FastConformer model it started from, scored the same way (streaming, same text normalisation). Lower is better.</p>
     <div class="tscroll">
     <table class="dtable">
       <caption>Word error rate per test set</caption>
       <thead><tr><th scope="col">Test set</th><th scope="col" class="num">Size</th><th scope="col" class="num">NVIDIA base</th><th scope="col" class="num">Arc Transcriber Space</th></tr></thead>
       <tbody>
         <tr class="grp"><th scope="row" colspan="4">Advisor corpus, held out</th></tr>
-        <tr><th scope="row" class="ind">Houston We Have a Podcast</th><td class="num">11 episodes</td><td class="num">10.0%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row" class="ind">Small Steps, Giant Leaps</th><td class="num">5 episodes</td><td class="num">9.7%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row" class="ind">Curious Universe</th><td class="num">3 episodes</td><td class="num">6.0%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row" class="ind">All podcast parts</th><td class="num">19 episodes, 12.8 h</td><td class="num">9.7%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row" class="ind">Artemis audio</th><td class="num">1,141 utterances</td><td class="num">28.5%</td><td class="num pend">pending</td></tr>
+        <tr><th scope="row" class="ind">Houston We Have a Podcast</th><td class="num">11 episodes</td><td class="num">10.0%</td><td class="num best">7.2%</td></tr>
+        <tr><th scope="row" class="ind">Small Steps, Giant Leaps</th><td class="num">5 episodes</td><td class="num">9.7%</td><td class="num best">6.4%</td></tr>
+        <tr><th scope="row" class="ind">Curious Universe</th><td class="num">3 episodes</td><td class="num">6.0%</td><td class="num best">4.8%</td></tr>
+        <tr><th scope="row" class="ind">All podcast parts</th><td class="num">19 episodes, 12.8 h</td><td class="num">9.7%</td><td class="num best">7.0%</td></tr>
+        <tr><th scope="row" class="ind">Artemis audio</th><td class="num">1,141 utterances</td><td class="num">28.5%</td><td class="num best">12.6%</td></tr>
         <tr class="grp"><th scope="row" colspan="4">Other test sets</th></tr>
-        <tr><th scope="row">Apollo mission audio</th><td class="num">500</td><td class="num">35.5%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row">Open read speech</th><td class="num">300</td><td class="num">42.0%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row">Space questions (synthetic)</th><td class="num">300</td><td class="num pend">pending</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row">Common Voice 17 English</th><td class="num">2,000</td><td class="num">12.7%</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row">CREMA-D adults</th><td class="num">600</td><td class="num">3.7%</td><td class="num pend">pending</td></tr>
+        <tr><th scope="row">Apollo mission audio</th><td class="num">500</td><td class="num">35.5%</td><td class="num best">15.7%</td></tr>
+        <tr><th scope="row">Open read speech</th><td class="num">300</td><td class="num">42.0%</td><td class="num best">18.5%</td></tr>
+        <tr><th scope="row">Space questions (synthetic)</th><td class="num">300</td><td class="num">48.1%</td><td class="num best">9.1%</td></tr>
+        <tr><th scope="row">Common Voice 17 English</th><td class="num">2,000</td><td class="num best">12.6%</td><td class="num">17.1%</td></tr>
+        <tr><th scope="row">CREMA-D adults</th><td class="num">600</td><td class="num">3.7%</td><td class="num best">1.9%</td></tr>
       </tbody>
     </table>
     </div>
 
+    <p class="note-p"><b>Where it is weaker:</b> on everyday read English (Common Voice), the NVIDIA base model is better. Tuning for space speech costs some general dictation. Every space, crew, children's and adult test set improves.</p>
+
     <h3 class="sub-h">Names: hearing and linking them</h3>
-    <p class="note-p">Each utterance comes with a names list made of its own names plus 20 similar-sounding decoys. The base model has no names lists or linking, so its column is n/a.</p>
+    <p class="note-p">Measured on the app's own path: the int8 model on a CPU, with each utterance's names list made of its own names plus 20 similar-sounding decoys. The base model has no names lists, tags or linking, so its column is n/a.</p>
     <div class="tscroll">
     <table class="dtable">
-      <caption>Names metrics, final model</caption>
-      <thead><tr><th scope="col">Test set</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked to a wrong entry</th><th scope="col" class="num">NVIDIA base</th></tr></thead>
+      <caption>Names metrics, Arc Transcriber Space</caption>
+      <thead><tr><th scope="col">Test set</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked to a wrong entry</th><th scope="col" class="num">Space-tag F1</th><th scope="col" class="num">NVIDIA base</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Artemis II crew audio (300)</th><td class="num pend">pending</td><td class="num pend">pending</td><td class="num pend">pending</td><td class="num">n/a</td></tr>
-        <tr><th scope="row">Space questions, synthetic (300)</th><td class="num pend">pending</td><td class="num pend">pending</td><td class="num pend">pending</td><td class="num">n/a</td></tr>
-        <tr><th scope="row">Open read speech (300)</th><td class="num" colspan="3">false links per 100 utterances: <span class="pend">pending</span></td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Artemis II crew audio (300)</th><td class="num">93.6%</td><td class="num">97.1%</td><td class="num">0.0%</td><td class="num">0.88</td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Space questions, synthetic (300)</th><td class="num">82.8%</td><td class="num">91.4%</td><td class="num">0.0%</td><td class="num">0.83</td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Open read speech (300)</th><td class="num" colspan="4">0.67 false links per 100 utterances (no names in this set)</td><td class="num">n/a</td></tr>
       </tbody>
     </table>
     </div>
@@ -218,27 +218,27 @@
     </div>
 
     <h3 class="sub-h">The tags Outpost Luna relies on</h3>
-    <p class="note-p">Inline tags mark names and numbers inside the transcript. Training counts are labelled spans in the training data. Test scores (precision / recall / F1 per test set) are <span class="pend">pending validation</span>.</p>
+    <p class="note-p">Inline tags mark names and numbers inside the transcript. Scores are precision / recall / F1 on the app's path; the number of gold tags is in brackets. The open read-speech set has no gold tags, so it only adds to precision in the "All" column.</p>
     <div class="tscroll">
     <table class="dtable">
-      <caption>Inline tags with training labels</caption>
-      <thead><tr><th scope="col">Tag</th><th scope="col">Meaning</th><th scope="col" class="num">Training spans</th><th scope="col" class="num">Test P / R / F1</th></tr></thead>
+      <caption>Inline tags: meaning and test scores (P / R / F1)</caption>
+      <thead><tr><th scope="col">Tag</th><th scope="col">Meaning</th><th scope="col" class="num">Artemis II crew audio</th><th scope="col" class="num">Space questions</th><th scope="col" class="num">All 900</th></tr></thead>
       <tbody>
-        <tr><th scope="row"><code>ENTITY_LUNAR</code></th><td>A named feature or site on the Moon: crater, mare, mountain, rille, landing site</td><td class="num">27,056</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>ENTITY_SPACECRAFT</code></th><td>A named spacecraft, vehicle, rocket or module</td><td class="num">13,296</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>ENTITY_MISSION</code></th><td>A named space mission or programme, e.g. Apollo 11, Artemis II</td><td class="num">6,400</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>ENTITY_CELESTIAL</code></th><td>A named celestial body: the Moon, a planet, star or comet</td><td class="num">5,655</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>ENTITY_PERSON</code></th><td>A person named: crew, scientist or other</td><td class="num">5,194</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>ENTITY_TERM</code></th><td>A space science or engineering term</td><td class="num">4,214</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>NUMBER</code></th><td>A spoken number with no more specific kind</td><td class="num">11,289</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>NUMBER_PERCENT</code></th><td>A percentage</td><td class="num">5,623</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>NUMBER_MEASURE</code></th><td>A physical measurement: distance, speed, mass, temperature</td><td class="num">3,927</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>NUMBER_DATE</code></th><td>A date or year</td><td class="num">1,095</td><td class="num pend">pending</td></tr>
-        <tr><th scope="row"><code>NUMBER_TIME</code></th><td>A time of day</td><td class="num">228</td><td class="num pend">pending</td></tr>
+        <tr><th scope="row"><code>ENTITY_LUNAR</code></th><td>A named feature or site on the Moon: crater, mare, mountain, rille, landing site</td><td class="num">.87 / .89 / .88 (165)</td><td class="num">.88 / .81 / .84 (124)</td><td class="num">.87 / .85 / .86 (289)</td></tr>
+        <tr><th scope="row"><code>ENTITY_SPACECRAFT</code></th><td>A named spacecraft, vehicle, rocket or module</td><td class="num">1 / 1 / 1 (1)</td><td class="num">.83 / .83 / .83 (29)</td><td class="num">.83 / .83 / .83 (30)</td></tr>
+        <tr><th scope="row"><code>ENTITY_MISSION</code></th><td>A named space mission or programme, e.g. Apollo 11, Artemis II</td><td class="num">–</td><td class="num">.81 / .79 / .80 (43)</td><td class="num">.81 / .79 / .80 (43)</td></tr>
+        <tr><th scope="row"><code>ENTITY_CELESTIAL</code></th><td>A named celestial body: the Moon, a planet, star or comet</td><td class="num">.83 / 1 / .91 (5)</td><td class="num">1 / 1 / 1 (2)</td><td class="num">.88 / 1 / .93 (7)</td></tr>
+        <tr><th scope="row"><code>ENTITY_TERM</code></th><td>A space science or engineering term</td><td class="num">.69 / .75 / .72 (24)</td><td class="num">1 / 1 / 1 (2)</td><td class="num">.71 / .77 / .74 (26)</td></tr>
+        <tr><th scope="row"><code>ENTITY_PERSON</code></th><td>A person named: crew, scientist or other</td><td class="num">.21 / .92 / .34 (13)</td><td class="num">.13 / 1 / .22 (1)</td><td class="num">.11 / .93 / .19 (14)</td></tr>
+        <tr><th scope="row"><code>NUMBER</code></th><td>A spoken number with no more specific kind</td><td class="num">.53 / .60 / .56 (62)</td><td class="num">.88 / 1 / .93 (7)</td><td class="num">.32 / .64 / .43 (69)</td></tr>
+        <tr><th scope="row"><code>NUMBER_PERCENT</code></th><td>A percentage</td><td class="num">0 / 0 / 0 (1)</td><td class="num">1 / 1 / 1 (13)</td><td class="num">.93 / .93 / .93 (14)</td></tr>
+        <tr><th scope="row"><code>NUMBER_TIME</code></th><td>A time of day</td><td class="num">.33 / .11 / .17 (9)</td><td class="num">–</td><td class="num">.33 / .11 / .17 (9)</td></tr>
+        <tr><th scope="row"><code>NUMBER_MEASURE</code></th><td>A physical measurement: distance, speed, mass, temperature</td><td class="num">0 / 0 / 0 (4)</td><td class="num">0 / 0 / 0 (1)</td><td class="num">0 / 0 / 0 (5)</td></tr>
       </tbody>
-      <tfoot><tr><th scope="row" colspan="2">All inline tags</th><td class="num">83,977</td><td></td></tr></tfoot>
+      <tfoot><tr><th scope="row" colspan="2">All space name tags</th><td class="num">.87 / .89 / .88 (171)</td><td class="num">.86 / .81 / .83 (198)</td><td class="num">.86 / .85 / .85 (369)</td></tr></tfoot>
     </table>
     </div>
+    <p class="note-p"><b>Weak spots:</b> <code>ENTITY_PERSON</code> tags too often (low precision), and number kinds (time, measure) are rarely right. The space name tags, which the app links to its lists, are the strong part.</p>
     <p class="note-p">The four space name tags (lunar feature, spacecraft, mission, celestial) are the ones the app links to its names lists. Other inline tags, such as organisation and place, can appear but have no labels in the space data.</p>
 
     <div class="tscroll">
