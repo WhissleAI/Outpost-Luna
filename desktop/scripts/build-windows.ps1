@@ -97,7 +97,7 @@ Write-Host ("node {0}, {1}, {2}, compiler {3}, {4} GB free" -f (node -v), (uv --
 
 Step "2/8 NASA media (backend\data\media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
 if ($SkipMedia) { Write-Host "skipped (-SkipMedia)" }
-else { Run uv run --no-project --with pillow==11.3.0 python backend\pipeline\fetch_media.py }
+else { Run uv run --no-project --with pillow==11.3.0 --with pip-system-certs python backend\pipeline\fetch_media.py }   # pip-system-certs: use the Windows certificate store (networks that inspect HTTPS)
 if (-not (Test-Path backend\data\media\img\moon4k.jpg)) { Die "backend\data\media is incomplete (re-run; fetch_media.py resumes)" }
 
 Step "3/8 frontend dependencies"
