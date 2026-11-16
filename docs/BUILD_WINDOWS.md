@@ -1,6 +1,6 @@
 # Build and test Outpost Luna on Windows
 
-You build the Windows app (version 0.3.2) from `main` with one command. Then you run it and go through the checklist in
+You build the Windows app (version 0.3.3) from `main` with one command. Then you run it and go through the checklist in
 §8. You need no accounts, keys or tokens, and nothing from us.
 
 > **Status.** The first tester build on a real Windows PC (2026-11-15) found three things, all fixed on `main`:
@@ -25,7 +25,7 @@ powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 1. Install the tools (§1). Then open a **new** PowerShell window.
 2. Clone the repo to `C:\src\atm` (§2).
 3. Run `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` (§3). It takes about 15 to 30 minutes.
-4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.2.exe` (§5).
+4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.3.exe` (§5).
 5. On first launch the app downloads its models (510 MB, required), or you click **Import offline pack…** (§6).
 6. Go through the tester checklist (§8) and send it back with the logs from `%APPDATA%\Outpost Luna\logs` (§9).
 
@@ -121,7 +121,7 @@ If the NASA download stops part-way, run the same command again. It keeps the fi
 
 | what | where |
 |---|---|
-| Installer | `desktop\dist\Outpost Luna Setup 0.3.2.exe` (about 190 MB) |
+| Installer | `desktop\dist\Outpost Luna Setup 0.3.3.exe` (about 190 MB) |
 | Unpacked app (runs without installing) | `desktop\dist\win-unpacked\Outpost Luna.exe` (783 MB, about 7,900 files) |
 | Installed app | `%LOCALAPPDATA%\Programs\Outpost Luna\` (a per-user install; you can choose another folder) |
 | Downloaded models and media | `%APPDATA%\Outpost Luna\assets\` (`ear`, `tagger`, `embedder`, `voice`, and later `crew`, `videos`, `steer`) |
@@ -139,7 +139,7 @@ To open the logs folder, run `explorer "$env:APPDATA\Outpost Luna\logs"`.
 & "desktop\dist\win-unpacked\Outpost Luna.exe"
 ```
 
-**With the installer.** Double-click `desktop\dist\Outpost Luna Setup 0.3.2.exe`. It is a per-user install, so it does
+**With the installer.** Double-click `desktop\dist\Outpost Luna Setup 0.3.3.exe`. It is a per-user install, so it does
 not ask for Administrator rights. Start the app from the Start menu: **Outpost Luna**. To uninstall, use Settings →
 Apps → Outpost Luna → Uninstall. (Uninstalling leaves `%APPDATA%\Outpost Luna`; delete it by hand for a clean slate.)
 
@@ -368,7 +368,7 @@ A Mac can build the same Windows tree. This is how it was checked without a PC:
 
 ```bash
 brew install mingw-w64 sevenzip cmake node@22 uv
-bash desktop/scripts/cross-build-windows.sh                       # -> desktop/dist/Outpost Luna Setup 0.3.2.exe
+bash desktop/scripts/cross-build-windows.sh                       # -> desktop/dist/Outpost Luna Setup 0.3.3.exe
 SKIP_MEDIA=1 DIR_ONLY=1 KEEP_INTERMEDIATES=1 bash desktop/scripts/cross-build-windows.sh   # win-unpacked only, kept
 MAC_APP="/Applications/Outpost Luna.app" bash desktop/scripts/cross-build-windows.sh       # + a parity report vs the Mac app
 ```
@@ -400,6 +400,6 @@ cd backend && uv run pytest tests/test_windows_paths.py tests/test_reset.py test
 ```
 
 **Last cross-build (2026-11-15, `main` at 0.3.0 + this guide's PR):** steps 1 to 8 passed, including the NSIS
-installer (`Outpost Luna Setup 0.3.2.exe`, 192 MB; 9.4 min on a Mac at load average ~30). `dlls`: 231 DLL/PYD files,
+installer (`Outpost Luna Setup 0.3.3.exe`, 192 MB; 9.4 min on a Mac at load average ~30). `dlls`: 231 DLL/PYD files,
 every import resolves. `speech`: all 8 present. `runtime`: RUNTIME OK. The installer's payload, unpacked with 7-Zip, is
 identical to `win-unpacked` (783 MB, 7,896 files). Every asset link in the manifest answered a 1-byte range request.
