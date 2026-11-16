@@ -49,7 +49,8 @@ const LESSON_PLACE = {
 };
 /** Cockpit orders a kid can tap on a command step (each is sent as the words, so voice and tap grade the same way). */
 const ORDERS = [["heater", "Heaters up", "more power to the heaters"], ["shield", "Shields up", "more power to the shields"],
-  ["shelter", "Into the shelter", "everyone into the shelter"], ["leave", "Leave the shelter", "leave the shelter"], ["rover", "Rover: get ice", "send the rover for ice"]];
+  ["shelter", "Into the shelter", "everyone into the shelter"], ["leave", "Leave the shelter", "leave the shelter"], ["rover", "Rover: get ice", "send the rover for ice"],
+  ["call", "Call Houston", "houston, any space weather?"]];
 
 /** The step registry. ctx: {L, i, answer(input, btn), esc, clip, done, stop} */
 export const STEP_RENDERERS = {
