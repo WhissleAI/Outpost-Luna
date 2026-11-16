@@ -124,7 +124,8 @@ def test_voice_pack_answers_only_when_asked_at_1x_in_the_guide_voice(client, mon
     def pack(key):
         asked.append(key)
         pcm = ov.read_wav(tone_wav(0.8, sr=22050))[0]
-        return {"pcm": pcm, "sr": 22050, "words": "10-200,220-400,420-700", "voice": "com.apple.siri.natural.Nora",
+        g = tts_os.resolve(None)   # the clip was recorded in this machine's guide voice (the Mac case)
+        return {"pcm": pcm, "sr": 22050, "words": "10-200,220-400,420-700", "voice": g.get("system_voice") or g["id"],
                 "voice_name": "Siri Voice 1 (Nora)"} if key == "all clear commander" else None
     monkeypatch.setattr(tts_os, "PACK_LOOKUP", pack)
     n = len(client.engine.calls)
@@ -141,6 +142,24 @@ def test_voice_pack_answers_only_when_asked_at_1x_in_the_guide_voice(client, mon
         assert client.post("/v1/tts", json=body).headers["x-tts-engine"] == "say"
     client.post("/v1/tts", json={"text": "Something new.", "pack": True})
     assert asked[-1] == "something new" and client.engine.calls[-1][0] == ["Something new."]
+
+
+def test_voice_pack_is_skipped_when_the_guide_voice_is_another_voice(client, monkeypatch):
+    """Windows (or a Mac set to another system voice): the guide voice is not the pack's Nora, so every line is
+    spoken live in one voice instead of alternating between studio clips and the live voice."""
+    def pack(key):
+        pcm = ov.read_wav(tone_wav(0.8, sr=22050))[0]
+        return {"pcm": pcm, "sr": 22050, "words": "", "voice": "com.apple.siri.natural.Nora",
+                "voice_name": "Siri Voice 1 (Nora)"}
+    monkeypatch.setattr(tts_os, "PACK_LOOKUP", pack)
+    g = tts_os.resolve(None)
+    assert not tts_os.pack_voice_matches({"voice": "com.apple.siri.natural.Nora", "voice_name": "Siri Voice 1 (Nora)"},
+                                         {**g, "id": "MSTTS_V110_enUS_ZiraM", "system_voice": None, "name": "Microsoft Zira"})
+    assert tts_os.pack_voice_matches({"voice": "com.apple.siri.natural.Nora"},
+                                     {"id": "system", "system_voice": "com.apple.siri.natural.Nora", "name": "Nora (Siri)"})
+    if (g.get("system_voice") or g["id"]).lower() != "com.apple.siri.natural.nora":
+        r = client.post("/v1/tts", json={"text": "All clear, Commander.", "pack": True})
+        assert r.headers["x-tts-engine"] != "pack"
 
 
 def test_voice_pack_module_reads_a_fixture_pack(tmp_path, monkeypatch):
