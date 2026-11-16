@@ -34,6 +34,8 @@ required; Host and Origin still are.
 - **`make dev`.** The Makefile makes one token per run (or uses `LUNA_TOKEN` from the shell) and sets
   `LUNA_DEV_COOKIE=1`. The Vite dev server (`frontend/vite.config.js`) and the backend serving a page itself set the
   same cookie on the page, so a normal browser works with the token on. Never set `LUNA_DEV_COOKIE` in the app.
+  The Vite proxy keeps the page's own Host (`changeOrigin: false`), so the page's Origin is same-origin for the
+  backend on any Vite port (the e2e suites use 5205, 5297, ...).
 - **Tests.** `backend/tests` and `model_server/tests` run without a token (`conftest.py` allows `Host: testserver`);
   `test_local_guard.py` in each wraps the app in a guard with a token and checks hostile origins, missing and wrong
   tokens, the cookie, the header, the dev cookie, and rebinding.

@@ -29,8 +29,10 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      "/api": backend,
-      "/media": backend,
+      // [#84] changeOrigin off (the string shorthand turns it on): the backend sees the page's own Host, so a POST's
+      // Origin (http://localhost:<vite port>) is same-origin for its Origin check (backend/app/local_guard.py)
+      "/api": { target: backend, changeOrigin: false },
+      "/media": { target: backend, changeOrigin: false },
       "/ws": { target: backend.replace(/^http/, "ws"), ws: true },
     },
   },
