@@ -20,6 +20,9 @@
 //   9. local diagnostics (#92, diag.js, docs/DIAGNOSTICS.md): JSON-lines logs (logs/main.jsonl; the children write
 //      backend.jsonl / models.jsonl), crash-free sessions in metrics/, and Settings -> Help & diagnostics -> "Save a
 //      diagnostics file…" (a zip the user saves where they choose; nothing is uploaded).
+//  10. app updates (appupdate.js, docs/DESKTOP.md "App updates"): Settings -> App version -> "Check for updates" asks
+//      GitHub for the latest release (manual; or once a day on launch when the user opted in) and "Download" opens the
+//      installer in the system browser. Nothing is installed by the app.
 "use strict";
 const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu, ipcMain } = require("electron");
 const fs = require("fs");
@@ -34,6 +37,7 @@ const AS = require("./assets"); // first-run assets
 const U = require("./updates"); // asset updates (remote manifest, staged swap, rollback)
 const E = require("./engine");  // per-launch token, engine.json, restart back-off, hang watch (docs/SECURITY.md)
 const D = require("./diag");    // structured logs, crash-free sessions, the diagnostics file (docs/DIAGNOSTICS.md)
+const AU = require("./appupdate"); // Settings -> "Check for updates" (GitHub releases; manual unless opted in)
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
 if (process.env.OUTPOST_USER_DATA) app.setPath("userData", process.env.OUTPOST_USER_DATA);
@@ -291,6 +295,9 @@ function createMain(origin) {
     if (r) { e.preventDefault(); resetApp(r, origin); return; }
     // Settings → Help & diagnostics → "Save a diagnostics file…" (#92): the user picks where; nothing is uploaded
     if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin); return; }
+    // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and opens the browser
+    const up = AU.parseUpdateUrl(url, origin);
+    if (up) { e.preventDefault(); if (up.do === "check") checkAppUpdate("Settings"); else openUpdateTarget(up.what); return; }
     if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
   });
   win.once("ready-to-show", () => {
@@ -300,7 +307,48 @@ function createMain(origin) {
   });
   win.on("closed", () => { win = null; });
   win.webContents.on("did-finish-load", pushEngine);   // a reload gets the engine state again
+  win.webContents.on("did-finish-load", helloAppUpdate);   // the version for Settings; the opt-in daily check
   win.loadURL(origin + "/");
+}
+
+// ---- Settings → App version → "Check for updates" (appupdate.js) ----------------------------------------------------
+// Test runs only (unpackaged, like OUTPOST_DIAG_SAVE_PATH): OUTPOST_TEST_APP_VERSION pretends to be another version;
+// OUTPOST_TEST_OPEN_LOG appends the URL "Download" would open to that file instead of opening a browser.
+const TESTING = !app.isPackaged;
+const UPDATE_VERSION = (TESTING && process.env.OUTPOST_TEST_APP_VERSION) || APP_VERSION;
+const autoGate = AU.createAutoGate({ file: path.join(USER, "update-check.json") });
+let appUpdate = null, appUpdateBusy = false;
+function pushUpdate(s) {
+  if (!win || win.isDestroyed()) return Promise.resolve(null);
+  return win.webContents.executeJavaScript(`window.__lunaUpdate ? window.__lunaUpdate(${JSON.stringify(s)}) : null`).catch(() => null);
+}
+/** The page loaded: tell it the version; it answers whether the user opted in to the daily check. */
+async function helloAppUpdate() {
+  const r = await pushUpdate(appUpdate && appUpdate.state === "available" ? appUpdate : { state: "idle", current: UPDATE_VERSION });
+  if (r && r.auto === true && !appUpdate && autoGate.due()) {
+    autoGate.mark();   // the attempt counts: at most one request a day, online or not
+    setTimeout(() => checkAppUpdate("auto"), 5000);
+  }
+}
+async function checkAppUpdate(why) {
+  if (appUpdateBusy) return;
+  appUpdateBusy = true;
+  const auto = why === "auto";
+  try {
+    if (!auto) pushUpdate({ state: "checking", current: UPDATE_VERSION });
+    const r = await AU.check({ appVersion: UPDATE_VERSION, platform: process.platform });
+    appUpdate = r;
+    log(`app update check (${why}): ${r.state}${r.latest ? " " + r.latest : ""}${r.reason ? " (" + r.reason + ": " + r.detail + ")" : ""}`);
+    jlog.event("app_update_check", { why, state: r.state, latest: r.latest || null, reason: r.reason || null });
+    if (!auto || r.state === "available") pushUpdate({ ...r, auto });   // the opt-in check is silent unless there is one
+  } finally { appUpdateBusy = false; }
+}
+function openUpdateTarget(what) {
+  const url = AU.targetUrl(appUpdate, what);
+  if (!url) { log(`app update: open ${what} refused (nothing allow-listed to open)`); return; }
+  log(`app update: opening ${what} ${url}`);
+  if (TESTING && process.env.OUTPOST_TEST_OPEN_LOG) { fs.appendFileSync(process.env.OUTPOST_TEST_OPEN_LOG, url + "\n"); return; }
+  shell.openExternal(url);
 }
 
 // ---- Settings → Help & diagnostics (#92, diag.js) -------------------------------------------------------------------
