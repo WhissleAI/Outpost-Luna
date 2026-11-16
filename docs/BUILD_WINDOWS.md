@@ -28,6 +28,7 @@ powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.3.exe` (§5).
 5. On first launch the app downloads its models (510 MB, required), or you click **Import offline pack…** (§6).
 6. Go through the tester checklist (§8) and send it back with the logs from `%APPDATA%\Outpost Luna\logs` (§9).
+7. If it works, attach `desktop\dist\Outpost-Luna-win-x64.exe` to the release: `gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe` (§9).
 
 ---
 
@@ -122,6 +123,7 @@ If the NASA download stops part-way, run the same command again. It keeps the fi
 | what | where |
 |---|---|
 | Installer | `desktop\dist\Outpost Luna Setup 0.3.3.exe` (about 190 MB) |
+| Installer, release name (a copy) | `desktop\dist\Outpost-Luna-win-x64.exe`: the file to attach to a GitHub release (§9) |
 | Unpacked app (runs without installing) | `desktop\dist\win-unpacked\Outpost Luna.exe` (783 MB, about 7,900 files) |
 | Installed app | `%LOCALAPPDATA%\Programs\Outpost Luna\` (a per-user install; you can choose another folder) |
 | Downloaded models and media | `%APPDATA%\Outpost Luna\assets\` (`ear`, `tagger`, `embedder`, `voice`, and later `crew`, `videos`, `steer`) |
@@ -305,6 +307,20 @@ quit: no python.exe left?
 RAM after one question (Outpost Luna + its python.exe processes): ___ MB
 main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows privacy":
 ```
+
+### Attach the installer to the release
+
+If the build passes and the app runs, attach the installer to the GitHub release under its stable name. The website's
+"Download for Windows" button links `releases/latest/download/Outpost-Luna-win-x64.exe`, so this is what makes it work.
+You need the [GitHub CLI](https://cli.github.com/) (`winget install --id GitHub.cli -e`, then `gh auth login`) and write
+access to the repo. Use the tag of the release you built (for example `v0.3.3`):
+
+```powershell
+gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe
+```
+
+Add `--clobber` to replace a file that is already attached. Keep the name as it is: the site looks for exactly
+`Outpost-Luna-win-x64.exe`.
 
 ## 10. Known limitations
 

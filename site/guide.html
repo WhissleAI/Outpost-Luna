@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="landing.css?v=3">
+<link rel="stylesheet" href="landing.css?v=4">
 <script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
@@ -404,7 +404,7 @@
     <h2>Ready to try it?</h2>
     <div class="cta">
       <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">Download for Mac</a>
-      <a class="btn" href="./#windows">Build for Windows</a>
+      <a class="btn primary" data-win href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe"><span data-win-label>Download for Windows</span></a>
     </div>
   </section>
 </main>
@@ -425,5 +425,6 @@
     try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
   });
 </script>
+<script src="dl.js?v=1" defer></script>
 </body>
 </html>
