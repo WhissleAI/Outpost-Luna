@@ -249,3 +249,15 @@ a:focus-visible, .btn:focus-visible, .theme:focus-visible { outline: 2px solid v
 }
 .pair.narrow { grid-template-columns: repeat(2, minmax(0, 340px)); justify-content: start; }
 @media (max-width: 860px) { .pair.narrow { grid-template-columns: minmax(0, 340px); } }
+
+/* Data page: final-results tables */
+.pend { color: var(--net); font-weight: 600; }
+.pending-note { background: var(--net-soft); border: 1px solid var(--net); border-radius: 10px; padding: 10px 14px; color: var(--ink); font-size: 14.5px; margin: 0 0 18px; }
+.dtable tr.grp th { background: var(--card-2); font-size: 13px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em; }
+.dtable th.ind { padding-left: 28px; font-weight: 500; }
+.alltags { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+.alltags summary { cursor: pointer; font-weight: 700; }
+.alltags h4 { margin: 20px 0 8px; font-size: 15px; }
+.taglist { margin: 0; padding-left: 18px; columns: 2; column-gap: 28px; font-size: 13.5px; color: var(--ink-2); }
+.taglist li { break-inside: avoid; margin: 0 0 5px; }
+@media (max-width: 860px) { .taglist { columns: 1; } }
