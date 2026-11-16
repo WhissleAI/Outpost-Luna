@@ -46,7 +46,7 @@ const section = {
     <div class="tbl"><table><thead><tr><th>Download</th><th>Version</th><th>Size</th></tr></thead>
       <tbody data-as-rows><tr><td colspan="3">…</td></tr></tbody></table></div>
     <p class="set-help" data-as-total></p>
-    <button type="button" class="btn" data-as-check>Check for updates</button>
+    <button type="button" class="btn" data-as-check>Check for new models and media</button>
     <p class="set-help">Models, voices and media download once and stay on this computer. Updates download in the background and are used the next time Outpost Luna starts.</p>`),
   bind(el) {
     const line = el.querySelector("[data-as-line]"), body = el.querySelector("[data-as-rows]"),
