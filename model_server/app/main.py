@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
-from . import arcmeta, embed, tts_os, tts_steer
+from . import arcmeta, diag, embed, tts_os, tts_steer
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings
@@ -23,6 +23,7 @@ STATE: dict = {"tagger": None, "tagger_error": None, "loaded_s": None}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    diag.setup("models")   # [#92] JSON-lines log + metrics + the daily summary (app/diag.py, docs/DIAGNOSTICS.md)
     t = time.perf_counter()
     try:
         STATE["tagger"] = ArcTagger(settings.arctag_lib, settings.arctag_model_dir,
@@ -35,9 +36,25 @@ async def lifespan(app: FastAPI):
     tts_os.load()      # OS_TTS=on|off: the OS's own voices, warmed up; fails open, reason in /health
     embed.load()     # EMBED=on|off; fails open, reason in /health
     tts_steer.ensure()   # STEER_TTS=on|off, the optional engine: loads now if its asset is there, else on first use
+    _log_loads()
     yield
+    diag.shutdown()
     if STATE["tagger"]:
         STATE["tagger"].close()
+
+
+def _log_loads() -> None:
+    """[#92] One `model_load` event per model: loaded or not, how long, the reason (never a path's user name: scrubbed)."""
+    diag.LOG.event("model_load", model="arc_tagger", ok=STATE["tagger"] is not None, load_s=STATE["loaded_s"],
+                   error=STATE["tagger_error"])
+    if STATE["tagger"] is None:
+        diag.METRICS.error("tagger_load_failed")
+    a = arcmeta.STATE
+    eng = a.get("engine") or {}
+    diag.LOG.event("model_load", model="arc_ear", ok=a["arc"] is not None, load_s=a["load_s"], error=a["error"],
+                   backend=a.get("backend"), abi=eng.get("abi") if isinstance(eng, dict) else None)
+    if a["arc"] is None:
+        diag.METRICS.error("ear_load_failed")
 
 
 app = FastAPI(title="Outpost Luna model server", version="0.1.0", lifespan=lifespan)
@@ -50,6 +67,9 @@ app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream
 app.include_router(tts_steer.router)  # POST /v1/tts/steer, GET /v1/tts/steer/voices (the optional Steer engine)
 app.include_router(tts_os.router)  # POST /v1/tts, GET /v1/tts/voices (the OS's offline voices)
 app.include_router(embed.router)  # POST /v1/embed
+# [#92] GET /metrics: this process's counters and latency histograms, token-protected (app/diag.py, docs/DIAGNOSTICS.md)
+app.include_router(diag.metrics_router("/metrics", lambda: {"ear_sessions_open": arcmeta.STATE["sessions"],
+                                                       "ear_loaded": int(arcmeta.STATE["arc"] is not None)}))
 
 
 class TagRequest(BaseModel):
@@ -113,6 +133,7 @@ async def tag(req: TagRequest):
     except KeyError as e:
         raise HTTPException(400, str(e))
     out["ms"] = round((time.perf_counter() - t) * 1000, 2)
+    diag.METRICS.observe("tag_ms", out["ms"])
     if req.words and len(out.get("words", [])) != len(req.words):
         raise HTTPException(500, "tagger word split does not match the words sent")
     return out

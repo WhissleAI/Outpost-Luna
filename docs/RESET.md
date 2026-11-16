@@ -57,7 +57,7 @@ It erases what the app saved on this computer, at one of two levels.
       - `cache/tts` and `cache/turnlog` for Start over;
       - `cache/` and `hf/` for Reset everything;
       - joined with `path.win32` / `path.posix`, using `rmSync` with retries;
-   5. logs the reset in `logs/main.log`;
+   5. logs the reset in `logs/main.log` (`logs/` and `metrics/`, the local diagnostics, are kept: `docs/DIAGNOSTICS.md`);
    6. calls `app.relaunch(); app.exit(0)`.
 
    If the shell doesn't relaunch within 8 s (an older shell), the page reloads itself.

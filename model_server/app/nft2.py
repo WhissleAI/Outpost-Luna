@@ -313,7 +313,9 @@ class Nft2:
         o = ffi.new("arc_nft2_options *")
         dom = ffi.new("char[]", domain.encode())
         o.domain, o.no_bias, o.no_events = dom, int(no_bias), int(no_events)
+        waited = time.perf_counter()
         with self.lock:
+            _lock_wait((time.perf_counter() - waited) * 1000)   # [#92] another stream holding the model
             if names is not None and repr(names) != self._names_key:
                 self.set_names(names)
                 self._names_key = repr(names)
@@ -328,6 +330,14 @@ class Nft2:
                 self.L.arc_result_free(r)
         out["ms"] = round(ms, 1)
         return out
+
+
+def _lock_wait(ms: float) -> None:
+    try:
+        from . import diag
+        diag.METRICS.observe("ear_lock_wait_ms", ms)
+    except ImportError:   # tools that load this file on its own
+        pass
 
 
 # ------------------------------------------------------------------------------------------------- names lists

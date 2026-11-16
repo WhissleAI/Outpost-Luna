@@ -11,6 +11,7 @@ default limit is generous on purpose: it catches a hang, never a slow machine.
 from __future__ import annotations
 
 import asyncio
+import time
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,7 +32,15 @@ class DecodeTimeout(Exception):
 async def guarded(loop, pool, fn, *args, limit: float | None = None):
     """loop.run_in_executor(pool, fn, *args), but give up after `limit` seconds (default EAR_DECODE_TIMEOUT_S)."""
     limit = watchdog_settings.ear_decode_timeout_s if limit is None else limit
+    from . import diag
+    queued = time.perf_counter()
+
+    def timed(*a):   # [#92] queue wait: submitted -> the stream's worker thread picks it up
+        diag.METRICS.observe("ear_queue_ms", (time.perf_counter() - queued) * 1000)
+        return fn(*a)
     try:
-        return await asyncio.wait_for(loop.run_in_executor(pool, fn, *args), limit)
+        return await asyncio.wait_for(loop.run_in_executor(pool, timed, *args), limit)
     except asyncio.TimeoutError:
+        diag.METRICS.error("decode_timeout")
+        diag.LOG.error("decode_timeout", call=getattr(fn, "__name__", "decode"), limit_s=limit)
         raise DecodeTimeout(f"{getattr(fn, '__name__', 'decode')} took longer than {limit:g} s") from None

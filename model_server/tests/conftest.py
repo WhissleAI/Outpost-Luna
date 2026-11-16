@@ -5,3 +5,7 @@ import os
 os.environ["LUNA_ALLOWED_HOSTS"] = "testserver"
 for _k in ("LUNA_TOKEN", "LUNA_DEV_COOKIE", "LUNA_ORIGINS"):
     os.environ.pop(_k, None)
+
+# [#92] app/diag.py: tests never write the developer's logs or daily metrics (a test that wants them sets its own dirs)
+for _k in ("LUNA_LOG_DIR", "LUNA_DATA_DIR"):
+    os.environ.pop(_k, None)
