@@ -150,8 +150,14 @@ def reset_after_hang(model, reason: str, reload=None) -> bool:
         STATE["error"] = f"reloading after a hung decode ({reason})"[:300]
         STATE["resets"] += 1
         STATE["last_reset"] = {"at": round(time.time()), "reason": reason[:200]}
-    threading.Thread(target=reload or load, name="arc-reload", daemon=True).start()
+    threading.Thread(target=reload or _reload, name="arc-reload", daemon=True).start()
     return True
+
+
+def _reload() -> None:
+    load()
+    if STATE["arc"] is not None:
+        STATE["error"] = None
 
 
 # ------------------------------------------------------------------------------------------------------------ events

@@ -112,7 +112,7 @@ def test_hung_decode_is_abandoned_and_the_model_reset(monkeypatch, ear):
     monkeypatch.setitem(arcmeta.STATE, "error", None)
     monkeypatch.setitem(arcmeta.STATE, "sessions", 0)
     monkeypatch.setitem(arcmeta.STATE, "resets", 0)
-    monkeypatch.setattr(arcmeta, "load", lambda: reloads.append(time.time()))
+    monkeypatch.setattr(arcmeta, "_reload", lambda: reloads.append(time.time()))
     monkeypatch.setattr(arc_ear, "EarStream", HungStream)
     monkeypatch.setattr(decode_watchdog.watchdog_settings, "ear_decode_timeout_s", 0.4)
     HungStream.release.clear()

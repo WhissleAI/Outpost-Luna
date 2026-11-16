@@ -279,7 +279,7 @@ function createMain(origin) {
   win.once("ready-to-show", () => {
     reveal(win);
     if (splash && !splash.isDestroyed()) splash.close();
-    log(`window shown after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+    log(`window ${HEADLESS ? "ready (headless)" : "shown"} after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   });
   win.on("closed", () => { win = null; });
   win.webContents.on("did-finish-load", pushEngine);   // a reload gets the engine state again
