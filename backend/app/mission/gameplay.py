@@ -44,6 +44,18 @@ SHELTER_LEAD_H = 6         # storm prep: the shelter step opens this many hours 
 RECYCLER_MAX = 60          # the life check never offers the recycler past this (ice is the answer then)
 LIFE_CHECK = 55            # air under this: the life support check (ice, or more recycler power)
 QUIET_RATE = 0.1           # mSv/h: under this the sensor reads "normal" (the quiet-Sun baseline is ~0.06 game)
+HEATERS_SAFE = 8           # the night checklist only asks for heaters when they're under this (10 is the order; a
+                           # later power move can trim them to 8-9, which is still well clear of the 5% freeze line)
+# [polish 1] science jobs rotate so no two in a row are the same (sub, title, panel, press label, ack, why)
+SCIENCE_ROTATION = ("sample", "sensor", "quake", "core")
+SCIENCE_PRESS = {
+    "sample": ("Take a sample", "rover", "Take a sample", "Sample logged",
+               "Moon soil keeps a record of how the Moon formed."),
+    "quake": ("Read the seismometer", "habitat", "Read the seismometer", "Moonquake logged",
+              "Apollo seismometers heard thousands of moonquakes. They show what's inside."),
+    "core": ("Drill a core", "rover", "Drill a core", "Core logged: layers of lunar dust",
+             "Deep layers hold a record of the Sun's past."),
+}
 
 # ---- the story arc ---------------------------------------------------------------------------------------------------
 # id, title (on screen), CAPCOM line (spoken, <= 20 words), visual moment for the window, objective (<= 12 words)
@@ -95,17 +107,18 @@ def _log(m, kind: str, title: str, text: str):
 
 
 # ---- step helpers ----------------------------------------------------------------------------------------------------
-def _order(sid, label, target, cmd, done, ack):
-    return {"id": sid, "kind": "order", "label": label, "target": target, "cmd": cmd, "done_if": done, "ack": ack}
+def _order(sid, label, target, cmd, done, ack, why=None):
+    return {"id": sid, "kind": "order", "label": label, "target": target, "cmd": cmd, "done_if": done, "ack": ack,
+            "why": why}
 
 
-def _press(sid, label, ack, ready=None):
-    return {"id": sid, "kind": "press", "label": label, "target": "task", "ready_if": ready, "ack": ack}
+def _press(sid, label, ack, ready=None, why=None):
+    return {"id": sid, "kind": "press", "label": label, "target": "task", "ready_if": ready, "ack": ack, "why": why}
 
 
-def _choice(sid, label, options, ready=None, hint=None):
+def _choice(sid, label, options, ready=None, hint=None, why=None):
     return {"id": sid, "kind": "choice", "label": label, "target": "task", "options": options, "ready_if": ready,
-            "hint": hint}
+            "hint": hint, "why": why}
 
 
 def _wait(sid, label, done, ack=None):
@@ -146,13 +159,15 @@ def _first_power(m):
     a0 = m.acted.get("allocate", 0)
     return dict(title="Set your power", lesson="power", panel="radiation", level="info", priority=95,
                 say=None, steps=[_order("power", "Shields up to 30", "shields", ALLOC("shields", 30),
-                                        lambda m, t: m.acted.get("allocate", 0) > a0, "Power set. Good.")])
+                                        lambda m, t: m.acted.get("allocate", 0) > a0, "Power set. Good.",
+                                        why="Shields cut the radiation the crew soaks up every day.")])
 
 
 def _shelter_step():
     """Crew into the shelter: ready once the rover crew is home (the sim refuses it while they are outside)."""
     s = _order("shelter", "Crew into the shelter", "shelter", {"type": "shelter", "on": True},
-               lambda m, t: m.shelter, "Crew sheltered. Good.")
+               lambda m, t: m.shelter, "Crew sheltered. Good.", why="Thick walls block most of the storm's particles.")
+    s["live"] = True   # stays honest: a crew that walks out mid-storm is asked back in
     s["ready_if"] = lambda m, t: not m.rover["busy"]
     s["wait_text"] = "Shelter opens when the rover crew is home."
     return s
@@ -162,12 +177,14 @@ def _all_clear(m):
     return dict(title="All clear: crew out", lesson="radiation", panel="radiation", level="info", priority=85,
                 key=("clear", m.t_h // 6), say=None,
                 steps=[_order("out", "Crew out of the shelter", "shelter", {"type": "shelter", "on": False},
-                              lambda m, t: not m.shelter, "Crew out. Science is back on.")])
+                              lambda m, t: not m.shelter, "Crew out. Science is back on.",
+                              why="No science gets done in the shelter.")])
 
 
 def _storm_hit(m):
     st = _storm(m)
-    steps = [_order("rover", "Rover home", "rover:return", HOME, lambda m, t: _rover_home(m), "Rover turning home."),
+    steps = [_order("rover", "Rover home", "rover:return", HOME, lambda m, t: _rover_home(m), "Rover turning home.",
+                    why="Outside, the crew has no shelter from the particles."),
              _shelter_step()]
     return dict(title="Storm! Shelter the crew", lesson="radiation", panel="radiation", level="warn", priority=100,
                 deadline_h=st.start_h + st.dur_h, key=("storm", st.event["id"]), say=None, steps=steps)
@@ -176,10 +193,11 @@ def _storm_hit(m):
 def _storm_prep(m):
     w = _warning(m)
     steps = [_order("rover", "Rover home", "rover:return", HOME, lambda m, t: _rover_home(m),
-                    "Rover heading home. Good.")]
+                    "Rover heading home. Good.", why="The crew must be inside before the storm hits.")]
     if m.difficulty == "commander":
         steps.append(_order("shields", "Shields to 40", "shields", ALLOC("shields", 40),
-                            lambda m, t: m.loads["shields"] >= 40, "Shields up. Good."))
+                            lambda m, t: m.loads["shields"] >= 40, "Shields up. Good.",
+                            why="More shield power, less dose while you get ready."))
     if w["confidence"] == "likely":
         # shelter early, not too early: the shelter is good for about a day (Orion), and science stops inside
         sh = _shelter_step()
@@ -191,8 +209,11 @@ def _storm_prep(m):
                                         "Keep working, or skip ahead.")
         steps.append(sh)
     else:   # a "possible" storm: a real call to make, with no right answer known yet
-        steps.append(_choice("decide", "Possible storm. Shelter now, or wait?",
-                             [{"id": "shelter", "label": "Shelter now"}, {"id": "wait", "label": "Wait and watch"}]))
+        decide = _choice("decide", "Possible storm. Shelter now, or wait?",
+                         [{"id": "shelter", "label": "Shelter now"}, {"id": "wait", "label": "Wait and watch"}],
+                         why="Not every flare sends particles. Sheltering costs a day of science.")
+        decide["gate"] = "rover_home"   # the shelter can't open with the rover crew outside
+        steps.append(decide)
     sid = next((st.event["id"] for st in m.storms if m.warned.get(st.event["id"]) and m.t_h < st.start_h), None)
     return dict(title="Storm prep", lesson="radiation", panel="radiation", level="caution", priority=90,
                 deadline_h=m.t_h + int(w["eta_h"]), key=("prep", sid), say=None, steps=steps)
@@ -238,10 +259,18 @@ def _night_prep(m):
         steps = _engineer_night_steps(m)
     else:
         steps = [_order("night", "Night mode on", "night", {"type": "power_save", "on": True},
-                        lambda m, t: m.power_save, "Night mode on. Good.")]
-        # below 5% in the dark the water lines freeze: every level gets this step
-        steps.append(_order("heaters", "Heaters to 10", "load:heaters", ALLOC("heaters", 10),
-                            lambda m, t: m.loads["heaters"] >= 10, "Heaters on. The water lines stay warm."))
+                        lambda m, t: m.power_save, "Night mode on. Good.",
+                        why="Solar arrays make nothing in the dark. The battery has to last.")]
+        # below 5% in the dark the water lines freeze: asked only while the heaters are low (never re-asked once up)
+        if m.loads["heaters"] < HEATERS_SAFE:
+            steps.append(_order("heaters", "Heaters to 10", "load:heaters", ALLOC("heaters", 10),
+                                lambda m, t: m.loads["heaters"] >= 10, "Heaters on. The water lines stay warm.",
+                                why="Below 5% the water lines freeze in the dark."))
+        else:   # [polish 1] a different job each night: read the battery, or log the sunset from JPL Horizons
+            n = _gp(m)["count"].get("night_prep", 0)
+            steps.append(_press("battery", "Check the battery", None, why="Will the battery last until sunrise?")
+                         if n % 2 else
+                         _press("sunset", "Log the sunset", None, why="JPL Horizons tells us when the Sun sets here."))
     if _night_len(m, m.t_h) >= 48:   # a long night (Malapert): the recycler needs the spare power
         steps.append(_order("air", "Air system to 45", "load:life_support", ALLOC("life_support", 45),
                             lambda m, t: m.loads["life_support"] >= 45, "Air system up. Ready for the long dark."))
@@ -258,7 +287,8 @@ def _sunrise(m):
     return dict(title="Sunrise: wake the outpost", lesson="power", panel="power", level="info", priority=45,
                 key=("sunrise", m.t_h // 12), say="Sunrise. Wake the outpost: night mode off.",
                 steps=[_order("wake", "Night mode off", "night", {"type": "power_save", "on": False},
-                              lambda m, t: not m.power_save, "Outpost awake. Science is back on.")])
+                              lambda m, t: not m.power_save, "Outpost awake. Science is back on.",
+                              why="The arrays are making power again. The lab can wake up.")])
 
 
 def _low_power(m):
@@ -295,6 +325,9 @@ def _life_check(m):
         steps = [_choice("air", "Air is dropping. Recycler up, or an ice run?" if len(opts) > 1 else
                          "Air is dropping. The recycler is maxed: ice run?", opts)]
         steps[0]["up"] = up
+        steps[0]["why"] = "The recycler makes air but costs power. Ice makes water and air."
+        if len(opts) == 1:
+            steps[0]["gate"] = "rover"   # only the ice run is left: it waits for a free rover and an open shelter
     return dict(title="Life support check", lesson="life", panel="habitat", level="caution", priority=70, cool_h=12,
                 say="Life support check. The air is dropping.", steps=steps)
 
@@ -303,9 +336,11 @@ def _comm_window(m):
     calls = m.houston_calls
     closes = sim.comm_closes_in_h(m, m.t_h)
     steps = [_order("radio", "Radio to 10: send science", "load:comms", ALLOC("comms", 10),
-                    lambda m, t: m.loads["comms"] >= 10, "Downlink running. Science is going home."),
+                    lambda m, t: m.loads["comms"] >= 10, "Downlink running. Science is going home.",
+                    why="Science only counts once it reaches Earth."),
              _order("houston", "Call Houston", "houston", {"type": "call_houston", "text": "Outpost Luna, check in."},
-                    lambda m, t: m.houston_calls > calls, "Houston has the news. Good.")]
+                    lambda m, t: m.houston_calls > calls, "Houston has the news. Good.",
+                    why="Earth is only up for a while. Talk while you can.")]
     return dict(title="Comm window", lesson="comms", panel="comm", level="info", priority=50, cool_h=24,
                 deadline_h=m.t_h + (closes if closes else 12), say=None, steps=steps)
 
@@ -325,7 +360,8 @@ def _ice_run(m):
                         hint="LOLA slope map")
     else:
         first = _order("send", "Send the rover for ice", "rover:collect_ice", ROVER("collect_ice"),
-                       lambda m, t: m.rover["busy"] and m.rover["task"] == "collect_ice", "Rover rolling. Good.")
+                       lambda m, t: m.rover["busy"] and m.rover["task"] == "collect_ice", "Rover rolling. Good.",
+                       why="Ice from the shadowed craters becomes water and air.")
         first["latch"] = True
     # the drive waits out a storm or a warning (and the crew must be out of the shelter): never "send it" mid-storm
     first["ready_if"] = lambda m, t: _calm(m) and not m.shelter and not m.rover["busy"]
@@ -345,7 +381,8 @@ def _ice_run(m):
 def _repair(m):
     return dict(title="Fix the solar array", lesson="power", panel="rover", level="caution", priority=60,
                 say="Arrays damaged. Three steps to fix them.",
-                steps=[_press("check", "Check the array", "Array at half power. The rover can fix it."),
+                steps=[_press("check", "Check the array", "Array at half power. The rover can fix it.",
+                              why="A micrometeorite hit it. Find out how bad."),
                        _order("send", "Send the rover to fix it", "task", ROVER("repair_array"),
                               lambda m, t: m.array_eff >= 1 or m.rover["task"] == "repair_array", "Rover on its way."),
                        _press("test", "Test the power", "Full power again. Nice repair.",
@@ -354,15 +391,18 @@ def _repair(m):
 
 def _science(m):
     n = _gp(m)["count"].get("science", 0)
-    if m.difficulty == "commander" and n % 2 == 1:
+    sub = SCIENCE_ROTATION[n % len(SCIENCE_ROTATION)]
+    if sub == "sensor":
         return dict(title="Read the radiation sensor", lesson="radiation", panel="radiation", level="info", priority=10,
                     deadline_h=m.t_h + 4, sub="sensor", say=None,
-                    steps=[_press("read", "Read the sensor", None),
+                    steps=[_press("read", "Read the sensor", None, why="Every dose counts toward the crew's limit."),
                            _choice("log", "Log it: normal or high?",
-                                   [{"id": "normal", "label": "Normal"}, {"id": "high", "label": "High"}])])
-    return dict(title="Take a sample", lesson="moon", panel="rover", level="info", priority=10, deadline_h=m.t_h + 4,
-                sub="sample", say=None,
-                steps=[_press("sample", "Take a sample", f"Sample logged. Science +{SAMPLE_SCIENCE:g}.")])
+                                   [{"id": "normal", "label": "Normal"}, {"id": "high", "label": "High"}],
+                                   hint=f"Quiet Sun: under {QUIET_RATE:g} mSv/h")])
+    title, panel, label, ack, why = SCIENCE_PRESS[sub]
+    return dict(title=title, lesson="moon", panel=panel, level="info", priority=10, deadline_h=m.t_h + 4,
+                sub=sub, say=None,
+                steps=[_press("sample", label, f"{ack}. Science +{SAMPLE_SCIENCE:g}.", why=why)])
 
 
 # ---- triggers: (kind, builder, when) in priority order -----------------------------------------------------------------
@@ -416,6 +456,15 @@ def _start(m, kind, builder, out):
     for s in t["steps"]:
         s.setdefault("done", False)
         s.setdefault("result", None)
+        if s["kind"] == "order":
+            # [polish 1] never re-ask a satisfied step: once done it stays done (a later power move that trims the
+            # heaters to 9% doesn't bring "Heaters to 10" back). Steps marked live (the shelter) keep showing the truth.
+            s.setdefault("latch", not s.get("live"))
+            c = s.get("cmd") or {}
+            if c.get("type") == "dispatch" and c.get("task") != "return":
+                _gate_rover(s)
+        elif s.get("gate"):
+            _gate_rover(s, home_only=s["gate"] == "rover_home")
     g["tasks"][tid] = t
     g["order"].append(tid)
     g["count"][kind] = g["count"].get(kind, 0) + 1
@@ -423,6 +472,30 @@ def _start(m, kind, builder, out):
         g.setdefault("keys", []).append(t["key"])
     _ev(m, out, "task", f"New task: {t['title']}.", phase="start", task=tid, task_kind=kind)
     return t
+
+
+def _rover_charge(m) -> float:
+    """The battery a rover trip takes (sim.py dispatch: the base charge plus the site's LOLA slope)."""
+    return sim.ROVER_POWER + sim.site(m.site_id).get("rover_slope_power", 0)
+
+
+def _rover_free(m) -> bool:
+    return not m.rover["busy"] and not m.shelter and m.power >= _rover_charge(m)
+
+
+def _gate_rover(s, home_only=False):
+    """A step that sends the rover is only ready when the sim would take it: the rover is home and the crew is out of
+    the shelter. Before, the card offered "Send the rover" while the rover was out, the sim said no, and a player who
+    pressed the card's button again and again never moved the clock (the Commander stall)."""
+    rdy = s.get("ready_if")
+    free = (lambda m: not m.rover["busy"]) if home_only else _rover_free
+    s["ready_if"] = (lambda m, t: free(m) and rdy(m, t)) if rdy else (lambda m, t: free(m))
+    wt = s.get("wait_text")
+    s["wait_text"] = lambda m, t: (f"The rover is out. Back in about {m.rover['eta_h']} h." if m.rover["busy"] else
+                                   None if home_only else
+                                   "Waits until the crew is out of the shelter." if m.shelter else
+                                   "Battery too low for the rover. It waits for the Sun." if m.power < _rover_charge(m) else
+                                   (wt(m, t) if callable(wt) else wt))
 
 
 def _close(m, t, status, out, text=None):
@@ -662,7 +735,7 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
         if m.shelter or m.power_save:
             return None, {"ok": False, "say": "The lab is asleep. Wake the outpost first.", "readback": "", "events": []}
         m.science += SAMPLE_SCIENCE
-        return f"Sample logged. Science +{SAMPLE_SCIENCE:g}.", {}
+        return s.get("ack") or f"Sample logged. Science +{SAMPLE_SCIENCE:g}.", {}
     if k == "science" and sid == "read":
         rate = sim.dose_rate(m, m.t_h)
         t["reading"] = round(rate, 3)
@@ -676,6 +749,17 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
         return f"Logged. It was {right}: quiet Sun is under {QUIET_RATE:g}.", {}
     if k == "repair" and sid in ("check", "test"):
         return s["ack"], {}
+    if k == "night_prep" and sid == "battery":
+        b, dark = _budget(m), _night_len(m, m.t_h)
+        lasts = b["night"]["lasts_h"]
+        verdict = ("Enough for the night." if lasts is None or not dark or lasts >= dark else
+                   "Tight. Keep the loads low tonight.")
+        return (f"Battery {m.power:.0f}%. In night mode it {_lasts(b['night'])}"
+                f"{f'; the dark lasts {dark} h' if dark else ''}. {verdict}"), {}
+    if k == "night_prep" and sid == "sunset":
+        dark = _night_len(m, m.t_h)
+        return (f"Sunset logged. Dark for about {dark} hours, from JPL Horizons." if dark else
+                "Sunset logged, from JPL Horizons."), {}
     if k == "night_prep" and sid == "budget":
         b = _budget(m)
         if choice == "night":
@@ -726,7 +810,7 @@ def _step_view(m, t, s) -> dict:
     ready = (not s.get("ready_if") or bool(s["ready_if"](m, t))) and s["kind"] != "wait"
     v = {"id": s["id"], "kind": s["kind"], "label": s["label"], "done": s["done"], "ready": ready and not s["done"],
          "target": s.get("target"), "result": s.get("result"),
-         "wait": _wait_text(m, t, s) if not ready and not s["done"] else None}
+         "wait": _wait_text(m, t, s) if not ready and not s["done"] else None, "why": s.get("why")}
     if s["kind"] == "order":
         v["cmd"] = s["cmd"]
     if s["kind"] == "choice":

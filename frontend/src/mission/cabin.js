@@ -602,7 +602,7 @@ export function createCabin(root, o = {}) {
     const left = c.left_h != null ? (c.left_h >= 1 ? `${Math.round(c.left_h)} h left` : `${Math.max(1, Math.round(c.left_h * 60))} min left`) : "";
     // Rebuild the card (and its buttons) only when its structure changes. The countdown and readouts tick about once a
     // second; re-rendering the buttons that often replaced them mid-click, so a real mouse click could be lost.
-    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, !!left]);
+    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, c.why, !!left]);
     if (key === cardKey) {
       requestAnimationFrame(fitNow);
       const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
@@ -624,7 +624,7 @@ export function createCabin(root, o = {}) {
     const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words))}</p>` : "";
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
       <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
-      ${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
+      ${c.why ? `<p class="cb-now-why">${esc(c.why)}</p>` : ""}${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
       ${btns ? `<div class="cb-now-btns${c.choice ? " is-choice" : ""}" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}${sayLine}${deckHint}`;
     q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own[+b.dataset.b], c));
     fitNow();

@@ -523,6 +523,14 @@ def main():
         m0 = js("() => document.getElementById('mic').getAttribute('aria-label')")
         press("m", 1200)
         ok(js("() => document.getElementById('mic').getAttribute('aria-label')") != m0, "M toggles the mic")
+        # back is layered (input/keys.js "back": the top layer first): the paused tour card is still up from the Esc
+        # above, so the first Backspace closes it and the next one leaves the Library. Before, this check pressed once
+        # and expected to leave, which only held while the paused card didn't count as a layer (failed on main).
+        tour_card = "() => { const c = document.getElementById('card'); return !!(c && !c.hidden); }"
+        if js(tour_card):
+            press("Backspace", 900)
+            ok(not js(tour_card) and js("() => document.body.dataset.mode") == "cadet",
+               "Backspace closes the paused tour card first (top layer), still in the Library")
         press("Backspace", 1500)
         ok(js("() => document.body.dataset.mode") != "cadet", "Backspace leaves the Library (back to where you were)")
         ok(js("() => !!document.querySelector('.topbar')"), "back never quits the app")
