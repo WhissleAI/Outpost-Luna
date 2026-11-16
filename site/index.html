@@ -3,90 +3,173 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Outpost Luna</title>
-<meta name="description" content="Outpost Luna: Junior Astronaut Mission Trainer. A voice-first desktop app: Flight School with real Artemis crew audio and NASA videos, then a pretend Moon outpost at the south pole. Every model runs on the computer.">
+<title>Outpost Luna · Train for the Moon by voice</title>
+<meta name="description" content="A voice-first desktop app for Mac and Windows. Learn the Moon in Flight School, then run an outpost at the lunar south pole on real NASA data. Every model runs on your computer.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Outpost Luna: Junior Astronaut Mission Trainer">
-<meta property="og:description" content="A voice-first desktop app. Learn the Moon with real Artemis crew audio and NASA data, then run a pretend outpost at the lunar south pole. Runs offline.">
+<meta property="og:site_name" content="Outpost Luna">
+<meta property="og:title" content="Outpost Luna · Train for the Moon by talking to CAPCOM">
+<meta property="og:description" content="Flight School, a 10-day south-pole mission and a Moon library, built on NASA open data. Runs offline on Mac and Windows.">
 <meta property="og:url" content="https://whissleai.github.io/Outpost-Luna/">
 <meta property="og:image" content="https://whissleai.github.io/Outpost-Luna/assets/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Outpost Luna: the Moon with a marker at Shackleton Rim.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0b0e16">
+<meta name="theme-color" content="#0B1220">
+<link rel="canonical" href="https://whissleai.github.io/Outpost-Luna/">
 <link rel="icon" type="image/png" href="assets/icon-64.png?v=2">
 <link rel="apple-touch-icon" href="assets/icon-180.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="landing.css?v=4">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="image" type="image/avif" href="assets/img/moon-1600.avif" imagesrcset="assets/img/moon-960.avif 960w, assets/img/moon-1600.avif 1600w" imagesizes="(max-width: 1120px) 100vw, 1072px">
+<link rel="stylesheet" href="landing.css?v=6">
 <script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="nav">
-  <a class="brand" href="./" aria-label="Outpost Luna home">
-    <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
-    Outpost Luna</a>
-  <nav aria-label="Sections">
-    <a href="#how">How it works</a><a href="#results">Results</a><a href="#privacy">Privacy</a><a href="#start">Get it</a><a href="guide.html">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
-  </nav>
-  <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
-  </button>
+<!-- 1 · Hero: what it is, download, and the film (one dark band: nav + intro + film) -->
+<header class="top dark">
+  <div class="nav">
+    <a class="brand" href="./" aria-label="Outpost Luna home">
+      <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
+      Outpost Luna</a>
+    <nav aria-label="Sections">
+      <a href="#app">The app</a><a href="#data">NASA data</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a class="keep" href="guide.html">Guide</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+    </nav>
+    <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
+    </button>
+  </div>
+  <div class="wrap">
+    <div class="hero">
+      <p class="eyebrow">NASA Space Apps Challenge 2026</p>
+      <h1 id="h1">Train for the Moon by <em>talking</em> to CAPCOM.</h1>
+      <p class="lede">A voice-first desktop app. Learn in Flight School, then run an outpost at the lunar south pole. Every model runs on your computer.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.39-.92-2.4-3.66ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z"/></svg>
+          Download for Mac</a>
+        <a class="btn primary" data-win href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.1H3V5.1Zm8.4-1.2L21 2.5v8.6h-9.6V3.9ZM3 12.9h7.4V20L3 18.9v-6Zm8.4 0H21v8.6l-9.6-1.4v-7.2Z"/></svg>
+          <span data-win-label>Download for Windows</span></a>
+      </div>
+      <!-- Mac: latest release asset Outpost-Luna-mac-arm64.dmg (notarized, stapled). Windows: Outpost-Luna-win-x64.exe
+           (desktop/scripts/build-windows.ps1); dl.js falls back to an older release, the build guide or the Releases page. -->
+      <p class="fine">Free · Mac with Apple silicon · Windows 10/11 · No account · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">All releases</a></p>
+    </div>
+
+    <!-- 2 · See it. Video slot: shows the Moon still today; film.js swaps in a <video> when site/media/outpost-luna.mp4
+         exists (poster: site/media/outpost-luna-poster.jpg; captions: site/media/outpost-luna.vtt, optional).
+         Keep the credit line while the still (or NASA imagery in the film) is shown. -->
+    <figure class="film" data-film="media/outpost-luna" data-film-label="Outpost Luna launch film">
+      <div class="frame">
+        <picture>
+          <source type="image/avif" srcset="assets/img/moon-960.avif 960w, assets/img/moon-1600.avif 1600w" sizes="(max-width: 1120px) 100vw, 1072px">
+          <source type="image/webp" srcset="assets/img/moon-960.webp 960w, assets/img/moon-1600.webp 1600w" sizes="(max-width: 1120px) 100vw, 1072px">
+          <img src="assets/img/moon-960.jpg" width="1600" height="900" fetchpriority="high" alt="The Moon in space with a glowing marker at Shackleton Rim, near the south pole: the site of Outpost Luna.">
+        </picture>
+      </div>
+      <figcaption>Moon: NASA/GSFC/Arizona State University (LRO), via the NASA SVS CGI Moon Kit.</figcaption>
+    </figure>
+  </div>
 </header>
 
-<main id="main">
-  <section class="hero">
-    <p class="eyebrow">Junior Astronaut Mission Trainer · NASA Space Apps Challenge 2026</p>
-    <h1>Train for the Moon by <em>talking</em> to CAPCOM.</h1>
-    <p class="lede">A voice-first desktop app. Learn the Moon in Flight School with real Artemis crew audio and NASA videos, then run a pretend outpost at the lunar south pole. Every model runs on the computer.</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.39-.92-2.4-3.66ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z"/></svg>
-        Download for Mac</a>
-      <a class="btn primary" data-win href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.1H3V5.1Zm8.4-1.2L21 2.5v8.6h-9.6V3.9ZM3 12.9h7.4V20L3 18.9v-6Zm8.4 0H21v8.6l-9.6-1.4v-7.2Z"/></svg>
-        <span data-win-label>Download for Windows</span></a>
-      <a class="btn" href="guide.html">See how it works</a>
-    </div>
-    <!-- Mac: the latest release asset Outpost-Luna-mac-arm64.dmg (about 246 MB), notarized and stapled. Windows: the release asset
-         Outpost-Luna-win-x64.exe (desktop/scripts/build-windows.ps1); dl.js falls back to an older release, the build guide or the Releases page. -->
-    <p class="fine">Notarized Mac app (Apple silicon) · Windows 10/11 x64 · no account, no keys · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">all releases</a></p>
-  </section>
-
-  <figure class="art">
-    <img src="assets/hero.jpg" width="1600" height="900" alt="Outpost Luna title art: the Moon in space with a marker at Shackleton Rim, labelled our outpost.">
-    <figcaption class="cap">Moon: NASA/GSFC/Arizona State University (LRO), via the NASA SVS CGI Moon Kit.</figcaption>
-  </figure>
-
-  <section id="app" class="sec">
-    <h2>One story, four steps</h2>
-    <!-- Source: docs/STORY.md §1 (the arc), README.md, backend/data/academy/course.json (6 core + 2 explorer lessons + check ride), backend/data/mission/sites.json (5 sites). -->
-    <p class="sec-lede">Artemis II flew its crew around the Moon in April 2026. You train to help run Outpost Luna, a pretend base near the south pole for the crews who come after.</p>
-    <ol class="stages">
-      <li><span class="n">01</span><h3>Flight School</h3><p>6 core lessons and 2 explorer lessons. Each is a story beat, a few voice or tap steps, and a patch.</p></li>
-      <li><span class="n">02</span><h3>Check ride</h3><p>One solo shift at Shackleton Rim, through the real May 2024 solar storm. Pass to earn the Mission Commander patch.</p></li>
-      <li><span class="n">03</span><h3>Command</h3><p>Run the outpost for 10 days at one of 5 south-pole sites, with real Sun and Earth positions and real solar storms.</p></li>
-      <li><span class="n">04</span><h3>Debrief</h3><p>What happened, the real data behind each event, and one thing to try. Then fly again.</p></li>
+<main id="main" class="full">
+<!-- 3 · The app. Sources: docs/STORY.md, README.md, backend/data/academy/course.json (6 core + 2 explorer lessons + check ride),
+     backend/data/mission/sites.json (5 sites), backend/data/artifacts.json (36 entries). -->
+<section id="app" class="band" aria-labelledby="app-h">
+  <div class="wrap">
+    <p class="eyebrow">The app</p>
+    <h2 id="app-h">Learn it, run it, explore it.</h2>
+    <p class="sec-lede">Artemis II flew around the Moon in April 2026. You train to run a south-pole base for the crews who come next.</p>
+    <ol class="places">
+      <li class="place">
+        <div class="shot"><picture>
+          <source type="image/avif" srcset="assets/img/lesson-720.avif 720w, assets/img/lesson-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <source type="image/webp" srcset="assets/img/lesson-720.webp 720w, assets/img/lesson-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <img src="assets/img/lesson-720.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="A Flight School lesson beside the Moon: Why does the Moon seem to change shape each month? Three answers to pick from.">
+        </picture></div>
+        <div class="body">
+          <h3><span class="step-n" aria-hidden="true">1</span>Flight School</h3>
+          <p>Spoken lessons with CAPCOM and real Artemis II crew audio.</p>
+          <p class="meta">6 core lessons · 2 explorer lessons · a check ride</p>
+        </div>
+      </li>
+      <li class="place">
+        <div class="shot"><picture>
+          <source type="image/avif" srcset="assets/img/mission-720.avif 720w, assets/img/mission-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <source type="image/webp" srcset="assets/img/mission-720.webp 720w, assets/img/mission-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <img src="assets/img/mission-720.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The mission cabin at Shackleton Crater Rim during a solar particle storm alert, with power, life support and dose gauges.">
+        </picture></div>
+        <div class="body">
+          <h3><span class="step-n" aria-hidden="true">2</span>Mission</h3>
+          <p>Run the outpost for 10 days through real solar storms.</p>
+          <p class="meta">5 south-pole sites · real Sun and Earth · debrief</p>
+        </div>
+      </li>
+      <li class="place">
+        <div class="shot"><picture>
+          <source type="image/avif" srcset="assets/img/library-720.avif 720w, assets/img/library-1200.avif 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <source type="image/webp" srcset="assets/img/library-720.webp 720w, assets/img/library-1200.webp 1200w" sizes="(max-width: 960px) 92vw, 360px">
+          <img src="assets/img/library-720.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The Moon Library: a 3D Moon with hardware markers and a card for the Apollo 11 lunar module descent stage, with its NASA sources.">
+        </picture></div>
+        <div class="body">
+          <h3><span class="step-n" aria-hidden="true">3</span>Moon Library</h3>
+          <p>Hardware left on the Moon, each piece with its sources.</p>
+          <p class="meta">36 pieces · 3D Moon · Artemis II crew moments</p>
+        </div>
+      </li>
     </ol>
-    <div class="shots">
-      <figure>
-        <img src="assets/lesson.jpg?v=3" width="1600" height="1000" loading="lazy" alt="A Flight School lesson card beside the Moon: Phases and eclipses, lesson 2 of 6. Why does the Moon seem to change shape each month? Guess first, with three numbered answers and a button to hear the Artemis II crew.">
-        <figcaption>Flight School: guess first, then see why. Answer by voice, tap or keys.</figcaption>
-      </figure>
-      <figure>
-        <img src="assets/cabin.jpg?v=3" width="1600" height="1000" loading="lazy" alt="The mission cabin at Shackleton Crater Rim: the clock bar with Play, speed and Skip ahead, a Now panel with the next task, the window onto the outpost, power, life support and dose gauges, and the habitat, radiation, rover, shift and radio panels.">
-        <figcaption>The cabin: live clock, the Now task, and the window onto real LOLA terrain. <a href="guide.html#mission">Every part explained</a>.</figcaption>
-      </figure>
-    </div>
-    <!-- Inputs: docs/GESTURES.md, docs/KEYBOARD.md, docs/HANDSFREE.md. Moon library: README.md (36 pieces of hardware; backend/data/artifacts.json has 36 entries). -->
-    <p class="inputs"><b>Every input works.</b> Talk, tap or type, use the keyboard or a game controller, or turn on the camera for hand gestures: an open hand stops, a thumbs up says yes, a fist spins the Moon. A Moon library holds 36 pieces of hardware left on the Moon, with their sources.</p>
-  </section>
+    <!-- Inputs: docs/GESTURES.md, docs/KEYBOARD.md, docs/HANDSFREE.md -->
+    <ul class="chips" aria-label="Ways to play">
+      <li class="lead">Play your way</li><li>Voice</li><li>Tap</li><li>Type</li><li>Keyboard</li><li>Game controller</li><li>Hand gestures</li>
+    </ul>
+    <p class="note-p"><a href="guide.html">See every screen in the guide →</a></p>
+  </div>
+</section>
 
-  <section id="how" class="sec">
-    <h2>How it works</h2>
-    <p class="sec-lede">The ear, the tagger and the Director run on the computer and decide what each turn means. Every lane that answers works offline.</p>
+<!-- 4 · NASA data. Sources: backend/data/clips_manifest.json (74 clips), mission/donki_events.json (13 events, 2017-09 to 2025-11),
+     mission/sites.json (5 sites; LOLA illumination, Horizons), video/catalog.json (17 NASA videos: 8 nasa_file + 9 NASA-channel
+     YouTube; 2 more are non-NASA how-to clips), artifacts.json (36, NSSDCA). docs/DESKTOP.md "Offline guarantees": no NASA API calls at run time. -->
+<section id="data" class="band dark pine" aria-labelledby="data-h">
+  <div class="wrap">
+    <p class="eyebrow">NASA open data</p>
+    <h2 id="data-h">Real missions, real Moon.</h2>
+    <p class="sec-lede">Every lesson and event traces to a NASA source.</p>
+    <ul class="data-grid">
+      <li><b>74</b><span>Artemis II crew clips</span><small>NASA Artemis audio</small></li>
+      <li><b>13</b><span>Real solar storms, 2017–2025</span><small>NASA DONKI</small></li>
+      <li><b>5</b><span>South-pole sites, scored</span><small>LRO sunlight, Earth view, ice and slope</small></li>
+      <li><b>17</b><span>NASA videos, 8 play offline</span><small>NASA SVS and NASA channels</small></li>
+      <li><b>36</b><span>Pieces of hardware on the Moon</span><small>NASA NSSDCA</small></li>
+      <li><b>10</b><span>Days of hourly Sun and Earth</span><small>JPL Horizons, per site</small></li>
+    </ul>
+    <p class="band-note">Built into the app. No NASA calls while it runs.</p>
+  </div>
+</section>
+
+<!-- 5 · How it works. Names and sizes: desktop/models.lock.json + docs/DESKTOP.md "What is in the bundle".
+     Ear numbers: docs/LOCAL_EAR.md "Old ear vs new ear" (LibriSpeech test-clean 5.2 -> 2.2%, SLURP 47.1 -> 19.3%,
+     crew-name links 64.7 -> 97.1%). Director: backend/app/director_model/runtime.py (rules act; the learned model runs in shadow).
+     Voice: docs/VOICES.md + backend/data/voice_pack/index.json (889 lines). Safety: backend/app/safety.py. -->
+<section id="how" class="band" aria-labelledby="how-h">
+  <div class="wrap">
+    <p class="eyebrow">How it works</p>
+    <h2 id="how-h">Voice AI that runs on your computer.</h2>
+    <p class="sec-lede">Our own speech and language models hear, check and decide each turn. No cloud.</p>
+    <div class="stats">
+      <div class="stat"><b>2.2%</b><span>word errors, clean speech</span><small>Previous ear: 5.2%</small></div>
+      <div class="stat"><b>19.3%</b><span>word errors, spoken commands</span><small>Previous ear: 47.1%</small></div>
+      <div class="stat"><b>97%</b><span>Moon names linked correctly</span><small>Previous ear: 65%</small></div>
+    </div>
+    <p class="stats-note">Arc Transcriber Space vs our previous ear, same held-out clips. <a href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/LOCAL_EAR.md">Method</a> · <a href="data.html">Training data</a></p>
+    <ul class="points">
+      <li><b>Hears you, not the room</b>Knows when you're talking to the app.</li>
+      <li><b>Keeps it clean</b>Swearing is masked, never graded or answered.</li>
+      <li><b>Decides by rules</b>Clear rules pick each move; a learned model trains alongside.</li>
+      <li><b>Speaks in one voice</b>889 recorded lines, plus your computer's own voice.</li>
+    </ul>
     <figure class="arch">
       <ul class="legend" aria-hidden="true">
         <li><i class="k-acc"></i>Whissle models</li>
@@ -94,13 +177,6 @@
         <li><i class="k-net"></i>Online, optional</li>
       </ul>
       <div class="scroll">
-      <!-- Names and sizes: desktop/models.lock.json + docs/DESKTOP.md "What is in the bundle":
-           Arc Transcriber Space nft2 (first-run asset, libarc + ONNX Runtime), Arc Tagger v0.3 arctag_int8.onnx 12 MB, all-MiniLM-L6-v2 int8 22 MB.
-           device_directed comes from Arc Transcriber Space (model_server/app/arc_ear.py);
-           safety / intent / entities from Arc Tagger (model_server/app/arctag.py EMIT; backend/app/safety.py masks swearing).
-           Director: backend/app/director_model/runtime.py, DIRECTOR_MODEL default "shadow" (owner 2026-11-14).
-           Voice out: docs/VOICES.md (macOS say, Windows WinRT then SAPI) + docs/VOICE_PACK.md (Nora pack).
-           Video: docs/MEDIA.md. NASA data: docs/DESKTOP.md "Offline guarantees" (baked into backend/data, no NASA API calls at run time). -->
       <svg viewBox="0 0 1000 480" role="img" aria-labelledby="archT archD">
         <title id="archT">Outpost Luna architecture</title>
         <desc id="archD">On the computer: the microphone feeds the Arc ear (Arc Transcriber Space: live words, whether you are talking to the app, and turn end), then Arc Tagger v0.3 (safety masking, intent, places), then the Director (decides what happens next). The camera feeds MediaPipe hand and face models, whose gestures become the same intents. The Director picks a lane: voice out (the system voice plus the recorded Nora pack), facts and places (a MiniLM embedder over NASA facts), the mission engine (storms, power, ice) or the Flight School grader. NASA data from Horizons, DONKI, LROC, LOLA and NSSDCA is fetched at build time and built into the app. Online and optional: NASA video files, downloaded once then played offline, and YouTube embeds from NASA channels, which stream only.</desc>
@@ -146,99 +222,80 @@
         <path class="ln netln" d="M730 198H700"/>
       </svg>
       </div>
-      <p class="swipe">Swipe sideways to see the whole diagram.</p>
-      <figcaption>Purple = Whissle models. Teal = on-device lanes, all offline. Amber = online and optional: NASA video files download once and then play offline; only the YouTube embeds need a connection. NASA data is fetched when the app is built, never while it runs.</figcaption>
+      <p class="swipe">Swipe to see the whole diagram.</p>
+      <figcaption>Everything that answers works offline. Only the NASA YouTube clips need a connection.</figcaption>
     </figure>
-    <ul class="points">
-      <li><b>Hears you, not the room.</b> Arc Transcriber Space turns speech into words and also reads the audio: is this said to the app, and is the turn over. Room talk is ignored.</li>
-      <li><b>Keeps it clean.</b> Arc Tagger's safety labels, backed by an offline word list, mask swearing wherever it would show. A masked turn is never graded or answered.</li>
-      <li><b>Decides carefully.</b> The Director's rules pick what to do: act, ignore or navigate. A small learned model checks its choices against them, and only takes over where it is proven safer.</li>
-      <li><b>Speaks in one voice.</b> The computer's own voices answer live. 889 fixed lines are pre-recorded in Siri Voice 1 (Nora), on Mac and Windows alike.</li>
-    </ul>
-  </section>
+  </div>
+</section>
 
-  <section id="results" class="sec">
-    <h2>Results</h2>
-    <p class="sec-lede">Measured on the released app (v0.3.1) and on held-out test sets.</p>
-    <div class="stats">
-      <!-- Arc Transcriber Space vs the previous Arc ear on the same test sets (LibriSpeech, SLURP, space-name linking). -->
-      <div class="stat"><b>2.2%</b><span>word errors on clean speech</span><small>Our on-device ear, tuned on NASA mission speech. The previous version made 5.2%.</small></div>
-      <div class="stat"><b>19.3%</b><span>word errors on spoken commands</span><small>Short, casual commands, the hardest case. Down from 47.1%.</small></div>
-      <div class="stat"><b>97%</b><span>space names understood</span><small>Craters, landing sites, crew and missions linked to the right place. Up from 65%.</small></div>
-    </div>
-
-    <h3 class="sub-h">What that means in use</h3>
-    <ul class="facts">
-      <li><span class="v">½ second</span><span class="d"><b>Fast replies.</b> The app knows you've finished about half a second after you stop talking, and answers in about half a second more.</span></li>
-      <li><span class="v">Offline</span><span class="d"><b>No internet after setup.</b> The models download once (about 510 MB); then everything runs on the computer, with no account.</span></li>
-      <li><span class="v">74 clips</span><span class="d"><b>Real Artemis II crew audio</b> used as lesson hooks and mission moments.</span></li>
-      <li><span class="v">13 storms</span><span class="d"><b>Real solar storms</b> from NASA's DONKI records (2017–2025) drive the missions.</span></li>
-      <li><span class="v">5 sites</span><span class="d"><b>Real south-pole sites</b>, scored with NASA LRO sunlight, Earth view, ice and slope maps.</span></li>
-      <li><span class="v">16 videos</span><span class="d"><b>NASA video</b> in lessons: 8 files saved for offline play, 8 NASA-channel streams.</span></li>
-      <li><span class="v">889 lines</span><span class="d"><b>A recorded guide voice</b> for every fixed line, plus the computer's own voices for live answers.</span></li>
-      <li><span class="v">1,400+</span><span class="d"><b>Automated tests</b> on every change, including keyboard, gamepad, gesture and silent end-to-end runs.</span></li>
-    </ul>
-  </section>
-
-  <section id="privacy" class="sec two">
-    <div>
-      <h2>Private by default</h2>
-      <p class="sec-lede">Private by design: no account, no cloud model, nothing uploaded.</p>
-    </div>
-    <!-- Sources: docs/DESKTOP.md "Offline guarantees" and "Where things go at run time"; docs/VOICES.md (listen: handsfree / ptt);
-         docs/GESTURES.md (privacy); docs/DIRECTOR_LOOP.md §1 (turn log); README.md (call sign kept on the device, never sent). -->
+<!-- 6 · Privacy. Sources: docs/DESKTOP.md "Offline guarantees" and "Where things go at run time"; docs/VOICES.md (handsfree / ptt);
+     docs/GESTURES.md (camera chip, no face recognition); docs/DIRECTOR_LOOP.md §1 (turn log); README.md (call sign stays on device). -->
+<section id="privacy" class="band alt" aria-labelledby="privacy-h">
+  <div class="wrap">
+    <p class="eyebrow">Privacy</p>
+    <h2 id="privacy-h">Private by design.</h2>
+    <p class="sec-lede">No account. No cloud model. Nothing uploaded.</p>
     <dl class="priv">
-      <div><dt>Runs on the computer</dt><dd>The ear, the tagger, the Director, the embedder and the voices all run locally. The app window may only talk to its own local servers; anything else is blocked, apart from the NASA YouTube player.</dd></div>
-      <div><dt>The mic: open or push-to-talk</dt><dd>Hands-free listening by default, or push-to-talk (hold Space) in Settings. Audio is never stored.</dd></div>
-      <div><dt>The camera is opt-in</dt><dd>Off until you turn on gestures in Settings, with a "Camera on" chip and a Turn off button while it runs. Frames are read on the computer and never saved or sent. No face recognition.</dd></div>
-      <div><dt>No account</dt><dd>You pick a call sign. It and all progress stay on the device.</dd></div>
-      <div><dt>Turn log: opt-in, text only</dt><dd>Off by default. If you turn on "Help improve the voice guide", the app keeps a small text log with names redacted. It is never uploaded, and "Delete what's saved" erases it.</dd></div>
+      <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 5h16v10H4zM9 19h6M12 15v4"/></svg><dt>On-device</dt><dd>Every model runs on your computer.</dd></div>
+      <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><dt>Mic</dt><dd>Hands-free or push-to-talk. Audio is never stored.</dd></div>
+      <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><dt>Camera</dt><dd>Off until you turn on gestures.</dd></div>
+      <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0"/></svg><dt>No account</dt><dd>A call sign, kept on the device.</dd></div>
+      <div><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M6 3h9l3 3v15H6zM9 10h6M9 14h6M9 18h4"/></svg><dt>Turn log</dt><dd>Opt-in, text only. Never uploaded.</dd></div>
     </dl>
-  </section>
+    <details class="more">
+      <summary>Privacy details</summary>
+      <ul>
+        <li>The app window may only reach its own local servers. Everything else is blocked, apart from the NASA YouTube player.</li>
+        <li>Hands-free listening is the default. Push-to-talk (hold Space) is in Settings.</li>
+        <li>While the camera runs, a "Camera on" chip with a Turn off button is always visible. Frames are never saved or sent. No face recognition.</li>
+        <li>Your call sign and all progress stay on the device.</li>
+        <li>The turn log ("Help improve the voice guide") is off by default, redacts names, and "Delete what's saved" erases it.</li>
+      </ul>
+    </details>
+  </div>
+</section>
 
-  <section id="start" class="sec">
-    <h2>Get it</h2>
-    <p class="sec-lede">Free desktop app for Mac and Windows. No account, no keys.</p>
+<!-- 7 · Get it. Sizes: v0.3.3 release assets (Mac dmg 257,553,103 bytes; Windows exe 193,741,702 bytes); first-run models
+     about 510 MB (site/assets/manifest.json, README "Download"). Windows installer is unsigned (SmartScreen). -->
+<section id="get" class="band dark" aria-labelledby="get-h">
+  <div class="wrap">
+    <p class="eyebrow">Get it</p>
+    <h2 id="get-h">Free for Mac and Windows.</h2>
+    <p class="sec-lede">One download. Models install once (510 MB), then it runs offline.</p>
     <div class="paths two-up">
       <div class="path">
         <h3>Mac <span class="tag">Apple silicon</span></h3>
-        <p>Open the dmg and drag Outpost Luna to Applications. The first run downloads the models once (about 510 MB); after that it works offline.</p>
+        <p>Notarized. 258 MB. Drag to Applications.</p>
         <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">Download for Mac</a>
       </div>
       <div class="path" id="windows">
         <h3>Windows <span class="tag">10 / 11 · x64</span></h3>
-        <p>Run the installer. If SmartScreen warns about an unsigned app, choose More info → Run anyway. The first run downloads the models once; after that it works offline.</p>
+        <p>194 MB. Unsigned for now: More info → Run anyway.</p>
         <a class="btn primary" data-win href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe"><span data-win-label>Download for Windows</span></a>
       </div>
     </div>
-    <p class="note-p"><a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source → README on GitHub</a></p>
-  </section>
+    <p class="note-p"><a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">All releases and checksums</a></p>
+  </div>
+</section>
 
-  <section id="next" class="sec">
-    <h2>What's next</h2>
-    <p class="sec-lede">What comes after v0.3.1.</p>
-    <ul class="next">
-      <li class="wide"><b>Mission, simpler</b>
-        <ul class="nr">
-          <li>One clear goal at a time, one main button</li>
-          <li>Full controller and keyboard play in the site picker</li>
-          <li>Advanced consoles only when you need them</li>
-          <li>A story-first debrief</li>
-        </ul></li>
-      <!-- director_model/RESULTS.md: round 9 retrains on the new ear (Arc Transcriber Space); ships only if it passes the gate. -->
-      <li><b>A smarter Director</b><span>A tiny learned model, trained on the new ear and real voices, takes over more decisions as it proves itself.</span></li>
-      <!-- Windows installer ships unsigned (v0.3.3); Authenticode needs an OV/EV certificate. -->
-      <li><b>Windows, signed</b><span>A code-signing certificate, so SmartScreen stops warning on install.</span></li>
-    </ul>
-  </section>
+<!-- 8 · Team, challenge, credits -->
+<section id="credits" class="band" aria-labelledby="credits-h">
+  <div class="wrap">
+    <h2 id="credits-h" class="sr-only">Team, challenge and credits</h2>
+    <div class="credits">
+      <div><h3>Team</h3><p>Built by <a href="https://whissle.ai">Whissle</a>. The speech and language models are ours.</p></div>
+      <div><h3>Challenge</h3><p>NASA Space Apps Challenge 2026: Build a Junior Astronaut Mission Trainer.</p></div>
+      <div><h3>Credits</h3><p>Moon: NASA/GSFC/ASU (LRO). Terrain: NASA LRO LOLA. Earth: NASA Blue Marble. Crew audio: NASA Artemis audio.</p></div>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer class="foot">
-  <p><b>Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. Outpost Luna is a pretend outpost for learning.</b></p>
-  <p>Images: Moon from NASA/GSFC/Arizona State University (LRO), via the NASA SVS CGI Moon Kit. Cabin terrain: NASA LRO LOLA elevation. Earth: NASA Blue Marble. Crew audio: NASA Artemis Audio Library.</p>
+  <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <div class="row">
-    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
-    <span><a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/DESKTOP.md">Desktop notes</a> · <a href="data.html">Data report</a></span>
+    <span>© 2026 Whissle · Outpost Luna</span>
+    <span><a href="guide.html">Guide</a> · <a href="data.html">Data report</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
   </div>
 </footer>
 <script>
@@ -250,5 +307,6 @@
   });
 </script>
 <script src="dl.js?v=1" defer></script>
+<script src="film.js?v=1" defer></script>
 </body>
 </html>
