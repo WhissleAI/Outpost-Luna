@@ -262,3 +262,4 @@ a:focus-visible, .btn:focus-visible, .theme:focus-visible { outline: 2px solid v
 .taglist { margin: 0; padding-left: 18px; columns: 2; column-gap: 28px; font-size: 13.5px; color: var(--ink-2); }
 .taglist li { break-inside: avoid; margin: 0 0 5px; }
 @media (max-width: 860px) { .taglist { columns: 1; } }
+.dtable th code { white-space: nowrap; overflow-wrap: normal; }
