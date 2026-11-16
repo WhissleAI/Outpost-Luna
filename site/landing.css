@@ -119,6 +119,21 @@ h1 em { font-style: normal; color: var(--acc); }
 .film .frame > * { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .film picture img { width: 100%; height: 100%; object-fit: cover; }
 .film figcaption { color: var(--ink-3); font-size: 12.5px; margin: 10px 2px 0; }
+/* the film's cover button: one big green play over the Moon in the poster; gone once it plays */
+.film .frame > .film-play { inset: auto; left: 65.6%; top: 50%; width: auto; height: auto; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 12px; background: none; border: 0; padding: 8px; cursor: pointer; color: #fff; }
+.film-play-dot { width: clamp(64px, 9vw, 104px); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+  background: var(--green); color: #fff; box-shadow: 0 0 0 8px color-mix(in srgb, var(--teal) 28%, transparent), 0 18px 40px -12px rgba(0,0,0,.7);
+  transition: transform .18s ease, background-color .18s ease; }
+.film-play-dot svg { width: 42%; height: 42%; margin-left: 6%; }
+.film-play-label { font-size: clamp(12px, 1.3vw, 15px); font-weight: 600; letter-spacing: .02em; padding: 6px 12px; border-radius: 999px;
+  background: rgba(9,14,26,.66); backdrop-filter: blur(6px); }
+.film-play:hover .film-play-dot { transform: scale(1.06); background: var(--pine); }
+.film-play:focus-visible { outline: none; }
+.film-play:focus-visible .film-play-dot { outline: 3px solid var(--teal); outline-offset: 4px; }
+.film[data-film-state="playing"] .film-play { display: none; }
+@media (max-width: 560px) { .film-play-label { display: none; } }
+@media (prefers-reduced-motion: reduce) { .film-play-dot { transition: none; } }
 
 /* Story: three places, numbered green circles, mint cards */
 .places { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
