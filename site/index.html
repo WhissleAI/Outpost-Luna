@@ -34,7 +34,7 @@
       <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
       Outpost Luna</a>
     <nav aria-label="Sections">
-      <a href="#app">The app</a><a href="#data">NASA data</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a class="keep" href="guide.html">Guide</a><a href="assets/Outpost-Luna-slides.pdf">Slides</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+      <a href="#app">The app</a><a href="#data">NASA data</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a class="keep" href="arc-audio.html">Arc Audio</a><a class="keep" href="guide.html">Guide</a><a href="assets/Outpost-Luna-slides.pdf">Slides</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
     </nav>
   </div>
   <div class="wrap">
@@ -159,7 +159,7 @@
       <div class="stat"><b>19.3%</b><span>word errors, spoken commands</span><small>Previous ear: 47.1%</small></div>
       <div class="stat"><b>97%</b><span>Moon names linked correctly</span><small>Previous ear: 65%</small></div>
     </div>
-    <p class="stats-note">Arc Transcriber Space vs our previous ear, same held-out clips. <a href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/LOCAL_EAR.md">Method</a> · <a href="data.html">Training data</a></p>
+    <p class="stats-note">Arc Transcriber Space vs our previous ear, same held-out clips. <a href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/LOCAL_EAR.md">Method</a></p>
     <ul class="points">
       <li><b>Hears you, not the room</b>Knows when you're talking to the app.</li>
       <li><b>Keeps it clean</b>Swearing is masked, never graded or answered.</li>
@@ -221,6 +221,7 @@
       <p class="swipe">Swipe to see the whole diagram.</p>
       <figcaption>Everything that answers works offline. Only the NASA YouTube clips need a connection.</figcaption>
     </figure>
+    <p class="onward"><a class="more-link" href="arc-audio.html">How the ear is built and measured →</a></p>
   </div>
 </section>
 
@@ -260,6 +261,23 @@
       <div><h3>Challenge</h3><p>NASA Space Apps Challenge 2026: Build a Junior Astronaut Mission Trainer. <a href="assets/Outpost-Luna-slides.pdf">Slides (PDF)</a></p></div>
       <div><h3>Credits</h3><p>Moon: NASA/GSFC/ASU (LRO). Terrain: NASA LRO LOLA. Earth: NASA Blue Marble. Crew audio: NASA Artemis audio.</p></div>
     </div>
+    <!-- AI use: the project-wide Space Apps disclosure. Machine-readable twin: ai-disclosure.json (keep both in step, and README "AI use"). -->
+    <div id="ai-use" class="ai-use">
+      <h3>AI use</h3>
+      <p>AI tools helped write code and draft lessons, and made the icon and some voices. The team checked every fact.</p>
+      <p class="fine">Machine-readable: <a href="ai-disclosure.json">ai-disclosure.json</a></p>
+      <details class="more">
+        <summary>AI use details</summary>
+        <ul>
+          <li><b>Code:</b> written with AI coding assistants. Commits made with them carry a co-author line. The team reviewed and tested every change.</li>
+          <li><b>Writing:</b> lesson text, "Why?" cards and CAPCOM lines were drafted with AI help. Every fact is checked against the NASA source it cites.</li>
+          <li><b>Data:</b> part of the speech model's training data is synthetic text-to-speech audio. Results are measured on held-out clips; the one synthetic test set is labelled as such.</li>
+          <li><b>Images:</b> the app icon and the team image were made with an AI image generator, with no NASA logos, flags or insignia. Moon and Earth imagery is NASA's.</li>
+          <li><b>Audio:</b> CAPCOM's 889 scripted lines were recorded from macOS's built-in Siri voice, which is computer-generated. Live replies use the computer's own voice. The optional Steer voice is AI text-to-speech. The launch film's learner lines are AI-generated speech.</li>
+          <li><b>Not AI:</b> NASA data, NASA video and crew audio, and app screenshots.</li>
+        </ul>
+      </details>
+    </div>
   </div>
 </section>
 </main>
@@ -268,7 +286,7 @@
   <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <div class="row">
     <span>© 2026 Outpost Luna · NASA Space Apps Challenge 2026</span>
-    <span><a href="guide.html">Guide</a> · <a href="assets/Outpost-Luna-slides.pdf">Slides (PDF)</a> · <a href="data.html">Data report</a> · <a href="data.html#ai-use">AI use</a> · <a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
+    <span><a href="guide.html">Guide</a> · <a href="assets/Outpost-Luna-slides.pdf">Slides (PDF)</a> · <a href="arc-audio.html">Arc Audio</a> · <a href="#ai-use">AI use</a> · <a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
   </div>
 </footer>
 <script src="dl.js?v=1" defer></script>
