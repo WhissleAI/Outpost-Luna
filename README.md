@@ -23,16 +23,89 @@ Story copy lives in `frontend/src/story.js`. Inspired by NASA's Artemis program.
 The **Moon library** (the original explorer: 3D Moon, 36 pieces of hardware with sources, Artemis II crew moments) is a
 small button inside the app, used by the lessons.
 
-## Download for Mac
-**[Download Outpost Luna for Mac](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg)** (from [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest)) (Apple silicon, 246 MB,
-about 1.2 GB once set up). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to Applications, open
-it. On first run it downloads the models once (about 510 MB: the ear, Arc Tagger, the embedder and the voice pack), then
-runs with no internet, no account and no keys. The Artemis II crew audio and the NASA videos download in the background;
-the Steer voice (13 MB) only if you ask for it in Settings. Or import the offline pack with no network. The NASA YouTube
-clips need a connection. Each release lists the DMG's SHA-256.
+## Download
 
-Windows: build it from source with one command ([Windows quick start](#windows-quick-start), [docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)). Website:
-<https://whissleai.github.io/Outpost-Luna/> (source in `site/`, published with `scripts/publish_site.sh`).
+- **Mac** (Apple silicon): **[Outpost-Luna-mac-arm64.dmg](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg)**
+  (246 MB, about 1.2 GB once set up). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to
+  Applications, open it.
+- **Windows** 10/11 x64: **[Outpost-Luna-win-x64.exe](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe)**
+  (about 194 MB). The installer is unsigned, so SmartScreen asks: More info → Run anyway. Or
+  [build it from source](#windows).
+
+Both are on [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest); each release lists the
+SHA-256 of its files. On first run the app downloads the models once (about 510 MB: the ear, Arc Tagger, the embedder
+and the voice pack), then runs with no internet, no account and no keys. The Artemis II crew audio and the NASA videos
+download in the background; the Steer voice (13 MB) only if you ask for it in Settings. Or click **Import offline
+pack…** and pick `outpost-luna-assets-v2.zip` (885 MB, no network needed). The NASA YouTube clips need a connection.
+
+Website: <https://whissleai.github.io/Outpost-Luna/> (source in `site/`, published with `scripts/publish_site.sh`).
+
+## Build from source
+
+The desktop app is one installer that runs with no internet: Electron, an embedded Python, the backend, the model
+server and the app code; the models download on first run. It builds from a fresh clone with one command and needs no
+keys or tokens. Details: [docs/DESKTOP.md](docs/DESKTOP.md).
+
+Logs: `~/Library/Application Support/Outpost Luna/logs` (macOS), `%APPDATA%\Outpost Luna\logs` (Windows):
+`main.log`, `backend.log`, `models.log`.
+
+### macOS
+
+Needs Xcode command line tools, Node 22+, uv, CMake, ~6 GB free.
+
+```bash
+make desktop-mac                      # same as: bash desktop/scripts/build-mac.sh
+                                      # -> desktop/dist/Outpost Luna-<version>-arm64.dmg
+```
+
+### Windows
+
+Windows 10 or 11 (x64, AVX2 CPU), 16 GB RAM recommended, about 8 GB free. The full guide, with the tester checklist and
+troubleshooting: **[docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)**. In short, in PowerShell:
+
+1. Install the tools, then open a new PowerShell window:
+
+   ```powershell
+   winget install --id Git.Git -e; winget install --id OpenJS.NodeJS.LTS -e; winget install --id astral-sh.uv -e; winget install --id Kitware.CMake -e
+   winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --includeRecommended"
+   ```
+
+2. Clone to a short path and build (about 15 to 30 minutes):
+
+   ```powershell
+   mkdir C:\src -Force; cd C:\src
+   git clone https://github.com/WhissleAI/Outpost-Luna.git atm; cd atm
+   powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
+   ```
+
+3. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost-Luna-win-x64.exe` (the same
+   installer as `Outpost Luna Setup <version>.exe`; unsigned: SmartScreen → More info → Run anyway).
+4. First launch downloads the models (510 MB before the app opens, ~375 MB more in the background), or use **Import
+   offline pack…** (link in the guide).
+
+To publish a Windows build, attach the installer to the release:
+`gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe`.
+
+### Developers
+
+Three services (the frontend, the backend and the model server); needs uv and Node 20+.
+
+```bash
+git clone https://github.com/WhissleAI/Outpost-Luna.git && cd Outpost-Luna
+make setup      # uv sync (backend, model_server) + npm install (frontend)
+make data       # download NASA media (Moon map + 74 crew clips, ~0.5 GB; backend/pipeline/fetch_media.py)
+make dev        # model server + backend + frontend together → http://localhost:5173
+make test       # model_server + backend tests
+make index      # rebuild the crew index with Arc Tagger (model server must be running)
+make build      # frontend → frontend/dist, then served by the backend at http://localhost:8100
+make health     # check all three
+make models | backend | frontend   # run one part on its own
+```
+
+Running from source uses macOS for the Arc Tagger build. By default it is Head Start's `libarctag.dylib` and
+`models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. No cloud LLM: questions the rules can't
+place go to the local brain (knowledge cards + the model server's tiny embedder; one-time
+`cd model_server && uv run python tools/export_embedder.py --int8`). See [docs/LOCAL_BRAIN.md](docs/LOCAL_BRAIN.md).
 
 ## Layout: three services
 
@@ -53,63 +126,6 @@ browser ──► frontend (Vite :5173) ──/api, /media──► backend (:81
 The backend fails open: if the model server is down, `/api/ask` still answers from the gazetteer, and the read-out
 says "rules only". The model server is a plain FastAPI app, so it can later run unchanged as a Ray Serve deployment
 (`@serve.ingress(app)`) with its own replicas. Head Start can point at it instead of loading its own copy.
-
-## Commands
-
-```bash
-make setup      # uv sync (backend, model_server) + npm install (frontend)
-make data       # download NASA media (Moon map + 74 crew clips, ~0.5 GB; backend/pipeline/fetch_media.py)
-make dev        # model server + backend + frontend together → http://localhost:5173
-make index      # rebuild the crew index with Arc Tagger (model server must be running)
-make test       # model_server + backend tests
-make build      # frontend → frontend/dist, then served by the backend at http://localhost:8100
-make health     # check all three
-make models | backend | frontend   # run one part on its own
-make desktop-mac   # the offline desktop app (Electron + embedded Python + every model) -> desktop/dist/*.dmg
-```
-
-## Desktop app (offline)
-
-One installer that runs with no internet: Electron, an embedded Python, the backend, the model server, every model and
-the NASA audio. Built locally from a fresh clone, no keys or tokens. Details: [docs/DESKTOP.md](docs/DESKTOP.md).
-
-### Build Mac
-
-Needs Xcode command line tools, Node 22+, uv, CMake, ~6 GB free.
-
-```bash
-bash desktop/scripts/build-mac.sh     # -> desktop/dist/Outpost Luna-<version>-arm64.dmg
-```
-
-### Windows quick start
-
-Building and testing on a Windows PC, no help needed: **[docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)** (prerequisites,
-the tester checklist, troubleshooting). In short, in PowerShell:
-
-1. Install the tools, then open a new PowerShell window:
-
-   ```powershell
-   winget install --id Git.Git -e; winget install --id OpenJS.NodeJS.LTS -e; winget install --id astral-sh.uv -e; winget install --id Kitware.CMake -e
-   winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --includeRecommended"
-   ```
-
-2. Clone and build (about 15 to 30 minutes):
-
-   ```powershell
-   mkdir C:\src -Force; cd C:\src
-   git clone https://github.com/WhissleAI/Outpost-Luna.git atm; cd atm
-   powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
-   ```
-
-3. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup <version>.exe` (unsigned:
-   SmartScreen → More info → Run anyway). Logs: `%APPDATA%\Outpost Luna\logs`.
-4. First launch downloads the models (510 MB before the app opens, ~375 MB more in the background), or click
-   **Import offline pack…** and pick `outpost-luna-assets-v2.zip` (885 MB, no network needed; link in the guide).
-
-Requirements: uv, Node 20+, macOS for the Arc Tagger build that is used now. By default it is Head Start's
-`libarctag.dylib` and `models/arctag`; override with `ARCTAG_LIB` / `ARCTAG_MODEL_DIR` in `.env`. No cloud LLM:
-questions the rules can't place go to the local brain (knowledge cards + the model server's tiny embedder; one-time
-`cd model_server && uv run python tools/export_embedder.py --int8`). See [docs/LOCAL_BRAIN.md](docs/LOCAL_BRAIN.md).
 
 ## How a question is answered (`POST /api/ask`)
 
