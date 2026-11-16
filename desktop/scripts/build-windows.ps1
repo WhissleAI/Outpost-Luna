@@ -114,7 +114,7 @@ $miss = @($m.assets | Where-Object { $_.required -and -not $_.url -and -not $_.f
 if ($miss.Count) { Die "assets without a download link: $($miss -join ', ') (make asset-pack asset-upload)" }
 Remove-Item -Recurse -Force desktop\resources\models -ErrorAction SilentlyContinue   # an older build's bundled models
 
-Step "6/8 native libraries (arctag.dll: Arc Tagger; arc.dll: the ear)"
+Step "6/8 native libraries (arctag.dll: Arc Tagger; arc.dll: the ear + its pinned onnxruntime.dll)"
 Remove-Item -Recurse -Force desktop\build\arctag, desktop\build\libarc -ErrorAction SilentlyContinue
 if ($useClang) {
   Run cmake -S desktop\vendor\arctag -B desktop\build\arctag -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release
@@ -127,7 +127,9 @@ $dll = @("desktop\build\arctag\Release\arctag.dll", "desktop\build\arctag\arctag
 if (-not $dll) { Die "arctag.dll was not produced (see the CMake output above)" }
 New-Item -ItemType Directory -Force desktop\resources\native | Out-Null
 Copy-Item $dll desktop\resources\native\arctag.dll -Force
-# libarc (the ear). ONNX Runtime is the Python wheel's onnxruntime.dll, loaded by path at run time (nothing to link).
+# libarc (the ear). ONNX Runtime is loaded by path at run time (nothing to link): configuring libarc downloads the
+# pinned build (desktop\vendor\libarc\onnxruntime.lock.json: onnxruntime-win-x64-<v>.zip, sha256-checked, cached in
+# desktop\build\cache\onnxruntime) into desktop\build\libarc\onnxruntime\, copied next to arc.dll below. Needs CMake 3.21+.
 # libarc needs a GCC/Clang-compatible C compiler (C11 atomics, __builtin_popcountll, target attributes): plain MSVC
 # (cl.exe) cannot build it. Order: LLVM clang + Ninja; else Visual Studio's clang-cl toolset (-T ClangCL, the
 # "C++ Clang tools for Windows" component). Install either: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e
@@ -147,6 +149,13 @@ $dll = @("desktop\build\libarc\Release\arc.dll", "desktop\build\libarc\arc.dll",
   Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $dll) { Die "arc.dll was not produced (see the CMake output above)" }
 Copy-Item $dll desktop\resources\native\arc.dll -Force
+# the pinned ONNX Runtime (onnxruntime.dll + onnxruntime.json + LICENSE, ThirdPartyNotices.txt) next to arc.dll:
+# resources\native\onnxruntime\ (model_server/app/nft2.py loads and sha256-checks it)
+if (-not (Test-Path desktop\build\libarc\onnxruntime\onnxruntime.dll)) { Die "the pinned onnxruntime.dll was not downloaded (see the CMake configure output above)" }
+Remove-Item -Recurse -Force desktop\resources\native\onnxruntime -ErrorAction SilentlyContinue
+Copy-Item -Recurse desktop\build\libarc\onnxruntime desktop\resources\native\onnxruntime
+# the Python bindings are generated from arc.h / arctag.h: stale ones, or an arc.dll of another ABI, stop the build here
+Run uv run --no-project --with cffi==2.1.1 python model_server\tools\gen_bindings.py --check --lib desktop\resources\native\arc.dll
 
 Step "7/8 Electron + electron-builder (NSIS installer)"
 Push-Location desktop

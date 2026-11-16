@@ -12,7 +12,13 @@ dependencies = [
   "psutil>=7.2.2",
   "python-multipart>=0.0.33",
   "scipy>=1.17.1",
-  "onnxruntime>=1.32.0",
+  # ONE ONNX Runtime version for the whole app: desktop/vendor/libarc/onnxruntime.lock.json pins the C runtime libarc
+  # loads (vendored next to it at build time); this wheel (the embedder, Steer TTS) must be the same version
+  # (tests/test_bindings.py checks). Change both together.
+  "onnxruntime==1.32.0",
+  # The generated C bindings (app/_arc_ffi.py, app/_arctag_ffi.py; tools/gen_bindings.py): cffi out-of-line ABI mode.
+  # The generated code depends on the cffi version: regenerate when it moves.
+  "cffi==2.1.1",
   "tokenizers>=0.23.3",
   # Steer TTS Edge, the optional second voice engine (app/tts_steer.py): pure Python + ONNX Runtime + numpy +
   # safetensors (py3-none-any), so the same wheel runs on macOS and Windows. Vendored (CC BY-NC 4.0, NOTICE inside).

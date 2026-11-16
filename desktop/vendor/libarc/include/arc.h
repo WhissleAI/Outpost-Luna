@@ -25,6 +25,28 @@ extern "C" {
 
 #define ARC_SAMPLE_RATE 16000
 
+/* ================================================================ ABI version
+ *
+ * ARC_ABI_VERSION numbers the binary interface of this header: every struct layout, enum value, #define value and
+ * function signature below. A binding is generated from this header (model_server/tools/gen_bindings.py ->
+ * model_server/app/_arc_ffi.py) and refuses a library whose arc_abi_version() differs from the header it was generated
+ * from, so a stale libarc next to new Python (or the reverse) fails at load with a message instead of reading garbage.
+ *
+ * Bump ARC_ABI_VERSION (by 1) in the same commit as any of:
+ *   - a field of an existing struct added, removed, reordered, renamed or retyped (arc_utt, arc_result, options, ...)
+ *   - an existing function removed, or its parameters / return type changed, or its meaning changed incompatibly
+ *     (a pointer the caller must now free, a unit changed, an option that now means something else)
+ *   - an enum value or a #define value that crosses the API changed
+ * Do not bump it for additions that leave every existing declaration alone (a new function, a new struct only new
+ * functions take, a new #define): bump the minor of ARC_VERSION instead. Either way, regenerate the binding
+ * (python model_server/tools/gen_bindings.py) in the same commit; model_server/tests/test_bindings.py fails until then.
+ * ARC_VERSION is for people (logs, /health): "<arc_transcriber release>-outpost.<n>", n counting local changes. */
+#define ARC_ABI_VERSION 1
+#define ARC_VERSION "1.2.0-outpost.1"
+/* The ARC_ABI_VERSION / ARC_VERSION the library was compiled with. */
+int arc_abi_version(void);
+const char* arc_version(void);
+
 typedef struct arc_engine arc_engine;
 
 /* An inline tag over words [word_begin, word_end) of the utterance text (split on spaces). */
@@ -335,7 +357,7 @@ void arc_stream_close(arc_stream* s);
  * utterances with words (RNNT times, decoder casing / punctuation, inline tags), names (tag, heard, entity, state,
  * p), numbers, sound events and the device-directed head (arc_utt.directed_head, .directed).
  *
- * The encoder and RNNT nets run on ONNX Runtime (build with make ARC_ORT=/path/to/onnxruntime); everything else is
+ * The encoder and RNNT nets run on ONNX Runtime (loaded at run time: arc_ort_set_library); everything else is
  * libarc's C. Without ONNX Runtime arc_nft2_create fails with a message. One model runs one call at a time.
  *
  *   arc_nft2* m = arc_nft2_create("arc-transcriber-space/nft2", 4, err, sizeof err);
@@ -351,8 +373,17 @@ typedef struct arc_nft2 arc_nft2;
  * encoder_onnx/). threads: encoder threads and libarc's pool (0 = 4). NULL + message on failure. */
 arc_nft2* arc_nft2_create(const char* dir, int threads, char* err, size_t err_len);
 void arc_nft2_destroy(arc_nft2* m);
-/* The encoder / RNNT backend compiled in: "onnxruntime 1.23.2", or "none". */
+/* The encoder / RNNT backend: "onnxruntime <version of the loaded runtime>" ("onnxruntime 1.32.0"), or "none". */
 const char* arc_nft2_backend(void);
+
+/* ONNX Runtime is not linked (Outpost Luna, ort_loader.c): the runtime library is loaded by path at run time. path: the
+ * full path of libonnxruntime.<v>.dylib / onnxruntime.dll / libonnxruntime.so.<v> (the pinned copy the build vendors
+ * next to libarc, desktop/vendor/libarc/onnxruntime.lock.json). Call before arc_nft2_create; later calls after a
+ * successful load are ignored. 0 when it loaded and serves the C API version libarc is compiled against, else -1
+ * (the reason in arc_ort_error(), "" after a successful load). Without a call, the ARC_ORT_LIB environment variable
+ * is used at the first arc_nft2_create. */
+int arc_ort_set_library(const char* path);
+const char* arc_ort_error(void);
 
 /* The names list (kinds: lunar_feature site celestial spacecraft vehicle mission crew person place organization
  * product team law; aliases optional; see the names-list guide). Used three ways: RNNT biasing over every name and

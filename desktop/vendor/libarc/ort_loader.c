@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "arc.h" /* arc_ort_set_library / arc_ort_error are declared there (the binding is generated from it) */
 #include "onnxruntime_c_api.h"
 
 #ifdef _WIN32

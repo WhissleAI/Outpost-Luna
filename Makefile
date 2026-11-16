@@ -151,11 +151,15 @@ asset-pack:      ## Desktop: first-run assets -> desktop/build/assets (one .tar 
 asset-upload:    ## Desktop: upload the asset pack to Dropbox, public dl=1 links into the manifest (DROPBOX_TOKEN_FILE=<file holding the token>)
 	python3 scripts/upload_assets.py
 
-desktop-libarc:  ## Desktop: build libarc (the ear: libarc.dylib / arc.dll / libarc.so) from desktop/vendor/libarc -> desktop/resources/native
+desktop-libarc:  ## Desktop: build libarc (the ear: libarc.dylib / arc.dll / libarc.so) + its pinned ONNX Runtime -> desktop/resources/native
 	cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release
 	cmake --build desktop/build/libarc --config Release
 	mkdir -p desktop/resources/native
 	cp desktop/build/libarc/libarc.* desktop/resources/native/ 2>/dev/null || cp desktop/build/libarc/Release/arc.dll desktop/resources/native/
+	rm -rf desktop/resources/native/onnxruntime && cp -R desktop/build/libarc/onnxruntime desktop/resources/native/onnxruntime
+
+bindings:        ## Regenerate the model server's C bindings from arc.h / arctag.h (model_server/app/_arc_ffi.py, _arctag_ffi.py)
+	cd model_server && uv run python tools/gen_bindings.py
 
 desktop-arctag:  ## Desktop: build libarctag (dylib/so/dll) from desktop/vendor/arctag -> desktop/resources/native
 	cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release
@@ -175,4 +179,4 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: site-physics site-layers ear-model asset-pack asset-upload desktop-libarc voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: site-physics site-layers ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

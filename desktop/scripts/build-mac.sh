@@ -59,7 +59,8 @@ fi
 
 if [ "${SKIP_PREP:-0}" = 1 ]; then
   step "2-6/8 skipped (SKIP_PREP=1)"
-  for f in desktop/resources/python/bin/python3 desktop/resources/native/libarctag.dylib desktop/resources/native/libarc.dylib; do
+  for f in desktop/resources/python/bin/python3 desktop/resources/native/libarctag.dylib desktop/resources/native/libarc.dylib \
+           desktop/resources/native/onnxruntime/onnxruntime.json; do
     [ -e "$f" ] || die "SKIP_PREP=1 but $f is missing; run without it"; done
 else
 step "2/8 NASA media (backend/data/media: the Moon map ships; the crew clips are a first-run asset, see make asset-pack)"
@@ -82,13 +83,19 @@ python3 -c "import json,sys; m=json.load(open('desktop/assets.manifest.json')); 
   sys.exit('assets without a download link: %s (make asset-pack asset-upload)' % miss if miss else 0)"
 rm -rf desktop/resources/models   # an older build's bundled models
 
-step "6/8 native libraries (libarctag.dylib: Arc Tagger; libarc.dylib: the ear, Arc Transcriber Space)"
+step "6/8 native libraries (libarctag.dylib: Arc Tagger; libarc.dylib: the ear, Arc Transcriber Space; its pinned ONNX Runtime)"
 cmake -S desktop/vendor/arctag -B desktop/build/arctag -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
 cmake --build desktop/build/arctag --config Release
+# libarc's configure also downloads the pinned ONNX Runtime (desktop/vendor/libarc/onnxruntime.lock.json, sha256-checked)
+# into desktop/build/libarc/onnxruntime/; it ships next to libarc and the ear loads that copy, not the pip wheel's.
 cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 >/dev/null
 cmake --build desktop/build/libarc --config Release
-mkdir -p desktop/resources/native
+mkdir -p desktop/resources/native && rm -rf desktop/resources/native/onnxruntime
 cp desktop/build/arctag/libarctag.dylib desktop/build/libarc/libarc.dylib desktop/resources/native/
+cp -R desktop/build/libarc/onnxruntime desktop/resources/native/onnxruntime
+# the Python bindings are generated from arc.h / arctag.h (model_server/app/_arc_ffi.py ...): stale ones, or a libarc
+# of another ABI, stop the build here instead of failing in a kid's first session
+uv run --no-project --with cffi==2.1.1 python model_server/tools/gen_bindings.py --check --lib desktop/resources/native/libarc.dylib
 
 fi
 

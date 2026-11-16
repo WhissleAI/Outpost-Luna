@@ -256,8 +256,9 @@ SITE_DROP_GLOBS = ["**/*.pyi", "**/*.a", "**/*.lib", "**/*.pdb", "torch/lib/*.li
 #     refuses to start without it on macOS / Linux (torch/__init__.py _manager_path), though the app never shares tensors.
 #   numpy/f2py (Fortran wrapper generator) and each site folder's bin/ (console scripts with a build-machine shebang).
 #   onnxruntime/{transformers,quantization,tools}: ONNX model optimizer / quantizer / converter CLIs; `import
-#     onnxruntime` never loads them. onnxruntime/capi/libonnxruntime.*.dylib / onnxruntime.dll STAY: libarc (the ear,
-#     model_server/app/nft2.py) loads that C-API library at run time; it is the app's only ONNX Runtime for C.
+#     onnxruntime` never loads them. onnxruntime/capi/libonnxruntime.*.dylib / onnxruntime.dll STAY: `import
+#     onnxruntime` (the embedder, Steer TTS) needs them. libarc (the ear) does NOT use them: it loads the pinned copy in
+#     resources/native/onnxruntime/ (desktop/vendor/libarc/onnxruntime.lock.json, the same version as this wheel).
 UNUSED_PACKAGES = ["pip", "setuptools", "pkg_resources", "_distutils_hack", "wheel", "pygments", "networkx", "hf_xet"]
 UNUSED_FILES = ["distutils-precedence.pth", "torch/bin/protoc*", "numpy/f2py", "bin", "onnxruntime/transformers",
                 "onnxruntime/quantization", "onnxruntime/tools"]

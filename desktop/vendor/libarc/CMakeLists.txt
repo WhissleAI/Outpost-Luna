@@ -1,10 +1,13 @@
 # libarc as one shared library for the Outpost Luna ear (Arc Transcriber Space, model_server/app/nft2.py):
 #   macOS libarc.dylib, Windows arc.dll (clang / clang-cl) or libarc.dll (mingw-w64), Linux libarc.so.
 # Needs a GCC/Clang-compatible compiler (C11 atomics, __builtin_popcountll, target attributes): not plain cl.exe.
-# ONNX Runtime is NOT linked: ort_loader.c loads the Python onnxruntime wheel's library at run time (see NOTICE), so
-# only its 1.23.2 C API headers (third_party/onnxruntime/include) are needed to build.
+# ONNX Runtime is NOT linked: ort_loader.c loads it by path at run time (see NOTICE), so only its 1.23.2 C API headers
+# (third_party/onnxruntime/include, C API 23) are needed to compile. The runtime itself is pinned in
+# onnxruntime.lock.json: configuring downloads that exact build (sha256-checked) into <build>/onnxruntime/, which the
+# build scripts copy next to libarc (cmake/vendor_onnxruntime.cmake).
 #   cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release && cmake --build desktop/build/libarc
-cmake_minimum_required(VERSION 3.16)
+# CMake 3.21+ (string(JSON), file(ARCHIVE_EXTRACT ... PATTERNS), file(COPY_FILE)).
+cmake_minimum_required(VERSION 3.21)
 project(arc C)
 
 set(CMAKE_C_STANDARD 11)
@@ -51,3 +54,6 @@ if(MSVC)
 else()
   target_compile_options(arc PRIVATE -O2 -Wall -Wno-unused-parameter -Wno-unused-function -Wno-unused-but-set-variable)
 endif()
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/vendor_onnxruntime.cmake)
+arc_vendor_onnxruntime()

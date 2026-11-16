@@ -10,7 +10,7 @@ Schema 2: {schema, version, published_at, remote_url, pack, folder, note, assets
   entry: id, title, version (bump on every new sha256), file, url (https Dropbox dl=1 / Hugging Face / GitHub; null =
          not uploaded), sha256, size, required, min_app / max_app (app versions it works with, null = open),
          requires ([{id, min_version}]: other assets it needs), min_version (only meaningful in the bundled copy: older
-         installs are replaced in the foreground), licence, files [{path, size}], env, subdir, fallback?
+         installs are replaced in the foreground), licence, files [{path, size, sha256}] (sha256 per file: re-checked by the model server at load), env, subdir, fallback?
 """
 from __future__ import annotations
 

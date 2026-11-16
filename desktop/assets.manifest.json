@@ -23,99 +23,123 @@
    "files": [
     {
      "path": "LICENSE",
-     "size": 22053
+     "size": 22053,
+     "sha256": "47377b0214c20476d0c6a2c934d9b9845e54155f8df860e7f668eaf8f460b11a"
     },
     {
      "path": "NAMES_LISTS.md",
-     "size": 5047
+     "size": 5047,
+     "sha256": "2e658739d01b1e8a344da39d1ec39cf83ec4e09b739c734225835a6857a25343"
     },
     {
      "path": "NOTICE",
-     "size": 1354
+     "size": 1354,
+     "sha256": "666d757439d549747ec671e851f9b3b867066c3f3591f7ee8b3da7cc7979089a"
     },
     {
      "path": "nft2/adapters.safetensors",
-     "size": 18707468
+     "size": 18707468,
+     "sha256": "0624399e9817debf2d54c842fd6fa46f6ae602ee5fa81ebd274243921047b5f9"
     },
     {
      "path": "nft2/config.json",
-     "size": 106792
+     "size": 106792,
+     "sha256": "52e25a3a2b3b424ba6d7708eb0e6a028819e453aaae03adfec8fa7dbcfe1e30c"
     },
     {
      "path": "nft2/decoder/LICENSE",
-     "size": 14180
+     "size": 14180,
+     "sha256": "fa7d1174dd8af6a7cd280be20b80d10095ed4c19b5b20b61a7715c3ad790dc5f"
     },
     {
      "path": "nft2/decoder/config.json",
-     "size": 1537
+     "size": 1537,
+     "sha256": "5c00a220c4588d8ccc525eb0d9b0e9c23788addd0cab9007976fb7fcdfd5a0e9"
     },
     {
      "path": "nft2/decoder/generation_config.json",
-     "size": 247
+     "size": 247,
+     "sha256": "76738b486ca48ac8504af13a4978f62ff80502be99ed0dd9fdc286cfa8f9cb99"
     },
     {
      "path": "nft2/decoder/model.safetensors",
-     "size": 96442080
+     "size": 96442080,
+     "sha256": "f0dde9ec3e74ab26bcc534f99f5c9479edc3d1b945e6c5e65ea627ef7fb9b30c"
     },
     {
      "path": "nft2/decoder/processor_config.json",
-     "size": 340
+     "size": 340,
+     "sha256": "41db69af4b4f77d88e3d9d403d3bda2d027547b8880cda6507f2ac23dc09f1c1"
     },
     {
      "path": "nft2/decoder/tokenizer.json",
-     "size": 1691637
+     "size": 1691637,
+     "sha256": "0d34dabb14ef0f1e0e92541d79646d7c833df7bd3228743faa2e3533745f4cc1"
     },
     {
      "path": "nft2/decoder/tokenizer_config.json",
-     "size": 294
+     "size": 294,
+     "sha256": "68abd67d38150c56e3b44af16f005a5220d6ec2380cc98de16c35415c620c5af"
     },
     {
      "path": "nft2/encoder_onnx/config.json",
-     "size": 1874
+     "size": 1874,
+     "sha256": "05d404b2a0989f62508a03555a957f5c57f071da3645f107512d2d2b9d59e0cf"
     },
     {
      "path": "nft2/encoder_onnx/decoder.onnx",
-     "size": 17393816
+     "size": 17393816,
+     "sha256": "54e0ceb0e6b417181f50f4f95cdec862b59b131d14d242eebc7add0bd8fa4cad"
     },
     {
      "path": "nft2/encoder_onnx/encoder.onnx",
-     "size": 1196317
+     "size": 1196317,
+     "sha256": "f2b88309e2a53a0b6c9e59d399eb4ad2e588b333f48900245b709518bd977bfc"
     },
     {
      "path": "nft2/encoder_onnx/encoder.weights",
-     "size": 282249216
+     "size": 282249216,
+     "sha256": "b88cf2c219e38aaf6e7f44019824b240d1ddb845708dba2a5ca7c18f7bf1de5f"
     },
     {
      "path": "nft2/encoder_onnx/encoder_first.onnx",
-     "size": 1195151
+     "size": 1195151,
+     "sha256": "fcc691840f1eecf64a44724a1835472ccd1434c50f182d34f2cf0cecb68f6967"
     },
     {
      "path": "nft2/encoder_onnx/frontend.npz",
-     "size": 84342
+     "size": 84342,
+     "sha256": "3fff5d0b6d6c2ce0e88c81bbc90811a28b674be7decb693f5563e1b70d86c9d4"
     },
     {
      "path": "nft2/encoder_onnx/joint_enc.onnx",
-     "size": 1313547
+     "size": 1313547,
+     "sha256": "c750897280ebbb98dd2e4592d4860a1b886ec2606f50c29b025e9c903b822ecf"
     },
     {
      "path": "nft2/encoder_onnx/joint_net.onnx",
-     "size": 2628502
+     "size": 2628502,
+     "sha256": "99a11294cb863bb96bbba9746abd5a8499ff9358c52c34f193a62de0deae7180"
     },
     {
      "path": "nft2/encoder_onnx/tokenizer.model",
-     "size": 260690
+     "size": 260690,
+     "sha256": "6fdbb245a2b0020c7466e1f2b2913fe5bc282a6981c78f2366b6662ed0905f6d"
     },
     {
      "path": "nft2/encoder_onnx/tokens.txt",
-     "size": 11896
+     "size": 11896,
+     "sha256": "618dc110fc2213886b52e063ff42329bbdf37a266ca7705184090fa5f39f3131"
     },
     {
      "path": "nft2/model.q4.safetensors",
-     "size": 37098434
+     "size": 37098434,
+     "sha256": "cccf781963855beedcfd439fd7740a8756ae5b80518700eac7ac55906eccdc9f"
     },
     {
      "path": "nft2/tags.json",
-     "size": 145150
+     "size": 145150,
+     "sha256": "d68e86adca1aacf1d46cdd91ea24dfae0d902c9548544f71e23543e1eab4f902"
     }
    ],
    "source": {
@@ -273,23 +297,28 @@
    "files": [
     {
      "path": "LICENSE",
-     "size": 22075
+     "size": 22075,
+     "sha256": "48b816a228ee0e81879744c4c2aa50651b824e109b50764c25e3281a557f8132"
     },
     {
      "path": "NOTICE",
-     "size": 561
+     "size": 561,
+     "sha256": "58a50f7e38ef1ab953cce0ff62ed3c4baf638330912bda66b504056448d4ef49"
     },
     {
      "path": "arctag_int8.onnx",
-     "size": 11453059
+     "size": 11453059,
+     "sha256": "bd2eacf33bc64e01d8a4db630bd2fce89f7aad65282df2afc87311993ad3c737"
     },
     {
      "path": "arctag_meta.json",
-     "size": 61075
+     "size": 61075,
+     "sha256": "2a45622c93a1907522495d3480dd9ed3824e22215b5952ffa00df1700fb9731b"
     },
     {
      "path": "tokenizer.json",
-     "size": 553846
+     "size": 553846,
+     "sha256": "2ae4623fc283d9b25b83e9efb9bf376f24c8974a01a2bbbe6cf8b0b29ac6fc35"
     }
    ],
    "version": "1",
@@ -315,15 +344,18 @@
    "files": [
     {
      "path": "NOTICE",
-     "size": 203
+     "size": 203,
+     "sha256": "03c57e1fb15749a5338f0901f69fc80829321b41d56a153b0fc2aafa7a581b2e"
     },
     {
      "path": "model.int8.onnx",
-     "size": 22903734
+     "size": 22903734,
+     "sha256": "64d95decae7a8f071f6fa2e554ccc47c93e49e208c22df52e6af4e69addf06ac"
     },
     {
      "path": "tokenizer.json",
-     "size": 466247
+     "size": 466247,
+     "sha256": "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037"
     }
    ],
    "version": "1",
