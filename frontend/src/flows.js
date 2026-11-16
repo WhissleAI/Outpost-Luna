@@ -108,9 +108,9 @@ export function installFlowIntents() {
   on("move", (f, a, ev) => {
     if (!f.keys || !["keyboard", "gamepad"].includes(ev.source)) return false;
     if (a.dir !== "left" && a.dir !== "right") return false;
-    // with a control focused (Resume, Next, ×, a chip…) the arrows move focus like everywhere else, so a paused card never
-    // traps it: they can leave to the top bar. With nothing focused they step the flow (the card's own buttons still do).
-    if (focusedControl()) return false;
+    // on a PAUSED card with a control focused (Resume, ×, a chip…) the arrows move focus like everywhere else, so the
+    // card never traps it: they can leave to the top bar. While the flow plays, Left / Right always step it.
+    if (isPaused(f) && focusedControl()) return false;
     return run(f, a.dir === "right" ? "next" : "prev", ev.source);
   });
   on("select", (f, a, ev) => {
