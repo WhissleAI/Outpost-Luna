@@ -49,7 +49,8 @@ What the design has to respect:
 **Non-goals (v1)**
 
 - **Third-party apps**, a public SDK or protocol, and websites as clients.
-- Mobile, and the browser without an install. Those embed libarc in-process (#93). The C API is the shared contract.
+- Mobile, and the browser without an install. Those embed libarc in-process (#93, `docs/EMBEDDING.md`: static
+  library, C API rules, the WebAssembly build). The C API is the shared contract.
 - Per-machine or system services, and network clients.
 - The engine opening the microphone, wake word (§4.3).
 - Cloud fallback inside the engine. Deepgram fallback stays the app's decision.
@@ -279,7 +280,7 @@ int             arc_nft2_stream_set_partials(arc_nft2_stream*, int every_ms);
 int             arc_nft2_stream_set_max_audio_s(arc_nft2_stream*, float seconds);
 ```
 
-`arc_nft2_create` stays, as `model_load` + `create_from`, for in-process users (#93). Two of these changes matter most:
+`arc_nft2_create` stays, as `model_load` + `create_from`, for in-process users (#93, `docs/EMBEDDING.md`). Two of these changes matter most:
 
 - **The model/context split plus the global thread pool.** Without them, each extra session costs another
   ~0.6–0.9 GB and adds its own thread pool, oversubscribing the CPU.
