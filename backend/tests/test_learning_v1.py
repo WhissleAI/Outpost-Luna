@@ -228,7 +228,9 @@ def test_mission_lesson_numbers_follow_the_course():
 # ---- the router's prep screen (integ/v1: director round 8) ------------------------------------------------------------
 @pytest.mark.parametrize("text,want", [("done!", "prep_done"), ("we did it", "prep_done"), ("skip this one", "prep_skip"),
                                        ("we don't have flour", "prep_help"), ("hold on", "prep_wait"),
-                                       ("i need help", "prep_help"), ("say it again", "prep_help")])
+                                       ("i need help", "prep_help"), ("say it again", "prep_help"),
+                                       ("show me how", "prep_watch"), ("can we watch the video", "prep_watch"),
+                                       ("play the video", "prep_watch")])
 def test_router_prep_screen_takes_done_skip_wait_help(text, want):
     from app import turn_router as R
     out = R.route(text, R.Ctx(screen="prep", offer="prep_task", source="voice"))
@@ -240,3 +242,11 @@ def test_router_prep_screen_ignores_room_talk_and_answers_questions():
     ctx = R.Ctx(screen="prep", offer="prep_task", source="voice")
     assert R.route("it looks like a crater", ctx)["outcome"] == "ignore"
     assert R.route("what is regolith made of", ctx)["outcome"] == "question"
+
+
+@pytest.mark.parametrize("text", ["watch this", "mom watch", "look watch it", "show me the cookie", "it looks like a crater"])
+def test_router_prep_watch_never_fires_on_room_talk(text):
+    """[diy videos] "watch this!" during the task is room talk, never a video request."""
+    from app import turn_router as R
+    out = R.route(text, R.Ctx(screen="prep", offer="prep_task", source="voice"))
+    assert out.get("intent") != "prep_watch", out

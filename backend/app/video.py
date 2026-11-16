@@ -47,6 +47,13 @@ NASA_HOSTS = ("images-assets.nasa.gov", "images-api.nasa.gov", "svs.gsfc.nasa.go
 REQUIRED = ("id", "title", "concept", "source", "duration_s", "credit", "music_credit", "prefetch", "age")
 ID_RE = re.compile(r"^[a-z0-9_]{2,40}$")
 YT_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+# Hand-picked videos NOT from NASA (by video id, never a whole channel): "Watch how" videos for the hands-on Mission prep
+# tasks (course.json lesson.prep). Each is checked (title, channel, embeddable, on topic) and shown labelled with its
+# channel and "not from NASA". Adding one = adding its id here AND its catalog entry (owner-approved, 2026-11-15).
+NON_NASA_YOUTUBE = {
+    "osdOQhRhVJg": "Astronomy in Action",     # Moon crater making at home (flour + cocoa), for prep crater_drop
+    "XeBmuY2i2fg": "I Play With My Kids",     # Oreo Moon phases, for prep oreo_phases
+}
 UA = "OutpostLuna/1.0 (NASA Space Apps; offline video cache)"
 PROBE = {"nasa": "https://images-api.nasa.gov/", "youtube": "https://www.youtube-nocookie.com/"}
 PROBE_TTL_S = 20.0
@@ -108,8 +115,21 @@ def validate(items) -> list[str]:
             out.append(f"{vid}: source must be one of {SOURCES}")
         if not isinstance(v.get("duration_s"), (int, float)) or not 0 < v.get("duration_s", 0) <= 600:
             out.append(f"{vid}: duration_s must be 1..600")
-        if not str(v.get("credit", "")).startswith("NASA"):
+        if v.get("nasa") is False:   # a hand-picked non-NASA video: YouTube only, allow-listed, labelled
+            if src != "youtube" or v.get("youtube_id") not in NON_NASA_YOUTUBE:
+                out.append(f"{vid}: a non-NASA video must be a YouTube id in NON_NASA_YOUTUBE")
+            elif v.get("channel") != NON_NASA_YOUTUBE[v["youtube_id"]]:
+                out.append(f"{vid}: channel must be {NON_NASA_YOUTUBE[v['youtube_id']]!r}")
+            if "not from NASA" not in str(v.get("credit", "")):
+                out.append(f"{vid}: a non-NASA credit must say 'not from NASA'")
+            if not v.get("prep"):
+                out.append(f"{vid}: a non-NASA video belongs to a Mission prep task (prep)")
+        elif not str(v.get("credit", "")).startswith("NASA"):
             out.append(f"{vid}: credit must start with NASA")
+        if v.get("nasa") is True and v.get("youtube_id") in NON_NASA_YOUTUBE:
+            out.append(f"{vid}: an allow-listed non-NASA video cannot be marked nasa")
+        if "prep" in v and not ID_RE.match(str(v.get("prep") or "")):
+            out.append(f"{vid}: prep must be a prep task id")
         for f in ("music_credit", "prefetch"):
             if not isinstance(v.get(f), bool):
                 out.append(f"{vid}: {f} must be true or false")

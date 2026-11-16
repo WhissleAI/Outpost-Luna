@@ -37,6 +37,7 @@ PREP_SAY = {"prep_done": ["done", "done!", "i'm done", "we did it", "finished", 
             "prep_wait": ["wait", "hold on", "one sec", "give me a minute", "not yet", "we're still doing it"],
             "prep_help": ["i need help", "what do i do", "how do we do this", "help me", "say it again",
                           "we don't have flour"],   # round 8 rules: a missing thing is help (a gentle "you can skip")
+            "prep_watch": ["show me how", "watch the video", "show us how", "play the video", "can we watch the video"],
             "prep_where": ["where's the flour", "where is the flashlight", "where are the cookies", "do we need a bowl",
                            "what's a flashlight for"]}
 PREP_ROOM = ["ha ha ha", "oh no the flour went everywhere", "mom look", "can i eat the cookie", "it's on my shirt",

@@ -19,7 +19,9 @@ CONTRACT_IDS = {
                   "moon_weather", "moon_base_6mo"},
     "youtube": {"far_side_view": "jdkMHkF7BaA", "solar_eclipse_sp": "hyf5JF_VxwM", "south_pole_shadows": "0GCTOHu4OrQ",
                 "artemis_south_pole": "AQAaAJW-uC0", "solar_eruptions": "bX0hv0EFKnI", "impact_flashes": "B9MoWCnmuqw",
-                "meet_crew": "lPyl6d2FJGw", "ltv": "zTHJ9zb8J2s"},
+                "meet_crew": "lPyl6d2FJGw", "ltv": "zTHJ9zb8J2s",
+                # [diy videos] Mission prep "Watch how" (2 hand-picked non-NASA + 1 NASA)
+                "diy_crater": "osdOQhRhVJg", "diy_oreo_phases": "XeBmuY2i2fg", "moon_phases_2025": "RROlja1ob_4"},
 }
 
 
@@ -271,3 +273,36 @@ def test_router_video_screen_takes_only_its_controls():
 
 def test_catalog_is_valid_json_file():
     json.loads(video.catalog_path().read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- [diy videos] Mission prep "Watch how" ------------
+def test_prep_videos_are_labelled_allow_listed_and_belong_to_real_prep_tasks():
+    from app.academy import content
+    preps = {l["prep"]["id"] for l in content.course()["lessons"] if l.get("prep")}
+    vids = [v for v in video.catalog() if v.get("prep")]
+    assert {v["prep"] for v in vids} >= {"crater_drop", "oreo_phases"}
+    assert any(v.get("nasa") is not False for v in vids), "at least one NASA-made Watch-how video"
+    for v in vids:
+        assert v["prep"] in preps, v["id"]
+        assert v["source"] == "youtube" and not v["prefetch"] and v.get("channel"), v["id"]
+        if v.get("nasa") is False:
+            assert video.NON_NASA_YOUTUBE[v["youtube_id"]] == v["channel"]
+            assert "not from NASA" in v["credit"]
+        else:
+            assert v["credit"].startswith("NASA") and v["youtube_id"] not in video.NON_NASA_YOUTUBE
+    # every allow-listed non-NASA id is in the catalog (no stale allow-list entries)
+    assert set(video.NON_NASA_YOUTUBE) == {v["youtube_id"] for v in video.catalog() if v.get("nasa") is False}
+
+
+def test_non_nasa_videos_need_the_allow_list_and_a_label():
+    good = copy.deepcopy(video.catalog())
+    k = next(i for i, v in enumerate(good) if v["id"] == "diy_crater")
+    for mutate, frag in [
+        (lambda v: v.update(youtube_id="AAAAAAAAAAA"), "NON_NASA_YOUTUBE"),            # not hand-picked
+        (lambda v: v.update(channel="Someone else"), "channel must be"),
+        (lambda v: v.update(credit="Astronomy in Action"), "not from NASA"),
+        (lambda v: v.pop("prep"), "Mission prep task"),
+        (lambda v: v.update(nasa=True), "credit must start with NASA"),                 # can't pass as NASA
+    ]:
+        bad = copy.deepcopy(good); mutate(bad[k])
+        assert any(frag in p for p in video.validate(bad)), (frag, video.validate(bad))

@@ -96,7 +96,7 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 426,
+  "cells": 427,
   "covered": 72,
   "gap": 354,
   "pending": 0,
@@ -4461,6 +4461,17 @@
    "train": 46,
    "heldout": 37,
    "gap": []
+  },
+  {
+   "cell": "prep|nav:prep_watch",
+   "screen": "prep",
+   "intent": "nav:prep_watch",
+   "kind": "navigate",
+   "train": 38,
+   "heldout": 23,
+   "gap": [
+    "train 38 < 40"
+   ]
   },
   {
    "cell": "prep|question",
