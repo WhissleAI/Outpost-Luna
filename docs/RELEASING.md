@@ -43,8 +43,10 @@ reason), `FUZZ_SECONDS`, `FUZZ_SEED`, `SOAK=1`, `SOAK_MINUTES`.
 | unit | backend 1197 passed, model_server 128 passed, frontend 260/260, desktop 63/63 | the same (it runs the repo's tests) |
 | smoke | PASS: ear on onnxruntime 1.32.0 (pinned), ready in ~8 s; smoke.py ok; heard "...take out Orientale Basin..." linked | **FAIL**: `the ear never loaded: RuntimeError: ONNX Runtime library .../libonnxruntime.1.32.0.dylib is damaged or not the pinned build (sha256 fafafbb54a1e…, expected 51c5a25a3dfa…)` |
 | golden | PASS: WER 0.016, names 23/23, linked 19/23, numbers 11/12, p50 / p95 ~0.9 / 2.1 s | not run (no ear) |
-| fuzz | PASS: `fuzz:ws` ~290 connections per 40 s; `fuzz:libarc` 0 ASan / UBSan reports | `fuzz:libarc` still runs |
-| whole check | about 9 minutes (+10 with `SOAK=1`) | |
+| fuzz | PASS: `fuzz:ws` 579 connections in 120 s; `fuzz:libarc` 17 cases / 206 API calls in 120 s, 0 ASan / UBSan reports | `fuzz:libarc` PASS (smoke fails in 13 s) |
+| soak (`SOAK=1`, 10 min) | PASS: 143 turns; model server RSS 492 -> 495 MB; p50 939 -> 977 ms; no restarts | |
+| quit | PASS in 0.9 s; engine.json removed; no children left | |
+| whole check | 19.4 min with the 10 min soak (about 9.5 min without) | about 3 min |
 
 ## Mac release
 
