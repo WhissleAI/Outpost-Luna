@@ -107,8 +107,9 @@ fi
 cd "$ROOT"
 EXE=""
 if [ "${DIR_ONLY:-0}" != 1 ]; then
-  EXE=$(ls -t desktop/dist/*.exe | head -1)
+  EXE=$(ls -t desktop/dist/Outpost\ Luna\ Setup\ *.exe | head -1)
   [ -n "$EXE" ] || die "no installer in desktop/dist"
+  cp -f "$EXE" desktop/dist/Outpost-Luna-win-x64.exe   # the stable GitHub release asset name (site + README link it)
 fi
 
 step "8/8 structural checks (the installer cannot run here)"

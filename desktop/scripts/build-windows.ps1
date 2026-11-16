@@ -1,4 +1,6 @@
 # Outpost Luna desktop: one command from a fresh clone to desktop\dist\Outpost Luna Setup <version>.exe (Windows x64).
+# A copy under the stable release name, desktop\dist\Outpost-Luna-win-x64.exe, is what gets attached to a GitHub release
+# (the site and README link releases/latest/download/Outpost-Luna-win-x64.exe): gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe
 # Mirrors desktop/scripts/build-mac.sh step for step. Step-by-step guide: docs/BUILD_WINDOWS.md.
 #
 # Not yet run on a real PC: parsed and dry-run in PowerShell 7, and the same tree cross-built and checked on a Mac
@@ -154,8 +156,11 @@ Run npx electron-builder --win nsis --x64 --publish never
 Pop-Location
 
 Step "8/8 checks + done"
-$exe = Get-ChildItem desktop\dist\*.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$exe = Get-ChildItem "desktop\dist\Outpost Luna Setup *.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $exe) { Die "no installer in desktop\dist" }
+# The stable name for the GitHub release asset (releases/latest/download/Outpost-Luna-win-x64.exe on the site).
+$stable = Join-Path $exe.DirectoryName "Outpost-Luna-win-x64.exe"
+Copy-Item $exe.FullName $stable -Force
 # Every .dll / .pyd import resolves inside the app or in Windows itself, so a PC without the VC++ Redistributable
 # (or without Visual Studio, unlike this one) still starts the model server.
 Run uv run --no-project python desktop\scripts\win_bundle_check.py dlls desktop\dist\win-unpacked\resources
@@ -163,5 +168,6 @@ Run uv run --no-project python desktop\scripts\win_bundle_check.py speech deskto
 # every runtime file: models at their sha256, the voice-pack clips, the trimmed crew audio, the video catalog, the shell
 Run uv run --no-project python desktop\scripts\win_bundle_check.py runtime desktop\dist\win-unpacked\resources
 Write-Host ("Installer: {0}  ({1:N0} MB, {2:N0} s)" -f $exe.FullName, ($exe.Length / 1MB), ((Get-Date) - $T0).TotalSeconds) -ForegroundColor Green
+Write-Host "Release asset: $stable   (attach it: gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe)" -ForegroundColor Green
 Write-Host "Unpacked app (run it without installing): $Root\desktop\dist\win-unpacked\Outpost Luna.exe"
 Write-Host "Smoke test: start the app, then:  `$env:PYTHONPATH='desktop\resources\site\backend'; desktop\resources\python\python.exe desktop\scripts\smoke.py"

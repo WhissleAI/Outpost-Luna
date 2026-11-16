@@ -574,6 +574,7 @@ html[data-motion="reduce"] .is-point{animation:none}
 .cb-now-left{display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono)} .cb-now-left.is-low{color:var(--color-lamp-caution);font-weight:var(--weight-semibold)}
 .cb-now-lesson{padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--cb-line);color:var(--color-on-space)}
 .cb-now-hint{margin:0;font-size:var(--text-xs);color:var(--color-phosphor)}
+.cb-now-why{margin:0;font-size:var(--text-xs);color:var(--cb-text-2);font-style:italic}
 .cb-now-ros{display:flex;gap:var(--space-3);flex-wrap:wrap;font-family:var(--font-mono);font-size:var(--text-xs)} .cb-now-ro em{font-style:normal;color:var(--cb-text-2)}
 .cb-now-ack{margin:0;display:inline-flex;align-items:center;gap:4px;color:var(--color-phosphor);font-weight:var(--weight-semibold);animation:cbAck .4s var(--ease-out)}
 @keyframes cbAck{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -693,7 +694,7 @@ html[data-motion="reduce"] .cb-moment,html[data-motion="reduce"] .cb-now-ack{ani
 .m-cabin .cb-now .is-point{outline:none;animation:cbHot 1.8s var(--ease-in-out) infinite;box-shadow:0 0 0 0 color-mix(in srgb,var(--color-accent-strong) 70%,transparent)}
 @keyframes cbHot{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--color-accent-strong) 0%,transparent)}}
 .m-cabin .cb-now-say{margin:0;font-size:var(--text-xs);color:var(--cb-text-2)}
-.m-cabin .cb-now-hint{font-size:var(--text-sm)}
+.m-cabin :is(.cb-now-hint,.cb-now-why){font-size:var(--text-sm)}
 .m-cabin .cb.is-focus .c3-panel:not(.is-focus):not([data-alarm]):not(.is-open){opacity:.72;filter:saturate(.75)}
 .m-cabin .cb.is-focus .c3-panel[data-panel="displays"]{opacity:1;filter:none}
 html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"] .m-cabin .cb-state i{animation:none}
@@ -710,7 +711,7 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 .m-cabin .cb:not(.is-3d){padding-top:calc(var(--rail) * 2 + var(--deck-h))}
 
 /* a panel opened (the camera dollies in): the Now panel keeps its step and buttons, drops the details */
-.m-cabin .cb:has(.c3:not([data-panel="seat"])) .cb-now :is(.cb-now-meta,.cb-now-ros,.cb-now-hint,.cb-now-ack){display:none}
+.m-cabin .cb:has(.c3:not([data-panel="seat"])) .cb-now :is(.cb-now-meta,.cb-now-ros,.cb-now-hint,.cb-now-why,.cb-now-ack){display:none}
 
 /* narrower windows: the deck drops words before it drops controls */
 /* the view tabs ride on the glass (top-right); the sky readout moves to the glass's bottom-right, clear of the Now panel */
@@ -725,12 +726,12 @@ html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"]
 @media (max-width:1200px){.m-cabin .cb-deck .cb-clock small{display:none}.m-cabin .cb-logbtn span{display:none}}
 @media (max-width:1100px){.m-cabin .cb-state{min-width:0}.m-cabin .cb-deck{gap:var(--space-2)}.m-cabin .cb-deck .cb-prog{gap:4px}}
 @media (max-width:1024px){.m-cabin{--now-w:224px;--deck-h:48px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
-@media (max-height:700px){.m-cabin .cb-now-ros,.m-cabin .cb-now-hint{display:none}}
+@media (max-height:700px){.m-cabin .cb-now-ros,.m-cabin .cb-now-hint,.m-cabin .cb-now-why{display:none}}
 
 /* two options side by side; the Now panel drops details when the wall above the Habitat console is short (fitNow) */
 .m-cabin .cb-now-btns.is-choice:has(.cb-now-b:nth-child(2):last-child){display:grid;grid-template-columns:1fr 1fr}
 .m-cabin .cb-now-btns.is-choice .cb-now-b{justify-content:flex-start}
-.m-cabin .cb-now.is-tight :is(.cb-now-ros,.cb-now-hint,.cb-now-lesson){display:none}
+.m-cabin .cb-now.is-tight :is(.cb-now-ros,.cb-now-hint,.cb-now-why,.cb-now-lesson){display:none}
 .m-cabin .cb-now.is-tighter :is(.cb-now-meta,.cb-now-ack){display:none}
 .m-cabin .cb-now.is-tightest :is(.cb-now-say,.cb-now-head){display:none}
 

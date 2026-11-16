@@ -65,7 +65,7 @@ function taskCard(s, t, clock) {
   else if (st.kind === "choice") buttons = (st.options || []).map(o => ({ label: o.label, hint: o.hint || null, task: { type: "task", task: t.id, step: st.id, choice: o.id } }));
   else buttons = [{ label: st.label, task: { type: "task", task: t.id, step: st.id } }];
   return { ...base, key, text: st.label, target: st.target === "task" ? "task" : st.target, panel: st.target === "task" ? t.panel : panelOf(st.target, t.panel),
-    buttons, choice: st.kind === "choice", hint: st.hint || null, step: st };
+    buttons, choice: st.kind === "choice", hint: st.hint || null, why: st.why || null, step: st };
 }
 
 export function nowCard(s, clock = null) {
