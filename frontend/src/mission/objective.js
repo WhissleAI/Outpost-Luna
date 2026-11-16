@@ -58,7 +58,7 @@ function taskCard(s, t, clock) {
   const key = `task:${t.id}:${st.id}:${st.ready ? "go" : "wait"}`;
   if (!st.ready) {
     // nothing to press yet: the clock is the job (skip ahead to the moment it's ready)
-    return { ...base, key, text: waitLine(t, st, s), target: "skip", panel: "pedestal", buttons: [{ label: NOW.skipBtn, clock: "skip" }], choice: false, step: st };
+    return { ...base, key, text: waitLine(t, st, s), target: "skip", panel: "pedestal", buttons: [{ label: NOW.skipBtn, clock: "skip" }], choice: false, step: st, auto: true };
   }
   let buttons;
   if (st.kind === "order") buttons = [{ label: st.label, cmd: st.cmd }];
@@ -77,9 +77,10 @@ export function nowCard(s, clock = null) {
   if (s.task) return taskCard(s, s.task, clock);
   const o = legacy(s, clock);
   if (!o) return null;
-  const b = o.target === "play" ? [{ label: NOW.playBtn, clock: "play" }] : o.target === "skip" ? [{ label: NOW.skipBtn, clock: "skip" }]
-    : o.target === "warp" ? [{ label: NOW.warpBtn, clock: "warp" }, { label: NOW.skipBtn, clock: "skip" }] : [];
-  return { title: NOW.label, progress: null, left_h: null, lesson: null, readouts: [], choice: false, buttons: b, ...o };
+  const b = o.target === "play" ? [{ label: NOW.playBtn, clock: "play" }] : o.target === "skip" ? [{ label: NOW.skipBtn, clock: "skip" }] : [];
+  // [polish a] nothing to do but wait: the card says so and time fast-forwards by itself (mission/ui.js AUTO_MS);
+  // "Go now" skips at once, and any order, the pause or a held clock (a decision, a card) stops the auto-skip
+  return { title: NOW.label, progress: null, left_h: null, lesson: null, readouts: [], choice: false, buttons: b, auto: o.target === "skip", ...o };
 }
 
 /** The strip from the state alone (no task from the sim: the sample model, a storm with the crew sheltered, steady). */
@@ -114,7 +115,7 @@ function legacy(s, clock) {
   if (clock && clock.started && !clock.running && !clock.held) return o("paused", NOW.paused, "play", "pedestal");
   // already at full warp: "Time warp 4x" would be a dead button, so the job is the next event
   if (clock && clock.running && clock.warp >= 4) return o("steady_fast", NOW.steadyFast, "skip", "pedestal");
-  return o("steady", NOW.steady, "warp", "pedestal");
+  return o("steady", NOW.steady, "skip", "pedestal");
 }
 
 export function nowObjective(s, clock = null) {

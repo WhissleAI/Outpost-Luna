@@ -84,8 +84,9 @@ test("task card: a pending yes / no is the job (never a stale step under it)", (
 
 test("task card: always reflects reality, and says so when nothing is urgent", () => {
   const steady = nowCard(st(), { started: true, running: true, warp: 1 });
-  assert.equal(steady.key, "steady"); assert.equal(steady.text, S.NOW.steady); assert.equal(steady.target, "warp");
-  assert.deepEqual(steady.buttons.map(b => b.clock), ["warp", "skip"]);
+  assert.equal(steady.key, "steady"); assert.equal(steady.text, S.NOW.steady); assert.equal(steady.target, "skip");
+  // [polish a] nothing to do: time fast-forwards by itself (auto), "Go now" skips at once; no Time-warp chore
+  assert.deepEqual(steady.buttons.map(b => b.clock), ["skip"]); assert.equal(steady.auto, true);
   const fast = nowCard(st(), { started: true, running: true, warp: 4 });   // never a dead "Time warp 4x" at 4x
   assert.equal(fast.key, "steady_fast"); assert.deepEqual(fast.buttons.map(b => b.clock), ["skip"]);
   const paused = nowCard(st(), { started: true, running: false, paused: true, warp: 1 });

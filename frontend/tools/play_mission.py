@@ -97,8 +97,21 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
                 safe = re.sub(r'[<>:"/\\|?*]', "", name)   # a valid file name on Windows too (git can't check out "?")
                 pg.screenshot(path=os.path.join(shots, f"{tag}-{shots_taken:02d}-{safe}.jpg"), type="jpeg", quality=60, timeout=300000)
 
-        click(pg, "#mStart")
-        pg.wait_for_selector(".cb-now, .m-tour", timeout=60000)
+        # the first-mission briefing may offer NASA's Moon Base video over the site picker (it appears a few seconds in):
+        # a novice skips it, then presses the big Take command at the suggested site
+        t_pick, steps = time.time(), []
+        VIS = "(s) => { const e = document.querySelector(s); return !!(e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden'); }"
+        while time.time() - t_pick < 90:
+            if pg.evaluate(VIS, ".cb-now") or pg.evaluate(VIS, ".m-tour:not([hidden])"):
+                break
+            if pg.evaluate(VIS, "#mlSkip, [data-skip]"):
+                steps.append("skip video: " + click(pg, "#mlSkip, [data-skip]"))
+            elif pg.evaluate(VIS, "#mStart"):
+                steps.append("take command: " + click(pg, "#mStart"))
+            pg.wait_for_timeout(1500)
+        pg.wait_for_selector(".cb-now:not([hidden]), .m-tour:not([hidden])", timeout=60000)
+        log.append({"t": round(time.time() - t0), "moment": "picker", "should": "Take command at the suggested site",
+                    "obvious": True, "reacted": True, "seen": f"cabin after {time.time() - t_pick:.1f}s; " + "; ".join(steps)})
         pg.wait_for_timeout(1200)
         shot("arrival")
         first_shift_t, sped = None, not real_first_shift
