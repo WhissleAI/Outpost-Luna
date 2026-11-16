@@ -29,5 +29,5 @@ test("rows: version, size, update-ready note; sizes read in MB / GB", () => {
 test("registered as a Settings section after Videos; hidden in a dev checkout", () => {
   const sec = window.__outpost.settingsSections.find(x => x.id === "storage");
   assert.ok(sec && sec.after === "videos" && sec.title === "Storage & updates");
-  assert.match(sec.html(), /Check for updates/);
+  assert.match(sec.html(), /Check for new models and media/);
 });
