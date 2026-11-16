@@ -121,10 +121,25 @@ def resolve_ort(lib: Path, ort: Path | str | None = None) -> tuple[Path, dict]:
         if not path.is_file():
             raise RuntimeError(f"ONNX Runtime library missing: {path} (rebuild libarc or reinstall the app)")
         got = sha256_file(path)
-        if got != info["sha256"]:
+        if got != info["sha256"] and not _signed_in_app_bundle(path):
             raise RuntimeError(f"ONNX Runtime library {path} is damaged or not the pinned build (sha256 {got[:12]}…, "
                                f"expected {info['sha256'][:12]}…): reinstall the app (or rebuild libarc)")
     return path, info
+
+
+def _signed_in_app_bundle(path: Path) -> bool:
+    """macOS release builds re-sign every Mach-O inside the .app, which rewrites the pinned dylib's signature bytes, so
+    its sha256 no longer equals the lock's. There the bundle's own code signature is the integrity check: accept the
+    file when `codesign --verify --strict` passes for it (a tampered or unsigned file fails). The engine still checks
+    the runtime reports the pinned version after loading. Elsewhere (Windows, Linux, a clone) the sha256 rule stands."""
+    if sys.platform != "darwin" or ".app/Contents/" not in str(path):
+        return False
+    import subprocess
+    try:
+        r = subprocess.run(["/usr/bin/codesign", "--verify", "--strict", str(path)], capture_output=True, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
 
 
 def wheel_ort_library() -> Path | None:
