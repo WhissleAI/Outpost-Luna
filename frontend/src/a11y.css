@@ -150,7 +150,7 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .au-state:empty{display:none}
 .au-line{margin:0;font-size:var(--text-sm);font-weight:var(--weight-medium)}
 .au-notes{margin:0;font-size:var(--text-sm);color:var(--color-text-2);line-height:var(--leading-normal)}
-.au-notice{position:fixed;left:var(--space-4);bottom:var(--space-4);z-index:var(--z-toast);display:flex;align-items:center;gap:var(--space-3);
+.au-notice{position:fixed;right:var(--space-4);top:calc(var(--topbar-h) + var(--space-3));z-index:var(--z-toast);display:flex;align-items:center;gap:var(--space-3);
   max-width:min(440px,calc(100vw - 2 * var(--space-4)));padding:var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   border:1px solid var(--color-line);border-radius:var(--radius-lg);background:var(--color-surface);color:var(--color-text);box-shadow:var(--shadow-2)}
 .au-notice .au-line{flex:1}
