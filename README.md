@@ -171,6 +171,10 @@ New clips:
 
 `backend/pipeline/probe_tagger.py` reproduces the tagger measurements the plan cites.
 
+## AI use
+
+Space Apps asks teams to disclose AI ("SI") use. Code was written with AI coding assistants (Anthropic Claude via Claude Code; commits carry `Co-Authored-By: Claude`). Lesson text, "Why?" cards and CAPCOM lines were drafted with AI help and fact-checked against their NASA sources. Part of the speech-model training data is synthetic (TTS audio, AI-generated name variations). The app icon and team image were generated with Google Gemini (no NASA branding). The optional Steer voice is AI TTS, and the launch film's learner lines are AI-generated speech. NASA data, NASA media and app screenshots are not AI-generated. Machine-readable: [`ai-disclosure.json`](ai-disclosure.json).
+
 ## Caveats
 
 - Integrity and Carroll are names the crew proposed, not IAU-approved names. Their locations are estimates from the
