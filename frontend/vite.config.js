@@ -1,4 +1,8 @@
 import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
+
+// The About drawer shows this (frontend/package.json "version", bumped with every release).
+const APP_VERSION = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version;
 
 // Dev: Vite serves the UI on :5173 and forwards API and media calls to the backend.
 // Prod: `npm run build` → dist/, which the backend serves itself.
@@ -20,6 +24,7 @@ const devToken = {
 
 export default defineConfig({
   plugins: [devToken],
+  define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   // pre-bundle three + its addons + postprocessing together, so dev never loads two copies of three
   optimizeDeps: { include: ["three", "three/examples/jsm/controls/OrbitControls.js", "three/examples/jsm/csm/CSM.js", "postprocessing"] },
   // [gestures] the vision worker is an ES module: MediaPipe's module WASM loader (public/vision/, bundled offline by
