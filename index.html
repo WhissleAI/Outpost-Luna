@@ -24,7 +24,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="preload" as="image" type="image/avif" href="assets/img/moon-1600.avif" imagesrcset="assets/img/moon-960.avif 960w, assets/img/moon-1600.avif 1600w" imagesizes="(max-width: 1120px) 100vw, 1072px">
 <link rel="stylesheet" href="landing.css?v=6">
-<script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -35,11 +34,8 @@
       <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
       Outpost Luna</a>
     <nav aria-label="Sections">
-      <a href="#app">The app</a><a href="#data">NASA data</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a class="keep" href="guide.html">Guide</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+      <a href="#app">The app</a><a href="#data">NASA data</a><a href="#how">How it works</a><a href="#privacy">Privacy</a><a class="keep" href="guide.html">Guide</a><a href="assets/Outpost-Luna-slides.pdf">Slides</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
     </nav>
-    <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
-    </button>
   </div>
   <div class="wrap">
     <div class="hero">
@@ -172,7 +168,7 @@
     </ul>
     <figure class="arch">
       <ul class="legend" aria-hidden="true">
-        <li><i class="k-acc"></i>Whissle models</li>
+        <li><i class="k-acc"></i>Our models</li>
         <li><i class="k-lane"></i>On-device lanes</li>
         <li><i class="k-net"></i>Online, optional</li>
       </ul>
@@ -255,36 +251,13 @@
   </div>
 </section>
 
-<!-- 7 · Get it. Sizes: v0.3.3 release assets (Mac dmg 257,553,103 bytes; Windows exe 193,741,702 bytes); first-run models
-     about 510 MB (site/assets/manifest.json, README "Download"). Windows installer is unsigned (SmartScreen). -->
-<section id="get" class="band dark" aria-labelledby="get-h">
-  <div class="wrap">
-    <p class="eyebrow">Get it</p>
-    <h2 id="get-h">Free for Mac and Windows.</h2>
-    <p class="sec-lede">One download. Models install once (510 MB), then it runs offline.</p>
-    <div class="paths two-up">
-      <div class="path">
-        <h3>Mac <span class="tag">Apple silicon</span></h3>
-        <p>Notarized. 258 MB. Drag to Applications.</p>
-        <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">Download for Mac</a>
-      </div>
-      <div class="path" id="windows">
-        <h3>Windows <span class="tag">10 / 11 · x64</span></h3>
-        <p>194 MB. Unsigned for now: More info → Run anyway.</p>
-        <a class="btn primary" data-win href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe"><span data-win-label>Download for Windows</span></a>
-      </div>
-    </div>
-    <p class="note-p"><a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">All releases and checksums</a></p>
-  </div>
-</section>
-
 <!-- 8 · Team, challenge, credits -->
 <section id="credits" class="band" aria-labelledby="credits-h">
   <div class="wrap">
     <h2 id="credits-h" class="sr-only">Team, challenge and credits</h2>
     <div class="credits">
-      <div><h3>Team</h3><p>Built by <a href="https://whissle.ai">Whissle</a>. The speech and language models are ours.</p></div>
-      <div><h3>Challenge</h3><p>NASA Space Apps Challenge 2026: Build a Junior Astronaut Mission Trainer.</p></div>
+      <div><h3>Team</h3><p><b>Outpost Luna</b>: Karan Singla and Bryan Pellom. We built the app and its on-device speech and language models.</p></div>
+      <div><h3>Challenge</h3><p>NASA Space Apps Challenge 2026: Build a Junior Astronaut Mission Trainer. <a href="assets/Outpost-Luna-slides.pdf">Slides (PDF)</a></p></div>
       <div><h3>Credits</h3><p>Moon: NASA/GSFC/ASU (LRO). Terrain: NASA LRO LOLA. Earth: NASA Blue Marble. Crew audio: NASA Artemis audio.</p></div>
     </div>
   </div>
@@ -294,18 +267,10 @@
 <footer class="foot">
   <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <div class="row">
-    <span>© 2026 Whissle · Outpost Luna</span>
-    <span><a href="guide.html">Guide</a> · <a href="data.html">Data report</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
+    <span>© 2026 Outpost Luna · NASA Space Apps Challenge 2026</span>
+    <span><a href="guide.html">Guide</a> · <a href="assets/Outpost-Luna-slides.pdf">Slides (PDF)</a> · <a href="data.html">Data report</a> · <a href="https://github.com/WhissleAI/Outpost-Luna#build-from-source">Build from source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
   </div>
 </footer>
-<script>
-  document.getElementById("themeBtn").addEventListener("click", () => {
-    const r = document.documentElement;
-    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    r.dataset.theme = cur === "dark" ? "light" : "dark";
-    try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
-  });
-</script>
 <script src="dl.js?v=1" defer></script>
 <script src="film.js?v=1" defer></script>
 </body>
