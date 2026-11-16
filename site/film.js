@@ -32,7 +32,21 @@
       Object.assign(t, { kind: "captions", srclang: "en", label: "English", src: `${base}.vtt` });
       v.append(t);
     }
-    fig.querySelector(".frame").replaceChildren(v);
+    // A clear cover: the poster plus one big play button. Native controls appear once it plays.
+    v.controls = false;
+    const play = document.createElement("button");
+    play.type = "button";
+    play.className = "film-play";
+    play.setAttribute("aria-label", `Play the ${fig.dataset.filmLabel || "film"}${fig.dataset.filmLength ? ` (${fig.dataset.filmLength})` : ""}`);
+    play.innerHTML = `<span class="film-play-dot" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34"><path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg></span>` +
+      `<span class="film-play-label">Watch the film${fig.dataset.filmLength ? ` · ${fig.dataset.filmLength}` : ""}</span>`;
+    const start = () => { fig.dataset.filmState = "playing"; v.controls = true; v.play().catch(() => {}); };
+    play.addEventListener("click", start);
+    v.addEventListener("play", () => { fig.dataset.filmState = "playing"; v.controls = true; });
+    v.addEventListener("ended", () => { fig.dataset.filmState = "video"; });
+    fig.querySelector(".frame").replaceChildren(v, play);
     fig.dataset.filmState = "video";
+    const cap = fig.querySelector("figcaption");
+    if (cap && fig.dataset.filmCaption) cap.textContent = fig.dataset.filmCaption;
   });
 })();
