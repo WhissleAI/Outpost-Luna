@@ -11,31 +11,31 @@
 <meta property="og:url" content="https://whissleai.github.io/Outpost-Luna/data.html">
 <meta property="og:image" content="https://whissleai.github.io/Outpost-Luna/assets/og.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0b0e16">
+<meta name="theme-color" content="#0B1220">
 <link rel="icon" type="image/png" href="assets/icon-64.png?v=2">
 <link rel="apple-touch-icon" href="assets/icon-180.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="landing.css?v=4">
+<link rel="stylesheet" href="landing.css?v=6">
 <script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="nav">
+<header class="top dark">
+  <div class="nav">
   <a class="brand" href="./" aria-label="Outpost Luna home">
     <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
     Outpost Luna</a>
   <nav aria-label="Sections">
-    <a href="#corpus">Corpus</a><a href="#annotation">Annotation</a><a href="#hygiene">Test sets</a><a href="#results">Results</a><a href="guide.html">Guide</a><a href="./">Home</a>
+    <a href="#corpus">Corpus</a><a href="#annotation">Annotation</a><a href="#hygiene">Test sets</a><a href="#results">Results</a><a href="guide.html">Guide</a><a class="keep" href="./">Home</a>
   </nav>
   <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
   </button>
-</header>
-
-<main id="main">
-  <section class="hero">
+  </div>
+  <div class="wrap">
+  <div class="hero">
     <p class="eyebrow">Data report · Arc Transcriber Space</p>
     <h1>Teaching a model to <em>hear the Moon</em>.</h1>
     <p class="lede">Arc Transcriber Space is the speech model built for Outpost Luna. Its core data is a corpus of real NASA speech: Artemis crew audio and NASA's own podcasts, where astronauts, flight controllers and scientists talk about the Moon in their own words. This page covers what is in it, how it is labelled, how test sets are kept out, and what the model measures.</p>
@@ -44,7 +44,11 @@
       <a class="btn" href="https://github.com/WhissleAI/arc_transcriber">Code: arc_transcriber</a>
     </div>
     <p class="fine">Uses NASA open media; not endorsed by NASA. Model weights © 2026 Whissle Inc., CC BY-NC 4.0.</p>
-  </section>
+  </div>
+  </div>
+</header>
+
+<main id="main">
 
   <section id="why" class="sec two">
     <div>
@@ -185,9 +189,9 @@
 </main>
 
 <footer class="foot">
-  <p><b>Inspired by NASA's Artemis program. Uses NASA open data and media; not endorsed by NASA.</b></p>
+  <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <div class="row">
-    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
+    <span>© 2026 Whissle · Outpost Luna · NASA Space Apps Challenge 2026</span>
     <span><a href="./">Home</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://huggingface.co/WhissleAI/arc-transcriber-space">Model</a></span>
   </div>
 </footer>

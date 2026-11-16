@@ -13,34 +13,34 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0b0e16">
+<meta name="theme-color" content="#0B1220">
 <link rel="icon" type="image/png" href="assets/icon-64.png?v=2">
 <link rel="apple-touch-icon" href="assets/icon-180.png?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="landing.css?v=4">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css?v=6">
 <script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<header class="nav">
+<header class="top dark">
+  <div class="nav">
   <a class="brand" href="./" aria-label="Outpost Luna home">
     <img src="assets/icon-64.png?v=2" width="30" height="30" alt="">
     Outpost Luna</a>
   <nav aria-label="Sections">
-    <a href="./">Home</a><a href="guide.html" aria-current="page">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
+    <a class="keep" href="./">Home</a><a href="guide.html" aria-current="page">Guide</a><a href="data.html">Data</a><a href="https://github.com/WhissleAI/Outpost-Luna">GitHub</a>
   </nav>
   <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
   </button>
-</header>
-
-<main id="main">
-  <section class="hero guide-hero">
-    <p class="eyebrow">Guide · version 0.3.1</p>
+  </div>
+  <div class="wrap">
+  <div class="hero guide-hero">
+    <p class="eyebrow">Guide · screenshots from 0.3.1</p>
     <h1>How Outpost Luna <em>works</em></h1>
-    <p class="lede">Every picture below is a screenshot of the real app. The numbered dots match the notes under each picture.</p>
+    <p class="lede">Real screenshots of the app. Numbered dots match the notes below each one.</p>
     <nav class="toc" aria-label="On this page">
       <a href="#first-run"><b>1</b> First run</a>
       <a href="#flight-school"><b>2</b> Flight School</a>
@@ -48,7 +48,11 @@
       <a href="#library"><b>4</b> Library</a>
       <a href="#settings"><b>5</b> Settings</a>
     </nav>
-  </section>
+  </div>
+  </div>
+</header>
+
+<main id="main">
 
   <!-- ============================================================ 1. FIRST RUN -->
   <!-- Sources: desktop/main/firstrun.html + main.js (fetchRequired, OFFLINE_MSG, "Continue later" keeps every .part),
@@ -56,12 +60,12 @@
   <section id="first-run" class="sec">
     <p class="kicker">Step 1</p>
     <h2>Install and first run</h2>
-    <p class="sec-lede">Download the Mac app (246 MB), drag it to Applications and open it. The first time, it downloads its models once. After that it runs with no internet.</p>
+    <p class="sec-lede">Install on Mac or Windows. The first launch downloads the models once; then it runs offline.</p>
 
     <div class="trio">
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/firstrun-downloading.jpg" width="1120" height="940" loading="lazy" alt="The first-run window: Getting Outpost Luna ready, downloading the Moon (510 MB), with a progress bar for each of four models.">
+          <picture><source type="image/webp" srcset="assets/guide/firstrun-downloading.webp"><img src="assets/guide/firstrun-downloading.jpg" width="1120" height="940" loading="lazy" alt="The first-run window: Getting Outpost Luna ready, downloading the Moon (510 MB), with a progress bar for each of four models."></picture>
           <span class="mk" style="--x:8%;--y:25.8%" aria-hidden="true">1</span>
           <span class="mk" style="--x:94%;--y:44%" aria-hidden="true">2</span>
           <span class="mk" style="--x:83%;--y:72%" aria-hidden="true">3</span>
@@ -70,14 +74,14 @@
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/firstrun-offline.jpg" width="1120" height="940" loading="lazy" alt="The first-run window when offline: Outpost Luna isn't ready yet, with Try again, Import offline pack and Continue later buttons.">
+          <picture><source type="image/webp" srcset="assets/guide/firstrun-offline.webp"><img src="assets/guide/firstrun-offline.jpg" width="1120" height="940" loading="lazy" alt="The first-run window when offline: Outpost Luna isn't ready yet, with Try again, Import offline pack and Continue later buttons."></picture>
           <span class="mk" style="--x:7%;--y:76%" aria-hidden="true">4</span>
         </div>
         <figcaption>No internet? Use the offline pack</figcaption>
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/splash.jpg" width="920" height="600" loading="lazy" alt="The start-up screen: Outpost Luna, warming up the models.">
+          <picture><source type="image/webp" srcset="assets/guide/splash.webp"><img src="assets/guide/splash.jpg" width="920" height="600" loading="lazy" alt="The start-up screen: Outpost Luna, warming up the models."></picture>
           <span class="mk" style="--x:80%;--y:73%" aria-hidden="true">5</span>
         </div>
         <figcaption>Every launch after that</figcaption>
@@ -93,7 +97,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/home.jpg" width="1600" height="1000" loading="lazy" alt="The welcome screen: Nobody's landed at the pole yet. Train for the crews who will. A call-sign field with suggestions and a Start button.">
+        <picture><source type="image/webp" srcset="assets/guide/home.webp"><img src="assets/guide/home.jpg" width="1600" height="1000" loading="lazy" alt="The welcome screen: Nobody's landed at the pole yet. Train for the crews who will. A call-sign field with suggestions and a Start button."></picture>
         <span class="mk" style="--x:28%;--y:34%" aria-hidden="true">1</span>
         <span class="mk" style="--x:26%;--y:53%" aria-hidden="true">2</span>
         <span class="mk" style="--x:20%;--y:65.4%" aria-hidden="true">3</span>
@@ -118,7 +122,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/fs-map.jpg" width="1600" height="1000" loading="lazy" alt="The Flight School map: lesson patches on the 3D Moon, a progress chip reading Flight School 2 of 9 with the call sign, and a Next up card for Phases and eclipses.">
+        <picture><source type="image/webp" srcset="assets/guide/fs-map.webp"><img src="assets/guide/fs-map.jpg" width="1600" height="1000" loading="lazy" alt="The Flight School map: lesson patches on the 3D Moon, a progress chip reading Flight School 2 of 9 with the call sign, and a Next up card for Phases and eclipses."></picture>
         <span class="mk" style="--x:40%;--y:2.8%" aria-hidden="true">1</span>
         <span class="mk" style="--x:94.2%;--y:6.8%" aria-hidden="true">2</span>
         <span class="mk" style="--x:19%;--y:9.7%" aria-hidden="true">3</span>
@@ -141,7 +145,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/fs-lesson.jpg" width="1600" height="1000" loading="lazy" alt="A lesson card beside the Moon: Phases and eclipses, lesson 2 of 6, step 1 of 5. Why does the Moon seem to change shape each month? Three numbered answers.">
+        <picture><source type="image/webp" srcset="assets/guide/fs-lesson.webp"><img src="assets/guide/fs-lesson.jpg" width="1600" height="1000" loading="lazy" alt="A lesson card beside the Moon: Phases and eclipses, lesson 2 of 6, step 1 of 5. Why does the Moon seem to change shape each month? Three numbered answers."></picture>
         <span class="mk" style="--x:73.2%;--y:10.2%" aria-hidden="true">1</span>
         <span class="mk" style="--x:73.5%;--y:27%" aria-hidden="true">2</span>
         <span class="mk" style="--x:73.5%;--y:35.8%" aria-hidden="true">3</span>
@@ -163,7 +167,7 @@
     <div class="pair narrow">
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/fs-lesson-why.jpg" width="410" height="640" loading="lazy" alt="After a guess: the chosen answer is marked Your guess, and a note explains: We see more or less of its sunny half. It's not Earth's shadow. A Next button.">
+          <picture><source type="image/webp" srcset="assets/guide/fs-lesson-why.webp"><img src="assets/guide/fs-lesson-why.jpg" width="410" height="640" loading="lazy" alt="After a guess: the chosen answer is marked Your guess, and a note explains: We see more or less of its sunny half. It's not Earth's shadow. A Next button."></picture>
           <span class="mk" style="--x:3.5%;--y:35%" aria-hidden="true">1</span>
           <span class="mk" style="--x:90%;--y:67%" aria-hidden="true">2</span>
         </div>
@@ -171,7 +175,7 @@
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/fs-lesson-video.jpg" width="410" height="420" loading="lazy" alt="A NASA video step: Here's a whole month in 15 seconds. Watch the bright part grow, then shrink. Watch (15 sec) and Skip buttons, credited to NASA Goddard Scientific Visualization Studio.">
+          <picture><source type="image/webp" srcset="assets/guide/fs-lesson-video.webp"><img src="assets/guide/fs-lesson-video.jpg" width="410" height="420" loading="lazy" alt="A NASA video step: Here's a whole month in 15 seconds. Watch the bright part grow, then shrink. Watch (15 sec) and Skip buttons, credited to NASA Goddard Scientific Visualization Studio."></picture>
           <span class="mk" style="--x:9%;--y:76%" aria-hidden="true">3</span>
           <span class="mk" style="--x:96%;--y:80%" aria-hidden="true">4</span>
         </div>
@@ -187,7 +191,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/fs-checkride.jpg" width="1600" height="1000" loading="lazy" alt="The check ride: the mission cabin at day 6, 18:00, with a lesson card asking: Earth is up over the rim. Can you call Houston now?">
+        <picture><source type="image/webp" srcset="assets/guide/fs-checkride.webp"><img src="assets/guide/fs-checkride.jpg" width="1600" height="1000" loading="lazy" alt="The check ride: the mission cabin at day 6, 18:00, with a lesson card asking: Earth is up over the rim. Can you call Houston now?"></picture>
         <span class="mk" style="--x:15%;--y:8.5%" aria-hidden="true">1</span>
         <span class="mk" style="--x:83.8%;--y:15%" aria-hidden="true">2</span>
       </div>
@@ -209,7 +213,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/m-brief.jpg" width="1600" height="1000" loading="lazy" alt="Choose your landing site: a south-pole map with a Sunlight layer and scored sites, and a panel for Shackleton Crater Rim listing sunlight, longest dark, Earth in view, ice, slope and ground temperature, each with a NASA source link.">
+        <picture><source type="image/webp" srcset="assets/guide/m-brief.webp"><img src="assets/guide/m-brief.jpg" width="1600" height="1000" loading="lazy" alt="Choose your landing site: a south-pole map with a Sunlight layer and scored sites, and a panel for Shackleton Crater Rim listing sunlight, longest dark, Earth in view, ice, slope and ground temperature, each with a NASA source link."></picture>
         <span class="mk" style="--x:27.5%;--y:10.1%" aria-hidden="true">1</span>
         <span class="mk" style="--x:47%;--y:58.8%" aria-hidden="true">2</span>
         <span class="mk" style="--x:38.5%;--y:78%" aria-hidden="true">3</span>
@@ -232,7 +236,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/m-cabin.jpg" width="1600" height="1000" loading="lazy" alt="The mission cabin: a clock bar with day and time, Play, speed and Skip ahead; a Now panel with the next task; the window onto the outpost; power, life support and dose gauges; and panels for the habitat, radiation, rover, shift and radio.">
+        <picture><source type="image/webp" srcset="assets/guide/m-cabin.webp"><img src="assets/guide/m-cabin.jpg" width="1600" height="1000" loading="lazy" alt="The mission cabin: a clock bar with day and time, Play, speed and Skip ahead; a Now panel with the next task; the window onto the outpost; power, life support and dose gauges; and panels for the habitat, radiation, rover, shift and radio."></picture>
         <span class="mk" style="--x:17.3%;--y:8.5%" aria-hidden="true">1</span>
         <span class="mk" style="--x:32%;--y:13.2%" aria-hidden="true">2</span>
         <span class="mk" style="--x:57%;--y:13.2%" aria-hidden="true">3</span>
@@ -265,7 +269,7 @@
     <div class="pair">
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/m-panel.jpg" width="1600" height="1000" loading="lazy" alt="A cabin panel up close: the Power display with battery, panels and sunset time, a power budget for shields, greenhouse, rover, heaters, air, science and radio, and Night, Shields minus 5 and plus 5 buttons.">
+          <picture><source type="image/webp" srcset="assets/guide/m-panel.webp"><img src="assets/guide/m-panel.jpg" width="1600" height="1000" loading="lazy" alt="A cabin panel up close: the Power display with battery, panels and sunset time, a power budget for shields, greenhouse, rover, heaters, air, science and radio, and Night, Shields minus 5 and plus 5 buttons."></picture>
           <span class="mk" style="--x:44%;--y:28%" aria-hidden="true">1</span>
           <span class="mk" style="--x:69.5%;--y:48%" aria-hidden="true">2</span>
           <span class="mk" style="--x:44%;--y:66%" aria-hidden="true">3</span>
@@ -274,7 +278,7 @@
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/m-storm.jpg" width="1600" height="1000" loading="lazy" alt="A solar particle storm: a banner names the real event with Shelter the crew and Set shields to 40 buttons; the radiation panel shows a red alert and the master alarm is lit.">
+          <picture><source type="image/webp" srcset="assets/guide/m-storm.webp"><img src="assets/guide/m-storm.jpg" width="1600" height="1000" loading="lazy" alt="A solar particle storm: a banner names the real event with Shelter the crew and Set shields to 40 buttons; the radiation panel shows a red alert and the master alarm is lit."></picture>
           <span class="mk" style="--x:24.5%;--y:23%" aria-hidden="true">4</span>
           <span class="mk" style="--x:73%;--y:45.5%" aria-hidden="true">5</span>
           <span class="mk" style="--x:34%;--y:75%" aria-hidden="true">6</span>
@@ -302,7 +306,7 @@
 
     <figure class="ann wide">
       <div class="shot">
-        <img src="assets/guide/lib-card.jpg" width="1600" height="1000" loading="lazy" alt="The Library: the Moon turned to the Apollo 11 landing site, with a card for the Apollo 11 Lunar Module Eagle: its story, crew and NSSDCA source links.">
+        <picture><source type="image/webp" srcset="assets/guide/lib-card.webp"><img src="assets/guide/lib-card.jpg" width="1600" height="1000" loading="lazy" alt="The Library: the Moon turned to the Apollo 11 landing site, with a card for the Apollo 11 Lunar Module Eagle: its story, crew and NSSDCA source links."></picture>
         <span class="mk" style="--x:6.9%;--y:14.6%" aria-hidden="true">1</span>
         <span class="mk" style="--x:18.8%;--y:14.6%" aria-hidden="true">2</span>
         <span class="mk" style="--x:28.8%;--y:14.6%" aria-hidden="true">3</span>
@@ -335,7 +339,7 @@
     <div class="pair">
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/set-voice.jpg" width="840" height="640" loading="lazy" alt="Settings, Voice: Your computer's voice is selected; Steer TTS (Whissle) shows Downloading Steer voice. Options for the recorded guide voice, speed and expressiveness.">
+          <picture><source type="image/webp" srcset="assets/guide/set-voice.webp"><img src="assets/guide/set-voice.jpg" width="840" height="640" loading="lazy" alt="Settings, Voice: Your computer's voice is selected; Steer TTS (Whissle) shows Downloading Steer voice. Options for the recorded guide voice, speed and expressiveness."></picture>
           <span class="mk" style="--x:21%;--y:12%" aria-hidden="true">1</span>
           <span class="mk" style="--x:44.6%;--y:20.5%" aria-hidden="true">2</span>
           <span class="mk" style="--x:79%;--y:20.5%" aria-hidden="true">3</span>
@@ -345,7 +349,7 @@
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/set-camera.jpg" width="840" height="640" loading="lazy" alt="Settings, Camera and gestures: Use the camera for gestures is off. Options to show a small self-view, look around with your head, sensitivity, which hand you use, and extra gestures.">
+          <picture><source type="image/webp" srcset="assets/guide/set-camera.webp"><img src="assets/guide/set-camera.jpg" width="840" height="640" loading="lazy" alt="Settings, Camera and gestures: Use the camera for gestures is off. Options to show a small self-view, look around with your head, sensitivity, which hand you use, and extra gestures."></picture>
           <span class="mk" style="--x:26.3%;--y:24.7%" aria-hidden="true">5</span>
           <span class="mk" style="--x:26.3%;--y:38%" aria-hidden="true">6</span>
           <span class="mk" style="--x:68%;--y:58%" aria-hidden="true">7</span>
@@ -366,7 +370,7 @@
     <div class="pair">
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/set-listen.jpg" width="840" height="640" loading="lazy" alt="Settings, Listening: how to talk, hands-free or hold to talk; ignore other voices, relaxed, normal or strict; and an option to help improve the voice guide.">
+          <picture><source type="image/webp" srcset="assets/guide/set-listen.webp"><img src="assets/guide/set-listen.jpg" width="840" height="640" loading="lazy" alt="Settings, Listening: how to talk, hands-free or hold to talk; ignore other voices, relaxed, normal or strict; and an option to help improve the voice guide."></picture>
           <span class="mk" style="--x:47%;--y:21%" aria-hidden="true">8</span>
           <span class="mk" style="--x:47%;--y:42%" aria-hidden="true">9</span>
         </div>
@@ -374,7 +378,7 @@
       </figure>
       <figure class="ann">
         <div class="shot">
-          <img src="assets/guide/set-reset.jpg" width="840" height="640" loading="lazy" alt="Settings, Reset: Start over erases progress and settings and keeps downloads; Reset everything also erases downloads and saved videos.">
+          <picture><source type="image/webp" srcset="assets/guide/set-reset.webp"><img src="assets/guide/set-reset.jpg" width="840" height="640" loading="lazy" alt="Settings, Reset: Start over erases progress and settings and keeps downloads; Reset everything also erases downloads and saved videos."></picture>
           <span class="mk" style="--x:44%;--y:26.5%" aria-hidden="true">10</span>
           <span class="mk" style="--x:50%;--y:39%" aria-hidden="true">11</span>
         </div>
@@ -410,10 +414,10 @@
 </main>
 
 <footer class="foot">
-  <p><b>Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA. Outpost Luna is a pretend outpost for learning.</b></p>
+  <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <p>Screenshots: Outpost Luna 0.3.1. Moon imagery: NASA/GSFC/Arizona State University (LRO). Site maps: NASA LRO LOLA and Diviner. Lesson video: NASA/Goddard Scientific Visualization Studio.</p>
   <div class="row">
-    <span>Outpost Luna · built by Whissle for the NASA Space Apps Challenge 2026</span>
+    <span>© 2026 Whissle · Outpost Luna · NASA Space Apps Challenge 2026</span>
     <span><a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">Releases</a></span>
   </div>
 </footer>

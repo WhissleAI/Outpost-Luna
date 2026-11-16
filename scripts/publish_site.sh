@@ -13,6 +13,7 @@ SITE="$ROOT/site"
 BRANCH="${BRANCH:-gh-pages}"
 REMOTE="${REMOTE:-origin}"
 [ -f "$SITE/index.html" ] || { echo "no $SITE/index.html" >&2; exit 1; }
+python3 "$ROOT/scripts/check_site.py" || { echo "fix the site checks above before publishing" >&2; exit 1; }
 
 SRC_REV="$(git -C "$ROOT" rev-parse --short HEAD)"
 TMP="$(mktemp -d)"
