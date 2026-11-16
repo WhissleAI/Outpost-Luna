@@ -22,6 +22,7 @@ import httpx
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from app.config import settings  # noqa: E402
+from app.local_guard import auth_headers  # noqa: E402  (LUNA_TOKEN, when the model server has one)
 from app.gazetteer import Gazetteer, norm  # noqa: E402
 
 RULES = [
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> None:
             if " " not in k and len(k) >= 5 and k not in DESCRIPTOR_ALIASES:
                 names[k] = p.id
     manifest = json.loads((settings.data_dir / "clips_manifest.json").read_text())["clips"]
-    http = httpx.Client(base_url=settings.model_server_url, timeout=30)
+    http = httpx.Client(base_url=settings.model_server_url, timeout=30, headers=auth_headers())
     try:
         http.get("/health").raise_for_status()
     except httpx.HTTPError:

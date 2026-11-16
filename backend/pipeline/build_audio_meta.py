@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 
 from app.config import settings
+from app.local_guard import auth_headers  # noqa: E402  (LUNA_TOKEN, when the model server has one)
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 AWE_MIN = 0.5      # utterances at or above this awe score are peaks
@@ -30,7 +31,7 @@ def words_for(stem: str) -> list[dict]:
 def main() -> int:
     clips = json.loads((DATA / "clips_manifest.json").read_text())["clips"]
     out, url = {}, settings.model_server_url.rstrip("/") + "/v1/meta"
-    with httpx.Client(timeout=300) as c:
+    with httpx.Client(timeout=300, headers=auth_headers()) as c:
         for clip in clips:
             audio = next((DATA / "media/audio").glob(f"{clip['stem']}.*"), None)
             if audio is None:

@@ -130,6 +130,7 @@ If the NASA download stops part-way, run the same command again. It keeps the fi
 | App data, settings and caches | `%APPDATA%\Outpost Luna\` |
 | **Logs** | `%APPDATA%\Outpost Luna\logs\` (`main.log`, `backend.log`, `models.log`) |
 | Ports the app chose | `%APPDATA%\Outpost Luna\ports.json` (backend on 47310, models on 47210 unless taken) |
+| Where the running engine is + its token | `%APPDATA%\Outpost Luna\engine.json` (while the app runs; docs/SECURITY.md) |
 
 To open the logs folder, run `explorer "$env:APPDATA\Outpost Luna\logs"`.
 

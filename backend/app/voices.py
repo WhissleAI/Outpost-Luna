@@ -26,6 +26,7 @@ from fastapi import APIRouter, HTTPException
 
 from . import steering
 from .config import settings
+from .local_guard import auth_headers
 
 router = APIRouter()
 PREVIEW_PREFIX = "/api/voices/preview"
@@ -52,7 +53,7 @@ async def refresh() -> None:
         return
     CATALOG["tried"] = time.monotonic()
     try:
-        async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=3.0) as c:
+        async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=3.0, headers=auth_headers()) as c:
             r = await c.get("/v1/tts/voices")
         if r.status_code == 200:
             set_catalog(r.json())
@@ -66,7 +67,7 @@ def refresh_sync() -> None:
         return
     CATALOG["tried"] = time.monotonic()
     try:
-        r = httpx.get(settings.model_server_url.rstrip("/") + "/v1/tts/voices", timeout=1.5)
+        r = httpx.get(settings.model_server_url.rstrip("/") + "/v1/tts/voices", timeout=1.5, headers=auth_headers())
         if r.status_code == 200:
             set_catalog(r.json())
     except (httpx.HTTPError, ValueError):
@@ -167,7 +168,7 @@ def _flag(kind: str, id_: str):
 async def _steer_health() -> dict:
     """The model server's /health steer_tts entry ({} when unreachable)."""
     try:
-        async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=3.0) as c:
+        async with httpx.AsyncClient(base_url=settings.model_server_url, timeout=3.0, headers=auth_headers()) as c:
             r = await c.get("/health")
         if r.status_code == 200:
             return (r.json().get("models") or {}).get("steer_tts") or {}

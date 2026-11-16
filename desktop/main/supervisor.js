@@ -117,10 +117,10 @@ class PidFile {
   }
 }
 
-/** GET url -> parsed JSON on 200, else null. */
-function getJson(url, timeoutMs = 2000) {
+/** GET url -> parsed JSON on 200, else null. `headers`: e.g. the per-launch token (X-Luna-Token). */
+function getJson(url, timeoutMs = 2000, headers = {}) {
   return new Promise((resolve) => {
-    const req = http.get(url, { timeout: timeoutMs }, (res) => {
+    const req = http.get(url, { timeout: timeoutMs, headers }, (res) => {
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (c) => { body += c; });

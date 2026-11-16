@@ -16,6 +16,7 @@ from . import arcmeta, embed, tts_os, tts_steer
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings
+from .local_guard import LocalGuard, env_options as local_guard_options
 
 STATE: dict = {"tagger": None, "tagger_error": None, "loaded_s": None}
 
@@ -40,6 +41,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Outpost Luna model server", version="0.1.0", lifespan=lifespan)
+# [#84] Host + Origin + per-launch token on every request and WebSocket (app/local_guard.py, docs/SECURITY.md). No
+# browser page ever talks to the model server: only the backend (server side, with the token) and local tools.
+app.add_middleware(LocalGuard, **local_guard_options())
 app.include_router(tag_stream.router)  # WS /v1/tag/stream
 from .routes_meta import router as meta_router  # noqa: E402
 app.include_router(meta_router)  # POST /v1/meta, WS /v1/stream

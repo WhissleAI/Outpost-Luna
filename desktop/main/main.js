@@ -11,6 +11,12 @@
 //   6. asset updates without an app build (updates.js, docs/DESKTOP.md "Asset updates"): updates staged by an earlier
 //      run are swapped in before the children start and confirmed (or rolled back) by the model server's health;
 //      once the UI is up the remote manifest is checked and changed assets are staged in the background.
+//   7. local access (docs/SECURITY.md, #84 / #88): a per-launch token (engine.js) goes to both children (LUNA_TOKEN) and
+//      to the page as an HttpOnly SameSite=Strict cookie on our origin; both children refuse any other Origin and any
+//      WebSocket / state-changing call without it. engine.json (0600, userData) tells other local clients where we are.
+//   8. supervision (#87): a crashed child restarts with exponential back-off (engine.js RestartPolicy) and the app gives
+//      up with a clear message after 5 fast crashes; a child that stops answering its health check is killed and
+//      restarted; the page shows "Ear restarting…" (frontend/src/engine.js) while typing keeps working.
 "use strict";
 const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu, ipcMain } = require("electron");
 const fs = require("fs");
@@ -23,6 +29,7 @@ const R = require("./reset");   // Settings → Reset Outpost Luna (docs/RESET.m
 const G = require("./gate");   // [media] links out of a NASA video open behind the grown-up gate (docs/MEDIA.md)
 const AS = require("./assets"); // first-run assets
 const U = require("./updates"); // asset updates (remote manifest, staged swap, rollback)
+const E = require("./engine");  // per-launch token, engine.json, restart back-off, hang watch (docs/SECURITY.md)
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
 if (process.env.OUTPOST_USER_DATA) app.setPath("userData", process.env.OUTPOST_USER_DATA);
@@ -40,9 +47,19 @@ const APP_VERSION = app.getVersion();
 const pids = new S.PidFile(path.join(USER, "children.json"));
 const portsFile = path.join(USER, "ports.json");
 const START_TIMEOUT_MS = 240000;
+const HEALTH_EVERY_MS = 5000;   // after launch: both children's health checks (a hung child is killed and restarted)
+const TOKEN = E.newToken();     // per launch; never written anywhere but engine.json (0600)
+const AUTH = { "X-Luna-Token": TOKEN };
+const ENGINE_FILE = E.discoveryFile(USER);
+const LABEL = { models: "model server", backend: "backend" };
+let engine = { ear: "starting", backend: "starting" };   // what the page shows (frontend/src/engine.js)
 
 // Silent runs (tests, demos next to someone): OUTPOST_MUTE_AUDIO=1 mutes every page, like --mute-audio.
 if (process.env.OUTPOST_MUTE_AUDIO === "1") app.commandLine.appendSwitch("mute-audio");
+// Test runs next to someone working: OUTPOST_HEADLESS=1 never shows a window and (macOS) keeps the app out of the Dock,
+// so it never takes focus. The page still loads and runs (drive it over --remote-debugging-port).
+const HEADLESS = process.env.OUTPOST_HEADLESS === "1";
+const reveal = (w) => { if (!HEADLESS) w.show(); };
 
 const kids = {};            // name -> { proc, port, restarts: [timestamps] }
 let quitting = false, splash = null, win = null, ports = null;
@@ -67,7 +84,7 @@ async function choosePorts() {
 }
 
 function envFor(name) {
-  const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf") };
+  const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf"), LUNA_TOKEN: TOKEN };
   if (name === "models") {
     const a = store.envPaths();   // the installed assets (assets.js): <userData>/assets/<id>
     return S.childEnv({
@@ -111,25 +128,83 @@ function startChild(name) {
   // POSIX: own process group, so quitting can kill the whole tree. Windows: no console window; taskkill /T on quit.
   const proc = spawn(PY, [LAUNCH, name, "--port", String(port)], S.childSpawnOptions({ cwd: path.join(RES, "app"), env: envFor(name), out }));
   fs.closeSync(out);
-  const k = kids[name] = kids[name] || { restarts: [] };
-  k.proc = proc; k.port = port; k.ready = false;
+  const k = kids[name] = kids[name] || { policy: new E.RestartPolicy(), hang: new E.HangWatch() };
+  k.proc = proc; k.port = port; k.ready = false; k.restarting = false; k.startedAt = Date.now(); k.hang.ok();
   pids.add({ name, pid: proc.pid, started: Date.now() });
   log(`started ${name} pid ${proc.pid} on 127.0.0.1:${port}`);
   proc.on("exit", (code, signal) => {
     pids.remove(proc.pid);
     log(`${name} exited code=${code} signal=${signal}`);
     if (quitting || k.proc !== proc) return;
+    k.ready = false;
     if (name === "models" && updater && updater.trials().length) {   // a fresh update may be what killed it
       const back = updater.rollbackTrials(`the model server stopped (code ${code})`);
       if (back.length) writeSummary();
     }
-    const now = Date.now();
-    k.restarts = k.restarts.filter((t) => now - t < 60000);
-    if (k.restarts.length >= 3) return fail(`The ${name === "models" ? "model server" : "backend"} keeps stopping.`);
-    k.restarts.push(now);
-    setTimeout(() => { if (!quitting) startChild(name); }, 1000);
+    const r = k.policy.crashed();
+    if (r.action === "giveup") return gaveUp(name, r.failures);
+    log(`${name}: restart ${r.attempt} in ${r.delayMs} ms`);
+    k.restarting = true;
+    setEngine(name, "restarting");
+    setTimeout(() => { if (!quitting && k.proc === proc) startChild(name); }, r.delayMs);
   });
   proc.on("error", (e) => fail(`Could not start ${name}: ${e.message}`));
+}
+
+/** A child crashed `failures` times in a row without running healthy in between: stop trying. The backend serves the
+ *  page itself, so without it the app cannot go on; without the model server the page still works by typing. */
+function gaveUp(name, failures) {
+  log(`${name}: gave up after ${failures} restarts`);
+  if (name === "backend" || !win) return fail(`The ${LABEL[name]} keeps stopping.`);
+  setEngine(name, "down");
+}
+
+function setEngine(name, state) {
+  const key = name === "models" ? "ear" : "backend";
+  if (engine[key] === state) return;
+  engine = { ...engine, [key]: state };
+  log(`engine: ${key} ${state}`);
+  pushEngine();
+}
+
+/** The page's status line (frontend/src/engine.js): "Ear restarting…", or "Voice is off" after giving up. */
+function pushEngine() {
+  if (win && !win.isDestroyed()) {
+    win.webContents.executeJavaScript(`window.__lunaEngine && window.__lunaEngine(${JSON.stringify(engine)})`).catch(() => {});
+  }
+}
+
+/** After launch: every HEALTH_EVERY_MS ask both children. A restarted child turns ready again here; a running child
+ *  that misses 4 checks in a row (20 s+), or one that never gets ready within START_TIMEOUT_MS, is killed: its exit
+ *  handler restarts it with the back-off. */
+function watchHealth() {
+  let busy = false;
+  setInterval(async () => {
+    if (busy || quitting) return;
+    busy = true;
+    try {
+      for (const name of ["models", "backend"]) {
+        const k = kids[name];
+        if (!k || !k.proc || k.restarting) continue;
+        const proc = k.proc;
+        const h = await S.getJson(`http://127.0.0.1:${k.port}${name === "models" ? "/health" : "/api/health"}`, 3000, AUTH);
+        if (quitting || k.proc !== proc) continue;
+        if (h) {
+          k.hang.ok();
+          k.policy.healthy();
+          if (!k.ready) { k.ready = true; log(`${name} healthy after a restart`); setEngine(name, "ok"); }
+          continue;
+        }
+        const hung = k.ready ? k.hang.miss() : Date.now() - k.startedAt > START_TIMEOUT_MS;
+        if (hung) {
+          log(`${name} stopped answering its health check; restarting it`);
+          k.ready = false;
+          setEngine(name, "restarting");
+          S.killTree(proc.pid);   // the exit handler restarts it
+        }
+      }
+    } finally { busy = false; }
+  }, HEALTH_EVERY_MS);
 }
 
 function status(msg) {
@@ -152,12 +227,17 @@ async function waitHealthy() {
   let modelsUp = false;
   while (Date.now() < deadline && !failed && !quitting) {
     if (!modelsUp) {
-      const h = await S.getJson(`http://127.0.0.1:${ports.models}/health`);
+      const h = await S.getJson(`http://127.0.0.1:${ports.models}/health`, 2000, AUTH);
       if (h) { modelsUp = true; log(`model server healthy after ${((Date.now() - t0) / 1000).toFixed(1)} s`); status("Models ready. Opening the outpost…"); }
     }
     if (modelsUp) {
-      const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/health`);
-      if (b) { log(`backend healthy after ${((Date.now() - t0) / 1000).toFixed(1)} s`); return true; }
+      const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/health`, 2000, AUTH);
+      if (b) {
+        log(`backend healthy after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+        for (const k of Object.values(kids)) { k.ready = true; k.policy.healthy(); }
+        engine = { ear: "ok", backend: "ok" };
+        return true;
+      }
     }
     await S.sleep(300);
   }
@@ -177,7 +257,7 @@ function createSplash() {
   splash = new BrowserWindow({ width: 460, height: 300, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
     webPreferences: { sandbox: true, contextIsolation: true } });
   splash.loadFile(path.join(__dirname, "splash.html"));
-  splash.once("ready-to-show", () => splash.show());
+  splash.once("ready-to-show", () => reveal(splash));
 }
 
 function createMain(origin) {
@@ -197,11 +277,12 @@ function createMain(origin) {
     if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
   });
   win.once("ready-to-show", () => {
-    win.show();
+    reveal(win);
     if (splash && !splash.isDestroyed()) splash.close();
     log(`window shown after ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   });
   win.on("closed", () => { win = null; });
+  win.webContents.on("did-finish-load", pushEngine);   // a reload gets the engine state again
   win.loadURL(origin + "/");
 }
 
@@ -211,7 +292,7 @@ function resetApp(r, origin) {
   resetting = true;
   R.performReset(r, {
     session: session.defaultSession, fs, userData: USER, log,
-    confirm: async (token) => { const j = await S.getJson(`${origin}/api/reset/confirm?token=${encodeURIComponent(token)}`); return j && j.level; },
+    confirm: async (token) => { const j = await S.getJson(`${origin}/api/reset/confirm?token=${encodeURIComponent(token)}`, 2000, AUTH); return j && j.level; },
     stopChildren: stopAll,
     clearAssets: () => AS.clearAll(store.dir),   // "Reset everything": the first-run downloads go; the next launch fetches them
     relaunch: () => app.relaunch(), exit: (c) => app.exit(c),
@@ -236,7 +317,7 @@ function createFirstRun() {
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, "firstrun-preload.js") } });
   firstrun.loadFile(path.join(__dirname, "firstrun.html"));
   firstrun.webContents.on("did-finish-load", () => frSend());
-  firstrun.once("ready-to-show", () => firstrun.show());
+  firstrun.once("ready-to-show", () => reveal(firstrun));
   firstrun.on("closed", () => { firstrun = null; if (!requiredReady() && !quitting) app.quit(); });
 }
 
@@ -346,7 +427,7 @@ function writeSummary() {
 /** The backend says a mission or a video is on: background downloads wait (like the video prefetch). */
 async function backendBusy() {
   if (!ports) return false;
-  const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/assets/busy`);
+  const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/assets/busy`, 2000, AUTH);
   return !!(b && b.busy);
 }
 
@@ -362,7 +443,7 @@ async function runUpdates(why) {
 /** Children healthy: keep the updates that loaded, roll back the ones that did not (then restart the model server). */
 async function confirmUpdates() {
   if (!updater.trials().length) return;
-  const h = (await S.getJson(`http://127.0.0.1:${ports.models}/health`)) || {};
+  const h = (await S.getJson(`http://127.0.0.1:${ports.models}/health`, 2000, AUTH)) || {};
   const bad = updater.failing(h);
   if (bad.length) {
     // Stop both children BEFORE the rollback renames: Windows keeps open / memory-mapped files (the ear's weights, the
@@ -391,6 +472,7 @@ async function stopAll() {
   quitting = true;
   await Promise.all(Object.values(kids).map((k) => k.proc && S.killTree(k.proc.pid)));
   pids.write([]);
+  E.removeDiscovery(ENGINE_FILE);
   log("children stopped");
 }
 
@@ -399,6 +481,7 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.whenReady().then(async () => {
+    if (HEADLESS && app.dock) app.dock.hide();
     fs.mkdirSync(LOGS, { recursive: true });
     log(`Outpost Luna ${app.getVersion()} (${process.platform} ${process.arch}); resources ${RES}; data ${USER}`);
     createSplash();
@@ -423,7 +506,15 @@ if (!app.requestSingleInstanceLock()) {
     startChild("models");
     startChild("backend");
     if (await waitHealthy()) {
+      // [#84] the page's token: a cookie on our origin only (HttpOnly: page scripts never see it; SameSite=Strict: no
+      // other site's request carries it). Sent with every fetch and WebSocket from the page.
+      await session.defaultSession.cookies.set({ url: origin, name: "luna_token", value: TOKEN, httpOnly: true, sameSite: "strict" });
+      // [#88] engine.json: where the engine is and its token, for other local clients (docs/SECURITY.md)
+      try {
+        E.writeDiscovery(ENGINE_FILE, E.discoveryRecord({ backendPort: ports.backend, modelsPort: ports.models, token: TOKEN, version: APP_VERSION }));
+      } catch (e) { log("engine.json not written:", e.message); }
       createMain(origin);
+      watchHealth();
       await confirmUpdates();
       setTimeout(fetchOptional, 20000);
       setTimeout(() => runUpdates("launch"), 30000);   // non-blocking, after the UI is up; offline: nothing changes
@@ -438,6 +529,6 @@ if (!app.requestSingleInstanceLock()) {
     e.preventDefault();
     stopAll().finally(() => { stopped = true; app.quit(); });
   });
-  process.on("exit", () => { for (const k of Object.values(kids)) if (k.proc) S.killTreeSync(k.proc.pid); });
+  process.on("exit", () => { for (const k of Object.values(kids)) if (k.proc) S.killTreeSync(k.proc.pid); E.removeDiscovery(ENGINE_FILE); });
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => app.quit());
 }

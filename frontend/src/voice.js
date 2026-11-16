@@ -14,6 +14,7 @@ import { decideBarge, isCommand, saysStop, BARGE_TUNING, energyNeed } from "./ba
 import { logBarge } from "./bargelog.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
+import { onEngine, earNote } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
 export { spaceAction, micErrorText };
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
@@ -160,10 +161,10 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const note = text => { hintEl.lastElementChild.textContent = text; };
   // [qa] The ear can drop (model server restarted, too many sessions): never show the server's words to a kid; reconnect
   // on our own with a back-off, and put "Hold to talk" back once the mic is live again.
-  let retryT = 0, retries = 0, userOff = false;
+  let retryT = 0, retries = 0, userOff = false, everOn = false;
   function earLost() {
     if (userOff || retryT) return;
-    note("Voice paused. Reconnecting…");
+    note(earNote() || "Voice paused. Reconnecting…");
     const wait = Math.min(30000, 2000 * 2 ** retries++);
     retryT = setTimeout(async () => { retryT = 0; wsBroken = false; if (!(await startAlwaysOn()) && !userOff && mode !== "ws") earLost(); }, wait);
   }
@@ -367,7 +368,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "end") { if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
-      else if (m.t === "error") { console.warn("ear error:", m.message); note("Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
+      else if (m.t === "error") { console.warn("ear error:", m.message); note(earNote() || "Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
     },
     level,
     close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); earLost(); } },
@@ -394,12 +395,24 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (mode === "ws" || starting || wsBroken || !canWS) return mode === "ws";
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
-    if (ok === true) { mode = "ws"; retries = 0; userOff = false; note(HOLD); idle(); return true; }
+    if (ok === true) { mode = "ws"; retries = 0; userOff = false; everOn = true; note(earNote() || HOLD); idle(); return true; }
     if (ok !== "mic") { wsBroken = true; set("off"); earLost(); }   // [qa] retry with a back-off (the ear may be warming up)       // "mic": micBlocked already showed why
     return false;
   }
   function stopAlwaysOn() { userOff = true; clearTimeout(retryT); retryT = 0; listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
   function srStart() { if (!rec || srOn) return; finalBuf = ""; interim = ""; turnAsked = false; try { rec.start(); } catch (e) { /* already running */ } }
+
+  // [#87] The desktop shell restarted the ear (engine.js): say so while it is away; once it is back, reconnect at once
+  // (not at the end of the back-off), but only a mic that was on before and that the kid did not switch off.
+  onEngine((s, prev) => {
+    const n = earNote(s);
+    if (n) { note(n); return; }
+    if (s.ear !== "ok" || prev.ear === "ok") return;
+    note(HOLD);
+    if (mode === "ws" || userOff || !everOn) return;
+    clearTimeout(retryT); retryT = 0; retries = 0; wsBroken = false;
+    startAlwaysOn().then(ok => { if (!ok && !userOff && mode !== "ws") earLost(); });
+  });
 
   // First gesture anywhere opens the mic (browsers need a gesture for audio + mic).
   const firstGesture = () => { removeEventListener("pointerdown", firstGesture, true); removeEventListener("keydown", firstGesture, true); startAlwaysOn(); };
