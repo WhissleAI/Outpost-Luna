@@ -7,8 +7,7 @@ release gates), #92 (local metrics + diagnostics) and #93 (static libarc for in-
 **Scope decision (owner):** the engine serves **Whissle's own apps only**. Third-party clients are not supported, so
 there is no public SDK, no third-party consent flow, and no licensing conflict: libarc and the models stay CC BY-NC 4.0.
 
-Numbers marked *measured* come from `docs/LOCAL_EAR.md` and `docs/DESKTOP.md`. Numbers marked *estimate* are to be
-measured in Phase 2 before any default below is frozen.
+*Measured* = `docs/LOCAL_EAR.md` / `docs/DESKTOP.md`; *estimate* = to measure in Phase 2.
 
 ## 0. Today
 
@@ -23,19 +22,15 @@ Outpost Luna.app (Electron main: desktop/main/main.js)
 
 What the design has to respect:
 
-- **One model, one call at a time.** `nft2.Nft2.transcribe` takes `self.lock`, following libarc's rule. Every live
-  stream (`META_MAX_SESSIONS=4`) and every `/v1/meta` call waits on that one lock in arrival order. A 20 s offline clip
-  can therefore block a kid's live final.
-- **Partials re-decode the whole open segment** every 0.3 s (backing off to 1.25× their own cost, stopping after
-  8 s), so cost grows quadratically with turn length. *Measured* RTF is 0.50 with partials and 0.3 without (4 threads,
-  arm64).
-- **Memory.** The ear is 460 MB on disk: `encoder.weights` 282 MB, the decoder 96 MB, `model.q4` 37 MB, adapters
-  19 MB. *Measured* process RSS is 578 MB steady in the packaged app and 955–985 MB in `ear_compare`. Each extra
-  `arc_nft2_create` is another full copy.
-- **Names are per model, not per stream.** `Nft2.transcribe` re-sets the names whenever the caller's list differs, so
-  two streams with different lists thrash the bias state on every call.
-- **The app owns the mic.** The renderer captures with `getUserMedia`, which includes echo cancellation of the app's
-  own in-page audio, and sends PCM16 mono 16 kHz in ~80 ms frames.
+- **One model call at a time** (`Nft2.lock`, libarc's rule): live streams (`META_MAX_SESSIONS=4`) and `/v1/meta`
+  queue in arrival order, so a 20 s offline clip can block a kid's live final.
+- **Partials re-decode the whole open segment** every 0.3 s: cost grows quadratically with turn length (*measured*
+  RTF 0.50 with partials, 0.3 without; 4 threads, arm64).
+- **Memory:** the ear is 460 MB on disk (`encoder.weights` 282 MB). *Measured* RSS is 578 MB steady (packaged) to
+  955–985 MB (`ear_compare`). Each extra `arc_nft2_create` is another full copy.
+- **Names are per model:** two streams with different lists thrash the bias state on every call.
+- **The app owns the mic:** the renderer captures with `getUserMedia` (with echo cancellation of its own audio) and
+  sends PCM16 mono 16 kHz in ~80 ms frames.
 
 ## 1. Goals and non-goals
 
@@ -106,8 +101,8 @@ The engine runs as `~/Library/LaunchAgents/ai.whissle.engine.plist`, bootstrappe
 - **launchd does the supervision.** It guarantees a single instance and restarts the engine after a crash on the next
   connect. Idle shutdown is just `exit(0)`.
 - **No throttling.** `ProcessType Interactive` keeps a windowless agent from being throttled on the live path.
-- **Rejected: spawn by the first client.** It races, and the engine would belong to whichever app started it.
-  Electron's `killTree` would take it down when that app quits. This path stays only as the fallback for dev builds.
+- **Rejected: spawn by the first client.** It races, and the engine dies with whichever app started it (Electron's
+  `killTree`). This stays only as the dev-build fallback.
 - **Rejected: `SMAppService.agent`.** It binds the engine to a plist inside one app's bundle, so deleting that app
   removes the engine for all the others. Q10 asks whether to ship a separate helper app instead.
 
@@ -125,10 +120,7 @@ The engine runs as `~/Library/LaunchAgents/ai.whissle.engine.plist`, bootstrappe
 4. Live worker threads opt out of EcoQoS: `SetThreadInformation(ThreadPowerThrottling)` with
    `ControlMask = EXECUTION_SPEED` and `StateMask = 0`. Windows 11 throttles windowless processes otherwise.
 
-Rejected:
-
-- **Per-user services.** Their template needs an admin install.
-- **Scheduled task at logon.** It keeps 0.6–1 GB resident all day and still needs a spawn path on first install.
+Rejected: per-user services (the template needs admin) and a logon task (0.6–1 GB resident all day).
 
 ### 2.5 Idle shutdown and memory pressure
 
@@ -146,10 +138,8 @@ Phases 1–4 reuse `model_server` as the engine host, packaged the way `make des
 libarc and the pinned ORT from #85. uvicorn serves HTTP/WS over the UDS (`--uds`) and loopback TCP, and ctypes calls
 release the GIL, so workers decode in parallel.
 
-A native host (Rust or C++, using the #86 generated bindings) is a **Phase 5 decision**, made on measurements:
-- Python's own RSS (~100–150 MB, *estimate*);
-- event-loop jitter on the live path;
-- Windows named-pipe support, which uvicorn lacks.
+A native host (Rust or C++, on the #86 bindings) is a **Phase 5 decision**, made on Python's RSS (~100–150 MB,
+*estimate*), live-path jitter, and Windows named pipes (uvicorn lacks them).
 
 ## 3. Transport and discovery
 
@@ -220,8 +210,7 @@ the client claims.
 It is accepted because it is a Whissle-signed interpreter inside a Whissle-signed app bundle: the engine checks both
 the binary's signature and that its path lies inside a valid Whissle bundle. Q7 asks whether that is enough.
 
-**Dev builds.** Only a *development* build of the engine accepts unsigned clients. Release engines have no switch for
-it.
+Only a *development* engine build accepts unsigned clients.
 
 **Per-app keys are dropped.** With the signature as identity, keys would add nothing. Identity is used for
 **attribution and quotas among Whissle apps** (§5.2) and for metrics. It is not a security boundary against code
@@ -297,9 +286,8 @@ int             arc_nft2_stream_set_max_audio_s(arc_nft2_stream*, float seconds)
 - **Streaming partials.** The RNNT is streaming by construction, so its partials are nearly free. They remove the
   quadratic re-decode that dominates the live load today. Finals stay the full Arc decode at the endpoint.
 
-Two smaller models don't need the split:
-- **Arc Tagger** already gives each stream its own handle, and its weights are only 12 MB.
-- **Steer TTS** stays serialized on its lock and shares the ORT runtime.
+Arc Tagger (12 MB, a handle per stream) needs no split. Steer TTS stays serialized on its lock and shares the
+ORT runtime.
 
 ### 5.2 Scheduler
 
@@ -311,8 +299,7 @@ Two smaller models don't need the split:
             within a priority: deficit round-robin across apps by audio-seconds, then FIFO per app
 ```
 
-- **The unit of work is a job:** one libarc call on one session's context. Sessions never share a lock; they compete
-  only for workers.
+- **The unit of work is a job:** one libarc call on one session's context; sessions compete only for workers.
 - **Priorities are strict:** P0 live final, then P1 live partial, then P2 batch, then P3. When a stream's final is
   queued, its pending partial is dropped. Each stream has at most one pending partial, and a newer one replaces it.
 - **Calls can't be interrupted, so they are kept short:**
@@ -359,8 +346,8 @@ defaults of **`max_live` 4 on 8 GB and 8 on 16 GB+**, scaled at start from physi
 Compute limits how many sessions can be *speaking at once*, not how many are open. One T = 3 worker at RTF ~0.3
 sustains ~3 continuous speakers. Kids' sessions are an estimated 10–25% speech (Q8).
 
-Why sharing must be in-process: libarc's own mmap'd safetensors would be shared across processes anyway, but ORT
-prepacks weights into private memory per session, and `encoder.weights` is the bulk (Q1).
+Sharing must be in-process: mmap'd safetensors are shared across processes anyway, but ORT prepacks weights into
+private memory per session, and `encoder.weights` is the bulk (Q1).
 
 ## 6. Protocol `/v1` (internal)
 
@@ -438,21 +425,13 @@ also handles:
 - reconnecting with jittered back-off (250 ms → 8 s) on 1013, 1001 and engine restarts;
 - delivering `lag` and `busy` as events, not exceptions.
 
-```python
-async with Engine.connect(engine=">=1.2 <2") as eng:          # Luna's backend, replacing listen.py's raw client
-    async with eng.ear(domain="assistant", names=names, priority="live") as ear:
-        await ear.push(pcm16)
-        async for msg in ear: ...
-```
-
 ### 6.5 Deprecation
 
 - **Additive only within v1.** Both sides ignore unknown fields and unknown `t`, and the schemas allow additional
   properties.
 - **Removal only in a new major.** `/v2` is served alongside `/v1` until every shipped Whissle app that speaks only v1
   is past its supported window, with a minimum of 12 months.
-- **Announcing.** Deprecated items appear in `ready.deprecations` and are counted in local metrics. The count tells us
-  which installed app builds still use them.
+- **Announcing.** Deprecated items appear in `ready.deprecations` and are counted in local metrics.
 
 ## 7. Updates
 
@@ -481,43 +460,25 @@ async with Engine.connect(engine=">=1.2 <2") as eng:          # Luna's backend, 
 5. **Models update apart from the engine.** A new model version installs next to the old one and is used from the
    next `hello`, never in the middle of a stream. At most two versions of one model are resident at a time.
 
-**Compatibility.**
-- Each Whissle app declares an engine range and model ranges in `hello`. Each model in the manifest declares
-  `min_engine`.
-- The engine never downgrades.
-- Each app ships an engine payload and installs it only if it is newer than the installed engine, or if no engine is
-  installed.
+**Compatibility.** Apps declare engine and model ranges in `hello`; models declare `min_engine`. The engine never
+downgrades: an app installs its bundled engine payload only when it is newer than the installed one, or none is
+installed.
 
-**Releases are built locally (#91).** Builds come from the Mac and Windows build machines. `make release-check` gates
-signing:
-- golden-audio WER and latency gates;
-- C API and protocol fuzzing;
-- a 24 h soak;
-- a 4-session concurrency soak with an update-and-rollback drill.
-
-Signing keys sit on a hardware token. Publishing is unchanged (`scripts/publish_site.sh`).
+**Releases are built locally (#91)** on the Mac and Windows build machines. `make release-check` gates signing:
+golden-audio WER/latency, C API + protocol fuzzing, a 24 h soak, and a 4-session soak with an update-and-rollback
+drill. Signing keys sit on a hardware token; publishing is unchanged.
 
 ## 8. Observability and privacy
 
 - **What is never stored.** No audio: there is no capture mode at all. No transcript text in logs, which carry only
   lengths, timings, codes and model ids. Dev builds of the engine may log text; release builds cannot.
 - **Logs.** JSON lines in `logs/engine.log`, rotated 5 × 10 MB.
-- **Metrics (#92).** Minute buckets kept for 30 days, per app and per model:
-  - sessions and audio-seconds;
-  - queue wait p50/p95 per priority, decode p50/p95, turn-end latency;
-  - partial drop rate and `busy`/`overloaded` counts;
-  - crashes, crash-free sessions, RSS.
-
-  They are served at `GET /v1/metrics` and sent nowhere.
-- **Diagnostics zip (#92).** Built only when the user asks, written to `diag/` and shown in Finder/Explorer. It
-  contains:
-  - logs and metrics;
-  - `engine.json` without the token, and `active.json`;
-  - model ids, sha256s and load-check results;
-  - OS and hardware summary;
-  - the app list;
-  - **minimal crash dumps** (`MiniDumpNormal` without heap on Windows, `.ips` reports on Mac). A full dump would
-    contain live audio buffers.
+- **Metrics (#92).** 30 days of minute buckets per app and model: sessions, audio-seconds, queue wait and decode
+  p50/p95 per priority, turn-end latency, partial drops, `busy`/`overloaded`, crashes, RSS. Served at
+  `GET /v1/metrics`, sent nowhere.
+- **Diagnostics zip (#92).** Only on request, into `diag/`: logs, metrics, `engine.json` without the token,
+  `active.json`, model hashes and load checks, OS/hardware summary, app list, and **minimal crash dumps**
+  (`MiniDumpNormal` without heap; Mac `.ips`), since a full dump would hold live audio buffers.
 
 ## 9. Threat model
 
@@ -529,7 +490,6 @@ Signing keys sit on a hardware token. Publishing is unchanged (`scripts/publish_
 | **Tampered files** | swap weights or graphs to crash or exploit parsers; swap the engine build | sha256 of every model file at install and load (#85); pinned ORT; the launcher verifies the build's signature; ONNX/safetensors parsing fuzzed (#91) | same-user write access remains powerful; signing raises the bar |
 | **Update path** | MITM, a substituted artifact | https + host allow-list + Ed25519-signed manifest + sha256 + code signing | key theft: hardware token, offline rotation key |
 | **Malformed client input** | crash libarc | schemas, frame limits, fuzzing, decode watchdog (#87) | an engine crash drops every session; clients reconnect, live audio in flight is lost |
-| **Leaks via outputs** | text in logs, audio in dumps | §8 | none in release builds |
 
 ## 10. Migration
 
