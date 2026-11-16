@@ -20,3 +20,6 @@ backend/data/cache/
 # Camera gestures: the on-device vision runtime + models (frontend/tools/fetch_vision.mjs, sha256-pinned)
 frontend/public/vision/
 backend/data/turnlog/
+
+# [polish 2] the dev checkout keeps the mission auto-save here (the desktop app: its per-user cache folder)
+backend/data/saves/

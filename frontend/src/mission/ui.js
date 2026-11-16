@@ -266,6 +266,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (nv.ready && sites.every(s => nv.place(s.id))) {   // the navigator: map, layers, numbers with sources, weights
       nv.render({ site, firstPick, recommended: PICKER.recommended, recTag: PICKER.recTag });
       previewSite(); if (!nv.mapShown) pins(pickSite); else if (pinEl) pinEl.hidden = true;
+      offerContinue();
       return;
     }
     const src0 = site && (site.sources || [])[0];
@@ -288,6 +289,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       </div>
       <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${srcLink(HORIZONS, "JPL Horizons")}</p>
       <button type="button" class="mx-go" id="mStart">Take command</button>`;
+    offerContinue();
     const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
     panel.querySelectorAll(".mx-site").forEach(b => {
       b.onclick = () => pick(b.dataset.site);
@@ -383,11 +385,16 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const checked = !isPractice && screen === "brief" && panel.querySelector('.mx-site[aria-checked="true"]');
     if (checked) site = sites.find(s => s.id === checked.dataset.site) || site;
     window.__outpost && (window.__outpost.missionSite = site && site.id);   // tools/picker_select.py reads it
-    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level }); } catch (e) { st = null; }
+    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level, ...(isPractice ? { practice: true } : {}) }); } catch (e) { st = null; }
     starting = false;
     document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
     if (!alive(g)) return;   // left Mission while it started (even if the kid is back on a new screen generation)
     if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
+    enterMission(st, level);
+  }
+  /** A mission state from the server (a new one, or the auto-save): wire the clock, telemetry and the cabin. */
+  function enterMission(st, level, resumed = false) {
+    chaptersSeen = ((st.chapter && st.chapter.done) || []).length;
     state = st; prev = null; logHistory = []; reminded.clear(); seen.clear();
     mclock.detach(); mclock = newClock(); lastTask = st.task ? st.task.id : null; lastAck = st.ack ? st.ack.n : 0; beatsSeen = new Set((st.story && st.story.reached) || []);
     if (unsub) unsub();
@@ -396,6 +403,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     showHud();
     if (session && !client.sample && session.onStart) session.onStart(state);   // [session hook]
     windows = null; if (client.windows) client.windows(state.id).then(w => { windows = w; if (cockpit && cockpit.setWindows) cockpit.setWindows(w); }).catch(() => {});
+    if (resumed) {   // [polish 2] Continue: back where the chapter saved; the clock waits for Play
+      const c = st.chapter || {}, line = `Welcome back. Day ${st.day}, chapter ${c.n || 1}: ${c.title || ""}.`.replace(/: \.$/, ".");
+      capcom({ say: line }); Promise.resolve(say(line)).catch(() => {}); nudge.arm(); briefSpoken = false; return;
+    }
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
     const first = !firstDone(), touring = !tourDone(callSign.get());
     // never wait on the voice for the next step: a slow or silent TTS must not leave the kid in a cabin with no guide
@@ -411,6 +422,31 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     }
     if (first) markFirstDone();
     briefSpoken = false;
+  }
+
+  /** [polish 2] The hub offers the chapter auto-save (the server keeps one): Continue, or pick a site for a new one. */
+  function offerContinue() {
+    if (!client || !client.saved || (state && !state.over)) return;
+    const g = gen;
+    client.saved().then(r => {
+      if (!alive(g) || screen !== "brief" || !r || !r.saved) return;
+      const v = r.saved; panel.querySelectorAll(".mx-continue").forEach(n => n.remove());
+      panel.insertAdjacentHTML("afterbegin", `<div class="mx-continue" role="group" aria-label="Saved mission">
+        <span>${ic("check")}<b>Resume Day ${v.day} at ${esc(v.site_name.split(" (")[0])}</b><small>Saved automatically · Chapter ${Math.min(5, v.chapter + 1)} of 5</small></span>
+        <button type="button" class="mx-go" id="mContinue" aria-label="Resume day ${v.day} at ${esc(v.site_name.split(" (")[0])}">Resume</button></div>`);
+      const go = panel.querySelector("#mStart"); if (go && !/new/i.test(go.textContent)) go.textContent = "New mission: take command";
+      panel.querySelector("#mContinue").onclick = () => resumeSaved();
+    }).catch(() => {});
+  }
+  async function resumeSaved() {
+    if (starting || !client.resume) return;
+    starting = true; const g = gen; let st = null;
+    try { st = await client.resume(); } catch (e) { st = null; }
+    starting = false;
+    if (!alive(g)) return;
+    if (!st) { capcom({ say: "That saved mission can't be opened. Pick a site to start a new one." }); return; }
+    site = sites.find(s => s.id === (st.site && st.site.id)) || site;
+    enterMission(st, null, true);
   }
 
   // ---------- first mission: one "how to play" line, repeated only after ~20 s of silence with no order (max twice) ----------
@@ -493,10 +529,79 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     else if (a === "pause") mclock.pause();
     else if (a === "warp") { const w = mclock.setWarp(arg); if (!mclock.started || mclock.paused) mclock.play(); say(`Time warp, ${w} times.`, null, { priority: 4 }); }
     else if (a === "skip") { skipEvent(); return true; }
+    else if (a === "ff") { const on = arg === true || arg === "on"; if (on && (!mclock.started || mclock.paused)) mclock.play(); mclock.hold(on); }
     if (cockpit && cockpit.clock) cockpit.clock(mclock.state);
     renderCard();
     return true;
   }
+  // ---------- [polish 2] the pause menu, the chapter card, Restart shift (docs/MISSION_POLISH_SPEC.md) ----------
+  let menuWas = false, chapterWas = false, chapterRec = null, chaptersSeen = 0;
+  /** Esc at the seat, Start, voice "pause", the deck's Menu: the clock holds and the menu opens (again: it closes). */
+  function openMenu() {
+    if (screen !== "hud" || !state || state.over || !cockpit || !cockpit.menu || tour.active) return false;
+    if (cockpit.chapterOpen) return false;
+    if (cockpit.menuOpen) return closeMenu(true);
+    nudge.heard();
+    menuWas = mclock.started && !mclock.paused;
+    mclock.hold(false); mclock.pause();
+    const c = (state.chapter || {}), t = state.mission_time_h || 0;
+    cockpit.menu(true, { eye: `Day ${state.day} of 10${c.n ? ` · Chapter ${c.n} of ${c.of}: ${c.title}` : ""}`,
+      shift: `Back to day ${Math.floor(t / 24) + 1}, shift ${Math.floor((t % 24) / 6) + 1}` });
+    cockpit.clock(mclock.state);
+    return true;
+  }
+  function closeMenu(resume = true) {
+    if (!cockpit || !cockpit.menuOpen) return false;
+    cockpit.menu(false);
+    if (resume && menuWas) mclock.play();
+    menuWas = false;
+    cockpit.clock(mclock.state); renderCard();
+    return true;
+  }
+  function menuAction(a, v) {
+    if (a === "open") return openMenu();
+    if (a === "resume") return closeMenu(true);
+    if (a === "speed") { mclock.setWarp(+v); menuWas = true; cockpit.clock(mclock.state); return true; }   // picking a speed means "run at it"
+    if (a === "restart") return restartShift();
+    if (a === "settings") { closeMenu(false); const A = window.__outpost && window.__outpost.a11y; if (A && A.open) A.open(true); return true; }
+    if (a === "quit") { closeMenu(false); showDebrief(); return true; }   // the paused debrief is the hub: Resume, a new site
+    return false;
+  }
+  /** Back to the start of this shift: the server replays the mission's own inputs up to it (same storms, same tasks). */
+  async function restartShift() {
+    if (screen !== "hud" || !state || state.over || !client || !client.restartShift) return false;
+    if (stepping) { try { await stepping; } catch (e) { /* reported below */ } }
+    const g = gen; let r;
+    try { await mclock.flush(); r = await client.restartShift(state.id); }
+    catch (e) { if (alive(g)) capcom({ say: "CAPCOM can't reach the mission server." }); return true; }
+    if (!alive(g)) return true;
+    closeMenu(false); mclock.reset(); mclock.dropWarp();
+    chaptersSeen = ((r.state.chapter && r.state.chapter.done) || []).length;
+    prev = null; applyState(r.state, true);
+    if (!mclock.started || mclock.paused) mclock.play();
+    if (r.say) { capcom({ say: r.say }); say(r.say, null, { priority: 4 }); }
+    renderCard();
+    return true;
+  }
+  /** A chapter ended (the sim's "chapter" event, auto-saved on the server): stars, CAPCOM's line, Continue. */
+  function showChapter(rec) {
+    if (!cockpit || !cockpit.chapter) return;
+    if (cockpit.menuOpen) closeMenu(false);
+    chapterRec = rec; chapterWas = mclock.started && !mclock.paused;
+    mclock.hold(false); mclock.pause(); cockpit.clock(mclock.state);
+    cockpit.chapter(rec);
+    radio("capcom", rec.capcom);
+    say(`Chapter ${rec.n} done. ${rec.count} of 3 stars. ${rec.capcom}`, null, { priority: 4 });
+  }
+  function chapterGo() {
+    if (!cockpit || !cockpit.chapterOpen) return false;
+    const rec = chapterRec; cockpit.chapter(null); chapterRec = null;
+    if (rec && rec.last) { showDebrief(); return true; }
+    if (chapterWas || !mclock.started) mclock.play();
+    chapterWas = false; cockpit.clock(mclock.state); renderCard();
+    return true;
+  }
+
   /** Skip to next event: the sim runs until something happens (at most a day), then the clock carries on. */
   async function skipEvent() {
     if (!state || state.over) return;
@@ -605,6 +710,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       onEndShift: () => endShift(),
       onDebrief: () => showDebrief(),
       onClock: a => { const [k, v] = String(a).split(":"); clockAction(k, v); },
+      onMenu: (a, v) => menuAction(a, v),
+      onChapter: () => chapterGo(),
       onTask: b => taskButton(b),
       onWhy: c => sayWhy(c),
     });
@@ -735,7 +842,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     say(r.say);
   }
 
-  function applyState(s, keepPrev) { if (!s) return; if (testForce && s.env) { s.env.storm = testForce.storm; s.alerts = [...new Set([...(s.alerts || []), "dose_rate_high"])]; }
+  function applyState(s, keepPrev) { if (!s) return;
+    { // [polish 2] a chapter just ended (on any path: the clock, a skip, an order, an end-shift, the session): its card
+      const done = (s.chapter && s.chapter.done) || [];
+      if (done.length > chaptersSeen) { const rec = done[done.length - 1]; chaptersSeen = done.length;
+        if (!s.over && !practice) setTimeout(() => { if (screen === "hud" && state && !state.over) showChapter(rec); }, 0); } } if (testForce && s.env) { s.env.storm = testForce.storm; s.alerts = [...new Set([...(s.alerts || []), "dose_rate_high"])]; }
     if (!keepPrev && state) prev = prev || state; state = s;
     // [polish wave 2] time plays itself: the first order of the mission starts the clock (no separate "press Play" job)
     if (screen === "hud" && !mclock.started && !tour.active && !s.over && (s.mission_time_h || 0) === 0 && s.acted && s.acted.allocate) mclock.play();
@@ -797,8 +908,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (/^(show me around|give me the tour)$/.test(w)) return replayTour();
     if (/^(help|what do i do( now| next)?|what should i do|im lost|i am lost)$/.test(w)) return nav("help");
     if (/^(skip|jump)( ahead| forward| to (the )?next( event| thing| job)?)$|^fast forward$|^next event$/.test(w)) { radio("kid", text); await skipEvent(); return true; }
+    // [polish 2] "pause" opens the pause menu (it holds the clock); "pause the clock" only holds it
+    if (/^(pause|pause( the)? game|pause it|time out|menu|(open )?(the )?(pause )?menu)$/.test(w)) { radio("kid", text); return openMenu("voice"); }
     if (/^(pause|stop|freeze|hold)( the)?( clock| time| game)?$|^pause it$|^time out$/.test(w) && w !== "stop") { radio("kid", text); return clockAction("pause"); }
-    if (/^((start|resume|run|unpause)( the)? (clock|time)|resume|unpause|play)$/.test(w)) { radio("kid", text); return clockAction("play"); }
+    if (/^((start|resume|run|unpause)( the)? (clock|time)|resume|unpause|play)$/.test(w)) { radio("kid", text); if (cockpit && cockpit.menuOpen) return closeMenu(true); return clockAction("play"); }
+    if (/^restart( the)? shift$/.test(w)) { radio("kid", text); return restartShift(); }
     { const m = w.match(/^(time ?warp|warp)( speed)?( (one|two|four|1|2|4))?( x| times)?$/); if (m) { radio("kid", text); return clockAction("warp", { one: 1, two: 2, four: 4 }[m[4]] || (m[4] ? +m[4] : undefined)); } }
     if (/^(do it|go|ok do it|lets do it)$/.test(w) && doTaskStep()) { radio("kid", text); return true; }
     if (/^(center|centre|recenter|recentre|look forward|look ahead|face forward|(center|centre|reset) (the )?view)$/.test(w) && cockpit && cockpit.recenter) { cockpit.recenter(); return true; }
@@ -1069,7 +1183,13 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (tour.active && (intent === "skip_tour" || intent === "decline_offer")) { tour.end(false); return true; }
     if (intent === "cabin_tour") return replayTour();
     if (intent === "recenter" && screen === "hud" && cockpit && cockpit.recenter) { cockpit.recenter(); return true; }
+    if (screen === "hud" && !tour.active && cockpit && cockpit.chapterOpen) {   // [polish 2] the chapter card owns yes / next
+      if (["accept_offer", "yes", "next", "start"].includes(intent)) return chapterGo();
+      if (intent === "debrief") { cockpit.chapter(null); showDebrief(); return true; }
+    }
+    if (screen === "hud" && !tour.active && cockpit && cockpit.menuOpen && ["accept_offer", "yes", "start"].includes(intent)) return closeMenu(true);
     if (screen === "hud" && !tour.active) {
+      if (intent === "pause_menu") return openMenu();
       if (intent === "skip_event") { skipEvent(); return true; }
       if (intent === "time_pause") return clockAction("pause");
       if (intent === "time_resume") return clockAction("play");
@@ -1122,7 +1242,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       case "task_step": return doTaskStep();
       case "time_toggle": return clockAction("toggle");
       case "time_warp": return clockAction("warp", arg && arg.warp);
-      case "skip_event": skipEvent(); return true;
+      case "skip_event": if (cockpit.menuOpen || cockpit.chapterOpen) return true; skipEvent(); return true;
+      case "pause_menu": return openMenu();
+      case "time_ff": return clockAction("ff", !!(arg && arg.on));
       case "why": return openWhy(arg && (arg.gauge || arg.arg), "key");
       default: return nav(name, arg);
     }
@@ -1134,6 +1256,20 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // The cabin's look / panels / next-prev / yes-no reach missionUI.intent() through the shell's defaults
   // (input/defaults.js, priority 0) and router decisions through shellNav → nav(). Here (priority 10) only what the
   // defaults don't cover: the site picker's next / prev / yes, the debrief's yes, and direct Houston / end shift.
+  // [polish 2] hold F to fast-forward (keyup lets go); a held key's repeats are ignored, and typing never triggers it
+  if (typeof window !== "undefined") {
+    const typing = t => !!(t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName)));
+    let fHeld = false;
+    addEventListener("keydown", e => {
+      if (e.key !== "f" && e.key !== "F") return;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || typing(e.target) || screen !== "hud" || !state || state.over) return;
+      if (cockpit && (cockpit.menuOpen || cockpit.chapterOpen)) return;
+      fHeld = true; clockAction("ff", true);
+    }, true);   // capture: the shell's key layer stops letters it doesn't map from bubbling
+    const letGo = () => { if (fHeld) { fHeld = false; clockAction("ff", false); } };
+    addEventListener("keyup", e => { if (e.key === "f" || e.key === "F") letGo(); }, true);
+    addEventListener("blur", letGo);
+  }
   const onBus = {
     next: () => screen === "brief" ? (stepSite(1), true) : false,
     prev: () => screen === "brief" ? (stepSite(-1), true) : false,
@@ -1143,7 +1279,17 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     task_step: () => screen === "hud" ? intent("task_step") === true : false,
     time_toggle: () => screen === "hud" ? clockAction("toggle") : false,
     time_warp: a => screen === "hud" ? clockAction("warp", a && a.warp) : false,
-    skip_event: () => screen === "hud" && !(state && state.over) ? (skipEvent(), true) : false,
+    skip_event: () => screen === "hud" && !(state && state.over) ? ((cockpit && (cockpit.menuOpen || cockpit.chapterOpen)) || skipEvent(), true) : false,
+    pause_menu: () => openMenu(),
+    time_ff: a => screen === "hud" ? clockAction("ff", !!(a && a.on)) : false,
+    // [polish 2] Esc / B at the seat (nothing else open: keys.js "back" passed it on) opens the pause menu; with the
+    // menu or a chapter card up it closes it
+    back: (a, ev) => {
+      if (screen !== "hud" || !cockpit || tour.active) return false;
+      if (cockpit.chapterOpen) return chapterGo();
+      if (cockpit.menuOpen) return closeMenu(true);
+      return ev && ["keyboard", "gamepad"].includes(ev.source) ? openMenu() : false;
+    },
     why: (a, ev) => screen === "hud" ? openWhy(a && (a.gauge || a.arg), ev && ev.source === "voice" ? "voice" : "key") : false,   // "why is power low?", the I key
     // an open palm (stop) also holds the clock; it never consumes the intent (speech still stops)
     stop: () => { if (screen === "hud" && mclock.running) clockAction("pause"); return false; },
@@ -1152,7 +1298,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const onTour = { next: () => tour.next(), yes: () => tour.next(), accept_offer: () => tour.next(), skip_tour: () => tour.end(false), decline_offer: () => tour.end(false) };
   const loadBus = busMods["../input/intents.js"];
   if (loadBus) loadBus().then(m => {
-    Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, a => fn(a) === true, { priority: 10 }));
+    Object.entries(onBus).forEach(([n, fn]) => m.onIntent(n, (a, ev) => fn(a, ev) === true, { priority: 10 }));
     Object.entries(onTour).forEach(([n, fn]) => m.onIntent(n, () => (tour.active ? fn() === true : false), { priority: 20 }));
     ["skip_tour", "cabin_tour", "help"].forEach(n => m.onIntent(n, a => nav(n, a && a.arg) === true, { priority: 10 }));
     // "what can I do" (the a11y path) in the cabin answers with the job first
@@ -1168,7 +1314,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     close: src => tour.end(false, src) });
   registerFlow({ name: "mission_clock", rank: 40, keys: false,
     active: () => screen === "hud" && !tour.active && !!state && !state.over && mclock.started && mclock.paused, paused: () => true,
-    pause: () => true, resume: src => { fl("mission_clock", "resume", src); return clockAction("play") !== false; } });
+    pause: () => true, resume: src => { fl("mission_clock", "resume", src);
+      if (cockpit && cockpit.chapterOpen) return chapterGo();   // [polish 2] "continue" on a chapter card / the menu
+      if (cockpit && cockpit.menuOpen) return closeMenu(true);
+      return clockAction("play") !== false; } });
   registerFlow({ name: "mission_paused", rank: 40, keys: false,
     active: () => screen === "debrief" && !!state && !state.over && !pendingWipe, paused: () => true,   // a wipe confirm owns yes
     pause: () => true, resume: src => { fl("mission_paused", "resume", src); showHud(); return true; } });

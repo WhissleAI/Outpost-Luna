@@ -88,8 +88,8 @@ export function createCabin(root, o = {}) {
       ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock controls" data-state="paused">
         <span class="cb-state" id="cbState"><i aria-hidden="true"></i><span id="cbHeld" role="status" aria-live="polite"></span></span>
         <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
-        <span class="cb-warps" role="group" aria-label="Time warp">${[1, 2, 4].map(w => `<button type="button" class="cb-tbtn cb-warp" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time warp ${w} times">${w}×</button>`).join("")}</span>
-        <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event">${ic("next", 16)}<span>Skip ahead</span></button>
+        <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event. Hold to fast-forward." title="Tap: skip ahead (E). Hold: fast-forward (hold F)">${ic("next", 16)}<span>Skip ahead</span></button>
+        <button type="button" class="cb-tbtn cb-menub" id="cbMenuBtn" aria-haspopup="dialog" aria-label="Menu: speed, restart, settings" title="Menu (Esc)">${ic("menu", 16)}<span>Menu</span></button>
       </div>`}
       ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
     </header>
@@ -173,6 +173,28 @@ export function createCabin(root, o = {}) {
       <div class="cb-capwrap"><p class="cb-caption" id="cbCap"><b id="cbCapWho">CAPCOM</b> <span id="cbCapTxt">Standing by.</span></p><div class="cb-capslot" id="cbCapSlot"></div></div>
       <div class="cb-askslot" id="cbAskSlot" role="group" aria-label="Talk to CAPCOM"></div>
     </section>
+    ${o.mode === "ride" ? "" : `<div class="cb-pm" id="cbMenu" hidden role="dialog" aria-modal="true" aria-labelledby="cbMenuT">
+      <div class="cb-pm-box">
+        <header><p class="cb-pm-eye" id="cbMenuEye"></p><h2 id="cbMenuT">Paused</h2></header>
+        <button type="button" class="cb-pm-b is-hot" data-m="resume">${ic("play", 20)}<span>Resume</span><kbd>Esc</kbd></button>
+        <div class="cb-pm-speed" role="group" aria-label="Time speed"><span>${ic("speed", 20)}Time speed</span>
+          <span class="cb-pm-seg">${[1, 2, 4].map(w => `<button type="button" class="cb-pm-sp" data-m="speed" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time speed ${w} times">${w}×</button>`).join("")}</span></div>
+        <button type="button" class="cb-pm-b" data-m="restart">${ic("replay", 20)}<span>Restart shift</span><small id="cbMenuShift"></small></button>
+        <button type="button" class="cb-pm-b" data-m="settings">${ic("settings", 20)}<span>Settings</span></button>
+        <button type="button" class="cb-pm-b" data-m="quit">${ic("home", 20)}<span>Quit to hub</span><small>Your mission saves</small></button>
+        <p class="cb-pm-tip">Hold <kbd>F</kbd>, hold <b>Skip ahead</b> or hold <kbd>RT</kbd> to fast-forward.</p>
+      </div>
+    </div>
+    <div class="cb-ch" id="cbChapter" hidden role="dialog" aria-modal="true" aria-labelledby="cbChT">
+      <div class="cb-ch-box">
+        <p class="cb-ch-eye" id="cbChEye"></p>
+        <h2 id="cbChT"></h2>
+        <ul class="cb-ch-stars" id="cbChStars" aria-label="Stars"></ul>
+        <p class="cb-ch-cap"><b>CAPCOM</b> <span id="cbChCap"></span></p>
+        <p class="cb-ch-saved">${ic("check", 16)}<span>Saved. You can quit and pick up here.</span></p>
+        <button type="button" class="cb-pm-b is-hot" id="cbChGo">${ic("play", 20)}<span id="cbChGoT">Next chapter</span><kbd>Enter</kbd></button>
+      </div>
+    </div>`}
   </div>`;
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
@@ -263,8 +285,15 @@ export function createCabin(root, o = {}) {
   // ---- the live clock: play / pause, time warp, skip to next event (mission/clock.js owns the timing) ----
   if (q("#cbPlay")) {
     q("#cbPlay").onclick = () => cb.onClock("toggle");
-    root.querySelectorAll(".cb-warp").forEach(b => b.onclick = () => cb.onClock("warp:" + b.dataset.warp));
-    q("#cbSkip").onclick = () => cb.onClock("skip");
+    // [polish 2] Skip ahead: a tap skips to the next event; a hold fast-forwards until you let go
+    const sk = q("#cbSkip"); let holdT = 0, held = false, swallow = false;
+    const up = () => { clearTimeout(holdT); if (held) { held = false; swallow = true; cb.onClock("ff:off"); } };
+    sk.addEventListener("pointerdown", e => { if (e.button) return; swallow = false; holdT = setTimeout(() => { held = true; cb.onClock("ff:on"); }, 320); });
+    ["pointerup", "pointerleave", "pointercancel", "blur"].forEach(ev => sk.addEventListener(ev, up));
+    sk.onclick = () => { if (swallow) { swallow = false; return; } cb.onClock("skip"); };   // a hold's release isn't a tap
+    q("#cbMenuBtn").onclick = () => (cb.onMenu || (() => {}))("open");
+    root.querySelectorAll("#cbMenu [data-m]").forEach(b => b.onclick = () => (cb.onMenu || (() => {}))(b.dataset.m, b.dataset.warp));
+    q("#cbChGo").onclick = () => (cb.onChapter || (() => {}))("go");
   }
   if (q("#cbProg")) q("#cbProg").addEventListener("click", e => { if (e.target.closest(".cb-logbtn")) toggleLog(); });
   // the Now panel folds to its one line (title + the step), remembered on this device
@@ -546,8 +575,9 @@ export function createCabin(root, o = {}) {
     p.innerHTML = `${ic(on || waiting ? "pause" : "play", 16)}<span>${on || waiting ? "Pause" : c.started ? "Resume" : "Play"}</span>`;
     p.setAttribute("aria-label", on || waiting ? "Pause the clock" : c.started ? "Resume the clock" : "Start the clock");
     p.classList.toggle("is-on", !!on);
-    root.querySelectorAll(".cb-warp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.warp === c.warp)));
-    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "Ready" : c.paused ? "Paused" : `Running ${c.warp}×`;
+    root.querySelectorAll(".cb-pm-sp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.warp === c.warp)));
+    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "Ready" : c.paused ? "Paused" : c.ff ? "Fast-forward" : `Running ${c.warp}×`;
+    q("#cbSkip").classList.toggle("is-ff", !!c.ff);
     q("#cbTime").dataset.state = on ? "run" : waiting ? "held" : "paused";
     const cab = root.querySelector(".cb"); if (cab) cab.dataset.clock = on ? "run" : waiting ? "held" : "paused";
   }
@@ -590,7 +620,7 @@ export function createCabin(root, o = {}) {
     const W = l => String(l).toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !["to", "the", "an", "or", "and"].includes(w));
     return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
   }
-  const DECKHINT = { skip: "Skip ahead is in the clock bar (E).", warp: "Time warp is in the clock bar (W).", play: "Play is in the clock bar (K)." };
+  const DECKHINT = { skip: "Skip ahead is in the clock bar (E).", warp: "Time speed is in the menu (Esc), or press W.", play: "Play is in the clock bar (K)." };
   const NOWSAY = ws => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${ws.map((_, i) => i + 1).join(" or ")}.`;
   /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
   function card(c, { ack = null, cadet = false } = {}) {
@@ -647,6 +677,11 @@ export function createCabin(root, o = {}) {
     for (const c of ["is-tight", "is-tighter", "is-tightest"]) { if (room() >= 0) break; el.classList.add(c); }
   }
   addEventListener("resize", () => requestAnimationFrame(fitNow));
+  /** An overlay (menu, chapter card) owns focus: the cabin behind it goes inert, so arrows and Tab stay on it. */
+  function trap(on) {
+    const any = on || [q("#cbMenu"), q("#cbChapter")].some(n => n && !n.hidden);
+    root.querySelectorAll(".cb > :not(.cb-pm):not(.cb-ch)").forEach(n => { n.inert = !!any; });
+  }
   return { update, telemetry, log, calling, busy, setView, alert, get view() { return view; }, get state() { return st; },
     /** Panels: open("power" | "habitat" | "comm"), back(). No-ops in the flat layout. */
     openPanel: id => c3 && c3.open(id), seat: () => c3 && c3.back(),
@@ -671,7 +706,7 @@ export function createCabin(root, o = {}) {
       const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
         goals: "#cbObj", start: '[data-du="0"], #cbEnd', end_shift: "#cbEnd", shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
         night: ".cb-sk.is-night", houston: "#cbPtt", rover: `.cb-rvb[data-task="${v}"]`, load: '[data-du="0"]',
-        play: "#cbPlay", skip: "#cbSkip", warp: '.cb-warp[data-warp="4"]', task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
+        play: "#cbPlay", skip: "#cbSkip", warp: "#cbMenuBtn", task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
       // [flows] "Time warp?" glows the 4× button, not the whole 1× / 2× / 4× group: a novice pressing the glowing group
       // toggled between 1× and 2× forever (tools/play_mission.py at 1440×879: "All steady. Time warp?" never moved on)
       const nodes = sel ? [...root.querySelectorAll(sel)] : [];
@@ -692,6 +727,29 @@ export function createCabin(root, o = {}) {
     /** Open the "Why?" card for a gauge (power | battery | life_support | dose | heaters | shields | rover); returns it. */
     why: (id, from = "voice") => openWhy(id, from), whyClose: () => closeWhy(), get whyOpen() { return whyId; },
     clock: c => paintTime(c),
+    /** [polish 2] The pause menu: open with {eye, shift} (day / chapter line, the shift Restart goes back to), or close. */
+    menu(open, info = {}) {
+      const m = q("#cbMenu"); if (!m) return false;
+      m.hidden = !open; trap(open);
+      if (open) { q("#cbMenuEye").textContent = info.eye || ""; q("#cbMenuShift").textContent = info.shift || "";
+        requestAnimationFrame(() => { const f = m.querySelector('[data-m="resume"]'); if (f) f.focus({ preventScroll: true }); }); }
+      return true;
+    },
+    get menuOpen() { const m = q("#cbMenu"); return !!(m && !m.hidden); },
+    /** [polish 2] The chapter card: {n, of, title, days, stars:{safe, powered, science}, capcom, last}; null closes. */
+    chapter(rec) {
+      const el = q("#cbChapter"); if (!el) return false;
+      el.hidden = !rec; trap(!!rec); if (!rec) return true;
+      q("#cbChEye").textContent = `Chapter ${rec.n} of ${rec.of} · Days ${rec.days[0]}–${rec.days[1]}`;
+      q("#cbChT").textContent = `${rec.title}: ${rec.count} of 3 stars`;
+      const S = [["safe", "Safe", "Crew dose and air in range"], ["powered", "Powered", "Battery never under 20%"], ["science", "Science", "Science sent home"]];
+      q("#cbChStars").innerHTML = S.map(([k, n, d]) => `<li class="${rec.stars[k] ? "is-on" : ""}"><span class="cb-ch-star">${ic("star", 34)}</span><b>${n}</b><small>${rec.stars[k] ? d : "Missed"}</small></li>`).join("");
+      q("#cbChCap").textContent = rec.capcom || "";
+      q("#cbChGoT").textContent = rec.last ? "Open your debrief" : "Next chapter";
+      requestAnimationFrame(() => q("#cbChGo").focus({ preventScroll: true }));
+      return true;
+    },
+    get chapterOpen() { const el = q("#cbChapter"); return !!(el && !el.hidden); },
     /** The window's frame between whole hours (the live clock's `live` telemetry): the clock reads smoothly. */
     frame: f => { if (st && f && f.mission_time_h != null) paintClock(st, f.mission_time_h); },
     moment: b => moment(b),

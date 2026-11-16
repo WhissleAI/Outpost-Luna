@@ -57,7 +57,8 @@ export function createPadReader({ delay = 380, repeat = () => 150 } = {}) {
 export function installGamepad({ settings = () => ({}), repeatMs = () => 150, inCabin = () => false, onConnect = () => {}, setMode = () => {} } = {}) {
   if (typeof navigator === "undefined" || !navigator.getGamepads) return null;
   const reader = createPadReader({ repeat: repeatMs });
-  let raf = 0, active = false;
+  let raf = 0, active = false, rtAt = 0, rtFF = false;
+  const FF_HOLD_MS = 320;   // [polish 2] in the cabin RT is "tap: skip ahead, hold: fast-forward" (like the Skip button)
   const pads = () => [...(navigator.getGamepads() || [])].filter(Boolean);
   function frame() {
     raf = 0;
@@ -66,8 +67,19 @@ export function installGamepad({ settings = () => ({}), repeatMs = () => 150, in
     const acts = reader.step(f, performance.now());
     if (acts.length) setMode();
     acts.forEach(a => {
-      if (a.intent) { if ((a.intent === "skip_event" || a.intent === "time_warp") && !inCabin()) return; emitIntent(a.intent, a.args, "gamepad"); return; }   // the triggers zoom outside the cabin
-      if ("zoom" in a) { if (!inCabin()) emitIntent("zoom_rate", { phase: a.end ? "end" : a.start ? "start" : "move", rate: a.zoom }, "gamepad"); return; }
+      if (a.intent) {
+        if ((a.intent === "skip_event" || a.intent === "time_warp") && !inCabin()) return;   // the triggers zoom outside the cabin
+        if (a.intent === "skip_event") { rtAt = performance.now(); rtFF = false; return; }   // decided on release (below)
+        if (a.intent === "settings" && inCabin()) { emitIntent("pause_menu", {}, "gamepad"); return; }   // Start: the pause menu
+        emitIntent(a.intent, a.args, "gamepad"); return;
+      }
+      if ("zoom" in a) {
+        if (!inCabin()) { emitIntent("zoom_rate", { phase: a.end ? "end" : a.start ? "start" : "move", rate: a.zoom }, "gamepad"); return; }
+        if (!rtAt) return;
+        if (a.end) { if (rtFF) emitIntent("time_ff", { on: false }, "gamepad"); else emitIntent("skip_event", {}, "gamepad"); rtAt = 0; rtFF = false; return; }
+        if (!rtFF && a.zoom > 0 && performance.now() - rtAt >= FF_HOLD_MS) { rtFF = true; emitIntent("time_ff", { on: true }, "gamepad"); }
+        return;
+      }
       if (inCabin()) emitIntent("look", { x: a.look.x, y: a.look.y }, "gamepad");   // the stick is the look offset; centre recentres
       else emitIntent("spin", { phase: a.end ? "end" : "move", x: a.look.x, y: a.look.y }, "gamepad");   // the same rate feel as the fist
     });

@@ -647,10 +647,62 @@ def _good_calls(m):
     g["calls_seen"] = len(m.good_calls)
 
 
+# ---- chapters (docs/MISSION_POLISH_SPEC.md): five ~2-day chapters, each ends on a card with three stars -----------------
+CHAPTER_H = 48
+CHAPTERS = ("First light", "Settling in", "Holding steady", "The long haul", "Homeward")
+STAR_SAFE_DOSE = sim.DOSE_LIMIT / 5          # mSv: the crew stays under its share of the 10-day limit
+STAR_SAFE_LIFE = 40                          # % air and water never dips under this
+STAR_POWER_MIN = 20                          # % battery never dips under this
+STAR_SCIENCE = sim.SCIENCE_GOAL / 10         # science sent home in the chapter (half the even pace: a fair bar)
+STAR_TIPS = {"safe": "Shelter early next time. The crew's dose climbed.",
+             "powered": "The battery dipped low. Night mode sooner saves it.",
+             "science": "Send science home whenever Earth is up."}
+
+
+def _ch(m) -> dict:
+    g = _gp(m)
+    c = g.get("chapter")
+    if c is None:
+        c = g["chapter"] = {"n": 0, "dose0": m.dose, "sent0": m.science_sent, "min_power": m.power, "min_life": m.life}
+        g["chapters"] = []
+    return c
+
+
+def chapter_of(t_h: int) -> int:
+    return min(len(CHAPTERS) - 1, t_h // CHAPTER_H)
+
+
+def _chapters(m, out):
+    """Track the chapter's lows; when its two days end (or the mission does), score it and say so (a "chapter" event,
+    which stops a skip: the cabin shows the chapter card and the game auto-saves, registry.py)."""
+    c = _ch(m)
+    c["min_power"], c["min_life"] = min(c["min_power"], m.power), min(c["min_life"], m.life)
+    end = (c["n"] + 1) * CHAPTER_H
+    if m.t_h < end and not m.over:
+        return
+    done = _gp(m)["chapters"]
+    if c["n"] >= len(CHAPTERS) or (done and done[-1]["last"]):
+        return
+    stars = {"safe": m.dose - c["dose0"] <= STAR_SAFE_DOSE and c["min_life"] >= STAR_SAFE_LIFE and
+             m.outcome in (None, "survived"),
+             "powered": c["min_power"] >= STAR_POWER_MIN,
+             "science": m.science_sent - c["sent0"] >= STAR_SCIENCE}
+    n = sum(stars.values())
+    miss = next((k for k in ("safe", "powered", "science") if not stars[k]), None)
+    line = ("Three stars. Textbook flying, Outpost Luna." if n == 3 else STAR_TIPS[miss])
+    rec = {"n": c["n"] + 1, "of": len(CHAPTERS), "title": CHAPTERS[c["n"]], "days": [c["n"] * 2 + 1, c["n"] * 2 + 2],
+           "stars": stars, "count": n, "capcom": line, "t_h": m.t_h, "last": c["n"] + 1 >= len(CHAPTERS) or m.over}
+    _gp(m)["chapters"].append(rec)
+    _ev(m, out, "chapter", f"Chapter {rec['n']} done: {n} of 3 stars. {line}", chapter=rec)
+    _gp(m)["chapter"] = {"n": c["n"] + 1, "dose0": m.dose, "sent0": m.science_sent, "min_power": m.power,
+                         "min_life": m.life}
+
+
 # ---- the sim's hooks -------------------------------------------------------------------------------------------------
 def update(m, out: list):
     """Called by sim._tick after every mission hour (and after each order, with no time passing)."""
     _gp(m)
+    _chapters(m, out)
     _beats(m, out)
     _check(m, out)
     if not m.over:
@@ -867,6 +919,8 @@ def view(m) -> dict:
                  "arc": [{"id": b, "title": BEATS[b][0]} for b in ARC]}
     return {"task": cur, "tasks_waiting": max(0, len(act) - 1), "story": story, "mission_log": g["log"][-30:],
             "ack": g.get("ack"),
+            "chapter": {"n": min(_ch(m)["n"], len(CHAPTERS) - 1) + 1, "of": len(CHAPTERS),
+                        "title": CHAPTERS[min(_ch(m)["n"], len(CHAPTERS) - 1)], "done": g.get("chapters", [])},
             "progress": {"day": min(m.t_h // 24 + 1, 10), "days_done": round(min(m.t_h, sim.MISSION_H) / 24, 1),
                          "days_total": sim.MISSION_H // 24, "science_sent": round(m.science_sent, 1),
                          "science_goal": sim.SCIENCE_GOAL, "ice": m.ice_runs, "ice_goal": sim.ICE_GOAL}}

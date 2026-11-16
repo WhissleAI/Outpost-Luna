@@ -13,6 +13,12 @@ from app import models_client
 
 
 @pytest.fixture(autouse=True)
+def mission_saves(tmp_path_factory, monkeypatch):
+    """[polish 2] Every mission auto-saves (app/mission/registry.py): tests save into a temp folder, never data/."""
+    monkeypatch.setenv("MISSION_SAVE_DIR", str(tmp_path_factory.mktemp("saves")))
+
+
+@pytest.fixture(autouse=True)
 def no_embedder(monkeypatch, request):
     """Tests run without the model server's embedder (rules + card aliases only) unless a test patches embed itself."""
     if "real_embedder" in request.keywords:

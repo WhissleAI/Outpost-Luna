@@ -19,7 +19,8 @@ class StartReq(BaseModel):
     site: str
     seed: int | None = None
     roles: list[str] | None = None
-    level: Literal["cadet", "commander", "engineer"] = "cadet"   # Settings (docs/VOICES.md): the band, ages 7-9 / 10-12; engineer = Commander in real units
+    level: Literal["cadet", "commander", "engineer"] = "cadet"
+    practice: bool = False   # [polish 2] the academy's practice shift: never auto-saved over the real mission   # Settings (docs/VOICES.md): the band, ages 7-9 / 10-12; engineer = Commander in real units
 
 
 class CommandReq(BaseModel):
@@ -49,10 +50,30 @@ def mission_sites():
 @router.post("/api/mission/start")
 def mission_start(req: StartReq):
     try:
-        m = registry.create(req.site, req.seed, req.roles, level=req.level)
+        m = registry.create(req.site, req.seed, req.roles, level=req.level, save=not req.practice)
     except KeyError:
         raise HTTPException(404, f"unknown site {req.site!r}")
     return sim.to_state(m)
+
+
+@router.get("/api/mission/saved")
+def mission_saved():
+    """[polish 2] The chapter auto-save, if one is worth continuing (the hub's Continue)."""
+    return {"saved": registry.saved()}
+
+
+@router.post("/api/mission/resume")
+def mission_resume():
+    m = registry.resume()
+    if m is None:
+        raise HTTPException(404, "no saved mission")
+    return sim.to_state(m)
+
+
+@router.post("/api/mission/{mid}/restart_shift")
+def mission_restart_shift(mid: str):
+    _mission(mid)
+    return registry.restart_shift(mid)
 
 
 @router.get("/api/mission/{mid}")
