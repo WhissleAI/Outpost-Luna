@@ -16,7 +16,7 @@ import { createCabin } from "../mission/cabin.js";   // [ride] the check ride si
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER } from "../story.js";
-import { isAvailable, openVideo, getVideo, watchLabel } from "../media/video.js";   // [media] the patch-screen video
+import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, coreLessons } from "../explorer.js";   // explorer lessons open after missions
 import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
@@ -332,6 +332,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <section class="a-step a-prep" aria-live="polite">
           ${p.grown_up ? `<p class="a-prep-tag">${icon("astronaut", { size: 16 })}${esc(PREP.grownUp)}</p>` : ""}
           <ol class="a-prep-steps">${p.steps.map(t => `<li>${esc(t)}</li>`).join("")}</ol>
+          <div class="a-prep-videos" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>
           <p class="a-how a-do">${esc(PREP.how)}</p>
         </section>
       </div>
@@ -342,6 +343,32 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.querySelector("#aPrepSkip").onclick = () => prepDone(false);
     panel.querySelector("#aPrepDone").focus({ preventScroll: true });
     say([PREP.intro, ...(p.grown_up ? [PREP.grownUpSay] : []), ...p.steps], { situation: "lesson_brief" });
+    fillPrepVideos(p);
+  }
+  /** [diy videos] "Watch how": the catalog's videos for this task (entry.prep === task id), NASA first, each shown only
+   *  when it can play now (online: never a dead button). A non-NASA video says whose it is and "Not from NASA". */
+  let prepVideoIds = [];
+  async function fillPrepVideos(p) {
+    prepVideoIds = [];
+    const box = panel.querySelector("#aPrepVideos"); if (!box) return;
+    let list = [];
+    try { list = (await videoCatalog()).filter(v => v.prep === p.id).sort((a, b) => (b.nasa !== false) - (a.nasa !== false)); } catch (e) { return; }
+    const ok = [];
+    for (const v of list) if ((await isAvailable(v.id)) !== "offline") ok.push(v);
+    if (!box.isConnected || view !== "prep" || !ok.length) return;
+    prepVideoIds = ok.map(v => v.id);
+    box.innerHTML = ok.map(v => `<button type="button" class="btn a-prep-video" data-v="${esc(v.id)}">${icon("play", { size: 16 })}<span>${esc(PREP.watch)} <small>${esc(watchLabel(v).replace(/^Watch\s*/, ""))}</small></span>
+        <small class="a-prep-src">${esc(prepVideoSource(v))}</small></button>`).join("");
+    box.hidden = false;
+    box.querySelectorAll("[data-v]").forEach(b => b.onclick = () => watchPrepVideo(b.dataset.v));
+  }
+  function prepVideoSource(v) { return v.nasa === false ? `${v.channel || v.credit} · ${PREP.notNasa}` : (v.channel || v.credit); }
+  function watchPrepVideo(id) {
+    const vid = id || prepVideoIds[0];
+    if (!vid) { say(PREP.noVideo); return false; }
+    flowLog({ flow: "prep", event: "video", source: id ? "tap" : "voice" });
+    stop(); openVideo(vid, { context: "prep" });
+    return true;
   }
   function prepDone(done) {
     if (view !== "prep" || !L) return;
@@ -708,6 +735,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (["prep_done", "next", "start", "accept_offer", "yes"].includes(intent)) { prepDone(true); return true; }
       if (["prep_skip", "decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
       if (intent === "prep_wait") { flowLog({ flow: "prep", event: "pause", source: "voice" }); say(PREP.waitSay); return true; }
+      if (intent === "prep_watch") { watchPrepVideo(); return true; }
       if (intent === "prep_help" || intent === "repeat_step") { flowLog({ flow: "prep", event: "repeat", source: "voice" }); say(L.prep.steps); return true; }
     }
     if (view === "lesson" && L && !waitingNext && L.steps[i].accept.type === "video" && stepState.video) {   // [media] next skips
@@ -756,6 +784,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (/\b(done|did it|finished|all done|ready|yes|yeah|next)\b/.test(t)) { prepDone(true); return true; }
       if (/\b(skip|no|nope|not now|later)\b/.test(t)) { prepDone(false); return true; }
       if (/^(continue|resume|keep going|go on|carry on|i m back|we re back)$/.test(t)) { flowLog({ flow: "prep", event: "repeat", source: "typed" }); say(L.prep.steps); return true; }
+      if (/\b(show (me|us) how|watch (how|the video|a video)|play (the|a) video|show (me|us) the video)\b/.test(t)) { watchPrepVideo(); return true; }
       say(PREP.ask); return true;
     }
     if (view !== "lesson") return false;

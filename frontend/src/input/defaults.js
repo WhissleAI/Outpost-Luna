@@ -175,7 +175,7 @@ export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", 
   "resume", "pause",     // [flows] the router's flow words (turn_router FLOW_NAV); flows.js takes them first
   // [flows] Mission prep's own words (turn_router PREP_CMDS): "done", "skip", "wait", "help" were decided by the router
   // and then dropped here (not in this set), so voice never moved the prep card
-  "prep_done", "prep_skip", "prep_wait", "prep_help"]);
+  "prep_done", "prep_skip", "prep_wait", "prep_help", "prep_watch"]);
 
 /** Keyboard source: Alt+→ / Alt+← next / previous, Alt+Y / Alt+N yes / no, Alt+. stop. Never while typing in a field. */
 export function installKeyboardIntents() {

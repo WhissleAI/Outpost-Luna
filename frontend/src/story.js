@@ -361,6 +361,11 @@ export const PREP = {
   /** "wait", "hold on": the card stays up */
   waitSay: "Take your time. Tell me when it's ready.",
   skipSay: "No problem. On to the lesson.",
+  /** [diy videos] the "Watch how" buttons (online only), and their source line */
+  watch: "Watch how",
+  watchGroup: "Watch how it's done",
+  notNasa: "Not from NASA",
+  noVideo: "No video for this one right now. Tell me when it's ready.",
 };
 
 /** First mission only, before the cabin: NASA's real plan, then ours. Shown once; Settings -> Help replays the video. */

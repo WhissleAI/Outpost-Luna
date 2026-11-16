@@ -62,7 +62,7 @@ FLOW_STATE = {"resume": "paused", "pause": "running"}
 # The screens' own intents (turn_router.VIDEO_CMDS / PREP_CMDS). video_watch stays pending: "watch" is the lesson's
 # video-step answer (step:video), not a router intent on the video screen.
 SCREEN_INTENTS = {"video": ["video_play", "video_pause", "video_stop", "video_skip"],
-                  "prep": ["prep_done", "prep_skip", "prep_wait", "prep_help"]}
+                  "prep": ["prep_done", "prep_skip", "prep_wait", "prep_help", "prep_watch"]}
 PENDING_INTENTS: dict = {}     # all merged (main 4b4b7e1)
 OFFERS = ["next_lesson", "next_step", "mission", "take_command", "fly_again", "tour", "task", "practice",
           "practice_done", "moon_base", "prep_task"]

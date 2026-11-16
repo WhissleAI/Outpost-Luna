@@ -17,10 +17,29 @@ A list of entries:
 | `file_url`, `captions_url`, `poster_url` | nasa_file only. https on a NASA host. `.srt` is converted to WebVTT once. A missing `captions_url` means the video has no captions (or NASA's file is empty) |
 | `bytes`, `sha256` | the download check (`prefetch` items must have `bytes`) |
 | `duration_s` | sets the button label ("Watch (2 min)") and the watched threshold |
-| `credit` | starts with "NASA". Shown under the player and in About → Videos |
+| `credit` | starts with "NASA" (a non-NASA video: its channel and "not from NASA"). Shown under the player and in About → Videos |
+| `nasa`, `channel` | optional; `nasa: false` marks one of the few hand-picked non-NASA videos (below) |
+| `prep` | optional, a Mission prep task id (course.json `lesson.prep.id`): the video is that task's "Watch how" |
 | `music_credit` | the NASA source credits third-party music. Such a video plays from YouTube, never as a cached file |
 | `prefetch` | pinned: downloaded on first online launch and never evicted |
 | `fallback` | optional, a `nasa_file` id. The offline card offers it in place of this video |
+
+### "Watch how" videos for Mission prep (hand-picked, some not from NASA)
+
+A hands-on Mission prep task (the flour-and-cocoa crater, Oreo Moon phases) shows a **Watch how** button for each catalog
+video whose `prep` is that task, NASA first, and only while the computer is online (no dead buttons). Voice: "show me
+how", "watch the video" (the router's `prep_watch`; never a bare "watch", which is room talk during the task). They
+play in the same youtube-nocookie player as the NASA clips; links out still go through the grown-up gate.
+
+Non-NASA videos are allowed **by video id only**, never by channel: `app/video.py NON_NASA_YOUTUBE` maps each id to its
+channel, and `validate()` requires `nasa: false`, the matching `channel`, "not from NASA" in the credit and a `prep`
+task. Each one was checked (title and channel via YouTube oEmbed, embeddable, landscape, under 10 min, on topic).
+
+| id | video | channel | NASA | prep task |
+|---|---|---|---|---|
+| `diy_crater` | Moon Crater Making @ Home (osdOQhRhVJg, 2:06) | Astronomy in Action | no | `crater_drop` |
+| `diy_oreo_phases` | Oreo Moon Phases Activity (XeBmuY2i2fg, 0:56) | I Play With My Kids | no | `oreo_phases` |
+| `moon_phases_2025` | 2025 Moon Phases, Northern Hemisphere (RROlja1ob_4, 4:52) | NASA Goddard | yes | `oreo_phases` |
 
 `GET /api/video/catalog` serves it, and each entry also gets `cached`, `play_url`, `captions_src` and `poster_src`.
 `app/video.py validate()` checks the contract, and the tests run it. To recheck every URL and refresh the sizes and

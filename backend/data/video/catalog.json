@@ -241,5 +241,50 @@
   "prefetch": false,
   "age": "7-12",
   "fallback": "moon_base_6mo"
+ },
+ {
+  "id": "diy_crater",
+  "title": "Moon Crater Making at Home",
+  "concept": "impacts",
+  "source": "youtube",
+  "youtube_id": "osdOQhRhVJg",
+  "duration_s": 126,
+  "credit": "Astronomy in Action · not from NASA",
+  "nasa": false,
+  "channel": "Astronomy in Action",
+  "music_credit": false,
+  "prefetch": false,
+  "age": "7-12",
+  "prep": "crater_drop"
+ },
+ {
+  "id": "diy_oreo_phases",
+  "title": "Oreo Moon Phases Activity",
+  "concept": "phases",
+  "source": "youtube",
+  "youtube_id": "XeBmuY2i2fg",
+  "duration_s": 56,
+  "credit": "I Play With My Kids · not from NASA",
+  "nasa": false,
+  "channel": "I Play With My Kids",
+  "music_credit": false,
+  "prefetch": false,
+  "age": "7-12",
+  "prep": "oreo_phases"
+ },
+ {
+  "id": "moon_phases_2025",
+  "title": "2025 Moon Phases (Northern Hemisphere)",
+  "concept": "phases",
+  "source": "youtube",
+  "youtube_id": "RROlja1ob_4",
+  "duration_s": 292,
+  "credit": "NASA Goddard",
+  "nasa": true,
+  "channel": "NASA Goddard",
+  "music_credit": false,
+  "prefetch": false,
+  "age": "7-12",
+  "prep": "oreo_phases"
  }
 ]

@@ -841,6 +841,10 @@ PREP_CMDS = (
                              r"next one|next one please|we don t have (?:any |the )?\w+|maybe later|later)$")),
     ("prep_wait", re.compile(r"^(?:wait|hold on|hang on|one sec|one second|just a sec|give me a minute|give us a minute|"
                              r"not yet|we re still doing it|still going|almost)$")),
+    # [diy videos] the task's "Watch how" video (catalog entries with prep = this task), only while online
+    ("prep_watch", re.compile(r"^(?:show me how|show us how|watch how|how do you do it|watch the video|watch a video|"
+                              r"play the video|play a video|show me the video|show us the video|"
+                              r"can we watch (?:the|a) video|let s watch (?:the|a) video)$")),   # never bare "watch" ("watch this!")
     ("prep_help", re.compile(r"^(?:help|help me|i need help|what do i do|what do we do|how do (?:i|we) do this|"
                              r"say it again|say that again|again|repeat|what was it|what s next|"
                              # [flows] back from a pause: the task again ("continue" was ignored on the prep screen)
