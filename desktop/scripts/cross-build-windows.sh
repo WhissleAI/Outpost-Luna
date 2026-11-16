@@ -87,6 +87,10 @@ cmake --build desktop/build/libarc-win --config Release
 DLL=$(ls desktop/build/libarc-win/arc.dll desktop/build/libarc-win/libarc.dll 2>/dev/null | head -1 || true)
 [ -n "$DLL" ] || die "arc.dll was not produced (see the CMake output above)"
 cp "$DLL" desktop/resources/native/arc.dll
+# the pinned ONNX Runtime for Windows (onnxruntime.lock.json "windows-x64", downloaded by libarc's configure)
+[ -f desktop/build/libarc-win/onnxruntime/onnxruntime.dll ] || die "the pinned onnxruntime.dll was not downloaded"
+cp -R desktop/build/libarc-win/onnxruntime desktop/resources/native/onnxruntime
+uv run --no-project --with cffi==2.1.1 python model_server/tools/gen_bindings.py --check   # (arc.dll's ABI: checked on Windows)
 uv run --no-project python desktop/scripts/win_bundle_check.py dlls desktop/resources/native >/dev/null \
   || die "arctag.dll / arc.dll imports a DLL Windows does not have (see: python desktop/scripts/win_bundle_check.py dlls desktop/resources/native)"
 

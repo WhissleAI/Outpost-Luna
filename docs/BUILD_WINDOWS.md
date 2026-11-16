@@ -50,7 +50,7 @@ In PowerShell (a normal window, not Administrator):
 winget install --id Git.Git -e                      # Git 2.40 or newer
 winget install --id OpenJS.NodeJS.LTS -e            # Node 22 or newer (the LTS is fine)
 winget install --id astral-sh.uv -e                 # uv 0.9 or newer; it fetches its own Python 3.11
-winget install --id Kitware.CMake -e                # CMake 3.20 or newer
+winget install --id Kitware.CMake -e                # CMake 3.21 or newer (libarc's configure reads a JSON lock)
 # C compilers (about 3 GB, 10 to 20 minutes): MSVC for the Arc Tagger library, and clang-cl for libarc (the ear)
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Llvm.Clang --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset --includeRecommended"
 ```
@@ -109,7 +109,7 @@ While it works, it prints `==> [time] step n/8`. The steps match the Mac build (
 | 3 | Runs `npm ci` for the frontend, then fetches the camera-gesture runtime and models (sha256-pinned) | 1 to 2 min |
 | 4 | Sets up the embedded Python 3.11 and installs the backend and model-server packages: ONNX Runtime, the WinRT and SAPI speech packages, the Steer TTS runtime, and the Visual C++ runtime DLLs. It then builds the frontend and stages the app code, and checks that every DLL import resolves | 3 to 6 min |
 | 5 | Checks `desktop\assets.manifest.json`. No models are bundled: the app downloads them on first launch (§6) | seconds |
-| 6 | Builds `arctag.dll` (MSVC) and `arc.dll` (libarc, the ear: clang-cl or clang) with CMake | 1 to 2 min |
+| 6 | Builds `arctag.dll` (MSVC) and `arc.dll` (libarc, the ear: clang-cl or clang) with CMake. Configuring libarc downloads the pinned ONNX Runtime (`onnxruntime-win-x64-1.32.0.zip`, 97 MB, once; cached in `desktop\build\cache\onnxruntime`), checks its sha256, and the script copies `onnxruntime.dll` to `resources\native\onnxruntime\`. Then it checks the Python bindings match `arc.h` / `arctag.h` and that `arc.dll` reports the header's ABI | 1 to 3 min |
 | 7 | Runs Electron and electron-builder. This makes `dist\win-unpacked`, then compresses it into the NSIS installer | 3 to 10 min |
 | 8 | Checks the unpacked app: `win_bundle_check.py dlls`, `speech` and `runtime` (§12). Then it prints the installer path | under 1 min |
 
@@ -338,6 +338,30 @@ Add `--clobber` to replace a file that is already attached. Keep the name as it 
   Speech → Manage voices; they appear in the app within 30 s.
 - **The clang-cl build of libarc is untested.** The Mac cross-build uses mingw-w64 gcc. Report step 6's output if it
   fails.
+- **The pinned ONNX Runtime and the generated bindings (#85, #86) are untested on a Windows machine.** The Mac
+  cross-build fetches and checks the same `onnxruntime.dll`; what only a Windows build can confirm is listed just
+  below ("Engine boundary").
+
+### Engine boundary (pinned ONNX Runtime, ABI check, model checksums)
+
+After a native Windows build, please confirm and send the output:
+
+1. Step 6 prints `onnxruntime 1.32.0 (windows-x64): ...\onnxruntime\onnxruntime.dll (sha256 ok)` during libarc's
+   configure (both generators: LLVM clang + Ninja, and Visual Studio `-T ClangCL`), then
+   `C bindings match arc.h and arctag.h` and `desktop\resources\native\arc.dll: ABI 1 (matches arc.h)`.
+2. `desktop\dist\win-unpacked\resources\native\onnxruntime\` holds `onnxruntime.dll`, `onnxruntime.json`,
+   `LICENSE`, `ThirdPartyNotices.txt`, and step 8's `runtime` check says `onnxruntime.dll 1.32.0 sha256 ok`.
+3. Step 8's `dlls` check passes (the pinned `onnxruntime.dll` imports `MSVCP140.dll` / `VCRUNTIME140*.dll`; they must
+   resolve from `resources\python\`).
+4. Start the unpacked app, then `curl http://127.0.0.1:47210/health` (the models port from `ports.json`):
+   `models.arc_ear.available` is true and `models.arc_ear.engine` shows `"abi": 1`, `"ort_source": "pinned"`,
+   `"backend": "onnxruntime 1.32.0"`, `"verify": {"verified": true, ...}`; `ort_wheel` is `1.32.0`.
+5. Say something with a lunar name ("take me to Tycho"): the transcript and the link work as before.
+6. Optional, the repair path: quit the app, append one byte to `%APPDATA%\Outpost Luna\assets\tagger\NOTICE`
+   (a size change) or overwrite a byte of `assets\ear\nft2\tags.json` keeping its size; start the app. `/health`
+   shows the ear (or tagger) refused with `is damaged ... sha256`, the file is renamed `*.damaged`, and the asset
+   downloads again (a size change is caught by the app before the servers start; a same-size change by the model
+   server, which asks for the download through `assets\.want\`).
 
 ## 11. Troubleshooting
 
@@ -365,7 +389,10 @@ Add `--clobber` to replace a file that is already attached. Keep the name as it 
 | "not enough disk space for …" | Free the space it names on the system drive (`%APPDATA%` lives there), then Try again |
 | Splash says the backend or model server "keeps stopping" | Send `%APPDATA%\Outpost Luna\logs\*.log` |
 | `models.log`: `libarc not found` or `cannot load ... arc.dll` | Send `models.log`. The app should have `resources\native\arc.dll` |
-| `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | Send `models.log`. libarc loads `resources\site\models\onnxruntime\capi\onnxruntime.dll` by path |
+| `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | Send `models.log`. libarc loads the pinned `resources\native\onnxruntime\onnxruntime.dll` by path (it needs the VC++ DLLs next to `python.exe`) |
+| `models.log` / `/health`: `ONNX Runtime ... not found next to libarc` or `... damaged or not the pinned build` | `resources\native\onnxruntime\` is missing or altered: rebuild (step 6) or reinstall. Send step 6's output |
+| `models.log` / `/health`: `AbiMismatch: ... libarc ABI` or `C bindings out of date with the headers` (step 6) | `arc.dll` and the Python code come from different commits: pull, delete `desktop\build\libarc`, re-run |
+| `/health`: `The speech model ... is damaged: nft2/... sha256 ...` | A model file changed on disk after its download. The app moves it aside and downloads the asset again; restart when it finishes. Send `models.log` if it repeats |
 | `models.log`: `cannot open ...` for a file under `assets\ear` | Send `models.log`, and say whether your Windows user name has accents or non-Latin letters |
 | `models.log`: `DLL load failed` / `WinError 126` | Send `models.log`. As a test only, installing the "Microsoft Visual C++ Redistributable (x64)" should fix it; report it either way |
 | `models.log`: `does not report AVX2 + FMA` | Report the CPU (only a cross-built DLL needs AVX2) |
@@ -394,6 +421,8 @@ These are the differences from the native build:
 - **Python and wheels.** The interpreter is python-build-standalone's `x86_64-pc-windows-msvc` build, checked against
   its `SHA256SUMS`. The packages are win_amd64 wheels, from `uv pip install --python-platform x86_64-pc-windows-msvc`.
 - **`arctag.dll` and `arc.dll`** come from mingw-w64 gcc, statically linked (they import only Windows' own DLLs).
+  The pinned `onnxruntime.dll` is Microsoft's release build either way (`windows-x64` in
+  `desktop/vendor/libarc/onnxruntime.lock.json`); it imports the VC++ runtime, which ships next to `python.exe`.
 - **The `.exe` icon and version info are not edited**, because there is no Wine.
 
 `desktop/resources/` holds one platform's build at a time. After a cross-build, `build-mac.sh` rebuilds it for the Mac.
@@ -404,7 +433,7 @@ Step 8 checks the result with `desktop/scripts/win_bundle_check.py`, which is st
 |---|---|
 | `dlls <resources>` | Every `.dll` / `.pyd` import (the import and delay-load tables) resolves in the bundle or in Windows itself |
 | `speech <resources>` | The WinRT SpeechSynthesis, Media.Core, Storage.Streams and Foundation `.pyd` files, comtypes (SAPI) and `steertts_edge` (the Steer runtime) |
-| `runtime <resources>` | Every file the app needs at run time: python.exe and the VC++ DLLs; `arctag.dll` and `arc.dll`; the `onnxruntime.dll` libarc loads; no bundled models; a usable `assets.manifest.json` (an https download, sha256 and file list for every asset); the NASA video catalog and downloader; the ear and Steer bindings; Reset; the assets API; the Director weights; the vision assets; and the Electron shell inside `app.asar` (main, supervisor, permissions, keys, reset, the grown-up gate, the splash, the first-run screen, assets and updates) |
+| `runtime <resources>` | Every file the app needs at run time: python.exe and the VC++ DLLs; `arctag.dll` and `arc.dll`; the pinned `native\onnxruntime\onnxruntime.dll` libarc loads, at its sha256; no bundled models; a usable `assets.manifest.json` (an https download, sha256 and file list for every asset); the NASA video catalog and downloader; the ear and Steer bindings; Reset; the assets API; the Director weights; the vision assets; and the Electron shell inside `app.asar` (main, supervisor, permissions, keys, reset, the grown-up gate, the splash, the first-run screen, assets and updates) |
 | `compare <mac Resources> <win resources>` | Parity with a Mac build, area by area |
 
 The platform-mocked tests run on any OS:

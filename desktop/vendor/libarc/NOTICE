@@ -8,10 +8,13 @@ Copyright (c) 2015 James Turk; full text in the upstream NOTICE).
 Local changes for Outpost Luna (desktop/vendor/libarc):
 - src/arc_nft2_ort.c: plain_session() reads the RNNT .onnx files into memory and uses CreateSessionFromArray (as the
   encoder already does), so no file path crosses the ONNX Runtime API (ORTCHAR_T is wchar_t on Windows).
-- ort_loader.c (new): OrtGetApiBase() is resolved at run time from the ONNX Runtime library the app already ships (the
-  Python onnxruntime wheel's libonnxruntime / onnxruntime.dll), set with arc_ort_set_library() or ARC_ORT_LIB, so
-  libarc links no ONNX Runtime and the installer carries one copy of it. The C API version used is 23 (ONNX Runtime
-  1.23 headers); newer runtimes serve older API versions.
+- ort_loader.c (new): OrtGetApiBase() is resolved at run time from the ONNX Runtime library set with
+  arc_ort_set_library() (declared in include/arc.h) or ARC_ORT_LIB, so libarc links no ONNX Runtime. The app ships a
+  pinned Microsoft release build of it next to libarc (onnxruntime.lock.json, downloaded and sha256-checked by
+  cmake/vendor_onnxruntime.cmake; MIT License, its LICENSE and ThirdPartyNotices.txt copied alongside). The C API
+  version used is 23 (ONNX Runtime 1.23 headers); newer runtimes serve older API versions.
+- include/arc.h, src/arc_api.c: ARC_ABI_VERSION / ARC_VERSION and arc_abi_version() / arc_version(), with the bump
+  rules in arc.h; the Python binding is generated from arc.h (model_server/tools/gen_bindings.py).
 - compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c, and arc_u8io.h / arc_u8io.c
   (force-included on Windows): fopen / open / rename / remove take UTF-8 paths through _wfopen / _wopen (binary) /
   MoveFileExW / _wremove, so a model folder under a non-ASCII user name opens.

@@ -15,6 +15,11 @@
 #include "arc_tok.h"
 #include "arc_engine.h"
 
+/* ------------------------------------------------------------------ version */
+
+int arc_abi_version(void) { return ARC_ABI_VERSION; }
+const char* arc_version(void) { return ARC_VERSION; }
+
 /* ------------------------------------------------------------------ config */
 
 static int load_cfg(arc_engine* e, const char* dir) {

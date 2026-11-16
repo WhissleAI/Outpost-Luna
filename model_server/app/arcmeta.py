@@ -50,7 +50,7 @@ meta_settings = MetaSettings()
 EMOTION_REASON = "Arc Transcriber Space has no emotion output."
 
 STATE: dict = {"arc": None, "error": None, "load_s": None, "sessions": 0, "decoder": False, "rss_mb": None,
-               "rss_delta_mb": None, "model_dir": None, "lib": None, "backend": None}
+               "rss_delta_mb": None, "model_dir": None, "lib": None, "backend": None, "engine": None}
 _lock = threading.Lock()
 
 
@@ -94,7 +94,7 @@ def load() -> None:
         m = Nft2(lib, d, threads=meta_settings.arc_threads)
         rng = np.random.default_rng(0)      # warm every path once, so the first kid turn doesn't pay for it
         m.transcribe((rng.standard_normal(SR) * 0.01).astype(np.float32))
-        STATE.update(arc=m, decoder=True, model_dir=str(d), lib=str(lib), backend=m.backend)
+        STATE.update(arc=m, decoder=True, model_dir=str(d), lib=str(lib), backend=m.backend, engine=m.info())
     except Exception as e:  # noqa: BLE001
         STATE["arc"] = None
         STATE["error"] = f"{type(e).__name__}: {e}"[:300]
@@ -102,6 +102,16 @@ def load() -> None:
     STATE["rss_mb"] = _rss_mb()
     if rss0 is not None and STATE["rss_mb"] is not None:
         STATE["rss_delta_mb"] = round(STATE["rss_mb"] - rss0, 1)
+
+
+def _wheel_version() -> str | None:
+    """The pip onnxruntime wheel's version (the embedder and Steer TTS run on it): pinned to the same version as the
+    runtime next to libarc (desktop/vendor/libarc/onnxruntime.lock.json, model_server/tests/test_bindings.py)."""
+    try:
+        from importlib.metadata import version
+        return version("onnxruntime")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _rss_mb():
@@ -119,7 +129,10 @@ def health() -> dict:
                      "sessions": STATE["sessions"], "max_sessions": meta_settings.meta_max_sessions},
         "arc_ear": {"available": up, "model": MODEL, "revision": ARC_REVISION[:7], "backend": STATE["backend"],
                     "decoder_loaded": up, "load_s": STATE["load_s"], "rss_after_load_mb": STATE["rss_mb"],
-                    "rss_load_delta_mb": STATE["rss_delta_mb"], "rss_now_mb": _rss_mb()},
+                    "rss_load_delta_mb": STATE["rss_delta_mb"], "rss_now_mb": _rss_mb(),
+                    # libarc ABI / version, the ONNX Runtime it runs on (pinned | wheel | env) and the model files'
+                    # sha256 check (app/nft2.py, app/model_verify.py)
+                    "engine": STATE["engine"], "ort_wheel": _wheel_version()},
         "emotion": {"loaded": False, "enabled": False, "reason": EMOTION_REASON},
     }
 

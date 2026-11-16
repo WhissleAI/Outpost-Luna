@@ -1,7 +1,11 @@
-"""Arc Tagger v0.3 through its C API (ctypes), with a small pool of handles per domain.
+"""Arc Tagger v0.3 through its C API, with a small pool of handles per domain.
 
-The C library is arc-tagger-c (`arctag_create_ex`, `arctag_tag_text`, ...). One handle holds one stream's state and
-is not thread-safe, so requests borrow a handle from a per-domain pool and reset it before returning it.
+The C library is arc-tagger-c (`arctag_create_ex`, `arctag_tag_text`, ...), built from desktop/vendor/arctag. The
+binding is generated from its header (include/arctag.h -> app/_arctag_ffi.py, cffi out-of-line ABI mode,
+model_server/tools/gen_bindings.py), and loading checks arctag_version() against the header's ARCTAG_VERSION_MAJOR /
+MINOR (the library has no separate ABI number; 0.x minors change the API). The model folder is checked against the
+asset manifest's sha256 at load (app/model_verify.py). One handle holds one stream's state and is not thread-safe, so
+requests borrow a handle from a per-domain pool and reset it before returning it.
 """
 from __future__ import annotations
 
@@ -14,10 +18,11 @@ import threading
 from contextlib import contextmanager
 from pathlib import Path
 
+from ._arctag_ffi import ffi
+from ._cdefs import DEFINES
+from .model_verify import verify_asset
 
-class _Opts(ctypes.Structure):
-    _fields_ = [("size", ctypes.c_size_t), ("precision", ctypes.c_int), ("threads", ctypes.c_int),
-                ("model_file", ctypes.c_char_p), ("backend", ctypes.c_int)]
+HEADER_VERSION = (int(DEFINES["_arctag_ffi"]["ARCTAG_VERSION_MAJOR"]), int(DEFINES["_arctag_ffi"]["ARCTAG_VERSION_MINOR"]))
 
 
 def load_library(lib_path: Path) -> ctypes.CDLL:
@@ -30,6 +35,36 @@ def load_library(lib_path: Path) -> ctypes.CDLL:
     return ctypes.CDLL(str(lib_path))
 
 
+_LOADED: list = []
+
+
+def open_library(lib_path: Path):
+    """load_library + the generated binding over the same handle + the version check. -> cffi lib."""
+    h = load_library(lib_path)
+    _LOADED.append(h)      # the ctypes handle stays referenced (libraries are never unloaded)
+    try:
+        L = ffi.dlopen(ffi.cast("void *", h._handle))
+    except (TypeError, OSError, ffi.error):   # this cffi does not take a handle: by path (same file, already loaded)
+        L = ffi.dlopen(str(lib_path))
+    try:
+        v = ffi.string(L.arctag_version()).decode()
+    except (AttributeError, ffi.error):   # cffi: symbol not in the library
+        raise RuntimeError(f"{lib_path} has no arctag_version(): not an Arc Tagger library") from None
+    try:
+        got = tuple(int(x) for x in v.split(".")[:2])
+    except ValueError:
+        got = None
+    if got != HEADER_VERSION:
+        raise RuntimeError(f"{lib_path} is Arc Tagger {v}, this model server's binding is for "
+                           f"{HEADER_VERSION[0]}.{HEADER_VERSION[1]}.x (desktop/vendor/arctag/include/arctag.h): "
+                           "rebuild it (make desktop-arctag) or reinstall the app")
+    return L
+
+
+def _str(p) -> str:
+    return ffi.string(p).decode("utf-8", "replace") if p != ffi.NULL else ""
+
+
 class ArcTagger:
     EMIT = "entity,number,pii,events,intent,act,safety,state"
 
@@ -38,27 +73,11 @@ class ArcTagger:
             raise FileNotFoundError(f"Arc Tagger library not found: {lib_path} (set ARCTAG_LIB)")
         if not (model_dir / "arctag_int8.onnx").exists():
             raise FileNotFoundError(f"Arc Tagger model not found in {model_dir} (set ARCTAG_MODEL_DIR)")
-        L = load_library(lib_path)
-        L.arctag_options_init.argtypes = [ctypes.POINTER(_Opts)]
-        L.arctag_create_ex.argtypes = [ctypes.c_char_p, ctypes.POINTER(_Opts), ctypes.c_char_p, ctypes.c_size_t]
-        L.arctag_create_ex.restype = ctypes.c_void_p
-        for fn in ("arctag_tag_text", "arctag_info", "arctag_poll"):
-            getattr(L, fn).restype = ctypes.c_void_p
-        L.arctag_tag_text.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.arctag_info.argtypes = [ctypes.c_void_p]
-        L.arctag_poll.argtypes = [ctypes.c_void_p]
-        L.arctag_push_words.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-        L.arctag_push_words.restype = ctypes.c_int
-        L.arctag_set_option.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
-        L.arctag_set_option.restype = ctypes.c_int
-        L.arctag_reset.argtypes = [ctypes.c_void_p]
-        L.arctag_destroy.argtypes = [ctypes.c_void_p]
-        L.arctag_free_str.argtypes = [ctypes.c_void_p]
-        L.arctag_last_error.argtypes = [ctypes.c_void_p]
-        L.arctag_last_error.restype = ctypes.c_char_p
-        self.L, self.model_dir = L, model_dir
+        self.verify = verify_asset("tagger", model_dir, "The Arc Tagger model")
+        self.L, self.model_dir = open_library(lib_path), model_dir
+        self.version = _str(self.L.arctag_version())
         self.pools: dict[str, queue.Queue] = {}
-        self._all: list[int] = []
+        self._all: list = []
         self._lock = threading.Lock()
         self.streams = 0  # live dedicated stream handles (open_stream)
         for d in domains:
@@ -67,14 +86,14 @@ class ArcTagger:
                 q.put(self._create(d))
             self.pools[d] = q
 
-    def _create(self, domain: str, emit: str | None = None) -> int:
-        o = _Opts()
-        self.L.arctag_options_init(ctypes.byref(o))
-        o.precision, o.backend = 1, 1  # int8, native backend (no ONNX Runtime)
-        err = ctypes.create_string_buffer(512)
-        h = self.L.arctag_create_ex(str(self.model_dir).encode(), ctypes.byref(o), err, 512)
-        if not h:
-            raise RuntimeError(f"arctag_create_ex failed: {err.value.decode(errors='replace')}")
+    def _create(self, domain: str, emit: str | None = None):
+        o = ffi.new("arctag_options *")
+        self.L.arctag_options_init(o)
+        o.precision, o.backend = self.L.ARCTAG_INT8, self.L.ARCTAG_BACKEND_NATIVE  # int8, no ONNX Runtime
+        err = ffi.new("char[]", 512)
+        h = self.L.arctag_create_ex(str(self.model_dir).encode(), o, err, 512)
+        if h == ffi.NULL:
+            raise RuntimeError(f"arctag_create_ex failed: {_str(err)}")
         for k, v in (("domain", domain), ("emit", emit if emit is not None else self.EMIT)):
             if not v:
                 continue
@@ -85,11 +104,10 @@ class ArcTagger:
         return h
 
     def _take(self, h, p) -> dict:
-        if not p:
-            e = self.L.arctag_last_error(h)
-            raise RuntimeError(f"arctag call failed: {e.decode(errors='replace') if e else 'unknown'}")
+        if p == ffi.NULL:
+            raise RuntimeError(f"arctag call failed: {_str(self.L.arctag_last_error(h)) or 'unknown'}")
         try:
-            return json.loads(ctypes.string_at(p).decode("utf-8"))
+            return json.loads(ffi.string(p).decode("utf-8"))
         finally:
             self.L.arctag_free_str(p)
 
@@ -115,7 +133,7 @@ class ArcTagger:
 
     # --- dedicated stream handles (one per WebSocket; never pooled, so stream state survives between calls) ---
 
-    def open_stream(self, domain: str, emit: str | None = None) -> int:
+    def open_stream(self, domain: str, emit: str | None = None):
         """A fresh handle owned by one caller. Raises KeyError for a domain this server didn't load."""
         if domain not in self.pools:
             raise KeyError(f"domain {domain!r} not loaded; loaded: {sorted(self.pools)}")
@@ -124,7 +142,7 @@ class ArcTagger:
             self.streams += 1
         return h
 
-    def close_stream(self, h: int):
+    def close_stream(self, h):
         with self._lock:
             if h in self._all:
                 self._all.remove(h)
@@ -133,29 +151,28 @@ class ArcTagger:
                 return  # already destroyed by close()
         self.L.arctag_destroy(h)
 
-    def err(self, h: int) -> str:
-        e = self.L.arctag_last_error(h)
-        return e.decode(errors="replace") if e else ""
+    def err(self, h) -> str:
+        return _str(self.L.arctag_last_error(h))
 
-    def set_option(self, h: int, key: str, value: str):
+    def set_option(self, h, key: str, value: str):
         if self.L.arctag_set_option(h, key.encode(), str(value).encode()) != 0:
             raise ValueError(f"arctag_set_option({key}={value}) failed: {self.err(h)}")
 
-    def push_words(self, h: int, payload: bytes):
+    def push_words(self, h, payload: bytes):
         """payload: a JSON list of words, or {"words", "from"?, "endpoint"?} (see Head Start's server/tagger.py)."""
         if self.L.arctag_push_words(h, payload) != 0:
             raise ValueError(f"arctag_push_words failed: {self.err(h)}")
 
-    def poll(self, h: int) -> dict:
+    def poll(self, h) -> dict:
         return self._take(h, self.L.arctag_poll(h))
 
-    def tag_text_on(self, h: int, text: str) -> dict:
+    def tag_text_on(self, h, text: str) -> dict:
         return self._take(h, self.L.arctag_tag_text(h, text.encode()))
 
-    def reset(self, h: int):
+    def reset(self, h):
         self.L.arctag_reset(h)
 
-    def info_on(self, h: int) -> dict:
+    def info_on(self, h) -> dict:
         return self._take(h, self.L.arctag_info(h))
 
     def close(self):

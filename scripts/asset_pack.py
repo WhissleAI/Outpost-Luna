@@ -251,14 +251,15 @@ def write_tar(dst: Path, files: list[tuple[str, Path | bytes]]) -> list[dict]:
         for rel, src in sorted(files, key=lambda x: x[0]):
             if isinstance(src, bytes):
                 t.addfile(tarinfo(rel, len(src)), io.BytesIO(src))
-                listing.append({"path": rel, "size": len(src)})
+                listing.append({"path": rel, "size": len(src), "sha256": hashlib.sha256(src).hexdigest()})
             else:
                 if not src.exists():
                     sys.exit(f"missing source for {dst.name}: {src}")
                 n = src.stat().st_size
                 with open(src, "rb") as f:
                     t.addfile(tarinfo(rel, n), f)
-                listing.append({"path": rel, "size": n})
+                # every file's sha256: the model server re-checks model files against it at load (app/model_verify.py)
+                listing.append({"path": rel, "size": n, "sha256": sha256_file(src)})
     tmp.replace(dst)
     return listing
 

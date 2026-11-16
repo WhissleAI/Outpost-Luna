@@ -16,7 +16,8 @@ Anything else would fail on a clean PC with "DLL load failed" / WinError 126, th
 on a machine without the Visual C++ Redistributable.
 
 runtime: one Windows tree on its own (no Mac app needed): every MUST file below, the embedded python.exe + Visual C++
-runtime, arctag.dll and arc.dll (libarc, the ear) + the onnxruntime.dll it loads by path, no bundled models (0.3: they
+runtime, arctag.dll and arc.dll (libarc, the ear) + the pinned onnxruntime.dll it loads by path
+(native/onnxruntime/, at its sha256), no bundled models (0.3: they
 are first-run assets) and a usable resources/assets.manifest.json (https download + sha256 + file list for every
 asset), a valid NASA video catalog, the speech packages (WinRT, SAPI, the Steer runtime), and the Electron shell inside
 app.asar (main, supervisor, reset, keys, permissions, the grown-up gate, the splash, the first-run screen, assets and
@@ -99,6 +100,9 @@ def pe_imports(path: Path) -> list[str]:
     return names
 
 
+VC_RUNTIME = {"msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "vcruntime140.dll", "vcruntime140_1.dll"}
+
+
 def is_system(dll: str) -> bool:
     d = dll.lower()
     return d.startswith(("api-ms-win-", "ext-ms-")) or d.removesuffix(".dll") in SYSTEM_DLLS or d in SYSTEM_DLLS
@@ -117,11 +121,16 @@ def check_dlls(res: Path) -> list[tuple[str, str]]:
         parts = [x.lower() for x in p.relative_to(res).parts]
         if any(x.endswith(".libs") for x in parts) or "lib" in parts or "capi" in parts or "_soundfile_data" in parts:
             pkg_dirs |= by_dir[p.parent]
+    # the pinned onnxruntime.dll (native/onnxruntime/) takes the Visual C++ runtime from python.exe's folder (the
+    # application folder, searched for every load); checking a native/ folder on its own, assume it is there
+    native_only = not (res / "python").exists()
     missing = []
     for p in pes:
         for dll in pe_imports(p):
             d = dll.lower()
             if is_system(d) or d in by_dir[p.parent] or d in app_dir or d in pkg_dirs:
+                continue
+            if native_only and p.parent.name.lower() == "onnxruntime" and d in VC_RUNTIME:
                 continue
             missing.append((p.relative_to(res).as_posix(), dll))
     return missing
@@ -184,7 +193,9 @@ MUST = {
                                                            "backend/data/voice_pack/lines.json"],
     "NASA video catalog + downloader": ["backend/data/video/catalog.json", "backend/app/video.py"],
     "ear (libarc binding) + Steer engine": ["model_server/app/nft2.py", "model_server/app/arc_ear.py",
-                                            "model_server/app/tts_steer.py"],
+                                            "model_server/app/tts_steer.py", "model_server/app/_arc_ffi.py",
+                                            "model_server/app/_arctag_ffi.py", "model_server/app/_cdefs.py",
+                                            "model_server/app/model_verify.py"],
     "first-run assets API": ["backend/app/assets_api.py"],
     "NASA physics tables (docs/PHYSICS.md)": ["backend/data/physics/physics.json", "backend/app/mission/physics.py"],
     "Settings reset (docs/RESET.md)": ["backend/app/reset.py"],
@@ -219,6 +230,18 @@ def asar_files(asar: Path) -> set[str]:
     return out
 
 
+def pinned_ort(d: Path) -> tuple[bool, str]:
+    """The pinned onnxruntime.dll next to arc.dll (desktop/vendor/libarc/onnxruntime.lock.json): present, and at the
+    sha256 its onnxruntime.json gives (the model server refuses it otherwise)."""
+    try:
+        meta = json.loads((d / "onnxruntime.json").read_text(encoding="utf-8"))
+        dll = d / meta["lib"]
+        ok = dll.is_file() and sha256(dll) == meta["sha256"]
+        return ok, f"{dll.name} {meta['version']} " + ("sha256 ok" if ok else "MISSING or sha256 mismatch")
+    except (OSError, ValueError, KeyError) as e:
+        return False, f"native/onnxruntime/onnxruntime.json unreadable: {e}"
+
+
 def runtime(res: Path) -> dict[str, tuple[bool, str]]:
     """{check: (ok, detail)} for one Windows resources tree."""
     app = res / "app"
@@ -230,8 +253,7 @@ def runtime(res: Path) -> dict[str, tuple[bool, str]]:
     out["embedded python + VC++ runtime"] = (not miss, "python.exe, python311.dll, VC++ DLLs" if not miss else f"missing {miss}")
     nat = {n: (res / "native" / n).is_file() for n in ("arctag.dll", "arc.dll")}
     out["native Arc Tagger + libarc (the ear)"] = (all(nat.values()), ", ".join(f"{n} {'ok' if v else 'MISSING'}" for n, v in nat.items()))
-    ort = sorted((res / "site/models/onnxruntime/capi").glob("onnxruntime*.dll"))
-    out["ONNX Runtime DLL (libarc loads it by path)"] = (bool(ort), ", ".join(p.name for p in ort) or "no onnxruntime.dll")
+    out["ONNX Runtime DLL (libarc loads it by path)"] = pinned_ort(res / "native/onnxruntime")
     models = res / "models"
     out["no bundled models (0.3: first-run assets)"] = (not models.exists(), "none" if not models.exists() else "resources/models still there")
     try:

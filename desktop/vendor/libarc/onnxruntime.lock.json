@@ -1,0 +1,36 @@
+{
+ "_doc": "The ONE place the ONNX Runtime version is pinned (issue #85). libarc's CMake build downloads the archive for the target platform, checks its sha256 and the library's sha256, and copies the library + its licence next to libarc (<build>/onnxruntime/), with onnxruntime.json; the model server loads that copy (model_server/app/nft2.py) and checks its sha256 again at load. model_server/pyproject.toml pins the Python wheel (the embedder, Steer TTS) to the same version; model_server/tests/test_bindings.py fails when the two differ. To move to another version: update version + every platform entry (archive sha256 from the GitHub release's asset digest, lib_sha256 of the extracted library), pyproject.toml's onnxruntime==, uv lock, rebuild, run the ear tests.",
+ "version": "1.32.0",
+ "c_api_version": 23,
+ "licence": ["LICENSE", "ThirdPartyNotices.txt"],
+ "platforms": {
+  "darwin-arm64": {
+   "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-osx-arm64-1.32.0.tgz",
+   "sha256": "8ddca23f532b9d4fbb279ba9b08dab6c0ac94fdc9aec2eb44a1db7049216c043",
+   "root": "onnxruntime-osx-arm64-1.32.0",
+   "lib": "lib/libonnxruntime.1.32.0.dylib",
+   "lib_sha256": "51c5a25a3dfafd74f62f403e6e0dc7881d97c0e627c703a4d9548c5677abc8fd"
+  },
+  "windows-x64": {
+   "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-win-x64-1.32.0.zip",
+   "sha256": "aaa1d04fcf86bd31e84b90bc0cbde80e632bd0720dcc5d8ba05c4fe45c09d127",
+   "root": "onnxruntime-win-x64-1.32.0",
+   "lib": "lib/onnxruntime.dll",
+   "lib_sha256": "348c3d29d6995eee37e3451825eaddb7ea7400be3afda6ca2286b12bc775f042"
+  },
+  "linux-x64": {
+   "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-x64-1.32.0.tgz",
+   "sha256": "bb169b7e374731730d2ae406fb39de7be4b315f413a9132efe896261c31bb503",
+   "root": "onnxruntime-linux-x64-1.32.0",
+   "lib": "lib/libonnxruntime.so.1.32.0",
+   "lib_sha256": "4213d6d8c42ac4754865849cb139d31fc39127db6a326babf90bbc81a6eb52fc"
+  },
+  "linux-arm64": {
+   "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-aarch64-1.32.0.tgz",
+   "sha256": "81a46251dd90da4122f4b9ceb4433f836fbc79ee1eddffca7c09033af81a1939",
+   "root": "onnxruntime-linux-aarch64-1.32.0",
+   "lib": "lib/libonnxruntime.so.1.32.0",
+   "lib_sha256": "fd1db07c49cb1ad11370ef4393a405eef959fa9622fb5b2880f85d025757e719"
+  }
+ }
+}

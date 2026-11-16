@@ -135,7 +135,8 @@ The pieces, also runnable on their own:
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
 | `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 48 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
 | `make asset-pack` / `make asset-upload` | the first-run assets (above) |
-| `make desktop-libarc` | CMake build of `desktop/vendor/libarc` (libarc + the Arc Transcriber Space backend; ONNX Runtime loaded at run time from the Python wheel) -> `libarc.dylib` / `arc.dll` |
+| `make desktop-libarc` | CMake build of `desktop/vendor/libarc` (libarc + the Arc Transcriber Space backend) -> `libarc.dylib` / `arc.dll`, plus the pinned ONNX Runtime it loads at run time -> `native/onnxruntime/` (see "The engine boundary") |
+| `make bindings` | regenerate the model server's C bindings from `arc.h` / `arctag.h` (`model_server/tools/gen_bindings.py`) |
 | `make desktop-arctag` | CMake build of `desktop/vendor/arctag` (arc-tagger-c sources, native backend only) -> `libarctag.dylib` / `arctag.dll` |
 | `make desktop-run` | run the shell against `desktop/resources` without packaging |
 | `make desktop-clean` | delete `desktop/resources`, `desktop/build`, `desktop/dist` |
@@ -145,8 +146,60 @@ dmg 0.65 GB, caches);
 `build-mac.sh` deletes the unpacked app once the dmg is made. The vendored wheels `desktop/vendor/wheels/
 arc_transcriber-1.2.1` (145 KB) is committed (CC-BY-NC-4.0, NOTICE inside).
 
-PyInstaller was not used: two separate servers with torch, onnxruntime and ctypes-loaded native libraries are simpler as
+PyInstaller was not used: two separate servers with torch, onnxruntime and dlopen-loaded native libraries are simpler as
 a plain relocatable interpreter plus `--target` folders; nothing is frozen, so tracebacks and the logs stay readable.
+
+## The engine boundary (libarc ABI, pinned ONNX Runtime, model checksums)
+
+Issues #85 and #86. What crosses from the model server's Python into the native engines, and how each side proves the
+other is the one it was built for:
+
+- **Bindings generated from the headers.** `model_server/app/_arc_ffi.py` (from `desktop/vendor/libarc/include/arc.h`)
+  and `_arctag_ffi.py` (from `desktop/vendor/arctag/include/arctag.h`) are cffi **out-of-line ABI mode** modules made
+  by `model_server/tools/gen_bindings.py` (`make bindings`): the header is preprocessed (comments, guards, export macros
+  go; integer `#define`s stay) and fed to `ffi.cdef()`; the output is plain Python holding the parsed declarations.
+  `app/nft2.py` / `app/arctag.py` `ffi.dlopen()` the shipped library over a ctypes handle (same load rules as before,
+  `os.add_dll_directory` on Windows). No compiler, header or pycparser on the user's machine: only `_cffi_backend`,
+  which the app already shipped for soundfile (`cffi==2.1.1`, pinned: the generated code depends on it). API mode and
+  nanobind were rejected: each is a CPython extension to compile per platform and Python version, i.e. a second native
+  build on the Windows machine, for calls that are one per utterance.
+- **Drift fails at build time.** `gen_bindings.py --check` runs in step 6 of `build-mac.sh` / `build-windows.ps1` /
+  `cross-build-windows.sh`, and `model_server/tests/test_bindings.py` checks: the generated files equal what the
+  headers give now; every struct's `sizeof` / `offsetof` and every constant / enum value agree with a real C compiler
+  reading the real header; every C function the Python calls is declared; and the ABI bump rule (below) against
+  `tests/abi_snapshot.json`.
+- **ABI version.** `arc.h` defines `ARC_ABI_VERSION` (1) and `ARC_VERSION` ("1.2.0-outpost.1"); libarc exports
+  `arc_abi_version()` / `arc_version()`. `nft2.open_library()` calls it right after loading and raises `AbiMismatch`
+  ("libarc ABI 2 ..., this model server was generated for ABI 1: rebuild libarc ...") on a difference, or when the
+  library predates the call. Bump rules are in `arc.h`: any change to an existing struct, signature, enum or `#define`
+  value bumps `ARC_ABI_VERSION`; pure additions bump `ARC_VERSION`'s minor. After a bump, refresh the snapshot
+  (`cd model_server && PYTHONPATH=. uv run python tests/test_bindings.py --snapshot`). Arc Tagger has no separate ABI
+  number: `arctag_version()` must match the header's `ARCTAG_VERSION_MAJOR.MINOR`. Build scripts also run
+  `gen_bindings.py --check --lib <libarc>` on the freshly built library. `/health` `models.arc_ear.engine` shows
+  `abi`, `libarc`, the runtime and the model check.
+- **ONNX Runtime, pinned once.** `desktop/vendor/libarc/onnxruntime.lock.json` is the only place the version lives
+  (1.32.0, the version the ear has been tested on since the wheel moved to it): per platform the GitHub release
+  archive URL, its sha256 (the release's asset digest) and the sha256 of the library inside. Configuring libarc
+  (`cmake/vendor_onnxruntime.cmake`) downloads the archive once into `desktop/build/cache/onnxruntime/`, checks both
+  sha256, and writes `<build>/onnxruntime/` (`libonnxruntime.1.32.0.dylib` / `onnxruntime.dll` /
+  `libonnxruntime.so.1.32.0`, `onnxruntime.json`, `LICENSE`, `ThirdPartyNotices.txt`); the build scripts copy it to
+  `resources/native/onnxruntime/`. The model server loads that copy (`<libarc's folder>/onnxruntime/`, or one folder up
+  for a Visual Studio `Release\` build), re-checks its sha256 at every load and checks `arc_nft2_backend()` reports
+  the pinned version. The pip wheel is no longer a fallback: `ARC_ORT_FROM_WHEEL=1` (dev only) uses the wheel's copy,
+  `ARC_ORT_LIB=<path>` any library; without either and without the pinned copy, the ear does not load and says why.
+  The Python wheel (the embedder, Steer TTS) is pinned to the same version in `model_server/pyproject.toml`
+  (`onnxruntime==1.32.0`); `test_bindings.py` fails when the lock, `pyproject.toml` and `uv.lock` disagree, or when
+  the C API headers (`third_party/onnxruntime/include`, API 23) are not the lock's `c_api_version`. To move: edit the
+  lock (all platforms), the pyproject pin, `uv lock`, rebuild, run the ear tests.
+- **Model files re-checked at load.** Every file of the `ear`, `tagger` and `embedder` assets now has a `sha256` in
+  both manifests (`scripts/asset_pack.py` writes one for every file of every asset). At load, `app/model_verify.py`
+  hashes the ear's and the tagger's files (4 threads; ~0.25 s for the 460 MB ear on an M-series Mac) against
+  `<assets>/state.json` (the installed version's list) or else the manifest when it describes the installed version.
+  A mismatch refuses the load (`ModelIntegrityError`, the reason on `/health`). In the app, the damaged files are
+  renamed `<file>.damaged` (so assets.js's size check calls the asset `corrupt`) and `<assets>/.want/<id>` asks the
+  main process to download it again at once; a launch with a corrupt required asset re-downloads it before the
+  servers start anyway. In a clone the message says how to fetch it (`make ear-model`). `ARC_VERIFY=off` skips the
+  check (dev only).
 
 ## What is in the bundle (macOS arm64, 0.1.0)
 
@@ -168,6 +221,8 @@ below: 1.9 GB and ~1.0 GB):
 | `models/minilm` | 22 MB | all-MiniLM-L6-v2 `model.int8.onnx` + `tokenizer.json` (the fp32 `model.onnx` is not shipped) |
 | `models/arctag` | 12 MB | Arc Tagger v0.3 `arctag_int8.onnx`, `arctag_meta.json`, `tokenizer.json` |
 | `native/libarctag.dylib` | 0.2 MB | built from `desktop/vendor/arctag` |
+| `native/libarc.dylib` | ~1 MB | built from `desktop/vendor/libarc` (the ear) |
+| `native/onnxruntime/` | 48 MB | the pinned ONNX Runtime libarc loads (`libonnxruntime.1.32.0.dylib`, `onnxruntime.json`, LICENSE, ThirdPartyNotices) |
 | Electron framework | ~300 MB | Electron 44.10.0 |
 
 Arc v1.1 `backbone="mini"` pulls **no other Hugging Face snapshot**: `mini/` carries its own Moonshine Streaming tiny

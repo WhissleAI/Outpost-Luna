@@ -12,7 +12,7 @@ Deepgram Flux (cloud) stays an option (`EAR=deepgram`) and the fallback when the
 browser mic ──PCM16 80 ms──▶ backend /ws/listen ──▶ model server WS /v1/stream?ear=arc  (app/arc_ear.py)
                                │  1st frame + every screen change: {"t":"context","names":[{name,kind,aliases}] <= 40}
                                ◀── turn / words / arc / context_ack (relayed unchanged; posted to the session)
-model server: app/nft2.py (ctypes) ──▶ libarc (arc_nft2_*) ──▶ ONNX Runtime = the onnxruntime wheel's C library
+model server: app/nft2.py (cffi, generated from arc.h) ──▶ libarc (arc_nft2_*) ──▶ ONNX Runtime 1.32.0 (pinned copy next to libarc)
 ```
 
 - **Setup (dev):** `make desktop-libarc ear-model` (libarc for this OS; the model, ~460 MB, into
@@ -20,8 +20,11 @@ model server: app/nft2.py (ctypes) ──▶ libarc (arc_nft2_*) ──▶ ONNX 
   The desktop app downloads both on first run (docs/DESKTOP.md "First run: assets").
 - **libarc**: the upstream C code (arc_transcriber `c/`, commit bfffb19), built as one shared library with CMake
   (`libarc.dylib`; `arc.dll` with clang / mingw-w64: it needs C11 atomics and GCC builtins). It links no ONNX Runtime:
-  `ort_loader.c` loads the onnxruntime wheel's `libonnxruntime.*.dylib` / `onnxruntime.dll` by path (C API 23, served
-  by the wheel's 1.32), so the installer carries one ONNX Runtime. Local changes are listed in its NOTICE.
+  `ort_loader.c` loads the pinned `libonnxruntime.1.32.0.dylib` / `onnxruntime.dll` the build vendors next to it
+  (`desktop/vendor/libarc/onnxruntime.lock.json`, C API 23), sha256-checked at load; `ARC_ORT_FROM_WHEEL=1` (dev only)
+  uses the pip wheel's copy instead. The binding is generated from `arc.h` and checks `arc_abi_version()`; the model
+  files are checked against the manifest's sha256 at load (docs/DESKTOP.md "The engine boundary"). Local changes are
+  listed in its NOTICE.
 - **Turns** (`arc_ear.EarStream`): an energy VAD with an adaptive floor opens a segment (2 voiced 80 ms chunks, 0.3 s
   pre-roll); a partial decode (no events) runs every 0.3 s on the open segment (backing off to 1.25x its cost, first 8 s
   only; it was 0.5 s / 2x, which gave a 1.3 s command one partial and read as "no streaming") and the first non-empty partial is the turn `start`; 0.5 s of silence (or `end_turn` / `stop`, or 15 s) closes
