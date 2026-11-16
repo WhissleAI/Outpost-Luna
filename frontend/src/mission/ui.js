@@ -446,6 +446,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     return null;
   }
   const AUTO_MS = 3500;   // [polish a] how long a wait-only card shows before time fast-forwards by itself
+  let autoT = 0, autoKey = "";   // declared before renderCard can run (no temporal dead zone at start-up)
   // dev-only: tools/play_mission.py may run the clock faster (window.__hourMs); the shipped app always uses HOUR_MS
   const hourMs = () => (import.meta.env && import.meta.env.DEV && +window.__hourMs) || 0;
   const newClock = () => createMissionClock({
@@ -554,7 +555,6 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // [polish a] auto-pace: a card that only waits (the crew sheltered, the rover driving, all steady) fast-forwards by
   // itself after AUTO_MS, instead of asking for "Skip ahead" / "Time warp" again and again. It never fires while the
   // clock is paused or held (a decision, a card, the tour) and restarts its wait whenever the card changes.
-  let autoT = 0, autoKey = "";
   function autoPace(c) {
     const ok = !!(c && c.auto && !tour.active && state && !state.over && mclock.started && !mclock.paused && !mclock.held);
     const k = ok ? c.key : "";
