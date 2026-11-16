@@ -505,6 +505,9 @@ def main():
            "library: Up leaves a paused tour card for the top bar (no trap)")
         ok(js("() => (document.getElementById('cardEyebrow') || {}).textContent || ''") == stop1, "library: arrows over a paused tour move focus, not the tour")
         ok(press_until(["ArrowRight"], "() => document.activeElement.id === 'aboutBtn'", n=8), "top bar: arrows reach About")
+        press("Escape", 800)   # the second Esc closes the paused tour (and leaves focus where it is)
+        ok(js("() => !/Paused:/.test(document.body.innerText) && document.getElementById('tourBtn').getAttribute('aria-pressed') !== 'true'"),
+           "library: the second Esc closes the paused tour")
         press("Enter", 900)
         ok(js("() => document.getElementById('about').open"), "About opens")
         press("ArrowDown", 400)
