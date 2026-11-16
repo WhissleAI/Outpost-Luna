@@ -270,8 +270,10 @@ body[data-cabin="1"] .stage{--panel-w:0px}
 body[data-cabin="1"] .hud,body[data-cabin="1"] .m-banner,body[data-cabin="1"] .m-signal{display:none}
 /* the alert strip in the window is the visual alert inside the cabin (the screen-edge flash and screen-reader alert still fire) */
 body[data-cabin="1"] .a11y-vbanner{display:none!important}
-/* CAPCOM's card only shows in the cabin when it asks something (Yes / No): top-left of the window, under the clock */
-body[data-cabin="1"] .card{left:calc(var(--space-4) * 2);top:calc(var(--space-4) * 2 + 64px);bottom:auto;right:auto;width:min(340px,30%);max-height:40%;z-index:var(--z-dock);
+/* CAPCOM's card only shows in the cabin when it asks something (Yes / No). [polish 2] It sits centred in the window,
+   under the alert strip: at top-left it covered the Now panel's own button (novice playthrough, Commander: "Crew into
+   the shelter" and "Shields to 40" were under the card's chips) */
+body[data-cabin="1"] .card{left:calc(50% - min(170px, 15%));top:calc(var(--space-4) * 2 + 64px + 120px);bottom:auto;right:auto;width:min(340px,30%);max-height:40%;z-index:var(--z-dock);
   padding:var(--space-3) var(--space-4);background:var(--color-glass);color:var(--color-on-space);border:1px solid var(--cb-line);border-radius:var(--radius-lg);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 body[data-cabin="1"] .card .card-say{font-size:var(--text-md);color:var(--color-on-space)}
