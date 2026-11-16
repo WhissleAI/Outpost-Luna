@@ -146,8 +146,8 @@
 </section>
 
 <!-- 5 · How it works. Names and sizes: desktop/models.lock.json + docs/DESKTOP.md "What is in the bundle".
-     Ear numbers: docs/LOCAL_EAR.md "Old ear vs new ear" (LibriSpeech test-clean 5.2 -> 2.2%, SLURP 47.1 -> 19.3%,
-     crew-name links 64.7 -> 97.1%). Director: backend/app/director_model/runtime.py (rules act; the learned model runs in shadow).
+     Ear numbers: arc-audio.html "Results" (= the HF model card): word error rate vs the base model it builds on,
+     streaming, same normaliser; NASA podcast held-out 9.7 -> 7.0, Artemis 1,141 utts 28.5 -> 12.6; names linked 94.5% (Artemis). Director: backend/app/director_model/runtime.py (rules act; the learned model runs in shadow).
      Voice: docs/VOICES.md + backend/data/voice_pack/index.json (889 lines). Safety: backend/app/safety.py. -->
 <section id="how" class="band" aria-labelledby="how-h">
   <div class="wrap">
@@ -155,11 +155,11 @@
     <h2 id="how-h">Voice AI that runs on your computer.</h2>
     <p class="sec-lede">Our own speech and language models hear, check and decide each turn. No cloud.</p>
     <div class="stats">
-      <div class="stat"><b>2.2%</b><span>word errors, clean speech</span><small>Previous ear: 5.2%</small></div>
-      <div class="stat"><b>19.3%</b><span>word errors, spoken commands</span><small>Previous ear: 47.1%</small></div>
-      <div class="stat"><b>97%</b><span>Moon names linked correctly</span><small>Previous ear: 65%</small></div>
+      <div class="stat"><b>12.6%</b><span>word errors, Artemis II crew audio</span><small>Base model: 28.5%</small></div>
+      <div class="stat"><b>7.0%</b><span>word errors, NASA podcasts</span><small>Base model: 9.7%</small></div>
+      <div class="stat"><b>94.5%</b><span>names linked correctly, Artemis audio</span><small>Base model: can't link names</small></div>
     </div>
-    <p class="stats-note">Arc Transcriber Space vs our previous ear, same held-out clips. <a href="https://github.com/WhissleAI/Outpost-Luna/blob/main/docs/LOCAL_EAR.md">Method</a></p>
+    <p class="stats-note">Arc Transcriber Space vs the open base model it builds on, on held-out NASA audio. <a href="arc-audio.html#results">Full results</a></p>
     <ul class="points">
       <li><b>Hears you, not the room</b>Knows when you're talking to the app.</li>
       <li><b>Keeps it clean</b>Swearing is masked, never graded or answered.</li>
