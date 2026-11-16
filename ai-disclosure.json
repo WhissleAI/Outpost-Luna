@@ -1,0 +1,41 @@
+{
+  "project": "Outpost Luna",
+  "event": "NASA Space Apps Challenge 2026",
+  "si_use": {
+    "code": {
+      "used": true,
+      "tools": [
+        "Anthropic Claude (Claude Code)"
+      ],
+      "how": "AI-assisted code; commits carry Co-Authored-By: Claude; reviewed and tested by the team"
+    },
+    "writing": {
+      "used": true,
+      "how": "Lesson text, Why? cards and CAPCOM lines drafted with AI help; facts checked against cited NASA sources"
+    },
+    "data": {
+      "used": true,
+      "how": "Part of the speech-model training data is synthetic (TTS audio, AI-generated name variations); results measured on held-out real clips"
+    },
+    "images": {
+      "used": true,
+      "tools": [
+        "Google Gemini"
+      ],
+      "files": [
+        "site/assets/icon-64.png (app icon)",
+        "team image (submission)"
+      ],
+      "how": "App icon and team image generated with Gemini; no NASA branding"
+    },
+    "audio": {
+      "used": true,
+      "how": "Optional Steer voice is AI TTS; launch film learner lines are AI-generated speech; CAPCOM scripted lines recorded on a Mac"
+    },
+    "not_ai": [
+      "NASA data",
+      "NASA video and crew audio",
+      "app screenshots"
+    ]
+  }
+}
