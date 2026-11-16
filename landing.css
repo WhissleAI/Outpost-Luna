@@ -398,3 +398,7 @@ picture { display: block; }
 /* Top nav: 8 links on every page. Below 940px only the page links (.keep: Arc Audio, Guide) stay; the brand goes home. */
 .nav nav a { white-space: nowrap; }
 @media (max-width: 940px) { .nav nav a:not(.keep) { display: none; } }
+
+/* setup facts right above the download buttons */
+.hero .setup { margin: 0 0 14px; font-size: 14px; line-height: 1.55; color: var(--ink-2); max-width: 720px; }
+.hero .setup b { color: var(--ink); font-weight: 600; }

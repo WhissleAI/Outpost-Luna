@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="preload" as="image" type="image/avif" href="assets/img/moon-1600.avif" imagesrcset="assets/img/moon-960.avif 960w, assets/img/moon-1600.avif 1600w" imagesizes="(max-width: 1120px) 100vw, 1072px">
-<link rel="stylesheet" href="landing.css?v=8">
+<link rel="stylesheet" href="landing.css?v=9">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -42,6 +42,10 @@
       <p class="eyebrow">NASA Space Apps Challenge 2026</p>
       <h1 id="h1">Train for the Moon by <em>talking</em> to CAPCOM.</h1>
       <p class="lede">A voice-first desktop app. Learn in Flight School, then run an outpost at the lunar south pole. Every model runs on your computer.</p>
+      <!-- Sizes: v0.3.3 assets (dmg 258 MB, exe 194 MB) + first-launch models 510 MB (site/assets/manifest.json).
+           macOS 13+: Electron 44 requires Ventura. Apple silicon only (electron-builder arch arm64). Windows: x64 + AVX2. -->
+      <p class="setup"><b>Setup:</b> about 770 MB in all. The app is 258 MB (Windows 194 MB); the AI models add 510 MB on first launch. Then it runs offline.<br>
+        <b>Runs on:</b> any Apple silicon Mac (M1, 2020, or newer) with macOS 13 or later · Windows 10/11, 64-bit.</p>
       <div class="cta">
         <a class="btn primary" href="https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.39-.92-2.4-3.66ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z"/></svg>
@@ -52,7 +56,7 @@
       </div>
       <!-- Mac: latest release asset Outpost-Luna-mac-arm64.dmg (notarized, stapled). Windows: Outpost-Luna-win-x64.exe
            (desktop/scripts/build-windows.ps1); dl.js falls back to an older release, the build guide or the Releases page. -->
-      <p class="fine">Free · Mac with Apple silicon · Windows 10/11 · No account · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">All releases</a></p>
+      <p class="fine">Free · No account · <a href="https://github.com/WhissleAI/Outpost-Luna/releases/latest">All releases</a></p>
     </div>
 
     <!-- 2 · See it. Video slot: shows the Moon still today; film.js swaps in a <video> when site/media/outpost-luna.mp4
