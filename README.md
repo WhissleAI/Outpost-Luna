@@ -86,6 +86,13 @@ troubleshooting: **[docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)**. In short, i
 To publish a Windows build, attach the installer to the release:
 `gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe`.
 
+### Releasing
+
+No CI: every release is gated locally on the installer that ships. On the Mac, run
+`make release-check DMG=<dmg>`; on Windows, run `desktop\scripts\release-check.ps1`. The gates are the unit suites,
+the installed app (signature, the ear on its pinned runtime, a real voice turn), a golden-clip WER and latency check,
+C API and WebSocket fuzzing, and an optional soak. The steps: [docs/RELEASING.md](docs/RELEASING.md).
+
 ### Developers
 
 Three services (the frontend, the backend and the model server); needs uv and Node 20+.

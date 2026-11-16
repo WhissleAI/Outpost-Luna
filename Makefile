@@ -177,7 +177,10 @@ desktop-win-cross: ## Desktop: Windows x64 installer cross-built on this Mac (de
 desktop-run:     ## Desktop: run the shell against desktop/resources without packaging (dev; first run downloads the assets)
 	cd desktop && node node_modules/electron/install.js && npx electron .
 
+release-check:   ## Release gates before every release (docs/RELEASING.md): unit + installed-app smoke + golden ear + fuzz [+ SOAK=1]; DMG=<dmg> (default: newest in desktop/dist), ARGS=...
+	python3 desktop/scripts/release_check.py $(if $(DMG),--dmg "$(DMG)") $(ARGS)
+
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: site-physics site-layers ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: release-check site-physics site-layers ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

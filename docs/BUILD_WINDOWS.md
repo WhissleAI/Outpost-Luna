@@ -28,7 +28,9 @@ powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.3.exe` (§5).
 5. On first launch the app downloads its models (510 MB, required), or you click **Import offline pack…** (§6).
 6. Go through the tester checklist (§8) and send it back with the logs from `%APPDATA%\Outpost Luna\logs` (§9).
-7. If it works, attach `desktop\dist\Outpost-Luna-win-x64.exe` to the release: `gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe` (§9).
+7. Run the release gates on the installer: `powershell -ExecutionPolicy Bypass -File desktop\scripts\release-check.ps1`
+   (about 10 minutes, silent; it must end in `PASS`). See [RELEASING.md](RELEASING.md).
+8. If it passes, attach `desktop\dist\Outpost-Luna-win-x64.exe` to the release: `gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe` (§9).
 
 ---
 
@@ -311,7 +313,16 @@ main.log lines with "assets:", "blocked", "FAIL", "exited", "ROLLBACK", "windows
 
 ### Attach the installer to the release
 
-If the build passes and the app runs, attach the installer to the GitHub release under its stable name. The website's
+First run the release gates on the installer you are about to upload (the full steps are in
+[RELEASING.md](RELEASING.md)). They unpack it into a temp folder without running the installer, start it headless on
+its own data folder and ports, and check the unit suites, the ear and a real voice turn, the golden clips, the
+protocol fuzzer and a clean quit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File desktop\scripts\release-check.ps1
+```
+
+If every line says `PASS`, attach the installer to the GitHub release under its stable name. The website's
 "Download for Windows" button links `releases/latest/download/Outpost-Luna-win-x64.exe`, so this is what makes it work.
 You need the [GitHub CLI](https://cli.github.com/) (`winget install --id GitHub.cli -e`, then `gh auth login`) and write
 access to the repo. Use the tag of the release you built (for example `v0.3.3`):
