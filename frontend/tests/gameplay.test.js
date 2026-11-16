@@ -76,6 +76,16 @@ test("task card: the step, its progress, the countdown, the lesson and the butto
   assert.equal(w.target, "skip"); assert.match(w.text, /7 hours/); assert.equal(w.buttons[0].clock, "skip");
 });
 
+test("task card: [polish 1] each step carries its short why; a step waiting on the rover says when it's back", () => {
+  const task = { id: "night_prep-4", kind: "night_prep", title: "Night power-down", panel: "power", level: "caution", done_count: 0, total: 2,
+    steps: [], step: { id: "night", kind: "order", label: "Night mode on", ready: true, target: "night", why: "Solar arrays make nothing in the dark.",
+      cmd: { type: "power_save", on: true } } };
+  const c = nowCard(st({ task }));
+  assert.equal(c.why, "Solar arrays make nothing in the dark."); assert.ok(words(c.why) <= 12);
+  const w = nowCard(st({ task: { ...task, step: { id: "send", kind: "order", label: "Send the rover to fix it", ready: false, wait: "The rover is out. Back in about 9 h." } } }));
+  assert.equal(w.text, "The rover is out. Back in about 9 h."); assert.equal(w.auto, true);
+});
+
 test("task card: a pending yes / no is the job (never a stale step under it)", () => {
   const c = nowCard(st({ pending: { type: "dispatch", task: "collect_ice" }, task: { id: "ice_run-2", kind: "ice_run", title: "Ice run", steps: [], done_count: 0, total: 3,
     step: { id: "send", kind: "order", label: "Send the rover for ice", ready: true, target: "rover:collect_ice", cmd: { type: "dispatch" } } } }));
