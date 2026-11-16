@@ -15,7 +15,7 @@
     },
     "data": {
       "used": true,
-      "how": "Part of the speech-model training data is synthetic (TTS audio, AI-generated name variations); results measured on held-out real clips"
+      "how": "Part of the speech-model training data is synthetic (TTS audio); results measured on held-out clips, the one synthetic test set labelled as such"
     },
     "images": {
       "used": true,
