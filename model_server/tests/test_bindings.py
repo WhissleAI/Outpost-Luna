@@ -293,3 +293,13 @@ if __name__ == "__main__" and "--snapshot" in sys.argv:   # refresh after a deli
     SNAPSHOT.write_text(json.dumps({mod: {"abi": _abi(mod), "decls": _decls(_cdefs.CDEF[mod])}
                                     for mod in ("_arc_ffi", "_arctag_ffi")}, indent=1) + "\n")
     print(f"wrote {SNAPSHOT}")
+
+
+def test_generated_bindings_are_lf_only(tmp_path):
+    """The Windows build runs --check: generation must write LF there too (text mode would write CRLF)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("gen_bindings", Path(__file__).resolve().parents[1] / "tools" / "gen_bindings.py")
+    gb = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gb)
+    for p in gb.generate(tmp_path).values():
+        assert b"\r\n" not in p.read_bytes(), p.name
