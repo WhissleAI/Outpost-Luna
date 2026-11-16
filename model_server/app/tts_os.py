@@ -465,7 +465,7 @@ def render(req: TTSRequest, memo: bool = True) -> tuple[bytes, dict]:
     key = json.dumps([eng.name, v["id"], v.get("system_voice"), plain, factor, pause, tight, tail])
     if PACK_LOOKUP is not None and pack_ok(req, v, pause):
         hit = PACK_LOOKUP(ov.pack_key(plain))
-        if hit:
+        if hit and pack_voice_matches(hit, v):
             return pack_reply(hit, words, v, sentences, tail)
     if memo and key in _MEMO:
         _MEMO.move_to_end(key)
@@ -504,6 +504,21 @@ def pack_ok(req: TTSRequest, v: dict, pause: int) -> bool:
     voice (a kid who picked another voice hears that voice, live)."""
     return bool(req.pack) and abs(float(req.pace or 1.0) - 1.0) < 1e-3 and not pause and \
         v["id"] == (STATE.get("roles") or {}).get("guide")
+
+
+def pack_voice_matches(hit: dict, v: dict) -> bool:
+    """A recorded clip plays only when the live guide voice IS the voice it was recorded in (the macOS Siri voice
+    "Nora"). Otherwise a Windows voice, or a Mac set to another system voice, would alternate between the studio
+    clips and the live voice line by line. Different voice -> every line live, in one voice."""
+    pv = (hit.get("voice") or "").lower()
+    if not pv:
+        return True
+    ids = {str(v.get("id") or "").lower(), str(v.get("system_voice") or "").lower()}
+    if pv in ids:
+        return True
+    name = (hit.get("voice_name") or "").lower()
+    vn = " ".join(str(v.get(k) or "") for k in ("name", "system_name")).lower()
+    return bool(name) and any(t in vn for t in ("nora",) if t in name)
 
 
 def pack_reply(hit: dict, words: list[str], v: dict, sentences: list[str], tail: float) -> tuple[bytes, dict]:
