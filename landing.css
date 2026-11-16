@@ -65,8 +65,8 @@ main.full { max-width: none; padding: 0; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; text-decoration: none; white-space: nowrap; }
 .brand img { border-radius: 50%; flex: none; }
 .nav nav { display: flex; gap: 22px; margin-left: auto; font-size: 14px; }
-.nav nav a { text-decoration: none; color: var(--ink-2); }
-.nav nav a:hover, .nav nav a[aria-current] { color: var(--ink); }
+.nav nav a { text-decoration: none; color: var(--ink); font-weight: 500; }
+.nav nav a:hover, .nav nav a[aria-current] { color: var(--acc); }
 .theme { border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 8px; width: 34px; height: 34px;
   display: grid; place-items: center; cursor: pointer; flex: none; }
 
@@ -98,7 +98,7 @@ h1 em { font-style: normal; color: var(--acc); }
 
 /* Hero (index + guide) */
 .hero { padding: 64px 0 36px; max-width: 860px; }
-.top .nav nav a { color: var(--ink-2); }
+.top .nav nav a { color: var(--ink); }
 .top { padding-bottom: 72px; }
 .top .hero { padding: 56px 0 40px; }
 
