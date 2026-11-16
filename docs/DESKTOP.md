@@ -149,6 +149,42 @@ arc_transcriber-1.2.1` (145 KB) is committed (CC-BY-NC-4.0, NOTICE inside).
 PyInstaller was not used: two separate servers with torch, onnxruntime and dlopen-loaded native libraries are simpler as
 a plain relocatable interpreter plus `--target` folders; nothing is frozen, so tracebacks and the logs stay readable.
 
+## App updates: "Check for updates"
+
+A new app version is a new installer (`docs/RELEASING.md`); the app tells you when there is one and never installs
+anything itself. Settings -> **App version** shows the installed version (`app.getVersion()`) and a **Check for
+updates** button (`desktop/main/appupdate.js`, `frontend/src/app_update_ui.js`):
+
+1. The page navigates to `/__outpost/update?do=check`; `main.js` stops that navigation (the page is locked to its own
+   origin and could not reach GitHub) and the **main process** sends one request:
+   `GET https://api.github.com/repos/WhissleAI/Outpost-Luna/releases/latest`, no auth, `User-Agent: Outpost-Luna/<version>`,
+   8 s timeout. Nothing about the user, the device or the app's use is sent.
+2. It compares the release tag with `app.getVersion()` (numeric dotted compare, `cmpVersion`) and calls
+   `window.__lunaUpdate(result)`. Drafts and prereleases are ignored. The row says one of:
+   - "You're up to date (0.3.8)";
+   - "Outpost Luna 0.3.9 is available", the release notes' "What's new" lines as plain text, and **Download**:
+     `Outpost-Luna-mac-arm64.dmg` on a Mac, `Outpost-Luna-win-x64.exe` on Windows (a versioned name as fallback);
+   - "0.3.9 is out for Mac; the Windows installer is coming" when this platform's installer is not uploaded yet, with
+     **Open the release page**;
+   - "Couldn't check right now. You can also download from whissleai.github.io/Outpost-Luna" when offline, rate-limited
+     (GitHub's unauthenticated limit is 60 requests an hour per IP: a 403 / 429) or anything else went wrong.
+3. **Download** navigates to `/__outpost/update?do=open&what=download`: the page names *what* to open, never a URL. The
+   main process opens the URL from its own last result with `shell.openExternal`, and only an https URL on
+   `github.com/WhissleAI/Outpost-Luna/...` or `whissleai.github.io/Outpost-Luna` (`openAllowed`); anything else is
+   refused and logged.
+
+**Manual by default.** "Check for updates automatically" (`prefs.update_check`, stored with the other settings on this
+device, per cadet profile) is **off** until a grown-up turns it on. When on, the page tells the shell so when it loads;
+the shell checks at most once per 24 h (the last *attempt* is kept in `<userData>/update-check.json`, so an offline
+launch does not retry until the next day) and stays silent unless a newer release exists: then a small notice in the
+corner offers the same Download. Each check is a line in `main.log` and an `app_update_check` event in `main.jsonl`.
+
+No auto-install yet: Windows is not code-signed and macOS auto-update (electron-updater) needs zip + `latest-mac.yml`
+artifacts on every release. See "Follow-ups".
+
+Test hooks (unpackaged runs only, like `OUTPOST_DIAG_SAVE_PATH`): `OUTPOST_TEST_APP_VERSION=0.3.7` pretends to be
+another version; `OUTPOST_TEST_OPEN_LOG=<file>` appends the URL Download would open to a file instead of opening a browser.
+
 ## The engine boundary (libarc ABI, pinned ONNX Runtime, model checksums)
 
 Issues #85 and #86. What crosses from the model server's Python into the native engines, and how each side proves the
@@ -306,6 +342,9 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
   `frontend/index.html` (and `a11y.js`'s Atkinson Hyperlegible): it fails at once and the UI falls back to system fonts.
   Follow-up for the frontend owner: self-host those fonts (e.g. `@fontsource/*`) so the offline app looks like the web app.
   External links open in the system browser (they will not load offline, which is fine).
+- **App updates:** the app asks GitHub for a newer version only when you press Settings -> App version -> Check for
+  updates, or once a day on launch if you turned on "Check for updates automatically" (off by default). One request
+  from the main process, nothing about you in it; nothing is downloaded or installed by the app ("App updates" above).
 - **Mic and camera:** the permission handler grants audio and video capture only to `http://127.0.0.1:<backend port>`;
   everything else (screen capture, location, notifications, other origins) is denied. The camera is only ever
   requested when the kid turns on Settings → Camera & gestures (docs/GESTURES.md); on macOS the first request goes
@@ -457,4 +496,6 @@ parsed and dry-run in PowerShell 7, and a cross-built installer has been unpacke
 - Arc ear without torch: an ONNX export of Arc v1.1 Mini (trunk + Moonshine tiny) would drop torch, transformers and
   sympy (~490 MB unpacked) and cut model-server RAM.
 - Trim `transformers/models/*` to the few the app imports (~90 MB).
-- Self-hosted fonts (frontend owner), an app icon (`build-resources/icon.icns` / `.ico`), auto-update (out of scope offline).
+- Self-hosted fonts (frontend owner), an app icon (`build-resources/icon.icns` / `.ico`).
+- App auto-install (today "Check for updates" only opens the installer in the browser): electron-updater once Windows is
+  code-signed and the macOS release ships the zip + `latest-mac.yml` it needs; it must stay opt-in like the check.

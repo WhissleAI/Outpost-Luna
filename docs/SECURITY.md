@@ -73,3 +73,12 @@ ones this launch picked: usually 47310 / 47210, but never assume them (`docs/DES
 Local only, never uploaded, and never holding audio, transcripts, names or the token: the structured logs are scrubbed
 when written, the metrics endpoints need the token, and the diagnostics file (Settings → Help & diagnostics) is a zip the
 user saves where they choose, with `engine.json` minus its token. Details: [`docs/DIAGNOSTICS.md`](DIAGNOSTICS.md).
+
+## Check for updates
+
+The one request the app makes to the internet on its own behalf after setup, and only when asked (Settings → App
+version → Check for updates) or, if a grown-up opted in, once a day on launch: the **main process** (never the page,
+which stays locked to its origin) GETs GitHub's latest-release API with no auth and no user data. The page can only ask
+for a check or name what to open (`download` / `release` / `site`); the URL comes from the main process's own result
+and must be https on `github.com/WhissleAI/Outpost-Luna` or `whissleai.github.io/Outpost-Luna` before
+`shell.openExternal`. Nothing is installed. Details: [`docs/DESKTOP.md`](DESKTOP.md) "App updates".

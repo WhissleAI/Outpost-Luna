@@ -22,6 +22,7 @@ export const PREF_DEFAULTS = Object.freeze({
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12) | "engineer" (Commander in real units, docs/PHYSICS.md)
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
   muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
+  update_check: false,       // Settings → App version → "Check for updates automatically" (app_update_ui.js). Off by default.
 });
 /** Settings → Voice: where a parent downloads clearer voices on this OS (the app speaks with the OS's own offline
  *  voices, docs/VOICES.md). "" on any other OS. */
@@ -68,6 +69,7 @@ export function normalizePrefs(x) {
   o.pack = s.pack !== false;          // on unless explicitly turned off
   o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
   o.muted = s.muted === true;
+  o.update_check = s.update_check === true;   // opt-in only, like improve
   return o;
 }
 
