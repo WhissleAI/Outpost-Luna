@@ -30,7 +30,7 @@
     },
     "audio": {
       "used": true,
-      "how": "Optional Steer voice is AI TTS; launch film learner lines are AI-generated speech; CAPCOM scripted lines recorded on a Mac"
+      "how": "CAPCOM scripted lines (889-clip voice pack) recorded from the macOS built-in Siri voice (computer-generated speech); live replies use the OS voice; optional Steer voice is AI TTS; launch film learner lines are AI-generated speech"
     },
     "not_ai": [
       "NASA data",
