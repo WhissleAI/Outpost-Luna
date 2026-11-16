@@ -1,12 +1,11 @@
 // Windows download links (every <a data-win>): never a link that 404s.
 // The HTML points at the stable asset of the latest release. On load we ask the GitHub API which recent release
 // carries it: latest has it -> keep; an older (or pre-) release has it -> link that file; none -> the build guide;
-// the API fails -> the Releases page. A click before the answer arrives waits for it (at most 4 s).
+// the API fails or is rate-limited -> keep the stable link (every release attaches the exe). A click before the answer arrives waits for it (at most 4 s).
 (() => {
   const REPO = "WhissleAI/Outpost-Luna";
   const ASSET = "Outpost-Luna-win-x64.exe";
   const GUIDE = `https://github.com/${REPO}/blob/main/docs/BUILD_WINDOWS.md`;
-  const RELEASES = `https://github.com/${REPO}/releases/latest`;
   const links = [...document.querySelectorAll("a[data-win]")];
   if (!links.length) return;
 
@@ -39,7 +38,7 @@
       if (older) return { state: "release", href: asset(older).browser_download_url };
       return { state: "guide", href: GUIDE, label: "Windows: build guide" };
     })
-    .catch(() => ({ state: "releases", href: RELEASES, label: "Windows: all releases" }))
+    .catch(() => ({ state: "assumed", href: links[0].getAttribute("href") }))
     .then((r) => { clearTimeout(timer); return apply(r); });
 
   for (const a of links) {
