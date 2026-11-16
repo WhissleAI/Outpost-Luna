@@ -18,7 +18,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="landing.css?v=6">
-<script>try { const t = localStorage.getItem("ol-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -30,9 +29,6 @@
   <nav aria-label="Sections">
     <a href="#corpus">Corpus</a><a href="#annotation">Annotation</a><a href="#hygiene">Test sets</a><a href="#results">Results</a><a href="guide.html">Guide</a><a class="keep" href="./">Home</a>
   </nav>
-  <button class="theme" id="themeBtn" type="button" aria-label="Toggle light or dark theme">
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-9.54-4.6A5.4 5.4 0 0 1 12 3Z"/></svg>
-  </button>
   </div>
   <div class="wrap">
   <div class="hero">
@@ -43,7 +39,7 @@
       <a class="btn primary" href="https://huggingface.co/WhissleAI/arc-transcriber-space">The model on Hugging Face</a>
       <a class="btn" href="https://github.com/WhissleAI/arc_transcriber">Code: arc_transcriber</a>
     </div>
-    <p class="fine">Uses NASA open media; not endorsed by NASA. Model weights © 2026 Whissle Inc., CC BY-NC 4.0.</p>
+    <p class="fine">Uses NASA open media; not endorsed by NASA. Model weights CC BY-NC 4.0 (see The model, below).</p>
   </div>
   </div>
 </header>
@@ -191,17 +187,9 @@
 <footer class="foot">
   <p class="disclaim">Inspired by NASA's Artemis program. Uses NASA open data; not endorsed by NASA.</p>
   <div class="row">
-    <span>© 2026 Whissle · Outpost Luna · NASA Space Apps Challenge 2026</span>
+    <span>© 2026 Outpost Luna · NASA Space Apps Challenge 2026</span>
     <span><a href="./">Home</a> · <a href="https://github.com/WhissleAI/Outpost-Luna">Source on GitHub</a> · <a href="https://huggingface.co/WhissleAI/arc-transcriber-space">Model</a></span>
   </div>
 </footer>
-<script>
-  document.getElementById("themeBtn").addEventListener("click", () => {
-    const r = document.documentElement;
-    const cur = r.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    r.dataset.theme = cur === "dark" ? "light" : "dark";
-    try { localStorage.setItem("ol-theme", r.dataset.theme); } catch (e) {}
-  });
-</script>
 </body>
 </html>
