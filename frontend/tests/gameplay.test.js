@@ -153,3 +153,18 @@ test("Mute: Shift+M (M stays the mic), a pref that persists, and the router's wo
   const { ROUTER_INTENTS } = await import("../src/input/defaults.js");
   assert.ok(ROUTER_INTENTS.has("mute_sound") && ROUTER_INTENTS.has("unmute_sound"));
 });
+
+test("clock: [polish 2] hold to fast-forward runs FF_WARP while held, only while running; news lets go", async () => {
+  const { FF_WARP } = await import("../src/mission/clock.js");
+  const f = fake(); const posted = [];
+  const c = createMissionClock({ post: async dt => { posted.push(dt); }, now: f.now, timers: f.timers });
+  c.attach(); c.play(); c.hold(true);
+  assert.equal(c.state.ff, true);
+  await f.run(HOUR_MS);
+  await c.flush();
+  const got = posted.reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(got - FF_WARP) < 0.6, `about ${FF_WARP} sim hours in one real hour-ms (got ${got})`);
+  c.dropWarp(); assert.equal(c.state.ff, true, "news drops the speed, not a held fast-forward");
+  c.hold(true); c.pause(); assert.equal(c.state.ff, false, "a paused clock never fast-forwards");
+  c.play(); c.hold(false); assert.equal(c.state.ff, false); assert.equal(c.state.warp, 1);
+});
