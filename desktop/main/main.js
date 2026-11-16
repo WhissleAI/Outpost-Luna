@@ -17,6 +17,9 @@
 //   8. supervision (#87): a crashed child restarts with exponential back-off (engine.js RestartPolicy) and the app gives
 //      up with a clear message after 5 fast crashes; a child that stops answering its health check is killed and
 //      restarted; the page shows "Ear restarting…" (frontend/src/engine.js) while typing keeps working.
+//   9. local diagnostics (#92, diag.js, docs/DIAGNOSTICS.md): JSON-lines logs (logs/main.jsonl; the children write
+//      backend.jsonl / models.jsonl), crash-free sessions in metrics/, and Settings -> Help & diagnostics -> "Save a
+//      diagnostics file…" (a zip the user saves where they choose; nothing is uploaded).
 "use strict";
 const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu, ipcMain } = require("electron");
 const fs = require("fs");
@@ -30,6 +33,7 @@ const G = require("./gate");   // [media] links out of a NASA video open behind 
 const AS = require("./assets"); // first-run assets
 const U = require("./updates"); // asset updates (remote manifest, staged swap, rollback)
 const E = require("./engine");  // per-launch token, engine.json, restart back-off, hang watch (docs/SECURITY.md)
+const D = require("./diag");    // structured logs, crash-free sessions, the diagnostics file (docs/DIAGNOSTICS.md)
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
 if (process.env.OUTPOST_USER_DATA) app.setPath("userData", process.env.OUTPOST_USER_DATA);
@@ -53,6 +57,8 @@ const AUTH = { "X-Luna-Token": TOKEN };
 const ENGINE_FILE = E.discoveryFile(USER);
 const LABEL = { models: "model server", backend: "backend" };
 let engine = { ear: "starting", backend: "starting" };   // what the page shows (frontend/src/engine.js)
+const jlog = D.createJsonLog({ dir: LOGS, svc: "main", token: TOKEN });   // [#92] logs/main.jsonl, scrubbed + rotated
+const tracker = D.createTracker({ dir: path.join(USER, "metrics"), version: APP_VERSION });   // [#92] crash-free sessions
 
 // Silent runs (tests, demos next to someone): OUTPOST_MUTE_AUDIO=1 mutes every page, like --mute-audio.
 if (process.env.OUTPOST_MUTE_AUDIO === "1") app.commandLine.appendSwitch("mute-audio");
@@ -69,6 +75,7 @@ function log(...a) {
   const line = `[${new Date().toISOString()}] ${a.join(" ")}\n`;
   process.stdout.write(line);
   try { fs.appendFileSync(path.join(LOGS, "main.log"), line); } catch { /* logs dir not ready */ }
+  jlog.event("log", { msg: a.join(" ") });   // the same line, structured and scrubbed (paths -> ~, no token)
 }
 
 function readPorts() { try { return JSON.parse(fs.readFileSync(portsFile, "utf8")); } catch { return {}; } }
@@ -84,7 +91,8 @@ async function choosePorts() {
 }
 
 function envFor(name) {
-  const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf"), LUNA_TOKEN: TOKEN };
+  const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf"), LUNA_TOKEN: TOKEN,
+    LUNA_LOG_DIR: LOGS, LUNA_DATA_DIR: USER };   // [#92] <svc>.jsonl logs + metrics/daily-<svc>.json (app/diag.py)
   if (name === "models") {
     const a = store.envPaths();   // the installed assets (assets.js): <userData>/assets/<id>
     return S.childEnv({
@@ -132,10 +140,13 @@ function startChild(name) {
   k.proc = proc; k.port = port; k.ready = false; k.restarting = false; k.startedAt = Date.now(); k.hang.ok();
   pids.add({ name, pid: proc.pid, started: Date.now() });
   log(`started ${name} pid ${proc.pid} on 127.0.0.1:${port}`);
+  jlog.event("child_start", { child: name, pid: proc.pid, port });
   proc.on("exit", (code, signal) => {
     pids.remove(proc.pid);
     log(`${name} exited code=${code} signal=${signal}`);
     if (quitting || k.proc !== proc) return;
+    jlog.error("child_exit", { child: name, code, signal, up_s: Math.round((Date.now() - k.startedAt) / 1000) });
+    tracker.restart(name);   // [#92] this session is no longer crash-free
     k.ready = false;
     if (name === "models" && updater && updater.trials().length) {   // a fresh update may be what killed it
       const back = updater.rollbackTrials(`the model server stopped (code ${code})`);
@@ -155,6 +166,8 @@ function startChild(name) {
  *  page itself, so without it the app cannot go on; without the model server the page still works by typing. */
 function gaveUp(name, failures) {
   log(`${name}: gave up after ${failures} restarts`);
+  jlog.error("child_gave_up", { child: name, failures });
+  tracker.event(`gave_up{child=${name}}`);
   if (name === "backend" || !win) return fail(`The ${LABEL[name]} keeps stopping.`);
   setEngine(name, "down");
 }
@@ -198,6 +211,8 @@ function watchHealth() {
         const hung = k.ready ? k.hang.miss() : Date.now() - k.startedAt > START_TIMEOUT_MS;
         if (hung) {
           log(`${name} stopped answering its health check; restarting it`);
+          jlog.error("child_hung", { child: name });
+          tracker.event(`health_kills{child=${name}}`);
           k.ready = false;
           setEngine(name, "restarting");
           S.killTree(proc.pid);   // the exit handler restarts it
@@ -274,6 +289,8 @@ function createMain(origin) {
     // Settings → Reset: the page asked the backend (which returned a one-time token), now the shell does its part
     const r = R.parseResetUrl(url, origin);
     if (r) { e.preventDefault(); resetApp(r, origin); return; }
+    // Settings → Help & diagnostics → "Save a diagnostics file…" (#92): the user picks where; nothing is uploaded
+    if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin); return; }
     if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
   });
   win.once("ready-to-show", () => {
@@ -284,6 +301,36 @@ function createMain(origin) {
   win.on("closed", () => { win = null; });
   win.webContents.on("did-finish-load", pushEngine);   // a reload gets the engine state again
   win.loadURL(origin + "/");
+}
+
+// ---- Settings → Help & diagnostics (#92, diag.js) -------------------------------------------------------------------
+let diagBusy = false;
+function diagState(state) {
+  if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.__lunaDiag && window.__lunaDiag(${JSON.stringify({ state })})`).catch(() => {});
+}
+async function saveDiagnostics(origin) {
+  if (diagBusy || !win) return;
+  diagBusy = true;
+  try {
+    // OUTPOST_DIAG_SAVE_PATH: test runs only (like OUTPOST_USER_DATA): no dialog, this file
+    let file = process.env.OUTPOST_DIAG_SAVE_PATH || "";
+    if (!file) {
+      const r = await dialog.showSaveDialog(win, { title: "Save a diagnostics file",
+        defaultPath: path.join(app.getPath("downloads"), D.defaultName()), filters: [{ name: "Zip", extensions: ["zip"] }] });
+      if (r.canceled || !r.filePath) { diagState("cancelled"); return; }
+      file = r.filePath;
+    }
+    diagState("saving");
+    const shell = D.shellInfo({ appVersion: APP_VERSION, packaged: app.isPackaged, engine: E.readDiscovery(ENGINE_FILE),
+      tracker, appMetrics: app.getAppMetrics() });
+    const bytes = await D.saveBundle({ backend: origin, token: TOKEN, shell, file });
+    log(`diagnostics: saved a ${Math.round(bytes / 1024)} KB file`);
+    jlog.event("diagnostics_saved", { bytes });
+    diagState("saved");
+  } catch (e) {
+    log("diagnostics: not saved:", e.message);
+    diagState("error");
+  } finally { diagBusy = false; }
 }
 
 let resetting = false;
@@ -469,6 +516,7 @@ function watchCheckRequests() {
 }
 
 async function stopAll() {
+  if (!quitting) { const free = tracker.end(failed); jlog.event("session_end", { crash_free: free, up_s: Math.round((Date.now() - t0) / 1000) }); }
   quitting = true;
   await Promise.all(Object.values(kids).map((k) => k.proc && S.killTree(k.proc.pid)));
   pids.write([]);
@@ -483,6 +531,9 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     if (HEADLESS && app.dock) app.dock.hide();
     fs.mkdirSync(LOGS, { recursive: true });
+    for (const n of ["main", "backend", "models"]) D.rotateText(path.join(LOGS, `${n}.log`));   // [#92] capped: 5 MB + one old
+    const { previous } = tracker.begin();   // [#92] a session = one launch; the last one unfinished = not crash-free
+    jlog.event("launch", { version: APP_VERSION, platform: process.platform, arch: process.arch, previous_session: previous });
     log(`Outpost Luna ${app.getVersion()} (${process.platform} ${process.arch}); resources ${RES}; data ${USER}`);
     createSplash();
     if (!fs.existsSync(PY)) return fail(`Embedded Python missing: ${PY}`);

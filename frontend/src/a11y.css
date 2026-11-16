@@ -142,6 +142,8 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .rs-link{margin:var(--space-2) 0 0}
 .rs-link .btn-link{border:0;background:none;padding:0;color:var(--color-accent);text-decoration:underline;font:inherit;cursor:pointer}
 .rs-zone{display:grid;gap:var(--space-2);justify-items:start}
+.dg-zone{display:grid;gap:var(--space-2);justify-items:start}
+.dg-list{margin:0;padding-left:1.2em;font-size:var(--text-sm);color:var(--color-text-2)}
 .rs-btn{color:var(--color-danger);border-color:var(--color-danger)}
 .rs-note{margin:-2px 0 var(--space-2);font-size:var(--text-sm);color:var(--color-text-2)}
 .rs-confirm{display:grid;gap:var(--space-3);padding:var(--space-4);border:2px solid var(--color-danger);border-radius:var(--radius-lg);background:var(--color-surface)}

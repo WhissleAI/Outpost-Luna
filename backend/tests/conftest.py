@@ -81,3 +81,8 @@ def no_voice_pack(monkeypatch, request):
         return
     from app import tts
     monkeypatch.setattr(tts, "pack_version", lambda: "")
+
+
+# [#92] app/diag.py: tests never write the developer's logs or daily metrics (a test that wants them sets its own dirs)
+for _k in ("LUNA_LOG_DIR", "LUNA_DATA_DIR"):
+    os.environ.pop(_k, None)

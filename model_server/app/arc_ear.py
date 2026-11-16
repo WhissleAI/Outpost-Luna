@@ -39,7 +39,7 @@ import time
 import numpy as np
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import arcmeta
+from . import arcmeta, diag
 from .nft2 import normalize_entry
 
 SR = arcmeta.SR
@@ -231,6 +231,10 @@ class EarStream:
         dt = time.perf_counter() - t
         self.compute_s += dt
         out["_s"] = dt
+        kind = "partial" if partial else "final"   # [#92] decode latency + real-time factor (app/diag.py)
+        diag.METRICS.observe("ear_decode_ms", dt * 1000, kind=kind)
+        if len(pcm):
+            diag.METRICS.observe("ear_rtf", dt / (len(pcm) / SR), bounds=diag.RATIO, kind=kind)
         return out
 
     def _seg_audio(self) -> np.ndarray:
@@ -320,6 +324,9 @@ class EarStream:
             msgs.append({"t": "turn", "state": "end", "text": text})
             self.ends.append({"at": round(self.audio_s, 3), "last_voice": round(self.last_voice_s, 3),
                               "reason": reason, "decode_ms": round(out["_s"] * 1000, 1)})
+            diag.METRICS.inc("ear_turns", end=reason)
+        elif not spoken:
+            diag.METRICS.inc("ear_segments_no_speech")
         self.turn_open, self.text = False, ""
         return msgs
 

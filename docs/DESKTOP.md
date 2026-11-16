@@ -277,7 +277,8 @@ Result: `python/` 57 -> 39 MB, `site/models/` 812 -> 728 MB, `site/backend/` 48 
 | app (read-only) | `/Applications/Outpost Luna.app/Contents/Resources` | `%LOCALAPPDATA%\Programs\Outpost Luna\resources` |
 | writable data | `~/Library/Application Support/Outpost Luna/` | `%APPDATA%\Outpost Luna\` |
 
-Under the writable folder: `logs/{main,models,backend}.log`, `cache/{vectors,tts}` (backend `CACHE_DIR`),
+Under the writable folder: `logs/{main,models,backend}.log` (+ the structured `.jsonl` logs, 5 × 5 MB each) and
+`metrics/` (30-day local counts; `docs/DIAGNOSTICS.md`), `cache/{vectors,tts}` (backend `CACHE_DIR`),
 `children.json` (child pids), `ports.json` (last ports), `hf/` (an empty `HF_HOME`), and Chromium's own state. Nothing is
 written inside the bundle: the app runs from a read-only dmg mount.
 

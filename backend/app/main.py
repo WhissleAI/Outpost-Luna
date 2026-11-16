@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import knowledge, models_client, reset, video
+from . import diag, diagnostics, knowledge, models_client, reset, video
 from .listen import router as listen_router
 from .local_guard import LocalGuard, env_options as local_guard_options
 from .config import settings
@@ -22,6 +22,7 @@ S: dict = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    diag.setup("backend")   # [#92] JSON-lines log + metrics + the daily summary (app/diag.py, docs/DIAGNOSTICS.md)
     S["gaz"] = Gazetteer(settings.data_dir / "places.json")
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
@@ -29,6 +30,7 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(video.prefetch_task())   # NASA video: pinned files on first online launch (docs/MEDIA.md)
     yield
     video.stop_prefetch()
+    diag.shutdown()
 
 
 async def _warm_brain():
@@ -38,6 +40,7 @@ async def _warm_brain():
 
 
 app = FastAPI(title="Outpost Luna backend", version="0.2.0", lifespan=lifespan)
+app.add_middleware(diagnostics.ErrorCounter)   # [#92] 5xx + unhandled exceptions, counted by code (app/diagnostics.py)
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins.split(","), allow_methods=["*"],
                    allow_headers=["*"])
 # [#84] outermost: Host + Origin + per-launch token on every request and WebSocket (app/local_guard.py, docs/SECURITY.md)
@@ -145,6 +148,10 @@ async def ask(req: AskRequest):
 
 
 app.include_router(listen_router)
+# [#92] GET /api/metrics (token-protected) + Settings -> Help & diagnostics (app/diagnostics.py, docs/DIAGNOSTICS.md)
+app.include_router(diag.metrics_router("/api/metrics"))
+app.include_router(diagnostics.router)
+diagnostics.install_mission_hooks()   # mission saves / loads / failures, counted around app/mission/registry.py
 from .mission.routes import router as mission_router; app.include_router(mission_router)  # noqa: E402
 from .mission.navigator import router as navigator_router; app.include_router(navigator_router)  # noqa: E402  (site navigator)
 from .session import router as session_router; app.include_router(session_router)  # noqa: E402  (docs/SESSION_CONTRACT.md)

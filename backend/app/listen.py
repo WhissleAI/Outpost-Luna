@@ -29,6 +29,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import time
 from functools import lru_cache
 from urllib.parse import urlencode
 
@@ -36,7 +37,7 @@ import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import session as sessions
+from . import diag, session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
 from .keyterms import base_keyterms
@@ -165,20 +166,48 @@ async def listen(ws: WebSocket):
     # Session Director hook (docs/SESSION_CONTRACT.md §1): ?session=<id>, or `session` in a context frame, makes this
     # relay also post its words / turn / arc / emotion into that session server-side.
     sid = {"id": ws.query_params.get("session")}
+    stat = {"ear": None, "turns": 0, "errors": 0, "t0": time.perf_counter()}   # [#92] counts only, never words
+    diag.METRICS.inc("listen_sessions")
 
     async def send(m: dict):
+        _count(m, stat)
         with contextlib.suppress(Exception):
             async with lock:
                 await ws.send_json(m)
         if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion"):
             await sessions.post(sid["id"], m)
 
+    try:
+        await _listen(ws, send, sid)
+    finally:
+        diag.LOG.event("listen_close", ear=stat["ear"], turns=stat["turns"], errors=stat["errors"],
+                       open_s=round(time.perf_counter() - stat["t0"], 1))
+
+
+def _count(m: dict, stat: dict) -> None:
+    """[#92] The relay's metrics: turns per ear, errors by code. Reads only the message type and state."""
+    t = m.get("t")
+    if t == "ear":
+        stat["ear"] = m.get("ear")
+    elif t == "turn" and m.get("state") == "end":
+        stat["turns"] += 1
+        diag.METRICS.inc("turns", ear=stat["ear"] or "unknown")
+    elif t == "error":
+        stat["errors"] += 1
+        code = str(m.get("code") or ("ear_closed" if "closed" in str(m.get("message") or "") else "listen_error"))
+        diag.METRICS.error(code)
+        diag.LOG.warning("listen_error", code=code, ear=stat["ear"])
+
+
+async def _listen(ws: WebSocket, send, sid: dict):
     want = ear_settings.ear.strip().lower()
     fallback_from = None
     if want != "deepgram":
         arc, why = await open_arc_ear()
         if arc is not None:
             return await run_arc(ws, send, sid, arc)
+        diag.METRICS.error("ear_unavailable")
+        diag.LOG.warning("ear_unavailable", reason=why, fallback=bool(settings.deepgram_api_key))
         log.warning("arc ear unavailable (%s)%s", why, "; falling back to Deepgram" if settings.deepgram_api_key else "")
         fallback_from = {"from": "arc", "reason": why}
         if not settings.deepgram_api_key:

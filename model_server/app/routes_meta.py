@@ -5,13 +5,14 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 
-from . import arc_ear, arcmeta
+from . import arc_ear, arcmeta, diag
 from .decode_watchdog import DecodeTimeout, guarded
 from .stream_context import StreamContext
 
@@ -163,20 +164,25 @@ async def ear_stream(ws: WebSocket, domain: str):
     if why is None and not arcmeta.admit():
         why = "META_MAX_SESSIONS reached"
     if why:
+        diag.METRICS.error("ear_unavailable")
+        diag.LOG.warning("ear_unavailable", reason=why)
         await ws.send_json({"t": "ear", "available": False, "ear": "arc", "reason": why})
         await ws.close(code=1013)
         return
     ctx = StreamContext()
     pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="arcear-ws")
     loop = asyncio.get_running_loop()
-    es = None
+    es = seen = None
+    opened = time.perf_counter()
 
     async def send_all(msgs):
         for m in msgs:
             await ws.send_json(ctx.decorate(m))
 
     try:
-        es = await loop.run_in_executor(pool, arc_ear.EarStream, domain)
+        es = seen = await loop.run_in_executor(pool, arc_ear.EarStream, domain)
+        diag.METRICS.inc("ear_streams")
+        diag.LOG.event("ear_stream_open", domain=domain, sessions=arcmeta.STATE["sessions"])
         await ws.send_json({"t": "ear", "available": True, "ear": "arc", "model": arcmeta.MODEL, "domain": domain})
         await ws.send_json({"t": "emotion", "available": False, "reason": arcmeta.EMOTION_REASON})
         buf = b""
@@ -209,6 +215,11 @@ async def ear_stream(ws: WebSocket, domain: str):
         await _hung(ws, es, str(e))
         es = None               # its worker is stuck: never queue close() behind it
     finally:
+        if seen is not None:    # [#92] one line per stream: how much audio, how fast, how many turns (no words)
+            a_s, c_s = getattr(seen, "audio_s", 0.0) or 0.0, getattr(seen, "compute_s", 0.0) or 0.0
+            diag.LOG.event("ear_stream_close", audio_s=round(a_s, 2), compute_s=round(c_s, 3),
+                           rtf=round(c_s / a_s, 3) if a_s else None, turns=len(getattr(seen, "ends", []) or []),
+                           open_s=round(time.perf_counter() - opened, 1), hung=es is None)
         if es is not None:
             await loop.run_in_executor(pool, es.close)
         pool.shutdown(wait=False)

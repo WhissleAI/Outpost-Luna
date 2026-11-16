@@ -150,6 +150,9 @@ def reset_after_hang(model, reason: str, reload=None) -> bool:
         STATE["error"] = f"reloading after a hung decode ({reason})"[:300]
         STATE["resets"] += 1
         STATE["last_reset"] = {"at": round(time.time()), "reason": reason[:200]}
+    from . import diag   # [#92] model resets, in the metrics and the log
+    diag.METRICS.inc("model_resets", model="arc_ear")
+    diag.LOG.warning("model_reset", model="arc_ear", reason=reason)
     threading.Thread(target=reload or _reload, name="arc-reload", daemon=True).start()
     return True
 
