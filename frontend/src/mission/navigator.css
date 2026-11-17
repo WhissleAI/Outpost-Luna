@@ -106,3 +106,14 @@ body:has(.nv-map:not([hidden]):not(.is-pending)) .mx-pins,body:has(.nv-map:not([
   .nv-chip{flex:none}
   .nv-row{padding:6px var(--space-3)}
 }
+/* [playtest 15] the Cadet briefing: three short bars per site, three lines for the chosen one; the numbers behind More */
+.nv-bars{display:flex;gap:var(--space-3);margin-top:var(--space-1);flex-wrap:wrap}
+.nv-kbar{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);color:var(--color-text-2)}
+.nv-kbar i{position:relative;display:block;width:44px;height:6px;border-radius:3px;background:var(--color-surface-2);overflow:hidden}
+.nv-kbar i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--color-accent)}
+.nv-kbar em{font-style:normal;font-variant-numeric:tabular-nums}
+.nv-kidl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2);font-size:var(--text-md)}
+.nv-kidl li{display:flex;align-items:center;gap:var(--space-2)}
+.nv-more>summary{cursor:pointer;min-height:var(--control-sm);display:inline-flex;align-items:center;font-size:var(--text-sm);color:var(--color-text-2);border-radius:var(--radius-sm)}
+.nv-more>summary:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.nv-more[open]>summary{margin-bottom:var(--space-2)}

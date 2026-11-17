@@ -75,7 +75,9 @@ app.include_router(diag.metrics_router("/metrics", lambda: {"ear_sessions_open":
 class TagRequest(BaseModel):
     text: str | None = Field(None, description="Plain text")
     words: list[str] | None = Field(None, description="Words in order; spans index into this list")
-    domain: str = Field("assistant", description="assistant | news | talk (as loaded)")
+    domain: str = Field("assistant", description="assistant | news | talk | kids (as loaded)")
+    command_context: bool | None = Field(None, description="kids domain: the turn is a command on a cockpit / mission "
+                                         "screen; model-only safety tags of such a turn are gated (Arc Tagger 0.5)")
 
     @model_validator(mode="after")
     def one_input(self):
@@ -129,7 +131,7 @@ async def tag(req: TagRequest):
     text = req.text if req.text else " ".join(req.words)
     t = time.perf_counter()
     try:
-        out = await run_in_threadpool(tg.tag_text, text, req.domain)
+        out = await run_in_threadpool(tg.tag_text, text, req.domain, req.command_context)
     except KeyError as e:
         raise HTTPException(400, str(e))
     out["ms"] = round((time.perf_counter() - t) * 1000, 2)

@@ -23,9 +23,12 @@ def client() -> httpx.AsyncClient:
     return _client
 
 
-async def tag(text: str, domain: str = "assistant") -> dict | None:
+async def tag(text: str, domain: str = "assistant", command_context: bool | None = None) -> dict | None:
+    body = {"text": text, "domain": domain}
+    if command_context is not None:   # kids domain: a cockpit / mission command (Arc Tagger 0.5)
+        body["command_context"] = bool(command_context)
     try:
-        r = await client().post("/v1/tag", json={"text": text, "domain": domain})
+        r = await client().post("/v1/tag", json=body)
         r.raise_for_status()
         return r.json()
     except (httpx.HTTPError, RuntimeError, ValueError):

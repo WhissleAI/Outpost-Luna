@@ -95,7 +95,8 @@ def load() -> None:
         m = Nft2(lib, d, threads=meta_settings.arc_threads)
         rng = np.random.default_rng(0)      # warm every path once, so the first kid turn doesn't pay for it
         m.transcribe((rng.standard_normal(SR) * 0.01).astype(np.float32))
-        STATE.update(arc=m, decoder=True, model_dir=str(d), lib=str(lib), backend=m.backend, engine=m.info())
+        STATE.update(arc=m, decoder=True, model_dir=str(d), lib=str(lib), backend=m.backend, engine=m.info(),
+                     error=None)   # a load that works clears an earlier failure (a reload after a hung decode)
     except Exception as e:  # noqa: BLE001
         STATE["arc"] = None
         STATE["error"] = f"{type(e).__name__}: {e}"[:300]

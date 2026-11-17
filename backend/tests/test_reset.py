@@ -25,7 +25,8 @@ def _left(c: Path) -> dict:
     return {d.name: sorted(p.name for p in d.iterdir()) for d in sorted(c.iterdir())}
 
 
-def test_targets_come_from_settings_not_hard_coded(tmp_cache):
+def test_targets_come_from_settings_not_hard_coded(tmp_cache, monkeypatch):
+    monkeypatch.delenv("LEARN_DIR", raising=False)     # conftest points learning at a temp folder; here: the settings
     t = R.targets("all")
     assert all(str(p).startswith(str(tmp_cache)) for p in t["all"])
     assert set(t["start"]) < set(t["all"])

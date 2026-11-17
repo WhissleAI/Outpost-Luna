@@ -23,3 +23,6 @@ backend/data/turnlog/
 
 # [polish 2] the dev checkout keeps the mission auto-save here (the desktop app: its per-user cache folder)
 backend/data/saves/
+
+# On-device learning in a dev checkout (backend/app/learn; the desktop app: its per-user cache folder)
+backend/data/learning_state/

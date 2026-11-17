@@ -23,7 +23,7 @@ class FakeModel:
         self.text, self.names_out, self.directed, self.events, self.by_len = text, names or [], directed, events, by_len
         self.calls, self.names_seen = [], []
 
-    def transcribe(self, pcm, domain="assistant", no_events=False, no_bias=False, names=None):
+    def transcribe(self, pcm, domain="assistant", no_events=False, no_bias=False, names=None, **abi2):
         self.calls.append({"n": len(pcm), "partial": no_events})
         self.names_seen.append(names)
         text = self.by_len(len(pcm)) if self.by_len else self.text

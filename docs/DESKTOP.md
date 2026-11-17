@@ -42,7 +42,7 @@ with the chunked upload-session API, makes public links and checks each one anon
 | id | what | required | download | installed as |
 |---|---|---|---|---|
 | `ear` | Arc Transcriber Space `nft2/` + LICENSE + NOTICE (CC BY-NC 4.0) | yes | 461 MB | `ARC_SPACE_DIR` |
-| `tagger` | Arc Tagger v0.3 int8 + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
+| `tagger` | Arc Tagger model (v0.3 int8; run by the 0.5.0 library, kids domain built in) + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
 | `embedder` | all-MiniLM-L6-v2 int8 ONNX (Apache-2.0) | yes | 23 MB | `EMBED_MODEL_DIR` |
 | `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
 | `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
@@ -213,7 +213,7 @@ other is the one it was built for:
   headers give now; every struct's `sizeof` / `offsetof` and every constant / enum value agree with a real C compiler
   reading the real header; every C function the Python calls is declared; and the ABI bump rule (below) against
   `tests/abi_snapshot.json`.
-- **ABI version.** `arc.h` defines `ARC_ABI_VERSION` (1) and `ARC_VERSION` ("1.2.0-outpost.1"); libarc exports
+- **ABI version.** `arc.h` defines `ARC_ABI_VERSION` (2) and `ARC_VERSION` ("1.3.0-outpost.1"); libarc exports
   `arc_abi_version()` / `arc_version()`. `nft2.open_library()` calls it right after loading and raises `AbiMismatch`
   ("libarc ABI 2 ..., this model server was generated for ABI 1: rebuild libarc ...") on a difference, or when the
   library predates the call. Bump rules are in `arc.h`: any change to an existing struct, signature, enum or `#define`

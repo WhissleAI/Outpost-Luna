@@ -400,3 +400,9 @@ For the Arc team. Concrete, in priority order, with the evidence above.
    (end of turn on a kid's slow command).
 10. **Kid speech data.** All of the above is on synthetic Mac voices (WER 30-48 % on natural / eloquence voices; 1-2
     word turns are 24-53 % empty). Short answers ("hmm", "help", "this one") are the worst bucket.
+
+## 9. Update: libarc ABI 2 (16 Nov 2026)
+
+Arc answered asks 3-4 (per-word confidence, n-best), the "almost linked" state, numbers (typed quantities), streaming
+and the echo reference. What the app switched on, before / after numbers and the round-13 feature block:
+`docs/ARC_ABI2.md`. The round-7 slots stay 0 for the shipped weights; the new read-outs have their own keys and slots.

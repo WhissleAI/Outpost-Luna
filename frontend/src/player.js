@@ -1,6 +1,7 @@
 // Moon Moment playback: one server moment (t0..t1 of a crew clip) with a karaoke caption, the globe following the
 // places the crew names, PAUSE_EXPLAIN for hard words (at the next sentence end, max 1 per 30 s, none in the first
 // 5 s), ducking while the kid talks, and a chime on every scene change.
+import * as echoref from "./echoref.js";
 import { chime, fadeTo } from "./sound.js";
 import { floor, speak } from "./floor.js";
 import { normMoment } from "./api.js";
@@ -62,6 +63,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
       lim.threshold.value = -1; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.05;
       src.connect(gain).connect(lim).connect(master).connect(ctx.destination);
       graph = { ctx, gain, master };
+      echoref.tapNode(ctx, master);    // what the crew clip really plays -> the ear's echo reference (echoref.js)
       const setMaster = () => { const L = window.__outpost && window.__outpost.levels; master.gain.value = L && isFinite(L.master) ? L.master : 1; };
       setMaster(); addEventListener("outpost:prefs", setMaster);
     } catch (e) { graph = false; }

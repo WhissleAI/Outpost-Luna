@@ -12,7 +12,7 @@
 //   logs/            KEPT always (the reset itself is logged there)
 //   ports.json       KEPT (stable ports keep the page origin the same)
 //   children.json    KEPT (the supervisor's pid file)
-//   cache/           the backend's CACHE_DIR: tts/ turnlog/ (start); video/ vectors/ (all)
+//   cache/           the backend's CACHE_DIR: tts/ turnlog/ learning/ (start); video/ vectors/ (all)
 //   hf/              HF_HOME (all)
 //   assets/          the first-run downloads (assets.js: the ear, tagger, embedder, voice pack, crew audio, videos, the
 //                    Steer voice, staged updates, rollback copies, the cached remote manifest) (all): the next launch
@@ -31,7 +31,7 @@ const STORAGES = ["localstorage", "indexdb", "cachestorage", "serviceworkers", "
 function plan(level, userData, platform = process.platform) {
   if (!LEVELS.includes(level)) throw new Error(`reset level: ${level}`);
   const P = platform === "win32" ? path.win32 : path.posix;
-  const start = [P.join(userData, "cache", "tts"), P.join(userData, "cache", "turnlog")];
+  const start = [P.join(userData, "cache", "tts"), P.join(userData, "cache", "turnlog"), P.join(userData, "cache", "learning")];
   const all = [P.join(userData, "cache"), P.join(userData, "hf"), ...downloadedAssetDirs(userData, platform)];
   const del = level === "all" ? all : start;
   for (const d of del) {

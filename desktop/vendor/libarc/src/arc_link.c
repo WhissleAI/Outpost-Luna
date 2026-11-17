@@ -847,6 +847,61 @@ static void generic_guard(name_rec* r, const char* span_text) {
   r->n.kb_index = -1;
 }
 
+/* arc_space Engine._number_guard: never link across numbers: "Apollo fourteen" linked to "Apollo 12" moves to the
+ * list's "Apollo 14" (same words, the heard number), else is not in the list (no such entry) or abstains (several);
+ * an abstained span that is exactly one entry's words and number (the list holds Apollo 12 / 14 / 15) links to it */
+static void number_guard(arc_link* l, name_rec* r, const char* span_text, const int* allowed, int na) {
+  if (!r->n.state) return;
+  int abst = !strcmp(r->n.state, "abstain") && !(r->n.via && !strcmp(r->n.via, "generic_guard"));
+  if (!abst && (strcmp(r->n.state, "linked") || r->n.kb_index < 0)) return;
+  const char*** cf = arc_malloc(sizeof(char**) * (size_t)(na + 1));
+  int* ncf = arc_malloc(sizeof(int) * (size_t)(na + 1));
+  int* out = arc_malloc(sizeof(int) * (size_t)(na + 1));
+  for (int k = 0; k < na; ++k) {
+    const arc_kbent* c = &l->kb[allowed[k]];
+    const char** f = arc_malloc(sizeof(char*) * (size_t)(c->n_aliases + 1));
+    int nf = 0;
+    f[nf++] = c->name ? c->name : "";
+    for (int j = 0; j < c->n_aliases; ++j) f[nf++] = c->aliases[j];
+    cf[k] = f;
+    ncf[k] = nf;
+  }
+  int n;
+  const char** lf = NULL;
+  if (abst) {   /* siblings in the list (Apollo 12 / 14 / 15): the heard number decides */
+    n = arc_tidy_number_exact(span_text, allowed, (const char* const* const*)cf, ncf, na, out);
+    if (n == 1) {
+      r->n.entity = l->kb[out[0]].name;
+      r->n.kb_index = out[0];
+      r->n.state = "linked";
+      r->n.via = "number";
+    }
+    n = -1;
+  } else {
+    const arc_kbent* e = &l->kb[r->n.kb_index];
+    lf = arc_malloc(sizeof(char*) * (size_t)(e->n_aliases + 1));
+    int nlf = 0;
+    lf[nlf++] = e->name ? e->name : "";
+    for (int j = 0; j < e->n_aliases; ++j) lf[nlf++] = e->aliases[j];
+    n = arc_tidy_number_relink(span_text, lf, nlf, allowed, (const char* const* const*)cf, ncf, na, out);
+  }
+  if (n == 1) {   /* p stays the link's own: the name was right, the heard number picks the entry */
+    r->n.entity = l->kb[out[0]].name;
+    r->n.kb_index = out[0];
+    r->n.via = "number";
+  } else if (n >= 0) {
+    r->n.entity = NULL;
+    r->n.state = n ? "abstain" : "not_in_list";
+    r->n.via = "number";
+    r->n.kb_index = -1;
+  }
+  for (int k = 0; k < na; ++k) arc_free((void*)cf[k]);
+  arc_free(cf);
+  arc_free(ncf);
+  arc_free(out);
+  arc_free(lf);
+}
+
 static int read_name(run_ctx* x, const pend* pd, name_rec* r) {
   arc_link* l = x->l;
   const arc_wstore* W = x->W;
@@ -926,7 +981,10 @@ static int read_name(run_ctx* x, const pend* pd, name_rec* r) {
       r->n.state = top >= 2 ? "linked" : "not_in_list";
       if (top >= 2) r->n.kb_index = top - 2;
     }
-    if (x->c->e->space_names) generic_guard(r, span_text);
+    if (x->c->e->space_names) {
+      generic_guard(r, span_text);
+      number_guard(l, r, span_text, allowed, na);
+    }
     arc_free(z);
     arc_free(Sf);
     arc_free(heard);
@@ -939,7 +997,7 @@ static int read_name(run_ctx* x, const pend* pd, name_rec* r) {
   int show = 0;
   for (int k = 0; k < pd->nk; ++k) {
     const arc_wsword* w = &W->w[pd->keys[k]];
-    r->w[k] = (arc_wordb){w->w, w->start, w->end, w->tag, w->tag_begin};
+    r->w[k] = (arc_wordb){.w = w->w, .start = w->start, .end = w->end, .tag = w->tag, .tag_begin = w->tag_begin};
     show |= show_word(w->w);
   }
   r->span_p = hok ? hp : NAN;
@@ -1190,6 +1248,8 @@ static arc_word* arena_words(arc_arena* A, const arc_wordb* w, int n) {
     o[k].end = (float)w[k].end;
     o[k].tag = w[k].tag >= 0 ? arc_tag_name(w[k].tag) : NULL;
     o[k].tag_begin = w[k].tag_begin;
+    o[k].conf = w[k].has_conf ? w[k].conf : -1.0f;
+    o[k].disfl = w[k].disfl;
   }
   return o;
 }
@@ -1346,7 +1406,7 @@ int arc_link_run(arc_link* l, const arc_link_ctx* c, const arc_wstore* W, arc_re
         r->w = arc_malloc(sizeof(arc_wordb) * (size_t)(r->nw + 1));
         for (int q = 0; q < r->nw; ++q) {
           const arc_wordb* src = &ub->aw[ss[k].w[q]];
-          r->w[q] = (arc_wordb){src->w, src->start, src->end, src->tag, src->tag_begin};
+          r->w[q] = (arc_wordb){.w = src->w, .start = src->start, .end = src->end, .tag = src->tag, .tag_begin = src->tag_begin};
         }
         added++;
       }
@@ -1394,6 +1454,9 @@ int arc_link_run(arc_link* l, const arc_link_ctx* c, const arc_wstore* W, arc_re
     int wn = tn[k].n_words, w0 = wn ? (int)(tn[k].words - tw[tn[k].id]) : 0;
     o->words = arena_words(x.A, r->w + w0, wn);
     o->n_words = wn;
+    o->candidate = NULL;
+    o->candidate_kb_index = -1;
+    o->candidate_p = -1.0f;
   }
   R->names = out;
   R->n_names = nk;

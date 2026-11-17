@@ -83,9 +83,33 @@ def _more(cmd: dict, loads: dict) -> bool:
     return False
 
 
+# Kid words for an order that the mission NLU doesn't read ("come out" for leave the shelter). Only the order the step
+# expects can match them, so they never fire a different order (docs/playtest/NOVICE_PLAYTEST_2026-11-16.md #13).
+ORDER_ALSO = {
+    ("shelter", False): ["come out", "everyone come out", "come on out", "get out", "everybody out", "everyone out",
+                         "go out", "go outside", "back outside", "out of the shelter", "exit the shelter", "exit",
+                         "leave", "you can come out", "crew come out", "crew out"],
+    ("shelter", True): ["get inside", "go in", "everyone in", "get in the shelter", "go in the shelter", "hide inside"],
+}
+
+
+def order_also(text: str, expect: dict) -> dict | None:
+    """The expected order, when the words are one of its kid phrasings (ORDER_ALSO); else None."""
+    key = (expect.get("type"), expect.get("on")) if expect.get("type") == "shelter" else None
+    t = re.sub(r"^(?:okay |ok |um |uh |so |please |now |crew |everyone |guys )+|(?: please| now| guys)+$", "",
+               _gnorm(text)).strip()
+    hit = lambda w: t == _gnorm(w) or (" " in w and re.search(rf"(?<![a-z]){re.escape(_gnorm(w))}(?![a-z])", t))  # noqa: E731
+    if key and t and len(t.split()) <= 8 and any(hit(w) for w in ORDER_ALSO.get(key, [])):
+        return {"type": "shelter", "on": key[1]}
+    return None
+
+
 def matching_command(text: str, expect: dict, loads: dict | None = None) -> dict | None:
     """The first Command the NLU reads from `text` that matches `expect`, else None."""
     loads = loads or dict(sim.DEFAULT_LOADS)
+    also = order_also(text, expect)
+    if also:
+        return also
     for cmd in nlu.parse(text or "").get("commands", []):
         if any(k != "more" and cmd.get(k) != v for k, v in expect.items()):
             continue
@@ -171,7 +195,11 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
         return bool(p and p.id in {acc["place"], *acc.get("also", [])}), {}
     if kind == "command":
         cmd = matching_command(text, acc["expect"], loads)
-        return cmd is not None, {"command": cmd} if cmd else {}
+        if cmd is None:   # the order it was (a wrong one teaches why: guide.ladder, step.wrong)
+            from .guide import order_key
+            heard = next((order_key(c) for c in nlu.parse(text or "").get("commands", []) if order_key(c)), None)
+            return False, {"heard_order": heard} if heard else {}
+        return True, {"command": cmd}
     if kind == "keywords":
         t = _norm(text)
         ok_all = all(any(_has(t, w) for w in grp) for grp in acc.get("all", []))
@@ -198,7 +226,12 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
             secs = max(0.0, float(vid.get("seconds") or 0))
         except (TypeError, ValueError):
             secs = 0.0
-        return True, {"watched": bool(vid.get("watched")), "seconds": round(secs, 1)}
+        out = {"watched": bool(vid.get("watched")), "seconds": round(secs, 1)}
+        gs = acc.get("guess") or {}
+        if gs.get("answer"):   # "Guess first, then watch": the kid's guess, and the answer it's checked against
+            g = vid.get("guess") if any(o["id"] == vid.get("guess") for o in gs.get("options", [])) else None
+            out |= {"answer": gs["answer"], **({"guess": g, "correct": g == gs["answer"]} if g else {})}
+        return True, out
     return False, {}
 
 
@@ -485,8 +518,9 @@ def step_options(acc: dict) -> list[tuple[str, list[str]]]:
         return [(o["id"], [o["label"]] + ([o["term"]] if kind != "vocab_match" else [])) for o in vocab.options(acc)]
     if kind == "globe_side":
         return [(k, ["", *SIDE_WORDS[k]]) for k in ("near", "far")]
-    if kind == "video":
-        return [(k, w) for k, w in VIDEO_WORDS.items()]
+    if kind == "video":   # Watch / Skip, and a "Guess, then watch" step's guess chips (the client takes the guess)
+        return [(k, w) for k, w in VIDEO_WORDS.items()] + \
+            [(o["id"], [o["label"], *o.get("say", [])]) for o in (acc.get("guess") or {}).get("options", [])]
     return []
 
 
@@ -525,6 +559,8 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
     if kind == "command" and any(c.get("type") not in ("confirm", "cancel", "deny")
                                  for c in nlu.parse(text).get("commands", [])):
         return True
+    if kind == "command" and acc.get("expect") and order_also(text, acc["expect"]):
+        return True       # "come out": the expected order in kid words
     if kind in ("tap", "intent", "route", "terminator", "compare") and gaz().match_text(text):
         return True
     if kind == "terminator" and re.search(r"\b(terminator|day|night|line|shadow)\b", t):

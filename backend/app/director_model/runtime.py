@@ -461,6 +461,7 @@ class Shadow:
                 return None
             out, thr = pk
             thr = {**thr, **(thr.get("guarded") or {})}
+        thr = learned_thr(thr, self.sess)
         b = self.sess.belief
         return policy(out, FX.words_of(text), rc, rules_guard, thr,
                       mission=bool(b.get("mission_id")) and b.get("mode") == "mission")
@@ -469,6 +470,27 @@ class Shadow:
 DEFAULT_POLICY = {"conf": CONF, "cmd": CONF, "ignore": CONF, "ask": CONF, "veto": None, "answer_ignore": None,
                   "ignore_min_words": None,
                   "nav": None}
+
+
+# On-device learning (backend/app/learn/policy.py): the only policy keys a cadet's learning may move, and how far. Moves
+# are only ever towards MORE careful (a higher `ignore` bar), so the shipped weights' decisions change only for turns
+# whose p(ignore) falls between the shipped value and the learned one.
+LEARN_BOUNDS = {"ignore": (0.95, 0.99)}
+
+
+def learned_thr(thr: dict, sess) -> dict:
+    lrn = getattr(sess, "learning", None)
+    if lrn is None:
+        return thr
+    try:
+        ov = lrn.policy_overrides() or {}
+    except Exception:  # noqa: BLE001
+        return thr
+    out = dict(thr)
+    for k, (lo, hi) in LEARN_BOUNDS.items():
+        if k in ov and k in thr and thr[k] is not None:
+            out[k] = min(hi, max(lo, max(float(thr[k]), float(ov[k]))))
+    return out
 
 
 def nav_policy(out: dict | None, thr: dict, offer: bool = False) -> str | None:

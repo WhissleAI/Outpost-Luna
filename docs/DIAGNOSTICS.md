@@ -7,6 +7,11 @@ of this leaves the machine.
 Never collected anywhere in this system: audio, what was said or typed (transcripts), names the user said or typed, the
 call sign, the turn log (`docs/DIRECTOR_LOOP.md`, opt-in and separate), the per-launch token.
 
+**On-device learning** (`docs/ON_DEVICE_LEARNING.md`): the file has `learning.json` with the learned numbers (echo
+delay and threshold for this computer; per cadet: how many names were learned, end-of-turn silence, thresholds). The
+learned names themselves (the heard form, e.g. "ticko" -> Tycho) and the kid's own yes / no words are in it **only**
+when the grown-up ticks "Include the names the app learned" next to the save button.
+
 ## 1. Where it lives
 
 Under the app's per-user folder (`~/Library/Application Support/Outpost Luna/` on macOS, `%APPDATA%\Outpost Luna\` on

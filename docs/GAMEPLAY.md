@@ -285,3 +285,32 @@ one press away) and 5 (the 12-step tour only in Help).
   shelter, or shields to 40?"; "Storm's here! Crew into the shelter."
 - **A story moment** ("Day 3 · On our own") never prints over a window marker: a marker under it hides while it shows
   (`cabin.js` `clearMarks`).
+
+## 12. First-time-player playtest fixes (docs/playtest/NOVICE_PLAYTEST_2026-11-16.md)
+
+- **The Now card tells the truth about time** (`objective.js` `clockTruth`). A card that only waits never says time is
+  moving when it isn't: on a clock that is ready (a resumed mission) it says "Welcome back. Press Play to pick up where
+  you left off." with a **Play** button on the card; on a clock the player paused, "Clock paused. Press Play…". A held
+  clock (a decision, Settings) keeps its own card. The first order after a resume starts the clock, like a new
+  mission's first order. Wait cards say "Time skips ahead" (the auto-skip does), and the clock bar reads
+  "Fast-forward" while a skip runs.
+- **Science follows Earth, honestly** (`gameplay.py` `_chapters`). Earth visibility is real data (JPL Horizons + the
+  LOLA skyline): at Shackleton Rim, Earth is below the horizon until Day 6. A chapter with no Earth window (under 4 h)
+  scores the Science star on science **gathered**, which waits on board (store and forward) and goes home at
+  Earthrise; the bar follows the chapter's lab hours (night mode and the shelter put the lab to sleep). A chapter with
+  a window scores science **sent**, as before. The chapter card says which ("Gathered. Saved on board for
+  Earthrise"); CAPCOM's tip says "Do the science jobs. They wait on board for Earthrise." The progress strip shows
+  "+N on board" under the sent count; a sample's line says "Science +2, saved for Earthrise". Once the ice is home,
+  the Now card offers up to three **science drives** (the rover's explore trip, +25), so a first mission that follows
+  the card reaches the 120 goal (`tests/test_mission_playtest.py`).
+- **Storm card**: a crew already in the shelter under a warning gets "Crew is safe in the shelter. Wait for the
+  storm.", never the shelter order again; the Director's storm offer drops orders already carried out ("You're ready"
+  when none are left); a skip under a warning or a storm never says "a quiet day".
+- **Time waits behind Settings**, About and a video (`held()` → "settings").
+- **Readable consoles**: in the 3D cabin every label a task points to is at least 12 px on screen at 1280×720; the
+  folded Now card keeps its button.
+- **Debrief for kids**: stars, title, grade; then three lines with a tick or a cross (crew, ice, "Science home: 58 of
+  120"), the try line for the goal that was missed, and the numbers, chart and sources behind "For grown-ups".
+- **Cadet site briefing**: three bars (sun, radio, ice) and three lines per site in mission days; the scores, presets
+  and sources behind "More". Commander and Engineer keep the full navigator.
+- **Earth view** with Earth below the horizon says so, and the day it rises.

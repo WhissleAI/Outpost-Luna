@@ -1,4 +1,4 @@
-"""Arc Tagger v0.3 through its C API, with a small pool of handles per domain.
+"""Arc Tagger 0.5 through its C API, with a small pool of handles per domain.
 
 The C library is arc-tagger-c (`arctag_create_ex`, `arctag_tag_text`, ...), built from desktop/vendor/arctag. The
 binding is generated from its header (include/arctag.h -> app/_arctag_ffi.py, cffi out-of-line ABI mode,
@@ -6,6 +6,13 @@ model_server/tools/gen_bindings.py), and loading checks arctag_version() against
 MINOR (the library has no separate ABI number; 0.x minors change the API). The model folder is checked against the
 asset manifest's sha256 at load (app/model_verify.py). One handle holds one stream's state and is not thread-safe, so
 requests borrow a handle from a per-domain pool and reset it before returning it.
+
+Kid turns use the `kids` domain (0.5.0, docs/KIDS.md upstream): the assistant model input with thresholds fitted on short
+kid turns plus the guard layer (profanity / insult / threat as utterance safety tags, PII only with evidence, backstops
+for self-harm, grooming, sexual content, jailbreak). `command_context` (per call) gates model-only safety tags of a
+cockpit command ("kill the heaters"). Its thresholds come from arctag_kids.json in the model folder when there is one,
+else the library's built-in copy (src/kids_thr.inc, the same values: desktop/vendor/arctag/arctag_kids.json pins the
+Hugging Face file). The other domains give byte-identical output to the 0.3 library on the same model files.
 """
 from __future__ import annotations
 
@@ -122,9 +129,17 @@ class ArcTagger:
             self.L.arctag_reset(h)
             self.pools[domain].put(h)
 
-    def tag_text(self, text: str, domain: str) -> dict:
+    def tag_text(self, text: str, domain: str, command_context: bool | None = None) -> dict:
+        """One text through a pooled handle. command_context (kids domain): the turn is a command on a game screen, so
+        the guard gates model-only safety tags; it is set for this call only (the handle goes back with it off)."""
         with self.handle(domain) as h:
-            return self._take(h, self.L.arctag_tag_text(h, text.encode()))
+            if command_context is None:
+                return self._take(h, self.L.arctag_tag_text(h, text.encode()))
+            self.set_option(h, "command_context", "on" if command_context else "off")
+            try:
+                return self._take(h, self.L.arctag_tag_text(h, text.encode()))
+            finally:
+                self.L.arctag_set_option(h, b"command_context", b"off")
 
     def info(self) -> dict:
         d = next(iter(self.pools))

@@ -257,6 +257,10 @@ def _round7(sess, ev: dict, text: str, now: float) -> dict:
                                                                       "tier": (ear.get("hot") or {}).get("tier")}
         with _suppress():
             out["link"] = link_view(ear, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
+        with _suppress():
+            v13 = abi2_view(ear)
+            if v13:
+                out["e13"] = v13
     with _suppress():
         out["ent"] = entity_view(sess, text, ear if kind == "turn" else None, now)
     prev = getattr(sess, "_r7_prev", None)
@@ -268,6 +272,27 @@ def _round7(sess, ev: dict, text: str, now: float) -> dict:
 
 def _ntoks(x: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", (x or "").lower()))
+
+
+def abi2_view(ear: dict) -> dict:
+    """Round 13: libarc ABI 2's read-outs on the final words (model_server arc_ear.abi2_view) -> rec["e13"]; {} when the
+    ear sent none (ABI 1, Deepgram, typed)."""
+    keys = ("uconf", "min_wconf", "nbest", "almost", "quantities", "disfl", "n_dropped", "playback_leak", "playback",
+            "barge", "eot")
+    if not any(ear.get(k) is not None for k in keys):
+        return {}
+    heard = f" {_ntoks(ear.get('spoken') or '')} "
+    ents = {_ntoks(n.get("entity") or "") for n in ear.get("names") or [] if isinstance(n, dict)}
+    nb = [a for a in ear.get("nbest") or [] if isinstance(a, dict) and a.get("text")]
+    nb_name = any(e and f" {e} " in f" {_ntoks(a['text'])} " and f" {e} " not in heard for a in nb for e in ents) or \
+        any(_dec_names_more(heard, f" {_ntoks(a['text'])} ") for a in nb)
+    al = [a for a in ear.get("almost") or [] if isinstance(a, dict) and a.get("candidate")]
+    num = lambda v: float(v) if isinstance(v, (int, float)) else 0.0  # noqa: E731
+    return {"uconf": num(ear.get("uconf")), "min_wconf": num(ear.get("min_wconf")), "nbest": len(nb),
+            "nbest_name": bool(nb_name), "almost": bool(al), "almost_p": max([num(a.get("p")) for a in al], default=0.0),
+            "qty": bool(ear.get("quantities")), "disfl": len(ear.get("disfl") or []),
+            "dropped": bool(ear.get("n_dropped")), "leak": num(ear.get("playback_leak")),
+            "playback": ear.get("playback") is True, "barge": bool(ear.get("barge")), "eot": num(ear.get("eot"))}
 
 
 def link_view(ear: dict, options: list[str] | None = None) -> dict:
@@ -452,12 +477,22 @@ FEATS: list[str] = (
     # words ("the jelly"); a control / mission object is named (shields, rover, ...).
     + ["ent_any", "ent_step_target", "ent_seen_before", "ent_recency", "ent_guide_said", "ent_state_rel",
        "ent_mishear", "ent_control"]
+    # ---- round 13 (libarc ABI 2, docs/ARC_ABI2.md): appended after the entity block ----
+    # The ear's ABI 2 read-outs, in slots of their own (the round-7 ear_conf / ear_alts stay 0 for the shipped weights):
+    # present; the least sure utterance's mean word confidence; the least sure word; n-best texts (n / 3); an n-best
+    # text names a list entry the words lack; a sound-alike "almost" name and its p; a typed quantity; disfluent words
+    # (n / 3); words the guard dropped; playback leak against our reference; flagged as our playback; a barge-in during
+    # the turn; the end-of-turn probability at the close.
+    + ["e13_avail", "e13_uconf", "e13_min_wconf", "e13_nbest", "e13_nbest_name", "e13_almost", "e13_almost_p",
+       "e13_qty", "e13_disfl", "e13_dropped", "e13_leak", "e13_playback", "e13_barge", "e13_eot"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
 F_R6 = FEATS.index("lx_filler") + 1       # the round-6 width (216)
 F_R11 = FEATS.index("st_video") + 1       # rounds 8-11 width (242): the shipped r10 weights read this prefix
 F_R12_EAR = FEATS.index("ear_dec_name") + 1   # + the ear's link / decoder block (253)
+F_R12 = FEATS.index("ent_control") + 1        # + the entity block (261): what round 12 trains on
+F_R13 = FEATS.index("e13_eot") + 1            # + libarc ABI 2's read-outs (275)
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -720,6 +755,13 @@ def _round7_feats(rec: dict, ws: list[str], s):
         s("ent_seen_before", en.get("seen_before", False)); s("ent_recency", en.get("recency", 0.0))
         s("ent_guide_said", en.get("guide_said", False)); s("ent_state_rel", en.get("state_rel", False))
         s("ent_mishear", en.get("mishear", False)); s("ent_control", en.get("control", False))
+    e13 = rec.get("e13")
+    if e13:     # round 13, libarc ABI 2: appended slots only (F_R11 / F_R12 weights never read them)
+        s("e13_avail", 1); s("e13_uconf", e13["uconf"]); s("e13_min_wconf", e13["min_wconf"])
+        s("e13_nbest", min(e13["nbest"], 3) / 3); s("e13_nbest_name", e13["nbest_name"]); s("e13_almost", e13["almost"])
+        s("e13_almost_p", e13["almost_p"]); s("e13_qty", e13["qty"]); s("e13_disfl", min(e13["disfl"], 3) / 3)
+        s("e13_dropped", e13["dropped"]); s("e13_leak", e13["leak"]); s("e13_playback", e13["playback"])
+        s("e13_barge", e13["barge"]); s("e13_eot", e13["eot"])
     pv = rec.get("prev")
     if pv and t:
         from difflib import SequenceMatcher

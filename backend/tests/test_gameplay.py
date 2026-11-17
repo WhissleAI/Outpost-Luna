@@ -75,7 +75,7 @@ def test_skip_stops_at_the_next_event_and_never_jumps_a_storm():
         kinds = [e["kind"] for e in r["events"]]
         seen.append(kinds)
         if not m.over:
-            assert any(k in sim.SKIP_STOPS for k in kinds) or r["say"].endswith("A quiet day. All steady.")
+            assert any(k in sim.SKIP_STOPS for k in kinds) or r["say"].endswith(("A quiet day. All systems fine.", "Stay ready.", "Stay in the shelter."))
         assert words(r["say"]) <= 22
     flat = [k for ks in seen for k in ks]
     assert "storm_warning" in flat and "solar_storm" in flat   # each one stopped the skip on its own
@@ -167,7 +167,7 @@ def test_sample_gives_science_only_when_pressed():
         t = task(m)
         if t and t["kind"] == "science":
             break
-        if t and t["kind"] == "ice_run":
+        if t and t["kind"] in ("ice_run", "explore"):   # [playtest 4] the science drive comes after the ice
             do_step(m)
         sim.step(m, 1)
     t = task(m)

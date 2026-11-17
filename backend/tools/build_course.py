@@ -60,13 +60,15 @@ def clip(clip_id, t0, t1, who, when="before"):
     return {"clip_id": clip_id, "t0": t0, "t1": t1, "who": who, "when": when}
 
 
-def video(media, say, reveal):
+def video(media, say, reveal, guess=None):
     """A NASA video step (docs/MEDIA.md: {type: video, media, say, reveal}; media from backend/data/video/catalog.json):
     CAPCOM asks for a guess (`say`), the kid watches (or skips, or is offline), then CAPCOM says the one-line
     `reveal`. It never blocks. Written out in the shape content.video_step() gives it, so tools that read course.json
-    directly see a whole step."""
-    return {"type": "video", "media": media, "say": say, "reveal": reveal, "prompt": say,
-            "accept": {"type": "video", "media": media}, "hint": VIDEO_HINT, "success": reveal, "fail": VIDEO_HINT}
+    directly see a whole step. `guess` = (options, answer): the guess chips a "Guess, then watch" step shows; the
+    reply checks the kid's guess against `answer` after the video, or after Skip (novice playtest 2026-11-16 #7)."""
+    g = {"guess": {"options": guess[0], "answer": guess[1]}} if guess else {}
+    return {"type": "video", "media": media, "say": say, "reveal": reveal, **g, "prompt": say,
+            "accept": {"type": "video", "media": media, **g}, "hint": VIDEO_HINT, "success": reveal, "fail": VIDEO_HINT}
 
 
 def prep(id_, title, steps, source, grown_up=False):
@@ -74,6 +76,23 @@ def prep(id_, title, steps, source, grown_up=False):
     never on screen). 3 spoken steps or fewer; the last ends "Tell me when it's ready." (never the trigger word: the
     open mic would hear "done" back). The kid answers Done by voice, a thumbs-up or the button."""
     return {"id": id_, "title": title, "steps": steps, "grown_up": grown_up, "source": source}
+
+
+# A real order, the wrong one: say why it isn't the one, then what to do (guide.ladder; never "Say again?", which the
+# radio lesson teaches as "I didn't hear you"). Keys: guide.order_key. Novice playtest 2026-11-16 #10.
+WRONG_STORM = {"shields": "Shields help a little. The shelter is safer.",
+               "heaters": "Heaters fight cold, not radiation.",
+               "rover_ice": "Ice can wait. Keep the crew safe.",
+               "houston": "Houston agrees: get under cover.",
+               "shelter_out": "Not yet. The storm is coming."}
+WRONG_COLD = {"shields": "Shields block radiation, not cold.",
+              "shelter_in": "The shelter is for storms.",
+              "rover_ice": "The rover can wait.",
+              "houston": "Houston can't warm the pipes."}
+WRONG_ICE = {"shields": "Shields won't bring water.",
+             "heaters": "Heaters won't bring water.",
+             "shelter_in": "No storm now.",
+             "houston": "Houston agrees: get ice."}
 
 
 LESSONS = [
@@ -109,7 +128,6 @@ LESSONS = [
               {"type": "intent", "place": "tranquillitatis"},
               "Copy. The Sea of Tranquility, July 1969.", "Not there.",
               "It's the dark plain right of the middle.",
-              do="Tap it on the Moon, or say its name",
               globe={"do": "side", "side": "near"}),
          step("Standing there, could you see Earth in the sky?",
               {"type": "earth_view", "place": "tranquillitatis"},
@@ -117,12 +135,13 @@ LESSONS = [
               "This side of the Moon always faces Earth.",
               show=["tranquillitatis"], globe={"do": "earth", "place": "tranquillitatis"}),
          video("far_side_view", "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
-               "Yes. Far side, not dark side."),
+               "Yes. Far side, not dark side.",
+               guess=([opt("yes", "Yes, sometimes", "yes", "sometimes"), opt("no", "No, never", "no", "never")], "yes")),
          step("Turn the Moon to show the far side.",
               {"type": "globe_side", "want": "far"},
               "Roger. That's the far side.", "Not yet. Keep turning.",
               "Tap Far, or drag the Moon around.",
-              clip=clip("orientale-basin-ejecta-extent", 1.12, 22.42, "an Artemis II astronaut", "after")),
+              clip=clip("orientale-basin-ejecta-extent", 1.12, 13.3, "an Artemis II astronaut", "after")),
          step("Now find the south pole. It's inside the gold ring.",
               {"type": "intent", "place": "shackleton"},
               "Roger. Shackleton crater. Our outpost goes here.", "Not quite.",
@@ -168,7 +187,9 @@ LESSONS = [
               {"type": "terminator", "sun_lon": 45, "tol_deg": 12},
               "That's the terminator. It shapes the phase.", "Not quite. Find the shadow's edge.",
               "Where the bright part turns dark.",
-              globe={"do": "sun", "sun_lon": 45}),
+              # the camera faces the terminator (sun_lon - 90), so the edge runs down the middle of the disc: a half
+              # Moon, never a full one with the edge on the rim (novice playtest 2026-11-16 #2)
+              globe={"do": "sun", "sun_lon": 45, "view_lon": -45}),
          step("Artemis two flew behind the Moon. What did the Moon block for the crew?",
               {"type": "predict", "answer": "sun",
                "options": [opt("sun", "The Sun", "sun"), opt("earth", "Earth", "earth"),
@@ -176,9 +197,11 @@ LESSONS = [
               "Right. The Moon hid the Sun.", "Pick one, then we listen.",
               "Guess first. Then hear the crew.",
               reveal="The Sun. The Moon hid it: a solar eclipse.",
-              clip=clip("observing-pulsating-streamers-suns", 27.49, 50.78, "an Artemis II astronaut", "after")),
+              clip=clip("observing-pulsating-streamers-suns", 40.0, 53.2, "an Artemis II astronaut", "after")),
          video("lunar_eclipse", "In a lunar eclipse, what covers the Moon? Guess, then watch.",
-               "Yes, Earth's shadow. Phases happen without it."),
+               "Earth's shadow. Phases happen without it.",
+               guess=([opt("shadow", "Earth's shadow", "shadow", "earth"), opt("cloud", "A big cloud", "cloud"),
+                       opt("sun", "The Sun", "sun")], "shadow")),
      ]},
     # ---------------------------------------------------------------- 3. gravity and dust (NGSS 5-PS2-1)
     {"id": "gravity", "title": "Moon gravity and dust", "minutes": 5, "place": "apollo15_lm_falcon",
@@ -219,7 +242,8 @@ LESSONS = [
               "The Moon pulls about one sixth as hard.",
               do="Tap an answer, or say it"),
          video("lunar_dust", "Is Moon dust soft like flour, or sharp? Guess, then watch.",
-               "Sharp, like tiny glass. It clings to everything."),
+               "Sharp, like tiny glass. It clings to everything.",
+               guess=([opt("soft", "Soft like flour", "soft", "flour"), opt("sharp", "Sharp", "sharp")], "sharp")),
          step("Moon dust has a science name: regolith. Say it out loud: regolith!",
               {"type": "vocab_say", "term": "regolith"},
               "Yes! Regolith, the Moon's dusty soil.", "Say it again.",
@@ -314,7 +338,7 @@ LESSONS = [
               do="Tap an answer, or say it"),
          step("CAPCOM: \"Commander, set the heaters to 40 percent.\" Say it back.",
               {"type": "keywords", "all": [["heater", "heaters"], ["40", "forty"]]},
-              "Good readback. Heaters to 40.", "Say again? Repeat the order.", "Say what to set, and how much.",
+              "Good readback. Heaters to 40.", "Close. Repeat the whole order.", "Say what to set, and how much.",
               do="Repeat the order out loud, or type it",
               capcom="Commander, set the heaters to 40 percent."),
          step("How long does your voice take to reach Earth?",
@@ -376,10 +400,11 @@ LESSONS = [
                                           else f"{num(SITE['shackleton_rim']['sun_days'])} of 10 days") + " in our model.", "Not that one.",
               "Malapert goes dark early in our mission.",
               globe={"do": "pair", "places": ["shackleton_rim", "malapert_massif"]}),
-         step("Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
+         step("Pretend you're at Malapert. Night is coming. Move power to the heaters!",
               {"type": "command", "expect": {"type": "allocate", "to": "heaters", "more": True}},
-              f"Copy. That dark spell lasted {DARK_H} hours.", "Negative.",
+              f"Copy. That dark spell lasted {DARK_H} hours.", "Not that order.",
               "The heaters need more power. Tap Heaters up.",
+              wrong=WRONG_COLD,
               globe={"do": "fly", "place": "malapert_massif"}),
      ]},
     # ---------------------------------------------------------------- 5. radiation and storms
@@ -406,7 +431,8 @@ LESSONS = [
                   src("NASA STEM: Ray Shielding Activity", "https://www.nasa.gov/stem-content/ray-shielding-activity/")),
      "steps": [
          video("moon_weather", "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
-               "Yes: space weather, fast particles from the Sun."),
+               "Yes: space weather, fast particles from the Sun.",
+               guess=([opt("yes", "Yes", "yes"), opt("no", "No", "no")], "yes")),
          step("Earth has a magnetic shield and thick air. Does the Moon?",
               {"type": "predict", "answer": "no",
                "options": [opt("yes", "Yes, the Moon does too", "yes", "does"),
@@ -421,8 +447,8 @@ LESSONS = [
               "Particles move fast. An hour is short. Act early."),
          step("Alert! A solar particle storm, like the real one in May 2024. Your order?",
               {"type": "command", "expect": {"type": "shelter", "on": True}},
-              "Copy. Crew in the shelter. Dose rate way down.", "Say again? Radiation is climbing.",
-              "Get the crew under cover. Tap Into the shelter.", alert=True),
+              "Copy. Crew in the shelter. Dose rate way down.", "Radiation is climbing.",
+              "Get the crew under cover. Tap Into the shelter.", alert=True, wrong=WRONG_STORM),
          step("Doctors count radiation in mSv. So what is an mSv?",
               {"type": "choice", "answer": "dose",
                "options": [opt("dose", "A radiation dose", "dose", "radiation"),
@@ -431,9 +457,10 @@ LESSONS = [
               "It measures how much radiation you got."),
      ]},
     # ---------------------------------------------------------------- 6. water and ice
-    {"id": "life", "title": "Air, water and ice", "minutes": 4, "place": "lcross_centaur_impact",
+    {"id": "life", "title": "Air, water and ice", "minutes": 4,
+     "place": {"name": "Cabeus crater", "lat": -84.68, "lon": -48.73},   # the word the lesson uses, not the hardware's
      "badge": {"id": "ice", "name": "Ice Hunter", "glyph": "I"},
-     "globe": {"place": "lcross_centaur_impact", "dist": 2.4},
+     "globe": {"lat": -80, "lon": -48.73, "dist": 2.6},
      "clip": {**clip("impact-flashes-observing-moons", 0.56, 22.16, "Christina Koch"),
               "note": "She says dark side. She means the night side."},
      "brief": "Water is heavy to launch. Let's look for some on the Moon.",
@@ -452,7 +479,9 @@ LESSONS = [
                       "https://www.nasa.gov/wp-content/uploads/2012/02/146860main_making_regolith_educator.pdf")),
      "steps": [
          video("psr", "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
-               "Among the coldest spots measured. Ice hides there."),
+               "Among the coldest spots measured. Ice hides there.",
+               guess=([opt("freezer", "Cold like a freezer", "freezer"),
+                       opt("coldest", "Colder than anywhere on Earth", "colder", "coldest", "anywhere")], "coldest")),
          step("Why would NASA crash a rocket into a dark crater?",
               {"type": "predict", "answer": "dig",
                "options": [opt("dig", "To dig up what's buried", "dig", "buried", "ice", "water"),
@@ -460,10 +489,10 @@ LESSONS = [
                            opt("pad", "To make a landing pad", "pad", "landing")]},
               "Right. Water hid in regolith, the Moon's dust.", "Pick one, then we check.", "Guess first.",
               reveal="To dig up buried stuff. LCROSS found about 155 kg of water."),
-         step("The LCROSS rocket hit Cabeus crater, near the south pole. Find it.",
-              {"type": "tap", "place": "lcross_centaur_impact", "also": ["lcross_impact"], "radius_deg": 8},
+         step("The LCROSS rocket hit Cabeus crater, near the south pole. Find Cabeus crater.",
+              {"type": "tap", "place": "lcross_centaur_impact", "also": ["lcross_impact"], "radius_deg": 8,
+               "label": "Cabeus crater"},
               "Roger. Cabeus crater, 2009.", "Not there.", "It's close to the south pole, in the middle.",
-              do="Tap it on the Moon, or say its name",
               globe={"do": "pole", "pole": "south"}),
          step("Ice hides in Shackleton crater. Which outpost is closer to it?",
               {"type": "compare", "answer": "shackleton_rim", "metric": "ice_km",
@@ -474,8 +503,8 @@ LESSONS = [
               show=["shackleton"], globe={"do": "pair", "places": ["shackleton_rim", "malapert_massif"]}),
          step("Life support is getting low. Send the rover for ice!",
               {"type": "command", "expect": {"type": "dispatch", "task": "collect_ice"}},
-              "Copy. Rover rolling out for ice.", "Negative.",
-              "The rover can dig up ice. Tap Rover: get ice."),
+              "Copy. Rover rolling out for ice.", "Not that order.",
+              "The rover can dig up ice. Tap Rover: get ice.", wrong=WRONG_ICE),
      ],
      # at the patch: an optional "Ice home" video on the patch screen (never a step; the patch is already earned)
      "patch_video": {"media": "water_extraction", "line": "How could crews get water out of icy dirt?"}},
@@ -484,7 +513,7 @@ LESSONS = [
      "place": {"name": "Shackleton Rim", "lat": -89.68, "lon": -166.0},
      "badge": {"id": "commander", "name": "Mission Commander", "glyph": "C"},
      "ride": {"site": "shackleton_rim", "seed": 2026, "storm_event": "2024-05-09T14:25:00-SEP-001",
-              "start_h": 138, "storm_start_h": 6, "mission_h": 48, "max_missed": 0},
+              "start_h": 168, "storm_start_h": 6, "mission_h": 48, "max_missed": 0},
      "brief": "Your check ride: two days at Shackleton Rim. A real particle storm is coming.",
      "facts": [
          fact("The storm in this ride is based on the real solar particle storm of 2024-05-09. Earth also got huge "
@@ -493,25 +522,25 @@ LESSONS = [
               "works.", "mission/sites.json", HORIZONS),
      ],
      "steps": [
-         step("Earth is up over the rim. Can you call Houston now?",
+         step("Look: Earth is up over the rim. Can you call Houston now?",
               {"type": "predict", "answer": "yes",
                "options": [opt("yes", "Yes, Earth is up", "yes", "can"),
                            opt("no", "No, never from here", "no", "never")]},
-              "Right. Earth is up, so the radio works.", "Pick one, then we check.", "Guess first.",
-              reveal="Yes. Earth is up, so the radio works."),
+              "Right. Earth is up, so the radio works.", "Pick one, then we check.", "The radio needs Earth in the sky.",
+              reveal="Yes. Earth is up, so the radio works.", do="Tap an answer, or say it"),
          step("Ask Houston about space weather.",
               {"type": "command", "expect": {"type": "call_houston"}},
               "Copy. Houston sees an active region. Stay sharp.", "Negative. Call Houston.",
               "Say: Houston, any space weather?", advance=1),
          step("Solar particle storm! Based on the real May 2024 storm. Your order?",
               {"type": "command", "expect": {"type": "shelter", "on": True}},
-              "Copy. Crew in the shelter.", "Say again? Radiation is climbing.",
-              "Get the whole crew under cover.", alert=True, advance="storm"),
+              "Copy. Crew in the shelter.", "Radiation is climbing.",
+              "Get the whole crew under cover.", alert=True, advance="storm", wrong=WRONG_STORM),
          step("The storm has passed. Bring the crew out of the shelter.",
               {"type": "command", "expect": {"type": "shelter", "on": False}},
               "Copy. Crew is out. Back to work.", "Negative. Bring the crew out.",
               "The crew can leave the shelter now."),
-         step("Life support is dropping. Send the rover for ice before day 2 ends.",
+         step("Life support is dropping. Send the rover for ice.",
               {"type": "command", "expect": {"type": "dispatch", "task": "collect_ice"}},
               "Copy. Rover rolling out for ice.", "Negative. The rover needs to fetch ice.",
               "The rover can dig up ice.", advance="end"),
@@ -524,7 +553,10 @@ LESSONS = [
 # "Lessons from Apollo" are explorer lessons, unlocked after missions (gravity after the 1st, Apollo after the 2nd).
 # The check ride stays the last stop; explorer lessons sit before it in the data but never block it.
 ORDER = ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]
-EXPLORER = {"gravity": 1, "history": 2}     # lesson id -> missions to fly before it unlocks
+EXPLORER = {"gravity": 1, "history": 0}     # lesson id -> missions to fly before it unlocks
+# Novice playtest 2026-11-16 #22: "Lessons from Apollo" (the trace step) waited for a second mission, out of reach in a
+# new kid's first hour. It opens after the check ride instead (`unlock_after: "checkride"`).
+UNLOCK_AFTER = {"history": "checkride"}
 
 
 def build() -> dict:
@@ -538,7 +570,8 @@ def build() -> dict:
                      "optional `prep` is a hands-on Mission prep task with its NASA activity source.",
             "title": "Junior Astronaut Academy", "pass_badge": "commander", "retired_badges": ["words"],
             "lessons": [{**l, "track": "explorer" if l["id"] in EXPLORER else "core",
-                         **({"unlock_after_missions": EXPLORER[l["id"]]} if l["id"] in EXPLORER else {})}
+                         **({"unlock_after_missions": EXPLORER[l["id"]]} if EXPLORER.get(l["id"]) else {}),
+                         **({"unlock_after": UNLOCK_AFTER[l["id"]]} if l["id"] in UNLOCK_AFTER else {})}
                         for l in sorted(LESSONS, key=lambda l: ORDER.index(l["id"]))]}
 
 

@@ -11,6 +11,7 @@ links in the manifest, or imports from the offline zip ("Import offline pack": o
 Assets (id -> what, where it is installed under <per-user data>/assets/<id>/, required or optional):
     ear        Arc Transcriber Space nft2/ + LICENSE + NOTICE (CC BY-NC 4.0)   required   ARC_SPACE_DIR=<ear>/nft2
     tagger     Arc Tagger v0.3 int8 + tokenizer + meta + LICENSE + NOTICE     required   ARCTAG_MODEL_DIR
+               (run by the 0.5.0 library; its kids thresholds are built in and equal arctag_kids.json at TAGGER_REVISION)
     embedder   all-MiniLM-L6-v2 int8 ONNX + tokenizer + NOTICE (Apache-2.0)    required   EMBED_MODEL_DIR
     voice      the recorded Nora voice pack (clips/, index.json, lines.json)   required   VOICE_PACK_DIR
     steer      Steer TTS Edge v1 (steer-tts-edge/ + director.bin, LICENSE,  optional   STEER_TTS_MODEL=<steer>/steer-tts-edge
@@ -70,6 +71,11 @@ EAR_FILES = [
     "nft2/encoder_onnx/joint_enc.onnx", "nft2/encoder_onnx/joint_net.onnx", "nft2/encoder_onnx/tokenizer.model",
     "nft2/encoder_onnx/tokens.txt",
 ]
+# Arc Tagger on Hugging Face. The tagger asset's own files predate it (v0.3 int8, kept: the Director's assistant-domain
+# read-out is byte-identical on them, docs/ARC_FEEDBACK.md); this revision pins the kids-domain thresholds the 0.5.0
+# library builds in (desktop/vendor/arctag/arctag_kids.json, checked by model_server/tests/test_tag_kids.py).
+TAGGER_REPO = "WhissleAI/arc-tagger"
+TAGGER_REVISION = "500449290c42fd8ad990106b62bece6852ab18a9"
 MINILM_NOTICE = ("all-MiniLM-L6-v2 (sentence-transformers), Apache License 2.0, https://huggingface.co/sentence-transformers/"
                  "all-MiniLM-L6-v2. Exported to ONNX and int8-quantised by model_server/tools/export_embedder.py.\n")
 NASA_NOTICE = ("NASA media. NASA audio, images and video are generally not subject to copyright in the United States "

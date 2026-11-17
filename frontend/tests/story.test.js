@@ -31,7 +31,7 @@ test("transitions: spoken lines <= 20 words, on-screen lines <= 12, no emoji", (
   for (const t of [T.firstMap, T.toRide]) { assert.ok(words(t.say) <= 20, t.say); assert.ok(words(t.line) <= 12, t.line); assert.ok(words(t.where) <= 6); }
   assert.ok(words(T.qualified.line) <= 12 && words(T.picker.line) <= 12);
   for (const n of [0, 3, 6, 7]) assert.ok(words(T.patchProgress(n, 7)) <= 12, T.patchProgress(n, 7));
-  assert.equal(T.patchProgress(6, 7), "6 of 7 patches. One lesson to go.");
+  assert.equal(T.patchProgress(5, 6), "5 of 6 lessons done. One to go, then your check ride.");
   assert.ok(words(S.PICKER.why) <= 12 && words(S.PICKER.recLine) <= 12 && words(S.PICKER.recTag) <= 3);
   for (const t of Object.values(S.HELP)) assert.ok(words(t) <= 20, t);
   for (const t of [S.OFFER.resume, S.OFFER.firstLesson]) assert.ok(words(t) <= 6);
@@ -82,7 +82,7 @@ test("objective: storms, warnings, power, air, rover and the night, most urgent 
   const d = base(); d.mission_time_h = 30; d.env.in_sun = false; assert.equal(nowObjective(d).key, "dark");
   const i = base(); i.mission_time_h = 30; assert.equal(nowObjective(i).key, "ice");
   i.objectives.ice.met = true; assert.equal(nowObjective(i).key, "steady"); assert.equal(nowObjective(i).target, "skip");
-  assert.match(nowObjective(i).text, /Fast-forwarding/);   // "when nothing is urgent it says so"
+  assert.match(nowObjective(i).text, /Time skips/);   // "when nothing is urgent it says so" ([playtest 21] never "Fast-forwarding" at 1x)
   assert.equal(nowObjective({ ...base(), over: true }), null);
 });
 

@@ -213,7 +213,8 @@ def lesson(r):
 
 
 def prep(r):
-    r.js("() => { try { localStorage.setItem('outpost-prep-seen', JSON.stringify(['comms','radiation'])); } catch (e) {} window.__outpost.shellNav('lesson', 'power', 'lesson power'); }")
+    # novice playtest 2026-11-16 #8: "Try at home" is never a gate; it opens from the map card / patch screen
+    r.js("() => window.__outpost.academyTest.prep('power')")
     return r.until("() => document.getElementById('aPanel') && document.getElementById('aPanel').dataset.step === 'prep'", 8000)
 
 

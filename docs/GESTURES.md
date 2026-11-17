@@ -401,6 +401,12 @@ A full dmg (`build-mac.sh`) was not built for this check: it needs at least 6 GB
   Result (gestures-v2): **54/54** pass. The machine was heavily loaded by other jobs (load ≈ 36), so the fake-camera
   inference ran at ~9 s a frame; `--min-frames` / `--frames-timeout` lower the frame-flow bar on such a machine without
   touching the gesture checks, which run on injected landmarks.
+  Result (2026-11-16, main after #126): **73/73** pass, with and without the Moon map. The backend needs
+  `backend/data/media` (gitignored; `make data`, or a link to a checkout that has it): without it the globe shows
+  "Couldn't load the Moon map." That note, like "Loading the Moon…", never takes the pointer (`.loading`,
+  `pointer-events: none`), so point + dwell, a tap or a click still reach the globe and its glowing ring under it.
+  Before that fix the note swallowed the cursor: a still index over nothing counted as "1", and the dwell's select
+  right after it was dropped (gesture/ui.js), so the suite stopped at "lesson: point + dwell -> select".
   ```
   cd frontend && npm run build    # then a backend serving frontend/dist on :8390
   uv run --no-project --with playwright==1.58.0 python tests/e2e/gestures_e2e.py --base http://127.0.0.1:8390 [--min-frames 4 --frames-timeout 90]

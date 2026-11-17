@@ -54,10 +54,15 @@ export const TRANSITION = {
   firstMap: {
     where: "Flight School", line: "Earn a patch at each pin. Then fly your check ride.",
     say: "Each pin on the Moon is a lesson. Earn the patches, then command the outpost.",
+    /** [novice playtest 29] the first map only: three short beats on how this screen works (on screen, not spoken) */
+    intro: ["This is the Moon. Drag it to spin it.", "Each pin is a lesson. Tap Start lesson.", "Talk to me, or type in the bar below."],
   },
   /** map -> lesson: lessonHello (LESSON_STORY beats) carries it. */
   /** lesson -> patch: the sub line under the patch name. */
-  patchProgress: (n, total) => `${n} of ${total} patches. ${total - n === 1 ? "One lesson to go." : total - n > 1 ? `${total - n} lessons to go.` : ""}`.trim(),
+  // [novice playtest 9] one count everywhere: the core lessons ("3 of 6 lessons done"), then the check ride; bonus
+  // lessons are counted apart
+  patchProgress: (n, total) => `${n} of ${total} lessons done. ${total - n === 1 ? "One to go, then your check ride." : total - n > 1 ? `${total - n} to go, then your check ride.` : "Next: your check ride."}`,
+  bonusPatch: "A bonus patch. Extra, just for fun.",
   /** last lesson -> ride */
   toRide: {
     where: "Check ride", line: "One solo shift. Pass it and you take command.",
@@ -162,18 +167,21 @@ export const NOW = {
   firstShift: "Set power: raise the shields.",
   startClock: "Power set. Now press Play to start the clock.",
   stormHit: "Storm hitting. Get the crew into the shelter.",
-  weakStorm: "Storm at Earth, few particles here. Fast-forwarding…",
-  sheltered: "Crew sheltered. Riding out the storm…",
-  warning: h => (h != null ? `Storm forecast: about ${h} hours to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
+  weakStorm: "Storm at Earth, few particles here. Time skips ahead.",
+  sheltered: "Crew safe in the shelter. Riding out the storm.",
+  /** [playtest 16] a storm is coming and the crew is already in the shelter: nothing left to do but wait */
+  warningSafe: "Crew is safe in the shelter. Wait for the storm.",
+  stormReady: "You're ready. The crew is safe in the shelter.",
+  warning: h => (h != null ? `Storm forecast: about ${h} hour${h === 1 ? "" : "s"} to get ready. Shields or shelter.` : "Storm coming. Get ready: shields or shelter."),
   lowPower: "Battery low. Turn on night mode, or cut a load.",
   lowAir: "Air is low. Send the rover for ice.",
   roverDark: "Rover out. Bring it home before dark.",
-  roverOut: h => `Rover out, back in ${h} hours. Fast-forwarding…`,
+  roverOut: h => `Rover out, back in ${h} hours. Time skips ahead.`,
   sunset: h => `Sunset in ${h} hours. Turn on night mode before dark.`,
   dark: "Dark outside. Night mode saves power.",
   ice: "No storm due. Send the rover for ice.",
-  steady: "All steady. Fast-forwarding to the next event…",
-  steadyFast: "All steady. Fast-forwarding to the next event…",
+  steady: "All steady. Time skips to the next event.",
+  steadyFast: "All steady. Time skips to the next event.",
   confirmTitle: "CAPCOM asks",
   /** [polish 3] the storm's own buttons on the Now card (the alert strip only says what is happening) */
   stormTitle: "Solar storm",
@@ -181,9 +189,12 @@ export const NOW = {
   shieldsBtn: "Shields to 40",
   confirm: "CAPCOM needs a yes or no.",
   paused: "Clock paused. Press Play when you're ready.",
+  /** [playtest 3] a resumed mission: the clock waits for Play, and the card says so */
+  resumePlay: "Welcome back. Press Play to pick up where you left off.",
+  resumeBtn: "Play",
   driving: h => `Rover driving. Back in ${h} hours.`,
-  repairing: "Rover fixing the array. Fast-forwarding…",
-  waiting: "Not yet. Fast-forwarding to it…",
+  repairing: "Rover fixing the array. Time skips ahead.",
+  waiting: "Not yet. Time skips ahead to it.",
   taskDone: t => `${t}: done.`,
   /** the ~20 s nudge (spoken; 20 words or fewer with the task's step) */
   nudge: (task, step) => `${task}. Next: ${step}`,
@@ -251,9 +262,11 @@ export const TRACKS = [
 ];
 /** Explorer lessons (course.json track "explorer"): locked until the cadet has flown missions (explorer.js). */
 export const EXPLORER = {
-  eyebrow: "Explorer",
-  locked: n => (n > 1 ? "Unlocks after your second mission" : "Unlocks after your first mission"),
+  eyebrow: "Bonus lesson",
+  // n: missions to fly first, or "checkride" (novice playtest 22: Lessons from Apollo opens after the check ride)
+  locked: n => (n === "checkride" ? "Unlocks after your check ride" : n > 1 ? "Unlocks after your second mission" : "Unlocks after your first mission"),
   lockedSay: "That lesson opens after a mission. Fly one first.",
+  lockedSayRide: "That lesson opens after your check ride.",
   unlockedTitle: "New lesson unlocked",
   open: "Open it",
 };
@@ -303,6 +316,8 @@ export const SCHOOL = {
   answerFirst: "Answer this one first.",
   /** [audit2] the map's beat after the first patch (was blank: a returning cadet saw no "where am I"). */
   progressLine: (n, of, next) => `${n} of ${of} lessons done. Next: ${next}.`,
+  /** [novice playtest 9] the map's count: core lessons ("Lesson 3 of 6"), never the patch total */
+  lessonsCount: (n, of) => `${n} of ${of} lessons`,
   /** [audit2] "What do I do?" on the map names the button the card really shows. */
   mapHelp: (cta, title, ride) => (ride ? `Tap ${cta}. One solo shift, then you take command.` : `Tap ${cta} to begin ${title}.`),
 };
@@ -391,23 +406,26 @@ export const callbackLine = (kind, earned) => {
 /** Mission prep: a hands-on job before a lesson (course.json lesson.prep, adapted from a NASA activity). Shown on its
  *  own the first time a lesson opens; after that from the lesson's card on the map, never mid-lesson. Done by voice, a
  *  thumbs-up or a tap. Spoken lines never say "done" (the open mic would hear it back, docs/COPY.md). */
+// [novice playtest 8] Optional, never a gate: offered on the patch screen and the lesson's map card, not before the lesson.
 export const PREP = {
-  eyebrow: "Mission prep",
-  open: "Mission prep",
-  done: "Done!",
-  skip: "Skip",
-  grownUp: "Needs a grown-up",
+  eyebrow: "Try at home",
+  open: "Try at home",
+  done: "We did it!",
+  skip: "Not now",
+  grownUp: "Ask a grown-up",
   /** spoken before the task's own steps */
-  intro: "Mission prep first. Try this at home, or skip it.",
+  intro: "Want to try this at home? It's just for fun.",
   grownUpSay: "Ask a grown-up to help with this one.",
   /** on screen under the steps (not spoken) */
-  how: "Tap Done, or show a thumbs-up.",
+  how: "Missing something? Tap Not now. It's optional.",
   /** spoken when the kid says something else on the prep card */
-  ask: "Tell me when it's ready. Or tap Skip.",
-  doneSay: "Nice work. Now the lesson.",
+  ask: "Tell me when it's ready. Or tap Not now.",
+  doneSay: "Nice work, scientist.",
+  /** "I don't have a lamp": a way out, never the task's steps again */
+  missingSay: "That's okay. Tap Not now. You can try it another day.",
   /** "wait", "hold on": the card stays up */
   waitSay: "Take your time. Tell me when it's ready.",
-  skipSay: "No problem. On to the lesson.",
+  skipSay: "No problem. You can try it another day.",
   /** [diy videos] the "Watch how" buttons (online only), and their source line */
   watch: "Watch how",
   watchGroup: "Watch how it's done",
@@ -458,7 +476,7 @@ export const DEBRIEF = {
   noStorm: "The Sun stayed quiet this time.",
   goalsBoth: "You sent science home and brought back ice.",
   goalsScience: "You sent science home. No ice run yet.",
-  goalsIce: "You brought back ice. Science still waiting.",
+  goalsIce: "You brought back ice. Not enough science got home.",
   goalsNone: "No science home and no ice yet.",
   endWon: "All ten days done. The crew is home safe.",
   endPaused: d => `Paused on day ${d}. Your outpost is waiting.`,
@@ -476,6 +494,14 @@ export const DEBRIEF = {
   wipeYes: "Start over",
   wipeNo: "Keep my mission",
   tryDefault: "Next time, watch the warning lights and act early.",
+  /** [playtest 19] the checklist under the stars: one short line each, the same facts as the stars */
+  checkSafe: "Crew safe all 10 days",
+  checkSafeSoFar: "Crew safe so far",
+  checkHurt: "Crew took a big radiation dose",
+  checkLost: "The mission ended early",
+  checkIce: n => (n > 0 ? `Ice brought home (${n} run${n === 1 ? "" : "s"})` : "No ice run yet"),
+  checkScience: (got, goal, aboard) => `Science home: ${got} of ${goal}${aboard > 0 ? ` (${aboard} still on board)` : ""}`,
+  grownups: "For grown-ups: the numbers and sources",
   tryNewSite: "Next, try a site with a long night, like Malapert.",
   gradeOver: (cs, g, pts) => `Grade ${g}, ${pts} points. Let's learn from it, ${cs}.`,   // [qa] a failed mission isn't "nice flying"
 };

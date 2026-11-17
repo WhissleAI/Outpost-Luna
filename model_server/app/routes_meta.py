@@ -138,6 +138,22 @@ async def stream(ws: WebSocket):
             pass
 
 
+REF_MAX_S = 12.0
+
+
+def ref_pcm(msg: dict) -> np.ndarray | None:
+    """{"t":"ref","pcm": base64 PCM16 LE mono 16 kHz, "at"} -> float32 (None when malformed or too long)."""
+    import base64
+    import binascii
+    try:
+        raw = base64.b64decode(msg.get("pcm") or "", validate=True)
+    except (binascii.Error, ValueError, TypeError):
+        return None
+    if not raw or len(raw) % 2 or len(raw) > REF_MAX_S * arc_ear.SR * 2:
+        return None
+    return np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+
+
 async def _hung(ws: WebSocket, stream, why: str) -> None:
     """The decode watchdog fired (app/decode_watchdog.py): tell the client, reset the model handle, close (1011)."""
     model = getattr(stream, "m", None)
@@ -206,6 +222,12 @@ async def ear_stream(ws: WebSocket, domain: str):
                     await ws.send_json(await guarded(loop, pool, ctx.update, msg, es))
                 elif t == "end_turn":
                     await send_all(await guarded(loop, pool, es.end_turn_all))
+                elif t == "tune":     # on-device learning: bounded per-stream values (arc_ear.TUNE_BOUNDS)
+                    await ws.send_json(await guarded(loop, pool, es.tune, msg))
+                elif t == "ref":      # the app's playback (base64 PCM16 16 kHz) at mic stream time `at`
+                    x = ref_pcm(msg)
+                    if x is not None:
+                        await guarded(loop, pool, es.feed_ref, x, msg.get("at"))
                 elif t == "stop":
                     await send_all(await guarded(loop, pool, es.flush_all))
                     break

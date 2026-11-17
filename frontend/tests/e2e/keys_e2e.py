@@ -214,11 +214,10 @@ def main():
             for li, L in enumerate(WALK):
                 if li == 0:
                     press("n", 1500)   # N on the map: start the next lesson
-                # Mission prep (learning v1) comes first the first time a lesson opens: its Done is focused; Enter
+                # novice playtest 2026-11-16 #8: "Try at home" is optional, offered on the map card and the patch, never a
+                # gate before the lesson
                 until("() => !!(document.querySelector('#aInput') || document.querySelector('#aPrepDone'))", 20000, "lesson or prep")
-                if js("() => !!document.querySelector('#aPrepDone')"):
-                    ok(act()["id"] == "aPrepDone", f"{L['id']}: Mission prep, focus is on Done")
-                    press("Enter", 1200)
+                ok(not js("() => !!document.querySelector('#aPrepDone')"), f"{L['id']}: the lesson opens without a prep gate")
                 ok(until("() => !!document.querySelector('#aInput')", 20000), f"{L['id']}: lesson opens")
                 for k, st in enumerate(L["steps"]):
                     pg.wait_for_timeout(900)
@@ -240,9 +239,10 @@ def main():
                         if t in ("choice", "route", "command", "keywords"):
                             shot(f"03-lesson-{t}-next")
                     last = k == len(L["steps"]) - 1
-                    if last:
+                    if last and ride:
                         until("() => !!document.querySelector('.a-badge')", 8000, "badge")
-                    if not last and js("() => !!document.querySelector('#aNext')"):
+                    # the last lesson step keeps its answer up behind "Get your patch" (novice playtest 2026-11-16 #7)
+                    if (not last or not ride) and js("() => !!document.querySelector('#aNext')"):
                         until("() => document.activeElement && document.activeElement.id === 'aNext'", 4000, "next focus")
                         ok(act()["id"] in ("aNext", "q"), f"{L['id']} step {k + 1}: focus is on Next")
                         press("Enter" if act()["id"] == "aNext" else "Escape", 300)

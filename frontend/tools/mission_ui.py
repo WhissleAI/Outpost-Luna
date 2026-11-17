@@ -8,7 +8,8 @@ clicked, not what it covered. This tool checks what a kid SEES:
     alert strip, mission log) never intersect each other;
   * the Now card never covers the windshield's centre or the three gauges (POWER / LIFE SUPPORT / DOSE);
   * nothing visible is cut by the viewport, and no label is clipped by its own box (scrollWidth > clientWidth);
-  * every control is shown once (one Pause/Play, one speed group, one Skip ahead).
+  * every control is shown once (one Pause/Play, one speed group, one Skip ahead);
+  * [playtest 18] the 3D consoles' labels are at least 12 px on screen at 1280x720 and larger.
 
 It drives the real app to the owner's moment (Cadet, Shackleton Rim, ice run, the "Steer left / Steer right" choice),
 shoots each size into --shots, and exits non-zero on any finding.
@@ -301,6 +302,9 @@ def to_steer(pg):
     pg.wait_for_selector("#mStart")
     pg.wait_for_timeout(1500)
     pg.evaluate("document.getElementById('mStart').click()")
+    # [polish 4] the hub's Start opens the 3-card briefing first: Take command
+    pg.wait_for_selector("#mBriefGo, .cb-now-btns .cb-now-b")
+    pg.evaluate("() => { const b = document.getElementById('mBriefGo'); if (b) b.click(); }")
     pg.wait_for_selector(".cb-now-btns .cb-now-b")
     pg.wait_for_timeout(1200)
     for _ in range(120):
@@ -336,6 +340,27 @@ WHY_MEASURE = """() => {
 }"""
 
 
+# [playtest 18] the 3D consoles' text as drawn on screen (CSS3D scales each console): every visible label's font size
+# times the console's on-screen scale. The floor: 12 px at 1280x720 and larger.
+CONSOLE_TEXT = """() => { const out = [];
+  document.querySelectorAll('.c3-css .c3-panel').forEach(p => p.querySelectorAll('*').forEach(e => {
+    const own = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!own || !e.offsetWidth || e.classList.contains('cb-vh') || e.closest('[hidden]')) return;
+    const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') return;
+    const r = e.getBoundingClientRect(); if (!r.width) return;
+    const k = Math.max(r.width / e.offsetWidth, r.height / e.offsetHeight);
+    out.push({ panel: p.dataset.panel, text: e.textContent.trim().slice(0, 24), px: +(parseFloat(cs.fontSize) * k).toFixed(1) }); }));
+  return out; }"""
+CONSOLE_FLOOR_PX = 12
+
+
+def console_text_checks(pg, vw, vh):
+    if vw < 1280 or vh < 720:
+        return []
+    rows = pg.evaluate(CONSOLE_TEXT)
+    return [f"console text under {CONSOLE_FLOOR_PX}px: {r['panel']} '{r['text']}' {r['px']}px" for r in rows if r["px"] < CONSOLE_FLOOR_PX - 0.05]
+
+
 def why_checks(pg):
     out = []
     w = pg.evaluate(WHY_MEASURE)
@@ -367,7 +392,7 @@ def why_checks(pg):
     return out
 
 
-def main(base, shots, tag, sizes, camera=True, navigator_only=False):
+def main(base, shots, tag, sizes, camera=True, navigator_only=False, navigator=True):
     bad = {}
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--use-gl=angle", "--use-angle=swiftshader"])
@@ -377,7 +402,7 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False):
             pg.add_init_script(PAD)
             pg.add_init_script(SEED)
             pg.goto(base)
-            nf = navigator_checks(pg, f"{tag}-{vw}x{vh}", shots)
+            nf = navigator_checks(pg, f"{tag}-{vw}x{vh}", shots) if navigator else []
             print(f"{'ok  ' if not nf else 'FAIL'} {vw}x{vh}  navigator")
             for x in nf:
                 print(f"       {x}")
@@ -391,7 +416,7 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False):
                 pg.keyboard.press("Escape")   # a Cadet offer opened a panel: the kid goes back to the seat, where the HUD is measured
                 pg.wait_for_timeout(1500)
             m = pg.evaluate(MEASURE, HUD)
-            f = nf + findings(m) + ([] if got else ["never reached the steer choice"])
+            f = nf + findings(m) + ([] if got else ["never reached the steer choice"]) + console_text_checks(pg, vw, vh)
             # again with a story banner up (day start, comm gap, storm): it has its own slot, never text on text
             # the app's reduced-motion mode: no fade, so a busy machine's slow animation can't hide the banner from the check
             pg.evaluate("() => { document.documentElement.dataset.motion = 'reduce'; window.__cabinTest && window.__cabinTest.moment('On our own'); }")
@@ -435,7 +460,8 @@ if __name__ == "__main__":
     ap.add_argument("--sizes", default=SIZES)
     ap.add_argument("--no-camera", action="store_true", help="skip the look-input / spring-back checks")
     ap.add_argument("--navigator-only", action="store_true", help="only the landing-site navigator screen")
+    ap.add_argument("--no-navigator", action="store_true", help="skip the navigator (a dev checkout without the map layers pack)")
     a = ap.parse_args()
     if a.shots:
         os.makedirs(a.shots, exist_ok=True)
-    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera, navigator_only=a.navigator_only))
+    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera, navigator_only=a.navigator_only, navigator=not a.no_navigator))

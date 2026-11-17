@@ -320,6 +320,13 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         s.ice ? "ice right here" : s.rover_to_ice_h ? `ice run ${s.rover_to_ice_h} h each way` : ""];
       if (s.rover_slope_power) parts.push(`steep drive +${s.rover_slope_power}% battery`);
       return parts.filter(Boolean).join(" · ") + "."; },
+    // [playtest 15] the Cadet briefing: three bars and three short lines per site, in mission days (the hub's words)
+    simple: () => levelNow() === "cadet",
+    kidLines: id => { const s = sites.find(x => x.id === id); if (!s) return [];
+      const sd = sunDays(s), ed = earthDays(s), ih = s.ice ? 0 : (s.rover_to_ice_h || 0);
+      return [{ icon: "sun", p: sd / 10, short: `Sun ${sd}/10`, text: `Sun for power: ${sd} of 10 days` },
+        { icon: "earth", p: ed / 10, short: `Radio ${ed}/10`, text: ed > 0 ? `Radio with Earth: ${ed} of 10 days` : "No radio with Earth this mission" },
+        { icon: "ice", p: 1 - Math.min(1, ih / 12), short: s.ice ? "Ice here" : `Ice ${ih} h`, text: s.ice ? "Ice right here" : `Ice: a ${ih}-hour drive` }]; },
   });
   try { (window.__outpost = window.__outpost || {}).navigator = nv; } catch (e) { /* */ }   // tests/e2e/site_navigator_e2e.py
   /** Row and pin: hovering either lights both. */
@@ -572,6 +579,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (state.task && state.task.decision) return "choice";
     if (offer && offerLive()) return "decision";
     if (document.hidden) return "hidden";
+    // [playtest 17] Settings, About or a video over the cabin: time waits (a storm never passes behind a menu)
+    if (document.querySelector(".a11y-panel:not([hidden]), dialog[open]")) return "settings";
     return null;
   }
   const AUTO_MS = 3500;   // [polish a] how long a wait-only card shows before time fast-forwards by itself
@@ -933,6 +942,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     applyState(r.state);
     const res = r.result || {};
     pending = res.needs_confirm ? command : null;
+    // [playtest 3] time plays itself after an order: a resumed mission's clock (ready, never started) starts on the
+    // kid's first order too, not only a new mission's (applyState covers hour 0)
+    if (res.ok !== false && !res.needs_confirm && screen === "hud" && state && !state.over && !mclock.started && !tour.active) mclock.play();
     capcom({ say: res.say || res.readback, confirm: !!res.needs_confirm });
     handleEvents(res.events || []);
     if (spoken || res.needs_confirm || command.type === "query" || !res.ok) await say(res.say || res.readback);
@@ -1096,9 +1108,20 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (/night mode/i.test(text) && s.power_save) return true;
     return false;
   }
+  /** [playtest 16] An offer's storm orders the crew has already carried out (in the shelter; shields at 40 or more). */
+  const doneAction = a => { const s = state || {}, l = String((a && a.label) || "");
+    return (/shelter/i.test(l) && !/out|leave/i.test(l) && !!s.shelter) || (/shields/i.test(l) && (!!s.shelter || ((s.loads || {}).shields || 0) >= 40)); };
   function showCard(d, send) {
     const s = state;
     if (staleOffer(d)) return;   // the moment passed while the clock ran; the Now card has the current job
+    if ((d.actions || []).length && screen === "hud" && /storm|shelter|shields/i.test([d.title, d.body, ...(d.chips || [])].join(" "))) {
+      // [playtest 16] never ask for what's done: drop the done orders; all done (or only "wait" left) -> "You're ready"
+      const left = d.actions.filter(a => !doneAction(a));
+      if (left.length < d.actions.length) {
+        if (!left.some(a => /shelter|shields/i.test(a.label))) { radio("capcom", NOW.stormReady); return; }
+        d = { ...d, actions: left };
+      }
+    }
     if ((d.actions || []).length && screen === "hud") {   // [polish 3] an offer in the cabin is the Now card, nothing else
       const text = d.body || d.asked || "";
       // the title names the event (the Director's first chip: "Solar storm"), the text is its line, the buttons its choices
@@ -1200,19 +1223,21 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         ${nums.length ? `<button type="button" class="mx-link" id="mNums">${esc(DEBRIEF.numbers)}</button>` : ""}</div>
       <div class="mx-db-body">
         <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
-          <ol>${story.beats.map(b => `<li>${esc(b)}</li>`).join("")}</ol>
+          <ul class="mx-checks">${story.checks.map(c => `<li class="${c.ok ? "is-ok" : "is-no"}"><span class="mx-ck" aria-hidden="true">${ic(c.ok ? "check" : "close", 18)}</span><span class="sr-only">${c.ok ? "Done: " : "Not yet: "}</span>${esc(c.text)}</li>`).join("")}</ul>
           <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
+        <details class="mx-grown" id="mxGrown"><summary>${esc(DEBRIEF.grownups)}</summary>
         ${nums.length ? `<section class="mx-nums" id="mxNums" tabindex="-1" aria-label="${esc(DEBRIEF.numbersTitle)}"><h3>${esc(DEBRIEF.numbersTitle)}</h3>
           <ul>${nums.map(n => `<li><span>${esc(n.text)}${eng && n.eq ? `<code class="mx-eq">${esc(n.eq)}</code>` : ""}</span>${n.source ? srcLink(n.source, srcLabel(n.source)) : ""}</li>`).join("")}</ul></section>` : ""}
         ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
         ${breakdown(d)}
         ${nums.length ? "" : `<ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>`}
         ${(d.data_used || []).length ? `<details class="mx-data"><summary>Data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
+        </details>
       </div>`;
     $("mAgain").onclick = () => { if (paused && state && !state.over) { showHud(); return; } if (unsub) unsub(); state = null; start(); };
     if ($("mNext")) $("mNext").onclick = () => nextMission();
     if ($("mNewSite")) $("mNewSite").onclick = () => leaveMission(() => { if (unsub) unsub(); state = null; picker(); });
-    if ($("mNums")) $("mNums").onclick = () => { const n = $("mxNums"); if (n) { n.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); n.focus({ preventScroll: true }); } };
+    if ($("mNums")) $("mNums").onclick = () => { const g = $("mxGrown"); if (g) g.open = true; const n = $("mxNums"); if (n) { n.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); n.focus({ preventScroll: true }); } };
     $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else hub(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });

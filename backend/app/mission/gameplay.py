@@ -38,6 +38,8 @@ LESSON_NO, LESSON_TITLE = _lesson_order()
 SAMPLE_SCIENCE = 2.0       # a sample or a logged sensor reading: small, and only when the kid does it
 SCIENCE_TASKS = {"cadet": 4, "commander": 6}
 SCIENCE_EVERY_H = 8
+EXPLORE_TASKS = 3          # [playtest 4] science drives per mission, offered once the ice is home (+EXPLORE_SCIENCE each)
+EXPLORE_EVERY_H = 12
 STEER_AFTER_H = 2          # the boulder field comes up this far into an ice drive
 STEER_WAIT_H = 2           # ...and the rover picks its own way if nobody steers in time
 SHELTER_LEAD_H = 6         # storm prep: the shelter step opens this many hours before a likely storm
@@ -64,8 +66,8 @@ BEATS = {
                 "Set power, then start the clock."),
     "settle": ("Settling in", "Systems steady. The clock is running. Your jobs show on the Now card.", "site",
                "Watch the Now card for jobs."),
-    "comm_gap": ("On our own", "Earth is below the horizon. No radio until it rises. We're on our own.", "earthset",
-                 "No radio for now. Keep the crew safe."),
+    "comm_gap": ("On our own", "Earth is below the horizon. No radio until it rises. Science waits on board.", "earthset",
+                 "No radio for now. Science waits on board."),
     "first_dark": ("First sunset", "Sunset. The long dark starts. Night mode keeps the lights on.", "sunset",
                    "Power down for the night."),
     "forecast": ("Storm forecast", "Houston sees a storm coming. Get ready before it hits.", "storm_glow",
@@ -160,7 +162,7 @@ def _first_power(m):
     return dict(title="Set your power", lesson="power", panel="radiation", level="info", priority=95,
                 say=None, steps=[_order("power", "Shields up to 30", "shields", ALLOC("shields", 30),
                                         lambda m, t: m.acted.get("allocate", 0) > a0, "Power set. Good.",
-                                        why="Shields cut the radiation the crew soaks up every day.")])
+                                        why="Shields cut the everyday radiation. In a big storm, the shelter is safer.")])
 
 
 def _shelter_step():
@@ -345,6 +347,22 @@ def _comm_window(m):
                 deadline_h=m.t_h + (closes if closes else 12), say=None, steps=steps)
 
 
+def _explore(m):
+    """[playtest 4] A science drive: the rover brings back samples (sim EXPLORE_SCIENCE). Without it a kid who follows
+    the Now card gathers about 80 science in 10 days, so the mission's 120 was out of reach on a first mission."""
+    first = _order("send", "Send the rover to explore", "rover:explore", ROVER("explore"),
+                   lambda m, t: m.rover["busy"] and m.rover["task"] == "explore", "Rover exploring. Good.",
+                   why="New rocks are new science. The rover brings samples home.")
+    first["latch"] = True
+    first["ready_if"] = lambda m, t: _calm(m) and not m.shelter and not m.rover["busy"]
+    first["wait_text"] = "The drive waits until the storm passes."
+    back = _wait("back", "Rover back with samples",
+                 lambda m, t: t["steps"][0]["done"] and not m.rover["busy"], "Samples home. Science is up.")
+    back["latch"] = True
+    return dict(title="Science drive", lesson="moon", panel="rover", level="info", priority=30, cool_h=EXPLORE_EVERY_H,
+                say="Ice is home. Time for a science drive.", steps=[first, back])
+
+
 def _ice_run(m):
     runs = m.ice_runs
     rng = random.Random(f"{m.site_id}:{m.seed}:steer:{runs}")
@@ -402,7 +420,8 @@ def _science(m):
     title, panel, label, ack, why = SCIENCE_PRESS[sub]
     return dict(title=title, lesson="moon", panel=panel, level="info", priority=10, deadline_h=m.t_h + 4,
                 sub=sub, say=None,
-                steps=[_press("sample", label, f"{ack}. Science +{SAMPLE_SCIENCE:g}.", why=why)])
+                steps=[_press("sample", label, f"{ack}. Science +{SAMPLE_SCIENCE:g}." if sim.env_at(m, m.t_h)["earth_visible"]
+                              else f"{ack}. Science +{SAMPLE_SCIENCE:g}, saved for Earthrise.", why=why)])
 
 
 # ---- triggers: (kind, builder, when) in priority order -----------------------------------------------------------------
@@ -433,6 +452,9 @@ TRIGGERS = [
      (sim.next_sun_change_h(m, m.t_h) or 99) > sim.SUNSET_NOTICE_H),
     ("ice_run", _ice_run, lambda m: not sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
      _calm(m) and m.t_h >= 2 and m.power > 35),
+    ("explore", _explore, lambda m: sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
+     _calm(m) and m.power > 50 and sim.env_at(m, m.t_h)["lit"] and m.t_h <= sim.MISSION_H - 24 and
+     _gp(m)["count"].get("explore", 0) < EXPLORE_TASKS),
     ("science", _science, lambda m: m.t_h >= 3 and not m.shelter and not m.power_save and _calm(m) and
      _gp(m)["count"].get("science", 0) < SCIENCE_TASKS[m.difficulty]),
 ]
@@ -558,7 +580,7 @@ def _done_text(m, t) -> str:
             "comm_window": "Science sent and Houston called.", "repair": "Solar array fixed. Full power.",
             "life_check": "Life support balanced.", "first_power": "Power set for day one.",
             "sunrise": "Outpost awake at sunrise.", "low_power": "Battery saved.",
-            "science": "Science logged."}.get(t["kind"], f"{t['title']}: done.")
+            "science": "Science logged.", "explore": "Science drive done. Samples home."}.get(t["kind"], f"{t['title']}: done.")
 
 
 def _trigger(m, out):
@@ -656,14 +678,35 @@ STAR_POWER_MIN = 20                          # % battery never dips under this
 STAR_SCIENCE = sim.SCIENCE_GOAL / 10         # science sent home in the chapter (half the even pace: a fair bar)
 STAR_TIPS = {"safe": "Shelter early next time. The crew's dose climbed.",
              "powered": "The battery dipped low. Night mode sooner saves it.",
-             "science": "Send science home whenever Earth is up."}
+             "science": "Send science home whenever Earth is up.",
+             # [playtest 4] a chapter with no Earth window: the star is for science gathered and kept on board
+             "science_stored": "Do the science jobs. They wait on board for Earthrise."}
+def gp_sample() -> float:
+    return SAMPLE_SCIENCE
+
+
+DOWNLINK_H = 4                               # Earth-up hours a chapter needs to send STAR_SCIENCE (3 per hour, comms 5)
+
+
+def lab_hours(m, n: int) -> int:
+    """Hours the lab can run in chapter n: the arrays lit (Horizons + LOLA) and no particle storm on (the shelter)."""
+    lit = sim.sky_table(m.site_id)[0]
+    return sum(1 for h in range(n * CHAPTER_H, min((n + 1) * CHAPTER_H, len(lit)))
+               if lit[h] and not any(st.active(h) and st.event.get("sep") for st in m.storms))
+
+
+def earth_hours(m, n: int) -> int:
+    """Hours Earth is above the outpost's horizon in chapter n (Horizons + the LOLA skyline, sim.sky_table)."""
+    earth = sim.sky_table(m.site_id)[1]
+    return sum(earth[n * CHAPTER_H:(n + 1) * CHAPTER_H])
 
 
 def _ch(m) -> dict:
     g = _gp(m)
     c = g.get("chapter")
     if c is None:
-        c = g["chapter"] = {"n": 0, "dose0": m.dose, "sent0": m.science_sent, "min_power": m.power, "min_life": m.life}
+        c = g["chapter"] = {"n": 0, "dose0": m.dose, "sent0": m.science_sent, "sci0": m.science, "min_power": m.power,
+                            "min_life": m.life}
         g["chapters"] = []
     return c
 
@@ -686,16 +729,29 @@ def _chapters(m, out):
     stars = {"safe": m.dose - c["dose0"] <= STAR_SAFE_DOSE and c["min_life"] >= STAR_SAFE_LIFE and
              m.outcome in (None, "survived"),
              "powered": c["min_power"] >= STAR_POWER_MIN,
-             "science": m.science_sent - c["sent0"] >= STAR_SCIENCE}
+             "science": False}
+    # [playtest 4] Earth sets the science star. A chapter with a real downlink window (Horizons + LOLA) scores the
+    # science SENT home; one with no window (Shackleton Rim until Day 6) scores the science GATHERED, which waits on
+    # board (store and forward) and goes home at Earthrise. Either way a kid who does the jobs can earn it.
+    # The bar follows the chapter's sky too: a chapter that is mostly night or storm (the lab sleeps in night mode and
+    # in the shelter) asks for half a point per lab hour, at least one science job's worth.
+    stored = earth_hours(m, c["n"]) < DOWNLINK_H
+    sent, got = m.science_sent - c["sent0"], m.science - c.get("sci0", m.science)
+    lab = lab_hours(m, c["n"])
+    goal = STAR_SCIENCE if not stored else min(STAR_SCIENCE, max(gp_sample(), round(lab * 0.5)))
+    stars["science"] = (got >= goal) if stored else (sent >= goal)
     n = sum(stars.values())
     miss = next((k for k in ("safe", "powered", "science") if not stars[k]), None)
-    line = ("Three stars. Textbook flying, Outpost Luna." if n == 3 else STAR_TIPS[miss])
+    line = ("Three stars. Textbook flying, Outpost Luna." if n == 3 else
+            STAR_TIPS["science_stored" if miss == "science" and stored else miss])
     rec = {"n": c["n"] + 1, "of": len(CHAPTERS), "title": CHAPTERS[c["n"]], "days": [c["n"] * 2 + 1, c["n"] * 2 + 2],
-           "stars": stars, "count": n, "capcom": line, "t_h": m.t_h, "last": c["n"] + 1 >= len(CHAPTERS) or m.over}
+           "stars": stars, "count": n, "capcom": line, "t_h": m.t_h, "last": c["n"] + 1 >= len(CHAPTERS) or m.over,
+           "science": {"mode": "stored" if stored else "sent", "sent": round(sent, 1), "got": round(got, 1),
+                       "goal": goal}}
     _gp(m)["chapters"].append(rec)
     _ev(m, out, "chapter", f"Chapter {rec['n']} done: {n} of 3 stars. {line}", chapter=rec)
-    _gp(m)["chapter"] = {"n": c["n"] + 1, "dose0": m.dose, "sent0": m.science_sent, "min_power": m.power,
-                         "min_life": m.life}
+    _gp(m)["chapter"] = {"n": c["n"] + 1, "dose0": m.dose, "sent0": m.science_sent, "sci0": m.science,
+                         "min_power": m.power, "min_life": m.life}
 
 
 # ---- the sim's hooks -------------------------------------------------------------------------------------------------
@@ -923,4 +979,9 @@ def view(m) -> dict:
                         "title": CHAPTERS[min(_ch(m)["n"], len(CHAPTERS) - 1)], "done": g.get("chapters", [])},
             "progress": {"day": min(m.t_h // 24 + 1, 10), "days_done": round(min(m.t_h, sim.MISSION_H) / 24, 1),
                          "days_total": sim.MISSION_H // 24, "science_sent": round(m.science_sent, 1),
-                         "science_goal": sim.SCIENCE_GOAL, "ice": m.ice_runs, "ice_goal": sim.ICE_GOAL}}
+                         "science_goal": sim.SCIENCE_GOAL, "ice": m.ice_runs, "ice_goal": sim.ICE_GOAL,
+                         # [playtest 4] gathered but not home yet: stored on board until Earth is up (the counter
+                         # shows it, so a "Science +2" visibly counts while Earth is down)
+                         "science_stored": round(max(0.0, m.science - m.science_sent), 1),
+                         "earth_up": bool(sim.env_at(m, m.t_h)["earth_visible"]),
+                         "earth_in_h": sim.next_comm_window_h(m, m.t_h)}}

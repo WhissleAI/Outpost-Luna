@@ -20,6 +20,8 @@ router.include_router(_vocab_router)
 HINT_AFTER = 1   # misses before the hint (the hint ladder: app/academy/guide.py)
 SHOW_AFTER = REVEAL_AFTER   # real misses (and >= 20 s open: grade.reveal_due) before CAPCOM shows the answer (§5)
 SHOWN = "Here it is. "
+GUESS_RIGHT = "You guessed it! "     # a video step's guess chip, checked after the video (or Skip)
+GUESS_OTHER = "Good guess. Here's the answer. "
 # The check-ride result card shows this one line (not spoken). Moon: ~2.6 s round trip; Mars: 6 to 44 minutes.
 MARS_FACT = "On Mars, Houston would answer 6 to 44 minutes later."
 
@@ -41,6 +43,14 @@ class AttemptReq(BaseModel):
     ride_id: str | None = None
     step_s: float | None = Field(None, ge=0)   # seconds the step has been open (client): no reveal in the first 20 s
     level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): for the learning design; no effect yet
+    rung: int = Field(0, ge=0, le=3)   # the hint rung the card already shows (a find step opens at 1; help climbs)
+
+
+class HintReq(BaseModel):
+    lesson_id: str
+    step: int = Field(..., ge=0)
+    rung: int = Field(1, ge=1, le=3)   # the rung to show: help climbs one at a time (highlight, label, show)
+    got: list[str] | None = Field(None, max_length=12)   # route: the stops already tapped right
 
 
 def _decisions(lesson_id: str, step: int, status: str, say: str, score: int | None = None, badge: bool = False,
@@ -75,6 +85,25 @@ def academy_ride():
     return {"ride_id": r["m"].id, "lesson_id": les["id"], "state": rides.hud(r), "say": les["steps"][0]["prompt"]}
 
 
+@router.post("/api/academy/hint")
+def academy_hint(req: HintReq):
+    """The kid asked for help ("help", "I don't know", "where is it?"): the next rung of the hint ladder, with no miss
+    counted and nothing graded (guide.help_rung). The check ride has no ladder: its hint, as written."""
+    les = content.lesson(req.lesson_id)
+    if not les:
+        raise HTTPException(404, "no such lesson")
+    if req.step >= len(les["steps"]):
+        raise HTTPException(422, "no such step")
+    st = les["steps"][req.step]
+    if les.get("ride"):
+        exp = (st["accept"] or {}).get("expect")
+        say = guide._end(st["hint"]) + (f" Tap {guide.order_label(exp)}." if exp else "")
+        return {"status": "help", "rung": 1, "say": say, "hint": st["hint"],
+                "decisions": _decisions(les["id"], req.step, "help", say)}
+    out = guide.help_rung(st, req.rung, req.got)
+    return {"status": "help", **out, "decisions": _decisions(les["id"], req.step, "help", out["say"])}
+
+
 @router.post("/api/academy/attempt")
 async def academy_attempt(req: AttemptReq):
     les = content.lesson(req.lesson_id)
@@ -103,6 +132,8 @@ async def academy_attempt(req: AttemptReq):
         say = st["success"]
         if st["accept"]["type"] == "predict" and not extra.get("correct"):
             say = st["reveal"]                          # a guess is never wrong: "your guess" vs "the data"
+        if st["accept"]["type"] == "video" and extra.get("guess"):   # the guess, acknowledged, then the answer
+            say = (GUESS_RIGHT if extra.get("correct") else GUESS_OTHER) + say
         if shown:
             say = SHOWN + say
         return _out(les["id"], req.step, "passed", say, next_step=None if last else req.step + 1,
@@ -122,7 +153,7 @@ def _route_progress(inp: dict, extra: dict) -> bool:
 
 def _miss(les: dict, req: AttemptReq, st: dict, extra: dict) -> dict:
     """A real miss: the next rung of the hint ladder (app/academy/guide.py), which always says what to do next."""
-    g = guide.ladder(st, req.misses, req.input.model_dump(exclude_none=True), extra)
+    g = guide.ladder(st, req.misses, req.input.model_dump(exclude_none=True), extra, seen=req.rung)
     if st["accept"]["type"] == "route":
         g["got"] = extra.get("got") or []   # the stops still right (the client keeps those taps)
     return _out(les["id"], req.step, "hint", g.pop("say"), **g)
@@ -153,15 +184,17 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
         res = m.apply(extra["command"])["result"] if extra.get("command") else {"say": ""}
         if res.get("needs_confirm"):
             res = m.apply({"type": "confirm"})["result"]
-        sim_say = res.get("say", "")
+        sim_say = _new_news(st["success"], res.get("say", ""))
         r["missed"].append(False)
     else:
         r["misses"] += 1
         if r["misses"] < rides.MISS_LIMIT:
             status = "hint" if r["misses"] >= HINT_AFTER else "retry"
-            say = st["fail"] + (" Hint: " + st["hint"] if status == "hint" else "")
+            # a wrong order teaches why (step.wrong: "Shields help a little. The shelter is safer."), then what to do
+            lead = (st.get("wrong") or {}).get(extra.get("heard_order") or "", st["fail"])
+            say = lead + (" " + guide._end(st["hint"]) if status == "hint" else "")
             return _out(les["id"], r["step"], status, say, hint=st["hint"] if status == "hint" else None,
-                        state=rides.hud(r))
+                        state=rides.hud(r), cue=(st["accept"] or {}).get("expect") if r["misses"] >= 2 else None)
         r["missed"].append(True)   # the world doesn't wait: the ride moves on without that order
     evs = rides.advance(r, st.get("advance"))
     r["step"] += 1
@@ -185,6 +218,16 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
                     fact=MARS_FACT)
     return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " Not qualified yet. Fly it again.",
                 passed=False, score=score, state=rides.hud(r), events=events, fact=MARS_FACT)
+
+
+def _new_news(said: str, sim_say: str) -> str:
+    """The sim's own reply minus what the step's success line already said ("Copy. Crew in the shelter." then "Crew in
+    the shelter. Much less radiation…" said it twice): only its sentences that are new."""
+    import re
+    key = lambda t: re.sub(r"[^a-z0-9 ]", "", t.lower()).strip()  # noqa: E731
+    have = {key(x) for x in re.split(r"(?<=[.!?])\s+", said or "") if x.strip()}
+    keep = [x for x in re.split(r"(?<=[.!?])\s+", sim_say or "") if x.strip() and key(x) not in have]
+    return " ".join(keep)
 
 
 def _answer_of(st: dict) -> dict:

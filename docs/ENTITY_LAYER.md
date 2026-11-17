@@ -139,6 +139,8 @@ Privacy:
 
 What round 12 should use: all 19.
 
+Round 13 appends libarc ABI 2's read-outs (`e13_*`, F 261 → 275): `docs/ARC_ABI2.md` §6.
+
 The six round-7 slots (`ear_conf`, `ear_alts`, `ear_alt_hot`, `ear_rescored`, `ear_tier_step`,
 `ear_tier_screen`):
 - stay 0;
@@ -157,6 +159,18 @@ Shipped decisions are unchanged:
 - `test_entities.py::test_entity_features_never_reach_the_shipped_weights` and
   `test_speech_signals.py::test_new_features_never_reach_the_shipped_weights` run the shipped weights with and
   without the new read-outs. Every head is bit-identical.
+
+## 4b. Personal aliases (on-device learning)
+
+How one kid says a name ("ticko" for Tycho) can become a **private alias** of that entity for that cadet, after they
+confirm the app's "Did you mean Tycho?" (`app/learn/aliases.py`, `docs/ON_DEVICE_LEARNING.md`). It is an overlay on the
+registry, never written into it:
+- it is checked against the registry: never another entity's name, alias, spoken form or known mishearing, never a
+  form containing another entity's name, never common words;
+- `director._link` uses it after the ear's sure links and before any "Did you mean": `learned_alias(read
+  ["learned_aliases"], heard words)` -> the entity's place (`how = "learned_alias"`);
+- it is not sent to the ear (the names lists are unchanged), and the Director model never sees it (it is added to the
+  read after the model's step).
 
 ## 5. Plugging in another app
 

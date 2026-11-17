@@ -27,6 +27,7 @@ registerProcessor("pcm16-80ms", Pcm16);`;
 
 export function createListener(on) {
   let ws = null, ctx = null, stream = null, node = null, src = null, live = false;
+  let sent = 0;            // 16 kHz samples sent on this socket: the mic stream's clock (echoref.js stamps playback with it)
 
   function wsUrl() { return (location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/listen"; }
 
@@ -35,7 +36,7 @@ export function createListener(on) {
     const ok = await new Promise(res => {
       let settled = false; const done = v => { if (!settled) { settled = true; clearTimeout(to); res(v); } };
       try { ws = new WebSocket(wsUrl()); } catch (e) { return res(false); }
-      ws.binaryType = "arraybuffer";
+      ws.binaryType = "arraybuffer"; sent = 0;
       const to = setTimeout(() => done(false), 2500);
       ws.onopen = () => done(true);
       ws.onerror = () => done(false);
@@ -53,7 +54,7 @@ export function createListener(on) {
       src = ctx.createMediaStreamSource(stream);
       node = new AudioWorkletNode(ctx, "pcm16-80ms");
       node.port.onmessage = e => {
-        if (ws && ws.readyState === 1) ws.send(e.data);
+        if (ws && ws.readyState === 1) { ws.send(e.data); sent += e.data.byteLength / 2; }
         if (on.level) { const a = new Int16Array(e.data); let sum = 0; for (let k = 0; k < a.length; k += 4) sum += a[k] * a[k]; on.level(Math.sqrt(sum / (a.length / 4)) / 32768); }
       };
       const mute = ctx.createGain(); mute.gain.value = 0;
@@ -82,5 +83,8 @@ export function createListener(on) {
   /** Send a JSON control frame (e.g. {t:"context",…}) when the socket is open. Returns whether it was sent. */
   function send(obj) { if (!ws || ws.readyState !== 1) return false; try { ws.send(JSON.stringify(obj)); return true; } catch (e) { return false; } }
 
-  return { start, stop, send, get live() { return live; }, get sampleRate() { return ctx ? ctx.sampleRate : 0; } };
+  /** Seconds of mic audio sent on this socket (the ear's own clock for this stream). */
+  const clock = () => sent / 16000;
+
+  return { start, stop, send, clock, get live() { return live; }, get sampleRate() { return ctx ? ctx.sampleRate : 0; } };
 }
