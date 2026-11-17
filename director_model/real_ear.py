@@ -289,6 +289,33 @@ def r11_jobs(a, G, have, new, add):
     print(f"r11 train Mac variants of old texts: {m}", flush=True)
 
 
+def cmd_relist(a):
+    """Round 12: re-key an earlier cache's jobs for a re-decode with what the app sends TODAY. Every job (Steer TTS,
+    OS-voice, Mac voice bank) gets its screen's current names list (names_list.screen_names: the 80-entry Moon lists of
+    PR #119 / #121) and no hot list (the live ear gets none). Only jobs the source cache decoded are kept. The decode
+    then stores the final words' extras exactly as arc_ear sends them (names, spoken, decoder_text, agree, tags):
+    gen_sessions replays them (features.ear_final), so the ear_* / ent_* features are filled as at serve time."""
+    sys.path.insert(0, str(HERE.parent / "backend"))
+    src = Path(a.src)
+    CACHE.mkdir(parents=True, exist_ok=True)
+    jobs = [json.loads(line) for line in open(src / "jobs.jsonl")]
+    lists: dict = {}
+    n = 0
+    with open(JOBS, "w") as f:
+        for j in jobs:
+            if not (src / "dec" / f"{j['key']}.json").exists():
+                continue
+            fr = j.get("frame") or {"screen": "cabin"}
+            fk = frame_key(fr) + f"|{fr.get('lesson_id')}|{fr.get('step')}"
+            if fk not in lists:
+                lists[fk] = screen_names_of(fr)
+            j = {k: v for k, v in j.items() if k != "hot"}
+            j["names"] = lists[fk]
+            f.write(json.dumps(j) + "\n")
+            n += 1
+    print(f"{n} jobs (of {len(jobs)}), {len(lists)} distinct names lists -> {JOBS}")
+
+
 def load_jobs() -> list[dict]:
     return [json.loads(line) for line in open(JOBS)] if JOBS.exists() else []
 
@@ -397,6 +424,10 @@ def _decode_worker(args):
         print("Arc ear not loaded:", arcmeta.STATE.get("error"), flush=True)
         return 0
     tier = json.load(open(HERE.parent / "backend" / "tests" / "fixtures" / "ear_eval" / "tier_a.json"))
+    import importlib.util       # the backend's replay module by path (this process's `app` is the model server's)
+    spec = importlib.util.spec_from_file_location("dm_replay", HERE.parent / "backend/app/director_model/replay.py")
+    RP = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RP)
     (CACHE / "dec").mkdir(parents=True, exist_ok=True)
     done = 0
     t0 = time.time()
@@ -409,7 +440,7 @@ def _decode_worker(args):
             print(f"decode[{wid}] resumed", flush=True)
         es = arc_ear.EarStream("assistant")
         ctx = StreamContext()
-        ctx.update({"t": "context", "names": j.get("names") or tier}, es)
+        ctx.update({"t": "context", "names": j["names"] if "names" in j else tier}, es)
         if j.get("hot"):
             ctx.update({"t": "context", "hot": j["hot"]}, es)
         msgs = []
@@ -417,7 +448,6 @@ def _decode_worker(args):
             msgs += es.feed_all(x[i:i + 2560])
         msgs += es.flush_all()
         es.close()
-        ev = []
         xr = {"names": [], "spoken": "", "tags": [], "audio_events": [], "dh": [], "directed": [],
               "ends": es.ends, "audio_s": round(es.audio_s, 3)}
         for m in msgs:
@@ -429,17 +459,15 @@ def _decode_worker(args):
                 xr["audio_events"] += m.get("audio_events") or []
                 xr["dh"].append(m.get("directed_head"))
                 xr["directed"].append(m.get("directed"))
-            if m["t"] == "words":
-                ev.append({"t": "words", "text": m["text"], "final": bool(m.get("final")),
-                           **{k: m[k] for k in ("alts", "conf", "hot", "rescored") if m.get(k) is not None}})
-            elif m["t"] == "turn":
-                ev.append({"t": "turn", "state": m["state"], "text": m.get("text") or ""})
-            elif m["t"] == "arc":
-                ev.append({"t": "arc", "dd": m.get("device_directed"), "cc": m.get("command_complete")})
+        # round 12: the cache form is backend/app/director_model/replay.compact (the parity test's own code path): the
+        # events in live order, and the final words' ear extras (names, spoken, decoder_text, agree) gen_sessions replays
+        ev, fx = RP.compact(msgs, arc_ear.agreement)
+        if fx is not None:
+            xr["final"] = fx
         finals = [e["text"] for e in ev if e["t"] == "words" and e["final"] and e["text"].strip()]
         out.write_text(json.dumps({"key": j["key"], "text": j["text"], "group": j["group"], "fk": j.get("fk", ""),
                                    "hyp": " ".join(finals),
-                                   "events": ev, "render": rmeta, **({"x": xr} if j.get("vb") else {}),
+                                   "events": ev, "render": rmeta, "x": xr, "names_n": len(j.get("names") or []),
                                    **({k: j[k] for k in ("cat", "gold_act") if j.get(k) is not None}), "rtf": round(es.compute_s / max(es.audio_s, 1e-6), 3)}))
         done += 1
         if done % 100 == 0:
@@ -461,6 +489,9 @@ def cmd_decode(a):
         while held or va or tr:
             todo += held[:2] + va[:1] + tr[:1]
             held, va, tr = held[2:], va[1:], tr[1:]
+    elif a.order == "r12":     # round 12: everything the gate reads first (held-out, class, echo sets), val, then train
+        pri = {"val": 1, "train": 2}
+        todo.sort(key=lambda j: (pri.get(j["group"], 0), j.get("var", 0)))
     elif a.order == "r11":     # round 11: the held-out voices, the echo bank and val first, then train
         pri = {"voice_ho": 0, "echo_bank": 1, "val": 2, "train": 3}
         todo = [j for j in todo if j.get("vb")]
@@ -517,7 +548,8 @@ def cmd_stats(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["jobs", "decode", "stats"])
+    ap.add_argument("cmd", choices=["jobs", "decode", "stats", "relist"])
+    ap.add_argument("--src", default="", help="relist: the cache whose jobs are re-keyed")
     ap.add_argument("--train", type=int, default=3000)
     ap.add_argument("--val", type=int, default=150)
     ap.add_argument("--test", type=int, default=200)
@@ -537,4 +569,4 @@ if __name__ == "__main__":
     ap.add_argument("--classes", default="", help="jobs for these class sets only (comma list), nothing else")
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
-    {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats}[a.cmd](a)
+    {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats, "relist": cmd_relist}[a.cmd](a)

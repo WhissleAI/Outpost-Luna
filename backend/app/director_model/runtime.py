@@ -47,7 +47,8 @@ def mode() -> str:
     return m if m in MODES else "on"
 
 
-DEFAULT_MODE = "guarded"  # round 10 (2026-11-16): r10 xl acts only in the classes its policy lists (hot, echo: each
+DEFAULT_MODE = "guarded"  # round 12 (2026-11-17): r12 xl acts in quiet, r10 xl (weights_r10, routed) in hot + echo;
+#   round 10 (2026-11-16): r10 xl acts only in the classes its policy lists (hot, echo: each
 #   passed the full gate with 0 extra wrong actions); the rules decide everywhere else. Was "shadow" since 2026-11-14
 #   (owner: shadow until a round passes the gate).
 
@@ -76,8 +77,26 @@ def situation(rec: dict | None, text: str) -> str:
 
 
 def allowed(thr: dict, cls: str) -> bool:
-    """`guarded`: may the model act in this class? Only the classes the weights' policy lists (none = nowhere)."""
-    return cls in (thr.get("classes") or ())
+    """`guarded`: may a model act in this class? Only the classes the weights' policy lists (none = nowhere), either
+    for the weights themselves (`classes`) or routed to another weight file (`routes`, round 12)."""
+    return cls in (thr.get("classes") or ()) or cls in (thr.get("routes") or {})
+
+
+def pick(thr: dict, cls: str, out: dict | None, pols: dict | None = None) -> tuple[dict, dict] | None:
+    """Round 12, per-class model routing (`guarded`): which model decides in class `cls`, and with which policy.
+    `thr` is the primary weights' policy: `classes` lists the classes the primary acts in itself; `routes`
+    ({class: weight file name}) the classes another weight file acts in, with ITS OWN fitted policy (`pols[name]`) and
+    its own output (`out["_routed"][name]`, stepped on the same events). A class in neither: None, the rules decide.
+    A routed file that failed to load gives None too (the rules decide). ONE definition: the runtime below and
+    director_model/evaluate.py (the gate evaluates exactly this)."""
+    if not out:
+        return None
+    r = (thr.get("routes") or {}).get(cls)
+    if r:
+        o = (out.get("_routed") or {}).get(r)
+        p = (pols or {}).get(r)
+        return (o, p) if o is not None and p is not None else None
+    return (out, thr) if cls in (thr.get("classes") or ()) else None
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward
@@ -137,6 +156,11 @@ class Model:
         # Features are only ever APPENDED (round 6 added the hands-free block after F_R5): older weights read the
         # prefix they were trained on. A model wider than features.py is stale code, not stale weights.
         self.F = int(meta["F"])
+        # Round 12: the slots these weights were trained with at 0 (the dead round-7 ear slots, `trained_zero` in
+        # weights.json). An ear that fills them later (libarc ABI 2: per-word conf, n-best alts) must not move these
+        # weights' inputs: they are forced back to 0 here, whatever features.py computes.
+        self.zero = np.array([FX._IDX[k] for k in meta.get("trained_zero") or [] if FX._IDX.get(k, self.F) < self.F],
+                             np.int64)
         assert self.F <= FX.F and self.F >= FX.F_R5, \
             f"feature width {meta['F']} vs {FX.F}: retrain/export the model for this features.py"
 
@@ -192,6 +216,9 @@ class Model:
         m = (toks > 0).astype(np.float32)[:, None]
         bag = (e * m).sum(0) / max(1.0, float(m.sum()))
         feats = feats[:self.F]
+        if self.zero.size:
+            feats = feats.copy()
+            feats[self.zero] = 0.0
         x = self.lin("inp", np.concatenate([(feats - p["mu"]) / p["sd"], bag]))
         state = state or [(None, None)] * self.L
         new = []
@@ -219,6 +246,7 @@ class Model:
 
 _model: Model | None = None
 _failed: str | None = None
+_routed: dict = {}           # round 12: {weight file name: Model} for the primary policy's `routes`
 LATENCY: dict = {}            # step latency of the loaded weights (ms p50 / p95 over a short warm-up, CPU, numpy)
 
 
@@ -241,11 +269,30 @@ def model() -> Model | None:
     global _model, _failed
     if _model is None and _failed is None:
         try:
-            _model = Model()
+            _model = Model(MODEL_DIR)
+            for name in sorted(set(((_model.meta.get("policy") or {}).get("routes") or {}).values())):
+                try:
+                    _routed[name] = Model(MODEL_DIR, name)
+                except Exception as e:  # noqa: BLE001 (a routed file that fails: its classes go back to the rules)
+                    LATENCY["routed_error"] = f"{name}: {type(e).__name__}: {e}"
             LATENCY.update(measure_latency(_model))
+            if _routed:
+                LATENCY["routed"] = {n: measure_latency(m) for n, m in _routed.items()}
+                LATENCY["turn_p50_ms"] = round(LATENCY["p50_ms"] + sum(v["p50_ms"] for v in LATENCY["routed"].values()), 3)
         except Exception as e:  # noqa: BLE001 (no weights shipped / stale features: shadow logs nothing, rules decide)
             _failed = f"{type(e).__name__}: {e}"
     return _model
+
+
+def routed_models() -> dict:
+    """{name: Model} of the routed weight files (loaded with the primary; empty without `routes`)."""
+    model()
+    return _routed
+
+
+def policies() -> dict:
+    """{name: policy} of the routed weight files (runtime.pick's `pols`)."""
+    return {n: {**DEFAULT_POLICY, **(m.meta.get("policy") or {})} for n, m in routed_models().items()}
 
 
 # ---------------------------------------------------------------------------------------------- stats
@@ -257,6 +304,9 @@ def stats() -> dict:
     s = {k: v for k, v in STATS.items() if k not in ("pairs", "recent")}
     s["mode"] = mode()
     s["model"] = None if model() is None else {k: _model.meta.get(k) for k in ("size_name", "params", "trained")}
+    s["routed"] = {n: {"classes": [c for c, f in ((_model.meta.get("policy") or {}).get("routes") or {}).items() if f == n],
+                       **{k: m.meta.get(k) for k in ("size_name", "params", "trained")}}
+                   for n, m in _routed.items()} if _model is not None else None
     s["latency"] = dict(LATENCY) or None
     s["model_error"] = _failed
     s["act_agreement"] = round(s["act_agree"] / s["decisions"], 4) if s["decisions"] else None
@@ -299,6 +349,7 @@ class Shadow:
         self.sink = sink
         self.run_model = (mode() != "off") if run_model is None else run_model
         self.state = None
+        self.rstate: dict = {}             # round 12: each routed model's own recurrent state
         self.prev: dict | None = None
         self.cur: dict | None = None
         self.n = 0
@@ -313,6 +364,12 @@ class Shadow:
                 x = FX.step_feats(rec, self.prev)
                 toks, wtok, wfeat = FX.step_tokens(rec)
                 out, self.state = m.step(self.state, x, toks, wtok, wfeat)
+                rm = routed_models() if mode() == "guarded" else {}
+                if rm:       # round 12: every routed model steps on every event too (its state must follow the stream)
+                    ro = {}
+                    for name, mr in rm.items():
+                        ro[name], self.rstate[name] = mr.step(self.rstate.get(name), x, toks, wtok, wfeat)
+                    out = {**out, "_routed": ro}
         self.cur = {"rec": rec, "out": out, "decisions": [], "r": None, "i": self.n}
         self.prev = rec
         self.n += 1
@@ -371,8 +428,9 @@ class Shadow:
             return False
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
-        if md == "guarded" and not allowed(thr, "answer"):
-            return False
+        if md == "guarded":
+            pk = pick(thr, "answer", out, policies())
+            return bool(pk) and answer_policy(*pk)
         return answer_policy(out, thr)
 
     def decide_nav(self, out: dict | None, offer: str | None) -> str | None:
@@ -382,8 +440,9 @@ class Shadow:
             return None
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
-        if md == "guarded" and not allowed(thr, "nav"):
-            return None
+        if md == "guarded":
+            pk = pick(thr, "nav", out, policies())
+            return nav_policy(pk[0], pk[1], offer=bool(offer)) if pk else None
         return nav_policy(out, thr, offer=bool(offer))
 
     def decide_turn(self, out: dict | None, text: str, rules_guard: bool) -> dict | None:
@@ -397,8 +456,10 @@ class Shadow:
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
         if md == "guarded":
-            if not allowed(thr, situation((self.cur or {}).get("rec"), text)):
+            pk = pick(thr, situation((self.cur or {}).get("rec"), text), out, policies())
+            if not pk:
                 return None
+            out, thr = pk
             thr = {**thr, **(thr.get("guarded") or {})}
         thr = learned_thr(thr, self.sess)
         b = self.sess.belief

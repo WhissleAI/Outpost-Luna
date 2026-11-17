@@ -184,25 +184,30 @@ def on_outcome(m: dict, o: dict, thr: dict):
     return ov["act"], ov.get("command")
 
 
-def guarded_outcome(m: dict, o: dict, thr: dict):
+def guarded_outcome(m: dict, o: dict, thr: dict, pols: dict | None = None):
     """Round 10, DIRECTOR_MODEL=guarded exactly as the runtime runs it: the model may act only where the turn's class
     is in thr["classes"] (runtime.situation for a policy turn; "nav" for the navigate fill, "answer" for the lesson
-    silencing); the rules decide everywhere else."""
+    silencing); the rules decide everywhere else. Round 12: a class in thr["routes"] is decided by that weight file's
+    output (o["_routed"][name]) under its own policy (pols[name]): runtime.pick, the runtime's own choice."""
     ra, rc = rules_out(m)
     route = m.get("route")
     if route == "navigate":
         return ra, rc
-    if RT.allowed(thr, "nav"):
-        nv = RT.nav_policy(o, thr, offer=bool(m.get("offer"))) if route is not None else None
+    pk = RT.pick(thr, "nav", o, pols)
+    if pk:
+        nv = RT.nav_policy(pk[0], pk[1], offer=bool(m.get("offer"))) if route is not None else None
         if nv:
             return "navigate", {"nav": nv}
     if route == "ignore":
         return ra, rc
     if route == "answer":
-        return ("ignore", None) if RT.allowed(thr, "answer") and RT.answer_policy(o, thr) else (ra, rc)
-    if not RT.allowed(thr, m.get("situ") or "quiet"):
+        pk = RT.pick(thr, "answer", o, pols)
+        return ("ignore", None) if pk and RT.answer_policy(*pk) else (ra, rc)
+    pk = RT.pick(thr, m.get("situ") or "quiet", o, pols)
+    if not pk:
         return ra, rc
-    t = {**thr, **(thr.get("guarded") or {})}
+    o, t = pk
+    t = {**t, **(t.get("guarded") or {})}
     ov = RT.policy(o, FX.words_of(m["heard"]), rules_cmds(m["heard"]), guard_of(m), t, mission=m["mode"] == "mission")
     if ov and ov["act"] == "command" and m["mode"] != "mission":
         ov = None

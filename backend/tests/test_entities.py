@@ -208,9 +208,11 @@ def test_entity_features_read_the_memory(explorer):
 
 def test_entity_features_never_reach_the_shipped_weights(explorer):
     from app.director_model import runtime
-    m = runtime.model()
-    if m is None:
+    # round 12: the routed r10 file (hot + echo) still reads its 242-wide prefix only; the primary r12 file reads all
+    if runtime.model() is None or "weights_r10" not in runtime.routed_models():
         pytest.skip("no shipped weights")
+    m = runtime.routed_models()["weights_r10"]
+    assert runtime.model().F == FX.F_R12
     explorer.memory.note_turn([], "what is tycho", "map")
     explorer.clock_obj.t += 30
     explorer.belief["kid"]["ear"] = {"names": [{"entity": "Tycho", "state": "linked", "p": 0.6}], "spoken": "tycho",

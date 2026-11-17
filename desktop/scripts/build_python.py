@@ -344,6 +344,7 @@ def stage_app(skip_frontend: bool):
     shutil.copytree(dist, app / "frontend")
     # Camera gestures: the vision runtime + models ship inside the app (frontend/tools/fetch_vision.mjs; docs/GESTURES.md)
     for must in ("backend/app/director_model/weights.json", "backend/app/director_model/weights.npz",
+                 "backend/app/director_model/weights_r10.json", "backend/app/director_model/weights_r10.npz",   # round 12: routed
                  "backend/data/places.json", "backend/data/index/clips.json",
                  "backend/data/ear_vocab.json", "model_server/app/tts_os.py", "model_server/app/os_voices.py",
                  "model_server/app/voice_pack.py", "backend/data/voice_pack/lines.json",
