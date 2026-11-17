@@ -47,6 +47,13 @@ export function saveSettings(storage, s) {
 /** The next speed up/down the ladder. */
 export function stepSpeed(cur, dir) { const i = SPEEDS.indexOf(normalize({ speed: cur }).speed); return SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, i + dir))]; }
 
+// "What do I do?": the screen's current hint (window.__outpost.help: academy/ui.js, main.js), docs/PLAYTEST.md. In a
+// Flight School step each one climbs the hint ladder (novice playtest 2026-11-16 #1: "where is it?", "I dont know").
+// Mirrored in backend/app/turn_router.py NAV ("a11y").
+export const HELP_RE = /^(help|help please|help me please|hint|give me a hint|i need (a hint|help)|what do i do( now| here)?|what should i do|what am i supposed to do|i m stuck|i don t get it|i dont get it|i don t know what to do|i dont know what to do|i don t know|i dont know|i do not know|idk|dunno|i have no idea|no idea|how do i do this|what do i do next|what should i do (now|next)|i m lost|i am lost|what s my job|whats my job|what do i have to do|where is it|where s it|wheres it|where|where is that|where do i tap|where do i click|i can t find it|i cant find it|i can t see it|i cant see it|show me where|show me where it is)$/;
+// "what?", "huh?": the step again, simply (window.__outpost.explain), never silence (playtest #1, #13)
+export const CONFUSED_RE = /^(what|what what|huh|hmm what|eh|what do you mean|what does that mean|i don t understand|i dont understand|i don t get what you mean|what was that|come again|pardon|sorry what)$/;
+
 /** A typed or spoken a11y command → {cmd, arg} or null. Kept narrow so lesson answers aren't swallowed. */
 export function parseCommand(text) {
   const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
@@ -54,7 +61,8 @@ export function parseCommand(text) {
   if (/^(where am i|what screen is this|what s on (the )?screen|describe (the )?screen)$/.test(t)) return { cmd: "where" };
   if (/^(what can i do|what can i say|help me|options|what are my options)$/.test(t)) return { cmd: "options" };
   // "what do I do?": the screen's current hint (window.__outpost.help: academy/ui.js, main.js), docs/PLAYTEST.md
-  if (/^(help|help please|hint|give me a hint|i need (a hint|help)|what do i do( now| here)?|what should i do|what am i supposed to do|i m stuck|i don t get it|i don t know what to do|i don t know|how do i do this|what do i do next|what should i do (now|next)|i m lost|i am lost|what s my job|whats my job|what do i have to do)$/.test(t)) return { cmd: "help" };
+  if (HELP_RE.test(t)) return { cmd: "help" };
+  if (CONFUSED_RE.test(t)) return { cmd: "confused" };
   if (/^(speak |talk )?(faster|speed up)( please)?$/.test(t)) return { cmd: "speed", arg: 1 };
   if (/^(speak |talk )?(slower|slow down)( please)?$/.test(t)) return { cmd: "speed", arg: -1 };
   if (/^(normal speed|regular speed)$/.test(t)) return { cmd: "speed", arg: 0 };
@@ -371,6 +379,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (text === lastDesc && now - lastDescT < 4000) return;
     lastDesc = text; lastDescT = now;
     (alert ? alertLive : live).textContent = text;             // screen readers always get it
+    // an alert is news, not a label: it leaves the live region once read, so a screen reader never meets a storm alert
+    // from Lesson 5 in the Mission (novice playtest 2026-11-16 #31)
+    if (alert) { clearTimeout(describe.at); describe.at = setTimeout(() => { if (alertLive.textContent === text) alertLive.textContent = ""; }, 8000); }
     if (S.describe && !quiet && say) say(text, { describe: true });   // spoken only in audio-description mode
     if (O.captions && S.describe) O.captions.log("describe", text);
   }
@@ -410,7 +421,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   }
 
   /** QA-68: an alert's flash and banner belong to the screen that raised it: a mode switch ends them. */
-  function clearAlerts() { clearTimeout(visualAlert.t); clearTimeout(visualAlert.f); flash.classList.remove("is-on"); vbanner.hidden = true; }
+  function clearAlerts() { clearTimeout(visualAlert.t); clearTimeout(visualAlert.f); flash.classList.remove("is-on"); vbanner.hidden = true; alertLive.textContent = ""; }
   new MutationObserver(clearAlerts).observe(document.body, { attributes: true, attributeFilter: ["data-mode"] });
 
   // ---- screen state on request ----
@@ -440,7 +451,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   }
   function options() {
     const h = O.help && O.help();   // a screen that knows what the kid should do says that, not a list of buttons
-    if (h) return h;
+    if (h && typeof h === "string") return h;
     const names = controls().map(b => (b.getAttribute("aria-label") || b.textContent).replace(/\s+/g, " ").trim()).filter(Boolean);
     const uniq = [...new Set(names)].slice(0, 8);
     const g = O.gestures && O.gestures.summary ? O.gestures.summary() : "";   // [gestures] only while the camera is on
@@ -455,10 +466,13 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   async function handleText(text) {
     const c = parseCommand(text); if (!c) return false;
     const reply = t => { describe(t, { quiet: true }); if (say) say(t, {}); };
+    // a screen's help may be async (a Flight School step asks the server for the next hint rung)
+    const replyAsync = (h, orElse) => (h && typeof h.then === "function" ? h.then(t => reply(t || orElse())) : reply(h || orElse()));
     switch (c.cmd) {
       case "where": reply(where()); break;
       case "options": reply(options()); break;
-      case "help": reply((O.help && O.help()) || options()); break;
+      case "help": await replyAsync(O.help && O.help(), options); break;
+      case "confused": await replyAsync((O.explain && O.explain()) || (O.help && O.help()), options); break;
       case "speed": set({ speed: c.arg === 0 ? 1 : stepSpeed(S.speed, c.arg) }); reply(`Voice speed ${S.speed} times.`); break;
       case "text": set({ textScale: Math.max(1, Math.min(1.5, S.textScale + 0.25 * c.arg)) }); reply(`Text size ${Math.round(S.textScale * 100)} percent.`); break;
       case "contrast": set({ contrast: c.arg }); reply(`High contrast ${c.arg ? "on" : "off"}.`); break;

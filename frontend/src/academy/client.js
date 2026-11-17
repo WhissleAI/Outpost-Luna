@@ -11,6 +11,9 @@ export const academyApi = {
   /** {lesson_id, step, input:{text?|tap?|choice?}, misses, ride_id?} → {status, say, next_step?, badge?, hint?, state?, decisions} */
   attempt: body => post("/api/academy/attempt", body),
   ride: () => post("/api/academy/ride"),
+  /** The kid asked for help: {lesson_id, step, rung (1 highlight, 2 label, 3 show), got?} → the ladder's next rung,
+   *  no miss counted: {status: "help", rung, say, focus?, label?, eliminate?, cue?, answer?, phrase?, line_lon?, show?} */
+  hint: body => post("/api/academy/hint", body),
 };
 
 const KEY = "atm-academy";

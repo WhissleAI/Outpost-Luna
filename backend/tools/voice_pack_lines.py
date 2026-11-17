@@ -149,7 +149,7 @@ class Harvest:
 def academy_says() -> tuple[list[dict], list[dict]]:
     """Flight School replies, composed by the real code (routes.py constants, guide.ladder)."""
     from app.academy import content, guide
-    from app.academy.routes import SHOWN
+    from app.academy.routes import GUESS_OTHER, GUESS_RIGHT, SHOWN
     says, live = [], []
     src = "backend/app/academy/routes.py"
     add = lambda t, s=src: says.append({"lines": [t], "source": s, "role": ROLE_CAPCOM})  # noqa: E731
@@ -160,21 +160,39 @@ def academy_says() -> tuple[list[dict], list[dict]]:
             if kind.startswith("vocab_"):
                 continue                  # slowed + stressed on purpose (situation vocab): live, listed by the frontend half
             if L.get("ride"):
-                add(st["fail"])
-                add(st["fail"] + " Hint: " + st["hint"])
+                # a miss: why (step.wrong per order, else fail), then the hint (routes._ride_attempt)
+                for lead in [st["fail"], *(st.get("wrong") or {}).values()]:
+                    add(lead + " " + guide._end(st["hint"]))
                 add(st["success"])
                 add("Time's up. " + st["hint"])
+                exp = (st["accept"] or {}).get("expect")   # "help" on a ride step (routes.academy_hint)
+                add(guide._end(st["hint"]) + (f" Tap {guide.order_label(exp)}." if exp else ""))
                 continue
             for line in [st["success"], st.get("reveal")]:
                 if line:
                     add(line)
                     add(SHOWN + line)
+            if kind == "video" and (st["accept"].get("guess") or {}).get("options"):   # the guess, then the answer
+                add(GUESS_RIGHT + st["success"])
+                add(GUESS_OTHER + st["success"])
+            # "help" / "I don't know" / "where is it?": the ladder's rungs, no miss (guide.help_rung)
+            for rung in (1, 2, 3):
+                add(guide.help_rung(st, rung)["say"], "backend/app/academy/guide.py")
+                if kind == "route":
+                    for j in range(1, len(st["accept"]["stops"])):
+                        add(guide.help_rung(st, rung, st["accept"]["stops"][:j])["say"], "backend/app/academy/guide.py")
+            # a real order, the wrong one: why it isn't the one (step.wrong), on both rungs
+            for heard in (st.get("wrong") or {}):
+                for misses in (0, 1):
+                    add(guide.ladder(st, misses, {}, {"heard_order": heard})["say"], "backend/app/academy/guide.py")
             # the hint ladder: rung 1 and rung 2 with nothing tapped (a tapped place's name makes it live)
             for misses in (0, 1):
                 extra = {"got": []} if kind == "route" else {}
                 add(guide.ladder(st, misses, {}, extra)["say"], "backend/app/academy/guide.py")
             if kind == "route":
                 stops = st["accept"]["stops"]
+                for j, x in enumerate(stops[1:], 1):   # a later stop tapped first (guide.ladder)
+                    add(f"That's {guide.short(x)}. Start with 1: {guide.short(stops[0])}.", "backend/app/academy/guide.py")
                 for j in range(len(stops) - 1):
                     add(f"Yes, {guide.short(stops[j])}. Now {guide.short(stops[j + 1])}.")
                     for misses in (0, 1):

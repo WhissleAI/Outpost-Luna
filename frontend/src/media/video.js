@@ -19,7 +19,7 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc } from "./commands.js";
 
 export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc };
 
@@ -263,7 +263,7 @@ function run({ v, status, fb, context, resolve }) {
     const poster = item.poster_src || (fb && fb.poster_src);
     stage.innerHTML = `<div class="vid-off" role="status">
         ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}" onerror="this.remove()">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
-        <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}</p></div>`;
+        <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}${context === "lesson" ? ` ${esc(NO_PLAY_LESSON)}` : ""}</p></div>`;
     bar.innerHTML = `${fb ? `<button type="button" class="btn-primary" data-fb>${icon("play")}<span>Watch NASA's ${esc(lengthLabel(fb.duration_s))} video instead</span></button>` : ""}
       <button type="button" class="${fb ? "btn" : "btn-primary"} vid-x" data-close>${icon("close")}<span>Close</span></button>`;
     const b = bar.querySelector("[data-fb]");

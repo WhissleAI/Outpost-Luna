@@ -43,6 +43,8 @@ const CODE = [
   [AUI, "Pick a call sign, then tap Start."], [AUI, "Tap Take command to run the outpost."],
   [AUI, "Tap a patch to fly a lesson again."], [AUI, "Tap Next for the next lesson, or Map."], [AUI, "Tap Next, or say next."],
   [MUI, "Clock running."],
+  ["frontend/src/media/video_ui.js", "Got your guess. Now tap Watch to check."],   // a video step's guess chip
+  [AUI, "Tap Open it for your new lesson, or Take command."],
 ];
 for (const [f, t] of CODE) {
   if (!read(f).includes(t)) throw new Error(`voice_lines: "${t}" is no longer in ${f}: update frontend/tools/voice_lines.mjs`);
@@ -68,7 +70,9 @@ for (const L of lessons) {
     if (vocab) keepLive("backend/data/academy/course.json", `${L.id} step ${k + 1} (${st.accept.type}) replies`, "vocabulary lines are slowed and stressed on purpose (situation vocab): always live");
     // "next" before the answer: SCHOOL.answerFirst + the help line
     add(`${S.SCHOOL.answerFirst} ${helpLine(doLine(st), st.hint)}`, AUI);
-    add(helpLine(doLine(st), st.hint), AUI);   // "what do I do?" in a step
+    add(helpLine(doLine(st), st.hint), AUI);   // "what do I do?" in a step (the fallback when the hint API is down)
+    // "what?", "huh?": the step again, simply (ui.js explain(): the prompt's last sentence + the do-line)
+    { const sents = String(st.prompt).match(/[^.!?]+[.!?]*/g) || [st.prompt]; add(`${sents[sents.length - 1].trim()} ${doLine(st)}.`.replace(/\.\.$/, "."), AUI); }
     // an "after" crew clip: CAPCOM only acknowledges (ui.js answer(): the first <= 3-word sentence of the line)
     const c = st.clip || (k === 0 ? L.clip : null);
     if (c && c.when === "after" && !vocab) {

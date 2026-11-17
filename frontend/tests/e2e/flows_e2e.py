@@ -324,10 +324,13 @@ def lesson(page):
         page.evaluate("() => document.getElementById('modeAcademy').click()")
         until(page, "() => document.body.dataset.mode === 'academy'")
         page.wait_for_timeout(1500)   # Flight School settles on its map first
-        page.evaluate("id => window.__outpost.shellNav('lesson', id)", lid)
+        # novice playtest 2026-11-16 #8: "Try at home" is optional (map card / patch screen), never a gate: open it
+        # the way the patch screen does, then the lesson itself
+        page.evaluate("id => window.__outpost.academyTest.prep(id)", lid) if lid == "phases" else \
+            page.evaluate("id => window.__outpost.shellNav('lesson', id)", lid)
         page.wait_for_timeout(800)
         page.wait_for_timeout(1200)
-        if page.evaluate("() => window.__outpost.screenFrame().screen") == "prep":   # mission prep: a hands-on task first
+        if page.evaluate("() => window.__outpost.screenFrame().screen") == "prep":   # Try at home: the hands-on task
             hear(page, "wait")
             page.wait_for_timeout(1200)
             n = page.evaluate("() => window.__outpost.intents.recent().length")
@@ -336,6 +339,8 @@ def lesson(page):
                "prep: \"keep going\" after \"wait\" says the task again (it was ignored)")
             hear(page, "skip")
             until(page, "() => window.__outpost.screenFrame().screen !== 'prep'", 8000)
+            page.evaluate("id => window.__outpost.shellNav('lesson', id)", lid)   # "Not now" goes back to the map
+            page.wait_for_timeout(1500)
         page.evaluate("() => { const b = document.getElementById('aBriefBtn'); if (b && b.offsetParent) b.click(); }")   # the lesson's brief
         if not until(page, "() => { const a = document.getElementById('aPanel'); return a && !a.hidden && !!a.querySelector('.a-prompt'); }", 15000):
             ok(False, f"{label}: it opens"); continue
