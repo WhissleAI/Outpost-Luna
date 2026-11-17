@@ -527,7 +527,8 @@ html[data-motion="reduce"] .is-point{animation:none}
 .cb-prog .pg i{grid-column:1/-1;height:3px;border-radius:2px;background:var(--cb-line);position:relative;overflow:hidden;margin-top:2px}
 .cb-prog .pg i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--color-phosphor);transition:width var(--dur-slow) var(--ease-out)}
 .cb-prog .pg.is-met{border-color:var(--color-phosphor)}
-.cb-prog .pg .pg-aboard{grid-column:1/-1;color:var(--color-phosphor);font-size:var(--text-xs)}
+.cb-prog .pg .pg-aboard{color:var(--color-phosphor)}
+@media (max-width:1180px){.cb-prog .pg .pg-ab-l{display:none}}
 .cb-logbtn{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 var(--space-2);border-radius:var(--radius-sm);border:1px solid var(--cb-line);
   background:var(--color-glass);color:var(--color-on-space);font-size:var(--text-xs);font-weight:var(--weight-semibold);cursor:pointer}
 .cb-logbtn small{font-family:var(--font-mono);color:var(--color-phosphor)}

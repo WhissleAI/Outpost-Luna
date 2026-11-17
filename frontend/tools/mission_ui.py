@@ -302,6 +302,9 @@ def to_steer(pg):
     pg.wait_for_selector("#mStart")
     pg.wait_for_timeout(1500)
     pg.evaluate("document.getElementById('mStart').click()")
+    # [polish 4] the hub's Start opens the 3-card briefing first: Take command
+    pg.wait_for_selector("#mBriefGo, .cb-now-btns .cb-now-b")
+    pg.evaluate("() => { const b = document.getElementById('mBriefGo'); if (b) b.click(); }")
     pg.wait_for_selector(".cb-now-btns .cb-now-b")
     pg.wait_for_timeout(1200)
     for _ in range(120):
@@ -389,7 +392,7 @@ def why_checks(pg):
     return out
 
 
-def main(base, shots, tag, sizes, camera=True, navigator_only=False):
+def main(base, shots, tag, sizes, camera=True, navigator_only=False, navigator=True):
     bad = {}
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--use-gl=angle", "--use-angle=swiftshader"])
@@ -399,7 +402,7 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False):
             pg.add_init_script(PAD)
             pg.add_init_script(SEED)
             pg.goto(base)
-            nf = navigator_checks(pg, f"{tag}-{vw}x{vh}", shots)
+            nf = navigator_checks(pg, f"{tag}-{vw}x{vh}", shots) if navigator else []
             print(f"{'ok  ' if not nf else 'FAIL'} {vw}x{vh}  navigator")
             for x in nf:
                 print(f"       {x}")
@@ -457,7 +460,8 @@ if __name__ == "__main__":
     ap.add_argument("--sizes", default=SIZES)
     ap.add_argument("--no-camera", action="store_true", help="skip the look-input / spring-back checks")
     ap.add_argument("--navigator-only", action="store_true", help="only the landing-site navigator screen")
+    ap.add_argument("--no-navigator", action="store_true", help="skip the navigator (a dev checkout without the map layers pack)")
     a = ap.parse_args()
     if a.shots:
         os.makedirs(a.shots, exist_ok=True)
-    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera, navigator_only=a.navigator_only))
+    sys.exit(main(a.base, a.shots, a.tag, [tuple(map(int, s.split("x"))) for s in a.sizes.split(",")], camera=not a.no_camera, navigator_only=a.navigator_only, navigator=not a.no_navigator))

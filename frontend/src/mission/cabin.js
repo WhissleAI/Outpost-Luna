@@ -604,7 +604,7 @@ export function createCabin(root, o = {}) {
     const aboard = Math.round(P.science_stored || 0);
     const sciTitle = `Science sent home${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
     el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
-      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `</b>${aboard ? `<small class="pg-aboard">+${aboard} on board</small>` : ""}`)
+      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard}<span class="pg-ab-l"> on board</span></small>` : ""}</b>`)
       + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
       + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
   }
