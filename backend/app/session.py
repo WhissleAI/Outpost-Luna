@@ -622,7 +622,7 @@ class Session:
         # and a flag for the grown-ups; a rude / toxic turn is ignored (never graded, never a question).
         tags = k.get("safety") if source in OPEN_MIC or source == "ptt" else None
         if tags is None:   # no read from the ear: ask Arc Tagger on the words (~20 ms on the local model server)
-            tags = await safety_.tagger_read(text)
+            tags = await safety_.tagger_read(text, safety_.command_context(self.screen_name()))
         sf = safety_.classify(text, tags)
         ctx_r.unsafe = sf["mask"]
         if sf["care"]:

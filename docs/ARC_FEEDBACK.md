@@ -8,6 +8,29 @@ How we read the output: `POST /v1/tag {"text", "domain": "assistant"}` → `utte
 tag counts only when `on` is true and `p >= thr`. Probed 2026-11-14 against the local model server (:8200, Arc v1.1
 mini text tagger). Latency is about 15–20 ms a turn, so calling it on every turn is fine.
 
+## Status: Arc Tagger 0.5.0, kids domain (16 Nov 2026)
+
+The Arc team fixed this in arc-tagger-c 0.5.0 (main `4318e4a`, PR #10): a `kids` / `game` domain calibrated on short
+kid turns, plus a guard layer (`src/guard.c`). The app now uses it:
+
+- **Safety reads use `domain: "kids"`** (`backend/app/safety.py` `tagger_read` → `POST /v1/tag`), with
+  `command_context: true` on the command screens (`cabin`, `brief`, `ride`), so "kill the heaters" is a command.
+- **The Director's read-out stays on `assistant`** (`session._direct_turn`, `/api/ask`, `claims.py`). On the same model
+  files the 0.5.0 library gives byte-identical `assistant` / `news` / `talk` output to the 0.3 library (1,500 round-11
+  kid texts × 3 domains: 0 differences), so the shipped r10 weights see exactly what they saw.
+- **Model files unchanged** (the tagger asset, v1). The kids thresholds are built into the library (`src/kids_thr.inc`);
+  `model_server/tests/test_tag_kids.py` checks they equal `onnx/arctag_kids.json` of `WhissleAI/arc-tagger` at revision
+  `500449290c` (vendored as `desktop/vendor/arctag/arctag_kids.json`, sha256 `f3add6ae…`). The newer Hugging Face
+  int8 weights (v0.4.1) were not adopted: they change every `assistant` read-out the Director and round 12 train on,
+  and on the 1,500 round-11 texts in the kids domain they added two false alarms our files do not have
+  ("mom i'm hungry" → self-harm, "go mine some ice with the buggy" → strong profanity).
+- **Every example in the tables below now behaves as expected** (tested against the real library and model:
+  `test_tag_kids.py`, with and without `command_context`). Kids domain on 1,500 round-11 texts: 36 tagged, all real
+  (29 PII with an address / phone / name, 6 profanity, 1 insult); none on the other 1,464.
+- **Backstops kept**, as the Arc team asked (precision 1.00, recall on indirect phrasings ~0.5): the offline word list,
+  the `CRISIS` phrases, and new `GROOMING` phrases (pictures of you, secrecy from parents, meeting in person, "add me
+  on snap"). No round-11 text triggers either phrase list.
+
 ## The owner's case (the reason this exists)
 
 The packaged app, open mic, room chatter in the background. The voice bar printed the overheard words, profanity

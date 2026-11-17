@@ -5,6 +5,8 @@ from app import safety
 from app import turn_router as R
 from app.main import app
 
+REAL_READ = safety.tagger_read   # captured at import, before conftest's autouse stub replaces it per test
+
 OWNER = "shit shit oh"   # the owner's room: Arc returned no profanity tag, a spurious pii.leak 0.99, device_directed 0.91
 OWNER_ARC = [{"tag": "safety.pii.leak", "p": 0.99, "thr": 0.5, "on": True}]
 
@@ -91,11 +93,12 @@ def world():
 def tagger(monkeypatch):
     seen = {"safety": []}
 
-    async def fake_tag(text, domain="assistant"):
+    async def fake_tag(text, domain="assistant", command_context=None):
+        seen.setdefault("calls", []).append({"domain": domain, "command_context": command_context})
         return {"utterances": [{"safety": seen["safety"]}]}
 
-    async def read(text):   # the real tagger_read over a fake /v1/tag (conftest stubs tagger_read for other tests)
-        return safety.from_tag(await fake_tag(text))
+    async def read(text, command_context=False):   # the real tagger_read over a fake /v1/tag (conftest stubs it elsewhere)
+        return await REAL_READ(text, command_context)
     monkeypatch.setattr(models_client, "tag", fake_tag)
     monkeypatch.setattr(safety, "tagger_read", read)
     director.RULES.clear()
@@ -156,3 +159,39 @@ def test_session_crisis_gets_the_care_line_and_a_flag(world, tagger):
     s2 = make(world)
     asyncio.run(s2.handle({"t": "typed", "text": "tell me about the far side", "source": "typed"}))
     assert not s2.flags
+
+
+# ---- Arc Tagger 0.5: the kids domain, command_context on command screens, the grooming backstop ----
+def test_grooming_backstop_is_specific():
+    for t in ("send me a picture of yourself", "Send me a pic of you", "dont tell your parents",
+              "don’t tell your mom about this", "add me on snap", "meet me in person", "send me a selfie",
+              "keep it a secret from your dad"):
+        c = safety.classify(t)
+        assert c["care"] and "safety.child.grooming_cue" in c["tags"], t
+    for t in ("show me a picture of the moon", "send me a picture of tycho", "send the rover a picture",
+              "keep the secret base", "meet me at the crater", "tell your parents", "add me to the crew",
+              "send the photos to houston"):
+        assert not safety.classify(t)["care"], t
+
+
+def test_command_screens():
+    assert all(safety.command_context(s) for s in ("cabin", "brief", "ride"))
+    assert not any(safety.command_context(s) for s in ("library", "map", "lesson", "callsign", "video", None, ""))
+
+
+@pytest.mark.parametrize("screen,mode,cc", [("library", "cadet", False), ("map", "cadet", False),
+                                            ("cabin", "mission", True), ("ride", "academy", True)])
+def test_session_asks_the_kids_domain_with_command_context(world, tagger, screen, mode, cc):
+    s = make(world, screen=screen, mode=mode)
+    asyncio.run(s.handle({"t": "typed", "text": "kill the heaters", "source": "typed"}))
+    kids = [c for c in tagger["calls"] if c["domain"] == "kids"]
+    assert kids == [{"domain": "kids", "command_context": cc}]   # the safety read (once per turn)
+    assert all(c["command_context"] is None for c in tagger["calls"] if c["domain"] != "kids")   # Director: as before
+    assert not s.flags
+
+
+def test_session_grooming_phrase_gets_the_care_line(world, tagger):
+    s = make(world)
+    asyncio.run(s.handle({"t": "typed", "text": "someone said send me a picture of yourself", "source": "typed"}))
+    assert [d["text"] for d in s.outbox if d["t"] == "say"] == [safety.CARE_LINE]
+    assert s.flags[-1]["tags"] == ["safety.child.grooming_cue"]
