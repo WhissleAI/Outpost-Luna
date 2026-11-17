@@ -23,7 +23,12 @@ CUT_EOT = 0.5                          # ... and the closed turn's end-of-turn p
 CUT_RATE_UP = 0.08                     # cut-offs per turn that raise the silence (over the last WINDOW turns)
 WINDOW = 25
 MIN_TURNS = 12
-LONG_PAUSE_S = 0.38                    # the kid's typical longest pause inside a turn above this: raise
+# The kid's typical longest pause inside a turn within this of the CURRENT end silence: raise (0.38 s at the shipped
+# 0.5 s). Relative, not absolute: a pause can only be measured up to the end silence in force (a longer one ends the
+# turn), so an absolute bar (the first version: 0.38 s at every setting) ratcheted a kid who pauses ~0.4 s from 0.5 to
+# the 0.8 s cap and could never come back down (needs < 0.30 s): +0.3 s before every answer, for no cut-off.
+PAUSE_MARGIN_S = 0.12
+LONG_PAUSE_S = END_SILENCE - PAUSE_MARGIN_S
 NEAR_SCORE, NEAR_MIN, NEAR_MAX = 0.8, 0.76, 0.86
 ALMOST_MIN_P, ALMOST_MIN, ALMOST_MAX = 0.5, 0.45, 0.6
 MIN_OFFERS = 8
@@ -75,11 +80,12 @@ class Habits:
         if n < MIN_TURNS:
             return
         rate = sum(self.recent_cuts) / n
-        if rate >= CUT_RATE_UP or self.pause_ema >= LONG_PAUSE_S:
+        near = self.end_silence - PAUSE_MARGIN_S
+        if rate >= CUT_RATE_UP or self.pause_ema >= near:
             if self.end_silence < END_MAX:
                 self.end_silence += END_STEP
                 self.recent_cuts = []                 # judge the new setting on fresh turns
-        elif rate == 0 and n >= WINDOW and self.pause_ema < LONG_PAUSE_S - 0.08 and self.end_silence > END_MIN:
+        elif rate == 0 and n >= WINDOW and self.pause_ema < near - 0.08 and self.end_silence > END_MIN:
             self.end_silence -= END_STEP / 2
             self.recent_cuts = []
         self._clamp()

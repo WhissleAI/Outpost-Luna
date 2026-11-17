@@ -115,6 +115,23 @@ def test_end_of_turn_silence_moves_only_inside_its_range():
     assert Habits({"habits": {"end_silence": 0.1}}).end_silence_s() == END_MIN
 
 
+def test_pauses_raise_the_silence_only_while_they_come_close_to_it():
+    """No ratchet: a kid who pauses ~0.4 s inside turns (never cut off) gets one step (0.5 -> 0.6, the pause was 0.1 s
+    from ending the turn) and stays there; the first version raised them to the 0.8 s cap for good (+0.3 s per answer)."""
+    h = Habits()
+    for _ in range(300):
+        h.observe_turn(5, 1.5, 0.40, cut_off=False)
+    assert h.end_silence_s() == 0.6
+    calm = Habits({"habits": {"end_silence": 0.8}})
+    for _ in range(300):                                   # pauses well under the setting, no cut-offs: back down
+        calm.observe_turn(5, 1.5, 0.30, cut_off=False)
+    assert calm.end_silence_s() == END_MIN
+    near = Habits({"habits": {"end_silence": 0.6}})
+    for _ in range(300):                                   # still pausing close to 0.6: one more step, then no more
+        near.observe_turn(5, 1.5, 0.52, cut_off=False)
+    assert near.end_silence_s() == 0.7
+
+
 def test_a_kids_own_yes_word_needs_two_sightings_and_never_both_ways():
     h = Habits()
     assert h.observe_reply("yesh", meant_yes=True) is None and not h.is_yes("yesh")

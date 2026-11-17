@@ -14,7 +14,7 @@ Code: `desktop/vendor/libarc` (ABI 2, `"1.3.0-outpost.1"`), `model_server/app/nf
 |---|---|---|
 | Tail / repetition guard, no-speech gate | on (libarc default) | every decode; `n_dropped` per turn |
 | Sound-alike names (`almost`) | `EAR_ALMOST=1` | `words.almost` → `director._link` "Did you mean …?" (`ALMOST_POLICY`, §3) |
-| RNNT n-best (`nbest = 4`) | `EAR_NBEST=4` | `words.nbest`, `words.walts` (the words stay the greedy decode's) |
+| RNNT n-best (`nbest = 4`) | **off** since the 0.3.10 gate (`EAR_NBEST=0`; §9): it moves no shipped decision and cost ~0.1 s per close | `words.nbest`, `words.walts` empty (the words stay the greedy decode's) |
 | Per-word / utterance confidence | always | `words.wconf`, `uconf`, `min_wconf` |
 | Typed quantities | always | `words.quantities` → mission NLU amounts when the words have no number (`nlu._number`) |
 | Disfluencies, `clean_text` | always | `words.disfl`, `words.clean_text` → mission parsing (`director._mission_turn`) |
@@ -37,7 +37,8 @@ mic 80 ms ─► EarStream.feed_all ─► VAD (turn open / close, unchanged)
                         ▲                                       ENTITY  ─► {"t":"entity", kind name|almost|quantity}
    app playback ─► feed_ref(pcm, mic time)                      EOT     ─► {"t":"eot","p"}  (every 0.25 s at most)
    (echoref.js)                                                 BARGE_IN ─► {"t":"barge_in"} (not in the echo tail)
-turn close (VAD) ─► end_turn (the stream's echo leak for the turn) + ONE clip decode of the segment ─► final words
+turn close (VAD) ─► ONE clip decode of the segment ─► final words ─► (then) the held pause + the stream's end_turn
+                    (playback in the turn: end_turn first, for its echo leak, then the clip decode)
 ```
 
 The final read (words, names, sound events, the directed head) is the classic clip decode of the segment, as before.
@@ -274,3 +275,78 @@ used; the app still measures the delay and its drift per computer (on-device lea
    matched to what we said, so the leak is the only defence for them.
 
 Notes for the Arc team (no personal data) travel with the recording: `echo_set/CALIBRATION_NOTES.md`.
+
+## 9. Close latency: the 0.3.10 release gate (2026-11-17)
+
+The first 0.3.10 build failed the golden gate on latency: p50 1632 ms against a budget of 1519 ms, and +394 ms over
+0.3.9 on the same load (1238 ms). Every clip was slower (median +456 ms). This section records the cause and the fix.
+
+**Cause.** In live mode, each turn's close decoded the utterance **twice**, one decode after the other. Arc's
+segmenter closes the stream's open utterance at a 0.4 s pause, about 0.1 s before our VAD closes the turn (0.5 s).
+That stream final is a full decode with the n-best beam and sound events, and its result is thrown away except for its
+`playback_leak`. Our VAD then queued the classic clip decode behind it. The n-best beam (+~30 % of a decode) ran in
+both decodes. The in-process trace of one clip ("shields to 40"): the stream's final took 345 ms at 0.40 s of pause,
+then the clip decode took 443 ms at 0.56 s.
+
+**Fix** (`model_server/app/arc_ear.py`):
+1. **One decode at the close.** When none of our playback overlaps the turn (no reference since 0.3 s before it began,
+   and nothing playing), the stream is fed the pause only up to `EAR_STREAM_HOLD_S` (0.24 s). The rest is held, so
+   Arc's segmenter cannot close the utterance first. The clip decode runs, the final words go out, and then the held
+   audio and the stream's `end_turn` follow on the next call (`_settle`). That stream final has no leak to give
+   (`p = -1` without a reference). When our playback does overlap the turn, the old order is kept (`end_turn` first,
+   for the leak).
+2. **The stream decodes lean.** No n-best and no sound events in the stream's own finals (`EAR_STREAM_NBEST=0`,
+   `EAR_STREAM_EVENTS=0`); nothing reads them.
+3. **n-best off** (`EAR_NBEST=0`). It moved no shipped decision (below) and cost ~0.1 s per close. Round 13's
+   re-decode sets it itself. A model that reads `e13_nbest` must turn it back on when it ships.
+
+**Golden on the source build** (`release_check.golden_run` against a model server and backend from this checkout; the
+same machine; two rounds that alternate the configurations; mean of the two p50s and p95s, in ms):
+
+| configuration | p50 | p95 | linked | p50 vs 0.3.10 as built |
+|---|---|---|---|---|
+| 0.3.10 as built (live, n-best 4 in both decodes, `almost`, 74-name list) | 1139 | 2192 | 23/23 | |
+| ... `EAR_NBEST=0` (both decodes) | 902 | 1942 | 23/23 | **-237** |
+| ... `EAR_LIVE=0` (the old re-decode partials) | 972 | 2144 | 23/23 | -167 |
+| ... `almost` off | 1062 | 2229 | 23/23 | -77 |
+| ... names list 40 instead of 74 (`EAR_MAX_NAMES=40`, 0.3.9's cap) | 1163 | 2360 | **20/23** | +24 (noise) |
+| ... echo reference | | | | 0: golden plays nothing, so no reference is fed |
+| **fix 1+2** (one decode at the close, lean stream; n-best 4 in the clip) | 936 | 1936 | 23/23 | -203 |
+| **fix 1+2+3** (shipped) | **836** | **1793** | **23/23** | **-303** |
+| 0.3.9-like on this libarc (re-decode partials, n-best off, no `almost`, 40 names) | 863 | 1877 | 20/23 | -276 |
+
+So the shipped close is 3 % faster than the 0.3.9-like path and keeps the 23/23 links: the longer list is what
+links them, and it costs no measurable latency. (The installed-dmg A/B against the published 0.3.9 is in the release
+notes' gate.)
+
+**#125's set** (§2's 758 kid turns plus 258 echo-bank clips, re-rendered; names lists from this checkout's
+`names_list`; each clip fed through `EarStream` in 80 ms frames; "close" is the last voice to the final words going
+out, with a worker queue at real-time pace):
+
+| | 0.3.10 as built | fix 1+2 | **fix 1+2+3 (shipped)** |
+|---|---|---|---|
+| close p50 / p90 | 1585 / 2298 ms | 1122 / 1626 ms | **1010 / 1444 ms** |
+| final decode p50 / p90 | 691 / 1220 ms | 528 / 897 ms | 424 / 758 ms |
+| WER | 34.2 % | 34.2 % | 34.2 % |
+| names in the list (380): linked right / wrong / none | 56.6 / 5.0 / 38.4 % | same | same |
+| explorer turns: "Did you mean" right / wrong + spurious (accuracy) | 66 / 5 + 4 (88.0 %) | same | same |
+| numbers carried (215): words / + typed quantities | 63.3 / 69.8 % | same | same |
+
+Turn by turn (`parity.py`, all 1,016 clips): the final words, spoken form, decoder text, names, `almost`,
+quantities, `uconf`, device-directed read, `playback_leak`, `playback` and `barge` are **identical** between the build
+and fix 1+2. Fix 3 changes only `nbest` / `walts` (now empty). The #125 note (29 of 672 turns crossed DD_MIN when
+the final came from the stream's flush) does not apply: the final read is still the clip decode.
+
+What does change: the `eot` on the final words is the stream's last in-turn value, read before Arc's own final
+(median 0.04 instead of 0.35). It is under 0.5 on 98 % of turns either way (728 → 736 of 745), so the learner's cut-off
+rule (`eot < 0.5` and the next turn within 1 s) is driven by the 1 s gap, as before. A round-13 re-decode must use
+this code so that `e13_eot` matches. The partial captions lose the updates that the held pause would have given
+(2466 → 2319 partials on the set). The final words follow at once.
+
+**The empty "shields to 40"** (c01_0 in the golden rerun, and one noisy clip in other runs): the clip was decoded,
+but too late. `/ws/listen` waits `STOP_WAIT_S` (2 s) after the client's `stop` for the ear, then closes. The ear
+handles one connection's messages in order on one worker. Each close cost two decodes, and the live stream's
+utterance finals cost up to 1.6 s during feeds (`ear_live_feed_ms` max, model server `/metrics`). On a loaded
+machine, the backlog at the end of a clip passed 1 s of tail + 2 s, so the final words came after the relay had
+closed. In the app the mic stays open, so the words would only be late. With one decode per close the backlog falls
+(mean 1.38 → 0.99 s per clip on #125's set), and no golden run of the fix lost a clip.

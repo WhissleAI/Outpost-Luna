@@ -16,7 +16,7 @@ Code: `backend/app/learn/` (app-agnostic, like the entity layer: it needs a `Reg
 |---|---|---|---|
 | **Echo, per computer** (`echo.py`) | each line we play: GCC-PHAT of the reference against the mic, in memory in the ear (`echo_delay.py`) → `{"t":"echo_delay","ms","peak"}`; each heard turn's `playback_leak`, labelled without the leak (our line = the router's text echo; the kid = a routed turn with a barge-in that is not a text echo) | the speaker → mic delay (median, p10-p90, drift per hour) for the view; the playback-leak threshold the echo rule uses (`session.ear_playback`) | threshold 0.75-0.95 (shipped 0.85), only when both sides have evidence (20 / 5) and separate; else the shipped value |
 | **Personal name aliases** (`aliases.py`) | a "Did you mean X?" answered yes (or X tapped on the card) | the heard form ("ticko") links to the entity (`tycho`) directly next time (`director._link`, after the ear's sure links) | below |
-| **Speech habits** (`habits.py`) | every routed kid turn: words, speech seconds and the longest pause inside it (the ear sends `speech_s`, `max_pause_s`); a turn that turned out cut off (the next one followed within 1 s and its end-of-turn p was < 0.5); the answers to offers | end-of-turn silence (`EAR_END_SILENCE_S`, sent to the ear as `{"t":"tune"}`); this kid's own yes / no words; the "Did you mean" thresholds (`NEAR_SCORE`, `ALMOST_MIN_P`) | silence 0.5-0.8 s (shipped 0.5); near 0.76-0.86 (0.8); almost 0.45-0.6 (0.5); at most 8 yes and 8 no words |
+| **Speech habits** (`habits.py`) | every routed kid turn: words, speech seconds and the longest pause inside it (the ear sends `speech_s`, `max_pause_s`); a turn that turned out cut off (the next one followed within 1 s and its end-of-turn p was < 0.5); the answers to offers | end-of-turn silence (`EAR_END_SILENCE_S`, sent to the ear as `{"t":"tune"}`); this kid's own yes / no words; the "Did you mean" thresholds (`NEAR_SCORE`, `ALMOST_MIN_P`) | silence 0.5-0.8 s (shipped 0.5), raised on cut-offs or when the kid's typical longest pause comes within 0.12 s of the silence in force (relative, so it cannot ratchet: §4); near 0.76-0.86 (0.8); almost 0.45-0.6 (0.5); at most 8 yes and 8 no words |
 | **Director thresholds** (`policy.py`) | offers made for low-p ear links; a turn the guarded model silenced that the kid said again within 8 s | `LINK_ACT_P` per cadet; the guarded policy's `ignore` bar (`runtime.learned_thr`) | link 0.97-0.99 (shipped 0.99; one "no" in the band → back to 0.99); ignore 0.95-0.99, **up only** |
 
 ### Alias guards (each is a test)
@@ -114,6 +114,13 @@ then 20 held-out turns:
 
 Every child moved up (even the rare pausers, whose synthetic turns still had 15 % cut-offs at 0.5 s); the cost is
 0.25-0.3 s more before the app answers those children. Pauses over 0.8 s still cut (the bound).
+
+**No ratchet (0.3.10 release gate).** The first version raised the silence whenever the kid's typical longest pause was
+over 0.38 s, at any setting. A pause can only be measured up to the silence in force (a longer one ends the turn), so
+once raised to 0.6 s a kid who pauses ~0.4 s kept reading over 0.38 s and climbed to the 0.8 s cap, and could not come
+down (that needed under 0.30 s): +0.3 s before every answer with no cut-off at all. The pause rule is now relative to
+the setting (`habits.PAUSE_MARGIN_S`, 0.12 s: the same 0.38 s at the shipped 0.5 s): that kid gets one step (0.6 s)
+and stays there (`test_pauses_raise_the_silence_only_while_they_come_close_to_it`). Cut-offs still raise it as before.
 
 **Own-line turns (per-computer threshold, real echo + kid mix).** The first 60 % of the real recording with kid turns
 mixed in teaches `DeviceEcho` (40 echo labels, 17 kid labels); on this laptop the two sides overlap, so the learned
