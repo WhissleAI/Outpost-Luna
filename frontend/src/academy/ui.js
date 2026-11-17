@@ -99,6 +99,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // no name); help and misses climb to the label, then to "here it is"
     gs = !L || L.ride || !["intent", "tap"].includes(acc.type) || !acc.place || (st.ring || []).includes(acc.place) ? { rung: 0 } : { rung: 1, focus: [acc.place] };
     stepState = { taps: [] }; pendingBadge = null;
+    // a terminator step's night side never leaks into the next step or lesson (it re-locks the Sun when it renders)
+    if (globe.setSunDir) globe.setSunDir(null);
     const t = acc.type; intro = t && !L.ride && firstUse(t) ? INTRO[t] : null;
   };
   /** Merge a hint reply into the guidance state: help never takes back what the card already shows. */
@@ -138,6 +140,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (kind !== "map") { globe.route.clear(); globe.setViewport(null); }
     // a lesson's place name never outlives it (novice playtest #31: "Shackleton (south pole)" stayed as a label)
     if (kind !== "lesson" && kind !== "ride" && globe.clearHighlight) globe.clearHighlight();
+    if (kind !== "lesson" && kind !== "ride" && globe.setSunDir) globe.setSunDir(null);
     if (globe.guide) globe.guide.clear();
     globe.setDecor(false);   // no unlabelled place dots in Flight School: a step draws only its own labelled marks
   }
