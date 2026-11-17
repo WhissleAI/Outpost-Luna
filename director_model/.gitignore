@@ -4,6 +4,7 @@ runs/*
 runs/*/*
 !runs/*/report.md
 !runs/*/gate.json
+!runs/*/ear_analysis.md
 runs_*.log
 __pycache__/
 cache/

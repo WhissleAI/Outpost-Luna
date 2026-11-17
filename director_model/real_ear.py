@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import random
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -165,10 +166,127 @@ def cmd_jobs(a):
             elif it.get("text"):
                 add("test", it["text"], frame=it.get("frame") or {"screen": "cabin"})
     print(f"round 8 class / OS-voice / video jobs: {len(new) - n0}", flush=True)
+    if a.r11:
+        r11_jobs(a, G, have, new, add)
     with open(JOBS, "a") as f:
         for j in new:
             f.write(json.dumps(j) + "\n")
     print(f"{len(new)} new jobs, {len(have)} total -> {JOBS}")
+
+
+def screen_names_of(fr: dict) -> list[dict]:
+    """The names list the app sends the ear for this screen frame (names_list.screen_names; session.ear_names)."""
+    from app.names_list import screen_names
+    from app.academy import content as AC
+    st = None
+    if fr.get("lesson_id") and fr.get("screen") in ("lesson", "ride"):
+        L = AC.lesson(fr["lesson_id"])
+        st = L["steps"][fr["step"]] if L and fr.get("step") is not None else None
+    return screen_names(fr, st, None)
+
+
+def r11_jobs(a, G, have, new, add):
+    """Round 11 (voice_bank.py): kid turns in the Mac's voices. New jobs carry vb=mac, the screen's names list (what
+    the app sends the ear), the item's category and gold act (for the ear analysis).
+      train     more of the train sessions' texts (in session order, so whole sessions get real decodes), up to
+                --r11-train new jobs; then a Mac-voice variant (var 1) of already-decoded train texts
+      val       a Mac-voice variant (var 1) of every val text
+      voice_ho  every kid turn of the first --ho-sessions test sessions, in the held-out voices only
+      echo_bank the app's lines in every bank voice (and NASA crew clips) through speaker -> mic, nothing else"""
+    import voice_bank as VB
+
+    def tag(k, it, fr):
+        j = have[k]
+        j["vb"] = "mac"
+        j["names"] = screen_names_of(fr)
+        j["cat"] = it.get("cat")
+        j["gold_act"] = (it.get("gold") or {}).get("act")
+
+    def full_items(sc):
+        lesson = None
+        for it in sc["items"]:
+            if it.get("op") == "lesson":
+                lesson = (it["lesson_id"], it["step"])
+            if it.get("op") in ("end_shift", "emotion", "tap", "lesson", "echo", "echo2") or "heard" in it or \
+                    not it.get("text"):
+                continue
+            fr = it.get("frame")
+            if fr is None:
+                fr = {"screen": MODE_SCREEN.get(sc["mode"], "map")}
+                if sc["mode"] == "academy" and lesson:
+                    fr.update(lesson_id=lesson[0], step=lesson[1])
+            yield it, fr
+
+    def keyed(group, it, fr, var=0):
+        fk = frame_key(fr)
+        k = key_of(group, it["text"] + "#" + fk, var)
+        n0 = len(new)
+        add(group, it["text"], var=var, frame=fr)
+        if len(new) > n0:
+            tag(k, it, fr)
+            return 1
+        return 0
+
+    # voice_ho: whole test sessions (seeds as gen_sessions test_real: 900_000 + k), held-out voices
+    n = 0
+    for k in range(a.ho_sessions):
+        rng = random.Random(900_000 + k)
+        sc = G.kind_script(rng, "test", 900_000 + k, hf_p=0.0)
+        for it, fr in full_items(sc):
+            n += keyed("voice_ho", it, fr)
+    print(f"r11 voice_ho jobs: {n}", flush=True)
+    # echo bank
+    n = 0
+    rng = random.Random(1111)
+    lines = VB.app_lines()
+    for v in VB.ALL:
+        for i, line in enumerate(rng.sample(lines, 6)):
+            k = key_of("echo_bank", f"{line}#{v}", i)
+            if k not in have:
+                have[k] = {"key": k, "group": "echo_bank", "text": line, "var": i, "seed": rng.randrange(1 << 30),
+                           "voice": v, "vb": "echo", "frame": {"screen": "cabin"}, "fk": frame_key({"screen": "cabin"}),
+                           "names": screen_names_of({"screen": "cabin"})}
+                new.append(have[k])
+                n += 1
+    for i in range(60):
+        k = key_of("echo_bank", "crew_clip", i)
+        if k not in have:
+            have[k] = {"key": k, "group": "echo_bank", "text": "", "var": i, "seed": rng.randrange(1 << 30),
+                       "clip": True, "vb": "echo", "frame": {"screen": "video"}, "fk": frame_key({"screen": "video"}),
+                       "names": screen_names_of({"screen": "video"})}
+            new.append(have[k])
+            n += 1
+    print(f"r11 echo_bank jobs: {n}", flush=True)
+    # val: a Mac-voice variant of every val text
+    n = 0
+    for k in range(a.val):
+        rng = random.Random(500_000 + k)
+        sc = G.kind_script(rng, "val", 500_000 + k, hf_p=a.hf_p)
+        if not rng.random() < 0.5:
+            continue
+        for it, fr in full_items(sc):
+            if key_of("val", it["text"] + "#" + frame_key(fr), 0) in have:
+                n += keyed("val", it, fr, var=1)
+    print(f"r11 val Mac-voice jobs: {n}", flush=True)
+    # train: new texts in session order (the sessions gen_sessions builds: seeds 10_000 + k), then variants
+    n = 0
+    k = 0
+    while n < a.r11_train and k < a.train:
+        rng = random.Random(10_000 + a.seed * 1_000_000 + k)
+        sc = G.kind_script(rng, "train", 10_000 + a.seed * 1_000_000 + k, hf_p=a.hf_p)
+        k += 1
+        if not rng.random() < 0.5:      # gen_sessions' noise draw: only noised train turns replay real decodes
+            continue
+        for it, fr in full_items(sc):
+            n += keyed("train", it, fr)
+    print(f"r11 train jobs: {n} new texts (sessions 0..{k})", flush=True)
+    m = 0
+    olds = [j for j in list(have.values()) if j["group"] == "train" and not j.get("vb")]
+    random.Random(7).shuffle(olds)
+    for j in olds[: a.r11_variants]:
+        fr = j.get("frame") or {"screen": "cabin"}
+        m += keyed("train", {"text": j["text"]}, fr, var=1)
+    print(f"r11 train Mac variants of old texts: {m}", flush=True)
 
 
 def load_jobs() -> list[dict]:
@@ -195,8 +313,17 @@ def iter_audio(jobs):
     groups = {"test": [v for i, v in enumerate(by_f0) if i % 5 == 0], "val": [v for i, v in enumerate(by_f0) if i % 5 == 1],
               "train": [v for i, v in enumerate(by_f0) if i % 5 > 1]}
     bab_pool: list = []
+    import voice_bank as VB
+    mac_pool: list = []
     for j in jobs:
         rng = np.random.default_rng(j["seed"])
+        if j.get("vb"):                             # round 11: the Mac voice bank (voice_bank.py)
+            x, meta = VB.render_echo(j, rng) if j["vb"] == "echo" else VB.render_kid(j, rng, mac_pool)
+            if x is None:
+                print("render skip", j["text"][:40], meta, flush=True)
+                continue
+            yield j, (np.clip(x, -1, 1) * 32767).astype("<i2").tobytes(), meta
+            continue
         if j.get("audio") or tts is None:          # round 8: OS voices / the voice pack / NASA audio / music
             x, meta = render_r8.render(j if j.get("audio") else {**j, "audio": {"kind": "say_kid"}}, rng)
             if x is None:
@@ -275,9 +402,14 @@ def _decode_worker(args):
     t0 = time.time()
     for j, x, rmeta in iter_audio([j for j in jobs[wid::nproc] if not (CACHE / "dec" / f"{j['key']}.json").exists()]):
         out = CACHE / "dec" / f"{j['key']}.json"
+        if shutil.disk_usage(CACHE).free < 2.2e9:         # round 11: the disk is shared and tight; wait, never fill it
+            print(f"decode[{wid}] paused: under 2.2 GB free", flush=True)
+            while shutil.disk_usage(CACHE).free < 2.6e9:
+                time.sleep(30)
+            print(f"decode[{wid}] resumed", flush=True)
         es = arc_ear.EarStream("assistant")
         ctx = StreamContext()
-        ctx.update({"t": "context", "names": tier}, es)
+        ctx.update({"t": "context", "names": j.get("names") or tier}, es)
         if j.get("hot"):
             ctx.update({"t": "context", "hot": j["hot"]}, es)
         msgs = []
@@ -286,7 +418,17 @@ def _decode_worker(args):
         msgs += es.flush_all()
         es.close()
         ev = []
+        xr = {"names": [], "spoken": "", "tags": [], "audio_events": [], "dh": [], "directed": [],
+              "ends": es.ends, "audio_s": round(es.audio_s, 3)}
         for m in msgs:
+            if m["t"] == "words" and m.get("final"):
+                xr["names"] += m.get("names") or []
+                xr["spoken"] = (xr["spoken"] + " " + (m.get("spoken") or "")).strip()
+                xr["tags"] += m.get("tags") or []
+            elif m["t"] == "arc":
+                xr["audio_events"] += m.get("audio_events") or []
+                xr["dh"].append(m.get("directed_head"))
+                xr["directed"].append(m.get("directed"))
             if m["t"] == "words":
                 ev.append({"t": "words", "text": m["text"], "final": bool(m.get("final")),
                            **{k: m[k] for k in ("alts", "conf", "hot", "rescored") if m.get(k) is not None}})
@@ -297,7 +439,8 @@ def _decode_worker(args):
         finals = [e["text"] for e in ev if e["t"] == "words" and e["final"] and e["text"].strip()]
         out.write_text(json.dumps({"key": j["key"], "text": j["text"], "group": j["group"], "fk": j.get("fk", ""),
                                    "hyp": " ".join(finals),
-                                   "events": ev, "render": rmeta, "rtf": round(es.compute_s / max(es.audio_s, 1e-6), 3)}))
+                                   "events": ev, "render": rmeta, **({"x": xr} if j.get("vb") else {}),
+                                   **({k: j[k] for k in ("cat", "gold_act") if j.get(k) is not None}), "rtf": round(es.compute_s / max(es.audio_s, 1e-6), 3)}))
         done += 1
         if done % 100 == 0:
             print(f"decode[{wid}] {done} ({time.time() - t0:.0f} s)", flush=True)
@@ -318,6 +461,10 @@ def cmd_decode(a):
         while held or va or tr:
             todo += held[:2] + va[:1] + tr[:1]
             held, va, tr = held[2:], va[1:], tr[1:]
+    elif a.order == "r11":     # round 11: the held-out voices, the echo bank and val first, then train
+        pri = {"voice_ho": 0, "echo_bank": 1, "val": 2, "train": 3}
+        todo = [j for j in todo if j.get("vb")]
+        todo.sort(key=lambda j: (pri.get(j["group"], 4), j.get("var", 0)))
     print(f"decode {len(todo)} of {len(jobs)}", flush=True)
     t0 = time.time()
     with get_context("spawn").Pool(a.procs) as p:
@@ -383,6 +530,10 @@ if __name__ == "__main__":
     ap.add_argument("--order", default="test_first")
     ap.add_argument("--hf-p", type=float, default=0.3)
     ap.add_argument("--cls-n", type=int, default=160)
+    ap.add_argument("--r11", action="store_true", help="round 11: the Mac voice-bank jobs (r11_jobs)")
+    ap.add_argument("--r11-train", type=int, default=4000)
+    ap.add_argument("--r11-variants", type=int, default=600)
+    ap.add_argument("--ho-sessions", type=int, default=55)
     ap.add_argument("--classes", default="", help="jobs for these class sets only (comma list), nothing else")
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))

@@ -1086,3 +1086,167 @@ hot + echo together, every set (the two classes never overlap on a turn, so thei
   hot or echo, set `DIRECTOR_MODEL=shadow`: one env var, no rebuild.
 - quiet could ship with a prep-screen exclusion, but only if a fresh round passes it. It must not be fitted to cls_prep
   after the fact.
+
+## Round 11 — 2026-11-16 (the Mac voice bank as "real-voice" data) — NOT SHIPPED: r10 stays
+
+There are no real kid recordings. The owner's call: build the real-voice data from the Mac's own voices plus noise,
+decode it with the real ear, and treat it as real. **Every number below is on synthetic speech** (macOS `say` voices,
+pitched and sped toward a child, through a simulated room and laptop mic). Nothing here has been checked on a child.
+Pipeline: `director_model/run_r11.sh`. Voice bank: `voice_bank.py`. Comparison gate: `gate_vs.py`. Ear numbers:
+`runs/2026-11-16-r11/ear_analysis.md`. Gate summary: `runs/2026-11-16-r11/gate.json`.
+
+### The voice bank
+
+- **Rendered:** every English voice `say -v '?'` lists, 43 names. No Enhanced or Premium voices are installed. Two
+  Siri voices (Aman and Tara, "Hi, I'm Siri!") share their names with the compact voices, so `say -v` cannot pick
+  them. Whatever `say` resolves the name to is what was rendered. Everything was rendered with `say -o` to a temporary
+  file, read, and deleted. Nothing was played; no audio is kept.
+- **Varied:**
+  - rate 140–200 wpm;
+  - pitch toward a child: sox `pitch` +150..+500 cents on 50 %, a resample speed-up ×1.04–1.20 on 30 %;
+  - a laptop mic (band-pass ~150 Hz to 4–7 kHz, light limiter) on 60 %;
+  - room reverb (RT60 0.15–0.5 s) on 30 %;
+  - one noise bed per turn:
+    - babble (other bank renders + pink noise), SNR 5–20 dB;
+    - the app's NASA video soundtracks through the speaker, 6–18 dB;
+    - music, 8–20 dB;
+    - one of our own lines in an app OS voice, or a NASA crew clip, through speaker → mic, −1.0..+1.5 s from the
+      kid's start, 12–25 dB under;
+    - room noise, 15–30 dB;
+    - or none.
+- **Dropped after review:** the novelty voices (Albert, Bahh, Boing, Bubbles, Jester, Superstar, Trinoids, Whisper,
+  Wobble, Zarvox) and the sung voices (Bad News, Good News, Bells, Cellos, Organ). They are not plausible kid speech:
+  74 % and 84 % WER, 36–37 % empty. Their 675 decodes were moved to a stress set (reported only). Those turns were
+  re-rendered and decoded in the split's other voices.
+- **Used for training (15 Mac voice/accent pairs):** Samantha, Daniel, Karen, Moira, Tessa, Rishi, Ralph, and Flo,
+  Grandpa, Reed, Shelley (UK and US each). Plus the 902 Steer TTS train decodes from round 9 (the Steer train
+  voices), plus the error-model text path.
+- **Val:** Fred, Aman, Grandma (UK and US).
+- **Held out, never in train or val:** Tara, Junior, Kathy, and Eddy, Rocko, Sandy (UK and US each). A speaker is
+  held out in both accents. This is the new set **`test_voice_heldout`**: test_real's first 55 sessions, every turn
+  decoded in these voices, **489 turns**.
+  - It leans on the robotic Eloquence voices, so it is a harder set than train.
+  - The app's own OS voices are never held out, because train hears them as echo.
+
+### Decodes (real ear: libarc + the app's nft2 model, `real_ear.py decode`, nice 10, 2 processes)
+
+| group | decodes |
+|---|---|
+| train (Mac voices; 4,177 new texts + 800 second-voice variants; the 675 dropped novelty / sung turns re-rendered in the split's other voices are counted here) | 4,977 |
+| val (a Mac-voice variant of every val text) | 302 |
+| voice_ho (held-out voices) | 381 |
+| echo bank (each bank voice × 6 of our lines, + 60 crew clips, through speaker → mic, nothing else) | 318 |
+| stress, not trained on: the first "harsh" chain (rate to 230, +700 cents, RT60 0.7, SNR to 3 dB; ~60 % WER) | 653 |
+| stress, not trained on: novelty / sung | 675 |
+| **total decoded this round** | **7,306** (≈ 3.5 h of decode, paused while the disk was under 2.2 GB) |
+
+- Each decode is ~5 KB of text. No audio is kept.
+- The decodes got the screen's own names list (`names_list.screen_names`, as the app sends it), not round 9's fixed
+  tier-A list.
+- **Coverage:** a noised train turn whose text has a real-ear train decode rose from 46 % (r10) to 76 %. Those turns
+  replay a real decode with p = 0.9.
+
+### Gate: each class against the rules AND against the shipped r10, every set (27 + test_voice_heldout)
+
+The data is `ds_r11b`: ds_r10's 27 sets unchanged, plus a rebuilt val and test_voice_heldout. The policy is fitted
+on val, plus r10's `veto` off and `ignore_min_words` 3.
+
+A class ships only if, on every set:
+
+- it has 0 extra wrong actions over the rules and over r10;
+- its act ok is ≥ both the rules and r10;
+- its total gain over r10 is > 0.
+
+Act ok over all 11,897 turns:
+
+| class | turns | rules | r10 | **r11 xl** | r11 xl wrong (r10) | sets worse than rules or r10 | ships |
+|---|---|---|---|---|---|---|---|
+| hot | 5,501 | 4,853 | 4,865 | 4,861 | 279 (279) | cls_prep_roomtalk −2, cls_voice_echo_os −1, cls_coverage −1 (vs r10) | no |
+| echo | 922 | 727 | 755 | 754 | 16 (15) | test_real **+1 wrong vs r10**, cls_echo −1, cls_voice_echo_os −1 | no |
+| quiet | 3,337 | 2,193 | 2,193 | **2,201** | 110 (110) | none (cls_prep passes: 129 = rules) | **yes (alone)** |
+| short | 2,137 | 1,698 | 1,698 | 1,698 | 19 | none, no gain | no |
+| video | 0 | – | – | – | – | no turn reaches it | no |
+| nav | 11,897 | 9,471 | 9,471 | **9,496** | 424 (424) | none | **yes (alone)** |
+| answer | 11,897 | 9,471 | 9,471 | **9,475** | 424 | none | **yes (alone)** |
+
+- **r11 xl:** 743,069 params, `--fp-exec 0.5`, best step 1,800. Train loss 0.18 vs val 1.90 at the end. It is
+  still data-limited; ~10× train loss vs val.
+- **r11 xl's val-fitted policy:** cmd off · ask off · ignore 0.95 · answer_ignore 0.7 · nav 0.99.
+  - **cmd / ask:** the val fit leaves both off, so no class moves beyond silencing plus navigation here.
+  - **nav:** the first round where nav passes. +25 act ok on cls_help (+13), cls_offer (+8), test_clean, test_asr,
+    and 0 wrong actions.
+  - **quiet:** earned without touching cls_prep. It is +8 overall and ties the rules on cls_prep (129). r10's quiet
+    lost 5 there.
+- **Why nothing ships:** one weight file serves every class.
+  - r11 xl alone in quiet + nav + answer gives up r10's hot + echo gains: 9,508 vs r10's 9,511.
+  - r11 xl in all five classes is +32 over r10 (**9,543 vs 9,511**), but it fails the rule: on test_real it misses
+    one wrong action that r10 avoids ("god who left ranger seven on that site" → command; gold ask_clarify). It is
+    also below r10 on cls_echo (−1), cls_prep_roomtalk (−2) and cls_voice_echo_os (−2).
+
+**The other candidates:**
+
+- **r11 s** (32,971 params, same data): the val fit turns ignore off. It never acts in hot, echo or quiet, and its
+  nav adds 14 wrong actions. Fails.
+- **r11 xl trained WITH the novelty / sung voices** (gated the same way): its val fit turns command fill on (cmd
+  0.95). That adds 10 wrong actions in hot, 7 in echo and 16 in quiet. Ignore-only, it passes quiet (+10) and nothing
+  else. Fails.
+
+### What the round shows
+
+- **The shipped r10 is 1 turn below the rules on unseen voices.** On test_voice_heldout its echo class silences a
+  real question ("remove does it have any craters", gold answer). Rules 259, r10 258, 0 wrong actions. That is the
+  only set where r10 is below the rules. Its hot class is still clean there.
+- **More real-ear train data helped the classes r10 could not ship** (quiet, nav, answer). It did not beat r10 where
+  r10 already acts (hot, echo).
+- **The text the model trains on is now much noisier:** ~30 % WER on the natural Mac voices and ~49 % on Eloquence,
+  vs 10 % on Steer TTS. It is still data-limited.
+
+### Ear findings for the Arc team (all on synthetic voices; `ear_analysis.md` has the tables)
+
+- **WER by voice group:**
+  - natural Mac voices 30 % (Moira 17 %, Tessa 21 %, Samantha 22 %, Ralph 60 %);
+  - Eloquence 49 %;
+  - Steer TTS 10–12 %;
+  - novelty 74 %, sung 84 % (stress set).
+- **By noise and conditions:** room noise 32 %, none 33 %, music 37 %, babble 40 %, our OS-voice echo 40 %, TV 49 %,
+  crew-clip echo 51 %. Reverb adds ~9 points (46–47 % vs 37–38 %). The laptop band itself costs nothing.
+- **Empty decodes:** 7.4 % overall. 49 % of 1-word turns come back empty and 21 % of 2-word turns ("hmm", "help",
+  "this one", "yeah"); 3+ words: 5 %.
+- **Lunar names** (997 mentions of a name on the screen's list):
+  - the words are right 61 % of the time; linked right 50 %; abstain 4 %; **linked to the WRONG entity 6 %** (12 %
+    on the cabin screen); not_in_list 6 %; no name returned 33 %.
+  - **Worst:** Tsiolkovskiy 0/27 ("siakowski", "syalkovski"); Byrgius A 15 % ("by gsr"); Malapert Massif 17 % (one
+    heard as "vavilov"); Sea of Rains 20 % ("sea of rain"); Ohm 24 % (8 of 33 vanish); Mare Humorum 25 % ("emma snare
+    him"); de Gerlache 31 % ("the jelly"); Sea of Tranquility / Crises 32–40 % ("z of tranquility", "c of crisi").
+  - "South Pole" is heard as "shackleton" 6 of 23 times.
+- **Numbers (ITN):** numbers are right on 57 % of 1,422 turns that have one; a number is dropped on 40 %. Percents
+  come out as "N%" 87 % of the time and are lost 8 %. 184 decodes keep a number as words ("five hundred and fifty
+  five thirty three").
+- **Echo leakage:** our own line alone through speaker → mic produces words on 52 % of 318 clips (2.6 words per
+  clip).
+  - App OS voices: Rishi 83 %, Tessa 83 %, Moira 67 %, Karen 50 %, Daniel 50 %, Samantha 33 %.
+  - NASA crew clips: 55 %.
+  - Under a kid's turn, a crew clip adds ≥ 2 words on 16 % of turns, and our OS voice on 8 %.
+- **device_directed:** AUC 0.70, directed vs room talk / chatter. dd ≥ 0.5 on 93 % of directed turns and 79 % of
+  room talk. Our own echo with words: AUC 0.80, 67 % ≥ 0.5. It still does not separate room talk.
+- **End of turn:**
+  - a turn is cut into pieces on 2.6 %; a premature cut-off (closed before the speech ended) on 0.2 %;
+  - close latency after the speech ends: p50 0.49 s, p90 2.08 s;
+  - final decode: p50 480 ms, p90 930 ms under load.
+- **Commands kept:** the decode parses to the same commands as the reference on 54 % of single-command turns and
+  48 % of compound turns. It loses a command on 45–48 %.
+- **Features that read 0 under this ear:** `ear_conf`, `ear_alts`, `ear_alt_hot`, `ear_rescored`, `ear_tier_*` (0 %
+  non-zero). The ear sends `command_complete` on 0 of 6,648 arc messages.
+  - **Train / serve skew:** `gen_sessions.run` injects `cc` = U(0.5, 0.95) on every turn, so every train and test
+    set has `cc` on ~85 % of turn ends, while the app has none. Fix it before the next train round.
+  - The ear's `names` link states, `audio_events`, `spoken` and `tags` are not Director features at all.
+
+### Next
+
+- Fix the `cc` skew (generate cc = None for real-ear turns), and append the link-state features
+  (`name_linked` / `abstain` / `not_in_list`, link p). Both are cheap.
+- A one-file ship of quiet + nav + answer needs a candidate that also keeps r10's hot and echo turns. Two options:
+  - train with r10's hot / echo decisions as a distillation target;
+  - add a per-class weights slot in the runtime (two models).
+  Both are runtime decisions for the owner.
+- Watch r10's echo class on real voices: the held-out voices already show one silenced real question.
