@@ -257,6 +257,8 @@ def _round7(sess, ev: dict, text: str, now: float) -> dict:
                                                                       "tier": (ear.get("hot") or {}).get("tier")}
         with _suppress():
             out["link"] = link_view(ear, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
+    with _suppress():
+        out["ent"] = entity_view(sess, text, ear if kind == "turn" else None, now)
     prev = getattr(sess, "_r7_prev", None)
     if prev:
         out["prev"] = {"text": prev["text"], "dt": now - prev["t"], "route": prev.get("route")}
@@ -293,6 +295,43 @@ def link_view(ear: dict, options: list[str] | None = None) -> dict:
         ents = {_ntoks(n.get("entity") or "") for n in names or []} | {_ntoks(n.get("heard") or "") for n in names or []}
         out["dec_name"] = any(e and f" {e} " in dt and f" {e} " not in heard for e in ents) or \
             _dec_names_more(heard, dt)
+    return out
+
+
+def entity_view(sess, text: str, ear: dict | None, now: float) -> dict:
+    """Round 12 (the entity layer): what the turn names, against the session's entity memory and the open step."""
+    from ..entities import registry
+    R = registry()
+    ids: list[str] = []
+    for n in (ear or {}).get("names") or []:
+        if isinstance(n, dict) and n.get("state") == "linked" and n.get("entity"):
+            e = R.resolve(n["entity"])
+            if e is not None and e.id not in ids:
+                ids.append(e.id)
+    heard = (ear or {}).get("spoken") or text
+    for e in R.mentions(heard):
+        if e.id not in ids:
+            ids.append(e.id)
+    out: dict = {"any": bool(ids), "mishear": R.mishear_of(heard) is not None,
+                 "control": any(R.get(i).type == "control" for i in ids)}
+    if not ids:
+        return out
+    with _suppress():
+        from ..names_list import step_targets
+        st = sess.open_step() if hasattr(sess, "open_step") else None
+        tg, _ = step_targets(st, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
+        out["step_target"] = bool(set(tg) & set(ids))
+    mem = getattr(sess, "memory", None)
+    if mem is not None:
+        prev = [mem.last(i, "kid", before=now - 5.0) for i in ids]
+        prev = [p for p in prev if p]
+        out["seen_before"] = bool(prev)
+        out["recency"] = max((math.exp(-(now - p["t"]) / 120.0) for p in prev), default=0.0)
+        out["guide_said"] = any((g := mem.last(i, None)) is not None and g["by"] != "kid" and now - g["t"] <= 60
+                                for i in ids)
+    with _suppress():
+        sts = set(sess.mission_states()) if hasattr(sess, "mission_states") else set()
+        out["state_rel"] = any(set(R.get(i).states) & sts for i in ids)
     return out
 
 
@@ -406,11 +445,19 @@ FEATS: list[str] = (
     # words lack.
     + ["ear_names_avail", "ear_linked", "ear_link_p", "ear_link_sure", "ear_abstain", "ear_not_in_list",
        "ear_link_step", "ear_link_screen", "ear_dec_avail", "ear_agree", "ear_dec_name"]
+    # ---- round 12, the entity layer (docs/ENTITY_LAYER.md): appended after the ear block ----
+    # The turn names a registry entity (by the ear's link or the words); one of them is the open step's target; the kid
+    # named it before in this session (> 5 s ago) and how recently (exp(-ago / 120 s)); we named it in our lines in
+    # the last 60 s; it is relevant to an active mission state (a storm -> shields); a known mishearing is in the
+    # words ("the jelly"); a control / mission object is named (shields, rover, ...).
+    + ["ent_any", "ent_step_target", "ent_seen_before", "ent_recency", "ent_guide_said", "ent_state_rel",
+       "ent_mishear", "ent_control"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
 F_R6 = FEATS.index("lx_filler") + 1       # the round-6 width (216)
 F_R11 = FEATS.index("st_video") + 1       # rounds 8-11 width (242): the shipped r10 weights read this prefix
+F_R12_EAR = FEATS.index("ear_dec_name") + 1   # + the ear's link / decoder block (253)
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -667,6 +714,12 @@ def _round7_feats(rec: dict, ws: list[str], s):
             s("ear_link_step", lk["step"]); s("ear_link_screen", lk["screen"])
         if lk.get("dec"):
             s("ear_dec_avail", 1); s("ear_agree", lk["agree"]); s("ear_dec_name", lk["dec_name"])
+    en = rec.get("ent")
+    if en:      # round 12, the entity layer: appended slots only
+        s("ent_any", en.get("any", False)); s("ent_step_target", en.get("step_target", False))
+        s("ent_seen_before", en.get("seen_before", False)); s("ent_recency", en.get("recency", 0.0))
+        s("ent_guide_said", en.get("guide_said", False)); s("ent_state_rel", en.get("state_rel", False))
+        s("ent_mishear", en.get("mishear", False)); s("ent_control", en.get("control", False))
     pv = rec.get("prev")
     if pv and t:
         from difflib import SequenceMatcher

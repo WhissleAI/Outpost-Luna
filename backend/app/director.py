@@ -224,15 +224,39 @@ NEAR_SCORE = 0.8
 def _near_vocab(gaz: Gazetteer) -> list[str]:
     v = getattr(gaz, "_near_vocab", None)
     if v is None:
-        from .names_list import catalogue_names
+        from .entities import registry
         v = []
-        for e in catalogue_names():
-            for f in [e["name"], *(e.get("aliases") or [])]:
-                if len(f) >= 5 and gaz.match_text(f) is not None:
-                    v.append(f)
+        for e in registry().entities:
+            if e.ear and place_of(e.id, gaz) is not None:
+                v += [f for f in e.forms() if len(f) >= 5]
         v += [p.name for p in gaz.places.values()]
         gaz._near_vocab = v
     return v
+
+
+def place_of(eid: str | None, gaz: Gazetteer) -> Place | None:
+    """The gazetteer place an entity id stands for: the registry's `ref` (places.json / artifacts.json ids are the
+    gazetteer's), else the entity's canonical name in the gazetteer."""
+    from .entities import registry
+    e = registry().get(eid)
+    if e is None:
+        return None
+    r = e.ref or {}
+    if r.get("source") in ("places.json", "artifacts.json") and r.get("id") in gaz.places:
+        return gaz.places[r["id"]]
+    if e.type in ("place", "hardware"):
+        return gaz.match_text(e.name)
+    return None
+
+
+def ear_place(entity: str | None, gaz: Gazetteer) -> Place | None:
+    """A linked name (the list's spelling) -> its place, by id through the registry; the text match as a fallback for
+    names the registry does not know (a client's own context names)."""
+    from .entities import registry
+    e = registry().resolve(entity or "", prefer=("place", "hardware", "site"))
+    if e is not None:
+        return place_of(e.id, gaz)
+    return gaz.match_text(entity or "") if entity else None
 
 
 def near_name(heard: str, gaz: Gazetteer, min_score: float = NEAR_SCORE) -> tuple[Place, float] | None:
@@ -262,7 +286,7 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
     low: list[tuple[Place, float]] = []
     for n in ear:
         if n.get("state") == "linked" and n.get("entity"):
-            p = gaz.match_text(n["entity"])
+            p = ear_place(n["entity"], gaz)     # by id (registry), not by re-matching the text
             if not p:
                 continue
             lp = n.get("p")
@@ -300,7 +324,12 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
         if s >= ACCEPT and not close:
             return top, "arc+link" if read.get("available") else "fuzzy", []
         return None, "ask", [cands[0], *close]
-    if "ear_names" in read:     # a heard turn (the ear ran): the sound-alike offer
+    if "ear_names" in read:     # a heard turn (the ear ran): a known mishearing ("the jelly"), then a sound-alike
+        from .entities import registry
+        mh = registry().mishear_of(spoken or target)
+        mp = place_of(mh[0].id, gaz) if mh else None
+        if mp is not None:
+            return None, "near", [(mp, 100.0)]
         nm = near_name(spoken or target, gaz)
         if nm is not None:
             return None, "near", [(nm[0], 100.0 * nm[1])]
@@ -550,6 +579,18 @@ def _tone(say: str, emotion: str) -> str:
     return say
 
 
+def linked_entity(read: dict, types: tuple[str, ...]):
+    """The registry entity the ear linked on this turn with p >= LINK_ACT_P, of one of these types (or None)."""
+    from .entities import registry
+    for n in read.get("ear_names") or []:
+        if isinstance(n, dict) and n.get("state") == "linked" and n.get("entity") and \
+                (n.get("p") is None or n["p"] >= LINK_ACT_P):
+            e = registry().resolve(n["entity"], prefer=types)
+            if e is not None and e.type in types:
+                return e
+    return None
+
+
 async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: MomentIndex) -> dict | None:
     """Mission layer first. None = not a mission turn (the Moon explorer answers)."""
     mctx = ctx.get("mission") or {}
@@ -570,6 +611,10 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     else:
         nl = await nlu.understand(text, read, state)
     cmds, dd = nl["commands"], ctx.get("device_directed")
+    site = linked_entity(read, ("site",))
+    for c in cmds:     # the rover's target: the site the ear linked (by id), not the raw words after "to"
+        if c.get("type") == "dispatch" and site is not None and c.get("task") in ("explore", "collect_ice"):
+            c["target"], c["target_id"] = site.name, site.id
     if not cmds and not nl["needs_clarify"]:
         if dd is not None and float(dd) < CHATTER_DD:
             return {**base, "action": "none", "say": "", "source": "mission+chatter"}

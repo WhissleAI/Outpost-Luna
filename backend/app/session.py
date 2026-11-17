@@ -186,6 +186,9 @@ class Session:
         # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
         self.tlog = turnlog.SessionLog(self)
         self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
+        # The entity layer (docs/ENTITY_LAYER.md): what was talked about, by entity id (in memory only, never stored)
+        from .entities import EntityMemory, registry
+        self.memory = EntityMemory(registry(), clock)
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -346,6 +349,8 @@ class Session:
         if st == "start":
             self.belief["playing"] = {"kind": kind, "id": did, "text": (self.pending.get(did) or {}).get("text") or m.get("text"),
                                       "t": m.get("t"), "since": self.clock()}
+            with contextlib.suppress(Exception):   # the names in our own line (story callbacks, the ear list's boost)
+                self.memory.note_line(self.belief["playing"]["text"] or "", by=kind, screen=self.screen_name())
             self.spoken.start(did, self.belief["playing"]["text"] or "")
             if self.belief["floor"] != "kid":
                 self.belief["floor"] = kind
@@ -525,7 +530,25 @@ class Session:
         with contextlib.suppress(Exception):   # what we just said: the names in it go first (the kid's next turn names them)
             recent = list(self.spoken.recent())[-2:]
         return screen_names({**self.screen, "screen": self.screen_name()}, self.open_step(), self.belief.get("last_place"),
-                            recent)
+                            recent, kid=self.memory.kid_recent(), states=self.mission_states())
+
+    def mission_states(self) -> list[str]:
+        """The mission states that make entities relevant (registry `states`): storm, dark, low_power, dose_high."""
+        st = self.belief.get("state") or {}
+        if not st or not self.belief.get("mission_id"):
+            return []
+        env, res = st.get("env") or {}, st.get("resources") or {}
+        out = []
+        if (env.get("storm") or {}).get("active"):
+            out.append("storm")
+        if env.get("in_sun") is False:
+            out.append("dark")
+        if (res.get("power_pct") or 100) < 35:
+            out.append("low_power")
+        lim = res.get("dose_limit_msv") or 50
+        if (res.get("dose_msv") or 0) >= 0.8 * lim:
+            out.append("dose_high")
+        return out
 
     def hot_words(self) -> dict:
         """The ear's tiered hot lists for the screen the kid is on (round 7, hotlist.py; /ws/listen sends them to the
@@ -611,9 +634,16 @@ class Session:
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
             return
         rt = router_.route(text, ctx_r, act=k.get("act"))
+        ents: list[dict] = []
+        if rt["outcome"] != "ignore":   # what the kid talked about (to us): the session's entity memory
+            with contextlib.suppress(Exception):
+                ear = (k.get("ear") or {}) if source in OPEN_MIC or source == "ptt" else {}
+                ents = self.memory.note_turn(ear.get("names"), ear.get("spoken") or text, self.screen_name())
         # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
         # guard path), so a false PII flag costs only the text in the log, never the turn on screen
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
+        if self._tl is not None and ents:   # entity ids + how they were heard (no words)
+            self._tl["entities"] = [{"id": e["id"], "how": e["how"], "p": e["p"], "state": e["state"]} for e in ents]
         if self._tl is not None and (sf["pii"] or sf["mask"]):
             self._tl["_guard"] = True
         try:
@@ -775,6 +805,16 @@ class Session:
         if r.get("action") == "none":
             await self.emit(pre)
             return
+        if r.get("place") and not b["mission_id"] and r.get("say"):   # story callback: "You asked about Tycho earlier."
+            line = None
+            with contextlib.suppress(Exception):
+                line = self.memory.recall_line(r["place"])
+            if line:
+                r["say"] = f"{line} {r['say']}"
+                for d in r.get("decisions") or []:
+                    if d.get("t") == "say" and d.get("text"):
+                        d["text"] = f"{line} {d['text']}"
+                        break
         if self.screen and self.screen_name() != "cabin" and rt["outcome"] == "question":
             # A hands-free client outside the cabin renders the explorer answer itself (artifacts, tours, crew audio).
             slim = {k_: v for k_, v in r.items() if k_ not in ("decisions", "readout")}

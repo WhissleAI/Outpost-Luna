@@ -1,0 +1,2296 @@
+{
+ "schema": "whissle.entities/1",
+ "app": "outpost_luna",
+ "_note": "The entity registry: every named thing the app knows (docs/ENTITY_LAYER.md). Source of truth for names, aliases, spoken forms, mishearings, relations and relevance; domain payloads stay in the files `ref` points to. Migrated from names_list.py on 2026-11-16.",
+ "screens": {
+  "library": {
+   "cap": 80,
+   "groups": [
+    [
+     "hardware"
+    ],
+    [
+     "place"
+    ],
+    [
+     "crew_now",
+     6
+    ],
+    [
+     "mission",
+     2
+    ],
+    [
+     "spacecraft",
+     2
+    ],
+    [
+     "site"
+    ],
+    [
+     "crew_past"
+    ]
+   ]
+  },
+  "map": {
+   "cap": 80,
+   "groups": [
+    [
+     "place"
+    ],
+    [
+     "hardware"
+    ],
+    [
+     "crew_now",
+     6
+    ],
+    [
+     "mission",
+     2
+    ],
+    [
+     "spacecraft",
+     2
+    ],
+    [
+     "site"
+    ],
+    [
+     "crew_past"
+    ]
+   ]
+  },
+  "cabin": {
+   "cap": 40,
+   "groups": [
+    [
+     "site"
+    ],
+    [
+     "crew_now"
+    ],
+    [
+     "mission",
+     3
+    ],
+    [
+     "spacecraft",
+     3
+    ],
+    [
+     "place"
+    ]
+   ]
+  },
+  "video": {
+   "cap": 40,
+   "groups": [
+    [
+     "crew_now"
+    ],
+    [
+     "mission",
+     3
+    ],
+    [
+     "place"
+    ]
+   ]
+  },
+  "lesson": {
+   "cap": 40,
+   "groups": [
+    [
+     "place"
+    ],
+    [
+     "crew_now",
+     4
+    ],
+    [
+     "mission",
+     2
+    ]
+   ]
+  },
+  "callsign": {
+   "cap": 40,
+   "groups": [
+    [
+     "crew_now"
+    ]
+   ]
+  },
+  "prep": {
+   "cap": 40,
+   "groups": [
+    [
+     "crew_now",
+     4
+    ],
+    [
+     "mission",
+     2
+    ]
+   ]
+  },
+  "brief": {
+   "same_as": "cabin"
+  },
+  "debrief": {
+   "same_as": "cabin"
+  },
+  "ride": {
+   "same_as": "lesson"
+  },
+  "patch": {
+   "same_as": "map"
+  },
+  "lesson_done": {
+   "same_as": "map"
+  },
+  "settings": {
+   "same_as": "map"
+  }
+ },
+ "default_screen": "map",
+ "entities": [
+  {
+   "id": "tranquillitatis",
+   "type": "place",
+   "group": "place",
+   "name": "Sea of Tranquility",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Mare Tranquillitatis",
+    "Tranquility Base",
+    "Sea of Tranquillity"
+   ],
+   "mishears": [
+    "z of tranquility",
+    "c of tranquility",
+    "alta tranquility"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "tranquillitatis"
+   },
+   "lessons": [
+    "moon"
+   ]
+  },
+  {
+   "id": "aristarchus",
+   "type": "place",
+   "group": "place",
+   "name": "Aristarchus Plateau",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Aristarchus",
+    "Aristarchus crater"
+   ],
+   "mishears": [
+    "sls plateau",
+    "aristarch"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "aristarchus"
+   }
+  },
+  {
+   "id": "orientale",
+   "type": "place",
+   "group": "place",
+   "name": "Orientale Basin",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Mare Orientale",
+    "Orientale"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "orientale"
+   },
+   "lessons": [
+    "history"
+   ]
+  },
+  {
+   "id": "hertzsprung",
+   "type": "place",
+   "group": "place",
+   "name": "Hertzsprung",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Hertzsprung basin",
+    "Hertzsprung crater"
+   ],
+   "mishears": [
+    "earthspring",
+    "hertz spring"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "hertzsprung"
+   }
+  },
+  {
+   "id": "vavilov",
+   "type": "place",
+   "group": "place",
+   "name": "Vavilov",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "vavilov"
+   }
+  },
+  {
+   "id": "ohm",
+   "type": "place",
+   "group": "place",
+   "name": "Ohm",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Ohm crater"
+   ],
+   "mishears": [
+    "by zone"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "ohm"
+   },
+   "lessons": [
+    "history"
+   ]
+  },
+  {
+   "id": "glushko",
+   "type": "place",
+   "group": "place",
+   "name": "Glushko",
+   "kind": "lunar_feature",
+   "mishears": [
+    "lacho"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "glushko"
+   }
+  },
+  {
+   "id": "reiner",
+   "type": "place",
+   "group": "place",
+   "name": "Reiner Gamma",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Reiner Gamma swirl"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "reiner"
+   }
+  },
+  {
+   "id": "integrity",
+   "type": "place",
+   "group": "place",
+   "name": "Integrity",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "integrity"
+   },
+   "lessons": [
+    "history"
+   ]
+  },
+  {
+   "id": "carroll",
+   "type": "place",
+   "group": "place",
+   "name": "Carroll",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "carroll"
+   }
+  },
+  {
+   "id": "tycho",
+   "type": "place",
+   "group": "place",
+   "name": "Tycho",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Tycho crater"
+   ],
+   "mishears": [
+    "tie co",
+    "taiko"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "tycho"
+   }
+  },
+  {
+   "id": "copernicus",
+   "type": "place",
+   "group": "place",
+   "name": "Copernicus",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Copernicus crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "copernicus"
+   }
+  },
+  {
+   "id": "imbrium",
+   "type": "place",
+   "group": "place",
+   "name": "Sea of Rains",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Mare Imbrium",
+    "Imbrium",
+    "Sea of Rain"
+   ],
+   "mishears": [
+    "sea of rain",
+    "see rings"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "imbrium"
+   },
+   "lessons": [
+    "phases"
+   ]
+  },
+  {
+   "id": "crisium",
+   "type": "place",
+   "group": "place",
+   "name": "Sea of Crises",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Mare Crisium",
+    "Crisium",
+    "Sea of Crisis"
+   ],
+   "mishears": [
+    "c of crisi",
+    "sea of crisi",
+    "a crisium"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "crisium"
+   }
+  },
+  {
+   "id": "shackleton",
+   "type": "place",
+   "group": "place",
+   "name": "Shackleton",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Shackleton crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "shackleton"
+   },
+   "lessons": [
+    "life",
+    "moon",
+    "power"
+   ]
+  },
+  {
+   "id": "south_pole",
+   "type": "place",
+   "group": "place",
+   "name": "South Pole",
+   "kind": "lunar_feature",
+   "aliases": [
+    "lunar south pole"
+   ]
+  },
+  {
+   "id": "tsiolkovskiy",
+   "type": "place",
+   "group": "place",
+   "name": "Tsiolkovskiy",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Tsiolkovsky",
+    "Tsiolkovsky crater"
+   ],
+   "mishears": [
+    "siakowski",
+    "slskovsky",
+    "sir kochi",
+    "tychovski"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "tsiolkovskiy"
+   }
+  },
+  {
+   "id": "spa",
+   "type": "place",
+   "group": "place",
+   "name": "South Pole–Aitken Basin",
+   "kind": "lunar_feature",
+   "aliases": [
+    "South Pole Aitken",
+    "Aitken basin",
+    "South Pole Aitken basin",
+    "South PoleAitken Basin"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "spa"
+   }
+  },
+  {
+   "id": "grimaldi",
+   "type": "place",
+   "group": "place",
+   "name": "Grimaldi",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "grimaldi"
+   }
+  },
+  {
+   "id": "kepler",
+   "type": "place",
+   "group": "place",
+   "name": "Kepler",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "kepler"
+   }
+  },
+  {
+   "id": "byrgius_a",
+   "type": "place",
+   "group": "place",
+   "name": "Byrgius A",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Byrgius Alpha",
+    "Byrgius"
+   ],
+   "mishears": [
+    "by gsr",
+    "beauty s",
+    "birgius"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "byrgius_a"
+   }
+  },
+  {
+   "id": "pythagoras",
+   "type": "place",
+   "group": "place",
+   "name": "Pythagoras",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Pythagoras crater"
+   ],
+   "mishears": [
+    "the magrus"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "pythagoras"
+   }
+  },
+  {
+   "id": "humorum",
+   "type": "place",
+   "group": "place",
+   "name": "Mare Humorum",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Sea of Moisture",
+    "Humorum"
+   ],
+   "mishears": [
+    "emma snare him",
+    "their ingram"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "humorum"
+   }
+  },
+  {
+   "id": "north_pole",
+   "type": "place",
+   "group": "place",
+   "name": "North Pole",
+   "kind": "lunar_feature",
+   "ref": {
+    "source": "places.json",
+    "id": "north_pole"
+   }
+  },
+  {
+   "id": "shackleton_rim",
+   "type": "site",
+   "group": "site",
+   "name": "Shackleton Crater Rim",
+   "kind": "site",
+   "aliases": [
+    "Shackleton rim"
+   ],
+   "ref": {
+    "source": "mission/sites.json",
+    "id": "shackleton_rim"
+   },
+   "related": [
+    "shackleton",
+    "south_pole"
+   ]
+  },
+  {
+   "id": "shackleton_floor",
+   "type": "site",
+   "group": "site",
+   "name": "Shackleton Crater Floor",
+   "kind": "site",
+   "aliases": [
+    "Shackleton floor"
+   ],
+   "ref": {
+    "source": "mission/sites.json",
+    "id": "shackleton_floor"
+   },
+   "related": [
+    "shackleton",
+    "south_pole"
+   ]
+  },
+  {
+   "id": "connecting_ridge",
+   "type": "site",
+   "group": "site",
+   "name": "Connecting Ridge",
+   "kind": "site",
+   "ref": {
+    "source": "mission/sites.json",
+    "id": "connecting_ridge"
+   }
+  },
+  {
+   "id": "de_gerlache_rim",
+   "type": "site",
+   "group": "site",
+   "name": "de Gerlache Crater Rim",
+   "kind": "site",
+   "aliases": [
+    "de Gerlache",
+    "de Gerlache rim"
+   ],
+   "mishears": [
+    "the jelly",
+    "de gerla",
+    "deja j",
+    "the dew artemis"
+   ],
+   "ref": {
+    "source": "mission/sites.json",
+    "id": "de_gerlache_rim"
+   },
+   "related": [
+    "de_gerlache"
+   ]
+  },
+  {
+   "id": "malapert_massif",
+   "type": "site",
+   "group": "site",
+   "name": "Malapert Massif",
+   "kind": "site",
+   "aliases": [
+    "Malapert",
+    "Malapert Mountain"
+   ],
+   "mishears": [
+    "malapart",
+    "you saw a leopard messy"
+   ],
+   "ref": {
+    "source": "mission/sites.json",
+    "id": "malapert_massif"
+   },
+   "related": [
+    "malapert"
+   ]
+  },
+  {
+   "id": "cabeus",
+   "type": "site",
+   "group": "site",
+   "name": "Cabeus",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Cabeus crater"
+   ],
+   "lessons": [
+    "life"
+   ]
+  },
+  {
+   "id": "malapert",
+   "type": "site",
+   "group": "site",
+   "name": "Malapert",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Malapert Mountain"
+   ],
+   "mishears": [
+    "malapart",
+    "mala pert"
+   ],
+   "exclude_screens": [
+    "cabin",
+    "brief",
+    "debrief"
+   ],
+   "related": [
+    "malapert_massif"
+   ],
+   "lessons": [
+    "comms",
+    "life",
+    "power"
+   ]
+  },
+  {
+   "id": "de_gerlache",
+   "type": "site",
+   "group": "site",
+   "name": "de Gerlache",
+   "kind": "lunar_feature",
+   "aliases": [
+    "de Gerlache crater"
+   ],
+   "mishears": [
+    "the jelly"
+   ],
+   "exclude_screens": [
+    "cabin",
+    "brief",
+    "debrief"
+   ],
+   "related": [
+    "de_gerlache_rim"
+   ]
+  },
+  {
+   "id": "reid_wiseman",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "Reid Wiseman",
+   "kind": "crew",
+   "aliases": [
+    "Reid",
+    "Commander Wiseman"
+   ]
+  },
+  {
+   "id": "victor_glover",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "Victor Glover",
+   "kind": "crew",
+   "aliases": [
+    "Victor",
+    "Glover"
+   ]
+  },
+  {
+   "id": "christina_koch",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "Christina Koch",
+   "kind": "crew",
+   "aliases": [
+    "Christina",
+    "Koch"
+   ]
+  },
+  {
+   "id": "jeremy_hansen",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "Jeremy Hansen",
+   "kind": "crew",
+   "aliases": [
+    "Jeremy",
+    "Hansen"
+   ]
+  },
+  {
+   "id": "houston",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "Houston",
+   "kind": "organization",
+   "aliases": [
+    "Mission Control"
+   ],
+   "lessons": [
+    "checkride",
+    "history",
+    "radiation"
+   ]
+  },
+  {
+   "id": "capcom",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "CAPCOM",
+   "kind": "crew",
+   "aliases": [
+    "cap com",
+    "capsule communicator"
+   ],
+   "mishears": [
+    "cap calm",
+    "cap come"
+   ],
+   "lessons": [
+    "comms"
+   ]
+  },
+  {
+   "id": "nasa",
+   "type": "crew",
+   "group": "crew_now",
+   "name": "NASA",
+   "kind": "organization",
+   "aliases": [
+    "N A S A"
+   ],
+   "lessons": [
+    "life"
+   ]
+  },
+  {
+   "id": "artemis_ii",
+   "type": "mission",
+   "group": "mission",
+   "name": "Artemis II",
+   "kind": "mission",
+   "aliases": [
+    "Artemis 2",
+    "Artemis two"
+   ]
+  },
+  {
+   "id": "artemis_iii",
+   "type": "mission",
+   "group": "mission",
+   "name": "Artemis III",
+   "kind": "mission",
+   "aliases": [
+    "Artemis 3",
+    "Artemis three"
+   ]
+  },
+  {
+   "id": "artemis_i",
+   "type": "mission",
+   "group": "mission",
+   "name": "Artemis I",
+   "kind": "mission",
+   "aliases": [
+    "Artemis 1",
+    "Artemis one"
+   ]
+  },
+  {
+   "id": "apollo_11",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 11",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_12",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 12",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_14",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 14",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_15",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 15",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_16",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 16",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_17",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 17",
+   "kind": "mission"
+  },
+  {
+   "id": "surveyor_1",
+   "type": "mission",
+   "group": "mission",
+   "name": "Surveyor 1",
+   "kind": "mission"
+  },
+  {
+   "id": "surveyor_3",
+   "type": "mission",
+   "group": "mission",
+   "name": "Surveyor 3",
+   "kind": "mission"
+  },
+  {
+   "id": "surveyor_5",
+   "type": "mission",
+   "group": "mission",
+   "name": "Surveyor 5",
+   "kind": "mission"
+  },
+  {
+   "id": "surveyor_6",
+   "type": "mission",
+   "group": "mission",
+   "name": "Surveyor 6",
+   "kind": "mission"
+  },
+  {
+   "id": "surveyor_7",
+   "type": "mission",
+   "group": "mission",
+   "name": "Surveyor 7",
+   "kind": "mission"
+  },
+  {
+   "id": "ranger_7",
+   "type": "mission",
+   "group": "mission",
+   "name": "Ranger 7",
+   "kind": "mission"
+  },
+  {
+   "id": "ranger_8",
+   "type": "mission",
+   "group": "mission",
+   "name": "Ranger 8",
+   "kind": "mission"
+  },
+  {
+   "id": "ranger_9",
+   "type": "mission",
+   "group": "mission",
+   "name": "Ranger 9",
+   "kind": "mission"
+  },
+  {
+   "id": "apollo_13",
+   "type": "mission",
+   "group": "mission",
+   "name": "Apollo 13",
+   "kind": "mission"
+  },
+  {
+   "id": "lunar_prospector",
+   "type": "mission",
+   "group": "mission",
+   "name": "Lunar Prospector",
+   "kind": "mission"
+  },
+  {
+   "id": "lcross",
+   "type": "mission",
+   "group": "mission",
+   "name": "LCROSS",
+   "kind": "mission",
+   "aliases": [
+    "L cross"
+   ]
+  },
+  {
+   "id": "grail",
+   "type": "mission",
+   "group": "mission",
+   "name": "GRAIL",
+   "kind": "mission"
+  },
+  {
+   "id": "ladee",
+   "type": "mission",
+   "group": "mission",
+   "name": "LADEE",
+   "kind": "mission",
+   "aliases": [
+    "laddie"
+   ]
+  },
+  {
+   "id": "luna_2",
+   "type": "mission",
+   "group": "mission",
+   "name": "Luna 2",
+   "kind": "mission"
+  },
+  {
+   "id": "luna_17",
+   "type": "mission",
+   "group": "mission",
+   "name": "Luna 17",
+   "kind": "mission"
+  },
+  {
+   "id": "chang_e_3",
+   "type": "mission",
+   "group": "mission",
+   "name": "Chang'e 3",
+   "kind": "mission",
+   "aliases": [
+    "Chang e 3",
+    "Changee 3"
+   ]
+  },
+  {
+   "id": "orion",
+   "type": "spacecraft",
+   "group": "spacecraft",
+   "name": "Orion",
+   "kind": "spacecraft",
+   "aliases": [
+    "Orion capsule",
+    "Orion spacecraft"
+   ]
+  },
+  {
+   "id": "sls",
+   "type": "spacecraft",
+   "group": "spacecraft",
+   "name": "SLS",
+   "kind": "spacecraft",
+   "aliases": [
+    "S L S",
+    "Space Launch System"
+   ]
+  },
+  {
+   "id": "lunar_module",
+   "type": "spacecraft",
+   "group": "spacecraft",
+   "name": "Lunar Module",
+   "kind": "spacecraft",
+   "aliases": [
+    "L M",
+    "lunar lander"
+   ]
+  },
+  {
+   "id": "lunar_roving_vehicle",
+   "type": "spacecraft",
+   "group": "spacecraft",
+   "name": "Lunar Roving Vehicle",
+   "kind": "spacecraft",
+   "aliases": [
+    "moon buggy",
+    "L R V"
+   ]
+  },
+  {
+   "id": "integrity_spacecraft",
+   "type": "spacecraft",
+   "group": "spacecraft",
+   "name": "Integrity spacecraft",
+   "kind": "spacecraft",
+   "aliases": [
+    "the Integrity capsule"
+   ]
+  },
+  {
+   "id": "apollo11_lm_eagle",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 11 Lunar Module Eagle",
+   "kind": "spacecraft",
+   "aliases": [
+    "Eagle",
+    "Apollo 11 lander",
+    "Apollo 11 lunar module",
+    "Apollo 11 LM",
+    "Apollo eleven lander",
+    "Apollo 11",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo11_lm_eagle"
+   },
+   "related": [
+    "apollo_11",
+    "buzz_aldrin",
+    "neil_armstrong"
+   ]
+  },
+  {
+   "id": "apollo12_lm_intrepid",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 12 Lunar Module Intrepid",
+   "kind": "spacecraft",
+   "aliases": [
+    "Intrepid",
+    "Apollo 12 lander",
+    "Apollo 12 lunar module",
+    "Apollo 12 LM",
+    "Apollo twelve lander",
+    "Apollo 12",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo12_lm_intrepid"
+   },
+   "related": [
+    "alan_bean",
+    "apollo_12",
+    "pete_conrad"
+   ]
+  },
+  {
+   "id": "apollo14_lm_antares",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 14 Lunar Module Antares",
+   "kind": "spacecraft",
+   "aliases": [
+    "Antares",
+    "Apollo 14 lander",
+    "Apollo 14 lunar module",
+    "Apollo 14 LM",
+    "Apollo fourteen lander",
+    "Apollo 14",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo14_lm_antares"
+   },
+   "related": [
+    "alan_shepard",
+    "apollo_14",
+    "edgar_mitchell"
+   ]
+  },
+  {
+   "id": "apollo15_lm_falcon",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 15 Lunar Module Falcon",
+   "kind": "spacecraft",
+   "aliases": [
+    "Falcon",
+    "Apollo 15 lander",
+    "Apollo 15 lunar module",
+    "Apollo 15 LM",
+    "Apollo fifteen lander",
+    "Apollo 15",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo15_lm_falcon"
+   },
+   "related": [
+    "apollo_15",
+    "david_scott",
+    "james_irwin"
+   ],
+   "lessons": [
+    "gravity"
+   ]
+  },
+  {
+   "id": "apollo16_lm_orion",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 16 Lunar Module Orion",
+   "kind": "spacecraft",
+   "aliases": [
+    "Orion lander",
+    "Apollo 16 lander",
+    "Apollo 16 lunar module",
+    "Apollo 16 LM",
+    "Apollo sixteen lander",
+    "Apollo 16",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo16_lm_orion"
+   },
+   "related": [
+    "apollo_16",
+    "charles_duke",
+    "john_young"
+   ]
+  },
+  {
+   "id": "apollo17_lm_challenger",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 17 Lunar Module Challenger",
+   "kind": "spacecraft",
+   "aliases": [
+    "Challenger",
+    "Apollo 17 lander",
+    "Apollo 17 lunar module",
+    "Apollo 17 LM",
+    "Apollo seventeen lander",
+    "Apollo 17",
+    "descent stage"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo17_lm_challenger"
+   },
+   "related": [
+    "apollo_17",
+    "eugene_cernan",
+    "harrison_schmitt"
+   ]
+  },
+  {
+   "id": "apollo15_lrv",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 15 Lunar Roving Vehicle",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 15 rover",
+    "LRV 1",
+    "LRV-1",
+    "Apollo fifteen rover",
+    "Apollo 15 moon buggy"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo15_lrv"
+   },
+   "related": [
+    "apollo_15",
+    "david_scott",
+    "james_irwin"
+   ]
+  },
+  {
+   "id": "apollo16_lrv",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 16 Lunar Roving Vehicle",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 16 rover",
+    "LRV 2",
+    "LRV-2",
+    "Apollo sixteen rover",
+    "Apollo 16 moon buggy"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo16_lrv"
+   },
+   "related": [
+    "apollo_16",
+    "charles_duke",
+    "john_young"
+   ]
+  },
+  {
+   "id": "apollo17_lrv",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 17 Lunar Roving Vehicle",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 17 rover",
+    "LRV 3",
+    "LRV-3",
+    "Apollo seventeen rover",
+    "Apollo 17 moon buggy"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo17_lrv"
+   },
+   "related": [
+    "apollo_17",
+    "eugene_cernan",
+    "harrison_schmitt"
+   ]
+  },
+  {
+   "id": "apollo11_lrrr",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 11 Laser Ranging Retroreflector",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 11 mirror",
+    "Apollo 11 laser reflector",
+    "Apollo 11 retroreflector",
+    "LRRR"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo11_lrrr"
+   },
+   "related": [
+    "apollo_11",
+    "buzz_aldrin",
+    "neil_armstrong"
+   ]
+  },
+  {
+   "id": "apollo15_lrrr",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 15 Laser Ranging Retroreflector",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 15 mirror",
+    "Apollo 15 laser reflector",
+    "Apollo 15 retroreflector"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo15_lrrr"
+   },
+   "related": [
+    "apollo_15",
+    "david_scott",
+    "james_irwin"
+   ]
+  },
+  {
+   "id": "apollo12_alsep",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 12 ALSEP science station",
+   "kind": "spacecraft",
+   "aliases": [
+    "Apollo 12 al sep",
+    "Apollo 12 al sep science station",
+    "Apollo 12 ALSEP",
+    "Apollo 12 science station",
+    "Apollo 12 seismometer"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo12_alsep"
+   },
+   "related": [
+    "alan_bean",
+    "apollo_12",
+    "pete_conrad"
+   ]
+  },
+  {
+   "id": "apollo16_far_uv_camera",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 16 Far Ultraviolet Camera/Spectrograph",
+   "kind": "spacecraft",
+   "aliases": [
+    "Moon telescope",
+    "Apollo 16 telescope",
+    "UV camera",
+    "Carruthers camera"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo16_far_uv_camera"
+   },
+   "related": [
+    "apollo_16",
+    "charles_duke",
+    "john_young"
+   ]
+  },
+  {
+   "id": "apollo15_fallen_astronaut",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Fallen Astronaut memorial",
+   "kind": "site",
+   "aliases": [
+    "Fallen Astronaut",
+    "Moon memorial",
+    "Apollo 15 plaque",
+    "Apollo 15 memorial"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo15_fallen_astronaut"
+   },
+   "related": [
+    "apollo_15",
+    "david_scott",
+    "james_irwin"
+   ]
+  },
+  {
+   "id": "surveyor1",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Surveyor 1",
+   "kind": "spacecraft",
+   "aliases": [
+    "Surveyor one",
+    "Surveyor I"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "surveyor1"
+   },
+   "related": [
+    "surveyor1"
+   ]
+  },
+  {
+   "id": "surveyor3",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Surveyor 3",
+   "kind": "spacecraft",
+   "aliases": [
+    "Surveyor three",
+    "Surveyor III"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "surveyor3"
+   },
+   "related": [
+    "surveyor3"
+   ],
+   "lessons": [
+    "history"
+   ]
+  },
+  {
+   "id": "surveyor5",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Surveyor 5",
+   "kind": "spacecraft",
+   "aliases": [
+    "Surveyor five",
+    "Surveyor V"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "surveyor5"
+   },
+   "related": [
+    "surveyor5"
+   ]
+  },
+  {
+   "id": "surveyor6",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Surveyor 6",
+   "kind": "spacecraft",
+   "aliases": [
+    "Surveyor six",
+    "Surveyor VI"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "surveyor6"
+   },
+   "related": [
+    "surveyor6"
+   ]
+  },
+  {
+   "id": "surveyor7",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Surveyor 7",
+   "kind": "spacecraft",
+   "aliases": [
+    "Surveyor seven",
+    "Surveyor VII"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "surveyor7"
+   },
+   "related": [
+    "surveyor7"
+   ]
+  },
+  {
+   "id": "ranger7_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Ranger 7 impact site",
+   "kind": "site",
+   "aliases": [
+    "Ranger 7",
+    "Ranger seven",
+    "Ranger VII"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "ranger7_impact"
+   },
+   "related": [
+    "ranger_7"
+   ]
+  },
+  {
+   "id": "ranger8_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Ranger 8 impact site",
+   "kind": "site",
+   "aliases": [
+    "Ranger 8",
+    "Ranger eight",
+    "Ranger VIII"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "ranger8_impact"
+   },
+   "related": [
+    "ranger_8"
+   ]
+  },
+  {
+   "id": "ranger9_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Ranger 9 impact site",
+   "kind": "site",
+   "aliases": [
+    "Ranger 9",
+    "Ranger nine",
+    "Ranger IX"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "ranger9_impact"
+   },
+   "related": [
+    "ranger_9"
+   ]
+  },
+  {
+   "id": "apollo13_sivb_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 13 S-IVB rocket stage impact site",
+   "kind": "site",
+   "aliases": [
+    "Apollo 13 S 4 B",
+    "Apollo 13 S four B",
+    "Apollo 13 S 4 B rocket stage impact site",
+    "Apollo 13 S four B rocket stage impact site",
+    "Apollo 13 S-IVB",
+    "Apollo 13 rocket",
+    "Apollo 13 third stage",
+    "Apollo 13 booster"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo13_sivb_impact"
+   },
+   "related": [
+    "apollo_13"
+   ]
+  },
+  {
+   "id": "apollo14_sivb_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 14 S-IVB rocket stage impact site",
+   "kind": "site",
+   "aliases": [
+    "Apollo 14 S 4 B",
+    "Apollo 14 S four B",
+    "Apollo 14 S 4 B rocket stage impact site",
+    "Apollo 14 S four B rocket stage impact site",
+    "Apollo 14 S-IVB",
+    "Apollo 14 rocket",
+    "Apollo 14 third stage",
+    "Apollo 14 booster"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo14_sivb_impact"
+   },
+   "related": [
+    "apollo_14"
+   ]
+  },
+  {
+   "id": "apollo15_sivb_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 15 S-IVB rocket stage impact site",
+   "kind": "site",
+   "aliases": [
+    "Apollo 15 S 4 B",
+    "Apollo 15 S four B",
+    "Apollo 15 S 4 B rocket stage impact site",
+    "Apollo 15 S four B rocket stage impact site",
+    "Apollo 15 S-IVB",
+    "Apollo 15 rocket",
+    "Apollo 15 third stage",
+    "Apollo 15 booster"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo15_sivb_impact"
+   },
+   "related": [
+    "apollo_15"
+   ]
+  },
+  {
+   "id": "apollo16_sivb_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 16 S-IVB rocket stage impact site",
+   "kind": "site",
+   "aliases": [
+    "Apollo 16 S 4 B",
+    "Apollo 16 S four B",
+    "Apollo 16 S 4 B rocket stage impact site",
+    "Apollo 16 S four B rocket stage impact site",
+    "Apollo 16 S-IVB",
+    "Apollo 16 rocket",
+    "Apollo 16 third stage",
+    "Apollo 16 booster"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo16_sivb_impact"
+   },
+   "related": [
+    "apollo_16"
+   ]
+  },
+  {
+   "id": "apollo17_sivb_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Apollo 17 S-IVB rocket stage impact site",
+   "kind": "site",
+   "aliases": [
+    "Apollo 17 S 4 B",
+    "Apollo 17 S four B",
+    "Apollo 17 S 4 B rocket stage impact site",
+    "Apollo 17 S four B rocket stage impact site",
+    "Apollo 17 S-IVB",
+    "Apollo 17 rocket",
+    "Apollo 17 third stage",
+    "Apollo 17 booster"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "apollo17_sivb_impact"
+   },
+   "related": [
+    "apollo_17"
+   ]
+  },
+  {
+   "id": "lunar_prospector_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Lunar Prospector impact site",
+   "kind": "site",
+   "aliases": [
+    "Lunar Prospector"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "lunar_prospector_impact"
+   },
+   "related": [
+    "lunar_prospector"
+   ]
+  },
+  {
+   "id": "lcross_centaur_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "LCROSS Centaur rocket impact site",
+   "kind": "site",
+   "aliases": [
+    "L cross rocket",
+    "L cross Centaur",
+    "L cross Centaur rocket",
+    "L cross Centaur rocket impact site",
+    "LCROSS Centaur rocket",
+    "Centaur",
+    "LCROSS rocket",
+    "Centaur rocket"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "lcross_centaur_impact"
+   },
+   "related": [
+    "lcross"
+   ],
+   "lessons": [
+    "life"
+   ]
+  },
+  {
+   "id": "lcross_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "LCROSS Shepherding Spacecraft impact site",
+   "kind": "site",
+   "aliases": [
+    "L cross",
+    "L cross spacecraft",
+    "L cross Shepherding Spacecraft",
+    "L cross Shepherding Spacecraft impact site",
+    "LCROSS Shepherding Spacecraft",
+    "LCROSS",
+    "LCROSS spacecraft"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "lcross_impact"
+   },
+   "related": [
+    "lcross"
+   ],
+   "lessons": [
+    "life"
+   ]
+  },
+  {
+   "id": "grail_ebb_flow_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "GRAIL Ebb and Flow impact site",
+   "kind": "site",
+   "aliases": [
+    "grail",
+    "grail twins",
+    "grail Ebb and Flow",
+    "Ebb and Flow",
+    "Sally Ride impact site",
+    "Sally K. Ride Impact Site"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "grail_ebb_flow_impact"
+   },
+   "related": [
+    "grail"
+   ]
+  },
+  {
+   "id": "ladee_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "LADEE impact site",
+   "kind": "site",
+   "aliases": [
+    "laddie",
+    "laddie spacecraft",
+    "laddie impact site",
+    "LADEE",
+    "LADEE spacecraft"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "ladee_impact"
+   },
+   "related": [
+    "ladee"
+   ]
+  },
+  {
+   "id": "luna2_impact",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Luna 2 impact site",
+   "kind": "site",
+   "aliases": [
+    "Luna 2",
+    "Luna two"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "luna2_impact"
+   },
+   "related": [
+    "luna_2"
+   ]
+  },
+  {
+   "id": "lunokhod1",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Lunokhod 1 rover",
+   "kind": "spacecraft",
+   "aliases": [
+    "Lunokhod 1",
+    "Lunokhod one",
+    "Luna 17 rover",
+    "Soviet rover"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "lunokhod1"
+   },
+   "related": [
+    "luna_17"
+   ]
+  },
+  {
+   "id": "change3_lander",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Chang'e 3 lander",
+   "kind": "spacecraft",
+   "aliases": [
+    "Chang e 3",
+    "Changee 3",
+    "Chang e three",
+    "Changee three",
+    "Chang e 3 lander",
+    "Changee 3 lander",
+    "Chang'e 3",
+    "Chang'e three"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "change3_lander"
+   },
+   "related": [
+    "chang_e_3"
+   ]
+  },
+  {
+   "id": "yutu_rover",
+   "type": "hardware",
+   "group": "hardware",
+   "name": "Yutu rover",
+   "kind": "spacecraft",
+   "aliases": [
+    "Yutu",
+    "Jade Rabbit",
+    "Chinese rover"
+   ],
+   "ref": {
+    "source": "artifacts.json",
+    "id": "yutu_rover"
+   },
+   "related": [
+    "chang_e_3"
+   ]
+  },
+  {
+   "id": "neil_armstrong",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Neil Armstrong",
+   "kind": "crew",
+   "aliases": [
+    "Armstrong"
+   ]
+  },
+  {
+   "id": "buzz_aldrin",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Buzz Aldrin",
+   "kind": "crew",
+   "aliases": [
+    "Edwin Aldrin",
+    "Aldrin"
+   ]
+  },
+  {
+   "id": "pete_conrad",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Pete Conrad",
+   "kind": "crew",
+   "aliases": [
+    "Charles Conrad",
+    "Conrad"
+   ]
+  },
+  {
+   "id": "alan_bean",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Alan Bean",
+   "kind": "crew",
+   "aliases": [
+    "Bean"
+   ]
+  },
+  {
+   "id": "alan_shepard",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Alan Shepard",
+   "kind": "crew",
+   "aliases": [
+    "Shepard"
+   ]
+  },
+  {
+   "id": "edgar_mitchell",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Edgar Mitchell",
+   "kind": "crew",
+   "aliases": [
+    "Mitchell"
+   ]
+  },
+  {
+   "id": "david_scott",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "David Scott",
+   "kind": "crew",
+   "aliases": [
+    "Scott"
+   ],
+   "lessons": [
+    "gravity"
+   ]
+  },
+  {
+   "id": "james_irwin",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "James Irwin",
+   "kind": "crew",
+   "aliases": [
+    "Irwin"
+   ]
+  },
+  {
+   "id": "john_young",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "John Young",
+   "kind": "crew",
+   "aliases": [
+    "Young"
+   ],
+   "lessons": [
+    "history"
+   ]
+  },
+  {
+   "id": "charles_duke",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Charles Duke",
+   "kind": "crew",
+   "aliases": [
+    "Duke"
+   ]
+  },
+  {
+   "id": "eugene_cernan",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Eugene Cernan",
+   "kind": "crew",
+   "aliases": [
+    "Cernan"
+   ]
+  },
+  {
+   "id": "harrison_schmitt",
+   "type": "crew",
+   "group": "crew_past",
+   "name": "Harrison Schmitt",
+   "kind": "crew",
+   "aliases": [
+    "Schmitt"
+   ]
+  },
+  {
+   "id": "load_shields",
+   "type": "control",
+   "group": "control",
+   "name": "Shields",
+   "kind": "product",
+   "aliases": [
+    "radiation shields",
+    "shield",
+    "force field",
+    "protection"
+   ],
+   "ear": false,
+   "states": [
+    "storm",
+    "dose_high"
+   ],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "shields"
+   }
+  },
+  {
+   "id": "load_life_support",
+   "type": "control",
+   "group": "control",
+   "name": "Life support",
+   "kind": "product",
+   "aliases": [
+    "oxygen",
+    "the air",
+    "air"
+   ],
+   "ear": false,
+   "states": [
+    "low_oxygen"
+   ],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "life_support"
+   }
+  },
+  {
+   "id": "load_greenhouse",
+   "type": "control",
+   "group": "control",
+   "name": "Greenhouse",
+   "kind": "product",
+   "aliases": [
+    "plants",
+    "garden",
+    "veggies",
+    "food"
+   ],
+   "ear": false,
+   "states": [],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "greenhouse"
+   }
+  },
+  {
+   "id": "load_science",
+   "type": "control",
+   "group": "control",
+   "name": "Science",
+   "kind": "product",
+   "aliases": [
+    "experiments",
+    "the lab",
+    "instruments"
+   ],
+   "ear": false,
+   "states": [],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "science"
+   }
+  },
+  {
+   "id": "load_rover",
+   "type": "control",
+   "group": "control",
+   "name": "Rover",
+   "kind": "product",
+   "aliases": [
+    "moon buggy",
+    "buggy",
+    "the rover"
+   ],
+   "ear": false,
+   "states": [],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "rover"
+   }
+  },
+  {
+   "id": "load_comms",
+   "type": "control",
+   "group": "control",
+   "name": "Comms",
+   "kind": "product",
+   "aliases": [
+    "radio",
+    "antenna",
+    "the dish"
+   ],
+   "ear": false,
+   "states": [
+    "comm_closed"
+   ],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "comms"
+   }
+  },
+  {
+   "id": "load_heaters",
+   "type": "control",
+   "group": "control",
+   "name": "Heaters",
+   "kind": "product",
+   "aliases": [
+    "heating",
+    "heat"
+   ],
+   "ear": false,
+   "states": [
+    "dark"
+   ],
+   "ref": {
+    "source": "mission/nlu.py LOADS",
+    "id": "heaters"
+   }
+  },
+  {
+   "id": "unit_percent",
+   "type": "unit",
+   "group": "unit",
+   "name": "percent",
+   "kind": "product",
+   "aliases": [
+    "%",
+    "per cent"
+   ],
+   "ear": false
+  },
+  {
+   "id": "unit_hours",
+   "type": "unit",
+   "group": "unit",
+   "name": "hours",
+   "kind": "product",
+   "aliases": [
+    "hour",
+    "h"
+   ],
+   "ear": false
+  },
+  {
+   "id": "unit_msv",
+   "type": "unit",
+   "group": "unit",
+   "name": "millisieverts",
+   "kind": "product",
+   "aliases": [
+    "mSv",
+    "millisievert"
+   ],
+   "ear": false
+  },
+  {
+   "id": "lesson_moon",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Know your Moon",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "moon"
+   },
+   "related": [
+    "shackleton",
+    "tranquillitatis"
+   ]
+  },
+  {
+   "id": "lesson_phases",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Phases and eclipses",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "phases"
+   },
+   "related": [
+    "imbrium"
+   ]
+  },
+  {
+   "id": "lesson_power",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Power from the Sun",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "power"
+   },
+   "related": [
+    "malapert",
+    "shackleton"
+   ]
+  },
+  {
+   "id": "lesson_comms",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Talk on the radio",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "comms"
+   },
+   "related": [
+    "capcom",
+    "malapert"
+   ]
+  },
+  {
+   "id": "lesson_radiation",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Radiation and storms",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "radiation"
+   },
+   "related": [
+    "houston"
+   ]
+  },
+  {
+   "id": "lesson_life",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Air, water and ice",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "life"
+   },
+   "related": [
+    "cabeus",
+    "lcross_centaur_impact",
+    "lcross_impact",
+    "malapert",
+    "nasa",
+    "shackleton"
+   ]
+  },
+  {
+   "id": "lesson_gravity",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Moon gravity and dust",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "gravity"
+   },
+   "related": [
+    "apollo15_lm_falcon",
+    "david_scott"
+   ]
+  },
+  {
+   "id": "lesson_history",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Lessons from Apollo",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "history"
+   },
+   "related": [
+    "houston",
+    "integrity",
+    "john_young",
+    "ohm",
+    "orientale",
+    "surveyor3"
+   ]
+  },
+  {
+   "id": "lesson_checkride",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Check ride",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "checkride"
+   },
+   "related": [
+    "houston"
+   ]
+  }
+ ]
+}
