@@ -12,8 +12,19 @@ const YT_REFERER = "https://ai.whissle.outpostluna/";
 
 // The player's own art, by path only (measured in Electron 44, desktop/main/permissions.test.js): the YouTube logo and
 // control icons, its Roboto font, and the channel avatar. Without them the video still plays, but unbranded.
-const YT_ASSETS = [["www.gstatic.com", "/youtube/"], ["fonts.gstatic.com", "/s/i/youtube_"], ["fonts.gstatic.com", "/s/roboto/"],
+const YT_ASSETS = [["www.gstatic.com", "/youtube/"], ["ssl.gstatic.com", "/docs/picker/images/youtube_"], ["fonts.gstatic.com", "/s/i/youtube_"], ["fonts.gstatic.com", "/s/roboto/"],
   ["yt3.ggpht.com", "/"]];
+
+// [video fix 0.3.11] The embed's BotGuard (anti-abuse attestation) script: https://www.google.com/js/th/<hash>.js. When it
+// is blocked, YouTube answers with "Sign in to confirm you're not a bot" and never plays (measured in Electron 44.10,
+// 2026-11-17; no IFrame API error is sent). Allowed by path and only as a script: never a page, a frame or anything
+// else on www.google.com.
+// Its answer goes to Google's Web Anti-Abuse service (jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/Create and
+// GenerateIT), allowed by path and only as xhr / fetch.
+const YT_BOTGUARD = ["www.google.com", "/js/th/"];
+const YT_WAA = ["jnn-pa.googleapis.com", "/$rpc/google.internal.waa.v1.Waa/"];
+function isBotGuard(u) { return hostOf(u) === YT_BOTGUARD[0] && pathOf(u).startsWith(YT_BOTGUARD[1]) && /\.js$/.test(pathOf(u)); }
+function isWaa(u) { return hostOf(u) === YT_WAA[0] && pathOf(u).startsWith(YT_WAA[1]); }
 
 function hostOf(u) { try { const x = new URL(u); return x.protocol === "https:" ? x.hostname : ""; } catch { return ""; } }
 function pathOf(u) { try { return new URL(u).pathname; } catch { return ""; } }
@@ -28,6 +39,8 @@ function isYouTubeHost(u) {
  * so a click inside the player can never turn the app into YouTube (links open behind the grown-up gate instead).
  */
 function allowYouTube(u, resourceType) {
+  if (isBotGuard(u)) return resourceType === "script";
+  if (isWaa(u)) return resourceType === "xhr" || resourceType === "fetch";
   if (!isYouTubeHost(u)) return false;
   if (resourceType === "mainFrame") return false;
   if (resourceType === "subFrame") return hostOf(u) === YT_FRAME && pathOf(u).startsWith("/embed/");

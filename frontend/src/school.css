@@ -343,6 +343,7 @@ html[data-motion="reduce"] .gd-mark.is-pulse .gd-ring{animation:none}
 .a-foot #aPrepSkip{margin-right:auto}
 /* [diy videos] "Watch how" (online only): the video's length, and whose it is (a non-NASA one says so) */
 .a-prep-videos{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.a-prep-start{margin-top:var(--space-3)}   /* [video fix 0.3.11] a Try-at-home lesson's "Watch how" at its start */
 .a-prep-video{display:inline-grid;grid-template-columns:auto 1fr;column-gap:var(--space-2);align-items:center;text-align:left}
 .a-prep-video small{color:var(--color-text-2);font-weight:var(--weight-regular, 400)}
 .a-prep-video .a-prep-src{grid-column:2;font-size:var(--text-xs, .78rem)}

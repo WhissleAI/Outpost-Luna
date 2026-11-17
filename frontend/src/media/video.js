@@ -19,7 +19,7 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, stallWatch, YT_STALL_MS } from "./commands.js";
 
 export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc };
 
@@ -124,11 +124,13 @@ export async function openVideo(id, { context = "" } = {}) {
   const v = await getVideo(id);
   const status = v ? await isAvailable(id) : "offline";
   const fb = v && v.fallback ? await getVideo(v.fallback) : null;
-  const fbOk = fb ? (await isAvailable(fb.id)) === "cached" : false;
-  return new Promise(resolve => run({ v: v || { id, title: "Video", credit: "", duration_s: 0, missing: true }, status, fb: fbOk ? fb : null, context, resolve }));
+  // [video fix 0.3.11] the fallback is offered when it can play now: saved, or (on the "won't play here" card, which
+  // only shows while we are online) streamed and saved on its first play
+  const fbStatus = fb ? await isAvailable(fb.id) : "offline";
+  return new Promise(resolve => run({ v: v || { id, title: "Video", credit: "", duration_s: 0, missing: true }, status, fb: fbStatus !== "offline" ? fb : null, fbCached: fbStatus === "cached", context, resolve }));
 }
 
-function run({ v, status, fb, context, resolve }) {
+function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
   shell.stopOthers();
   const dlg = dialogEl(), before = document.activeElement;
   let seconds = 0, ended = false, closed = false, extra = {}, detach = () => {}, started = false;
@@ -173,7 +175,18 @@ function run({ v, status, fb, context, resolve }) {
     el.addEventListener("play", () => { paint(); if (!started) { started = true; if (floor) floor.mediaPlayback("start", "video:" + item.id); } });
     el.addEventListener("pause", paint);
     el.addEventListener("ended", () => { ended = true; paint(); });
-    el.addEventListener("error", () => { if (!closed && player && player.el === el) failed(item.id); });   // not saved and the network went: the card
+    // not saved and the network went: the card. [video fix 0.3.11] One quiet retry first when nothing has played yet:
+    // the first play of a NASA file is cached in the background, so a second ask a moment later usually plays it.
+    let retried = false;
+    el.addEventListener("error", () => {
+      if (closed || !player || player.el !== el) return;
+      if (!retried && !started) {
+        retried = true;
+        setTimeout(() => { if (closed || !player || player.el !== el) return; el.src = item.play_url + (item.play_url.includes("?") ? "&" : "?") + "retry=1"; el.load(); el.play().catch(() => paint()); }, 1500);
+        return;
+      }
+      failed(item.id);
+    });
     el.addEventListener("click", () => (el.paused ? el.play() : el.pause()));
     pp.onclick = () => (el.paused || el.ended ? el.play() : el.pause());
     const cc = bar.querySelector("[data-cc]"); if (cc) cc.onclick = () => showCaptions(cc.getAttribute("aria-pressed") !== "true");
@@ -204,7 +217,16 @@ function run({ v, status, fb, context, resolve }) {
     let state = -1, last = 0, ready = false, heard = false;
     // the frame never answered (no network, or blocked): after a while, ask what is wrong and show the right card
     const quiet = setTimeout(() => { if (!heard) failed(item.id, { onlyOffline: true }); }, 15000);
-    const send = (func, args = []) => { try { fr.contentWindow.postMessage(JSON.stringify({ event: "command", func, args, id: 1, channel: "widget" }), YT_ORIGIN); } catch (e) { /* */ } };
+    // [video fix 0.3.11] the embed answered but never plays (YouTube's "confirm you're not a bot" card, no onError):
+    // after YT_STALL_MS from a play request, "This video won't play here" with the NASA fallback
+    const watch = stallWatch(() => {
+      if (closed || player !== self) return;
+      extra.error = extra.error || "stalled"; dlg.dataset.yterror = "stalled";
+      failed(item.id);
+    });
+    watch.play(YT_STALL_MS + 8000);   // from mount: the frame's own load, then onReady's playVideo re-arms it
+    const send0 = (func, args = []) => { try { fr.contentWindow.postMessage(JSON.stringify({ event: "command", func, args, id: 1, channel: "widget" }), YT_ORIGIN); } catch (e) { /* */ } };
+    const send = (func, args = []) => { if (func === "playVideo") watch.play(); send0(func, args); };
     const paint = () => { const p = state === 1 || state === 3; pp.innerHTML = `${icon(p ? "pause" : "play")}<span>${p ? "Pause" : "Play"}</span>`; pp.setAttribute("aria-label", p ? "Pause" : "Play"); };
     const onMsg = e => {
       if (e.origin !== YT_ORIGIN || e.source !== fr.contentWindow) return;
@@ -216,7 +238,7 @@ function run({ v, status, fb, context, resolve }) {
       const info = m.info && typeof m.info === "object" ? m.info : {};
       const s = m.event === "onStateChange" ? m.info : info.playerState;
       if (typeof s === "number" && s !== state) {
-        state = s; paint();
+        state = s; paint(); watch.state(s);
         if (s === 0) ended = true;
         if (s === 1 && !started) { started = true; if (floor) floor.mediaPlayback("start", "video:" + item.id); }
         dlg.dataset.ytstate = String(s);
@@ -236,13 +258,14 @@ function run({ v, status, fb, context, resolve }) {
     // the top bar's Mute while the embed plays: the IFrame API's mute / unMute (a silent run stays muted)
     const onYtMute = e => send((e.detail && e.detail.muted) || (window.__outpost && window.__outpost.muteVideos) ? "mute" : "unMute");
     addEventListener("outpost:mute", onYtMute);
-    return {
+    const self = {
       play: () => send("playVideo"), pause: () => send("pauseVideo"), toggle: () => send(state === 1 || state === 3 ? "pauseVideo" : "playVideo"),
       duck: l => send("setVolume", [Math.round(l * 100)]), unduck: () => send("setVolume", [100]),
-      dispose: () => { clearTimeout(quiet); removeEventListener("message", onMsg); removeEventListener("outpost:mute", onYtMute); fr.src = "about:blank"; },
+      dispose: () => { clearTimeout(quiet); watch.dispose(); removeEventListener("message", onMsg); removeEventListener("outpost:mute", onYtMute); fr.src = "about:blank"; },
       get paused() { return state !== 1 && state !== 3; }, get ended() { return state === 0; },
       text: () => "",
     };
+    return self;
   }
 
   /** The player failed: the offline card only when we really are offline, else "This video won't play here". */
@@ -260,7 +283,9 @@ function run({ v, status, fb, context, resolve }) {
     if (!stage || !bar) return;   // never write anywhere but inside our own overlay
     if (kind === "offline") extra.offline = true; else { delete extra.offline; extra.failed = true; }
     dlg.dataset.card = kind;
-    const poster = item.poster_src || (fb && fb.poster_src);
+    // offline, only a saved fallback can play; "won't play here" (we are online) may stream it
+    const fb = fbAll && (kind !== "offline" || fbCached) && fbAll.id !== item.id ? fbAll : null;
+    const poster = item.poster_src || (fbAll && fbAll.poster_src);
     stage.innerHTML = `<div class="vid-off" role="status">
         ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}" onerror="this.remove()">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
         <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}${context === "lesson" ? ` ${esc(NO_PLAY_LESSON)}` : ""}</p></div>`;

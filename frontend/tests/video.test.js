@@ -136,3 +136,49 @@ test("[vidfix] the overlay: thumbs down closes it; a failed player is not called
   assert.notEqual(C.NO_PLAY_LINE, C.OFFLINE_LINE);
   assert.doesNotMatch(C.NO_PLAY_LINE, /internet/i);
 });
+
+function fakeTimers() {
+  let now = 0, id = 0; const q = new Map();
+  return { setTimeout: (f, ms) => { q.set(++id, [now + ms, f]); return id; }, clearTimeout: k => q.delete(k),
+    advance(ms) { now += ms; for (const [k, [at, f]] of [...q]) if (at <= now) { q.delete(k); f(); } } };
+}
+
+test("[video fix 0.3.11] YouTube watchdog: an embed that takes Play but never plays (the bot card) is caught once", () => {
+  const T = fakeTimers(); let stalls = 0;
+  const w = C.stallWatch(() => stalls++, { ms: 12000, timers: T });
+  w.play(); T.advance(11000); assert.equal(stalls, 0);
+  w.state(3); T.advance(2000); assert.equal(stalls, 1, "buffering forever counts as stuck");
+  w.play(); T.advance(20000); assert.equal(stalls, 1, "fires once");
+});
+
+test("[video fix 0.3.11] YouTube watchdog: playing, or the kid pausing, never trips it", () => {
+  const T = fakeTimers(); let stalls = 0;
+  const w = C.stallWatch(() => stalls++, { ms: 12000, timers: T });
+  w.play(); T.advance(5000); w.state(1); T.advance(60000); assert.equal(stalls, 0);
+  w.play(); T.advance(60000); assert.equal(stalls, 0, "once it has played, the watch is over");
+  const p = C.stallWatch(() => stalls++, { ms: 12000, timers: T });
+  p.play(); T.advance(3000); p.state(2); T.advance(60000); assert.equal(stalls, 0, "paused before it played: disarmed");
+  p.play(); T.advance(12000); assert.equal(stalls, 1, "the next Play re-arms it");
+  const d = C.stallWatch(() => stalls++, { ms: 12000, timers: T });
+  d.play(); d.dispose(); T.advance(60000); assert.equal(stalls, 1, "closed: never fires");
+});
+
+test("[video fix 0.3.11] the overlay wires the watchdog, offers the NASA fallback on 'won't play here', retries a file once", async () => {
+  const fs = await import("node:fs");
+  const s = fs.readFileSync(new URL("../src/media/video.js", import.meta.url), "utf8");
+  assert.match(s, /stallWatch\(/);
+  assert.match(s, /if \(func === "playVideo"\) watch\.play\(\)/, "every play request arms the watchdog");
+  assert.match(s, /watch\.state\(s\)/);
+  assert.match(s, /kind !== "offline" \|\| fbCached/, "online: a fallback that streams is offered; offline only a saved one");
+  assert.match(s, /retried = true/);
+});
+
+test("[video fix 0.3.11] a lesson with a Try-at-home task shows its Watch how videos at the start (Oreo, 0.3.10 lost it)", async () => {
+  const fs = await import("node:fs");
+  const s = fs.readFileSync(new URL("../src/academy/ui.js", import.meta.url), "utf8");
+  assert.match(s, /const prepAtStart = firstLook && !!\(L\.prep && !L\.ride\)/);
+  assert.match(s, /prepAtStart \? `<div class="a-prep-videos a-prep-start" id="aPrepVideos"/);
+  assert.match(s, /if \(prepAtStart\) fillPrepVideos\(L\.prep, \{ where: "lesson" \}\)/);
+  // still never a gate: the prep card opens only when asked for
+  assert.match(s, /if \(L\.prep && !L\.ride && prep\) \{ showPrep\(\); return; \}/);
+});

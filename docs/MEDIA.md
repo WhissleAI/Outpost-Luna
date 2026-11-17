@@ -27,7 +27,9 @@ A list of entries:
 ### "Watch how" videos for Mission prep (hand-picked, some not from NASA)
 
 A hands-on Mission prep task (the flour-and-cocoa crater, Oreo Moon phases) shows a **Watch how** button for each catalog
-video whose `prep` is that task, NASA first, and only while the computer is online (no dead buttons). Voice: "show me
+video whose `prep` is that task, NASA first, and only while the computer is online (no dead buttons). The same buttons
+also sit on the lesson's first step (0.3.11), so the Oreo video is there at the start of the phases lesson; the Try at
+home card itself stays optional (map card after the patch, or the patch screen). Voice: "show me
 how", "watch the video" (the router's `prep_watch`; never a bare "watch", which is room talk during the task). They
 play in the same youtube-nocookie player as the NASA clips; links out still go through the grown-up gate.
 
@@ -62,6 +64,12 @@ const { watched, seconds } = await openVideo("psr", { context: "debrief" });   /
   `navigator.onLine` and asks the backend once (4 s) before calling anything offline. An embed that never answers is
   checked after 15 s. The backend's own probe (`video.online()`) retries a timeout once with a longer wait, counts any
   HTTP answer as online, and remembers a failure for 5 s only.
+- **Stuck embed watchdog** (0.3.11): YouTube can answer (onReady) and then sit on a card of its own, such as "Sign in
+  to confirm you're not a bot", with no IFrame API error. Every play request must reach "playing" within 12 s
+  (`commands.js stallWatch`, `YT_STALL_MS`), or the overlay shows "This video won't play here." with the catalog's
+  `fallback` NASA file as **Watch NASA's … video instead** (offered when it is saved, or, since we are online, when it
+  can stream). A pause before it plays disarms the watch; playing once ends it.
+- A NASA file that errors before it has played gets one quiet retry 1.5 s later (its first play is being cached).
 - The card always renders inside the overlay (`.vid-stage` / `.vid-bar`) with a Close button. Esc, the Close button,
   voice "stop" and a thumbs down close it; an open palm pauses. Opening the overlay closes Settings and stops a gestures
   calibration (`outpost:modal-open`), and Settings opened by voice closes the video, so no sheet is ever left inert
@@ -92,7 +100,13 @@ each. Text that is neither watch nor skip is ignored, never counted as a miss.
   files are never evicted.
 - On first online launch the pinned files download in the background: one at a time, slowly, and paused while a
   mission clock ticks or a video streams. If the computer is offline, the backend tries again every 5 minutes.
-- Any other NASA file streams through the backend on its first play and is cached at the same time.
+- Any other NASA file streams through the backend on its first play and is cached at the same time. A file the
+  desktop's video pack (`VIDEO_PACK_DIR`) already has is copied from it and served at once, never streamed; when the
+  stream fails but the background copy has landed, that copy is served.
+- TLS: the backend checks NASA hosts against certifi's roots plus Let's Encrypt's intermediates
+  (`backend/data/video/intermediates.pem`, `video.tls()`), because `svs.gsfc.nasa.gov` has sent its leaf certificate
+  without the intermediate since 2026-11-16. Browsers fetch the missing one; Python does not, so `phases_loop` failed
+  to download and stream (HTTP 502) until this.
 - Settings → Videos shows "X MB saved" and a Clear button (`GET`/`DELETE /api/video/cache`).
 - `VIDEO_PREFETCH=0` turns off the background download (the tests do this). `VIDEO_OFFLINE=1` makes the backend act
   offline.
@@ -102,7 +116,12 @@ each. Text that is neither watch nor skip is ignored, never counted as a miss.
 - `permissions.js` allows only the youtube-nocookie `/embed/` frame and its player traffic:
   - `www.youtube.com`, `s.ytimg.com` and `i.ytimg.com`;
   - `*.googlevideo.com`;
-  - the player's art by path on `www.gstatic.com/youtube/`, `fonts.gstatic.com` and `yt3.ggpht.com`.
+  - the player's art by path on `www.gstatic.com/youtube/`, `ssl.gstatic.com/docs/picker/images/youtube_`,
+    `fonts.gstatic.com` and `yt3.ggpht.com`;
+  - YouTube's BotGuard attestation (0.3.11): the script `www.google.com/js/th/*.js` (as a script only) and its Web
+    Anti-Abuse call `jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/*` (xhr / fetch only). Blocked, the embed
+    shows "Sign in to confirm you're not a bot" every time. Allowed, it can still show that card when YouTube distrusts
+    the network (measured 2026-11-17 on a home connection: real Chrome too); the watchdog above handles that case.
 - A YouTube page never loads as the window or as a frame.
 - NASA hosts are not allowed in the renderer.
 - Mic and camera stay with our origin.

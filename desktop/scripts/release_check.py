@@ -10,6 +10,9 @@ Gates (one line each, a JSON report in desktop/dist/release-check.json, exit 1 i
            installer (never the registry), signature checked, launched headless and muted on its own data folder and
            ports; engine.json + the model server's ear loaded on the PINNED ONNX Runtime; desktop/scripts/smoke.py;
            a real voice turn (crew clip -> /ws/listen -> "Orientale" heard and linked); clean quit (engine.json gone)
+  video    the installed app plays a NASA file (hammer_feather) in its own player and a YouTube video (far_side_view)
+           muted, read from the page over DevTools; a YouTube refusal must fall back to the NASA file cleanly (warn),
+           never hang; YouTube is skipped offline. VIDEO_SWEEP=1: every catalog entry
   golden   40 fixed clips (desktop/tests/golden) through the installed app's ear: WER / name / link / number rates
            within tolerance of baseline.json, p50 / p95 latency within budget (a different machine: warn only)
   fuzz     (a) libarc's C API under ASan + UBSan (desktop/tests/fuzz/fuzz_libarc.c, debug build), (b) random and
@@ -17,7 +20,7 @@ Gates (one line each, a JSON report in desktop/dist/release-check.json, exit 1 i
   soak     only with SOAK=1 (or --gates soak): looped clips through the ear for SOAK_MINUTES (10); fails on an RSS leak
            trend, latency drift, a child restart or a watchdog reset
 
-Env: FUZZ_SECONDS (120 each), SOAK=1, SOAK_MINUTES (10), RC_ASSETS_SEED (the folder the test app's models come from).
+Env: FUZZ_SECONDS (120 each), VIDEO_SWEEP=1, SOAK=1, SOAK_MINUTES (10), RC_ASSETS_SEED (the folder the test app's models come from).
 Stdlib only, Python 3.9+: on Windows it runs under the installed app's own Python.
 """
 from __future__ import annotations
@@ -53,7 +56,7 @@ FIX = ROOT / "backend/tests/fixtures"
 IS_WIN, IS_MAC = sys.platform == "win32", sys.platform == "darwin"
 FRAME = 2560                     # 80 ms of PCM16 at 16 kHz
 OWNER_PORTS = {47310, 47311, 47312, 47210, 47211, 47212}   # the installed app's defaults: never used by a test run
-ALL_GATES = ["unit", "smoke", "golden", "fuzz", "soak"]
+ALL_GATES = ["unit", "smoke", "video", "golden", "fuzz", "soak"]
 
 
 # ----------------------------------------------------------------------------------------------------------- report
@@ -334,6 +337,7 @@ class App:
     def launch(self):
         self.ports = {"backend": free_port(), "models": 0}
         self.ports["models"] = free_port({self.ports["backend"]})
+        self.ports["devtools"] = free_port({self.ports["backend"], self.ports["models"]})   # the video gate drives the page
         env = {**os.environ, "OUTPOST_HEADLESS": "1", "OUTPOST_MUTE_AUDIO": "1", "OUTPOST_USER_DATA": str(self.ud),
                "OUTPOST_BACKEND_PORT": str(self.ports["backend"]), "OUTPOST_MODELS_PORT": str(self.ports["models"]),
                # no asset update checks or downloads from a test run
@@ -343,7 +347,7 @@ class App:
         out = open(self.log_path, "ab")
         kw = {"creationflags": 0x08000000} if IS_WIN else {"start_new_session": True}   # CREATE_NO_WINDOW
         self.t_launch = time.time()
-        self.proc = subprocess.Popen([str(self.exe), "--mute-audio"], cwd=str(self.work), env=env, stdout=out,
+        self.proc = subprocess.Popen([str(self.exe), "--mute-audio", f"--remote-debugging-port={self.ports['devtools']}"], cwd=str(self.work), env=env, stdout=out,
                                      stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, **kw)
         out.close()
 
@@ -614,6 +618,122 @@ def gate_smoke(rep: Report, app: App, info: dict, t0: float):
             else f"{app.version}: FAILED {', '.join(bad)}; {why}")
     return rep.add("smoke", status, summ, time.time() - t0, checks=checks, install=info, engine=eng,
                    ready_s=round(app.t_ready, 1), smoke_py=out.strip().splitlines()[-40:])
+
+
+# ----------------------------------------------------------------------------------------------------------- video
+class CDP:
+    """The installed app's page over the DevTools protocol (--remote-debugging-port on the TEST app only)."""
+
+    def __init__(self, port: int, origin: str, timeout=60.0):
+        deadline, page = time.time() + timeout, None
+        while time.time() < deadline and not page:
+            try:
+                ts = http_json(f"http://127.0.0.1:{port}/json", timeout=3)
+                page = next((t for t in ts if t.get("type") == "page" and t.get("url", "").startswith(origin)), None)
+            except (OSError, ValueError):
+                pass
+            if not page:
+                time.sleep(1)
+        if not page:
+            raise GateError(f"no app page on the DevTools port {port}")
+        self.ws, self.n = WS.connect(page["webSocketDebuggerUrl"], timeout=10), 0
+
+    def eval(self, expr: str, timeout=90.0):
+        self.n += 1
+        self.ws.send_text(json.dumps({"id": self.n, "method": "Runtime.evaluate",
+                                      "params": {"expression": expr, "awaitPromise": True, "returnByValue": True}}))
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            m = json.loads(self.ws.recv(timeout=max(1.0, deadline - time.time())))
+            if m.get("id") == self.n:
+                r = m.get("result", {})
+                if r.get("exceptionDetails"):
+                    raise GateError("page error: " + json.dumps(r["exceptionDetails"])[:300])
+                return r.get("result", {}).get("value")
+        raise GateError(f"page did not answer in {timeout:.0f} s")
+
+    def close(self):
+        try:
+            self.ws.close()
+        except OSError:
+            pass
+
+
+# One video in the installed app's own overlay, muted: did it really play (time moving), or show which card?
+# -> {id, kind, result: played|fell_back|card|stuck|unavailable, ...}. A YouTube video that shows "won't play here"
+# also has its NASA fallback button pressed, and that file must play.
+VIDEO_JS = r"""(async (id, waitS) => {
+  const O = window.__outpost; O.muteVideos = true;
+  const V = O.video, sleep = ms => new Promise(r => setTimeout(r, ms));
+  const v = (await V.catalog()).find(x => x.id === id);
+  if (!v) return { id, result: "missing" };
+  const avail = await V.isAvailable(id);
+  if (avail === "offline") return { id, kind: v.source, result: "unavailable", avail };
+  if (V.isOpen()) V.command("stop");
+  const done = V.openVideo(id, { context: "release-check" });
+  const t0 = Date.now(); let out = null, fbT0 = 0;
+  while (!out && Date.now() - t0 < waitS * 1000) {
+    await sleep(500);
+    const d = document.getElementById("vidDlg"); if (!d) continue;
+    const el = d.querySelector("video");
+    if (el && el.currentTime > 1.5 && !el.paused) out = { result: fbT0 ? "fell_back" : "played", t: +el.currentTime.toFixed(1), file: el.currentSrc.replace(location.origin, "") };
+    else if (d.dataset.ytstate === "1") out = { result: "played", ytstate: 1 };
+    else if (d.dataset.card && !fbT0) {
+      const b = d.querySelector("[data-fb]");
+      if (b && v.source === "youtube") { fbT0 = Date.now(); b.click(); }
+      else out = { result: "card", card: d.dataset.card, yterror: d.dataset.yterror || null };
+    }
+  }
+  const d = document.getElementById("vidDlg");
+  if (!out) out = { result: "stuck", ytstate: d && d.dataset.ytstate, card: d && d.dataset.card };
+  out.yterror = out.yterror || (d && d.dataset.yterror) || null;
+  out.seconds_to_result = +((Date.now() - t0) / 1000).toFixed(1);
+  V.command("stop"); const r = await done;
+  return { id, kind: v.source, avail, ...out, closed: !V.isOpen(), how: r && (r.fallback ? "fallback:" + r.fallback : r.failed ? "failed" : "ok") };
+})"""
+
+
+def play_video(cdp: CDP, vid: str, wait_s=45) -> dict:
+    return cdp.eval(f"{VIDEO_JS}({json.dumps(vid)}, {wait_s})", timeout=wait_s + 60) or {"id": vid, "result": "?"}
+
+
+def gate_video(rep: Report, app: App, sweep=False):
+    """The installed app plays a NASA file in its own player, and a YouTube video (or, when YouTube refuses, falls back
+    to the NASA file cleanly, never stuck). Offline-safe: YouTube is skipped when the app says it is offline.
+    VIDEO_SWEEP=1: every catalog entry."""
+    t0 = time.time()
+    cdp = None
+    try:
+        cdp = CDP(app.ports["devtools"], f"http://127.0.0.1:{app.ports['backend']}")
+        ok = cdp.eval("(async () => { for (let i = 0; i < 120; i++) { if (window.__outpost && window.__outpost.video) "
+                      "return true; await new Promise(r => setTimeout(r, 500)); } return false; })()")
+        if not ok:
+            raise GateError("the page never set up its video player (window.__outpost.video)")
+        ids = ["hammer_feather", "far_side_view"]
+        if sweep:
+            ids = [v["id"] for v in cdp.eval("(async () => (await window.__outpost.video.catalog()).map(v => ({id: v.id})))()")]
+        res = [play_video(cdp, i) for i in ids]
+    except (GateError, OSError, Closed, TimeoutError) as e:
+        return rep.add("video", "fail", f"could not drive the page: {e}", time.time() - t0)
+    finally:
+        if cdp:
+            cdp.close()
+    bad, warn, lines = [], [], []
+    for r in res:
+        k, out = r.get("kind"), r.get("result")
+        lines.append(f"{r['id']}={out}" + (f"({r.get('yterror')})" if r.get("yterror") else ""))
+        if k == "nasa_file" and out != "played":
+            bad.append(r["id"])
+        elif k == "youtube" and out == "fell_back":
+            warn.append(r["id"])
+        elif k == "youtube" and out not in ("played", "unavailable"):
+            bad.append(r["id"])
+        elif not k:
+            bad.append(r["id"])
+    status = "fail" if bad else "warn" if warn else "pass"
+    summ = ("; ".join(lines) + (f"; FAILED {', '.join(bad)}" if bad else "")
+            + (f"; YouTube refused {', '.join(warn)} (fell back to NASA's file cleanly)" if warn else ""))
+    return rep.add("video", status, summ, time.time() - t0, results=res)
 
 
 # ---------------------------------------------------------------------------------------------------------- golden
@@ -1089,7 +1209,7 @@ def main():
           flush=True)
     if "unit" in gates:
         gate_unit(rep)
-    app_gates = [g for g in gates if g in ("smoke", "golden", "fuzz", "soak")]
+    app_gates = [g for g in gates if g in ("smoke", "video", "golden", "fuzz", "soak")]
     work = Path(tempfile.mkdtemp(prefix="outpost-rc-"))
     app = None
     try:
@@ -1125,6 +1245,8 @@ def main():
                             health=app.health.get("models", {}).get("arc_ear"))
                     app_gates = []   # nothing more to run against this app (the libarc fuzzer still runs below)
                 if app.proc and app.proc.poll() is None and app.engine.get("model_server"):
+                    if "video" in app_gates:
+                        gate_video(rep, app, sweep=os.environ.get("VIDEO_SWEEP") == "1")
                     if "golden" in app_gates:
                         gate_golden(rep, app, mach, a.update_baseline)
                     if "fuzz" in app_gates:

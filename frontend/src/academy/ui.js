@@ -381,14 +381,15 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** [diy videos] "Watch how": the catalog's videos for this task (entry.prep === task id), NASA first, each shown only
    *  when it can play now (online: never a dead button). A non-NASA video says whose it is and "Not from NASA". */
   let prepVideoIds = [];
-  async function fillPrepVideos(p) {
+  async function fillPrepVideos(p, { where = "prep" } = {}) {
     prepVideoIds = [];
     const box = panel.querySelector("#aPrepVideos"); if (!box) return;
     let list = [];
     try { list = (await videoCatalog()).filter(v => v.prep === p.id).sort((a, b) => (b.nasa !== false) - (a.nasa !== false)); } catch (e) { return; }
-    const ok = [];
-    for (const v of list) if ((await isAvailable(v.id)) !== "offline") ok.push(v);
-    if (!box.isConnected || view !== "prep" || !ok.length) return;
+    // all at once (one slow check never holds the others back)
+    const st = await Promise.all(list.map(v => isAvailable(v.id)));
+    const ok = list.filter((v, k) => st[k] !== "offline");
+    if (!box.isConnected || view !== where || !ok.length) return;
     prepVideoIds = ok.map(v => v.id);
     box.innerHTML = ok.map(v => `<button type="button" class="btn a-prep-video" data-v="${esc(v.id)}">${icon("play", { size: 16 })}<span>${esc(PREP.watch)} <small>${esc(watchLabel(v).replace(/^Watch\s*/, ""))}</small></span>
         <small class="a-prep-src">${esc(prepVideoSource(v))}</small></button>`).join("");
@@ -434,6 +435,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
+    // [video fix 0.3.11] a lesson with a Try-at-home task shows its "Watch how" videos at the start (online only), as
+    // 0.3.9 did through the prep card it opened first. Just buttons: never a gate before the lesson (playtest 8).
+    const prepAtStart = firstLook && !!(L.prep && !L.ride);
     const how = doLine(st, { gesture: gesturesOn() });
     const FB_ICON = { ok: "check", reveal: "explore", shown: "info", progress: "check" };
     const revealSrc = feedback && (feedback.kind === "reveal" || (feedback.kind === "ok" && acc.type === "predict")) && st.reveal && st.reveal.source;
@@ -462,6 +466,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>${clip.note ? `<p class="a-how a-clipnote">${esc(clip.note)}</p>` : ""}` : ""}
           <div class="a-input${waitingNext ? " is-locked" : ""}" id="aInput">${R.html(st, ctx)}</div>
           ${fb}
+          ${prepAtStart ? `<div class="a-prep-videos a-prep-start" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>` : ""}
 
         </section>
         ${ride ? `<div id="aRideSlot"></div>` : ""}
@@ -487,6 +492,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // (a Moon step keeps its own focus: the keyboard's Moon reticle, input/spatial.js)
     else if (focusPrompt && panel.querySelector("#aInput button")) { const q = panel.querySelector(".a-prompt"); if (q) q.focus({ preventScroll: true }); }
     focusPrompt = false;
+    if (prepAtStart) fillPrepVideos(L.prep, { where: "lesson" });
     applyGuide();
     fitBody();
   }

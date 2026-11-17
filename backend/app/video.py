@@ -29,6 +29,7 @@ import json
 import os
 import re
 import shutil
+import ssl
 import threading
 import time
 from pathlib import Path
@@ -60,6 +61,27 @@ PROBE_TTL_S = 20.0
 PROBE_FAIL_TTL_S = 5.0     # a failed probe is retried soon: a blip must not pin "offline" for long
 PROBE_TIMEOUTS_S = (3.0, 6.0)
 MISSION_QUIET_S = 20.0      # a mission clock tick within this long pauses the background prefetch
+INTERMEDIATES = Path(__file__).resolve().parent.parent / "data" / "video" / "intermediates.pem"
+_tls: list = []
+
+
+def tls() -> ssl.SSLContext:
+    """[video fix 0.3.11] certifi's roots plus Let's Encrypt's intermediates (data/video/intermediates.pem). A NASA host
+    that sends its leaf certificate without the intermediate (svs.gsfc.nasa.gov since its 2026-11-16 renewal) fails
+    Python's check ("unable to get local issuer certificate") although every browser accepts it: phases_loop then
+    neither downloaded nor streamed (HTTP 502). Verification is still full: the chain must end at a certifi root."""
+    if not _tls:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+        if INTERMEDIATES.is_file():
+            ctx.load_verify_locations(cafile=str(INTERMEDIATES))
+        _tls.append(ctx)
+    return _tls[0]
+
+
+def _client(**kw) -> httpx.Client:
+    return httpx.Client(follow_redirects=True, timeout=httpx.Timeout(30.0, connect=10.0), headers={"User-Agent": UA},
+                        verify=tls(), **kw)
 
 
 # ---------------------------------------------------------------- catalog --------------------------------------------
@@ -309,8 +331,7 @@ class Cache:
                 part.unlink()
                 have = 0
             own = client is None
-            c = client or httpx.Client(follow_redirects=True, timeout=httpx.Timeout(30.0, connect=10.0),
-                                       headers={"User-Agent": UA})
+            c = client or _client()
             try:
                 if not (size and have == size):
                     hdr = {"Range": f"bytes={have}-"} if have else {}
@@ -417,7 +438,7 @@ def online(kind: str = "nasa") -> bool:
     # refused / unresolvable connection, or two timeouts, says offline. Any HTTP answer at all (even 4xx/5xx) is online.
     for t in PROBE_TIMEOUTS_S:
         try:
-            httpx.head(PROBE[kind], timeout=t, headers={"User-Agent": UA})
+            httpx.head(PROBE[kind], timeout=t, headers={"User-Agent": UA}, verify=tls())
             ok = True
             break
         except httpx.TimeoutException:
@@ -493,7 +514,10 @@ def fetch_captions(v: dict, pinned: bool = False, client: httpx.Client | None = 
     if not v.get("captions_url"):
         return False
     try:
-        r = (client or httpx).get(v["captions_url"], timeout=20.0, follow_redirects=True, headers={"User-Agent": UA})
+        if client is not None:
+            r = client.get(v["captions_url"], timeout=20.0, follow_redirects=True, headers={"User-Agent": UA})
+        else:
+            r = httpx.get(v["captions_url"], timeout=20.0, follow_redirects=True, headers={"User-Agent": UA}, verify=tls())
         r.raise_for_status()
     except httpx.HTTPError:
         return False
@@ -551,8 +575,7 @@ def prefetch_all(stop: threading.Event | None = None, pace=None) -> dict:
     todo = [v for v in catalog() if v.get("prefetch") and v.get("source") == "nasa_file"]
     STATE.update(state="running", total=len(todo), done=0, error=None)
     pace = pace or _pace(stop)
-    with httpx.Client(follow_redirects=True, timeout=httpx.Timeout(30.0, connect=10.0),
-                      headers={"User-Agent": UA}) as client:
+    with _client() as client:
         for v in todo:
             try:
                 fetch_video(v, pace=pace, client=client)
@@ -692,15 +715,27 @@ async def video_file(vid: str, request: Request):
     if cache().has(n):
         cache().touch(n)
         return FileResponse(cache().path(n), media_type="video/mp4")
+    # [video fix 0.3.11] the desktop's video pack has it (a local copy, about a second): copy it now and play the file.
+    # Before, the first play streamed from NASA even then, so a NASA hiccup (svs.gsfc.nasa.gov's broken chain) was a
+    # 502 and "This video won't play here" while the very same file landed in the cache a moment later.
+    if pack_has(v) and await asyncio.to_thread(from_pack, v, "video", bool(v.get("prefetch"))):
+        cache().touch(n)
+        return FileResponse(cache().path(n), media_type="video/mp4")
     if not await asyncio.to_thread(online, "nasa"):
         raise HTTPException(503, "offline and not saved yet")
     _cache_in_background(v)
-    return await _proxy(v["file_url"], request.headers.get("range"))
+    try:
+        return await _proxy(v["file_url"], request.headers.get("range"))
+    except HTTPException:
+        if cache().has(n):        # the background copy finished meanwhile
+            cache().touch(n)
+            return FileResponse(cache().path(n), media_type="video/mp4")
+        raise
 
 
 async def _proxy(url: str, rng: str | None) -> Response:
     client = httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(30.0, connect=10.0),
-                               headers={"User-Agent": UA})
+                               headers={"User-Agent": UA}, verify=tls())
     try:
         r = await client.send(client.build_request("GET", url, headers={"Range": rng} if rng else {}), stream=True)
     except httpx.HTTPError:
