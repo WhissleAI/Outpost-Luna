@@ -96,7 +96,8 @@ async function choosePorts() {
 
 function envFor(name) {
   const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf"), LUNA_TOKEN: TOKEN,
-    LUNA_LOG_DIR: LOGS, LUNA_DATA_DIR: USER };   // [#92] <svc>.jsonl logs + metrics/daily-<svc>.json (app/diag.py)
+    LUNA_LOG_DIR: LOGS, LUNA_DATA_DIR: USER,   // [#92] <svc>.jsonl logs + metrics/daily-<svc>.json (app/diag.py)
+    ORT_DISABLE_TELEMETRY: "1" };   // ONNX Runtime's built-in Microsoft telemetry: off (no network after setup)
   if (name === "models") {
     const a = store.envPaths();   // the installed assets (assets.js): <userData>/assets/<id>
     return S.childEnv({
@@ -308,6 +309,7 @@ function createMain(origin) {
   win.on("closed", () => { win = null; });
   win.webContents.on("did-finish-load", pushEngine);   // a reload gets the engine state again
   win.webContents.on("did-finish-load", helloAppUpdate);   // the version for Settings; the opt-in daily check
+  win.webContents.on("did-finish-load", helloAssets);      // the opt-in daily check for new models and media
   win.loadURL(origin + "/");
 }
 
@@ -500,8 +502,7 @@ function watchWanted() {
 /** After the UI is up: the optional assets (crew audio, videos), quietly; a failure waits for the next launch. An
  *  `on_demand` asset (the Steer voice) is never fetched here: only when the kid picks it in Settings (watchWanted). */
 async function fetchOptional() {
-  const onDemand = new Set(store.manifest.assets.filter((x) => x.on_demand).map((x) => x.id));
-  const todo = store.status().filter((x) => !x.required && !onDemand.has(x.id) && x.state !== "installed").map((x) => x.id);
+  const todo = U.setupNeeds(store.status(), store.manifest).optional;   // empty once setup is done: no request at all
   for (const id of todo) {
     if (quitting) return;
     try { await store.ensure([id]); log(`assets: ${id} installed`); }
@@ -524,6 +525,21 @@ async function backendBusy() {
   if (!ports) return false;
   const b = await S.getJson(`http://127.0.0.1:${ports.backend}/api/assets/busy`, 2000, AUTH);
   return !!(b && b.busy);
+}
+
+// The check for NEW models and media is opt-in (the app promises no network after setup): Settings -> Storage & updates
+// -> "Check for new models and media automatically" (prefs.assets_check, off by default). The page answers
+// window.__lunaAssets() when it loads; when on, a launch checks at most once a day (the last attempt is kept in
+// <userData>/asset-check.json). The button ("Check for new models and media") always works (watchCheckRequests).
+const assetGate = AU.createAutoGate({ file: path.join(USER, "asset-check.json") });
+let assetAutoScheduled = false;
+async function helloAssets() {
+  if (assetAutoScheduled || !win || win.isDestroyed()) return;
+  const r = await win.webContents.executeJavaScript("window.__lunaAssets ? window.__lunaAssets() : null").catch(() => null);
+  if (assetAutoScheduled || !U.autoCheckDue(r, assetGate)) return;
+  assetAutoScheduled = true;   // one per launch, even if the page reloads
+  assetGate.mark();            // the attempt counts: at most one request a day, online or not
+  setTimeout(() => runUpdates("auto"), U.AUTO_CHECK_DELAY_MS);   // non-blocking, after the UI is up
 }
 
 let updating = false;
@@ -616,7 +632,7 @@ if (!app.requestSingleInstanceLock()) {
       watchHealth();
       await confirmUpdates();
       setTimeout(fetchOptional, 20000);
-      setTimeout(() => runUpdates("launch"), 30000);   // non-blocking, after the UI is up; offline: nothing changes
+      // no launch-time check for new models and media: opt-in only (helloAssets), or the Settings button
       watchCheckRequests();
       watchWanted();
     }

@@ -2,6 +2,9 @@
 // versions and size, and their updates (downloaded in the background, swapped in on the next launch). The backend
 // relays the Electron main process's state: GET /api/assets, POST /api/assets/check (backend/app/assets_api.py). In a
 // dev checkout there is no desktop app ({managed: false}): the section is not shown.
+// The check for new versions is MANUAL by default (the app promises no network after setup): the button, or the opt-in
+// "Check for new models and media automatically" (prefs.assets_check, off by default). When the page loads the shell
+// asks window.__lunaAssets() whether it is on; if so it checks at most once a day (desktop/main/updates.js autoCheckDue).
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -37,6 +40,23 @@ export function rows(s) {
   }));
 }
 
+export const COPY = {
+  check: "Check for new models and media",
+  auto: "Check for new models and media automatically",
+  autoHelp: "Once a day, when Outpost Luna starts.",
+  help: "Models, voices and media download once and stay on this computer. Updates download in the background and are used the next time Outpost Luna starts.",
+};
+
+/** Is the opt-in on? (prefs.assets_check; read straight from storage before prefs.js is up.) */
+export function autoOn(o = O, ls = (() => { try { return window.localStorage; } catch (e) { return null; } })()) {
+  const P = o && o.prefsApi && o.prefsApi.value;
+  if (P) return P.assets_check === true;
+  try { return JSON.parse((ls && ls.getItem("outpost-prefs")) || "null").assets_check === true; } catch (e) { return false; }
+}
+
+/** The shell's question when the page loads: is the daily check on? */
+export const receive = () => ({ auto: autoOn() });
+
 let last = null;   // the last state fetched (html() is sync: it paints what we know, bind() refreshes)
 const load = () => fetch("/api/assets").then(r => r.json()).then(s => (last = s)).catch(() => null);
 
@@ -46,8 +66,9 @@ const section = {
     <div class="tbl"><table><thead><tr><th>Download</th><th>Version</th><th>Size</th></tr></thead>
       <tbody data-as-rows><tr><td colspan="3">…</td></tr></tbody></table></div>
     <p class="set-help" data-as-total></p>
-    <button type="button" class="btn" data-as-check>Check for new models and media</button>
-    <p class="set-help">Models, voices and media download once and stay on this computer. Updates download in the background and are used the next time Outpost Luna starts.</p>`),
+    <button type="button" class="btn" data-as-check>${esc(COPY.check)}</button>
+    <label class="a11y-sw"><input type="checkbox" data-pb="assets_check" ${autoOn() ? "checked" : ""}><span><b>${esc(COPY.auto)}</b><small>${esc(COPY.autoHelp)}</small></span></label>
+    <p class="set-help">${esc(COPY.help)}</p>`),
   bind(el) {
     const line = el.querySelector("[data-as-line]"), body = el.querySelector("[data-as-rows]"),
       total = el.querySelector("[data-as-total]"), btn = el.querySelector("[data-as-check]");
@@ -74,6 +95,7 @@ const section = {
 };
 if (typeof window !== "undefined") {
   (O.settingsSections = O.settingsSections || []).push(section);
+  window.__lunaAssets = receive;
   if (typeof fetch === "function" && typeof document !== "undefined") load();
 }
 export default section;

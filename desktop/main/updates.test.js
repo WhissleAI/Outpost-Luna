@@ -274,3 +274,64 @@ test("busy() pauses the background download", async (t) => {
   assert.equal(st.state, "ready");
   assert.ok(calls >= 2);
 });
+
+// ---- the opt-in background check (Settings -> "Check for new models and media automatically", off by default) ----
+const AU = require("./appupdate");
+
+function gateAt(t0) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ol-assetgate-"));
+  const clock = { t: t0 };
+  return { clock, gate: AU.createAutoGate({ file: path.join(dir, "asset-check.json"), now: () => clock.t }) };
+}
+
+test("auto check: default off schedules nothing (no answer, false, a truthy non-true value)", () => {
+  const { gate } = gateAt(Date.parse("2026-11-16T09:00:00Z"));
+  for (const answer of [null, undefined, {}, { auto: false }, { auto: "true" }, { auto: 1 }]) {
+    assert.equal(U.autoCheckDue(answer, gate), false, JSON.stringify(answer));
+  }
+});
+
+test("auto check: on means one check a day (the attempt counts, online or not)", () => {
+  const DAY = 24 * 3600 * 1000;
+  const { clock, gate } = gateAt(Date.parse("2026-11-16T09:00:00Z"));
+  const on = { auto: true };
+  // simulate main.js helloAssets over several launches: due -> mark -> schedule
+  let checks = 0;
+  const launch = () => { if (U.autoCheckDue(on, gate)) { gate.mark(); checks++; } };
+  launch(); launch(); assert.equal(checks, 1);              // second launch the same day: nothing
+  clock.t += DAY - 60000; launch(); assert.equal(checks, 1);  // 23 h 59 min later: still nothing
+  clock.t += 60000; launch(); assert.equal(checks, 2);        // a day later: one more
+  clock.t += 3 * DAY; launch(); launch(); assert.equal(checks, 3);
+  assert.ok(U.AUTO_CHECK_DELAY_MS >= 10000, "after the UI is up");
+});
+
+test("first run still downloads: setupNeeds lists missing required assets whatever the opt-in says", () => {
+  const manifest = { assets: [{ id: "ear", required: true }, { id: "voice", required: true }, { id: "crew" },
+    { id: "steer", on_demand: true }, { id: "videos" }] };
+  const fresh = manifest.assets.map((a) => ({ id: a.id, required: !!a.required, state: "missing" }));
+  assert.deepEqual(U.setupNeeds(fresh, manifest), { required: ["ear", "voice"], optional: ["crew", "videos"] });
+  // a half-done first run (a corrupt file counts as missing) resumes; a finished one asks for nothing
+  const half = fresh.map((x) => ({ ...x, state: x.id === "ear" ? "corrupt" : "installed" }));
+  assert.deepEqual(U.setupNeeds(half, manifest), { required: ["ear"], optional: [] });
+  const done = fresh.map((x) => ({ ...x, state: x.id === "steer" ? "missing" : "installed" }));
+  assert.deepEqual(U.setupNeeds(done, manifest), { required: [], optional: [] });   // on_demand waits for the kid
+});
+
+test("main.js: setup is unconditional; no launch-time re-check; the opt-in path is gated", () => {
+  const src = fs.readFileSync(path.join(__dirname, "main.js"), "utf8");
+  assert.match(src, /\n {4}await requiredAssets\(\);\n/, "the first-run download is awaited on every launch, not gated");
+  assert.match(src, /U\.setupNeeds\(store\.status\(\), store\.manifest\)\.optional/);
+  assert.doesNotMatch(src, /runUpdates\("launch"\)/, "no silent check 30 s after launch");
+  const calls = [...src.matchAll(/runUpdates\("(\w+)"\)/g)].map((m) => m[1]).sort();
+  assert.deepEqual(calls, ["Settings", "auto"], "only the button and the opt-in check");
+  assert.match(src, /if \(assetAutoScheduled \|\| !U\.autoCheckDue\(r, assetGate\)\) return;/);
+  assert.match(src, /did-finish-load", helloAssets/);
+});
+
+test("ONNX Runtime telemetry is off in every child (launch.py, the model server package, the shell's env)", () => {
+  const root = path.join(__dirname, "..", "..");
+  const rx = /os\.environ\["ORT_DISABLE_TELEMETRY"\] = "1"/;
+  assert.match(fs.readFileSync(path.join(root, "desktop", "runtime", "launch.py"), "utf8"), rx);
+  assert.match(fs.readFileSync(path.join(root, "model_server", "app", "__init__.py"), "utf8"), rx);
+  assert.match(fs.readFileSync(path.join(__dirname, "main.js"), "utf8"), /ORT_DISABLE_TELEMETRY: "1"/);
+});
