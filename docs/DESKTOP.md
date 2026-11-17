@@ -86,8 +86,17 @@ replace an older install in the foreground (an app that needs a newer ear).
 
 The flow (`desktop/main/updates.js`):
 
-1. **Check.** 30 s after the window opens, and from Settings -> Storage & updates -> Check for updates, the app fetches
-   the remote manifest (8 s timeout) and caches it in `assets/remote-manifest.json`. Offline means nothing changes.
+1. **Check.** From Settings -> Storage & updates -> "Check for new models and media", the app fetches the remote
+   manifest (8 s timeout) and caches it in `assets/remote-manifest.json`. Offline means nothing changes. **Manual by
+   default**: the app promises no network after setup, so there is no launch-time check unless a grown-up turns on
+   "Check for new models and media automatically" (`prefs.assets_check`, off by default, stored with the other
+   settings). When on, the page tells the shell so when it loads (`window.__lunaAssets()`), and the shell checks 30 s
+   later, at most once per 24 h (the last *attempt* is kept in `<userData>/asset-check.json`). Setup is not affected:
+   a fresh install still downloads its required assets on the first-run screen, and the optional ones (crew audio,
+   videos, map layers) after the UI is up until they are in (`setupNeeds`); after that a launch makes no request.
+   ONNX Runtime's official builds ship Microsoft telemetry (1DS, on by default, native code to Azure within seconds of
+   the first session): `ORT_DISABLE_TELEMETRY=1` is set for both children (`desktop/runtime/launch.py`, the shell's
+   child env, `model_server/app/__init__.py`), so a launch after setup opens no outside connection at all.
 2. **Stage.** Each installed asset whose version or sha changed, fits this app (`min_app` / `max_app`, `requires`) and
    is not older is downloaded in the background into `assets/.dl` (resumable). The download is paced and pauses while a
    mission runs or a video streams (`GET /api/assets/busy`). It is sha256-checked, unpacked into `assets/.pending/<id>`

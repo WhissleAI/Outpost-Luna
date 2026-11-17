@@ -23,6 +23,7 @@ export const PREF_DEFAULTS = Object.freeze({
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
   muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
   update_check: false,       // Settings → App version → "Check for updates automatically" (app_update_ui.js). Off by default.
+  assets_check: false,       // Settings → Storage & updates → "Check for new models and media automatically" (storage_ui.js). Off by default.
 });
 /** Settings → Voice: where a parent downloads clearer voices on this OS (the app speaks with the OS's own offline
  *  voices, docs/VOICES.md). "" on any other OS. */
@@ -70,6 +71,7 @@ export function normalizePrefs(x) {
   o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
   o.muted = s.muted === true;
   o.update_check = s.update_check === true;   // opt-in only, like improve
+  o.assets_check = s.assets_check === true;   // opt-in only: no network after setup unless a grown-up turns it on
   return o;
 }
 

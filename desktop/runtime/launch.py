@@ -60,6 +60,10 @@ def main() -> None:
     os.chdir(HERE / app_dir)   # pydantic reads ../.env and .env from here: the bundle ships neither (build check)
     for k in OFFLINE_KEYS:     # offline app: no cloud keys, whatever the launching shell had
         os.environ.pop(k, None)
+    # ONNX Runtime's official builds (1.32 on macOS) ship Microsoft's 1DS telemetry, ON by default: it phones Azure
+    # (*.events.data.microsoft.com) within seconds of the first session, from native code. The app promises no network
+    # after setup, so it is off before anything loads onnxruntime (the Python wheel and libarc's own copy both read it).
+    os.environ["ORT_DISABLE_TELEMETRY"] = "1"
     if os.environ.get("MOON_PARENT_PID"):
         watch_parent(int(os.environ["MOON_PARENT_PID"]))
     import uvicorn

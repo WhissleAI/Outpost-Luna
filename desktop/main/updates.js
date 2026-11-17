@@ -8,7 +8,9 @@
 //   2. children healthy: confirm(health) keeps a trial asset whose load check passed (and drops .prev), or rolls it
 //      back (.prev -> <id>, the new sha remembered as rejected, logged); a model server that dies with a trial asset
 //      in place rolls back too (rollbackTrials)
-//   3. after the UI is up, online: check() fetches the remote manifest (short timeout), validates it and caches it;
+//   3. after the UI is up, ONLY when the user opted in (Settings -> "Check for new models and media automatically",
+//      off by default, at most once a day: autoCheckDue) or pressed "Check for new models and media": check() fetches
+//      the remote manifest (short timeout), validates it and caches it;
 //      stageAll() downloads every changed + compatible installed asset in the background (resumable, paced, paused
 //      while busy() says a mission or a video is on), verifies its sha256 and unpacks it into .pending/<id>:
 //      it is swapped in on the NEXT launch
@@ -352,5 +354,28 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
     pendingIds, cacheFile };
 }
 
+/** What a launch downloads as SETUP (docs/DESKTOP.md "Asset updates"): the required assets that are missing (the first
+ *  run, with its screen) and then, after the UI is up, the optional ones not installed yet (crew audio, videos, map
+ *  layers; never an `on_demand` one: that waits until the kid picks it). Neither needs the opt-in below: a fresh
+ *  install always gets its models. Once everything is in, both lists are empty and a launch makes no request.
+ *  -> { required: [id], optional: [id] }. Pure. */
+function setupNeeds(status, manifest) {
+  const onDemand = new Set(((manifest && manifest.assets) || []).filter((x) => x.on_demand).map((x) => x.id));
+  const missing = (status || []).filter((x) => x.state !== "installed");
+  return { required: missing.filter((x) => x.required).map((x) => x.id),
+    optional: missing.filter((x) => !x.required && !onDemand.has(x.id)).map((x) => x.id) };
+}
+
+/** The background re-check for NEW models and media is opt-in: Settings -> Storage & updates -> "Check for new models
+ *  and media automatically" (prefs.assets_check, off by default; the page answers window.__lunaAssets() with {auto}).
+ *  True only for an explicit `auto: true` and a gate (appupdate.createAutoGate) that says a day has passed since the
+ *  last attempt. The manual button never asks this. Pure apart from gate.due(). */
+function autoCheckDue(answer, gate) {
+  return !!(answer && answer.auto === true && gate && gate.due());
+}
+
+/** How long after the window opens the opt-in check starts (the UI settles first). */
+const AUTO_CHECK_DELAY_MS = 30000;
+
 module.exports = { REMOTE_URL, ALLOW_HOSTS, cmpVersion, hostAllowed, validateManifest, appCompatible, requiresMet,
-  effectiveManifest, fetchManifest, healthOk, createUpdater };
+  effectiveManifest, fetchManifest, healthOk, createUpdater, setupNeeds, autoCheckDue, AUTO_CHECK_DELAY_MS };
