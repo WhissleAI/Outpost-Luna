@@ -325,6 +325,11 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (sc.id.startsWith("panel:")) { const pt = cands.find(c => c.matches(".is-point, .is-point *")); if (pt) return pt; }
     if (sc.id === "lesson") {
       const inp = doc.querySelector("#aInput");
+      // [playtest 12] a question with several answers (the check ride's orders, a choice): the question takes focus,
+      // never the first answer, so the Enter that pressed Next can't also send "Heaters up" into a storm
+      const answers = inp ? cands.filter(c => inp.contains(c) && c.matches(".a-choice, .a-order, .v-opt")) : [];
+      const ask = answers.length > 1 && doc.querySelector("#aPanel .a-prompt");
+      if (ask && visible(ask)) { if (!ask.hasAttribute("tabindex")) ask.tabIndex = -1; return ask; }
       const own = inp && cands.find(c => inp.contains(c) && c.matches("button"));
       if (own) return own;
       const nx = cands.find(c => c.id === "aNext"); if (nx) return nx;
@@ -462,7 +467,14 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
       if (!was3d) { was3d = true; lastPanel = cabinPanel() || "seat"; const cab = doc.getElementById("mCabin");
         if (lastPanel === "seat" && !(a && a !== doc.body && a !== seatEl && cab && cab.contains(a) && visible(a))) { focusSeat(); return; } }
       const p = cabinPanel() || "seat";
-      if (p !== lastPanel) { const was = lastPanel; lastPanel = p; if (p === "seat") { focusSeat(was !== "seat" ? (was === "power" ? "displays" : was) : null); return; } restore(); return; }
+      if (p !== lastPanel) { const was = lastPanel; lastPanel = p;
+        if (p === "seat") {
+          // a cabin control the kid already moved to (the view bar, the deck, the Now card) keeps focus when the camera
+          // settles back at the seat; only focus inside a console (or none) goes back to the seat
+          const cab = doc.getElementById("mCabin");
+          if (a && a !== seatEl && a !== doc.body && cab && cab.contains(a) && !a.closest(".c3-panel, .c3-back") && visible(a)) return;
+          focusSeat(was !== "seat" ? (was === "power" ? "displays" : was) : null); return; }
+        restore(); return; }
     } else { lastPanel = "seat"; was3d = false; }
     const roots = sc.roots.filter(Boolean);
     const ok = a === seatEl ? atSeat() && !seatEl.hidden

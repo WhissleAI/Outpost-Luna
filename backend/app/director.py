@@ -723,6 +723,11 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
             if res.get("say") and res["say"] != rb and not same:
                 # The sim's own line adds the result ("Shields now gets 40%"); drop its "Copy." so CAPCOM says it once.
                 extra = re.sub(r"^\s*copy[,.!]?\s*", "", res["say"], flags=re.I)
+                # [playtest 27] the sim's line often opens with the readback's own words ("Crew in the shelter.
+                # Crew in the shelter. Much less radiation"): say them once
+                body = capcom._strip_copy(rb).strip()
+                if body and extra.lower().startswith(body.lower()):
+                    extra = extra[len(body):].strip()
                 if extra:
                     lines.append(extra)
         resp = resp or {"action": "command", "command": cmd, "needs_confirm": bool(res.get("needs_confirm")),

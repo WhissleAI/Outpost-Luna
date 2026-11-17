@@ -82,7 +82,7 @@ test("objective: storms, warnings, power, air, rover and the night, most urgent 
   const d = base(); d.mission_time_h = 30; d.env.in_sun = false; assert.equal(nowObjective(d).key, "dark");
   const i = base(); i.mission_time_h = 30; assert.equal(nowObjective(i).key, "ice");
   i.objectives.ice.met = true; assert.equal(nowObjective(i).key, "steady"); assert.equal(nowObjective(i).target, "skip");
-  assert.match(nowObjective(i).text, /Fast-forwarding/);   // "when nothing is urgent it says so"
+  assert.match(nowObjective(i).text, /Time skips/);   // "when nothing is urgent it says so" ([playtest 21] never "Fast-forwarding" at 1x)
   assert.equal(nowObjective({ ...base(), over: true }), null);
 });
 
