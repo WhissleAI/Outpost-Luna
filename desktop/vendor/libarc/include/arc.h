@@ -42,9 +42,10 @@ extern "C" {
  * (python model_server/tools/gen_bindings.py) in the same commit; model_server/tests/test_bindings.py fails until then.
  * ARC_VERSION is for people (logs, /health): "<arc_transcriber release>-outpost.<n>", n counting local changes.
  * Upstream arc_transcriber 0aa792f (PR #18) is ABI 2 / "1.3.0"; the outpost changes (run-time ORT loader, the WebAssembly
- * backend, Windows shims) change no declaration of it. */
+ * backend, Windows shims) change no declaration of it; outpost.2 adds arc_nft2_tap / arc_nft2_tap_free (no existing
+ * declaration changes, so the ABI stays 2). */
 #define ARC_ABI_VERSION 2
-#define ARC_VERSION "1.3.0-outpost.1"
+#define ARC_VERSION "1.3.0-outpost.2"
 /* The ARC_ABI_VERSION / ARC_VERSION the library was compiled with. */
 int arc_abi_version(void);
 const char* arc_version(void);
@@ -495,6 +496,14 @@ int arc_nft2_set_tagger(arc_nft2* m, const char* model_dir, const char* domain, 
  * cut by Arc's segmenter and each utterance decoded with 0.15 s of audio either side. NULL on failure
  * (arc_last_error). */
 arc_result* arc_nft2_transcribe(arc_nft2* m, const float* pcm, size_t n, const arc_nft2_options* o);
+
+/* (outpost.2) The encoder's Arc tap of a clip, for Arc Transcriber Space v2's room read-outs (nft2/room.onnx, run by
+ * the caller on ONNX Runtime; libarc does not run it): [*T, *d] floats, row-major, the layer-`tap` frames with frame 0
+ * left out (80 ms grid), for pcm cut / zero-padded to max(80, n / 80 * 80) samples. Memoised with the clip decode:
+ * called right after arc_nft2_transcribe on the same pcm (same model, no call in between) it runs no encoder pass.
+ * n: 80 .. 120 s of samples. Free with arc_nft2_tap_free. NULL on failure (arc_last_error). */
+float* arc_nft2_tap(arc_nft2* m, const float* pcm, size_t n, int* T, int* d);
+void arc_nft2_tap_free(float* p);
 
 /* Audio as it arrives: Arc's segmenter cuts utterances (0.4 s pauses, at most 15 s) and each closed utterance is
  * decoded at once. feed returns those utterances (words, tags; names / events come with flush), or a result with

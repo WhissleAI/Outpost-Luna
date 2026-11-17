@@ -240,6 +240,18 @@ static void op_transcribe(src_t* r) {
   arc_result* res = arc_nft2_transcribe(M, x, n, rn(r, 3) ? &o : NULL);
   walk(res);
   if (res) arc_result_free(res);
+  if (rn(r, 2)) {   /* outpost.2: the Arc tap (the memo of this decode, or a fresh pass on a cut of the clip) */
+    int T = -1, d = -1;
+    size_t m = rn(r, 3) ? n : (size_t)rn(r, (uint32_t)(n + 2));
+    N_CALLS++;
+    float* tp = arc_nft2_tap(M, rn(r, 8) ? x : NULL, m, &T, &d);
+    if (tp) {
+      volatile float acc = 0.0f;
+      for (size_t i = 0; i < (size_t)T * (size_t)d; i++) acc += tp[i];
+      (void)acc;
+      arc_nft2_tap_free(tp);
+    }
+  }
   free(x);
 }
 

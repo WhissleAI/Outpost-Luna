@@ -4,7 +4,10 @@ The Arc team's update (arc_transcriber `0aa792f`, PR #18; "Arc update for Outpos
 our asks in `docs/SPEECH_SIGNALS_AUDIT.md` §8. This document records how the app uses each piece, what was measured
 before and after, what the Director sees, and what round 13 should train on.
 
-Code: `desktop/vendor/libarc` (ABI 2, `"1.3.0-outpost.1"`), `model_server/app/nft2.py` (binding: read-outs, options,
+**Arc Transcriber Space v2 (17 Nov 2026):** measured against this ear and integrated as shadow room read-outs, not as the
+shipped ear: `docs/ARC_V2.md`.
+
+Code: `desktop/vendor/libarc` (ABI 2, `"1.3.0-outpost.1"`; `"1.3.0-outpost.2"` adds `arc_nft2_tap`), `model_server/app/nft2.py` (binding: read-outs, options,
 `Nft2Stream`), `model_server/app/arc_ear.py` (the ear), `backend/app/{session,director,listen}.py`,
 `backend/app/mission/nlu.py`, `frontend/src/echoref.js`, `backend/app/director_model/features.py` (round-13 block).
 

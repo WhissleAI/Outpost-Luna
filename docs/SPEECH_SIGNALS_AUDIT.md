@@ -406,3 +406,8 @@ For the Arc team. Concrete, in priority order, with the evidence above.
 Arc answered asks 3-4 (per-word confidence, n-best), the "almost linked" state, numbers (typed quantities), streaming
 and the echo reference. What the app switched on, before / after numbers and the round-13 feature block:
 `docs/ARC_ABI2.md`. The round-7 slots stay 0 for the shipped weights; the new read-outs have their own keys and slots.
+
+## 10. Update: Arc Transcriber Space v2 (17 Nov 2026)
+
+Measured on our sets and kept off as the ear (Director wrong actions up, directed head shifted, own-voice echo
+transcribed more); its room read-outs ride along in shadow: `docs/ARC_V2.md`.

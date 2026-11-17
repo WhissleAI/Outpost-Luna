@@ -71,6 +71,11 @@ EAR_FILES = [
     "nft2/encoder_onnx/joint_enc.onnx", "nft2/encoder_onnx/joint_net.onnx", "nft2/encoder_onnx/tokenizer.model",
     "nft2/encoder_onnx/tokens.txt",
 ]
+# Files a revision adds (docs/ARC_V2.md): Arc Transcriber Space v2 (d35e3e7) ships the room read-outs. Flipping the ear
+# to v2 = EAR_REVISION here + arcmeta.ARC_REVISION, then `make asset-pack` (both manifests, per-file sha256 incl. these).
+# Not flipped in 0.3.12: v2 raised the Director's wrong actions and the golden WER (docs/ARC_V2.md section 3).
+EAR_EXTRA = {"d35e3e7002ddd89325ecad626171dc08891656d9": ["nft2/room.onnx", "nft2/SHA256SUMS"]}
+EAR_FILES = EAR_FILES + EAR_EXTRA.get(EAR_REVISION, [])
 # Arc Tagger on Hugging Face. The tagger asset's own files predate it (v0.3 int8, kept: the Director's assistant-domain
 # read-out is byte-identical on them, docs/ARC_FEEDBACK.md); this revision pins the kids-domain thresholds the 0.5.0
 # library builds in (desktop/vendor/arctag/arctag_kids.json, checked by model_server/tests/test_tag_kids.py).

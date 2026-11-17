@@ -65,6 +65,11 @@ LISTEN = ("handsfree", "ptt")
 # own keys. The round-7 `conf` / `alts` stay null / [] (the shipped Director weights were trained with them empty).
 EAR_ABI2 = ("almost", "quantities", "clean_text", "uconf", "min_wconf", "nbest", "walts", "disfl", "n_dropped",
             "playback_leak", "playback", "barge", "barge_p", "eot")
+# Arc Transcriber Space v2 room read-outs (model_server/app/arc_room.py, docs/ARC_V2.md): kept on k["ear"]["room"] for
+# the turn log and round 13, SHADOW only. No rule, router, echo drop, safety path or Director feature reads them; the
+# addressee and kids-safety outputs are BETA and never trigger an automatic action (safety stays with Arc Tagger's kids
+# domain and the phrase backstops, safety.py).
+EAR_V2 = ("room",)
 OPEN_MIC = ("listen", "voice")
 
 
@@ -426,7 +431,8 @@ class Session:
             if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
                 # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
                 k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken", "decoder_text",
-                                                  "agree", "speech_s", "max_pause_s") + EAR_ABI2 if m.get(x) is not None}
+                                                  "agree", "speech_s", "max_pause_s") + EAR_ABI2 + EAR_V2
+                            if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":

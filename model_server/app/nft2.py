@@ -335,10 +335,12 @@ class Nft2:
     # ---- decoding ----
     def transcribe(self, pcm: np.ndarray, domain: str = "assistant", no_events: bool = False, no_bias: bool = False,
                    names: list[dict] | None = None, almost: bool = False, nbest: int = 0,
-                   no_guard: bool = False) -> dict:
+                   no_guard: bool = False, tap: bool = False) -> dict:
         """A whole clip (16 kHz mono float32). Up to 20 s is one utterance; longer clips are segmented by Arc.
         ABI 2: almost (sound-alike "almost" name records), nbest (> 1: an RNNT beam's n-best texts and word
-        alternatives; the words stay the greedy decode's), no_guard (keep every RNNT word)."""
+        alternatives; the words stay the greedy decode's), no_guard (keep every RNNT word).
+        tap: also out["tap"], the clip's encoder Arc tap (T, d) for the v2 room read-outs (app/arc_room.py), taken under
+        the same lock right after the decode, so it is the decode's memo (no second encoder pass)."""
         x = np.ascontiguousarray(pcm, dtype=np.float32)
         o, keep = options(domain=domain, no_bias=no_bias, no_events=no_events, almost=almost, nbest=nbest,
                           no_guard=no_guard)
@@ -355,8 +357,25 @@ class Nft2:
                 out = _result(r)
             finally:
                 self.L.arc_result_free(r)
+            if tap:
+                out["tap"] = self._tap(x)
         out["ms"] = round(ms, 1)
         return out
+
+    def _tap(self, x: np.ndarray) -> np.ndarray | None:
+        """arc_nft2_tap (libarc outpost.2) of a clip, as a (T, d) float32 copy; None when the library or the clip
+        cannot give one. The caller holds self.lock."""
+        if len(x) < 80 or not hasattr(self.L, "arc_nft2_tap"):
+            return None
+        T, d = ffi.new("int *"), ffi.new("int *")
+        p = self.L.arc_nft2_tap(self.m, ffi.from_buffer("float[]", x), len(x), T, d)
+        if p == ffi.NULL:
+            return None
+        try:
+            n = int(T[0]) * int(d[0])
+            return np.frombuffer(ffi.buffer(p, 4 * n), dtype=np.float32).reshape(int(T[0]), int(d[0])).copy()
+        finally:
+            self.L.arc_nft2_tap_free(p)
 
 
 def options(domain: str = "assistant", no_bias: bool = False, no_events: bool = False, almost: bool = False,
