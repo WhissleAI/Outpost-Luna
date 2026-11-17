@@ -46,3 +46,21 @@ export function youtubeSrc(id, origin) {
   const q = new URLSearchParams({ rel: "0", cc_load_policy: "1", playsinline: "1", enablejsapi: "1", origin: origin || "" });
   return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${q}`;
 }
+
+/**
+ * [video fix 0.3.11] The YouTube watchdog. An embed can sit forever on a card of its own ("Sign in to confirm you're
+ * not a bot") with no IFrame API error: it says onReady, takes playVideo and never plays. Every play request must reach
+ * "playing" (state 1) within `ms`, or onStall() runs once (the overlay then shows "This video won't play here" and the
+ * NASA fallback). A pause (2) or the end (0) disarms it until the next play request; playing once ends the watch.
+ */
+export const YT_STALL_MS = 12000;
+export function stallWatch(onStall, { ms = YT_STALL_MS, timers = globalThis } = {}) {
+  let t = 0, done = false;
+  const clear = () => { if (t) timers.clearTimeout(t); t = 0; };
+  return {
+    play(wait = ms) { if (done) return; clear(); t = timers.setTimeout(() => { t = 0; if (!done) { done = true; onStall(); } }, wait); },
+    state(s) { if (s === 1) { done = true; clear(); } else if (s === 0 || s === 2) clear(); },
+    dispose() { done = true; clear(); },
+    get armed() { return !!t; },
+  };
+}

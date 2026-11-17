@@ -38,7 +38,7 @@ def main() -> int:
     path = video.catalog_path()
     items = json.loads(path.read_text(encoding="utf-8"))
     bad = 0
-    with httpx.Client(follow_redirects=True, timeout=30.0, headers=UA) as c:
+    with httpx.Client(follow_redirects=True, timeout=30.0, headers=UA, verify=video.tls()) as c:
         for v in items:
             if v["source"] == "youtube":
                 r = c.get("https://www.youtube.com/oembed", params={"url": f"https://www.youtube.com/watch?v={v['youtube_id']}", "format": "json"})

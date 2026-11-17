@@ -205,6 +205,71 @@ def test_routes_offline(tmp_cache):
         assert v["bytes"] > 0
 
 
+def _fake_item(monkeypatch, body: bytes, **extra):
+    v = {**copy.deepcopy(video.item("phases_loop")), "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest(), **extra}
+    real = video.item
+    monkeypatch.setattr(video, "item", lambda vid: v if vid == "phases_loop" else real(vid))
+    return v
+
+
+def test_first_play_copies_from_the_video_pack_instead_of_streaming(tmp_cache, tmp_path, monkeypatch):
+    """[video fix 0.3.11] Karan's 0.3.10: the first play of phases_loop streamed from NASA (502, svs.gsfc.nasa.gov's
+    broken chain) while the same file sat in the desktop's video pack. Now the pack copy is served at once, even
+    offline, and NASA is never asked."""
+    body = b"\x01" * 4096
+    _fake_item(monkeypatch, body)
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / "phases_loop.mp4").write_bytes(body)
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    monkeypatch.setattr(video, "_proxy", lambda *a, **k: pytest.fail("streamed from NASA although the pack has it"))
+    with TestClient(app) as c:
+        r = c.get("/api/video/phases_loop/file", headers={"Range": "bytes=0-99"})
+        assert r.status_code == 206 and len(r.content) == 100 and r.headers["content-type"] == "video/mp4"
+        assert tmp_cache.has("phases_loop.mp4")
+        assert c.get("/api/video/phases_loop/available").json()["status"] == "cached"
+
+
+def test_a_bad_pack_file_is_never_served(tmp_cache, tmp_path, monkeypatch):
+    _fake_item(monkeypatch, b"\x01" * 4096)
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / "phases_loop.mp4").write_bytes(b"\x02" * 4096)    # same size, wrong sha256
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    with TestClient(app) as c:
+        assert c.get("/api/video/phases_loop/file").status_code == 503   # offline, and the pack copy is refused
+    assert not tmp_cache.has("phases_loop.mp4")
+
+
+def test_stream_failure_falls_back_to_the_file_cached_meanwhile(tmp_cache, monkeypatch):
+    body = b"\x03" * 2048
+    _fake_item(monkeypatch, body)
+    monkeypatch.setattr(settings, "video_offline", False)
+    monkeypatch.setattr(video, "online", lambda kind="nasa": True)
+
+    def bg(v):   # the background cache wins the race
+        tmp_cache.root.mkdir(parents=True, exist_ok=True)
+        (tmp_cache.root / "phases_loop.mp4").write_bytes(body)
+        tmp_cache.add("phases_loop.mp4", pinned=True)
+    monkeypatch.setattr(video, "_cache_in_background", bg)
+
+    async def proxy(url, rng):
+        raise video.HTTPException(502, "NASA did not answer")
+    monkeypatch.setattr(video, "_proxy", proxy)
+    with TestClient(app) as c:
+        r = c.get("/api/video/phases_loop/file")
+        assert r.status_code == 200 and r.content == body
+
+
+def test_tls_completes_a_nasa_host_that_sends_its_leaf_alone():
+    """svs.gsfc.nasa.gov (phases_loop) sends no intermediate since 2026-11-16: the context carries Let's Encrypt's
+    intermediates on top of certifi's roots (still a full check: the chain must end at a certifi root)."""
+    ctx = video.tls()
+    names = {dict(x[0] for x in c["subject"]).get("commonName") for c in ctx.get_ca_certs()}
+    assert {"YR1", "YR2", "YR3", "YE1", "R12", "R13", "E7", "E8", "Root YR"} <= names
+    assert "ISRG Root X1" in names and ctx.verify_mode.name == "CERT_REQUIRED" and ctx.check_hostname
+
+
 # ---------------------------------------------------------------- the lesson's video step ----------------------------
 def fixture_course():
     """A fixture lesson with a video step (tests only; course.json belongs to the learning content)."""

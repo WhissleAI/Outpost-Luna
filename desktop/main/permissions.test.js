@@ -86,8 +86,11 @@ test("NASA video: only the YouTube embed and its player traffic, never a YouTube
   assert.equal(go("https://evil-googlevideo.com/x", "xhr"), false);
   assert.equal(go("https://www.youtube.com.evil.example/x.js", "script"), false);
   assert.equal(go("http://www.youtube-nocookie.com/embed/x", "subFrame"), false);
-  assert.equal(go("https://www.google.com/js/th/x.js", "script"), false);
   assert.equal(go("https://www.gstatic.com/recaptcha/x.js", "script"), false);
+  assert.equal(go("https://www.google.com/", "mainFrame"), false);
+  assert.equal(go("https://www.google.com/search?q=x", "xhr"), false);
+  assert.equal(go("https://jnn-pa.googleapis.com/other", "xhr"), false);
+  assert.equal(go("https://storage.googleapis.com/x", "xhr"), false);
   assert.equal(go("https://fonts.gstatic.com/s/other/x.woff2", "font"), false);
   // the renderer never downloads NASA files: the backend does (backend/app/video.py)
   for (const u of ["https://images-assets.nasa.gov/video/x/x~medium.mp4", "https://svs.gsfc.nasa.gov/vis/x.mp4", "https://nssdc.gsfc.nasa.gov/x.mp4", "https://images-api.nasa.gov/search"]) {
@@ -96,6 +99,29 @@ test("NASA video: only the YouTube embed and its player traffic, never a YouTube
   assert.ok(blocked.length >= 13);
   assert.equal(allowYouTube("https://i.ytimg.com/x.jpg", "image"), true);
   assert.equal(isYouTubeHost("https://example.com/"), false);
+});
+
+test("[video fix 0.3.11] the embed's BotGuard script and its Web Anti-Abuse call: by path, as a sub-resource only", () => {
+  // Karan's 0.3.10 main.log: "blocked script https://www.google.com/js/th/Ur_cm….js", then YouTube's "Sign in to
+  // confirm you're not a bot" card in the embed and no IFrame API error
+  const th = "https://www.google.com/js/th/Ur_cmCrGbuP0CDSRxcm86cmNvtWLRAMd5Uv5X7w3mIQ.js";
+  const waa = "https://jnn-pa.googleapis.com/$rpc/google.internal.waa.v1.Waa/GenerateIT";
+  assert.equal(allowYouTube(th, "script"), true);
+  for (const t of ["mainFrame", "subFrame", "xhr", "image", "media", "other"]) assert.equal(allowYouTube(th, t), false, t);
+  assert.equal(allowYouTube("https://www.google.com/js/th/x.css", "script"), false);
+  assert.equal(allowYouTube("https://www.google.com/js/other.js", "script"), false);
+  assert.equal(allowYouTube("http://www.google.com/js/th/x.js", "script"), false);
+  assert.equal(allowYouTube("https://evil.google.com/js/th/x.js", "script"), false);
+  assert.equal(allowYouTube(waa, "xhr"), true);
+  assert.equal(allowYouTube(waa.replace("GenerateIT", "Create"), "fetch"), true);
+  for (const t of ["mainFrame", "subFrame", "script"]) assert.equal(allowYouTube(waa, t), false, t);
+  assert.equal(allowYouTube("https://jnn-pa.googleapis.com/$rpc/other.Service/X", "xhr"), false);
+  // the bot card's own logo is player art, by path
+  assert.equal(allowYouTube("https://ssl.gstatic.com/docs/picker/images/youtube_logo_dark.svg", "image"), true);
+  assert.equal(allowYouTube("https://ssl.gstatic.com/docs/other.svg", "image"), false);
+  // neither is a "YouTube host" (the optional Referer and the gate's link classification stay as they were)
+  assert.equal(isYouTubeHost(th), false);
+  assert.equal(isYouTubeHost(waa), false);
 });
 
 test("the YouTube frame never gets the mic or the camera", async () => {

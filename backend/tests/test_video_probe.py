@@ -16,7 +16,7 @@ def _fresh(monkeypatch):
 def _head(script):
     calls = []
 
-    def head(url, timeout=None, headers=None):
+    def head(url, timeout=None, headers=None, verify=None):
         calls.append(timeout)
         r = script[min(len(calls), len(script)) - 1]
         if isinstance(r, Exception):
