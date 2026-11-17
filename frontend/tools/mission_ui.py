@@ -8,7 +8,8 @@ clicked, not what it covered. This tool checks what a kid SEES:
     alert strip, mission log) never intersect each other;
   * the Now card never covers the windshield's centre or the three gauges (POWER / LIFE SUPPORT / DOSE);
   * nothing visible is cut by the viewport, and no label is clipped by its own box (scrollWidth > clientWidth);
-  * every control is shown once (one Pause/Play, one speed group, one Skip ahead).
+  * every control is shown once (one Pause/Play, one speed group, one Skip ahead);
+  * [playtest 18] the 3D consoles' labels are at least 12 px on screen at 1280x720 and larger.
 
 It drives the real app to the owner's moment (Cadet, Shackleton Rim, ice run, the "Steer left / Steer right" choice),
 shoots each size into --shots, and exits non-zero on any finding.
@@ -336,6 +337,27 @@ WHY_MEASURE = """() => {
 }"""
 
 
+# [playtest 18] the 3D consoles' text as drawn on screen (CSS3D scales each console): every visible label's font size
+# times the console's on-screen scale. The floor: 12 px at 1280x720 and larger.
+CONSOLE_TEXT = """() => { const out = [];
+  document.querySelectorAll('.c3-css .c3-panel').forEach(p => p.querySelectorAll('*').forEach(e => {
+    const own = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+    if (!own || !e.offsetWidth || e.classList.contains('cb-vh') || e.closest('[hidden]')) return;
+    const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') return;
+    const r = e.getBoundingClientRect(); if (!r.width) return;
+    const k = Math.max(r.width / e.offsetWidth, r.height / e.offsetHeight);
+    out.push({ panel: p.dataset.panel, text: e.textContent.trim().slice(0, 24), px: +(parseFloat(cs.fontSize) * k).toFixed(1) }); }));
+  return out; }"""
+CONSOLE_FLOOR_PX = 12
+
+
+def console_text_checks(pg, vw, vh):
+    if vw < 1280 or vh < 720:
+        return []
+    rows = pg.evaluate(CONSOLE_TEXT)
+    return [f"console text under {CONSOLE_FLOOR_PX}px: {r['panel']} '{r['text']}' {r['px']}px" for r in rows if r["px"] < CONSOLE_FLOOR_PX - 0.05]
+
+
 def why_checks(pg):
     out = []
     w = pg.evaluate(WHY_MEASURE)
@@ -391,7 +413,7 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False):
                 pg.keyboard.press("Escape")   # a Cadet offer opened a panel: the kid goes back to the seat, where the HUD is measured
                 pg.wait_for_timeout(1500)
             m = pg.evaluate(MEASURE, HUD)
-            f = nf + findings(m) + ([] if got else ["never reached the steer choice"])
+            f = nf + findings(m) + ([] if got else ["never reached the steer choice"]) + console_text_checks(pg, vw, vh)
             # again with a story banner up (day start, comm gap, storm): it has its own slot, never text on text
             # the app's reduced-motion mode: no fade, so a busy machine's slow animation can't hide the banner from the check
             pg.evaluate("() => { document.documentElement.dataset.motion = 'reduce'; window.__cabinTest && window.__cabinTest.moment('On our own'); }")

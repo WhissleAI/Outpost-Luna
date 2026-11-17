@@ -1223,7 +1223,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         ${nums.length ? `<button type="button" class="mx-link" id="mNums">${esc(DEBRIEF.numbers)}</button>` : ""}</div>
       <div class="mx-db-body">
         <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
-          <ul class="mx-checks">${story.checks.map(c => `<li class="${c.ok ? "is-ok" : "is-no"}"><span class="mx-ck" aria-label="${c.ok ? "done" : "not yet"}">${ic(c.ok ? "check" : "close", 18)}</span>${esc(c.text)}</li>`).join("")}</ul>
+          <ul class="mx-checks">${story.checks.map(c => `<li class="${c.ok ? "is-ok" : "is-no"}"><span class="mx-ck" aria-hidden="true">${ic(c.ok ? "check" : "close", 18)}</span><span class="sr-only">${c.ok ? "Done: " : "Not yet: "}</span>${esc(c.text)}</li>`).join("")}</ul>
           <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
         <details class="mx-grown" id="mxGrown"><summary>${esc(DEBRIEF.grownups)}</summary>
         ${nums.length ? `<section class="mx-nums" id="mxNums" tabindex="-1" aria-label="${esc(DEBRIEF.numbersTitle)}"><h3>${esc(DEBRIEF.numbersTitle)}</h3>

@@ -137,3 +137,6 @@ Director coverage tests green.
   place of the 12-step tour (which stays in Help), the debrief with stars first and Next mission / Fly again always on
   screen, one wording for the storm's orders ("Shields to 40"), the Orbit ↔ seat key trap, and story moments clear
   of the window's markers. Details: docs/GAMEPLAY.md §11.
+- Playtest fixes (2026-11-16 novice playtest): the Now card's Play after Resume, store-and-forward science and science
+  drives, the storm card when the crew is sheltered, time held behind Settings, readable consoles, the kid debrief and
+  the Cadet site briefing. Details: docs/GAMEPLAY.md §12.
