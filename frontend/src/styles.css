@@ -93,6 +93,9 @@ kbd{font-family:var(--font-mono);font-size:11px;font-weight:var(--weight-semibol
   --gut:var(--space-4);--side:0px}
 .stage canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--color-on-space-2);font-size:var(--text-sm);text-align:center;padding:var(--space-5)}
+/* the "Loading the Moon…" / "Couldn't load the Moon map." note covers the globe but never takes the pointer: the places and
+   the glowing ring stay tappable (mouse, touch, point + dwell) while the 4k map loads or when it failed */
+.loading{pointer-events:none}
 .label{position:absolute;left:0;top:0;pointer-events:none;transform:translate(-50%,-140%);z-index:1;background:var(--color-surface);color:var(--color-text);
   font-weight:var(--weight-semibold);font-size:var(--text-sm);padding:var(--space-1) var(--space-3);border-radius:var(--radius-full);white-space:nowrap;box-shadow:var(--shadow-2);transition:opacity var(--dur-base)}
 .label small{font-weight:var(--weight-regular);color:var(--color-text-2);margin-left:6px}
