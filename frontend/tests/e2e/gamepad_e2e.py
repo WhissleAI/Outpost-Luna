@@ -134,9 +134,7 @@ def main():
         tap(X, 1200)
         ok(js("() => document.getElementById('mic').getAttribute('aria-label')") != m0, "X: mic on / off")
         tap(RB, 2500)
-        if pg.query_selector("#aPrepDone") is not None:   # learning v1: Mission prep first; A takes Done
-            ok(act()["id"] == "aPrepDone", "RB (next): Mission prep first, focus on Done")
-            tap(A, 2500)
+        ok(pg.query_selector("#aPrepDone") is None, "RB (next): no prep gate before the lesson (novice playtest #8)")
         ok(pg.query_selector("#aInput") is not None, "RB (next) on the map: the next lesson opens")
         ok(js("() => !!document.activeElement && document.activeElement.id === 'moonFocus'"), "a Moon step: focus on the Moon reticle")
         tap(RIGHT, 1600)

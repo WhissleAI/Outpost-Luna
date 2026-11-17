@@ -50,10 +50,13 @@ def run(base):
             pg.wait_for_timeout(700)
             say(answer_for(st, vocab=_Vocab()))
             last = k == len(L["steps"]) - 1
-            pg.wait_for_selector(".a-badge" if last else "#aNext", timeout=25000)
+            pg.wait_for_selector("#aNext", timeout=25000)   # the last step's answer stays up: "Get your patch"
             step(f"voice: lesson 1 step {k + 1} ({st['accept']['type']}) answered")
-            if not last:
-                say("next"); pg.wait_for_timeout(900)
+            say("next")
+            if last:
+                pg.wait_for_selector(".a-badge", timeout=20000)
+            else:
+                pg.wait_for_timeout(900)
         step("patch earned card")
         say("next"); pg.wait_for_selector(".apanel.is-lesson", timeout=20000)
         step("voice: 'next' on the patch → lesson 2")
@@ -68,10 +71,13 @@ def run(base):
             else:
                 say(answer_for(st, vocab=_Vocab()))
             last = k == len(L["steps"]) - 1
-            pg.wait_for_selector(".a-badge" if last else "#aNext", timeout=25000)
+            pg.wait_for_selector("#aNext", timeout=25000)
             step(f"click/type: lesson 2 step {k + 1} ({a['type']})")
-            if not last:
-                pg.click("#aNext"); pg.wait_for_timeout(500)
+            pg.click("#aNext")
+            if last:
+                pg.wait_for_selector(".a-badge", timeout=20000)
+            else:
+                pg.wait_for_timeout(500)
         pg.click("#aMap"); pg.wait_for_selector(".mp-card", timeout=15000)
         step("click: patch → Map")
         assert pg.evaluate("JSON.parse(localStorage.getItem('atm-academy')).badges.length") == 2

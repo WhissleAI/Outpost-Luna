@@ -15,7 +15,7 @@ import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, ARC_STEP, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER } from "../story.js";
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, coreLessons } from "../explorer.js";   // explorer lessons open after missions
 import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
@@ -33,6 +33,7 @@ const UI = {
   nextUp: SCHOOL.next, lesson: (n, of) => `Lesson ${n} of ${of}`, step: (n, of) => `Step ${n} of ${of}`, min: SCHOOL.minutes,
   patches: SCHOOL.progress, qualified: "Qualified", retry: "Fly it again", shuffle: CALLSIGN_COPY.random,
   callsign: CALLSIGN_COPY.edit, ride: "Check ride", patchEarned: "Patch earned", commander: SCHOOL.go,
+  patchNext: "Get your patch", bonus: "Bonus patch",
 };
 /** Where each lesson sits on the Moon, when course.json doesn't say (a lesson's `place`: {name, lat, lon} or a place
  *  id from /api/places wins). The route runs from the near side down to the south-pole outpost, where the check ride
@@ -88,10 +89,23 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
   let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
+  let pendingBadge = null, focusPrompt = false;   // the last step's patch waits for Next; Next lands focus on the question
   // guidance (docs/PLAYTEST.md): the hint-ladder rung and what the server said to draw; per-step state that survives
   // a re-render (the route's taps); the first-use intro line for this step
   let gs = { rung: 0 }, stepState = { taps: [] }, intro = null;
-  const freshStep = () => { gs = { rung: 0 }; stepState = { taps: [] }; const t = L && L.steps[i] && L.steps[i].accept.type; intro = t && !L.ride && firstUse(t) ? INTRO[t] : null; };
+  const freshStep = () => {
+    const st = L && L.steps[i], acc = (st && st.accept) || {};
+    // [novice playtest 5] a find-a-place step never tests a place nobody showed: its target already glows (rung 1,
+    // no name); help and misses climb to the label, then to "here it is"
+    gs = !L || L.ride || !["intent", "tap"].includes(acc.type) || !acc.place || (st.ring || []).includes(acc.place) ? { rung: 0 } : { rung: 1, focus: [acc.place] };
+    stepState = { taps: [] }; pendingBadge = null;
+    const t = acc.type; intro = t && !L.ride && firstUse(t) ? INTRO[t] : null;
+  };
+  /** Merge a hint reply into the guidance state: help never takes back what the card already shows. */
+  const climb = (g, r) => ({ ...g, rung: Math.max(g.rung || 0, r.rung || 0), focus: r.focus || g.focus,
+    label: [...new Set([...(g.label || []), ...(r.label || [])])], eliminate: r.eliminate || g.eliminate, cue: r.cue || g.cue,
+    answer: r.answer || g.answer, phrase: r.phrase || g.phrase, line_lon: r.line_lon != null ? r.line_lon : g.line_lon,
+    label_line: !!(r.label_line || g.label_line), show: !!(r.show || g.show) });
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
@@ -108,7 +122,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // core lessons only: explorer lessons and the check ride aren't numbered (the patch total still counts every lesson)
   const lessonNo = l => { const ls = coreLessons(lessons()); return { n: ls.indexOf(l) + 1, of: ls.length }; };
   const has = id => prog.badges.includes(id);
-  const open = l => unlocked(l, missionsFlown(callSign.get()));
+  const open = l => unlocked(l, missionsFlown(callSign.get()), prog.qualified);
+  const lockedWhen = l => (l.unlock_after === "checkride" ? "checkride" : l.unlock_after_missions);
+  /** [novice playtest 14] a bonus lesson that opened and isn't flown yet: the map card offers it by name. */
+  const newLesson = () => lessons().find(l => isExplorer(l) && open(l) && !has(l.badge.id)) || null;
+  /** [novice playtest 9] one count: the core lessons ("3 of 6"), then the check ride; bonus lessons apart. */
+  const coreDone = () => { const c = coreLessons(lessons()); return { n: c.filter(l => has(l.badge.id)).length, of: c.length }; };
   const nextLesson = () => lessons().find(l => !has(l.badge.id) && open(l)) || null;
   const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
   /** Panel layout for this view. The Moon is always the backdrop: home and map are overlays on it, lesson / patch /
@@ -117,6 +136,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.className = "apanel is-" + kind;
     document.body.dataset.aview = kind;
     if (kind !== "map") { globe.route.clear(); globe.setViewport(null); }
+    // a lesson's place name never outlives it (novice playtest #31: "Shackleton (south pole)" stayed as a label)
+    if (kind !== "lesson" && kind !== "ride" && globe.clearHighlight) globe.clearHighlight();
     if (globe.guide) globe.guide.clear();
     globe.setDecor(false);   // no unlabelled place dots in Flight School: a step draws only its own labelled marks
   }
@@ -146,14 +167,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let suspended = null;
   function exit() {
     if (!ui.active) { panel.hidden = true; return; }   // already suspended (Mission → Library): keep the lesson
-    suspended =view === "lesson" && L && !L.ride ? { L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt, gs, stepState, intro } : null;
+    suspended =view === "lesson" && L && !L.ride ? { L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt, gs, stepState, intro, pendingBadge } : null;
     ui.active = false; view = "off"; panel.hidden = true; busy = false;
     endRide(); leaveCatalog(); globe.route.clear(); globe.setViewport(null); if (globe.guide) globe.guide.clear();
   }
   function resume() {
     const s = suspended; suspended = null;
     if (!s || !lessons().includes(s.L)) return false;
-    ({ L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt, gs, stepState, intro } = s);
+    ({ L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt, gs, stepState, intro, pendingBadge } = s);
     stepState.directed = false;   // the step's camera move runs again
     view = "lesson";
     const st = L.steps[i], f = st && st.accept && (st.accept.place ? placeById(st.accept.place) : null);
@@ -244,7 +265,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.dataset.l = l.id;
       const no = l.ride || isExplorer(l) ? "" : String(lessonNo(l).n);
       if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it to read when it opens (spatial nav skips it)
-      b.setAttribute("aria-label", `${no ? no + ". " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, ${EXPLORER.locked(l.unlock_after_missions)}` : ""}. ${at.name}`);
+      b.setAttribute("aria-label", `${no ? no + ". " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, ${EXPLORER.locked(lockedWhen(l))}` : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label">${no ? `<b>${no}</b>` : ""}${esc(l.title)}</span>`;
       b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
       return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next };
@@ -252,26 +273,33 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
     const cta = ctaFor(sel, nx, n);
+    const nl = prog.qualified ? newLesson() : null;
     const card = prog.qualified && (!mapSel || !sel)
       ? `<div class="mp-card"><span class="mp-patch">${patch("checkride", { earned: true, size: 64 })}</span>
-          <div class="mp-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2></div>
-          <button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button></div>`
+          <div class="mp-copy"><p class="eyebrow">${esc(UI.qualified)}</p><h2>${esc(SCHOOL.titleDone(cs))}</h2>
+            ${nl ? `<p class="mp-sub mp-new">${icon("star", { size: 16 })}<span><b>${esc(EXPLORER.unlockedTitle)}:</b> ${esc(nl.title)}</span></p>` : ""}</div>
+          <div class="mp-actions"><button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>
+          ${nl ? `<button type="button" class="btn" id="aNewLesson" data-l="${esc(nl.id)}">${esc(EXPLORER.open)}</button>` : ""}</div></div>`
       : sel ? `<div class="mp-card"><span class="mp-patch">${patch(sel.id, { earned: selDone, size: 64 })}</span>
           <div class="mp-copy"><p class="eyebrow">${esc(sel === nx ? UI.nextUp : sel.ride ? UI.ride : isExplorer(sel) ? EXPLORER.eyebrow : UI.lesson(lessonNo(sel).n, lessonNo(sel).of))}${at && at.name ? ` · ${esc(at.name)}` : ""}</p>
-            <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(open(sel) ? (LESSON_BLURB[sel.id] || sel.brief) : EXPLORER.locked(sel.unlock_after_missions))}</p></div>
-          ${open(sel) ? `${sel.prep && !has(sel.badge.id) && prepSeen(sel.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}
-          <button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button>` : ""}</div>` : "";
+            <h2>${esc(sel.title)}</h2><p class="mp-sub">${esc(open(sel) ? (LESSON_BLURB[sel.id] || sel.brief) : EXPLORER.locked(lockedWhen(sel)))}</p></div>
+          ${open(sel) ? `<div class="mp-actions"><button type="button" class="btn-primary" id="aStart" data-l="${esc(sel.id)}">${esc(cta)}${icon("chevron-right")}</button>
+          ${sel.prep && has(sel.badge.id) ? `<button type="button" class="btn-quiet" id="aPrepMap" data-l="${esc(sel.id)}">${icon("todo", { size: 16 })}${esc(PREP.open)}</button>` : ""}</div>` : ""}</div>` : "";
     panel.innerHTML = `
       <header class="mp-top">
         <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
-        <span class="mp-count" aria-label="${esc(UI.patches(n, ls.length))}">${n}<small>/${ls.length}</small></span>
+        <span class="mp-count" aria-label="${esc(SCHOOL.lessonsCount(coreDone().n, coreDone().of))}">${coreDone().n}<small>/${coreDone().of}</small></span>
         <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
       </header>
-      ${!prog.qualified && nx ? `<p class="mp-beat"><b>${esc(ARC_STEP(nx.ride ? 1 : 0))} · ${esc(nx.ride ? TRANSITION.toRide.where : TRANSITION.firstMap.where)}</b>${esc(nx.ride ? TRANSITION.toRide.line : n === 0 ? TRANSITION.firstMap.line : SCHOOL.progressLine(n, lessonNo(nx).of, nx.title))}</p>` : ""}
+      ${!prog.qualified && nx ? (n === 0 && !nx.ride
+        // [novice playtest 29] the first map: three beats on how it works; then one line on where you are
+        ? `<div class="mp-beat mp-intro"><b>${esc(TRANSITION.firstMap.where)} · ${esc(SCHOOL.lessonsCount(0, coreDone().of))}</b><ol>${TRANSITION.firstMap.intro.map(t => `<li>${esc(t)}</li>`).join("")}</ol></div>`
+        : `<p class="mp-beat"><b>${esc(nx.ride ? TRANSITION.toRide.where : `${TRANSITION.firstMap.where} · ${SCHOOL.lessonsCount(coreDone().n, coreDone().of)}`)}</b>${esc(nx.ride ? TRANSITION.toRide.line : `Next: ${nx.title}.`)}</p>`) : ""}
       ${card}
       <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
+    const nb = panel.querySelector("#aNewLesson"); if (nb) nb.onclick = () => openLesson(nb.dataset.l);
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);
     const pm = panel.querySelector("#aPrepMap"); if (pm) pm.onclick = () => openLesson(pm.dataset.l, { prep: true });   // Mission prep, from the map
   }
@@ -283,7 +311,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // ---------- lesson ----------
   async function openLesson(id, { prep = false } = {}) {
     const want = lessons().find(l => l.id === id); if (!want) return;
-    if (!open(want)) { mapSel = want.id; showMap(true); say(EXPLORER.lockedSay); return; }   // an explorer lesson, still locked
+    if (!open(want)) { mapSel = want.id; showMap(true); say(want.unlock_after === "checkride" ? EXPLORER.lockedSayRide : EXPLORER.lockedSay); return; }   // an explorer lesson, still locked
     L = want;
     view = "lesson"; i = 0; misses = 0; waitingNext = false; feedback = null; nagged = false; stepKey = ""; leaveCatalog(); freshStep();
     try { dispatchEvent(new CustomEvent("outpost:lesson", { detail: { id } })); } catch (e) { /* tests */ }   // main.js closes a stale answer card
@@ -295,7 +323,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const f = L.globe.place && placeById(L.globe.place);
       if (f) globe.showFeature(f, { dist: L.globe.dist }); else if (L.globe.lat != null) globe.flyTo(L.globe.lat, L.globe.lon, L.globe.dist || 3.6);
     } else { const at = placeOf(L); globe.flyTo(at.lat, at.lon, 2.6); }
-    if (L.prep && !L.ride && (prep || !prepSeen(L.id))) { showPrep(); return; }   // Mission prep: before the lesson, never mid-lesson
+    // [novice playtest 8] the home activity is optional: only when asked for (the map card's or the patch's "Try it at
+    // home"), never a gate before the lesson
+    if (L.prep && !L.ride && prep) { showPrep(); return; }
     beginLesson();
   }
   /** The lesson proper: its card, then hello + brief + the first question as one say. */
@@ -310,10 +340,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (L.steps[0].alert) alertSound();
   }
 
-  // ---------- Mission prep: a hands-on job before the lesson (course.json lesson.prep; docs/LEARNING_DESIGN.md) ----------
-  // Up to 3 spoken steps, then Done (voice, thumbs-up, or the button) or Skip. Shown by itself the first time the lesson
-  // opens; after that, from the lesson's card on the map (never mid-lesson). Either answer goes on to the lesson. The NASA
-  // activity it comes from is credited in course.json, not on screen.
+  // ---------- Try it at home: an optional hands-on job (course.json lesson.prep; docs/LEARNING_DESIGN.md) ----------
+  // Up to 3 spoken steps, then "We did it!" (voice, thumbs-up, or the button) or "Not now". [novice playtest 8] Never a
+  // gate: it opens only from the lesson's map card or its patch screen, and either answer goes back to the map. "I don't
+  // have a lamp" gets a way out, never the steps again. The NASA activity is credited in course.json, not on screen.
   const PREP_KEY = "outpost-prep-seen";
   const prepSeen = id => { try { return JSON.parse(localStorage.getItem(PREP_KEY) || "[]").includes(id); } catch (e) { return true; } };
   const markPrep = id => { try { const a = JSON.parse(localStorage.getItem(PREP_KEY) || "[]"); if (!a.includes(id)) a.push(id); localStorage.setItem(PREP_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } };
@@ -336,12 +366,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <p class="a-how a-do">${esc(PREP.how)}</p>
         </section>
       </div>
-      <footer class="a-foot"><button type="button" class="btn-quiet" id="aPrepSkip" data-intent="no">${esc(PREP.skip)}</button>
+      <footer class="a-foot"><button type="button" class="btn a-prep-skip" id="aPrepSkip" data-intent="no">${esc(PREP.skip)}</button>
         <button type="button" class="btn-primary" id="aPrepDone" data-intent="yes">${icon("check", { size: 18 })}${esc(PREP.done)}</button></footer>`;
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
     panel.querySelector("#aPrepDone").onclick = () => prepDone(true);
     panel.querySelector("#aPrepSkip").onclick = () => prepDone(false);
-    panel.querySelector("#aPrepDone").focus({ preventScroll: true });
+    panel.querySelector("#aPrepSkip").focus({ preventScroll: true });   // Enter is never a "We did it!" nobody did
     say([PREP.intro, ...(p.grown_up ? [PREP.grownUpSay] : []), ...p.steps], { situation: "lesson_brief" });
     fillPrepVideos(p);
   }
@@ -374,7 +404,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view !== "prep" || !L) return;
     stop();
     say(done ? PREP.doneSay : PREP.skipSay, { situation: done ? "badge" : "lesson_brief" });
-    beginLesson();
+    mapSel = L.id; showMap(true);   // back to the lesson's card: Start lesson (or Replay) is one tap away
   }
 
   /** The question as shown. A fill-the-blank prompt that quotes its own sentence shows only its lead-in ("Fill the
@@ -422,8 +452,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           ${firstLook && !L.ride ? `<p class="a-lead">${esc(L.brief)}</p>` : ""}
-          <p class="a-prompt">${esc(promptOf(st))}</p>
-          ${intro && !waitingNext && gs.rung === 0 ? `<p class="a-intro"><b>New</b>${esc(intro.replace(/^New: /, ""))}</p>` : ""}
+          <p class="a-prompt" tabindex="-1">${esc(promptOf(st))}</p>
+          ${intro && !waitingNext && !feedback ? `<p class="a-intro"><b>New</b>${esc(intro.replace(/^New: /, ""))}</p>` : ""}
           ${how && !waitingNext ? `<p class="a-how a-do">${esc(how)}</p>` : ""}
           ${gs.phrase && !waitingNext ? `<p class="a-phrase">Say: &ldquo;${esc(gs.phrase)}&rdquo;</p>` : ""}
           ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>${clip.note ? `<p class="a-how a-clipnote">${esc(clip.note)}</p>` : ""}` : ""}
@@ -433,7 +463,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         </section>
         ${ride ? `<div id="aRideSlot"></div>` : ""}
       </div>
-      <footer class="a-foot">${waitingNext ? `<button type="button" class="btn-primary" id="aNext">${esc(UI.next)}${icon("chevron-right")}</button>` : ""}</footer>`;
+      <footer class="a-foot">${waitingNext ? `<button type="button" class="btn-primary" id="aNext">${esc(pendingBadge ? UI.patchNext : UI.next)}${icon("chevron-right")}</button>` : ""}</footer>`;
     panel.querySelector("#aBack").onclick = () => { stop(); showMap(); };
     const bb = panel.querySelector("#aBriefBtn");
     if (bb) bb.onclick = () => { const b = panel.querySelector("#aBrief"), open = b.hidden; b.hidden = !open; bb.setAttribute("aria-expanded", open); };
@@ -449,6 +479,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const slot = panel.querySelector("#aRideSlot"); if (slot && rideEl) { slot.replaceWith(rideEl); if (ride.state) rideCk.update(ride.state); }
     if (ride && rideCk) { if (ride.state) rideCk.update(ride.state); setTimeout(rideCue, 400); }   // [ride]
     const nb = panel.querySelector("#aNext"); if (nb) { nb.onclick = next; nb.focus({ preventScroll: true }); }
+    // [novice playtest 12] after Next, focus is on the new question, never on its first answer (one more Enter used
+    // to order "Heaters up" in a storm)
+    // (a Moon step keeps its own focus: the keyboard's Moon reticle, input/spatial.js)
+    else if (focusPrompt && panel.querySelector("#aInput button")) { const q = panel.querySelector(".a-prompt"); if (q) q.focus({ preventScroll: true }); }
+    focusPrompt = false;
     applyGuide();
     fitBody();
   }
@@ -482,6 +517,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const b = c.side ? inp.querySelector(`.g-side[data-c="${CSS.escape(c.side)}"]`) : words && inp.querySelector(`.a-order[data-say="${CSS.escape(words)}"]`);
       if (b) b.classList.add("is-cue");
     }
+    if (gs.answer) { const b = inp.querySelector(`[data-c="${CSS.escape(gs.answer)}"]`); if (b) b.classList.add("is-cue"); }   // rung 3: "Here's the answer"
+  }
+  /** Rung 3 ("show"): the camera goes to what CAPCOM points at, and it stays named on the Moon. */
+  function showOnGlobe() {
+    const acc = (L && L.steps[i] && L.steps[i].accept) || {};
+    if (gs.line_lon != null && acc.type === "terminator") { globe.flyTo(0, gs.line_lon, 3.4); return; }
+    const f = (gs.focus || []).map(findPlace).find(Boolean); if (!f) return;
+    if (Math.abs(f.lat) > 70) globe.poleView(f.lat > 0 ? "north" : "south", 1.9); else globe.flyTo(f.lat, f.lon, 2.6);
   }
   /** Turn the Moon toward what the hint is about, when it's round the back or on the edge. */
   function turnToFocus(ids) {
@@ -495,23 +538,47 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (view === "callsign") return "Pick a call sign, then tap Start.";
     if (view === "map") {
       const nx = nextLesson(), n = lessons().filter(l => has(l.badge.id)).length, sel = (mapSel && lessons().find(l => l.id === mapSel)) || nx;
-      if (prog.qualified && (!mapSel || !sel)) return "Tap Take command to run the outpost.";
+      if (prog.qualified && (!mapSel || !sel)) return newLesson() ? "Tap Open it for your new lesson, or Take command." : "Tap Take command to run the outpost.";
       return sel ? SCHOOL.mapHelp(ctaFor(sel, nx, n), sel.title, !!sel.ride && !has(sel.badge.id)) : "Tap a patch to fly a lesson again.";
     }
     if (view === "badge") return "Tap Next for the next lesson, or Map.";
+    if (view === "prep") return PREP.ask;
     if (view !== "lesson" || !L) return "";
-    if (waitingNext) return "Tap Next, or say next.";
-    const st = L.steps[i], acc = st.accept;
-    if (gs.rung >= 1 && feedback && feedback.text) return feedback.text;
-    // nothing tried yet: the hint, on the card too, and the same visual as a first miss (no miss is counted)
-    const focus = acc.type === "route" ? [acc.stops[stepState.taps.length] || acc.stops[0]] : acc.place ? [acc.place] : [];
-    // [audit2] the do-line is already on the card: the card adds only the hint, and a hint that repeats the do-line
-    // ("Guess first. Any guess is fine." + "Guess first. Then we'll see.") is not said twice
-    const line = helpLine(doLine(st, { gesture: gesturesOn() }), st.hint);
-    if (!L.ride) { if (focus.length) gs = { ...gs, rung: Math.max(gs.rung, 1), focus }; feedback = { kind: "help", text: st.hint || doLine(st, { gesture: gesturesOn() }) }; render(); turnToFocus(focus); }
+    if (waitingNext) return pendingBadge ? `Tap ${UI.patchNext}, or say next.` : "Tap Next, or say next.";
+    return climbHelp();
+  }
+  /** [novice playtest 1] "help", "I don't know", "where is it?" in a step: the NEXT rung of the hint ladder, every
+   *  time (highlight, then label, then show), with no miss counted, never the last miss line again. The server
+   *  composes the rung (POST /api/academy/hint, guide.help_rung); the card and the Moon show it; the line is returned
+   *  for the caller to say (a11y.js awaits it). */
+  async function climbHelp() {
+    const st = L.steps[i], at = { L, i };
+    const fallback = helpLine(doLine(st, { gesture: gesturesOn() }), st.hint);
+    let r = null;
+    try {
+      r = await academyApi.hint({ lesson_id: L.id, step: i, rung: Math.min(3, (gs.rung || 0) + 1),
+        got: st.accept.type === "route" ? (stepState.got || []) : undefined });
+    } catch (e) { r = null; }
+    if (!ui.active || view !== "lesson" || L !== at.L || i !== at.i || waitingNext) return "";   // moved on meanwhile
+    if (!r || !r.say) { feedback = { kind: "help", text: fallback }; render(); return fallback; }
+    if (!L.ride) gs = climb(gs, r);
+    feedback = { kind: "help", text: r.say };
+    render();
+    if (r.show) showOnGlobe(); else if (r.focus) turnToFocus(r.focus);
+    return r.say;
+  }
+  /** [novice playtest 1] "what?", "huh?": the step again, simply: what it asks (its last sentence) and how to answer.
+   *  Not a rung; "help" climbs. Outside a lesson: the screen's help. */
+  function explain() {
+    if (!ui.active) return "";
+    if (view !== "lesson" || !L || waitingNext) return help();
+    const st = L.steps[i], sents = String(promptOf(st)).match(/[^.!?]+[.!?]*/g) || [promptOf(st)];
+    const ask = sents[sents.length - 1].trim().replace(/^(CAPCOM:\s*)/, "");
+    const line = `${ask} ${doLine(st, { gesture: gesturesOn() })}.`.replace(/\.\.$/, ".");
+    feedback = { kind: "help", text: line }; render();
     return line;
   }
-  try { (window.__outpost = window.__outpost || {}).help = help; } catch (e) { /* tests */ }
+  try { Object.assign((window.__outpost = window.__outpost || {}), { help, explain }); } catch (e) { /* tests */ }
 
   /** After the answer the step stays on screen, locked: the kid's pick, the right one, and any data the reply carried. */
   function lockInput(el) {
@@ -523,7 +590,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (right) right.classList.add("is-answer");
     if (feedback.data) {   // compare: the step's metric first, then the other numbers
       const metric = (L.steps[i].accept || {}).metric || "sun_days";
-      const ROWS = { sun_days: ["sun", "sun days"], earth_days: ["earth", "Earth days"], ice_km: ["ice", "km to ice"] };
+      const ROWS = { sun_days: ["sun", "sunny days"], earth_days: ["earth", "days Earth is up"], ice_km: ["ice", "km to ice"] };   // plain words (playtest #26)
       el.querySelectorAll(".g-data").forEach(d => {
         const x = feedback.data[d.dataset.for]; if (!x) return;
         d.innerHTML = [metric, ...Object.keys(ROWS).filter(k => k !== metric)].filter(k => x[k] != null && ROWS[k])
@@ -548,7 +615,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (acc0.type === "route" && !input.taps && !L.ride) input = { ...input, taps: stepState.taps.slice() };   // "...then Ohm" after tapping Orientale
     let r;
     const step_s = Math.max(0, Math.round((now() - stepAt) / 100) / 10);   // the reveal needs ~20 s (grade.reveal_due)
-    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id }); }
+    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id, rung: L.ride ? 0 : Math.min(3, gs.rung || 0) }); }
     catch (e) { busy = false; feedback = { kind: "retry", text: "I can't reach CAPCOM right now. Try again." }; render(); return true; }
     busy = false;
     // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
@@ -560,18 +627,25 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (ride && r.events && r.events.length) ride.events = r.events;
     if (r.status === "progress") {   // a route stop was right: not a miss, just the next stop
       stepState.taps = (r.got || []).map((id, k) => stepState.taps[k] || (f => f && { lat: f.lat, lon: f.lon })(findPlace(id))).filter(Boolean);
+      stepState.got = r.got || [];
       feedback = { kind: "progress", text: r.say }; render(); speakLine(r.say, r); return r;
     }
     if (r.status === "passed" || r.status === "missed" || r.status === "done") {
       if (L.ride) return rideStep(r);
       const acc = L.steps[i].accept, sa = r.shown ? r.shown_answer || {} : null;
       // shown = CAPCOM showed the answer (3 misses); a predict guess is never wrong, it reveals the real number
-      const kind = sa ? "shown" : acc.type === "predict" && r.correct === false ? "reveal" : "ok";
-      feedback = { kind, text: r.say, chosen: input && input.choice, right: sa && (sa.choice || sa.side), data: r.data || null };
+      const kind = sa ? "shown" : (acc.type === "predict" || acc.type === "video") && r.correct === false ? "reveal" : "ok";
+      // a video step's guess chip (novice playtest #7): the kid's guess and the answer light up after the video or Skip
+      const vg = acc.type === "video" && r.answer ? { chosen: r.guess || null, right: r.answer } : null;
+      feedback = { kind, text: r.say, chosen: vg ? vg.chosen : input && input.choice, right: vg ? vg.right : sa && (sa.choice || sa.side), data: r.data || null };
+      // [novice playtest 2] "Here it is" on the day/night step points at the line: drawn, labelled and in view
+      if (acc.type === "terminator") gs = { ...gs, line_lon: acc.sun_lon - 90, label_line: true };
       // the reveal on the Moon: the traced route, or the far side turned toward the kid
       const reveal = sa ? { ...sa, shown: true } : acc.type === "route" ? { stops: acc.stops } : acc.type === "globe_side" && acc.want ? { side: acc.want } : null;
       if (acc.type === "intent" || acc.type === "tap") { const f = placeById(acc.place); if (f) globe.showFeature(f); }
-      if (r.badge) { award(r.badge); speakLine(r.say, r); setTimeout(() => showBadge(r.badge), 900); waitingNext = true; render(); showAnswerOnGlobe(reveal); return true; }
+      // the last step: the answer stays up to read (a Skip's reveal used to vanish under the patch in 0.9 s); the patch
+      // is earned now and shown on Next ("Get your patch")
+      if (r.badge) { award(r.badge); pendingBadge = r.badge; speakLine(r.say, r); waitingNext = true; render(); showAnswerOnGlobe(reveal); return true; }
       waitingNext = true; render(); showAnswerOnGlobe(reveal);
       // a crew clip marked "after" plays once the success line is said (it's the reward)
       const st = L.steps[i], c = st.clip || (i === hookAt(L) ? L.clip : null), at = { L, i };
@@ -589,9 +663,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     misses++;
     feedback = { kind: "retry", text: r.say, hint: r.hint };
     if (!L.ride) {
-      gs = { rung: r.rung || Math.min(2, misses), focus: r.focus, label: r.label, eliminate: r.eliminate || gs.eliminate, cue: r.cue, phrase: r.phrase,
-        line_lon: r.line_lon, label_line: r.label_line };
-      if (acc0.type === "route") stepState.taps = stepState.taps.slice(0, (r.got || []).length);
+      // a miss climbs the same ladder as "help", and never takes back what the card already showed
+      gs = climb(gs, { rung: r.rung || Math.min(2, misses), focus: r.focus, label: r.label, eliminate: r.eliminate, cue: r.cue, phrase: r.phrase,
+        line_lon: r.line_lon, label_line: r.label_line });
+      if (acc0.type === "route") { stepState.taps = stepState.taps.slice(0, (r.got || []).length); stepState.got = r.got || []; }
     }
     render();
     if (r.focus) turnToFocus(r.focus);
@@ -603,10 +678,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   function next() {
     if (!waitingNext) return;
+    if (pendingBadge) { const b = pendingBadge; pendingBadge = null; stop(); if (player.active) player.stop(true); showBadge(b); return; }
     if (i + 1 >= L.steps.length) { showMap(); return; }   // never a dead end
     if (player.active) player.stop(true);
     waitingNext = false; feedback = null; misses = 0; nagged = false; i++; freshStep();
     if (globe.setSunDir) globe.setSunDir(null);   // [learning-v3] a terminator step's lighting ends with the step
+    focusPrompt = true;
     render();
     // the question, then (first time only) how this kind of step works, then a "Listen to…" step's own crew clip
     const st = L.steps[i], at = { L, i }, here = () => view === "lesson" && L === at.L && i === at.i && !waitingNext;
@@ -681,11 +758,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="a-bigpatch">${patch(L.id, { earned: true, size: 168 })}</span>
         <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
-        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : esc(TRANSITION.patchProgress(prog.badges.filter(b => lessons().some(l => l.badge.id === b)).length, lessons().length))}</p>
+        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : isExplorer(L) ? esc(TRANSITION.bonusPatch) : esc(TRANSITION.patchProgress(coreDone().n, coreDone().of))}</p>
         <div class="a-actions">
           ${commander ? `<button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>`
             : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}
           <button type="button" class="btn-quiet" id="aMap">${icon("map", { size: 16 })}${esc(UI.map)}</button>
+          ${L.prep ? `<button type="button" class="btn-quiet" id="aPrepBadge">${icon("todo", { size: 16 })}${esc(PREP.open)}: ${esc(L.prep.title)}</button>` : ""}
         </div>
         ${L.patch_video ? `<button type="button" class="btn-quiet a-patchvideo" id="aPatchVideo" hidden>${icon("play", { size: 16 })}${esc(L.patch_video.line)} <small></small></button>` : ""}
       </div>`;
@@ -699,6 +777,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const g = panel.querySelector("#aGoMission"); if (g) g.onclick = () => goMission();
     const n = panel.querySelector("#aNextLesson"); if (n) n.onclick = () => openLesson(nx.id);
     panel.querySelector("#aMap").onclick = () => showMap();
+    const pb = panel.querySelector("#aPrepBadge"), lid = L.id; if (pb) pb.onclick = () => openLesson(lid, { prep: true });   // optional, after the lesson
     (g || n || panel.querySelector("#aMap")).focus({ preventScroll: true });
     const pv = panel.querySelector("#aPatchVideo"), pvm = L.patch_video && L.patch_video.media;
     if (pv) Promise.all([isAvailable(pvm), getVideo(pvm)]).then(([st, v]) => {   // only when it can play now (never a dead button)
@@ -721,7 +800,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (waitingNext) return { screen: "lesson_done", offer: "next_step" };
     const acc = L.steps[i].accept;
     // lesson_id + step: the router looks up the step to tell a real try from room talk (grade.plausible)
-    return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || []).map(o => o.label), lesson_id: L.id, step: i };
+    return { screen: L.ride ? "ride" : "lesson", step_type: acc.type, step_options: (acc.options || (acc.guess || {}).options || []).map(o => o.label), lesson_id: L.id, step: i };
   }
   /** [flows] "continue" / "resume" in a lesson (often after "stop" cut the question off): the question again. */
   function reAsk(source) { flowLog({ flow: L && L.ride ? "check_ride" : "lesson", event: "repeat", source, step: i }); say(L.steps[i].prompt, undefined, { repeat: true }); }
@@ -736,9 +815,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (["prep_skip", "decline_offer", "no", "skip_tour"].includes(intent)) { prepDone(false); return true; }
       if (intent === "prep_wait") { flowLog({ flow: "prep", event: "pause", source: "voice" }); say(PREP.waitSay); return true; }
       if (intent === "prep_watch") { watchPrepVideo(); return true; }
+      if (intent === "prep_help" && arg === "missing") { flowLog({ flow: "prep", event: "missing", source: "voice" }); return true; }   // the session said PREP_MISSING_LINE: never the steps again
       if (intent === "prep_help" || intent === "repeat_step") { flowLog({ flow: "prep", event: "repeat", source: "voice" }); say(L.prep.steps); return true; }
     }
     if (view === "lesson" && L && !waitingNext && L.steps[i].accept.type === "video" && stepState.video) {   // [media] next skips
+      // "yes" / "no" before a guess is the guess (novice playtest #7: "yes" used to open the video)
+      const gw = { yes: "yes", accept_offer: "yes", no: "no", decline_offer: "no" }[intent];
+      if (gw && stepState.video.needsGuess && stepState.video.needsGuess() && stepState.video.guessText(gw)) return true;
       if (["next", "decline_offer", "no"].includes(intent)) { stepState.video.skip(); return true; }
       if (["accept_offer", "yes"].includes(intent)) { stepState.video.watch(); return true; }
     }
@@ -749,7 +832,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       // [flows] "continue" / "resume" in a lesson (often after "stop" cut the question off): the question again
       if (view === "lesson" && intent === "start") { reAsk("voice"); return true; }
       // [audit2] "next" before the step is answered did nothing at all: say why, and how (the hint shows on the card)
-      if (view === "lesson" && intent === "next") { const t = help(); if (t) say(`${SCHOOL.answerFirst} ${t}`); return true; }
+      if (view === "lesson" && intent === "next") { Promise.resolve(help()).then(t => { if (t) say(`${SCHOOL.answerFirst} ${t}`); }); return true; }
       if (view === "badge" || view === "map") {
         if (prog.qualified && (view === "badge" || !nx || arg === "mission")) { goMission(); return true; }
         if (nx) { openLesson(nx.id); return true; }
@@ -781,6 +864,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       return false;
     }
     if (view === "prep") {   // "done", "finished", "yes" / "skip", "no", "not now"
+      // "I don't have a lamp", "we can't find flour": a way out, never the task's steps again (novice playtest #8)
+      if (/\b(don ?t|do not|haven ?t|have no|got no) (have|got|own)\b|\bcan ?t find\b|\b(we|i) have no\b|^no \w+$/.test(t) && !/^no (thanks|thank you)$/.test(t)) { say(PREP.missingSay); return true; }
       if (/\b(done|did it|finished|all done|ready|yes|yeah|next)\b/.test(t)) { prepDone(true); return true; }
       if (/\b(skip|no|nope|not now|later)\b/.test(t)) { prepDone(false); return true; }
       if (/^(continue|resume|keep going|go on|carry on|i m back|we re back)$/.test(t)) { flowLog({ flow: "prep", event: "repeat", source: "typed" }); say(L.prep.steps); return true; }
@@ -792,7 +877,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // [flows] no session (POST /api/ask): "continue" after a stop asks the question again, never grades it as an answer
     if (/^(continue|resume|keep going|go on|carry on)$/.test(t)) { reAsk("typed"); return true; }
     // [media] a video step: "watch" plays it here, "skip" moves on (the server never has to grade those words)
-    if (L.steps[i].accept.type === "video" && stepState.video) { const w = videoStepWord(text); if (w) { stepState.video[w](); return true; } }
+    if (L.steps[i].accept.type === "video" && stepState.video) {
+      if (stepState.video.needsGuess && stepState.video.needsGuess() && stepState.video.guessText(text)) return true;   // "yes" is a guess first
+      const w = videoStepWord(text); if (w) { stepState.video[w](); return true; }
+    }
     // [owner bug] the far side step: "far side" / "near side" by voice turns the Moon first, exactly like the button
     // (academy/globe_steps.js grades after the turn); anything else still goes to the server's grader
     if (L.steps[i].accept.type === "globe_side") {
@@ -823,6 +911,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // lesson to step n, fresh, as if the kid had just arrived there
   try { if (window.__outpostTest) (window.__outpost = window.__outpost || {}).academyTest = {
     step: n => { if (view !== "lesson" || !L || !L.steps[n]) return false; i = n; misses = 0; waitingNext = false; feedback = null; stepKey = ""; freshStep(); render(); return true; },
+    prep: id => openLesson(id, { prep: true }),   // "Try at home" (opened from the map card or the patch screen)
     get where() { return { view, lesson: L && L.id, step: i, waitingNext }; } }; } catch (e) { /* */ }
   return ui;
 }

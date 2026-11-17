@@ -115,7 +115,7 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
 
 # Decisions whose text is ours on screen (never "nav", which carries the kid's own words)
 SHOWN_TYPES = ("alert", "ask_confirm", "hud", "card", "toast")
-PREP_MISSING_LINE ="That's okay. You can skip this one, or use something else you have."
+PREP_MISSING_LINE = "That's okay. Tap Not now. You can try it another day."   # = story.js PREP.missingSay
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
 _CACHE: dict = {}

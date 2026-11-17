@@ -22,13 +22,17 @@ export const INTENT_CMD = Object.freeze({ video_pause: "pause", video_play: "pla
 /** The button's length: "Watch (2 min)", "Watch (15 sec)". */
 export function lengthLabel(seconds) {
   const s = Math.max(1, Math.round(+seconds || 0));
-  return s < 50 ? `${s} sec` : `${Math.max(1, Math.round(s / 60))} min`;
+  // to the nearest half minute: a 1:29 video is "1½ min", never "1 min" (novice playtest 2026-11-16 #25)
+  const m = Math.max(1, Math.round(s / 30) / 2);
+  return s < 50 ? `${s} sec` : `${m % 1 ? Math.floor(m) + "½" : m} min`;
 }
 export const watchLabel = v => `Watch (${lengthLabel(v && v.duration_s)})`;
 export const NEEDS_NET = "Needs internet";
 export const OFFLINE_LINE = "Needs internet. Ask a grown-up to connect.";
 /** The player failed while we ARE online (YouTube error 2/5/100/101/150/153, an unknown id): not "Needs internet". */
 export const NO_PLAY_LINE = "This video won't play here.";
+/** In a lesson, a video that can't play is never a dead end: closing it gives the step's answer (playtest #25). */
+export const NO_PLAY_LESSON = "Close it, and I'll tell you the answer.";
 
 /** watched = the kid saw most of it: the end, or at least 70% of its length. */
 export function watchedEnough(seconds, duration, ended) {

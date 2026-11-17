@@ -112,7 +112,6 @@
       "type": "intent",
       "place": "tranquillitatis"
      },
-     "do": "Tap it on the Moon, or say its name",
      "globe": {
       "do": "side",
       "side": "near"
@@ -143,10 +142,52 @@
      "media": "far_side_view",
      "say": "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
      "reveal": "Yes. Far side, not dark side.",
+     "guess": {
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes, sometimes",
+        "say": [
+         "yes",
+         "sometimes"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, never",
+        "say": [
+         "no",
+         "never"
+        ]
+       }
+      ],
+      "answer": "yes"
+     },
      "prompt": "We never see the far side from Earth. Does it ever get sunlight? Guess, then watch.",
      "accept": {
       "type": "video",
-      "media": "far_side_view"
+      "media": "far_side_view",
+      "guess": {
+       "options": [
+        {
+         "id": "yes",
+         "label": "Yes, sometimes",
+         "say": [
+          "yes",
+          "sometimes"
+         ]
+        },
+        {
+         "id": "no",
+         "label": "No, never",
+         "say": [
+          "no",
+          "never"
+         ]
+        }
+       ],
+       "answer": "yes"
+      }
      },
      "hint": "Tap Watch, or say skip.",
      "success": "Yes. Far side, not dark side.",
@@ -161,7 +202,7 @@
      "clip": {
       "clip_id": "orientale-basin-ejecta-extent",
       "t0": 1.12,
-      "t1": 22.42,
+      "t1": 13.3,
       "who": "an Artemis II astronaut",
       "when": "after"
      },
@@ -335,7 +376,8 @@
      },
      "globe": {
       "do": "sun",
-      "sun_lon": 45
+      "sun_lon": 45,
+      "view_lon": -45
      },
      "hint": "Where the bright part turns dark.",
      "success": "That's the terminator. It shapes the phase.",
@@ -373,8 +415,8 @@
      "reveal": "The Sun. The Moon hid it: a solar eclipse.",
      "clip": {
       "clip_id": "observing-pulsating-streamers-suns",
-      "t0": 27.49,
-      "t1": 50.78,
+      "t0": 40.0,
+      "t1": 53.2,
       "who": "an Artemis II astronaut",
       "when": "after"
      },
@@ -386,14 +428,68 @@
      "type": "video",
      "media": "lunar_eclipse",
      "say": "In a lunar eclipse, what covers the Moon? Guess, then watch.",
-     "reveal": "Yes, Earth's shadow. Phases happen without it.",
+     "reveal": "Earth's shadow. Phases happen without it.",
+     "guess": {
+      "options": [
+       {
+        "id": "shadow",
+        "label": "Earth's shadow",
+        "say": [
+         "shadow",
+         "earth"
+        ]
+       },
+       {
+        "id": "cloud",
+        "label": "A big cloud",
+        "say": [
+         "cloud"
+        ]
+       },
+       {
+        "id": "sun",
+        "label": "The Sun",
+        "say": [
+         "sun"
+        ]
+       }
+      ],
+      "answer": "shadow"
+     },
      "prompt": "In a lunar eclipse, what covers the Moon? Guess, then watch.",
      "accept": {
       "type": "video",
-      "media": "lunar_eclipse"
+      "media": "lunar_eclipse",
+      "guess": {
+       "options": [
+        {
+         "id": "shadow",
+         "label": "Earth's shadow",
+         "say": [
+          "shadow",
+          "earth"
+         ]
+        },
+        {
+         "id": "cloud",
+         "label": "A big cloud",
+         "say": [
+          "cloud"
+         ]
+        },
+        {
+         "id": "sun",
+         "label": "The Sun",
+         "say": [
+          "sun"
+         ]
+        }
+       ],
+       "answer": "shadow"
+      }
      },
      "hint": "Tap Watch, or say skip.",
-     "success": "Yes, Earth's shadow. Phases happen without it.",
+     "success": "Earth's shadow. Phases happen without it.",
      "fail": "Tap Watch, or say skip."
     }
    ],
@@ -571,7 +667,7 @@
      "fail": "Not that one."
     },
     {
-     "prompt": "Night is coming at Malapert. Move power to the heaters so the pipes don't freeze.",
+     "prompt": "Pretend you're at Malapert. Night is coming. Move power to the heaters!",
      "accept": {
       "type": "command",
       "expect": {
@@ -580,13 +676,19 @@
        "more": true
       }
      },
+     "wrong": {
+      "shields": "Shields block radiation, not cold.",
+      "shelter_in": "The shelter is for storms.",
+      "rover_ice": "The rover can wait.",
+      "houston": "Houston can't warm the pipes."
+     },
      "globe": {
       "do": "fly",
       "place": "malapert_massif"
      },
      "hint": "The heaters need more power. Tap Heaters up.",
      "success": "Copy. That dark spell lasted 74 hours.",
-     "fail": "Negative."
+     "fail": "Not that order."
     }
    ],
    "track": "core"
@@ -702,7 +804,7 @@
      "do": "Repeat the order out loud, or type it",
      "hint": "Say what to set, and how much.",
      "success": "Good readback. Heaters to 40.",
-     "fail": "Say again? Repeat the order."
+     "fail": "Close. Repeat the whole order."
     },
     {
      "prompt": "How long does your voice take to reach Earth?",
@@ -897,10 +999,48 @@
      "media": "moon_weather",
      "say": "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
      "reveal": "Yes: space weather, fast particles from the Sun.",
+     "guess": {
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes",
+        "say": [
+         "yes"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No",
+        "say": [
+         "no"
+        ]
+       }
+      ],
+      "answer": "yes"
+     },
      "prompt": "No wind, no rain. Is there weather on the Moon? Guess, then watch.",
      "accept": {
       "type": "video",
-      "media": "moon_weather"
+      "media": "moon_weather",
+      "guess": {
+       "options": [
+        {
+         "id": "yes",
+         "label": "Yes",
+         "say": [
+          "yes"
+         ]
+        },
+        {
+         "id": "no",
+         "label": "No",
+         "say": [
+          "no"
+         ]
+        }
+       ],
+       "answer": "yes"
+      }
      },
      "hint": "Tap Watch, or say skip.",
      "success": "Yes: space weather, fast particles from the Sun.",
@@ -981,9 +1121,16 @@
        "on": true
       }
      },
+     "wrong": {
+      "shields": "Shields help a little. The shelter is safer.",
+      "heaters": "Heaters fight cold, not radiation.",
+      "rover_ice": "Ice can wait. Keep the crew safe.",
+      "houston": "Houston agrees: get under cover.",
+      "shelter_out": "Not yet. The storm is coming."
+     },
      "hint": "Get the crew under cover. Tap Into the shelter.",
      "success": "Copy. Crew in the shelter. Dose rate way down.",
-     "fail": "Say again? Radiation is climbing."
+     "fail": "Radiation is climbing."
     },
     {
      "prompt": "Doctors count radiation in mSv. So what is an mSv?",
@@ -1027,15 +1174,20 @@
    "id": "life",
    "title": "Air, water and ice",
    "minutes": 4,
-   "place": "lcross_centaur_impact",
+   "place": {
+    "name": "Cabeus crater",
+    "lat": -84.68,
+    "lon": -48.73
+   },
    "badge": {
     "id": "ice",
     "name": "Ice Hunter",
     "glyph": "I"
    },
    "globe": {
-    "place": "lcross_centaur_impact",
-    "dist": 2.4
+    "lat": -80,
+    "lon": -48.73,
+    "dist": 2.6
    },
    "clip": {
     "clip_id": "impact-flashes-observing-moons",
@@ -1098,10 +1250,52 @@
      "media": "psr",
      "say": "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
      "reveal": "Among the coldest spots measured. Ice hides there.",
+     "guess": {
+      "options": [
+       {
+        "id": "freezer",
+        "label": "Cold like a freezer",
+        "say": [
+         "freezer"
+        ]
+       },
+       {
+        "id": "coldest",
+        "label": "Colder than anywhere on Earth",
+        "say": [
+         "colder",
+         "coldest",
+         "anywhere"
+        ]
+       }
+      ],
+      "answer": "coldest"
+     },
      "prompt": "Some craters at the pole never see sunlight. How cold? Guess, then watch.",
      "accept": {
       "type": "video",
-      "media": "psr"
+      "media": "psr",
+      "guess": {
+       "options": [
+        {
+         "id": "freezer",
+         "label": "Cold like a freezer",
+         "say": [
+          "freezer"
+         ]
+        },
+        {
+         "id": "coldest",
+         "label": "Colder than anywhere on Earth",
+         "say": [
+          "colder",
+          "coldest",
+          "anywhere"
+         ]
+        }
+       ],
+       "answer": "coldest"
+      }
      },
      "hint": "Tap Watch, or say skip.",
      "success": "Among the coldest spots measured. Ice hides there.",
@@ -1146,16 +1340,16 @@
      "fail": "Pick one, then we check."
     },
     {
-     "prompt": "The LCROSS rocket hit Cabeus crater, near the south pole. Find it.",
+     "prompt": "The LCROSS rocket hit Cabeus crater, near the south pole. Find Cabeus crater.",
      "accept": {
       "type": "tap",
       "place": "lcross_centaur_impact",
       "also": [
        "lcross_impact"
       ],
-      "radius_deg": 8
+      "radius_deg": 8,
+      "label": "Cabeus crater"
      },
-     "do": "Tap it on the Moon, or say its name",
      "globe": {
       "do": "pole",
       "pole": "south"
@@ -1212,9 +1406,15 @@
        "task": "collect_ice"
       }
      },
+     "wrong": {
+      "shields": "Shields won't bring water.",
+      "heaters": "Heaters won't bring water.",
+      "shelter_in": "No storm now.",
+      "houston": "Houston agrees: get ice."
+     },
      "hint": "The rover can dig up ice. Tap Rover: get ice.",
      "success": "Copy. Rover rolling out for ice.",
-     "fail": "Negative."
+     "fail": "Not that order."
     }
    ],
    "patch_video": {
@@ -1388,10 +1588,50 @@
      "media": "lunar_dust",
      "say": "Is Moon dust soft like flour, or sharp? Guess, then watch.",
      "reveal": "Sharp, like tiny glass. It clings to everything.",
+     "guess": {
+      "options": [
+       {
+        "id": "soft",
+        "label": "Soft like flour",
+        "say": [
+         "soft",
+         "flour"
+        ]
+       },
+       {
+        "id": "sharp",
+        "label": "Sharp",
+        "say": [
+         "sharp"
+        ]
+       }
+      ],
+      "answer": "sharp"
+     },
      "prompt": "Is Moon dust soft like flour, or sharp? Guess, then watch.",
      "accept": {
       "type": "video",
-      "media": "lunar_dust"
+      "media": "lunar_dust",
+      "guess": {
+       "options": [
+        {
+         "id": "soft",
+         "label": "Soft like flour",
+         "say": [
+          "soft",
+          "flour"
+         ]
+        },
+        {
+         "id": "sharp",
+         "label": "Sharp",
+         "say": [
+          "sharp"
+         ]
+        }
+       ],
+       "answer": "sharp"
+      }
      },
      "hint": "Tap Watch, or say skip.",
      "success": "Sharp, like tiny glass. It clings to everything.",
@@ -1683,7 +1923,7 @@
     }
    ],
    "track": "explorer",
-   "unlock_after_missions": 2
+   "unlock_after": "checkride"
   },
   {
    "id": "checkride",
@@ -1703,7 +1943,7 @@
     "site": "shackleton_rim",
     "seed": 2026,
     "storm_event": "2024-05-09T14:25:00-SEP-001",
-    "start_h": 138,
+    "start_h": 168,
     "storm_start_h": 6,
     "mission_h": 48,
     "max_missed": 0
@@ -1733,7 +1973,7 @@
    ],
    "steps": [
     {
-     "prompt": "Earth is up over the rim. Can you call Houston now?",
+     "prompt": "Look: Earth is up over the rim. Can you call Houston now?",
      "accept": {
       "type": "predict",
       "answer": "yes",
@@ -1757,7 +1997,8 @@
       ]
      },
      "reveal": "Yes. Earth is up, so the radio works.",
-     "hint": "Guess first.",
+     "do": "Tap an answer, or say it",
+     "hint": "The radio needs Earth in the sky.",
      "success": "Right. Earth is up, so the radio works.",
      "fail": "Pick one, then we check."
     },
@@ -1785,9 +2026,16 @@
       }
      },
      "advance": "storm",
+     "wrong": {
+      "shields": "Shields help a little. The shelter is safer.",
+      "heaters": "Heaters fight cold, not radiation.",
+      "rover_ice": "Ice can wait. Keep the crew safe.",
+      "houston": "Houston agrees: get under cover.",
+      "shelter_out": "Not yet. The storm is coming."
+     },
      "hint": "Get the whole crew under cover.",
      "success": "Copy. Crew in the shelter.",
-     "fail": "Say again? Radiation is climbing."
+     "fail": "Radiation is climbing."
     },
     {
      "prompt": "The storm has passed. Bring the crew out of the shelter.",
@@ -1803,7 +2051,7 @@
      "fail": "Negative. Bring the crew out."
     },
     {
-     "prompt": "Life support is dropping. Send the rover for ice before day 2 ends.",
+     "prompt": "Life support is dropping. Send the rover for ice.",
      "accept": {
       "type": "command",
       "expect": {

@@ -71,6 +71,9 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-copy h2{font-size:var(--text-lg);font-weight:var(--weight-bold)}
 .mp-sub{color:var(--color-text-2);font-size:var(--text-sm);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}   /* QA-58: the blurb wraps to 2 lines, never cut mid-word */
 .mp-card .btn-primary{min-width:148px}
+.mp-actions{display:flex;flex-direction:column;align-items:stretch;gap:var(--space-2)}
+.mp-new{display:flex;align-items:center;gap:6px;color:var(--color-text)}
+.mp-intro ol{margin:4px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:2px}
 .mp-credit{position:absolute;left:var(--gut);bottom:var(--gut);max-width:280px;text-align:left;font-size:var(--text-xs);color:var(--color-on-space-2);pointer-events:none!important}
 
 /* route layer (globe.js): dotted line between stops, a dot on the true spot, the pin badge (maybe nudged) */
@@ -102,7 +105,11 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 /* ---------- lesson card (glass, hugs its content, never under the strip) ---------- */
 .apanel.is-lesson,.apanel.is-ride{top:var(--gut);right:var(--gut);width:400px;max-height:calc(100% - 2 * var(--gut) - var(--strip-h, 62px) - var(--space-3));
   display:flex;flex-direction:column;border-radius:var(--radius-xl);overflow:hidden;animation:rise var(--dur-slow) var(--ease-out)}
-.apanel.is-ride{width:min(480px,calc(100% - 2 * var(--gut)))}
+.apanel.is-ride{width:min(440px,calc(100% - 2 * var(--gut)))}
+/* the check ride's cabin stops where the lesson card starts: nothing of the cabin (view tabs, the Radiation panel) sits
+   under the card (novice playtest 2026-11-16 #28) */
+.m-cabin.a-ridecabin{right:calc(min(440px, 100% - 2 * var(--gut)) + var(--gut) + var(--space-3))}
+.a-prompt[tabindex="-1"]:focus{outline:none}   /* Next lands focus on the question (playtest #12): no ring on a <p> */
 .a-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding:var(--space-3) var(--space-4) 0 var(--space-2)}
 .a-back{gap:var(--space-1)}
 .a-steps{display:flex;gap:var(--space-1)}
@@ -259,6 +266,9 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .gd-ring{position:absolute;left:calc(-1 * var(--r));top:calc(-1 * var(--r));width:calc(2 * var(--r));height:calc(2 * var(--r));border-radius:50%;
   border:3px solid var(--gd);box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 18px var(--gd)}
 .gd-mark.is-dot .gd-ring{--r:6px;background:var(--gd);border-width:2px}
+/* the day/night edge (terminator steps): a glowing dotted line, not rings (novice playtest #2) */
+.gd-mark.is-line{--gd:#FFD27A}
+.gd-mark.is-line .gd-ring{--r:3.5px;background:var(--gd);border:0;box-shadow:0 0 8px 2px rgba(255,210,122,.75)}
 .gd-mark.is-pulse .gd-ring{animation:gdPulse 1.4s ease-in-out infinite}
 @keyframes gdPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.12)}}
 .gd-num{position:absolute;left:calc(-1 * var(--r) - 14px);top:calc(-1 * var(--r) - 14px);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;

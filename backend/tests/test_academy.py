@@ -131,7 +131,7 @@ def test_check_ride_pass(client):
     out = _ride(client, GOOD)
     assert out["status"] == "done" and out["passed"] and out["badge"]["id"] == "commander" and out["unlocks"] == "mission"
     assert "Mars" in out["fact"] and "Mars" not in out["say"]   # the Mars delay is on the result card, not spoken
-    assert out["state"]["mission_time_h"] == 138 + 48 and out["state"]["resources"]["dose_msv"] < 50
+    assert out["state"]["mission_time_h"] == 168 + 48 and out["state"]["resources"]["dose_msv"] < 50
 
 
 def test_check_ride_storm_without_shelter_fails(client):
@@ -231,3 +231,121 @@ def test_every_miss_line_short_and_actionable():
                 out = guide.ladder(s, m, {"text": "um"}, {"got": []})
                 assert len(out["say"].split()) <= 20, out["say"]
                 assert out["say"].strip() not in ("Not that one.", "Not quite.", "Not there."), (l["id"], s["prompt"])
+
+
+# ---- novice playtest 2026-11-16 (docs/playtest/NOVICE_PLAYTEST_2026-11-16.md) ------------------------------------------
+def test_check_ride_earth_is_really_up_when_the_question_says_so(client):
+    """#11: step 1 says "Earth is up over the rim"; the clock bar must agree for the whole ride."""
+    s = client.post("/api/academy/ride").json()
+    assert s["state"]["env"]["earth_elev_deg"] > 0.5
+    from app.academy import ride as rides
+    r = rides.get(s["ride_id"])
+    rides.advance(r, "end")
+    assert rides.hud(r)["env"]["earth_elev_deg"] > 0.5
+    L = content.lesson("checkride")
+    assert all("day 2" not in st["prompt"].lower() for st in L["steps"])   # the clock says Day 8, not day 2
+
+
+def test_help_climbs_the_ladder_without_a_miss(client):
+    """#1: "help" / "I don't know" climb highlight -> label -> show; never the last miss line, never a miss."""
+    k = _step("moon", "intent")
+    r1, r2, r3 = (client.post("/api/academy/hint", json={"lesson_id": "moon", "step": k, "rung": n}).json() for n in (1, 2, 3))
+    assert [r["rung"] for r in (r1, r2, r3)] == [1, 2, 3] and all(r["status"] == "help" for r in (r1, r2, r3))
+    assert r1["focus"] == ["tranquillitatis"] and "label" not in r1
+    assert r2["label"] == ["tranquillitatis"] and "Sea of Tranquility" in r2["say"]
+    assert r3["show"] and r3["say"].startswith("Here it is") and "Tap" in r3["say"]
+    assert "That's" not in r1["say"] + r2["say"] + r3["say"]
+
+
+def test_help_rungs_for_every_step_say_what_to_do():
+    from app.academy import guide
+    for L in content.course()["lessons"]:
+        if L.get("ride"):
+            continue
+        for s in L["steps"]:
+            for n in (1, 2, 3):
+                out = guide.help_rung(s, n)
+                assert out["say"] and len(out["say"].split()) <= 20, (L["id"], s["prompt"], n, out["say"])
+                if n == 3 and s["accept"]["type"] in ("choice", "compare", "earth_view"):
+                    assert out["answer"] and out["say"].startswith("Here's the answer"), out
+
+
+def test_terminator_help_draws_and_shows_the_line(client):
+    k = _step("phases", "terminator")
+    r = client.post("/api/academy/hint", json={"lesson_id": "phases", "step": k, "rung": 3}).json()
+    assert r["line_lon"] == -45 and r["label_line"] and r["show"]
+    st = content.lesson("phases")["steps"][k]
+    assert st["globe"]["view_lon"] == st["accept"]["sun_lon"] - 90   # the edge runs down the middle of the view
+
+
+def test_a_find_step_that_opens_glowing_labels_on_the_first_miss(client):
+    """#5: the target glows from the start (the client sends rung 1), so the first miss adds the label."""
+    k = _step("moon", "intent")
+    cop = g.gaz().places["copernicus"]
+    r = client.post("/api/academy/attempt", json={"lesson_id": "moon", "step": k, "misses": 0, "rung": 1,
+                                                   "input": {"tap": {"lat": cop.lat, "lon": cop.lon}}}).json()
+    assert r["rung"] == 2 and r["label"] == ["tranquillitatis"] and r["say"].startswith("That's Copernicus.")
+
+
+def test_cabeus_is_labelled_cabeus():
+    """#6: the label says the word the prompt asks for, not "LCROSS Centaur rocket impact site"."""
+    from app.academy import guide
+    L = content.lesson("life")
+    st = next(s for s in L["steps"] if s["accept"]["type"] == "tap")
+    assert "Cabeus crater" in st["prompt"] and guide.label_of(st, st["accept"]["place"]) == "Cabeus crater"
+    assert "Cabeus crater" in guide.ladder(st, 1, {}, {})["say"] and "LCROSS Centaur" not in guide.ladder(st, 1, {}, {})["say"]
+    pub = next(l for l in content.public()["lessons"] if l["id"] == "life")
+    assert next(s for s in pub["steps"] if s["accept"]["type"] == "tap")["accept"]["label"] == "Cabeus crater"
+    assert L["place"]["name"] == "Cabeus crater"
+
+
+def test_video_guess_is_checked_after_the_video_or_skip(client):
+    """#7: guess chips; the reply says whether the guess was right, then the answer, watched or skipped."""
+    k = next(j for j, s in enumerate(content.lesson("phases")["steps"]) if s.get("media") == "lunar_eclipse")
+    pub = next(l for l in content.public()["lessons"] if l["id"] == "phases")["steps"][k]["accept"]
+    assert [o["id"] for o in pub["guess"]["options"]] == ["shadow", "cloud", "sun"] and "answer" not in pub["guess"]
+    att = lambda v: client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k, "input": {"video": v}}).json()  # noqa: E731
+    r = att({"watched": False, "skipped": True, "guess": "shadow"})
+    assert r["status"] == "passed" and r["correct"] and r["say"].startswith("You guessed it!") and "Earth's shadow" in r["say"]
+    r = att({"watched": True, "seconds": 30, "guess": "cloud"})
+    assert not r["correct"] and r["answer"] == "shadow" and r["say"].startswith("Good guess.")
+    r = att({"watched": False, "skipped": True})          # no guess: still the answer
+    assert r["status"] == "passed" and "Earth's shadow" in r["say"]
+    for L in content.course()["lessons"]:              # every "Guess, then watch" step has chips
+        for s in L["steps"]:
+            if s["accept"]["type"] == "video" and "guess" in s["prompt"].lower():
+                assert s["accept"].get("guess", {}).get("options"), s["prompt"]
+
+
+def test_wrong_order_teaches_never_say_again(client):
+    """#10: "Shields up" in a storm: why it's not the one, then what to do; never "Say again?"."""
+    k = _step("radiation", "command")
+    r = _att(client, "radiation", k, {"text": "shields up"})
+    assert r["status"] == "hint" and r["say"].startswith("Shields help a little") and "shelter" in r["say"].lower()
+    for L in content.course()["lessons"]:
+        for s in L["steps"]:
+            assert not s["fail"].startswith("Say again"), (L["id"], s["prompt"])
+    s = client.post("/api/academy/ride").json()
+    rid = s["ride_id"]
+    for st, a in enumerate(["yes", "Houston, any space weather?"]):
+        client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": st, "ride_id": rid, "input": {"text": a}})
+    r = client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": 2, "ride_id": rid,
+                                                   "input": {"text": "shields up"}}).json()
+    assert r["say"].startswith("Shields help a little") and "Say again" not in r["say"]
+
+
+def test_come_out_leaves_the_shelter():
+    """#13: kid words for the order the step expects."""
+    st = content.lesson("checkride")["steps"][3]
+    for t in ("come out", "everyone come out", "come out of the shelter", "get out"):
+        assert g.grade(st, {"text": t})[0], t
+        assert g.plausible(st, t), t
+    assert not g.grade(content.lesson("checkride")["steps"][2], {"text": "come out"})[0]   # never the opposite order
+
+
+def test_ride_never_says_the_same_sentence_twice(client):
+    """#27: "Copy. Crew in the shelter. Crew in the shelter." -> the sim's news only."""
+    from app.academy.routes import _new_news
+    assert _new_news("Copy. Crew in the shelter.", "Crew in the shelter. Much less radiation, but science stops.") == \
+        "Much less radiation, but science stops."
+    assert _new_news("Copy. Crew is out. Back to work.", "Crew is out. Science can start again.") == "Science can start again."

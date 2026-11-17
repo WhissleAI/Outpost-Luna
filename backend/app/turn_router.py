@@ -113,6 +113,15 @@ NAV: list[tuple[str, re.Pattern]] = [
                         r"help|help please|hint|give me a hint|i need (?:a hint|help)|what do i do(?: now| here)?|"
                         r"what should i do|what am i supposed to do|i m stuck|i don t get it|i don t know what to do|"
                         r"i don t know|how do i do this|"
+                        # novice playtest 2026-11-16 #1: typed without apostrophes, and "where is it?" on a find step
+                        # (frontend/src/a11y.js HELP_RE: each one climbs the hint ladder)
+                        r"help me please|i dont get it|i dont know what to do|i dont know|i do not know|idk|dunno|"
+                        r"i have no idea|no idea|where is it|where s it|wheres it|where|where is that|where do i tap|"
+                        r"where do i click|i can t find it|i cant find it|i can t see it|i cant see it|show me where|"
+                        r"show me where it is|"
+                        # "what?", "huh?": the step again, simply (a11y.js CONFUSED_RE), never silence (#13)
+                        r"what|what what|huh|hmm what|eh|what do you mean|what does that mean|i don t understand|"
+                        r"i dont understand|i don t get what you mean|what was that|come again|pardon|sorry what|"
                         # docs/STORY.md: the same help, a few more ways to say it
                         r"what do i do next|what should i do (?:now|next)|i m lost|i am lost|what s my job|whats my job|"
                         r"what do i have to do|"
@@ -855,7 +864,7 @@ PREP_CMDS = (
 # Round 8 rules: a missing thing for the hands-on task ("we don't have flour", "I can't find the flashlight",
 # "where's the flour") is a call for help, answered with a gentle "you can skip this one" (session.PREP_MISSING_LINE),
 # never a skip the kid did not ask for and never a mission order.
-PREP_MISSING = re.compile(r"^(?:(?:we|i) don t have (?:any |the |a |an )?\w+(?: \w+)?|(?:we|i) (?:can t|cannot|couldn t) find "
+PREP_MISSING = re.compile(r"^(?:(?:we|i) (?:don t|dont|do not|haven t|havent) (?:have|got) (?:any |the |a |an )?\w+(?: \w+)?|(?:we|i) (?:can t|cannot|couldn t) find "
                           r"(?:any |the |a |an |my |our )?\w+(?: \w+)?|(?:there s|there is) no \w+(?: \w+)?|"
                           r"we re out of \w+|no \w+ here)$")
 PREP_WAIT_MORE = re.compile(r"^(?:not yet|not done yet|wait a (?:sec|second|minute)|give (?:me|us) (?:a|one) (?:sec|second|minute|"

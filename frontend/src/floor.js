@@ -230,7 +230,7 @@ export function micErrorText(e) {
   if (/NotAllowed|Security|not-allowed|service-not-allowed/i.test(n)) return "Mic is blocked. Type instead.";
   if (/NotFound|Overconstrained|audio-capture/i.test(n)) return "No microphone found. Type instead.";
   if (/NotReadable|Abort/i.test(n)) return "Another app is using the mic. Type instead.";
-  return "The mic didn't start. Type instead, or tap the mic.";
+  return "Mic didn't start. Type instead.";   // fits the field at 1024 (novice playtest 2026-11-16 #23)
 }
 
 // ---------- the floor manager ----------
