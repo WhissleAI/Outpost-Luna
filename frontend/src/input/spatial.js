@@ -318,7 +318,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
 
   // ---- what to focus when nothing is (a new screen, a re-render) ----
   const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
-    "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
+    "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mBriefGo", "#mDebrief[data-primary=next] #mNext", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
   function primary(sc = scope()) {
     if (sc.seat) return null;
     const cands = candidates(sc.roots);
@@ -409,8 +409,12 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const fromEl = a === seatEl ? panelEl(seatPanel) : a;
     if (!fromEl) return focusSeat();
     const from = fromEl.getBoundingClientRect();
+    // [polish 4] Up from the cabin's own controls (the view bar, the deck, the Now card) never drops back onto a 3D
+    // console: a lit console turns the camera, and its projected box could reach above the view bar, so Up from Orbit
+    // went back to the seat and Up from the seat to Orbit (a trap: the top bar was out of reach)
+    const hudUp = dir === "up" && a !== seatEl && !!(a && a.closest && a.closest(".cb-viewbar, .cb-deck, .cb-now, .cb-alert, .cb-why, .cb-mlog"));
     const items = [
-      ...panelEls().filter(p => p.dataset.panel !== (a === seatEl ? seatPanel : "")).map(p => ({ panel: p.dataset.panel, rect: p.getBoundingClientRect() })),
+      ...(hudUp ? [] : panelEls()).filter(p => p.dataset.panel !== (a === seatEl ? seatPanel : "")).map(p => ({ panel: p.dataset.panel, rect: p.getBoundingClientRect() })),
       // the cabin's own controls (window views, the alert strip, the comm row) and the top bar (sections, Settings)
       ...candidates([cab, doc.querySelector(".topbar")]).filter(c => c !== a && !c.closest(".c3-panel")).map(el => ({ el, rect: el.getBoundingClientRect() })),
     ];

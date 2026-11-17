@@ -1673,6 +1673,15 @@
    ]
   },
   {
+   "key": "good choice say start when you re ready",
+   "text": "Good choice. Say start when you're ready.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
    "key": "good choice say take command when you re ready",
    "text": "Good choice. Say take command when you're ready.",
    "source": "frontend/src/mission/ui.js",
@@ -2784,6 +2793,591 @@
    "role": "capcom",
    "sources": [
     "frontend/src/academy/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge comet",
+   "text": "Mission ready at Connecting Ridge, Comet.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge commander",
+   "text": "Mission ready at Connecting Ridge, Commander.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge crater cat",
+   "text": "Mission ready at Connecting Ridge, Crater Cat.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge moon moth",
+   "text": "Mission ready at Connecting Ridge, Moon Moth.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge moonbeam",
+   "text": "Mission ready at Connecting Ridge, Moonbeam.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge nova",
+   "text": "Mission ready at Connecting Ridge, Nova.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge orbit",
+   "text": "Mission ready at Connecting Ridge, Orbit.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge pulsar",
+   "text": "Mission ready at Connecting Ridge, Pulsar.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge rocket",
+   "text": "Mission ready at Connecting Ridge, Rocket.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge rover fox",
+   "text": "Mission ready at Connecting Ridge, Rover Fox.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge sky otter",
+   "text": "Mission ready at Connecting Ridge, Sky Otter.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge star hopper",
+   "text": "Mission ready at Connecting Ridge, Star Hopper.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at connecting ridge stardust",
+   "text": "Mission ready at Connecting Ridge, Stardust.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim comet",
+   "text": "Mission ready at de Gerlache Crater Rim, Comet.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim commander",
+   "text": "Mission ready at de Gerlache Crater Rim, Commander.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim crater cat",
+   "text": "Mission ready at de Gerlache Crater Rim, Crater Cat.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim moon moth",
+   "text": "Mission ready at de Gerlache Crater Rim, Moon Moth.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim moonbeam",
+   "text": "Mission ready at de Gerlache Crater Rim, Moonbeam.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim nova",
+   "text": "Mission ready at de Gerlache Crater Rim, Nova.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim orbit",
+   "text": "Mission ready at de Gerlache Crater Rim, Orbit.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim pulsar",
+   "text": "Mission ready at de Gerlache Crater Rim, Pulsar.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim rocket",
+   "text": "Mission ready at de Gerlache Crater Rim, Rocket.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim rover fox",
+   "text": "Mission ready at de Gerlache Crater Rim, Rover Fox.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim sky otter",
+   "text": "Mission ready at de Gerlache Crater Rim, Sky Otter.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim star hopper",
+   "text": "Mission ready at de Gerlache Crater Rim, Star Hopper.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at de gerlache crater rim stardust",
+   "text": "Mission ready at de Gerlache Crater Rim, Stardust.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif comet",
+   "text": "Mission ready at Malapert Massif, Comet.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif commander",
+   "text": "Mission ready at Malapert Massif, Commander.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif crater cat",
+   "text": "Mission ready at Malapert Massif, Crater Cat.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif moon moth",
+   "text": "Mission ready at Malapert Massif, Moon Moth.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif moonbeam",
+   "text": "Mission ready at Malapert Massif, Moonbeam.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif nova",
+   "text": "Mission ready at Malapert Massif, Nova.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif orbit",
+   "text": "Mission ready at Malapert Massif, Orbit.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif pulsar",
+   "text": "Mission ready at Malapert Massif, Pulsar.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif rocket",
+   "text": "Mission ready at Malapert Massif, Rocket.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif rover fox",
+   "text": "Mission ready at Malapert Massif, Rover Fox.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif sky otter",
+   "text": "Mission ready at Malapert Massif, Sky Otter.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif star hopper",
+   "text": "Mission ready at Malapert Massif, Star Hopper.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at malapert massif stardust",
+   "text": "Mission ready at Malapert Massif, Stardust.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor comet",
+   "text": "Mission ready at Shackleton Crater Floor, Comet.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor commander",
+   "text": "Mission ready at Shackleton Crater Floor, Commander.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor crater cat",
+   "text": "Mission ready at Shackleton Crater Floor, Crater Cat.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor moon moth",
+   "text": "Mission ready at Shackleton Crater Floor, Moon Moth.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor moonbeam",
+   "text": "Mission ready at Shackleton Crater Floor, Moonbeam.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor nova",
+   "text": "Mission ready at Shackleton Crater Floor, Nova.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor orbit",
+   "text": "Mission ready at Shackleton Crater Floor, Orbit.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor pulsar",
+   "text": "Mission ready at Shackleton Crater Floor, Pulsar.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor rocket",
+   "text": "Mission ready at Shackleton Crater Floor, Rocket.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor rover fox",
+   "text": "Mission ready at Shackleton Crater Floor, Rover Fox.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor sky otter",
+   "text": "Mission ready at Shackleton Crater Floor, Sky Otter.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor star hopper",
+   "text": "Mission ready at Shackleton Crater Floor, Star Hopper.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater floor stardust",
+   "text": "Mission ready at Shackleton Crater Floor, Stardust.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim comet",
+   "text": "Mission ready at Shackleton Crater Rim, Comet.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim commander",
+   "text": "Mission ready at Shackleton Crater Rim, Commander.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim crater cat",
+   "text": "Mission ready at Shackleton Crater Rim, Crater Cat.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim moon moth",
+   "text": "Mission ready at Shackleton Crater Rim, Moon Moth.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim moonbeam",
+   "text": "Mission ready at Shackleton Crater Rim, Moonbeam.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim nova",
+   "text": "Mission ready at Shackleton Crater Rim, Nova.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim orbit",
+   "text": "Mission ready at Shackleton Crater Rim, Orbit.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim pulsar",
+   "text": "Mission ready at Shackleton Crater Rim, Pulsar.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim rocket",
+   "text": "Mission ready at Shackleton Crater Rim, Rocket.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim rover fox",
+   "text": "Mission ready at Shackleton Crater Rim, Rover Fox.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim sky otter",
+   "text": "Mission ready at Shackleton Crater Rim, Sky Otter.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim star hopper",
+   "text": "Mission ready at Shackleton Crater Rim, Star Hopper.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
+   "key": "mission ready at shackleton crater rim stardust",
+   "text": "Mission ready at Shackleton Crater Rim, Stardust.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
    ]
   },
   {
@@ -4627,6 +5221,16 @@
    ]
   },
   {
+   "key": "ready for the next mission",
+   "text": "Ready for the next mission?",
+   "source": "frontend/src/story.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/story.js",
+    "frontend/src/mission/ui.js"
+   ]
+  },
+  {
    "key": "ready for the next one",
    "text": "Ready for the next one?",
    "source": "frontend/src/story.js",
@@ -5206,6 +5810,15 @@
    ]
   },
   {
+   "key": "run a real moon outpost for ten days",
+   "text": "Run a real Moon outpost for ten days.",
+   "source": "frontend/src/story.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/story.js"
+   ]
+  },
+  {
    "key": "save power done",
    "text": "Save power: done.",
    "source": "backend/app/mission/gameplay.py:219",
@@ -5294,6 +5907,15 @@
    "role": "capcom",
    "sources": [
     "frontend/src/story.js"
+   ]
+  },
+  {
+   "key": "say start when you re ready",
+   "text": "Say start when you're ready.",
+   "source": "frontend/src/mission/ui.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/mission/ui.js"
    ]
   },
   {
@@ -5690,6 +6312,15 @@
    ]
   },
   {
+   "key": "storm coming crew into the shelter or shields to 40",
+   "text": "Storm coming. Crew into the shelter, or shields to 40?",
+   "source": "backend/app/session.py:876",
+   "role": "capcom",
+   "sources": [
+    "backend/app/session.py:876"
+   ]
+  },
+  {
    "key": "storm coming get ready shields or shelter",
    "text": "Storm coming. Get ready: shields or shelter.",
    "source": "frontend/src/story.js",
@@ -5867,6 +6498,15 @@
    "role": "capcom",
    "sources": [
     "backend/app/mission/gameplay.py:166"
+   ]
+  },
+  {
+   "key": "storm s here crew into the shelter",
+   "text": "Storm's here! Crew into the shelter.",
+   "source": "backend/app/session.py:876",
+   "role": "capcom",
+   "sources": [
+    "backend/app/session.py:876"
    ]
   },
   {
@@ -7095,6 +7735,15 @@
   {
    "key": "warning lights red means act now",
    "text": "Warning lights. Red means act now.",
+   "source": "frontend/src/story.js",
+   "role": "capcom",
+   "sources": [
+    "frontend/src/story.js"
+   ]
+  },
+  {
+   "key": "watch for storms and long nights",
+   "text": "Watch for storms and long nights.",
    "source": "frontend/src/story.js",
    "role": "capcom",
    "sources": [

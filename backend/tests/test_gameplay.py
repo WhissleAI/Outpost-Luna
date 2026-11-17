@@ -295,7 +295,7 @@ def test_session_drops_storm_news_the_clock_overtook():
     m = registry.create("shackleton_rim", 3, level="cadet")
     s = sessions.Session("t-overtaken", None, None, registry=registry)
     s.belief["mission_id"] = m.id
-    say = {"t": "say", "text": "Storm coming. Shelter now, or wait?", "situation": "storm_warning"}
+    say = {"t": "say", "text": "Storm coming. Crew into the shelter, or shields to 40?", "situation": "storm_warning"}
     card = {"t": "card", "chips": ["Solar storm", "DONKI"]}
     calm = {"t": "say", "text": "Comm window open."}
     assert s._overtaken(say) and s._overtaken(card) and not s._overtaken(calm)

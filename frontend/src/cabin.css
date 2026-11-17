@@ -868,3 +868,20 @@ html[data-motion="reduce"] .m-cabin .cb-hole>.cb-rover,html[data-motion="reduce"
 .cb-ch-cap{margin:0;font-size:var(--text-md, 1rem)}
 .cb-ch-cap b{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-phosphor);margin-right:var(--space-2)}
 .cb-ch-saved{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--text-sm);color:var(--color-phosphor)}
+
+/* ---------- [polish 4] first mission, teach by doing (mission/coach.js): one prompt beside its control ---------- */
+/* no buttons and no pointer events: the Now card stays the only place that says what to do, and a click goes through */
+.m-cabin>.cb-coach{position:absolute;z-index:8;left:0;top:0;max-width:min(300px,calc(100% - 32px));box-sizing:border-box;display:flex;align-items:flex-start;gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-accent-strong,var(--color-accent));color:var(--color-on-accent-strong,var(--color-on-accent));
+  box-shadow:var(--shadow-2);font-family:var(--font-ui);font-size:var(--text-md);font-weight:var(--weight-semibold);line-height:var(--leading-snug);pointer-events:none;
+  animation:cbCoach var(--dur-slow) var(--ease-out)}
+.m-cabin>.cb-coach[hidden]{display:none}
+.m-cabin>.cb-coach::before{content:"";position:absolute;width:12px;height:12px;background:inherit;transform:rotate(45deg)}
+.m-cabin>.cb-coach[data-side="right"]::before{left:-6px;top:calc(50% - 6px)}
+.m-cabin>.cb-coach[data-side="below"]::before{top:-6px;left:calc(var(--ax, 50%) - 6px)}
+.cb-coach-n{flex:none;font-family:var(--font-mono);font-size:var(--text-xs);opacity:.8;padding-top:3px}
+@keyframes cbCoach{from{opacity:0}}
+html[data-motion="reduce"] .m-cabin>.cb-coach{animation:none}
+@media (prefers-reduced-motion:reduce){.m-cabin>.cb-coach{animation:none}}
+/* [polish 4] a window marker under the story moment fades while it shows (cabin.js clearMarks) */
+.tv-mark.is-under{opacity:0!important;transition:opacity var(--dur-fast)}

@@ -10,9 +10,11 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING } from "../story.js";
 import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./objective.js";
-import { createTour, tourDone } from "./tour.js";
+import { createTour } from "./tour.js";
+import { createCoach, coachDone } from "./coach.js";
+import { missionsFlown } from "../explorer.js";
 import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
 import { createNavigator } from "./navigator.js";   // the landing-site navigator (docs/SITE_NAVIGATOR.md)
@@ -145,7 +147,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (g !== gen || !entered) return;   // QA-19: left Mission while the sites loaded: no picker over another mode
     }
     if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
-    briefing();
+    hub();
   }
   // In the cabin the ask dock and the caption line live in the panel's bottom comm row (never over the window or a
   // display unit); outside it they go back where index.html put them. Same nodes, so #q / #mic / Ask keep working.
@@ -160,7 +162,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function dockOut() { while (docked.length) { const d = docked.pop(); d.parent.insertBefore(d.el, d.next && d.next.parentNode === d.parent ? d.next : null); } }
   const hideCabin = () => {
     dockOut();
-    cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false);
+    cabinEl.hidden = true; delete document.body.dataset.cabin; delete document.body.dataset.cabinView; globe.setViewport(null); globe.pause(false); coach.stop();
     clearTimeout(surfT); if (tv) tv.hide(); curView = null; mclock.detach(); nudge.stop();
     if (cockpit && cockpit.dispose) { cockpit.dispose(); cockpit = null; }   // stop the 3D cabin's render loop
   };
@@ -204,7 +206,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
     if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
   }
-  function exit() { nv.hide(); if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
+  function exit() { nv.hide(); coach.stop(); if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
   /** The site picker (Moon-first): the five real sites as labelled pins on the south pole, a glass panel with the same
    *  sites as a table (radio group; the keyboard and screen-reader path), one primary action. Sun and Earth are the share
@@ -226,7 +228,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function gate() {
     const fresh = screen !== "gate";
     screen = "gate"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
-    panel.classList.add("mx-brief");
+    panel.classList.remove("mx-hub", "mx-plan"); panel.classList.add("mx-brief");
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">${esc(GATE.eyebrow)}</span>${sampleTag()}</header>
       <h2 class="mx-title">${esc(GATE.title)}</h2>
@@ -254,15 +256,15 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     $("mPracticeAgain").onclick = () => startPractice();
     Promise.resolve(say(GATE.doneSay(callSign.spoken("Cadet")))).catch(() => {});
   }
-  function briefing() {
+  function picker() {
     if (!qualified()) { gate(); return; }
     const fresh = screen !== "brief";
-    screen = "brief"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
+    screen = "brief"; debriefEl.hidden = true; panel.classList.remove("mx-hub", "mx-plan"); banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
     firstPick = !firstDone();
     if (!site) site = (firstPick && sites.find(s => s.id === PICKER.recommended)) || sites[0];
     // the transition beat: where you are (Command), why the choice matters; spoken once per visit
     // one say through the line queue: no async chain to outlive the screen (rc-polish's screen generations)
-    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say([CAPCOM.missionBrief(callSign.spoken(), rank()), PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {}); }
+    if (fresh) Promise.resolve(say([PICKER.why, ...(firstPick ? [PICKER.recLine] : [])])).catch(() => {});   // [polish 4] the hub said hello
     if (nv.ready && sites.every(s => nv.place(s.id))) {   // the navigator: map, layers, numbers with sources, weights
       nv.render({ site, firstPick, recommended: PICKER.recommended, recTag: PICKER.recTag });
       previewSite(); if (!nv.mapShown) pins(pickSite); else if (pinEl) pinEl.hidden = true;
@@ -288,9 +290,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         </button>`).join("")}
       </div>
       <p class="mx-srcline">Sun and Earth: days in view during your 10 days · ${srcLink(HORIZONS, "JPL Horizons")}</p>
-      <button type="button" class="mx-go" id="mStart">Take command</button>`;
+      <button type="button" class="mx-go" id="mStart">${esc(PICKER.go)}</button>`;
     offerContinue();
-    const pick = id => { site = sites.find(s => s.id === id); previewSite(); briefing(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
+    const pick = id => { site = sites.find(s => s.id === id); previewSite(); picker(); const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus(); };
     panel.querySelectorAll(".mx-site").forEach(b => {
       b.onclick = () => pick(b.dataset.site);
       b.onpointerenter = () => hot(b.dataset.site, true); b.onpointerleave = () => hot(b.dataset.site, false);
@@ -302,17 +304,17 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       e.preventDefault(); e.stopPropagation();
       pick(sites[k].id);
     });
-    $("mStart").onclick = () => start();
+    $("mStart").onclick = () => toPlan();
     previewSite(); pins(pick);
   }
   /** One pick path for the picker's rows, its pins and the navigator's map: select, preview, re-render, keep focus. */
   function pickSite(id) {
     const s = sites.find(x => x.id === id); if (!s) return;
-    site = s; previewSite(); briefing();
+    site = s; previewSite(); picker();
     const n = panel.querySelector(`[data-site="${CSS.escape(site.id)}"]`); if (n) n.focus({ preventScroll: true });
   }
   const nv = createNavigator({
-    panel, say: t => say(t), onPick: id => pickSite(id), onStart: () => start(), active: () => screen === "brief",
+    panel, say: t => say(t), onPick: id => pickSite(id), onStart: () => toPlan(), active: () => screen === "brief",
     missionText: id => { const s = sites.find(x => x.id === id); if (!s) return "";
       const parts = [`Sun ${sunDays(s)} of 10 days`, `radio ${earthDays(s)} of 10 days`,
         s.ice ? "ice right here" : s.rover_to_ice_h ? `ice run ${s.rover_to_ice_h} h each way` : ""];
@@ -368,12 +370,77 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     globe.setViewport(window.__pickBand || .3); globe.flyTo(-88.6, -40, window.__pickDist || 1.45);
   }
 
+  // ---------- [polish 4] the Mission hub and the 3-card briefing (docs/MISSION_POLISH_SPEC.md, wave 4) ----------
+  // Mission tab -> hub (one card: the mission, its site, Start; the navigator is one press away) -> briefing (Goal,
+  // Danger, Bonus; Take command) -> the cabin. The NASA video is a chip on the hub (mission_learning.js), never a yes / no.
+  const missionNo = () => { try { return missionsFlown(callSign.get()) + 1; } catch (e) { return 1; } };
+  const hubFacts = s => [["sun", `Sun ${sunDays(s)} of 10 days`], ["earth", `Radio ${earthDays(s)} of 10 days`],
+    ["ice", s.ice ? "Ice right here" : s.rover_to_ice_h ? `Ice ${s.rover_to_ice_h} h away` : "No ice nearby"]]
+    .map(([i, t]) => `<span>${ic(i, 16)}${esc(t)}</span>`).join("");
+  function hub() {
+    if (!qualified()) { gate(); return; }
+    const fresh = screen !== "hub";
+    nv.hide(); if (pinEl) pinEl.hidden = true;
+    screen = "hub"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
+    firstPick = !firstDone();
+    if (!site) site = sites.find(s => s.id === PICKER.recommended) || sites[0];
+    if (!site) return;
+    const nm = site.name.split(" (")[0], rec = site.id === PICKER.recommended;
+    panel.classList.remove("nv", "mx-plan"); panel.classList.add("mx-brief", "mx-hub"); panel.style.maxHeight = "";
+    panel.innerHTML = `
+      <header class="mx-head"><span class="eyebrow">${esc(HUB.eyebrow(missionNo()))}</span>${sampleTag()}</header>
+      <div class="mx-hubcard">
+        <h2 class="mx-title">${esc(nm)}</h2>
+        <p class="mx-hubrec">${rec ? `${ic("star", 14)}${esc(HUB.rec)}` : esc(siteTag(site))}</p>
+        <p class="mx-hubfacts">${hubFacts(site)}</p>
+        <p class="mx-hubwhat" id="mHubWhatT" hidden>${esc(HUB.whatLine)}</p>
+      </div>
+      <button type="button" class="mx-go" id="mStart"><span>${esc(HUB.start)}</span></button>
+      <div class="mx-hubrow">
+        <button type="button" class="mx-btn" id="mHubSite">${ic("map", 16)}<span>${esc(HUB.choose)}</span></button>
+        <button type="button" class="mx-btn" id="mHubWhat" aria-expanded="false" aria-controls="mHubWhatT">${ic("info", 16)}<span>${esc(HUB.what)}</span></button>
+      </div>`;
+    $("mStart").onclick = () => toPlan();
+    $("mHubSite").onclick = () => picker();
+    $("mHubWhat").onclick = () => hubWhat();
+    previewSite();
+    offerContinue();
+    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say(HUB.say(callSign.spoken(), nm))).catch(() => {}); }
+    try { dispatchEvent(new CustomEvent("outpost:mission-hub")); } catch (e) { /* old browsers */ }   // mission_learning.js adds the video chip
+  }
+  function hubWhat() {
+    const t = $("mHubWhatT"), b = $("mHubWhat"); if (!t || !b) return false;
+    t.hidden = false; b.setAttribute("aria-expanded", "true");
+    Promise.resolve(say(HUB.whatLine)).catch(() => {});
+    return true;
+  }
+  /** The briefing: three cards and Take command (from the hub's Start or the navigator's Start). */
+  function toPlan() {
+    if (!qualified()) { gate(); return; }
+    if (screen === "brief") { const checked = panel.querySelector('.mx-site[aria-checked="true"]'); if (checked) site = sites.find(s => s.id === checked.dataset.site) || site; }
+    if (!site) return;
+    nv.hide(); if (pinEl) pinEl.hidden = true;
+    screen = "plan"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; card.hide();
+    const nm = site.name.split(" (")[0];
+    panel.classList.remove("nv", "mx-hub"); panel.classList.add("mx-brief", "mx-plan"); panel.style.maxHeight = "";
+    panel.innerHTML = `
+      <header class="mx-head"><span class="eyebrow">${esc(BRIEFING.eyebrow)} · ${esc(nm)}</span>${sampleTag()}</header>
+      <h2 class="mx-title">${esc(BRIEFING.title)}</h2>
+      <ol class="mx-cards">${BRIEFING.cards.map(c => `<li class="mx-card is-${c.k}"><span class="mx-card-i">${ic(c.icon, 22)}</span><b>${esc(c.label)}</b><span class="mx-card-t">${esc(c.text)}</span></li>`).join("")}</ol>
+      <button type="button" class="mx-go" id="mBriefGo"><span>${esc(BRIEFING.go)}</span></button>
+      <button type="button" class="mx-link" id="mBriefBack">${esc(BRIEFING.back)}</button>`;
+    $("mBriefGo").onclick = () => start();
+    $("mBriefBack").onclick = () => hub();
+    previewSite();
+    Promise.resolve(say(BRIEFING.say)).catch(() => {});
+  }
+
   let starting = false;
   async function start(seed, { practice: isPractice = false } = {}) {
     if (!isPractice) practice = false;
     // [qa] QA-54: one mission per press (a double click, or a click while saying "take command"); a failed start says so
     if (starting) return; starting = true;
-    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = true; });
+    document.querySelectorAll("#mStart, #mBriefGo, #mAgain").forEach(b => { b.disabled = true; });
     // dev-only: tools/*.py may fix the storm schedule (window.__missionSeed) so a check reaches the same moment
     siteSeed = seed ?? ((import.meta.env && import.meta.env.DEV && window.__missionSeed != null) ? +window.__missionSeed : Math.floor(Math.random() * 1e9));
     // Settings → level (prefs, from the first request), else the stored tier; Cadet/Commander bands in the sim
@@ -387,7 +454,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     window.__outpost && (window.__outpost.missionSite = site && site.id);   // tools/picker_select.py reads it
     try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level, ...(isPractice ? { practice: true } : {}) }); } catch (e) { st = null; }
     starting = false;
-    document.querySelectorAll("#mStart, #mAgain").forEach(b => { b.disabled = false; });
+    document.querySelectorAll("#mStart, #mBriefGo, #mAgain").forEach(b => { b.disabled = false; });
     if (!alive(g)) return;   // left Mission while it started (even if the kid is back on a new screen generation)
     if (!st) { capcom({ say: "Can't reach the mission server. Try again." }); return; }
     enterMission(st, level);
@@ -409,33 +476,36 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       capcom({ say: line }); Promise.resolve(say(line)).catch(() => {}); nudge.arm(); briefSpoken = false; return;
     }
     capcom({ say: CAPCOM.missionStart(callSign.shown(), site.name) });
-    const first = !firstDone(), touring = !tourDone(callSign.get());
+    const first = !firstDone();
     // never wait on the voice for the next step: a slow or silent TTS must not leave the kid in a cabin with no guide
-    // One say through the floor's line queue (rc-polish): the hello and the first tour beat (or the objective) play as
-    // one on-air span, so the ear's hard mute covers the whole run. The card shows at once; it never waits on the voice.
+    // One say through the floor's line queue (rc-polish): the hello and the objective play as one on-air span, so the
+    // ear's hard mute covers the whole run. The card shows at once; it never waits on the voice.
     const hello = CAPCOM.missionStart(callSign.spoken(), site.name);
-    if (touring) tour.start(band(level), { lead: hello });         // first mission: CAPCOM shows the cabin first
-    else {
-      const ob = cardNow();   // [polish 3] the job is on the Now card; CAPCOM's radio log doesn't repeat it
-      Promise.resolve(say(ob ? [hello, ob.text] : hello)).catch(() => {});
-      nudge.arm();
-    }
+    const ob = cardNow();   // [polish 3] the job is on the Now card; CAPCOM's radio log doesn't repeat it
+    Promise.resolve(say(ob ? [hello, ob.text] : hello)).catch(() => {});
+    nudge.arm();
+    // [polish 4] first mission: teach by doing, one prompt at a time beside its control (coach.js), not a 12-step
+    // tour (the tour stays in Settings -> Help, "Show me around")
+    if (!coachDone(callSign.get())) coach.start();
     if (first) markFirstDone();
     briefSpoken = false;
   }
 
   /** [polish 2] The hub offers the chapter auto-save (the server keeps one): Continue, or pick a site for a new one. */
   function offerContinue() {
-    if (!client || !client.saved || (state && !state.over)) return;
+    // [polish 4] Quit to hub with the mission still in memory: Resume goes straight back to its cabin
+    const live = !!(state && !state.over && !practice);
+    if (!client || (!client.saved && !live) || (state && !state.over && !live)) return;
     const g = gen;
-    client.saved().then(r => {
-      if (!alive(g) || screen !== "brief" || !r || !r.saved) return;
+    const saved = live ? Promise.resolve({ saved: { day: state.day, site_name: state.site.name, chapter: ((state.chapter && state.chapter.done) || []).length, live: true } }) : client.saved();
+    saved.then(r => {
+      if (!alive(g) || (screen !== "brief" && screen !== "hub") || !r || !r.saved) return;
       const v = r.saved; panel.querySelectorAll(".mx-continue").forEach(n => n.remove());
       panel.insertAdjacentHTML("afterbegin", `<div class="mx-continue" role="group" aria-label="Saved mission">
         <span>${ic("check")}<b>Resume Day ${v.day} at ${esc(v.site_name.split(" (")[0])}</b><small>Saved automatically · Chapter ${Math.min(5, v.chapter + 1)} of 5</small></span>
         <button type="button" class="mx-go" id="mContinue" aria-label="Resume day ${v.day} at ${esc(v.site_name.split(" (")[0])}">Resume</button></div>`);
-      const go = panel.querySelector("#mStart"); if (go && !/new/i.test(go.textContent)) go.textContent = "New mission: take command";
-      panel.querySelector("#mContinue").onclick = () => resumeSaved();
+      const go = panel.querySelector("#mStart"); if (go && !/new/i.test(go.textContent)) go.textContent = "New mission";
+      panel.querySelector("#mContinue").onclick = () => (v.live && state && !state.over ? showHud() : resumeSaved());
     }).catch(() => {});
   }
   async function resumeSaved() {
@@ -551,8 +621,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     else if (a === "play") mclock.play();
     else if (a === "pause") mclock.pause();
     else if (a === "warp") { const w = mclock.setWarp(arg); if (!mclock.started || mclock.paused) mclock.play(); say(`Time warp, ${w} times.`, null, { priority: 4 }); }
-    else if (a === "skip") { skipEvent(); return true; }
-    else if (a === "ff") { const on = arg === true || arg === "on"; if (on && (!mclock.started || mclock.paused)) mclock.play(); mclock.hold(on); }
+    else if (a === "skip") { coach.did("time"); skipEvent(); return true; }
+    else if (a === "ff") { const on = arg === true || arg === "on"; if (on) coach.did("time"); if (on && (!mclock.started || mclock.paused)) mclock.play(); mclock.hold(on); }
     if (cockpit && cockpit.clock) cockpit.clock(mclock.state);
     renderCard();
     return true;
@@ -564,7 +634,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (screen !== "hud" || !state || state.over || !cockpit || !cockpit.menu || tour.active) return false;
     if (cockpit.chapterOpen) return false;
     if (cockpit.menuOpen) return closeMenu(true);
-    nudge.heard();
+    nudge.heard(); coach.did("menu");
     menuWas = mclock.started && !mclock.paused;
     mclock.hold(false); mclock.pause();
     const c = (state.chapter || {}), t = state.mission_time_h || 0;
@@ -587,7 +657,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (a === "speed") { mclock.setWarp(+v); menuWas = true; cockpit.clock(mclock.state); return true; }   // picking a speed means "run at it"
     if (a === "restart") return restartShift();
     if (a === "settings") { closeMenu(false); const A = window.__outpost && window.__outpost.a11y; if (A && A.open) A.open(true); return true; }
-    if (a === "quit") { closeMenu(false); showDebrief(); return true; }   // the paused debrief is the hub: Resume, a new site
+    if (a === "quit") { closeMenu(false); mclock.pause(); hub(); return true; }   // [polish 4] the real hub: Resume Day N (the save), or a new mission
     return false;
   }
   /** Back to the start of this shift: the server replays the mission's own inputs up to it (same storms, same tasks). */
@@ -645,7 +715,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   /** A button on the Now card: an order, a task press / choice, or a clock action. */
   function taskButton(b) {
     if (!b) return false;
-    nudge.heard();
+    nudge.heard(); coach.did("now");
     if (b.offer != null) {   // [polish 3] CAPCOM's question on the Now card: answer it once, then the sim's job is back
       const o = offer; if (!o) return false;
       const a = o.actions[b.offer]; offer = null; decisionAt = 0;
@@ -706,8 +776,12 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const tour = createTour({ host: cabinEl.parentNode || document.body, cockpit: () => cockpit, say: t => say(t), hush: () => stopSpeaking("mission_tour_hush"), callsign: () => callSign.get(),
     log: (event, source) => flowLog({ flow: "cabin_tour", event, source: source || "flow", step: tour ? tour.index : -1 }),
     onEnd: () => { if (screen !== "hud" || !state) return; lastObj = ""; render(); const ob = cardNow(); if (ob) say(ob.text, null, { priority: 4 }); nudge.arm(); } });
+  // [polish 4] the first mission's in-place prompts (coach.js): "time" waits until the clock runs by itself
+  const coach = createCoach({ host: cabinEl, callsign: () => callSign.get(),
+    ready: id => !tour.active && screen === "hud" && !(cockpit && (cockpit.menuOpen || cockpit.chapterOpen)) && (id !== "time" || (mclock.started && !mclock.paused)),
+    log: (event, step) => flowLog({ flow: "mission_coach", event, source: "flow", step: step || "" }) });
   /** Settings -> Help "Show me around", or "show me around" by voice: replay the tour in the cabin. */
-  function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); tour.start(band(levelNow())); return true; }
+  function replayTour() { if (screen !== "hud" || !cockpit) return false; nudge.stop(); coach.stop(); tour.start(band(levelNow())); return true; }
   addEventListener("outpost:tour", () => { if (!replayTour()) { try { localStorage.removeItem("outpost-tour-done:" + (callSign.get() || "cadet")); } catch (e) { /* blocked */ } } });
   const levelNow = () => (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.level) || tier();
   /** Engineer flies Commander's band (the same missions, in real units): the tour and the hints follow the band. */
@@ -716,6 +790,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function whatNow() {
     if (screen === "hud") { const c = state ? cardNow() : null; return c ? (c.offer ? c.text : nowSpoken(state, mclock.state)) : null; }
     if (screen === "brief") return HELP.picker;
+    if (screen === "hub") return HELP.hub;
+    if (screen === "plan") return HELP.briefing;
     if (screen === "gate") return GATE.say(callSign.spoken("Cadet"));
     if (screen === "practice_done") return GATE.doneSub;
     if (screen === "debrief") return HELP.debrief;
@@ -847,6 +923,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   async function run(command, { spoken } = {}) {
     if (!state) return;
     nudge.heard(); decisionAt = 0; offer = null;   // any order answers (or overrides) CAPCOM's question
+    coach.did("now");
     if (command.type === "end_shift") return endShift();
     if (command.type === "skip") return skipEvent();
     let r;
@@ -1078,7 +1155,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         <div class="mx-db-top"><div><h2 class="mx-title">Debrief not ready</h2><p class="mx-sub">Couldn't load it. Try again.</p></div></div>
         <div class="mx-foot"><button type="button" class="mx-go" id="mDbRetry">Try again</button><button type="button" class="mx-btn" id="mNewSite">${esc(DEBRIEF.another)}</button></div>`;
       $("mDbRetry").onclick = () => showDebrief();
-      $("mNewSite").onclick = () => { if (unsub) unsub(); unsub = null; state = null; briefing(); };
+      $("mNewSite").onclick = () => { if (unsub) unsub(); unsub = null; state = null; picker(); };
       return;
     }
     const outcome = d.outcome || state.outcome || (state.over ? "" : "in_progress");
@@ -1099,31 +1176,44 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       return t.split(/[,(]|:\s/)[0].trim() || "Source"; };
     // [physics] story first, then the numbers behind it (cause -> effect, with sources), then the grade
     const nums = (d.numbers || []).filter(n => n && n.text).slice(0, 5), eng = !!(d.engineer || state.engineer);
-    const scoreHtml = `<dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div>${d.stars != null ? `<div><dt>Stars</dt><dd class="mx-stars" aria-label="${d.stars} of 3 stars">${[0, 1, 2].map(k => `<span class="${k < d.stars ? "is-on" : ""}">${ic("star", 20)}</span>`).join("")}</dd></div>` : ""}</dl>
-        ${breakdown(d)}`;
+    // [polish 4] stars first (big), then the grade; one primary (Next mission when won, else Fly again) that is always
+    // on screen: the foot sits under the hero, the story / numbers / chart scroll in the body (never the buttons)
+    const stars = d.stars != null ? Math.max(0, Math.min(3, +d.stars || 0)) : null;
+    const starsHtml = stars != null && !paused ? `<p class="mx-bigstars" role="img" aria-label="${esc(DEBRIEF.starsLabel(stars))}">${[0, 1, 2].map(k => `<span class="${k < stars ? "is-on" : ""}" style="--i:${k}">${ic("star", 40)}</span>`).join("")}</p>` : "";
+    const scoreHtml = `<dl class="mx-score">${paused ? "" : `<div><dt>Grade</dt><dd class="mx-grade">${esc(d.grade)}</dd></div>`}<div><dt>Score</dt><dd>${Math.round(d.score || 0)}</dd></div></dl>`;
+    const primary = paused ? "resume" : won ? "next" : "again";
+    const btn = (id, cls, label) => `<button type="button" class="${cls}" id="${id}">${esc(label)}</button>`;
+    const foot = paused ? btn("mAgain", "mx-go", DEBRIEF.resume) + btn("mNewSite", "mx-link", DEBRIEF.choiceNew)
+      : won ? btn("mNext", "mx-go", DEBRIEF.next) + btn("mAgain", "mx-btn", DEBRIEF.choiceAgain)
+        : btn("mAgain", "mx-go", DEBRIEF.choiceAgain) + btn("mNext", "mx-btn", DEBRIEF.next);
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
+    debriefEl.dataset.primary = primary;
     debriefEl.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Debrief · ${esc(state.site.name)}</span>${sampleTag()}
         <button class="mx-x" id="mDbClose" type="button" aria-label="${esc(DEBRIEF.close)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></header>
-      <div class="mx-db-top">
-        <div><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
-        ${nums.length ? "" : scoreHtml}
+      <div class="mx-db-top mx-db-hero">
+        ${starsHtml}
+        <div class="mx-db-head"><h2 class="mx-title">${head}</h2>${sub ? `<p class="mx-sub">${esc(sub)}</p>` : ""}</div>
+        ${scoreHtml}
       </div>
-      <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
-        <ol>${story.beats.map(b => `<li>${esc(b)}</li>`).join("")}</ol>
-        <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
-      ${nums.length ? `<section class="mx-nums" aria-label="${esc(DEBRIEF.numbersTitle)}"><h3>${esc(DEBRIEF.numbersTitle)}</h3>
-        <ul>${nums.map(n => `<li><span>${esc(n.text)}${eng && n.eq ? `<code class="mx-eq">${esc(n.eq)}</code>` : ""}</span>${n.source ? srcLink(n.source, srcLabel(n.source)) : ""}</li>`).join("")}</ul></section>` : ""}
-      ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
-      ${nums.length ? `<div class="mx-grade-row">${scoreHtml}</div>` : `<ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>`}
-      <div class="mx-foot">
-        <button type="button" class="mx-go" id="mAgain">${esc(paused ? DEBRIEF.resume : DEBRIEF.choiceAgain)}</button>
-        <button type="button" class="mx-link" id="mNewSite">${esc(DEBRIEF.choiceNew)}</button>
+      <div class="mx-foot">${foot}
+        ${nums.length ? `<button type="button" class="mx-link" id="mNums">${esc(DEBRIEF.numbers)}</button>` : ""}</div>
+      <div class="mx-db-body">
+        <section class="mx-story" aria-label="${esc(DEBRIEF.storyTitle)}"><h3>${esc(DEBRIEF.storyTitle)}</h3>
+          <ol>${story.beats.map(b => `<li>${esc(b)}</li>`).join("")}</ol>
+          <p class="mx-try"><b>${esc(DEBRIEF.tryTitle)}</b> ${esc(story.tryLine)}</p></section>
+        ${nums.length ? `<section class="mx-nums" id="mxNums" tabindex="-1" aria-label="${esc(DEBRIEF.numbersTitle)}"><h3>${esc(DEBRIEF.numbersTitle)}</h3>
+          <ul>${nums.map(n => `<li><span>${esc(n.text)}${eng && n.eq ? `<code class="mx-eq">${esc(n.eq)}</code>` : ""}</span>${n.source ? srcLink(n.source, srcLabel(n.source)) : ""}</li>`).join("")}</ul></section>` : ""}
+        ${chart(d.timeline || [], state.resources.dose_limit_msv || 50)}
+        ${breakdown(d)}
+        ${nums.length ? "" : `<ul class="mx-tks">${tks.slice(0, 3).map(t => `<li><span>${esc(t.text)}</span>${t.source ? srcLink(t.source, srcLabel(t.source)) : t.lesson ? `<span class="mx-tag">Lesson ${t.lesson}</span>` : t.next ? `<span class="mx-tag">Next time</span>` : ""}</li>`).join("")}</ul>`}
         ${(d.data_used || []).length ? `<details class="mx-data"><summary>Data used</summary><ul>${d.data_used.map(x => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a></li>`).join("")}</ul></details>` : ""}
       </div>`;
     $("mAgain").onclick = () => { if (paused && state && !state.over) { showHud(); return; } if (unsub) unsub(); state = null; start(); };
-    $("mNewSite").onclick = () => leaveMission(() => { if (unsub) unsub(); state = null; briefing(); });
-    $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else briefing(); };
+    if ($("mNext")) $("mNext").onclick = () => nextMission();
+    if ($("mNewSite")) $("mNewSite").onclick = () => leaveMission(() => { if (unsub) unsub(); state = null; picker(); });
+    if ($("mNums")) $("mNums").onclick = () => { const n = $("mxNums"); if (n) { n.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }); n.focus({ preventScroll: true }); } };
+    $("mDbClose").onclick = () => { if (state && !state.over) showHud(); else hub(); };
     wireChart();
     requestAnimationFrame(() => { const h = debriefEl.querySelector(".mx-title"); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } });
     // [qa] no "Nice flying" on a failed mission
@@ -1139,8 +1229,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // story first: the turning point and its biggest number, then the grade, then what to try and the one offer
     const top = !paused && nums.length && nums[0].say ? [nums[0].say] : [];
     Promise.resolve(say(paused ? [spoken(callSign.spoken()), `${story.end} ${OFFER.resume}`]
-      : nums.length ? [story.beats[1], ...top, spoken(callSign.spoken()), `${story.tryLine} ${OFFER.flyAgain}`]
-        : [spoken(callSign.spoken()), story.beats[1], `${story.tryLine} ${OFFER.flyAgain}`])).catch(() => {});   // one on-air span
+      : nums.length ? [story.beats[1], ...top, spoken(callSign.spoken()), `${story.tryLine} ${won ? OFFER.nextMission : OFFER.flyAgain}`]
+        : [spoken(callSign.spoken()), story.beats[1], `${story.tryLine} ${won ? OFFER.nextMission : OFFER.flyAgain}`])).catch(() => {});   // one on-air span
   }
 
   /** QA-26: a paused mission is never wiped by accident. Fly again / a new site from a paused debrief asks first. */
@@ -1157,6 +1247,12 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     say(DEBRIEF.wipeAsk);
   }
   let pendingWipe = null;
+  /** [polish 4] Next mission: the next site in the list, on the hub (Start, or Choose site). */
+  function nextMission() {
+    const go = () => { if (unsub) unsub(); unsub = null; const cur = state && state.site ? state.site.id : site && site.id; state = null;
+      const i = sites.findIndex(x => x.id === cur); site = sites.length ? sites[(i + 1) % sites.length] : site; hub(); };
+    leaveMission(go); return true;
+  }
 
   /** Score breakdown, when the debrief sends one (the game redesign): [{label, points}] or {label: points}. */
   function breakdown(d) {
@@ -1252,12 +1348,18 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
     if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }
     if (screen === "brief" && nv.nav(intent, arg)) return true;   // map layers, "which site has the most ice?", weights, regions
-    if (intent === "pick_site" && (screen === "brief" || screen === "debrief")) {
+    if (intent === "pick_site" && ["brief", "debrief", "hub", "plan"].includes(screen)) {
       const s = sites.find(x => x.id === arg); if (!s) return false;
       if (unsub && screen === "debrief") { unsub(); unsub = null; state = null; }
-      site = s; previewSite(); briefing(); say(`${s.name.split(" (")[0]}. Good choice. Say take command when you're ready.`); return true;
+      const onHub = screen === "hub" || screen === "plan";
+      site = s; previewSite(); if (onHub) hub(); else picker(); say(`${s.name.split(" (")[0]}. Good choice. Say start when you're ready.`); return true;
     }
-    if (screen === "brief" && ["take_command", "start", "next", "accept_offer"].includes(intent)) { start(); return true; }
+    // [polish 4] hub -> briefing -> cabin: "start" / "take command" / "yes" moves one screen on; back goes to the hub
+    if (screen === "hub" && (intent === "next" || intent === "prev")) { stepSite(intent === "next" ? 1 : -1); return true; }   // LB / RB: another site
+    if ((screen === "brief" || screen === "hub") && ["take_command", "start", "next", "accept_offer", "yes"].includes(intent)) { toPlan(); return true; }
+    if (screen === "plan" && ["take_command", "start", "next", "accept_offer", "yes"].includes(intent)) { start(); return true; }
+    if (screen === "hub" && intent === "new_site") { picker(); return true; }
+    if ((screen === "plan" || screen === "brief") && intent === "back") { hub(); return true; }
     if (screen === "gate" && ["start", "next", "accept_offer", "yes"].includes(intent)) { startPractice(); return true; }
     if (screen === "gate" && intent === "take_command") { say(GATE.say(callSign.spoken("Cadet"))); return true; }   // not yet: the path, again
     if (screen === "practice_done" && ["accept_offer", "yes", "start", "next"].includes(intent)) { if (academy && academy.goRide) academy.goRide(); return true; }
@@ -1265,9 +1367,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (screen === "debrief" && pendingWipe && ["accept_offer", "yes"].includes(intent)) { const g = pendingWipe; pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); g(); return true; }
     if (screen === "debrief" && pendingWipe && intent === "decline_offer") { pendingWipe = null; debriefEl.querySelectorAll(".mx-wipe").forEach(n => n.remove()); return true; }
     if (screen === "debrief" && intent === "accept_offer" && state && !state.over) { showHud(); return true; }   // paused: the offer is "resume"
+    if (screen === "debrief" && (intent === "next_mission" || (intent === "accept_offer" && debriefEl.dataset.primary === "next"))) return nextMission();
     if (screen === "debrief" && ["fly_again", "accept_offer", "start"].includes(intent)) { leaveMission(() => { if (unsub) unsub(); state = null; start(); }); return true; }
-    if (screen === "debrief" && intent === "new_site") { leaveMission(() => { if (unsub) unsub(); state = null; briefing(); }); return true; }
-    if (screen === "debrief" && intent === "back") { if (state && !state.over) showHud(); else briefing(); return true; }
+    if (screen === "debrief" && intent === "new_site") { leaveMission(() => { if (unsub) unsub(); state = null; picker(); }); return true; }
+    if (screen === "debrief" && intent === "back") { if (state && !state.over) showHud(); else hub(); return true; }
     if (screen === "hud" && (intent === "debrief" || intent === "fly_again")) { showDebrief(); return true; }
     if (intent === "decline_offer") return true;
     return false;
@@ -1321,9 +1424,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     addEventListener("blur", letGo);
   }
   const onBus = {
-    next: () => screen === "brief" ? (stepSite(1), true) : false,
-    prev: () => screen === "brief" ? (stepSite(-1), true) : false,
-    yes: () => screen === "brief" ? (start(), true) : screen === "gate" ? (startPractice(), true) : screen === "debrief" ? nav("fly_again") : false,
+    next: () => (screen === "brief" || screen === "hub") ? (stepSite(1), true) : false,
+    prev: () => (screen === "brief" || screen === "hub") ? (stepSite(-1), true) : false,
+    new_site: () => screen === "hub" ? (picker(), true) : false,
+    yes: () => (screen === "brief" || screen === "hub") ? (toPlan(), true) : screen === "plan" ? (start(), true) : screen === "gate" ? (startPractice(), true) : screen === "debrief" ? (debriefEl.dataset.primary === "next" && !pendingWipe ? nextMission() : nav("fly_again")) : false,
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,
     end_shift: () => screen === "hud" && !(state && state.over) ? (endShift(), true) : false,
     task_step: () => screen === "hud" ? intent("task_step") === true : false,
@@ -1335,6 +1439,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // [polish 2] Esc / B at the seat (nothing else open: keys.js "back" passed it on) opens the pause menu; with the
     // menu or a chapter card up it closes it
     back: (a, ev) => {
+      if (screen === "plan" || screen === "brief") { hub(); return true; }   // [polish 4] Esc / B: back to the hub
       if (screen !== "hud" || !cockpit || tour.active) return false;
       if (cockpit.chapterOpen) return chapterGo();
       if (cockpit.menuOpen) return closeMenu(true);
@@ -1369,10 +1474,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (cockpit && cockpit.menuOpen) return closeMenu(true);
       return clockAction("play") !== false; } });
   registerFlow({ name: "mission_paused", rank: 40, keys: false,
-    active: () => screen === "debrief" && !!state && !state.over && !pendingWipe, paused: () => true,   // a wipe confirm owns yes
+    active: () => (screen === "debrief" || screen === "hub") && !!state && !state.over && !practice && !pendingWipe, paused: () => true,   // a wipe confirm owns yes
     pause: () => true, resume: src => { fl("mission_paused", "resume", src); showHud(); return true; } });
   // next / prev on the picker moves the selection: say the new site so a hands-free kid knows what "take command" will fly
-  function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); briefing();
+  function stepSite(d) { if (!sites.length) return; site = sites[(sites.indexOf(site) + d + sites.length) % sites.length]; previewSite(); if (screen === "hub") hub(); else picker();
     Promise.resolve(say(site.name.split(" (")[0] + ".")).catch(() => {}); }
 
   return {

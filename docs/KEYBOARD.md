@@ -26,7 +26,7 @@ Code:
 | <kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd> | `move {dir}` | Moves focus to the nearest control that way. Tab and Shift+Tab still work as always. |
 | <kbd>Enter</kbd>, or a tap of <kbd>Space</kbd> | `select` | Presses the focused control. On the Moon, it picks the place under the ring. At the cabin seat, it opens the lit panel. |
 | <kbd>Space</kbd> held (≥ 0.26 s) | voice.js push-to-talk | Hold to talk, unchanged. With nothing selectable focused, Space is talk at once, as before. |
-| <kbd>Esc</kbd>, <kbd>Backspace</kbd> (when not typing) | `back` | In order: close the help sheet, Settings, About, the calibration, a glossary card, the lesson brief, the answer card (in the cabin, only when focus is on it) or Find it. Then close an open cabin panel (`panel_back`). Then the screen's own back: lesson → map, patch → map, Library → where you were, debrief → cabin or picker. **Never quits.** |
+| <kbd>Esc</kbd>, <kbd>Backspace</kbd> (when not typing) | `back` | In order: close the help sheet, Settings, About, the calibration, a glossary card, the lesson brief, the answer card (in the cabin, only when focus is on it) or Find it. Then close an open cabin panel (`panel_back`). Then the screen's own back: lesson → map, patch → map, Library → where you were, briefing or site picker → Mission hub, debrief → cabin or hub. **Never quits.** |
 | <kbd>M</kbd> | `mic` | Turns the mic on or off. |
 | <kbd>Shift</kbd>+<kbd>M</kbd> | `mute` | The top bar's **Mute** (next to Settings): every sound off or back on. Captions and text stay. Output only; the mic is unchanged. Voice: "mute" / "unmute". |
 | <kbd>H</kbd> or <kbd>?</kbd> | `help` | Opens the help sheet with every key for **this** screen, plus the controller's buttons when one is connected. |
@@ -83,9 +83,9 @@ The arrows never land on the two grips: Tab reaches them.
   7. the **cabin seat**: the panels, the window views, the alert strip, the comm row and the top bar;
   8. a **lesson card**: the card, the Moon reticle on a Moon step, the site pins of a compare step, and the answer card.
 
-  The **cabin tour** card (first mission, `mission/tour.js`) is a scope too. Next is its primary; Enter or N advances it; ← / → step it (flows.js); the first Esc pauses it (Resume focused, Enter resumes), a second Esc skips it.
+  The **cabin tour** card (Settings → Help "Show me around", `mission/tour.js`; the first mission teaches in place instead, `mission/coach.js`) is a scope too. Next is its primary; Enter or N advances it; ← / → step it (flows.js); the first Esc pauses it (Resume focused, Enter resumes), a second Esc skips it.
 
-  Otherwise the whole screen is one scope, and focus moves **inside the current region first** before it jumps to the nearest control in any region. A control in another region still wins when it is under half the distance. Sheets have regions too: the Settings section list, then the section body. **The top bar is the edge**: it is reached only when nothing on the stage (or in the cabin) lies that way. The regions are the top bar, the Flight School panel, the map pins, the mission panel, the debrief, the answer card, the Library toolbar, the now-playing chip and the voice bar.
+  Otherwise the whole screen is one scope, and focus moves **inside the current region first** before it jumps to the nearest control in any region. A control in another region still wins when it is under half the distance. Sheets have regions too: the Settings section list, then the section body. **The top bar is the edge**: it is reached only when nothing on the stage (or in the cabin) lies that way. In the cabin, Up from its own controls (the view bar, the deck, the Now card) never drops back onto a 3D console: a lit console turns the camera, and its projected box could reach above the view bar (Polish 4 fixed an Orbit ↔ seat trap there). keys_e2e checks that every Up press lands higher on the screen, from every console, until the top bar. The regions are the top bar, the Flight School panel, the map pins, the mission panel, the debrief, the answer card, the Library toolbar, the now-playing chip and the voice bar.
 - **Memory and restore.** The last focused control is remembered per screen: mode + Academy view + mission screen + cabin panel + scope. It is restored when the kid comes back. When a re-render drops the focused control, focus goes to its twin, found by its id or an identifying data attribute (`data-l`, `data-c`, `data-site`, `data-sec`…). This happens when a pin is picked, after a wrong answer, or when Settings re-renders. On a new screen with nothing remembered, focus goes to the primary action: Next, the first answer, Start, Take command, Fly again, and so on. Restore runs only while the kid uses keys or a controller; a pointer never has its focus moved.
 - **Long sheets.** When nothing lies that way inside a scrolling sheet (About, Settings, the debrief), <kbd>↑</kbd> <kbd>↓</kbd> scroll it instead, so what was below comes into reach.
 - **Key repeat.** A held arrow moves at most once per 260 / 150 / 80 ms (Slow / Normal / Fast). A fresh press always moves.
@@ -205,8 +205,14 @@ still work.
 | | Map | "map" | — | Esc, or arrows to Map | Map |
 | **Check ride** | An order | say it | point at a control | 1–5 (order buttons), / then type | the orders, the cabin controls |
 | | Fly it again | "start" | point | Enter on Fly it again | Fly it again |
-| **Site picker** | Next / previous site | "pick Malapert" | swipe | N / P, ↑ ↓ on the rows, 1–5 | a row or a pin |
-| | Take command | "take command", "yes" | thumbs up | Y, Enter on Take command | Take command |
+| **Mission hub** | Start (to the briefing) | "start", "take command", "yes" | thumbs up | Enter on Start (the first arrow lands on it), Y; A | Start |
+| | Another site's mission | "pick Malapert" | swipe | N / P; LB / RB | Choose site |
+| | Choose site (the navigator) | "new site" | — | ↓ to Choose site, Enter | Choose site |
+| **Briefing** (3 cards) | Take command | "take command", "yes" | thumbs up | Enter (focus is on it), Y; A | Take command |
+| | Back to the hub | "go back" | — | Esc, Backspace; B | Back |
+| **Site picker** (navigator) | Next / previous site | "pick Malapert" | swipe | N / P, ↑ ↓ on the rows, 1–5 | a row or a pin |
+| | Start (to the briefing) | "start", "yes" | thumbs up | Y, Enter on Start | Start |
+| | Back to the hub | "go back" | — | Esc, Backspace | — |
 | **Cabin, seat** | Light a panel | — | turn your head | arrows | hover |
 | | Open it | "open the comm panel" | lean in | Enter, O | click the panel |
 | | Window view | "show me the rover", "zoom out" | swipe | V, N / P | Orbit / Site / Rover / Earth |
@@ -219,8 +225,8 @@ still work.
 | **Houston** | Call Houston | "call Houston" | — (raise hand removed: an open hand is always stop) | Comm panel → Call Houston, Enter | Call Houston |
 | **End shift** | End shift | "end shift" | — | pedestal → End shift, Enter | End shift |
 | | Finish mission | "debrief" | — | pedestal → Finish mission, Enter | Finish mission |
-| **Debrief** | Fly again | "fly again", "yes" | thumbs up | Y, Enter on Fly again | Fly again |
-| | Another site | "new site" | — | arrows to Another site, Enter | Another site |
+| **Debrief** | Next mission (won) or Fly again (otherwise): the focused primary, always on screen | "yes", "fly again" | thumbs up | Enter (focus is on it), Y | Next mission / Fly again |
+| | The other one, The numbers | "fly again", "new site" | — | arrows, Enter | the buttons |
 | | Close | "go back" | — | Esc, Backspace | × |
 | **Library** | Pick a place | "where did Apollo 11 land?" | point at the Moon | Moon reticle: arrows hop, Enter | tap the Moon or a marker |
 | | Turn the Moon | "show me the far side" | fist and lean (spin) | Shift+arrows, right stick | drag, Near / Far side |
