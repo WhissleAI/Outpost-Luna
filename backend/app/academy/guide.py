@@ -85,10 +85,157 @@ def terminator_lon(acc: dict) -> float:
     return float(acc["sun_lon"]) - 90.0
 
 
-def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
-    """Reply fields for miss number misses+1 (rung 1 or 2)."""
+def label_of(st: dict, pid: str) -> str:
+    """The name a step's mark carries: the step's own `label` for its target (the word the prompt uses: "Cabeus
+    crater", not the hardware's "LCROSS Centaur rocket impact site"), else the place's short name."""
+    acc = st.get("accept") or {}
+    if acc.get("label") and pid in {acc.get("place"), *acc.get("also", [])}:
+        return acc["label"]
+    return short(pid)
+
+
+# The order buttons a command step shows (frontend/src/academy/ui.js ORDERS), by what the order does.
+ORDER_LABEL = {"heaters": "Heaters up", "shields": "Shields up", "shelter_in": "Into the shelter",
+               "shelter_out": "Leave the shelter", "rover_ice": "Rover: get ice", "houston": "Call Houston"}
+
+
+def order_key(cmd: dict | None) -> str | None:
+    """A parsed mission order (or a step's `expect`) as one of ORDER_LABEL's keys, else None."""
+    if not cmd:
+        return None
+    t = cmd.get("type")
+    if t == "allocate" and cmd.get("to") in ("heaters", "shields"):
+        return cmd["to"]
+    if t == "shelter":
+        return "shelter_in" if cmd.get("on") else "shelter_out"
+    if t == "dispatch" and cmd.get("task") == "collect_ice":
+        return "rover_ice"
+    if t == "call_houston":
+        return "houston"
+    return None
+
+
+def order_label(expect: dict) -> str:
+    return ORDER_LABEL.get(order_key(expect) or "", "the glowing order")
+
+
+def option_label(acc: dict, oid: str) -> str:
+    """The label on an option's button (what "Here's the answer" names)."""
+    if acc["type"].startswith("vocab_"):
+        from .vocab import options
+        o = next((o for o in options(acc) if o["id"] == oid), None)
+        return (o or {}).get("label", oid)
+    if acc["type"] == "earth_view":
+        return oid.capitalize()
+    o = next((o for o in acc.get("options", []) if o["id"] == oid), None)
+    return (o or {}).get("label", oid)
+
+
+def right_option(acc: dict) -> str | None:
+    if acc["type"].startswith("vocab_"):
+        from .vocab import options
+        return next((o["id"] for o in options(acc) if o["term"] == acc["term"]), None)
+    if acc["type"] == "earth_view":
+        from .grade import earth_answer
+        return earth_answer(acc["place"])
+    return acc.get("answer")
+
+
+def _end(t: str) -> str:
+    t = str(t or "").strip()
+    return t if not t or t[-1] in ".!?" else t + "."
+
+
+def help_rung(st: dict, rung: int, got: list | None = None) -> dict:
+    """The kid ASKED for help ("help", "I don't know", "where is it?"): the next rung of the same ladder, with no miss
+    counted. Rung 1 = highlight (the place glows, the camera turns), 2 = label (its name on the Moon, a wrong card
+    crossed out, the order glows, the words on the card), 3 = show (CAPCOM points at the answer; the kid still taps
+    it, so the step is theirs). Every line says what to do next (docs/PLAYTEST.md)."""
+    acc, kind = st["accept"], st["accept"]["type"]
+    rung = max(1, min(3, int(rung or 1)))
+    hint = _end(st.get("hint", ""))
+    out: dict = {"rung": rung, "hint": st.get("hint", "")}
+    if kind == "predict":
+        return {**out, "rung": 1, "say": "Any guess is fine. Tap one."}
+    if kind == "video":
+        return {**out, "rung": 1, "say": "Tap Watch to see it, or Skip."}
+    target = None
+    if kind in PLACE_TYPES:
+        target = acc["place"]
+    elif kind == "route":
+        got = got or []
+        target = acc["stops"][min(len(got), len(acc["stops"]) - 1)]
+    if target:
+        name = label_of(st, target)
+        out["focus"] = [target]
+        if rung >= 2:
+            out["label"] = [target]
+        if kind == "route":
+            k = acc["stops"].index(target) + 1
+            out["say"] = (f"Tap {k}: {name}. It's glowing." if rung == 1 else
+                          f"Tap {k}: {name}. It has a label now." if rung == 2 else f"Here it is. Tap {k}: {name}.")
+        else:
+            out["say"] = (f"Look for the glowing ring. {hint}" if rung == 1 else
+                          f"Look for the label: {name}. Tap it." if rung == 2 else f"Here it is: {name}. Tap it.")
+        if rung == 3:
+            out["show"] = True
+        return out
+    if kind == "terminator":
+        out["line_lon"] = terminator_lon(acc)
+        out["label_line"] = rung >= 2
+        out["say"] = ("Look for the glowing line. Tap on it." if rung == 1 else
+                      "Tap the line marked Day meets night." if rung == 2 else
+                      "Here it is: where day meets night. Tap the line.")
+        if rung == 3:
+            out["show"] = True
+        return out
+    if kind == "globe_side":
+        w = acc["want"]
+        if rung >= 2:
+            out["cue"] = {"side": w}
+        out["say"] = (f"Drag the Moon to turn it. Or tap {w.title()} side." if rung == 1 else
+                      f"Tap the glowing {w.title()} side button.")
+        return out
+    if kind == "command":
+        if rung >= 2:
+            out["cue"] = acc["expect"]
+        out["say"] = hint if rung == 1 else "Tap the glowing order." if rung == 2 else \
+            f"Here it is: tap {order_label(acc['expect'])}."
+        return out
+    if kind in ("keywords", "vocab_say"):
+        ph = phrase_of(st) if kind == "keywords" else acc.get("term", "")
+        if rung >= 2 and ph:
+            out["phrase"] = ph
+        out["say"] = hint if rung == 1 or not ph else "The words are on the card now. Say them."
+        return out
+    if kind in OPTION_TYPES:
+        if rung == 2:
+            w = wrong_option(acc)
+            if w:
+                out["eliminate"] = w
+            out["say"] = hint + (" I crossed one out." if w else "")
+        elif rung == 3:
+            r = right_option(acc)
+            if r:
+                out["answer"] = r
+                out["eliminate"] = wrong_option(acc)
+                out["say"] = f"Here's the answer: {option_label(acc, r)}. Tap it."
+            else:
+                out["say"] = hint
+        else:
+            out["say"] = hint
+        return out
+    out["say"] = hint
+    return out
+
+
+def ladder(st: dict, misses: int, inp: dict, extra: dict, seen: int = 0) -> dict:
+    """Reply fields for miss number misses+1 (rung 1 or 2). `seen`: the rung the card already shows (a find step opens
+    at rung 1, and help climbs without a miss), so a miss always adds something new."""
     acc, kind = st["accept"], st["accept"]["type"]
     rung = 1 if misses <= 0 else 2
+    if seen >= 1:
+        rung = 2
     hint, fail = st["hint"], st["fail"]
     out: dict = {"rung": rung, "hint": hint}
     tap = inp.get("tap") or ((inp.get("taps") or [None])[-1] if inp.get("taps") else None)
@@ -99,9 +246,11 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
     elif kind == "route":
         got = extra.get("got") or []
         target = acc["stops"][min(len(got), len(acc["stops"]) - 1)]
-    if name and target and name == short(target):
+    if name and target and name in (short(target), label_of(st, target)):
         name = None
     lead = f"That's {name}. " if name else fail + " "
+    if kind == "command":   # a real order, the wrong one: say why it's not the one, never "Say again?" (docs/PLAYTEST.md)
+        lead = (st.get("wrong") or {}).get(extra.get("heard_order") or "", fail) + " "
     if kind == "globe_side":
         # [owner bug] "Tap the Far side button" right after they pressed it. State-aware and the same on both rungs:
         # what to do with the Moon first, the button second (≤ 20 spoken words, docs/COPY.md)
@@ -109,6 +258,11 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
         out["say"] = f"Not yet. Turn the Moon until the {w} side faces you. Or press {w.title()} side."
         if rung == 2:
             out["cue"] = {"side": w}
+        return out
+    if kind == "route" and name and target and name in [short(x) for x in acc["stops"][acc["stops"].index(target) + 1:]]:
+        k = acc["stops"].index(target) + 1   # a later stop first: say which comes first (novice playtest #22)
+        out |= {"focus": [target], **({"label": [target]} if rung == 2 else {})}
+        out["say"] = f"That's {name}. Start with {k}: {short(target)}."
         return out
     if rung == 1:
         out["say"] = lead + hint
@@ -122,7 +276,7 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict) -> dict:
         out |= {"focus": [target], "label": [target]}
         k = acc["stops"].index(target) + 1 if kind == "route" else 0
         out["say"] = lead + (f"Tap {k}: {short(target)}. It has a label now." if k else
-                             f"Look for the label: {short(target)}.")
+                             f"Look for the label: {label_of(st, target)}.")
     elif kind == "terminator":
         out |= {"line_lon": terminator_lon(acc), "label_line": True}
         out["say"] = lead + "Tap the glowing line."

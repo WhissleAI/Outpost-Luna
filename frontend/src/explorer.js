@@ -20,9 +20,11 @@ export function markMissionFlown(id, cs, storage = typeof localStorage !== "unde
 }
 
 export const isExplorer = l => !!(l && l.track === "explorer");
-/** Is this lesson open to the cadet now? Core lessons always are. */
-export const unlocked = (l, flown) => !isExplorer(l) || flown >= (l.unlock_after_missions || 1);
+/** Is this lesson open to the cadet now? Core lessons always are. An explorer lesson with `unlock_after: "checkride"`
+ *  opens once the cadet is qualified (novice playtest 2026-11-16 #22: Apollo's trace step in the first hour). */
+export const unlocked = (l, flown, qualified = false) => !isExplorer(l) ||
+  (l.unlock_after === "checkride" ? !!qualified : flown >= (l.unlock_after_missions || 1));
 /** The explorer lessons that opened exactly at `flown` missions (the debrief offers these). */
-export const newlyUnlocked = (lessons, flown) => (lessons || []).filter(l => isExplorer(l) && (l.unlock_after_missions || 1) === flown);
+export const newlyUnlocked = (lessons, flown) => (lessons || []).filter(l => isExplorer(l) && l.unlock_after !== "checkride" && (l.unlock_after_missions || 1) === flown);
 /** Core lessons only: "Lesson n of 6" (the check ride and explorer lessons aren't numbered). */
 export const coreLessons = lessons => (lessons || []).filter(l => !l.ride && !isExplorer(l));

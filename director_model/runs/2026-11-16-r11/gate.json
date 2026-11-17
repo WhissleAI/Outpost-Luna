@@ -1,0 +1,800 @@
+{
+ "round": 11,
+ "data": "ds_r11b (ds_r10's 27 sets unchanged + val and test_voice_heldout rebuilt; train on Mac voice bank without novelty/sung voices)",
+ "base": "shipped r10 xl (backend/app/director_model, classes hot+echo)",
+ "verdict": "nothing ships; r10 stays",
+ "r10_self": {
+  "hot": {
+   "n": 5501,
+   "rules_ok": 4853,
+   "base_ok": 4865,
+   "cand_ok": 4865,
+   "rules_wrong": 279,
+   "base_wrong": 279,
+   "cand_wrong": 279,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [],
+   "pass": true
+  },
+  "short": {
+   "n": 2137,
+   "rules_ok": 1698,
+   "base_ok": 1698,
+   "cand_ok": 1698,
+   "rules_wrong": 19,
+   "base_wrong": 19,
+   "cand_wrong": 19,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [],
+   "pass": false
+  },
+  "echo": {
+   "n": 922,
+   "rules_ok": 727,
+   "base_ok": 755,
+   "cand_ok": 755,
+   "rules_wrong": 16,
+   "base_wrong": 15,
+   "cand_wrong": 15,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [
+    "test_voice_heldout"
+   ],
+   "pass": false
+  },
+  "video": {
+   "n": 0,
+   "rules_ok": 0,
+   "base_ok": 0,
+   "cand_ok": 0,
+   "rules_wrong": 0,
+   "base_wrong": 0,
+   "cand_wrong": 0,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [],
+   "pass": false
+  },
+  "quiet": {
+   "n": 3337,
+   "rules_ok": 2193,
+   "base_ok": 2193,
+   "cand_ok": 2200,
+   "rules_wrong": 110,
+   "base_wrong": 110,
+   "cand_wrong": 110,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [
+    "cls_prep"
+   ],
+   "pass": false
+  },
+  "nav": {
+   "n": 11897,
+   "rules_ok": 9471,
+   "base_ok": 9471,
+   "cand_ok": 9471,
+   "rules_wrong": 424,
+   "base_wrong": 424,
+   "cand_wrong": 424,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [],
+   "pass": false
+  },
+  "answer": {
+   "n": 11897,
+   "rules_ok": 9471,
+   "base_ok": 9471,
+   "cand_ok": 9471,
+   "rules_wrong": 424,
+   "base_wrong": 424,
+   "cand_wrong": 424,
+   "extra_rules": 0,
+   "extra_base": 0,
+   "worse_sets": [],
+   "pass": false
+  }
+ },
+ "xl_b (no novelty/sung, fitted policy)": {
+  "policy": {
+   "cmd": 1.01,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": 0.7,
+   "nav": 0.99,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 62,
+    "extra_wrong": 0,
+    "rules_wrong": 64,
+    "act_ok": 1572,
+    "turns": 2016
+   },
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "n": 5501,
+    "rules_ok": 4853,
+    "base_ok": 4865,
+    "cand_ok": 4861,
+    "rules_wrong": 279,
+    "base_wrong": 279,
+    "cand_wrong": 279,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [
+     "cls_prep_roomtalk",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "short": {
+    "n": 2137,
+    "rules_ok": 1698,
+    "base_ok": 1698,
+    "cand_ok": 1698,
+    "rules_wrong": 19,
+    "base_wrong": 19,
+    "cand_wrong": 19,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "echo": {
+    "n": 922,
+    "rules_ok": 727,
+    "base_ok": 755,
+    "cand_ok": 754,
+    "rules_wrong": 16,
+    "base_wrong": 15,
+    "cand_wrong": 16,
+    "extra_rules": 0,
+    "extra_base": 1,
+    "worse_sets": [
+     "test_real",
+     "cls_echo",
+     "cls_voice_echo_os"
+    ],
+    "pass": false
+   },
+   "video": {
+    "n": 0,
+    "rules_ok": 0,
+    "base_ok": 0,
+    "cand_ok": 0,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "quiet": {
+    "n": 3337,
+    "rules_ok": 2193,
+    "base_ok": 2193,
+    "cand_ok": 2201,
+    "rules_wrong": 110,
+    "base_wrong": 110,
+    "cand_wrong": 110,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   },
+   "nav": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9496,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   },
+   "answer": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9475,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   }
+  }
+ },
+ "xl_b ignore-only": {
+  "policy": {
+   "cmd": 1.01,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": 0.7,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 62,
+    "extra_wrong": 0,
+    "rules_wrong": 64,
+    "act_ok": 1572,
+    "turns": 2016
+   },
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "n": 5501,
+    "rules_ok": 4853,
+    "base_ok": 4865,
+    "cand_ok": 4861,
+    "rules_wrong": 279,
+    "base_wrong": 279,
+    "cand_wrong": 279,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [
+     "cls_prep_roomtalk",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "short": {
+    "n": 2137,
+    "rules_ok": 1698,
+    "base_ok": 1698,
+    "cand_ok": 1698,
+    "rules_wrong": 19,
+    "base_wrong": 19,
+    "cand_wrong": 19,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "echo": {
+    "n": 922,
+    "rules_ok": 727,
+    "base_ok": 755,
+    "cand_ok": 754,
+    "rules_wrong": 16,
+    "base_wrong": 15,
+    "cand_wrong": 16,
+    "extra_rules": 0,
+    "extra_base": 1,
+    "worse_sets": [
+     "test_real",
+     "cls_echo",
+     "cls_voice_echo_os"
+    ],
+    "pass": false
+   },
+   "video": {
+    "n": 0,
+    "rules_ok": 0,
+    "base_ok": 0,
+    "cand_ok": 0,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "quiet": {
+    "n": 3337,
+    "rules_ok": 2193,
+    "base_ok": 2193,
+    "cand_ok": 2201,
+    "rules_wrong": 110,
+    "base_wrong": 110,
+    "cand_wrong": 110,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   },
+   "nav": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "answer": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9475,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   }
+  }
+ },
+ "s_b (no novelty/sung)": {
+  "policy": {
+   "cmd": 1.01,
+   "veto": null,
+   "ignore": 1.01,
+   "ask": 1.01,
+   "answer_ignore": null,
+   "nav": 0.7,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 63,
+    "extra_wrong": 0,
+    "rules_wrong": 64,
+    "act_ok": 1569,
+    "turns": 2016
+   },
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "n": 5501,
+    "rules_ok": 4853,
+    "base_ok": 4865,
+    "cand_ok": 4853,
+    "rules_wrong": 279,
+    "base_wrong": 279,
+    "cand_wrong": 279,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [
+     "cls_echo",
+     "cls_prep_roomtalk",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "short": {
+    "n": 2137,
+    "rules_ok": 1698,
+    "base_ok": 1698,
+    "cand_ok": 1698,
+    "rules_wrong": 19,
+    "base_wrong": 19,
+    "cand_wrong": 19,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "echo": {
+    "n": 922,
+    "rules_ok": 727,
+    "base_ok": 755,
+    "cand_ok": 727,
+    "rules_wrong": 16,
+    "base_wrong": 15,
+    "cand_wrong": 16,
+    "extra_rules": 0,
+    "extra_base": 1,
+    "worse_sets": [
+     "test_clean",
+     "test_asr",
+     "test_real",
+     "cls_echo",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "video": {
+    "n": 0,
+    "rules_ok": 0,
+    "base_ok": 0,
+    "cand_ok": 0,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "quiet": {
+    "n": 3337,
+    "rules_ok": 2193,
+    "base_ok": 2193,
+    "cand_ok": 2193,
+    "rules_wrong": 110,
+    "base_wrong": 110,
+    "cand_wrong": 110,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "nav": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9506,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 438,
+    "extra_rules": 14,
+    "extra_base": 14,
+    "worse_sets": [
+     "test_h40",
+     "test_h40_asr",
+     "cls_mishear",
+     "cls_roomtalk",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "answer": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   }
+  }
+ },
+ "xl_a (with novelty/sung, fitted)": {
+  "policy": {
+   "cmd": 0.95,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": null,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 62,
+    "extra_wrong": 0,
+    "rules_wrong": 64,
+    "act_ok": 1581,
+    "turns": 2016
+   },
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "n": 5501,
+    "rules_ok": 4853,
+    "base_ok": 4865,
+    "cand_ok": 4879,
+    "rules_wrong": 279,
+    "base_wrong": 279,
+    "cand_wrong": 289,
+    "extra_rules": 10,
+    "extra_base": 10,
+    "worse_sets": [
+     "test_clean",
+     "test_asr",
+     "test_real",
+     "test_h40",
+     "test_h40_asr",
+     "cls_prep_roomtalk",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "short": {
+    "n": 2137,
+    "rules_ok": 1698,
+    "base_ok": 1698,
+    "cand_ok": 1703,
+    "rules_wrong": 19,
+    "base_wrong": 19,
+    "cand_wrong": 19,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   },
+   "echo": {
+    "n": 922,
+    "rules_ok": 727,
+    "base_ok": 755,
+    "cand_ok": 752,
+    "rules_wrong": 16,
+    "base_wrong": 15,
+    "cand_wrong": 22,
+    "extra_rules": 6,
+    "extra_base": 7,
+    "worse_sets": [
+     "test_clean",
+     "test_asr",
+     "test_real",
+     "cls_echo",
+     "cls_voice_echo_os"
+    ],
+    "pass": false
+   },
+   "video": {
+    "n": 0,
+    "rules_ok": 0,
+    "base_ok": 0,
+    "cand_ok": 0,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "quiet": {
+    "n": 3337,
+    "rules_ok": 2193,
+    "base_ok": 2193,
+    "cand_ok": 2226,
+    "rules_wrong": 110,
+    "base_wrong": 110,
+    "cand_wrong": 126,
+    "extra_rules": 16,
+    "extra_base": 16,
+    "worse_sets": [
+     "test_clean",
+     "test_asr",
+     "test_real",
+     "test_h40_asr",
+     "test_voice_heldout"
+    ],
+    "pass": false
+   },
+   "nav": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "answer": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   }
+  }
+ },
+ "xl_a ignore-only": {
+  "policy": {
+   "cmd": 1.01,
+   "veto": null,
+   "ignore": 0.95,
+   "ask": 1.01,
+   "answer_ignore": null,
+   "nav": null,
+   "fit": {
+    "sets": [
+     "val"
+    ],
+    "wrong": 62,
+    "extra_wrong": 0,
+    "rules_wrong": 64,
+    "act_ok": 1581,
+    "turns": 2016
+   },
+   "ignore_min_words": 3
+  },
+  "classes": {
+   "hot": {
+    "n": 5501,
+    "rules_ok": 4853,
+    "base_ok": 4865,
+    "cand_ok": 4860,
+    "rules_wrong": 279,
+    "base_wrong": 279,
+    "cand_wrong": 279,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [
+     "cls_prep_roomtalk",
+     "cls_voice_echo_os",
+     "cls_coverage"
+    ],
+    "pass": false
+   },
+   "short": {
+    "n": 2137,
+    "rules_ok": 1698,
+    "base_ok": 1698,
+    "cand_ok": 1698,
+    "rules_wrong": 19,
+    "base_wrong": 19,
+    "cand_wrong": 19,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "echo": {
+    "n": 922,
+    "rules_ok": 727,
+    "base_ok": 755,
+    "cand_ok": 748,
+    "rules_wrong": 16,
+    "base_wrong": 15,
+    "cand_wrong": 16,
+    "extra_rules": 0,
+    "extra_base": 1,
+    "worse_sets": [
+     "test_real",
+     "cls_echo",
+     "cls_voice_echo_os"
+    ],
+    "pass": false
+   },
+   "video": {
+    "n": 0,
+    "rules_ok": 0,
+    "base_ok": 0,
+    "cand_ok": 0,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "quiet": {
+    "n": 3337,
+    "rules_ok": 2193,
+    "base_ok": 2193,
+    "cand_ok": 2203,
+    "rules_wrong": 110,
+    "base_wrong": 110,
+    "cand_wrong": 110,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": true
+   },
+   "nav": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   },
+   "answer": {
+    "n": 11897,
+    "rules_ok": 9471,
+    "base_ok": 9471,
+    "cand_ok": 9471,
+    "rules_wrong": 424,
+    "base_wrong": 424,
+    "cand_wrong": 424,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "worse_sets": [],
+    "pass": false
+   }
+  }
+ },
+ "xl_b all five classes vs r10": {
+  "total": {
+   "n": 11897,
+   "rules_ok": 9471,
+   "base_ok": 9511,
+   "cand_ok": 9543,
+   "rules_wrong": 424,
+   "base_wrong": 423,
+   "cand_wrong": 424,
+   "extra_base": 1
+  },
+  "sets_worse_than_r10": {
+   "test_real": {
+    "n": 889,
+    "rules_ok": 572,
+    "base_ok": 572,
+    "cand_ok": 572,
+    "rules_wrong": 69,
+    "base_wrong": 68,
+    "cand_wrong": 69,
+    "extra_rules": 0,
+    "extra_base": 1,
+    "ex": [
+     "god who left ranger seven on that site -> command (gold ask_clarify)"
+    ]
+   },
+   "cls_echo": {
+    "n": 160,
+    "rules_ok": 143,
+    "base_ok": 155,
+    "cand_ok": 154,
+    "rules_wrong": 2,
+    "base_wrong": 2,
+    "cand_wrong": 2,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "ex": []
+   },
+   "cls_prep_roomtalk": {
+    "n": 150,
+    "rules_ok": 137,
+    "base_ok": 139,
+    "cand_ok": 137,
+    "rules_wrong": 0,
+    "base_wrong": 0,
+    "cand_wrong": 0,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "ex": []
+   },
+   "cls_voice_echo_os": {
+    "n": 160,
+    "rules_ok": 141,
+    "base_ok": 152,
+    "cand_ok": 150,
+    "rules_wrong": 2,
+    "base_wrong": 2,
+    "cand_wrong": 2,
+    "extra_rules": 0,
+    "extra_base": 0,
+    "ex": []
+   }
+  }
+ }
+}

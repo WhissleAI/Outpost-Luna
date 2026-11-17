@@ -211,19 +211,95 @@ def _bridge(m: dict) -> str:
     return f"{who} saw this from Orion. Listen!"
 
 
+# The ear's link decision (Arc Transcriber Space names[i].p, docs/SPEECH_SIGNALS_AUDIT.md section 3): on the round-11
+# Mac-voice decodes a link with p >= LINK_ACT_P named the place the kid said 88 % of the time, one below it 47 %. A link
+# under it is not acted on: the place is offered back ("Did you mean Tycho?"), unless what the ear heard (its spoken
+# words, not the list spelling it wrote over them) names a place by itself.
+LINK_ACT_P = 0.99
+# "Almost linked": no link and no alias, but a span of the heard words sounds like a place name (soundalike.similar):
+# offered back as a question, never acted on. Calibrated on the same decodes (section 3).
+NEAR_SCORE = 0.8
+
+
+def _near_vocab(gaz: Gazetteer) -> list[str]:
+    v = getattr(gaz, "_near_vocab", None)
+    if v is None:
+        from .entities import registry
+        v = []
+        for e in registry().entities:
+            if e.ear and place_of(e.id, gaz) is not None:
+                v += [f for f in e.forms() if len(f) >= 5]
+        v += [p.name for p in gaz.places.values()]
+        gaz._near_vocab = v
+    return v
+
+
+def place_of(eid: str | None, gaz: Gazetteer) -> Place | None:
+    """The gazetteer place an entity id stands for: the registry's `ref` (places.json / artifacts.json ids are the
+    gazetteer's), else the entity's canonical name in the gazetteer."""
+    from .entities import registry
+    e = registry().get(eid)
+    if e is None:
+        return None
+    r = e.ref or {}
+    if r.get("source") in ("places.json", "artifacts.json") and r.get("id") in gaz.places:
+        return gaz.places[r["id"]]
+    if e.type in ("place", "hardware"):
+        return gaz.match_text(e.name)
+    return None
+
+
+def ear_place(entity: str | None, gaz: Gazetteer) -> Place | None:
+    """A linked name (the list's spelling) -> its place, by id through the registry; the text match as a fallback for
+    names the registry does not know (a client's own context names)."""
+    from .entities import registry
+    e = registry().resolve(entity or "", prefer=("place", "hardware", "site"))
+    if e is not None:
+        return place_of(e.id, gaz)
+    return gaz.match_text(entity or "") if entity else None
+
+
+def near_name(heard: str, gaz: Gazetteer, min_score: float = NEAR_SCORE) -> tuple[Place, float] | None:
+    """The place a span of the heard words sounds like ("the jelly" ~ "de Gerlache"), or None."""
+    from . import soundalike
+    if not heard or not heard.strip():
+        return None
+    b = soundalike.best_span(heard, _near_vocab(gaz), min_score)
+    if b is None:
+        return None
+    p = gaz.match_text(b[1])
+    return (p, b[2]) if p is not None else None
+
+
 def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, list[tuple[Place, float]]]:
-    """-> (place, how, ask_candidates). ask_candidates is set when the fuzzy link is in the ask band.
+    """-> (place, how, ask_candidates). ask_candidates is set when the link is in the ask band ("ask": "did you mean
+    A or B?") or needs a yes ("confirm": a low-p link, "near": a sound-alike; one candidate, "did you mean A?").
 
     The ear's names come first (read["ear_names"], Arc Transcriber Space linking what was said to the screen's names
-    list): `linked` -> that entry's place; `abstain` (unsure, or only generic words) -> the gazetteer's candidates for
-    what was heard, asked as "did you mean ...?" when two are close; `not_in_list` -> what was heard is searched in the
-    whole gazetteer, like an Arc Tagger mention."""
+    list): `linked` with p >= LINK_ACT_P -> that entry's place; `linked` below it -> what the ear HEARD (read["ear_spoken"],
+    before the list spelling replaced it) is matched instead, else the entry is offered back (confirm); `abstain`
+    (unsure, or only generic words) -> the gazetteer's candidates for what was heard, asked as "did you mean ...?" when
+    two are close; `not_in_list` -> what was heard is searched in the whole gazetteer, like an Arc Tagger mention.
+    Last, a span of the heard words that SOUNDS like a place (near_name) is offered back ("near"), never acted on."""
     ear = [n for n in read.get("ear_names") or [] if isinstance(n, dict)]
+    spoken = read.get("ear_spoken")
+    low: list[tuple[Place, float]] = []
     for n in ear:
         if n.get("state") == "linked" and n.get("entity"):
-            p = gaz.match_text(n["entity"])
-            if p:
+            p = ear_place(n["entity"], gaz)     # by id (registry), not by re-matching the text
+            if not p:
+                continue
+            lp = n.get("p")
+            if lp is None or lp >= LINK_ACT_P:
                 return p, "ear_link", []
+            low.append((p, 100.0 * float(lp)))
+    if low:
+        # the heard words name ANOTHER place by themselves: that one. The same place (the linker is unsure of exactly
+        # these words, "Fly Tycho pelicus" for "fly to Copernicus") or none: offered back.
+        p = gaz.match_text(spoken) if spoken else None
+        if p and all(p.id != c[0].id for c in low):
+            return p, "alias", []
+        return None, "confirm", low[:1]
     p = gaz.match_text(target)
     if p:
         return p, "alias", []
@@ -248,6 +324,15 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
         if s >= ACCEPT and not close:
             return top, "arc+link" if read.get("available") else "fuzzy", []
         return None, "ask", [cands[0], *close]
+    if "ear_names" in read:     # a heard turn (the ear ran): a known mishearing ("the jelly"), then a sound-alike
+        from .entities import registry
+        mh = registry().mishear_of(spoken or target)
+        mp = place_of(mh[0].id, gaz) if mh else None
+        if mp is not None:
+            return None, "near", [(mp, 100.0)]
+        nm = near_name(spoken or target, gaz)
+        if nm is not None:
+            return None, "near", [(nm[0], 100.0 * nm[1])]
     return None, "", []
 
 
@@ -340,7 +425,8 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
         names = [f"{p.name}" for p, _ in cands]
         question = did_you_mean(names)
         return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands], "labels": names},
-                "place": cands[0][0].id, "view": _view(cands[0][0]), "source": "arc+link"}
+                "place": cands[0][0].id, "view": _view(cands[0][0]),
+                "source": {"confirm": "ear_confirm", "near": "ear_near"}.get(how, "arc+link")}
     last = gaz.places.get(ctx.get("last_place") or "")
     if place is None and last and (MORE.search(target) or wants_crew or (last.kind == "artifact" and WHO.search(q))):
         place, how = last, "context"
@@ -493,6 +579,18 @@ def _tone(say: str, emotion: str) -> str:
     return say
 
 
+def linked_entity(read: dict, types: tuple[str, ...]):
+    """The registry entity the ear linked on this turn with p >= LINK_ACT_P, of one of these types (or None)."""
+    from .entities import registry
+    for n in read.get("ear_names") or []:
+        if isinstance(n, dict) and n.get("state") == "linked" and n.get("entity") and \
+                (n.get("p") is None or n["p"] >= LINK_ACT_P):
+            e = registry().resolve(n["entity"], prefer=types)
+            if e is not None and e.type in types:
+                return e
+    return None
+
+
 async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: MomentIndex) -> dict | None:
     """Mission layer first. None = not a mission turn (the Moon explorer answers)."""
     mctx = ctx.get("mission") or {}
@@ -513,6 +611,10 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
     else:
         nl = await nlu.understand(text, read, state)
     cmds, dd = nl["commands"], ctx.get("device_directed")
+    site = linked_entity(read, ("site",))
+    for c in cmds:     # the rover's target: the site the ear linked (by id), not the raw words after "to"
+        if c.get("type") == "dispatch" and site is not None and c.get("task") in ("explore", "collect_ice"):
+            c["target"], c["target_id"] = site.name, site.id
     if not cmds and not nl["needs_clarify"]:
         if dd is not None and float(dd) < CHATTER_DD:
             return {**base, "action": "none", "say": "", "source": "mission+chatter"}

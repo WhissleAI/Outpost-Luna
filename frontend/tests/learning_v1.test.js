@@ -90,13 +90,17 @@ test("story.js follows the course: tracks, blurbs, beats and lesson numbers (no 
   for (const c of Object.values(S.CALLBACKS)) assert.equal(core.findIndex(l => l.id === c.lesson) + 1, c.n, c.lesson);
   assert.deepEqual(core.map(l => l.id), ["moon", "phases", "power", "comms", "radiation", "life"]);
   assert.deepEqual(S.TRACKS.find(t => t.id === "explorer").lessons, COURSE.lessons.filter(isExplorer).map(l => l.id));
-  assert.equal(S.TRANSITION.patchProgress(8, 9), "8 of 9 patches. One lesson to go.");
+  // novice playtest 2026-11-16 #9: one count, the core lessons, then the check ride (never "9 patches")
+  assert.equal(S.TRANSITION.patchProgress(5, 6), "5 of 6 lessons done. One to go, then your check ride.");
+  assert.equal(S.TRANSITION.patchProgress(6, 6), "6 of 6 lessons done. Next: your check ride.");
 });
 
 test("explorer lessons: locked until missions are flown; counted once per mission; core numbering", () => {
   const store = new Map(), st = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
   const grav = COURSE.lessons.find(l => l.id === "gravity"), hist = COURSE.lessons.find(l => l.id === "history");
-  assert.ok(isExplorer(grav) && grav.unlock_after_missions === 1 && hist.unlock_after_missions === 2);
+  // novice playtest #22: Lessons from Apollo (the trace step) opens after the check ride, in the first hour
+  assert.ok(isExplorer(grav) && grav.unlock_after_missions === 1 && hist.unlock_after === "checkride");
+  assert.ok(!unlocked(hist, 0, false) && unlocked(hist, 0, true) && !unlocked(grav, 0, true));
   assert.equal(missionsFlown("Nova", st), 0);
   assert.ok(!unlocked(grav, 0) && unlocked(COURSE.lessons[0], 0));
   assert.equal(markMissionFlown("m1", "Nova", st), 1);
@@ -104,9 +108,10 @@ test("explorer lessons: locked until missions are flown; counted once per missio
   assert.equal(missionsFlown("Comet", st), 0);                  // per call sign
   assert.ok(unlocked(grav, 1) && !unlocked(hist, 1));
   assert.deepEqual(newlyUnlocked(COURSE.lessons, 1).map(l => l.id), ["gravity"]);
-  assert.deepEqual(newlyUnlocked(COURSE.lessons, 2).map(l => l.id), ["history"]);
+  assert.deepEqual(newlyUnlocked(COURSE.lessons, 2), []);
   assert.deepEqual(newlyUnlocked(COURSE.lessons, 3), []);
   assert.equal(core.length, 6);                                 // "Lesson n of 6"; patches count all 9
   assert.equal(S.EXPLORER.locked(1), "Unlocks after your first mission");
   assert.ok(words(S.EXPLORER.lockedSay) <= 20 && words(S.EXPLORER.locked(2)) <= 12);
+  assert.equal(S.EXPLORER.locked("checkride"), "Unlocks after your check ride");
 });

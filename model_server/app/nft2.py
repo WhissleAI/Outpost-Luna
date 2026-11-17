@@ -205,7 +205,11 @@ def _result(r) -> dict:
         n = r.names[i]
         names.append({"t0": round(n.start, 3), "t1": round(n.end, 3), "tag": _s(n.tag), "heard": _s(n.heard),
                       "entity": _s(n.entity), "kb_index": n.kb_index, "state": _s(n.state), "p": _f(n.p),
-                      "src": _s(n.src), "via": _s(n.via), "show": bool(n.show)})
+                      "src": _s(n.src), "via": _s(n.via), "show": bool(n.show),
+                      # the linker's evidence (signals audit): the pointer head's own pick and its p, the snap
+                      # similarity, the tag head's span p (None: not computed)
+                      "model_entity": _s(n.model_entity), "model_p": _f(n.model_p), "snap": _f(n.snap_score),
+                      "span_p": _f(n.span_p)})
     numbers = []
     for i in range(r.n_numbers):
         n = r.numbers[i]

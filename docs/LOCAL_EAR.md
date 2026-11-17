@@ -10,7 +10,7 @@ Deepgram Flux (cloud) stays an option (`EAR=deepgram`) and the fallback when the
 
 ```
 browser mic ──PCM16 80 ms──▶ backend /ws/listen ──▶ model server WS /v1/stream?ear=arc  (app/arc_ear.py)
-                               │  1st frame + every screen change: {"t":"context","names":[{name,kind,aliases}] <= 40}
+                               │  1st frame + every screen change: {"t":"context","names":[{name,kind,aliases}] <= 40 (Moon screens <= 80)}
                                ◀── turn / words / arc / context_ack (relayed unchanged; posted to the session)
 model server: app/nft2.py (cffi, generated from arc.h) ──▶ libarc (arc_nft2_*) ──▶ ONNX Runtime 1.32.0 (pinned copy next to libarc)
 ```
@@ -40,11 +40,15 @@ model server: app/nft2.py (cffi, generated from arc.h) ──▶ libarc (arc_nft
 - **Names lists** (`backend/app/names_list.py`): a catalogue from places.json, artifacts.json, mission/sites.json and
   the crew lists, every entry with a `kind` and aliases for what is not said as written (Roman numerals "Artemis II"
   -> "Artemis 2" / "Artemis two"; Latin and English "Sea of Tranquility" + "Mare Tranquillitatis"; "LCROSS" -> "L
-  cross"; "S-IVB" -> "S 4 B"; "ALSEP" -> "al sep"; parenthesised names; ASCII spellings). `screen_names(frame, step,
-  last_place)` picks <= 40, most relevant first: the open step's options / places, the place being looked at, then
-  the screen's world (Moon screens: the gazetteer, the Artemis II crew and craft, sites, hardware; cabin / brief /
-  debrief: the mission sites, Houston, CAPCOM, crew; lessons: the step's names, then places). `session.ear_names()`
-  builds it; `/ws/listen` sends it at the start and whenever it changes (it takes effect from the next decode).
+  cross"; "S-IVB" -> "S 4 B"; "ALSEP" -> "al sep"; parenthesised names; ASCII spellings; the spoken forms the ear
+  produced, "Sea of Rain"). `screen_names(frame, step, last_place, recent)` picks <= 40 on a focused screen and <= 80
+  on the Moon screens (every place and every piece of hardware), most relevant first: the open step's options /
+  places, the names in what we just said (`recent`), the place being looked at, then the screen's world (library:
+  the hardware, then the places; map: the places, then the hardware; cabin / brief / debrief: the mission sites,
+  Houston, CAPCOM, crew; lessons: the step's names, then places). An alias names ONE entry (shared or colliding
+  aliases are dropped), and controls ("the rover") are never entries: the ear rewrites a linked span in the list's
+  spelling. `session.ear_names()` builds it; `/ws/listen` sends it at the start and whenever it changes (it takes
+  effect from the next decode, mid-turn included). docs/SPEECH_SIGNALS_AUDIT.md has the measurements.
 - **device_directed**: the model's directed head is conservative (real device commands from SLURP: 32% >= 0.5, 67%
   >= 0.05; crew talk 11% of clips >= 0.05). The ear maps it onto the router's scale (`app_dd`: head 0.05 -> 0.5 =
   `DD_MIN`, 0.5 -> 0.7 = `DD_STRONG`; `EAR_DD_KNEE`, `EAR_DD_STRONG_AT`) and also sends the raw `directed_head`.

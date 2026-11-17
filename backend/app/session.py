@@ -115,7 +115,7 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
 
 # Decisions whose text is ours on screen (never "nav", which carries the kid's own words)
 SHOWN_TYPES = ("alert", "ask_confirm", "hud", "card", "toast")
-PREP_MISSING_LINE ="That's okay. You can skip this one, or use something else you have."
+PREP_MISSING_LINE = "That's okay. Tap Not now. You can try it another day."   # = story.js PREP.missingSay
 CALLSIGNS = ["Comet", "Nova", "Rocket", "Orbit", "Moon Moth", "Crater Cat", "Star Hopper", "Sky Otter", "Pulsar",
              "Moonbeam", "Rover Fox", "Stardust"]   # frontend/src/story.js CALLSIGNS
 _CACHE: dict = {}
@@ -186,6 +186,9 @@ class Session:
         # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
         self.tlog = turnlog.SessionLog(self)
         self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
+        # The entity layer (docs/ENTITY_LAYER.md): what was talked about, by entity id (in memory only, never stored)
+        from .entities import EntityMemory, registry
+        self.memory = EntityMemory(registry(), clock)
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -346,6 +349,8 @@ class Session:
         if st == "start":
             self.belief["playing"] = {"kind": kind, "id": did, "text": (self.pending.get(did) or {}).get("text") or m.get("text"),
                                       "t": m.get("t"), "since": self.clock()}
+            with contextlib.suppress(Exception):   # the names in our own line (story callbacks, the ear list's boost)
+                self.memory.note_line(self.belief["playing"]["text"] or "", by=kind, screen=self.screen_name())
             self.spoken.start(did, self.belief["playing"]["text"] or "")
             if self.belief["floor"] != "kid":
                 self.belief["floor"] = kind
@@ -375,7 +380,8 @@ class Session:
             k["words"] = m.get("text") or ""
             if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
                 # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
-                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken") if m.get(x) is not None}
+                k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken", "decoder_text",
+                                                  "agree") if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -520,7 +526,29 @@ class Session:
         """The ear's names list for the screen the kid is on (names_list.py; /ws/listen sends it to Arc Transcriber
         Space on every change): <= 40 {"name", "kind", "aliases"}, most relevant first."""
         from .names_list import screen_names
-        return screen_names({**self.screen, "screen": self.screen_name()}, self.open_step(), self.belief.get("last_place"))
+        recent: list[str] = []
+        with contextlib.suppress(Exception):   # what we just said: the names in it go first (the kid's next turn names them)
+            recent = list(self.spoken.recent())[-2:]
+        return screen_names({**self.screen, "screen": self.screen_name()}, self.open_step(), self.belief.get("last_place"),
+                            recent, kid=self.memory.kid_recent(), states=self.mission_states())
+
+    def mission_states(self) -> list[str]:
+        """The mission states that make entities relevant (registry `states`): storm, dark, low_power, dose_high."""
+        st = self.belief.get("state") or {}
+        if not st or not self.belief.get("mission_id"):
+            return []
+        env, res = st.get("env") or {}, st.get("resources") or {}
+        out = []
+        if (env.get("storm") or {}).get("active"):
+            out.append("storm")
+        if env.get("in_sun") is False:
+            out.append("dark")
+        if (res.get("power_pct") or 100) < 35:
+            out.append("low_power")
+        lim = res.get("dose_limit_msv") or 50
+        if (res.get("dose_msv") or 0) >= 0.8 * lim:
+            out.append("dose_high")
+        return out
 
     def hot_words(self) -> dict:
         """The ear's tiered hot lists for the screen the kid is on (round 7, hotlist.py; /ws/listen sends them to the
@@ -571,14 +599,30 @@ class Session:
             ev["route"] = {"outcome": rt.get("outcome"), "reason": rt.get("reason"), "intent": rt.get("intent")}
         return ev
 
+    CONFIRM_WINDOW_S = 20.0    # a "Did you mean Tycho?" (the ear's confirm) takes a yes within this long
+
+    def _confirm_reply(self, text: str) -> str | None:
+        """A yes to the ear's pending "Did you mean X?" -> X (the turn is then X, as if tapped); None otherwise. Any turn
+        clears the pending confirm (one try: a "no" or anything else is routed as it is)."""
+        c = self.belief.pop("confirm_name", None)
+        if not c or self.clock() - c["at"] > self.CONFIRM_WINDOW_S:
+            return None
+        q = router_.norm(text)
+        if router_.YES.match(q) or q in ("yes please", "yeah please", "that one", "yes that one", "uh huh"):
+            return c["label"]
+        return None
+
     async def _turn(self, text: str, source: str):
         k = self.belief["kid"]
+        said = self._confirm_reply(text)
+        if said:            # "yes" to "Did you mean Tycho?": the turn is the name, as if its option was tapped
+            text, source = said, "typed"
         ctx_r = self.route_ctx(source)
         # [P0] safety first (safety.py): Arc's tags, then the word list. A crisis or grooming cue gets one gentle line
         # and a flag for the grown-ups; a rude / toxic turn is ignored (never graded, never a question).
         tags = k.get("safety") if source in OPEN_MIC or source == "ptt" else None
         if tags is None:   # no read from the ear: ask Arc Tagger on the words (~20 ms on the local model server)
-            tags = await safety_.tagger_read(text)
+            tags = await safety_.tagger_read(text, safety_.command_context(self.screen_name()))
         sf = safety_.classify(text, tags)
         ctx_r.unsafe = sf["mask"]
         if sf["care"]:
@@ -590,9 +634,16 @@ class Session:
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
             return
         rt = router_.route(text, ctx_r, act=k.get("act"))
+        ents: list[dict] = []
+        if rt["outcome"] != "ignore":   # what the kid talked about (to us): the session's entity memory
+            with contextlib.suppress(Exception):
+                ear = (k.get("ear") or {}) if source in OPEN_MIC or source == "ptt" else {}
+                ents = self.memory.note_turn(ear.get("names"), ear.get("spoken") or text, self.screen_name())
         # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
         # guard path), so a false PII flag costs only the text in the log, never the turn on screen
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
+        if self._tl is not None and ents:   # entity ids + how they were heard (no words)
+            self._tl["entities"] = [{"id": e["id"], "how": e["how"], "p": e["p"], "state": e["state"]} for e in ents]
         if self._tl is not None and (sf["pii"] or sf["mask"]):
             self._tl["_guard"] = True
         try:
@@ -686,9 +737,12 @@ class Session:
 
         resolved = self.resolve_referent(text) if b["mission_id"] else text
         read = summarize(await models_client.tag(resolved, "assistant"))
-        names = (k.get("ear") or {}).get("names") if source in OPEN_MIC or source == "ptt" else None
-        if names:   # the ear's names for THIS turn: director._link routes on names[i].entity, not on the raw words
-            read = {**read, "ear_names": names}
+        ear = (k.get("ear") or {}) if source in OPEN_MIC or source == "ptt" else {}
+        if ear:     # the ear's names for THIS turn: director._link routes on names[i].entity (when its link_p is high
+            # enough), else on what the ear heard (`spoken`, before the list spelling replaced it)
+            read = {**read, "ear_names": list(ear.get("names") or [])}
+            if ear.get("spoken"):
+                read["ear_spoken"] = ear["spoken"]
         out = None
         if self.dm is not None:
             with contextlib.suppress(Exception):
@@ -732,6 +786,10 @@ class Session:
         if override:
             dmodel.STATS["model_overrides"] += 1
         r = self._gate_fallback(r, text, ctx_r, k.get("act"))
+        if r.get("source") in ("ear_confirm", "ear_near") and r.get("action") == "ask":
+            labels = (r.get("ask") or {}).get("labels") or []
+            if len(labels) == 1:
+                self.belief["confirm_name"] = {"label": labels[0], "at": self.clock()}
         if self.dm is not None:
             self.dm.turn_result(r)
         if self._tl is not None:
@@ -747,6 +805,16 @@ class Session:
         if r.get("action") == "none":
             await self.emit(pre)
             return
+        if r.get("place") and not b["mission_id"] and r.get("say"):   # story callback: "You asked about Tycho earlier."
+            line = None
+            with contextlib.suppress(Exception):
+                line = self.memory.recall_line(r["place"])
+            if line:
+                r["say"] = f"{line} {r['say']}"
+                for d in r.get("decisions") or []:
+                    if d.get("t") == "say" and d.get("text"):
+                        d["text"] = f"{line} {d['text']}"
+                        break
         if self.screen and self.screen_name() != "cabin" and rt["outcome"] == "question":
             # A hands-free client outside the cabin renders the explorer answer itself (artifacts, tours, crew audio).
             slim = {k_: v for k_, v in r.items() if k_ not in ("decisions", "readout")}
@@ -783,9 +851,15 @@ class Session:
         brain = (r.get("readout") or {}).get("brain") or {}
         unknown = r.get("source") == "none" or (r.get("say") or "").startswith(director.UNKNOWN)
         guess = r.get("action") == "ask" and brain.get("status") in ("ask", "unknown")
+        none = {**r, "action": "none", "say": "", "decisions": [], "source": "router+quiet"}
+        # the ear's "Did you mean Tycho?" (director._link): a low-p link is offered back unless the kid was talking to
+        # someone else; a sound-alike only for a clear device-directed question or request, like the brain's guesses
+        if r.get("source") == "ear_confirm":
+            return none if heard and ctx_r.dd is not None and float(ctx_r.dd) < ctx_r.dd_min else r
+        if r.get("source") == "ear_near":
+            guess = True
         if not (unknown or guess):
             return r
-        none = {**r, "action": "none", "say": "", "decisions": [], "source": "router+quiet"}
         if heard and not router_.clear_question(text, ctx_r.dd, act, ctx_r.dd_strong):
             return none
         if unknown:

@@ -41,7 +41,8 @@ def video_step(s: dict) -> dict:
     skipping both pass (never block a lesson on media); the reveal is said either way."""
     if s.get("type") != "video" or "accept" in s:
         return s
-    return {**s, "prompt": s.get("say", ""), "accept": {"type": "video", "media": s.get("media")},
+    acc = {"type": "video", "media": s.get("media"), **({"guess": s["guess"]} if s.get("guess") else {})}
+    return {**s, "prompt": s.get("say", ""), "accept": acc,
             "success": s.get("reveal", ""), "hint": s.get("hint") or VIDEO_HINT, "fail": s.get("fail") or VIDEO_HINT}
 
 
@@ -70,6 +71,8 @@ def public() -> dict:
                               for o in a["options"]]
         if a["type"] in ("tap", "intent"):
             acc["place"] = a["place"]
+            if a.get("label"):                       # the name the prompt uses ("Cabeus crater"), for the label
+                acc["label"] = a["label"]
         if a["type"] in ("predict", "compare"):
             acc["options"] = [{"id": o["id"], "label": o["label"]} for o in a["options"]]
             if a.get("metric"):
@@ -85,6 +88,8 @@ def public() -> dict:
             acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
         if a["type"] == "video":
             acc["media"] = a.get("media")
+            if (a.get("guess") or {}).get("options"):   # "Guess first": the chips, not the answer (the reply has it)
+                acc["guess"] = {"options": [{"id": o["id"], "label": o["label"]} for o in a["guess"]["options"]]}
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -118,6 +123,11 @@ def check_video_step(s: dict, ids: set[str] | None = None) -> list[str]:
     m = s.get("media") or (s.get("accept") or {}).get("media")
     if m not in ids:
         out.append(f"video step: media {m!r} is not in the video catalog")
+    g = s.get("guess") or (s.get("accept") or {}).get("guess")
+    if g and (g.get("answer") not in {o.get("id") for o in g.get("options", [])} or not 2 <= len(g["options"]) <= 3):
+        out.append("video step guess: 2 or 3 options, and the answer among them")
+    if not g and re.search(r"\bguess\b", str(s.get("say") or s.get("prompt") or ""), re.I):
+        out.append("video step says 'guess' but has no guess chips")
     for k in ("say", "reveal"):
         if not str(s.get(k) or "").strip():
             out.append(f"video step needs {k}")
@@ -234,9 +244,11 @@ def check() -> list[str]:
             probs += [f"{lid}: {p}" for p in check_prep(l["prep"])]
         if l.get("track", "core") not in ("core", "explorer"):
             probs.append(f"{lid}: track must be core or explorer")
-        if l.get("track") == "explorer" and not (isinstance(l.get("unlock_after_missions"), int)
-                                                 and l["unlock_after_missions"] >= 1):
-            probs.append(f"{lid}: an explorer lesson needs unlock_after_missions >= 1")
+        # an explorer lesson opens after n missions, or (unlock_after: "checkride") once the cadet is qualified
+        if l.get("track") == "explorer" and not ((isinstance(l.get("unlock_after_missions"), int)
+                                                  and l["unlock_after_missions"] >= 1)
+                                                 or l.get("unlock_after") == "checkride"):
+            probs.append(f"{lid}: an explorer lesson needs unlock_after_missions >= 1 or unlock_after checkride")
         if l.get("track") == "explorer" and l.get("ride"):
             probs.append(f"{lid}: the check ride is core")
         pv = l.get("patch_video")

@@ -255,11 +255,95 @@ def _round7(sess, ev: dict, text: str, now: float) -> dict:
     if ear:
         out["ear"] = {k: ear.get(k) for k in ("conf", "rescored")} | {"n_alts": len(ear.get("alts") or []),
                                                                       "tier": (ear.get("hot") or {}).get("tier")}
+        with _suppress():
+            out["link"] = link_view(ear, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
+    with _suppress():
+        out["ent"] = entity_view(sess, text, ear if kind == "turn" else None, now)
     prev = getattr(sess, "_r7_prev", None)
     if prev:
         out["prev"] = {"text": prev["text"], "dt": now - prev["t"], "route": prev.get("route")}
     sess._r7_prev = {"text": text, "t": now, "route": (ev.get("route") or {}).get("outcome")}
     return out
+
+
+def _ntoks(x: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", (x or "").lower()))
+
+
+def link_view(ear: dict, options: list[str] | None = None) -> dict:
+    """Round 12: the ear's names-linker read-out and its decoder text, at a turn end (record -> rec["link"])."""
+    from ..director import LINK_ACT_P
+    names = [n for n in ear.get("names") or [] if isinstance(n, dict)] if "names" in ear else None
+    out: dict = {}
+    if names is not None:
+        linked = [n for n in names if n.get("state") == "linked" and n.get("entity")]
+        ps = [float(n["p"]) for n in linked if n.get("p") is not None]
+        opts = {_ntoks(o) for o in options or [] if o}
+        step = any(_ntoks(n["entity"]) in opts for n in linked)
+        out.update(names=True, linked=bool(linked), p=max(ps) if ps else (1.0 if linked else 0.0),
+                   abstain=any(n.get("state") == "abstain" for n in names),
+                   not_in_list=any(n.get("state") == "not_in_list" for n in names),
+                   step=step, screen=bool(linked) and not step)
+        out["sure"] = bool(linked) and out["p"] >= LINK_ACT_P
+    dec = ear.get("decoder_text")
+    if dec:
+        out["dec"] = True
+        out["agree"] = float(ear["agree"]) if ear.get("agree") is not None else 0.0
+        heard = f" {_ntoks(ear.get('spoken') or '')} "
+        dt = f" {_ntoks(dec)} "
+        # an entity the decoder wrote that the words lack (the names list's own spelling, as the linker would)
+        ents = {_ntoks(n.get("entity") or "") for n in names or []} | {_ntoks(n.get("heard") or "") for n in names or []}
+        out["dec_name"] = any(e and f" {e} " in dt and f" {e} " not in heard for e in ents) or \
+            _dec_names_more(heard, dt)
+    return out
+
+
+def entity_view(sess, text: str, ear: dict | None, now: float) -> dict:
+    """Round 12 (the entity layer): what the turn names, against the session's entity memory and the open step."""
+    from ..entities import registry
+    R = registry()
+    ids: list[str] = []
+    for n in (ear or {}).get("names") or []:
+        if isinstance(n, dict) and n.get("state") == "linked" and n.get("entity"):
+            e = R.resolve(n["entity"])
+            if e is not None and e.id not in ids:
+                ids.append(e.id)
+    heard = (ear or {}).get("spoken") or text
+    for e in R.mentions(heard):
+        if e.id not in ids:
+            ids.append(e.id)
+    out: dict = {"any": bool(ids), "mishear": R.mishear_of(heard) is not None,
+                 "control": any(R.get(i).type == "control" for i in ids)}
+    if not ids:
+        return out
+    with _suppress():
+        from ..names_list import step_targets
+        st = sess.open_step() if hasattr(sess, "open_step") else None
+        tg, _ = step_targets(st, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
+        out["step_target"] = bool(set(tg) & set(ids))
+    mem = getattr(sess, "memory", None)
+    if mem is not None:
+        prev = [mem.last(i, "kid", before=now - 5.0) for i in ids]
+        prev = [p for p in prev if p]
+        out["seen_before"] = bool(prev)
+        out["recency"] = max((math.exp(-(now - p["t"]) / 120.0) for p in prev), default=0.0)
+        out["guide_said"] = any((g := mem.last(i, None)) is not None and g["by"] != "kid" and now - g["t"] <= 60
+                                for i in ids)
+    with _suppress():
+        sts = set(sess.mission_states()) if hasattr(sess, "mission_states") else set()
+        out["state_rel"] = any(set(R.get(i).states) & sts for i in ids)
+    return out
+
+
+def _dec_names_more(heard: str, dec: str) -> bool:
+    """The decoder's text holds a gazetteer place name the words lack ("fly to tycho" vs "fly to")."""
+    with _suppress():
+        g = _gaz()
+        if g is None:
+            return False
+        a, b = g.match_text(dec), g.match_text(heard)
+        return a is not None and (b is None or a.id != b.id)
+    return False
 
 
 class _suppress:
@@ -351,10 +435,29 @@ FEATS: list[str] = (
     + ["nlu_other", "gesture_now", "video_on"]
     # the router's merged screens (video overlay, Mission prep) and the video lesson step: their own slots, appended
     + ["scr_video", "scr_prep", "st_video"]
+    # ---- round 12 (signals audit, docs/SPEECH_SIGNALS_AUDIT.md): appended after F_R11 = 242 ----
+    # What Arc Transcriber Space actually gives (the round-7 slots above, ear_conf / ear_alts / ear_alt_hot /
+    # ear_rescored / ear_tier_*, were Arc Mini's n-best and hot-list rescoring: this ear has neither, so they stay 0, as
+    # the shipped weights were trained). The names linker: the ear returned names; a name linked; its link p (max over
+    # linked names); the link is sure (p >= director.LINK_ACT_P); a name abstained; a name heard but not in the list;
+    # the linked entry is one of the step's options ("step" tier) or only on the screen's list ("screen" tier).
+    # The Arc decoder's own text next to the RNNT words: present; word agreement of the two; it names a list entry the
+    # words lack.
+    + ["ear_names_avail", "ear_linked", "ear_link_p", "ear_link_sure", "ear_abstain", "ear_not_in_list",
+       "ear_link_step", "ear_link_screen", "ear_dec_avail", "ear_agree", "ear_dec_name"]
+    # ---- round 12, the entity layer (docs/ENTITY_LAYER.md): appended after the ear block ----
+    # The turn names a registry entity (by the ear's link or the words); one of them is the open step's target; the kid
+    # named it before in this session (> 5 s ago) and how recently (exp(-ago / 120 s)); we named it in our lines in
+    # the last 60 s; it is relevant to an active mission state (a storm -> shields); a known mishearing is in the
+    # words ("the jelly"); a control / mission object is named (shields, rover, ...).
+    + ["ent_any", "ent_step_target", "ent_seen_before", "ent_recency", "ent_guide_said", "ent_state_rel",
+       "ent_mishear", "ent_control"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
 F_R6 = FEATS.index("lx_filler") + 1       # the round-6 width (216)
+F_R11 = FEATS.index("st_video") + 1       # rounds 8-11 width (242): the shipped r10 weights read this prefix
+F_R12_EAR = FEATS.index("ear_dec_name") + 1   # + the ear's link / decoder block (253)
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -603,6 +706,20 @@ def _round7_feats(rec: dict, ws: list[str], s):
         g = lesson_grade_sa(ls, rec.get("text") or "")
         if g:
             s("lesson_pass_sa", 1)
+    lk = rec.get("link")
+    if lk:      # round 12: appended slots only (F_R11 and older weights never read them)
+        if lk.get("names"):
+            s("ear_names_avail", 1); s("ear_linked", lk["linked"]); s("ear_link_p", lk["p"])
+            s("ear_link_sure", lk["sure"]); s("ear_abstain", lk["abstain"]); s("ear_not_in_list", lk["not_in_list"])
+            s("ear_link_step", lk["step"]); s("ear_link_screen", lk["screen"])
+        if lk.get("dec"):
+            s("ear_dec_avail", 1); s("ear_agree", lk["agree"]); s("ear_dec_name", lk["dec_name"])
+    en = rec.get("ent")
+    if en:      # round 12, the entity layer: appended slots only
+        s("ent_any", en.get("any", False)); s("ent_step_target", en.get("step_target", False))
+        s("ent_seen_before", en.get("seen_before", False)); s("ent_recency", en.get("recency", 0.0))
+        s("ent_guide_said", en.get("guide_said", False)); s("ent_state_rel", en.get("state_rel", False))
+        s("ent_mishear", en.get("mishear", False)); s("ent_control", en.get("control", False))
     pv = rec.get("prev")
     if pv and t:
         from difflib import SequenceMatcher

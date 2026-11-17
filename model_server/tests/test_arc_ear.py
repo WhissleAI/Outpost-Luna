@@ -94,7 +94,8 @@ def test_linked_names_replace_the_heard_words():
     fin = [x for x in msgs if x["t"] == "words" and x["final"]][0]
     assert fin["text"] == "when did Artemis II fly"
     assert fin["names"][0] == {"heard": "artemis two", "entity": "Artemis II", "state": "linked", "p": 0.97,
-                               "tag": "entity.mention.mission", "kind": "mission"}
+                               "tag": "entity.mention.mission", "kind": "mission", "t0": 0.8, "t1": 1.35,
+                               "src": "decoder"}      # + the linker's evidence when the model gives it
     assert fin["names"][1]["state"] == "abstain" and fin["names"][1]["entity"] is None
     assert m.names_seen[-1] == [{"name": "Artemis II", "kind": "mission", "aliases": ["Artemis 2"]}]
 
@@ -102,10 +103,25 @@ def test_linked_names_replace_the_heard_words():
 def test_names_list_from_the_context_frame_is_capped_and_kinded():
     from app.stream_context import StreamContext
     es = arc_ear.EarStream(model=FakeModel())
-    names = ["Shackleton"] + [{"name": f"Place {i}", "kind": "site"} for i in range(60)]
+    names = ["Shackleton"] + [{"name": f"Place {i}", "kind": "site"} for i in range(120)]
     ack = StreamContext().update({"t": "context", "names": names}, es)
     assert ack["names_to_arc"] is True
-    assert len(es.names) == 40 and es.names[0] == {"name": "Shackleton", "kind": "place"}
+    assert len(es.names) == arc_ear.ear_settings.ear_max_names == 80   # the Moon screens' lists (backend MAX_MOON)
+    assert es.names[0] == {"name": "Shackleton", "kind": "place"}
+
+
+def test_final_words_carry_the_decoder_text_and_agreement_not_alts():
+    class Dec(FakeModel):
+        def transcribe(self, *a, **k):
+            out = super().transcribe(*a, **k)
+            for u in out["utts"]:
+                u["decoder_text"] = "Fly to Tycho"
+            return out
+    es = arc_ear.EarStream(model=Dec(text="fly to"))
+    fin = [x for x in run(es, [1] * 8 + [0] * 10) if x["t"] == "words" and x["final"]][0]
+    assert fin["decoder_text"] == "Fly to Tycho" and fin["agree"] == round(2 / 3, 3)
+    assert fin["alts"] == [] and fin["conf"] is None    # the round-7 fields stay empty (the shipped Director weights)
+    assert arc_ear.agreement("a b c", "a b c") == 1.0 and arc_ear.agreement("", "") == 1.0
 
 
 def test_end_turn_closes_now_and_partial_text_survives_an_empty_final():

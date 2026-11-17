@@ -30,7 +30,9 @@ def test_new_lessons_core_and_explorer_tracks():
     ids = [l["id"] for l in c["lessons"]]
     assert ids == ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]
     track = {l["id"]: (l["track"], l.get("unlock_after_missions")) for l in c["lessons"]}
-    assert track["gravity"] == ("explorer", 1) and track["history"] == ("explorer", 2)
+    # novice playtest 2026-11-16 #22: Apollo's trace step opens after the check ride, not a second mission
+    assert track["gravity"] == ("explorer", 1) and track["history"] == ("explorer", None)
+    assert content.lesson("history")["unlock_after"] == "checkride"
     assert all(t == ("core", None) for k, t in track.items() if k not in ("gravity", "history"))
     ph, gr = content.lesson("phases"), content.lesson("gravity")
     assert ph["badge"]["name"] == "Moon Watcher" and set(ph["ngss"]) == {"1-ESS1-1", "MS-ESS1-1"}
@@ -129,7 +131,8 @@ def test_video_step_through_the_api():
     with TestClient(app) as c:
         pub = next(l for l in c.get("/api/academy/course").json()["lessons"] if l["id"] == lid)["steps"][k]
         assert pub["type"] == "video" and pub["media"] == "psr" and pub["reveal"] and pub["say"]
-        assert pub["accept"] == {"type": "video", "media": "psr"}
+        assert {k: v for k, v in pub["accept"].items() if k != "guess"} == {"type": "video", "media": "psr"}
+        assert "answer" not in pub["accept"]["guess"]   # the chips go to the client, the answer comes in the reply
         r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"text": "what is for lunch"}}).json()
         assert r["status"] == "ignored"                          # not Watch / Skip: never a miss
         r = c.post("/api/academy/attempt", json={"lesson_id": lid, "step": k, "input": {"choice": "watched"}}).json()

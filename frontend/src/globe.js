@@ -119,7 +119,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   function setSunDir(lat, lon) {
     // the night side must read as night for a terminator step: dim the fill light while the Sun is locked
     if (lat == null) { sunLock = false; sun.position.copy(ll2v(10, -40).multiplyScalar(5)); if (!mi.on) ambient.intensity = 0.35 * Math.PI; return; }
-    sunLock = true; sun.position.copy(ll2v(lat, lon).multiplyScalar(5)); ambient.intensity = 0.05 * Math.PI;
+    // [novice playtest 2] night reads as night: almost no fill light, so the edge is plain on any GPU (and SwiftShader)
+    sunLock = true; sun.position.copy(ll2v(lat, lon).multiplyScalar(5)); ambient.intensity = 0.012 * Math.PI;
   }
   /** Look straight down on a pole (flyTo stops at 75°; the south-pole lessons need the view from above). */
   function poleView(pole = "south", dist = 2.2) { flyTo(pole === "north" ? 88 : -88, 0, dist, { clamp: false }); }
@@ -237,10 +238,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     rstops.forEach(s => {
       const f = s.p.clone().normalize().dot(cam);
       s.f = f; s.on = f > 0.3; tmp.copy(s.p).project(camera);
-      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 30 : 6);   // the next pin keeps room for its label
+      s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x; s.by = s.y; s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 42 : 8);   // the next pin keeps room for its label (playtest #28: it covered the pin below)
     });
     const vis = rstops.filter(s => s.on);
-    for (let it = 0; it < 6; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
+    for (let it = 0; it < 12; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
       const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
       if (d >= need) return;
       const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
@@ -287,7 +288,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       glayer.textContent = "";
       gmarks = (list || []).map(m => {
         const el = document.createElement("div");
-        el.className = "gd-mark" + (m.pulse ? " is-pulse" : "") + (m.ring ? " is-ring" : " is-dot") + (m.gold ? " is-gold" : "") + (m.label ? " has-label" : "") + (m.above ? " is-above" : "");
+        el.className = "gd-mark" + (m.pulse ? " is-pulse" : "") + (m.ring ? " is-ring" : " is-dot") + (m.line ? " is-line" : "") + (m.gold ? " is-gold" : "") + (m.label ? " has-label" : "") + (m.above ? " is-above" : "");
         el.setAttribute("aria-hidden", "true");
         el.innerHTML = `<i class="gd-ring"></i>${m.num ? `<b class="gd-num"></b>` : ""}${m.label ? `<span class="gd-label"></span>` : ""}`;
         if (m.num) el.querySelector(".gd-num").textContent = String(m.num);

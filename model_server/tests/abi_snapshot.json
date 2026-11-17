@@ -80,10 +80,10 @@
   ]
  },
  "_arctag_ffi": {
-  "abi": "0.3",
+  "abi": "0.5",
   "decls": [
    "#define ARCTAG_VERSION_MAJOR 0",
-   "#define ARCTAG_VERSION_MINOR 3",
+   "#define ARCTAG_VERSION_MINOR 5",
    "#define ARCTAG_VERSION_PATCH 0",
    "typedef struct arctag arctag_t;",
    "typedef enum { ARCTAG_FP32 = 0, ARCTAG_INT8 = 1 } arctag_precision_t;",

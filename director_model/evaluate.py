@@ -55,7 +55,9 @@ def guard_of(m: dict) -> bool:
     return m["rules_act"] == "guard"
 
 SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40_asr", "test_q80", "test_q80_asr",
-        "test_gold"]
+        "test_gold",
+        # round 11: test_real's sessions in Mac voices never used in train / val (voice_bank.HELDOUT)
+        "test_voice_heldout"]
 # round 6: today's real failure classes (gen_sessions.py cls_set; pools.CLASSES) and the imported real turns
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
               "cls_roomtalk", "test_log",

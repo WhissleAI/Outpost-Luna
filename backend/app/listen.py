@@ -127,13 +127,15 @@ def context_message(d: dict) -> dict:
 
 def arc_context(d: dict, base: list | tuple = ()) -> dict:
     """context_message() for the Arc ear: the client's names first (what's on screen now), then the screen's list.
-    A client's plain-string names become {"name": s, "kind": "place"} (the model needs a kind); capped at 40."""
+    A client's plain-string names become {"name": s, "kind": "place"} (the model needs a kind); capped at
+    names_list.MAX_EAR (the Moon screens' list length)."""
+    from .names_list import MAX_EAR
     out = context_message(d)
     out.pop("terms", None)        # Arc Transcriber Space has no free-term slot
     if "names" in out:
         mine = [x if isinstance(x, dict) else {"name": str(x), "kind": "place"} for x in out["names"]]
         seen = {str(x.get("name")).lower() for x in mine}
-        out["names"] = (mine + [n for n in base if str(n.get("name")).lower() not in seen])[:40]
+        out["names"] = (mine + [n for n in base if str(n.get("name")).lower() not in seen])[:MAX_EAR]
     return out
 
 
