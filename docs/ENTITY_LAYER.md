@@ -177,6 +177,30 @@ inline.
 
 ## 6. Measurements
 
-See `docs/SPEECH_SIGNALS_AUDIT.md` §5. On the round-11 paired re-decode, the derived lists are the ones measured
-there (identical lists). The "Did you mean" rate, the id-based linking and the r10 invariance are summarised in the
-PR body.
+Paired re-decode of 830 round-11 clips (SPEECH_SIGNALS_AUDIT.md §5). The ear lists derived from the registry are
+identical to the measured ones, so the ear-side numbers carry over unchanged:
+- names said that are in the list sent: 44 → 83 %;
+- linked right: 28 → 43 %;
+- linked wrong: 7.3 → 8.5 %;
+- spurious links: 4 / 166 → 4 / 166.
+
+What the app does with the links, on the explorer screens (528 turns; gold = the place the reference names):
+
+| | act right | act WRONG | act spurious | Did you mean: right | Did you mean: wrong / spurious | miss |
+|---|---|---|---|---|---|---|
+| before (old lists, act on any link by text) | 199 | 119 | 6 | 0 | 0 | 117 |
+| speech-signals PR (#119): new lists, p gate, sound-alike | 212 | 52 | 5 | 86 | 11 + 2 | 78 |
+| **entity layer: + act on ids (registry `ref`), + known mishearings** | **221** | 54 | 5 | 80 | 9 + 2 | 75 |
+
+- Resolving the ear's link by id instead of re-matching the list spelling against gazetteer aliases adds 9 right
+  actions. These are mostly hardware whose long names the gazetteer's text match missed.
+- The "Did you mean" rate is 91 of 528 explorer turns (17 %), and 88 % of those offers are right.
+- Cabin (299 turns, mission layer first):
+  - 4 right / 3 wrong offers;
+  - misses fall from 36 to 29;
+  - actions are unchanged.
+
+Shipped Director: zero change. The r10 weights (F = 242) never see the `ear_*` or `ent_*` slots. Both invariance
+tests compare every head bit for bit. `situation()` reads `hot` (hotlist.py, untouched). What changes is the rules
+path (the table above) and the ear list order (the moment boosts). The guarded model acts only in its hot / echo
+classes, on its own 242 inputs.
