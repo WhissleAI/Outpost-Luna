@@ -693,6 +693,23 @@ VIDEO_JS = r"""(async (id, waitS) => {
 })"""
 
 
+# The phases lesson opens with its Try-at-home "Watch how" videos (the Oreo one) on its first step, while online.
+WATCH_HOW_JS = r"""(async () => {
+  const O = window.__outpost, sleep = ms => new Promise(r => setTimeout(r, ms));
+  if ((await O.video.isAvailable("diy_oreo_phases")) === "offline") return { result: "unavailable" };
+  document.getElementById("modeAcademy").click();
+  for (let i = 0; i < 20 && document.body.dataset.mode !== "academy"; i++) await sleep(250);
+  await sleep(1500);
+  O.shellNav("lesson", "phases");
+  for (let i = 0; i < 30; i++) {
+    await sleep(500);
+    const b = document.getElementById("aPrepVideos");
+    if (b && !b.hidden && b.querySelector("[data-v]")) return { result: "shown", ids: [...b.querySelectorAll("[data-v]")].map(x => x.dataset.v) };
+  }
+  return { result: "missing", panel: !!document.querySelector("#aPanel .a-prompt") };
+})()"""
+
+
 def play_video(cdp: CDP, vid: str, wait_s=45) -> dict:
     return cdp.eval(f"{VIDEO_JS}({json.dumps(vid)}, {wait_s})", timeout=wait_s + 60) or {"id": vid, "result": "?"}
 
@@ -713,6 +730,7 @@ def gate_video(rep: Report, app: App, sweep=False):
         if sweep:
             ids = [v["id"] for v in cdp.eval("(async () => (await window.__outpost.video.catalog()).map(v => ({id: v.id})))()")]
         res = [play_video(cdp, i) for i in ids]
+        how = cdp.eval(WATCH_HOW_JS, timeout=60) or {"result": "?"}
     except (GateError, OSError, Closed, TimeoutError) as e:
         return rep.add("video", "fail", f"could not drive the page: {e}", time.time() - t0)
     finally:
@@ -724,16 +742,19 @@ def gate_video(rep: Report, app: App, sweep=False):
         lines.append(f"{r['id']}={out}" + (f"({r.get('yterror')})" if r.get("yterror") else ""))
         if k == "nasa_file" and out != "played":
             bad.append(r["id"])
-        elif k == "youtube" and out == "fell_back":
-            warn.append(r["id"])
+        elif k == "youtube" and (out == "fell_back" or (out == "card" and r.get("card") == "error")):
+            warn.append(r["id"])   # YouTube refused; the kid got "won't play here" (+ the NASA file when there is one)
         elif k == "youtube" and out not in ("played", "unavailable"):
             bad.append(r["id"])
         elif not k:
             bad.append(r["id"])
+    lines.append(f"phases lesson Watch how={how.get('result')}" + (f"({','.join(how['ids'])})" if how.get("ids") else ""))
+    if how.get("result") not in ("shown", "unavailable") or (how.get("ids") and "diy_oreo_phases" not in how["ids"]):
+        bad.append("watch-how")
     status = "fail" if bad else "warn" if warn else "pass"
     summ = ("; ".join(lines) + (f"; FAILED {', '.join(bad)}" if bad else "")
-            + (f"; YouTube refused {', '.join(warn)} (fell back to NASA's file cleanly)" if warn else ""))
-    return rep.add("video", status, summ, time.time() - t0, results=res)
+            + (f"; YouTube refused {', '.join(warn)} (clean 'won't play here' card / NASA fallback)" if warn else ""))
+    return rep.add("video", status, summ, time.time() - t0, results=res, watch_how=how)
 
 
 # ---------------------------------------------------------------------------------------------------------- golden
