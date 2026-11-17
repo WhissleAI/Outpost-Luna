@@ -700,6 +700,7 @@ WATCH_HOW_JS = r"""(async () => {
   document.getElementById("modeAcademy").click();
   for (let i = 0; i < 20 && document.body.dataset.mode !== "academy"; i++) await sleep(250);
   await sleep(1500);
+  const cs = document.getElementById("aCsGo"); if (cs) { cs.click(); await sleep(1500); }   // a fresh data folder: call sign first
   O.shellNav("lesson", "phases");
   for (let i = 0; i < 30; i++) {
     await sleep(500);
