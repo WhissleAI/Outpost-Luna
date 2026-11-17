@@ -1,8 +1,11 @@
 """NASA video: the catalog, the offline cache and its routes (docs/MEDIA.md).
 
-The catalog (backend/data/video/catalog.json) lists every video the app can show. Two sources:
+The catalog (backend/data/video/catalog.json) lists every video the app can show. Three sources:
   nasa_file  a NASA file we download once and play offline in our own player (captions converted to WebVTT)
-  youtube    a NASA-channel upload, streamed as a youtube-nocookie embed when online; never cached (YouTube policy III.E.1)
+  pack_file  a file only the desktop's video pack carries (the app never downloads it): a NASA video NASA hosts only in
+             a huge rendition (re-encoded by tools/video_catalog.py --derive), or a third-party video used with its
+             owner's written permission (a local drop-in, docs/MEDIA.md)
+  youtube    a hand-picked upload, streamed as a youtube-nocookie embed when online; never cached (YouTube policy III.E.1)
 
 The backend does the downloading, in the dev stack and in the desktop app alike: the renderer only ever talks to our own
 origin (desktop/main/permissions.js), and the cache lives in CACHE_DIR/video (the per-user app data folder on the
@@ -43,8 +46,12 @@ from .config import settings
 
 router = APIRouter()
 
-SOURCES = ("nasa_file", "youtube")
+SOURCES = ("nasa_file", "pack_file", "youtube")
+LOCAL_SOURCES = ("nasa_file", "pack_file")   # play in our own player from a local file
 NASA_HOSTS = ("images-assets.nasa.gov", "images-api.nasa.gov", "svs.gsfc.nasa.gov", "nssdc.gsfc.nasa.gov")
+# where a NASA pack_file's original lives (tools/video_catalog.py --derive downloads it there; the app never does)
+ORIGIN_HOSTS = NASA_HOSTS + ("www.jpl.nasa.gov",)
+PERMISSION = "used with permission"   # a third-party pack_file's credit says so (About → Videos shows the credit)
 REQUIRED = ("id", "title", "concept", "source", "duration_s", "credit", "music_credit", "prefetch", "age")
 ID_RE = re.compile(r"^[a-z0-9_]{2,40}$")
 YT_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -107,12 +114,12 @@ def item(vid: str) -> dict | None:
     return next((v for v in catalog() if v.get("id") == vid), None)
 
 
-def _nasa_url(u) -> bool:
+def _nasa_url(u, hosts=NASA_HOSTS) -> bool:
     try:
         p = urlparse(str(u))
     except ValueError:
         return False
-    return p.scheme == "https" and p.hostname in NASA_HOSTS and " " not in str(u)
+    return p.scheme == "https" and p.hostname in hosts and " " not in str(u)
 
 
 def validate(items) -> list[str]:
@@ -137,7 +144,16 @@ def validate(items) -> list[str]:
             out.append(f"{vid}: source must be one of {SOURCES}")
         if not isinstance(v.get("duration_s"), (int, float)) or not 0 < v.get("duration_s", 0) <= 600:
             out.append(f"{vid}: duration_s must be 1..600")
-        if v.get("nasa") is False:   # a hand-picked non-NASA video: YouTube only, allow-listed, labelled
+        if v.get("nasa") is False and src == "pack_file":   # a third-party file used with its owner's permission
+            if not str(v.get("permission") or "").strip():
+                out.append(f"{vid}: a third-party pack_file needs its permission record (permission)")
+            if PERMISSION not in str(v.get("credit", "")).lower():
+                out.append(f"{vid}: a third-party pack_file's credit must say '{PERMISSION}'")
+            if not v.get("channel"):
+                out.append(f"{vid}: a third-party pack_file names its owner (channel)")
+            if not v.get("prep"):
+                out.append(f"{vid}: a non-NASA video belongs to a Mission prep task (prep)")
+        elif v.get("nasa") is False:   # a hand-picked non-NASA video: YouTube only, allow-listed, labelled
             if src != "youtube" or v.get("youtube_id") not in NON_NASA_YOUTUBE:
                 out.append(f"{vid}: a non-NASA video must be a YouTube id in NON_NASA_YOUTUBE")
             elif v.get("channel") != NON_NASA_YOUTUBE[v["youtube_id"]]:
@@ -167,14 +183,29 @@ def validate(items) -> list[str]:
                 out.append(f"{vid}: a music-credited video plays from YouTube, never as a cached file")
             if v.get("youtube_id"):
                 out.append(f"{vid}: a nasa_file has no youtube_id")
+        if src == "pack_file":
+            if v.get("file_url") or v.get("youtube_id") or v.get("captions_url") or v.get("poster_url"):
+                out.append(f"{vid}: a pack_file is never downloaded by the app (no file_url, captions_url, poster_url, "
+                           "youtube_id)")
+            if not v.get("prefetch"):
+                out.append(f"{vid}: a pack_file is pinned (prefetch true): the pack is its only copy")
+            if not (isinstance(v.get("sha256"), str) and v["sha256"]):
+                out.append(f"{vid}: a pack_file needs its sha256 (the pack copy is checked against it)")
+            if v.get("music_credit") and v.get("nasa") is not False:
+                out.append(f"{vid}: a music-credited video plays from YouTube, never as a cached file")
+            if v.get("nasa") is not False and not _nasa_url(v.get("origin_url"), ORIGIN_HOSTS):
+                out.append(f"{vid}: a NASA pack_file names its NASA original (origin_url on {ORIGIN_HOSTS})")
+            for f in ("captions", "poster"):
+                if f in v and not isinstance(v[f], bool):
+                    out.append(f"{vid}: {f} must be true or false (the pack carries <id>.vtt / <id>.jpg)")
         for f in ("captions_url", "poster_url"):
             if v.get(f) and not _nasa_url(v[f]):
                 out.append(f"{vid}: {f} must be an https URL on a NASA host")
         if v.get("captions_url") and not re.search(r"\.(srt|vtt)$", v["captions_url"], re.I):
             out.append(f"{vid}: captions_url must be .srt or .vtt")
         if v.get("prefetch"):
-            if src != "nasa_file" or not v.get("file_url"):
-                out.append(f"{vid}: a prefetch item must be a nasa_file with a file_url")
+            if not (src == "nasa_file" and v.get("file_url")) and src != "pack_file":
+                out.append(f"{vid}: a prefetch item must be a nasa_file with a file_url (or a pack_file)")
             if not isinstance(v.get("bytes"), int) or v["bytes"] <= 0:
                 out.append(f"{vid}: a prefetch item needs its size in bytes (the download check)")
         if v.get("sha256") and not re.fullmatch(r"[0-9a-f]{64}", str(v["sha256"])):
@@ -183,8 +214,8 @@ def validate(items) -> list[str]:
         if fb is not None:
             if fb == vid or fb not in ids:
                 out.append(f"{vid}: fallback {fb!r} is not another catalog id")
-            elif next(x for x in items if isinstance(x, dict) and x.get("id") == fb).get("source") != "nasa_file":
-                out.append(f"{vid}: fallback {fb!r} must be a nasa_file (it plays offline)")
+            elif next(x for x in items if isinstance(x, dict) and x.get("id") == fb).get("source") not in LOCAL_SOURCES:
+                out.append(f"{vid}: fallback {fb!r} must be a nasa_file or pack_file (it plays offline)")
     return out
 
 
@@ -455,12 +486,21 @@ def names(v: dict) -> dict:
 
 
 def is_cached(v: dict) -> bool:
-    return v.get("source") == "nasa_file" and cache().has(names(v)["video"])
+    return v.get("source") in LOCAL_SOURCES and cache().has(names(v)["video"])
+
+
+def reachable(v: dict) -> bool:
+    """Can this pinned item ever be saved here? A pack_file only when the installed video pack has it."""
+    return v.get("source") == "nasa_file" or (v.get("source") == "pack_file" and pack_has(v))
 
 
 def availability(v: dict) -> str:
-    if is_cached(v):
+    # [videos offline] the installed video pack's copy plays at once (the first play copies it into the cache), even
+    # offline and before the background copy got to it
+    if is_cached(v) or (v.get("source") in LOCAL_SOURCES and pack_has(v)):
         return "cached"
+    if v.get("source") == "pack_file":
+        return "offline"          # not installed: nothing to download it from
     return "online" if online("youtube" if v.get("source") == "youtube" else "nasa") else "offline"
 
 
@@ -547,6 +587,8 @@ def fetch_video(v: dict, pace=None, client: httpx.Client | None = None) -> Path:
         fetch_captions(v, pinned, client)
         fetch_poster(v, pinned, client)
         return cache().path(names(v)["video"])
+    if v.get("source") != "nasa_file":
+        raise DownloadError(f"{v['id']}: only the video pack carries it")
     p = cache().download(v["file_url"], names(v)["video"], size=v.get("bytes"), sha256=v.get("sha256"),
                          pinned=pinned, pace=pace, client=client)
     fetch_captions(v, pinned, client)
@@ -572,7 +614,7 @@ def _pace(stop: threading.Event | None = None, sleep_s: float = 0.02):
 
 def prefetch_all(stop: threading.Event | None = None, pace=None) -> dict:
     """Download every pinned (prefetch) file not cached yet. Blocking: run it in a thread."""
-    todo = [v for v in catalog() if v.get("prefetch") and v.get("source") == "nasa_file"]
+    todo = [v for v in catalog() if v.get("prefetch") and reachable(v)]
     STATE.update(state="running", total=len(todo), done=0, error=None)
     pace = pace or _pace(stop)
     with _client() as client:
@@ -600,9 +642,10 @@ async def prefetch_task(delay_s: float = 15.0, retry_s: float = 300.0) -> None:
     try:
         await asyncio.sleep(delay_s)
         while not _stop.is_set():
-            todo = [v for v in catalog() if v.get("prefetch") and not is_cached(v)]
+            todo = [v for v in catalog() if v.get("prefetch") and reachable(v) and not is_cached(v)]
             if not todo:
-                STATE.update(state="done", total=sum(1 for v in catalog() if v.get("prefetch")), error=None)
+                STATE.update(state="done", total=sum(1 for v in catalog() if v.get("prefetch") and reachable(v)),
+                             error=None)
                 STATE["done"] = STATE["total"]
                 return
             if all(pack_has(v) for v in todo) or (settings.video_prefetch and await asyncio.to_thread(online, "nasa")):
@@ -631,11 +674,11 @@ def _get(vid: str) -> dict:
 def public(v: dict) -> dict:
     vid = v["id"]
     local = {"cached": is_cached(v)}
-    if v["source"] == "nasa_file":
+    if v["source"] in LOCAL_SOURCES:
         local |= {"play_url": f"/api/video/{vid}/file",
-                  "captions_src": f"/api/video/{vid}/captions.vtt" if v.get("captions_url") else None}
+                  "captions_src": f"/api/video/{vid}/captions.vtt" if v.get("captions_url") or v.get("captions") else None}
     fb = item(v["fallback"]) if v.get("fallback") else None
-    if v.get("poster_url") or (fb and fb.get("poster_url")):
+    if v.get("poster_url") or v.get("poster") or (fb and (fb.get("poster_url") or fb.get("poster"))):
         local["poster_src"] = f"/api/video/{vid}/poster"
     return {**v, **local}
 
@@ -647,7 +690,7 @@ def video_catalog():
 
 @router.get("/api/video/cache")
 def video_cache_stats():
-    pinned = [v for v in catalog() if v.get("prefetch")]
+    pinned = [v for v in catalog() if v.get("prefetch") and reachable(v)]
     return {**cache().stats(), "pinned_ready": sum(is_cached(v) for v in pinned), "pinned_total": len(pinned),
             "prefetch": dict(STATE)}
 
@@ -669,8 +712,9 @@ async def video_available(vid: str):
 async def video_captions(vid: str):
     v = _get(vid)
     n = names(v)["captions"]
-    if not cache().has(n) and not (v.get("captions_url") and await asyncio.to_thread(online, "nasa")
-                                   and await asyncio.to_thread(fetch_captions, v, bool(v.get("prefetch")))):
+    if not cache().has(n) and not await asyncio.to_thread(from_pack, v, "captions", bool(v.get("prefetch"))) \
+            and not (v.get("captions_url") and await asyncio.to_thread(online, "nasa")
+                     and await asyncio.to_thread(fetch_captions, v, bool(v.get("prefetch")))):
         raise HTTPException(404, "no captions")
     cache().touch(n)
     return FileResponse(cache().path(n), media_type="text/vtt; charset=utf-8")
@@ -680,11 +724,12 @@ async def video_captions(vid: str):
 async def video_poster(vid: str):
     v = _get(vid)
     for x in [v] + ([item(v["fallback"])] if v.get("fallback") else []):
-        if not x or not x.get("poster_url"):
+        if not x or not (x.get("poster_url") or x.get("poster")):
             continue
         n = names(x)["poster"]
-        if cache().has(n) or (await asyncio.to_thread(online, "nasa")
-                              and await asyncio.to_thread(fetch_poster, x, bool(x.get("prefetch")))):
+        if cache().has(n) or await asyncio.to_thread(from_pack, x, "poster", bool(x.get("prefetch"))) \
+                or (x.get("poster_url") and await asyncio.to_thread(online, "nasa")
+                    and await asyncio.to_thread(fetch_poster, x, bool(x.get("prefetch")))):
             return FileResponse(cache().path(n), media_type="image/jpeg")
     raise HTTPException(404, "no poster")
 
@@ -709,7 +754,7 @@ def _cache_in_background(v: dict) -> None:
 @router.get("/api/video/{vid}/file")
 async def video_file(vid: str, request: Request):
     v = _get(vid)
-    if v["source"] != "nasa_file":
+    if v["source"] not in LOCAL_SOURCES:
         raise HTTPException(404, "YouTube videos play in the YouTube player and are never downloaded")
     n = names(v)["video"]
     if cache().has(n):
@@ -721,6 +766,8 @@ async def video_file(vid: str, request: Request):
     if pack_has(v) and await asyncio.to_thread(from_pack, v, "video", bool(v.get("prefetch"))):
         cache().touch(n)
         return FileResponse(cache().path(n), media_type="video/mp4")
+    if v["source"] == "pack_file":
+        raise HTTPException(503, "not installed: only the video pack carries it")
     if not await asyncio.to_thread(online, "nasa"):
         raise HTTPException(503, "offline and not saved yet")
     _cache_in_background(v)

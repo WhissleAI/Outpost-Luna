@@ -6,6 +6,11 @@ const { classifyOpen, createGate } = require("./gate");
 
 const ORIGIN = "http://127.0.0.1:47310";
 
+test("[videos offline] the video card's 'Watch on YouTube' link is a gated link, never one that opens straight away", async () => {
+  const C = await import("../../frontend/src/media/commands.js");
+  for (const id of ["osdOQhRhVJg", "XeBmuY2i2fg"]) assert.equal(classifyOpen(C.youtubeWatchUrl(id), ORIGIN), "youtube", id);
+});
+
 test("which links need the gate", () => {
   assert.equal(classifyOpen("https://www.youtube.com/watch?v=jdkMHkF7BaA", ORIGIN), "youtube");
   assert.equal(classifyOpen("https://youtu.be/jdkMHkF7BaA", ORIGIN), "youtube");

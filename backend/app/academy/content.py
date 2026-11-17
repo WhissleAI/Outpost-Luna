@@ -24,10 +24,10 @@ VIDEO_HINT = "Tap Watch, or say skip."
 
 def _video_media() -> dict:
     """The catalog's videos by source (backend/data/video/catalog.json, the one list; app/video.py validates it).
-    "cached": NASA files kept after the first online launch, so they play offline. "online": NASA-channel YouTube
+    "cached": NASA files (and the video pack's own pack_files), kept locally so they play offline. "online": YouTube
     embeds, stream only. A step on an online video still passes offline: the reveal is said and the lesson goes on."""
     cat = json.loads((DATA / "video" / "catalog.json").read_text())
-    return {"cached": tuple(v["id"] for v in cat if v.get("source") == "nasa_file"),
+    return {"cached": tuple(v["id"] for v in cat if v.get("source") in ("nasa_file", "pack_file")),
             "online": tuple(v["id"] for v in cat if v.get("source") == "youtube")}
 
 

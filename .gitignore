@@ -26,3 +26,5 @@ backend/data/saves/
 
 # On-device learning in a dev checkout (backend/app/learn; the desktop app: its per-user cache folder)
 backend/data/learning_state/
+# videos only the video pack carries (backend/tools/video_catalog.py --derive, or a licensed drop-in): never in git
+backend/data/video/local/

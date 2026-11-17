@@ -443,10 +443,12 @@ export const MOON_BASE = {
 };
 
 /** Debrief "Learn more": one video per outcome (the sim's outcome names), or a fact card when there is no video, or
- *  it can't play (offline, no player). `online` is the better pick when the internet is up (YouTube only). */
+ *  it can't play (offline, no player). `online` is the better pick when the internet is up (YouTube only). [videos
+ *  offline] none has one now: every Learn more video is a local NASA file (solar_eruptions credits third-party music
+ *  and NASA hosts it only as a 137 MB vertical file, so it left the catalog). */
 export const LEARN_MORE = {
   title: "Learn more",
-  dose_limit: { media: "moon_weather", online: "solar_eruptions", line: "Space weather: what the Sun throws at the Moon.",
+  dose_limit: { media: "moon_weather", line: "Space weather: what the Sun throws at the Moon.",
     fact: "The Moon has no magnetic shield or thick air. Shelter early." },
   power_out: { media: null, line: "Why power runs out at the pole.",
     fact: "At the pole the Sun skims the horizon. Long dark spells drain batteries." },

@@ -47,6 +47,14 @@ export function youtubeSrc(id, origin) {
   return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${q}`;
 }
 
+/** [videos offline] The plain youtube.com watch page, for "Watch on YouTube" on the "won't play here" card: a signed-in
+ *  browser usually passes the bot check the embed fails. The desktop opens it only through the grown-up gate
+ *  (desktop/main/gate.js classifyOpen → "youtube"). Null for anything that is not an 11-character video id. */
+export function youtubeWatchUrl(id) {
+  return /^[A-Za-z0-9_-]{11}$/.test(String(id || "")) ? `https://www.youtube.com/watch?v=${id}` : null;
+}
+export const WATCH_ON_YOUTUBE = "Watch on YouTube";
+
 /**
  * [video fix 0.3.11] The YouTube watchdog. An embed can sit forever on a card of its own ("Sign in to confirm you're
  * not a bot") with no IFrame API error: it says onReady, takes playVideo and never plays. Every play request must reach

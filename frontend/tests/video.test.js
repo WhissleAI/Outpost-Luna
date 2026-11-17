@@ -95,7 +95,7 @@ test("offline with nothing saved: the button says so, and Watch still continues 
   UI.deps.isAvailable = async () => "offline";
   UI.deps.openVideo = async () => ({ watched: false, seconds: 0, offline: true });
   const sent = [];
-  const r = R.video({ acc: { type: "video", media: "impact_flashes" }, answer: x => sent.push(x), state: {} });
+  const r = R.video({ acc: { type: "video", media: "south_pole_shadows" }, answer: x => sent.push(x), state: {} });
   const e = el(); r.bind(e); await tick();
   assert.equal(e.nodes["[data-watch]"].label.textContent, "Needs internet");
   await e.nodes["[data-watch]"].onclick();
@@ -171,6 +171,36 @@ test("[video fix 0.3.11] the overlay wires the watchdog, offers the NASA fallbac
   assert.match(s, /watch\.state\(s\)/);
   assert.match(s, /kind !== "offline" \|\| fbCached/, "online: a fallback that streams is offered; offline only a saved one");
   assert.match(s, /retried = true/);
+});
+
+test("[videos offline] 'Watch on YouTube': the plain watch page, only for a real video id", () => {
+  assert.equal(C.youtubeWatchUrl("osdOQhRhVJg"), "https://www.youtube.com/watch?v=osdOQhRhVJg");
+  for (const bad of ["", null, undefined, "short", "osdOQhRhVJg&x=1", "javascript:x", "../../etc/pass"]) assert.equal(C.youtubeWatchUrl(bad), null, String(bad));
+  assert.equal(C.WATCH_ON_YOUTUBE, "Watch on YouTube");
+});
+
+test("[videos offline] the won't-play card offers YouTube only without a NASA fallback, through the browser (the gate)", async () => {
+  const fs = await import("node:fs");
+  const s = fs.readFileSync(new URL("../src/media/video.js", import.meta.url), "utf8");
+  // only on "won't play here" (online), only for a YouTube entry, never when a NASA file is offered instead
+  assert.match(s, /const yt = !fb && kind === "error" && item\.source === "youtube" \? youtubeWatchUrl\(item\.youtube_id\) : null;/);
+  // a new window: the desktop's setWindowOpenHandler sends youtube.com through the grown-up gate (desktop/main/gate.js)
+  assert.match(s, /window\.open\(yt, "_blank", "noopener"\)/);
+  assert.doesNotMatch(s, /location\.href\s*=\s*yt/, "never navigates the app window to YouTube");
+});
+
+test("[videos offline] a stale <dialog> close event (the last video's) never closes the next video", async () => {
+  const fs = await import("node:fs");
+  const s = fs.readFileSync(new URL("../src/media/video.js", import.meta.url), "utf8");
+  assert.match(s, /const onClose = \(\) => \{ if \(!dlg\.open\) finish\("closed"\); \};/);
+});
+
+test("[videos offline] About → Videos credits: YouTube marked, a third-party pack file always says 'used with permission'", () => {
+  assert.equal(UI.creditLine({ credit: "NASA/Goddard", source: "nasa_file" }), "NASA/Goddard");
+  assert.equal(UI.creditLine({ credit: "I Play With My Kids · not from NASA", source: "youtube", nasa: false }), "I Play With My Kids · not from NASA · YouTube");
+  assert.equal(UI.creditLine({ credit: "Astronomy in Action · used with permission", source: "pack_file", nasa: false }), "Astronomy in Action · used with permission");
+  assert.equal(UI.creditLine({ credit: "Astronomy in Action", source: "pack_file", nasa: false }), "Astronomy in Action · used with permission");
+  assert.equal(UI.creditLine({ credit: "NASA/JPL-Caltech (JPL Education)", source: "pack_file" }), "NASA/JPL-Caltech (JPL Education)");
 });
 
 test("[video fix 0.3.11] a lesson with a Try-at-home task shows its Watch how videos at the start (Oreo, 0.3.10 lost it)", async () => {
