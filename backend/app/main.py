@@ -186,7 +186,7 @@ def safety_flags():
 
 @app.get("/api/director/stats")
 def director_stats():
-    """The learned Director (DIRECTOR_MODEL=off|shadow|on): mode, model, and shadow agreement with the rules."""
+    """The learned Director (DIRECTOR_MODEL=off|shadow|guarded|on): mode, model, and shadow agreement with the rules."""
     from .director_model import runtime as dmodel
     return dmodel.stats()
 

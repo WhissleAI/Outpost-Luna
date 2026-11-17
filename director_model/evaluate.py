@@ -182,6 +182,77 @@ def on_outcome(m: dict, o: dict, thr: dict):
     return ov["act"], ov.get("command")
 
 
+def guarded_outcome(m: dict, o: dict, thr: dict):
+    """Round 10, DIRECTOR_MODEL=guarded exactly as the runtime runs it: the model may act only where the turn's class
+    is in thr["classes"] (runtime.situation for a policy turn; "nav" for the navigate fill, "answer" for the lesson
+    silencing); the rules decide everywhere else."""
+    ra, rc = rules_out(m)
+    route = m.get("route")
+    if route == "navigate":
+        return ra, rc
+    if RT.allowed(thr, "nav"):
+        nv = RT.nav_policy(o, thr, offer=bool(m.get("offer"))) if route is not None else None
+        if nv:
+            return "navigate", {"nav": nv}
+    if route == "ignore":
+        return ra, rc
+    if route == "answer":
+        return ("ignore", None) if RT.allowed(thr, "answer") and RT.answer_policy(o, thr) else (ra, rc)
+    if not RT.allowed(thr, m.get("situ") or "quiet"):
+        return ra, rc
+    t = {**thr, **(thr.get("guarded") or {})}
+    ov = RT.policy(o, FX.words_of(m["heard"]), rules_cmds(m["heard"]), guard_of(m), t, mission=m["mode"] == "mission")
+    if ov and ov["act"] == "command" and m["mode"] != "mission":
+        ov = None
+    if not ov:
+        return ra, rc
+    return ov["act"], ov.get("command")
+
+
+CLASSES = RT.SITUATIONS + ("nav", "answer")
+
+
+def class_gate(model, data_dir: Path, pol: dict) -> dict:
+    """Round 10: per set x class, the model enabled in that ONE class (guarded) vs the rules: turns, act ok, wrong,
+    extra wrong (the model wrong where the rules were not). A class may ship only with 0 extra wrong and act ok >=
+    rules on every set."""
+    res = {}
+    for name in SETS + CLASS_SETS:
+        if not (data_dir / f"{name}.npz").exists():
+            continue
+        rows = turn_rows(model, data_dir, name)
+        for c in CLASSES:
+            t = {**pol, "classes": [c]}
+            n = rok = ook = rw = ow = extra = 0
+            ex = []
+            for m, o in rows:
+                if c in RT.SITUATIONS and (m.get("situ") or "quiet") != c:
+                    continue
+                ra, rcm = rules_out(m)
+                a, cm = guarded_outcome(m, o, t)
+                n += 1
+                rok += act_ok(m, ra, rcm)
+                ook += act_ok(m, a, cm)
+                r_w, o_w = is_wrong(m, ra, rcm), is_wrong(m, a, cm)
+                rw += r_w
+                ow += o_w
+                if o_w and not r_w:
+                    extra += 1
+                    if len(ex) < 4:
+                        ex.append(f"{m['heard']} -> {a} (gold {m['gold_act']})")
+            res.setdefault(name, {})[c] = {"n": n, "rules_ok": rok, "on_ok": ook, "rules_wrong": rw, "on_wrong": ow,
+                                           "extra": extra, "ex": ex}
+    verdict = {}
+    for c in CLASSES:
+        cells = [r[c] for r in res.values()]
+        ok = all(x["extra"] == 0 and x["on_ok"] >= x["rules_ok"] for x in cells)
+        gain = sum(x["on_ok"] - x["rules_ok"] for x in cells)
+        verdict[c] = {"pass": ok and gain > 0, "clean": ok, "gain": gain, "n": sum(x["n"] for x in cells),
+                      "extra": sum(x["extra"] for x in cells),
+                      "worse_sets": [k for k, r in res.items() if r[c]["extra"] or r[c]["on_ok"] < r[c]["rules_ok"]]}
+    return {"sets": res, "verdict": verdict}
+
+
 def nav_right(m, c) -> bool:
     gn = m.get("gold_nav")
     return gn in (None, "other", "none") or (c or {}).get("nav") == gn
@@ -455,6 +526,8 @@ def main():
                     "vetoes a rules command or navigates. Everything else stays with the rules")
     ap.add_argument("--policy", default="", help='round 9: JSON merged over the policy, e.g. '
                     '\'{"veto": null, "ignore_min_words": 3}\'')
+    ap.add_argument("--class-gate", action="store_true", help="round 10: also the per-situation-class gate "
+                    "(the model enabled in one class at a time, guarded, vs the rules on every set)")
     a = ap.parse_args()
     d = Path(a.data)
     if a.weights:
@@ -479,6 +552,13 @@ def main():
         pol = ignore_only(pol)
         res["policy"] = pol
         res["policy_kind"] = "ignore_only"
+    if a.class_gate:
+        g = class_gate(model, d, pol)
+        res["class_gate"] = g
+        print("| class | turns | gain (act ok vs rules) | extra wrong | sets worse | ships |")
+        for c, v in g["verdict"].items():
+            print(f"| {c} | {v['n']} | {v['gain']:+d} | {v['extra']} | {', '.join(v['worse_sets']) or '-'} | "
+                  f"{'yes' if v['pass'] else 'no'} |")
     for name in SETS + CLASS_SETS:
         r = evaluate_set(model, d, name, thr, pol)
         if r:

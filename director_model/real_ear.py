@@ -309,7 +309,7 @@ def cmd_decode(a):
     jobs = load_jobs()
     todo = [j for j in jobs if not (CACHE / "dec" / f"{j['key']}.json").exists()]
     if a.order == "test_first":
-        todo.sort(key=lambda j: {"app": 0, "test": 0, "val": 1, "train": 2}[j["group"]])
+        todo.sort(key=lambda j: {"val": 1, "train": 2}.get(j["group"], 0))   # app / test / class groups first
     elif a.order == "mix":     # round 7: held-out first, but every 3rd job a train / val one (a cut-short run still
         held = [j for j in todo if j["group"] not in ("val", "train")]   # test, app, app_os, video ...   # leaves train decodes with the ear's extras)
         va = [j for j in todo if j["group"] == "val"]

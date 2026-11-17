@@ -620,7 +620,9 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
                         expect=it.get("expect"), ok=it.get("ok"),
                         route=(st["rec"].get("route") or {}).get("outcome"), hf=bool(it.get("frame")),
                         gold_conf=it.get("conf"), gold_nav=gold_nav, offer=(fr_it or {}).get("offer"),
-                        rules_nav=_rules_nav(st["rec"].get("route"), fr_it), repeat_of=it.get("repeat_of"))
+                        rules_nav=_rules_nav(st["rec"].get("route"), fr_it), repeat_of=it.get("repeat_of"),
+                        # round 10: the runtime-visible state the per-class enable keys on (runtime.situation)
+                        situ=RT.situation(st["rec"], " ".join(final)))
     for m in metas:
         m.update(meta_base)
     return {"feats": feats, "toks": toks, "wtok": wtok, "wfeat": wfeat, **{f"y_{k}": v for k, v in y.items()},

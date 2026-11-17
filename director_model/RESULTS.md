@@ -987,3 +987,102 @@ ask off.
   28 sets on new-ear decodes, ~1 h on an idle machine) and gate the policy-updated r4 s and r9 xl together; r9 xl
   with the same 3-word minimum is one wrong action from passing and is the strongest candidate once train decodes
   are on the new ear too.
+
+## Round 10 — 2026-11-15/16 (the full gate on the new ear, per-class enable) — SHIPPED: r10 xl as `guarded`, classes hot + echo
+
+Round 9 rebuilt only 9 of the 28 sets on the new ear. Round 10 rebuilds all of them (`director_model/run_r10.sh`,
+reusing round 9's decode cache) and asks a narrower question than "is the model better than the rules": **in which
+situations is it never worse?** It ships the model only there. Merged on top of main (the branch was 84 commits behind;
+re-applied on a fresh branch, no conflicts in the Director files).
+
+### What changed
+
+- **`DIRECTOR_MODEL=guarded`** (runtime.py). `situation(rec, text)` classifies each turn end from session state the
+  runtime already has (features.record), first match wins:
+  - `hot`: the words hit an on-screen control or a step option;
+  - `short`: fewer than 3 words;
+  - `echo`: our own line is on the air or just spoken, or a guide or crew clip is playing;
+  - `video`: a video is playing;
+  - `quiet`: anything else.
+
+  `nav` (the navigate fill) and `answer` (the lesson-step silencing) are classes too. In `guarded` the model may act
+  only where `allowed(policy, class)` holds, meaning the class is in the weights' `policy.classes`. Everywhere else
+  the rules decide. **A policy with no `classes` key enables nothing, so guarded weights from any earlier round behave
+  exactly like the rules** (test: `test_guarded_without_classes_is_the_rules`).
+- **`evaluate.py --class-gate`**: for each set and each class, it enables the model in that one class only, using the
+  same code path as the runtime (`guarded_outcome`), and compares it to the rules. A class ships only if, on every
+  set, it adds 0 wrong actions over the rules and gets at least as many acts right, and its total gain is > 0.
+  `gen_sessions.py` stores each turn's `situ` so the gate keys on exactly what the runtime sees.
+
+### Data and model
+
+- **ds_r10:** every round-8 set regenerated on the new-ear decodes (27 sets / 11,408 policy turns in the class gate),
+  2,400 train sessions plus the 1,200-session coverage sweep.
+- **r10 xl:** 743,069 params, 2,200 steps with `--fp-exec 0.5`, best step 1,600. Train loss reached 0.15 while val
+  flattened at ~1.06, so it is data-limited again, like r9 xl. Policy fitted on val: cmd 1.01 (off) · ignore 0.95 ·
+  ask 1.01 (off) · veto off · `ignore_min_words` 3 · when 0.98. **The model only ever silences turns.** It never fills
+  a command, asks, vetoes or navigates.
+- **Exported:** int8 `weights.npz` 902 KB (r4 s was 65 KB). Max |dp| int8 vs float is 0.025. numpy streaming vs torch
+  parallel ≤ 6e-6. numpy step p50 1.8 ms (measured under load average ~44).
+
+### Class gate (exported int8 weights, `runs/2026-11-15-r10/eval_exported.log`, `gate.json`)
+
+| class | turns | gain (act ok vs rules) | extra wrong | sets worse | ships |
+|---|---|---|---|---|---|
+| hot | 5,294 | +12 | 0 | none | **yes** |
+| echo | 876 | +29 | 0 | none | **yes** |
+| quiet | 3,148 | +7 | 0 | cls_prep (−5) | no |
+| short | 2,090 | 0 | 0 | none | no (no gain: `ignore_min_words` 3 already keeps the model out) |
+| video | 0 | 0 | 0 | none | no (no turn reaches this class; see below) |
+| nav, answer | 11,408 | 0 | 0 | none | no (the fitted policy has nav and answer_ignore off) |
+
+**Reproduced:** the exported weights give the same class gate as the torch candidate
+(`xl/eval_candidate.log`) on every one of the 27 sets × 7 classes, with no cell different. The int8 rounding
+moves only the unguarded `on` table by ±1 turn on test_asr, and that mode does not ship.
+
+The shipped r4 s, run the same way (`eval_shipped.log`), passes only echo (+5). Its hot class loses on test_real
+and its quiet class loses on cls_coverage.
+
+### What it buys, plainly
+
+hot + echo together, every set (the two classes never overlap on a turn, so their gains add):
+
+| set | hot+echo turns | act ok, rules → guarded | wrong, rules → guarded |
+|---|---|---|---|
+| test_clean | 1,215 | 1,090 → 1,091 | 73 → 73 |
+| test_asr | 1,182 | 925 → 928 | 93 → 93 |
+| test_real | 468 | 361 → 361 | 51 → **50** |
+| cls_echo | 132 | 118 → 130 | 2 → 2 |
+| cls_voice_echo_os | 116 | 100 → 111 | 2 → 2 |
+| cls_prep_roomtalk | 60 | 47 → 49 | 0 → 0 |
+| cls_coverage | 1,525 | 1,399 → 1,411 | 26 → 26 |
+| every other set | | no change | no change |
+| **all 27 sets** | **6,170** | **5,414 → 5,455 (+41)** | **276 → 275** |
+
+- **The gain is small:** +41 right acts over 6,170 hot + echo turns (+0.7 points), and one fewer wrong action. All of
+  it comes from silencing: our own voice or a crew or guide clip heard back (cls_echo +12, OS-voice echo +11), plus
+  room talk that happens to name a control. The model adds **no wrong action** in either class on any set.
+- **The unguarded `on` model is not shippable.** Its wrong actions per 50 turns roughly double vs the rules
+  (test_clean 13.6 vs 7.9, test_asr 17.3 vs 10.1, test_real 17.7 vs 13.6), and it collapses on cls_prep
+  (act accuracy 0.31 vs 0.88) and cls_chatter. Without the class guard this weight file is worse than the rules.
+
+### Still off, and why
+
+- **quiet:** +7 overall, but −5 on cls_prep. The model silences prep-screen turns that the rules answer correctly.
+  These are not counted as wrong actions, but they are lost answers, so the class fails.
+- **short:** 0 gain. The 3-word minimum keeps the model out of these turns by design (round 9's "far side").
+- **video:** no turn in any set reaches this class. On the video sets, `echo` (a clip on the air) or `hot` (video
+  controls) match first. So `video` is untested, not proven safe, and stays off.
+- **nav / answer:** the val fit leaves both thresholds off.
+- **`on`:** see above.
+
+### Next
+
+- **Real voice data is the bottleneck, not model size.** xl's train loss is 7× its val loss. Most of the remaining
+  error is in turns the rules also get wrong (276 wrong in hot + echo for both). The synthetic kid voices (TTS + babble)
+  have shown what they can: every round since 7 moves a few dozen turns. The next real gain needs real-ear decodes of
+  real kids from playtests (`make director-import`), first to check that hot + echo hold up on them, then to train.
+- Watch `/api/director/stats` and the turn logs from the first guarded sessions. If any extra wrong action shows up in
+  hot or echo, set `DIRECTOR_MODEL=shadow`: one env var, no rebuild.
+- quiet could ship with a prep-screen exclusion, but only if a fresh round passes it. It must not be fitted to cls_prep
+  after the fact.

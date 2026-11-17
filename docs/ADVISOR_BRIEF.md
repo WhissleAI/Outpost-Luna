@@ -106,12 +106,12 @@ Every model below runs locally:
 | --- | --- | --- |
 | Hearing | Arc v1.1 Mini (Whissle) | ~1 GB RAM with metadata |
 | Understanding | Arc Tagger v0.3 (Whissle), plus a tiny embedder (MiniLM, int8) | 26 MB + 53 MB |
-| Deciding | A learned Director, a tiny Mamba-3 (Whissle Director family), in shadow mode next to the rules | 77K params, 137 KB |
+| Deciding | A learned Director, a tiny Mamba-3 (Whissle Director family), next to the rules; it acts only where it proved it adds no wrong action (guarded) | 743K params, 0.9 MB |
 | Speaking | Steer TTS Edge (Whissle), with styles chosen per line | ~12 MB |
 | Knowledge | 106 sourced knowledge cards; no cloud LLM | — |
 
 Current gaps:
-- The learned Director still makes more wrong actions than the rules, so it stays in shadow mode until it beats them on every test set. Another improvement round is running now.
+- The learned Director acts only in two situations: when a command names an on-screen control, and when our own voice or a clip is heard back. In those two it was never worse than the rules on any test set, but the gain is small: +41 right calls over ~6,200 turns. Everywhere else the rules decide.
 - The ear has only been tested on synthetic kid voices.
 
 **Ask for the advisor:** can we get 10 minutes of real kids using it before the final pitch?

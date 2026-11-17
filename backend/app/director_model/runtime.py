@@ -1,11 +1,14 @@
 """The learned Director at runtime: a tiny streaming Mamba-3 (trained in director_model/, exported int8) stepped once per
 session event, numpy only (no torch).
 
-DIRECTOR_MODEL=off|shadow|on (env; default shadow since 2026-11-14, owner decision after round 6; was on since round 4: the guarded policy met the switch-on criteria in
+DIRECTOR_MODEL=off|shadow|guarded|on (env; see DEFAULT_MODE. shadow 2026-11-14 to round 10, owner decision after round 6; was on since round 4: the guarded policy met the switch-on criteria in
 director_model/RESULTS.md; the rules remain the fallback on every turn the policy does not take, and whenever the
 weights fail to load):
   off     the model never runs.
   shadow  the model runs on every step and logs what it would do next to what the rules did; it never acts.
+  guarded (round 10) as `on`, but only in the situation classes (situation(): hot / short / echo / video / quiet, plus
+          "nav" and "answer") that the weights' policy lists under "classes", each passed on the full gate with no
+          extra wrong action over the rules. A policy without "classes" enables nothing: guarded == the rules.
   on      the model decides at a kid's turn end where the rules read no command, with the rules as guardrails: the
           privacy guard always wins; the model never overrides a rules command; a model
           command must pass nlu.valid(); below CONF the rules decide; style tags outside the allowed set are never
@@ -33,9 +36,48 @@ MODEL_DIR = Path(__file__).resolve().parent
 CONF = 0.7                     # `on`: the model's act must be at least this sure, else the rules decide
 
 
+MODES = ("off", "shadow", "guarded", "on")
+
+
 def mode() -> str:
-    m = (os.environ.get("DIRECTOR_MODEL") or "shadow").strip().lower()   # owner 2026-11-14: shadow until a round passes the gate (r4 weights silence real-ear mishears)
-    return m if m in ("off", "shadow", "on") else "on"
+    """off: no model. shadow: the model runs and is scored, the rules decide. guarded (round 10): the model may act
+    only in the situation classes its weights' policy lists under "classes" (each proven on the full gate to add no
+    wrong action over the rules), the rules decide everywhere else. on: the fitted policy everywhere."""
+    m = (os.environ.get("DIRECTOR_MODEL") or DEFAULT_MODE).strip().lower()
+    return m if m in MODES else "on"
+
+
+DEFAULT_MODE = "guarded"  # round 10 (2026-11-16): r10 xl acts only in the classes its policy lists (hot, echo: each
+#   passed the full gate with 0 extra wrong actions); the rules decide everywhere else. Was "shadow" since 2026-11-14
+#   (owner: shadow until a round passes the gate).
+
+# Round 10: the situation a turn end is in, from session state the runtime has at that moment (features.record).
+# Checked in this order; the first that holds names the class.
+SITUATIONS = ("hot", "short", "echo", "video", "quiet")
+
+
+def situation(rec: dict | None, text: str) -> str:
+    """hot   : the words name an on-screen control or the step's options (hot-list exact hit) - a command said plainly;
+       short : fewer than 3 words (usually a real answer or a control: "far side", "yes please");
+       echo  : our own line is on the air / just spoken, or a guide or crew clip is playing (its audio leaks in);
+       video : a video is playing;
+       quiet : none of these (room talk, a plain turn)."""
+    rec = rec or {}
+    hot = rec.get("hot") or {}
+    if (hot.get("step") or 0) > 0 or (hot.get("screen") or 0) > 0:
+        return "hot"
+    if len([w for w in FX.words_of(text) if w]) < 3:
+        return "short"
+    if rec.get("on_air") or rec.get("speaking") or rec.get("playing_kind") in ("guide", "crew"):
+        return "echo"
+    if rec.get("video_on") or rec.get("playing_kind") == "video":
+        return "video"
+    return "quiet"
+
+
+def allowed(thr: dict, cls: str) -> bool:
+    """`guarded`: may the model act in this class? Only the classes the weights' policy lists (none = nowhere)."""
+    return cls in (thr.get("classes") or ())
 
 
 # ---------------------------------------------------------------------------------------------- numpy forward
@@ -324,29 +366,40 @@ class Shadow:
     def decide_answer(self, out: dict | None) -> bool:
         """A lesson step's answer (router outcome `answer`), `on` mode: True = the model is sure enough it is room
         chatter / not an answer to silence it (answer_policy). Off unless the weights carry a fitted threshold."""
-        if mode() != "on" or not out:
+        md = mode()
+        if md not in ("on", "guarded") or not out:
             return False
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        if md == "guarded" and not allowed(thr, "answer"):
+            return False
         return answer_policy(out, thr)
 
     def decide_nav(self, out: dict | None, offer: str | None) -> str | None:
         """`on` mode, a routed turn the router did not navigate: the model's navigation intent, or None."""
-        if mode() != "on" or not out:
+        md = mode()
+        if md not in ("on", "guarded") or not out:
             return None
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        if md == "guarded" and not allowed(thr, "nav"):
+            return None
         return nav_policy(out, thr, offer=bool(offer))
 
     def decide_turn(self, out: dict | None, text: str, rules_guard: bool) -> dict | None:
         """At a turn end, `on` mode: the model's decision if it may override the rules, else None (rules decide).
         -> {"act": "ignore"|"ask_clarify"|"command", "command"?: Command}."""
-        if mode() != "on" or not out:
+        md = mode()
+        if md not in ("on", "guarded") or not out:
             return None
         from ..mission import nlu
         rc = [c for c in map(nlu.valid, nlu.parse(text).get("commands") or []) if c]
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
+        if md == "guarded":
+            if not allowed(thr, situation((self.cur or {}).get("rec"), text)):
+                return None
+            thr = {**thr, **(thr.get("guarded") or {})}
         b = self.sess.belief
         return policy(out, FX.words_of(text), rc, rules_guard, thr,
                       mission=bool(b.get("mission_id")) and b.get("mode") == "mission")

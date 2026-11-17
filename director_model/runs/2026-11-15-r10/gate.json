@@ -1,0 +1,210 @@
+{
+ "round": 10,
+ "candidate": "runs/2026-11-15-r10/xl/cand (r10 xl, 743,069 params)",
+ "data": "ds_r10",
+ "exported_policy": {
+  "conf": 0.7,
+  "cmd": 1.01,
+  "ignore": 0.95,
+  "ask": 1.01,
+  "veto": null,
+  "answer_ignore": null,
+  "ignore_min_words": 3,
+  "nav": null,
+  "classes": [
+   "hot",
+   "echo"
+  ]
+ },
+ "thr_when": 0.9800000000000004,
+ "class_gate_exported": {
+  "hot": {
+   "pass": true,
+   "clean": true,
+   "gain": 12,
+   "n": 5294,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "short": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 2090,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "echo": {
+   "pass": true,
+   "clean": true,
+   "gain": 29,
+   "n": 876,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "video": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 0,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "quiet": {
+   "pass": false,
+   "clean": false,
+   "gain": 7,
+   "n": 3148,
+   "extra": 0,
+   "worse_sets": [
+    "cls_prep"
+   ]
+  },
+  "nav": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "answer": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  }
+ },
+ "class_gate_candidate_torch": {
+  "hot": {
+   "pass": true,
+   "clean": true,
+   "gain": 12,
+   "n": 5294,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "short": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 2090,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "echo": {
+   "pass": true,
+   "clean": true,
+   "gain": 29,
+   "n": 876,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "video": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 0,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "quiet": {
+   "pass": false,
+   "clean": false,
+   "gain": 7,
+   "n": 3148,
+   "extra": 0,
+   "worse_sets": [
+    "cls_prep"
+   ]
+  },
+  "nav": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "answer": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  }
+ },
+ "class_gate_shipped_r4s": {
+  "hot": {
+   "pass": false,
+   "clean": false,
+   "gain": 6,
+   "n": 5294,
+   "extra": 0,
+   "worse_sets": [
+    "test_real"
+   ]
+  },
+  "short": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 2090,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "echo": {
+   "pass": true,
+   "clean": true,
+   "gain": 5,
+   "n": 876,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "video": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 0,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "quiet": {
+   "pass": false,
+   "clean": false,
+   "gain": 14,
+   "n": 3148,
+   "extra": 0,
+   "worse_sets": [
+    "cls_coverage"
+   ]
+  },
+  "nav": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  },
+  "answer": {
+   "pass": false,
+   "clean": true,
+   "gain": 0,
+   "n": 11408,
+   "extra": 0,
+   "worse_sets": []
+  }
+ },
+ "reproduced": "exported int8 weights == torch candidate on every set x class cell (27 sets x 7 classes)",
+ "ships": {
+  "mode": "guarded",
+  "classes": [
+   "hot",
+   "echo"
+  ]
+ }
+}
