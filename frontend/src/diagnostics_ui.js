@@ -9,6 +9,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 export const COPY = {
   line: "For support. No audio, no words, no keys. Never uploaded.",
   save: "Save a diagnostics file…",
+  names: "Include the names the app learned (how your child says them)",
   state: { saving: "Saving…", saved: "Saved.", cancelled: "", error: "Couldn't save it. Try again." },
 };
 export const FALLBACK = ["App, system and hardware details", "App and model versions", "Speed and error counts",
@@ -23,15 +24,15 @@ let last = null;
 const load = () => fetch("/api/diagnostics/contents").then(r => (r.ok ? r.json() : null)).then(c => (last = c)).catch(() => null);
 
 /** Desktop: hand over to the shell. Browser: fetch the zip and let the browser save it. */
-export async function save({ w = window, fetchFn = fetch, onState = () => {} } = {}) {
+export async function save({ w = window, fetchFn = fetch, onState = () => {}, names = false } = {}) {
   if (isDesktop(w.navigator && w.navigator.userAgent)) {
     w.__lunaDiag = d => onState(d && d.state);
-    w.location.href = "/__outpost/diagnostics";
+    w.location.href = "/__outpost/diagnostics" + (names ? "?names=1" : "");
     return "desktop";
   }
   onState("saving");
   try {
-    const r = await fetchFn("/api/diagnostics/bundle", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const r = await fetchFn("/api/diagnostics/bundle", { method: "POST", headers: { "Content-Type": "application/json" }, body: names ? JSON.stringify({ learning_aliases: true }) : "{}" });
     if (!r.ok) throw new Error(String(r.status));
     const url = URL.createObjectURL(await r.blob());
     const a = w.document.createElement("a");
@@ -48,6 +49,7 @@ const section = {
   html: () => `<div class="dg-zone">
     <p class="set-help">${esc(COPY.line)}</p>
     <ul class="dg-list" data-dg-items>${items(last).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+    <label class="set-help"><input type="checkbox" data-dg-names> ${esc(COPY.names)}</label>
     <button type="button" class="btn" data-dg-save>${esc(COPY.save)}</button>
     <p class="set-help" data-dg-state role="status" aria-live="polite"></p></div>`,
   bind(el) {
@@ -58,7 +60,8 @@ const section = {
       st.textContent = COPY.state[s] ?? "";
       btn.disabled = s === "saving";
     };
-    btn.onclick = () => save({ onState });
+    const names = el.querySelector("[data-dg-names]");
+    btn.onclick = () => save({ onState, names: !!(names && names.checked) });
   },
 };
 if (typeof window !== "undefined") {

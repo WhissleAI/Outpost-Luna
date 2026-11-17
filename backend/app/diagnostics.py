@@ -39,6 +39,7 @@ CONTENTS = [   # (name or folder/, what it is: the page shows these lines)
     ("engine.json", "Where the engine runs (without its key)"),
     ("health/", "Health checks from both servers"),
     ("metrics/", "Speed, error and crash counts (last 30 days)"),
+    ("learning.json", "What the app learned on this computer, as numbers (names only if you tick the box)"),
     ("logs/", "Recent technical logs"),
 ]
 README = """Outpost Luna diagnostics file
@@ -256,6 +257,7 @@ async def build(shell: dict | None = None, *, log_dir: Path | None = None, data_
         "metrics/backend.json": _json(diag.METRICS.snapshot()),
         "metrics/model_server.json": _json(mm),
     }
+    files["learning.json"] = learning_file(bool(shell.get("learning_aliases")))
     if shell.get("main_metrics"):
         files["metrics/main.json"] = _json(shell["main_metrics"])
     for p in daily_files(data_dir):
@@ -274,6 +276,24 @@ async def build(shell: dict | None = None, *, log_dir: Path | None = None, data_
             assert not name.lower().endswith(FORBIDDEN_SUFFIXES), name
             z.writestr(name, body)
     return buf.getvalue(), list(files)
+
+
+def learning_file(include_aliases: bool = False) -> bytes:
+    """On-device learning (docs/ON_DEVICE_LEARNING.md): numbers and counters. The learned names (what the kid said)
+    and their own yes / no words only when a grown-up ticked "Include learned names" (`learning_aliases`)."""
+    try:
+        from . import learn
+        out = {"computer": learn.device().echo.summary(), "profiles": []}
+        d = learn.store.learn_dir()
+        ids = sorted(p.stem[len("profile-"):] for p in d.glob("profile-*.json")) if d.is_dir() else []
+        for pid in ids[:8]:
+            out["profiles"].append(learn.for_profile(pid).describe(include_aliases=include_aliases))
+        out["names_included"] = include_aliases
+    except Exception as e:  # noqa: BLE001
+        out = {"error": type(e).__name__}
+    if include_aliases:   # the grown-up asked for the names: written as they are (no scrubber), nothing else added
+        return (json.dumps(out, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
+    return _json(out)
 
 
 # ------------------------------------------------------------------------------------------------------- the routes

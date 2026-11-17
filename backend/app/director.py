@@ -9,6 +9,7 @@ _mission_turn and docs/MISSION_CONTRACT.md.
 """
 from __future__ import annotations
 
+import contextlib
 import inspect
 import re
 
@@ -292,6 +293,43 @@ def arc_almost(almost, gaz: Gazetteer, min_p: float | None = None) -> tuple[Plac
     return best
 
 
+def learned_alias(pairs, text: str | None, gaz: Gazetteer) -> Place | None:
+    """A private alias this cadet confirmed (app/learn/aliases.py), said in `text` -> its place (longest first)."""
+    if not pairs or not text:
+        return None
+    t = f" {norm(text)} "
+    for heard, eid in sorted(pairs, key=lambda x: -len(x[0])):
+        if heard and f" {heard} " in t:
+            p = place_of(eid, gaz)
+            if p is not None:
+                return p
+    return None
+
+
+def confirm_heard(how: str, read: dict, target: str, place: Place, gaz: Gazetteer) -> tuple[str | None, float | None]:
+    """The words the kid said that made us ask "Did you mean <place>?", and the p behind the offer: what a "yes" would
+    make a personal alias of (app/learn). (None, None) when it cannot be told apart from the rest of the turn."""
+    spoken = read.get("ear_spoken") or target
+    if how == "confirm":
+        for n in read.get("ear_names") or []:
+            if isinstance(n, dict) and n.get("state") == "linked" and n.get("entity"):
+                p = ear_place(n["entity"], gaz)
+                if p is not None and p.id == place.id:
+                    return (norm(n.get("heard") or "") or None), n.get("p")
+        return None, None
+    if how == "near":
+        for a in read.get("ear_almost") or []:
+            if isinstance(a, dict) and a.get("candidate") and a.get("heard"):
+                p = ear_place(a["candidate"], gaz)
+                if p is not None and p.id == place.id:
+                    return norm(a["heard"]) or None, a.get("p")
+        from . import soundalike
+        b = soundalike.best_span(spoken, _near_vocab(gaz), 0.0) if spoken else None
+        if b is not None and gaz.match_text(b[1]) is not None and gaz.match_text(b[1]).id == place.id:
+            return norm(b[0]) or None, b[2]
+    return None, None
+
+
 def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, list[tuple[Place, float]]]:
     """-> (place, how, ask_candidates). ask_candidates is set when the link is in the ask band ("ask": "did you mean
     A or B?") or needs a yes ("confirm": a low-p link, "near": a sound-alike; one candidate, "did you mean A?").
@@ -304,6 +342,10 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
     Last, a span of the heard words that SOUNDS like a place (near_name) is offered back ("near"), never acted on."""
     ear = [n for n in read.get("ear_names") or [] if isinstance(n, dict)]
     spoken = read.get("ear_spoken")
+    # on-device learning (app/learn, docs/ON_DEVICE_LEARNING.md): this cadet's bounded thresholds and private aliases;
+    # absent (the default, and every measurement above) = the shipped values exactly
+    tune = read.get("learn_tune") or {}
+    act_p = float(tune.get("link_act_p", LINK_ACT_P))
     low: list[tuple[Place, float]] = []
     for n in ear:
         if n.get("state") == "linked" and n.get("entity"):
@@ -311,9 +353,12 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
             if not p:
                 continue
             lp = n.get("p")
-            if lp is None or lp >= LINK_ACT_P:
+            if lp is None or lp >= act_p:
                 return p, "ear_link", []
             low.append((p, 100.0 * float(lp)))
+    learned = learned_alias(read.get("learned_aliases"), spoken or target, gaz)
+    if learned is not None:     # a name this kid confirmed before ("ticko" -> Tycho): straight to it, no question
+        return learned, "learned_alias", []
     if low:
         # the heard words name ANOTHER place by themselves: that one. The same place (the linker is unsure of exactly
         # these words, "Fly Tycho pelicus" for "fly to Copernicus") or none: offered back.
@@ -351,10 +396,10 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
         mp = place_of(mh[0].id, gaz) if mh else None
         if mp is not None:
             return None, "near", [(mp, 100.0)]
-        al = arc_almost(read.get("ear_almost"), gaz) if ALMOST_POLICY != "ours" else None
+        al = arc_almost(read.get("ear_almost"), gaz, tune.get("almost_min_p")) if ALMOST_POLICY != "ours" else None
         if al is not None and ALMOST_POLICY in ("arc_first", "arc"):
             return None, "near", [(al[0], 100.0 * al[1])]
-        nm = near_name(spoken or target, gaz) if ALMOST_POLICY != "arc" else None
+        nm = near_name(spoken or target, gaz, float(tune.get("near_score", NEAR_SCORE))) if ALMOST_POLICY != "arc" else None
         if nm is not None:
             return None, "near", [(nm[0], 100.0 * nm[1])]
         if al is not None and ALMOST_POLICY == "ours_first":
@@ -450,7 +495,13 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
     if place is None and cands:
         names = [f"{p.name}" for p, _ in cands]
         question = did_you_mean(names)
-        return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands], "labels": names},
+        ask = {"question": question, "options": [p.id for p, _ in cands], "labels": names}
+        if how in ("confirm", "near") and len(cands) == 1:    # what the kid said, for a personal alias on "yes"
+            with contextlib.suppress(Exception):
+                hd, hp = confirm_heard(how, read, target, cands[0][0], gaz)
+                if hd:
+                    ask.update(heard=hd, p=None if hp is None else round(float(hp), 3))
+        return {**out, "action": "ask", "say": question, "ask": ask,
                 "place": cands[0][0].id, "view": _view(cands[0][0]),
                 "source": {"confirm": "ear_confirm", "near": "ear_near"}.get(how, "arc+link")}
     last = gaz.places.get(ctx.get("last_place") or "")

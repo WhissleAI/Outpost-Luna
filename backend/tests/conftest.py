@@ -86,3 +86,13 @@ def no_voice_pack(monkeypatch, request):
 # [#92] app/diag.py: tests never write the developer's logs or daily metrics (a test that wants them sets its own dirs)
 for _k in ("LUNA_LOG_DIR", "LUNA_DATA_DIR"):
     os.environ.pop(_k, None)
+
+
+@pytest.fixture(autouse=True)
+def learn_dir(tmp_path_factory, monkeypatch):
+    """On-device learning (app/learn): every test learns into its own temp folder, never data/, and starts empty."""
+    from app import learn
+    monkeypatch.setenv("LEARN_DIR", str(tmp_path_factory.mktemp("learning")))
+    learn.forget_cached()
+    yield
+    learn.forget_cached()

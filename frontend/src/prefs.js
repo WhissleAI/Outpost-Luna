@@ -52,6 +52,7 @@ const PROFILES = "outpost-profiles";
 export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier"];   // [qa] + camera and mission tier
 
 const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
+function activeProfileId() { try { const s = JSON.parse(get(PROFILES) || "null"); return s && typeof s.active === "string" ? s.active : "p1"; } catch (e) { return "p1"; } }
 const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
 const set = (k, v) => { try { if (!store) return; if (v == null) store.removeItem(k); else store.setItem(k, v); } catch (e) { /* private mode */ } };
 
@@ -110,7 +111,8 @@ export function createPrefs({ globe = null } = {}) {
   /** What the session needs (main.js sends it on the socket). */
   const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false,
     engine: P.engine === "steer" ? "steer" : "os", steer_voice: P.steer_voice || null, rate: Math.max(0.6, Math.min(1.6, rate)),
-    volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true });
+    volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true,
+    profile: activeProfileId() });   // whose on-device learning applies (backend app/learn; never the call sign)
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
   const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };

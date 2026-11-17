@@ -77,7 +77,8 @@ def clear_memory() -> dict:
 def targets(level: str) -> dict[str, list[Path]]:
     """Which folders each level empties (the unit tests read this). The paths come from the settings, never hard-coded."""
     from . import turnlog
-    start = [turnlog.log_dir(), settings.tts_cache()]
+    from .learn import store as learn_store
+    start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir()]   # learn: on-device learning
     return {"start": start, "all": start + [settings.video_cache(), settings.vector_cache()]}
 
 
@@ -87,6 +88,8 @@ def reset(level: str) -> dict:
     from . import turnlog
     cleared: dict[str, int] = {}
     turnlog.STORE.clear()
+    from . import learn
+    learn.forget_cached()
     for d in targets(level)[level]:
         cleared[str(d)] = _rm_tree_contents(d)
     if level == "all":

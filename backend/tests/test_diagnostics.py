@@ -224,7 +224,8 @@ def test_bundle_holds_exactly_the_listed_parts_and_nothing_forbidden(tmp_path, m
     assert sorted(z.namelist()) == sorted(names)
     assert {"README.txt", "system.json", "versions.json", "engine.json", "health/backend.json",
             "health/model_server.json", "metrics/backend.json", "metrics/model_server.json", "metrics/main.json",
-            "metrics/daily-backend.json", "metrics/daily-main.json", "logs/backend.jsonl", "logs/models.jsonl"} == set(names)
+            "metrics/daily-backend.json", "metrics/daily-main.json", "logs/backend.jsonl", "logs/models.jsonl",
+            "learning.json"} == set(names)
     # every part is one of the listed kinds (the page shows the list before saving)
     listed = {n for n, _ in diagnostics.CONTENTS}
     assert all(n in listed or n.split("/")[0] + "/" in listed for n in names)
@@ -253,7 +254,7 @@ def test_contents_list_matches_the_bundle(tmp_path):
     c = diagnostics.contents(logs)
     assert [x["name"] for x in c["items"]] == [n for n, _ in diagnostics.CONTENTS]
     assert "(1 files)" in c["items"][-1]["what"] and c["uploaded"] is False
-    assert [x["name"] for x in diagnostics.contents(tmp_path / "none")["items"]][-1] == "metrics/"
+    assert [x["name"] for x in diagnostics.contents(tmp_path / "none")["items"]][-1] == "learning.json"   # no logs/ line
 
 
 def test_bundle_endpoint_returns_a_zip_and_needs_the_token(tmp_path, monkeypatch):

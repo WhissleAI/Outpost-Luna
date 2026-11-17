@@ -222,6 +222,8 @@ async def ear_stream(ws: WebSocket, domain: str):
                     await ws.send_json(await guarded(loop, pool, ctx.update, msg, es))
                 elif t == "end_turn":
                     await send_all(await guarded(loop, pool, es.end_turn_all))
+                elif t == "tune":     # on-device learning: bounded per-stream values (arc_ear.TUNE_BOUNDS)
+                    await ws.send_json(await guarded(loop, pool, es.tune, msg))
                 elif t == "ref":      # the app's playback (base64 PCM16 16 kHz) at mic stream time `at`
                     x = ref_pcm(msg)
                     if x is not None:

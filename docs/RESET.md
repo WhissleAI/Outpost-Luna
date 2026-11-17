@@ -12,6 +12,7 @@ It erases what the app saved on this computer, at one of two levels.
 | Missions flown, debriefs, the first-mission briefing seen | erased | erased |
 | Prefs: voice, theme, Mute, expressiveness, the recorded voice, captions, text size, gestures and their calibration, coach marks seen, the tour seen | erased | erased |
 | The opt-in voice-guide log (turn log) | erased | erased |
+| On-device learning: learned names, speech habits, thresholds, this computer's echo numbers (`docs/ON_DEVICE_LEARNING.md`) | erased | erased |
 | Spoken-line cache (TTS) | erased | erased |
 | Live server state: missions, sessions, check rides, standing orders | erased | erased |
 | Saved NASA videos, embedding vectors, `hf/` | kept | erased |
@@ -40,7 +41,7 @@ It erases what the app saved on this computer, at one of two levels.
    or a configured dev origin, and it must carry that header. A cross-site page can't send the header without a CORS
    preflight, which we refuse. The backend then:
    - empties its per-user folders, taken from the settings, never hard-coded:
-     - `turnlog`, `tts` (both levels);
+     - `turnlog`, `tts`, `learning` (both levels);
      - `video`, `vectors` (`all` only);
    - clears its in-memory state;
    - calls `reset_downloaded_assets()` for `all`;
@@ -54,7 +55,7 @@ It erases what the app saved on this computer, at one of two levels.
    2. stops the backend and the model server (the existing `stopAll`), so Windows can delete files a child held open;
    3. runs `session.clearStorageData` and `clearCache`;
    4. deletes the level's folders under `app.getPath("userData")`:
-      - `cache/tts` and `cache/turnlog` for Start over;
+      - `cache/tts`, `cache/turnlog` and `cache/learning` for Start over;
       - `cache/` and `hf/` for Reset everything;
       - joined with `path.win32` / `path.posix`, using `rmSync` with retries;
    5. logs the reset in `logs/main.log` (`logs/` and `metrics/`, the local diagnostics, are kept: `docs/DIAGNOSTICS.md`);
