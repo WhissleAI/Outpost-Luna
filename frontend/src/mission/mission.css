@@ -265,3 +265,14 @@ html[data-motion="reduce"] .mx-bigstars span{animation:none}
 @media (max-width:640px){
   .mx-debrief .mx-db-hero{grid-template-columns:1fr}
 }
+/* [playtest 19] the debrief's kid checklist (same facts as the stars) and the grown-ups' numbers behind one press */
+.mx-checks{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--space-2)}
+.mx-checks li{display:flex;align-items:center;gap:var(--space-2);font-size:var(--text-lg);line-height:var(--leading-snug)}
+.mx-checks li::before{content:none}
+.mx-ck{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--color-surface-2);color:var(--color-text-2)}
+.mx-checks li.is-ok .mx-ck{background:color-mix(in srgb,var(--color-success,#2e9d5b) 22%,transparent);color:var(--color-success,#2e9d5b)}
+.mx-grown{border-top:1px solid var(--color-border);padding-top:var(--space-2)}
+.mx-grown>summary{cursor:pointer;min-height:var(--control-sm);display:inline-flex;align-items:center;border-radius:var(--radius-sm);font-size:var(--text-sm);color:var(--color-text-2)}
+.mx-grown>summary:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mx-grown[open]>summary{margin-bottom:var(--space-3)}
+.mx-grown>*+*{margin-top:var(--space-3)}

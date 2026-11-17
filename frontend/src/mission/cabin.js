@@ -109,6 +109,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-tint" aria-hidden="true"></div>
         <div class="cb-alert" id="cbAlert" hidden role="alert"></div>
         <div class="cb-moment" id="cbMoment" hidden aria-hidden="true"></div>
+        <p class="cb-earthnote" id="cbEarthNote" hidden role="status"></p>
         <div class="cb-rover" id="cbRover" hidden></div>
       </div>
     </section>
@@ -199,7 +200,7 @@ export function createCabin(root, o = {}) {
   const q = s => root.querySelector(s);
   const glassEl = q(".cb-glass");
   // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
-  const HUD = [".cb-alert", ".cb-rover", ".cb-moment"];
+  const HUD = [".cb-alert", ".cb-rover", ".cb-moment", ".cb-earthnote"];
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -248,7 +249,18 @@ export function createCabin(root, o = {}) {
   function setView(v, quiet) {
     view = v; root.querySelectorAll(".cb-view").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
     glassEl.dataset.view = v;
+    paintEarthNote();
     if (!quiet) cb.onView(v);
+  }
+  /** [playtest 20] The Earth view with Earth below the horizon: say so, and when it rises (Horizons, the sim's own
+   *  comm windows), instead of a grey slope and a black sky with no words. */
+  function paintEarthNote() {
+    const n = q("#cbEarthNote"); if (!n) return;
+    const e = (st && st.env) || {}, show = view === "earth" && !!st && !e.earth_visible;
+    n.hidden = !show; if (!show) return;
+    const h = e.next_comm_window_h, t = (st.mission_time_h || 0);
+    const day = h != null ? Math.floor((t + h) / 24) + 1 : null;
+    n.innerHTML = `${ic("earth", 18)}<span><b>Earth is below the horizon.</b> ${day == null || day > 10 ? "It won't rise again this mission." : day === Math.floor(t / 24) + 1 ? "It rises later today." : `It rises on Day ${day}.`}</span>`;
   }
   root.querySelectorAll(".cb-view").forEach(b => b.onclick = () => setView(b.dataset.view));
   if (q("#cbCenter")) q("#cbCenter").onclick = () => { if (c3) c3.recenter(); setView("site"); cb.onCenter && cb.onCenter(); };
@@ -467,6 +479,7 @@ export function createCabin(root, o = {}) {
     if (!s) return; prev = st; st = s;
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
+    paintEarthNote();
     sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible, e.in_sun);
     paintClock(s, null);
     paintDus(); paintSwitches(); paintRover();
@@ -554,7 +567,10 @@ export function createCabin(root, o = {}) {
     if (on) q("#cbPttSub").textContent = `${(ms / 2000).toFixed(1)} s each way`;
     else if (st) q("#cbPttSub").textContent = st.env.earth_visible ? "Earth in view" : "No signal";
   }
-  function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); const sk = q("#cbSkip"); if (sk) sk.disabled = !!on; }
+  // [playtest 21] while a skip runs, the clock bar says so (the card's "time skips ahead" is then true on both)
+  let skipping = false;
+  function busy(on) { q("#cbEnd").disabled = !!on; q("#cbEnd").classList.toggle("is-busy", !!on); const sk = q("#cbSkip"); if (sk) sk.disabled = !!on;
+    skipping = !!on; if (clockSt) paintTime(clockSt); }
 
   // ---- the live clock, the task card, progress, story moments, the mission log (docs/GAMEPLAY.md) ----
   const hh = h => String(Math.floor(h % 24)).padStart(2, "0") + ":" + String(Math.floor((h % 1) * 60 / 15) * 15).padStart(2, "0");
@@ -565,7 +581,7 @@ export function createCabin(root, o = {}) {
   }
   let clockSt = null;
   const HELD = { tour: "On hold: the tour", confirm: "On hold: yes or no?", decision: "On hold: your call", choice: "On hold: your choice",
-    hidden: "Paused", start: "", over: "", away: "" };
+    hidden: "Paused", settings: "Paused: Settings", start: "", over: "", away: "" };
   function paintTime(c) {
     clockSt = c; const p = q("#cbPlay"); if (!p || !c) return;
     const on = c.running, waiting = c.started && !c.paused && c.held;
@@ -573,7 +589,7 @@ export function createCabin(root, o = {}) {
     p.setAttribute("aria-label", on || waiting ? "Pause the clock" : c.started ? "Resume the clock" : "Start the clock");
     p.classList.toggle("is-on", !!on);
     root.querySelectorAll(".cb-pm-sp").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.warp === c.warp)));
-    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "Ready" : c.paused ? "Paused" : c.ff ? "Fast-forward" : `Running ${c.warp}×`;
+    const h = q("#cbHeld"); h.textContent = waiting ? (HELD[c.held] ?? "Paused") : !c.started ? "Ready" : c.paused ? "Paused" : c.ff || skipping ? "Fast-forward" : `Running ${c.warp}×`;
     q("#cbSkip").classList.toggle("is-ff", !!c.ff);
     q("#cbTime").dataset.state = on ? "run" : waiting ? "held" : "paused";
     const cab = root.querySelector(".cb"); if (cab) cab.dataset.clock = on ? "run" : waiting ? "held" : "paused";
@@ -584,8 +600,11 @@ export function createCabin(root, o = {}) {
     el.hidden = false;
     const sci = Math.min(1, P.science_sent / (P.science_goal || 120)), ice = Math.min(1, P.ice / (P.ice_goal || 1));
     const bit = (cls, title, name, val, of, p) => `<span class="pg${cls}" title="${title}"><em>${name}</em><b class="num">${val}<small>/${of}</small></b><i style="--p:${(p * 100).toFixed(1)}%"></i></span>`;
+    // [playtest 4] science gathered but not home yet counts too: "+14 on board" under the sent-home number
+    const aboard = Math.round(P.science_stored || 0);
+    const sciTitle = `Science sent home${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
     el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
-      + bit(sci >= 1 ? " is-met" : "", "Science sent home", "Science", Math.round(P.science_sent), P.science_goal, sci)
+      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `</b>${aboard ? `<small class="pg-aboard">+${aboard} on board</small>` : ""}`)
       + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
       + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
   }
@@ -667,7 +686,7 @@ export function createCabin(root, o = {}) {
       const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
       const rg = q("#cbNowMore .cb-now-ring"); if (rg && ringP != null) { rg.style.setProperty("--p", ringP.toFixed(3)); rg.classList.toggle("is-low", c.left_h <= 2); }
       q("#cbNowMore").querySelectorAll(".cb-now-ro").forEach((n, i) => { const r = (c.readouts || [])[i]; if (r) n.lastChild.textContent = " " + r.v; });
-      const own2 = (c.buttons || []).filter(b => !b.clock);
+      const own2 = (c.buttons || []).filter(b => !b.clock || b.clock === "play");
       q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own2[+b.dataset.b], c));   // latest task object
       return;
     }
@@ -677,8 +696,11 @@ export function createCabin(root, o = {}) {
     const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em><span> ${esc(r.v)}</span></span>`).join("");
     // a choice: each option is its own button with its number and the word to say; anything else: one hot button (T)
     const words = sayWords((c.buttons || []).map(b => b.label));
-    const own = (c.buttons || []).filter(b => !b.clock);   // Play / Skip ahead / the speed are the deck's, shown once there
-    const deckHint = (c.buttons || []).some(b => b.clock) ? `<p class="cb-now-say">${esc(DECKHINT[(c.buttons.find(b => b.clock) || {}).clock] || "")}</p>` : "";
+    // Skip ahead / the speed are the deck's, shown once there. [playtest 3] Play is the card's own button too: a clock
+    // that is ready (a resumed mission) or paused makes Play the one job, so it sits where every job sits.
+    const own = (c.buttons || []).filter(b => !b.clock || b.clock === "play");
+    const deckB = (c.buttons || []).find(b => b.clock && b.clock !== "play");
+    const deckHint = deckB ? `<p class="cb-now-say">${esc(DECKHINT[deckB.clock] || "")}</p>` : "";
     // the key on each button: 1 / 2 for a choice, Y / N for a yes / no (Y and N answer it), T for the one job
     const keyOf = (b, i) => (b.intent === "yes" ? "Y" : b.intent === "no" ? "N" : c.choice ? String(i + 1) : "T");
     const btns = own.map((b, i) => `<button type="button" class="cb-now-b${(i || c.choice) && b.intent !== "yes" ? "" : " is-hot"}" data-b="${i}" ${b.intent ? `data-intent="${b.intent}"` : i === 0 && !c.choice ? 'data-intent="yes"' : ""}
@@ -779,8 +801,13 @@ export function createCabin(root, o = {}) {
       el.hidden = !rec; trap(!!rec); if (!rec) return true;
       q("#cbChEye").textContent = `Chapter ${rec.n} of ${rec.of} · Days ${rec.days[0]}–${rec.days[1]}`;
       q("#cbChT").textContent = `${rec.title}: ${rec.count} of 3 stars`;
-      const S = [["safe", "Safe", "Crew dose and air in range"], ["powered", "Powered", "Battery never under 20%"], ["science", "Science", "Science sent home"]];
-      q("#cbChStars").innerHTML = S.map(([k, n, d]) => `<li class="${rec.stars[k] ? "is-on" : ""}"><span class="cb-ch-star">${ic("star", 34)}</span><b>${n}</b><small>${rec.stars[k] ? d : "Missed"}</small></li>`).join("");
+      // [playtest 4] the Science star follows Earth: with no Earth window in the chapter it counts science gathered (it
+      // waits on board for Earthrise), else science sent home; a miss shows how far it got
+      const sc = rec.science || null, stored = !!(sc && sc.mode === "stored");
+      const sciOn = stored ? "Gathered. Saved on board for Earthrise" : "Science sent home";
+      const sciOff = sc ? (stored ? `Gathered ${Math.round(sc.got)} of ${Math.round(sc.goal)}` : `Sent home ${Math.round(sc.sent)} of ${Math.round(sc.goal)}`) : "Missed";
+      const S = [["safe", "Safe", "Crew dose and air in range", "Missed"], ["powered", "Powered", "Battery never under 20%", "Missed"], ["science", "Science", sciOn, sciOff]];
+      q("#cbChStars").innerHTML = S.map(([k, n, d, off]) => `<li class="${rec.stars[k] ? "is-on" : ""}"><span class="cb-ch-star">${ic("star", 34)}</span><b>${n}</b><small>${rec.stars[k] ? d : off}</small></li>`).join("");
       q("#cbChCap").textContent = rec.capcom || "";
       q("#cbChGoT").textContent = rec.last ? "Open your debrief" : "Next chapter";
       requestAnimationFrame(() => q("#cbChGo").focus({ preventScroll: true }));

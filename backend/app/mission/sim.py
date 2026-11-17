@@ -813,7 +813,12 @@ def _skip_say(m: Mission, evs: list) -> str:
         return f"{clock} {job['text']}"
     if beat and len(evs) < SKIP_MAX_H:
         return f"{clock} {beat.get('title', '')}."
-    return f"{clock} A quiet day. All steady."
+    # [playtest 16] never "a quiet day" under a storm warning, a storm or a crew in the shelter
+    if env_at(m, m.t_h)["storm"]:
+        return f"{clock} The storm is still on. Stay in the shelter."
+    if _warning(m) is not None:
+        return f"{clock} The storm is still coming. Stay ready."
+    return f"{clock} A quiet day. All systems fine."
 
 
 def _execute(m: Mission, cmd: dict) -> dict:
@@ -1128,10 +1133,15 @@ def debrief(m: Mission) -> dict:
     timeline = list(m.shifts)
     obj = objectives(m)
     why = {
-        "survived": (f"Your crew made it through all 10 days at {s['name']} with {m.dose:.0f} of {DOSE_LIMIT:.0f} mSv."
+        # [playtest 19] one kid line that agrees with the stars and the checklist below it
+        "survived": (f"Your crew made it through all 10 days at {s['name']}, and both goals are done."
                      if obj["met"] == 2 else
-                     f"Your crew was safe for 10 days, but sent home {obj['science']['got']:.0f} of "
-                     f"{SCIENCE_GOAL:.0f} science and made {m.ice_runs} ice run{'' if m.ice_runs == 1 else 's'}."),
+                     f"The crew was safe all 10 days. Science home: {obj['science']['got']:.0f} of {SCIENCE_GOAL:.0f}."
+                     if obj["ice"]["met"] else
+                     f"The crew was safe all 10 days, but there was no ice run."
+                     if obj["science"]["met"] else
+                     f"The crew was safe all 10 days. Science home: {obj['science']['got']:.0f} of "
+                     f"{SCIENCE_GOAL:.0f}, and no ice run."),
         "life_support_out": "Life support ran out: the crew needed more power for recycling, the greenhouse, or ice.",
         "power_out": "The batteries stayed empty for two shifts, so nothing could run.",
         "dose_limit": "The crew got too much radiation: a solar storm hit while they were not sheltered enough.",
@@ -1167,7 +1177,8 @@ def debrief(m: Mission) -> dict:
                       "science": round(m.science, 1), "science_sent": round(m.science_sent, 1)},
             "timeline": timeline, "lessons": lessons[:4], "data_used": data_used,
             "difficulty": m.difficulty, "level": m.level, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
-            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else "goals"),
+            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else
+                                "goals_science" if obj["ice"]["met"] else "goals_ice" if obj["science"]["met"] else "goals"),
             # cause -> effect in real numbers, with sources (physics.py); Engineer also shows each line's equation
             "numbers": physics.numbers(m), "engineer": m.engineer}
 
@@ -1176,7 +1187,10 @@ TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md 
     "dose_limit": "Shelter when the warning comes, not when the storm hits.",
     "power_out": "Turn on night mode before sunset. Check the Sun strip.",
     "life_support_out": "Send the rover for ice when no storm is due.",
-    "goals": "Leave the shelter when the storm ends, and send science home when Earth is up.",
+    # [playtest 19] the goal that was missed, and how to get it (the shelter time is the game's to skip, not the kid's)
+    "goals": "Do the ice run first, then every science job and science drive.",
+    "goals_science": "Do every science job and science drive: it all goes home when Earth is up.",
+    "goals_ice": "Send the rover for ice when no storm is due.",
     "survived": "Try a harder site: Malapert has the longest night.",
 }
 

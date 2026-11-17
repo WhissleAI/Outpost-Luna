@@ -26,7 +26,9 @@ export const LAYER_LABEL = { sunlight: "Sunlight", slope: "Slope", ice: "Ice", e
 const LAYER_ICON = { sunlight: "sun", slope: "site", ice: "ice", earth: "earth" };
 /** What CAPCOM says when a layer comes on (≤ 14 words). */
 export function createNavigator({ panel, say = () => {}, onPick = () => {}, onStart = () => {}, active = () => true, onMapChange = () => {},
-  missionText = () => "" } = {}) {
+  missionText = () => "", simple = () => false, kidLines = () => [] } = {}) {
+  // [playtest 15] simple(): the Cadet briefing. Each site is three short bars (sun, radio with Earth, ice) with one line
+  // each, in mission days; the scores, presets, ranges and sources wait behind "More" (Commander and Engineer see them).
   let homed = false, data = null, places = [], weights = { ...PRESETS.balanced, ...store.get(W_KEY, {}) }, layer = store.get(L_KEY, "sunlight");
   let focus = null;                    // the place shown in the detail card (a site or a region)
   let selected = null, mapEl = null, canvas = null, imgs = {}, view = { x: 0, y: 0, z: 1 }, raf = 0, pollT = 0, watchT = 0;
@@ -64,6 +66,13 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
         <span title="Distance to ice">${ic("ice", 12)}${fmt(p, "ice_km")}</span>
         <span title="Slope at the landing spot">${ic("site", 12)}${fmt(p, "slope_deg")}</span></span>`;
     const tag = `<em class="nv-tag is-${esc(p.status)}">${esc(TAG[p.status] || "")}</em>`;
+    if (isSite && simple()) {
+      const kl = kidLines(p.id) || [];
+      const label = `${p.name}. ${kl.map(l => l.text).join(". ")}`;
+      return `<button type="button" class="mx-site nv-row nv-kid" role="radio" data-site="${esc(p.id)}" aria-checked="${sel}" tabindex="${sel ? 0 : -1}" aria-label="${esc(label)}">
+        <span class="nv-top"><b>${esc(p.name)}</b><span class="nv-score" aria-hidden="true" hidden>${sc}</span></span>
+        <span class="nv-bars">${kl.map(l => `<span class="nv-bar">${ic(l.icon, 16)}<i style="--p:${Math.round(Math.max(0.06, Math.min(1, l.p)) * 100)}%"></i><em>${esc(l.short)}</em></span>`).join("")}</span></button>`;
+    }
     const label = `${p.name}: score ${sc} of 100. ${TAG[p.status] || ""}. Sunlight ${fmt(p, "sunlight_pct")} of the year, Earth in view ${fmt(p, "earth_pct")}, ice ${fmt(p, "ice_km")}, slope ${fmt(p, "slope_deg")}`;
     if (isSite) {
       return `<button type="button" class="mx-site nv-row" role="radio" data-site="${esc(p.id)}" aria-checked="${sel}" tabindex="${sel ? 0 : -1}" aria-label="${esc(label)}">
@@ -89,9 +98,16 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
     const mission = mt ? `<p class="nv-mission">${ic("mission", 14)}<span>In your mission: ${esc(mt)}</span></p>` : "";
     const where = p.kind === "region" ? `<p class="nv-note">${p.site ? `Our ${esc(short((byId(p.site) || {}).name))} outpost is in this region.` : "Compare only: no mission model here yet."}
       ${p.position && p.position.source === "regionmap" ? " Position read off NASA's map, about ±5 km." : ""}</p>` : "";
+    const dl = `<dl class="nv-dl">${lines.map(([i, k, v, r, s]) => `<div><dt>${ic(i, 14)}${esc(k)}</dt><dd><b>${esc(v)}</b>${r}${srcLink(s)}</dd></div>`).join("")}</dl>`;
+    if (p.playable && simple()) {   // [playtest 15] three kid lines first; the real numbers and sources one press away
+      const kl = kidLines(p.id) || [];
+      return `<section class="nv-detail nv-kid" aria-label="${esc(p.name)}">
+        <ul class="nv-kidl">${kl.map(l => `<li>${ic(l.icon, 18)}<span>${esc(l.text)}</span></li>`).join("")}</ul>
+        <details class="nv-more"><summary>More: the numbers and sources</summary>${dl}${weightsHtml()}</details></section>`;
+    }
     return `<section class="nv-detail" aria-label="${esc(p.name)}: the numbers">
       <h3 class="nv-dh">${esc(p.name)}${p.kind === "region" ? ` <em class="nv-tag is-${esc(p.status)}">${esc(TAG[p.status] || "")}</em>` : ""}</h3>
-      <dl class="nv-dl">${lines.map(([i, k, v, r, s]) => `<div><dt>${ic(i, 14)}${esc(k)}</dt><dd><b>${esc(v)}</b>${r}${srcLink(s)}</dd></div>`).join("")}</dl>
+      ${dl}
       ${mission}${where}</section>`;
   }
   function weightsHtml() {
@@ -114,7 +130,7 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">Briefing · Landing site</span></header>
       <h2 class="mx-title">Choose your landing site</h2>
-      ${weightsHtml()}
+      ${simple() ? "" : weightsHtml()}
       <div class="nv-scroll">
         <div class="mx-sites nv-list" role="radiogroup" aria-label="Outpost site">
           ${sites.map(p => row(p, true).replace("<b>", firstPick && p.id === recommended ? `<b data-rec>` : "<b>") +

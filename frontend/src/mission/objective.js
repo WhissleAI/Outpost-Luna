@@ -76,14 +76,26 @@ export function nowCard(s, clock = null) {
     buttons: [{ label: "Yes", cmd: { type: "confirm" } }, { label: "No", cmd: { type: "cancel" } }] };
   // [polish 3] one instruction: the storm decision lives on this card, never only on the alert strip. A particle storm
   // hitting an unsheltered crew outranks any other job the sim offers (its own storm task already carries it).
-  if (s.task && !(stormHits(s) && !STORM_TASKS.has(s.task.kind))) return taskCard(s, s.task, clock);
+  if (s.task && !(stormHits(s) && !STORM_TASKS.has(s.task.kind))) return clockTruth(taskCard(s, s.task, clock), s, clock);
   const o = legacy(s, clock);
   if (!o) return null;
   const b = o.target === "play" ? [{ label: NOW.playBtn, clock: "play" }] : o.target === "skip" ? [{ label: NOW.skipBtn, clock: "skip" }]
     : ORDER_BTNS[o.key] ? [ORDER_BTNS[o.key](o.target)] : [];
   // [polish a] nothing to do but wait: the card says so and time fast-forwards by itself (mission/ui.js AUTO_MS);
   // "Go now" skips at once, and any order, the pause or a held clock (a decision, a card) stops the auto-skip
-  return { title: NOW.label, progress: null, left_h: null, lesson: null, readouts: [], choice: false, buttons: b, auto: o.target === "skip", ...o };
+  return clockTruth({ title: NOW.label, progress: null, left_h: null, lesson: null, readouts: [], choice: false, buttons: b, auto: o.target === "skip", ...o }, s, clock);
+}
+
+/** [playtest 3] The card never claims time is moving when it isn't. A card that only waits ("Fast-forwarding…", "Go
+ *  now") on a clock that is ready (a resumed mission) or paused by the player says what to press instead: Play. A
+ *  held clock (a decision, a card, Settings) is not the player's to start, so it keeps its own card. */
+export function clockTruth(c, s, clock) {
+  if (!c || !clock || clock.held || !c.auto) return c;
+  const ready = !clock.started, paused = clock.started && clock.paused;
+  if (!ready && !paused) return c;
+  const text = ready && (s.mission_time_h || 0) > 0 ? NOW.resumePlay : ready ? NOW.startClock : NOW.paused;
+  return { ...c, key: `${c.key}:play`, text, target: "play", panel: "pedestal", auto: false, waitText: c.text,
+    buttons: [{ label: ready && (s.mission_time_h || 0) > 0 ? NOW.resumeBtn : NOW.playBtn, clock: "play" }] };
 }
 
 /** Tasks that already carry the storm's decision (the sim's own storm cards). */
@@ -111,6 +123,8 @@ function legacy(s, clock) {
   if (storm && !s.shelter) return { ...o("storm_hit", NOW.stormHit, "shelter", "radiation", "warn"), title: NOW.stormTitle, kind: "storm_hit" };
   if (storm && s.shelter) return o("sheltered", NOW.sheltered, "skip", "pedestal", "info");
   if ((s.mission_time_h || 0) === 0 && !started) return o("start_clock", NOW.startClock, "play", "pedestal");
+  // [playtest 16] a crew already in the shelter is ready: the card says so (never "Crew into the shelter" again)
+  if (wn && s.shelter) return o("warning_safe", NOW.warningSafe, "skip", "pedestal", "info");
   if (wn) return o("warning", NOW.warning(wn.lead != null ? n0(wn.lead) : null), (L.shields || 0) >= 40 ? "shelter" : "shields", "radiation", "caution");
   if (al.includes("low_power") || (r.power_pct != null && r.power_pct < 25)) {
     return s.power_save ? o("low_power", NOW.lowPower, "load:science", "power", "caution") : o("low_power", NOW.lowPower, "night", "power", "caution");
@@ -172,7 +186,16 @@ export function debriefStory(d = {}, st = {}) {
   // three beats: the setting, the storm, then goals + ending folded into the last one only when it stays short
   const beats = [b1, b2, paused || won ? goals : end];
   const tryLine = firstSentence(d.try) || (won && sci && ice ? DEBRIEF.tryNewSite : DEBRIEF.tryDefault);
-  return { beats, end, tryLine, choice: paused ? "resume" : "again", won, paused };
+  // [playtest 19] three kid lines with a tick or a cross, the same facts as the stars: crew, ice, science
+  const so = O.science || {}, io = O.ice || {}, fin = d.final || {};
+  const got = Math.round(so.got ?? fin.science_sent ?? 0), goal = Math.round(so.goal || 120);
+  const aboard = Math.max(0, Math.round((fin.science ?? got) - (fin.science_sent ?? got)));
+  const checks = [
+    { ok: !hurt && outcome !== "life_support_out" && outcome !== "power_out", text: hurt ? DEBRIEF.checkHurt : paused ? DEBRIEF.checkSafeSoFar : won ? DEBRIEF.checkSafe : DEBRIEF.checkLost },
+    { ok: ice, text: DEBRIEF.checkIce(+io.got || 0) },
+    { ok: sci, text: DEBRIEF.checkScience(got, goal, aboard) },
+  ];
+  return { beats, end, tryLine, checks, choice: paused ? "resume" : "again", won, paused };
 }
 
 function firstSentence(t) { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return (m ? m[0] : String(t || "")).trim(); }

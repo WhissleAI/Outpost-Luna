@@ -371,6 +371,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (text === lastDesc && now - lastDescT < 4000) return;
     lastDesc = text; lastDescT = now;
     (alert ? alertLive : live).textContent = text;             // screen readers always get it
+    // [playtest 31] an alert is news, not a label: it leaves the live region once read, so a screen reader that
+    // browses later never meets a storm alert from an earlier screen
+    if (alert) { clearTimeout(describe.clr); describe.clr = setTimeout(() => { if (alertLive.textContent === text) alertLive.textContent = ""; }, 10000); }
     if (S.describe && !quiet && say) say(text, { describe: true });   // spoken only in audio-description mode
     if (O.captions && S.describe) O.captions.log("describe", text);
   }
@@ -410,7 +413,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   }
 
   /** QA-68: an alert's flash and banner belong to the screen that raised it: a mode switch ends them. */
-  function clearAlerts() { clearTimeout(visualAlert.t); clearTimeout(visualAlert.f); flash.classList.remove("is-on"); vbanner.hidden = true; }
+  function clearAlerts() { clearTimeout(visualAlert.t); clearTimeout(visualAlert.f); flash.classList.remove("is-on"); vbanner.hidden = true; alertLive.textContent = ""; }
   new MutationObserver(clearAlerts).observe(document.body, { attributes: true, attributeFilter: ["data-mode"] });
 
   // ---- screen state on request ----
