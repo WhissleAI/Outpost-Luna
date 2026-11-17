@@ -135,7 +135,7 @@ function createTracker({ dir, version = "", pid = process.pid, now = () => Date.
   const sessionFile = path.join(dir, "session.json"), dailyFile = path.join(dir, "daily-main.json");
   const counters = {};
   let cur = null;
-  const count = (k, n = 1, when) => { counters[k] = (counters[k] || 0) + n; addDaily(dailyFile, { [k]: n }, when); };
+  const count = (k, n = 1, when = now()) => { counters[k] = (counters[k] || 0) + n; addDaily(dailyFile, { [k]: n }, when); };
   return {
     sessionFile, dailyFile,
     /** At launch: settle the previous session (unfinished = not crash-free), start this one. */
