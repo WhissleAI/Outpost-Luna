@@ -22,7 +22,7 @@ def names(screen, **kw):
 
 # ------------------------------------------------------------------------------------------------ names lists
 def test_moon_screens_carry_every_place_and_every_piece_of_hardware():
-    want = {e["name"] for e in catalogue()["places"] + catalogue()["hardware"]}
+    want = {e["name"] for e in catalogue()["place"] + catalogue()["hardware"]}
     for screen in ("library", "map"):
         got = {n["name"] for n in names(screen)}
         assert want <= got, (screen, sorted(want - got)[:5])
@@ -149,7 +149,7 @@ def test_yes_to_the_confirm_is_the_name(explorer):
 
 # ------------------------------------------------------------------------------------------------ Director features
 def test_round12_features_are_appended():
-    assert FX.F_R11 == 242 and FX.FEATS[FX.F_R11] == "ear_names_avail" and FX.F == FX.F_R11 + 11
+    assert FX.F_R11 == 242 and FX.FEATS[FX.F_R11] == "ear_names_avail" and FX.F_R12_EAR == FX.F_R11 + 11
     assert FX.FEATS[:FX.F_R11][-3:] == ["scr_video", "scr_prep", "st_video"]
 
 
