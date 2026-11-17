@@ -185,7 +185,7 @@ def test_new_features_never_reach_the_shipped_weights(explorer):
     if runtime.model() is None or "weights_r10" not in runtime.routed_models():
         pytest.skip("no shipped weights")
     m = runtime.routed_models()["weights_r10"]
-    assert runtime.model().F == FX.F
+    assert runtime.model().F == FX.F_R12
     assert m.F == FX.F_R11
     ear = {"names": [{"heard": "tycho", "entity": "Tycho", "state": "linked", "p": 0.5}], "spoken": "fly to tycho",
            "decoder_text": "Fly to Tycho", "agree": 0.4}

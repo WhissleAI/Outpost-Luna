@@ -212,7 +212,7 @@ def test_entity_features_never_reach_the_shipped_weights(explorer):
     if runtime.model() is None or "weights_r10" not in runtime.routed_models():
         pytest.skip("no shipped weights")
     m = runtime.routed_models()["weights_r10"]
-    assert runtime.model().F == FX.F
+    assert runtime.model().F == FX.F_R12
     explorer.memory.note_turn([], "what is tycho", "map")
     explorer.clock_obj.t += 30
     explorer.belief["kid"]["ear"] = {"names": [{"entity": "Tycho", "state": "linked", "p": 0.6}], "spoken": "tycho",

@@ -1417,7 +1417,8 @@ terminator": agreement 0.17, now a feature.
   - files 890 KB + 880 KB.
   - `/api/director/stats` reports `routed` and `latency.turn_p50_ms`.
 - The desktop bundle checks (`build_python.py`, `win_bundle_check.py`) now require `weights_r10.*` too.
-- Backend suite: 1,255 passed, 3 skipped.
+- Backend suite (merged with main, which now carries the ABI-2 `e13_*` block, F 275): 1,336 passed, 3 skipped.
+  r12 reads the 261 prefix, so the `e13_*` slots never reach it (`test_arc_abi2.py` now checks both shipped files).
 
 ### Next
 

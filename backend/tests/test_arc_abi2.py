@@ -63,22 +63,24 @@ def test_abi2_fills_only_the_round13_slots(explorer):
 
 
 def test_abi2_never_reaches_the_shipped_weights(explorer):
-    """r10 (F = 242): the same turn end with and without libarc ABI 2's read-out gives bit-identical outputs on every
-    head, so the guarded decisions cannot change (as #121's test for the round-12 block)."""
+    """Both shipped files (round 12: r12 xl, F = 261, and the routed r10 xl, F = 242): the same turn end with and
+    without libarc ABI 2's read-out gives bit-identical outputs on every head, so the guarded decisions cannot change
+    (as #121's test for the round-12 block)."""
     from app.director_model import runtime
-    m = runtime.model()
-    if m is None:
+    if runtime.model() is None:
         pytest.skip("no shipped weights")
-    assert m.F == FX.F_R11
+    ms = [(runtime.model(), FX.F_R12)] + [(m, FX.F_R11) for m in runtime.routed_models().values()]
     rec1 = _turn_end(explorer, {**BASE, **ABI2, "conf": None, "alts": []})
     rec0 = {k: v for k, v in rec1.items() if k != "e13"}
     x1, x0 = FX.step_feats(rec1, None), FX.step_feats(rec0, None)
-    assert not np.array_equal(x1, x0) and np.array_equal(x1[:m.F], x0[:m.F])
     toks = FX.step_tokens(rec1)
-    o1, _ = m.step(None, x1, *toks)
-    o0, _ = m.step(None, x0, *toks)
-    for k in o1:
-        assert np.array_equal(np.asarray(o1[k]), np.asarray(o0[k])), k
+    for m, f in ms:
+        assert m.F == f
+        assert not np.array_equal(x1, x0) and np.array_equal(x1[:m.F], x0[:m.F])
+        o1, _ = m.step(None, x1, *toks)
+        o0, _ = m.step(None, x0, *toks)
+        for k in o1:
+            assert np.array_equal(np.asarray(o1[k]), np.asarray(o0[k])), k
 
 
 def test_the_ear_message_keeps_conf_and_alts_empty(explorer):
