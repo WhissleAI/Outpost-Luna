@@ -248,7 +248,9 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
   /**
    * installed | missing | corrupt | outdated (cheap: state + every file's size, no hashing). An installed asset may be
    * another version than the manifest's (an update swapped in, updates.js): its own file list (state) is checked.
-   * outdated: older than this build's min_version for it, replaced in the foreground like a missing one.
+   * outdated: older than this build's min_version for it, replaced like a missing one: a required asset on the first-run
+   * screen, an optional one (videos) in the background once the UI is up (main.js fetchOptional). The old copy stays in
+   * place and in use until the new one is verified and swapped in (commit); a failed download leaves it as it was.
    */
   function check(a) {
     const st = readState()[a.id];
