@@ -113,3 +113,44 @@ def test_options_default_to_abi1_behaviour():
     o, _ = nft2.options()
     assert (o.almost, o.nbest, o.live, o.no_guard, o.echo_decode, o.playback_drop) == (0, 0, 0, 0, 0, 0)
     assert json.dumps(nft2.EVENT_TYPES)
+
+
+def _close_order(es, x):
+    """Feed until the final words: -> (messages, the stream's finals seen by then, deferred flag), then the rest."""
+    b = (np.clip(x, -1, 1) * 32767).astype("<i2").tobytes()
+    msgs, at_final = [], None
+    for i in range(0, len(b), 2560):
+        out = es.feed_all(b[i:i + 2560])
+        msgs += out
+        if at_final is None and any(m["t"] == "words" and m.get("final") for m in out):
+            at_final = (len(es.st_finals), es.deferred)
+    return msgs + es.flush_all(), at_final
+
+
+def test_one_decode_at_the_close_without_playback(model):
+    """No playback in the turn: the final words go out before the stream closes its utterance (its final carries only
+    a playback leak, None here), so the close costs one decode, as before the live stream. The final read is the same
+    as with the stream fed at once (ear_stream_hold_s 0, the 0.3.10 behaviour): words, links, device-directed."""
+    x = np.concatenate([pcm(), np.zeros(32000, np.float32)])
+    es = arc_ear.EarStream(names=NAMES, s=arc_ear.EarSettings(ear_live=True))
+    msgs, (n_st, deferred) = _close_order(es, x)
+    assert deferred and es.st is not None
+    assert not es.deferred and len(es.st_finals) > n_st        # settled on the next call: the stream's final came after
+    old = arc_ear.EarStream(names=NAMES, s=arc_ear.EarSettings(ear_live=True, ear_stream_hold_s=0.0, ear_stream_nbest=4,
+                                                               ear_stream_events=True))
+    msgs0, (_, deferred0) = _close_order(old, x)
+    es.close(); old.close()
+    assert not deferred0
+    pick = lambda ms: [(m["t"], m.get("text"), json.dumps(m.get("names")), m.get("device_directed"), m.get("playback_leak"))  # noqa: E731
+                       for m in ms if m["t"] in ("arc", "turn") or (m["t"] == "words" and m.get("final"))]
+    assert pick(msgs) == pick(msgs0)
+
+
+def test_playback_in_the_turn_keeps_the_stream_final_first(model):
+    """Our playback overlaps the turn: the stream's utterance final (its playback_leak) still comes before the words."""
+    x = np.concatenate([pcm(), np.zeros(32000, np.float32)])
+    es = arc_ear.EarStream(names=NAMES, s=arc_ear.EarSettings(ear_live=True))
+    es.feed_ref(np.zeros(16000 * 9, np.float32) + 1e-4, 0.0)
+    msgs, (_, deferred) = _close_order(es, x)
+    es.close()
+    assert not deferred and not es.held

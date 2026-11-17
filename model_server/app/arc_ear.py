@@ -73,8 +73,20 @@ class EarSettings(BaseSettings):
     # greedy decode's), and the live stream (partials decoded one 560 ms chunk at a time instead of re-decoding the
     # segment; early entity / end-of-turn / barge-in events; the playback reference for echo).
     ear_almost: bool = True
-    ear_nbest: int = 4
+    # n-best (words.nbest / walts) moves no shipped decision: on #125's 1,016 turns the words, links, sound-alikes,
+    # quantities and device-directed read are identical with it off, and it cost ~0.1 s of every close (0.3.10 gate,
+    # docs/ARC_ABI2.md section 9). Off; the round-13 re-decode sets EAR_NBEST=4 itself, and a model that reads e13_nbest
+    # must turn it back on when it ships.
+    ear_nbest: int = 0
     ear_live: bool = True               # False: the re-decode partial loop (ear_partial_every_s) and one final decode
+    # The live stream's own utterance finals are never the turn's final read (that is the clip decode below); only their
+    # playback_leak is used. So the stream decodes them lean (no n-best beam, no sound events), and when no playback
+    # overlaps the turn the stream is kept from closing its utterance before ours (its segmenter cuts at a 0.4 s pause,
+    # our VAD at EAR_END_SILENCE_S): the end of the pause past EAR_STREAM_HOLD_S is held back and fed after the final
+    # words have gone out, so the turn's close is ONE decode, as before the live stream (docs/ARC_ABI2.md section 9).
+    ear_stream_nbest: int = 0
+    ear_stream_events: bool = False
+    ear_stream_hold_s: float = 0.24     # 0: feed the stream every chunk at once (the 0.3.10 behaviour)
     ear_stream_max_s: float = 60.0      # live: a stream keeps its audio; past this, reopened when idle and quiet
     # playback_leak >= this marks an utterance as our own audio (0: libarc's 0.7). 0.85 since the real-laptop calibration
     # (docs/ARC_ABI2.md section 8: echo vs kid-over-playback AUC 0.72 on real echo, not the simulation's 0.95). The
@@ -293,7 +305,9 @@ class EarStream:
     (feed_ref) BARGE_IN ({"t":"barge_in"}) and each utterance's playback_leak / playback. Turns are still opened and
     closed by this file's VAD (the backend's turn contract): at a turn's close the stream's open utterance is closed
     (end_turn, for its echo leak) and the segment gets the classic clip decode (words, names, sound events, the
-    device-directed head: the read the router and the Director were built on). The stream keeps its audio, so it is
+    device-directed head: the read the router and the Director were built on). Without our playback in the turn the
+    stream's final has no leak to give, so the end of the pause is held back (ear_stream_hold_s) and the clip decode
+    goes first: one decode at the close (docs/ARC_ABI2.md section 9). The stream keeps its audio, so it is
     reopened when idle past EAR_STREAM_MAX_S (and the reference still in flight is fed to the new one)."""
 
     def __init__(self, domain: str = "assistant", names=None, s: EarSettings = ear_settings, model=None,
@@ -332,6 +346,8 @@ class EarStream:
         self.ref_shift_s = s.ear_ref_shift_s
         self.quiet_run = 0.0            # the open segment: the current pause, and the longest one between its words
         self.max_pause = 0.0
+        self.held: list[np.ndarray] = []   # live: the pause's tail, not yet fed to the stream (ear_stream_hold_s)
+        self.deferred = False              # live: the stream's end_turn is owed (after a final that went out first)
         self.delay = None
         if self.live and s.ear_echo_delay:
             from .echo_delay import DelayMeter
@@ -399,8 +415,8 @@ class EarStream:
         from .nft2 import Nft2Stream
         t = time.perf_counter()
         self.st = Nft2Stream(self.m, names=self.names, domain=self.domain, almost=self.cfg.ear_almost,
-                             nbest=self.cfg.ear_nbest, live=True, playback_threshold=self.cfg.ear_playback_threshold,
-                             echo_decode=self.cfg.ear_echo_decode)
+                             nbest=self.cfg.ear_stream_nbest, no_events=not self.cfg.ear_stream_events, live=True,
+                             playback_threshold=self.cfg.ear_playback_threshold, echo_decode=self.cfg.ear_echo_decode)
         pre = 0.0 if prefeed is None else len(prefeed) / SR
         self.st_t0 = self.audio_s - pre
         self.st_finals = []
@@ -438,6 +454,8 @@ class EarStream:
         keep = self.cfg.ear_ref_keep_s
         while self.refs and self.refs[0][0] + len(self.refs[0][1]) / SR < self.audio_s - keep:
             self.refs.popleft()
+        if self.deferred and self.st is not None:
+            self._settle()                 # the stream's clock must reach the held audio before a new reference
         if self.st is not None:
             rel = t - self.st_t0
             if rel < 0:
@@ -512,12 +530,38 @@ class EarStream:
         diag.METRICS.observe("ear_live_feed_ms", dt * 1000)
         return self._events(evs)
 
+    def _turn_playback(self) -> bool:
+        """Our playback reaches into the open turn (or is playing): the stream's utterance final must come first, for
+        the turn's playback_leak. Otherwise that final carries nothing the turn uses."""
+        return self.playing() or (bool(self.refs) and self.ref_until > self.seg_t0 - 0.3)
+
+    def _feed_held(self) -> list[dict]:
+        msgs: list[dict] = []
+        held, self.held = self.held, []
+        for x in held:
+            msgs += self._stream_feed(x)
+        return msgs
+
+    def _settle(self) -> list[dict]:
+        """The stream work a final that went out first still owes (ear_stream_hold_s): the held pause, then the
+        stream's end of turn. Runs before anything else the stream is given."""
+        if not self.deferred:
+            return []
+        self.deferred = False
+        msgs = self._feed_held()
+        if self.st is not None:
+            t = time.perf_counter()
+            _, evs = self.st.end_turn()
+            self.compute_s += time.perf_counter() - t
+            msgs += self._events(evs)
+        return [m for m in msgs if m["t"] == "barge_in"]
+
     def feed_all(self, pcm16: bytes) -> list[dict]:
         x = np.frombuffer(pcm16, dtype="<i2").astype(np.float32) / 32768.0
         dur = len(x) / SR
+        msgs: list[dict] = self._settle() if self.live else []
         self.audio_s += dur
         quiet = self.vad.quiet(x)
-        msgs: list[dict] = []
         if self.delay is not None:
             msgs += self.delay.feed_mic(x, self.audio_s)
         if self.seg is None:
@@ -541,14 +585,18 @@ class EarStream:
                 self.quiet_run = self.max_pause = 0.0
             return msgs
         self.seg.append(x)
-        if self.live:
-            msgs += self._stream_feed(x)
         if not quiet:
             self.max_pause = max(self.max_pause, self.quiet_run)
             self.quiet_run = 0.0
             self.last_voice_s = self.audio_s
         else:
             self.quiet_run += dur
+        if self.live:
+            hold = self.cfg.ear_stream_hold_s
+            if hold > 0 and quiet and self.quiet_run > hold + 1e-6 and not self._turn_playback():
+                self.held.append(x)        # the pause's tail: fed after this turn's final (or when the words go on)
+            else:
+                msgs += self._feed_held() + self._stream_feed(x)
         seg_s = self.audio_s - self.seg_t0
         if self.audio_s - self.last_voice_s >= self.end_silence_s:
             return msgs + self._finish("silence")
@@ -571,13 +619,22 @@ class EarStream:
         return msgs
 
     def _final_live(self, pcm: np.ndarray) -> tuple[dict, list[dict]]:
+        if self.held and not self._turn_playback():
+            # no playback in this turn: the stream's final has no leak to give, so the clip decode goes first and the
+            # held pause + the stream's end of turn follow once the final words are out (_settle)
+            out = self._decode(pcm, partial=False)
+            self.deferred = True
+            for u in out["utts"]:
+                u["playback_leak"], u["playback"] = None, None
+            return out, []
+        msgs = self._feed_held()
         """Live: close the stream's open utterance (its echo leak), then ONE clip decode of the segment for the final read
         (words, names, events, the directed head): exactly the classic final. Measured: a flush of the stream gives the
         same words but a different directed head (it reads the stream's own utterances and context; 29 of 672 turns
         crossed DD_MIN, commands lost 6-11 points), so the read the router and the Director see stays the clip's."""
         t = time.perf_counter()
         _, evs = self.st.end_turn()
-        msgs = self._events(evs)
+        msgs += self._events(evs)
         dt = time.perf_counter() - t
         self.compute_s += dt
         a0 = self.seg_t0 - 0.2
@@ -662,19 +719,21 @@ class EarStream:
             diag.METRICS.inc("ear_segments_no_speech")
         self.turn_open, self.text = False, ""
         self.barge_at, self.eot, self.first_partial_at, self.partials = None, None, None, []
+        if self.held:
+            self.deferred = True       # a held pause not fed yet (a segment closed without the stream's final)
         return msgs
 
     def end_turn_all(self) -> list[dict]:
         """Push-to-talk released (or the client's end of speech): close the open segment now."""
         if self.seg is None and not self.turn_open:
-            return []
+            return self._settle() if self.live else []
         if self.seg is None:
             self.seg = []
         return self._finish("end_turn")
 
     def flush_all(self) -> list[dict]:
         msgs = self._finish("stop") if self.seg is not None else []
-        return msgs
+        return msgs + (self._settle() if self.live else [])
 
     def close(self) -> None:
         self.seg = None
