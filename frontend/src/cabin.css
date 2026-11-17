@@ -68,11 +68,6 @@
 .cb-al-i svg{width:100%;height:100%}
 .cb-alert b{font-weight:var(--weight-bold);letter-spacing:var(--tracking-caps);text-transform:uppercase;font-size:var(--text-sm);white-space:nowrap}
 .cb-al-t{flex:1;min-width:0;color:var(--cb-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cb-al-acts{display:flex;gap:var(--space-2);flex:none}
-.cb-al-b{min-height:var(--control-sm);padding:0 var(--space-4);border-radius:var(--radius-md);border:1px solid var(--cb-line);background:var(--color-panel);color:var(--color-on-space);
-  font-size:var(--text-sm);font-weight:var(--weight-semibold)}
-.cb-al-b.is-hot{background:var(--color-lamp-warning);border-color:var(--color-lamp-warning);color:var(--color-space)}
-.cb-al-b:hover{filter:brightness(1.1)}
 
 /* surface views (mission/terrain.js) */
 .tv{position:absolute;inset:0;opacity:0;transition:opacity .9s ease;pointer-events:none}
@@ -375,8 +370,6 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 .cb-hole:has(>.cb-alert:not([hidden]))>.cb-sky,.cb-hole:has(>.cb-alert:not([hidden]))>.cb-rover{top:calc(var(--inset) * .5 + var(--control-md) + var(--space-2) + 56px)}
 /* in 3D the panel's chip names it; a single plate's own heading would repeat it */
 .c3-panel[data-panel="habitat"] .cb-plate>h3,.c3-panel[data-panel="rover"] .cb-plate>h3,.c3-panel[data-panel="radiation"] .cb-plate>h3,.c3-panel[data-panel="comm"] .cb-plate>h3{display:none}
-/* Cadet: when the offer is on its panel, CAPCOM's card does not repeat the buttons */
-body:has(.cb-offer) .card .card-actions{display:none}
 .cb-grp[hidden]{display:none}
 /* panel read-outs */
 .cb-info{display:flex;flex-direction:column;gap:6px;font-family:var(--font-mono);font-size:var(--text-sm)}
@@ -438,12 +431,7 @@ html[data-motion="reduce"] .is-cue{animation:none}
 /* the highlight only comes from head aim (gestures): say how to open it */
 .c3[data-panel="seat"] .c3-panel.is-hl::after{content:"Lean in to open";position:absolute;right:var(--space-4);top:-34px;padding:4px var(--space-3);border-radius:var(--radius-full);
   background:var(--color-glass);color:var(--color-on-space);font-size:var(--text-md);font-weight:var(--weight-semibold)}
-/* Cadet: CAPCOM's offer as two big buttons on the panel it is about */
-.cb-offer{position:absolute;left:var(--space-3);right:var(--space-3);bottom:var(--space-3);z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);
-  padding:var(--space-2);border-radius:var(--radius-md);background:var(--color-panel);box-shadow:0 0 0 2px var(--color-accent-strong),0 8px 30px color-mix(in srgb,var(--color-space) 70%,transparent)}
 .cb-grp,.cb-dus{position:relative}
-.cb-offer-b{min-height:var(--control-lg);border-radius:var(--radius-md);border:1px solid var(--cb-line);background:var(--cb-key);color:var(--color-on-space);font-size:var(--text-lg);font-weight:var(--weight-semibold)}
-.cb-offer-b.is-hot{background:var(--color-accent-strong);border-color:transparent;color:var(--color-on-accent-strong)}
 
 /* icons (assets/icons.js): drawn in currentColor */
 .m-cabin .ic{flex:none;stroke-width:2}
@@ -701,6 +689,41 @@ html[data-motion="reduce"] .cb-moment,html[data-motion="reduce"] .cb-now-ack{ani
 .m-cabin .cb.is-focus .c3-panel[data-panel="displays"]{opacity:1;filter:none}
 html[data-motion="reduce"] .m-cabin .cb-now .is-point,html[data-motion="reduce"] .m-cabin .cb-state i{animation:none}
 @media (prefers-reduced-motion:reduce){.m-cabin .cb-now .is-point,.m-cabin .cb-state i{animation:none}}
+
+/* [polish 3] one instruction at a time (docs/MISSION_POLISH_SPEC.md, problem 3 and "Event takeover"). A question CAPCOM
+   asks, a storm or a decision with a deadline: the cabin dims around the Now card, which grows a little and shows the
+   time left as a ring, so its buttons are the one thing to press. The voice bar and the captions stay bright (CAPCOM
+   says the question there); the deck dims but still works. The alert strip says what is happening, never what to do. */
+.m-cabin .cb::before{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;
+  background:color-mix(in srgb,var(--color-space) 58%,transparent);transition:opacity var(--dur-slow) var(--ease-out)}
+.m-cabin .cb.is-takeover::before{opacity:1}
+.m-cabin .cb.is-takeover>:is(.cb-deck,.cb-viewbar){opacity:.5;transition:opacity var(--dur-slow) var(--ease-out)}
+.m-cabin .cb.is-takeover>:is(.cb-deck,.cb-viewbar):is(:hover,:focus-within){opacity:1}
+.m-cabin .cb.is-takeover>.cb-commrow{z-index:5}
+.m-cabin .cb>.cb-now.is-takeover{--now-w:clamp(280px,26vw,380px);padding:var(--space-3) var(--space-4) var(--space-4);gap:var(--space-2);
+  animation:cbTake .45s var(--ease-out) both}
+.m-cabin .cb>.cb-now.is-takeover.is-caution{box-shadow:0 0 0 1px var(--color-lamp-caution),0 0 32px color-mix(in srgb,var(--color-lamp-caution) 22%,transparent),0 14px 36px color-mix(in srgb,var(--color-space) 60%,transparent)}
+.m-cabin .cb>.cb-now.is-takeover.is-warn{box-shadow:0 0 0 2px var(--color-lamp-warning),0 0 36px color-mix(in srgb,var(--color-lamp-warning) 28%,transparent),0 14px 36px color-mix(in srgb,var(--color-space) 60%,transparent)}
+.m-cabin .cb-now.is-takeover .cb-now-step{font-size:var(--text-lg);line-height:1.25}
+.m-cabin .cb-now.is-takeover .cb-now-head .cb-now-title{color:var(--color-on-space)}
+.m-cabin .cb-now.is-takeover .cb-now-b{min-height:var(--control-lg)}
+.m-cabin .cb-now.is-takeover .cb-now-fold{display:none}
+/* a yes / no: Yes is the hot button, No stays quiet; a storm card's single order is red-hot */
+.m-cabin .cb-now.is-takeover.is-warn:not(.is-choice) .cb-now-b.is-hot{background:var(--color-lamp-warning);border-color:var(--color-lamp-warning);color:var(--color-space)}
+.m-cabin .cb-now.is-choice .cb-now-b[data-intent="yes"]{background:var(--color-accent-strong);border-color:var(--color-accent-strong);color:#fff}
+@keyframes cbTake{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+/* the countdown ring: game hours left for the decision */
+.m-cabin .cb-now-ring{--p:1;flex:0 0 auto;width:26px;height:26px;display:inline-grid}
+.m-cabin .cb-now-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.m-cabin .cb-now-ring circle{fill:none;stroke:var(--cb-line);stroke-width:3.5}
+.m-cabin .cb-now-ring circle.is-arc{stroke:var(--color-phosphor);stroke-linecap:round;stroke-dasharray:calc(var(--p) * 100) 100;transition:stroke-dasharray var(--dur-slow) linear}
+.m-cabin .cb-now.is-caution .cb-now-ring circle.is-arc{stroke:var(--color-lamp-caution)}
+.m-cabin .cb-now-ring.is-low circle.is-arc,.m-cabin .cb-now.is-warn .cb-now-ring circle.is-arc{stroke:var(--color-lamp-warning)}
+.m-cabin .cb-now.is-takeover .cb-now-meta{font-size:var(--text-sm)}
+/* the step and its one button would say the same words: the button says them (the line stays for screen readers) */
+.m-cabin .cb-now.is-same:not(.is-folded) .cb-now-step{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+html[data-motion="reduce"] .m-cabin .cb>.cb-now.is-takeover{animation:none}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-now.is-takeover{animation:none}.m-cabin .cb::before{transition:none}}
 
 /* the mission log opens under the deck, at the right */
 .m-cabin .cb>.cb-mlog{position:absolute;z-index:7;right:var(--rail);left:auto;top:calc(var(--rail) * 2 + var(--deck-h));width:min(360px,40%);max-height:60%}

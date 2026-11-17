@@ -125,3 +125,11 @@ Director coverage tests green.
 3. Replace the visible 1×/2×/4×/Skip ahead with auto-time + hold-to-fast-forward (speeds stay in the pause menu)?
 4. First mission: start at the recommended site and keep the navigator one press away (yes/no)?
 5. Keep the 12-step cabin tour only in Help once teach-by-doing ships?
+
+## Progress
+
+- PR 1 (#69): the Commander stall, no repeated chores, varied jobs with a why.
+- PR 2 (#97): autosave and resume, Restart shift, 5 chapters with stars, the pause menu, hold to fast-forward.
+- PR 3: one instruction at a time. The Now card carries every decision (the storm, CAPCOM's yes / no, the Director's
+  offers); the alert strip has no buttons; decisions dim the cabin around the card with a time-left ring; no repeated
+  lines on screen. Details: docs/GAMEPLAY.md §10.

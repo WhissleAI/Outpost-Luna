@@ -374,18 +374,19 @@ def main():
         press("Backspace", 1300)
         ok(act()["cabin"] == "seat", "panel: Backspace also goes back to the seat")
 
-        # storm (forced by the dev hook: a state, not an input) → Shelter from the alert strip by keyboard
-        js("() => window.__cabinTest && window.__cabinTest.storm(true)")
+        # storm (forced by the dev hook: a state, not an input) → the Now card carries the decision ([polish 3]: the alert
+        # strip has no buttons); Up from the seat reaches its "Crew into the shelter", Enter sends it
+        js("() => window.__cabinTest.storm(true)")
         pg.wait_for_timeout(1200)
-        got = press_until(["ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=3) or \
-            press_until(["ArrowLeft", "ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=4) or \
-            press_until(["ArrowRight", "ArrowUp"], "() => document.activeElement.matches('.cb-al-b[data-act=shelter]')", n=4)
+        ok(js("() => !document.querySelector('.cb-alert button')"), "storm: the alert strip has no buttons (one instruction)")
+        HOT = "() => document.activeElement.matches('.cb-now.is-takeover .cb-now-b') && /shelter/i.test(document.activeElement.textContent)"
+        got = press_until(["ArrowUp"], HOT, n=3) or press_until(["ArrowLeft", "ArrowUp"], HOT, n=4) or press_until(["ArrowRight", "ArrowUp"], HOT, n=4)
         if not got:
-            print("  at:", act(), js("() => [...document.querySelectorAll('.cb-al-b')].map(b => b.dataset.act).join(',')"))
-        ok(got, "storm: arrows reach Shelter on the alert strip")
+            print("  at:", act(), js("() => [...document.querySelectorAll('.cb-now-b')].map(b => b.textContent.trim()).join(',')"))
+        ok(got, "storm: arrows reach Crew into the shelter on the Now card")
         shot("08-cabin-storm")
         press("Enter", 3000)
-        ok(until("() => document.getElementById('cbl-shelter').classList.contains('is-on') || !document.querySelector('.cb-al-b[data-act=shelter]')", 12000), "storm: Enter sends the crew to the shelter")
+        ok(until("() => document.getElementById('cbl-shelter').classList.contains('is-on') || !document.querySelector('.cb-now.is-takeover')", 12000), "storm: Enter sends the crew to the shelter")
         js("() => window.__cabinTest.storm(false)")
         # a confirm: Y / N answer it (N is no, not next, while it waits)
         js("() => window.__cabinTest.confirm('Send the rover out during a solar storm? Say yes or no.')")

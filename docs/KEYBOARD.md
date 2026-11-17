@@ -110,7 +110,7 @@ pin, so the card shows that lesson, and the second <kbd>Enter</kbd> starts it.
 ### The 3D cabin
 
 - **Entering the cabin.** The seat takes focus: the panel the **Now** objective points at (cabin.js `point()`, `.is-point`), else the lit panel, else Displays. Inside a panel opened to answer the objective, its glowing control is focused first.
-- **Seat view.** Focus sits on a proxy (`#seatFocus`) that stands over the lit panel and draws its ring. The arrows move across the six console faces (Habitat, Rover, Displays and power, Radiation, Comm, and the pedestal with Caution and warning and End shift). The focused face is lit (`missionUI.intent("highlight_panel")`, the head-look highlight), and the chip says "Enter · open". The arrows also reach the window views, the alert strip's Shelter and Shields buttons, the comm row and the top bar. **Enter** or **O** opens the lit panel.
+- **Seat view.** Focus sits on a proxy (`#seatFocus`) that stands over the lit panel and draws its ring. The arrows move across the six console faces (Habitat, Rover, Displays and power, Radiation, Comm, and the pedestal with Caution and warning and End shift). The focused face is lit (`missionUI.intent("highlight_panel")`, the head-look highlight), and the chip says "Enter · open". The arrows also reach the window views, the comm row and the top bar. While the Now card asks for a decision (a storm, CAPCOM's yes / no), **Up** from the seat goes to its first button. **Enter** or **O** opens the lit panel.
 - **Inside a panel.** The arrows move between the panel's controls. The shield knob turns with <kbd>←</kbd> <kbd>→</kbd>. **N / P** go to the next / previous panel. **Esc** or **Backspace** goes back to the seat, and focus returns to the panel just left. A panel opened by voice, a gesture or a click also pulls focus inside it while keys are in use.
 
 ## Gamepad (`gamepad.js`)
@@ -214,8 +214,8 @@ still work.
 | **Cabin, panel** | Use a control | the order ("shields to 40") | point + dwell | arrows + Enter; knob ← → | click |
 | | Next / previous panel | "open the rover panel" | swipe | N / P | — |
 | | Back to the seat | "back to my seat" | sit back | Esc, Backspace | Seat |
-| **Storm / alert strip** | Shelter, Shields 40 | "everyone to the shelter", "shields to 40" | point | arrows to the strip, Enter | the buttons |
-| **Confirm (risky order)** | Yes / No | "yes" / "no" | thumbs up / down | Y / N (N means no while it waits) | Yes / No |
+| **Storm (Now card)** | Crew into the shelter, Shields to 40 | "everyone to the shelter", "shields to 40" | point | Up from the seat, Enter (or T) | the Now card's button |
+| **Confirm (risky order)** | Yes / No on the Now card | "yes" / "no" | thumbs up / down | Y / N (N means no while it waits) | Yes / No |
 | **Houston** | Call Houston | "call Houston" | — (raise hand removed: an open hand is always stop) | Comm panel → Call Houston, Enter | Call Houston |
 | **End shift** | End shift | "end shift" | — | pedestal → End shift, Enter | End shift |
 | | Finish mission | "debrief" | — | pedestal → Finish mission, Enter | Finish mission |

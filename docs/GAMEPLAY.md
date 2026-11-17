@@ -230,3 +230,26 @@ and text kept, mic untouched. The state persists in prefs. Keys: Shift+M (M is t
   voice ("right").
 - Every Playwright tool imports `frontend/tools/silent.py`, so runs are muted (audio-output flags plus a muting init
   script, with the app's Mute on) and headless.
+
+## 10. One instruction at a time (Mission polish 3)
+
+docs/MISSION_POLISH_SPEC.md, problem 3: the Now card, the CAPCOM card, the alert strip, a console's offer buttons and
+the spoken line could each name a different action at once. Now the **Now card is the only place that says what to
+do**:
+
+- **The alert strip has no buttons.** It says what is happening (the storm, its real date, NASA DONKI, when it ends).
+  A particle storm on an unsheltered crew always puts "Crew into the shelter" on the Now card, even over another job
+  the sim offers (`objective.js` `nowCard`; the sim's own storm task, which first brings the rover crew home, keeps
+  its steps). A forecast without a sim task offers "Shields to 40", then the shelter.
+- **CAPCOM's questions are the Now card.** A yes / no (a risky order, one the Director holds) and the Director's offers
+  ("Shelter now, or wait a shift?") replace the card's job until answered (`ui.js` `cardNow`). The window shows no
+  second card and the consoles no offer buttons. A yes / no waits for its answer; an offer holds the clock for 30 s,
+  then the sim's job comes back. Y / N, "yes" / "no", thumbs up / down and the buttons all answer it.
+- **Event takeover.** A question, a storm, or a caution choice with a deadline dims the cabin around the Now card
+  (the voice bar and the captions stay bright, the deck dims but works). The card grows a little, its buttons get
+  taller, and a ring shows the game hours left. Up from the seat lands on its first button.
+- **No repeats.** A step whose one button says the same words shows just the button (the line stays for screen
+  readers). A CAPCOM line that is the card's own words goes to the radio log, not the caption line. A story moment
+  shows its title only (its objective line was a second instruction).
+- `frontend/tools/play_mission.py` counts, at every action, buttons that tell the player what to do anywhere but the
+  Now card (`competing`), and how many moments were takeovers.

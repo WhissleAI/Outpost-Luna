@@ -402,8 +402,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const grp = a && a.closest && a.closest(".cb-now-btns");
     if (grp) { const bs = [...grp.querySelectorAll("button")].filter(visible), i = bs.indexOf(a), n = bs[i + (dir === "right" || dir === "down" ? 1 : -1)];
       if (i >= 0 && n) { focusEl(n); onMove(); return true; } }
-    // an alert on the window (a storm): Up from the seat goes to its main action first ("Shelter the crew")
-    if (a === seatEl && dir === "up") { const hot = cab.querySelector(".cb-alert:not([hidden]) .cb-al-b.is-hot");
+    // [polish 3] a decision on the Now card (a storm, CAPCOM's yes / no): Up from the seat goes to its first button
+    // ("Crew into the shelter"); the alert strip above the window only says what is happening
+    if (a === seatEl && dir === "up") { const hot = cab.querySelector(".cb-now.is-takeover:not([hidden]) .cb-now-b");
       if (hot && visible(hot)) { seatEl.hidden = true; focusEl(hot); onMove(); return true; } }
     const fromEl = a === seatEl ? panelEl(seatPanel) : a;
     if (!fromEl) return focusSeat();
