@@ -1250,3 +1250,191 @@ Act ok over all 11,897 turns:
   - add a per-class weights slot in the runtime (two models).
   Both are runtime decisions for the owner.
 - Watch r10's echo class on real voices: the held-out voices already show one silenced real question.
+
+## Round 12 — 2026-11-16/17 (the ear's real read-out in training, no invented cc, per-class routing) — SHIPPED: r12 xl in quiet, r10 kept for hot + echo
+
+**Every number is on synthetic speech** (round 11's Mac voice bank and Steer TTS through a simulated room and mic,
+decoded by the real ear). Nothing here has been checked on a child. Pipeline: `director_model/run_r12.sh`. Gate:
+`director_model/gate_r12.py`. Logs and gate JSON: `runs/2026-11-16-r12/` (`xl/gate_r12.log`,
+`xl/gate_exported_ship.log`).
+
+### The skew fix
+
+Round 11's training data did not look like what the app sees:
+- `gen_sessions` posted `command_complete` = U(0.5, 0.95) on every voice turn (`cc` on ~85 % of turn ends). The live
+  ear (Arc Transcriber Space) never sends cc.
+- The final words carried none of the ear's read-out (names with link state / p, spoken words, decoder text,
+  agreement), so the 19 round-12 features (`ear_*` 11, `ent_*` 8) were 0 in every training set.
+- The turn start carried `""`; the live ear's start carries the first decoded words.
+- The arc read (dd) came after the second partial; live, it comes once, at the end, just before the final words.
+
+What changed:
+- **`backend/app/director_model/replay.py`** is the one place that maps the ear's live messages to the cache
+  (`compact`) and the cache back to the Session messages (`messages`), in arc_ear's order. The decode worker
+  (`real_ear.py`) writes `compact(...)`, and `gen_sessions.py` posts `messages(...)`.
+- **cc is never invented.** `command_complete` is None in every replayed and synthetic arc message, as live.
+  `cc_avail` is 0 on every step of every round-12 set (checked).
+- **The dead round-7 slots stay 0** (`ear_conf`, `ear_alts`, `ear_alt_hot`, `ear_rescored`, `ear_tier_*`): 0 on every
+  step of every set (checked). Features are append-only; the layout is 261.
+- **Re-decode.** The round-11 caches had names and spoken words, but no decoder text or agreement (those came with
+  PR #119), and the round-9/10 Steer TTS decodes had no names at all. So every clip was decoded again, once:
+  - 8,755 clips (`real_ear.py relist` keeps round 11's jobs and seeds, gives each one its screen's current names
+    list, the 80-entry Moon lists of #119 / #121, and no hot list, since the live ear gets none);
+  - plus 1,328 stress clips;
+  - nice 10, 2 processes, libarc ABI 1;
+  - 60 crew-clip echo-bank renders failed. They feed only the ear analysis, not the Director.
+- **Parity test** (`backend/tests/test_director_r12.py`). Three library-screen turns are run two ways:
+  - **live:** the messages arc_ear sends, posted verbatim, with the Shadow's own feature call (what the weights would
+    read);
+  - **training:** `compact` → `messages`, then the generator's sink and label path.
+
+  The test asserts:
+  - the feature vectors and word tokens are identical at every step;
+  - the turn ends really carry the read-out: a sure link, a 0.93 link whose decoder text names another place
+    (`ear_dec_name`, agreement 0.6), `ent_seen_before`;
+  - `cc_avail` = 0 and the dead slots = 0 in both paths.
+
+What the new features look like on test_voice_heldout turn ends:
+
+| feature | non-zero share |
+|---|---|
+| `ear_names_avail`, `ear_dec_avail` | 95 % |
+| `ear_agree` (agreement < 1) | 87 % |
+| `ear_linked` | 7 % |
+| `ear_not_in_list` | 10 % |
+| `ear_dec_name` | 4 % |
+| `ent_any` | 30 % |
+| `ent_control` | 14 % |
+
+Not replayed: the turn-specific `recent` lines and kid history that `session.ear_names()` adds to the live names
+list. The decode gets the screen's list.
+
+### Data and models
+
+- **ds_r12:** the scripts and seeds of ds_r11b, every set regenerated on the new decodes:
+  - train 2,400 sessions + the 1,200-session coverage sweep (3,600 sessions, 301,911 steps);
+  - val 200;
+  - the 27 gate sets plus test_voice_heldout (11,888 policy turns);
+  - two report-only stress sets:
+    - `stress_harsh`: test_voice_heldout's sessions heard through round 11's "harsh" chain, 497 turns;
+    - `stress_odd`: the novelty / sung voice decodes as single turns, 419 turns.
+- **r12 xl:** 745,501 params, r10's recipe (2,200 steps, `--fp-exec 0.5`, 4 threads). Best step 2,200 (the last), val 1.586.
+  It is still data-limited: train loss 0.08.
+- **r12 s:** 33,579 params, val 1.634. It passes only quiet (+2) and its nav fill adds wrong actions. Not used.
+- **xl, 3,600 steps:** best val 1.761, worse than the first xl. Not gated (chosen on val, not on the test sets).
+- **The val-fitted policy of r12 xl:**
+  - cmd off, ask off (1.01);
+  - ignore 0.95, `ignore_min_words` 3;
+  - veto off;
+  - nav off;
+  - answer_ignore 0.7.
+
+### Class gate (all 11,888 turns: 27 sets + test_voice_heldout; act ok, with wrong actions in brackets)
+
+- **rules** is `DIRECTOR_MODEL=shadow`.
+- **r10** is what shipped: r10 xl, guarded, hot + echo.
+- **r11** and **r12** columns are that model alone in the class, with the rest as in r10. r11 is round 11's xl at its
+  242-wide prefix, policy refit on the new val with r10's veto off and min words 3.
+- **routed** is what ships now.
+- All runs are on the regenerated sets. r10 therefore sees `cc_avail` = 0, as it does live.
+
+| class | turns | rules | r10 | r11 | r12 xl | r12 passes | routed (ships) |
+|---|---|---|---|---|---|---|---|
+| hot | 5,470 | 4,824 (263) | **4,841** (263) | 4,836 (267) | 4,829 (263) | no: below r10 on cls_prep_roomtalk −8, cls_echo −2, cls_coverage −2, cls_voice_echo_os −1 | r10: 4,841 (263) |
+| echo | 965 | 738 (12) | **765** (12) | 759 (12) | 759 (12) | no: below r10 on cls_echo −3, cls_voice_echo_os −3, test_clean −1 | r10: 765 (12) |
+| quiet | 3,372 | 2,161 (118) | 2,161 (118) | 2,182 (**126**) | **2,169 (118)** | **yes**: +8, 0 extra wrong, no set worse | **r12: 2,169 (118)** |
+| short | 2,081 | 1,683 (22) | 1,683 | 1,688 | 1,683 | no gain | rules |
+| video | 0 | – | – | – | – | no turn reaches it | rules |
+| nav | 11,888 | 9,406 | 9,450 | 9,450 | 9,450 | no gain (nav fitted off) | rules |
+| answer | 11,888 | 9,406 | 9,450 | 9,450 | 9,452 (+2) | gate yes; **NOT shipped**, see below | rules |
+| **config, all sets** | 11,888 | 9,406 (415) | 9,450 (415) | – | – | – | **9,458 (415)** |
+
+- **r11 on this data:** +21 in quiet, but 8 more wrong actions (its val fit turns command fill on, cmd 0.98). It fails
+  as before.
+- **r12 quiet's +8** comes from test_asr +4, test_clean +2 and cls_roomtalk +2. All of it is silenced room talk. It
+  adds 0 wrong actions and is at or above both the rules and r10 on every set, including cls_prep (61 = 61), the set
+  where r10's quiet failed.
+- **answer: passed the offline gate (+2), failed the app.** With `answer` enabled, the backend suite's lesson tests
+  (`test_step_tries`, `test_handsfree_loop`: 10 tests) failed. The model silenced real step answers: "one", "a",
+  "A dark flat sea of old lava", "mare means a sea of cooled lava". The gate's answer-routed turns (~100 in val, few
+  in the sets) did not cover this, so answer stays with the rules. Lesson: the backend suite is part of the gate.
+
+**Routed config vs what shipped (r10 guarded), every set:**
+- act ok is ≥ r10 on all 28 sets;
+- there are 0 extra wrong actions vs r10 and vs the rules;
+- the total is +8 (9,458 vs 9,450);
+- the sets that move: test_clean 1,571 → 1,573, test_asr 1,395 → 1,399, cls_roomtalk 132 → 134.
+
+**Reproduced:** the exported int8 weights (`--cand-weights`, numpy runtime, routed through `runtime.pick`) give the
+same gate as the torch candidate in every routed cell and every quiet / answer cell (0 cells differ).
+- Export: max |dp| int8 vs float 0.022; numpy streaming vs torch parallel ≤ 2e-6.
+
+**Stress sets (report only, never gated)**, act ok (wrong):
+
+| set | turns | rules | r10 | r10 + r11 (quiet / nav / answer) | routed |
+|---|---|---|---|---|---|
+| stress_harsh | 497 | 247 (48) | 247 (48) | 248 (48) | 247 (48) |
+| stress_odd | 419 | 221 (21) | 220 (21) | 220 (21) | 220 (21) |
+
+On ~60 % WER audio no config moves much. r10's hot / echo silencing costs one turn on the novelty / sung voices.
+
+### The r10 echo case ("remove does it have any craters", gold answer)
+
+The held-out-voice decode is unchanged ("remove does it have any craters"). The ear's decoder heard "remove the
+terminator": agreement 0.17, now a feature.
+
+- **r10:** in round 11 its echo class silenced this turn. On the round-12 sets it answers it: p(ignore) 0.878 < 0.95.
+  r10's inputs changed only by the skew fix (cc now absent, as live; the live message order), so the round-11
+  silencing came from training-only inputs, partly the fabricated cc.
+- **r12 xl:** p(ignore) is 0.817 on the echo turn and 0.18-0.20 on the same words in quiet turns (r10: 0.68 and
+  0.99), so the new features push it further from silencing.
+- **r10 is still 2 below the rules on test_voice_heldout** (254 vs 256). It silences "okay the fog side of the house
+  of the moon that never faces earth" (hot) and "tell me about two" (echo). r12 does not beat r10 in hot or echo
+  overall, so r10 keeps them. Routing does not change this set (254).
+
+### What shipped
+
+- `backend/app/director_model/weights.{json,npz}`: **r12 xl** (F 261), `policy.classes` = `["quiet"]`,
+  `policy.routes` = `{"hot": "weights_r10", "echo": "weights_r10"}`.
+- `weights_r10.{json,npz}`: the round-10 file, unchanged weights, with `trained_zero` added.
+- **`runtime.pick`** is one definition for the runtime and `evaluate.guarded_outcome`:
+  - a class listed in `classes` is decided by the primary file;
+  - a class in `routes` is decided by that file, with its own output (it steps on every event with its own state)
+    and its own fitted policy;
+  - any other class goes to the rules (guarded semantics);
+  - a routed file that fails to load hands its classes back to the rules.
+- **Rollback:** `DIRECTOR_MODEL=shadow` (one env var, no rebuild). Routed models are stepped only in `guarded`.
+- **`trained_zero`** (round 12) is in both weights files: the runtime forces those slots to 0 before the model reads
+  them.
+  - r12 lists the six dead ear slots plus `cc_avail` / `cc`;
+  - r10 lists the six dead ear slots (it was trained with cc on).
+
+  When libarc ABI 2 starts filling `ear_conf` / `ear_alts`, neither shipped model's inputs move. Test:
+  `test_slots_trained_at_zero_stay_zero_for_every_shipped_file`.
+- **Runtime cost**, both files stepped on every event, numpy, CPU, measured on test_clean (load ~10):
+  - r12 0.68 ms + r10 0.54 ms = **1.22 ms per event p50** (p95 1.63);
+  - RSS +11 MB for both models (dequantized f32);
+  - files 890 KB + 880 KB.
+  - `/api/director/stats` reports `routed` and `latency.turn_p50_ms`.
+- The desktop bundle checks (`build_python.py`, `win_bundle_check.py`) now require `weights_r10.*` too.
+- Backend suite: 1,255 passed, 3 skipped.
+
+### Next
+
+- **Round 13: re-decode with the ABI-2 ear and retrain.** libarc ABI 2 (PR B, `wt-moon-arc2`) adds:
+  - per-word conf and n-best alts;
+  - the `almost` link state;
+  - typed quantities and clean_text;
+  - end-of-turn probability;
+  - an echo reference / playback leak.
+
+  Those fill the slots that are dead today. Both shipped files list them as `trained_zero`, so serve-time gating keeps
+  them at 0 until a model is trained on them. Re-run `real_ear.py relist` + decode with the ABI-2 lib (`compact` /
+  `messages` must carry the new fields; extend the parity test first), then retrain and re-gate. Note: these round-12
+  decodes used an ABI-1 libarc; the shared `wt-moon-v03` build is ABI 2 now, and the last 162 stress clips were
+  decoded with an ABI-1 libarc rebuilt from this checkout.
+- hot / echo stay with r10 until a single model beats it there. r12's hot losses are concentrated in
+  cls_prep_roomtalk (−8): room talk that names a control.
+- answer needs lesson-answer coverage in the generated sets (short answers such as "one", "a", option letters) before
+  it can be gated again. The backend suite caught what the gate missed.
+- Real kid recordings remain the bottleneck. Every number above is synthetic.

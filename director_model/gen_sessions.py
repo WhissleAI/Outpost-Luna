@@ -43,7 +43,7 @@ import numpy as np  # noqa: E402
 from app import director, models_client, session as S  # noqa: E402
 from app.academy import content as AC, grade as AG  # noqa: E402
 from app.config import settings  # noqa: E402
-from app.director_model import features as FX, runtime as RT  # noqa: E402
+from app.director_model import features as FX, replay as RP, runtime as RT  # noqa: E402
 from app.gazetteer import Gazetteer  # noqa: E402
 from app.knowledge.answer import detect_attr  # noqa: E402
 from app.mission import capcom, registry, sim  # noqa: E402
@@ -301,7 +301,7 @@ def real_stream(d: dict):
     cc = arcs[-1]["cc"] if arcs else None
     fin = [e for e in d["events"] if e["t"] == "words" and e["final"]]
     extra = {k: fin[-1][k] for k in ("alts", "conf", "hot", "rescored") if fin and fin[-1].get(k) is not None}
-    return hw, ps, "eager" in states, dd, cc, extra
+    return hw, ps, "eager" in states, dd, cc, extra, d
 
 
 async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12, real=None,
@@ -451,32 +451,47 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             await sess.handle({"t": "typed", "text": " ".join(hw), "source": "typed"})
             ann["end"] = i0 if sess.dm.n > i0 else None
         else:
-            ann["words"].append((sess.dm.n, []))
-            await sess.handle({"t": "turn", "state": "start", "text": ""})
-            ps = rd[1] if rd is not None else partials(hw, rng)
-            for j, p in enumerate(ps):
-                clock.t += 0.32 * rng.uniform(0.7, 1.5)
-                if pend_line is not None and clock.t >= pend_line[0]:
-                    await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
-                                       "text": pend_line[2]})
-                    pend_line = None
-                ann["words"].append((sess.dm.n, p))
-                wm = {"t": "words", "text": " ".join(p)}
-                if j == len(ps) - 1 and rd is not None and rd[5]:
-                    wm.update(final=True, **rd[5])      # the ear's n-best / confidence / hot match (round 7)
-                await sess.handle(wm)
-                if j == min(1, len(ps) - 1) and arc_on:
-                    ann["words"].append((sess.dm.n, p))
-                    await sess.handle({"t": "arc", "device_directed": round(dd, 3),
-                                       "command_complete": round(rng.uniform(0.5, 0.95), 3)})
-            if (rd[2] if rd is not None else rng.random() < 0.4):
+            # round 12: a real decode replays its clip's live message stream (replay.messages: the turn start with its
+            # first words, the partials, the ear's arc read, the final words WITH the ear's names / spoken /
+            # decoder_text / agree, in the order arc_ear sends them); no command_complete is ever invented (the live
+            # ear has none). Synthetic turns keep the generated partials, in the same live order.
+            msgs = RP.messages(rd[6], dd=round(dd, 3)) if rd is not None else None
+            if msgs is not None and not arc_on:
+                msgs = [m for m in msgs if m["t"] != "arc"]
+            if msgs is None:
+                ps = rd[1] if rd is not None else partials(hw, rng)
+                msgs = [{"t": "turn", "state": "start", "text": " ".join(ps[0])}]
+                for j, p in enumerate(ps):
+                    if j == len(ps) - 1 and arc_on:
+                        msgs.append({"t": "arc", "device_directed": round(dd, 3), "command_complete": None})
+                    wm = {"t": "words", "text": " ".join(p)}
+                    if j == len(ps) - 1 and rd is not None and rd[5]:
+                        wm.update(final=True, **rd[5])      # the ear's n-best / confidence / hot match (round 7)
+                    msgs.append(wm)
+                eager = rd[2] if rd is not None else rng.random() < 0.4
+                end_text = " ".join(hw)
+            else:
+                eager = False                      # Arc Transcriber Space sends no eager turn state
+                end_text = msgs[-1]["text"]
+                msgs = msgs[:-1]
+            for m in msgs:
+                if m["t"] == "words":
+                    clock.t += 0.32 * rng.uniform(0.7, 1.5)
+                    if pend_line is not None and clock.t >= pend_line[0]:
+                        await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
+                                           "text": pend_line[2]})
+                        pend_line = None
+                ann["words"].append((sess.dm.n, [] if m["t"] == "turn" else
+                                     FX.words_of(m["text"]) if m["t"] == "words" else ann["words"][-1][1]))
+                await sess.handle(m)
+            if eager:
                 clock.t += 0.25
                 ann["words"].append((sess.dm.n, hw))
                 await sess.handle({"t": "turn", "state": "eager", "text": " ".join(hw)})
             clock.t += rng.uniform(0.3, 0.6)
             i0 = sess.dm.n
             n_routes = len(sess.routes)
-            await sess.handle({"t": "turn", "state": "end", "text": " ".join(hw)})
+            await sess.handle({"t": "turn", "state": "end", "text": end_text})
             ann["end"] = i0 if sess.dm.n > i0 else None
             g_act = (it.get("gold") or {}).get("act") or ("answer" if it.get("lesson") else None)
             if repeat_p and tid < 1000 and len(sess.routes) > n_routes and sess.routes[-1]["outcome"] == "ignore" and \
@@ -720,6 +735,9 @@ async def main():
     ap.add_argument("--ho-sessions", type=int, default=55, help="round 11: test sessions in the held-out voices")
     ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
                     "in train / val (outcome signals as weak labels)")
+    ap.add_argument("--stress-cache", default="", help="round 12: a stress decode cache (report-only set)")
+    ap.add_argument("--stress-name", default="stress")
+    ap.add_argument("--stress-mode", default="ho", choices=["ho", "items"])
     a = ap.parse_args()
     R8["p"], R8["cov"] = a.r8_p, a.cov_p
     if a.merge:
@@ -735,9 +753,10 @@ async def main():
     only = set(x for x in a.only.split(",") if x)
     t0 = time.time()
 
-    async def gen(name, split, n, seed0, noise_mode, group=None, real_p=None):
+    async def gen(name, split, n, seed0, noise_mode, group=None, real_p=None, re_=None):
         if only and name not in only:
             return
+        RE_ = re_ if re_ is not None else RE
         ss = []
         si, sn = (int(x) for x in a.shard.split("/")) if a.shard else (0, 1)
         if a.shard:
@@ -750,12 +769,12 @@ async def main():
             nz = None
             if noise_mode == "half" and rng.random() < 0.5 or noise_mode == "all":
                 nz = (em, rng.random() < 0.5, rng.uniform(0.5, 1.5) if noise_mode == "half" else 1.0)
-            real = (RE, group, a.real_p if real_p is None else real_p) if (RE is not None and group) else None
+            real = (RE_, group, a.real_p if real_p is None else real_p) if (RE_ is not None and group) else None
             if noise_mode == "real":
                 txt = [it["text"] for it in sc["items"] if it.get("text") and it.get("op") not in ("echo",)]
-                if any(RE.get(group, t, random.Random(0)) is None for t in txt):
+                if any(RE_.get(group, t, random.Random(0)) is None for t in txt):
                     continue        # the real set keeps only sessions whose every turn has a real decode
-                nz, real = (em, False, 0.0), (RE, group, 1.0)
+                nz, real = (em, False, 0.0), (RE_, group, 1.0)
             rp = a.repeat_p if split in ("train", "val") else 0.0
             ss.append(await make(sc, seed0 + k, nz, rng.random() < 0.8, rng.random() < 0.85, name, split, real, rp))
             if k % 100 == 99:
@@ -843,6 +862,38 @@ async def main():
         its = [x for c in gap_cells() if c.get("pending")
                for x in (P8.cell_item(c, rng, "test") for _ in range(a.cov_heldout)) if x]
         await cls_set("cls_coverage_pending", its)
+    if a.stress_cache:
+        # round 12, report only: the ear stress decodes (real_ear.py relist of round 11's harsh / novelty-sung caches,
+        # re-decoded with the round-12 extras). "ho": test_voice_heldout's sessions, every turn heard in the stress
+        # chain; "items": each stress decode one turn, 8 per session, in its own screen frame
+        RS = RealEar(Path(a.stress_cache))
+        if a.stress_mode == "ho":
+            await gen(a.stress_name, "test", a.ho_sessions, 900_000, "real", "voice_ho", re_=RS)
+        elif not only or a.stress_name in only:
+            jobs = {}
+            for line in open(Path(a.stress_cache) / "jobs.jsonl"):
+                j = json.loads(line)
+                jobs[j["key"]] = j
+            anyre = RealEar.__new__(RealEar)
+            anyre.by = {"any": {}}
+            its = []
+            for grp in sorted(RS.by):
+                for t, ds in sorted(RS.by[grp].items()):
+                    for d in ds:
+                        anyre.by["any"].setdefault(t, []).append(d)
+                        j = jobs.get(d["key"]) or {}
+                        if any(x["text"] == t for x in its) or not d.get("hyp"):
+                            continue
+                        it = {"text": t, "frame": j.get("frame") or {"screen": "cabin"}, "cat": d.get("cat") or "stress"}
+                        if d.get("gold_act"):
+                            it["gold"] = {"act": d["gold_act"]}
+                        its.append(it)
+            ss = []
+            for k in range(0, len(its), 8):
+                sc = set_script([dict(x) for x in its[k:k + 8]], "mission", 980_000 + k)
+                ss.append(await make(sc, 980_000 + k, (em, False, 0.0), True, True, a.stress_name, "test",
+                                     (anyre, "any", 1.0)))
+            save(out, a.stress_name, ss)
     logged = logged_items("test")
     if logged:
         for x in logged:

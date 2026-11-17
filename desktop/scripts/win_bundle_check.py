@@ -184,7 +184,8 @@ def manifest(res: Path) -> dict:
 
 # What each area must contain (and so what a Windows build must not lose). Paths under resources/app.
 MUST = {
-    "Director weights": ["backend/app/director_model/weights.npz", "backend/app/director_model/weights.json"],
+    "Director weights": ["backend/app/director_model/weights.npz", "backend/app/director_model/weights.json",
+                         "backend/app/director_model/weights_r10.npz", "backend/app/director_model/weights_r10.json"],
     "vision assets": ["frontend/vision/vision_wasm_module_internal.js", "frontend/vision/vision_wasm_module_internal.wasm",
                       "frontend/vision/hand_landmarker.task", "frontend/vision/blaze_face_short_range.tflite"],
     "story / places / clips data": ["backend/data/places.json", "backend/data/index/clips.json", "backend/data/clip_loudness.json"],

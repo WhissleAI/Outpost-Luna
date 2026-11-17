@@ -38,6 +38,9 @@ def main():
     ap.add_argument("--split", default="test_clean")
     ap.add_argument("--n", type=int, default=6)
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--trained-zero", default="ear_conf,ear_alts,ear_alt_hot,ear_rescored,ear_tier_step,ear_tier_screen,"
+                    "cc_avail,cc", help="round 12: slots these weights were trained with at 0 (runtime forces them to 0)")
+    ap.add_argument("--no-fixture", action="store_true", help="do not rewrite the backend parity fixture")
     ap.add_argument("--eval", default="", help="evaluate.py json: thr_when + headline numbers go into weights.json")
     a = ap.parse_args()
     cfg = json.load(open(f"{a.run}/train.json"))
@@ -63,6 +66,7 @@ def main():
             "heads": [[k, n] for k, n in TR.HEADS], "word_heads": list(FX.WORD_HEADS),
             "thr": {"when": ev.get("thr_when", 0.9)},
             "policy": {k: v for k, v in (ev.get("policy") or {}).items() if k != "fit"} or None, "run": Path(a.run).name, "data": Path(a.data).name,
+            "trained_zero": [x for x in a.trained_zero.split(",") if x],
             "trained": {k: cfg[k] for k in ("n_train_sessions", "n_train_steps", "best_step") if k in cfg}}
     (out / "weights.json").write_text(json.dumps(meta, indent=1))
     ss = TR.load_split(Path(a.data) / f"{a.split}.npz")[:a.n]
@@ -101,7 +105,8 @@ def main():
           "off": np.cumsum([0] + [len(s["feats"]) for s in ss[:3]])}
     for k in keys + list(FX.WORD_HEADS):
         fx[f"p_{k}"] = np.concatenate([p[k] for p in tp[:3]])
-    np.savez_compressed(FIXTURE, **fx)
+    if not a.no_fixture:
+        np.savez_compressed(FIXTURE, **fx)
     rep = {"file_bytes": os.path.getsize(out / "weights.npz"), "params": cfg["params"],
            "int8_vs_float_max_dp": round(d_q, 5),
            "numpy_stream_vs_torch_parallel_max_dp": {k: round(v, 6) for k, v in d_s.items()},

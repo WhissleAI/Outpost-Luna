@@ -8,8 +8,8 @@
   "emb": 16
  },
  "size_name": "xl",
- "params": 743069,
- "F": 242,
+ "params": 745501,
+ "F": 261,
  "heads": [
   [
    "act",
@@ -86,7 +86,7 @@
   "w_task"
  ],
  "thr": {
-  "when": 0.9800000000000004
+  "when": 0.9400000000000004
  },
  "policy": {
   "cmd": 1.01,
@@ -97,19 +97,33 @@
   "nav": null,
   "ignore_min_words": 3,
   "classes": [
-   "hot",
-   "echo"
-  ]
+   "quiet"
+  ],
+  "routes": {
+   "hot": "weights_r10",
+   "echo": "weights_r10"
+  }
  },
  "run": "cand",
- "data": "ds_r10",
+ "data": "ds_r12",
+ "trained_zero": [
+  "ear_conf",
+  "ear_alts",
+  "ear_alt_hot",
+  "ear_rescored",
+  "ear_tier_step",
+  "ear_tier_screen",
+  "cc_avail",
+  "cc"
+ ],
  "trained": {
   "n_train_sessions": 3600,
-  "n_train_steps": 321387,
-  "best_step": 1600
+  "n_train_steps": 301911,
+  "best_step": 2200
  },
  "history": [
   "2026-11-15 round 9: policy-only update on the new ear (veto off, ignore_min_words 3); weights r4 s",
-  "2026-11-16 round 10: r10 xl (743k params, ds_r10, full gate on the new ear), DIRECTOR_MODEL=guarded with classes hot + echo (class gate: hot +12, echo +29 act ok, 0 extra wrong, no set worse); everything else stays with the rules"
+  "2026-11-16 round 10: r10 xl (743k params, ds_r10, full gate on the new ear), DIRECTOR_MODEL=guarded with classes hot + echo (class gate: hot +12, echo +29 act ok, 0 extra wrong, no set worse); everything else stays with the rules",
+  "2026-11-17 round 12: r12 xl (745k params, ds_r12: the ear's real read-out replayed, no invented cc, F 261) acts in quiet; hot + echo routed to weights_r10 (r10 xl); everything else the rules. Class gate: quiet +8 act ok, 0 extra wrong vs rules and r10, no set worse. answer (+2 on the gate) NOT shipped: it silenced real lesson answers in the app's own tests (test_step_tries)"
  ]
 }

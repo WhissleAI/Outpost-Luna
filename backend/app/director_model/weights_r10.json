@@ -1,0 +1,124 @@
+{
+ "size": {
+  "d": 128,
+  "layers": 4,
+  "d_state": 16,
+  "head_dim": 32,
+  "buckets": 8192,
+  "emb": 16
+ },
+ "size_name": "xl",
+ "params": 743069,
+ "F": 242,
+ "heads": [
+  [
+   "act",
+   11
+  ],
+  [
+   "when",
+   1
+  ],
+  [
+   "cmd_type",
+   12
+  ],
+  [
+   "sub_type",
+   12
+  ],
+  [
+   "amount",
+   9
+  ],
+  [
+   "load_to",
+   8
+  ],
+  [
+   "load_from",
+   8
+  ],
+  [
+   "task",
+   5
+  ],
+  [
+   "query",
+   8
+  ],
+  [
+   "rule_when",
+   7
+  ],
+  [
+   "card_attr",
+   14
+  ],
+  [
+   "style",
+   13
+  ],
+  [
+   "s_rate",
+   3
+  ],
+  [
+   "s_loud",
+   3
+  ],
+  [
+   "s_f0_iqr",
+   3
+  ],
+  [
+   "barge",
+   1
+  ],
+  [
+   "nav",
+   47
+  ]
+ ],
+ "word_heads": [
+  "w_load",
+  "w_num",
+  "w_task"
+ ],
+ "thr": {
+  "when": 0.9800000000000004
+ },
+ "policy": {
+  "cmd": 1.01,
+  "veto": null,
+  "ignore": 0.95,
+  "ask": 1.01,
+  "answer_ignore": null,
+  "nav": null,
+  "ignore_min_words": 3,
+  "classes": [
+   "hot",
+   "echo"
+  ]
+ },
+ "run": "cand",
+ "data": "ds_r10",
+ "trained": {
+  "n_train_sessions": 3600,
+  "n_train_steps": 321387,
+  "best_step": 1600
+ },
+ "history": [
+  "2026-11-15 round 9: policy-only update on the new ear (veto off, ignore_min_words 3); weights r4 s",
+  "2026-11-16 round 10: r10 xl (743k params, ds_r10, full gate on the new ear), DIRECTOR_MODEL=guarded with classes hot + echo (class gate: hot +12, echo +29 act ok, 0 extra wrong, no set worse); everything else stays with the rules",
+  "2026-11-17 round 12: kept as weights_r10 (routed: hot + echo); trained_zero marks the dead round-7 ear slots (trained at 0; libarc ABI 2 will fill them at serve time)"
+ ],
+ "trained_zero": [
+  "ear_conf",
+  "ear_alts",
+  "ear_alt_hot",
+  "ear_rescored",
+  "ear_tier_step",
+  "ear_tier_screen"
+ ]
+}

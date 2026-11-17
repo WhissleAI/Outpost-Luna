@@ -175,14 +175,20 @@ def test_policy_never_silences_a_very_short_turn():
 
 def test_default_mode_is_guarded_with_rules_fallback(monkeypatch):
     """Round 10 (RESULTS.md): the default is `guarded` (was `shadow` since 2026-11-14, owner: until a round passes the
-    gate). The shipped weights enable the model only in the classes that passed the full class gate (hot, echo), keep
+    gate). The shipped weights enable a model only in the classes that passed the full class gate, keep
     their fitted cost-aware thresholds, and with no model output the rules decide every turn."""
     monkeypatch.delenv("DIRECTOR_MODEL", raising=False)
     assert RT.mode() == "guarded"
     pol = RT.model().meta.get("policy")
     assert pol and pol["cmd"] >= 0.9 and (pol["veto"] is None or pol["veto"] >= 0.95)
-    assert sorted(pol["classes"]) == ["echo", "hot"]
-    assert not RT.allowed(pol, "quiet") and not RT.allowed(pol, "nav") and not RT.allowed(pol, "answer")
+    # round 12: r12 xl acts in quiet itself; hot + echo are routed to the r10 file (runtime.pick); nav, answer, short
+    # and video stay with the rules (answer passed the offline gate but silenced real step answers: test_step_tries)
+    assert pol["classes"] == ["quiet"]
+    assert pol["routes"] == {"hot": "weights_r10", "echo": "weights_r10"}
+    assert set(RT.routed_models()) == {"weights_r10"}
+    assert sorted(RT.policies()["weights_r10"]["classes"]) == ["echo", "hot"]
+    assert not RT.allowed(pol, "nav") and not RT.allowed(pol, "short") and not RT.allowed(pol, "video")
+    assert not RT.allowed(pol, "answer")
     sh = RT.Shadow.__new__(RT.Shadow)
     assert sh.decide_turn(None, "more power to the shields", False) is None
 
