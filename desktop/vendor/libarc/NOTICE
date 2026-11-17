@@ -1,5 +1,5 @@
 libarc (Arc inference code in C), vendored from https://github.com/WhissleAI/arc_transcriber (c/, commit
-bfffb19358781423d7fed432ee33a85292d0f8e4).
+0aa792f, PR #18: ABI 2 / "1.3.0", rebased from bfffb19358781423d7fed432ee33a85292d0f8e4 with the local changes below).
 Copyright (c) 2026 Whissle Inc. Licensed under the Creative Commons Attribution-NonCommercial 4.0 International License
 (CC BY-NC 4.0) and the Whissle terms in LICENSE; commercial use requires a separate written licence from Whissle Inc.
 (ksingla@whissle.ai, https://whissle.ai). src/arc_ntext.c contains a C port of jellyfish's Metaphone (MIT License,
@@ -13,8 +13,9 @@ Local changes for Outpost Luna (desktop/vendor/libarc):
   pinned Microsoft release build of it next to libarc (onnxruntime.lock.json, downloaded and sha256-checked by
   cmake/vendor_onnxruntime.cmake; MIT License, its LICENSE and ThirdPartyNotices.txt copied alongside). The C API
   version used is 23 (ONNX Runtime 1.23 headers); newer runtimes serve older API versions.
-- include/arc.h, src/arc_api.c: ARC_ABI_VERSION / ARC_VERSION and arc_abi_version() / arc_version(), with the bump
-  rules in arc.h; the Python binding is generated from arc.h (model_server/tools/gen_bindings.py).
+- include/arc.h: the bump rules for ARC_ABI_VERSION next to upstream's (ABI 2), ARC_VERSION "1.3.0-outpost.1"; the
+  Python binding is generated from arc.h (model_server/tools/gen_bindings.py). ONNX Runtime telemetry: upstream now
+  calls DisableTelemetryEvents itself; the app keeps ORT_DISABLE_TELEMETRY=1 as well.
 - compat/win/: tiny pthread mutex / mmap shims for Windows builds of arc_nft2_ort.c, and arc_u8io.h / arc_u8io.c
   (force-included on Windows): fopen / open / rename / remove take UTF-8 paths through _wfopen / _wopen (binary) /
   MoveFileExW / _wremove, so a model folder under a non-ASCII user name opens.

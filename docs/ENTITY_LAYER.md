@@ -139,6 +139,8 @@ Privacy:
 
 What round 12 should use: all 19.
 
+Round 13 appends libarc ABI 2's read-outs (`e13_*`, F 261 → 275): `docs/ARC_ABI2.md` §6.
+
 The six round-7 slots (`ear_conf`, `ear_alts`, `ear_alt_hot`, `ear_rescored`, `ear_tier_step`,
 `ear_tier_screen`):
 - stay 0;

@@ -219,6 +219,11 @@ LINK_ACT_P = 0.99
 # "Almost linked": no link and no alias, but a span of the heard words sounds like a place name (soundalike.similar):
 # offered back as a question, never acted on. Calibrated on the same decodes (section 3).
 NEAR_SCORE = 0.8
+# libarc ABI 2's sound-alike names (options.almost: state "almost", a candidate list entry and its p; never linked by
+# the ear). How they join our own sound-alike fallback (near_name), measured on the round-11 re-decodes
+# (docs/ARC_ABI2.md): "arc_first" = Arc's candidate, else ours; "ours_first"; "arc" = Arc's only; "ours" = ours only.
+ALMOST_POLICY = "arc_first"
+ALMOST_MIN_P = 0.5
 
 
 def _near_vocab(gaz: Gazetteer) -> list[str]:
@@ -269,6 +274,22 @@ def near_name(heard: str, gaz: Gazetteer, min_score: float = NEAR_SCORE) -> tupl
         return None
     p = gaz.match_text(b[1])
     return (p, b[2]) if p is not None else None
+
+
+def arc_almost(almost, gaz: Gazetteer, min_p: float | None = None) -> tuple[Place, float] | None:
+    """The best of the ear's "almost" names (heard words that sound like a list entry) that is a place, or None."""
+    lo = ALMOST_MIN_P if min_p is None else min_p
+    best = None
+    for a in almost or []:
+        if not isinstance(a, dict) or not a.get("candidate"):
+            continue
+        p = a.get("p")
+        if p is None or float(p) < lo:
+            continue
+        pl = ear_place(a["candidate"], gaz)
+        if pl is not None and (best is None or float(p) > best[1]):
+            best = (pl, float(p))
+    return best
 
 
 def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, list[tuple[Place, float]]]:
@@ -330,9 +351,14 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
         mp = place_of(mh[0].id, gaz) if mh else None
         if mp is not None:
             return None, "near", [(mp, 100.0)]
-        nm = near_name(spoken or target, gaz)
+        al = arc_almost(read.get("ear_almost"), gaz) if ALMOST_POLICY != "ours" else None
+        if al is not None and ALMOST_POLICY in ("arc_first", "arc"):
+            return None, "near", [(al[0], 100.0 * al[1])]
+        nm = near_name(spoken or target, gaz) if ALMOST_POLICY != "arc" else None
         if nm is not None:
             return None, "near", [(nm[0], 100.0 * nm[1])]
+        if al is not None and ALMOST_POLICY == "ours_first":
+            return None, "near", [(al[0], 100.0 * al[1])]
     return None, "", []
 
 
@@ -591,6 +617,13 @@ def linked_entity(read: dict, types: tuple[str, ...]):
     return None
 
 
+def _same_turn(clean: str, text: str) -> bool:
+    """The ear's clean text belongs to this turn's words: every clean word is in the text (it only drops words)."""
+    tw = set(norm(text).split())
+    cw = norm(clean).split()
+    return bool(cw) and all(w in tw for w in cw)
+
+
 async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: MomentIndex) -> dict | None:
     """Mission layer first. None = not a mission turn (the Moon explorer answers)."""
     mctx = ctx.get("mission") or {}
@@ -609,7 +642,12 @@ async def _mission_turn(text: str, read: dict, ctx: dict, out: dict, index: Mome
         nl = {"commands": [c for c in map(nlu.valid, ctx["commands"]) if c], "confidence": 0.8, "needs_clarify": None,
               "source": "model"}
     else:
-        nl = await nlu.understand(text, read, state)
+        # libarc ABI 2: the ear's text without fillers / restarts ("um then give protection 80 more percent") is what
+        # the rules parse, when it is this turn's (the typed / tapped text is parsed as it is)
+        clean = read.get("ear_clean")
+        nl = await nlu.understand(clean if clean and _same_turn(clean, text) else text, read, state)
+        if not nl["commands"] and clean and clean != text and not nl["needs_clarify"]:
+            nl = await nlu.understand(text, read, state)
     cmds, dd = nl["commands"], ctx.get("device_directed")
     site = linked_entity(read, ("site",))
     for c in cmds:     # the rover's target: the site the ear linked (by id), not the raw words after "to"

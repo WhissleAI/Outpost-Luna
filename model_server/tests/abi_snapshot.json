@@ -1,17 +1,18 @@
 {
  "_arc_ffi": {
-  "abi": "1",
+  "abi": "2",
   "decls": [
    "#define ARC_SAMPLE_RATE 16000",
-   "#define ARC_ABI_VERSION 1",
+   "#define ARC_ABI_VERSION 2",
    "int arc_abi_version(void);",
    "const char* arc_version(void);",
    "typedef struct arc_engine arc_engine;",
    "typedef struct { const char* tag; int word_begin, word_end; const char* text; } arc_tag;",
-   "typedef struct { const char* text; float start, end; const char* tag; int tag_begin; } arc_word;",
+   "typedef struct { const char* text; float start, end; const char* tag; int tag_begin; float conf; const char* disfl; int n_alts; const char* const* alts; const float* alt_p; } arc_word;",
+   "typedef struct { const char* type; double value; int is_int; const char* unit; int relative; int word_begin, word_end; float start, end; const char* text; const char* written; } arc_quantity;",
    "typedef struct { const char* label; float p; } arc_label;",
-   "typedef struct { float start, end; const char* text; int n_tags; const arc_tag* tags; float device_directed; float command_complete; arc_label intent; arc_label act; float directed_head; int n_words; const arc_word* words; int n_alts; const char* const* alts; const float* alt_scores; const char* decoder_text; int directed; } arc_utt;",
-   "typedef struct { float start, end; const char* tag; const char* heard; const char* entity; int kb_index; const char* state; float p; const char* model_entity; float model_p; const char* src; const char* via; float snap_score; float span_p; int show; int n_words; const arc_word* words; } arc_name;",
+   "typedef struct { float start, end; const char* text; int n_tags; const arc_tag* tags; float device_directed; float command_complete; arc_label intent; arc_label act; float directed_head; int n_words; const arc_word* words; int n_alts; const char* const* alts; const float* alt_scores; const char* decoder_text; int directed; float conf; const char* clean_text; int n_quantities; const arc_quantity* quantities; int n_dropped; float playback_leak; int playback; const char* tagger_json; } arc_utt;",
+   "typedef struct { float start, end; const char* tag; const char* heard; const char* entity; int kb_index; const char* state; float p; const char* model_entity; float model_p; const char* src; const char* via; float snap_score; float span_p; int show; int n_words; const arc_word* words; const char* candidate; int candidate_kb_index; float candidate_p; } arc_name;",
    "typedef struct { float start, end; const char* kind; const char* unit; const char* heard; int has_value, has_value2; double value, value2; int value_int, value2_int; const char* state; const char* kind_head; int has_value_model; double value_model; } arc_number;",
    "typedef struct { const char* label; float start, end, p; } arc_event;",
    "typedef struct { int n_utts; const arc_utt* utts; int n_events; const arc_event* events; int n_names; const arc_name* names; int n_numbers; const arc_number* numbers; float audio_s, wall_ms; } arc_result;",
@@ -70,13 +71,20 @@
    "typedef struct { const char* surface; const char* type; int minutes; } arc_nft2_ses_entity;",
    "typedef struct { const char* dom; const char* prev; int auto_prev; const char* const* kb; const char* const* kb_kind; int n_kb; const arc_nft2_ses_speaker* speakers; int n_speakers; const arc_nft2_ses_number* numbers; int n_numbers; const arc_nft2_ses_entity* entities; int n_entities; } arc_nft2_context;",
    "int arc_nft2_set_context(arc_nft2* m, const arc_nft2_context* c);",
-   "typedef struct { const char* domain; int no_bias; int no_events; } arc_nft2_options;",
+   "typedef struct { const char* domain; int no_bias; int no_events; int no_guard; int almost; int nbest; int live; float playback_threshold; int playback_drop; int echo_decode; } arc_nft2_options;",
+   "int arc_nft2_set_tagger(arc_nft2* m, const char* model_dir, const char* domain, int int8, char* err, size_t errlen);",
    "arc_result* arc_nft2_transcribe(arc_nft2* m, const float* pcm, size_t n, const arc_nft2_options* o);",
    "typedef struct arc_nft2_stream arc_nft2_stream;",
    "arc_nft2_stream* arc_nft2_stream_open(arc_nft2* m, const arc_nft2_options* o);",
    "arc_result* arc_nft2_stream_feed(arc_nft2_stream* s, const float* pcm, size_t n);",
    "arc_result* arc_nft2_stream_flush(arc_nft2_stream* s);",
-   "void arc_nft2_stream_close(arc_nft2_stream* s);"
+   "void arc_nft2_stream_close(arc_nft2_stream* s);",
+   "int arc_nft2_stream_feed_ref(arc_nft2_stream* s, const float* pcm, size_t n, double t);",
+   "int arc_nft2_stream_set_names(arc_nft2_stream* s, const arc_name_entry* names, int n);",
+   "arc_result* arc_nft2_stream_end_turn(arc_nft2_stream* s);",
+   "enum { ARC_EV_PARTIAL = 1, ARC_EV_ENTITY = 2, ARC_EV_EOT = 3, ARC_EV_BARGE_IN = 4, ARC_EV_FINAL = 5 };",
+   "typedef struct { int type; float t; int utt; const char* text; int n_stable; const char* kind; const char* entity; int kb_index; float p; float start, end; const char* qtype; double value; const char* unit; int relative; } arc_nft2_event;",
+   "const arc_nft2_event* arc_nft2_stream_events(arc_nft2_stream* s, int* n);"
   ]
  },
  "_arctag_ffi": {

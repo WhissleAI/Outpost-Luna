@@ -175,13 +175,32 @@ def _f(x: float, nd: int = 3):
 
 
 def _words(p, n: int) -> list[dict]:
+    """Words with times; ABI 2 adds the RNNT's own confidence (`conf`: its least likely token, unbiased), the
+    disfluency tag (`disfl`: filler / repeat / fragment) and other spellings heard there (`alts`, `alt_p`)."""
     out = []
     for k in range(n):
         w = p[k]
         d = {"w": _s(w.text), "t0": round(w.start, 3), "t1": round(w.end, 3)}
         if w.tag != ffi.NULL:
             d["tag"], d["tag_begin"] = _s(w.tag), bool(w.tag_begin)
+        if w.conf >= 0:
+            d["conf"] = round(float(w.conf), 4)
+        if w.disfl != ffi.NULL:
+            d["disfl"] = _s(w.disfl)
+        if w.n_alts > 0:
+            d["alts"] = [_s(w.alts[j]) for j in range(w.n_alts)]
+            d["alt_p"] = [round(float(w.alt_p[j]), 4) for j in range(w.n_alts)] if w.alt_p != ffi.NULL else None
         out.append(d)
+    return out
+
+
+def _quantities(u) -> list[dict]:
+    out = []
+    for k in range(u.n_quantities):
+        q = u.quantities[k]
+        out.append({"type": _s(q.type), "value": int(q.value) if q.is_int else round(float(q.value), 4),
+                    "unit": _s(q.unit), "relative": int(q.relative), "b": q.word_begin, "e": q.word_end,
+                    "t0": round(q.start, 3), "t1": round(q.end, 3), "text": _s(q.text), "written": _s(q.written)})
     return out
 
 
@@ -199,6 +218,14 @@ def _result(r) -> dict:
             "directed_head": _f(u.directed_head), "directed": None if u.directed < 0 else bool(u.directed),
             "intent": {"label": _s(u.intent.label), "p": _f(u.intent.p)} if u.intent.label != ffi.NULL else None,
             "act": {"label": _s(u.act.label), "p": _f(u.act.p)} if u.act.label != ffi.NULL else None,
+            # ABI 2 read-outs: mean word confidence, the text without disfluencies, typed quantities, words the guard
+            # dropped, n-best texts (options.nbest) with their share of the beam, echo leak / playback (streams with a
+            # reference only)
+            "conf": _f(u.conf, 4), "clean_text": _s(u.clean_text), "quantities": _quantities(u),
+            "n_dropped": int(u.n_dropped),
+            "nbest": [{"text": _s(u.alts[j]), "p": round(float(u.alt_scores[j]), 4) if u.alt_scores != ffi.NULL else None}
+                      for j in range(u.n_alts)],
+            "playback_leak": _f(u.playback_leak, 4), "playback": bool(u.playback) if u.playback_leak >= 0 else None,
         })
     names = []
     for i in range(r.n_names):
@@ -209,7 +236,10 @@ def _result(r) -> dict:
                       # the linker's evidence (signals audit): the pointer head's own pick and its p, the snap
                       # similarity, the tag head's span p (None: not computed)
                       "model_entity": _s(n.model_entity), "model_p": _f(n.model_p), "snap": _f(n.snap_score),
-                      "span_p": _f(n.span_p)})
+                      "span_p": _f(n.span_p),
+                      # options.almost: state "almost" = heard words that sound like a list entry (never linked)
+                      "candidate": _s(n.candidate), "candidate_kb_index": n.candidate_kb_index,
+                      "candidate_p": _f(n.candidate_p, 4)})
     numbers = []
     for i in range(r.n_numbers):
         n = r.numbers[i]
@@ -272,21 +302,7 @@ class Nft2:
     # ---- context ----
     def set_names(self, names: list[dict]) -> int:
         """[{"name", "kind", "aliases"?, "group"?}] in priority order (the first ~10-15 reach the decoder prompt)."""
-        ns = [n for n in (normalize_entry(x) for x in names or []) if n]
-        arr = ffi.new("arc_name_entry[]", max(1, len(ns)))
-        keep: list = [arr]
-        for i, n in enumerate(ns):
-            strs = [ffi.new("char[]", n["name"].encode())]
-            arr[i].name = strs[0]
-            for field in ("kind", "group"):
-                if n.get(field):
-                    c = ffi.new("char[]", n[field].encode())
-                    strs.append(c)
-                    setattr(arr[i], field, c)
-            al = [ffi.new("char[]", a.encode()) for a in n.get("aliases") or []]
-            ap = ffi.new("const char *[]", al or [ffi.NULL])
-            arr[i].aliases, arr[i].n_aliases = ap, len(al)
-            keep += strs + al + [ap]
+        ns, arr, keep = name_array(names)
         with self.lock:
             rc = self.L.arc_nft2_set_names(self.m, arr, len(ns))
             self._keep = keep
@@ -309,20 +325,27 @@ class Nft2:
         with self.lock:
             self.L.arc_nft2_set_context(self.m, c)
 
+    def use_names(self, names: list[dict] | None) -> None:
+        """Make `names` the model's list unless it already is (the caller holds self.lock; streams and clips share the
+        model's list: arc_nft2_set_names)."""
+        if names is not None and repr(names) != self._names_key:
+            self.set_names(names)
+            self._names_key = repr(names)
+
     # ---- decoding ----
     def transcribe(self, pcm: np.ndarray, domain: str = "assistant", no_events: bool = False, no_bias: bool = False,
-                   names: list[dict] | None = None) -> dict:
-        """A whole clip (16 kHz mono float32). Up to 20 s is one utterance; longer clips are segmented by Arc."""
+                   names: list[dict] | None = None, almost: bool = False, nbest: int = 0,
+                   no_guard: bool = False) -> dict:
+        """A whole clip (16 kHz mono float32). Up to 20 s is one utterance; longer clips are segmented by Arc.
+        ABI 2: almost (sound-alike "almost" name records), nbest (> 1: an RNNT beam's n-best texts and word
+        alternatives; the words stay the greedy decode's), no_guard (keep every RNNT word)."""
         x = np.ascontiguousarray(pcm, dtype=np.float32)
-        o = ffi.new("arc_nft2_options *")
-        dom = ffi.new("char[]", domain.encode())
-        o.domain, o.no_bias, o.no_events = dom, int(no_bias), int(no_events)
+        o, keep = options(domain=domain, no_bias=no_bias, no_events=no_events, almost=almost, nbest=nbest,
+                          no_guard=no_guard)
         waited = time.perf_counter()
         with self.lock:
             _lock_wait((time.perf_counter() - waited) * 1000)   # [#92] another stream holding the model
-            if names is not None and repr(names) != self._names_key:
-                self.set_names(names)
-                self._names_key = repr(names)
+            self.use_names(names)
             t = time.perf_counter()
             r = self.L.arc_nft2_transcribe(self.m, ffi.from_buffer("float[]", x), len(x), o)
             ms = (time.perf_counter() - t) * 1000
@@ -334,6 +357,132 @@ class Nft2:
                 self.L.arc_result_free(r)
         out["ms"] = round(ms, 1)
         return out
+
+
+def options(domain: str = "assistant", no_bias: bool = False, no_events: bool = False, almost: bool = False,
+            nbest: int = 0, no_guard: bool = False, live: bool = False, playback_threshold: float = 0.0,
+            playback_drop: bool = False, echo_decode: bool = False):
+    """arc_nft2_options (zeroed = the defaults) + the buffers it points at (keep them alive while it is used)."""
+    o = ffi.new("arc_nft2_options *")
+    dom = ffi.new("char[]", domain.encode())
+    o.domain, o.no_bias, o.no_events, o.no_guard = dom, int(no_bias), int(no_events), int(no_guard)
+    o.almost, o.nbest, o.live = int(almost), int(nbest), int(live)
+    o.playback_threshold, o.playback_drop, o.echo_decode = float(playback_threshold), int(playback_drop), int(echo_decode)
+    return o, [dom]
+
+
+EVENT_TYPES = {1: "partial", 2: "entity", 3: "eot", 4: "barge_in", 5: "final"}
+
+
+def _events(L, s) -> list[dict]:
+    n = ffi.new("int *")
+    p = L.arc_nft2_stream_events(s, n)
+    out = []
+    for k in range(n[0] if p != ffi.NULL else 0):
+        e = p[k]
+        d = {"type": EVENT_TYPES.get(e.type, str(e.type)), "t": round(e.t, 3), "utt": e.utt}
+        for f in ("text", "kind", "entity", "qtype", "unit"):
+            v = getattr(e, f)
+            if v != ffi.NULL:
+                d[f] = _s(v)
+        if e.type == 1:
+            d["n_stable"] = e.n_stable
+        if e.type == 2:
+            d.update(kb_index=e.kb_index, value=e.value, relative=e.relative, t0=round(e.start, 3), t1=round(e.end, 3))
+        d["p"] = round(float(e.p), 4) if e.p >= 0 else None
+        out.append(d)
+    return out
+
+
+class Nft2Stream:
+    """A libarc stream on a loaded model (arc_nft2_stream_*): Arc's segmenter cuts utterances, each is decoded as it
+    closes; options.live adds PARTIAL / ENTITY / EOT events (the open utterance decoded one 560 ms chunk at a time,
+    nothing decoded twice); a playback reference (feed_ref) adds echo cancellation, playback_leak and BARGE_IN. Every
+    call takes the model's lock (one call into a model at a time). The stream keeps its audio until closed: callers
+    reopen it (app/arc_ear.py keeps each one short)."""
+
+    def __init__(self, model: Nft2, names: list[dict] | None = None, **opts):
+        self.mod, self.L = model, model.L
+        self.o, self._keep = options(**opts)
+        self.names = names
+        self.audio_s = 0.0
+        with model.lock:
+            model.use_names(names)
+            s = self.L.arc_nft2_stream_open(model.m, self.o)
+        if s == ffi.NULL:
+            raise RuntimeError(f"arc_nft2_stream_open: {_s(self.L.arc_last_error())}")
+        self.s = s
+        self._nkeep: list = []
+
+    def _take(self, r, what: str) -> tuple[dict, list[dict]]:
+        if r == ffi.NULL:
+            raise RuntimeError(f"{what}: {_s(self.L.arc_last_error())}")
+        try:
+            out = _result(r)
+        finally:
+            self.L.arc_result_free(r)
+        return out, _events(self.L, self.s)
+
+    def feed(self, pcm: np.ndarray) -> tuple[dict, list[dict]]:
+        x = np.ascontiguousarray(pcm, dtype=np.float32)
+        with self.mod.lock:
+            self.mod.use_names(self.names)
+            r = self.L.arc_nft2_stream_feed(self.s, ffi.from_buffer("float[]", x), len(x))
+            self.audio_s += len(x) / SR
+            return self._take(r, "arc_nft2_stream_feed")
+
+    def feed_ref(self, pcm: np.ndarray, t: float) -> None:
+        """The device's playback (16 kHz mono float) as sent to the speaker; t: the stream time (s, this stream's
+        microphone clock) at which pcm[0] plays; t < 0: right after the previous reference."""
+        x = np.ascontiguousarray(pcm, dtype=np.float32)
+        with self.mod.lock:
+            if self.L.arc_nft2_stream_feed_ref(self.s, ffi.from_buffer("float[]", x), len(x), float(t)) != 0:
+                raise RuntimeError(f"arc_nft2_stream_feed_ref: {_s(self.L.arc_last_error())}")
+
+    def set_names(self, names: list[dict]) -> None:
+        """Mid-stream list change: the open utterance's bias switches at once; finals use it from the next close."""
+        ns, arr, keep = name_array(names)
+        with self.mod.lock:
+            if self.L.arc_nft2_stream_set_names(self.s, arr, len(ns)) != 0:
+                raise RuntimeError(f"arc_nft2_stream_set_names: {_s(self.L.arc_last_error())}")
+            self.mod.names, self.mod._names_key, self.mod._keep = ns, repr(names), keep   # = arc_nft2_set_names
+            self.names, self._nkeep = names, keep
+
+    def end_turn(self) -> tuple[dict, list[dict]]:
+        with self.mod.lock:
+            self.mod.use_names(self.names)
+            return self._take(self.L.arc_nft2_stream_end_turn(self.s), "arc_nft2_stream_end_turn")
+
+    def flush(self) -> tuple[dict, list[dict]]:
+        with self.mod.lock:
+            self.mod.use_names(self.names)
+            return self._take(self.L.arc_nft2_stream_flush(self.s), "arc_nft2_stream_flush")
+
+    def close(self) -> None:
+        if self.s is not None:
+            with self.mod.lock:
+                self.L.arc_nft2_stream_close(self.s)
+            self.s = None
+
+
+def name_array(names) -> tuple[list[dict], object, list]:
+    """normalize_entry'd names -> (names, arc_name_entry[], buffers to keep alive)."""
+    ns = [n for n in (normalize_entry(x) for x in names or []) if n]
+    arr = ffi.new("arc_name_entry[]", max(1, len(ns)))
+    keep: list = [arr]
+    for i, n in enumerate(ns):
+        strs = [ffi.new("char[]", n["name"].encode())]
+        arr[i].name = strs[0]
+        for field in ("kind", "group"):
+            if n.get(field):
+                c = ffi.new("char[]", n[field].encode())
+                strs.append(c)
+                setattr(arr[i], field, c)
+        al = [ffi.new("char[]", a.encode()) for a in n.get("aliases") or []]
+        ap = ffi.new("const char *[]", al or [ffi.NULL])
+        arr[i].aliases, arr[i].n_aliases = ap, len(al)
+        keep += strs + al + [ap]
+    return ns, arr, keep
 
 
 def _lock_wait(ms: float) -> None:
