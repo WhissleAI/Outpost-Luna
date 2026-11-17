@@ -76,10 +76,10 @@ class EarSettings(BaseSettings):
     ear_nbest: int = 4
     ear_live: bool = True               # False: the re-decode partial loop (ear_partial_every_s) and one final decode
     ear_stream_max_s: float = 60.0      # live: a stream keeps its audio; past this, reopened when idle and quiet
-    # playback_leak >= this marks an utterance as our own audio (0: libarc's 0.7). 0.4 on our simulated laptop path
-    # (echo vs kid-over-playback AUC 0.95: echo 35 % flagged, kid turns 1 %); to recalibrate on real laptop echo
-    # recordings (tools/arc_collect echo mode). A flagged turn is dropped only without a barge-in (backend session.py).
-    ear_playback_threshold: float = 0.4
+    # playback_leak >= this marks an utterance as our own audio (0: libarc's 0.7). 0.85 since the real-laptop calibration
+    # (docs/ARC_ABI2.md section 8: echo vs kid-over-playback AUC 0.72 on real echo, not the simulation's 0.95). The
+    # backend decides on the leak itself (session.ear_playback, PLAYBACK_THRESHOLD); this only sets the `playback` flag.
+    ear_playback_threshold: float = 0.85
     ear_echo_decode: bool = False       # decode finals from the echo-cancelled audio (measured: docs/ARC_ABI2.md)
     ear_ref_keep_s: float = 3.0         # playback reference kept to re-feed a reopened stream
 
@@ -307,6 +307,7 @@ class EarStream:
         self.first_partial_at: float | None = None
         self.partials: list[dict] = []  # live: (ear time, text) of each partial in the open turn (latency stats)
         self.st_finals: list[dict] = []  # live: the stream's FINAL events (utt, t, playback leak / kind)
+        self.barge_ps: list[tuple[float, float]] = []   # live: (ear time, p) of recent barge-in events
 
     # ---- context ----
     def set_names(self, names) -> int:
@@ -426,6 +427,9 @@ class EarStream:
                     continue
                 if self.barge_at is None:
                     self.barge_at = at
+                if e.get("p") is not None:
+                    self.barge_ps.append((at, float(e["p"])))
+                    del self.barge_ps[:-16]
                 msgs.append({"t": "barge_in", "at": at, "p": e.get("p")})
             elif self.seg is None:
                 continue
@@ -595,6 +599,8 @@ class EarStream:
                 pb = [u.get("playback") for u in utts if u.get("playback") is not None]
                 w.update(playback_leak=round(max(leaks), 3) if leaks else None, playback=any(pb) if pb else None,
                          barge=self.barge_at is not None and self.barge_at >= self.seg_t0 - 0.3, eot=self.eot)
+                bps = [p for t, p in self.barge_ps if t >= self.seg_t0 - 0.3]
+                w["barge_p"] = round(max(bps), 3) if bps else None
             msgs.append(w)
             msgs.append({"t": "turn", "state": "end", "text": text})
             self.ends.append({"at": round(self.audio_s, 3), "last_voice": round(self.last_voice_s, 3),
