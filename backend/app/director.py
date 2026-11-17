@@ -211,19 +211,71 @@ def _bridge(m: dict) -> str:
     return f"{who} saw this from Orion. Listen!"
 
 
+# The ear's link decision (Arc Transcriber Space names[i].p, docs/SPEECH_SIGNALS_AUDIT.md section 3): on the round-11
+# Mac-voice decodes a link with p >= LINK_ACT_P named the place the kid said 88 % of the time, one below it 47 %. A link
+# under it is not acted on: the place is offered back ("Did you mean Tycho?"), unless what the ear heard (its spoken
+# words, not the list spelling it wrote over them) names a place by itself.
+LINK_ACT_P = 0.99
+# "Almost linked": no link and no alias, but a span of the heard words sounds like a place name (soundalike.similar):
+# offered back as a question, never acted on. Calibrated on the same decodes (section 3).
+NEAR_SCORE = 0.8
+
+
+def _near_vocab(gaz: Gazetteer) -> list[str]:
+    v = getattr(gaz, "_near_vocab", None)
+    if v is None:
+        from .names_list import catalogue_names
+        v = []
+        for e in catalogue_names():
+            for f in [e["name"], *(e.get("aliases") or [])]:
+                if len(f) >= 5 and gaz.match_text(f) is not None:
+                    v.append(f)
+        v += [p.name for p in gaz.places.values()]
+        gaz._near_vocab = v
+    return v
+
+
+def near_name(heard: str, gaz: Gazetteer, min_score: float = NEAR_SCORE) -> tuple[Place, float] | None:
+    """The place a span of the heard words sounds like ("the jelly" ~ "de Gerlache"), or None."""
+    from . import soundalike
+    if not heard or not heard.strip():
+        return None
+    b = soundalike.best_span(heard, _near_vocab(gaz), min_score)
+    if b is None:
+        return None
+    p = gaz.match_text(b[1])
+    return (p, b[2]) if p is not None else None
+
+
 def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, list[tuple[Place, float]]]:
-    """-> (place, how, ask_candidates). ask_candidates is set when the fuzzy link is in the ask band.
+    """-> (place, how, ask_candidates). ask_candidates is set when the link is in the ask band ("ask": "did you mean
+    A or B?") or needs a yes ("confirm": a low-p link, "near": a sound-alike; one candidate, "did you mean A?").
 
     The ear's names come first (read["ear_names"], Arc Transcriber Space linking what was said to the screen's names
-    list): `linked` -> that entry's place; `abstain` (unsure, or only generic words) -> the gazetteer's candidates for
-    what was heard, asked as "did you mean ...?" when two are close; `not_in_list` -> what was heard is searched in the
-    whole gazetteer, like an Arc Tagger mention."""
+    list): `linked` with p >= LINK_ACT_P -> that entry's place; `linked` below it -> what the ear HEARD (read["ear_spoken"],
+    before the list spelling replaced it) is matched instead, else the entry is offered back (confirm); `abstain`
+    (unsure, or only generic words) -> the gazetteer's candidates for what was heard, asked as "did you mean ...?" when
+    two are close; `not_in_list` -> what was heard is searched in the whole gazetteer, like an Arc Tagger mention.
+    Last, a span of the heard words that SOUNDS like a place (near_name) is offered back ("near"), never acted on."""
     ear = [n for n in read.get("ear_names") or [] if isinstance(n, dict)]
+    spoken = read.get("ear_spoken")
+    low: list[tuple[Place, float]] = []
     for n in ear:
         if n.get("state") == "linked" and n.get("entity"):
             p = gaz.match_text(n["entity"])
-            if p:
+            if not p:
+                continue
+            lp = n.get("p")
+            if lp is None or lp >= LINK_ACT_P:
                 return p, "ear_link", []
+            low.append((p, 100.0 * float(lp)))
+    if low:
+        # the heard words name ANOTHER place by themselves: that one. The same place (the linker is unsure of exactly
+        # these words, "Fly Tycho pelicus" for "fly to Copernicus") or none: offered back.
+        p = gaz.match_text(spoken) if spoken else None
+        if p and all(p.id != c[0].id for c in low):
+            return p, "alias", []
+        return None, "confirm", low[:1]
     p = gaz.match_text(target)
     if p:
         return p, "alias", []
@@ -248,6 +300,10 @@ def _link(target: str, read: dict, gaz: Gazetteer) -> tuple[Place | None, str, l
         if s >= ACCEPT and not close:
             return top, "arc+link" if read.get("available") else "fuzzy", []
         return None, "ask", [cands[0], *close]
+    if "ear_names" in read:     # a heard turn (the ear ran): the sound-alike offer
+        nm = near_name(spoken or target, gaz)
+        if nm is not None:
+            return None, "near", [(nm[0], 100.0 * nm[1])]
     return None, "", []
 
 
@@ -340,7 +396,8 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
         names = [f"{p.name}" for p, _ in cands]
         question = did_you_mean(names)
         return {**out, "action": "ask", "say": question, "ask": {"question": question, "options": [p.id for p, _ in cands], "labels": names},
-                "place": cands[0][0].id, "view": _view(cands[0][0]), "source": "arc+link"}
+                "place": cands[0][0].id, "view": _view(cands[0][0]),
+                "source": {"confirm": "ear_confirm", "near": "ear_near"}.get(how, "arc+link")}
     last = gaz.places.get(ctx.get("last_place") or "")
     if place is None and last and (MORE.search(target) or wants_crew or (last.kind == "artifact" and WHO.search(q))):
         place, how = last, "context"

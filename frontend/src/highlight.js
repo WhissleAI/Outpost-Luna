@@ -60,6 +60,47 @@ export function tokenize(text, m) {
 const LABEL = { place: "Place", number: "Number", term: "Space word", resource: "Mission resource" };
 const SELECTORS = "#cardSay, #cardStory, .a-prompt, .a-brief p, .a-feedback, .a-hint, .m-log li, .m-radio p, .m-event, [data-hl]";
 
+/** The ear's linked names in the kid's words (Arc Transcriber Space `names` on the final words; docs/SPEECH_SIGNALS_AUDIT.md):
+ *  text + [{entity, state, p}] → [{text, link?: {entity, sure}}]. Only `linked` names whose entity is spelled in the
+ *  text (the ear writes the list's spelling over the heard words). `sure`: p >= LINK_SURE_P (the director acts on it);
+ *  below it the director asks "Did you mean …?", so the mark is shown as unsure. */
+export const LINK_SURE_P = 0.99;
+export function linkSegments(text, names) {
+  const t = String(text || "");
+  const ents = (Array.isArray(names) ? names : [])
+    .filter(n => n && n.state === "linked" && n.entity && t.toLowerCase().includes(String(n.entity).toLowerCase()))
+    .map(n => ({ entity: String(n.entity), sure: n.p == null || n.p >= LINK_SURE_P }))
+    .sort((a, b) => b.entity.length - a.entity.length);
+  if (!ents.length) return t ? [{ text: t }] : [];
+  const re = new RegExp(`(?<![\\p{L}\\p{N}])(?:${ents.map(e => esc(e.entity)).join("|")})(?![\\p{L}\\p{N}])`, "giu");
+  const out = []; let last = 0, m;
+  while ((m = re.exec(t))) {
+    if (m.index > last) out.push({ text: t.slice(last, m.index) });
+    const e = ents.find(x => x.entity.toLowerCase() === m[0].toLowerCase());
+    out.push({ text: m[0], link: { entity: e.entity, sure: e.sure } });
+    last = m.index + m[0].length;
+  }
+  if (last < t.length) out.push({ text: t.slice(last) });
+  return out;
+}
+
+/** Paint the kid's words into `el` with the linked names marked (a shape as well as a colour: solid underline + bold
+ *  when sure, dotted underline + "?" when the director will ask). `mask` (profanity) is applied to the plain parts. */
+export function paintLinked(el, text, names, mask = x => x) {
+  if (!el) return;
+  const segs = linkSegments(text, names);
+  if (!segs.some(s => s.link)) { el.textContent = mask(String(text || "")); return; }
+  el.textContent = "";
+  for (const s of segs) {
+    if (!s.link) { el.append(document.createTextNode(mask(s.text))); continue; }
+    const b = document.createElement("b");
+    b.className = "ear-link" + (s.link.sure ? "" : " is-unsure");
+    b.textContent = s.text + (s.link.sure ? "" : "?");
+    b.title = s.link.sure ? `Heard: ${s.link.entity}` : `Did you mean ${s.link.entity}?`;
+    el.append(b);
+  }
+}
+
 export function initHighlight({ api, say, playCrew, flyTo } = {}) {
   if (typeof document === "undefined") return null;
   const O = (window.__outpost = window.__outpost || { stepRenderers: {} });
