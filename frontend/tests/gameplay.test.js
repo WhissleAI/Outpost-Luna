@@ -168,3 +168,29 @@ test("clock: [polish 2] hold to fast-forward runs FF_WARP while held, only while
   c.hold(true); c.pause(); assert.equal(c.state.ff, false, "a paused clock never fast-forwards");
   c.play(); c.hold(false); assert.equal(c.state.ff, false); assert.equal(c.state.warp, 1);
 });
+
+test("[polish 3] one instruction: the storm decision is on the Now card (the alert strip has no buttons)", () => {
+  const storm = { active: true, sep: true, name: "Real solar particle storm" };
+  // no task from the sim (the sample model): the storm card carries the shelter order itself
+  const c = nowCard(st({ task: null, env: { ...st().env, storm } }));
+  assert.equal(c.key, "storm_hit"); assert.equal(c.level, "warn"); assert.equal(c.title, S.NOW.stormTitle);
+  assert.deepEqual(c.buttons.map(b => b.cmd), [{ type: "shelter", on: true }]); assert.equal(c.buttons[0].label, S.NOW.shelterBtn);
+  // a storm hitting while the sim still shows another job (science): the storm wins, never a science button mid-storm
+  const sci = { id: "science-5", kind: "science", title: "Science", panel: "habitat", level: "info", done_count: 0, total: 1, steps: [],
+    step: { id: "sample", kind: "press", label: "Take a sample", ready: true, target: "task" } };
+  assert.equal(nowCard(st({ task: sci, env: { ...st().env, storm } })).key, "storm_hit");
+  // the sim's own storm task keeps its steps (rover home first, then shelter)
+  const own = { id: "storm_hit-2", kind: "storm_hit", title: "Storm! Shelter the crew", panel: "radiation", level: "warn", done_count: 0, total: 1, steps: [],
+    step: { id: "shelter", kind: "order", label: "Crew into the shelter", ready: true, target: "shelter", cmd: { type: "shelter", on: true } } };
+  assert.equal(nowCard(st({ task: own, env: { ...st().env, storm } })).task, "storm_hit-2");
+  // the rover crew outside: the sim's card (bring them home), never a shelter button the sim would refuse
+  assert.equal(nowCard(st({ task: sci, rover: { busy: true, eta_h: 3 }, env: { ...st().env, storm } })).key, "task:science-5:sample:go");
+  // a near miss (few particles here) and a sheltered crew: no storm order
+  assert.notEqual(nowCard(st({ task: null, env: { ...st().env, storm: { ...storm, sep: false } } })).key, "storm_hit");
+  assert.equal(nowCard(st({ task: null, shelter: true, env: { ...st().env, storm } })).key, "sheltered");
+  // a forecast: shields to 40 on the card, then the shelter once the shields are up
+  const wn = nowCard(st({ task: null, loads: { shields: 30 }, env: { ...st().env, warning: { lead_h: 8, confidence: "likely" } } }));
+  assert.equal(wn.key, "warning"); assert.deepEqual(wn.buttons[0].cmd, { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null });
+  const wn2 = nowCard(st({ task: null, loads: { shields: 40 }, env: { ...st().env, warning: { lead_h: 8 } } }));
+  assert.deepEqual(wn2.buttons[0].cmd, { type: "shelter", on: true });
+});

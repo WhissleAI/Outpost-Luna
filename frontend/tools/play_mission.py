@@ -46,14 +46,17 @@ LOOK = """() => {
   const cardBtns = card ? [...card.querySelectorAll('button.pill:not([disabled])')].filter(vis).map(b => b.textContent.trim()) : [];
   const debrief = document.querySelector('#mDebrief:not([hidden]) .mx-title');
   const offer = [...document.querySelectorAll('.cb-offer-b')].filter(vis).map(b => b.textContent.trim());
+  // [polish 3] one instruction at a time: buttons that tell the kid what to do anywhere but the Now card (CAPCOM's card
+  // in the window, the alert strip, a console's offer). The Now card should be the only one.
+  const others = [...document.querySelectorAll('#card .card-actions button, .cb-alert button, .cb-offer-b')].filter(vis).map(b => b.textContent.trim());
   return { tour: tour ? (tour.querySelector('.t-text') || {}).textContent : null,
     now: vis(now) ? { title: (now.querySelector('.cb-now-title') || {}).textContent || '', text: (now.querySelector('#cbNowT') || {}).textContent || '',
       ack: ((now.querySelector('.cb-now-ack') || {}).textContent || '').trim(), meta: ((now.querySelector('.cb-now-meta') || {}).textContent || '').trim(),
-      buttons: btns.map(b => b.childNodes[0].textContent.trim()), hotClear: btns.length ? clear(btns[0]) : null } : null,
+      buttons: btns.map(b => ((b.querySelector('.cb-now-bl') || b.childNodes[0]).textContent || '').trim()), hotClear: btns.length ? clear(btns[0]) : null } : null,
     glow: glow.map(g => g.id || g.className.split(' ')[0]), glowClear: glow.some(clear),
     clock: (document.querySelector('#cbClock') || {}).textContent || '', held: (document.querySelector('#cbHeld') || {}).textContent || '',
     prog: ((document.querySelector('#cbProg') || {}).textContent || '').replace(/\\s+/g, ' ').trim(),
-    capcom: cardBtns, offer, debrief: debrief ? debrief.textContent : null,
+    capcom: cardBtns, offer, others, takeover: !!document.querySelector('.cb.is-takeover'), debrief: debrief ? debrief.textContent : null,
     moment: (() => { const m = document.querySelector('.cb-moment:not([hidden]) b'); return m ? m.textContent : null; })() };
 }"""
 
@@ -195,7 +198,8 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
             entry = {"t": round(time.time() - t0), "clock": hour, "task": n["title"] or "Now", "should": n["text"], "meta": n["meta"],
                      "buttons": n["buttons"], "glow": v["glow"], "obvious": bool(n["hotClear"]) and bool(v["glow"]) or bool(n["hotClear"]),
                      "glow_on_screen": v["glowClear"], "action": f"{act}: {n['buttons'][0]}", "reacted": reacted,
-                     "ack": na.get("ack") or "", "next": na.get("text") or "", "progress": after["prog"], "moment_shown": after["moment"]}
+                     "ack": na.get("ack") or "", "next": na.get("text") or "", "progress": after["prog"], "moment_shown": after["moment"],
+                     "competing": v["others"], "takeover": v["takeover"]}
             log.append(entry)
             k2 = (n["title"] or n["text"])
             if k2 not in seen_keys:
@@ -220,7 +224,8 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
 def summary(log):
     acts = [e for e in log if "action" in e and e.get("moment") != "tour"]
     return {"moments": len(log), "actions": len(acts), "obvious": sum(1 for e in acts if e.get("obvious")),
-            "reacted": sum(1 for e in acts if e.get("reacted")), "finished": any(e.get("moment") == "debrief" for e in log),
+            "reacted": sum(1 for e in acts if e.get("reacted")),
+            "competing": sum(1 for e in acts if e.get("competing")), "takeovers": sum(1 for e in acts if e.get("takeover")), "finished": any(e.get("moment") == "debrief" for e in log),
             "unclear": [e for e in acts if not e.get("obvious") or not e.get("reacted")][:12]}
 
 
@@ -244,7 +249,8 @@ if __name__ == "__main__":
         size = tuple(map(int, sz.split("x")))
         log, fst = play(a.base, a.level, size, a.shots, a.fast_ms, a.real_first_shift, a.max_s, a.graphics)
         s = summary(log)
-        print(f"== {a.level} {sz}: {s['actions']} actions, {s['obvious']} obvious, {s['reacted']} reacted, finished={s['finished']}"
+        print(f"== {a.level} {sz}: {s['actions']} actions, {s['obvious']} obvious, {s['reacted']} reacted, "
+              f"{s['competing']} with a competing instruction, {s['takeovers']} takeovers, finished={s['finished']}"
               + (f", first shift took {fst}s of real time" if fst else ""))
         for e in log:
             if "action" in e and e.get("moment") != "tour":

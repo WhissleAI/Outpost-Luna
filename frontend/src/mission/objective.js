@@ -74,14 +74,28 @@ export function nowCard(s, clock = null) {
   if (s.pending) return { key: "confirm", title: NOW.confirmTitle, text: NOW.confirm, target: "task", panel: null, level: "caution",
     progress: null, left_h: null, lesson: null, readouts: [], choice: true,
     buttons: [{ label: "Yes", cmd: { type: "confirm" } }, { label: "No", cmd: { type: "cancel" } }] };
-  if (s.task) return taskCard(s, s.task, clock);
+  // [polish 3] one instruction: the storm decision lives on this card, never only on the alert strip. A particle storm
+  // hitting an unsheltered crew outranks any other job the sim offers (its own storm task already carries it).
+  if (s.task && !(stormHits(s) && !STORM_TASKS.has(s.task.kind))) return taskCard(s, s.task, clock);
   const o = legacy(s, clock);
   if (!o) return null;
-  const b = o.target === "play" ? [{ label: NOW.playBtn, clock: "play" }] : o.target === "skip" ? [{ label: NOW.skipBtn, clock: "skip" }] : [];
+  const b = o.target === "play" ? [{ label: NOW.playBtn, clock: "play" }] : o.target === "skip" ? [{ label: NOW.skipBtn, clock: "skip" }]
+    : ORDER_BTNS[o.key] ? [ORDER_BTNS[o.key](o.target)] : [];
   // [polish a] nothing to do but wait: the card says so and time fast-forwards by itself (mission/ui.js AUTO_MS);
   // "Go now" skips at once, and any order, the pause or a held clock (a decision, a card) stops the auto-skip
   return { title: NOW.label, progress: null, left_h: null, lesson: null, readouts: [], choice: false, buttons: b, auto: o.target === "skip", ...o };
 }
+
+/** Tasks that already carry the storm's decision (the sim's own storm cards). */
+const STORM_TASKS = new Set(["storm_hit", "storm_prep", "all_clear"]);
+/** A particle storm on an unsheltered crew that can act on it (the rover crew home; the sim refuses a shelter order
+ *  with them outside, and its own storm task brings them home first). */
+const stormHits = s => { const e = s.env || {}, rv = s.rover || {};
+  return !!(e.storm && e.storm.active && e.storm.sep !== false && !s.shelter && !rv.busy); };
+/** The order a storm card's button sends (the alert strip shows the storm; it has no buttons of its own). */
+const SHELTER = { label: NOW.shelterBtn, cmd: { type: "shelter", on: true } };
+const SHIELDS40 = { label: NOW.shieldsBtn, cmd: { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null } };
+const ORDER_BTNS = { storm_hit: () => SHELTER, warning: t => (t === "shields" ? SHIELDS40 : SHELTER) };
 
 /** The strip from the state alone (no task from the sim: the sample model, a storm with the crew sheltered, steady). */
 function legacy(s, clock) {
@@ -93,10 +107,10 @@ function legacy(s, clock) {
   const started = !clock || clock.started;
   const acted = !!(s.acted && s.acted.allocate);
   if ((s.mission_time_h || 0) === 0 && !acted && !storm) return o("first_shift", NOW.firstShift, "shields", "radiation");
-  if ((s.mission_time_h || 0) === 0 && !started) return o("start_clock", NOW.startClock, "play", "pedestal");
   if (storm && e.storm.sep === false) return o("weak_storm", NOW.weakStorm, "skip", "pedestal", "info");   // QA-27: a near miss
-  if (storm && !s.shelter) return o("storm_hit", NOW.stormHit, "shelter", "radiation", "warn");
+  if (storm && !s.shelter) return { ...o("storm_hit", NOW.stormHit, "shelter", "radiation", "warn"), title: NOW.stormTitle, kind: "storm_hit" };
   if (storm && s.shelter) return o("sheltered", NOW.sheltered, "skip", "pedestal", "info");
+  if ((s.mission_time_h || 0) === 0 && !started) return o("start_clock", NOW.startClock, "play", "pedestal");
   if (wn) return o("warning", NOW.warning(wn.lead != null ? n0(wn.lead) : null), (L.shields || 0) >= 40 ? "shelter" : "shields", "radiation", "caution");
   if (al.includes("low_power") || (r.power_pct != null && r.power_pct < 25)) {
     return s.power_save ? o("low_power", NOW.lowPower, "load:science", "power", "caution") : o("low_power", NOW.lowPower, "night", "power", "caution");

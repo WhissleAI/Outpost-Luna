@@ -879,9 +879,13 @@ class Session:
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
             say = decision("say", pri, text=line, voice="capcom", proactive=True,
                            situation="storm_warning" if warning else "storm_alert", emotion=self._emotion())
+            near_miss = kind == "solar_storm" and e.get("sep") is False
+            # [polish 3] a near miss is news, not a decision: no shelter / shields offer (the cabin made it a takeover
+            # and a player who followed it sat in the shelter for nothing, with science off)
             card = decision("card", pri, title="CAPCOM", body=e.get("text") or line, chips=["Solar storm", src or "NASA"],
-                            actions=[{"label": "Go to shelter", "send": {"t": "typed", "text": "go to the shelter"}},
-                                     {"label": "Set shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
+                            actions=[] if near_miss else
+                            [{"label": "Go to shelter", "send": {"t": "typed", "text": "go to the shelter"}},
+                             {"label": "Set shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
                             hint=True)
             if st:
                 self.warned.add(st.start_h)   # the sim warned already: no second lookahead alert

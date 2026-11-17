@@ -509,29 +509,25 @@ export function createCabin(root, o = {}) {
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 
-  /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. */
+  /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. No buttons. */
   function alert(a) { clearTimeout(flashT); flash = a; paintAlert(); if (a) flashT = setTimeout(() => { flash = null; paintAlert(); }, 7000); }
   function paintAlert() {
     const el = q("#cbAlert"), stm = st && st.env && st.env.storm && st.env.storm.active ? st.env.storm : null;
     const wn = stormWarning(st);
     const weak = !!stm && stm.sep === false;   // QA-27: few particles reach the Moon
     const a = stm ? { level: weak ? "caution" : "warn", icon: "storm", title: weak ? (story.STORM.weak || "Storm at Earth") : story.STORM.name, link: { url: stm.url || DONKI, text: "NASA " + (stm.source || "DONKI") },
-        text: [weak ? story.STORM.weakText : "", stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · "),
-        actions: st.shelter || weak ? [] : [["shelter", "Shelter the crew"], ["shields", "Set shields to 40", true]] }
+        text: [weak ? story.STORM.weakText : "", stm.real_date ? `Real event, ${stm.real_date}` : "Real event", stm.ends_in_h != null ? `Ends in ~${stm.ends_in_h} h` : "", st.shelter ? "Crew sheltered" : ""].filter(Boolean).join(" · ") }
       : wn ? { level: "caution", icon: "storm", title: wn.word ? `Storm warning · ${wn.word}` : "Storm warning", conf: wn.conf, link: { url: DONKI, text: "NASA " + wn.source },
-        text: [wn.lead != null ? `Forecast ~${wn.lead} h (game)` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · "),
-        actions: (st.loads.shields || 0) >= 40 ? [] : [["shields", "Set shields to 40", true]] }
+        text: [wn.lead != null ? `Forecast ~${wn.lead} h (game)` : "On its way", wn.date ? `Real event, ${wn.date}` : ""].filter(Boolean).join(" · ") }
       : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
     const hole = root.querySelector(".cb-hole"); if (hole) hole.classList.toggle("has-alert", !!a);
     if (!a) { el.innerHTML = ""; return; }
     el.className = "cb-alert is-" + a.level;
-    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>
-      ${(a.actions || []).length ? `<span class="cb-al-acts">${a.actions.map(([k, n, fake], i) => `<button type="button" class="cb-al-b${i ? "" : " is-hot"}" data-act="${k}">${fake ? pretend(n) : esc(n)}</button>`).join("")}</span>` : ""}`;
+    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>`;
+    // [polish 3] the strip says what is happening; what to do about it is on the Now card (one instruction at a time)
     // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
     requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
-    el.querySelectorAll("[data-act]").forEach(b => b.onclick = () => cb.onCommand(b.dataset.act === "shelter" ? { type: "shelter", on: true }
-      : { type: "allocate", to: "shields", amount: { kind: "percent", value: 40 }, from: null }));
   }
 
   /** QA-24: the sim's "in sun" (a ridge-top site stays lit with the Sun a degree under the flat horizon) decides the
@@ -542,10 +538,11 @@ export function createCabin(root, o = {}) {
   }
   function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible, f.in_sun != null ? f.in_sun : st.env.in_sun); }
   /** Radio log (COMM page) + the fallback caption line (the caption bar takes over when captions are on). */
-  function log(who, text) {
+  function log(who, text, quiet = false) {
     if (!text) return;
     const last = logLines[logLines.length - 1]; if (last && last.text === text) return;
     logLines.push({ who, text }); logLines = logLines.slice(-12);
+    if (quiet) { if (pages.includes("COMM")) paintDus(); return; }   // [polish 3] in the radio log, not the caption line
     if (pages.includes("COMM")) paintDus();
     q("#cbCapWho").textContent = who === "kid" ? callSign.shown() : who === "houston" ? "Houston" : "CAPCOM";
     q("#cbCapTxt").textContent = text;
@@ -609,11 +606,14 @@ export function createCabin(root, o = {}) {
     if (!b) { el.hidden = true; slot(false); return; }
     glassEl.dataset.moment = b.visual || "";
     el.className = "cb-moment is-" + (b.visual || "site");
-    el.innerHTML = `<small>Day ${Math.floor((b.t_h || 0) / 24) + 1}</small><b>${esc(b.title)}</b>${b.objective ? `<span>${esc(b.objective)}</span>` : ""}`;
+    // [polish 3] the title only: the beat's objective line was a second instruction beside the Now card
+    el.innerHTML = `<small>Day ${Math.floor((b.t_h || 0) / 24) + 1}</small><b>${esc(b.title)}</b>`;
     el.hidden = false; slot(true);
     momentT = setTimeout(() => { el.hidden = true; slot(false); delete glassEl.dataset.moment; }, 5200);
   }
   let cardKey = "";
+  const ringMax = {};
+  const flat = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   /** The word a kid can say for each option: the one word no other option has ("Steer left" / "Steer right" -> left,
    *  right). The router's task_choice matches the same words (backend turn_router.task_choice). */
   function sayWords(labels) {
@@ -621,21 +621,33 @@ export function createCabin(root, o = {}) {
     return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
   }
   const DECKHINT = { skip: "Skip ahead is in the clock bar (E).", warp: "Time speed is in the menu (Esc), or press W.", play: "Play is in the clock bar (K)." };
-  const NOWSAY = ws => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${ws.map((_, i) => i + 1).join(" or ")}.`;
+  const NOWSAY = (ws, keys) => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${(keys || ws.map((_, i) => String(i + 1))).join(" or ")}.`;
   /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
   function card(c, { ack = null, cadet = false } = {}) {
     const el = q("#cbNow"); if (!el) return;
-    el.hidden = !c; if (!c) { cardKey = ""; return; }
-    el.className = `cb-now is-${c.level || "info"}${c.progress ? " is-task" : ""}${cadet ? " is-cadet" : ""}${c.choice ? " is-choice" : ""}${folded ? " is-folded" : ""}`;
-    q("#cbNowTitle").textContent = c.progress ? c.title : "";
+    const cab = root.querySelector(".cb");
+    el.hidden = !c; if (!c) { cardKey = ""; if (cab) cab.classList.remove("is-takeover"); return; }
+    const own0 = (c.buttons || []).filter(b => !b.clock);
+    // [polish 3] the event takeover: a question CAPCOM asks, a storm, a decision with a deadline. The cabin dims around
+    // the Now card, so its buttons are the one thing to press (the deck, the voice bar and the panels still work).
+    const take = own0.length > 0 && (!!c.offer || c.level === "warn" || (c.choice && c.level === "caution"));
+    // a step whose one button says the same words: the button carries them (the line stays for screen readers)
+    const same = !c.choice && own0.length === 1 && flat(own0[0].label) === flat(c.text);
+    el.className = `cb-now is-${c.level || "info"}${c.progress ? " is-task" : ""}${cadet ? " is-cadet" : ""}${c.choice ? " is-choice" : ""}${take ? " is-takeover" : ""}${same ? " is-same" : ""}${folded && !take ? " is-folded" : ""}`;
+    if (cab) cab.classList.toggle("is-takeover", take);
+    q("#cbNowTitle").textContent = c.title && c.title !== (story.NOW || {}).label ? c.title : "";
     q("#cbNowT").textContent = c.text;
     const left = c.left_h != null ? (c.left_h >= 1 ? `${Math.round(c.left_h)} h left` : `${Math.max(1, Math.round(c.left_h * 60))} min left`) : "";
+    // the countdown ring: the share of this job's time still left (its first reading is the full ring)
+    const rk = c.task || c.key; if (c.left_h != null) ringMax[rk] = Math.max(ringMax[rk] || 0, c.left_h);
+    const ringP = c.left_h != null && ringMax[rk] > 0 ? Math.max(0, Math.min(1, c.left_h / ringMax[rk])) : null;
     // Rebuild the card (and its buttons) only when its structure changes. The countdown and readouts tick about once a
     // second; re-rendering the buttons that often replaced them mid-click, so a real mouse click could be lost.
-    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, c.why, !!left]);
+    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, c.why, !!left, take]);
     if (key === cardKey) {
       requestAnimationFrame(fitNow);
       const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
+      const rg = q("#cbNowMore .cb-now-ring"); if (rg && ringP != null) { rg.style.setProperty("--p", ringP.toFixed(3)); rg.classList.toggle("is-low", c.left_h <= 2); }
       q("#cbNowMore").querySelectorAll(".cb-now-ro").forEach((n, i) => { const r = (c.readouts || [])[i]; if (r) n.lastChild.textContent = " " + r.v; });
       const own2 = (c.buttons || []).filter(b => !b.clock);
       q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own2[+b.dataset.b], c));   // latest task object
@@ -649,16 +661,23 @@ export function createCabin(root, o = {}) {
     const words = sayWords((c.buttons || []).map(b => b.label));
     const own = (c.buttons || []).filter(b => !b.clock);   // Play / Skip ahead / the speed are the deck's, shown once there
     const deckHint = (c.buttons || []).some(b => b.clock) ? `<p class="cb-now-say">${esc(DECKHINT[(c.buttons.find(b => b.clock) || {}).clock] || "")}</p>` : "";
-    const btns = own.map((b, i) => `<button type="button" class="cb-now-b${i || c.choice ? "" : " is-hot"}" data-b="${i}" ${i === 0 && !c.choice ? 'data-intent="yes"' : ""}
-      aria-keyshortcuts="${c.choice ? i + 1 : "T"}"><kbd aria-hidden="true">${c.choice ? i + 1 : "T"}</kbd><span class="cb-now-bl">${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</span></button>`).join("");
-    const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words))}</p>` : "";
+    // the key on each button: 1 / 2 for a choice, Y / N for a yes / no (Y and N answer it), T for the one job
+    const keyOf = (b, i) => (b.intent === "yes" ? "Y" : b.intent === "no" ? "N" : c.choice ? String(i + 1) : "T");
+    const btns = own.map((b, i) => `<button type="button" class="cb-now-b${(i || c.choice) && b.intent !== "yes" ? "" : " is-hot"}" data-b="${i}" ${b.intent ? `data-intent="${b.intent}"` : i === 0 && !c.choice ? 'data-intent="yes"' : ""}
+      aria-keyshortcuts="${keyOf(b, i)}"><kbd aria-hidden="true">${keyOf(b, i)}</kbd><span class="cb-now-bl">${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</span></button>`).join("");
+    const ring = take && ringP != null ? `<span class="cb-now-ring${c.left_h <= 2 ? " is-low" : ""}" style="--p:${ringP.toFixed(3)}" role="img" aria-label="${esc(left)}"><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9"/><circle class="is-arc" cx="18" cy="18" r="15.9" pathLength="100"/></svg></span>` : "";
+    const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words, own.map(keyOf)))}</p>` : "";
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
-      <div class="cb-now-meta">${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
+      <div class="cb-now-meta">${ring}${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
       ${c.why ? `<p class="cb-now-why">${esc(c.why)}</p>` : ""}${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}
       ${btns ? `<div class="cb-now-btns${c.choice ? " is-choice" : ""}" role="group" aria-label="${esc(c.title || "Now")}">${btns}</div>` : ""}${sayLine}${deckHint}`;
     q("#cbNowMore").querySelectorAll("[data-b]").forEach(b => b.onclick = () => cb.onTask(own[+b.dataset.b], c));
     fitNow();
+    // [polish 3] measure again once the 3D consoles have settled: a card drawn while the cabin's camera still flew in
+    // (a returning player skips the tour) measured the consoles mid-flight and stayed squeezed to its button
+    clearTimeout(fitT); fitT = setTimeout(() => { fitNow(); fitT = setTimeout(fitNow, 1200); }, 600);
   }
+  let fitT = 0;
   /** The Now panel lives on the wall above the Habitat console: when the wall is short (a small window), it drops its
    *  details (read-outs, the hint, then the meta row and the say line) so it never sits on the console. The step and
    *  its buttons always stay. */
@@ -688,7 +707,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); clearTimeout(momentT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+    dispose() { clearInterval(offT); clearTimeout(momentT); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
       escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
@@ -753,18 +772,6 @@ export function createCabin(root, o = {}) {
     /** The window's frame between whole hours (the live clock's `live` telemetry): the clock reads smoothly. */
     frame: f => { if (st && f && f.mission_time_h != null) paintClock(st, f.mission_time_h); },
     moment: b => moment(b),
-    missionLog: entries => { logEntries = entries || []; paintLog(); },
-    /** Cadet: an offer opens its panel with the choices as two big buttons there (null clears). */
-    offer(panelId, actions) {
-      root.querySelectorAll(".cb-offer").forEach(n => n.remove());
-      if (!panelId || !actions || !actions.length) return;
-      const host = q(`[data-panel="${panelId === "power" ? "displays" : panelId}"]`); if (!host) return;
-      const box = document.createElement("div"); box.className = "cb-offer"; box.setAttribute("role", "group"); box.setAttribute("aria-label", "CAPCOM offers");
-      actions.slice(0, 2).forEach((a, i) => { const b = document.createElement("button"); b.type = "button"; b.className = "cb-offer-b" + (i ? "" : " is-hot"); b.textContent = a.label;
-        b.onclick = () => { box.remove(); if (opened && c3 && c3.panel) c3.back(); a.onClick(); }; box.append(b); });   // decided: back to the seat (the window and the Now card)
-      host.append(box);
-      const opened = !!(c3 && c3.panel !== (panelId === "power" ? "power" : panelId));
-      if (c3) c3.open(panelId);
-      requestAnimationFrame(() => { const f = box.querySelector("button"); if (f) f.focus({ preventScroll: true }); });
-    } };
+    missionLog: entries => { logEntries = entries || []; paintLog(); }
+  };
 }

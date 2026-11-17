@@ -135,6 +135,10 @@ export const NOW = {
   steady: "All steady. Fast-forwarding to the next event…",
   steadyFast: "All steady. Fast-forwarding to the next event…",
   confirmTitle: "CAPCOM asks",
+  /** [polish 3] the storm's own buttons on the Now card (the alert strip only says what is happening) */
+  stormTitle: "Solar storm",
+  shelterBtn: "Crew into the shelter",
+  shieldsBtn: "Shields to 40",
   confirm: "CAPCOM needs a yes or no.",
   paused: "Clock paused. Press Play when you're ready.",
   driving: h => `Rover driving. Back in ${h} hours.`,
