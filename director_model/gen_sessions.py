@@ -717,6 +717,7 @@ async def main():
                     "a coverage gap cell (coverage.json): every screen x intent gets data")
     ap.add_argument("--r8-p", type=float, default=0.35, help="round 8: share of the hands-free class items drawn from "
                     "pools_r8 (video, prep, OS-voice echo, gestures, new lessons and offers)")
+    ap.add_argument("--ho-sessions", type=int, default=55, help="round 11: test sessions in the held-out voices")
     ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
                     "in train / val (outcome signals as weak labels)")
     a = ap.parse_args()
@@ -785,6 +786,9 @@ async def main():
     if RE is not None and RE.n("test"):
         # REAL Arc decodes of held-out sessions: unseen templates / card questions, held-out voices (real_ear.py)
         await gen("test_real", "test", a.test, 900_000, "real", "test")
+    if RE is not None and RE.n("voice_ho"):
+        # round 11: test_real's first sessions heard in Mac voices never used in train / val (voice_bank.HELDOUT)
+        await gen("test_voice_heldout", "test", a.ho_sessions, 900_000, "real", "voice_ho")
 
     async def set_sessions(name, items, mode_of, per=8, noise=None):
         if only and name not in only:
