@@ -612,7 +612,7 @@ export function createCabin(root, o = {}) {
     momentT = setTimeout(() => { el.hidden = true; slot(false); delete glassEl.dataset.moment; }, 5200);
   }
   // [polish 4] the window's markers (OUTPOST, ROVER, EARTH, SUN) follow the 3D camera; one that drifts under the
-  // story moment ("Day 3 · On our own") steps aside (fades) while the moment shows, so the two never print over each other
+  // story moment ("Day 3 · On our own") steps aside (hides) while the moment shows, so the two never print over each other
   let markRaf = 0;
   function clearMarks() {
     cancelAnimationFrame(markRaf);
@@ -621,9 +621,10 @@ export function createCabin(root, o = {}) {
       const marks = root.querySelectorAll(".tv-mark");
       if (!on) { marks.forEach(m => m.classList.remove("is-under")); markRaf = 0; return; }
       const r = el.getBoundingClientRect(), pad = 6;
-      marks.forEach(m => { m.classList.remove("is-under"); const k = m.getBoundingClientRect();
-        const hit = k.width > 0 && !(k.right < r.left - pad || k.left > r.right + pad || k.bottom < r.top - pad || k.top > r.bottom + pad);
-        if (hit) m.classList.add("is-under"); });
+      // measure first, then toggle (a remove + re-add each frame restarted the fade, so it never faded)
+      const hits = [...marks].map(m => { const k = m.getBoundingClientRect();
+        return k.width > 0 && !(k.right < r.left - pad || k.left > r.right + pad || k.bottom < r.top - pad || k.top > r.bottom + pad); });
+      marks.forEach((m, i) => m.classList.toggle("is-under", hits[i]));
       markRaf = requestAnimationFrame(tick);
     };
     tick();

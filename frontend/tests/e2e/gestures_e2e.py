@@ -316,9 +316,12 @@ def main():
         page.wait_for_timeout(2500)
         inject(page, "thumbs_up", 90_000_000)
         page.wait_for_timeout(3000)
+        if page.evaluate("() => !!document.getElementById('mBriefGo')"):   # [polish 4] hub -> briefing: a second thumbs up takes command
+            inject(page, "thumbs_up", 95_000_000)
+            page.wait_for_timeout(3000)
         sc = screen(page)
         if sc["cabin"] == "1":
-            ok(True, "brief: thumbs up -> take command (cabin)")
+            ok(True, "hub + briefing: thumbs up, thumbs up -> take command (cabin)")
             v0 = page.evaluate("() => (document.querySelector('.cb-view[aria-pressed=true]') || {}).dataset?.view")
             inject(page, "swipe_left", 100_000_000)
             page.wait_for_timeout(600)

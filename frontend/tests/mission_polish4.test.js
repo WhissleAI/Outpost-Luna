@@ -93,5 +93,5 @@ test("keys: Up from the view bar / deck / Now card never lands on a 3D console (
 test("a story moment's 'Day N' never prints over a window marker (OUTPOST, ROVER...)", () => {
   const cab = src("../src/mission/cabin.js");
   assert.match(cab, /function clearMarks\(\)/);
-  assert.match(src("../src/cabin.css"), /\.tv-mark\.is-under\{opacity:0!important/);
+  assert.match(src("../src/cabin.css"), /\.tv-mark\.is-under\{visibility:hidden!important\}/);
 });

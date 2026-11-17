@@ -217,7 +217,25 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 .mx-plan .mx-link{align-self:center}
 html[data-motion="reduce"] .mx-card{animation:none}
 @media (prefers-reduced-motion:reduce){.mx-card{animation:none}}
-@media (max-height:700px){.mpanel.mx-hub,.mpanel.mx-plan{gap:var(--space-3)} .mx-hubcard{padding:var(--space-3)} .mx-card{padding:var(--space-2) var(--space-3)}}
+@media (max-height:780px){
+  .mpanel.mx-hub,.mpanel.mx-plan{gap:var(--space-3);padding:var(--space-4)}
+  .mx-hubcard{padding:var(--space-3);gap:var(--space-1)}
+  .mx-hub .mx-title{font-size:var(--text-lg)}
+  .mx-hubfacts{flex-direction:row;flex-wrap:wrap;gap:var(--space-1) var(--space-3);font-size:var(--text-sm)}
+  .mx-hubrow{grid-template-columns:1fr 1fr}
+  .mx-hubrow .mx-btn{min-height:var(--control-md);font-size:var(--text-sm);line-height:1.15}
+  .mx-hub .mx-continue{margin:0;padding:var(--space-2) var(--space-3)}
+  .mx-hub .mx-continue .mx-go{min-height:var(--control-md);min-width:110px}
+  .mx-card{padding:var(--space-2) var(--space-3)}
+}
+/* the hub / briefing panel never runs under the voice bar: it ends above it when they share the screen's width */
+@media (max-width:1180px){.mpanel.mx-hub,.mpanel.mx-plan{bottom:auto;max-height:calc(100% - 92px)}}
+@media (max-height:700px){
+  .mx-hub .mx-continue>span small{display:none}
+  .mx-hub .mx-continue b{font-size:var(--text-sm)}
+  .mx-hub .mx-chip{min-height:32px}
+  .mx-hub .mx-go{min-height:var(--control-md)}
+}
 
 /* ---------- [polish 4] debrief: stars first, the one choice always on screen (wave 5) ---------- */
 /* the sheet is a column: head, hero (stars, title, grade), the buttons, then a body that scrolls on its own */

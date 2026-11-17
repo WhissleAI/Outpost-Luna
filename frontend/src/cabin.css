@@ -884,4 +884,4 @@ html[data-motion="reduce"] .m-cabin .cb-hole>.cb-rover,html[data-motion="reduce"
 html[data-motion="reduce"] .m-cabin>.cb-coach{animation:none}
 @media (prefers-reduced-motion:reduce){.m-cabin>.cb-coach{animation:none}}
 /* [polish 4] a window marker under the story moment fades while it shows (cabin.js clearMarks) */
-.tv-mark.is-under{opacity:0!important;transition:opacity var(--dur-fast)}
+.tv-mark.is-under{visibility:hidden!important}

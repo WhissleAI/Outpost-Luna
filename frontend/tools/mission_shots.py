@@ -64,6 +64,7 @@ def run(base, out, tag, size):
         pg.wait_for_timeout(2500)
         if vis(".mx-hub"):
             res["hub"] = js(IN_VIEW, "#mStart")
+            res["hub_site"] = js(IN_VIEW, "#mHubSite")
             shot("1-hub")
             tap("#mStart")
             wait("#mBriefGo")
@@ -98,13 +99,17 @@ def run(base, out, tag, size):
         js("() => window.__outpost.missionUI.clockAction('pause')")
         js("() => window.__cabinTest.storm(true)")
         pg.wait_for_timeout(1500)
+        try:
+            wait(".cb-now.is-takeover .cb-now-b", 15000)
+        except Exception:
+            pass
         res["storm"] = js(IN_VIEW, ".cb-now.is-takeover .cb-now-b")
         shot("5-storm-takeover")
         js("() => window.__cabinTest.storm(false)")
         js("() => window.__cabinTest.moment('On our own')")
         pg.wait_for_timeout(1800)
         res["moment_overlap"] = js("""() => { const m = document.querySelector('.cb-moment:not([hidden])'); if (!m) return null; const r = m.getBoundingClientRect();
-          return [...document.querySelectorAll('.tv-mark')].filter(k => k.getClientRects().length && getComputedStyle(k).opacity > 0.05 && getComputedStyle(k).visibility !== 'hidden').map(k => ({ t: k.textContent, b: k.getBoundingClientRect() }))
+          return [...document.querySelectorAll('.tv-mark')].filter(k => k.getClientRects().length && getComputedStyle(k).visibility !== 'hidden').map(k => ({ t: k.textContent, b: k.getBoundingClientRect() }))
             .filter(o => !(o.b.right < r.left || o.b.left > r.right || o.b.bottom < r.top || o.b.top > r.bottom)).map(o => o.t); }""")
         shot("6-moment")
         js("() => window.__cabinTest.debrief('survived', {stars: 3})")
@@ -129,7 +134,7 @@ if __name__ == "__main__":
     for sz in a.sizes.split(","):
         r = run(a.base, a.out, a.tag, tuple(map(int, sz.split("x"))))
         print(sz, json.dumps(r))
-        for k in ("hub", "briefing", "debrief", "storm"):
+        for k in ("hub", "hub_site", "briefing", "debrief", "storm"):
             if k in r and not (r[k] and r[k]["inside"] and r[k]["hit"]):
                 bad = True
         if r.get("moment_overlap"):

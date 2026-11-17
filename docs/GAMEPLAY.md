@@ -283,5 +283,5 @@ one press away) and 5 (the 12-step tour only in Help).
 - **One wording for the storm's orders.** The Director's offer uses the sim's labels ("Crew into the shelter",
   "Shields to 40", was "Go to shelter" / "Set shields to 40"), and CAPCOM says them: "Storm coming. Crew into the
   shelter, or shields to 40?"; "Storm's here! Crew into the shelter."
-- **A story moment** ("Day 3 · On our own") never prints over a window marker: a marker under it fades while it shows
+- **A story moment** ("Day 3 · On our own") never prints over a window marker: a marker under it hides while it shows
   (`cabin.js` `clearMarks`).
