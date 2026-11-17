@@ -112,7 +112,7 @@ def test_near_miss_storm_offers_no_shelter(sess):
     ds = sess.proactive({"kind": "solar_storm", "sep": False, "t_h": 80, "text": "Storm from 2025-04-15. Few particles here."})
     assert next(d for d in ds if d["t"] == "card")["actions"] == []
     ds = sess.proactive({"kind": "solar_storm", "sep": True, "t_h": 80, "text": "Solar storm!"})
-    assert [a["label"] for a in next(d for d in ds if d["t"] == "card")["actions"]] == ["Go to shelter", "Set shields to 40"]
+    assert [a["label"] for a in next(d for d in ds if d["t"] == "card")["actions"]] == ["Crew into the shelter", "Shields to 40"]
 
 
 def test_critical_storm_never_over_the_kid(sess):

@@ -231,6 +231,8 @@ def mission_choice(r):
         return True
     r.wait(1200)
     r.js("() => document.getElementById('mStart').click()")
+    r.until("() => !!document.getElementById('mBriefGo')", 8000)   # [polish 4] the hub's Start -> the briefing
+    r.js("() => { const b = document.getElementById('mBriefGo'); if (b) b.click(); }")
     if not r.until("() => !!document.querySelector('.cb-now-btns .cb-now-b')", 15000):
         return False
     r.js("() => { const p = document.getElementById('cbPlay'); if (p) p.click(); }")   # the clock running

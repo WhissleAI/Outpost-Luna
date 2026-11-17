@@ -269,9 +269,18 @@ def main():
             pg.goto(base + "/")
             pg.wait_for_timeout(2500)
             press("ArrowDown", 600)
-        ok(until("() => document.body.dataset.mode === 'mission' && !!document.getElementById('mStart')", 20000), "qualified: Enter → the site picker")
+        # [polish 4] Mission tab -> the hub (one mission, Start; Choose site opens the navigator) -> the 3-card briefing
+        # (Take command) -> the cabin
+        HUB = "() => document.body.dataset.mode === 'mission' && !!document.querySelector('#mPanel.mx-hub #mStart')"
+        ok(until(HUB, 20000), "qualified: Enter → the Mission hub")
+        until("() => document.activeElement && document.activeElement.id === 'mStart'", 5000, "hub primary")
+        ok(press_until(["ArrowUp"], "() => document.activeElement.id === 'mStart'", n=3), "hub: focus is on Start")
+        shot("05a-hub")
+        ok(press_until(["ArrowDown"], "() => document.activeElement.id === 'mHubSite'", n=4), "hub: Down reaches Choose site")
+        press("Enter", 1500)
+        ok(until("() => !!document.querySelector('#mPanel:not(.mx-hub) .mx-site[aria-checked=true]')", 10000), "hub: Enter on Choose site opens the site navigator")
         until("() => document.activeElement && document.activeElement.id === 'mStart'", 5000, "picker primary")
-        ok(act()["id"] == "mStart", "picker: focus lands on Take command")
+        ok(act()["id"] == "mStart", "picker: focus lands on Start")
         site0 = js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site")
         press("n", 900)
         ok(js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site") != site0, "picker: N picks the next site")
@@ -283,29 +292,29 @@ def main():
         ok(js("() => document.activeElement.classList.contains('mx-site') && document.activeElement.getAttribute('aria-checked') === 'true'")
            and js("() => [...document.querySelectorAll('.mx-site')].indexOf(document.activeElement)") != r0, "picker: Up / Down walk the rows (the focused row is picked)")
         shot("05-picker")
-        press("y", 3000)
-        if js("() => !!document.querySelector('#mlSkip')"):   # learning v1: the first mission offers the Moon Base video once
-            ok(act()["id"] == "mlWatch", "first mission: the Moon Base card, focus on Watch")
-            press("Escape", 3000)                          # Esc = no: skip it, the mission starts
-        ok(until("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000), "picker: Y takes command → the 3D cabin")
+        picked = js("() => document.querySelector('.mx-site[aria-checked=true]').dataset.site")
+        press("y", 1500)
+        ok(until("() => !!document.getElementById('mBriefGo') && document.activeElement.id === 'mBriefGo'", 10000), "picker: Y → the briefing, focus on Take command")
+        ok(js("() => document.querySelectorAll('.mx-cards .mx-card').length") == 3, "briefing: three cards (Goal, Danger, Bonus)")
+        shot("05b-briefing")
+        press("Escape", 1200)
+        ok(until(HUB, 6000), "briefing: Esc goes back to the hub")
+        until("() => document.activeElement && document.activeElement.id === 'mStart'", 5000, "hub primary again")
+        press_until(["ArrowUp"], "() => document.activeElement.id === 'mStart'", n=3)
+        press("Enter", 1500)
+        ok(until("() => document.activeElement && document.activeElement.id === 'mBriefGo'", 8000), "hub: Enter on Start → the briefing")
+        press("Enter", 3000)
+        ok(until("() => document.body.dataset.cabin === '1' && !!document.querySelector('#mCabin .c3-panel')", 30000), "briefing: Enter takes command → the 3D cabin")
+        ok(js("() => (window.__outpost.missionSite || '')") == picked, "the site picked in the navigator is the one that flies")
 
         # ---------------- the cabin ----------------
-        # the first-mission cabin tour (story): its Next is focused; Enter advances; Esc skips (on rc/2 + story)
+        # [polish 4] the first mission teaches by doing (no 12-step tour): one prompt beside the Now card's button, in
+        # the words of the input in use, no buttons of its own
         pg.wait_for_timeout(1500)
-        if js("() => !!document.querySelector('.m-tour:not([hidden])')"):
-            until("() => document.activeElement && document.activeElement.matches('.m-tour .t-next')", 6000, "tour next")
-            ok(js("() => document.activeElement.matches('.m-tour .t-next')"), "tour: focus is on Next")
-            shot("06a-cabin-tour")
-            b0 = js("() => document.querySelector('.m-tour .t-eye').textContent")
-            press("Enter", 1500)
-            ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour .t-eye').textContent !== %s" % json.dumps(b0)), "tour: Enter advances it")
-            press("ArrowLeft", 500)
-            ok(js("() => !document.querySelector('.m-tour:not([hidden])') || document.querySelector('.m-tour').contains(document.activeElement)"), "tour: arrows stay on the tour card (Next, Skip tour)")
-            # [flows] the first Esc pauses the tour (Paused, Resume focused); the second one skips it
-            press("Escape", 1000)
-            ok(js("() => { const c = document.querySelector('.m-tour:not([hidden])'); return !!c && c.classList.contains('is-paused') && document.activeElement && document.activeElement.dataset.t === 'resume'; }"), "tour: Esc pauses it (Resume focused)")
-            press("Escape", 1500)
-            ok(js("() => !document.querySelector('.m-tour:not([hidden])')"), "tour: a second Esc skips the tour")
+        ok(until("() => { const c = document.querySelector('.cb-coach:not([hidden])'); return !!c && /Press T/.test(c.textContent) && !c.querySelector('button'); }", 10000),
+           "first mission: an in-place prompt beside the Now card names its key, T (no tour, no buttons)")
+        ok(not js("() => !!document.querySelector('.m-tour:not([hidden])')"), "first mission: no cabin tour")
+        shot("06a-cabin-coach")
         until("() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000, "seat focus")
         ok(act()["id"] == "seatFocus", "seat: focus is on a console panel")
 
@@ -433,7 +442,33 @@ def main():
 
         # ---------------- the top bar from the seat, Settings ----------------
         until("() => document.activeElement && document.activeElement.id === 'seatFocus'", 8000, "seat focus again")
-        ok(press_until(["ArrowUp"], "() => !!document.activeElement.closest('.topbar')", n=6), "seat: Up reaches the top bar (no trap)")
+        # [polish 4] a real path, not a bigger limit: from every console the seat can light, each Up must land higher on
+        # the screen until the top bar (a trap, like Orbit <-> the seat, bounces focus back down and fails here)
+        YPOS = "() => { const a = document.activeElement || document.body, r = a.getBoundingClientRect(); return { y: r.top + r.height / 2, top: !!a.closest('.topbar'), at: a.id || (a.dataset && (a.dataset.view || a.dataset.panel)) || String(a.className).split(' ')[0] }; }"
+
+        def up_path():
+            path = [js(YPOS)]
+            for _ in range(12):
+                if path[-1]["top"]:
+                    return True, path
+                press("ArrowUp", 420)
+                path.append(js(YPOS))
+                if not path[-1]["top"] and path[-1]["y"] >= path[-2]["y"] - 1:
+                    return False, path
+            return path[-1]["top"], path
+
+        lit = act()["panel"]
+        good, bad = [], []
+        for panel in [lit] + [x for x in ["habitat", "rover", "displays", "pedestal", "radiation", "comm"] if x != lit]:
+            press_until(["ArrowDown"], "() => document.activeElement.id === 'seatFocus'", n=8)
+            if not seat_to(panel):
+                continue
+            up, path = up_path()
+            (good if up else bad).append(panel + ": " + " > ".join(p["at"] for p in path))
+        for x in bad:
+            print("  trap:", x)
+        ok(not bad and len(good) >= 5, f"seat: Up climbs to the top bar from every console ({len(good)} consoles, no trap)")
+        press_until(["ArrowUp"], "() => !!document.activeElement.closest('.topbar')", n=8)
         press("s", 900)
         ok(js("() => !document.querySelector('.a11y-panel').hidden"), "S opens Settings")
         ok(press_until(["ArrowDown"], "() => document.activeElement.dataset.sec === 'keys'", n=10), "settings: arrows walk the sections to Keyboard & controller")

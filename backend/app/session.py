@@ -872,8 +872,9 @@ class Session:
             elif warning and e.get("confidence") == "possible":
                 line = "A storm is possible. Shelter now, or wait and watch?"
             else:
-                line = ("Storm coming. Shelter now, or wait?" if warning else
-                        "Storm's here! Shelter, and shields up.")
+                # [polish 4] the sim's own words (gameplay.py, the Now card): "Crew into the shelter", "Shields to 40"
+                line = ("Storm coming. Crew into the shelter, or shields to 40?" if warning else
+                        "Storm's here! Crew into the shelter.")
             if calm:
                 line = "Okay, we've got this. " + capcom.short(line)
             al = decision("alert", pri, level="critical" if crit else "warn", text=e.get("text") or line, source=src)
@@ -884,8 +885,8 @@ class Session:
             # and a player who followed it sat in the shelter for nothing, with science off)
             card = decision("card", pri, title="CAPCOM", body=e.get("text") or line, chips=["Solar storm", src or "NASA"],
                             actions=[] if near_miss else
-                            [{"label": "Go to shelter", "send": {"t": "typed", "text": "go to the shelter"}},
-                             {"label": "Set shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
+                            [{"label": "Crew into the shelter", "send": {"t": "typed", "text": "go to the shelter"}},
+                             {"label": "Shields to 40", "send": {"t": "typed", "text": "shields to 40"}}],
                             hint=True)
             if st:
                 self.warned.add(st.start_h)   # the sim warned already: no second lookahead alert

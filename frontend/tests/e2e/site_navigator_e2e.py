@@ -57,6 +57,7 @@ def run(base: str) -> int:
         pg.on("request", lambda r: "/api/mission/start" in r.url and starts.append(r.post_data_json))
         pg.add_init_script(SEED)
         pg.goto(base)
+        pg.wait_for_selector("#mHubSite", timeout=60000); pg.click("#mHubSite")   # [polish 4] the hub's Choose site opens the navigator
         pg.wait_for_selector(".nv-map .nv-layer", timeout=60000)
         pg.wait_for_timeout(1500)
         pg.evaluate("() => { const f = window.speechSynthesis; window.__said = []; }")
@@ -150,9 +151,11 @@ def run(base: str) -> int:
         ctx = b.new_context(viewport={"width": 1280, "height": 720}); pg = ctx.new_page(); pg.add_init_script(SEED)
         st = []
         pg.on("response", lambda r: "/api/mission/start" in r.url and st.append(r.json()))
-        pg.goto(base); pg.wait_for_selector(".nv-map .nv-layer", timeout=60000); pg.wait_for_timeout(800)
+        pg.goto(base); pg.wait_for_selector("#mHubSite", timeout=60000); pg.click("#mHubSite")   # [polish 4] the hub's Choose site
+        pg.wait_for_selector(".nv-map .nv-layer", timeout=60000); pg.wait_for_timeout(800)
         pg.click('.mx-site[data-site="malapert_massif"]'); pg.wait_for_timeout(400)
-        pg.click("#mStart"); pg.wait_for_selector(".cb-glass", timeout=60000); pg.wait_for_timeout(500)
+        pg.click("#mStart"); pg.wait_for_selector("#mBriefGo", timeout=20000); pg.click("#mBriefGo")
+        pg.wait_for_selector(".cb-glass", timeout=60000); pg.wait_for_timeout(500)
         m = st[-1] if st else {}
         win = pg.evaluate("id => fetch('/api/mission/' + id + '/windows').then(r => r.json())", m.get("id", ""))
         sun_h = sum(b_ - a for a, b_ in win.get("sun", []))
@@ -169,7 +172,7 @@ def run(base: str) -> int:
             route.fulfill(response=resp, body=json.dumps(d), headers={**resp.headers, "content-type": "application/json"})
         pg.route("**/api/sites/navigator", stub)
         pg.route("**/api/sites/layers/want", lambda r: r.fulfill(status=200, body='{"ok":true}', headers={"content-type": "application/json"}))
-        pg.goto(base); pg.wait_for_selector("#mStart", timeout=60000); pg.wait_for_timeout(1500)
+        pg.goto(base); pg.wait_for_selector("#mHubSite", timeout=60000); pg.click("#mHubSite"); pg.wait_for_selector(".mx-site", timeout=20000); pg.wait_for_timeout(1500)
         ok("Map layers downloading" in pg.inner_text("body"), "no layers: 'Map layers downloading…'")
         ok(pg.locator(".mx-site").count() == 5 and pg.locator(".nv-detail .nv-src").count() >= 7, "...and the numbers with sources still show")
         pg.evaluate(TYPED, "show sunlight"); pg.wait_for_timeout(2000)

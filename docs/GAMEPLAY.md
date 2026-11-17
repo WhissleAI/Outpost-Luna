@@ -253,3 +253,35 @@ do**:
   shows its title only (its objective line was a second instruction).
 - `frontend/tools/play_mission.py` counts, at every action, buttons that tell the player what to do anywhere but the
   Now card (`competing`), and how many moments were takeovers.
+
+## 11. Hub, briefing, teach by doing, debrief (Mission polish 4)
+
+docs/MISSION_POLISH_SPEC.md waves 4 and 5, with the owner's decisions 4 (start at the recommended site, the navigator
+one press away) and 5 (the 12-step tour only in Help).
+
+- **Mission hub** (`ui.js` `hub`). The Mission tab opens one card: "Mission N · 10 days", the site (Shackleton Rim, the
+  best first pick, on a first mission; the next site after Next mission), its sun, radio and ice in mission days, and
+  one big **Start**. **Choose site** opens the navigator (docs/SITE_NAVIGATOR.md); LB / RB, N / P or "pick Malapert"
+  show another site's mission in place; **What's this mission?** reads one line. A saved mission adds Resume above it
+  (Start then reads New mission). NASA's Moon Base video is a small "Watch the 1-min briefing" chip on the card
+  (`mission_learning.js`, only when the clip is saved), never a yes / no before the cabin.
+- **Briefing** (`toPlan`): Goal "Keep the crew safe for 10 days." · Danger "Solar storms and long nights." · Bonus
+  "Bring back ice and science." and **Take command**. Esc / B / Back returns to the hub. The navigator's primary is
+  Start too, so both roads go through the same briefing. Fly again from the debrief skips it (same mission).
+- **Teach by doing** (`mission/coach.js`). The first mission per call sign shows three prompts, one at a time, beside
+  the control: the Now card's button ("Your job is always here. Press T to do it."), Skip ahead ("Time runs by
+  itself. Hold F to speed it up.") once the clock runs, and Menu ("Esc pauses. The menu has speed and restart."). The
+  words follow the input (keys, controller, touch / mouse). Each goes when the player does it (a Now-card press or
+  any order; a fast-forward or skip; opening the menu); the last two also step aside after 25 s / 15 s. They have no
+  buttons and no pointer events, hide during a takeover and while the Now card has nothing to press, and never hold
+  the clock. The 12-step tour is Settings → Help → Show me around ("show me around").
+- **Debrief, stars first** (`showDebrief`). The sheet is a column: the three stars (big, one by one), the title and
+  the grade; then **Next mission** (a won mission: the next site, on the hub) or **Fly again** (otherwise), with the
+  other one beside it and **The numbers**; then a body that scrolls on its own (what happened, the numbers with
+  sources, the chart, Learn more, Data used). The buttons are on screen without scrolling at 1440×900, 1280×720 and
+  1024×640 (`frontend/tools/mission_shots.py` checks it with a hit test).
+- **One wording for the storm's orders.** The Director's offer uses the sim's labels ("Crew into the shelter",
+  "Shields to 40", was "Go to shelter" / "Set shields to 40"), and CAPCOM says them: "Storm coming. Crew into the
+  shelter, or shields to 40?"; "Storm's here! Crew into the shelter."
+- **A story moment** ("Day 3 · On our own") never prints over a window marker: a marker under it hides while it shows
+  (`cabin.js` `clearMarks`).

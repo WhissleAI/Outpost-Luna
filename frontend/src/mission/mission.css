@@ -186,3 +186,82 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 .mx-continue>span{flex:1 1 200px;display:grid;grid-template-columns:auto 1fr;column-gap:var(--space-2);align-items:center}
 .mx-continue>span small{grid-column:2;color:var(--color-text-2, inherit);font-size:var(--text-sm)}
 .mx-continue .mx-go{margin:0;width:auto;min-width:140px}
+
+/* ---------- [polish 4] the Mission hub and the 3-card briefing (docs/MISSION_POLISH_SPEC.md, wave 4) ---------- */
+.mpanel.mx-hub,.mpanel.mx-plan{gap:var(--space-4)}
+.mx-hubcard{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-4);border-radius:var(--radius-lg);background:var(--color-surface-2);border:1px solid var(--color-line)}
+.mx-hub .mx-title{font-size:var(--text-xl)}
+.mx-hubrec{margin:0;display:flex;align-items:center;gap:var(--space-1);font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--color-text-2)}
+.mx-hubrec .ic{color:var(--color-warning)}
+.mx-hubfacts{margin:var(--space-1) 0 0;display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-md);color:var(--color-text)}
+.mx-hubfacts span{display:flex;align-items:center;gap:var(--space-2)}
+.mx-hubfacts .ic{color:var(--color-text-2)}
+.mx-hubwhat{margin:var(--space-1) 0 0;font-size:var(--text-md);line-height:var(--leading-snug);color:var(--color-text)}
+.mx-hubwhat[hidden]{display:none}
+.mx-hubrow{display:grid;grid-template-columns:1fr;gap:var(--space-2)}
+.mx-hub .mx-continue~.mx-go,.mx-hub .mx-go.is-second{background:var(--color-surface-2);color:var(--color-text);border:1px solid var(--color-line-strong)}
+.mx-hubrow .mx-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:var(--control-md);padding:0 var(--space-3);font-size:var(--text-sm)}
+.mx-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--control-sm);margin-top:var(--space-1);padding:0 var(--space-3);
+  border:1px solid var(--color-line-strong);border-radius:var(--radius-full);background:var(--color-surface);color:var(--color-text);font-family:var(--font-ui);
+  font-size:var(--text-sm);font-weight:var(--weight-semibold);cursor:pointer}
+.mx-chip:hover{background:var(--color-surface-3)} .mx-chip:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mx-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.mx-card{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);
+  border-radius:var(--radius-lg);background:var(--color-surface-2);border:1px solid var(--color-line);animation:mxCard var(--dur-slow) var(--ease-out) both}
+.mx-card:nth-child(2){animation-delay:80ms} .mx-card:nth-child(3){animation-delay:160ms}
+@keyframes mxCard{from{opacity:0;transform:translateY(8px)}}
+.mx-card-i{grid-row:1/3;display:grid;place-items:center;width:44px;height:44px;border-radius:var(--radius-md);background:var(--color-surface-3);color:var(--color-text)}
+.mx-card.is-danger .mx-card-i{color:var(--color-warning)} .mx-card.is-bonus .mx-card-i{color:var(--color-accent)}
+.mx-card b{font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-2)}
+.mx-card-t{font-size:var(--text-md);font-weight:var(--weight-semibold);line-height:var(--leading-snug);color:var(--color-text)}
+.mx-plan .mx-link{align-self:center}
+html[data-motion="reduce"] .mx-card{animation:none}
+@media (prefers-reduced-motion:reduce){.mx-card{animation:none}}
+@media (max-height:780px){
+  .mpanel.mx-hub,.mpanel.mx-plan{gap:var(--space-3);padding:var(--space-4)}
+  .mx-hubcard{padding:var(--space-3);gap:var(--space-1)}
+  .mx-hub .mx-title{font-size:var(--text-lg)}
+  .mx-hubfacts{flex-direction:row;flex-wrap:wrap;gap:var(--space-1) var(--space-3);font-size:var(--text-sm)}
+  .mx-hubrow{grid-template-columns:1fr 1fr}
+  .mx-hubrow .mx-btn{min-height:var(--control-md);font-size:var(--text-sm);line-height:1.15}
+  .mx-hub .mx-continue{margin:0;padding:var(--space-2) var(--space-3)}
+  .mx-hub .mx-continue .mx-go{min-height:var(--control-md);min-width:110px}
+  .mx-card{padding:var(--space-2) var(--space-3)}
+}
+/* the hub / briefing panel never runs under the voice bar: it ends above it when they share the screen's width */
+@media (max-width:1180px){.mpanel.mx-hub,.mpanel.mx-plan{bottom:auto;max-height:calc(100% - 92px)}}
+@media (max-height:700px){
+  .mx-hub .mx-continue>span small{display:none}
+  .mx-hub .mx-continue b{font-size:var(--text-sm)}
+  .mx-hub .mx-chip{min-height:32px}
+  .mx-hub .mx-go{min-height:var(--control-md)}
+}
+
+/* ---------- [polish 4] debrief: stars first, the one choice always on screen (wave 5) ---------- */
+/* the sheet is a column: head, hero (stars, title, grade), the buttons, then a body that scrolls on its own */
+.m-debrief.mx-debrief{display:flex;flex-direction:column;overflow:hidden}
+.mx-debrief .mx-db-hero{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-2) var(--space-5)}
+.mx-debrief .mx-db-hero .mx-score div{align-items:flex-end}
+.mx-bigstars{margin:0;display:flex;gap:var(--space-1);color:var(--color-text-3)}
+.mx-bigstars span{display:grid;animation:mxStar var(--dur-slow) var(--ease-out) both;animation-delay:calc(var(--i) * 140ms)}
+.mx-bigstars .is-on{color:var(--color-warning)}
+.mx-bigstars .ic{width:40px;height:40px}
+@keyframes mxStar{from{opacity:0;transform:scale(.4)}}
+html[data-motion="reduce"] .mx-bigstars span{animation:none}
+@media (prefers-reduced-motion:reduce){.mx-bigstars span{animation:none}}
+.mx-debrief .mx-foot{flex:none}
+.mx-debrief .mx-foot .mx-go{min-width:200px}
+.mx-db-body{flex:1 1 auto;min-height:0;overflow:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:var(--space-4);padding-top:var(--space-1);
+  border-top:1px solid var(--color-line)}
+.mx-db-body .mx-data{margin-left:0}
+.mx-nums:focus{outline:none}
+/* short screens: the old two-column grid moves into the body (the sheet itself stays a column) */
+@media (min-width:860px) and (max-height:780px){
+  .m-debrief.mx-debrief{display:flex}
+  .mx-db-body{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:var(--space-3) var(--space-5);align-content:start}
+  .mx-db-body>.mx-story,.mx-db-body>.mx-nums,.mx-db-body>.mx-break,.mx-db-body>.ml-learn,.mx-db-body>.mx-data{grid-column:1/-1}
+  .mx-bigstars .ic{width:32px;height:32px}
+}
+@media (max-width:640px){
+  .mx-debrief .mx-db-hero{grid-template-columns:1fr}
+}

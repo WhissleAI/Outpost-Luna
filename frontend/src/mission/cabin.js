@@ -608,8 +608,26 @@ export function createCabin(root, o = {}) {
     el.className = "cb-moment is-" + (b.visual || "site");
     // [polish 3] the title only: the beat's objective line was a second instruction beside the Now card
     el.innerHTML = `<small>Day ${Math.floor((b.t_h || 0) / 24) + 1}</small><b>${esc(b.title)}</b>`;
-    el.hidden = false; slot(true);
+    el.hidden = false; slot(true); clearMarks();
     momentT = setTimeout(() => { el.hidden = true; slot(false); delete glassEl.dataset.moment; }, 5200);
+  }
+  // [polish 4] the window's markers (OUTPOST, ROVER, EARTH, SUN) follow the 3D camera; one that drifts under the
+  // story moment ("Day 3 · On our own") steps aside (hides) while the moment shows, so the two never print over each other
+  let markRaf = 0;
+  function clearMarks() {
+    cancelAnimationFrame(markRaf);
+    const tick = () => {
+      const el = q("#cbMoment"), on = el && !el.hidden && el.isConnected;
+      const marks = root.querySelectorAll(".tv-mark");
+      if (!on) { marks.forEach(m => m.classList.remove("is-under")); markRaf = 0; return; }
+      const r = el.getBoundingClientRect(), pad = 6;
+      // measure first, then toggle (a remove + re-add each frame restarted the fade, so it never faded)
+      const hits = [...marks].map(m => { const k = m.getBoundingClientRect();
+        return k.width > 0 && !(k.right < r.left - pad || k.left > r.right + pad || k.bottom < r.top - pad || k.top > r.bottom + pad); });
+      marks.forEach((m, i) => m.classList.toggle("is-under", hits[i]));
+      markRaf = requestAnimationFrame(tick);
+    };
+    tick();
   }
   let cardKey = "";
   const ringMax = {};
@@ -707,7 +725,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); clearTimeout(momentT); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+    dispose() { clearInterval(offT); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
       escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */

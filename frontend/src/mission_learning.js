@@ -1,12 +1,11 @@
 // Mission-side learning beats (NASA Moon Learning & Media Plan v1), kept OUT of mission/ui.js (the mission-UI owner's
 // file): main.js installs this next to the mission UI and it works through the DOM and the shell's navigation.
-//   1. First mission only: before "Take command" flies, NASA's real Moon Base video ("NASA plans a real base near here.
-//      Ours is pretend. Let's run it."). Shown once; Settings -> Help replays it (a11y.js). Watch or Skip; when the video
-//      can't play (offline, no player) the mission simply starts.
+//   1. The Mission hub: a small "Watch the 1-min briefing" chip for NASA's real Moon Base video ([polish 4]: it used to
+//      be a blocking Watch / Skip card before the first mission). Settings -> Help also plays it (a11y.js).
 //   2. Debrief: "Learn more" (learn_more.js: one NASA video per outcome, or a fact card) and, when this mission unlocked
 //      an explorer lesson (explorer.js), a one-tap offer to open it.
 // Nothing here ever blocks the mission: every path ends in the mission's own action.
-import { MOON_BASE, LEARN_MORE, EXPLORER, callSign } from "./story.js";
+import { LEARN_MORE, EXPLORER, HUB, callSign } from "./story.js";
 import { isAvailable as videoState, openVideo as playVideo, getVideo, watchLabel } from "./media/video.js";   // docs/MEDIA.md
 import { pickLearnMore } from "./learn_more.js";
 import { markMissionFlown, missionsFlown, newlyUnlocked } from "./explorer.js";
@@ -14,8 +13,6 @@ import { icon } from "./assets/icons.js";
 import "./mission_learning.css";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const get = k => { try { return localStorage.getItem(k); } catch (e) { return "1"; } };
-const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
 
 /**
  * @param {object} o
@@ -28,74 +25,28 @@ const set = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* priva
  */
 export function installMissionLearning({ missionUI, say, stop = () => {}, lessons = () => [], openLesson = () => {},
   fetchDebrief = id => fetch(`/api/mission/${encodeURIComponent(id)}/debrief`).then(r => (r.ok ? r.json() : null)).catch(() => null) }) {
-  // ---------- 1. the first-mission Moon Base offer ----------
-  const cs = () => callSign.get() || "cadet";
-  const seenKey = () => "outpost-moonbase-seen:" + cs();
-  const firstMission = () => get("outpost-first-mission:" + cs()) !== "1" && missionsFlown(callSign.get()) === 0;
-  const onPicker = () => { const f = missionUI.active && missionUI.screen && missionUI.screen(); return !!(f && f.screen === "brief" && f.offer === "take_command"); };
-  const shouldOffer = () => !offer && !asking && get(seenKey()) !== "1" && firstMission() && onPicker();
-  let offer = null;     // {el, done(watch)} while the card is up
-  let bypass = false;
-  // [polish a] a second Take command (a double tap, or a tap plus "take command" by voice) while the video check is
-  // still in flight used to put up a second card: one stayed over the cabin for the whole mission with dead buttons
-  let asking = false;
-
-  async function offerThen(proceed) {
-    if (asking || offer) return;
-    asking = true;
-    let st;
-    try { st = await videoState("moon_base_6mo"); } finally { asking = false; }
-    // only a saved copy (moon_base_6mo is pinned: downloaded on the first online launch): it starts at once, offline
-    // too, and a run without the cache (tests: VIDEO_PREFETCH=0) never meets the card. Otherwise straight on.
-    if (st !== "cached" || !onPicker()) { proceed(); return; }
-    set(seenKey(), "1");
-    const el = document.createElement("div");
-    el.className = "ml-offer"; el.setAttribute("role", "dialog"); el.setAttribute("aria-labelledby", "mlOfferTitle");
-    el.innerHTML = `<div class="ml-card"><p class="eyebrow">Briefing</p><h2 id="mlOfferTitle">${esc(MOON_BASE.title)}</h2>
-      <p class="ml-line">${esc(MOON_BASE.line)}</p>
-      <div class="ml-actions"><button type="button" class="btn-quiet" data-intent="no" id="mlSkip">${esc(MOON_BASE.skip)}</button>
-      <button type="button" class="btn-primary" data-intent="yes" id="mlWatch">${icon("play", { size: 18 })}${esc(MOON_BASE.watch)}</button></div></div>`;
-    document.body.append(el);
-    offer = {
-      el,
-      async done(watch) {
-        if (!offer) return;
-        offer = null; el.remove();
-        if (watch) { stop(); await playVideo("moon_base_6mo", { context: "first_mission" }); }
-        proceed();
-      },
-    };
-    el.querySelector("#mlWatch").onclick = () => offer && offer.done(true);
-    el.querySelector("#mlSkip").onclick = () => offer && offer.done(false);
-    el.querySelector("#mlWatch").focus({ preventScroll: true });
-    Promise.resolve(say(MOON_BASE.line)).catch(() => {});
+  // ---------- 1. the Moon Base video: a chip on the Mission hub ([polish 4]; never a blocking yes / no) ----------
+  // Only a saved copy (moon_base_6mo is pinned: downloaded on the first online launch) shows the chip: it starts at
+  // once, offline too, and a run without the cache (tests: VIDEO_PREFETCH=0) never sees it.
+  const panel = document.getElementById("mPanel");
+  async function chip() {
+    if (!panel || !panel.classList.contains("mx-hub") || panel.querySelector("#mHubVideo")) return;
+    let st; try { st = await videoState("moon_base_6mo"); } catch (e) { st = null; }
+    if (st !== "cached" || !panel.classList.contains("mx-hub") || panel.querySelector("#mHubVideo")) return;
+    const row = panel.querySelector(".mx-hubcard"); if (!row) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "mx-chip"; b.id = "mHubVideo";
+    b.innerHTML = `${icon("play", { size: 14 })}<span>${esc(HUB.video)}</span>`;
+    b.onclick = () => { stop(); playVideo("moon_base_6mo", { context: "mission_hub" }); };
+    row.append(b);
   }
-  // a tap on Take command (the mission UI's own onclick runs after, through `bypass`)
-  document.addEventListener("click", e => {
-    const b = e.target && e.target.closest && e.target.closest("#mStart");
-    if (!b || bypass) return;
-    if (asking || offer) { e.preventDefault(); e.stopImmediatePropagation(); return; }   // the first press is being answered
-    if (!shouldOffer()) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    offerThen(() => { bypass = true; try { b.click(); } finally { bypass = false; } });
-  }, true);
+  addEventListener("outpost:mission-hub", () => { chip(); });
 
-  /** Voice / gestures / keys (main.js shellNav calls this before missionUI.nav). True when it took the intent. */
-  function nav(intent, arg) {
-    if (asking && ["take_command", "start", "next", "accept_offer"].includes(intent)) return true;   // already on it
-    if (offer) {
-      if (["accept_offer", "yes", "next"].includes(intent)) { offer.done(true); return true; }
-      if (["decline_offer", "no", "take_command", "start", "skip_tour", "back"].includes(intent)) { offer.done(false); return true; }
-      return false;
-    }
-    if (["take_command", "start", "next", "accept_offer"].includes(intent) && shouldOffer()) {
-      offerThen(() => missionUI.nav(intent, arg));
-      return true;
-    }
-    return false;
-  }
-  /** The router's screen frame while the card is up ("yes" watches, "no" skips). */
-  const screen = () => (offer ? { screen: "brief", offer: "moon_base" } : null);
+  /** Voice / gestures / keys (main.js shellNav calls this before missionUI.nav): nothing to answer any more. */
+  function nav() { return false; }
+  /** The router's screen frame: none of our own (the hub is mission/ui.js's). */
+  const screen = () => null;
+  const offer = null;
 
   // ---------- 2. the debrief: Learn more + a newly unlocked explorer lesson ----------
   let busy = false;
@@ -120,8 +71,8 @@ export function installMissionLearning({ missionUI, say, stop = () => {}, lesson
         + unlockedNow.map(l => `<p class="ml-unlock">${icon("star", { size: 16 })}<span><b>${esc(EXPLORER.unlockedTitle)}:</b> ${esc(l.title)}</span>
             <button type="button" class="btn-quiet" data-ml-open="${esc(l.id)}">${esc(EXPLORER.open)}</button></p>`).join("");
       if (!sec.innerHTML) return;
-      const foot = host.querySelector(".mx-foot");
-      if (foot) foot.before(sec); else host.append(sec);
+      const body = host.querySelector(".mx-db-body"), foot = host.querySelector(".mx-foot");   // [polish 4] in the scrolling body
+      if (body) body.append(sec); else if (foot) foot.before(sec); else host.append(sec);
       const go = sec.querySelector("#mlLearnGo");
       if (go && pick) {
         go.onclick = () => { stop(); playVideo(pick.media, { context: "debrief:" + outcome }); };

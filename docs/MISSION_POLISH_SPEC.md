@@ -133,3 +133,7 @@ Director coverage tests green.
 - PR 3: one instruction at a time. The Now card carries every decision (the storm, CAPCOM's yes / no, the Director's
   offers); the alert strip has no buttons; decisions dim the cabin around the card with a time-left ring; no repeated
   lines on screen. Details: docs/GAMEPLAY.md §10.
+- PR 4: the Mission hub (one mission, Start; the navigator one press away), the 3-card briefing, teach by doing in
+  place of the 12-step tour (which stays in Help), the debrief with stars first and Next mission / Fly again always on
+  screen, one wording for the storm's orders ("Shields to 40"), the Orbit ↔ seat key trap, and story moments clear
+  of the window's markers. Details: docs/GAMEPLAY.md §11.

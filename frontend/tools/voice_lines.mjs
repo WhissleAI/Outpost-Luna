@@ -101,7 +101,12 @@ for (const cs of [...S.CALLSIGNS, "Commander"]) for (const rank of ["Commander",
   add([S.CAPCOM.missionBrief(cs, rank), S.PICKER.why, S.PICKER.recLine], MUI);
 }
 add(S.PICKER.why, STORY); add(S.PICKER.recLine, STORY);
+// [polish 4] the Mission hub's hello per site and call sign, its "What's this mission?" line, the briefing
+add(S.HUB.whatLine, STORY); add(S.BRIEFING.say, STORY);
+add([S.PICKER.why, S.PICKER.recLine], MUI);
 for (const site of SITES) {
+  for (const cs of [...S.CALLSIGNS, "Commander"]) add(S.HUB.say(cs, site), MUI);
+  add(`${site}. Good choice. Say start when you're ready.`, MUI);
   add(`${site}. Good choice. Say take command when you're ready.`, MUI);
   add(`${site}.`, MUI);
   for (const cs of [...S.CALLSIGNS, "Commander"]) add(S.CAPCOM.missionStart(cs, site), MUI);
@@ -125,7 +130,7 @@ for (const kind of Object.keys(S.CALLBACKS)) for (const earned of [true, false])
 for (const site of [...SITES, "the outpost"]) for (let d = 1; d <= 10; d++) add(S.DEBRIEF.start(site, d), STORY);
 for (let n = 1; n <= 4; n++) { add(S.DEBRIEF.stormSafe(n), STORY); add(S.DEBRIEF.stormHurt(n), STORY); }
 for (const k of ["noStorm", "goalsBoth", "goalsScience", "goalsIce", "goalsNone", "endWon", "endLost", "wipeAsk", "tryDefault", "tryNewSite"]) add(S.DEBRIEF[k], STORY);
-for (const t of [S.DEBRIEF.tryDefault, S.DEBRIEF.tryNewSite]) add(`${t} ${S.OFFER.flyAgain}`, MUI);
+for (const t of [S.DEBRIEF.tryDefault, S.DEBRIEF.tryNewSite]) { add(`${t} ${S.OFFER.flyAgain}`, MUI); add(`${t} ${S.OFFER.nextMission}`, MUI); }
 for (let d = 1; d <= 10; d++) add(`${S.DEBRIEF.endPaused(d)} ${S.OFFER.resume}`, MUI);
 keepLive(STORY, "DEBRIEF.grade / gradeOver (\"Nice flying, <cs>. Grade <g>, <points> points.\")", "the score is an open number");
 keepLive(MUI, "\"Houston here. We copy you, <rank>. …\" and every Houston answer", "Houston keeps its own role voice (live)");

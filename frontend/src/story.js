@@ -82,6 +82,46 @@ export const PICKER = {
   recommended: "shackleton_rim",
   recTag: "Best first pick",
   recLine: "For a first mission, try Shackleton Rim: most sunlight, ice nearby.",
+  /** [polish 4] the navigator's primary: it goes on to the briefing (the briefing's button takes command) */
+  go: "Start",
+};
+
+// ---------- [polish 4] the Mission hub and the 3-card briefing (docs/MISSION_POLISH_SPEC.md, wave 4) ----------
+/** The hub: one card, one mission, one big Start. The navigator is one press away (Choose site). */
+export const HUB = {
+  eyebrow: n => `Mission ${n} · 10 days`,
+  rec: "NASA-studied site · best first pick",
+  start: "Start",
+  choose: "Choose site",
+  what: "What's this mission?",
+  /** spoken for "What's this mission?" and shown under the title (20 words or fewer) */
+  whatLine: "Run a real Moon outpost for ten days. Keep the crew safe through storms and long nights.",
+  video: "Watch the 1-min briefing",
+  say: (cs, site) => `Mission ready at ${site}, ${cs}. Press Start.`,
+};
+/** The briefing: three cards, 12 words or fewer each, then Take command. */
+export const BRIEFING = {
+  eyebrow: "Briefing",
+  title: "Your mission",
+  cards: [
+    { k: "goal", icon: "shelter", label: "Goal", text: "Keep the crew safe for 10 days." },
+    { k: "danger", icon: "storm", label: "Danger", text: "Solar storms and long nights." },
+    { k: "bonus", icon: "ice", label: "Bonus", text: "Bring back ice and science." },
+  ],
+  go: "Take command",
+  back: "Back",
+  say: "Keep the crew safe for ten days. Watch for storms and long nights. Bonus: ice and science.",
+};
+/** First mission, teach by doing (replaces the 12-step tour, which stays in Settings -> Help): one prompt at a time,
+ *  in place, next to the one control it is about. Each goes away when the player does it. No buttons: the Now card
+ *  stays the only place that says what to do. `keys` / `pad` / `touch` pick the words for the input in use. */
+export const COACH = {
+  now: { keys: "Your job is always here. Press T to do it.", pad: "Your job is always here. Go up to it, press A.",
+    touch: "Your job is always here. Tap it, or say “yes”." },
+  time: { keys: "Time runs by itself. Hold F to speed it up.", pad: "Time runs by itself. Hold RT to speed it up.",
+    touch: "Time runs by itself. Hold Skip ahead to speed it up." },
+  menu: { keys: "Esc pauses. The menu has speed and restart.", pad: "Start pauses. The menu has speed and restart.",
+    touch: "Menu pauses. It has speed and restart." },
 };
 
 // ---------- First mission: CAPCOM's cabin tour (mission/tour.js) ----------
@@ -162,7 +202,9 @@ export const HELP = {
   map: "Press Start on the lesson card, or say next. Each lesson earns a patch.",
   mapQualified: "You're qualified. Say take command to run the outpost.",
   patch: "Say next for the next lesson, or press Map to look around.",
-  picker: "Pick a site from the list, then say take command.",
+  picker: "Pick a site from the list, then say start.",
+  hub: "Say start to fly this mission, or choose site.",
+  briefing: "Say take command to begin the mission.",
   debrief: "Say fly again to try this site again, or new site.",
   library: "Tap a place on the Moon, or ask a question.",
   callsign: "Pick a call sign, then press Start.",
@@ -319,6 +361,7 @@ export const OFFER = {
   ride: "Ready for your check ride?",
   mission: "Ready to take command?",
   flyAgain: "Fly again?",
+  nextMission: "Ready for the next mission?",
   resume: "Back to the cabin?",
   firstLesson: "Ready for lesson one?",
   nextStep: "Ready for the next one?",
@@ -423,6 +466,10 @@ export const DEBRIEF = {
   /** The one clear choice at the end (the primary button) and its spoken offer. */
   choiceAgain: "Fly again",
   choiceNew: "Pick a new site",
+  /** [polish 4] stars first, then the one choice: the next mission (a new site) or the same one again */
+  next: "Next mission",
+  numbers: "The numbers",
+  starsLabel: n => `${n} of 3 stars`,
   resume: "Resume mission",
   /** QA-26: leaving a paused mission asks first */
   wipeAsk: "Start over? This mission ends, and you begin again at shift 1.",

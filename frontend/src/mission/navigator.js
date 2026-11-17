@@ -123,7 +123,7 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
         <details class="nv-regions"${focus && focus.kind === "region" ? " open" : ""}><summary>NASA's 9 Artemis III regions <small>compare</small></summary>
           <div class="nv-list">${regions.map(p => row(p, false) + (focus && focus.id === p.id ? detail(p) : "")).join("")}</div></details>
       </div>
-      <button type="button" class="mx-go" id="mStart">Take command<small>${esc(short(sel && sel.name))}</small></button>`;
+      <button type="button" class="mx-go" id="mStart">Start<small>${esc(short(sel && sel.name))}</small></button>`;
     if (firstPick && recommended) {
       const b = panel.querySelector("b[data-rec]"); if (b) b.insertAdjacentHTML("beforeend", `<em class="mx-rectag">${esc(recTag)}</em>`);
     }
