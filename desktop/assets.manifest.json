@@ -4448,6 +4448,7 @@
   {
    "id": "videos",
    "version": "2",
+   "min_version": "2",
    "min_app": "0.1.0",
    "max_app": null,
    "requires": [],

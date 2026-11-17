@@ -256,3 +256,30 @@ test("steer: an on-demand ask (.want/<id>) is listed until installed; .active ma
     assert.deepEqual(store.wanted(), []);
   } finally { srv.close(); }
 });
+
+test("videos v1 installed, the 0.3.11 manifest wants v2: outdated, fetched after the UI is up, the old pack kept on failure", async () => {
+  const U = require("./updates");
+  const m = A.loadManifest(path.join(__dirname, "..", "assets.manifest.json"));
+  const vid = m.assets.find((x) => x.id === "videos");
+  assert.equal(vid.min_version, "2");
+  assert.equal(vid.required, false);                       // never a first-run (blocking) asset
+  // an install of the old 8-video pack: state v1 with its own file list
+  const dir = tmp();
+  const old = { "a.mp4": Buffer.from("old video one"), "b.mp4": Buffer.from("old video two") };
+  fs.mkdirSync(path.join(dir, "videos"), { recursive: true });
+  for (const [p, b] of Object.entries(old)) fs.writeFileSync(path.join(dir, "videos", p), b);
+  fs.writeFileSync(path.join(dir, "state.json"), JSON.stringify({ videos: { version: "1", sha256: "0".repeat(64),
+    files: Object.entries(old).map(([p, b]) => ({ path: p, size: b.length })) } }));
+  const { srv, base } = await serve({});                  // the v2 pack is not reachable (404)
+  try {
+    const a = { ...vid, url: base + "/videos.tar" };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
+    assert.equal(store.check(a), "outdated");
+    const needs = U.setupNeeds(store.status(), { assets: [a] });
+    assert.deepEqual(needs, { required: [], optional: ["videos"] });   // background (fetchOptional), not the first-run screen
+    await assert.rejects(store.ensure(["videos"]));
+    for (const [p, b] of Object.entries(old)) assert.deepEqual(fs.readFileSync(path.join(dir, "videos", p)), b);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "state.json"), "utf8")).videos.version, "1");
+    assert.equal(store.check(a), "outdated");               // tried again next launch; the old videos still play
+  } finally { srv.close(); }
+});
