@@ -9,9 +9,9 @@
   "sr": 22050,
   "channels": 1
  },
- "count": 1067,
- "bytes": 15090631,
- "seconds": 2515.1,
+ "count": 1145,
+ "bytes": 16097627,
+ "seconds": 2683.0,
  "clips": {
   "2 real solar storms hit": {
    "file": "clips/f46873d8b035a07c-c663f8e8.mp3",
@@ -312,6 +312,30 @@
    "sha256": "ef369b805d386a7d28a891104bf0e9b7d4d894416a662bafcdcc3d21262f49b6",
    "recipe": "fc47c5e3aacaeab04911a7e9fc1a0248f4834a8b67c6def8f5222ae9d41ef1e0",
    "bytes": 7210
+  },
+  "any guess is fine": {
+   "file": "clips/6270ccde1370f10a-ddb474e4.mp3",
+   "text": "Any guess is fine.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.097,
+   "words": "90-429,429-659,659-837,837-1050",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "48199cd37cd1c9683bbb2d34973bff79c45189d03cefb5a4b0e7f02bf64ed1ba",
+   "recipe": "ddb474e4528703c657a013b468756851b4c16bf93119825621dcee3f325ebff8",
+   "bytes": 6583
+  },
+  "any guess is fine tap one": {
+   "file": "clips/35ea53149ca668c7-391f6416.mp3",
+   "text": "Any guess is fine. Tap one.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.09,
+   "words": "90-429,429-659,659-837,837-1050,1540-1805,1805-2070",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "ce8fd4e38ee6621cc7713b07cafa3cb7abd91ee87c7c46af7a8e2c75a750bcd0",
+   "recipe": "391f64164c24337deb9ef6684c736bd08ac08718bf40879147444e0730f6c2d9",
+   "bytes": 12539
   },
   "apollo 11 landed on a dark plain of old lava called a mare": {
    "file": "clips/3d927badf7804f78-e9e994ca.mp3",
@@ -840,6 +864,18 @@
    "sha256": "616acc24320c3ea3a50bc1267b0287a33d0a6f280ded9d143264d64b01a68fa0",
    "recipe": "8826ddd2a9a6849444d7eadfba337b2e0179d7d793f84a35e237a7241ee6c45d",
    "bytes": 9561
+  },
+  "close repeat the whole order": {
+   "file": "clips/6f2c7304f1b2df35-f3c90c91.mp3",
+   "text": "Close. Repeat the whole order.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.325,
+   "words": "90-362,702-1165,1165-1396,1396-1838,1838-2280",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "03e73269683f509e45469230bd3c60e7456e9d86bd8fe9b2c3d674ebda57b841",
+   "recipe": "f3c90c91725fa189670bfce9117b3c32d904d92a1612391fc9cd6c7104b834a3",
+   "bytes": 13949
   },
   "come out first": {
    "file": "clips/a21c98d0f1843d1c-93b407a9.mp3",
@@ -1801,6 +1837,18 @@
    "recipe": "4f30d14b96b86608338fb45afe41c4f5759a36ae528bd880fb537767e2f28777",
    "bytes": 4545
   },
+  "does the moon guess first": {
+   "file": "clips/526da23129fa9358-d0c61009.mp3",
+   "text": "Does the Moon? Guess first.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.011,
+   "words": "80-292,292-488,488-700,1200-1585,1585-1970",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "3af7567a1e374c6fce4859e300c1b520932ed10865202f473360f4e960acd338",
+   "recipe": "d0c610096feea9135381818e7b896c28c6b5584d3e69e9445f676f08573c52da",
+   "bytes": 12068
+  },
   "dose is climbing shields or the shelter": {
    "file": "clips/96a39ea1f6e6f46e-e1d7db9e.mp3",
    "text": "Dose is climbing. Shields, or the shelter.",
@@ -1860,6 +1908,30 @@
    "sha256": "4c8142293ad4e710edf702c0660696a22d41df0cd8b0eaa38b76f00cc143e88b",
    "recipe": "cba51dbea66022bcb43030eca0b1a00a33e2e7721026183150f7a799253b7504",
    "bytes": 10658
+  },
+  "drag the moon to turn it": {
+   "file": "clips/72bf1056a9b254ff-86851d68.mp3",
+   "text": "Drag the Moon to turn it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.463,
+   "words": "80-318,318-536,536-774,774-973,973-1211,1211-1410",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "24aa1b98ed829aeefd8f3f861aa238a415d952903580c2b68c7af86ac436954c",
+   "recipe": "86851d68c6dbc674a12658787927fdcb3dbda0bd29541682819ec976b01b8286",
+   "bytes": 8777
+  },
+  "drag the moon to turn it or tap a side": {
+   "file": "clips/dac10896f9f67289-1d8a9f77.mp3",
+   "text": "Drag the Moon to turn it, or tap a side.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.56,
+   "words": "80-300,300-502,502-722,722-906,906-1126,1126-1310,1520-1754,1754-2010,2010-2221,2221-2500",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "b818af373e7585f41172d18e21824a72c3bddd94f3b889e9de098394d6a39f35",
+   "recipe": "1d8a9f77c8ed15f0179236b37c32698d6d553f16d6c7f282aa4914b47638403a",
+   "bytes": 15360
   },
   "each lesson earns a patch": {
    "file": "clips/878945fbd8883494-09385872.mp3",
@@ -1957,17 +2029,17 @@
    "recipe": "ed31b5a47ea2a1358dd2ffedb6a1bd369c0e20c9948ae43e2737b4de41a2c7dd",
    "bytes": 10031
   },
-  "earth is up over the rim": {
-   "file": "clips/19c184a260c8440e-4a1e0ad1.mp3",
-   "text": "Earth is up over the rim.",
+  "earth s shadow phases happen without it": {
+   "file": "clips/67095aa96bd6f25c-dae5f901.mp3",
+   "text": "Earth's shadow. Phases happen without it.",
    "role": "capcom",
    "rate": "native",
-   "dur": 1.384,
-   "words": "90-304,304-469,469-635,635-967,967-1148,1148-1330",
+   "dur": 2.926,
+   "words": "90-431,431-970,1720-2057,2057-2394,2394-2746,2746-2900",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "31c5109069010b34715c1343cce1ca9a7603d4eb12e12e9f57bf77ab65f11779",
-   "recipe": "4a1e0ad119037d93ed532b656bf4c196cc1e27b1c4f8550678dc5e9169e96fec",
-   "bytes": 8307
+   "sha256": "710e29d68628f3b01039b0c756b427563965ad4d5d5475182542be7b464f6ba6",
+   "recipe": "dae5f901e28358cf6dc5987cb624e886c00335207c72ee105040a14e907ef1b4",
+   "bytes": 17554
   },
   "earth was up 7 of 10 days": {
    "file": "clips/9cd7791561069c33-3b86569b.mp3",
@@ -2017,17 +2089,41 @@
    "recipe": "763386eff562b9ecb5244d27205ad45f1e06438b692b1d3aeeeccbba167c8bb2",
    "bytes": 12068
   },
-  "find it": {
-   "file": "clips/8ca89c962a550c52-f0da7524.mp3",
-   "text": "Find it.",
+  "far side not dark side": {
+   "file": "clips/b6b67248a4a5e62e-79b9baee.mp3",
+   "text": "Far side, not dark side.",
    "role": "capcom",
    "rate": "native",
-   "dur": 0.653,
-   "words": "110-371,371-590",
+   "dur": 1.933,
+   "words": "90-416,416-770,850-1171,1171-1521,1521-1870",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "4b38639fdb16895135ea222e7751335a3501183d507505e4a99171d7ac7135d3",
-   "recipe": "f0da7524475c8628a1e79c7685bbef460c36712b5dacbc9606ed693d20d56f5a",
-   "bytes": 3918
+   "sha256": "9f2ab69e77ed31ef0ce50fe89cf6e14b38f1dc4ccfbd7795d7aaf9d1dbfb9502",
+   "recipe": "79b9baeebbf85ba75ee611fdef5d27cdc0a321ba2eac5827c3eca2c6edd09e61",
+   "bytes": 11598
+  },
+  "find cabeus crater": {
+   "file": "clips/b01d63621b48061b-d157f626.mp3",
+   "text": "Find Cabeus crater.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.384,
+   "words": "90-357,357-849,849-1340",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "bce89b160c4b46614a1921cdb3050e432273a65f7fecf517e88f9199a68c1bfb",
+   "recipe": "d157f6264635244152d5fc10cfcb2577a1baffa4275bbc2d40353848306665e3",
+   "bytes": 8307
+  },
+  "find cabeus crater tap the glowing ring or say its name": {
+   "file": "clips/cbf1d97808f06981-1a333674.mp3",
+   "text": "Find Cabeus crater. Tap the glowing ring, or say its name.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 4.049,
+   "words": "90-357,357-849,849-1340,1900-2114,2114-2329,2329-2776,2776-3010,3153-3348,3348-3562,3562-3777,3777-4010",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "dd377a087700b448a9a157f4eb88c83d43a1a9c63f07ab97d6a83ebd0caef7c2",
+   "recipe": "1a333674c932eae8bcb75ac983f2b9f52d0553dc1777d1db6fe6c970b1e77a19",
+   "bytes": 24294
   },
   "find the crater at the moon s very bottom where ice hides": {
    "file": "clips/940c73c7fcf16df7-55984796.mp3",
@@ -2269,6 +2365,18 @@
    "recipe": "2bad1771a3e470ade7196a630bcd1d667c3bd937b483e76c6b02afcf09a939c1",
    "bytes": 17084
   },
+  "good guess here s the answer": {
+   "file": "clips/3ed1f4678a4f3d4e-3b333885.mp3",
+   "text": "Good guess. Here's the answer.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.116,
+   "words": "90-378,378-690,1290-1586,1586-1741,1741-2050",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "e0e3139f5565586e267ea290791b4ee14e584014fad9725ae0c8ba476175defa",
+   "recipe": "3b3338855cb42ff519caafd3ba3b0b44a538e1525cc9cb58fc20da5ffea9f287",
+   "bytes": 12695
+  },
   "good guess let s see what apollo 15 found": {
    "file": "clips/9d43450e0fc75c44-a0ed7664.mp3",
    "text": "Good guess. Let's see what Apollo 15 found.",
@@ -2305,6 +2413,18 @@
    "recipe": "000c27ded28aa3472ad9a2b670a2196c3611abc22368349df32c0c4f82f1f6b4",
    "bytes": 9717
   },
+  "got your guess now tap watch to check": {
+   "file": "clips/689301438c57a193-4c336555.mp3",
+   "text": "Got your guess. Now tap Watch to check.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.926,
+   "words": "90-329,329-589,589-870,1450-1722,1722-1993,1993-2313,2313-2560,2560-2880",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "23541f95288b7624148681ed28126e37ecc21a6b52a29f504991058e0436bfe8",
+   "recipe": "4c3365554c6ec3726faea17dcb039e6f7ec1f73e9ac4eaca07a1d32674bc4abd",
+   "bytes": 17554
+  },
   "guess first": {
    "file": "clips/70cb494a5ad4733b-ceea1833.mp3",
    "text": "Guess first.",
@@ -2316,6 +2436,18 @@
    "sha256": "6ff306970416798054269ddffd2bd74dd27cdabcc67a2cebc26832c81d7b9d32",
    "recipe": "ceea18337ebcd2208ab6c76c5b37cd2afb19457e99caed254209a3edc209ac67",
    "bytes": 5485
+  },
+  "guess first any guess is fine": {
+   "file": "clips/a59bae35a8c771a5-8c1d6267.mp3",
+   "text": "Guess first. Any guess is fine.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.403,
+   "words": "90-480,480-870,1410-1749,1749-1979,1979-2157,2157-2370",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "8041749e2dda8e3a174aaabb1b77a64fc7154bab166f649bf0d18657c7feb574",
+   "recipe": "8c1d626754f257a12d3b39b9c4f65c37ee6bcbc6caa2a4c14377c635d0e4302a",
+   "bytes": 14419
   },
   "guess first then hear houston": {
    "file": "clips/f00ab3608b11def0-7f39cec0.mp3",
@@ -2365,6 +2497,18 @@
    "recipe": "8d95b9c038a540846a792aa7e92a3e2e6a42587f2b39ad5792a2a750ed216f4b",
    "bytes": 6896
   },
+  "guess then watch pick a guess": {
+   "file": "clips/d893deb9033a61a1-4f050225.mp3",
+   "text": "Guess, then watch. Pick a guess.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.403,
+   "words": "90-410,550-814,814-1100,1690-1930,1930-2111,2111-2370",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "4cbaaa82b34bee6bf3a93583a4c8aaac0dca0af614e471ab140e82097aa855c9",
+   "recipe": "4f050225b10565947a5c422dcbe02033a232ac338190b6ed21175fe00f031d64",
+   "bytes": 14419
+  },
   "habitat heaters science and your mission goals": {
    "file": "clips/89b7fcf28e899ad1-5c07409e.mp3",
    "text": "Habitat: heaters, science, and your mission goals.",
@@ -2413,6 +2557,18 @@
    "recipe": "2f508d5bd27e315a7e75fc1bbe057bf73c902ed8641a5ba5926cfa88daa4fb03",
    "bytes": 7053
   },
+  "heaters fight cold not radiation": {
+   "file": "clips/9ae242b044d97626-23863d88.mp3",
+   "text": "Heaters fight cold, not radiation.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.247,
+   "words": "90-594,594-878,878-1140,1270-1505,1505-2210",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "cc8e5e2b06e7459d0cb4f80b50143cb9784d1c3ad1fe5f8f8b0e94594f9be68b",
+   "recipe": "23863d88e6546418d21621e06beb86853060b515a9c3c67d3cf16d0e98059ba8",
+   "bytes": 13479
+  },
   "heaters on the water lines stay warm": {
    "file": "clips/ad9cc71130bb81cc-42df3c11.mp3",
    "text": "Heaters on. The water lines stay warm.",
@@ -2449,6 +2605,18 @@
    "recipe": "3572783bdf90f021e308a8b53ff662ee8a539e2e52aedd1e69c6b9bdcd4c14e9",
    "bytes": 5642
   },
+  "heaters won t bring water": {
+   "file": "clips/26c8df12e884dee2-d9ea008f.mp3",
+   "text": "Heaters won't bring water.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.332,
+   "words": "90-487,487-693,693-917,917-1280",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "1537e0ba1ab2228f8dd6ae918359ff6d0b991bc626db6668c0c68c866467a5f3",
+   "recipe": "d9ea008f33a0488a15a9e576765b3b5a2f7b3590a2b8cf00da959b4070571dc8",
+   "bytes": 7993
+  },
   "here it is": {
    "file": "clips/6927248b69302bec-ae80d13c.mp3",
    "text": "Here it is.",
@@ -2484,6 +2652,18 @@
    "sha256": "957b92382415183d18a52b5ba7e21d69f26ac921ab3dcf9d56141cd119847ea0",
    "recipe": "29d9c58b7438e1d023b0a2d28f7df42c1fdb7075339509e52bb3c69f86a95cba",
    "bytes": 18181
+  },
+  "here it is cabeus crater": {
+   "file": "clips/00b7624c5d142f1a-3ff2c698.mp3",
+   "text": "Here it is: Cabeus crater.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.907,
+   "words": "90-322,322-516,516-710,990-1425,1425-1860",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "5a99c9e7d71853532415cd3442b0b9bc598bb80c9b118ee6cce0cd75383b45f5",
+   "recipe": "3ff2c6980856b2804d4d0ceb5385dbdbc162428f43cd6cc6f02e756cb9a05761",
+   "bytes": 11441
   },
   "here it is copy crew in the shelter": {
    "file": "clips/91dc5386c3e58342-db84f03a.mp3",
@@ -2556,6 +2736,18 @@
    "sha256": "33a368eb7c586140a4e9f73e4332b1b32a9ecdaeb59269adea6bab5414f86731",
    "recipe": "fddf4053f8cbf4d3b57a6652c0e103e527f74897601456432510a0492a5538ce",
    "bytes": 10501
+  },
+  "here it is earth s shadow": {
+   "file": "clips/709b8b39d3a9155e-5a2f3193.mp3",
+   "text": "Here it is. Earth's shadow.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.116,
+   "words": "90-307,307-488,488-670,1190-1531,1531-2070",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "df653f339391e91957695671fccda4b3229d96db2f5440a5bf227f67380d877a",
+   "recipe": "5a2f319350de7ba1588fa873f4b303179ec25d40eeed27825e88b09db4b34a35",
+   "bytes": 12695
   },
   "here it is good guess": {
    "file": "clips/bd7217ecb72bb236-2a0015ca.mp3",
@@ -2797,6 +2989,30 @@
    "recipe": "69f9e0b3197a4638c8d10224b62eb8bba6cc633cba23841b1d5f6a2f478c3764",
    "bytes": 19592
   },
+  "here it is sea of tranquility": {
+   "file": "clips/67ca6489b62e5b2b-01b97edd.mp3",
+   "text": "Here it is: Sea of Tranquility.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.038,
+   "words": "90-303,303-482,482-660,920-1105,1105-1275,1275-2000",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "a9600bd0255ff76350a00f71b6b3814f9488cdbe6980bcb716332d74fbf6ae8a",
+   "recipe": "01b97edd2d3cfcd2b2d34b27a02aac1735112aca6f2bc89599faa8dfe6e3655d",
+   "bytes": 12225
+  },
+  "here it is shackleton": {
+   "file": "clips/bc918d6da730142f-b554b3cf.mp3",
+   "text": "Here it is: Shackleton.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.541,
+   "words": "90-318,318-509,509-700,950-1500",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "50503c3acc91188f506807fa2a773d9613b513afe7eebb39ad028801df9f9c3f",
+   "recipe": "b554b3cf0c740348a86855a4173f2d3ac636557cc037bb9d2654811cbfa5754e",
+   "bytes": 9247
+  },
   "here it is shackleton rim": {
    "file": "clips/43259e8a57d11635-e1dbc40a.mp3",
    "text": "Here it is. Shackleton Rim.",
@@ -2820,6 +3036,66 @@
    "sha256": "25b576cc46138a7dfbc4f3ad02dbc13eeb8daecbdb0f761e8e41d023d5ecd2f4",
    "recipe": "c9c3e0b6c9b46df7c811b43f7a38890f73b6edc074b2d141baf2eac92a21dbea",
    "bytes": 16457
+  },
+  "here it is tap 1 orientale": {
+   "file": "clips/b61e44f1310dcaa7-0c491524.mp3",
+   "text": "Here it is. Tap 1: Orientale.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.691,
+   "words": "90-299,299-475,475-650,1180-1454,1454-1760,1980-2640",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "85a4d240335ccf0b2acba902d65d805e827687a92628327f92715a70db7c73a9",
+   "recipe": "0c491524f334ea206159f6c6047d7b27f49a312ac5063f40f455e18f7f38f18c",
+   "bytes": 16143
+  },
+  "here it is tap 2 ohm": {
+   "file": "clips/61f5df6f00164f5f-7109fff0.mp3",
+   "text": "Here it is. Tap 2: Ohm.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.22,
+   "words": "90-299,299-475,475-650,1170-1411,1411-1680,1920-2180",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c30ceb759f1a5ff08f90d01f3692664ce30cb593b837d01c21128dd696799a2c",
+   "recipe": "7109fff0391b1dc3754369847beabb30664147e9b442dda7280d872c233b5cec",
+   "bytes": 13322
+  },
+  "here it is tap heaters up": {
+   "file": "clips/f1519eeffa7c6b32-e580353c.mp3",
+   "text": "Here it is: tap Heaters up.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.75,
+   "words": "90-303,303-482,482-660,870-1077,1077-1511,1511-1700",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "0c2934a14ea095a304d0b3fc6b935c1f5bb3a63a73e6c825488a60f8eceb94b3",
+   "recipe": "e580353c5d915a3ab4b59eda76f4301b39551815e7f227ce67be65114693361e",
+   "bytes": 10501
+  },
+  "here it is tap into the shelter": {
+   "file": "clips/56b5092499e5a230-b1fb31e7.mp3",
+   "text": "Here it is: tap Into the shelter.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.377,
+   "words": "90-318,318-509,509-700,1180-1375,1375-1729,1729-1924,1924-2330",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "283d2bc1e2a4a3499163f3880c46d913a104bd8d638e1ddcd78a697b658614ff",
+   "recipe": "b1fb31e726e781a92b4f33c926daee34a759265d19bcc714326c9a033de4bdf0",
+   "bytes": 14263
+  },
+  "here it is tap rover get ice": {
+   "file": "clips/3eabdd3a3865ecce-b67ea9ef.mp3",
+   "text": "Here it is: tap Rover: get ice.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.717,
+   "words": "90-311,311-495,495-680,1090-1444,1444-2120,2230-2450,2450-2670",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "9eb9989c9ca53c07aabfb74290fe948292a7629f308d4069234a1e6670016a20",
+   "recipe": "b67ea9efd696829228eb0bf987e362624c32a680c7356a98775bcae69c98dfac",
+   "bytes": 16300
   },
   "here it is that s the terminator": {
    "file": "clips/0a4dd99167999d78-8a66d33a.mp3",
@@ -2893,6 +3169,18 @@
    "recipe": "f0bf2756fe6b327c2348b4d9d111db186801810f0c1a61b14ba9a7003a0d5aca",
    "bytes": 18808
   },
+  "here it is where day meets night": {
+   "file": "clips/cb09ac7aedab7ce6-685c2db8.mp3",
+   "text": "Here it is: where day meets night.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.116,
+   "words": "90-337,337-543,543-750,1010-1283,1283-1515,1515-1787,1787-2060",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "e96228f694454c54516f30412ec3a90ed90c48d403422fa361108accc8eeae63",
+   "recipe": "685c2db81a2702dbe4ad2196681b1786040fbf7916efe58e7e24b142e0d7c075",
+   "bytes": 12695
+  },
   "here it is yes artemis two went over 250 thousand miles": {
    "file": "clips/dd24757351133afa-e064ba9b.mp3",
    "text": "Here it is. Yes. Artemis two went over 250 thousand miles.",
@@ -2916,18 +3204,6 @@
    "sha256": "93f80fa4879ce0680652e0c64cbd13cc3913b97d9db0a618b9263eabdcf59934",
    "recipe": "3e84e9806c84234c10504be877e6a79af9ed53dd596e8464921f2cd66c089673",
    "bytes": 23823
-  },
-  "here it is yes earth s shadow": {
-   "file": "clips/f20e1db2f4e16c87-04cc88d1.mp3",
-   "text": "Here it is. Yes, Earth's shadow.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.691,
-   "words": "90-307,307-488,488-670,1210-1640,1820-2138,2138-2640",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "02331ed1c7a832fcb8795a6b36e9a9f6b71a677be4465020a8cac213ad82aa0b",
-   "recipe": "04cc88d1005e9afa22612572d1dd5ec26ee3ae20c741ca235841d97b39f5738e",
-   "bytes": 16143
   },
   "here it is yes far side not dark side": {
    "file": "clips/e94f9643ddd4e921-20a3ec96.mp3",
@@ -2976,6 +3252,114 @@
    "sha256": "daf770b7ea7e2612a51c492b89c45415293cc27e1433eb9ec1b61337f6fff37c",
    "recipe": "71f8c9c637f51b6e7678be581160a3e44d952f5f0937ac9c12d04c3695d21079",
    "bytes": 12539
+  },
+  "here s the answer a radiation dose": {
+   "file": "clips/d4f1e113e21f51ee-019053d4.mp3",
+   "text": "Here's the answer: A radiation dose.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.717,
+   "words": "90-417,417-588,588-930,1400-1613,1613-2389,2389-2670",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "9c458b423e6d568b9f772d7c4a605db982d4bc8ffb6b8003b27d0019a61eee1d",
+   "recipe": "019053d43563c5efc8f7ce1e1622d2f8e6873a770ef257b3b877ad4d6d3be167",
+   "bytes": 16300
+  },
+  "here s the answer i heard you": {
+   "file": "clips/7144f76c4988c2a9-e2648562.mp3",
+   "text": "Here's the answer: I heard you.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.116,
+   "words": "90-413,413-582,582-920,1410-1588,1588-1843,1843-2060",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "77a935eb02646ef2425a9dea929211f5675e8f9f296209dc42be652c083879c2",
+   "recipe": "e26485627bb5a2aa30f7efebcf1c5a51acbec04135400c5a5e9bf0c4fb6c30cb",
+   "bytes": 12695
+  },
+  "here s the answer its tv camera": {
+   "file": "clips/4cf3f4830cce4d4b-8ebd662f.mp3",
+   "text": "Here's the answer: Its TV camera.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.56,
+   "words": "90-417,417-588,588-930,1430-1662,1662-1874,1874-2510",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "0ce238ca61b0792794c704b221337777e4e2b0b7d4d975ddfe970a570e7672f7",
+   "recipe": "8ebd662f368c04f973a05e798cedb9be63fbe5863217b8880070fadd1a720240",
+   "bytes": 15360
+  },
+  "here s the answer john young": {
+   "file": "clips/cf0391d39053073d-ecdab577.mp3",
+   "text": "Here's the answer: John Young.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.09,
+   "words": "90-417,417-588,588-930,1390-1698,1698-2030",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "1dfa75e725a2234704d850d24c325a440039d7af19014b33fda7ecdc90837b01",
+   "recipe": "ecdab577126737ec837f3130041ae1146b2daab95a9eca8817991b1a89d74cfa",
+   "bytes": 12539
+  },
+  "here s the answer like 5 kilos": {
+   "file": "clips/731b11db1bfb3fbb-020cf373.mp3",
+   "text": "Here's the answer: Like 5 kilos.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.456,
+   "words": "90-421,421-594,594-940,1250-1557,1557-1871,1871-2410",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "6859ca212122756f1cc617705f1443de45849f16bf938edfa3569e39b319af16",
+   "recipe": "020cf3735bacdc0d675b473073fdc486b96ceba02188c903f1d9aa9d5974f76e",
+   "bytes": 14733
+  },
+  "here s the answer malapert massif": {
+   "file": "clips/b94e61034952bc48-0931bb87.mp3",
+   "text": "Here's the answer: Malapert Massif.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.717,
+   "words": "90-409,409-576,576-910,1480-2180,2180-2660",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "fae8ad0d9fcc85dc0a83f67cc3411a685021233ac58ee0963a670191905aa322",
+   "recipe": "0931bb878b4ee9e49f70de6f5b818d42c8b483b46c5abd70b3d68bf66fef5017",
+   "bytes": 16300
+  },
+  "here s the answer right now": {
+   "file": "clips/2f1894e5afcd6a11-d1a9b28d.mp3",
+   "text": "Here's the answer: Right now.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.802,
+   "words": "90-417,417-588,588-930,1210-1507,1507-1760",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c15b4d6a200cd55cec1566c480cf892a0c90d191c34c408b43a62b1567555263",
+   "recipe": "d1a9b28d5abdde2675143de1fc21757c562d107a75b9b5022aecaf667843b31f",
+   "bytes": 10814
+  },
+  "here s the answer shackleton rim": {
+   "file": "clips/dbf9e06ba6c63c6d-fd41e236.mp3",
+   "text": "Here's the answer: Shackleton Rim.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.325,
+   "words": "80-407,407-578,578-920,1430-2065,2065-2270",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "50d2f20c06da4644e978378abafabb511e68d6f70471b237fa8e58e52ab24f98",
+   "recipe": "fd41e236908f46a746b9fc0ee88a05cbbef1dea0d5931c9d9d9fb70023c74b01",
+   "bytes": 13949
+  },
+  "here s the answer yes": {
+   "file": "clips/278410a3d5983c79-d2264c72.mp3",
+   "text": "Here's the answer: Yes.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.855,
+   "words": "90-594,594-858,858-1386,1546-1810",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "b4cbdc8bc25e457d0f78f792ed2d802781b0d7bafdba5f976c20ea6846ea0c1c",
+   "recipe": "d2264c72e636cae920ffca6ed6b52c3161c8b54ebe96011249e17f8c1094b671",
+   "bytes": 11128
   },
   "here s your next job": {
    "file": "clips/9571791baecd63df-4297ac73.mp3",
@@ -3145,65 +3529,41 @@
    "recipe": "11d9cf6350e040409b2c0be53af51fce37aba10067d469aa4e1c02a9a74f7a2c",
    "bytes": 8307
   },
-  "hint get the whole crew under cover": {
-   "file": "clips/4dfc060ca5c839f1-b97bbc56.mp3",
-   "text": "Hint: Get the whole crew under cover.",
+  "houston agrees get ice": {
+   "file": "clips/e795d62b0aaef8aa-f120598c.mp3",
+   "text": "Houston agrees: get ice.",
    "role": "capcom",
    "rate": "native",
-   "dur": 2.273,
-   "words": "90-460,660-837,837-1014,1014-1352,1352-1544,1544-1882,1882-2220",
+   "dur": 2.064,
+   "words": "80-581,581-1060,1350-1685,1685-2020",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "1acc4a3bd258d1d060f12928531706ae9d524d04194d1745d3de6b2cbffd3364",
-   "recipe": "b97bbc56616e519429b2e824cfda3c549ab7495bc833a6ce230aa5ffbfb5a6f9",
-   "bytes": 13636
+   "sha256": "45d38252312e8f579678ab5e4fd642840f30203c4dad483cf70759b0cab922c7",
+   "recipe": "f120598cbf7402a6c3a614eb50baec7227f1376fcaf24ea2746d3ff2f5fd41f3",
+   "bytes": 12382
   },
-  "hint guess first": {
-   "file": "clips/56c07cda5f5eff08-50c30913.mp3",
-   "text": "Hint: Guess first.",
+  "houston agrees get under cover": {
+   "file": "clips/bba77ba687c25d16-50ae76ce.mp3",
+   "text": "Houston agrees: get under cover.",
    "role": "capcom",
    "rate": "native",
-   "dur": 1.489,
-   "words": "90-440,660-1050,1050-1440",
+   "dur": 2.247,
+   "words": "90-580,580-1050,1440-1593,1593-1887,1887-2180",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "6eb32523301af71e219788a5b86354685cb6df2c68185a2727a358877063c2ad",
-   "recipe": "50c30913747ea50f1582f4c09d80d1ea37a81395305155613f2127e0f5fbd95a",
-   "bytes": 8934
+   "sha256": "aa3943c049771fd508700d9013645fe07f199ea72b4805463a823549b6a09e37",
+   "recipe": "50ae76cef1ee30f0917367c77ff79c3d520c4ce37c71b48139fd68d1102d184c",
+   "bytes": 13479
   },
-  "hint say houston any space weather": {
-   "file": "clips/74ae37b319527634-f9c3f6d0.mp3",
-   "text": "Hint: Say: Houston, any space weather?",
+  "houston can t warm the pipes": {
+   "file": "clips/8f81cea7940b38a2-52a0fc39.mp3",
+   "text": "Houston can't warm the pipes.",
    "role": "capcom",
    "rate": "native",
-   "dur": 2.769,
-   "words": "90-420,580-1000,1130-1710,1810-2122,2122-2334,2334-2710",
+   "dur": 1.933,
+   "words": "90-614,614-887,887-1160,1160-1410,1410-1890",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "796581010f9a0107e9074099f2e20b90f968be9d1f6e3d891581e9c7c24e1822",
-   "recipe": "f9c3f6d051ddcdde5508da9cda7a33e5cd4e023004a4fb5f991a45476fa090c3",
-   "bytes": 16614
-  },
-  "hint the crew can leave the shelter now": {
-   "file": "clips/f49389ac39abdeee-c2e352f2.mp3",
-   "text": "Hint: The crew can leave the shelter now.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.534,
-   "words": "90-400,660-880,880-1120,1120-1340,1340-1599,1599-1820,1820-2280,2280-2500",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "3ffc9c91c6497ce291e42c7b2f64a57c37804f91e7297e7fbda05b5b32683995",
-   "recipe": "c2e352f28eeb3cf40e1699d1ba862eec9ab0f943f69189d2d63b9a98c8729872",
-   "bytes": 15203
-  },
-  "hint the rover can dig up ice": {
-   "file": "clips/2891fccb25797c7a-3a13a010.mp3",
-   "text": "Hint: The rover can dig up ice.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.377,
-   "words": "90-380,630-881,881-1360,1360-1610,1610-1861,1861-2089,2089-2340",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "f21b7a7b3be15352b8636da97984e830e206af09f5ae193d3dac8b5a9ebf7723",
-   "recipe": "3a13a01022a027d09848d8255cd3f8319af81e7d4f230e99b39533a2f0ba10ce",
-   "bytes": 14263
+   "sha256": "9c6cf12351a4b010bcc0204d1528935da3f16f3d02a8706027462df5182b48c8",
+   "recipe": "52a0fc391ae629fccc269af667ae09048bcda4fd27f492d3452156b62732252d",
+   "bytes": 11598
   },
   "houston has the news": {
    "file": "clips/bdad6c80948a529f-0761f62a.mp3",
@@ -3288,6 +3648,18 @@
    "sha256": "09b8bb02684ee9a71b1ccc71638269f5870929dcef943c5f1834a969feec13fb",
    "recipe": "83a2663b069cc3bf1ee2d5ebe7e99f9a1f32fc9f10696d25ce9826f4dcc124ad",
    "bytes": 7523
+  },
+  "ice can wait keep the crew safe": {
+   "file": "clips/6c142affbfc6bbdf-cd01ce56.mp3",
+   "text": "Ice can wait. Keep the crew safe.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.273,
+   "words": "90-317,317-543,543-790,1320-1547,1547-1756,1756-1983,1983-2210",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "79ea9dbafcd49af9fc5a461e8db070ec1cbf29f67d89aa98e4049b85187599a9",
+   "recipe": "cd01ce5669da46f034c88e79c69c9b3638016aaa9e19f4d057dda247d984622b",
+   "bytes": 13636
   },
   "ice delivered life support up": {
    "file": "clips/3983b49699406ef4-7dbd5277.mp3",
@@ -4213,6 +4585,78 @@
    "recipe": "3112fce2d571f7ba5b0a39bed7f9277eb4561953a7eead21e1155efa7739a923",
    "bytes": 18808
   },
+  "look earth is up over the rim": {
+   "file": "clips/ab36952c6bd5d48a-1629a88e.mp3",
+   "text": "Look: Earth is up over the rim.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.933,
+   "words": "90-360,580-808,808-984,984-1160,1160-1513,1513-1707,1707-1900",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "5669865d79dfca524e729bcc78e4e22e20a8964974249d343669d44c5017f938",
+   "recipe": "1629a88e9afe25a0230cfc0b08bd97322957a1b9d892581d3e2adf111eb11d29",
+   "bytes": 11598
+  },
+  "look for the glowing line": {
+   "file": "clips/9e484aac99202eb2-fb5638eb.mp3",
+   "text": "Look for the glowing line.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.28,
+   "words": "90-288,288-470,470-652,652-1032,1032-1230",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "9a75487101f915a23344581337454e16d37ea74ef93a8475c8bbbe179e6ed450",
+   "recipe": "fb5638eb35f8dd5300b7c54a4bcbb612ea8f2d1ffa6b95fd3b4e6603ad0b9d81",
+   "bytes": 7680
+  },
+  "look for the glowing ring": {
+   "file": "clips/610aee8c675f4496-bb004a6b.mp3",
+   "text": "Look for the glowing ring.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.228,
+   "words": "90-279,279-453,453-627,627-991,991-1180",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "58e5910dc5f2d11c8cebc54376b218063ceb570b12c3ffb971ee2a7832641e1f",
+   "recipe": "bb004a6b5710ea59e5095d31e455cce3af54ada981b677e074b43f7c6f5e9caf",
+   "bytes": 7366
+  },
+  "look for the label cabeus crater": {
+   "file": "clips/ff56c4a3671b5491-362ea3ff.mp3",
+   "text": "Look for the label: Cabeus crater.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.482,
+   "words": "90-275,275-445,445-615,615-940,1480-1955,1955-2430",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "4aa26d8e53684d7fbc037a78ee339604b8090345eb8ff00f6077b5a81a43f106",
+   "recipe": "362ea3ffca58ccfebc3aded65f602eeebbd19a441074257c9a45c032ee813799",
+   "bytes": 14890
+  },
+  "look for the label sea of tranquility": {
+   "file": "clips/425a4073e49ca576-5d53555d.mp3",
+   "text": "Look for the label: Sea of Tranquility.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.56,
+   "words": "90-277,277-449,449-621,621-950,1380-1574,1574-1751,1751-2510",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "b5016a9922b632382b6a374fe726f10c81c401c50bccf8e63b6e6104ab4aa087",
+   "recipe": "5d53555d030ce68b6fde270c8d00a50c1b88c86b2b94896739c4cb423c1f9eb5",
+   "bytes": 15360
+  },
+  "look for the label shackleton": {
+   "file": "clips/58e3deaa6592ede8-b75781c5.mp3",
+   "text": "Look for the label: Shackleton.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.22,
+   "words": "90-273,273-441,441-609,609-930,1520-2170",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "8141f201a65b7b8d6b2215e7d4596958672d291835bb89417404a84c3ee026d2",
+   "recipe": "b75781c56bdac8648d221b7976652630097df7b55e951958eb1195461aba8c0c",
+   "bytes": 13322
+  },
   "malapert about 129": {
    "file": "clips/8d3f1fcb05059f6a-ba904d3b.mp3",
    "text": "Malapert, about 129.",
@@ -5137,17 +5581,17 @@
    "recipe": "090a6e0daab31906fbc1c5c82de1dbb5eca876062b0eedfd80ee5c3315a06013",
    "bytes": 15987
   },
-  "move power to the heaters so the pipes don t freeze": {
-   "file": "clips/9e7477e4d70d9f2c-ca5d1da6.mp3",
-   "text": "Move power to the heaters so the pipes don't freeze.",
+  "move power to the heaters": {
+   "file": "clips/fe94e6e6743721a9-2dd07472.mp3",
+   "text": "Move power to the heaters!",
    "role": "capcom",
    "rate": "native",
-   "dur": 3.03,
-   "words": "90-330,330-753,753-954,954-1175,1175-1636,1636-1837,1837-2058,2058-2480,2480-2721,2721-3000",
+   "dur": 1.541,
+   "words": "90-306,306-686,686-867,867-1065,1065-1480",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "7a4f76c4c1cd3e1337837f84dd00dd4e7f63c5b93cfaeff3a71795459877a270",
-   "recipe": "ca5d1da62c1dc17748eb152b39aacaa8e7a6a059476c498f9412428829830305",
-   "bytes": 18181
+   "sha256": "d1afa309c1e8a8a4454b6e82d51bb0f92ed0acc1028b4bcc82bb478ff39393f7",
+   "recipe": "2dd074726636a270ea6d6fd449a08f10e727014e96ef28f43a25c491e74c1fb6",
+   "bytes": 9247
   },
   "much less radiation but science stops": {
    "file": "clips/327057fc60a6b1e6-ff549a3d.mp3",
@@ -5185,42 +5629,6 @@
    "recipe": "95f7bc80fee00d1b0bb7a768a15d02eefba36aa1bf4ff2e5534408016521e5a9",
    "bytes": 11285
   },
-  "negative tap the glowing order": {
-   "file": "clips/e48753f0d0c17cbd-761de276.mp3",
-   "text": "Negative. Tap the glowing order.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.247,
-   "words": "90-560,1190-1358,1358-1527,1527-1878,1878-2200",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "a939bb04a11fa43d734f1fc9745cea7e46a49e0f57f5a0b7c56bc5373ef625e2",
-   "recipe": "761de27670219e5688647c9d1594029ac815e5d82e6b7506692c885ede1a7dde",
-   "bytes": 13479
-  },
-  "negative the heaters need more power": {
-   "file": "clips/9ed898f51a90e155-7df658f4.mp3",
-   "text": "Negative. The heaters need more power.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.717,
-   "words": "90-560,1200-1403,1403-1828,1828-2050,2050-2271,2271-2660",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "4715b912914a3881f98c9619872d8d52e4c19fac7cd4a427e1be29ee19c455a4",
-   "recipe": "7df658f4762b53e23dc0e1313702c67e8ec178a2347f293f1ec86693d8d7cef7",
-   "bytes": 16300
-  },
-  "negative the rover can dig up ice": {
-   "file": "clips/ee62adfbafa83516-e2454304.mp3",
-   "text": "Negative. The rover can dig up ice.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.873,
-   "words": "90-550,1210-1446,1446-1897,1897-2133,2133-2369,2369-2584,2584-2820",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "e59e25d96b146cf35c09dd2fb453fb2215e8a27a3d529690aa34eda2456b7913",
-   "recipe": "e24543040f6e401c8f881b750910b1be50fba071878cc8f3cea3ae9bbe06fb92",
-   "bytes": 17241
-  },
   "negative the rover needs to fetch ice": {
    "file": "clips/c4350a9c67583b55-5587e63c.mp3",
    "text": "Negative. The rover needs to fetch ice.",
@@ -5257,17 +5665,17 @@
    "recipe": "9dffd16f6dacfff047b9c4e01db017103df49f1f6cb68138c2fe8e097509a0fd",
    "bytes": 21786
   },
-  "new find a place tap it on the moon": {
-   "file": "clips/bebf08c284894b0d-0a1e2db8.mp3",
-   "text": "New: find a place. Tap it on the Moon.",
+  "new find a place tap the glowing ring": {
+   "file": "clips/0b03b01aa9a04aa6-b6c51c1c.mp3",
+   "text": "New: find a place. Tap the glowing ring.",
    "role": "capcom",
    "rate": "native",
-   "dur": 2.9,
-   "words": "90-450,660-924,924-1124,1124-1410,1960-2141,2141-2306,2306-2472,2472-2653,2653-2850",
+   "dur": 3.004,
+   "words": "90-450,660-924,924-1124,1124-1410,1970-2161,2161-2353,2353-2752,2752-2960",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "4dfb403cc3e63db8cc52c0491c83cbd18c880f7a87df230340663ff199b7eaa5",
-   "recipe": "0a1e2db85dc649a5a73952db56a4c025900b04b597116f602a5b633cfc9bb0dd",
-   "bytes": 17397
+   "sha256": "6dad0123f5e93f47ed95aaff32c2bcaf83bf7950f08c064ab0b40d786fda0cfb",
+   "recipe": "b6c51c1cb8f8b5a75bc987d4f6a2078c24d4f6378be37266fac07c9e8e932779",
+   "bytes": 18024
   },
   "new give an order tap a button or say it": {
    "file": "clips/305709ae532929bd-711c4794.mp3",
@@ -5653,17 +6061,17 @@
    "recipe": "9c4ad0f45dcad845ee5041df3a786b2c5bf1be5618e020372b825f651ccd9025",
    "bytes": 9404
   },
-  "night is coming at malapert": {
-   "file": "clips/d3cc2722b476fb23-cfef202a.mp3",
-   "text": "Night is coming at Malapert.",
+  "night is coming move power to the heaters": {
+   "file": "clips/14d13aee9a8e8cf6-603db842.mp3",
+   "text": "Night is coming. Move power to the heaters!",
    "role": "capcom",
    "rate": "native",
-   "dur": 1.489,
-   "words": "90-292,292-449,449-793,793-949,949-1450",
+   "dur": 2.847,
+   "words": "90-300,300-463,463-820,1410-1628,1628-2010,2010-2192,2192-2392,2392-2810",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "160d6e1717ac5c81bd53c2083431bb5dedc9fa1622391b92fbc9f4a374788474",
-   "recipe": "cfef202ab2a59e2363de03ed8cfd36f95e54e892a18eabd3c4b2361bc6563095",
-   "bytes": 8934
+   "sha256": "c33eb32aa2b21e2d78f6deaaf6e69c22ee843414fa3bca7fa5e4573f85522bb5",
+   "recipe": "603db842120d6c9af4fceded4b85f99554775e8dd9d0849d4dc45bd800c224b3",
+   "bytes": 17084
   },
   "night mode": {
    "file": "clips/bd4202e434f91f77-4a9af095.mp3",
@@ -5952,6 +6360,30 @@
    "sha256": "03e3012605394d0a8be361d6c85bd184ec8f47d9d250a45df63120a859819bfb",
    "recipe": "47dff2f0e15389cbfdf2643ccf15849d2a9acf07c71704bf71c0653887791b18",
    "bytes": 15360
+  },
+  "no storm now tap the glowing order": {
+   "file": "clips/45515203d673ce87-bceb64a0.mp3",
+   "text": "No storm now. Tap the glowing order.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.482,
+   "words": "90-323,323-624,624-880,1430-1597,1597-1763,1763-2111,2111-2430",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "61f7b25bd535ad50be82155440e0d789633050ec50e58c697157408864e111ab",
+   "recipe": "bceb64a0937a5d717cf38d708da7ce7b0db290c217c053d172eb1dd94314daa6",
+   "bytes": 14890
+  },
+  "no storm now the rover can dig up ice": {
+   "file": "clips/d84e9918851afdfe-fc71392f.mp3",
+   "text": "No storm now. The rover can dig up ice.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.109,
+   "words": "90-320,320-617,617-870,1440-1676,1676-2127,2127-2363,2363-2599,2599-2814,2814-3050",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "ee3c3b66673d446adfabde70a30f19c56e65434bd0f40d7aa20b910d7187595a",
+   "recipe": "fc71392f5d3b3d2829f7c5b48b62cdbfc180d7ec5136150e6b2d6ef935720dee",
+   "bytes": 18651
   },
   "no task waiting all steady": {
    "file": "clips/62476bcc6cdd0d2f-24596974.mp3",
@@ -6265,6 +6697,42 @@
    "recipe": "a015ff8a5e1e4c8fb0002ec664a6a10e023225fa5f0aa5e7f20a6d84beea0e00",
    "bytes": 22413
   },
+  "not that order tap the glowing order": {
+   "file": "clips/e1820a4d10adc6b2-9c634490.mp3",
+   "text": "Not that order. Tap the glowing order.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.534,
+   "words": "90-297,297-523,523-920,1490-1657,1657-1823,1823-2171,2171-2490",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "0f7ca722ca7cc6cb4a192f902e6a6d06bd7aec7004895f577f78edd84e0feb4d",
+   "recipe": "9c634490d15f18a23dfc50d58e893cb088ae065c1c4bbf8b7b43e2e090eab22b",
+   "bytes": 15203
+  },
+  "not that order the heaters need more power": {
+   "file": "clips/8c171ca79b3aa447-43e2d267.mp3",
+   "text": "Not that order. The heaters need more power.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.004,
+   "words": "90-297,297-523,523-920,1490-1693,1693-2118,2118-2340,2340-2561,2561-2950",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "7525c049988d673d966f12e86f26ad0a0dc8fd6476e001b04e3799781e35d2d1",
+   "recipe": "43e2d267e5108057799c944dc5904b295ca81d46436caacc83d6422571891bcc",
+   "bytes": 18024
+  },
+  "not that order the rover can dig up ice": {
+   "file": "clips/2fc848460f3089c4-e73c9ab5.mp3",
+   "text": "Not that order. The rover can dig up ice.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.161,
+   "words": "90-295,295-518,518-910,1500-1736,1736-2187,2187-2423,2423-2659,2659-2874,2874-3110",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "5e3bbded5747e61f8007978bd57c6d3378b787dd866f8d00c8f45f05068f6a9c",
+   "recipe": "e73c9ab5f915cb3c157001204c06babf7dda722627bce73f74b441564d942007",
+   "bytes": 18965
+  },
   "not there it s close to the south pole in the middle": {
    "file": "clips/4f1602b7ddc3e516-cc2ca581.mp3",
    "text": "Not there. It's close to the south pole, in the middle.",
@@ -6289,17 +6757,17 @@
    "recipe": "42511e795c8ed3244213e28a450b2a2a7c16742da81d72d6ce0b3dcd494dd79c",
    "bytes": 18181
   },
-  "not there look for the label lcross centaur rocket impact site": {
-   "file": "clips/d066ad7e79b84fa9-d33d0706.mp3",
-   "text": "Not there. Look for the label: LCROSS Centaur rocket impact site.",
+  "not there look for the label cabeus crater": {
+   "file": "clips/2fc481a42f619a03-bc985267.mp3",
+   "text": "Not there. Look for the label: Cabeus crater.",
    "role": "capcom",
    "rate": "native",
-   "dur": 6.504,
-   "words": "90-366,366-690,1300-1737,1737-2139,2139-2541,2541-3310,3410-3865,3865-4618,4618-5338,5338-6058,6058-6450",
+   "dur": 3.683,
+   "words": "90-366,366-690,1310-1495,1495-1665,1665-1835,1835-2160,2700-3175,3175-3650",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "e785e18d2d16fcf4bd9a1ab5c9534ca7a449ad438afaab258e1d3379b79a95f8",
-   "recipe": "d33d0706b2a57c83329282d712265be5d668d8a4da352bee658974c250d794e5",
-   "bytes": 39027
+   "sha256": "2705d57ca11dfc4d5d190cbf0fb01a406f6066aeecf7139ecdff111e88a78cac",
+   "recipe": "bc985267eba4845eb1af7f119f2f59a06324838f8c66f22f8d13e6dbaca3e034",
+   "bytes": 22099
   },
   "not there look for the label sea of tranquility": {
    "file": "clips/28cf9448335580c8-ee2e70ef.mp3",
@@ -6336,6 +6804,18 @@
    "sha256": "d825a67d54fdf03b643e3da85cfbfe383d94194687ac380d9ab8f38f858b0ff5",
    "recipe": "657ed4110123715b296d2819dd9f02af222fd1be7157133646da263464a53511",
    "bytes": 19435
+  },
+  "not yet the storm is coming": {
+   "file": "clips/9a1a4fda74d38127-ee3b2183.mp3",
+   "text": "Not yet. The storm is coming.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.247,
+   "words": "90-350,350-610,1210-1403,1403-1629,1629-1805,1805-2190",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "cae804d73b6d01fcf64f3c7f966a11513e77c42eed1ee83b47f1d8bae9d07ce6",
+   "recipe": "ee3b2183d1666541b6afba86e162e51cc8a2cabe7d0f4eade51e83fb1b5762c1",
+   "bytes": 13479
   },
   "not yet time skips ahead to it": {
    "file": "clips/8e0ed0cc9a9b6b8f-8d50e00d.mp3",
@@ -6492,6 +6972,18 @@
    "sha256": "b910af07018a4b8d819313539bcbd463377198814f4a8d32c59f39e5d1418aba",
    "recipe": "7541d13424d674d2c02983c85b681001d547fa221fabe2cdfee6f4a36dd72e93",
    "bytes": 7366
+  },
+  "or tap far side": {
+   "file": "clips/30532c261a958853-8cb32534.mp3",
+   "text": "Or tap Far side.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.202,
+   "words": "80-322,322-587,587-852,852-1140",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "2ea2dab06be384f089d14fadcda10de98b489d9c9c59b55caf508d2db395358a",
+   "recipe": "8cb32534e3ea42455f9336ddad7d0d32409c0eae7919af8a62a5f34ef845244f",
+   "bytes": 7210
   },
   "orbit pass your check ride to take command": {
    "file": "clips/3364584c10de8f9c-73852891.mp3",
@@ -7525,6 +8017,18 @@
    "recipe": "f78e6431a5db1e01b2187740eab6a541e8a324a01bccf69495a4f89643ed094b",
    "bytes": 15830
   },
+  "pretend you re at malapert": {
+   "file": "clips/095adc39d021fdde-1166803a.mp3",
+   "text": "Pretend you're at Malapert.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.463,
+   "words": "90-479,479-698,698-868,868-1410",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "1bd4d979a51072d53a90cb9decf7bf4d710e067a9ed1085f87ec4007de586d79",
+   "recipe": "1166803af375ac38584cc69eff75d5ae8105b762989eb62b292a3e09fe70d579",
+   "bytes": 8777
+  },
   "pulsar pass your check ride to take command": {
    "file": "clips/876c0361147814aa-fce17adb.mp3",
    "text": "Pulsar, pass your check ride to take command.",
@@ -7536,6 +8040,18 @@
    "sha256": "806e3098484f84b0f35c42c38366146f3237eb17eddc10481d793192c60385c7",
    "recipe": "fce17adb14a011d5646dd6be6dd05da4f5191815ff6728219bfcbaf7bd0d7a1e",
    "bytes": 15516
+  },
+  "radiation is climbing": {
+   "file": "clips/acc24db842820d5b-71df973c.mp3",
+   "text": "Radiation is climbing.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.411,
+   "words": "90-721,721-912,912-1370",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "d9c54c11466b080e999584f1a11945d077ec08b38775936c42e4ebd6ce705090",
+   "recipe": "71df973ccac2e1b7f6acd9aaa4ef7102e57c39a2fbab718b7462b92fc83c7300",
+   "bytes": 8463
   },
   "radiation shields and the storm shelter under its cover": {
    "file": "clips/54f62e947753629a-2205d07a.mp3",
@@ -8593,30 +9109,6 @@
    "recipe": "954ce17ec3e0dc0c4ae2d6c2fc3a4814e8304403231dc53ed3b6430e43f26015",
    "bytes": 11128
   },
-  "say again radiation is climbing": {
-   "file": "clips/d2d806e799d891bf-3aa3f1a4.mp3",
-   "text": "Say again? Radiation is climbing.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.612,
-   "words": "60-283,283-710,1280-1916,1916-2109,2109-2570",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "04c9d21374c5b74e56cee5a3b11c0b89888c25eb5dde60abcf2887e1cba7a827",
-   "recipe": "3aa3f1a4c703796981e1c92331f0939e517f780859ee998d884ac55a8e54dae0",
-   "bytes": 15673
-  },
-  "say again repeat the order": {
-   "file": "clips/68b5beeef93b6a81-3b67a147.mp3",
-   "text": "Say again? Repeat the order.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.168,
-   "words": "60-283,283-710,1270-1620,1620-1795,1795-2130",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "582cd2081969bb8df93b5feac163c68c1cc201af03d2c66784ce865c1ff66806",
-   "recipe": "3b67a1477cec85b17fad580ee222e13fe2c308d9366465363a0f7543eba52ae8",
-   "bytes": 13009
-  },
   "say fly again to try this site again or new site": {
    "file": "clips/67454d2e1b3230e1-ca830eda.mp3",
    "text": "Say fly again to try this site again, or new site.",
@@ -8652,6 +9144,18 @@
    "sha256": "83e37a64da823ee0819166eb4626f00fc255723440512ddce8f87276a000a0fc",
    "recipe": "439bd3acc2c2393bd6a6453591343d945aa69d25456c70f219a0abcb05b1a93f",
    "bytes": 4545
+  },
+  "say it back repeat the order out loud or type it": {
+   "file": "clips/13fb28ebfe34f8d5-f1496753.mp3",
+   "text": "\" Say it back. Repeat the order out loud, or type it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.474,
+   "words": "60-144,356-470,470-575,575-700,1300-1680,1680-1870,1870-2233,2233-2423,2423-2630,2730-2946,2946-3204,3204-3420",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "15dee1da7ad20e6fb722901833cd0cadd7831877a683c087c40de43f69ac2055",
+   "recipe": "f1496753427b91f4bb638eea60faf7a51e9539a18075a903166163f02301068a",
+   "bytes": 20845
   },
   "say it out loud or type it": {
    "file": "clips/72fa2bdfc3814a9e-0a97673c.mp3",
@@ -8772,6 +9276,18 @@
    "sha256": "3342bebe270f011fda54225422d08faed91d763c4d12761049c0388cb3a571b8",
    "recipe": "fdbccae666dac0fddb420d0f28e162957580d5e6d9801331d8f09ce9e26d7b95",
    "bytes": 7680
+  },
+  "say them": {
+   "file": "clips/6414599ac85a26a0-d868c1f9.mp3",
+   "text": "Say them.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 0.705,
+   "words": "80-358,358-660",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "3bb9de49e8fdbd5deb19c334bbbc0f6d284f63763065c380099d738aff3e737b",
+   "recipe": "d868c1f96fe12143b462f5e8323f8c89b563e54d3096946f2e90a075317d2e1f",
+   "bytes": 4232
   },
   "say what to set and how much": {
    "file": "clips/fa572865d1f993f3-210dbb3a.mp3",
@@ -8904,18 +9420,6 @@
    "sha256": "2ab279011abaa83f1958bd7d33370aee7c9a65f0e9e268bc7f0b157102234579",
    "recipe": "c155ded7acf4865e5060eab91ecf4caf99d0186fdf59f39f3ca5888926d69060",
    "bytes": 9090
-  },
-  "send the rover for ice before day 2 ends": {
-   "file": "clips/d0156f7aca2632b2-11b5c1e3.mp3",
-   "text": "Send the rover for ice before day 2 ends.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.691,
-   "words": "90-337,337-563,563-997,997-1223,1223-1450,1450-1903,1903-2130,2130-2383,2383-2630",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "d77a1afbc81f0110d5d2ecfaf1b7d01718d17f148d891d95c3ff320031c01549",
-   "recipe": "11b5c1e34a5211125d463a79e97c97c72bae8977419a271c0b005803db5dd4bd",
-   "bytes": 16143
   },
   "send the rover to explore": {
    "file": "clips/cf95915cbdca1f93-967d3049.mp3",
@@ -9073,6 +9577,30 @@
    "recipe": "58482fea5cd5c71cdff1f7bdcb7b7a9ec89cfcec5830a4c85f15bf7f3d4d8cd4",
    "bytes": 13636
   },
+  "shields block radiation not cold": {
+   "file": "clips/a5d704df50840d79-b9180cd4.mp3",
+   "text": "Shields block radiation, not cold.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.456,
+   "words": "90-445,445-753,753-1540,1680-2020,2020-2390",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "1a6fa4af9378d9c0bbb4bafff21ab02ca63f19a734ec639f416078f8e0aff5e0",
+   "recipe": "b9180cd449bd59787dcd4c116883fa390af38dcf4d000dad7f87a5925e170581",
+   "bytes": 14733
+  },
+  "shields help a little": {
+   "file": "clips/1f69ec6ed6546f05-5a21b14b.mp3",
+   "text": "Shields help a little.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.123,
+   "words": "90-344,344-549,549-704,704-1080",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c4f4caaa05bb3135368c9cacb74181209daf682398cfd71e2dfa2fa5461196af",
+   "recipe": "5a21b14b2d60835796545addcd895c3c590f6d0a80d754ae2c0faf59c2748cc0",
+   "bytes": 6739
+  },
   "shields or shelter": {
    "file": "clips/5a5594b0a75b78ca-31ae8e8c.mp3",
    "text": "Shields or shelter.",
@@ -9145,6 +9673,18 @@
    "recipe": "67be8c9ad3b6717c57a6a9654964937159f76b7d125e5b64a0fd4cf1068cc513",
    "bytes": 6896
   },
+  "shields won t bring water": {
+   "file": "clips/7b3961c2bbdcb2bc-9a891ac2.mp3",
+   "text": "Shields won't bring water.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.411,
+   "words": "90-401,401-651,651-921,921-1360",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "30fa68cb66387fa9aed6e29cd3f8ce9253402330228bb281de806fe43ea60ae8",
+   "recipe": "9a891ac241c8fabfd37d3c35ee148a37813bdaf9b2ff94b798da9ba0a2432c5b",
+   "bytes": 8463
+  },
   "sky otter pass your check ride to take command": {
    "file": "clips/3d3945f1957b60b1-5fd3a086.mp3",
    "text": "Sky Otter, pass your check ride to take command.",
@@ -9168,6 +9708,18 @@
    "sha256": "4541afc3f2b7538f10c32eddd8c16a65b066ba913020af24e36fa31a29eee419",
    "recipe": "fc21997bb4509ca0b726360ead2d1bd322d8b9151a8f955257902dab80cea1b9",
    "bytes": 9717
+  },
+  "so what is an msv tap an answer or say it": {
+   "file": "clips/7f7708da14c9b80e-62ed73b9.mp3",
+   "text": "So what is an mSv? Tap an answer, or say it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.84,
+   "words": "90-370,370-704,704-983,983-1263,1263-1570,2080-2300,2300-2500,2500-2940,3060-3292,3292-3547,3547-3780",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "6c5c61d87d6f48c259cadd8a466b3ae3752dc39cebe92fc4880f9f0f8a87c542",
+   "recipe": "62ed73b94846fc38d43f4aae020cdc6a046d05a345c8ed9ae2f70790acbe96d9",
+   "bytes": 23040
   },
   "solar panels need sunlight": {
    "file": "clips/72820fa4812b4239-a1cb2d2b.mp3",
@@ -9361,17 +9913,17 @@
    "recipe": "4102ba1eed051079559e4b9a86f2bc252d073ab42c86fb3621bb9d26780b9080",
    "bytes": 21943
   },
-  "storm forecast about 1 hours to get ready": {
-   "file": "clips/45c156b089e56612-48382439.mp3",
-   "text": "Storm forecast: about 1 hours to get ready.",
+  "storm forecast about 1 hour to get ready": {
+   "file": "clips/620fb0ac08a0c5f3-3a89bcef.mp3",
+   "text": "Storm forecast: about 1 hour to get ready.",
    "role": "capcom",
    "rate": "native",
-   "dur": 3.082,
-   "words": "90-375,375-1080,1440-1821,1821-2044,2044-2278,2278-2460,2460-2659,2659-3040",
+   "dur": 3.187,
+   "words": "90-375,375-1080,1450-1847,1847-2079,2079-2306,2306-2495,2495-2703,2703-3100",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "4399be15750590f321affa942f21be17a3bd1f1c9e90d464d14a5bd524affd5b",
-   "recipe": "48382439f0de93c69dfa34c5b5355174abe95e39597df34e7caca7483f2c8eb8",
-   "bytes": 18494
+   "sha256": "f1f4d2dcbebb095d02d08f7ddd9d1adcfe776976dc1f973d4e0554ebbc173f82",
+   "recipe": "3a89bcef53149542f2f86bdf899d3868af6edd7ea9417df2a69647df8225555e",
+   "bytes": 19121
   },
   "storm forecast about 10 hours to get ready": {
    "file": "clips/fd1b05f4122e966c-5b712c7c.mp3",
@@ -9889,6 +10441,54 @@
    "recipe": "23e928164c6d313f80882c77ad99c99fcf05b11c7b47a3074b11295b2ee15c24",
    "bytes": 16770
   },
+  "tap 1 orientale it has a label now": {
+   "file": "clips/0f3d5b30a1208ed0-18a5b082.mp3",
+   "text": "Tap 1: Orientale. It has a label now.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.318,
+   "words": "90-364,364-670,880-1550,2120-2307,2307-2513,2513-2682,2682-3075,3075-3280",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "ebf2ec84b582964a0b7dca2136684642db6cec7588d38de2878390dae6b8756d",
+   "recipe": "18a5b082f5699a58d0e7b268212f1e81de17e8fe6345c4c92d1a80859bb069c6",
+   "bytes": 19905
+  },
+  "tap 1 orientale it s glowing": {
+   "file": "clips/47d1dff5d0ec4cbb-5bf45306.mp3",
+   "text": "Tap 1: Orientale. It's glowing.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.769,
+   "words": "90-364,364-670,880-1550,2100-2298,2298-2710",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "25cf40e130e87618b5118b34c4977a8c42fb7355fd8c74ee869ff5a1628cafe1",
+   "recipe": "5bf45306977fab8d658a01420424bdf0573e12e0a410eef3e93d8c9f5ddcbb7d",
+   "bytes": 16614
+  },
+  "tap 2 ohm it has a label now": {
+   "file": "clips/164b7337802abf39-304be513.mp3",
+   "text": "Tap 2: Ohm. It has a label now.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.847,
+   "words": "90-331,331-600,830-1100,1650-1837,1837-2043,2043-2212,2212-2605,2605-2810",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "6a4b1092f099dc454f022b958b28186399a7fb89e4d15a1f45af7c71e5494d6f",
+   "recipe": "304be5138917841ac3f3437793f158cc6854f4ec208074e2d8e6a93ccfb9aa00",
+   "bytes": 17084
+  },
+  "tap 2 ohm it s glowing": {
+   "file": "clips/e34ef47e8487d545-b895dcc0.mp3",
+   "text": "Tap 2: Ohm. It's glowing.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.299,
+   "words": "90-331,331-600,830-1100,1630-1828,1828-2240",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "78ecb7c3ced518c96869a6fdca8b32debad5357c5d337b3ab2830adf20591c29",
+   "recipe": "b895dcc0935ac8f742b6935ba99b2c633d5d4c3a6f714c5fe788960da1bb2a9b",
+   "bytes": 13792
+  },
   "tap a card or a pin or say its name": {
    "file": "clips/5c8c10ce9b45da98-2ee64ddb.mp3",
    "text": "Tap a card or a pin, or say its name.",
@@ -9948,6 +10548,18 @@
    "sha256": "9535a80a566cef58469f91bbe438e5d123c42b84e3a475af4b3a7c94ca6e5ef1",
    "recipe": "dc45bb60aea0fe1f567cab73cbb87247d55a3ccdceade7f66484ea938039465c",
    "bytes": 10188
+  },
+  "tap call houston": {
+   "file": "clips/df7ce137bf2e6338-ae6ebadd.mp3",
+   "text": "Tap Call Houston.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.097,
+   "words": "60-297,297-555,555-1050",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "d9322d80e59188476164cb1966e4ceed2f1ab96829864ef0d7f5c7b60b684642",
+   "recipe": "ae6ebadda6a52e45b051e15cf5870fa7c5cf6ca87c35a4db31c511ad5365f8f0",
+   "bytes": 6583
   },
   "tap continue one solo shift then you take command": {
    "file": "clips/61c0da185af1ee42-659d8f0f.mp3",
@@ -10189,6 +10801,18 @@
    "recipe": "14d84557d0eeb784fd2cd1a372f32176d1992a84dce30e6369b9dc7c11df3908",
    "bytes": 9404
   },
+  "tap hear charlie duke then pick a name": {
+   "file": "clips/831d9af15c4af113-918eafc8.mp3",
+   "text": "Tap Hear Charlie Duke, then pick a name.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.482,
+   "words": "70-372,372-702,702-1111,1111-1440,1610-1828,1828-2047,2047-2212,2212-2430",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "f7ac3f30f37714f282d26bbff1215ac8d081edaf272c8d7fee6cce9c15d99cd0",
+   "recipe": "918eafc8d77b97eff83b88825085e0cd3869cccc39820ec61b20aee3cd70118f",
+   "bytes": 14890
+  },
   "tap heaters up": {
    "file": "clips/1b4b31858b40dffb-f1bde971.mp3",
    "text": "Tap Heaters up.",
@@ -10225,17 +10849,29 @@
    "recipe": "38f3b928291d066e1b8b7f3aac13b558949631e87aa3afe5993b144fa0e72ce0",
    "bytes": 7993
   },
-  "tap it on the moon or say its name": {
-   "file": "clips/a014f4a196ad68a6-7ae1e2e1.mp3",
-   "text": "Tap it on the Moon, or say its name.",
+  "tap it": {
+   "file": "clips/a71fa3ebfde93f1c-09005304.mp3",
+   "text": "Tap it.",
    "role": "capcom",
    "rate": "native",
-   "dur": 2.116,
-   "words": "60-255,255-434,434-612,612-807,807-1020,1120-1337,1337-1574,1574-1812,1812-2070",
+   "dur": 0.444,
+   "words": "90-257,257-410",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "d4f89f02a6f3f18e749612d96686652cf99684168c1e793d88a28b9ee8564083",
-   "recipe": "7ae1e2e17502058056074625e3ac32a36e135f83bb8249a3b05069e86aadd868",
-   "bytes": 12695
+   "sha256": "9248ab44facc69c347025a4a534e20ca3e8151fd03ae92ffb6d9f6719798913c",
+   "recipe": "090053041306db49d62df6fec61e41ae1fbc7916288c78c11e29ae9cae122af0",
+   "bytes": 2664
+  },
+  "tap leave the shelter": {
+   "file": "clips/e54bf9d72f44a926-c43642d7.mp3",
+   "text": "Tap Leave the shelter.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.202,
+   "words": "90-291,291-528,528-730,730-1150",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "cb20d945bf0fb07e5348a71303a293d463fd2a66b68c2af2af86205768e43b26",
+   "recipe": "c43642d70d51eeaa02ef6acf7923298ccaffc4a54391895bb702c568ed1f41f7",
+   "bytes": 7210
   },
   "tap next for the next lesson or map": {
    "file": "clips/1cd6532365ac62d6-df6d5dc6.mp3",
@@ -10260,6 +10896,30 @@
    "sha256": "1cba6dcd739d76a8a1b4bede9c95b96cbd505fa24250eeb239f5c9f29cfe57f0",
    "recipe": "bea20beadbc514ef93f2d542f4c35005c41e62c20c8d1deaaba3b76d6dbfa5f7",
    "bytes": 11285
+  },
+  "tap on it": {
+   "file": "clips/a61391d7d5bf5a4f-9116811d.mp3",
+   "text": "Tap on it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 0.653,
+   "words": "90-274,274-442,442-610",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "7bd3a0851e3a2c51a336233885d25f9b8b5ec3d12637fb463822023267f6f241",
+   "recipe": "9116811d78355c0c6f916ed79eb68b6d4911fd1e6df514f38ff225e11732651b",
+   "bytes": 3918
+  },
+  "tap open it for your new lesson or take command": {
+   "file": "clips/d3f5cb83c49b97e5-ec364c87.mp3",
+   "text": "Tap Open it for your new lesson, or Take command.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.795,
+   "words": "90-269,269-596,596-759,759-938,938-1133,1133-1312,1312-1670,1760-1979,1979-2239,2239-2740",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "47c45fea89d60996813eb5c5315ce03b0700701a030f5223afdbe594114a5dcf",
+   "recipe": "ec364c873ef00787e62b18eed89f7053e7539ef6c7c71fd4ba167d35c64003cb",
+   "bytes": 16770
   },
   "tap orientale basin then ohm": {
    "file": "clips/96f09d6f7025140b-1b6e8d48.mp3",
@@ -10513,6 +11173,18 @@
    "recipe": "acf9f19df8c33b4a11a1876c779d6a328a0296874b87afc60f41413aa62dfe8c",
    "bytes": 12539
   },
+  "tap the glowing far side button": {
+   "file": "clips/dc3ad2825319ea63-8d02ce55.mp3",
+   "text": "Tap the glowing Far side button.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.855,
+   "words": "60-274,274-488,488-935,935-1149,1149-1382,1382-1810",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "cde747a96f4cdc452def23892ee937b4ca305f11941a1102a96a351a97bcb7ba",
+   "recipe": "8d02ce55e2347552970ea080d326007b05d1872e55aebaaf8c414b2f1798d49b",
+   "bytes": 11128
+  },
   "tap the glowing line": {
    "file": "clips/1d9ea7df91747119-8707685e.mp3",
    "text": "Tap the glowing line.",
@@ -10549,6 +11221,42 @@
    "recipe": "30a6e6866510177874ea80648c414ffd3da3c3f2206a78edbc03f3d89e75c3da",
    "bytes": 22099
   },
+  "tap the glowing ring or say its name": {
+   "file": "clips/10cb61a9bdb9f616-ef38a7a7.mp3",
+   "text": "Tap the glowing ring, or say its name.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.22,
+   "words": "80-292,292-505,505-949,949-1180,1340-1534,1534-1746,1746-1959,1959-2190",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "51a3d79dfd779e0d496018e75ebecfe169a3674b8016c93b36afc1a6e1f960ca",
+   "recipe": "ef38a7a7307e7621ecee21f15bcae5673c6b86910160e40e0c540fd988ce6b8c",
+   "bytes": 13322
+  },
+  "tap the line": {
+   "file": "clips/c79e9e8a8061b6ab-44d21064.mp3",
+   "text": "Tap the line.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 0.836,
+   "words": "90-320,320-550,550-800",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "46b04d76a813237eadfb57a934bf60edd9f1522fe3bff4d0ff4ed77cc9076777",
+   "recipe": "44d2106419463fa9f0b07efad682434431597656cd5a1a2fc1e7920f5af5857c",
+   "bytes": 5015
+  },
+  "tap the line marked day meets night": {
+   "file": "clips/6a9b7be198bac335-b8cc25e5.mp3",
+   "text": "Tap the line marked Day meets night.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.22,
+   "words": "90-336,336-583,583-851,851-1344,1344-1590,1590-1880,1880-2170",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "01925f811ddc4690c8e439d188ffb99c6f27ac252c876673595ac5b864648359",
+   "recipe": "b8cc25e51c7fa33b4aa1e3e5c220f2bb8a4810fa618fdf5abf6300ea25bf7b82",
+   "bytes": 13322
+  },
   "tap the meaning or say it": {
    "file": "clips/c9523bede3ce10d5-4adc7d29.mp3",
    "text": "Tap the meaning, or say it.",
@@ -10573,6 +11281,30 @@
    "recipe": "6999916212d68995a7322b0d36c047b05bbac141a6775b4203e61e047224fe9b",
    "bytes": 10658
   },
+  "tap watch or skip": {
+   "file": "clips/6c7d180cc9fd6404-fa170da6.mp3",
+   "text": "Tap Watch, or Skip.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.541,
+   "words": "70-410,410-810,890-1168,1168-1500",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "3123db9e52786250b318a32b02b602f3dc53b2144ed57cd8edcf122eb3fe00fc",
+   "recipe": "fa170da6320d61ef02cc21f94c9dafac628caf21d62243befafb6c3c558adb77",
+   "bytes": 9247
+  },
+  "tap watch to see it or skip": {
+   "file": "clips/75fa828de77fd21b-2ae28314.mp3",
+   "text": "Tap Watch to see it, or Skip.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.933,
+   "words": "80-300,300-559,559-759,759-979,979-1180,1350-1587,1587-1870",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "7a8e6ce864199e30b81da3c4b01380e36ec05fdde353c357c647f4da26f9cd7c",
+   "recipe": "2ae28314bdb23ec2bf773ede4730ab870d87e5d70de2bd9e42e50831ebe1ef0e",
+   "bytes": 11598
+  },
   "tap where day meets night": {
    "file": "clips/d6c16c7d6a572c80-3b547b76.mp3",
    "text": "Tap where day meets night.",
@@ -10584,6 +11316,18 @@
    "sha256": "1b923a002c0aef3726cc26888c8f067b200ba9de9d2c7c03f878cde744a9cead",
    "recipe": "3b547b7625650dcab43a0cfb303fa1b2baef4be803a3ed94f8d9bf228c98cfec",
    "bytes": 8934
+  },
+  "tap where light turns to dark": {
+   "file": "clips/b01913eb4ac28ca0-79442d95.mp3",
+   "text": "Tap where light turns to dark.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.855,
+   "words": "90-353,353-663,663-973,973-1283,1283-1523,1523-1810",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "d846fd9ffef2c559233863b72befc913bf76b8faadd08ea0982666c8614ee3d5",
+   "recipe": "79442d95ca45f167c77057509def4f1c9cf847513985fb28c0ce5b14f5a5233a",
+   "bytes": 11128
   },
   "tap yes no or sometimes or say it": {
    "file": "clips/9a97ce802cae3191-60ab82e3.mp3",
@@ -10621,17 +11365,29 @@
    "recipe": "070a8722169faff329ead92874180b15a9822cf5c5e097af324667dfeac3af9a",
    "bytes": 5329
   },
-  "that s okay you can skip this one or use something else you have": {
-   "file": "clips/619455eabb765cd0-d53628fa.mp3",
-   "text": "That's okay. You can skip this one, or use something else you have.",
+  "that s ohm start with 1 orientale": {
+   "file": "clips/8656ca3d3fc98b68-c4f6c605.mp3",
+   "text": "That's Ohm. Start with 1: Orientale.",
    "role": "capcom",
    "rate": "native",
-   "dur": 3.788,
-   "words": "60-303,303-680,1110-1319,1319-1527,1527-1754,1754-1981,1981-2190,2450-2595,2595-2755,2755-3233,3233-3407,3407-3566,3566-3740",
+   "dur": 3.03,
+   "words": "50-304,304-520,1200-1478,1478-1736,1736-2000,2340-2990",
    "voice": "com.apple.siri.natural.Nora",
-   "sha256": "05e9d79179e25ecbfeaa3dc210fb4556d96f9fee24194f1ff8c286a0a135f125",
-   "recipe": "d53628faa757b84c49ed56d0bee3d9299f2ab31c3e43eeb849c9fecbc907c159",
-   "bytes": 22726
+   "sha256": "45b1d799dc6eaa010bc224dca1974a504e6d50ee1ff09c5510278481206d87d8",
+   "recipe": "c4f6c60560f007d2a28e702b5ca89485c96e49f0b1904629cf253452783b3abb",
+   "bytes": 18181
+  },
+  "that s okay tap not now": {
+   "file": "clips/f84eb0f469238e9a-16e3b7d2.mp3",
+   "text": "That's okay. Tap Not now.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.907,
+   "words": "70-309,309-680,1080-1340,1340-1600,1600-1860",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c7ea18b2801abb092ba212b9622c90ca9216983855d1c862b51245e7aa9e184a",
+   "recipe": "16e3b7d2f1abdda7248d73fa671e9e49a8f8054fffba939e91936940735740f6",
+   "bytes": 11441
   },
   "that s the terminator": {
    "file": "clips/00014719ef1810f0-11a17e01.mp3",
@@ -10909,6 +11665,18 @@
    "recipe": "f841447fbc5f3a53ca23bc05e70d8ea96e55b99659f4f0451bfc7ad9b14a68f9",
    "bytes": 11285
   },
+  "the radio needs earth in the sky": {
+   "file": "clips/4202cf94de4e492a-2c2250a8.mp3",
+   "text": "The radio needs Earth in the sky.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.038,
+   "words": "90-321,321-763,763-1035,1035-1307,1307-1518,1518-1749,1749-1980",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "82562dfa1ffe645ddb9d085ee9cd0e0549011c0df7a8bd19db90510b76ce437f",
+   "recipe": "2c2250a8eece92fc8a53adcb07577df1a1dde5e0310b1209668aebc06fbaa3b7",
+   "bytes": 12225
+  },
   "the recycler is maxed ice run": {
    "file": "clips/ff57a07d72d103b6-de6fde0c.mp3",
    "text": "The recycler is maxed: ice run?",
@@ -10981,6 +11749,30 @@
    "recipe": "45375159a2a94ddccb0838aa0b01bac12b2bf67b6f86092b9b612d50889a4458",
    "bytes": 7836
   },
+  "the rover can wait tap the glowing order": {
+   "file": "clips/e3cc7f7e92b9fe15-2f4c8092.mp3",
+   "text": "The rover can wait. Tap the glowing order.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.743,
+   "words": "90-292,292-678,678-880,880-1100,1690-1857,1857-2023,2023-2371,2371-2690",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "7e976bae508cdad52930923dbf615a275b78dc0ad1b1e5683e7be93bac34020a",
+   "recipe": "2f4c80922c801d0c1a827000d715609e050da96520181ff7a1128ac01f065b09",
+   "bytes": 16457
+  },
+  "the rover can wait the heaters need more power": {
+   "file": "clips/646ffce6ab906014-06ae97c6.mp3",
+   "text": "The rover can wait. The heaters need more power.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.213,
+   "words": "90-292,292-678,678-880,880-1100,1690-1893,1893-2318,2318-2540,2540-2761,2761-3150",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "6166740f0569663c35cd06ad115136e303c13427b87a1fc5cef3dc99dcbbe8d0",
+   "recipe": "06ae97c60681f2d6b501bea3f342a5e1811066df601345fd1168a70da88c8596",
+   "bytes": 19278
+  },
   "the rover crew is still outside": {
    "file": "clips/441927b50cc663dc-b42d8e4c.mp3",
    "text": "The rover crew is still outside.",
@@ -11004,6 +11796,30 @@
    "sha256": "29e3bc844809c5de7123404ee779059c3ab289591e273ec089e432b14859fed9",
    "recipe": "245ca1deb7f15c83d1e690f1aa70a5ea337c090081d5c37be4d5c207b7c59825",
    "bytes": 8777
+  },
+  "the shelter is for storms": {
+   "file": "clips/b1ada6080b92fd5f-e4c39434.mp3",
+   "text": "The shelter is for storms.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.802,
+   "words": "90-358,358-918,918-1163,1163-1431,1431-1770",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "877d0c82df35bd1860fda9c6428df25e0c4dbf5be411ceb4eb4401069c3006c7",
+   "recipe": "e4c39434335f8e1b713735b888e443374da048747c7fd2fd66e6132c4eeb929a",
+   "bytes": 10814
+  },
+  "the shelter is safer": {
+   "file": "clips/e0160f30790116e6-4ef306c9.mp3",
+   "text": "The shelter is safer.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.254,
+   "words": "90-279,279-675,675-848,848-1210",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "f97ff5b080cd93762cd2df07c3c92c818bf5b1286ecd0d5df0b2d5222dbfa5cc",
+   "recipe": "4ef306c987463ac553a7d42ed6f70fcabf640fa907774fc82b5d99ff8c564582",
+   "bytes": 7523
   },
   "the storm has passed": {
    "file": "clips/98d288a6d2e79a40-24d25ebe.mp3",
@@ -11089,6 +11905,18 @@
    "recipe": "e02a671703a64988c3d58846fbf578a5a8733c52dadd861be54ab80ef788c200",
    "bytes": 11285
   },
+  "then tap watch or skip": {
+   "file": "clips/e73f3d3e44461b25-e49c2da7.mp3",
+   "text": "Then tap Watch, or Skip.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.011,
+   "words": "90-441,441-764,764-1144,1304-1599,1599-1950",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c13956c854cbbded8207d677dca8491a1ef423d51317c4e0660ea2e07b9d2ed6",
+   "recipe": "e49c2da76f3e07eb7c0c85d44023899549fcef144edb274fd16d6a75e8115aab",
+   "bytes": 12068
+  },
   "they drove 26 7 km": {
    "file": "clips/0742a51ec251873d-99f3cf1a.mp3",
    "text": "They drove 26.7 km.",
@@ -11137,18 +11965,6 @@
    "recipe": "3d37b1b458ab11c76bf7ea5ab36e9f8d8d58a362cd0daffb4a40f27f728bf465",
    "bytes": 17241
   },
-  "time s up guess first": {
-   "file": "clips/2f195cce427437f4-9924a425.mp3",
-   "text": "Time's up. Guess first.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 2.09,
-   "words": "90-489,489-680,1270-1655,1655-2040",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "45fec7b9de6734f6770b940e5cec685b3da0aa6befab1b31b7b07d29edbd90c9",
-   "recipe": "9924a4259f9f27a271b0cd3a22c460c9aafbafc6bb54960082105de8c932ed60",
-   "bytes": 12539
-  },
   "time s up say houston any space weather": {
    "file": "clips/37629681d07b19af-7d3a5d22.mp3",
    "text": "Time's up. Say: Houston, any space weather?",
@@ -11172,6 +11988,18 @@
    "sha256": "e65e483921685f03968d557df78357e7577a72a4fa64607ce94a25a4a9621ca0",
    "recipe": "e9832853b0f668f17813a96394983bcc734a3961a78f048723cde15ffe696405",
    "bytes": 18651
+  },
+  "time s up the radio needs earth in the sky": {
+   "file": "clips/920c7bb9fd3c3430-84491375.mp3",
+   "text": "Time's up. The radio needs Earth in the sky.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.213,
+   "words": "90-489,489-680,1280-1511,1511-1953,1953-2225,2225-2497,2497-2708,2708-2939,2939-3170",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "af426d844e7d15bd05fcf450dfe1354c5916da6977b51bd299de58e60546da94",
+   "recipe": "844913757f67c6201b2974e06c149798d8a6acf8704685543e3f770c4674c360",
+   "bytes": 19278
   },
   "time s up the rover can dig up ice": {
    "file": "clips/e8d4b98c78513280-2003e227.mp3",
@@ -11352,6 +12180,18 @@
    "sha256": "5078b9d55913fefa61d4ea964943289f857ef56a2daae99583f93ae925398534",
    "recipe": "504dbb9acc389148b2edcfa25c4d067a872fbbef39ae709cd0013494bbb3921a",
    "bytes": 6269
+  },
+  "watch closely tap watch or skip": {
+   "file": "clips/44094a559081eda8-37499a14.mp3",
+   "text": "Watch closely. Tap Watch, or Skip.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.004,
+   "words": "90-355,355-990,1520-1855,1855-2250,2330-2608,2608-2940",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "2a10bb4d336f8c7a800b9d1a22291523b2580ebff809e2630cd1a0f714d5a8a0",
+   "recipe": "37499a146687276332b04975c6e3a61b9822af04d64c60d8930757f3b1c4a971",
+   "bytes": 18024
   },
   "watch for storms and long nights": {
    "file": "clips/6c2164bc33153103-20f83d03.mp3",
@@ -11581,6 +12421,18 @@
    "recipe": "e300860635773230f83594a182f5fe2c7789fc3be4ee9b523efc7ac5a5705e52",
    "bytes": 6896
   },
+  "which lands first guess first": {
+   "file": "clips/9374c6ce6f606c55-de0c33c4.mp3",
+   "text": "Which lands first? Guess first.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.429,
+   "words": "90-427,427-763,763-1100,1620-2005,2005-2390",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "3708dea67765c3eeb9180b011ed3758206a6f7f0cf2e1af712ec9d29b8fc6385",
+   "recipe": "de0c33c49f17c1c2b4575b487f49c84828740c3f50b3db3a629e7807c6b85e48",
+   "bytes": 14576
+  },
   "which outpost is closer to it": {
    "file": "clips/4b780ccc415e16f0-d6014d26.mp3",
    "text": "Which outpost is closer to it?",
@@ -11616,6 +12468,18 @@
    "sha256": "b30e928b50772f9ec42d2c1ba30ed01883a667cc1623a77160ad84ffe93f77a1",
    "recipe": "7054bc01004167d846eb727e40a8844d430583b2f44417a543789e14dcc7d796",
    "bytes": 15987
+  },
+  "which tap an answer or say it": {
+   "file": "clips/1293d72ce4900ecc-36056549.mp3",
+   "text": "Which? Tap an answer, or say it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.795,
+   "words": "90-530,1050-1270,1270-1470,1470-1910,2030-2263,2263-2518,2518-2750",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "1ec28a31a4fd74e01dc9c47c55750e711b853e1df820fed45865a72a870a96c8",
+   "recipe": "360565495904981ba7efdb99fa63d72ccd4b6bcbb8b26ff2ca7393ae38ff474c",
+   "bytes": 16770
   },
   "who landed on the moon with him": {
    "file": "clips/d6c074f9d38d46a4-d26b8db7.mp3",
@@ -11701,18 +12565,6 @@
    "recipe": "846a1a4c34ed7f055390882a51b26b9bbda26941bd67003cc55feb6a0826c779",
    "bytes": 17241
   },
-  "yes earth s shadow": {
-   "file": "clips/e5053aee4bbc2853-f92852ae.mp3",
-   "text": "Yes, Earth's shadow.",
-   "role": "capcom",
-   "rate": "native",
-   "dur": 1.567,
-   "words": "90-520,700-1018,1018-1520",
-   "voice": "com.apple.siri.natural.Nora",
-   "sha256": "c7e4565badfcec06bf71af0ce12d354060fb2dcf5da703c230f156cc28c7e7f5",
-   "recipe": "f92852ae1d6a4df47e9aca9417de987c7ff9766e0db2e4df32c0e3f8dd43f749",
-   "bytes": 9404
-  },
   "yes far side not dark side": {
    "file": "clips/5b89346fedb62552-4219a27e.mp3",
    "text": "Yes. Far side, not dark side.",
@@ -11760,6 +12612,78 @@
    "sha256": "8551141a091cbd6c9fd317f1223454a00a846a665855e0aeeb213d98c3faff52",
    "recipe": "e0ba9c7aaee08b967d698ae5ebbcfd1a06148f5a897217c8b6ecbd9833fb9b4b",
    "bytes": 7366
+  },
+  "you can try it another day": {
+   "file": "clips/d8e775013559fefe-4884adc0.mp3",
+   "text": "You can try it another day.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.384,
+   "words": "90-250,250-411,411-571,571-717,717-1170,1170-1330",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "c512bb26b59ca7cc2eced18231faff8d00d06bb1bd3cb40e2cff5582eacf6141",
+   "recipe": "4884adc03baaa5056dc5b05886c480e82b6f778330917bbb6e7c60e85b4a79b8",
+   "bytes": 8307
+  },
+  "you guessed it among the coldest spots measured": {
+   "file": "clips/fa1f14811ae3bda2-a3acecf2.mp3",
+   "text": "You guessed it! Among the coldest spots measured.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 3.187,
+   "words": "70-235,235-580,580-730,1380-1750,1750-1944,1944-2348,2348-2576,2576-3140",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "b78db9b38e71eaf72024feaddef177f304cbfff592a23cf5b18c190acd4a3bdd",
+   "recipe": "a3acecf226af2990933f97f5437536552fa183939c195a44f538c888089faf1e",
+   "bytes": 19121
+  },
+  "you guessed it earth s shadow": {
+   "file": "clips/e579a07345da3b21-8ff44f80.mp3",
+   "text": "You guessed it! Earth's shadow.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.273,
+   "words": "70-235,235-580,580-730,1340-1681,1681-2220",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "9f53a6811dc2958229c0db989957c74fd0ac81b39eaa94a155d7c0ce7f93247d",
+   "recipe": "8ff44f80861d8395a664e58a2534cacd0a7a5e6b30662d0e9f1930fb87045c2a",
+   "bytes": 13636
+  },
+  "you guessed it sharp like tiny glass": {
+   "file": "clips/916557360eeee9ba-1f4bd877.mp3",
+   "text": "You guessed it! Sharp, like tiny glass.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.9,
+   "words": "70-235,235-580,580-730,1360-1650,1810-2087,2087-2551,2551-2850",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "77025260b5cabc05366b2f29dd55313778f5b91f8fc44b94a04ca4ede9811a58",
+   "recipe": "1f4bd877101094ed0181145669b168d22c0d6110a834fb81b152670e4556251c",
+   "bytes": 17397
+  },
+  "you guessed it yes": {
+   "file": "clips/01ff27ae6cc4dc6e-1db10a38.mp3",
+   "text": "You guessed it! Yes.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 1.776,
+   "words": "70-336,336-891,891-1134,1474-1740",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "cd317d9930fa3100d20e14862bb593c13a57b6f87ed597783654ab0913137317",
+   "recipe": "1db10a38522bc3a26318151acc96a3472ec6cbad99f36d80942d61af0844df50",
+   "bytes": 10658
+  },
+  "you guessed it yes space weather fast particles from the sun": {
+   "file": "clips/8fa4fbe73be9642e-3ee43285.mp3",
+   "text": "You guessed it! Yes: space weather, fast particles from the Sun.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 4.284,
+   "words": "70-235,235-580,580-730,1390-1710,1880-2139,2139-2600,2830-3045,3045-3639,3639-3854,3854-4052,4052-4250",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "4419740f19702fb7b733dbb387b1603402cf55bffb8f39f04699bfc84a11b665",
+   "recipe": "3ee4328567d543efd506d3045dac2a11a55165348b02359f0bf739150fad3182",
+   "bytes": 25704
   },
   "you ran connecting ridge for 1 day": {
    "file": "clips/0def5da251a7abf5-b04c7e4f.mp3",
@@ -12804,6 +13728,18 @@
    "sha256": "a220418945564b8e5f3b81812a5864b9e559a257abfbea77010aaa63c7dfeac4",
    "recipe": "f173a0eda827e8c3d2a6b7bd4cc034f2ea8cef12a5696594e9844d1096349c17",
    "bytes": 4075
+  },
+  "your order tap an order or say it": {
+   "file": "clips/c32804b35088e856-9688ae96.mp3",
+   "text": "Your order? Tap an order, or say it.",
+   "role": "capcom",
+   "rate": "native",
+   "dur": 2.795,
+   "words": "90-282,282-620,1150-1346,1346-1525,1525-1900,2010-2243,2243-2498,2498-2730",
+   "voice": "com.apple.siri.natural.Nora",
+   "sha256": "5863578c7fb0b44a6076be67964a95331f3063fdcca6d115eec6ca961ece87ad",
+   "recipe": "9688ae96abaec5b84e358f84e55207db168305808f2c69310c98f56228c28ee0",
+   "bytes": 16770
   },
   "your three screens first power the battery the sun fills": {
    "file": "clips/3ba4a540c01e2b7e-6a8d8153.mp3",
