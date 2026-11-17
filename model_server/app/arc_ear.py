@@ -56,7 +56,9 @@ class EarSettings(BaseSettings):
     ear_partial_max_s: float = 8.0     # no partials past this much segment audio (the final still covers it all)
     ear_max_turn_s: float = 15.0       # a segment this long is closed as a turn
     ear_vad_margin_db: float = 6.0
-    ear_max_names: int = 40            # the names list cap (the model card: <= 30-50, most relevant first)
+    ear_max_names: int = 80            # the names list cap (the model card: <= 30-50, most relevant first). 80 since the
+    #                                    signals audit: the Moon screens carry every place AND every piece of hardware
+    #                                    (backend names_list.MAX_MOON); docs/SPEECH_SIGNALS_AUDIT.md has the re-decode
     # device_directed for the app = the model's directed head, re-mapped onto the router's scale (DD_MIN 0.5 "talking
     # to someone else" below, DD_STRONG 0.7): head EAR_DD_KNEE -> 0.5 and head EAR_DD_STRONG_AT -> 0.7. The raw head is
     # conservative: real device-directed commands (SLURP) are >= 0.5 only 32% of the time, >= 0.05 67%, while crew talk
@@ -174,6 +176,29 @@ class Vad:
         self.hist = (self.hist + [db])[-300:]
         floor = float(np.percentile(self.hist, 10)) if len(self.hist) >= 12 else -60.0
         return db < max(-50.0, floor + self.margin) or db < -55.0
+
+
+def agreement(a: str, b: str) -> float:
+    """Word agreement of two hypotheses of the same audio (the RNNT words and the Arc decoder's text), 0..1: matched
+    words (difflib) over the longer one, after lower-casing and dropping punctuation. Arc gives no per-word confidence;
+    two decoders agreeing is the closest thing it has (calibration in docs/SPEECH_SIGNALS_AUDIT.md)."""
+    import difflib
+    import re
+    x, y = re.findall(r"[a-z0-9']+", (a or "").lower()), re.findall(r"[a-z0-9']+", (b or "").lower())
+    if not x and not y:
+        return 1.0
+    sm = difflib.SequenceMatcher(a=x, b=y, autojunk=False)
+    return round(sum(m.size for m in sm.get_matching_blocks()) / max(len(x), len(y)), 3)
+
+
+def link_view(n: dict, names_list: list[dict]) -> dict:
+    """One linked name as the backend gets it: the decision (state, entity, p) plus the linker's evidence."""
+    out = {"heard": n.get("heard"), "entity": n.get("entity"), "state": n.get("state"), "p": n.get("p"),
+           "tag": n.get("tag"), "kind": _kind(names_list, n.get("entity"))}
+    for k in ("t0", "t1", "via", "src", "model_entity", "model_p", "span_p"):
+        if n.get(k) is not None:
+            out[k] = n[k]
+    return out
 
 
 def _kind(names_list: list[dict], entity: str | None) -> str | None:
@@ -294,9 +319,13 @@ class EarStream:
                                                                             "_s": 0.0}
         utts = [u for u in out["utts"] if (u.get("text") or "").strip()]
         out["names"] = guard_names(out["names"], utts)
-        names = [{"heard": n["heard"], "entity": n["entity"], "state": n["state"], "p": n["p"], "tag": n["tag"],
-                  "kind": _kind(self.names, n["entity"])} for n in out["names"]]
+        names = [link_view(n, self.names) for n in out["names"]]
         spoken = " ".join(u["text"].strip() for u in utts).strip()
+        # the Arc decoder's own text (its inline tags are moved onto the RNNT words; the words are the RNNT's): a
+        # second hypothesis from the same audio. Where it holds a list name the words lack ("Fly to Tycho" vs "Fly
+        # to"), the backend can offer it. NOT sent as `alts`: the round-7 Director features read `alts` / `conf` and
+        # the shipped weights were trained with both empty (docs/SPEECH_SIGNALS_AUDIT.md section 4).
+        dec = " ".join((u.get("decoder_text") or "").strip() for u in utts).strip()
         text = " ".join(display_text(u, out["names"]) for u in utts).strip()
         # the device-directed head over the utterances WITH words only: on a wordless segment (room noise, a TV, our own
         # voice the model chose not to transcribe) it can read high (0.6-0.9 on real noise beds), and "no speech" is
@@ -320,7 +349,8 @@ class EarStream:
             text = self.text           # the final heard nothing the partials did: close on the partial text
         if text:
             msgs.append({"t": "words", "text": text, "final": True, "spoken": spoken, "names": names,
-                         "tags": [t for u in utts for t in u["tags"]], "conf": None, "alts": []})
+                         "tags": [t for u in utts for t in u["tags"]], "conf": None, "alts": [],
+                         "decoder_text": dec or None, "agree": agreement(spoken, dec) if dec else None})
             msgs.append({"t": "turn", "state": "end", "text": text})
             self.ends.append({"at": round(self.audio_s, 3), "last_voice": round(self.last_voice_s, 3),
                               "reason": reason, "decode_ms": round(out["_s"] * 1000, 1)})

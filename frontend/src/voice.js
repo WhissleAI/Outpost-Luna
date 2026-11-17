@@ -13,6 +13,7 @@ import { floor as defaultFloor, spaceAction, micErrorText, isFiller, normWords, 
 import { decideBarge, isCommand, saysStop, BARGE_TUNING, energyNeed } from "./barge.js";
 import { logBarge } from "./bargelog.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";
+import { paintLinked } from "./highlight.js";   // the ear's linked names, marked in the kid's words
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
 import { onEngine, earNote } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
 export { spaceAction, micErrorText };
@@ -142,7 +143,8 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   const idle = () => { if (!kidTalking) set(mode === "ws" ? "listening" : "off"); };
   /** The kid's words show live only for an explicit turn (Space held, the Web Speech fallback). An open-mic turn shows
    *  its words only once the router took it (main.js showHeard), so overheard room talk is never on screen. */
-  const showWords = () => { if (explicit()) wordsEl.textContent = maskProfanity(turnText()); };
+  let turnLinks = [];   // the ear's names on this turn's final words (linked / abstain / not_in_list, with p)
+  const showWords = () => { if (explicit()) paintLinked(wordsEl, turnText(), turnLinks, maskProfanity); };
 
   // ----- the router's decision for a finished turn (main.js forwards every `heard` decision: decided()) -----
   let pending = null, thinkT = 0;
@@ -232,7 +234,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   function askTurn(text) {
     const exp = explicit();
     turnAsked = true; finalBuf = ""; interim = ""; kidTalking = false;
-    if (exp) wordsEl.textContent = maskProfanity(text || "");
+    if (exp) paintLinked(wordsEl, text || "", turnLinks, maskProfanity);
     if (floor) floor.setKid(false);
     if (!text) { kidDone(); return; }
     // Never answer ourselves or a hum: filler ("oh", "mm-mm") and echoes of our last few lines are dropped silently.
@@ -347,7 +349,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
       else if (m.t === "arc") { arcSeen = true; if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
       else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
       else if (m.t === "words" || m.t === "turn") {
-        if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; }
+        if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; turnLinks = []; }
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
         // A turn that began in silence and has no real word yet when one of our lines starts: from now on it is gated
         // like any turn heard while we play (it must not take the floor and cut the new line).
@@ -356,7 +358,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         }
         if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
         if (m.t === "words") {
-          if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; } else interim = m.text || "";
+          if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; if (Array.isArray(m.names)) turnLinks = turnLinks.concat(m.names); } else interim = m.text || "";
           if (idleStart && !isFiller(turnText())) { idleStart = false; bargeIn("turn_start", turnText()); set("hearing"); }
           showWords();
         }
@@ -459,6 +461,8 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     /** Show the guide speaking / thinking / back to listening. Never overrides the kid's own turn. */
     show(s) { if (kidTalking || ptt.held) return; if (s === "idle") idle(); else set(s); },
     clearWords() { wordsEl.textContent = ""; },
+    /** the ear's names on the last turn's final words (main.js showHeard marks the linked ones) */
+    links() { return turnLinks; },
     /** The router's decision for a turn (main.js forwards every `heard` decision): "ignore" ends it quietly (no
      *  "Thinking", no words); anything else shows "Thinking" until the reply speaks. */
     decided(outcome, text) {

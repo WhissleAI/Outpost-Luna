@@ -21,7 +21,12 @@ from functools import lru_cache
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parents[1] / "data"
-MAX = 40
+MAX = 40           # the cap for a focused screen (cabin, lesson, video ...): the model card's "<= 30-50"
+MAX_MOON = 80      # the Moon screens (map, library, patch, lesson_done): every place AND every piece of hardware.
+# Signals audit (docs/SPEECH_SIGNALS_AUDIT.md): at 40 the library list held 3 of the 36 hardware entries, so 57 % of the
+# names kids say on the library screen (595 of 1051 mentions in the round-11 texts) could never be linked. The
+# re-decode with an 80-entry list is in the audit (linking, wrong links, spurious links, decode time).
+MAX_EAR = MAX_MOON  # what /ws/listen and the model server accept (the longest list a screen sends)
 
 # Latin <-> English and other spoken forms of the gazetteer's places (by places.json id).
 PLACE_ALIASES = {
@@ -39,7 +44,15 @@ PLACE_ALIASES = {
     "reiner": ["Reiner Gamma swirl"],
     "copernicus": ["Copernicus crater"],
     "tycho": ["Tycho crater"],
+    # spoken / singular forms the ear produced for these names in the round-11 decodes ("sea of rain" x5, "c of crisi")
+    # and the place names kids use without the qualifier
 }
+SPOKEN_FORMS = {"imbrium": ["Sea of Rain"], "crisium": ["Sea of Crisis"], "byrgius_a": ["Byrgius"],
+                "ohm": ["Ohm crater"], "pythagoras": ["Pythagoras crater"],
+                "malapert_massif": ["Malapert", "Malapert Mountain"], "de_gerlache_rim": ["de Gerlache", "de Gerlache rim"],
+                "shackleton_rim": ["Shackleton rim"], "shackleton_floor": ["Shackleton floor"]}
+# aliases that name a CLASS of thing, not one entry (three lunar modules had "descent stage"): never a link target
+GENERIC_ALIASES = {"descent stage", "lander", "rover", "impact site", "spacecraft"}
 CREW_NOW = [("Reid Wiseman", ["Reid", "Commander Wiseman"]), ("Victor Glover", ["Victor", "Glover"]),
             ("Christina Koch", ["Christina", "Koch"]), ("Jeremy Hansen", ["Jeremy", "Hansen"])]
 ORGS = [("Houston", "organization", ["Mission Control"]), ("CAPCOM", "crew", ["cap com", "capsule communicator"]),
@@ -127,7 +140,8 @@ def catalogue() -> dict[str, list[dict]]:
         nm = _clean(p["name"])
         if generic(nm) and p["id"] != "north_pole":
             continue
-        places.append(_entry(nm, "lunar_feature", PLACE_ALIASES.get(p["id"], []) + _paren(p["name"]), id=p["id"]))
+        places.append(_entry(nm, "lunar_feature", PLACE_ALIASES.get(p["id"], []) + SPOKEN_FORMS.get(p["id"], [])
+                             + [x for x in _paren(p["name"]) if x.lower() != "south pole"], id=p["id"]))
         if p["id"] == "shackleton":
             # "south pole" is only an alias of Shackleton, and the ear's linker doesn't link aliases: without an entry
             # of its own, "show me the south pole" linked "Pole" -> "North Pole" (16/16 test clips) and flew north.
@@ -137,12 +151,12 @@ def catalogue() -> dict[str, list[dict]]:
     try:
         for s in json.loads((DATA / "mission/sites.json").read_text(encoding="utf-8")).get("sites") or []:
             nm = s["name"]
-            short = re.sub(r"\s+(Crater\s+)?(Rim|Floor)$", "", nm)
-            sites.append(_entry(nm, "site", [short] if short != nm else [], id=s.get("id")))
+            sites.append(_entry(nm, "site", SPOKEN_FORMS.get(s.get("id"), []), id=s.get("id")))
     except OSError:
         pass
-    sites += [_entry("Cabeus", "lunar_feature", ["Cabeus crater"]), _entry("Malapert", "lunar_feature", ["Malapert Mountain"]),
-              _entry("de Gerlache", "lunar_feature", ["de Gerlache crater"])]
+    sites += [_entry("Cabeus", "lunar_feature", ["Cabeus crater"], id="cabeus"),
+              _entry("Malapert", "lunar_feature", ["Malapert Mountain"], id="malapert"),
+              _entry("de Gerlache", "lunar_feature", ["de Gerlache crater"], id="de_gerlache")]
     crew = [_entry(n, "crew", al) for n, al in CREW_NOW] + [_entry(n, k, al) for n, k, al in ORGS]
     hardware, missions, old_crew = [], [_entry(n, "mission", al) for n, al in MISSIONS], []
     seen_m = set()
@@ -167,6 +181,11 @@ def catalogue() -> dict[str, list[dict]]:
             "old_crew": old_crew}
 
 
+# The cabin's sites carry the short names ("de Gerlache", "Malapert"): the lunar-feature entries of the same names stay
+# off the cabin list, so "explore de Gerlache" links the SITE (round 11: cabin had 11 % links to the wrong entity).
+SITE_TWINS = {"de_gerlache", "malapert"}
+
+
 def _find(name: str) -> dict | None:
     k = _clean(name).lower()
     for grp in catalogue().values():
@@ -184,38 +203,95 @@ def _take(out: list[dict], xs, cap: int = MAX) -> None:
             out.append(e)
 
 
-def screen_names(frame: dict | None, step: dict | None = None, last_place: str | None = None) -> list[dict]:
-    """The names list for this screen frame, most relevant first, <= MAX entries ({"name","kind","aliases"?})."""
+def recent_names(lines) -> list[dict]:
+    """Catalogue entries named in these lines (what we just said / showed): the kid's next turn often names them
+    ("...the crater Tsiolkovskiy." -> "how far is Tsiolkovskiy?"), so they go first: into the decoder's kb prompt
+    (the first ~10-15 entries) as well as the biasing and linking lists."""
+    text = " " + " ".join(_toks(x) for x in lines or [] if x) + " "
+    if not text.strip():
+        return []
+    out = []
+    for grp in ("places", "sites", "hardware", "crew", "missions", "spacecraft", "old_crew"):
+        for e in catalogue()[grp]:
+            for f in [e["name"], *(e.get("aliases") or [])]:
+                t = _toks(f)
+                if t and not generic(f) and f" {t} " in text:
+                    out.append(e)
+                    break
+    return out
+
+
+def _toks(s: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", (s or "").lower()))
+
+
+def dedupe_aliases(out: list[dict]) -> list[dict]:
+    """An alias is a link target, so it must name ONE entry: aliases equal to another entry's name, shared by two
+    entries, or generic (GENERIC_ALIASES) are dropped (round 11: "Shackleton" was an alias of both Shackleton sites AND
+    the name of the crater; "descent stage" of three lunar modules)."""
+    names = {e["name"].lower() for e in out}
+    seen: dict[str, int] = {}
+    for e in out:
+        for a in {a.lower() for a in e.get("aliases") or []}:
+            seen[a] = seen.get(a, 0) + 1
+    res = []
+    for e in out:
+        al = [a for a in e.get("aliases") or [] if a.lower() not in names and seen.get(a.lower(), 0) == 1
+              and a.lower() not in GENERIC_ALIASES]
+        e = {k: v for k, v in e.items() if k != "aliases"}
+        if al:
+            e["aliases"] = al
+        res.append(e)
+    return res
+
+
+def screen_names(frame: dict | None, step: dict | None = None, last_place: str | None = None,
+                 recent: list[str] | None = None) -> list[dict]:
+    """The names list for this screen frame, most relevant first ({"name","kind","aliases"?}): <= MAX entries on a
+    focused screen, <= MAX_MOON on the Moon screens. Order = weight: the ear puts the first ~10-15 in its decoder prompt.
+      1. what is on screen right now: the open step's options, then what we just said / showed (`recent` lines),
+         then the place the kid is looking at;
+      2. what the screen is about (per screen, below)."""
     C = catalogue()
     fr = frame or {}
     screen = fr.get("screen") or "map"
+    moon = screen not in ("cabin", "brief", "debrief", "video", "lesson", "ride", "callsign", "prep")
+    cap = MAX_MOON if moon else MAX
     out: list[dict] = []
-    # 1. what is on screen right now: the open step's options / places, the place the kid is looking at
+    cabin = screen in ("cabin", "brief", "debrief")
     if screen in ("lesson", "ride"):
         from .academy.grade import step_vocab
         for w in step_vocab(step, list(fr.get("step_options") or []), aliases=False):
             e = _find(w)
             if e:
-                _take(out, [e])
+                _take(out, [e], cap)
             elif re.search(r"[A-Z]", w) and len(w) >= 3 and not generic(w) and len(w.split()) <= 4:
-                _take(out, [_entry(w, "place")])      # an option that is a proper name we don't catalogue
+                _take(out, [_entry(w, "place")], cap)      # an option that is a proper name we don't catalogue
+    rec = [e for e in recent_names(recent) if not (cabin and e.get("id") in SITE_TWINS)]
+    _take(out, rec[:8], cap)
     if last_place:
-        _take(out, [e for e in C["places"] + C["hardware"] if e.get("id") == last_place])
-    # 2. what the screen is about
-    if screen in ("cabin", "brief", "debrief"):
-        _take(out, C["sites"] + C["crew"] + C["missions"][:3] + C["spacecraft"][:3] + C["places"])
+        _take(out, [e for e in C["places"] + C["hardware"] if e.get("id") == last_place], cap)
+    if cabin:
+        # NOT the rover / moon buggy: a control is not a name. The ear writes a linked span in the list's spelling, so
+        # "send the rover" became "send Lunar Roving Vehicle" and the cabin's WER rose 36 -> 46 % in the re-decode
+        # (docs/SPEECH_SIGNALS_AUDIT.md; the Arc ask: bias-only entries that are never linked or rewritten).
+        _take(out, [e for e in C["sites"] if e.get("id") not in SITE_TWINS] + C["crew"] + C["missions"][:3]
+              + C["spacecraft"][:3] + C["places"], cap)
     elif screen == "video":
-        _take(out, C["crew"] + C["missions"][:3] + C["places"])
+        _take(out, C["crew"] + C["missions"][:3] + C["places"], cap)
     elif screen in ("lesson", "ride"):
-        _take(out, C["places"] + C["crew"][:4] + C["missions"][:2])
+        _take(out, C["places"] + C["crew"][:4] + C["missions"][:2], cap)
     elif screen == "callsign":
-        _take(out, C["crew"])
+        _take(out, C["crew"], cap)
     elif screen == "prep":
-        _take(out, C["crew"][:4] + C["missions"][:2])
-    else:   # map, patch, lesson_done, library: the gazetteer, the Artemis II crew and craft, then the hardware
-        _take(out, C["places"] + C["crew"][:6] + C["missions"][:2] + C["spacecraft"][:2] + C["sites"][:3]
-              + C["hardware"])
-    return [{k: v for k, v in e.items() if k != "id"} for e in out[:MAX]]
+        _take(out, C["crew"][:4] + C["missions"][:2], cap)
+    elif screen == "library":   # the hardware library: what is left on the Moon first, then the places
+        _take(out, C["hardware"] + C["places"] + C["crew"][:6] + C["missions"][:2] + C["spacecraft"][:2]
+              + C["sites"] + C["old_crew"], cap)
+    else:   # map, patch, lesson_done: the gazetteer, the hardware on it, the Artemis II crew and craft, the sites
+        _take(out, C["places"] + C["hardware"] + C["crew"][:6] + C["missions"][:2] + C["spacecraft"][:2]
+              + C["sites"] + C["old_crew"], cap)
+    return dedupe_aliases([{k: v for k, v in e.items() if k != "id"} for e in out[:cap]])
 
 
 def catalogue_names() -> list[dict]:

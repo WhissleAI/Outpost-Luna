@@ -271,6 +271,10 @@ html[data-captions="off"] .stage{--cap-reserve:0px}
 .live-words:empty{display:none}
 .live-words.is-heard{color:var(--color-text-2);font-weight:var(--weight-regular)}
 .live-words.is-heard::before{content:"Heard: ";color:var(--color-text-3)}
+/* the ear's linked name in the kid's words (highlight.js paintLinked): solid underline when sure, dotted + "?" when the
+   director will ask "Did you mean …?" (shape, not colour alone) */
+.live-words .ear-link{font-weight:var(--weight-semibold, 600);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.live-words .ear-link.is-unsure{font-weight:inherit;text-decoration-style:dotted}
 .askbar.is-hearing .live-words:empty{display:block}
 .askbar.is-hearing .live-words:empty::before{content:"…";color:var(--color-text-3)}
 .hint{flex:none;display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--color-text-3);white-space:nowrap}

@@ -28,7 +28,7 @@ import { createSession } from "./session.js";
 import "./a11y.css";
 import { initA11y } from "./a11y.js";
 import { initCaptions } from "./caption.js";
-import { initHighlight } from "./highlight.js";
+import { initHighlight, paintLinked } from "./highlight.js";
 import { initVoiceBar } from "./voicebar.js";
 import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
@@ -594,7 +594,7 @@ async function boot() {
   let heardT = 0;
   function showHeard(text) {
     const w = $("liveWords"); if (!text || voice.kidTalking) return;
-    w.textContent = text; w.classList.add("is-heard"); clearTimeout(heardT);
+    paintLinked(w, text, voice.links ? voice.links() : []); w.classList.add("is-heard"); clearTimeout(heardT);
     heardT = setTimeout(() => { if (w.classList.contains("is-heard")) { w.classList.remove("is-heard"); w.textContent = ""; } }, 2600);
   }
   new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })

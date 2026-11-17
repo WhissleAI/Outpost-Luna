@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from app import listen
 from app.config import settings
 from app.main import app
+from app.names_list import MAX_EAR
 
 ARC_TURN = [{"t": "turn", "state": "start", "text": "shields"}, {"t": "words", "text": "shields to 40", "final": False},
             {"t": "turn", "state": "eager", "text": "shields to 40"},
@@ -98,7 +99,7 @@ def test_arc_ear_relays_unchanged_and_sends_the_names_list(servers):
     assert servers["flux"] == 0 and "ear=arc" in servers["arc_q"][0]
     first, client = servers["arc_ctx"][:2]
     names = [n["name"] for n in first["names"]]
-    assert len(names) <= 40 and "Sea of Tranquility" in names and "Reid Wiseman" in names and "Artemis II" in names
+    assert len(names) <= MAX_EAR and "Sea of Tranquility" in names and "Reid Wiseman" in names and "Artemis II" in names
     assert all(n.get("kind") for n in first["names"])            # Arc Transcriber Space needs a kind on every entry
     art = next(n for n in first["names"] if n["name"] == "Artemis II")
     assert "Artemis 2" in art["aliases"]                          # Roman numerals aliased

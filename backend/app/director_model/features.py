@@ -255,11 +255,56 @@ def _round7(sess, ev: dict, text: str, now: float) -> dict:
     if ear:
         out["ear"] = {k: ear.get(k) for k in ("conf", "rescored")} | {"n_alts": len(ear.get("alts") or []),
                                                                       "tier": (ear.get("hot") or {}).get("tier")}
+        with _suppress():
+            out["link"] = link_view(ear, list((getattr(sess, "screen", None) or {}).get("step_options") or []))
     prev = getattr(sess, "_r7_prev", None)
     if prev:
         out["prev"] = {"text": prev["text"], "dt": now - prev["t"], "route": prev.get("route")}
     sess._r7_prev = {"text": text, "t": now, "route": (ev.get("route") or {}).get("outcome")}
     return out
+
+
+def _ntoks(x: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", (x or "").lower()))
+
+
+def link_view(ear: dict, options: list[str] | None = None) -> dict:
+    """Round 12: the ear's names-linker read-out and its decoder text, at a turn end (record -> rec["link"])."""
+    from ..director import LINK_ACT_P
+    names = [n for n in ear.get("names") or [] if isinstance(n, dict)] if "names" in ear else None
+    out: dict = {}
+    if names is not None:
+        linked = [n for n in names if n.get("state") == "linked" and n.get("entity")]
+        ps = [float(n["p"]) for n in linked if n.get("p") is not None]
+        opts = {_ntoks(o) for o in options or [] if o}
+        step = any(_ntoks(n["entity"]) in opts for n in linked)
+        out.update(names=True, linked=bool(linked), p=max(ps) if ps else (1.0 if linked else 0.0),
+                   abstain=any(n.get("state") == "abstain" for n in names),
+                   not_in_list=any(n.get("state") == "not_in_list" for n in names),
+                   step=step, screen=bool(linked) and not step)
+        out["sure"] = bool(linked) and out["p"] >= LINK_ACT_P
+    dec = ear.get("decoder_text")
+    if dec:
+        out["dec"] = True
+        out["agree"] = float(ear["agree"]) if ear.get("agree") is not None else 0.0
+        heard = f" {_ntoks(ear.get('spoken') or '')} "
+        dt = f" {_ntoks(dec)} "
+        # an entity the decoder wrote that the words lack (the names list's own spelling, as the linker would)
+        ents = {_ntoks(n.get("entity") or "") for n in names or []} | {_ntoks(n.get("heard") or "") for n in names or []}
+        out["dec_name"] = any(e and f" {e} " in dt and f" {e} " not in heard for e in ents) or \
+            _dec_names_more(heard, dt)
+    return out
+
+
+def _dec_names_more(heard: str, dec: str) -> bool:
+    """The decoder's text holds a gazetteer place name the words lack ("fly to tycho" vs "fly to")."""
+    with _suppress():
+        g = _gaz()
+        if g is None:
+            return False
+        a, b = g.match_text(dec), g.match_text(heard)
+        return a is not None and (b is None or a.id != b.id)
+    return False
 
 
 class _suppress:
@@ -351,10 +396,21 @@ FEATS: list[str] = (
     + ["nlu_other", "gesture_now", "video_on"]
     # the router's merged screens (video overlay, Mission prep) and the video lesson step: their own slots, appended
     + ["scr_video", "scr_prep", "st_video"]
+    # ---- round 12 (signals audit, docs/SPEECH_SIGNALS_AUDIT.md): appended after F_R11 = 242 ----
+    # What Arc Transcriber Space actually gives (the round-7 slots above, ear_conf / ear_alts / ear_alt_hot /
+    # ear_rescored / ear_tier_*, were Arc Mini's n-best and hot-list rescoring: this ear has neither, so they stay 0, as
+    # the shipped weights were trained). The names linker: the ear returned names; a name linked; its link p (max over
+    # linked names); the link is sure (p >= director.LINK_ACT_P); a name abstained; a name heard but not in the list;
+    # the linked entry is one of the step's options ("step" tier) or only on the screen's list ("screen" tier).
+    # The Arc decoder's own text next to the RNNT words: present; word agreement of the two; it names a list entry the
+    # words lack.
+    + ["ear_names_avail", "ear_linked", "ear_link_p", "ear_link_sure", "ear_abstain", "ear_not_in_list",
+       "ear_link_step", "ear_link_screen", "ear_dec_avail", "ear_agree", "ear_dec_name"]
 )
 F = len(FEATS)
 F_R5 = FEATS.index("lesson_pass") + 1     # the round-5 width (169): the shipped r4/r5 weights read this prefix
 F_R6 = FEATS.index("lx_filler") + 1       # the round-6 width (216)
+F_R11 = FEATS.index("st_video") + 1       # rounds 8-11 width (242): the shipped r10 weights read this prefix
 _IDX = {k: i for i, k in enumerate(FEATS)}
 
 
@@ -603,6 +659,14 @@ def _round7_feats(rec: dict, ws: list[str], s):
         g = lesson_grade_sa(ls, rec.get("text") or "")
         if g:
             s("lesson_pass_sa", 1)
+    lk = rec.get("link")
+    if lk:      # round 12: appended slots only (F_R11 and older weights never read them)
+        if lk.get("names"):
+            s("ear_names_avail", 1); s("ear_linked", lk["linked"]); s("ear_link_p", lk["p"])
+            s("ear_link_sure", lk["sure"]); s("ear_abstain", lk["abstain"]); s("ear_not_in_list", lk["not_in_list"])
+            s("ear_link_step", lk["step"]); s("ear_link_screen", lk["screen"])
+        if lk.get("dec"):
+            s("ear_dec_avail", 1); s("ear_agree", lk["agree"]); s("ear_dec_name", lk["dec_name"])
     pv = rec.get("prev")
     if pv and t:
         from difflib import SequenceMatcher
