@@ -93,11 +93,27 @@ def sha256_file(p: Path) -> str:
     return h.hexdigest()
 
 
+def tls():
+    """[videos offline] The app's own TLS check for NASA hosts (backend/app/video.py tls(): certifi's roots + Let's
+    Encrypt's intermediates; svs.gsfc.nasa.gov sends no intermediate, and nssdc.gsfc.nasa.gov's root is missing from
+    some system stores). Without certifi (stdlib-only runs): the system default."""
+    import ssl
+    try:
+        import certifi
+        ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+    pem = ROOT / "backend/data/video/intermediates.pem"
+    if pem.is_file():
+        ctx.load_verify_locations(cafile=str(pem))
+    return ctx
+
+
 def fetch(url: str, dst: Path, want_sha: str | None = None) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_name(dst.name + ".part")
     req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
+    with urllib.request.urlopen(req, timeout=120, context=tls()) as r, open(tmp, "wb") as f:
         for b in iter(lambda: r.read(1 << 20), b""):
             f.write(b)
     if want_sha and sha256_file(tmp) != want_sha:
