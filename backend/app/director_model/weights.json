@@ -1,19 +1,19 @@
 {
  "size": {
-  "d": 32,
-  "layers": 1,
+  "d": 128,
+  "layers": 4,
   "d_state": 16,
-  "head_dim": 16,
-  "buckets": 1024,
-  "emb": 8
+  "head_dim": 32,
+  "buckets": 8192,
+  "emb": 16
  },
- "size_name": "s",
- "params": 28985,
- "F": 169,
+ "size_name": "xl",
+ "params": 743069,
+ "F": 242,
  "heads": [
   [
    "act",
-   10
+   11
   ],
   [
    "when",
@@ -21,11 +21,11 @@
   ],
   [
    "cmd_type",
-   11
+   12
   ],
   [
    "sub_type",
-   11
+   12
   ],
   [
    "amount",
@@ -74,6 +74,10 @@
   [
    "barge",
    1
+  ],
+  [
+   "nav",
+   47
   ]
  ],
  "word_heads": [
@@ -82,23 +86,30 @@
   "w_task"
  ],
  "thr": {
-  "when": 0.8800000000000003
+  "when": 0.9800000000000004
  },
  "policy": {
-  "cmd": 0.95,
+  "cmd": 1.01,
   "veto": null,
-  "ignore": 0.8,
+  "ignore": 0.95,
   "ask": 1.01,
-  "ignore_min_words": 3
+  "answer_ignore": null,
+  "nav": null,
+  "ignore_min_words": 3,
+  "classes": [
+   "hot",
+   "echo"
+  ]
  },
- "run": "r4_s",
- "data": "ds_r4",
+ "run": "cand",
+ "data": "ds_r10",
  "trained": {
-  "n_train_sessions": 2400,
-  "n_train_steps": 232430,
-  "best_step": 1200
+  "n_train_sessions": 3600,
+  "n_train_steps": 321387,
+  "best_step": 1600
  },
  "history": [
-  "2026-11-15 round 9: policy-only update on the new ear (veto off, ignore_min_words 3); weights unchanged (r4 s)"
+  "2026-11-15 round 9: policy-only update on the new ear (veto off, ignore_min_words 3); weights r4 s",
+  "2026-11-16 round 10: r10 xl (743k params, ds_r10, full gate on the new ear), DIRECTOR_MODEL=guarded with classes hot + echo (class gate: hot +12, echo +29 act ok, 0 extra wrong, no set worse); everything else stays with the rules"
  ]
 }

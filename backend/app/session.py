@@ -172,7 +172,7 @@ class Session:
         self.recent_turns: deque = deque(maxlen=6)  # (norm text, ts)
         self.poll_task: asyncio.Task | None = None
         self.lock = asyncio.Lock()
-        self.dm = dmodel.attach(self)          # the learned Director (DIRECTOR_MODEL=off|shadow|on), None when off
+        self.dm = dmodel.attach(self)          # the learned Director (DIRECTOR_MODEL=off|shadow|guarded|on), None when off
         # Hands-free (turn_router.py): what we said lately (echo check + hard mute), the client's screen, the fallback.
         self.spoken = router_.Spoken(clock)
         self.screen: dict = {}                 # {screen, step_type, step_options, offer} from the client (ui:screen)
