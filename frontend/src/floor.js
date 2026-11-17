@@ -32,6 +32,7 @@
 //   attachCrew(el, {text, pauseAtSentenceEnd, resume})   player.js registers its element and hooks
 //   crewPlayback(state, id)   player.js reports crew start / end / interrupted
 //   holder, guideBusy, guideText, guideSentence, crewText   (the echo check reads the last three)
+import * as echoref from "./echoref.js";
 import { fadeTo } from "./sound.js";
 import { spokenForm } from "./narration.js";
 import { logBarge } from "./bargelog.js";
@@ -287,6 +288,7 @@ export function createFloor({ ttsUrl = "/api/tts", envelope = envelopeOf } = {})
   const off = (ev, fn) => { subs[ev] = (subs[ev] || []).filter(f => f !== fn); };
 
   let guideEl = null;                       // created on first use (needs a document)
+  const blobs = new Map();                  // sentence url -> its audio blob (the ear's echo reference, echoref.js)
   let server = true;                        // false after a 503: this backend has no TTS, use the browser voice
   const synth = typeof window !== "undefined" ? window.speechSynthesis || null : null;
   let lastCancel = 0;
@@ -339,7 +341,9 @@ export function createFloor({ ttsUrl = "/api/tts", envelope = envelopeOf } = {})
       // [a11y] word timings (X-TTS-Words, "startMs-endMs,…" per display word) for the caption bar (caption.js)
       const blob = await r.blob();
       const envP = Promise.resolve().then(() => (envelope ? envelope(blob, text) : null)).catch(() => null);   // never delays the line
-      return { url: URL.createObjectURL(blob), words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "", envP };
+      const url = URL.createObjectURL(blob); blobs.set(url, blob);
+      if (blobs.size > 16) blobs.delete(blobs.keys().next().value);
+      return { url, words: r.headers.get("X-TTS-Words") || "", engine: r.headers.get("X-TTS-Engine") || "", envP };
     } catch (e) { return null; } finally { if (t) clearTimeout(t); }
   }
   function playUrl(url, tok) {
@@ -354,6 +358,7 @@ export function createFloor({ ttsUrl = "/api/tts", envelope = envelopeOf } = {})
       // watchdog: a clip that never starts (8 s) or never reports its end (its length + 2 s) releases the floor
       watch = setTimeout(() => failed(), 8000);
       a.onplaying = () => { heard = true; clearTimeout(watch);
+        echoref.fromBlob(blobs.get(url), a.currentTime || 0, !!levels().muted || a.muted);   // the ear's echo reference
         const len = isFinite(a.duration) && a.duration > 0 ? a.duration : 15;
         watch = setTimeout(() => fin("end"), (len / (a.playbackRate || 1) + 2) * 1000); };
       const failed = () => fin(heard || (a.currentTime || 0) > 0.25 ? "end" : "error");

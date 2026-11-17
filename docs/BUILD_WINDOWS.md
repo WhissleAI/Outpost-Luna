@@ -360,7 +360,7 @@ After a native Windows build, please confirm and send the output:
 
 1. Step 6 prints `onnxruntime 1.32.0 (windows-x64): ...\onnxruntime\onnxruntime.dll (sha256 ok)` during libarc's
    configure (both generators: LLVM clang + Ninja, and Visual Studio `-T ClangCL`), then
-   `C bindings match arc.h and arctag.h` and `desktop\resources\native\arc.dll: ABI 1 (matches arc.h)`.
+   `C bindings match arc.h and arctag.h` and `desktop\resources\native\arc.dll: ABI 2 (matches arc.h)`.
 2. `desktop\dist\win-unpacked\resources\native\onnxruntime\` holds `onnxruntime.dll`, `onnxruntime.json`,
    `LICENSE`, `ThirdPartyNotices.txt`, and step 8's `runtime` check says `onnxruntime.dll 1.32.0 sha256 ok`.
 3. Step 8's `dlls` check passes (the pinned `onnxruntime.dll` imports `MSVCP140.dll` / `VCRUNTIME140*.dll`; they must

@@ -184,6 +184,13 @@ def _number(t: str, read: dict | None = None) -> float | None:
     m = re.search(r"\b(\d+(?:\.\d+)?)\s*(percent|points?)?\b", t)
     if m:
         return float(m.group(1))
+    for q in (read or {}).get("ear_quantities") or []:   # libarc ABI 2: typed quantities read from the words as said
+        if not isinstance(q, dict) or q.get("value") is None:
+            continue
+        if q.get("relative") and not q.get("unit") and q.get("type") == "number":
+            continue        # "one more ..." reads as +1 (Arc's known limit): no unit, no number on screen -> not an amount
+        if q.get("type") in ("number", "percent") and 0 <= float(q["value"]) <= 1000:
+            return float(q["value"])
     for s in (read or {}).get("numbers") or []:
         d = _words_to_digits(norm(s))
         mm = re.search(r"\d+(?:\.\d+)?", d)

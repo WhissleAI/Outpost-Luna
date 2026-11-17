@@ -191,7 +191,7 @@ def test_the_session_ear_list_follows_what_the_kid_said(explorer):
 
 # ------------------------------------------------------------------------------------------------ Director features
 def test_entity_features_are_appended_after_the_ear_block():
-    assert FX.F_R12_EAR == 253 and FX.FEATS[FX.F_R12_EAR] == "ent_any" and FX.F == FX.F_R12_EAR + 8
+    assert FX.F_R12_EAR == 253 and FX.FEATS[FX.F_R12_EAR] == "ent_any" and FX.F_R12 == FX.F_R12_EAR + 8
 
 
 def test_entity_features_read_the_memory(explorer):

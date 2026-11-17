@@ -23,7 +23,7 @@ class FakeModel:
     def __init__(self, text):
         self.text = text
 
-    def transcribe(self, pcm, domain="assistant", no_events=False, no_bias=False, names=None):
+    def transcribe(self, pcm, domain="assistant", no_events=False, no_bias=False, names=None, **abi2):
         ws = self.text.split()
         words = [{"w": w, "t0": 0.2 + 0.3 * i, "t1": 0.45 + 0.3 * i} for i, w in enumerate(ws)]
         return {"utts": [{"t0": 0.0, "t1": len(pcm) / 16000, "text": self.text, "words": words, "tags": [], "act": None,

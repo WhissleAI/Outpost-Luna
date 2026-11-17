@@ -213,7 +213,7 @@ other is the one it was built for:
   headers give now; every struct's `sizeof` / `offsetof` and every constant / enum value agree with a real C compiler
   reading the real header; every C function the Python calls is declared; and the ABI bump rule (below) against
   `tests/abi_snapshot.json`.
-- **ABI version.** `arc.h` defines `ARC_ABI_VERSION` (1) and `ARC_VERSION` ("1.2.0-outpost.1"); libarc exports
+- **ABI version.** `arc.h` defines `ARC_ABI_VERSION` (2) and `ARC_VERSION` ("1.3.0-outpost.1"); libarc exports
   `arc_abi_version()` / `arc_version()`. `nft2.open_library()` calls it right after loading and raises `AbiMismatch`
   ("libarc ABI 2 ..., this model server was generated for ABI 1: rebuild libarc ...") on a difference, or when the
   library predates the call. Bump rules are in `arc.h`: any change to an existing struct, signature, enum or `#define`

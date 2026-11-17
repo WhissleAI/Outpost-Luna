@@ -110,13 +110,22 @@ static size_t walk(const arc_result* res) {
     const arc_utt* u = &res->utts[i];
     h += touch(u->text) + touch(u->decoder_text) + touch(u->intent.label) + touch(u->act.label);
     for (int k = 0; k < u->n_tags; k++) h += touch(u->tags[k].tag) + touch(u->tags[k].text) + (size_t)u->tags[k].word_end;
-    for (int k = 0; k < u->n_words; k++) h += touch(u->words[k].text) + touch(u->words[k].tag);
+    for (int k = 0; k < u->n_words; k++) {
+      const arc_word* w = &u->words[k];
+      h += touch(w->text) + touch(w->tag) + touch(w->disfl) + (size_t)(w->conf > 2.0f);
+      for (int j = 0; j < w->n_alts; j++) h += touch(w->alts[j]) + (size_t)(w->alt_p ? w->alt_p[j] > 2.0f : 0);
+    }
     for (int k = 0; k < u->n_alts; k++) h += touch(u->alts[k]) + (size_t)(u->alt_scores ? u->alt_scores[k] != 0 : 0);
+    /* ABI 2 read-outs */
+    h += touch(u->clean_text) + touch(u->tagger_json) + (size_t)u->n_dropped + (size_t)(u->playback_leak > 2.0f);
+    for (int k = 0; k < u->n_quantities; k++)
+      h += touch(u->quantities[k].type) + touch(u->quantities[k].unit) + touch(u->quantities[k].text) +
+           touch(u->quantities[k].written) + (size_t)(u->quantities[k].word_end - u->quantities[k].word_begin);
   }
   for (int i = 0; i < res->n_names; i++) {
     const arc_name* n = &res->names[i];
     h += touch(n->tag) + touch(n->heard) + touch(n->entity) + touch(n->state) + touch(n->src) + touch(n->via)
-       + touch(n->model_entity);
+       + touch(n->model_entity) + touch(n->candidate) + (size_t)(n->candidate_kb_index + 1);
     for (int k = 0; k < n->n_words; k++) h += touch(n->words[k].text);
   }
   for (int i = 0; i < res->n_numbers; i++) {
@@ -211,6 +220,14 @@ static arc_nft2_options ropts(src_t* r, arc_nft2_options* o) {
   o->domain = DOMS[rn(r, 6)];
   o->no_bias = (int)rn(r, 2);
   o->no_events = (int)rn(r, 2);
+  /* ABI 2 */
+  o->no_guard = (int)rn(r, 4) == 0;
+  o->almost = (int)rn(r, 2);
+  o->nbest = (int)(rn(r, 3) ? rn(r, 6) : rn(r, 40));
+  o->live = (int)rn(r, 2);
+  o->playback_threshold = rn(r, 4) ? 0.0f : (float)rn(r, 1200) / 1000.0f;
+  o->playback_drop = (int)rn(r, 2);
+  o->echo_decode = (int)rn(r, 2);
   return *o;
 }
 
@@ -226,6 +243,27 @@ static void op_transcribe(src_t* r) {
   free(x);
 }
 
+static size_t walk_events(arc_nft2_stream* st) {
+  int n = -1;
+  const arc_nft2_event* ev = arc_nft2_stream_events(st, &n);
+  size_t h = 0;
+  for (int i = 0; ev && i < n; i++)
+    h += touch(ev[i].text) + touch(ev[i].kind) + touch(ev[i].entity) + touch(ev[i].qtype) + touch(ev[i].unit) +
+         (size_t)(ev[i].type + ev[i].n_stable + ev[i].kb_index + ev[i].relative);
+  return h;
+}
+
+static void op_stream_names(src_t* r, arc_nft2_stream* st) {
+  int n = (int)rn(r, 30);
+  arc_name_entry* e = calloc((size_t)(n ? n : 1), sizeof *e);
+  char** keep = calloc((size_t)(n ? n : 1), sizeof(char*));
+  for (int i = 0; i < n; i++) { e[i].name = keep[i] = rstr(r); e[i].kind = KINDS[rn(r, NK)]; }
+  N_CALLS++;
+  (void)arc_nft2_stream_set_names(st, e, n);
+  for (int i = 0; i < n; i++) free(keep[i]);
+  free(keep); free(e);
+}
+
 static void op_stream(src_t* r) {
   arc_nft2_options o;
   ropts(r, &o);
@@ -235,13 +273,30 @@ static void op_stream(src_t* r) {
   int feeds = (int)rn(r, 12);
   for (int i = 0; i < feeds && !done(r); i++) {
     if (rn(r, 6) == 0) op_names(r);              /* the list changes mid-stream (a screen change) */
+    if (rn(r, 6) == 0) op_stream_names(r, st);   /* ABI 2: arc_nft2_stream_set_names */
+    if (rn(r, 3) == 0) {                         /* ABI 2: the playback reference, at any time (also < 0, NaN) */
+      size_t nr;
+      float* y = rpcm(r, &nr);
+      double t = rn(r, 4) == 0 ? -1.0 : rn(r, 8) == 0 ? (double)NAN : (double)rn(r, 20000) / 1000.0 - 2.0;
+      N_CALLS++;
+      (void)arc_nft2_stream_feed_ref(st, y, nr, t);
+      free(y);
+    }
     size_t n;
     float* x = rpcm(r, &n);
     N_CALLS++;
     arc_result* res = arc_nft2_stream_feed(st, x, n);
     walk(res);
     if (res) arc_result_free(res);
+    walk_events(st);
     free(x);
+    if (rn(r, 8) == 0) {                         /* ABI 2: push-to-talk release */
+      N_CALLS++;
+      res = arc_nft2_stream_end_turn(st);
+      walk(res);
+      if (res) arc_result_free(res);
+      walk_events(st);
+    }
   }
   if (rn(r, 4)) {
     N_CALLS++;

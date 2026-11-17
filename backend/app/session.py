@@ -61,7 +61,18 @@ PREF_DEFAULTS = {"voice": None, "voice_all": False, "engine": "os", "steer_voice
                  "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
 LEVELS = ("cadet", "commander", "engineer")   # engineer: Commander missions in real units (docs/PHYSICS.md)
 LISTEN = ("handsfree", "ptt")
-OPEN_MIC = ("listen", "voice")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
+# libarc ABI 2 read-outs on the ear's final words (model_server/app/arc_ear.py abi2_view): kept on k["ear"] under their
+# own keys. The round-7 `conf` / `alts` stay null / [] (the shipped Director weights were trained with them empty).
+EAR_ABI2 = ("almost", "quantities", "clean_text", "uconf", "min_wconf", "nbest", "walts", "disfl", "n_dropped",
+            "playback_leak", "playback", "barge", "eot")
+OPEN_MIC = ("listen", "voice")
+
+
+def ear_playback(ear: dict | None) -> bool:
+    """The ear marked this turn as the app's own playback (playback_leak >= threshold against the reference the app
+    fed) and heard no barge-in during it. Never on the flag alone while the kid may be talking over playback: Arc's
+    canceller flags ~22 % of such merged turns, so a barge-in event keeps the turn."""
+    return bool(ear) and ear.get("playback") is True and not ear.get("barge")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
 
 
 def clean_prefs(m: dict, cur: dict | None = None) -> dict:
@@ -381,7 +392,7 @@ class Session:
             if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
                 # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
                 k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken", "decoder_text",
-                                                  "agree") if m.get(x) is not None}
+                                                  "agree") + EAR_ABI2 if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -634,6 +645,8 @@ class Session:
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
             return
         rt = router_.route(text, ctx_r, act=k.get("act"))
+        if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear")):
+            rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)
         ents: list[dict] = []
         if rt["outcome"] != "ignore":   # what the kid talked about (to us): the session's entity memory
             with contextlib.suppress(Exception):
@@ -743,6 +756,12 @@ class Session:
             read = {**read, "ear_names": list(ear.get("names") or [])}
             if ear.get("spoken"):
                 read["ear_spoken"] = ear["spoken"]
+            if ear.get("almost"):           # libarc ABI 2: sound-alike names, offered back ("Did you mean ...?")
+                read["ear_almost"] = list(ear["almost"])
+            if ear.get("quantities"):       # typed numbers / percents / distances (mission amounts)
+                read["ear_quantities"] = list(ear["quantities"])
+            if ear.get("clean_text"):       # the words without fillers / restarts (mission parsing)
+                read["ear_clean"] = ear["clean_text"]
         out = None
         if self.dm is not None:
             with contextlib.suppress(Exception):

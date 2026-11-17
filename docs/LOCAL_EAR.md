@@ -18,7 +18,7 @@ model server: app/nft2.py (cffi, generated from arc.h) ──▶ libarc (arc_nft
 - **Setup (dev):** `make desktop-libarc ear-model` (libarc for this OS; the model, ~460 MB, into
   `model_server/models/arc-space`). Env: `ARC_SPACE_DIR` (the `nft2/` folder), `ARC_LIB` (libarc), `ARC_THREADS` (4).
   The desktop app downloads both on first run (docs/DESKTOP.md "First run: assets").
-- **libarc**: the upstream C code (arc_transcriber `c/`, commit bfffb19), built as one shared library with CMake
+- **libarc**: the upstream C code (arc_transcriber `c/`, commit 0aa792f, ABI 2; docs/ARC_ABI2.md), built as one shared library with CMake
   (`libarc.dylib`; `arc.dll` with clang / mingw-w64: it needs C11 atomics and GCC builtins). It links no ONNX Runtime:
   `ort_loader.c` loads the pinned `libonnxruntime.1.32.0.dylib` / `onnxruntime.dll` the build vendors next to it
   (`desktop/vendor/libarc/onnxruntime.lock.json`, C API 23), sha256-checked at load; `ARC_ORT_FROM_WHEEL=1` (dev only)

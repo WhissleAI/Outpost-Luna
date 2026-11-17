@@ -219,12 +219,29 @@ async def _listen(ws: WebSocket, send, sid: dict):
     await run_deepgram(ws, send, sid, fallback_from)
 
 
+REF_MAX_B64 = 16000 * 2 * 12 * 4 // 3 + 8     # one reference message: at most 12 s of 16 kHz PCM16
+
+
+def ref_message(d: dict) -> dict | None:
+    """A client playback reference {"t":"ref","at","pcm"} (pcm: base64 PCM16 LE mono 16 kHz; at: the mic stream time,
+    in seconds of audio this socket has sent, when the first sample plays) -> the model server's form, or None."""
+    pcm, at = d.get("pcm"), d.get("at")
+    if not isinstance(pcm, str) or not pcm or len(pcm) > REF_MAX_B64:
+        return None
+    try:
+        at = None if at is None else float(at)
+    except (TypeError, ValueError):
+        return None
+    return {"t": "ref", "at": at, "pcm": pcm}
+
+
 async def run_arc(ws: WebSocket, send, sid: dict, arc):
     """EAR=arc: audio + context to the model server's Arc ear; its words / turn / arc / emotion / context_ack back."""
     base = default_names() if ear_settings.ear_names else []
     if base:
         await arc.send(json.dumps({"t": "context", "names": base}))
-    relay = ("words", "turn", "arc", "emotion", "context_ack", "error")   # error: the decode watchdog (#87)
+    # error: the decode watchdog (#87); entity / eot / barge_in: libarc ABI 2 live events (model_server arc_ear.py)
+    relay = ("words", "turn", "arc", "emotion", "context_ack", "error", "entity", "eot", "barge_in")
 
     async def from_arc():
         async for raw in arc:
@@ -268,6 +285,10 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
                         if d.get("session"):
                             sid["id"] = str(d["session"])
                         await arc.send(json.dumps(arc_context(d, base)))
+                    elif d.get("t") == "ref":       # what the app plays, for the ear's echo canceller
+                        r = ref_message(d)
+                        if r is not None:
+                            await arc.send(json.dumps(r))
                     elif d.get("t") == "stop":
                         await arc.send(json.dumps({"t": "stop"}))
                         with contextlib.suppress(asyncio.TimeoutError, Exception):

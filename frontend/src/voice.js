@@ -14,6 +14,7 @@ import { decideBarge, isCommand, saysStop, BARGE_TUNING, energyNeed } from "./ba
 import { logBarge } from "./bargelog.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";
 import { paintLinked } from "./highlight.js";   // the ear's linked names, marked in the kid's words
+import * as echoref from "./echoref.js";       // what we play -> the ear's echo reference (libarc ABI 2)
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
 import { onEngine, earNote } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
 export { spaceAction, micErrorText };
@@ -397,11 +398,12 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (mode === "ws" || starting || wsBroken || !canWS) return mode === "ws";
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
+    if (ok === true && typeof listener.clock === "function") echoref.bind(listener);
     if (ok === true) { mode = "ws"; retries = 0; userOff = false; everOn = true; note(earNote() || HOLD); idle(); return true; }
     if (ok !== "mic") { wsBroken = true; set("off"); earLost(); }   // [qa] retry with a back-off (the ear may be warming up)       // "mic": micBlocked already showed why
     return false;
   }
-  function stopAlwaysOn() { userOff = true; clearTimeout(retryT); retryT = 0; listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
+  function stopAlwaysOn() { userOff = true; clearTimeout(retryT); retryT = 0; echoref.bind(null); listener.stop(); mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); }
   function srStart() { if (!rec || srOn) return; finalBuf = ""; interim = ""; turnAsked = false; try { rec.start(); } catch (e) { /* already running */ } }
 
   // [#87] The desktop shell restarted the ear (engine.js): say so while it is away; once it is back, reconnect at once
