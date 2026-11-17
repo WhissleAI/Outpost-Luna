@@ -87,7 +87,7 @@ def main():
         if not js("() => window.__outpost.prefs.muted"):
             pg.keyboard.press("Shift+M"); pg.wait_for_timeout(300)
         js("() => { window.__yt = []; }")
-        js("async () => { const m = await import('/src/media/video.js'); window.__vp2 = m.openVideo('meet_crew', { context: 'mute-test' }); }")
+        js("async () => { const m = await import('/src/media/video.js'); window.__vp2 = m.openVideo('diy_crater', { context: 'mute-test' }); }")
         pg.wait_for_timeout(2500)
         fr = js("() => { const f = document.querySelector('iframe.vid-yt'); return f ? f.getAttribute('src') : null; }")
         if fr is None:

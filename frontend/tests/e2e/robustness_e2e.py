@@ -277,7 +277,7 @@ def calibration(r):
 def gate(r):
     # the in-app half of the grown-up gate: a link out of the YouTube player is a window.open the shell turns into the
     # gate; in a browser it is a popup. The app itself must stay put and usable.
-    if not video_open("far_side_view")(r):
+    if not video_open("diy_crater")(r):
         return False
     with r.ctx.expect_page(timeout=5000) as pop:
         r.js("() => window.open('https://www.youtube.com/watch?v=jdkMHkF7BaA', '_blank')")
@@ -311,7 +311,7 @@ def after_video(r):
 
 SURFACES = [
     ("after_video", False, after_video, lambda r: r.js("() => !!window.__rbAfter")),
-    ("video_yt", False, video_open("far_side_view"), lambda r: r.js(VIDEO_ACTIVE)),
+    ("video_yt", False, video_open("diy_crater"), lambda r: r.js(VIDEO_ACTIVE)),
     ("video_file", False, video_open("psr"), lambda r: r.js(VIDEO_ACTIVE)),
     ("video_offline", False, video_offline, lambda r: r.js(VIDEO_ACTIVE)),
     ("l1_yes_no", False, l1_step(1), lambda r: r.js("() => !!document.querySelector('#aPanel .a-choice[data-c=sometimes]')")),

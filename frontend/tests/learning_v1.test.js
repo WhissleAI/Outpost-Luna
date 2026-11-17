@@ -22,7 +22,8 @@ test("playable: cached or online can play now; offline can't", () => {
 
 test("debrief Learn more: one video per outcome, the online pick only online, else a fact card", async () => {
   const all = st => () => st;
-  assert.deepEqual(await pickLearnMore("dose_limit", all("online")), { kind: "video", media: "solar_eruptions", line: S.LEARN_MORE.dose_limit.line });
+  // [videos offline] no YouTube pick any more: the local NASA file, online or not
+  assert.deepEqual(await pickLearnMore("dose_limit", all("online")), { kind: "video", media: "moon_weather", line: S.LEARN_MORE.dose_limit.line });
   assert.deepEqual(await pickLearnMore("dose_limit", id => (id === "moon_weather" ? "cached" : "offline")),
     { kind: "video", media: "moon_weather", line: S.LEARN_MORE.dose_limit.line });
   assert.deepEqual(await pickLearnMore("power_out", all("online")), { kind: "fact", text: S.LEARN_MORE.power_out.fact });

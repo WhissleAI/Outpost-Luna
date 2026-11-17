@@ -7,8 +7,10 @@
 // The catalog (backend/data/video/catalog.json, GET /api/video/catalog) says what each id is:
 //   nasa_file  our own <video> player, captions on (WebVTT from the backend), played from the offline cache (or
 //              streamed through the backend and cached on its first play)
+//   pack_file  the same player, from the desktop's video pack only (a NASA re-encode, or a video used with permission)
 //   youtube    a youtube-nocookie embed (≥ 480×270, nothing drawn over it; our buttons and the credit sit outside the
-//              frame), online only; never cached
+//              frame), online only; never cached. When it won't play and has no NASA fallback, the card offers
+//              "Watch on YouTube" (the system browser, behind the desktop's grown-up gate)
 // Offline (or not saved yet): a card with the NASA still, "Needs internet. Ask a grown-up to connect." and, when the
 // catalog maps one (`fallback`), the cached NASA video instead.
 //
@@ -19,9 +21,9 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, stallWatch, YT_STALL_MS } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, stallWatch, YT_STALL_MS } from "./commands.js";
 
-export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc };
+export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
@@ -65,7 +67,7 @@ export async function diagnose(id) {
 
 /** Every video the catalog lists, for the credits (About → Videos). */
 export async function credits() {
-  try { return (await catalog()).map(v => ({ id: v.id, title: v.title, credit: v.credit, source: v.source })); } catch (e) { return []; }
+  try { return (await catalog()).map(v => ({ id: v.id, title: v.title, credit: v.credit, source: v.source, nasa: v.nasa })); } catch (e) { return []; }
 }
 
 // ---------------------------------------------------------------- the overlay ----------------------------------------
@@ -289,11 +291,18 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
     stage.innerHTML = `<div class="vid-off" role="status">
         ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}" onerror="this.remove()">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
         <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}${context === "lesson" ? ` ${esc(NO_PLAY_LESSON)}` : ""}</p></div>`;
+    // [videos offline] a YouTube video that won't play here (the bot card, an embed error) and has no NASA file to offer
+    // instead: "Watch on YouTube" opens the youtube.com page in the system browser, where a signed-in grown-up usually
+    // passes the bot check. The desktop shell opens it only after the grown-up gate's 3-second hold (gate.js).
+    const yt = !fb && kind === "error" && item.source === "youtube" ? youtubeWatchUrl(item.youtube_id) : null;
     bar.innerHTML = `${fb ? `<button type="button" class="btn-primary" data-fb>${icon("play")}<span>Watch NASA's ${esc(lengthLabel(fb.duration_s))} video instead</span></button>` : ""}
-      <button type="button" class="${fb ? "btn" : "btn-primary"} vid-x" data-close>${icon("close")}<span>Close</span></button>`;
+      ${yt ? `<button type="button" class="btn-primary" data-yt>${icon("external")}<span>${esc(WATCH_ON_YOUTUBE)}</span></button>` : ""}
+      <button type="button" class="${fb || yt ? "btn" : "btn-primary"} vid-x" data-close>${icon("close")}<span>Close</span></button>`;
     const b = bar.querySelector("[data-fb]");
     if (b) b.onclick = () => { delete extra.offline; delete dlg.dataset.card; extra.fallback = fb.id; mount("file", fb); };
-    (b || bar.querySelector("[data-close]")).focus({ preventScroll: true });
+    const y = bar.querySelector("[data-yt]");
+    if (y) y.onclick = () => { extra.youtube = true; try { window.open(yt, "_blank", "noopener"); } catch (e) { /* */ } };
+    (b || y || bar.querySelector("[data-close]")).focus({ preventScroll: true });
   }
 
   function finish(how) {
@@ -311,7 +320,11 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
     const secs = Math.round(seconds * 10) / 10;
     resolve({ watched: watchedEnough(secs, v.duration_s, ended), seconds: secs, ...extra, ...(how === "skip" ? { skipped: true } : {}) });
   }
-  const onClose = () => finish("closed");
+  // [videos offline] <dialog>'s "close" event is queued, not fired in close(): when one video closes and the next opens
+  // within a few ms (the catalog cached, the file local), the OLD close event lands after the new showModal() and
+  // closed the new video at once (caught by the release check's video sweep). A close event while the dialog is open
+  // again is that stale one: ignored.
+  const onClose = () => { if (!dlg.open) finish("closed"); };
 
   dlg.innerHTML = `<div class="vid-box">
       <header class="vid-head"><h2 id="vidTitle"></h2><button type="button" class="x" data-close aria-label="Close video">${icon("close")}</button></header>

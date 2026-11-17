@@ -10,9 +10,10 @@ Gates (one line each, a JSON report in desktop/dist/release-check.json, exit 1 i
            installer (never the registry), signature checked, launched headless and muted on its own data folder and
            ports; engine.json + the model server's ear loaded on the PINNED ONNX Runtime; desktop/scripts/smoke.py;
            a real voice turn (crew clip -> /ws/listen -> "Orientale" heard and linked); clean quit (engine.json gone)
-  video    the installed app plays a NASA file (hammer_feather) in its own player and a YouTube video (far_side_view)
-           muted, read from the page over DevTools; a YouTube refusal must fall back to the NASA file cleanly (warn),
-           never hang; YouTube is skipped offline. VIDEO_SWEEP=1: every catalog entry
+  video    the installed app plays NASA files (hammer_feather, far_side_view) in its own player and a YouTube extra
+           (diy_crater) muted, read from the page over DevTools; a YouTube refusal must end on a clean card (warn),
+           never hang; YouTube is skipped offline. VIDEO_SWEEP=1: every catalog entry with YouTube blocked in the
+           page; every NASA video must play from a local file (the cache or the installed video pack)
   golden   40 fixed clips (desktop/tests/golden) through the installed app's ear: WER / name / link / number rates
            within tolerance of baseline.json, p50 / p95 latency within budget (a different machine: warn only)
   fuzz     (a) libarc's C API under ASan + UBSan (desktop/tests/fuzz/fuzz_libarc.c, debug build), (b) random and
@@ -637,6 +638,28 @@ class CDP:
         if not page:
             raise GateError(f"no app page on the DevTools port {port}")
         self.ws, self.n = WS.connect(page["webSocketDebuggerUrl"], timeout=10), 0
+        self.blocked, self.side = None, 10**7
+
+    def _recv(self, timeout: float) -> dict:
+        """The next message; events are handled here (a new frame target gets the URL block before it runs)."""
+        m = json.loads(self.ws.recv(timeout=timeout))
+        if m.get("method") == "Target.attachedToTarget":
+            sid = m["params"]["sessionId"]
+            for method, params in (("Network.enable", {}), ("Network.setBlockedURLs", {"urls": self.blocked or []}),
+                                   ("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True,
+                                                             "flatten": True}),
+                                   ("Runtime.runIfWaitingForDebugger", {})):
+                self.side += 1
+                self.ws.send_text(json.dumps({"id": self.side, "sessionId": sid, "method": method, "params": params}))
+        return m
+
+    def block_urls(self, urls: list):
+        """[videos offline] Cut the page off from these URL patterns, in the page AND in every frame that runs in its
+        own process (the YouTube embed is an out-of-process iframe: a block on the page alone does not reach it)."""
+        self.blocked = list(urls)
+        self.call("Network.enable")
+        self.call("Network.setBlockedURLs", {"urls": self.blocked})
+        self.call("Target.setAutoAttach", {"autoAttach": True, "waitForDebuggerOnStart": True, "flatten": True})
 
     def eval(self, expr: str, timeout=90.0):
         self.n += 1
@@ -644,13 +667,26 @@ class CDP:
                                       "params": {"expression": expr, "awaitPromise": True, "returnByValue": True}}))
         deadline = time.time() + timeout
         while time.time() < deadline:
-            m = json.loads(self.ws.recv(timeout=max(1.0, deadline - time.time())))
+            m = self._recv(timeout=max(1.0, deadline - time.time()))
             if m.get("id") == self.n:
                 r = m.get("result", {})
                 if r.get("exceptionDetails"):
                     raise GateError("page error: " + json.dumps(r["exceptionDetails"])[:300])
                 return r.get("result", {}).get("value")
         raise GateError(f"page did not answer in {timeout:.0f} s")
+
+    def call(self, method: str, params: dict | None = None, timeout=30.0):
+        """One DevTools command (Network.setBlockedURLs…); its result, or GateError."""
+        self.n += 1
+        self.ws.send_text(json.dumps({"id": self.n, "method": method, "params": params or {}}))
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            m = self._recv(timeout=max(1.0, deadline - time.time()))
+            if m.get("id") == self.n:
+                if m.get("error"):
+                    raise GateError(f"{method}: {m['error']}")
+                return m.get("result", {})
+        raise GateError(f"{method}: no answer in {timeout:.0f} s")
 
     def close(self):
         try:
@@ -681,11 +717,15 @@ VIDEO_JS = r"""(async (id, waitS) => {
     else if (d.dataset.card && !fbT0) {
       const b = d.querySelector("[data-fb]");
       if (b && v.source === "youtube") { fbT0 = Date.now(); b.click(); }
-      else out = { result: "card", card: d.dataset.card, yterror: d.dataset.yterror || null };
+      // [videos offline] no NASA file to offer: the card's "Watch on YouTube" (never pressed here: it opens the gate)
+      else out = { result: "card", card: d.dataset.card, yterror: d.dataset.yterror || null, youtube_button: !!d.querySelector("[data-yt]") };
     }
   }
   const d = document.getElementById("vidDlg");
-  if (!out) out = { result: "stuck", ytstate: d && d.dataset.ytstate, card: d && d.dataset.card };
+  if (!out) { const el = d && d.querySelector("video");
+    out = { result: "stuck", ytstate: d && d.dataset.ytstate, card: d && d.dataset.card, open: !!(d && d.open), last: O.videoLast || null,
+      video: el ? { src: el.currentSrc.replace(location.origin, ""), ready: el.readyState, net: el.networkState, paused: el.paused,
+                    t: +el.currentTime.toFixed(1), error: el.error && el.error.code } : null }; }
   out.yterror = out.yterror || (d && d.dataset.yterror) || null;
   out.seconds_to_result = +((Date.now() - t0) / 1000).toFixed(1);
   V.command("stop"); const r = await done;
@@ -696,7 +736,8 @@ VIDEO_JS = r"""(async (id, waitS) => {
 # The phases lesson opens with its Try-at-home "Watch how" videos (the Oreo one) on its first step, while online.
 WATCH_HOW_JS = r"""(async () => {
   const O = window.__outpost, sleep = ms => new Promise(r => setTimeout(r, ms));
-  if ((await O.video.isAvailable("diy_oreo_phases")) === "offline") return { result: "unavailable" };
+  // [videos offline] NASA's own phases video plays from a local file: the Watch how row shows even offline
+  if ((await O.video.isAvailable("moon_phases_2025")) === "offline") return { result: "unavailable" };
   document.getElementById("modeAcademy").click();
   for (let i = 0; i < 20 && document.body.dataset.mode !== "academy"; i++) await sleep(250);
   await sleep(1500);
@@ -715,21 +756,32 @@ def play_video(cdp: CDP, vid: str, wait_s=45) -> dict:
     return cdp.eval(f"{VIDEO_JS}({json.dumps(vid)}, {wait_s})", timeout=wait_s + 60) or {"id": vid, "result": "?"}
 
 
+YT_BLOCK = ["*youtube.com*", "*youtube-nocookie.com*", "*youtu.be*", "*ytimg.com*", "*googlevideo.com*",
+            "*ggpht.com*", "*jnn-pa.googleapis.com*"]
+LOCAL_KINDS = ("nasa_file", "pack_file")   # backend/app/video.py LOCAL_SOURCES: our own player, a local file
+
+
 def gate_video(rep: Report, app: App, sweep=False):
     """The installed app plays a NASA file in its own player, and a YouTube video (or, when YouTube refuses, falls back
     to the NASA file cleanly, never stuck). Offline-safe: YouTube is skipped when the app says it is offline.
-    VIDEO_SWEEP=1: every catalog entry."""
+    VIDEO_SWEEP=1 [videos offline]: every catalog entry, with the page cut off from YouTube (DevTools blocks its hosts):
+    every NASA video (nasa_file, pack_file) must play from a local file (status "cached": the cache or the installed
+    video pack, played from /api/video/<id>/file), and each YouTube extra must end on a clean "won't play here" card
+    that offers "Watch on YouTube" (or its NASA fallback). VIDEO_SWEEP_YT=1 keeps YouTube reachable in the sweep."""
     t0 = time.time()
     cdp = None
+    block = sweep and os.environ.get("VIDEO_SWEEP_YT") != "1"
     try:
         cdp = CDP(app.ports["devtools"], f"http://127.0.0.1:{app.ports['backend']}")
         ok = cdp.eval("(async () => { for (let i = 0; i < 120; i++) { if (window.__outpost && window.__outpost.video) "
                       "return true; await new Promise(r => setTimeout(r, 500)); } return false; })()")
         if not ok:
             raise GateError("the page never set up its video player (window.__outpost.video)")
-        ids = ["hammer_feather", "far_side_view"]
+        ids = ["hammer_feather", "far_side_view", "diy_crater"]   # a NASA file, a former embed now local, a YouTube extra
         if sweep:
             ids = [v["id"] for v in cdp.eval("(async () => (await window.__outpost.video.catalog()).map(v => ({id: v.id})))()")]
+        if block:
+            cdp.block_urls(YT_BLOCK)
         res = [play_video(cdp, i) for i in ids]
         how = cdp.eval(WATCH_HOW_JS, timeout=60) or {"result": "?"}
     except (GateError, OSError, Closed, TimeoutError) as e:
@@ -740,18 +792,25 @@ def gate_video(rep: Report, app: App, sweep=False):
     bad, warn, lines = [], [], []
     for r in res:
         k, out = r.get("kind"), r.get("result")
-        lines.append(f"{r['id']}={out}" + (f"({r.get('yterror')})" if r.get("yterror") else ""))
-        if k == "nasa_file" and out != "played":
+        lines.append(f"{r['id']}={out}" + (f"({r.get('yterror')})" if r.get("yterror") else "")
+                     + (f"[{r.get('avail')}]" if sweep and k in LOCAL_KINDS else ""))
+        if k in LOCAL_KINDS and out != "played":
             bad.append(r["id"])
+        elif k in LOCAL_KINDS and sweep and (r.get("avail") != "cached" or r.get("file") != f"/api/video/{r['id']}/file"):
+            bad.append(r["id"] + ":not-local")   # it played, but streamed from NASA instead of a local file
         elif k == "youtube" and (out == "fell_back" or (out == "card" and r.get("card") == "error")):
             warn.append(r["id"])   # YouTube refused; the kid got "won't play here" (+ the NASA file when there is one)
+            if out == "card" and not r.get("youtube_button"):
+                bad.append(r["id"] + ":no-youtube-button")
         elif k == "youtube" and out not in ("played", "unavailable"):
             bad.append(r["id"])
         elif not k:
             bad.append(r["id"])
     lines.append(f"phases lesson Watch how={how.get('result')}" + (f"({','.join(how['ids'])})" if how.get("ids") else ""))
-    if how.get("result") not in ("shown", "unavailable") or (how.get("ids") and "diy_oreo_phases" not in how["ids"]):
+    if how.get("result") not in ("shown", "unavailable") or (how.get("ids") and "moon_phases_2025" not in how["ids"]):
         bad.append("watch-how")
+    if block:
+        lines.append("YouTube blocked in the page")
     status = "fail" if bad else "warn" if warn else "pass"
     summ = ("; ".join(lines) + (f"; FAILED {', '.join(bad)}" if bad else "")
             + (f"; YouTube refused {', '.join(warn)} (clean 'won't play here' card / NASA fallback)" if warn else ""))

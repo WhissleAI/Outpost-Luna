@@ -659,7 +659,7 @@ credited in `source`, never on screen.
 - First mission only, on "Take command": "NASA plans a real base near here. Ours is pretend. Let's run it." with
   `moon_base_6mo`, offered only when the saved copy is on this computer (it is a pinned download, so it starts at once,
   offline too); otherwise the mission just starts. Watch or Skip. Settings → Help replays it.
-- Debrief "Learn more" (`frontend/src/learn_more.js`): `dose_limit` → `moon_weather` (`solar_eruptions` when online),
+- Debrief "Learn more" (`frontend/src/learn_more.js`): `dose_limit` → `moon_weather` (a local NASA file; `solar_eruptions` left the catalog with "videos offline", docs/MEDIA.md),
   `power_out` → a fact card, `life_support_out` → `water_extraction`, `survived` → `meet_crew`; a fact card whenever the
   video can't play.
 - Credits: "Outpost Luna is a pretend outpost for learning. NASA's real Moon Base plans: nasa.gov/moon-base." beside the

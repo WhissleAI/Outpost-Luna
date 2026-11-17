@@ -15,14 +15,17 @@ from app.config import settings
 from app.main import app
 
 CONTRACT_IDS = {
+    # [videos offline] every NASA video plays from a local file: the 8 originals + 5 that were YouTube embeds
     "nasa_file": {"phases_loop", "lunar_eclipse", "hammer_feather", "lunar_dust", "psr", "water_extraction",
-                  "moon_weather", "moon_base_6mo"},
-    "youtube": {"far_side_view": "jdkMHkF7BaA", "solar_eclipse_sp": "hyf5JF_VxwM", "south_pole_shadows": "0GCTOHu4OrQ",
-                "artemis_south_pole": "AQAaAJW-uC0", "solar_eruptions": "bX0hv0EFKnI", "impact_flashes": "B9MoWCnmuqw",
-                "meet_crew": "lPyl6d2FJGw", "ltv": "zTHJ9zb8J2s",
-                # [diy videos] Mission prep "Watch how" (2 hand-picked non-NASA + 1 NASA)
-                "diy_crater": "osdOQhRhVJg", "diy_oreo_phases": "XeBmuY2i2fg", "moon_phases_2025": "RROlja1ob_4"},
+                  "moon_weather", "moon_base_6mo",
+                  "far_side_view", "south_pole_shadows", "meet_crew", "ltv", "moon_phases_2025"},
+    # only the video pack carries it (NASA hosts only a 293 MB .mov): NASA/JPL's own crater activity, for crater_drop
+    "pack_file": {"diy_crater_nasa"},
+    # the two hand-picked non-NASA Mission prep "Watch how" videos: optional, stream only, never bundled
+    "youtube": {"diy_crater": "osdOQhRhVJg", "diy_oreo_phases": "XeBmuY2i2fg"},
 }
+# left the catalog: their NASA sources credit third-party music (Universal Production Music), and none plays in a lesson
+DROPPED = {"solar_eclipse_sp", "artemis_south_pole", "solar_eruptions", "impact_flashes"}
 
 
 @pytest.fixture
@@ -44,26 +47,34 @@ def test_catalog_valid_and_matches_the_contract():
         assert v["source"] == "nasa_file" and v["prefetch"] is True and v["music_credit"] is False
         assert v["file_url"].startswith("https://") and v["bytes"] > 0 and len(v["sha256"]) == 64
         assert v["credit"].startswith("NASA")
+    for vid in CONTRACT_IDS["pack_file"]:
+        v = by[vid]
+        assert v["source"] == "pack_file" and v["prefetch"] is True and v["bytes"] > 0 and len(v["sha256"]) == 64
+        assert "file_url" not in v and v["origin_url"].startswith("https://") and v["credit"].startswith("NASA")
     for vid, yid in CONTRACT_IDS["youtube"].items():
         v = by[vid]
         assert v["source"] == "youtube" and v["youtube_id"] == yid and not v["prefetch"] and "file_url" not in v
-    assert set(by) == CONTRACT_IDS["nasa_file"] | set(CONTRACT_IDS["youtube"])
-    # about 200 MB pinned (the plan's "about 210 MB with captions and posters")
-    assert 150e6 < sum(v.get("bytes", 0) for v in cat if v["prefetch"]) < 260e6
+        assert v.get("nasa") is False, "the only YouTube videos left are the two third-party Watch how extras"
+    assert set(by) == CONTRACT_IDS["nasa_file"] | CONTRACT_IDS["pack_file"] | set(CONTRACT_IDS["youtube"])
+    assert not DROPPED & set(by)
+    # the video pack: about 423 MB of video (+ captions and posters); no single file over 80 MB
+    assert 380e6 < sum(v.get("bytes", 0) for v in cat if v["prefetch"]) < 450e6
+    assert max(v.get("bytes", 0) for v in cat) < 80e6
 
 
 def test_catalog_validation_catches_mistakes():
     good = copy.deepcopy(video.catalog())
     assert video.validate(good) == []
     bad = copy.deepcopy(good)
+    k = {v["id"]: i for i, v in enumerate(bad)}
     bad[1]["id"] = bad[0]["id"]                                  # duplicate
     bad[2]["source"] = "vimeo"                                   # bad source
     bad[3]["music_credit"] = True                                # music in a cached file
     bad[4].pop("bytes")                                          # prefetch without a size
     bad[5]["file_url"] = "https://example.com/x.mp4"             # not a NASA host
-    bad[8]["fallback"] = "nope"                                  # unknown fallback
-    bad[9]["fallback"] = "far_side_view"                         # fallback must play offline
-    bad[10]["prefetch"] = True                                   # YouTube is never downloaded
+    bad[k["ltv"]]["fallback"] = "nope"                           # unknown fallback
+    bad[k["far_side_view"]]["fallback"] = "diy_crater"           # fallback must play offline
+    bad[k["diy_oreo_phases"]]["prefetch"] = True                 # YouTube is never downloaded
     p = "\n".join(video.validate(bad))
     for frag in ("duplicate id", "source must be", "music-credited", "size in bytes", "NASA host",
                  "'nope' is not another", "must be a nasa_file", "never downloaded"):
@@ -177,9 +188,12 @@ def test_routes_offline(tmp_cache):
         ph = next(v for v in cat if v["id"] == "phases_loop")
         assert ph["play_url"] == "/api/video/phases_loop/file" and ph["cached"] is False
         assert c.get("/api/video/phases_loop/available").json()["status"] == "offline"
-        assert c.get("/api/video/far_side_view/available").json()["status"] == "offline"
+        assert c.get("/api/video/diy_crater/available").json()["status"] == "offline"
+        assert c.get("/api/video/far_side_view/available").json()["status"] == "offline"   # a NASA file, not saved
+        assert c.get("/api/video/diy_crater_nasa/available").json()["status"] == "offline"  # no video pack here
+        assert c.get("/api/video/diy_crater_nasa/file").status_code == 503
         assert c.get("/api/video/phases_loop/file").status_code == 503
-        assert c.get("/api/video/far_side_view/file").status_code == 404
+        assert c.get("/api/video/diy_crater/file").status_code == 404
         assert c.get("/api/video/nope/available").status_code == 404
         # now it is saved: it plays offline, with Range (seeking)
         v = video.item("phases_loop")
@@ -193,13 +207,14 @@ def test_routes_offline(tmp_cache):
         r = c.get("/api/video/phases_loop/file", headers={"Range": "bytes=100-199"})
         assert r.status_code == 206 and len(r.content) == 100 and r.headers["content-type"] == "video/mp4"
         assert c.get("/api/video/phases_loop/poster").content == b"jpg"
-        assert c.get("/api/video/far_side_view/poster").content == b"jpg", "YouTube offline: its NASA fallback's still"
+        assert c.get("/api/video/south_pole_shadows/poster").status_code == 404   # not saved, offline
         assert c.get("/api/video/phases_loop/captions.vtt").status_code == 404   # silent loop: no captions
         tmp_cache.put_text("psr.vtt", "WEBVTT\n\n00:00.000 --> 00:01.000\nhi\n")
         assert c.get("/api/video/psr/captions.vtt").text.startswith("WEBVTT")
         st = c.get("/api/video/cache").json()
         assert st["bytes"] == 5003 + len("WEBVTT\n\n00:00.000 --> 00:01.000\nhi\n") and st["pinned_ready"] == 1
-        assert st["pinned_total"] == 8 and st["cap_bytes"] == 1024 * 1024 * 1024
+        # the pack_file counts only where the video pack can bring it (none here)
+        assert st["pinned_total"] == len(CONTRACT_IDS["nasa_file"]) and st["cap_bytes"] == 1024 * 1024 * 1024
         assert c.delete("/api/video/cache").json()["bytes"] == 0
         assert c.get("/api/video/phases_loop/available").json()["status"] == "offline"
         assert v["bytes"] > 0
@@ -346,15 +361,19 @@ def test_prep_videos_are_labelled_allow_listed_and_belong_to_real_prep_tasks():
     preps = {l["prep"]["id"] for l in content.course()["lessons"] if l.get("prep")}
     vids = [v for v in video.catalog() if v.get("prep")]
     assert {v["prep"] for v in vids} >= {"crater_drop", "oreo_phases"}
-    assert any(v.get("nasa") is not False for v in vids), "at least one NASA-made Watch-how video"
+    # [videos offline] every prep task with a Watch how video has a NASA-made one that plays from a local file
+    for task in {v["prep"] for v in vids}:
+        assert any(v["prep"] == task and v.get("nasa") is not False and v["source"] in video.LOCAL_SOURCES
+                   and v["prefetch"] for v in vids), task
     for v in vids:
         assert v["prep"] in preps, v["id"]
-        assert v["source"] == "youtube" and not v["prefetch"] and v.get("channel"), v["id"]
+        assert v.get("channel"), v["id"]
         if v.get("nasa") is False:
+            assert v["source"] == "youtube" and not v["prefetch"], "third-party videos are never bundled (no permission)"
             assert video.NON_NASA_YOUTUBE[v["youtube_id"]] == v["channel"]
             assert "not from NASA" in v["credit"]
         else:
-            assert v["credit"].startswith("NASA") and v["youtube_id"] not in video.NON_NASA_YOUTUBE
+            assert v["credit"].startswith("NASA") and v.get("youtube_id") not in video.NON_NASA_YOUTUBE
     # every allow-listed non-NASA id is in the catalog (no stale allow-list entries)
     assert set(video.NON_NASA_YOUTUBE) == {v["youtube_id"] for v in video.catalog() if v.get("nasa") is False}
 
@@ -371,3 +390,96 @@ def test_non_nasa_videos_need_the_allow_list_and_a_label():
     ]:
         bad = copy.deepcopy(good); mutate(bad[k])
         assert any(frag in p for p in video.validate(bad)), (frag, video.validate(bad))
+
+
+# ---------------------------------------------------------------- [videos offline] pack_file + local play ----------
+def _pack_item(monkeypatch, body: bytes, **extra) -> dict:
+    v = {**copy.deepcopy(video.item("diy_crater_nasa")), "bytes": len(body), "sha256": hashlib.sha256(body).hexdigest(),
+         **extra}
+    cat = [v if x["id"] == v["id"] else x for x in json.loads(video.catalog_path().read_text(encoding="utf-8"))]
+    monkeypatch.setattr(video, "catalog", lambda: cat)
+    return v
+
+
+def test_a_pack_file_plays_from_the_video_pack_offline_with_poster(tmp_cache, tmp_path, monkeypatch):
+    body = b"\x05" * 3000
+    v = _pack_item(monkeypatch, body)
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / f"{v['id']}.mp4").write_bytes(body)
+    (pack / f"{v['id']}.jpg").write_bytes(b"jpg!")
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    monkeypatch.setattr(video, "_proxy", lambda *a, **k: pytest.fail("a pack_file is never streamed"))
+    with TestClient(app) as c:
+        pub = next(x for x in c.get("/api/video/catalog").json() if x["id"] == v["id"])
+        assert pub["play_url"] == f"/api/video/{v['id']}/file" and pub["poster_src"] and pub["captions_src"] is None
+        # offline (tmp_cache), and not copied yet: the pack's copy already counts as playable
+        assert c.get(f"/api/video/{v['id']}/available").json()["status"] == "cached"
+        r = c.get(f"/api/video/{v['id']}/file", headers={"Range": "bytes=0-9"})
+        assert r.status_code == 206 and len(r.content) == 10
+        assert c.get(f"/api/video/{v['id']}/poster").content == b"jpg!"
+        st = c.get("/api/video/cache").json()
+        assert st["pinned_total"] == len(CONTRACT_IDS["nasa_file"]) + 1 and st["pinned_ready"] == 1
+
+
+def test_a_nasa_file_in_the_pack_counts_as_playable_before_it_is_copied(tmp_cache, tmp_path, monkeypatch):
+    body = b"\x06" * 2048
+    _fake_item(monkeypatch, body)
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / "phases_loop.mp4").write_bytes(body)
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    with TestClient(app) as c:     # offline: before, this said "offline" until the background copy ran
+        assert c.get("/api/video/phases_loop/available").json()["status"] == "cached"
+
+
+def test_prefetch_copies_pack_files_and_never_downloads_them(tmp_cache, tmp_path, monkeypatch):
+    body = b"\x07" * 1024
+    v = _pack_item(monkeypatch, body)
+    with pytest.raises(video.DownloadError, match="only the video pack"):
+        video.fetch_video(v)                       # no pack: nothing to download it from
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    (pack / f"{v['id']}.mp4").write_bytes(body)
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    assert video.fetch_video(v).read_bytes() == body and video.is_cached(v)
+
+
+def test_pack_file_and_permission_rules():
+    good = copy.deepcopy(video.catalog())
+    k = {v["id"]: i for i, v in enumerate(good)}
+    nasa = good[k["diy_crater_nasa"]]
+    for mutate, frag in [
+        (lambda v: v.update(file_url="https://svs.gsfc.nasa.gov/x.mp4"), "never downloaded by the app"),
+        (lambda v: v.update(prefetch=False), "pack is its only copy"),
+        (lambda v: v.pop("sha256"), "needs its sha256"),
+        (lambda v: v.update(origin_url="https://example.com/x.mov"), "names its NASA original"),
+        (lambda v: v.update(music_credit=True), "music-credited"),
+        (lambda v: v.update(poster="yes"), "true or false"),
+    ]:
+        bad = copy.deepcopy(good); mutate(bad[k["diy_crater_nasa"]])
+        assert any(frag in p for p in video.validate(bad)), (frag, video.validate(bad))
+    # the drop-in for a third-party video its owner allowed: a pack_file with the permission on record and in the credit
+    drop = {**{f: nasa[f] for f in ("concept", "duration_s", "age", "bytes", "sha256")}, "id": "diy_crater_licensed",
+            "title": "Moon Crater Making at Home", "source": "pack_file", "nasa": False, "channel": "Astronomy in Action",
+            "credit": "Astronomy in Action · used with permission", "permission": "email from the creator, 2026-11-20",
+            "music_credit": False, "prefetch": True, "prep": "crater_drop", "poster": True}
+    assert video.validate(good + [drop]) == []
+    for mutate, frag in [
+        (lambda v: v.pop("permission"), "permission record"),
+        (lambda v: v.update(credit="Astronomy in Action"), "used with permission"),
+        (lambda v: v.pop("channel"), "names its owner"),
+        (lambda v: v.pop("prep"), "Mission prep task"),
+    ]:
+        d = copy.deepcopy(drop); mutate(d)
+        assert any(frag in p for p in video.validate(good + [d])), (frag, video.validate(good + [d]))
+
+
+def test_every_catalog_video_but_the_third_party_extras_plays_from_a_local_file():
+    """Karan 2026-11-17: YouTube refuses the embeds from his network ("confirm you're not a bot"). Every NASA video is a
+    local file; the only YouTube entries left are the two third-party Watch how extras, never bundled without permission."""
+    for v in video.catalog():
+        if v.get("nasa") is False:
+            assert v["source"] == "youtube" and not v["prefetch"] and v.get("prep"), v["id"]
+        else:
+            assert v["source"] in video.LOCAL_SOURCES and v["prefetch"] and v["music_credit"] is False, v["id"]

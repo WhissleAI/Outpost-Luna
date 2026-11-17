@@ -33,7 +33,8 @@ uploads it again. Sources (env overrides in brackets):
     steer     [STEER_SRC] a steer-tts-edge folder (default: the WhissleAI/steer-tts-edge HF snapshot) + director.bin
               [STEER_DIRECTOR] (default: ../steer-tts/c/models/steer-tts-edge) + ../steer-tts LICENSE and edge/NOTICE.
               Every file must match STEER_V1_LOCK (the v1 model package's), which is also the download fallback
-    videos    [VIDEO_CACHE_SRC] an app video cache folder whose files match the catalog's sha256, else nasa.gov
+    videos    [VIDEO_CACHE_SRC] an app video cache folder whose files match the catalog's sha256, else nasa.gov;
+              pack_files from [VIDEO_LOCAL_SRC] (default backend/data/video/local; docs/MEDIA.md)
 Stdlib only, except the videos' SRT -> WebVTT conversion, which reuses backend/app/video.py (run under the backend env).
 """
 from __future__ import annotations
@@ -145,7 +146,23 @@ def src_videos():
     pins = [v for v in cat if v.get("prefetch") and v.get("source") == "nasa_file"]
     have = Path(os.environ.get("VIDEO_CACHE_SRC", Path.home() / "Library/Application Support/Outpost Luna/cache/video"))
     stage = OUT / "src-videos"
-    out: list = [("NOTICE", NASA_NOTICE.encode())]
+    third = [f"{v['title']}: {v['credit']} ({v['permission']}). Not NASA media; not for reuse.\n"
+             for v in cat if v.get("source") == "pack_file" and v.get("nasa") is False]
+    out: list = [("NOTICE", (NASA_NOTICE + "".join(third)).encode())]
+    # [videos offline] pack_files: only the pack carries them (a NASA re-encode from `tools/video_catalog.py --derive`, or
+    # a third-party video used with permission, dropped in by hand), from VIDEO_LOCAL_SRC (backend/data/video/local)
+    local = Path(os.environ.get("VIDEO_LOCAL_SRC", ROOT / "backend/data/video/local"))
+    for v in (v for v in cat if v.get("source") == "pack_file"):
+        mp4 = local / f"{v['id']}.mp4"
+        if not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
+            sys.exit(f"videos: {mp4} missing or not the catalog's file (sha256): run `uv run python tools/video_catalog.py "
+                     "--derive` in backend/ (a NASA pack_file), or drop the licensed file in (docs/MEDIA.md)")
+        out.append((mp4.name, mp4))
+        for ext, key in (("vtt", "captions"), ("jpg", "poster")):
+            if v.get(key):
+                if not (local / f"{v['id']}.{ext}").exists():
+                    sys.exit(f"videos: {local / (v['id'] + '.' + ext)} missing (the catalog says {key}: true)")
+                out.append((f"{v['id']}.{ext}", local / f"{v['id']}.{ext}"))
     for v in pins:
         vid, mp4 = v["id"], stage / f"{v['id']}.mp4"
         if not (mp4.exists() and sha256_file(mp4) == v["sha256"]):

@@ -100,11 +100,12 @@ const settingsSection = {
     <p class="set-help">NASA videos are saved here after the first time online, so lessons can show them offline.</p>`,
   bind(el) {
     const stat = el.querySelector("[data-vid-stat]"), clear = el.querySelector("[data-vid-clear]");
-    const paint = s => { stat.textContent = `Videos: ${mb(s.bytes || 0)} saved · ${s.pinned_ready ?? 0} of ${s.pinned_total ?? 0} lesson videos ready`; };
+    let total = 0;   // the lesson videos this computer can have (the backend counts them; no fixed number here)
+    const paint = s => { total = s.pinned_total ?? total; stat.textContent = `Videos: ${mb(s.bytes || 0)} saved · ${s.pinned_ready ?? 0} of ${s.pinned_total ?? 0} lesson videos ready`; };
     fetch("/api/video/cache").then(r => r.json()).then(paint).catch(() => { stat.textContent = "Videos: can't check right now."; });
     clear.onclick = async () => {
       clear.disabled = true;
-      try { const r = await fetch("/api/video/cache", { method: "DELETE" }); paint({ ...(await r.json()), pinned_ready: 0, pinned_total: 8 }); clear.textContent = "Cleared"; }
+      try { const r = await fetch("/api/video/cache", { method: "DELETE" }); paint({ ...(await r.json()), pinned_ready: 0, pinned_total: total }); clear.textContent = "Cleared"; }
       catch (e) { clear.disabled = false; }
       fetch("/api/video/cache").then(r => r.json()).then(paint).catch(() => {});
     };
@@ -117,6 +118,14 @@ if (typeof window !== "undefined") (O.settingsSections = O.settingsSections || [
 export async function fillCredits(doc = document) {
   const box = doc.getElementById("aboutVideos"); if (!box) return;
   const list = await credits(); if (!list.length) return;
-  box.innerHTML = list.map(v => `<tr><td>${esc(v.title)}</td><td>${esc(v.credit)}${v.source === "youtube" ? " · YouTube" : ""}</td></tr>`).join("");
+  box.innerHTML = list.map(v => `<tr><td>${esc(v.title)}</td><td>${esc(creditLine(v))}</td></tr>`).join("");
+}
+/** One credit line: the catalog's credit, "· YouTube" for an embed, and "used with permission" for a third-party file
+ *  the video pack carries (app/video.py validate() already makes that credit say so; this never drops it). */
+export function creditLine(v) {
+  let s = String(v.credit || "");
+  if (v.source === "youtube") s += " · YouTube";
+  if (v.source === "pack_file" && v.nasa === false && !/used with permission/i.test(s)) s += " · used with permission";
+  return s;
 }
 export default O.stepRenderers;

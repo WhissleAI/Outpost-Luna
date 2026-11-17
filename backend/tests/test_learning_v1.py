@@ -201,13 +201,15 @@ def test_learn_more_maps_every_sim_outcome_to_a_known_video_or_a_fact():
                               (ROOT / "backend/app/mission/sim.py").read_text()))
     assert outcomes == {"life_support_out", "dose_limit", "power_out", "survived"}
     assert set(lm) == outcomes
-    assert lm["dose_limit"] == {**lm["dose_limit"], "media": "moon_weather", "online": "solar_eruptions"}
+    assert lm["dose_limit"] == {**lm["dose_limit"], "media": "moon_weather", "online": None}
     assert lm["power_out"]["media"] is None                    # no video yet: a fact card
     assert lm["life_support_out"]["media"] == "water_extraction" and lm["survived"]["media"] == "meet_crew"
     for e in lm.values():
         assert all(x is None or x in content.VIDEO_IDS for x in (e["media"], e["online"]))
         assert words(e["fact"]) <= 20
-    assert lm["dose_limit"]["online"] in content.VIDEO_MEDIA["online"]      # online-only pick is a YouTube video
+        # [videos offline] every Learn more video plays from a local file: no YouTube pick
+        assert e["media"] is None or e["media"] in content.VIDEO_MEDIA["cached"]
+        assert e["online"] is None or e["online"] in content.VIDEO_MEDIA["online"]
 
 
 def test_explorer_lessons_validate(monkeypatch):

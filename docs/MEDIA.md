@@ -1,8 +1,10 @@
 # NASA video (media v1)
 
-Short NASA videos in lessons, the briefing and the debrief. NASA files play offline from a local cache in our own
-player. NASA-channel YouTube uploads play as a youtube-nocookie embed when the computer is online. Every video gets a
-predict → watch (or skip) → reveal step, and media never blocks a lesson.
+Short NASA videos in lessons, the briefing and the debrief. **Every NASA video plays from a local file** in our own
+player: the desktop's video pack (a first-run asset) carries all of them, and the backend keeps them in its cache, so
+they play without internet ("videos offline", 2026-11-17: YouTube refuses its embeds on some networks with "Sign in to
+confirm you're not a bot", even in real Chrome). The only YouTube embeds left are two hand-picked, third-party
+Mission prep extras. Every video gets a predict → watch (or skip) → reveal step, and media never blocks a lesson.
 
 ## The catalog: `backend/data/video/catalog.json`
 
@@ -12,40 +14,88 @@ A list of entries:
 |---|---|
 | `id` | lower_snake_case, unique |
 | `title`, `concept`, `age` | what it is and who it's for |
-| `source` | `nasa_file` (downloaded once, played offline) or `youtube` (stream only, never cached; YouTube policy III.E.1) |
+| `source` | `nasa_file` (a NASA file, downloaded once or copied from the video pack, played offline), `pack_file` (only the video pack carries it; the app never downloads it: below) or `youtube` (stream only, never cached; YouTube policy III.E.1) |
 | `youtube_id` | youtube only |
 | `file_url`, `captions_url`, `poster_url` | nasa_file only. https on a NASA host. `.srt` is converted to WebVTT once. A missing `captions_url` means the video has no captions (or NASA's file is empty) |
-| `bytes`, `sha256` | the download check (`prefetch` items must have `bytes`) |
+| `origin_url`, `origin_sha256`, `derive` | a NASA pack_file: its NASA original (https on a NASA host, `www.jpl.nasa.gov` included) and the ffmpeg arguments of the re-encode the pack carries |
+| `captions`, `poster` | pack_file only, true/false: the pack also carries `<id>.vtt` / `<id>.jpg` |
+| `permission` | a third-party pack_file only: the record of the owner's written permission (who, when) |
+| `bytes`, `sha256` | the download / pack check (`prefetch` items must have `bytes`; a pack_file must have `sha256`) |
 | `duration_s` | sets the button label ("Watch (2 min)") and the watched threshold |
-| `credit` | starts with "NASA" (a non-NASA video: its channel and "not from NASA"). Shown under the player and in About → Videos |
+| `credit` | starts with "NASA" (a non-NASA video: its channel and "not from NASA", or "used with permission" for a pack_file). Shown under the player and in About → Videos |
 | `nasa`, `channel` | optional; `nasa: false` marks one of the few hand-picked non-NASA videos (below) |
 | `prep` | optional, a Mission prep task id (course.json `lesson.prep.id`): the video is that task's "Watch how" |
-| `music_credit` | the NASA source credits third-party music. Such a video plays from YouTube, never as a cached file |
-| `prefetch` | pinned: downloaded on first online launch and never evicted |
-| `fallback` | optional, a `nasa_file` id. The offline card offers it in place of this video |
+| `music_credit` | the NASA source credits third-party music. Such a video plays from YouTube, never as a cached file. **None is in the catalog now**: see "Where each video comes from" |
+| `prefetch` | pinned: in the video pack, copied (or downloaded) on first launch and never evicted. Every NASA video is pinned |
+| `fallback` | optional, a `nasa_file` / `pack_file` id. The offline / won't-play card offers it in place of this video |
+| `source_page`, `nasa_id`, `note` | where a maintainer finds it again; why this rendition |
+
+### Where each video comes from (checked 2026-11-17)
+
+The 8 original NASA files are unchanged. The 11 YouTube entries were each looked up on NASA's own hosts
+(svs.gsfc.nasa.gov, images.nasa.gov, jpl.nasa.gov), including their music credits:
+
+| id | was (YouTube) | now | rendition |
+|---|---|---|---|
+| `far_side_view` | jdkMHkF7BaA, NASA Goddard | the same video, SVS 4253 ("A View From The Other Side", G2015-013) | 960×540 H.264 `.m4v`, 45.4 MB, captions |
+| `south_pole_shadows` | 0GCTOHu4OrQ, NASA Goddard | the same visualization, **silent** (SVS 4893 `moon_spzoom_720p30.mp4`): the narrated cut credits Universal Production Music | 720p, 20.7 MB |
+| `ltv` | zTHJ9zb8J2s, NASA | the same trailer, images.nasa.gov `jsc2024m000100…(Official NASA Trailer)` | 720p `~medium`, 24.7 MB, captions |
+| `meet_crew` | lPyl6d2FJGw, NASA | **replaced**: NASA hosts that video nowhere as a file; "Artemis II Crew Talks About the Moon" (images.nasa.gov `jsc2026m000054…`, the four crew) | 1080×608 `~medium`, 39.4 MB, captions |
+| `moon_phases_2025` | RROlja1ob_4, NASA Goddard | the same visualization, **silent** (SVS 5415 `phases_2025_fancy_720p30.mp4`): the YouTube cut credits Universal Production Music | 720p, 75.6 MB |
+| `solar_eruptions` | bX0hv0EFKnI | **dropped**: SVS 14988 credits Universal Production Music, and NASA hosts only 137 MB vertical files. The debrief's dose-limit Learn more plays `moon_weather` |  |
+| `artemis_south_pole` | AQAaAJW-uC0 | **dropped**: SVS 14886 credits Universal Production Music; no lesson used it |  |
+| `impact_flashes` | B9MoWCnmuqw | **dropped**: SVS 15103 credits Universal Production Music (and is 4K only, 137 MB); no lesson used it |  |
+| `solar_eclipse_sp` | hyf5JF_VxwM, NASA Space Place | **dropped**: Space Place hosts no file (YouTube only); no lesson used it. NASA's "The Moon's Role in a Solar Eclipse" (images.nasa.gov `GSFC_20170721_LRO_m12648_SolarEclipse`, 47 MB) could take its place |  |
+| `diy_crater`, `diy_oreo_phases` | third-party (below) | **not downloaded**: no permission. Optional YouTube extras |  |
+
+New: `diy_crater_nasa`, NASA/JPL Education's "DIY Space: How to Make a Crater" (Ota Lutz; flour, sprinkles, cocoa,
+rocks; 2:43), the crater_drop task's NASA Watch how. JPL hosts it only as a 293 MB 720p `.mov`, so it is a
+**pack_file**: `tools/video_catalog.py --derive` downloads the original (`origin_url`, checked against
+`origin_sha256`), re-encodes it with the entry's `derive` arguments (720p H.264 CRF 27 + AAC, 19.3 MB), grabs a poster,
+and pins `bytes` and `sha256`. NASA hosts no Oreo-phases video (Space Place's Oreo activity is a printable page only),
+so `oreo_phases` keeps `moon_phases_2025` as its NASA Watch how.
+
+**The video pack**: 8 videos, 199.4 MB before; 14 videos, **424.9 MB** now (38 files with captions, posters and the
+NOTICE). The largest file is 75.6 MB.
 
 ### "Watch how" videos for Mission prep (hand-picked, some not from NASA)
 
 A hands-on Mission prep task (the flour-and-cocoa crater, Oreo Moon phases) shows a **Watch how** button for each catalog
-video whose `prep` is that task, NASA first, and only while the computer is online (no dead buttons). The same buttons
-also sit on the lesson's first step (0.3.11), so the Oreo video is there at the start of the phases lesson; the Try at
-home card itself stays optional (map card after the patch, or the patch screen). Voice: "show me
-how", "watch the video" (the router's `prep_watch`; never a bare "watch", which is room talk during the task). They
-play in the same youtube-nocookie player as the NASA clips; links out still go through the grown-up gate.
+video whose `prep` is that task, NASA first, each only when it can play now (no dead buttons): the NASA ones play from
+the video pack offline; a YouTube extra shows only while online. The same buttons also sit on the lesson's first step
+(0.3.11), so the phases video is there at the start of the phases lesson; the Try at home card itself stays optional
+(map card after the patch, or the patch screen). Voice: "show me how", "watch the video" (the router's `prep_watch`;
+never a bare "watch", which is room talk during the task). Links out still go through the grown-up gate.
 
-Non-NASA videos are allowed **by video id only**, never by channel: `app/video.py NON_NASA_YOUTUBE` maps each id to its
-channel, and `validate()` requires `nasa: false`, the matching `channel`, "not from NASA" in the credit and a `prep`
-task. Each one was checked (title and channel via YouTube oEmbed, embeddable, landscape, under 10 min, on topic).
+Non-NASA YouTube videos are allowed **by video id only**, never by channel: `app/video.py NON_NASA_YOUTUBE` maps each
+id to its channel, and `validate()` requires `nasa: false`, the matching `channel`, "not from NASA" in the credit and a
+`prep` task. Each one was checked (title and channel via YouTube oEmbed, embeddable, landscape, under 10 min, on topic).
+They are third-party copyrighted and not CC-licensed, so they are **never downloaded or bundled** without the owner's
+written permission.
 
-| id | video | channel | NASA | prep task |
-|---|---|---|---|---|
-| `diy_crater` | Moon Crater Making @ Home (osdOQhRhVJg, 2:06) | Astronomy in Action | no | `crater_drop` |
-| `diy_oreo_phases` | Oreo Moon Phases Activity (XeBmuY2i2fg, 0:56) | I Play With My Kids | no | `oreo_phases` |
-| `moon_phases_2025` | 2025 Moon Phases, Northern Hemisphere (RROlja1ob_4, 4:52) | NASA Goddard | yes | `oreo_phases` |
+| id | video | channel | NASA | source | prep task |
+|---|---|---|---|---|---|
+| `diy_crater_nasa` | DIY Space: How to Make a Crater (2:43) | NASA JPL Education | yes | pack_file | `crater_drop` |
+| `diy_crater` | Moon Crater Making @ Home (osdOQhRhVJg, 2:06) | Astronomy in Action | no | youtube | `crater_drop` |
+| `diy_oreo_phases` | Oreo Moon Phases Activity (XeBmuY2i2fg, 0:56) | I Play With My Kids | no | youtube | `oreo_phases` |
+| `moon_phases_2025` | 2025 Moon Phases, Northern Hemisphere (SVS 5415, silent, 4:52) | NASA Goddard | yes | nasa_file | `oreo_phases` |
+
+#### When an owner gives permission: the local drop-in
+
+1. Put their file at `backend/data/video/local/<id>.mp4` (720p H.264 MP4; not in git), and optionally `<id>.jpg`
+   (poster) and `<id>.vtt` (captions).
+2. Change the catalog entry to `"source": "pack_file"`, drop `youtube_id`, add `"permission": "<who, how, when>"`,
+   make the credit say so (`"Astronomy in Action · used with permission"`), set `poster` / `captions` to match the
+   files, `"prefetch": true`, and remove its id from `NON_NASA_YOUTUBE`.
+3. `uv run python tools/video_catalog.py --pin` (from `backend/`) records `bytes` and `sha256`; `validate()` requires
+   the permission record, "used with permission" in the credit, the `channel` and a `prep` task.
+4. Rebuild and upload the video asset (`make asset-pack`, `scripts/upload_assets.py`). The pack's NOTICE names the
+   video and its permission, and About → Videos shows the credit with "used with permission".
 
 `GET /api/video/catalog` serves it, and each entry also gets `cached`, `play_url`, `captions_src` and `poster_src`.
 `app/video.py validate()` checks the contract, and the tests run it. To recheck every URL and refresh the sizes and
-hashes, run `uv run python tools/video_catalog.py [--pin]` from `backend/`.
+hashes, run `uv run python tools/video_catalog.py [--pin] [--derive]` from `backend/` (downloads go to the dev cache,
+`CACHE_DIR/video`).
 
 ## For screens: `frontend/src/media/video.js`
 
@@ -69,7 +119,14 @@ const { watched, seconds } = await openVideo("psr", { context: "debrief" });   /
   (`commands.js stallWatch`, `YT_STALL_MS`), or the overlay shows "This video won't play here." with the catalog's
   `fallback` NASA file as **Watch NASA's … video instead** (offered when it is saved, or, since we are online, when it
   can stream). A pause before it plays disarms the watch; playing once ends it.
+- **Watch on YouTube** (videos offline): a YouTube video that won't play here (the bot card, an embed error) and has no
+  NASA `fallback` gets a "Watch on YouTube" button on that card. It opens the plain `https://www.youtube.com/watch?v=<id>`
+  page with `window.open`; the desktop's `setWindowOpenHandler` classifies it as "youtube" (`gate.js classifyOpen`), so
+  it opens in the system browser only after the grown-up gate's 3-second hold. A signed-in browser usually passes the
+  bot check the embed fails. Offline there is no button (it would need internet anyway).
 - A NASA file that errors before it has played gets one quiet retry 1.5 s later (its first play is being cached).
+- The overlay ignores a `<dialog>` "close" event that arrives while the dialog is open again: `close()` queues that
+  event, so closing one video and opening the next a few ms later used to close the new one at once (videos offline).
 - The card always renders inside the overlay (`.vid-stage` / `.vid-bar`) with a Close button. Esc, the Close button,
   voice "stop" and a thumbs down close it; an open palm pauses. Opening the overlay closes Settings and stops a gestures
   calibration (`outpost:modal-open`), and Settings opened by voice closes the video, so no sheet is ever left inert
@@ -102,7 +159,10 @@ each. Text that is neither watch nor skip is ignored, never counted as a miss.
   mission clock ticks or a video streams. If the computer is offline, the backend tries again every 5 minutes.
 - Any other NASA file streams through the backend on its first play and is cached at the same time. A file the
   desktop's video pack (`VIDEO_PACK_DIR`) already has is copied from it and served at once, never streamed; when the
-  stream fails but the background copy has landed, that copy is served.
+  stream fails but the background copy has landed, that copy is served. `available` says "cached" for a video the
+  pack has, even before it is copied, so it plays offline from the first launch.
+- A `pack_file` comes only from the video pack: without the pack it is "offline" (its Watch how button stays hidden),
+  `/file` answers 503, and it does not count in Settings → Videos ("X of N lesson videos ready").
 - TLS: the backend checks NASA hosts against certifi's roots plus Let's Encrypt's intermediates
   (`backend/data/video/intermediates.pem`, `video.tls()`), because `svs.gsfc.nasa.gov` has sent its leaf certificate
   without the intermediate since 2026-11-16. Browsers fetch the missing one; Python does not, so `phases_loop` failed
