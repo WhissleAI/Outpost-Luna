@@ -71,7 +71,7 @@ export function createNavigator({ panel, say = () => {}, onPick = () => {}, onSt
       const label = `${p.name}. ${kl.map(l => l.text).join(". ")}`;
       return `<button type="button" class="mx-site nv-row nv-kid" role="radio" data-site="${esc(p.id)}" aria-checked="${sel}" tabindex="${sel ? 0 : -1}" aria-label="${esc(label)}">
         <span class="nv-top"><b>${esc(p.name)}</b><span class="nv-score" aria-hidden="true" hidden>${sc}</span></span>
-        <span class="nv-bars">${kl.map(l => `<span class="nv-bar">${ic(l.icon, 16)}<i style="--p:${Math.round(Math.max(0.06, Math.min(1, l.p)) * 100)}%"></i><em>${esc(l.short)}</em></span>`).join("")}</span></button>`;
+        <span class="nv-bars">${kl.map(l => `<span class="nv-kbar">${ic(l.icon, 16)}<i style="--p:${Math.round(Math.max(0.06, Math.min(1, l.p)) * 100)}%"></i><em>${esc(l.short)}</em></span>`).join("")}</span></button>`;
     }
     const label = `${p.name}: score ${sc} of 100. ${TAG[p.status] || ""}. Sunlight ${fmt(p, "sunlight_pct")} of the year, Earth in view ${fmt(p, "earth_pct")}, ice ${fmt(p, "ice_km")}, slope ${fmt(p, "slope_deg")}`;
     if (isSite) {
