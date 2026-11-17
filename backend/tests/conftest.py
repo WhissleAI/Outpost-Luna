@@ -35,7 +35,7 @@ def no_safety_tagger(monkeypatch):
     wants tags patches app.safety.tagger_read itself (tests/test_safety.py)."""
     from app import safety
 
-    async def none(text):
+    async def none(text, command_context=False):
         return []
     monkeypatch.setattr(safety, "tagger_read", none)
 

@@ -19,7 +19,7 @@ browser (frontend/, Vite :5173)
 backend/ (FastAPI :8100)  ── app logic: Director, gazetteer, moments, claim check, mission
    │  words+audio ──► Deepgram Flux (cloud ear, for now)
    │  audio + words + context ──► model_server WS /v1/stream          (Arc v1.1 Mini metadata)
-   │  text ──► model_server POST /v1/tag                               (Arc Tagger v0.3)
+   │  text ──► model_server POST /v1/tag                               (Arc Tagger 0.5.0)
    ▼
 model_server/ (FastAPI :8200) ── the ONLY process that loads weights; Head Start can share it (MODELS=host)
 ```
@@ -30,7 +30,7 @@ Run: `make setup && make data && make dev`, then open http://localhost:5173. Tes
 
 | Arc model | Called from | How | Code |
 | --- | --- | --- | --- |
-| **Arc Tagger v0.3** (native int8 C lib via ctypes) | model server | A pool of handles per domain (`assistant`, `news`, `talk`); one handle per request, reset after | `model_server/app/arctag.py` (`ArcTagger`), `model_server/app/main.py` (`POST /v1/tag`) |
+| **Arc Tagger 0.5.0** (native int8 C lib via cffi; model files v0.3) | model server | A pool of handles per domain (`assistant`, `news`, `talk`, `kids`); one handle per request, reset after. Safety reads use `kids` (+ `command_context` on command screens) | `model_server/app/arctag.py` (`ArcTagger`), `model_server/app/main.py` (`POST /v1/tag`) |
 | Arc Tagger, streaming | model server | One handle per WebSocket; push / poll / endpoint / revision semantics, the same as Head Start | `model_server/app/tag_stream.py` (`WS /v1/tag/stream`) |
 | **Arc v1.1 Mini** (audio metadata, external transcript, decoder not loaded) | model server | File: `predict(wav, words, domain, events="all")`. Live: `MetaStream` fed PCM + Deepgram words | `model_server/app/arcmeta.py` (`predict`, `MetaStream`, `awe_score`), `model_server/app/routes_meta.py` (`POST /v1/meta`, `WS /v1/stream`) |
 | Context into Arc | model server | `{"t":"context"}` on `/v1/stream` → `names` go to `Stream.set_names()`; terms, mission state and telemetry are recorded, not used by Arc yet | `model_server/app/stream_context.py`; details in `STREAMS.md` |

@@ -42,7 +42,7 @@ with the chunked upload-session API, makes public links and checks each one anon
 | id | what | required | download | installed as |
 |---|---|---|---|---|
 | `ear` | Arc Transcriber Space `nft2/` + LICENSE + NOTICE (CC BY-NC 4.0) | yes | 461 MB | `ARC_SPACE_DIR` |
-| `tagger` | Arc Tagger v0.3 int8 + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
+| `tagger` | Arc Tagger model (v0.3 int8; run by the 0.5.0 library, kids domain built in) + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
 | `embedder` | all-MiniLM-L6-v2 int8 ONNX (Apache-2.0) | yes | 23 MB | `EMBED_MODEL_DIR` |
 | `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
 | `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
