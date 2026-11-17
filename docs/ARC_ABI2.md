@@ -20,7 +20,7 @@ Code: `desktop/vendor/libarc` (ABI 2, `"1.3.0-outpost.1"`), `model_server/app/nf
 | Disfluencies, `clean_text` | always | `words.disfl`, `words.clean_text` → mission parsing (`director._mission_turn`) |
 | Live stream (`live = 1`) | `EAR_LIVE=1` | partial words from `PARTIAL` events (no re-decoding), `{"t":"entity"}`, `{"t":"eot"}` |
 | Mid-stream names | always (live) | `arc_nft2_stream_set_names` on every list change (`EarStream.set_names`) |
-| Echo reference | live + the app's playback (`EAR_PLAYBACK_THRESHOLD` 0.4) | `frontend/src/echoref.js` → `/ws/listen {"t":"ref"}` → `arc_nft2_stream_feed_ref`; `playback_leak`, `playback`, `{"t":"barge_in"}` |
+| Echo reference | live + the app's playback (leak ≥ 0.85 = our own audio, §8) | `frontend/src/echoref.js` → `/ws/listen {"t":"ref"}` → `arc_nft2_stream_feed_ref`; `playback_leak`, `playback`, `{"t":"barge_in"}` |
 | `echo_decode` | `EAR_ECHO_DECODE` (off; §4) | finals decoded from the echo-cancelled audio |
 | ORT telemetry | libarc disables it | `ORT_DISABLE_TELEMETRY=1` kept as well |
 | Arc Tagger in libarc (`ARC_WITH_ARCTAG`) | not built | the model server already runs Arc Tagger 0.5 (kids domain) itself |
@@ -119,8 +119,9 @@ on.
   `/ws/listen` as `{"t":"ref","at","pcm"}`, stamped with the mic socket's sample clock (`listen.js clock()`); the
   backend relays it, the model server calls `arc_nft2_stream_feed_ref`. **Not covered:** NASA videos (`<video>`, no
   Web Audio graph), YouTube (iframe), the browser-voice fallback, UI beeps.
-- **Policy (Arc's limits):** a turn is dropped as our own playback only when Arc flags it (`playback_leak >=
-  EAR_PLAYBACK_THRESHOLD`, 0.4) **and** no barge-in was heard during it (`session.ear_playback`). A barge-in in the last
+- **Policy (until §8, the simulation's):** a turn was dropped as our own playback only when Arc flagged it (`playback_leak
+  >= EAR_PLAYBACK_THRESHOLD`, 0.4) **and** no barge-in was heard during it. **Since the real-laptop calibration (§8):**
+  dropped when `playback_leak >= 0.85` (`session.PLAYBACK_THRESHOLD`), barge-in or not. A barge-in in the last
   0.15 s of our playback is ignored (it is the speaker's echo tail: it fired at the end of every clean echo in tests).
 - **Measured (simulated laptop path: 250 Hz high-pass, room reverb RT60 0.25-0.7 s, 0.1-0.4 s output latency):**
   - leak separates our audio from a kid talking over it well: AUC 0.95 (echo-bank clips with words, median leak
@@ -133,8 +134,7 @@ on.
     measured 22 % of merged kid turns flagged, so we follow their rule until real laptops say otherwise.
   - `echo_decode` (finals from the cancelled audio): kid turns with our voice underneath get fewer inserted words
     (≥ 2 inserted: 9.4 % → 3.9 %) but much worse words (WER 37 → 54 %): **off**.
-- **Next:** calibrate `EAR_PLAYBACK_THRESHOLD` and the barge-in rule on real laptop echo
-  (`tools/arc_collect` echo mode), and send Arc the barge-in-on-reverberant-echo finding.
+- **Done (§8):** calibrated on a real laptop echo recording (`tools/arc_collect` echo mode).
 
 ## 5. The Director: shipped decisions unchanged
 
@@ -177,3 +177,100 @@ glob, so the new sources (`arc_echo.c`, `arc_post.c`) are picked up; checked her
 `gen_bindings.py --check --lib desktop\resources\native\arc.dll` must print `ABI 2 (matches arc.h)`. Then the
 Windows test plan as usual (docs/BUILD_WINDOWS.md), plus: a voice turn shows partial words while speaking (live mode),
 and the guide's own voice through the laptop speakers does not become a turn more often than before.
+
+## 8. Real laptop echo: calibration (2026-11-16)
+
+**The recording** (`tools/arc_collect` echo mode, read-only here): MacBook Pro M3 Pro, built-in speakers and microphone,
+system volume 75 %, 25 min. 295 played items: 162 Nora voice-pack lines, 110 OS-voice lines (Nora, Daniel, Aman, Karen,
+Tara, Samantha), 23 crew clips, 6 chirps, at four levels (0, -6, -12, -18 dB under the -18 dBFS master), 30 noise-floor
+stretches. The reference is sample-aligned with the microphone (one duplex stream). Round trip from the chirps: 141,
+141, 154, 159, 148, 149 ms (it moves in steps, not smoothly). Echo at the microphone: -29 dBFS (0 dB block) to -44 dBFS
+(-18 dB); room floor -57.5 dBFS. No kid speech is in it.
+
+**How it was run:** the whole 25 min through the app's own ear (`arc_ear.EarStream`, ABI 2 live, nft2), 80 ms at a
+time, with the reference fed exactly as `echoref.js` does: a guide sentence whole when it starts (stamped with the
+moment it was handed to the speaker), a crew clip in 80 ms frames as it plays. The stream is reopened when idle past
+`EAR_STREAM_MAX_S` (60 s), as in the app: 24 canceller restarts in 25 min. Each final was routed by the app's own
+router (`turn_router.route` with `Spoken` fed the lines' start / end, explorer screen) and then by the drop rule.
+`nice`, 2 decode processes, `ARC_THREADS=2`.
+
+**Kid over playback (semi-synthetic):** 165 round-11 kid turns re-rendered from their seeds (#125's `render_kid`, the
+round-11 chain, no noise bed) mixed into the real microphone track: 75 % starting 0.3 s into one of our lines and
+talking over it, 25 % starting 0.15-0.8 s after a line ended; kid speech level -36 to -24 dBFS (median -30: from 6 dB
+under to 5 dB over our loudest echo). The echo, the room and the device are real; the kid is a Mac voice added
+digitally (no acoustic coupling, no AGC interaction). 116 of them produced words.
+
+### Results
+
+| | real recording |
+|---|---|
+| Our own lines that put words into the ear | 180 finals (295 items) |
+| ... that the router already ignores (text echo 103, hard mute 55, filler 3 ...) | 165 |
+| **... that become turns with no echo rule** | **15** (21 of 295 lines) |
+| playback_leak of our own finals, median (0 / -6 / -12 / -18 dB) | 0.75 (0.83 / 0.80 / 0.67 / 0.63) |
+| playback_leak of kid-over-playback finals: p10 / median / p90 | 0.00 / 0.43 / 0.77 |
+| **AUC, own-line finals vs kid-over-playback finals** | **0.72** (the simulation said 0.95) |
+| Flagged at 0.4: own / kid over playback | 76 % / 51 % (Arc measured 22 % of merged kid turns) |
+| Flagged at 0.85: own / kid over playback | 26 % / 2 % |
+| Arc BARGE_IN on our own lines (no kid anywhere) | on 64 % of own-line finals; 257 events in 25 min, median p 0.71 |
+| Turns during the 30 noise-floor stretches ("silence") | 0 |
+| Speaker -> mic delay, per line, measured by the app (`echo_delay.py`, GCC-PHAT) | 294 / 295 lines; 141-159 ms, matching every chirp |
+
+The own-line turns the router misses are mostly the en-IN OS voices (Tara, Aman) on long lines, transcribed as
+nonsense ("pierre chloe's thermal post philadelph..."), which no text echo check can match, and most of them come with a
+barge-in event. That is why the old rule (flag AND no barge-in) dropped only 1 of the 15.
+
+**The drop rule, both sides** (own-line turns that reach the app on the real echo; kid turns heard that the rule throws
+away, and kid turns that reach the app, of 116 heard):
+
+| rule | own-line turns | kid turns lost | kid turns that reach the app |
+|---|---|---|---|
+| no echo rule | 15 | 0 | 60 |
+| old: leak >= 0.4 and no barge-in | 14 | 5 | 59 |
+| leak >= 0.4 (Arc's barge-in ignored) | 1 | 60 | 39 |
+| leak >= 0.7 | 6 | 22 | 51 |
+| leak >= 0.8 | 7 | 7 | 56 |
+| **leak >= 0.85 (shipped)** | **10** | **2** | **59** |
+| leak >= 0.9 | 15 | 1 | 60 |
+| leak >= 0.85 unless a barge-in with p >= 0.8 | 12 | 1 | 59 |
+| leak >= 0.8 unless a barge-in with p >= 0.9 | 9 | 5 | 57 |
+
+Shipped: `session.PLAYBACK_THRESHOLD = 0.85`, the barge-in no longer keeps a flagged turn (`EAR_PLAYBACK_THRESHOLD`
+0.85 too, for the `playback` flag). Better on both sides than before: own-line turns 14 -> 10, kid turns lost 5 -> 2,
+the same 59 reaching the app. The optimum is narrow (0.8 loses 7 kid turns; 0.9 keeps all 15 own lines) on one laptop
+and 116 kid turns, which is why on-device learning (the next PR, `docs/ON_DEVICE_LEARNING.md`) may move it per computer, but only
+within 0.75-0.95, and only with evidence from both sides.
+
+**Warm-up** (own-line finals by seconds of playback the canceller had seen since its stream opened):
+
+| playback seen | finals | leak median | flagged at 0.85 |
+|---|---|---|---|
+| < 1 s | 7 | 0.29 | 0 / 7 |
+| 1-3 s | 11 | 0.69 | |
+| 3-10 s | 26 | 0.77 | |
+| >= 10 s | 136 | 0.76 | |
+
+So about 1-3 s of playback, close to Arc's "~1 s"; the first sentence after a (re)open is not handled. With the 60 s
+reopen this happens about once a minute of idle time; the API has no way to keep or prime the filter (below).
+
+**The measured round trip:** the app stamps the reference when it hands it to the speaker, so the canceller has to model
+~150 ms of pure delay inside its 512 ms window. Stamping it 120 ms later (the measured delay minus a margin, what the
+learner would do) raises every leak (own-line median 0.75 -> 0.84; the first second after an open 0.29 -> 0.46; barge-in
+on own lines 64 -> 57 %) but kid-over-playback leaks rise with it (median 0.43 -> 0.49): AUC 0.72 -> 0.74, and at
+the best threshold for it (0.9) 10 own-line turns and 5 kid turns lost. No gain on the decision, so the shift is not
+used; the app still measures the delay and its drift per computer (on-device learning) for when Arc can take a hint.
+
+**For the Arc team:**
+1. BARGE_IN fires on real, unreverberated laptop echo too (64 % of our own lines, mostly mid-line, not only the tail):
+   the 0.3 s window with `max_leak 0.5` is too eager when the canceller is not fully converged or the voice changes.
+2. On real echo, playback_leak separates our voice from a kid talking over it with AUC 0.72, not 0.95: a kid over
+   loud playback reads 0.43 (median), because the leak is the share of the mixture explained. A per-utterance
+   "residual speech" score (speech energy in the cancelled signal, or the ear's own decode of the residual) would help.
+3. Keep / prime the canceller: an `arc_nft2_stream_get_echo` / `set_echo` (the 32 x 129 filter, ~66 KB) or an echo
+   state that survives `arc_nft2_stream_close`, so a reopened stream (or a new session on the same laptop) starts
+   converged; the app can store the per-computer delay (it does now) but has no way to hand it to the canceller.
+4. A delay hint (`feed_ref` with a known bulk delay) would leave the 512 ms window for the room.
+5. The en-IN OS voices are transcribed as nonsense when they come back through the speakers; the words cannot be
+   matched to what we said, so the leak is the only defence for them.
+
+Notes for the Arc team (no personal data) travel with the recording: `echo_set/CALIBRATION_NOTES.md`.

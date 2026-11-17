@@ -64,15 +64,27 @@ LISTEN = ("handsfree", "ptt")
 # libarc ABI 2 read-outs on the ear's final words (model_server/app/arc_ear.py abi2_view): kept on k["ear"] under their
 # own keys. The round-7 `conf` / `alts` stay null / [] (the shipped Director weights were trained with them empty).
 EAR_ABI2 = ("almost", "quantities", "clean_text", "uconf", "min_wconf", "nbest", "walts", "disfl", "n_dropped",
-            "playback_leak", "playback", "barge", "eot")
+            "playback_leak", "playback", "barge", "barge_p", "eot")
 OPEN_MIC = ("listen", "voice")
 
 
-def ear_playback(ear: dict | None) -> bool:
-    """The ear marked this turn as the app's own playback (playback_leak >= threshold against the reference the app
-    fed) and heard no barge-in during it. Never on the flag alone while the kid may be talking over playback: Arc's
-    canceller flags ~22 % of such merged turns, so a barge-in event keeps the turn."""
-    return bool(ear) and ear.get("playback") is True and not ear.get("barge")    # turn sources from the open mic (the ear relay; the client's copy of an ear turn)
+# The echo drop rule (docs/ARC_ABI2.md section 8), calibrated on a real laptop echo recording (MacBook Pro, built-in
+# speakers at 75 %, 25 min, 295 lines at four levels) with round-11 kid turns mixed into it: a heard turn is our own
+# playback when the ear's playback_leak (the share of the turn the canceller explains with the reference the app fed) is
+# >= PLAYBACK_THRESHOLD. A barge-in no longer keeps the turn: on the real recording Arc's BARGE_IN fired on 64 % of our
+# own lines (the old rule, flag 0.4 AND no barge-in, dropped 1 of 15 own-line turns), while kid turns over our voice
+# read a median leak of 0.43. Own-line turns 14 -> 10, kid turns lost 5 -> 2 (of 116).
+PLAYBACK_THRESHOLD = 0.85
+
+
+def ear_playback(ear: dict | None, thr: float = PLAYBACK_THRESHOLD) -> bool:
+    """The ear marked this turn as the app's own playback: its playback_leak against the reference is >= thr."""
+    if not ear:
+        return False
+    leak = ear.get("playback_leak")
+    if leak is None:          # an ear that sends only the flag (libarc's own threshold) keeps the old rule
+        return ear.get("playback") is True and not ear.get("barge")
+    return float(leak) >= thr
 
 
 def clean_prefs(m: dict, cur: dict | None = None) -> dict:

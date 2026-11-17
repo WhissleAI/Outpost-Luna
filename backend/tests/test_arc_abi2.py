@@ -116,6 +116,14 @@ def test_same_turn_clean_text():
     assert not D._same_turn("fly to Tycho", "something else")
 
 
+@pytest.mark.parametrize("ear,drop", [({"playback_leak": 0.9, "barge": True}, True), ({"playback_leak": 0.85}, True),
+                                      ({"playback_leak": 0.84, "playback": True}, False), ({"playback_leak": 0.0}, False)])
+def test_the_real_laptop_rule_drops_on_the_leak_alone(ear, drop):
+    """docs/ARC_ABI2.md section 8: leak >= 0.85 is our own playback; a barge-in no longer keeps it (it fired on 64 % of
+    our own lines on a real laptop)."""
+    assert sessions.ear_playback(ear) is drop
+
+
 @pytest.mark.parametrize("ear,drop", [({"playback": True, "barge": False}, True), ({"playback": True, "barge": True}, False),
                                       ({"playback": False}, False), (None, False), ({}, False)])
 def test_playback_flag_needs_no_barge_in(ear, drop):
