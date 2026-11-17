@@ -63,7 +63,7 @@
 
   <section id="corpus" class="sec">
     <h2>What is in the corpus</h2>
-    <p class="sec-lede">Team Outpost Luna collected and cleaned the corpus: NASA public audio with matching transcripts. Today it is our main test set; its training split is reserved for the next model.</p>
+    <p class="sec-lede">Team Outpost Luna collected and cleaned the corpus: NASA public audio with matching transcripts. Its held-out episodes are our main test set; the rest is its training split.</p>
     <!-- Source: the team's corpus folder "nasa-hackathon" (12 archives). Numbers: the ingest inventory (2026-11-15). -->
     <div class="tscroll">
     <table class="dtable wide">
@@ -96,8 +96,8 @@
     <!-- Sources: NASA speech corpus ingest inventory and leak check (2026-11-15); training-index clip counts for the other sets; eval-set manifests. -->
     <div class="tscroll">
     <table class="dtable">
-      <caption>Our NASA speech corpus. Hours of audio, episodes or recordings in brackets. This model was not trained on any of it.</caption>
-      <thead><tr><th scope="col">Part</th><th scope="col" class="num">Test (held out)</th><th scope="col" class="num">Training split (next model)</th><th scope="col" class="num">Removed as possible leaks</th></tr></thead>
+      <caption>Our NASA speech corpus. Hours of audio, episodes or recordings in brackets. The model trains on part of the training split; the test parts never train.</caption>
+      <thead><tr><th scope="col">Part</th><th scope="col" class="num">Test (held out)</th><th scope="col" class="num">Training split</th><th scope="col" class="num">Removed as possible leaks</th></tr></thead>
       <tbody>
         <tr><th scope="row">Houston We Have a Podcast</th><td class="num">10.3 h (11)</td><td class="num">328.8 h (415)</td><td class="num">17.5 h (20)</td></tr>
         <tr><th scope="row">Small Steps, Giant Leaps</th><td class="num">1.7 h (5)</td><td class="num">66.9 h (177)</td><td class="num">1.5 h (2)</td></tr>
@@ -114,7 +114,7 @@
       <caption>The other sources</caption>
       <thead><tr><th scope="col">Source</th><th scope="col">What it is</th><th scope="col" class="num">In training</th><th scope="col" class="num">Test</th><th scope="col">How overlap is prevented</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Common Voice (English)</th><td>Everyday read speech, many speakers</td><td class="num">no</td><td class="num">2,000 clips, 3.3 h</td><td>Test only: a fixed sample, never trained on.</td></tr>
+        <tr><th scope="row">Common Voice (English)</th><td>Everyday read speech, many speakers</td><td class="num">yes (train split)</td><td class="num">2,000 clips, 3.3 h</td><td>A fixed sample of the official test split; test sentences are kept out of training.</td></tr>
         <tr><th scope="row">Open read speech</th><td>Openly licensed read speech (Apache-2.0)</td><td class="num">yes (train split)</td><td class="num">300 utterances</td><td>The corpus's own split: trained on its train split only.</td></tr>
         <tr><th scope="row">Space questions (synthetic)</th><td>Generated questions about the Moon, with app playback in the background</td><td class="num">yes</td><td class="num">300 utterances</td><td>Held-out questions, never trained on.</td></tr>
         <tr><th scope="row">Artemis II crew audio</th><td>Crew lunar-observation audio</td><td class="num">yes (other recordings)</td><td class="num">1,141 utterances</td><td>Split by whole recording; the 15 test recordings never train.</td></tr>
@@ -130,7 +130,7 @@
 
   <section id="annotation" class="sec">
     <h2>How it is annotated</h2>
-    <p class="sec-lede">Every segment carries the labels the model returns at run time, ready for training the next model.</p>
+    <p class="sec-lede">Every segment carries the labels the model returns at run time, ready for training.</p>
     <dl class="priv">
       <div><dt>Spoken-form transcripts</dt><dd>Written as said: "apollo twelve", "nineteen sixty nine". The app's names lists use the same form, so heard and linked text line up.</dd></div>
       <div><dt>Entity tags</dt><dd>Inline by type: lunar feature, site, celestial body, spacecraft, mission, crew, numbers, places, organisations.</dd></div>
@@ -156,7 +156,7 @@
 
   <section id="results" class="sec">
     <h2>Results for Arc Transcriber Space</h2>
-    <!-- Base = nvidia/stt_en_fastconformer_hybrid_large_streaming_multi. Both: cache-aware streaming, same Whisper English normaliser, micro WER. Source: final results 2026-11-15. -->
+    <!-- Base = nvidia/stt_en_fastconformer_hybrid_large_streaming_multi. Both: cache-aware streaming, same Whisper English normaliser, micro WER. Source: final results 2026-11-16. -->
     <p class="sec-lede">Word error rate per test set, against the NVIDIA FastConformer it started from. Both streaming, same text normalisation. Lower is better.</p>
     <div class="tscroll">
     <table class="dtable">
@@ -164,22 +164,22 @@
       <thead><tr><th scope="col">Test set</th><th scope="col" class="num">Size</th><th scope="col" class="num">NVIDIA base</th><th scope="col" class="num">Arc Transcriber Space</th></tr></thead>
       <tbody>
         <tr class="grp"><th scope="row" colspan="4">NASA speech corpus, held out</th></tr>
-        <tr><th scope="row" class="ind">Houston We Have a Podcast</th><td class="num">11 episodes</td><td class="num">10.0%</td><td class="num best">7.2%</td></tr>
-        <tr><th scope="row" class="ind">Small Steps, Giant Leaps</th><td class="num">5 episodes</td><td class="num">9.7%</td><td class="num best">6.4%</td></tr>
-        <tr><th scope="row" class="ind">Curious Universe</th><td class="num">3 episodes</td><td class="num">6.0%</td><td class="num best">4.8%</td></tr>
-        <tr><th scope="row" class="ind">All podcast parts</th><td class="num">19 episodes, 12.8 h</td><td class="num">9.7%</td><td class="num best">7.0%</td></tr>
-        <tr><th scope="row" class="ind">Artemis audio</th><td class="num">1,141 utterances</td><td class="num">28.5%</td><td class="num best">12.6%</td></tr>
+        <tr><th scope="row" class="ind">Houston We Have a Podcast</th><td class="num">11 episodes</td><td class="num">10.0%</td><td class="num best">6.5%</td></tr>
+        <tr><th scope="row" class="ind">Small Steps, Giant Leaps</th><td class="num">5 episodes</td><td class="num">9.7%</td><td class="num best">5.8%</td></tr>
+        <tr><th scope="row" class="ind">Curious Universe</th><td class="num">3 episodes</td><td class="num">6.0%</td><td class="num best">4.3%</td></tr>
+        <tr><th scope="row" class="ind">All podcast parts</th><td class="num">19 episodes, 12.8 h</td><td class="num">9.7%</td><td class="num best">6.2%</td></tr>
+        <tr><th scope="row" class="ind">Artemis audio</th><td class="num">1,141 utterances</td><td class="num">28.5%</td><td class="num best">12.7%</td></tr>
         <tr class="grp"><th scope="row" colspan="4">Other test sets</th></tr>
-        <tr><th scope="row">Apollo mission audio</th><td class="num">500</td><td class="num">35.5%</td><td class="num best">15.7%</td></tr>
-        <tr><th scope="row">Open read speech</th><td class="num">300</td><td class="num">42.0%</td><td class="num best">18.5%</td></tr>
-        <tr><th scope="row">Space questions (synthetic)</th><td class="num">300</td><td class="num">48.1%</td><td class="num best">9.1%</td></tr>
-        <tr><th scope="row">Common Voice 17 English</th><td class="num">2,000</td><td class="num best">12.6%</td><td class="num">17.1%</td></tr>
+        <tr><th scope="row">Apollo mission audio</th><td class="num">500</td><td class="num">35.5%</td><td class="num best">15.6%</td></tr>
+        <tr><th scope="row">Open read speech</th><td class="num">300</td><td class="num">42.0%</td><td class="num best">17.5%</td></tr>
+        <tr><th scope="row">Space questions (synthetic)</th><td class="num">300</td><td class="num">48.1%</td><td class="num best">8.1%</td></tr>
+        <tr><th scope="row">Common Voice 17 English</th><td class="num">2,000</td><td class="num best">12.6%</td><td class="num">14.7%</td></tr>
         <tr><th scope="row">CREMA-D adults</th><td class="num">600</td><td class="num">3.7%</td><td class="num best">1.9%</td></tr>
       </tbody>
     </table>
     </div>
 
-    <p class="note-p"><b>Common Voice: the base model is better</b> (12.6% vs 17.1%). Tuning for space speech costs some everyday dictation. Every other test set improves.</p>
+    <p class="note-p"><b>Common Voice: the base model is better</b> (12.6% vs 14.7%). Tuning for space speech costs some everyday dictation. Every other test set improves.</p>
 
     <h3 class="sub-h">Names: hearing and linking them</h3>
     <p class="note-p">The app's own path: int8 model on a CPU, full test sets. Each names list holds the utterance's names plus 20 similar-sounding decoys. On sets with no names, any link is false. The base model cannot link names (n/a).</p>
@@ -188,10 +188,10 @@
       <caption>Names metrics, Arc Transcriber Space</caption>
       <thead><tr><th scope="col">Test set</th><th scope="col" class="num">Name recall</th><th scope="col" class="num">Linked correctly</th><th scope="col" class="num">Linked to a wrong entry</th><th scope="col" class="num">Space-tag F1</th><th scope="col" class="num">NVIDIA base</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Artemis II crew audio (1,141)</th><td class="num">93.4%</td><td class="num">94.5%</td><td class="num">1.0%</td><td class="num">0.88</td><td class="num">n/a</td></tr>
-        <tr><th scope="row">Space questions, synthetic (300)</th><td class="num">82.8%</td><td class="num">91.4%</td><td class="num">0.0%</td><td class="num">0.83</td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Artemis II crew audio (1,141)</th><td class="num">93.1%</td><td class="num">94.1%</td><td class="num">0.8%</td><td class="num">0.89</td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Space questions, synthetic (300)</th><td class="num">82.8%</td><td class="num">92.9%</td><td class="num">0.0%</td><td class="num">0.84</td><td class="num">n/a</td></tr>
         <tr><th scope="row">Open read speech (300)</th><td class="num" colspan="4">0.67 false links per 100 utterances (no names in this set)</td><td class="num">n/a</td></tr>
-        <tr><th scope="row">Apollo mission audio (500)</th><td class="num" colspan="4">0.4 false links per 100 utterances (no gold names in this set)</td><td class="num">n/a</td></tr>
+        <tr><th scope="row">Apollo mission audio (500)</th><td class="num" colspan="4">0.2 false links per 100 utterances (no gold names in this set)</td><td class="num">n/a</td></tr>
       </tbody>
     </table>
     </div>
@@ -227,18 +227,18 @@
       <caption>Inline tags: meaning and test scores (P / R / F1)</caption>
       <thead><tr><th scope="col">Tag</th><th scope="col">Meaning</th><th scope="col" class="num">Artemis II crew audio (1,141)</th><th scope="col" class="num">Space questions (300)</th></tr></thead>
       <tbody>
-        <tr><th scope="row"><code>ENTITY_LUNAR</code></th><td>A named feature or site on the Moon: crater, mare, mountain, rille, landing site</td><td class="num">.88 / .88 / .88 (584)</td><td class="num">.88 / .81 / .84 (124)</td></tr>
+        <tr><th scope="row"><code>ENTITY_LUNAR</code></th><td>A named feature or site on the Moon: crater, mare, mountain, rille, landing site</td><td class="num">.90 / .87 / .88 (584)</td><td class="num">.89 / .82 / .85 (124)</td></tr>
         <tr><th scope="row"><code>ENTITY_SPACECRAFT</code></th><td>A named spacecraft, vehicle, rocket or module</td><td class="num">.86 / 1 / .92 (6)</td><td class="num">.83 / .83 / .83 (29)</td></tr>
-        <tr><th scope="row"><code>ENTITY_MISSION</code></th><td>A named space mission or programme, e.g. Apollo 11, Artemis II</td><td class="num">–</td><td class="num">.81 / .79 / .80 (43)</td></tr>
-        <tr><th scope="row"><code>ENTITY_CELESTIAL</code></th><td>A named celestial body: the Moon, a planet, star or comet</td><td class="num">.92 / .97 / .94 (34)</td><td class="num">1 / 1 / 1 (2)</td></tr>
-        <tr><th scope="row"><code>ENTITY_TERM</code></th><td>A space science or engineering term</td><td class="num">.82 / .83 / .82 (115)</td><td class="num">1 / 1 / 1 (2)</td></tr>
-        <tr><th scope="row"><code>ENTITY_PERSON</code></th><td>A person named: crew, scientist or other</td><td class="num">.22 / .94 / .36 (47)</td><td class="num">.13 / 1 / .22 (1)</td></tr>
-        <tr><th scope="row"><code>NUMBER</code></th><td>A spoken number with no more specific kind</td><td class="num">.51 / .67 / .58 (162)</td><td class="num">.88 / 1 / .93 (7)</td></tr>
+        <tr><th scope="row"><code>ENTITY_MISSION</code></th><td>A named space mission or programme, e.g. Apollo 11, Artemis II</td><td class="num">–</td><td class="num">.79 / .79 / .79 (43)</td></tr>
+        <tr><th scope="row"><code>ENTITY_CELESTIAL</code></th><td>A named celestial body: the Moon, a planet, star or comet</td><td class="num">.94 / .97 / .96 (34)</td><td class="num">1 / 1 / 1 (2)</td></tr>
+        <tr><th scope="row"><code>ENTITY_TERM</code></th><td>A space science or engineering term</td><td class="num">.81 / .79 / .80 (115)</td><td class="num">1 / 1 / 1 (2)</td></tr>
+        <tr><th scope="row"><code>ENTITY_PERSON</code></th><td>A person named: crew, scientist or other</td><td class="num">.23 / .94 / .36 (47)</td><td class="num">.14 / 1 / .25 (1)</td></tr>
+        <tr><th scope="row"><code>NUMBER</code></th><td>A spoken number with no more specific kind</td><td class="num">.51 / .67 / .58 (162)</td><td class="num">.78 / 1 / .88 (7)</td></tr>
         <tr><th scope="row"><code>NUMBER_PERCENT</code></th><td>A percentage</td><td class="num">0 / 0 / 0 (5)</td><td class="num">1 / 1 / 1 (13)</td></tr>
-        <tr><th scope="row"><code>NUMBER_TIME</code></th><td>A time of day</td><td class="num">.18 / .06 / .09 (36)</td><td class="num">–</td></tr>
+        <tr><th scope="row"><code>NUMBER_TIME</code></th><td>A time of day</td><td class="num">.14 / .06 / .08 (36)</td><td class="num">–</td></tr>
         <tr><th scope="row"><code>NUMBER_MEASURE</code></th><td>A physical measurement: distance, speed, mass, temperature</td><td class="num">0 / 0 / 0 (14)</td><td class="num">0 / 0 / 0 (1)</td></tr>
       </tbody>
-      <tfoot><tr><th scope="row" colspan="2">All space name tags</th><td class="num">.88 / .88 / .88 (624)</td><td class="num">.86 / .81 / .83 (198)</td></tr></tfoot>
+      <tfoot><tr><th scope="row" colspan="2">All space name tags</th><td class="num">.90 / .88 / .89 (624)</td><td class="num">.86 / .82 / .84 (198)</td></tr></tfoot>
     </table>
     </div>
     <p class="note-p"><b>Weak spots:</b> <code>ENTITY_PERSON</code> fires too often (low precision), and number kinds (time, measure) are rarely right. <b>Strong:</b> the four space name tags (lunar, spacecraft, mission, celestial), the ones the app links to its names lists. Other inline tags (organisation, place) have no labels in the space data.</p>
