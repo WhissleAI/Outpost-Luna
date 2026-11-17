@@ -17,8 +17,8 @@ WebSocket handshake:
 | Origin | absent (not a browser page), one of `LUNA_ORIGINS` + the backend's `CORS_ORIGINS` (dev: `http://localhost:5173`), or the request's own origin (`http://<Host>`) | 403 / WebSocket closed **1008 before it is accepted** |
 | Token | every WebSocket and every non-GET/HEAD/OPTIONS request carries `LUNA_TOKEN` as the `luna_token` cookie, an `X-Luna-Token` header, or `Authorization: Bearer` | 401 / WebSocket closed 1008 |
 
-Reads (`GET`) stay open to loopback without the token, except the metrics (`/metrics`, `/api/metrics`) and the
-diagnostics contents, which need it like a POST (`docs/DIAGNOSTICS.md`): the page's `<audio>`, `<video>` and images, and `GET /health`
+Reads (`GET`) stay open to loopback without the token, except the metrics (`/metrics`, `/api/metrics`), the
+learning view (`/api/learn`) and the diagnostics contents, which need it like a POST (`docs/DIAGNOSTICS.md`): the page's `<audio>`, `<video>` and images, and `GET /health`
 in a browser. Cross-origin pages cannot read them (CORS) and a rebinding page fails the Host check.
 With no `LUNA_TOKEN` set (a bare `make backend` / `make models`, the pipelines, the test suites) the token is not
 required; Host and Origin still are.
@@ -73,6 +73,13 @@ ones this launch picked: usually 47310 / 47210, but never assume them (`docs/DES
 Local only, never uploaded, and never holding audio, transcripts, names or the token: the structured logs are scrubbed
 when written, the metrics endpoints need the token, and the diagnostics file (Settings → Help & diagnostics) is a zip the
 user saves where they choose, with `engine.json` minus its token. Details: [`docs/DIAGNOSTICS.md`](DIAGNOSTICS.md).
+
+## On-device learning
+
+`GET /api/learn` (the Settings view) needs the token like the diagnostics contents (the learned names are the
+kid's words); `POST /api/learn/reset` and `/api/learn/forget` need
+the token and the page's `X-Outpost-Reset: 1` header. What is stored, and where: `docs/ON_DEVICE_LEARNING.md` (one small
+JSON per cadet and one per computer, 0600, no audio, no transcripts).
 
 ## Check for updates
 

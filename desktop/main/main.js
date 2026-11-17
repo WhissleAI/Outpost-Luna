@@ -295,7 +295,7 @@ function createMain(origin) {
     const r = R.parseResetUrl(url, origin);
     if (r) { e.preventDefault(); resetApp(r, origin); return; }
     // Settings → Help & diagnostics → "Save a diagnostics file…" (#92): the user picks where; nothing is uploaded
-    if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin); return; }
+    if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin, /[?&]names=1\b/.test(url)); return; }
     // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and opens the browser
     const up = AU.parseUpdateUrl(url, origin);
     if (up) { e.preventDefault(); if (up.do === "check") checkAppUpdate("Settings"); else openUpdateTarget(up.what); return; }
@@ -358,7 +358,7 @@ let diagBusy = false;
 function diagState(state) {
   if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.__lunaDiag && window.__lunaDiag(${JSON.stringify({ state })})`).catch(() => {});
 }
-async function saveDiagnostics(origin) {
+async function saveDiagnostics(origin, names = false) {
   if (diagBusy || !win) return;
   diagBusy = true;
   try {
@@ -373,6 +373,7 @@ async function saveDiagnostics(origin) {
     diagState("saving");
     const shell = D.shellInfo({ appVersion: APP_VERSION, packaged: app.isPackaged, engine: E.readDiscovery(ENGINE_FILE),
       tracker, appMetrics: app.getAppMetrics() });
+    if (names) shell.learning_aliases = true;   // a grown-up ticked "Include learned names" (docs/ON_DEVICE_LEARNING.md)
     const bytes = await D.saveBundle({ backend: origin, token: TOKEN, shell, file });
     log(`diagnostics: saved a ${Math.round(bytes / 1024)} KB file`);
     jlog.event("diagnostics_saved", { bytes });

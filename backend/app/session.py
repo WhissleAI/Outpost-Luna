@@ -73,7 +73,8 @@ OPEN_MIC = ("listen", "voice")
 # playback when the ear's playback_leak (the share of the turn the canceller explains with the reference the app fed) is
 # >= PLAYBACK_THRESHOLD. A barge-in no longer keeps the turn: on the real recording Arc's BARGE_IN fired on 64 % of our
 # own lines (the old rule, flag 0.4 AND no barge-in, dropped 1 of 15 own-line turns), while kid turns over our voice
-# read a median leak of 0.43. Own-line turns 14 -> 10, kid turns lost 5 -> 2 (of 116).
+# read a median leak of 0.43. Own-line turns 14 -> 10, kid turns lost 5 -> 2 (of 116). The per-computer threshold
+# (app/learn/echo.py) replaces PLAYBACK_THRESHOLD once it is known, within its bounds.
 PLAYBACK_THRESHOLD = 0.85
 
 
@@ -133,6 +134,9 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
         p["listen"] = m["listen"]
     if "improve" in m:    # only an explicit true turns the turn log on
         p["improve"] = m.get("improve") is True
+    if "profile" in m:    # the active cadet profile ("p1".."p6"): whose on-device learning applies (app/learn)
+        from .learn import store as _ls
+        p["profile"] = _ls.profile_id(m.get("profile"))
     return p
 
 
@@ -212,6 +216,20 @@ class Session:
         # The entity layer (docs/ENTITY_LAYER.md): what was talked about, by entity id (in memory only, never stored)
         from .entities import EntityMemory, registry
         self.memory = EntityMemory(registry(), clock)
+        # On-device learning (app/learn, docs/ON_DEVICE_LEARNING.md): per cadet and per computer, small numbers only
+        from .learn.live import SessionLearning
+        self.learning = SessionLearning(self, clock)
+
+    def ear_tune(self) -> dict | None:
+        """The ear's learned, bounded values ({"t":"tune"}: end-of-turn silence, echo reference shift)."""
+        with contextlib.suppress(Exception):
+            return self.learning.tune()
+        return None
+
+    def playback_threshold(self) -> float:
+        with contextlib.suppress(Exception):
+            return self.learning.playback_threshold(PLAYBACK_THRESHOLD)
+        return PLAYBACK_THRESHOLD
 
     # ---- plumbing --------------------------------------------------------------------------------------------------
     def registry(self):
@@ -353,6 +371,10 @@ class Session:
         if ev == "gesture":        # round 8: a hand gesture (feat/gestures-v2): the Director sees voice + gesture together
             self.last_gesture = (str(m.get("id") or m.get("target") or "")[:24], self.clock())
         self.tlog.ui(ev, m.get("id") or m.get("target"))
+        if ev == "confirm_pick":   # a tap on the "Did you mean …?" card's option (on-device learning: app/learn)
+            with contextlib.suppress(Exception):
+                self.learning.on_pick(str(m.get("id") or "")[:48])
+            return
         if ev in ("tap_place", "tap_artifact") and m.get("id"):
             self.belief["last_place"] = m["id"]
         elif ev == "barge_in":     # the client accepted a barge-in (Space, or its echo check passed)
@@ -404,7 +426,7 @@ class Session:
             if m.get("final"):     # the ear's extras ride on the final words: names linked to the screen's list (Arc
                 # Transcriber Space: [{heard, entity, state, p, tag, kind}]), and the round-7 n-best fields when an ear has them
                 k["ear"] = {x: m.get(x) for x in ("alts", "conf", "hot", "rescored", "names", "spoken", "decoder_text",
-                                                  "agree") + EAR_ABI2 if m.get(x) is not None}
+                                                  "agree", "speech_s", "max_pause_s") + EAR_ABI2 if m.get(x) is not None}
             if not ptt and k["open"] and self.belief["floor"] in ("guide", "crew") and self._is_barge(k["words"]):
                 await self.barge_in()
         elif t == "turn":
@@ -432,6 +454,9 @@ class Session:
                 k["safety"] = m["safety"]
         elif t == "emotion" and m.get("label"):
             k["emotion"] = m["label"]
+        elif t == "echo_delay":    # this computer's speaker -> mic delay for one line (numbers only; app/learn/echo.py)
+            with contextlib.suppress(Exception):
+                self.learning.on_echo_delay(m)
 
     def _is_barge(self, words: str) -> bool:
         """§3 rule 2, server side, from the ear relay's words while we play. The client makes the fast call (frontend
@@ -633,10 +658,29 @@ class Session:
         q = router_.norm(text)
         if router_.YES.match(q) or q in ("yes please", "yeah please", "that one", "yes that one", "uh huh"):
             return c["label"]
+        with contextlib.suppress(Exception):    # this kid's own yes word, learned on this device (app/learn/habits.py)
+            lr = self.learning.learner()
+            if lr is not None and lr.habits.is_yes(q):
+                return c["label"]
         return None
+
+    def _echoish(self, text: str, source: str) -> bool:
+        """This heard turn is (probably) our own voice: the ear's playback flag or the router's text echo check. Learning
+        never uses such a turn (app/learn)."""
+        if source not in OPEN_MIC:
+            return False
+        k = self.belief["kid"]
+        if ear_playback(k.get("ear"), self.playback_threshold()):
+            return True
+        with contextlib.suppress(Exception):
+            return router_.echo(text, self.route_ctx(source))
+        return False
 
     async def _turn(self, text: str, source: str):
         k = self.belief["kid"]
+        if self.learning.offer is not None:      # the answer to "Did you mean X?" teaches the learner (never an echo)
+            with contextlib.suppress(Exception):
+                self.learning.on_reply(text, self._echoish(text, source))
         said = self._confirm_reply(text)
         if said:            # "yes" to "Did you mean Tycho?": the turn is the name, as if its option was tapped
             text, source = said, "typed"
@@ -657,8 +701,11 @@ class Session:
             await self.emit([decision("say", P_ANSWER, text=safety_.CARE_LINE, voice="capcom")])
             return
         rt = router_.route(text, ctx_r, act=k.get("act"))
-        if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear")):
+        if source in OPEN_MIC and rt["outcome"] != "ignore" and ear_playback(k.get("ear"), self.playback_threshold()):
             rt = {"outcome": "ignore", "reason": "echo"}   # our own playback, heard back (libarc's echo reference)
+        with contextlib.suppress(Exception):           # on-device learning: leak labels, pace, cut-offs (app/learn)
+            self.learning.on_routed(text, source, rt, k.get("ear") if source in OPEN_MIC else None,
+                                    rt.get("reason") == "echo" or ear_playback(k.get("ear"), self.playback_threshold()))
         ents: list[dict] = []
         if rt["outcome"] != "ignore":   # what the kid talked about (to us): the session's entity memory
             with contextlib.suppress(Exception):
@@ -696,6 +743,8 @@ class Session:
                 rt = nv
             elif rt["outcome"] == "answer" and out is not None and self.dm.decide_answer(out):
                 rt = {"outcome": "ignore", "reason": "model_chatter"}
+                with contextlib.suppress(Exception):
+                    self.learning.on_model_ignore(text)
                 dmodel.STATS["model_overrides"] += 1
                 if self._tl is not None:
                     self._tl["router"]["model"] = "ignore"
@@ -805,6 +854,8 @@ class Session:
             override = None
         if override and override["act"] == "ignore":
             r = {"action": "none", "say": "", "source": "director_model", "decisions": []}
+            with contextlib.suppress(Exception):
+                self.learning.on_model_ignore(text)
         elif override and override["act"] == "ask_clarify":
             opts = override.get("clarify") or []
             q = did_you_mean(opts) if len(opts) == 2 else director.SAY_AGAIN
@@ -813,6 +864,10 @@ class Session:
         else:
             if override and override["act"] == "command":
                 ctx["commands"] = [override["command"]]
+            # this cadet's learned aliases and bounded thresholds (app/learn): added after the Director model's step, so
+            # its features never see them
+            with contextlib.suppress(Exception):
+                read = {**read, **self.learning.read_extras()}
             r = await director.direct(resolved, read, self.gaz, self.index, ctx)
         if override:
             dmodel.STATS["model_overrides"] += 1
@@ -821,6 +876,8 @@ class Session:
             labels = (r.get("ask") or {}).get("labels") or []
             if len(labels) == 1:
                 self.belief["confirm_name"] = {"label": labels[0], "at": self.clock()}
+                with contextlib.suppress(Exception):
+                    self.learning.on_offer(r, k.get("ear"), self._echoish(text, source))
         if self.dm is not None:
             self.dm.turn_result(r)
         if self._tl is not None:

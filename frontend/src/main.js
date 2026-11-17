@@ -39,6 +39,7 @@ import { installPretendExplain } from "./pretend.js";   // "pretend tech": say w
 import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChange, current as videoNow } from "./media/video.js";
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
+import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
 // ---- end [a11y] ----
@@ -311,7 +312,7 @@ async function boot() {
     const q = r.ask.question || r.say, opts = (r.ask.options || []).map(placeById).filter(Boolean);
     card.show({
       title: "Did you mean…", asked, say: q, arc,
-      actions: opts.map(f => ({ label: f.name, hot: true, once: true, onPreview: () => globe.showFeature(f), onClick: () => { clearPreviews(); turn.lastPlace = f.id; ask(f.name); } })),
+      actions: opts.map(f => ({ label: f.name, hot: true, once: true, onPreview: () => globe.showFeature(f), onClick: () => { clearPreviews(); turn.lastPlace = f.id; if (useSession()) session.ui("confirm_pick", { id: f.id }); ask(f.name); } })),
     });
     guideSay(q);
     // [qa] the preview flights stop on a choice, a new turn or a mode switch (cancelNudge clears them)

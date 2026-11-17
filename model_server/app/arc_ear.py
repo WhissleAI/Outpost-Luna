@@ -82,9 +82,29 @@ class EarSettings(BaseSettings):
     ear_playback_threshold: float = 0.85
     ear_echo_decode: bool = False       # decode finals from the echo-cancelled audio (measured: docs/ARC_ABI2.md)
     ear_ref_keep_s: float = 3.0         # playback reference kept to re-feed a reopened stream
+    # On-device learning (docs/ON_DEVICE_LEARNING.md): the backend may tune these per stream ({"t":"tune"}), always
+    # inside TUNE_BOUNDS. ear_ref_shift_s: every reference is stamped this much later (the computer's measured
+    # speaker -> mic delay minus a margin), so the canceller's 512 ms window holds the room rather than the latency.
+    ear_ref_shift_s: float = 0.0
+    ear_echo_delay: bool = True         # measure the speaker -> mic delay of each line we play (app/echo_delay.py)
 
 
 ear_settings = EarSettings()
+
+# {"t":"tune"} keys -> (min, max): what the backend's learner may set on one stream (anything else is ignored)
+TUNE_BOUNDS = {"end_silence_s": (0.5, 0.8), "ref_shift_s": (0.0, 0.25)}
+
+
+def tune_values(d: dict) -> dict:
+    out = {}
+    for k, (lo, hi) in TUNE_BOUNDS.items():
+        try:
+            v = float(d[k])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if v == v:
+            out[k] = round(min(hi, max(lo, v)), 3)
+    return out
 
 
 def written(text: str) -> str:
@@ -308,6 +328,23 @@ class EarStream:
         self.partials: list[dict] = []  # live: (ear time, text) of each partial in the open turn (latency stats)
         self.st_finals: list[dict] = []  # live: the stream's FINAL events (utt, t, playback leak / kind)
         self.barge_ps: list[tuple[float, float]] = []   # live: (ear time, p) of recent barge-in events
+        self.end_silence_s = s.ear_end_silence_s
+        self.ref_shift_s = s.ear_ref_shift_s
+        self.quiet_run = 0.0            # the open segment: the current pause, and the longest one between its words
+        self.max_pause = 0.0
+        self.delay = None
+        if self.live and s.ear_echo_delay:
+            from .echo_delay import DelayMeter
+            self.delay = DelayMeter()
+
+    def tune(self, d: dict) -> dict:
+        """The backend's learned per-computer / per-child values (bounded: TUNE_BOUNDS). -> what was applied."""
+        v = tune_values(d or {})
+        if "end_silence_s" in v:
+            self.end_silence_s = v["end_silence_s"]
+        if "ref_shift_s" in v:
+            self.ref_shift_s = v["ref_shift_s"]
+        return {"t": "tune_ack", **v}
 
     # ---- context ----
     def set_names(self, names) -> int:
@@ -393,6 +430,9 @@ class EarStream:
         if not len(x):
             return
         t = float(at) if at is not None else max(self.ref_until, self.audio_s)
+        if self.delay is not None:
+            self.delay.feed_ref(x, t)       # the delay is measured against the app's own stamp
+        t += self.ref_shift_s
         self.refs.append((t, x))
         self.ref_until = max(self.ref_until, t + len(x) / SR)
         keep = self.cfg.ear_ref_keep_s
@@ -478,6 +518,8 @@ class EarStream:
         self.audio_s += dur
         quiet = self.vad.quiet(x)
         msgs: list[dict] = []
+        if self.delay is not None:
+            msgs += self.delay.feed_mic(x, self.audio_s)
         if self.seg is None:
             self.pre.append(x)
             self.pre_s += dur
@@ -496,14 +538,19 @@ class EarStream:
                 self.next_partial_s = self.audio_s + self.cfg.ear_partial_every_s
                 self.barge_at = self.barge_at if self.playing() else None
                 self.first_partial_at, self.partials = None, []
+                self.quiet_run = self.max_pause = 0.0
             return msgs
         self.seg.append(x)
         if self.live:
             msgs += self._stream_feed(x)
         if not quiet:
+            self.max_pause = max(self.max_pause, self.quiet_run)
+            self.quiet_run = 0.0
             self.last_voice_s = self.audio_s
+        else:
+            self.quiet_run += dur
         seg_s = self.audio_s - self.seg_t0
-        if self.audio_s - self.last_voice_s >= self.cfg.ear_end_silence_s:
+        if self.audio_s - self.last_voice_s >= self.end_silence_s:
             return msgs + self._finish("silence")
         if seg_s >= self.cfg.ear_max_turn_s:
             return msgs + self._finish("max_turn")
@@ -595,6 +642,9 @@ class EarStream:
                  "tags": [t for u in utts for t in u["tags"]], "conf": None, "alts": [],
                  "decoder_text": dec or None, "agree": agreement(spoken, dec) if dec else None}
             w.update(abi2_view(utts, almost))
+            # pace and pauses (numbers only), for the backend's per-child end-of-turn tuning
+            w.update(speech_s=round(max(0.0, self.last_voice_s - self.seg_t0 - self.cfg.ear_preroll_s), 2),
+                     max_pause_s=round(self.max_pause, 2), end_silence_s=self.end_silence_s)
             if self.live:
                 pb = [u.get("playback") for u in utts if u.get("playback") is not None]
                 w.update(playback_leak=round(max(leaks), 3) if leaks else None, playback=any(pb) if pb else None,

@@ -176,7 +176,7 @@ async def listen(ws: WebSocket):
         with contextlib.suppress(Exception):
             async with lock:
                 await ws.send_json(m)
-        if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion"):
+        if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion", "echo_delay"):
             await sessions.post(sid["id"], m)
 
     try:
@@ -241,7 +241,9 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
     if base:
         await arc.send(json.dumps({"t": "context", "names": base}))
     # error: the decode watchdog (#87); entity / eot / barge_in: libarc ABI 2 live events (model_server arc_ear.py)
-    relay = ("words", "turn", "arc", "emotion", "context_ack", "error", "entity", "eot", "barge_in")
+    # echo_delay / tune_ack: on-device learning (app/learn): this computer's echo delay per line, the applied tuning
+    relay = ("words", "turn", "arc", "emotion", "context_ack", "error", "entity", "eot", "barge_in", "echo_delay",
+             "tune_ack")
 
     async def from_arc():
         async for raw in arc:
@@ -255,7 +257,7 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
     async def names_loop():
         """The session's screen -> the ear's names list (names_list.py), sent whenever it changes."""
         nonlocal base
-        last = base
+        last, last_tune = base, None
         while True:
             with contextlib.suppress(Exception):
                 s = sessions.get(sid["id"], create=False) if sid["id"] else None
@@ -263,6 +265,10 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
                 if names and names != last:
                     await arc.send(json.dumps({"t": "context", "names": names}))
                     last = base = names
+                tune = s.ear_tune() if s is not None else None   # on-device learning (app/learn): bounded values
+                if tune and tune != last_tune:
+                    await arc.send(json.dumps({"t": "tune", **tune}))
+                    last_tune = tune
             await asyncio.sleep(ear_settings.ear_names_every_s)
 
     hot_task = asyncio.create_task(names_loop()) if ear_settings.ear_names else None
