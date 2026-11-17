@@ -55,6 +55,7 @@ def run(base):
             say("next")
             if last:
                 pg.wait_for_selector(".a-badge", timeout=20000)
+                pg.wait_for_timeout(1200)   # the session drops the same words twice within 1 s (session._dup)
             else:
                 pg.wait_for_timeout(900)
         step("patch earned card")
