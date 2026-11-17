@@ -4447,14 +4447,19 @@
   },
   {
    "id": "videos",
+   "version": "2",
+   "min_version": "2",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": [],
    "title": "NASA videos",
    "required": false,
    "file": "outpost-luna-v2-videos.tar",
-   "url": "https://www.dropbox.com/scl/fi/x4xm0nmcqnb1a29frhpcl/outpost-luna-v2-videos.tar?rlkey=cyj9u6jylfy7odbvxrus4srqs&dl=1",
-   "sha256": "541458fe6321154dbb0665de75fe55e53bfd1e398376fbae4ab63c9bbb8eb21d",
-   "size": 199352320,
-   "unpacked_size": 199323900,
-   "n_files": 23,
+   "url": "https://www.dropbox.com/scl/fi/nvgewjmx13o2stepcuzpc/outpost-luna-v2-videos.tar?rlkey=oikdxotlm0oiou5ul3znbvnej&dl=1",
+   "sha256": "f5981dc87ebdcc6250ccc9965e854f788c095f4b5768a6d452348716d3b0d98c",
+   "size": 424867840,
+   "unpacked_size": 424833795,
+   "n_files": 38,
    "env": "VIDEO_PACK_DIR",
    "subdir": "",
    "licence": [
@@ -4463,101 +4468,195 @@
    "files": [
     {
      "path": "NOTICE",
-     "size": 290
+     "size": 290,
+     "sha256": "2535f3303215504bdb1ade76eca382c02ca46769c9626da4759b58c0815ec2bb"
+    },
+    {
+     "path": "diy_crater_nasa.jpg",
+     "size": 41313,
+     "sha256": "d2441061e1a930bbe8230dea1f34fc29849d18390752744e93f1be7bd842deff"
+    },
+    {
+     "path": "diy_crater_nasa.mp4",
+     "size": 19300492,
+     "sha256": "6852bd6faef938d725a6052ff266510df9c5b2263d2d8b475eb29a22d519d5ec"
+    },
+    {
+     "path": "far_side_view.jpg",
+     "size": 162574,
+     "sha256": "4f83610333136f420d76ac851e367a8cde18e40f285e1e464f17ce51d1bc5c71"
+    },
+    {
+     "path": "far_side_view.mp4",
+     "size": 45399345,
+     "sha256": "ca1736aa98a7ab3d54b3e459908d7143709204e36669c945a035a37875444fc8"
+    },
+    {
+     "path": "far_side_view.vtt",
+     "size": 2094,
+     "sha256": "03ec8f41044984f616503bafe988e88d07838cce6a48bcb744f7b021fb454dc3"
     },
     {
      "path": "hammer_feather.jpg",
-     "size": 1102369
+     "size": 1102369,
+     "sha256": "ae6fcca54747f49e717f825c2245a12e40a7640255d65175af1a7defa929657b"
     },
     {
      "path": "hammer_feather.mp4",
-     "size": 4103437
+     "size": 4103437,
+     "sha256": "1fdd97ba37bbc111c5ebb4ec5a299ffc5057eca5659b1eaeb4a44e8eff27e870"
+    },
+    {
+     "path": "ltv.jpg",
+     "size": 11248,
+     "sha256": "33d3e0ad9efb0164a90a6212f95449b26b3e29762898417c73c11115a8620365"
+    },
+    {
+     "path": "ltv.mp4",
+     "size": 24726141,
+     "sha256": "019df7d59ad5d7a479d9fd265dbca8c781f0c3bc121fe3a0f037e7ab68f556ac"
+    },
+    {
+     "path": "ltv.vtt",
+     "size": 2213,
+     "sha256": "2675e0b66c544eef1c21394565434e330707593b0974cf94dd9af55bb07f4123"
     },
     {
      "path": "lunar_dust.jpg",
-     "size": 10080
+     "size": 10080,
+     "sha256": "951bfcb1a6d3e1049e08c42ea1d836372776a4401477e63d6f1766258eb16833"
     },
     {
      "path": "lunar_dust.mp4",
-     "size": 46080368
+     "size": 46080368,
+     "sha256": "2bc2f4030969f26e6a032a64e93c77d729eff8201c32f3f671d94633c0ee4963"
     },
     {
      "path": "lunar_dust.vtt",
-     "size": 3941
+     "size": 3941,
+     "sha256": "0e9ae88cac1196134c78f865ed44943d75d1c1988340fbfd6c14d0319950adce"
     },
     {
      "path": "lunar_eclipse.jpg",
-     "size": 7135
+     "size": 7135,
+     "sha256": "3a449a430052251bcc4ff9948ef102f9ad24f94bdf3abbec0b5fc3f7df681892"
     },
     {
      "path": "lunar_eclipse.mp4",
-     "size": 35593136
+     "size": 35593136,
+     "sha256": "141c23470dbf8fa8985030ab0647f8e97bdbcb111b17a094f919ac2d73716403"
     },
     {
      "path": "lunar_eclipse.vtt",
-     "size": 2353
+     "size": 2353,
+     "sha256": "a04f92e2a220a644a43d8368e0e06f38419b04732dc448d004084b5d8dd47ce1"
+    },
+    {
+     "path": "meet_crew.jpg",
+     "size": 4169,
+     "sha256": "61e0c79978d522ea802c7e9b404915390159dda3783544a3b22b90d560c8d584"
+    },
+    {
+     "path": "meet_crew.mp4",
+     "size": 39367061,
+     "sha256": "57e8ee8232744bba4930a0126c1e082582f4410aa44740e4aa1cda83e2e2bcd3"
+    },
+    {
+     "path": "meet_crew.vtt",
+     "size": 3471,
+     "sha256": "1d9da65b34b1eeaac452fd0f39bbcc623cfd9db6f924768cc108a7305c4498e1"
     },
     {
      "path": "moon_base_6mo.jpg",
-     "size": 16525
+     "size": 16525,
+     "sha256": "1f077c3184800c0c07bfaa0ffceb3558e623ad8f3ae28a3c2151d8b3914eb17f"
     },
     {
      "path": "moon_base_6mo.mp4",
-     "size": 19725118
+     "size": 19725118,
+     "sha256": "512bba7961fff5efaa2aade2bbd58195c43f682cfc8cec5e8ffb2cbd26638ee3"
     },
     {
      "path": "moon_base_6mo.vtt",
-     "size": 1661
+     "size": 1661,
+     "sha256": "caf30f7bcf9714f6ca2abca69f1c534a2314ede8df9f8742e413a35c36a04bb1"
+    },
+    {
+     "path": "moon_phases_2025.jpg",
+     "size": 117656,
+     "sha256": "9d43962ffb1ee7ed646698ef050d1590821bb7ad52fe8467c7417a40d63ef1ae"
+    },
+    {
+     "path": "moon_phases_2025.mp4",
+     "size": 75595723,
+     "sha256": "ab059e75e3f29addb58faffbf720d918dc511e1e406be5d8a653aea94e149b4e"
     },
     {
      "path": "moon_weather.jpg",
-     "size": 3593
+     "size": 3593,
+     "sha256": "4adebd69bf393bab974a3b4fd5be9f8be4af24b4e6c21531bdf0a694b5570a25"
     },
     {
      "path": "moon_weather.mp4",
-     "size": 26382697
+     "size": 26382697,
+     "sha256": "59125a0797f2976e59e6599636410203d9617f19883f434f91e4bec72c4c6c75"
     },
     {
      "path": "moon_weather.vtt",
-     "size": 2056
+     "size": 2056,
+     "sha256": "a609686b1099aa949584872396825d3d9361d104b1fad67f944c2ec632b096a6"
     },
     {
      "path": "phases_loop.jpg",
-     "size": 121750
+     "size": 121750,
+     "sha256": "8d5f66e42bc87725af56d45f4801003da7176828028d30282a0abf8b22ade0ca"
     },
     {
      "path": "phases_loop.mp4",
-     "size": 3836605
+     "size": 3836605,
+     "sha256": "3cf3e8f4e7a29ae96fa9eaa32e7c313dc8843be672365a30fbcd4a1aa67acf44"
     },
     {
      "path": "psr.jpg",
-     "size": 13167
+     "size": 13167,
+     "sha256": "5f253ac38180ccf48170f03a5836fbef494f33749d656d3eb63d1418f9cca6b0"
     },
     {
      "path": "psr.mp4",
-     "size": 32881024
+     "size": 32881024,
+     "sha256": "7cfeeb5cb9bb085e0aa92c9fc58670cce09b7029e1ce8cb8d68123cdae53b0f4"
     },
     {
      "path": "psr.vtt",
-     "size": 2751
+     "size": 2751,
+     "sha256": "8835de2231d7d27f6c224f85287f05c37226585e0680566629b46fb4e201a707"
+    },
+    {
+     "path": "south_pole_shadows.jpg",
+     "size": 75692,
+     "sha256": "7165e60bc0506417d5bd2486024f4fe31a61c834c3b34f1eac8d46b3afc52b75"
+    },
+    {
+     "path": "south_pole_shadows.mp4",
+     "size": 20700703,
+     "sha256": "a97956da479bc75f11a846f6873673022142c9339eeb74c2f5a843083b630051"
     },
     {
      "path": "water_extraction.jpg",
-     "size": 13061
+     "size": 13061,
+     "sha256": "6070b587f4cd598ead65b80e6c3efccc50b07366a99aba10e8d6deaf5710e0d8"
     },
     {
      "path": "water_extraction.mp4",
-     "size": 29418081
+     "size": 29418081,
+     "sha256": "8a73bad0011fd86dd3d5fb727b7fca1c352b717451a051abc02c7312b893d551"
     },
     {
      "path": "water_extraction.vtt",
-     "size": 2702
+     "size": 2702,
+     "sha256": "1df744d0db3f67ee1dd3638cbc7797e51c01423a0dc14ea75565b905c3a9d1c4"
     }
-   ],
-   "version": "1",
-   "min_app": "0.1.0",
-   "max_app": null,
-   "requires": []
+   ]
   },
   {
    "id": "site_layers",
@@ -4618,6 +4717,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-15T20:46:47Z",
- "version": "2026.11.15.2046"
+ "published_at": "2026-11-17T19:02:20Z",
+ "version": "2026.11.17.1902"
 }
