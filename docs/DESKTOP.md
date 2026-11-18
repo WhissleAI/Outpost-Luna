@@ -46,11 +46,13 @@ with the chunked upload-session API, makes public links and checks each one anon
 | `embedder` | all-MiniLM-L6-v2 int8 ONNX (Apache-2.0) | yes | 23 MB | `EMBED_MODEL_DIR` |
 | `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
 | `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
-| `videos` | the 8 pinned NASA videos + captions + posters | no | 199 MB | `VIDEO_PACK_DIR` (copied into the video cache) |
+| `videos` | the video pack: 14 NASA videos (13 `nasa_file` + the `pack_file` crater re-encode) + captions + posters, 38 files | no | 425 MB | `VIDEO_PACK_DIR` (copied into the video cache) |
 | `site_layers` | the site navigator's polar map layers (NASA LRO; `make site-layers`, docs/SITE_NAVIGATOR.md) | no | 20 MB | `SITE_LAYERS_DIR` |
 
-First launch downloads **510 MB** (required) and then 375 MB more in the background; the offline zip
-(`outpost-luna-assets-v2.zip`) is all six, 885 MB. The flow (`desktop/main/assets.js`, `firstrun.html`):
+First launch downloads **510 MB** (required) and then about 620 MB more in the background (crew 175, videos 425, map
+layers 20); after that the app is fully offline. The offline zip (`outpost-luna-assets-v2.zip`, 885 MB) predates the
+14-video pack: it holds the four required assets, the crew audio and the earlier 8-video set (199 MB); the current video
+pack replaces it the next time the computer is online. The flow (`desktop/main/assets.js`, `firstrun.html`):
 
 - Everything goes to `<userData>/assets/<id>/` (`~/Library/Application Support/Outpost Luna/assets`,
   `%APPDATA%\Outpost Luna\assets`); `state.json` records what is installed.
@@ -58,7 +60,8 @@ First launch downloads **510 MB** (required) and then 375 MB more in the backgro
   into `.staging/<id>`, every file's size checked, then renamed into place (the old copy moved aside first). A failed
   check never installs. Three tries with backoff; the ear can also come straight from Hugging Face at the pinned
   revision (`fallback`) when its link fails.
-- The first-run screen shows each required asset's progress, **Try again**, **Continue later** (quits; the `.part`
+- The first-run screen shows the overall total and percent, the speed and the time left (`firstrun_progress.js`, tested
+  in `firstrun_progress.test.js`), a "one time, then fully offline" line, each required asset's progress, **Try again**, **Continue later** (quits; the `.part`
   files stay and resume next launch) and **Import offline pack…** (a `.zip` from Dropbox or a USB stick: its tars are
   matched by name + sha256 and installed with no network). With no network it says so and offers the pack.
 - The children start as soon as the required four are in. `crew` and `videos` download in the background after the
@@ -505,6 +508,5 @@ parsed and dry-run in PowerShell 7, and a cross-built installer has been unpacke
 - Arc ear without torch: an ONNX export of Arc v1.1 Mini (trunk + Moonshine tiny) would drop torch, transformers and
   sympy (~490 MB unpacked) and cut model-server RAM.
 - Trim `transformers/models/*` to the few the app imports (~90 MB).
-- Self-hosted fonts (frontend owner), an app icon (`build-resources/icon.icns` / `.ico`).
 - App auto-install (today "Check for updates" only opens the installer in the browser): electron-updater once Windows is
   code-signed and the macOS release ships the zip + `latest-mac.yml` it needs; it must stay opt-in like the check.

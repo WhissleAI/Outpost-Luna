@@ -6,6 +6,7 @@
 //   - About → Videos: every video the app can show, with its credit
 import { icon } from "../assets/icons.js";
 import { openVideo, isAvailable, getVideo, credits, videoCommand, watchLabel, NEEDS_NET } from "./video.js";
+import { holdButtonHtml, bindHold } from "../reset.js";   // Settings → Videos: Clear is a 3-second hold, like Reset
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 O.stepRenderers = O.stepRenderers || {};
@@ -93,22 +94,30 @@ O.stepRenderers.video = ctx => {
 
 // ---------------------------------------------------------------- Settings → Videos ---------------------------------
 const mb = b => (b / 1048576 < 10 ? (b / 1048576).toFixed(1) : Math.round(b / 1048576)) + " MB";
-const settingsSection = {
+export const VIDEOS_COPY = {
+  help: "NASA's lesson videos come in the app's video pack (14 videos, about 425 MB) and play offline.",
+  hold: "Hold to clear saved videos",
+  grownUp: "For a grown-up: hold for 3 seconds. The videos copy back from the pack when needed.",
+  cleared: "Cleared",
+};
+export const settingsSection = {
   id: "videos", title: "Videos", after: "display",
   html: () => `<p class="set-help" data-vid-stat>Videos: checking…</p>
-    <button type="button" class="btn" data-vid-clear>Clear saved videos</button>
-    <p class="set-help">NASA videos are saved here after the first time online, so lessons can show them offline.</p>`,
-  bind(el) {
+    <p class="set-help">${esc(VIDEOS_COPY.help)}</p>
+    ${holdButtonHtml(VIDEOS_COPY.hold, "data-vid-clear")}
+    <small class="rs-note">${esc(VIDEOS_COPY.grownUp)}</small>`,
+  bind(el, { fetchFn = (u, o) => fetch(u, o), holdMs } = {}) {
     const stat = el.querySelector("[data-vid-stat]"), clear = el.querySelector("[data-vid-clear]");
     let total = 0;   // the lesson videos this computer can have (the backend counts them; no fixed number here)
     const paint = s => { total = s.pinned_total ?? total; stat.textContent = `Videos: ${mb(s.bytes || 0)} saved · ${s.pinned_ready ?? 0} of ${s.pinned_total ?? 0} lesson videos ready`; };
-    fetch("/api/video/cache").then(r => r.json()).then(paint).catch(() => { stat.textContent = "Videos: can't check right now."; });
-    clear.onclick = async () => {
-      clear.disabled = true;
-      try { const r = await fetch("/api/video/cache", { method: "DELETE" }); paint({ ...(await r.json()), pinned_ready: 0, pinned_total: total }); clear.textContent = "Cleared"; }
-      catch (e) { clear.disabled = false; }
-      fetch("/api/video/cache").then(r => r.json()).then(paint).catch(() => {});
-    };
+    fetchFn("/api/video/cache").then(r => r.json()).then(paint).catch(() => { stat.textContent = "Videos: can't check right now."; });
+    // a click does nothing: the clear runs only after a 3-second hold (bindHold, the grown-up gate's pattern)
+    return bindHold(clear, { holdMs, onFire: async () => {
+      const r = await fetchFn("/api/video/cache", { method: "DELETE" });
+      paint({ ...(await r.json()), pinned_ready: 0, pinned_total: total });
+      const label = clear.querySelector("span"); if (label) label.textContent = VIDEOS_COPY.cleared;
+      fetchFn("/api/video/cache").then(r2 => r2.json()).then(paint).catch(() => {});
+    } });
   },
 };
 if (typeof window !== "undefined") (O.settingsSections = O.settingsSections || []).push(settingsSection);

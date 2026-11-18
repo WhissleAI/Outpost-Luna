@@ -167,7 +167,9 @@ each. Text that is neither watch nor skip is ignored, never counted as a miss.
   (`backend/data/video/intermediates.pem`, `video.tls()`), because `svs.gsfc.nasa.gov` has sent its leaf certificate
   without the intermediate since 2026-11-16. Browsers fetch the missing one; Python does not, so `phases_loop` failed
   to download and stream (HTTP 502) until this.
-- Settings → Videos shows "X MB saved" and a Clear button (`GET`/`DELETE /api/video/cache`).
+- Settings → Videos shows "X MB saved" and "Hold to clear saved videos" (`GET`/`DELETE /api/video/cache`): a 3-second
+  hold like Reset and the grown-up gate (`bindHold` in `frontend/src/reset.js`); a click does nothing. The copies come
+  back from the installed video pack when needed.
 - `VIDEO_PREFETCH=0` turns off the background download (the tests do this). `VIDEO_OFFLINE=1` makes the backend act
   offline.
 

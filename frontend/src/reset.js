@@ -95,32 +95,45 @@ export function confirmHtml(level) {
       <h4 id="rsTitle">${esc(L.title)}?</h4>
       <div id="rsWhat"><p>${esc(L.lead)}</p><ul>${L.erases.map(t => `<li>${esc(t)}</li>`).join("")}</ul><p class="rs-keep">${esc(L.keeps)}</p></div>
       <div class="rs-row"><button type="button" class="btn rs-cancel" data-reset-cancel>Cancel</button>
-        <button type="button" class="btn rs-hold" data-reset-hold><i class="rs-fill" aria-hidden="true"></i><span>${esc(L.hold)}</span></button></div>
+        ${holdButtonHtml(L.hold, "data-reset-hold")}</div>
       <p class="rs-status" aria-live="assertive"></p></div>`;
 }
 
+/** A hold button (the grown-up gate's pattern): the danger fill grows while it is held; a click does nothing. */
+export function holdButtonHtml(label, attr = "data-hold") {
+  return `<button type="button" class="btn rs-hold" ${attr}><i class="rs-fill" aria-hidden="true"></i><span>${esc(label)}</span></button>`;
+}
+
 /**
- * Wire a confirm view: the hold button resets after HOLD_MS of continuous press (pointer, Enter / Space, or a
- * controller's A while it has focus); letting go early resets the fill. onCancel(): back to the zone. doReset(level).
+ * Wire a hold button: onFire() runs after holdMs of continuous press (pointer, Enter / Space, or a controller's A while
+ * it has focus); letting go early resets the fill; a plain click never counts. Used by Reset and by Settings → Videos
+ * → "Hold to clear saved videos". -> { stop, rearm, destroy }.
  */
-export function bindConfirm(root, { onCancel, doReset = runReset, holdMs = HOLD_MS }) {
-  const box = root.querySelector(".rs-confirm"); if (!box) return () => {};
-  const level = box.dataset.level, hold = box.querySelector("[data-reset-hold]"), fill = box.querySelector(".rs-fill"), status = box.querySelector(".rs-status");
-  let t0 = 0, raf = 0, timer = 0, fired = false, padRaf = 0;
-  const paint = p => { fill.style.width = `${Math.round(p * 100)}%`; };
+export function bindHold(hold, { onFire, holdMs = HOLD_MS } = {}) {
+  const fill = hold.querySelector(".rs-fill");
+  const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  const raf = f => (typeof requestAnimationFrame === "function" ? requestAnimationFrame(f) : 0);
+  const caf = id => (typeof cancelAnimationFrame === "function" ? cancelAnimationFrame(id) : undefined);
+  let t0 = 0, rafId = 0, timer = 0, fired = false, padRaf = 0;
+  const paint = p => { if (fill) fill.style.width = `${Math.round(p * 100)}%`; };
   // the fill is painted on animation frames; the 3 s itself is a timer (a busy 3D cabin can starve frames, and a
   // hold that really lasted 3 s must count even if no frame landed near the end)
-  const tick = () => { if (!t0) return; paint(Math.min(1, (performance.now() - t0) / holdMs)); raf = requestAnimationFrame(tick); };
+  const tick = () => { if (!t0) return; paint(Math.min(1, (now() - t0) / holdMs)); rafId = raf(tick); };
   const start = () => {
-    if (fired || t0) return;
-    t0 = performance.now(); hold.classList.add("is-holding"); raf = requestAnimationFrame(tick);
+    if (fired || t0 || hold.disabled) return;
+    t0 = now(); hold.classList.add("is-holding"); rafId = raf(tick);
     timer = setTimeout(() => { if (t0) { paint(1); stop(true); fire(); } }, holdMs);
   };
   const stop = (keep = false) => {
-    if (t0 && !fired && !keep && performance.now() - t0 >= holdMs) { paint(1); clearTimeout(timer); cancelAnimationFrame(raf); t0 = 0; fire(); return; }
-    clearTimeout(timer); cancelAnimationFrame(raf); t0 = 0; hold.classList.remove("is-holding"); if (!keep) paint(0);
+    if (t0 && !fired && !keep && now() - t0 >= holdMs) { paint(1); clearTimeout(timer); caf(rafId); t0 = 0; fire(); return; }
+    clearTimeout(timer); caf(rafId); t0 = 0; hold.classList.remove("is-holding"); if (!keep) paint(0);
   };
-  const fire = () => { if (fired) return; fired = true; status.textContent = LEVELS[level].done; hold.disabled = true; Promise.resolve(doReset(level)).catch(() => { status.textContent = "That didn't work. Try again."; fired = false; hold.disabled = false; paint(0); }); };
+  const rearm = () => { fired = false; hold.disabled = false; hold.classList.remove("is-holding"); paint(0); };
+  const fire = () => {
+    if (fired) return;
+    fired = true; hold.disabled = true;
+    Promise.resolve().then(() => onFire && onFire()).catch(rearm);
+  };
   hold.addEventListener("pointerdown", e => { e.preventDefault(); start(); });
   ["pointerup", "pointerleave", "pointercancel"].forEach(ev => hold.addEventListener(ev, () => { if (!fired) stop(); }));
   hold.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); if (!e.repeat) start(); } });
@@ -128,10 +141,24 @@ export function bindConfirm(root, { onCancel, doReset = runReset, holdMs = HOLD_
   hold.addEventListener("click", e => e.preventDefault());   // a click (or a single select from a controller) is not a hold
   // a controller: A held while the hold button has focus
   const padA = () => { try { return [...(navigator.getGamepads ? navigator.getGamepads() : [])].some(g => g && g.buttons && g.buttons[0] && g.buttons[0].pressed); } catch (e) { return false; } };
-  const pollPad = () => { if (!hold.isConnected) return; if (document.activeElement === hold) { if (padA()) start(); else if (t0 && !fired) stop(); } padRaf = requestAnimationFrame(pollPad); };
-  padRaf = requestAnimationFrame(pollPad);
-  box.querySelector("[data-reset-cancel]").onclick = () => { stop(); onCancel && onCancel(); };
-  box.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); stop(); onCancel && onCancel(); } });
+  const pollPad = () => { if (!hold.isConnected) return; if (document.activeElement === hold) { if (padA()) start(); else if (t0 && !fired) stop(); } padRaf = raf(pollPad); };
+  padRaf = raf(pollPad);
+  return { stop, rearm, destroy: () => { stop(); caf(padRaf); } };
+}
+
+/**
+ * Wire a confirm view: the hold button resets after HOLD_MS of continuous press (bindHold). onCancel(): back to the
+ * zone. doReset(level).
+ */
+export function bindConfirm(root, { onCancel, doReset = runReset, holdMs = HOLD_MS }) {
+  const box = root.querySelector(".rs-confirm"); if (!box) return () => {};
+  const level = box.dataset.level, hold = box.querySelector("[data-reset-hold]"), status = box.querySelector(".rs-status");
+  const h = bindHold(hold, { holdMs, onFire: () => {
+    status.textContent = LEVELS[level].done;
+    return Promise.resolve(doReset(level)).catch((e) => { status.textContent = "That didn't work. Try again."; throw e; });
+  } });
+  box.querySelector("[data-reset-cancel]").onclick = () => { h.stop(); onCancel && onCancel(); };
+  box.addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); h.stop(); onCancel && onCancel(); } });
   box.querySelector("[data-reset-cancel]").focus({ preventScroll: true });   // the safe choice has focus first
-  return () => { stop(); cancelAnimationFrame(padRaf); };
+  return () => h.destroy();
 }

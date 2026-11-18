@@ -61,7 +61,7 @@ yes / no, <kbd>Alt</kbd>+<kbd>.</kbd> stop.
 
 ### Reading support
 
-Easy-read font (Atkinson Hyperlegible from Google Fonts, loaded only when chosen, with wider letter/word spacing),
+Easy-read font (Atkinson Hyperlegible, bundled with the app so it works offline, loaded only when chosen, with wider letter/word spacing),
 caption line length (24–80 characters, default 42, at most 4 lines), syllable hints on vocab words (`re·go·lith`).
 
 ### Speed
@@ -102,7 +102,7 @@ Screenshots: `docs/img/a11y-caption-word-sync.jpg`, `docs/img/a11y-high-contrast
 | Criterion | Status |
 | --- | --- |
 | 1.1.1 Non-text content | Icon buttons named; globe has a list alternative (place picker). Moon map canvas itself has no text alternative beyond the stage label. |
-| 1.2.1/1.2.2 Captions (prerecorded) | Crew audio captioned word by word + transcript. |
+| 1.2.1/1.2.2 Captions (prerecorded) | Crew audio captioned word by word + transcript. NASA videos: 9 of the 14 in the video pack carry NASA's captions (WebVTT, offline); `phases_loop`, `hammer_feather`, `south_pole_shadows`, `diy_crater_nasa` and `moon_phases_2025` have no NASA caption track yet (gap). |
 | 1.3.1 Info and relationships | Dialogs, groups, live regions, radio group for speed. |
 | 1.4.1 Use of colour | Marks use underline style/box/glyph as well as colour. |
 | 1.4.3 / 1.4.11 Contrast | Base tokens ≥ 4.5:1 (documented in styles.css); high-contrast mode for more. |
