@@ -15,7 +15,9 @@
 //   buttons   [{label, hint?, cmd? | task? | clock?}]: what the card's buttons do (an order, a task press or choice, a
 //             clock action: play | skip | warp)
 //   choice    true when the kid must pick (the clock pauses for a decision)
-//   lesson    {id, n, title} ("Lesson 5 helps here") or null
+//   lesson    {id, n, title, track?} ("Lesson 5 helps here"; a Field School lesson: "Field School: Field kit") or null
+//   free      "describe" | "sequence" when the kid's own words answer the step (voice / voice bar), else null
+//   sayLine   the line under a free step's buttons ("Say it in one line, or tap a word.")
 //   readouts  [{k, v}]: battery, dose rate, rover ETA... for the task
 // clock: {started, running, warp} from mission/clock.js (optional; the strip works without it).
 //
@@ -50,6 +52,9 @@ function waitLine(t, s, st) {
   return NOW.waiting;
 }
 
+/** [0.5 field] Now-card steps answered in the kid's own words (gameplay.py: describe, sequence). */
+const FREE = new Set(["describe", "sequence"]);
+
 function taskCard(s, t, clock) {
   const st = t.step;
   const base = { title: t.title, panel: t.panel, level: t.level || "info", lesson: t.lesson || null, readouts: t.readouts || [],
@@ -62,10 +67,16 @@ function taskCard(s, t, clock) {
   }
   let buttons;
   if (st.kind === "order") buttons = [{ label: st.label, cmd: st.cmd }];
-  else if (st.kind === "choice") buttons = (st.options || []).map(o => ({ label: o.label, hint: o.hint || null, task: { type: "task", task: t.id, step: st.id, choice: o.id } }));
+  else if (st.kind === "choice" || FREE.has(st.kind)) buttons = (st.options || []).map(o => ({ label: o.label, hint: o.hint || null, task: { type: "task", task: t.id, step: st.id, choice: o.id } }));
   else buttons = [{ label: st.label, task: { type: "task", task: t.id, step: st.id } }];
-  return { ...base, key, text: st.label, target: st.target === "task" ? "task" : st.target, panel: st.target === "task" ? t.panel : panelOf(st.target, t.panel),
-    buttons, choice: st.kind === "choice", hint: st.hint || null, why: st.why || null, step: st };
+  // [0.5 field] a describe / readback step: the kid's own words answer it (voice or the voice bar); its buttons are the
+  // tap path (a word chip, "Bag it", "Read it back"). Like a choice it holds the clock and never takes a bare "yes".
+  const free = FREE.has(st.kind);
+  // a step can carry its own lesson (the drive's glare and lights calls: Field School's "Eyes of a geologist")
+  return { ...base, key: free ? `${key}:${(st.got || []).join(",")}` : key, text: st.label, target: st.target === "task" ? "task" : st.target,
+    panel: st.target === "task" ? t.panel : panelOf(st.target, t.panel), buttons, choice: st.kind === "choice" || free, free: free ? st.kind : null,
+    sayLine: st.kind === "describe" ? NOW.describeSay : st.kind === "sequence" ? NOW.readbackSay : null,
+    hint: st.hint || null, why: st.why || null, step: st };
 }
 
 export function nowCard(s, clock = null) {

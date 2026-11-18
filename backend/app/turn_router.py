@@ -320,6 +320,9 @@ def why_gauge(q: str) -> str | None:
     return None
 
 
+TASK_FREE = ("describe", "sequence")   # Now-card steps whose answer is the kid's own words (docs/GAMEPLAY.md §13)
+
+
 def task_choice(q: str, options: list[str]) -> str | None:
     """A spoken pick on the cabin's task card ("left", "the ridge", "shelter now"): the one option it names, or None."""
     if not options or len(q.split()) > 5:
@@ -329,7 +332,9 @@ def task_choice(q: str, options: list[str]) -> str | None:
     qw = set(q.split()) - stop
     if not qw:
         return None
-    hits = [o for o in options if qw & (set(norm(o).split()) - stop)]
+    words_of = {o: set(norm(o).split()) - stop for o in options}
+    shared = set.intersection(*words_of.values()) if len(options) > 1 else set()   # "tack" in Tack left / Tack right
+    hits = [o for o in options if qw & (words_of[o] - shared)]
     return hits[0] if len(hits) == 1 else None
 
 
@@ -660,7 +665,9 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         pn = panel_intent(q)
         if pn:
             return pn
-        if ctx.offer == "task":   # a choice on the task card (route, steer, shelter or wait, normal or high)
+        # a choice on the task card (route, steer, shelter or wait, normal or high); a readback is graded on its words,
+        # never matched to its one button ("bag twelve" is not "Bag 14")
+        if ctx.offer == "task" and ctx.step_type != "sequence":
             tc = task_choice(q, ctx.step_options)
             if tc:
                 return "task_choice", tc
@@ -709,6 +716,8 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
                 ctx.offer != "tour":
             continue                 # a bare "skip" is a tour word only while the tour runs
         return intent, None
+    if ctx.screen == "cabin" and ctx.offer == "task" and ctx.step_type in TASK_FREE and 0 < len(q.split()) <= 25:
+        return "task_choice", q   # [0.5 field] a description or a readback on the Now card: the words are the answer
     if ctx.offer and (YES.match(q) or q in ("next", "next one")):
         return "accept_offer", ctx.offer
     if ctx.offer and NO.match(q):

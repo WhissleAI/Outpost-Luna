@@ -718,7 +718,9 @@ export function createCabin(root, o = {}) {
    *  right). The router's task_choice matches the same words (backend turn_router.task_choice). */
   function sayWords(labels) {
     const W = l => String(l).toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !["to", "the", "an", "or", "and"].includes(w));
-    return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
+    // one option ("Lights on"): its first word is the one to say
+    return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean)
+      : labels.length === 1 ? W(labels[0]).slice(0, 1) : [];
   }
   const DECKHINT = { skip: "Skip is in the clock bar (E).", warp: "Time speed is in the menu (Esc), or press W.", play: "Play is in the clock bar (K)." };
   const NOWSAY = (ws, keys) => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${(keys || ws.map((_, i) => String(i + 1))).join(" or ")}.`;
@@ -743,7 +745,7 @@ export function createCabin(root, o = {}) {
     const ringP = c.left_h != null && ringMax[rk] > 0 ? Math.max(0, Math.min(1, c.left_h / ringMax[rk])) : null;
     // Rebuild the card (and its buttons) only when its structure changes. The countdown and readouts tick about once a
     // second; re-rendering the buttons that often replaced them mid-click, so a real mouse click could be lost.
-    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, c.why, !!left, take]);
+    const key = JSON.stringify([c.key, (c.buttons || []).map(b => b.label), ack, (c.readouts || []).map(r => r.k), c.progress, c.hint, c.why, !!left, take, c.lesson && c.lesson.id]);
     if (key === cardKey) {
       requestAnimationFrame(fitNow);
       const lt = q("#cbNowMore .cb-now-left"); if (lt && left) { lt.lastChild.textContent = left; lt.classList.toggle("is-low", c.left_h != null && c.left_h <= 2); }
@@ -755,7 +757,9 @@ export function createCabin(root, o = {}) {
     }
     cardKey = key;
     const steps = c.progress ? `<span class="cb-now-steps" aria-label="Step ${Math.min(c.progress.done + 1, c.progress.total)} of ${c.progress.total}">${Array.from({ length: c.progress.total }, (_, i) => `<i class="${i < c.progress.done ? "is-done" : ""}"></i>`).join("")}<em>${c.progress.done} of ${c.progress.total}</em></span>` : "";
-    const lesson = c.lesson && c.lesson.n ? `<span class="cb-now-lesson" title="${esc(c.lesson.title || "")}">${esc((story.NOW.lessonHelps || (n => `Lesson ${n}`))(c.lesson.n))}</span>` : "";
+    const lessonText = !c.lesson ? "" : c.lesson.track === "field" && c.lesson.title ? (story.NOW.fieldHelps || (t => t))(c.lesson.title)
+      : c.lesson.n ? (story.NOW.lessonHelps || (n => `Lesson ${n}`))(c.lesson.n) : "";
+    const lesson = lessonText ? `<span class="cb-now-lesson" title="${esc(c.lesson.title || "")}">${esc(lessonText)}</span>` : "";
     const ro = (c.readouts || []).map(r => `<span class="cb-now-ro"><em>${esc(r.k)}</em><span> ${esc(r.v)}</span></span>`).join("");
     // a choice: each option is its own button with its number and the word to say; anything else: one hot button (T)
     const words = sayWords((c.buttons || []).map(b => b.label));
@@ -769,7 +773,7 @@ export function createCabin(root, o = {}) {
     const btns = own.map((b, i) => `<button type="button" class="cb-now-b${(i || c.choice) && b.intent !== "yes" ? "" : " is-hot"}" data-b="${i}" ${b.intent ? `data-intent="${b.intent}"` : i === 0 && !c.choice ? 'data-intent="yes"' : ""}
       aria-keyshortcuts="${keyOf(b, i)}"><kbd aria-hidden="true">${keyOf(b, i)}</kbd><span class="cb-now-bl">${esc(b.label)}${b.hint ? `<small>${esc(b.hint)}</small>` : ""}</span></button>`).join("");
     const ring = take && ringP != null ? `<span class="cb-now-ring${c.left_h <= 2 ? " is-low" : ""}" style="--p:${ringP.toFixed(3)}" role="img" aria-label="${esc(left)}"><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15.9"/><circle class="is-arc" cx="18" cy="18" r="15.9" pathLength="100"/></svg></span>` : "";
-    const sayLine = c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words, own.map(keyOf)))}</p>` : "";
+    const sayLine = c.sayLine ? `<p class="cb-now-say">${esc(c.sayLine)}</p>` : c.choice && words.length ? `<p class="cb-now-say">${esc(NOWSAY(words, own.map(keyOf)))}</p>` : "";
     q("#cbNowMore").innerHTML = `${ack ? `<p class="cb-now-ack" role="status">${ic("check", 14)}${esc(ack)}</p>` : ""}
       <div class="cb-now-meta">${ring}${steps}${left ? `<span class="cb-now-left${c.left_h != null && c.left_h <= 2 ? " is-low" : ""}">${ic("speed", 13)}<span>${esc(left)}</span></span>` : ""}${lesson}</div>
       ${c.why ? `<p class="cb-now-why">${esc(c.why)}</p>` : ""}${c.hint ? `<p class="cb-now-hint">${esc(c.hint)}</p>` : ""}${ro ? `<div class="cb-now-ros">${ro}</div>` : ""}

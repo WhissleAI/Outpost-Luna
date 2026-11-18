@@ -205,6 +205,11 @@ export const NOW = {
   warpBtn: "Time warp 4x",
   /** "Lesson 5 helps here" (the lesson's patch title is the tooltip) */
   lessonHelps: n => `Lesson ${n} helps here`,
+  /** [0.5 field] a Field School lesson is named, not numbered */
+  fieldHelps: t => `Field School: ${t}`,
+  /** [0.5 field] the Now card's free-text steps: the words are the answer, the buttons do the same */
+  describeSay: "Say it in one line, or tap a word.",
+  readbackSay: "Read it back, or press 1.",
   /** said before the line when the kid asks "what do I do?" */
   ask: "Here's your next job.",
 };

@@ -194,3 +194,55 @@ test("[polish 3] one instruction: the storm decision is on the Now card (the ale
   const wn2 = nowCard(st({ task: null, loads: { shields: 40 }, env: { ...st().env, warning: { lead_h: 8 } } }));
   assert.deepEqual(wn2.buttons[0].cmd, { type: "shelter", on: true });
 });
+
+// ---- [0.5 field] mission tasks from Field School (docs/GAMEPLAY.md §13) ----
+const fieldTask = (step, extra = {}) => ({ id: "science-9", kind: "science", title: "Sample station", panel: "rover", level: "info",
+  lesson: { id: "fieldkit", n: null, title: "Field kit", track: "field" }, done_count: 1, total: 3, time_left_h: 3, readouts: [],
+  steps: [], step, decision: true, ...extra });
+
+test("[0.5 field] sample station: the tool is a choice; the description takes words or chips; the clock holds", () => {
+  const tool = nowCard(st({ task: fieldTask({ id: "tool", kind: "choice", label: "A fist-size rock. Which tool?", ready: true, target: "task",
+    options: [{ id: "rake", label: "Rake" }, { id: "tongs", label: "Tongs" }, { id: "scoop", label: "Scoop" }] }) }));
+  assert.equal(tool.choice, true); assert.equal(tool.free, null);
+  assert.deepEqual(tool.buttons[1].task, { type: "task", task: "science-9", step: "tool", choice: "tongs" });
+  assert.equal(tool.lesson.track, "field"); assert.equal(S.NOW.fieldHelps(tool.lesson.title), "Field School: Field kit");
+  const d = nowCard(st({ task: fieldTask({ id: "describe", kind: "describe", label: "Describe it in one line.", ready: true, target: "task", got: ["size"],
+    options: [{ id: "shape", label: "Rounded" }, { id: "tone", label: "Bright" }, { id: "texture", label: "Rough" }, { id: "bag", label: "Bag it" }] }) }));
+  assert.equal(d.choice, true, "a description holds the clock and never takes a bare yes");
+  assert.equal(d.free, "describe"); assert.equal(d.sayLine, S.NOW.describeSay);
+  assert.ok(d.buttons.length <= 4, "keys 1-4 reach every button");
+  assert.deepEqual(d.buttons[3].task, { type: "task", task: "science-9", step: "describe", choice: "bag" });
+  assert.match(d.key, /:size$/, "a new descriptor re-keys the card (its chips change)");
+  const b = nowCard(st({ task: fieldTask({ id: "bag", kind: "sequence", label: "Call it in: bag 14.", ready: true, target: "task",
+    options: [{ id: "say", label: "Bag 14" }], items: [{ id: "bag", label: "Bag 14" }] }) }));
+  assert.equal(b.free, "sequence"); assert.equal(b.buttons[0].label, "Bag 14"); assert.equal(b.sayLine, S.NOW.readbackSay);
+  for (const l of [S.NOW.describeSay, S.NOW.readbackSay]) assert.ok(words(l) <= 12, l);
+});
+
+test("[0.5 field] low-Sun drive: tack and lights are choices with the Sun's readout and the field lesson", () => {
+  const t = { id: "ice_run-4", kind: "ice_run", title: "Ice run", panel: "rover", level: "info", done_count: 1, total: 5, time_left_h: null,
+    lesson: { id: "observe", n: null, title: "Eyes of a geologist", track: "field" }, readouts: [{ k: "Sun", v: "12° left, 1.4° up" }], steps: [], decision: true,
+    step: { id: "tack", kind: "choice", label: "Glare: low Sun ahead. Tack left or right?", ready: true, target: "task", hint: "Tack 20 to 30 degrees away from the Sun.",
+      options: [{ id: "left", label: "Tack left" }, { id: "right", label: "Tack right" }] } };
+  const c = nowCard(st({ task: t, rover: { busy: true, eta_h: 9 } }));
+  assert.equal(c.choice, true); assert.equal(c.buttons.length, 2); assert.equal(c.readouts[0].v, "12° left, 1.4° up");
+  assert.ok(words(c.text) <= 12 && words(c.hint) <= 10);
+  const l = nowCard(st({ task: { ...t, step: { id: "lights", kind: "choice", label: "Shadow ahead. Lights on before we enter.", ready: true, target: "task",
+    options: [{ id: "on", label: "Lights on" }] } } }));
+  assert.equal(l.buttons.length, 1); assert.deepEqual(l.buttons[0].task, { type: "task", task: "ice_run-4", step: "lights", choice: "on" });
+});
+
+test("[0.5 field] science stop: the trade-off with real numbers, then the readback in the kid's words", () => {
+  const t = { id: "replan-7", kind: "replan", title: "Science stop", panel: "rover", level: "info", done_count: 0, total: 2, time_left_h: 2,
+    lesson: { id: "rocks", n: null, title: "Moon rocks tell time", track: "field" }, readouts: [{ k: "Light margin", v: "5 h" }], steps: [], decision: true,
+    say: "Science Officer: unusual bright rock. The science room asks for 15 minutes.",
+    step: { id: "trade", kind: "choice", label: "15 min at the bright rock. What do we give up?", ready: true, target: "task",
+      options: [{ id: "margin", label: "Use the margin", hint: "Light margin 5 h." }, { id: "sample", label: "Drop a sample", hint: "−2 science later." }] } };
+  const c = nowCard(st({ task: t }));
+  assert.equal(c.choice, true); assert.match(c.buttons[0].hint, /5 h/); assert.match(c.buttons[1].hint, /2 science/);
+  assert.ok(words(t.say) <= 20, "CAPCOM's line");
+  for (const o of t.step.options) assert.ok(words(o.label) <= 3 && words(o.hint) <= 10, o.label);
+  const r = nowCard(st({ task: { ...t, step: { id: "readback", kind: "sequence", label: "Flight approves. Read back: 15 minutes at the rock, copy.", ready: true, target: "task",
+    options: [{ id: "say", label: "Read it back" }], items: [] } } }));
+  assert.equal(r.free, "sequence"); assert.equal(r.buttons[0].label, "Read it back"); assert.ok(words(r.text) <= 12);
+});

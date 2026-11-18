@@ -160,21 +160,237 @@ def test_ice_run_route_steer_and_return():
     assert any(e["title"] == "Ice run" for e in sim.to_state(m)["mission_log"])
 
 
-def test_sample_gives_science_only_when_pressed():
-    m = sim.new_mission("m", "shackleton_rim", 2, level="cadet")
+def _to_station(level="cadet", seed=2):
+    """Play like a kid until the first science job: the sample station."""
+    m = sim.new_mission("m", "shackleton_rim", seed, level=level)
     do_step(m)
-    for _ in range(80):
+    for _ in range(120):
         t = task(m)
         if t and t["kind"] == "science":
             break
-        if t and t["kind"] in ("ice_run", "explore"):   # [playtest 4] the science drive comes after the ice
+        if t and t["step"] and t["step"]["ready"]:
             do_step(m)
         sim.step(m, 1)
     t = task(m)
-    assert t and t["kind"] == "science"
+    assert t and t["kind"] == "science" and [s["id"] for s in t["steps"]] == ["tool", "describe", "bag"]
+    return m, t, m.gp["tasks"][t["id"]]
+
+
+# ---- [0.5 field] 1. the sample station: tool, a one-line description, the bag number ---------------------------------
+@pytest.mark.parametrize("level", ["cadet", "commander"])
+def test_sample_station_scales_with_the_description(level):
+    m, t, raw = _to_station(level)
+    assert t["decision"] and t["lesson"]["id"] == "fieldkit" and t["lesson"]["track"] == "field"
+    opts = t["step"]["options"]
+    assert raw["tool"] in [o["id"] for o in opts] and len(opts) == (3 if level == "cadet" else 4)
     sci = m.science
-    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "sample"})
-    assert r["ok"] and m.science == pytest.approx(sci + gameplay.SAMPLE_SCIENCE)
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "tool", "choice": raw["tool"]})
+    assert r["ok"] and "Good pick" in r["say"] and m.science == sci   # nothing until it's bagged and called in
+    t = task(m)
+    assert t["step"]["kind"] == "describe" and t["decision"]   # the clock holds while the kid describes
+    assert len(t["step"]["options"]) <= 4 and t["step"]["options"][-1]["label"] == "Bag it"
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "describe", "text": "it is really big"})
+    assert r["ok"] and r.get("progress") and r["say"].startswith("Good: size.") and words(r["say"]) <= 8
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "describe", "text": "round and bright"})
+    assert r["ok"] and not r.get("progress") and "size, shape and bright or dark" in r["say"]
+    t = task(m)
+    assert t["step"]["kind"] == "sequence" and t["step"]["options"][0]["label"] == f"Bag {raw['bag']}"
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "bag", "text": "uh, the bag"})
+    assert r.get("progress") and m.science == sci
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "bag",
+                              "text": f"bag {gameplay._num_words(raw['bag'])}"})
+    best = gameplay.STATION_BAG + gameplay.STATION_TOOL + gameplay.STATION_KIND * 3
+    assert r["ok"] and m.science == pytest.approx(sci + best) and f"bag {raw['bag']}" in r["say"].lower()
+    assert words(r["say"]) <= 20 and raw["status"] == "done"
+
+
+def test_a_lazy_station_still_counts_but_less():
+    m, t, raw = _to_station()
+    wrong = next(o["id"] for o in t["step"]["options"] if o["id"] != raw["tool"])
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "tool", "choice": wrong})
+    assert r["ok"] and gameplay.TOOL_USE[raw["tool"]] in r["say"]   # a wrong pick teaches; the job goes on
+    sci = m.science
+    sim.apply_command(m, {"type": "task", "task": t["id"], "step": "describe", "choice": "bag"})
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "bag", "choice": "say"})
+    assert m.science == pytest.approx(sci + gameplay.STATION_BAG)
+    # every station is worth little next to the sim's own science (the strategy guarantees hold)
+    assert gameplay.STATION_BAG + gameplay.STATION_TOOL + gameplay.STATION_KIND * gameplay.STATION_KINDS <= 2.5
+
+
+def test_station_chips_describe_by_tap():
+    m, t, raw = _to_station()
+    sim.apply_command(m, {"type": "task", "task": t["id"], "step": "tool", "choice": raw["tool"]})
+    for _ in range(3):
+        t = task(m)
+        chip = t["step"]["options"][0]
+        assert chip["id"] in raw["steps"][1]["look"]
+        sim.apply_command(m, {"type": "task", "task": t["id"], "step": "describe", "choice": chip["id"]})
+    assert task(m)["step"]["id"] == "bag" and len(raw["steps"][1]["got"]) == 3
+
+
+# ---- [0.5 field] 2. the low-Sun drive: tack off the sunline, lights before the shadow --------------------------------
+def _ice_drive(monkeypatch, sun):
+    """A Cadet ice drive with the Sun where the test puts it (sun_view patched; the real geometry is tested below)."""
+    monkeypatch.setattr(gameplay, "sun_view", lambda m, t_h=None, leg="out": dict(sun))
+    m = sim.new_mission("m", "connecting_ridge", 3, level="cadet")
+    for _ in range(300):
+        t = task(m)
+        if t and t["kind"] == "ice_run" and t["step"]["ready"]:
+            do_step(m)   # send the rover
+            return m, m.gp["tasks"][t["id"]]
+        if t and t["step"] and t["step"]["ready"]:
+            do_step(m)
+            if m.pending:
+                sim.apply_command(m, {"type": "confirm"})
+        sim.step(m, 1)
+    pytest.fail("no ice run")
+
+
+GLARE_LEFT = {"rel": -12.0, "side": "left", "elev": 1.4, "up": True, "glare": True}
+
+
+def test_low_sun_tack_away_from_the_sun(monkeypatch):
+    m, raw = _ice_drive(monkeypatch, GLARE_LEFT)
+    assert [s["id"] for s in raw["steps"]] == ["send", "tack", "steer", "lights", "back"]
+    sim.step(m, gameplay.TACK_AT_H)
+    t = task(m)
+    assert t["step"]["id"] == "tack" and t["decision"] and t["lesson"]["id"] == "observe"
+    assert any(r["k"] == "Sun" and r["v"] == "12° left, 1.4° up" for r in t["readouts"])
+    assert t["step"]["label"] == "Glare: Sun 12° left. Tack left or right?"   # the data is in the line too
+    eta = m.rover["eta_h"]
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "tack", "choice": "right"})
+    assert r["ok"] and m.rover["eta_h"] == eta and "can see" in r["say"]
+
+
+def test_low_sun_wrong_or_no_call_costs_an_hour_never_the_mission(monkeypatch):
+    m, raw = _ice_drive(monkeypatch, GLARE_LEFT)
+    sim.step(m, gameplay.TACK_AT_H)
+    eta = m.rover["eta_h"]
+    r = sim.apply_command(m, {"type": "task", "task": raw["id"], "step": "tack", "choice": "left"})
+    assert r["ok"] and m.rover["eta_h"] == eta + gameplay.NAV_COST_H and "glare" in r["say"].lower()
+    # nobody calls the lights: once it's the card's step, NAV_WAIT_H hours later the rover stops at the shadow
+    m2, raw2 = _ice_drive(monkeypatch, GLARE_LEFT)
+    for _ in range(40):
+        if raw2["steps"][3]["done"] or not m2.rover["busy"]:
+            break
+        t = task(m2)
+        if t["step"]["id"] in ("tack", "steer"):
+            do_step(m2)
+        p0, e0 = m2.power, m2.rover["eta_h"]
+        sim.step(m2, 1)
+    assert raw2["steps"][3]["result"].startswith("No lights") and not m2.over
+    assert m2.rover["eta_h"] == e0 - 1 + gameplay.NAV_COST_H
+
+
+def test_lights_on_before_the_shadow(monkeypatch):
+    m, raw = _ice_drive(monkeypatch, {**GLARE_LEFT, "glare": False, "up": False})
+    assert [s["id"] for s in raw["steps"]] == ["send", "steer", "lights", "back"]   # Sun down: no glare call
+    while task(m)["step"]["id"] != "lights" or not task(m)["step"]["ready"]:
+        if task(m)["step"]["ready"]:
+            do_step(m)
+        sim.step(m, 1)
+    t = task(m)
+    assert t["step"]["options"] == [{"id": "on", "label": "Lights on"}]
+    assert any(r["k"] == "Shadow in" for r in t["readouts"])
+    eta, p = m.rover["eta_h"], m.power
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "lights", "choice": "on"})
+    assert r["ok"] and m.rover["eta_h"] == eta and m.power == p
+
+
+def test_the_sun_is_real_data_and_the_glare_leg_varies():
+    m = sim.new_mission("m", "shackleton_rim", 0, level="cadet")
+    eph = sim.ephemeris("shackleton_rim")["sun_elev_deg"]
+    sv = gameplay.sun_view(m, 10)
+    assert sv["elev"] == pytest.approx(eph[10], abs=0.01) and -180 <= sv["rel"] <= 180
+    assert gameplay.sun_view(m, 10, "home")["rel"] == pytest.approx(((sv["rel"] + 360) % 360) - 180, abs=0.2)
+    legs = set()
+    for site in SITES:
+        mm = sim.new_mission("m", site, 0, level="cadet")
+        for h in range(0, sim.MISSION_H, 6):
+            mm.t_h = h
+            legs.add(gameplay._glare_leg(mm))
+    assert {"out", "home", None} <= legs   # the data decides: some drives face the Sun going out, some coming home
+    floor = sim.new_mission("m", "shackleton_floor", 0, level="cadet")
+    assert not any(gameplay.sun_view(floor, h)["up"] for h in range(0, 48))   # the crater floor never sees the Sun
+
+
+# ---- [0.5 field] 3. the science team's replan: what to give up, then the readback ---------------------------------------
+def _to_replan(level="cadet"):
+    m = sim.new_mission("m", "de_gerlache_rim", 1, level=level)
+    for _ in range(4000):
+        t = task(m)
+        if t and t["kind"] == "replan":
+            return m, t, m.gp["tasks"][t["id"]]
+        if t and t["step"] and t["step"]["ready"]:
+            do_step(m, t)
+            if m.pending:
+                sim.apply_command(m, {"type": "confirm"})
+        sim.step(m, 0.5)
+    pytest.fail("no replan")
+
+
+def test_replan_trades_real_numbers_and_needs_a_readback():
+    m, t, raw = _to_replan()
+    assert t["say"].startswith("Science Officer: unusual bright rock.") and words(t["say"]) <= 20
+    assert m.rover["busy"] and sim.env_at(m, m.t_h)["earth_visible"]   # the science room is on Earth
+    assert t["decision"] and t["lesson"]["id"] == "rocks"
+    hints = {o["id"]: o["hint"] for o in t["step"]["options"]}
+    mg = gameplay._margin(m)
+    assert ("all day" in hints["margin"]) if mg["margin_h"] is None else (f"{mg['margin_h']} h" in hints["margin"])
+    assert f"{gameplay.SAMPLE_SCIENCE:g}" in hints["sample"] or "Free" in hints["sample"]
+    sci, left = m.science, gameplay._samples_left(m)
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "trade", "choice": "margin"})
+    assert r["ok"] and r["say"] == "Flight approves, 15 minutes at the rock." and gameplay._samples_left(m) == left
+    assert m.rover.get("late_min") == gameplay.REPLAN_MIN and m.science == sci
+    t = task(m)
+    assert t["step"]["kind"] == "sequence" and t["decision"]
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "readback", "text": "fifteen minutes"})
+    assert r.get("progress") and "Then: at the rock" in r["say"] and m.science == sci
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "readback", "text": "at the rock, copy"})
+    assert r["ok"] and "Readback correct" in r["say"] and m.science == pytest.approx(sci + gameplay.ROCK_SCIENCE)
+    assert raw["status"] == "done" and words(r["say"]) <= 20
+
+
+def test_replan_with_no_light_margin_flight_says_no(monkeypatch):
+    m, t, raw = _to_replan()
+    monkeypatch.setattr(gameplay, "_margin", lambda m: {"eta_h": 9, "sun_h": 4, "lit": True, "margin_h": 0, "tight": True})
+    left = gameplay._samples_left(m)
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "trade", "choice": "margin"})
+    assert r["say"].startswith("Flight: negative, sunset in 4 h") and words(r["say"]) <= 20
+    assert gameplay._samples_left(m) == max(0, left - 1) and not m.rover.get("late_min")
+
+
+def test_replan_never_without_earth_and_once_a_mission():
+    for site in ("shackleton_rim", "de_gerlache_rim"):
+        m = sim.new_mission("m", site, 1, level="cadet")
+        while not m.over:
+            t = task(m)
+            if t and t["step"] and t["step"]["ready"]:
+                if t["kind"] == "replan":
+                    assert sim.env_at(m, m.t_h)["earth_visible"]
+                do_step(m, t)
+                if m.pending:
+                    sim.apply_command(m, {"type": "confirm"})
+            sim.step(m, 0.5)
+        assert m.gp["count"].get("replan", 0) <= gameplay.REPLAN_MAX
+
+
+def test_free_text_steps_route_by_voice():
+    from app import turn_router as R
+    ctx = R.Ctx(screen="cabin", offer="task", step_type="describe", step_options=["Fist-size", "Rounded", "Bag it"])
+    assert R.nav_intent("it's a big round rock with sharp edges", ctx) == ("task_choice", "it s a big round rock with sharp edges")
+    assert R.nav_intent("pause the clock", ctx)[0] == "time_pause"   # the clock still answers
+    ctx = R.Ctx(screen="cabin", offer="task", step_type="sequence", step_options=["Read it back"])
+    assert R.nav_intent("fifteen minutes at the rock copy", ctx)[0] == "task_choice"
+    ctx = R.Ctx(screen="cabin", offer="task", step_type="sequence", step_options=["Bag 14"])
+    assert R.nav_intent("bag twelve", ctx) == ("task_choice", "bag twelve")   # the words go to the grader
+    ctx = R.Ctx(screen="cabin", offer="task", step_options=["Tack left", "Tack right"])
+    assert R.nav_intent("left", ctx) == ("task_choice", "Tack left")
+    assert R.nav_intent("tack right", ctx) == ("task_choice", "Tack right")   # the word both options share doesn't count
+    ctx = R.Ctx(screen="cabin", offer="task", step_options=["Lights on"])
+    assert R.nav_intent("lights", ctx) == ("task_choice", "Lights on")
+    assert R.nav_intent("tongs", R.Ctx(screen="cabin", offer="task", step_options=["Rake", "Tongs", "Scoop"])) == \
+        ("task_choice", "Tongs")
 
 
 def test_night_prep_at_malapert_includes_the_long_night():

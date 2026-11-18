@@ -755,7 +755,35 @@ NASA page doesn't list them); Copernicus' size (places.json says 93 km, the IAU 
 (photo, describe, sample, bag, call it in) is a kid-sized routine built from the Apollo practice above and the
 Artemis II spoken reports, not a quoted NASA checklist; the lesson calls it "the station order", never NASA's.
 
-### 12.4 Not done
+### 12.4 Field School in the mission (0.5 part 2, `feat/05-mission-field`)
+
+Three mission tasks put the lessons to work in the cabin (docs/GAMEPLAY.md §13 has the design and numbers). Each task
+is a real job from NASA's surface plans, is voice-first, and points back to its lesson on the Now card ("Field School:
+Field kit").
+
+| Task | Lesson it uses | What the cadet does | Basis |
+|---|---|---|---|
+| Sample station (replaces "Take a sample") | `fieldkit` (tools, station order), `observe` (descriptor kinds) | Picks the tool, describes the sample in one line (graded like the lesson's describe step), calls in the bag number; CAPCOM reads it back | Naids et al. 2021 (NTRS 20210000242): Artemis tools and numbered bags; ALSJ bag practice |
+| Low-Sun drive (the ice run's navigator) | `observe` (bright and dark, shadows) | Calls a tack away from a 1–2° Sun in the cameras; calls lights before the crater's shadow | Litaker et al., NTRS 20240011393: south-pole lighting for driving |
+| Science stop (replan) | `rocks` (bright anorthosite, the first crust) | Chooses what to give up for 15 minutes at a bright rock (light margin or a sample stop) from the sim's numbers; reads back Flight's approval | JETT5 science ops: the science room asks, Flight approves, one CAPCOM voice |
+
+Learning design notes:
+
+- **Predict, then act, then see it counted:** the station's points scale with the description (0.5 to 2.5), so a
+  fuller description is worth more, but nothing is "wrong". A wrong tool gets the lesson's own line ("Tongs grab one
+  rock.") and the job goes on.
+- **Read the data:** the tack side comes from the Sun's real elevation and bearing on the readout, and the replan's
+  answer from the light margin (Horizons sunset minus the rover's ETA). A fixed rule ("always tack left", "always use
+  the margin") is right only some of the time. The rewards are too small to matter to the balance
+  (`tests/test_strategy.py` unchanged).
+- **Comms discipline:** the readback is a sequence step (the items in order, over turns), the same grader as the Field
+  kit lesson's station-order readback.
+- **Honest limits:** the Sun's bearing uses the game's azimuth convention, shared with the window (140° plus one turn
+  per lunar day), not a Horizons azimuth. The replan needs Earth up, since the science room is on Earth, so a mission
+  that never drives under Earth (Shackleton Rim before Day 6) never sees one. "Maybe anorthosite" stays a maybe: a
+  bright rock isn't always anorthosite, and the Rocks lesson says bright doesn't always mean young.
+
+### 12.5 Not done
 
 - **The 216 IAU names** in the pack (`names/moon_names.json`) are not wired into the entity registry or the ear's name
   lists. They exist only when the optional pack is installed, while the registry, the gazetteer and the Director's
