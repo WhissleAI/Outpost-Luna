@@ -242,8 +242,8 @@ html:not([data-captions="off"]) .cb-capwrap:has(.caption-bar:not([hidden])) .cb-
 .cb-askslot .askbar .chips{display:none}
 .cb-askslot .dock{flex-direction:row;align-items:center;width:100%;min-height:var(--control-md);border-radius:var(--radius-md);border:0;background:var(--cb-plate);color:var(--color-on-space);
   box-shadow:inset 0 0 0 1px var(--cb-line)}
-.cb-askslot .listen{flex:0 1 auto;height:auto;padding:0 var(--space-3);border:0;border-right:1px solid var(--cb-line);gap:var(--space-2);max-width:40%}
-.cb-askslot .listen-state{min-width:0;font-family:var(--font-mono);color:var(--cb-text-2)}
+.cb-askslot .listen{flex:none;min-width:0;height:auto;padding:0 var(--space-3);border:0;border-right:1px solid var(--cb-line);gap:var(--space-2)}
+.cb-askslot .listen-state{flex:none;font-family:var(--font-mono);color:var(--cb-text-2)}   /* [0.4.1] never cut: the field gives way */
 /* QA-22: the state colours of the light dock (.askbar.is-listening .listen-state = --color-text, dark) out-rank the
    rule above and put dark green on the dark plate: in the cabin the state word is always light (phosphor when hearing) */
 .cb-askslot .askbar[class] .listen-state,.cb-askslot .askbar[class] .listen-state:empty::before{color:var(--color-on-space)}

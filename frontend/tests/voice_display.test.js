@@ -125,3 +125,18 @@ test("every displayed state lasts at least the dwell", async () => {
   // each run except the last lasted >= the dwell (samples every 5 ms; allow timer slack)
   runs.slice(1).forEach(([s, k]) => assert.ok(k * 5 >= DISPLAY.DWELL * 0.7, `${s} shown only ~${k * 5} ms`));
 });
+
+test("[0.4.1] crew talk: room talk kept off a guess or a choice shows \"Crew talk\" briefly, then Listening", async () => {
+  const { CREW_TALK } = await import("../src/voice.js");
+  await boot();
+  hear("yes it is");
+  await wait(15);
+  voice.decided("ignore", "yes it is");
+  voice.notice(CREW_TALK);
+  await wait(DISPLAY.DWELL + 20);
+  assert.equal(els.listenState.textContent, "Crew talk");
+  assert.equal(els.liveWords.textContent, "", "the overheard words never show");
+  await wait(DISPLAY.NOTICE_MS + DISPLAY.DWELL + 40);
+  stop();
+  assert.notEqual(els.listenState.textContent, "Crew talk");
+});

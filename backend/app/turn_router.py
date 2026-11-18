@@ -959,6 +959,11 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         strong = len(ws) >= 3 and (dd is None or dd >= ctx.dd_strong)
         if not strong:
             return out("ignore", "speaking")
+    # 2b. [0.4.1] Crew talk: on a guess or a choice (a lesson's predict / choice step, a choice on the Now card) a spoken
+    #     answer counts only when Arc is sure it was for us (dd >= dd_strong, 0.7 at Normal). Two kids debating "yes"
+    #     / "no" never pick for them; the bar says "Crew talk" and a tap or Space still answers.
+    if crew_talk(raw, ctx, dd, nav):
+        return out("ignore", "crew_talk", notice=True)
     # 3. Not for us: Arc says the kid is talking to someone else. Except the open step's own answer, said as it is
     #    written ("Right now" for the option "Right now"): Arc rates short exact answers as not directed, and the live
     #    run showed a kid stuck on that step forever (round 7, handsfree_run --audio).
@@ -1018,6 +1023,24 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
     # [audit2] a typed turn was meant for us: never silent (the bar shows "Didn't catch that")
     return out("ignore", "unclear", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
+
+
+CREW_TALK_STEPS = ("predict", "choice")   # [0.4.1] guess / pick steps where room talk must never answer
+
+
+def crew_talk(text: str, ctx: Ctx, dd: float | None, nav: tuple | None = None) -> bool:
+    """[0.4.1] A heard turn Arc rates under dd_strong (0.7 at Normal) that would answer a guess or a choice: a lesson's
+    predict / choice step (its option words), or a choice on the Now card (the router's task_choice). Typed, tapped and
+    Space turns carry no dd and are never gated; navigation and questions are unaffected."""
+    if dd is None or dd >= ctx.dd_strong:
+        return False
+    if ctx.screen in ("lesson", "ride") and ctx.step_type in CREW_TALK_STEPS:
+        if nav and nav[0] != "a11y":
+            return False
+        return bool(_plausible(text, ctx, dd, strict=True) or _names_option(text, ctx) or _option_key(text, ctx)
+                    or BARE_YESNO.match(norm(text)))
+    return bool(ctx.screen == "cabin" and ctx.offer == "task" and ctx.step_type not in TASK_FREE and nav
+                and nav[0] == "task_choice")
 
 
 YESNO_STEPS = ("predict", "earth_view")

@@ -27,6 +27,9 @@ const CLASS_OF = { off: ["is-idle"], error: ["is-idle"], listening: ["is-listeni
  *  still undecided THINK_AFTER ms after it ended); an open-mic turn shows no words and no "Hearing you" until the
  *  router accepts it (room talk leaves no trace). Space / push-to-talk and the Web Speech fallback are explicit: the
  *  kid meant us, so their words and "Hearing you" show at once. */
+/** [0.4.1] The bar's word for room talk the router kept off a guess or a choice (turn_router.crew_talk): a tap or Space
+ *  still answers. */
+export const CREW_TALK = "Crew talk";
 export const DISPLAY = { DWELL: 600, THINK_AFTER: 450, THINK_MAX: 3000, NOTICE_MS: 1800, DECIDED_MS: 4000 };
 const ECHO_TAIL_MS = 2000;   // after output stops, the mic can still deliver its echo for a moment (hard mute ≥ 600 ms)
 const ECHO_LINES_MS = 12000; // what we said in the last 12 s is an echo reference too (the last few lines, not only this one)

@@ -10,7 +10,7 @@ import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional 
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
-import { createVoice } from "./voice.js";
+import { createVoice, CREW_TALK } from "./voice.js";
 import { onEngine, askbarClasses, warmState, WARM_MS, VOICE_FIX, earFailed, onEarFailed, setEarFailed } from "./engine.js";   // [#87] the desktop shell's ear state
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
@@ -571,7 +571,8 @@ async function boot() {
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
       voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
-      if (d.outcome === "ignore") { if (d.notice) voice.notice(); releaseHold(600); return; }   // not for us: a held tour plays on
+      // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
+      if (d.outcome === "ignore") { if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined); releaseHold(600); return; }
       // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
       // all; the offline word list catches what the tagger misses (profanity.js)
       const shownText = d.safety ? "" : maskProfanity(d.text);

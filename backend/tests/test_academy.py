@@ -114,7 +114,9 @@ def test_attempt_api_retry_hint_pass_badge(client):
     assert client.post("/api/academy/attempt", json={"lesson_id": "nope", "step": 0, "input": {}}).status_code == 404
 
 
-GOOD = ["yes", "Houston, any space weather?", "everyone to the shelter", "come out of the shelter", "send the rover for ice"]
+# [0.4.1] the storm procedure: read Houston's order back, act, confirm
+GOOD = ["yes", "Houston, any space weather?", "all crew into the shelter", "everyone to the shelter",
+        "in the shelter, copy", "come out of the shelter", "send the rover for ice"]
 
 
 def _ride(client, answers):
@@ -135,8 +137,9 @@ def test_check_ride_pass(client):
 
 
 def test_check_ride_storm_without_shelter_fails(client):
-    wrong = ["yes", "Houston, any space weather?", "end shift", "end shift", "end shift",   # 3 misses: storm hits
-             "come out of the shelter", "send the rover for ice"]
+    wrong = ["yes", "Houston, any space weather?", "all crew into the shelter",
+             "end shift", "end shift", "end shift",   # 3 misses: no shelter
+             "in the shelter, copy", "come out of the shelter", "send the rover for ice"]
     out = _ride(client, wrong)
     assert out["status"] == "done" and out["passed"] is False and "badge" not in out
 
@@ -144,8 +147,9 @@ def test_check_ride_storm_without_shelter_fails(client):
 def test_shelter_cuts_storm_dose(client):
     good = _ride(client, GOOD)["state"]["resources"]["dose_msv"]
     # "x" is not a try (grade.plausible): ignored, no miss. Three real wrong orders let the storm hit.
-    bad = _ride(client, ["yes", "Houston, any space weather?", "x", "more power to the heaters", "end shift",
-                         "send the rover for ice", "come out of the shelter", "send the rover for ice"])
+    bad = _ride(client, ["yes", "Houston, any space weather?", "all crew into the shelter", "x",
+                         "more power to the heaters", "end shift", "send the rover for ice", "in the shelter, copy",
+                         "come out of the shelter", "send the rover for ice"])
     assert bad["state"]["resources"]["dose_msv"] > good * 2
 
 
@@ -327,20 +331,20 @@ def test_wrong_order_teaches_never_say_again(client):
             assert not s["fail"].startswith("Say again"), (L["id"], s["prompt"])
     s = client.post("/api/academy/ride").json()
     rid = s["ride_id"]
-    for st, a in enumerate(["yes", "Houston, any space weather?"]):
+    for st, a in enumerate(["yes", "Houston, any space weather?", "all crew into the shelter"]):
         client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": st, "ride_id": rid, "input": {"text": a}})
-    r = client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": 2, "ride_id": rid,
+    r = client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": 3, "ride_id": rid,
                                                    "input": {"text": "shields up"}}).json()
     assert r["say"].startswith("Shields help a little") and "Say again" not in r["say"]
 
 
 def test_come_out_leaves_the_shelter():
     """#13: kid words for the order the step expects."""
-    st = content.lesson("checkride")["steps"][3]
+    st = content.lesson("checkride")["steps"][5]
     for t in ("come out", "everyone come out", "come out of the shelter", "get out"):
         assert g.grade(st, {"text": t})[0], t
         assert g.plausible(st, t), t
-    assert not g.grade(content.lesson("checkride")["steps"][2], {"text": "come out"})[0]   # never the opposite order
+    assert not g.grade(content.lesson("checkride")["steps"][3], {"text": "come out"})[0]   # never the opposite order
 
 
 def test_ride_never_says_the_same_sentence_twice(client):
@@ -386,3 +390,45 @@ def test_predict_waits_for_a_guess(client):
     r = client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k,
                                                   "input": {"choice": les["steps"][k]["accept"]["options"][0]["id"]}}).json()
     assert r["status"] == "passed"
+
+
+def _ride_to(client, n):
+    s = client.post("/api/academy/ride").json()
+    for st, a in enumerate(GOOD[:n]):
+        client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": st, "ride_id": s["ride_id"],
+                                                   "input": {"text": a}})
+    return s["ride_id"]
+
+
+def _ride_att(client, rid, step, inp):
+    return client.post("/api/academy/attempt", json={"lesson_id": "checkride", "step": step, "ride_id": rid,
+                                                      "input": inp}).json()
+
+
+def test_ride_storm_is_the_real_procedure(client):
+    """[0.4.1] Houston calls the order -> readback (voice or taps, word by word) -> the act -> "In the shelter, copy"."""
+    steps = content.lesson("checkride")["steps"]
+    assert [s["accept"]["type"] for s in steps[2:5]] == ["sequence", "command", "sequence"]
+    assert steps[2]["alert"] and "Houston: all crew into the shelter" in steps[2]["prompt"]
+    assert len(steps[2]["prompt"].split("Houston: ")[1].split()) <= 20
+    rid = _ride_to(client, 2)
+    r = _ride_att(client, rid, 2, {"text": "all crew"})                      # half a readback: progress, no miss
+    assert r["status"] == "progress" and r["got"] == ["crew"] and r["next"] == "shelter"
+    r = _ride_att(client, rid, 2, {"text": "into the shelter", "got": ["crew"]})
+    assert r["status"] == "passed" and r["next_step"] == 3
+    assert not r["state"]["shelter"]                                        # a readback is words: nobody moved yet
+    r = _ride_att(client, rid, 3, {"text": "everyone into the shelter"})
+    assert r["status"] == "passed" and r["state"]["shelter"]
+    r = _ride_att(client, rid, 4, {"choice": "in"})                          # the confirm by tap: chip by chip
+    assert r["status"] == "progress"
+    r = _ride_att(client, rid, 4, {"choice": "copy", "got": ["in"]})
+    assert r["status"] == "passed" and r["say"].startswith("Houston copies") and r["next_step"] == 5
+
+
+def test_ride_wrong_action_in_the_storm_still_counts_wrong(client):
+    """Leave the shelter during the alert is a wrong order (graded, taught), never a pass."""
+    rid = _ride_to(client, 3)
+    r = _ride_att(client, rid, 3, {"text": "leave the shelter"})
+    assert r["status"] == "hint" and r["say"].startswith("Wrong way") and not r["state"]["shelter"]
+    r = _ride_att(client, rid, 3, {"text": "more power to the shields"})
+    assert r["status"] == "hint" and r["say"].startswith("Shields help a little")

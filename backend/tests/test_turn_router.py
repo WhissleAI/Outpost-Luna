@@ -160,3 +160,34 @@ def test_zoom_words_in_the_cabin_stay_window_views():
     assert route("zoom out", ctx("cabin"))["intent"] == "view_orbit"
     assert route("zoom in", ctx("cabin"))["intent"] == "view_site"
     assert route("closer", ctx("cabin")).get("intent") != "zoom_in"
+
+
+# ---- [0.4.1] crew talk: room talk never answers a guess or a choice ---------------------------------------------------
+PREDICT = {"step_type": "predict", "step_options": ["Yes, Earth is up", "No, never from here"]}
+NOWCHOICE = {"offer": "task", "step_options": ["Steer left", "Steer right"]}
+
+
+@pytest.mark.parametrize("dd", [0.3, 0.55, 0.69])
+def test_low_dd_never_answers_a_guess_or_a_choice(dd):
+    for scr, extra, said in (("lesson", PREDICT, "yes earth is up"), ("lesson", PREDICT, "no"),
+                             ("lesson", SCREENS["lesson"], "go faster"), ("ride", PREDICT, "yes"),
+                             ("cabin", NOWCHOICE, "steer left")):
+        r = route(said, ctx(scr, dd=dd, recent=[], **extra))
+        assert r["outcome"] == "ignore" and r["reason"] == "crew_talk" and r["notice"], (scr, said, r)
+
+
+def test_crew_talk_gate_only_where_it_belongs():
+    # a clearly directed answer still answers; typed and Space-held turns carry no dd and are never gated
+    assert out("yes earth is up", ctx("lesson", dd=0.8, recent=[], **PREDICT)) == "answer"
+    assert out("yes earth is up", ctx("lesson", source="typed", dd=None, recent=[], **PREDICT)) == "answer"
+    assert out("yes earth is up", ctx("lesson", source="ptt", dd=0.2, recent=[], **PREDICT)) == "answer"
+    r = route("steer left", ctx("cabin", dd=0.9, recent=[], **NOWCHOICE))
+    assert r["outcome"] == "navigate" and r["intent"] == "task_choice"
+    assert route("steer left", ctx("cabin", source="typed", dd=None, recent=[], **NOWCHOICE))["intent"] == "task_choice"
+    # other step kinds, a readback on the Now card and plain navigation keep their own rules
+    assert route("send the rover for ice", ctx("ride", dd=0.6, recent=[], step_type="command"))["reason"] != "crew_talk"
+    assert route("bag fourteen", ctx("cabin", dd=0.6, recent=[], offer="task", step_type="sequence",
+                                     step_options=["Bag 14"]))["reason"] != "crew_talk"
+    assert route("next lesson", ctx("lesson", dd=0.6, recent=[], **PREDICT))["reason"] != "crew_talk"
+    # room talk that names no option stays silent as before (no "Crew talk" flash for every sentence)
+    assert route("what time is dinner tonight mom", ctx("lesson", dd=0.3, recent=[], **PREDICT))["reason"] != "crew_talk"

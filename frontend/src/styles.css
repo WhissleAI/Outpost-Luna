@@ -253,8 +253,10 @@ html[data-captions="off"] .stage{--cap-reserve:0px}
 .mic:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 /* state: bars + one word */
 /* fixed width: "Listening" / "Hearing you" / "Starting voice…" / "Didn't catch that" and the dots never resize the row */
-.listen{flex:none;display:flex;align-items:center;gap:var(--space-2);width:156px;overflow:hidden;padding-right:var(--space-3);border-right:1px solid var(--color-line);height:28px}
-.listen-state{min-width:0;overflow:hidden;text-overflow:ellipsis}
+/* [0.4.1] the state word is never cut ("Starting voice…", "Didn't catch that", big text): the slot grows past 156px
+   when it must, and the typing field and its "Hold to talk" hint give way first */
+.listen{flex:none;display:flex;align-items:center;gap:var(--space-2);min-width:156px;padding-right:var(--space-3);border-right:1px solid var(--color-line);height:28px}
+.listen-state{flex:none}
 .cs-tag{display:none}
 .orb{flex:none;display:flex;align-items:center;gap:3px;height:20px;width:22px;justify-content:center}
 .orb i{display:block;width:3px;height:4px;border-radius:2px;background:var(--color-text-3);transition:height var(--dur-fast),background-color var(--dur-base)}
@@ -312,7 +314,8 @@ html[data-captions="off"] .stage{--cap-reserve:0px}
 .live-words .ear-link.is-unsure{font-weight:inherit;text-decoration-style:dotted}
 .askbar.is-hearing .live-words:empty{display:block}
 .askbar.is-hearing .live-words:empty::before{content:"…";color:var(--color-text-3)}
-.hint{flex:none;display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--color-text-3);white-space:nowrap}
+.hint{flex:0 1 auto;min-width:0;overflow:hidden;display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--color-text-3);white-space:nowrap}
+.hint>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ask:focus-within .hint,.askbar:not(.is-listening):not(.is-idle) .hint,.ask:has(input:not(:placeholder-shown)) .hint,.live-words:not(:empty)~.hint{display:none}
 .send{flex:none;width:44px;height:44px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--color-surface-2);color:var(--color-text-3);
   transition:background-color var(--dur-fast),color var(--dur-fast)}
