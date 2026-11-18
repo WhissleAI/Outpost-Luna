@@ -25,6 +25,9 @@ Local changes for Outpost Luna (desktop/vendor/libarc):
   src/arc_nft2_web.c (new) runs the five NFT2 graphs on onnxruntime-web (JavaScript) for the Emscripten build;
   examples/transcribe.c and wasm/ (a test page, its loopback server and headless runner) are new. The public C API
   (include/arc.h) is unchanged.
+- outpost.2 (Arc Transcriber Space v2, docs/ARC_V2.md): src/arc_nft2.c + include/arc.h add arc_nft2_tap /
+  arc_nft2_tap_free, a copy of the clip decode's memoised Arc tap (layer-9 frames) for the v2 room read-outs
+  (nft2/room.onnx, run by the model server on ONNX Runtime). Additions only: ABI 2 unchanged.
 
 third_party/onnxruntime/include: ONNX Runtime 1.23.2 C API headers (Microsoft, MIT License, third_party/onnxruntime/LICENSE).
 

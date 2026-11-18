@@ -99,6 +99,12 @@ class EarSettings(BaseSettings):
     # speaker -> mic delay minus a margin), so the canceller's 512 ms window holds the room rather than the latency.
     ear_ref_shift_s: float = 0.0
     ear_echo_delay: bool = True         # measure the speaker -> mic delay of each line we play (app/echo_delay.py)
+    # Arc Transcriber Space v2 room read-outs (app/arc_room.py, docs/ARC_V2.md): `room` on the final words (act,
+    # end_of_turn, playback / media share, and BETA addressee / safety). shadow: sent and logged, no decision reads it;
+    # off: not computed. The model's playback head does not replace the echo rule and its end_of_turn does not replace
+    # the VAD close: neither beat what ships on our own sets (docs/ARC_V2.md section 3).
+    ear_room: str = "shadow"
+    ear_room_ref: bool = True           # feed the room network the app's playback reference (measured both ways)
 
 
 ear_settings = EarSettings()
@@ -393,7 +399,7 @@ class EarStream:
             out = self.m.transcribe(pcm, domain=self.domain, no_events=True, names=self.names)
         else:
             out = self.m.transcribe(pcm, domain=self.domain, no_events=False, names=self.names,
-                                    almost=self.cfg.ear_almost, nbest=self.cfg.ear_nbest)
+                                    almost=self.cfg.ear_almost, nbest=self.cfg.ear_nbest, **self._room_kw())
         dt = time.perf_counter() - t
         self.compute_s += dt
         out["_s"] = dt
@@ -402,6 +408,38 @@ class EarStream:
         if len(pcm):
             diag.METRICS.observe("ear_rtf", dt / (len(pcm) / SR), bounds=diag.RATIO, kind=kind)
         return out
+
+    def _room_kw(self) -> dict:
+        """transcribe(tap=True) when the room read-outs are on and loaded (a v1 model has none)."""
+        from . import arc_room
+        on = str(self.cfg.ear_room).strip().lower() not in ("off", "0", "false", "no")
+        return {"tap": True} if on and arc_room.STATE["room"] is not None and hasattr(self.m, "L") else {}
+
+    def _ref_for(self, t0: float, n: int) -> np.ndarray | None:
+        """The app's playback reference over [t0, t0 + n samples) of this ear's audio, sample-aligned with the mic
+        (zeros where nothing played), or None when nothing we played overlaps it."""
+        r = np.zeros(n, np.float32)
+        hit = False
+        for rt, x in self.refs:
+            a = int(round((rt - t0) * SR))
+            lo, hi = max(0, a), min(n, a + len(x))
+            if hi > lo:
+                r[lo:hi] += x[lo - a:hi - a]
+                hit = True
+        return r if hit else None
+
+    def _room(self, out: dict, pcm: np.ndarray) -> dict | None:
+        tap = out.pop("tap", None)
+        if tap is None:
+            return None
+        from . import arc_room
+        t = time.perf_counter()
+        ref = self._ref_for(self.seg_t0, len(pcm)) if self.cfg.ear_room_ref else None
+        r = arc_room.readout(tap, pcm, ref)
+        dt = time.perf_counter() - t
+        self.compute_s += dt
+        diag.METRICS.observe("ear_room_ms", dt * 1000)
+        return r
 
     def _seg_audio(self) -> np.ndarray:
         return np.concatenate(self.seg) if self.seg else np.zeros(0, np.float32)
@@ -452,6 +490,8 @@ class EarStream:
         self.refs.append((t, x))
         self.ref_until = max(self.ref_until, t + len(x) / SR)
         keep = self.cfg.ear_ref_keep_s
+        if self.seg is not None:     # the open turn's playback, for its room read-out (sample-aligned reference)
+            keep = max(keep, self.audio_s - self.seg_t0)
         while self.refs and self.refs[0][0] + len(self.refs[0][1]) / SR < self.audio_s - keep:
             self.refs.popleft()
         if self.deferred and self.st is not None:
@@ -660,6 +700,7 @@ class EarStream:
         else:
             out = self._decode(pcm, partial=False) if len(pcm) >= SR // 10 else {"utts": [], "names": [], "events": [],
                                                                                 "_s": 0.0}
+        room = self._room(out, pcm) if out.get("tap") is not None else None
         utts = [u for u in out["utts"] if (u.get("text") or "").strip()]
         out["names"] = guard_names(out["names"], utts)
         almost = [n for n in out["names"] if n.get("state") == "almost"]
@@ -708,6 +749,8 @@ class EarStream:
                          barge=self.barge_at is not None and self.barge_at >= self.seg_t0 - 0.3, eot=self.eot)
                 bps = [p for t, p in self.barge_ps if t >= self.seg_t0 - 0.3]
                 w["barge_p"] = round(max(bps), 3) if bps else None
+            if room is not None:
+                w["room"] = room       # v2 room read-outs, shadow (addressee / safety BETA): docs/ARC_V2.md
             msgs.append(w)
             msgs.append({"t": "turn", "state": "end", "text": text})
             self.ends.append({"at": round(self.audio_s, 3), "last_voice": round(self.last_voice_s, 3),

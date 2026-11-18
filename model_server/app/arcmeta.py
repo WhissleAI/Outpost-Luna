@@ -97,6 +97,7 @@ def load() -> None:
         m.transcribe((rng.standard_normal(SR) * 0.01).astype(np.float32))
         STATE.update(arc=m, decoder=True, model_dir=str(d), lib=str(lib), backend=m.backend, engine=m.info(),
                      error=None)   # a load that works clears an earlier failure (a reload after a hung decode)
+        _load_room(d)
     except Exception as e:  # noqa: BLE001
         STATE["arc"] = None
         STATE["error"] = f"{type(e).__name__}: {e}"[:300]
@@ -104,6 +105,18 @@ def load() -> None:
     STATE["rss_mb"] = _rss_mb()
     if rss0 is not None and STATE["rss_mb"] is not None:
         STATE["rss_delta_mb"] = round(STATE["rss_mb"] - rss0, 1)
+
+
+def _load_room(d: Path) -> None:
+    """Arc Transcriber Space v2's room read-outs (nft2/room.onnx, app/arc_room.py) next to the ear; EAR_ROOM=off skips
+    them. Fails open: the ear never depends on them."""
+    import os
+    from . import arc_room
+    if os.environ.get("EAR_ROOM", "shadow").strip().lower() in ("off", "0", "false", "no"):
+        arc_room.STATE.update(room=None, error="EAR_ROOM=off")
+        return
+    if arc_room.STATE["room"] is None:
+        arc_room.load(d, threads=1)
 
 
 def _wheel_version() -> str | None:
@@ -135,9 +148,15 @@ def health() -> dict:
                     # libarc ABI / version, the ONNX Runtime it runs on (pinned | wheel | env) and the model files'
                     # sha256 check (app/nft2.py, app/model_verify.py)
                     "engine": STATE["engine"], "ort_wheel": _wheel_version()},
+        "arc_room": _room_health(),
         "emotion": {"loaded": False, "enabled": False, "reason": EMOTION_REASON},
         "watchdog": {"resets": STATE["resets"], "last_reset": STATE["last_reset"]},
     }
+
+
+def _room_health() -> dict:
+    from . import arc_room
+    return arc_room.health()
 
 
 def reset_after_hang(model, reason: str, reload=None) -> bool:

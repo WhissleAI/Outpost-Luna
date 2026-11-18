@@ -2820,6 +2820,34 @@ arc_result* arc_nft2_transcribe(arc_nft2* m, const float* pcm, size_t n, const a
   return arc_result_finish(R, (float)((double)n / SR), (float)(arc_time_ms() - t0));
 }
 
+/* The encoder's Arc tap of a clip (outpost.2): what the v2 room read-outs (nft2/room.onnx) read. Arc.room's
+ * self.bb(x, want_tap=True)[2][0, :T]: drop0, 80 ms grid. Memoised with the clip decode (encode()), so right after
+ * arc_nft2_transcribe on the same samples it runs no encoder pass. */
+float* arc_nft2_tap(arc_nft2* m, const float* pcm, size_t n, int* T_out, int* d_out) {
+  arc_seterr("%s", "");
+  if (T_out) *T_out = 0;
+  if (d_out) *d_out = 0;
+  if (!m || !pcm || !T_out || !d_out || n < 80 || n > (size_t)SR * 120) {
+    arc_seterr("arc_nft2_tap: bad arguments");
+    return NULL;
+  }
+  if (!m->tap) {
+    arc_seterr("arc_nft2_tap: this model has no Arc tap");
+    return NULL;
+  }
+  const float *H, *Ht;
+  int T;
+  if (encode(m, pcm, (long)n, &H, &Ht, &T)) return NULL;
+  int D = m->d.d_model, k = T > 1 ? T - 1 : 0;
+  float* out = arc_malloc(sizeof(float) * (size_t)(k > 0 ? k : 1) * D);
+  if (k > 0) memcpy(out, Ht + D, sizeof(float) * (size_t)k * D);
+  *T_out = k;
+  *d_out = D;
+  return out;
+}
+
+void arc_nft2_tap_free(float* p) { arc_free(p); }
+
 /* ------------------------------------------------------------------ streams */
 
 /* live decoding of the open utterance (nft2_live.Live): stable log-mel frames -> encoder chunks with carried caches ->
