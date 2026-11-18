@@ -606,3 +606,18 @@ def test_storm_readback_uses_the_radio_readback_grader():
     assert g._sequence(acc(cf), {}, "copy, we're in the shelter")[0]
     assert not g._sequence(acc(cf), {}, "in the shelter")[0]          # no radio word yet: half a confirm
     assert not g._sequence(acc(cf), {}, "copy")[0]
+
+
+def test_a_slow_clock_frame_never_runs_past_a_choice():
+    """[0.4.1] A live-clock slice of several hours stops where a step becomes doable (the boulders), so the client's
+    held clock gets the choice; the rest of the slice runs after it, and the hours are never lost."""
+    m = sim.new_mission("m", "shackleton_rim", 2, level="cadet")
+    sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+    sim.step(m, 2)
+    sim.apply_command(m, task(m)["step"]["cmd"])            # send the rover for ice
+    sim.step(m, 6)                                           # one slow frame: six hours at once
+    t = task(m)
+    assert t["step"]["id"] == "steer" and t["step"]["ready"] and t["decision"] and m.frac >= 1
+    h = m.t_h + m.frac
+    sim.step(m, 0)                                           # the leftover hours still run later
+    assert m.t_h + m.frac == pytest.approx(h)
