@@ -22,7 +22,7 @@ Owners:
 | Heard | a used turn | "Heard: …" in the field for 2.6 s | `lesson_feedback` |
 | Didn't catch that | the router's `notice` (a clearly directed turn it couldn't use) | a small chip in the state slot, silent | (live) |
 | Mic denied | the browser refuses the mic | "Mic blocked" plus the reason in the field; typing works | `mic_denied` |
-| Model warming up | `/api/health`: the ear or Steer TTS is not loaded yet | the voice bar shows "Starting voice…" (dots), or "Voice off · type" after 3 min; typing works | `warming` |
+| Model warming up | `/api/health`: the ear or Steer TTS is not loaded yet | the voice bar shows "Starting voice…" (dots); "Voice off · type" (grey mic, one fix line) at once when the ear reports a load error or a fatal ear error with no fallback (0.3.12), else after 3 min; typing works | `warming` |
 | Caption duplicates screen text | the spoken line equals the question, feedback or brief on screen | the caption folds out of the strip but stays in `#captionBar` for screen readers | `lesson_feedback` |
 | Voice bar moved | dragging the grip, arrow keys on the grip, or "move the voice bar to the top right" | the bar snaps to one of 6 anchors, remembered per screen class, and the caption flips side | `vbar_moved` |
 | Answer card | a question anywhere (not a lesson answer) | a glass card top-left (Library: top-right): title, answer, crew button | (live) |

@@ -62,8 +62,9 @@ NOTICE). The largest file is 75.6 MB.
 
 A hands-on Mission prep task (the flour-and-cocoa crater, Oreo Moon phases) shows a **Watch how** button for each catalog
 video whose `prep` is that task, NASA first, each only when it can play now (no dead buttons): the NASA ones play from
-the video pack offline; a YouTube extra shows only while online. The same buttons also sit on the lesson's first step
-(0.3.11), so the phases video is there at the start of the phases lesson; the Try at home card itself stays optional
+the video pack offline; a YouTube extra shows only while online. The lesson has them too: in its Brief from the start,
+and under the first step once the first answer is in (0.3.12: predict before watch; 0.3.11 showed them before the
+guess). On a core lesson only the NASA ones show there; third-party extras stay on the Try at home card, which stays optional
 (map card after the patch, or the patch screen). Voice: "show me how", "watch the video" (the router's `prep_watch`;
 never a bare "watch", which is room talk during the task). Links out still go through the grown-up gate.
 

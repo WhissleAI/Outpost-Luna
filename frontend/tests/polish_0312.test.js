@@ -54,3 +54,15 @@ test("predict before watch: Watch how waits in the Brief until the guess; core s
 test("captions fold a spoken line that is already on the card (the lead and the 'New' line too)", () => {
   assert.match(src("../src/main.js"), /#aPanel \.a-lead, #aPanel \.a-intro/);
 });
+
+test("cabin: unlit caution legends read from the seat (≥ 4.5:1 after the dimming)", () => {
+  const css = src("../src/cabin.css"), tok = src("../src/tokens.css");
+  const op = +css.match(/\.c3\[data-panel="seat"\] \.cb-lamp:not\(\.is-lit\)\{opacity:([\d.]+)\}/)[1];
+  const hex = n => tok.match(new RegExp(`--${n}: (#[0-9A-Fa-f]{6})`))[1];
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const mix = (a, b, k) => a.map((v, i) => v * k + b[i] * (1 - k));
+  const lum = c => { const [r, g, b] = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const plate = rgb(hex("color-panel-2")), text = mix(rgb(hex("color-on-space-2")), plate, op), bg = mix(rgb(hex("color-display")), plate, op);
+  const ratio = (lum(text) + 0.05) / (lum(bg) + 0.05);
+  assert.ok(ratio >= 4.5, `unlit lamp contrast ${ratio.toFixed(2)}:1`);
+});

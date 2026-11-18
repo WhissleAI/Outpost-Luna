@@ -713,6 +713,38 @@ comm-window timeline and science waiting, the Rover panel's route, Orion-style b
 DUs, `src/mission.css` legacy aliases, and the picker framing (the camera can't look straight down at the pole, so the
 pins sit low; the labels now stay clear of the voice bar).
 
+### 0.3.12 polish, group A: voice bar, check-ride cockpit, lessons
+
+Evidence: the 0.3.11 polish audit (headless, 1440×900): voice bar stuck, clipped ride cockpit, repeated instructions.
+
+- **Voice bar (P0):** "Starting voice…" only while the ear is really starting. `/api/health` carries the ear's load
+  error (model server `arc_ear.error`) and which ear the voice waits for (backend `voice: {ear, fallback}`);
+  `engine.warmState` turns a load error with no Deepgram fallback into **Voice off · type** at once, and so does the
+  ear's first fatal `{"t":"error"}` (`engine.earErrorIsFatal`; a model server still starting, a full pool, a reload
+  after a hung decode or a dropped stream still reconnect quietly). Grey mic, one fix line in the hint slot
+  (`VOICE_FIX`); an ear that answers (`{"t":"ready"}`) clears it.
+- **Check-ride cockpit (P0):** one cabin across the stage (no globe beside it). The 3D seat view is centred in the part
+  left of the lesson card (`--ride-inset`, a camera view offset; the CSS3D panels render that part only) and its field
+  of view widens until every console's body is inside it (`cockpit3d.fitFov`): the panel row scales, never clips. The
+  Rover takes the Habitat's high seat in the ride (`RIDE_LAYOUT`). The caution & warning strip and master alarm are in
+  the ride (the storm lights SOLAR STORM and HIGH DOSE); its End shift stays hidden. The clock reads "Day 1 of 2" and
+  names the site (ride HUD: `site`, `ride: {day, days}`; `mission/ride.js`).
+- **Fly the check ride (P1):** before the core lessons are done the button carries "Unlocks after 6 lessons (2/6)" and
+  opens the next lesson; once ready it opens the ride itself (it used to drop the cadet on the map).
+- **One instruction per step (P1):** the first-use "New" chip replaces the "do this" bullet; TTS and captions never say
+  "New:"; captions fold the lead and the New line when they are on the card. The map no longer explains its own card
+  ("Tap Start lesson", "Next: <title>" over the Next up card).
+- **Predict before watch (P1):** "Watch how" waits in the Brief until the first answer, then sits under it; core lessons
+  show NASA videos only (third-party extras stay on the Try-at-home card). A guess step waits for a guess: other words
+  are never a miss and never reveal the answer, and a guess no longer matches a fuzzy near-miss of a label word.
+- **Houston (P1):** the ride's radio call answers once, Houston's own reply with the 1.3 s light-time line (20 words).
+- **Cabin readability (P1, quick wins):** unlit caution legends at .72 (about 5:1, was about 2:1). Console slant measured
+  from the seat (`.c3.__c3.slant`): at most 7.5° in a mission, under 1° in the ride. Not done here: the 18 px HUD floor
+  (deck sub-lines, progress chips, Now-card labels are 10–16 px), which belongs to the bigger cabin redesign.
+- **Checks:** `tools/mission_ui.py` passes at 1280×720 and 1440×879 (as on main); `tools/ux_flow.py` 22/22 (its console
+  errors were `/api/tts` 502s from a stub model server). Shots: before / after for the voice bar, the ride (question,
+  Houston, storm at 1440 and 1280), lessons 1–2 and the Mission gate.
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

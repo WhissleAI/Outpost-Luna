@@ -472,7 +472,8 @@ html[data-motion="reduce"] .is-point{animation:none}
 /* (the panel the tour or the objective points at keeps its detail: that is the one to read now) */
 .c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-swst,.cb-db),
 .c3[data-panel="seat"] .cb-cw>h3{display:none!important}
-.c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.35}
+/* [0.3.12] an unlit legend still reads (it was about 2:1 at .35); lit lamps stand out by their fill */
+.c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.72}
 .c3[data-panel="seat"] .cb-screen{display:flex;flex-direction:column;justify-content:center;gap:var(--space-3)}
 .c3[data-panel="seat"] .du-head b{font-size:64px}
 .c3[data-panel="seat"] .du-head span{font-size:var(--text-md)}

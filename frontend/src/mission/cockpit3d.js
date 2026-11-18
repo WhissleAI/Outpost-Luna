@@ -262,7 +262,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   }
   raf = requestAnimationFrame(frame);
 
-  return {
+  const api = {
     open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
     /** Look around from where the camera is: dx, dy in -1..1 (yaw, pitch), clamped to ±MAX_YAW / ±MAX_PITCH. look(0, 0)
      *  recentres; with no new look input for LOOK_IDLE_MS it springs back by itself (opts.hold: the tour's beats). */
@@ -272,6 +272,12 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     recenter() { lookT.x = lookT.y = 0; lookHold = false; if (open) go(null); },
     /** The camera as the tests see it: the look offset (rad), the open panel, a dolly in flight. */
     get fov() { return camera.fov; },
+    /** Each console's top edge on screen from the current camera, in degrees off horizontal (the tests: text never
+     *  reads slanted; [0.3.12] the ride's low Rover console read about 15°). */
+    get slant() { camera.updateMatrixWorld(true); const out = {};
+      Object.entries(objs).forEach(([id, P]) => { const a = P.g.localToWorld(new THREE.Vector3(-P.w / 2, P.h / 2, 0)).project(camera), b = P.g.localToWorld(new THREE.Vector3(P.w / 2, P.h / 2, 0)).project(camera);
+        out[id] = +(Math.atan2((b.y - a.y) * size.h, (b.x - a.x) * size.w) * 180 / Math.PI).toFixed(1); });
+      return out; },
     /** The seat view's faces in px (the tests: every panel inside the free area). */
     get seatSpan() { const f = camera.fov, r = seatSpan(f); return { x0: r[0], x1: r[1], w: size.w, fw: size.fw, fov: f }; },
     get pose() { return { yaw: lookC.x, pitch: lookC.y, targetYaw: lookT.x, targetPitch: lookT.y, panel: open, moving: !!tween, maxYaw: MAX_YAW, maxPitch: MAX_PITCH }; },
@@ -283,7 +289,9 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
       // [qa] free the GPU side too: geometries, materials, their textures, the environment map and the context itself
       scene.traverse(o => { if (o.geometry) o.geometry.dispose(); [].concat(o.material || []).forEach(m => { Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); }); m.dispose(); }); });
       envTex.dispose(); pmrem.dispose(); renderer.dispose(); renderer.forceContextLoss();
-      renderer.domElement.remove(); cssR.domElement.remove();
+      renderer.domElement.remove(); cssR.domElement.remove(); delete host.__c3;
     },
   };
+  host.__c3 = api;   // the layout checks read the seat view's fit and slant from the .c3 element
+  return api;
 }
