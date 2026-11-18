@@ -142,6 +142,10 @@ export function fitHabitat(obj, span = 13) {
   return k;
 }
 
+/** [0.4 cabin 2] The Site view's framing: the camera orbits (cx, cz), the middle of the outpost (habitat at the origin,
+ *  rover park at (14, 9), array at (34, 18)), r metres out and `up` metres above the pad, looking at lookUp metres. */
+export const SITE_FRAME = { cx: 12, cz: 7, r: 52, up: 15, lookUp: 0, fov: 42, base: Math.PI + .45 };
+
 export function createTerrainView(host, { reduced = () => false } = {}) {
   const canvas = document.createElement("canvas"); canvas.className = "tv-canvas"; canvas.setAttribute("aria-hidden", "true");
   host.prepend(canvas);
@@ -227,7 +231,7 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
       obj.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true;
         const mats = [].concat(o.material || []).map(x => { const c = x.clone(); if (c.isMeshStandardMaterial || c.isMeshPhysicalMaterial) { c.envMapIntensity = .8; if ("transmission" in c) c.transmission = 0;
           // regolith bounce + earthshine: the walls facing away from a grazing Sun still read (a back-lit hab went black)
-          c.emissive = new THREE.Color(0xffffff); c.emissiveMap = c.map || null; c.emissiveIntensity = c.map ? .32 : .12; csm.setupMaterial(c); } return c; });
+          c.emissive = new THREE.Color(0xffffff); c.emissiveMap = c.map || null; c.emissiveIntensity = c.map ? .42 : .16; csm.setupMaterial(c); } return c; });
         o.material = Array.isArray(o.material) ? mats : mats[0]; });
       hdu = obj; hdu.name = "hdu"; hab.add(hdu); hab.userData.modules.visible = false;
     }).catch(e => console.warn("HDU model", e));
@@ -360,11 +364,14 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   // ---- cameras ----
   const pose = (pos, look, fov) => ({ pos, look, fov });
   function sitePose(t) {
-    // hovering ~190 m out and 60 m up, looking past the outpost toward the Earth side, drifting slowly round it
-    const base = Math.PI + .45, a = base + (reduced() ? 0 : t * .012), r = 64;
-    const pos = new THREE.Vector3(Math.sin(a) * r + 10, 0, -Math.cos(a) * r + 6);
-    pos.y = Math.max(heightAt(pos.x, pos.z) + 8, hab.position.y + 17);
-    return pose(pos, new THREE.Vector3(Math.sin(a) * -18 + 10, hab.position.y + 5, Math.cos(a) * 18 + 6), 44);
+    // [0.4 cabin 2] framed on the outpost itself: the camera circles the middle of the habitat, the rover park and the
+    // array (SITE_FRAME) close enough that the habitat reads at a glance, a little above it so the arrays and the rover
+    // stand clear of the horizon, drifting slowly round (the old pose sat 64 m out and aimed 18 m past the outpost,
+    // which left NASA's HDU a few dark pixels in the window).
+    const F = SITE_FRAME, a = F.base + (reduced() ? 0 : t * .012);
+    const pos = new THREE.Vector3(F.cx + Math.sin(a) * F.r, 0, F.cz - Math.cos(a) * F.r);
+    pos.y = Math.max(heightAt(pos.x, pos.z) + 6, hab.position.y + F.up);
+    return pose(pos, new THREE.Vector3(F.cx, hab.position.y + F.lookUp, F.cz), F.fov);
   }
   function roverPose() {
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rv.quaternion); fwd.y = 0; fwd.normalize();

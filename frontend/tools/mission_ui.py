@@ -9,7 +9,9 @@ clicked, not what it covered. This tool checks what a kid SEES:
   * the Now card never covers the windshield's centre or the three gauges (POWER / LIFE SUPPORT / DOSE);
   * nothing visible is cut by the viewport, and no label is clipped by its own box (scrollWidth > clientWidth);
   * every control is shown once (one Pause/Play, one speed group, one Skip ahead);
-  * [playtest 18] the 3D consoles' labels are at least 12 px on screen at 1280x720 and larger.
+  * [playtest 18] the 3D consoles' labels are at least 12 px on screen at 1280x720 and larger;
+  * [0.4 cabin 2] no console's text leans more than 8° from the seat, and in a storm every console's values (4.5:1) and
+    labels (3:1) keep their contrast.
 
 It drives the real app to the owner's moment (Cadet, Shackleton Rim, ice run, the "Steer left / Steer right" choice),
 shoots each size into --shots, and exits non-zero on any finding.
@@ -352,6 +354,59 @@ CONSOLE_TEXT = """() => { const out = [];
     out.push({ panel: p.dataset.panel, text: e.textContent.trim().slice(0, 24), px: +(parseFloat(cs.fontSize) * k).toFixed(1) }); }));
   return out; }"""
 CONSOLE_FLOOR_PX = 12
+# [0.4 cabin 2] the consoles read flat from the seat: no console's text leans more than this (rows off horizontal,
+# columns off vertical; cockpit3d.js c3.skew, the same maths as consoleSkew in tests/cabin_flat.test.js)
+MAX_SKEW = 8
+SKEW = "() => { const c = document.querySelector('.c3'); return c && c.__c3 ? c.__c3.skew : null; }"
+# [0.4 cabin 2] a storm keeps every console readable: each text's own colour over its plate, through every opacity on
+# the way up and any shade drawn over the cabin (.cb::before), against WCAG: values ≥ 4.5:1, labels ≥ 3:1. A value is a
+# reading: text that starts with a number ("85", "0.08 mSv/h", "16:55 UTC") or a status line under a key ("No signal");
+# names, units and legends are labels. Visually hidden text (.cb-vh, for screen readers) is not on screen.
+CONTRAST = """() => {
+  const parse = c => { const m = String(c).match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
+  const lin = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  const L = c => .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2]);
+  const cab = document.querySelector('.cb'), sh = cab ? getComputedStyle(cab, '::before') : null;
+  const shade = sh && sh.display !== 'none' && +sh.opacity > 0 ? (parse(sh.backgroundColor) || [0, 0, 0, 0]) : null;
+  const shA = shade ? shade[3] * +sh.opacity : 0;
+  const over = (c, a, under) => [0, 1, 2].map(i => c[i] * a + under[i] * (1 - a));
+  const out = [];
+  document.querySelectorAll('.c3-panel').forEach(p => {
+    p.querySelectorAll('*').forEach(e => {
+      if (!e.getClientRects().length || e.offsetWidth < 2 || e.closest('.cb-vh')) return;
+      if (![...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) return;
+      let op = 1; for (let a = e; a && a !== document.body; a = a.parentElement) op *= +getComputedStyle(a).opacity;
+      if (op < .05 || getComputedStyle(e).visibility === 'hidden') return;
+      const cs = getComputedStyle(e), fg = parse(cs.color); if (!fg) return;
+      let bg = null; for (let a = e; a && a !== p.parentNode; a = a.parentElement) { const b = parse(getComputedStyle(a).backgroundColor); if (b && b[3] > .6) { bg = b; break; } }
+      bg = bg || [20, 22, 26, 1];
+      let f = over(fg, fg[3] * op, bg), b = bg;
+      if (shA) { f = over(shade, shA, f); b = over(shade, shA, b); }
+      const r = (Math.max(L(f), L(b)) + .05) / (Math.min(L(f), L(b)) + .05), t = e.textContent.trim();
+      const value = /^[−+-]?\d/.test(t) || e.id === 'cbPttSub' || e.id === 'cbRvSt';
+      out.push({ panel: p.dataset.panel, text: e.textContent.trim().slice(0, 24), ratio: +r.toFixed(2), need: value ? 4.5 : 3, value });
+    });
+  });
+  return out;
+}"""
+
+
+def skew_checks(pg):
+    sk = pg.evaluate(SKEW) or {}
+    return [f"the {k} console's text leans {v}° from the seat (max {MAX_SKEW}°)" for k, v in sk.items() if v > MAX_SKEW]
+
+
+def storm_checks(pg, vw, vh, shots="", tag=""):
+    """Force a storm, then every console's text against its plate (the reviewer: in a storm the consoles vanished)."""
+    pg.evaluate("() => { window.__outpost.missionUI.clockAction && window.__outpost.missionUI.clockAction('pause'); window.__cabinTest && window.__cabinTest.storm(true); }")
+    pg.wait_for_timeout(2500)
+    rows = pg.evaluate(CONTRAST)
+    if shots:
+        pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}-storm.jpg"), type="jpeg", quality=70, timeout=300000)
+    pg.evaluate("() => window.__cabinTest && window.__cabinTest.storm(false)")
+    pg.wait_for_timeout(1200)
+    out = [f"storm: {r['panel']} {'value' if r['value'] else 'label'} '{r['text']}' {r['ratio']}:1 (needs {r['need']}:1)" for r in rows if r["ratio"] < r["need"]]
+    return out if rows else ["storm: no console text measured"]
 
 
 def console_text_checks(pg, vw, vh):
@@ -434,11 +489,13 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False, navigator=T
             bad[f"{vw}x{vh}"] = f
             if shots:
                 pg.screenshot(path=os.path.join(shots, f"{tag}-{vw}x{vh}.jpg"), type="jpeg", quality=70, timeout=300000)
+            f += skew_checks(pg)   # [0.4 cabin 2] the consoles read flat from the seat
             f += why_checks(pg)   # after the seat-view checks: it opens each panel, then comes back to the seat
             if camera:
                 cf, times = camera_checks(pg, f"{tag}-{vw}x{vh}", shots)
                 f += cf
                 print(f"       camera back at the seat (s): {times}")
+            f += storm_checks(pg, vw, vh, shots, tag)   # [0.4 cabin 2] last: a storm keeps every console readable
             print(f"{'ok  ' if not f else 'FAIL'} {vw}x{vh}  now: {m['now']}")
             for x in f:
                 print(f"       {x}")

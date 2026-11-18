@@ -775,6 +775,36 @@ storm, the hub).
   the view centred in the free area left of the panel.
 - **Settings**: "Save a diagnostics file…" and "Reset my patches" are 3-second holds (`bindHold`), like Reset.
 
+### 0.4 cabin follow-up: readable in a storm, a Sun you recognise, the outpost in the window
+
+A reviewer's notes on the 0.4 part 2 shots. Shots: before / after at 1440×900 and 1280×720 (seat, site, storm, storm
+with the Radiation console open, the Rover console, the check-ride storm, the Site window over two minutes of drift).
+
+- **Storm readability.** The takeover's shade covered the whole cabin (58% black over the consoles), so in a storm the
+  Habitat, Rover, Displays and Comm consoles nearly vanished. In the 3D cabin the shade now sits between the room
+  (WebGL shell and the window) and the consoles' DOM faces (`.c3::after` under `.c3-css`); a storm adds red alert light
+  to the room (`cockpit3d setAlert`: hemisphere, cabin light, window light) and a red rim on each console. The cockpit
+  bar stays at full strength. `tools/mission_ui.py storm_checks` forces a storm and checks every console text against
+  its plate through every opacity and shade: values ≥ 4.5:1, labels ≥ 3:1. Without WebGL the flat cabin keeps a lighter
+  shade (34%).
+- **The real Sun.** AIA 131 is a dim teal disc (median ~35/255), so at 50-90 px it read as a dark blob, and swapping an
+  `<img>` src every 140 ms showed black while each frame decoded. Each frame is now drawn once into a 320 px canvas
+  (`cabin_views.js prepareFrame`): cropped to the whole disc (limb and corona, so AR 13664 at the west limb stays in),
+  stretched to its lit pixels and mapped onto a gold ramp; the loop starts on the flare frame (16:55 UTC), skips a frame
+  that isn't ready, and the frames are toned as soon as the pack is in (`preloadSun`). Until the first frame is drawn
+  the disc is a warm glow, never dark. The Radiation console's Sun is 150 px with a ring on AR 13664 and "X8.7 flare" on
+  the flare frame; the storm strip's is 64 px. Credit unchanged: "The actual Sun, 14 May 2024 · NASA/SDO".
+- **Site view.** The camera circled 64 m out and aimed 18 m past the outpost, leaving NASA's HDU a few dark pixels.
+  It now orbits the middle of the outpost (`terrain.js SITE_FRAME`: habitat, rover park, array) 52 m out, 15 m up, at
+  42°, so the habitat, the arrays and the rover read at a glance over the whole drift; the HDU's bounce light is a
+  little stronger. The Sun stays low (long shadows).
+- **Flat consoles.** Rover and Comm were yawed 0.6 rad and pitched 0.62, the pedestal laid back 1.0: "Ice · Explore ·
+  Home" and "Call Houston" leaned 13-15°. Every console face is now nearly square-on to the seat (yaw ±0.18, small
+  tilts), ≤ 5° of lean at any window shape (`cockpit3d consoleSkew`, `c3.skew`; tests/cabin_flat.test.js and
+  `mission_ui.py skew_checks` fail over 8°).
+- **ux_audit2.py** holds "Reset my patches" for 3.4 s with a real pointer (a tap first, which must do nothing) instead
+  of clicking it twice.
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

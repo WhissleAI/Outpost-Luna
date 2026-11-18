@@ -17,7 +17,7 @@ import { icon } from "../assets/icons.js";
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
-import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
+import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, preloadSun, flareOnCanvas, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -168,7 +168,7 @@ export function createCabin(root, o = {}) {
       </div>
       <div class="cb-grp" data-panel="radiation" role="group" aria-label="Radiation panel">
         <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-radtop"><div class="cb-info" id="cbInfoRad"></div>
-          <figure class="cb-sunmon" id="cbSunMon" hidden><img alt="The Sun in extreme ultraviolet on 14 May 2024, the day of a huge flare (NASA SDO)" decoding="async">
+          <figure class="cb-sunmon" id="cbSunMon" hidden><span class="cb-sun-disc" style="--fx:${(flareOnCanvas()[0] * 100).toFixed(1)}%;--fy:${(flareOnCanvas()[1] * 100).toFixed(1)}%"><canvas class="cb-sun-cv" width="320" height="320" role="img" aria-label="The Sun in extreme ultraviolet on 14 May 2024, the day of a huge flare (NASA SDO)"></canvas><i class="cb-sun-ring" aria-hidden="true"></i><em class="cb-sun-tag" aria-hidden="true">X8.7 flare</em></span>
             <figcaption><b>${esc(SUN_CREDIT.split(", ")[0])},</b><span>${esc(SUN_CREDIT.split(", ").slice(1).join(", "))} · ${esc(SUN_SOURCE)}</span><span class="cb-sun-time"></span></figcaption></figure></div>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
@@ -280,7 +280,8 @@ export function createCabin(root, o = {}) {
 
   // ---- [0.4] the app header folds into the cockpit's top bar; the real NASA views arrive when the pack is installed ----
   const foldOff = foldHeader(root, o);
-  const viewsOff = whenViews(() => { earthKey = ""; alertKey = ""; sunMonOn = false; if (st) { paintEarthNote(); paintAlert(); } });
+  // [0.4 cabin 2] the SDO frames are toned and cached as soon as the pack is in, so a storm's Sun is never dark
+  const viewsOff = whenViews(() => { earthKey = ""; alertKey = ""; sunMonOn = false; const sv = realSun(); if (sv) preloadSun(sv.frames); if (st) { paintEarthNote(); paintAlert(); } });
 
   // ---- window view switcher ----
   function setView(v, quiet) {
@@ -557,6 +558,9 @@ export function createCabin(root, o = {}) {
     });
     const storm = e.storm && e.storm.active;
     glassEl.classList.toggle("is-storm", !!storm);
+    // [0.4 cabin 2] red alert light in the room (the WebGL shell); the consoles' faces stay readable
+    const cabS = root.querySelector(".cb"); if (cabS) cabS.classList.toggle("is-storm", !!storm);
+    if (c3 && c3.alerting !== !!storm) c3.alert(!!storm);
     paintAlert();
     q("#cbPttSub").textContent = e.earth_visible ? "Earth in view" : "No signal";
     q("#cbPtt").classList.toggle("is-nosignal", !e.earth_visible);
@@ -572,7 +576,7 @@ export function createCabin(root, o = {}) {
     const f = q("#cbSunMon"); if (!f) return;
     const v = on ? realSun() : null; f.hidden = !v;
     if (!!v === sunMonOn) return; sunMonOn = !!v; stopSunMon();
-    if (v) stopSunMon = loopFrames(f.querySelector("img"), v.frames, { reduced: reducedMo }); else stopSunMon = () => {};
+    if (v) stopSunMon = loopFrames(f.querySelector("canvas"), v.frames, { reduced: reducedMo }); else stopSunMon = () => {};
   }
   /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. No buttons. */
   function alert(a) { clearTimeout(flashT); flash = a; paintAlert(); if (a) flashT = setTimeout(() => { flash = null; paintAlert(); }, 7000); }
@@ -595,8 +599,8 @@ export function createCabin(root, o = {}) {
     if (key === alertKey) return; alertKey = key;   // the strip repaints every tick: rebuild only on a change (the loop keeps running)
     stopAlertSun();
     el.className = "cb-alert is-" + a.level + (sunV ? " has-sun" : "");
-    el.innerHTML = `${sunV ? `<span class="cb-al-sun"><img alt="The real Sun on 14 May 2024 (NASA SDO)" decoding="async"></span>` : `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span>`}<span class="cb-al-body"><span class="cb-al-l1"><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span></span>${sunV ? `<small class="cb-al-sunc">${esc(SUN_CREDIT)} · ${esc(SUN_SOURCE)}</small>` : ""}</span>`;
-    if (sunV) stopAlertSun = loopFrames(el.querySelector(".cb-al-sun img"), sunV.frames, { reduced: reducedMo });
+    el.innerHTML = `${sunV ? `<span class="cb-al-sun"><canvas class="cb-sun-cv" width="160" height="160" role="img" aria-label="The real Sun on 14 May 2024 (NASA SDO)"></canvas></span>` : `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span>`}<span class="cb-al-body"><span class="cb-al-l1"><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span></span>${sunV ? `<small class="cb-al-sunc">${esc(SUN_CREDIT)} · ${esc(SUN_SOURCE)}</small>` : ""}</span>`;
+    if (sunV) stopAlertSun = loopFrames(el.querySelector(".cb-al-sun canvas"), sunV.frames, { reduced: reducedMo });
     // [polish 3] the strip says what is happening; what to do about it is on the Now card (one instruction at a time)
     // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
     requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
