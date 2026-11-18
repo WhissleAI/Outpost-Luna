@@ -411,3 +411,19 @@ and the echo reference. What the app switched on, before / after numbers and the
 
 Measured on our sets and kept off as the ear (Director wrong actions up, directed head shifted, own-voice echo
 transcribed more); its room read-outs ride along in shadow: `docs/ARC_V2.md`.
+
+## 11. Update: per-turn signals in gameplay (0.6 part 1, `feat/06-voice-signals`)
+
+Before this, the ear's per-turn read-outs fed only the Director's features and the on-device habits. Now three of them
+also drive play. Nothing new is stored: each one is read on the turn and forgotten.
+
+| Read-out | Where it comes from | Used for (0.6) | Code |
+|---|---|---|---|
+| `disfl` | arc.h `arc_word.disfl`: filler / repeat / fragment | hesitation: the next hint rung sooner, once per step | `backend/app/hesitation.py` |
+| `max_pause_s` | `arc_ear.py` (longest quiet run inside the turn) | hesitation at >= 2.5 s. The shipped end silence (0.5-0.8 s) caps it below that, so only an ear with a longer end silence reaches it | same |
+| `uconf` | the least sure utterance of the turn | hesitation under 0.45 (the v1/v2 p10, docs/ARC_V2.md) | same |
+| `eot` | `arc_ear.py` on the final words | a readback split by the end silence is graded joined (`eot` < `CUT_EOT` and the next turn within `CUT_GAP_S`, the learner's cut-off rule) | `session._readback` |
+| `barge` / `barge_in` | `arc_ear.py` live events | unchanged: the kid takes the floor. No "talking over" line or penalty | docs/GAMEPLAY.md §14.2 |
+
+`eot` on the final words is low on most turns (p90 0.35, docs/ARC_V2.md §3), so it is used only together with the
+1 s gap, never alone. `speech_s` and `min_wconf` stay with the Director and the habits.

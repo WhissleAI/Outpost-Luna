@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 import re
 import time
 from collections import deque
@@ -23,14 +24,15 @@ from typing import Any, Callable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from . import barge as barge_
-from . import director, models_client, steering, turnlog
+from . import director, hesitation, models_client, steering, turnlog
 from . import safety as safety_
 from . import turn_router as router_
 from .director_model import runtime as dmodel
 from .director import P_ANSWER, P_BARGE, P_CRITICAL, P_GUARD, P_NARRATION, P_NUDGE, decision
 from .gazetteer import norm
 from .knowledge.answer import did_you_mean
-from .mission import capcom
+from .learn.habits import CUT_EOT, CUT_GAP_S
+from .mission import capcom, nlu as mission_nlu, readback as readback_
 from .readout import summarize
 
 router = APIRouter()
@@ -224,6 +226,11 @@ class Session:
         # On-device learning (app/learn, docs/ON_DEVICE_LEARNING.md): per cadet and per computer, small numbers only
         from .learn.live import SessionLearning
         self.learning = SessionLearning(self, clock)
+        # Radio readback (mission/readback.py): the order steps already praised / nudged (one each per step), and the
+        # last heard turn (a readback the ear's end silence cut in two is graded joined: its eot was low)
+        self.rb_praised: set[str] = set()
+        self.rb_nudged: set[str] = set()
+        self.rb_last: dict | None = None
 
     def ear_tune(self) -> dict | None:
         """The ear's learned, bounded values ({"t":"tune"}: end-of-turn silence, echo reference shift)."""
@@ -632,7 +639,7 @@ class Session:
             shown=self.spoken.shown(t0) if heard else [],
             lessons=_lessons(), sites=_sites(), callsigns=CALLSIGNS)
 
-    async def _note(self, rt: dict, text: str, safety: bool = False):
+    async def _note(self, rt: dict, text: str, safety: bool = False, hes: bool = False):
         # [P0] a safety turn (Arc's tags or the word list): the logs keep that it happened, never the words, and the
         # client gets the decision without them (it shows nothing for it either way)
         safety = safety or rt.get("reason") == "safety"
@@ -644,7 +651,7 @@ class Session:
         if self.screen:   # a hands-free client: tell it what we heard (the mic chip shows "didn't catch that")
             await self.emit([decision("heard", P_ANSWER, outcome=rt["outcome"], reason=rt.get("reason"), intent=rt.get("intent"),
                                       notice=bool(rt.get("notice")) or None, text="" if safety else text,
-                                      safety=True if safety else None)])
+                                      safety=True if safety else None, hes=True if hes and not safety else None)])
 
     def _end_event(self, text: str, source: str, rt: dict | None = None) -> dict:
         ev = {"t": "turn", "state": "end", "text": text} if source == "listen" else \
@@ -766,7 +773,7 @@ class Session:
                 b["floor"] = "none"
             await self._note(rt, text)
             return
-        await self._note(rt, text)
+        await self._note(rt, text, hes=self._hesitant(text, source))
         if rt["outcome"] in ("navigate", "answer"):
             if self.dm is not None:
                 with contextlib.suppress(Exception):
@@ -786,6 +793,58 @@ class Session:
                                       text=run_text, heard=text if run_text != text else None)])
             return
         await self._direct_turn(text, source, rt, ctx_r)
+
+    def _hesitant(self, text: str, source: str) -> bool:
+        """[0.6] A heard turn on a lesson step or in the cabin that shows hesitation (hesitation.py): the client brings
+        the next hint rung sooner. A one-turn flag on the `heard` decision only: never stored, logged, shown or said."""
+        if source not in OPEN_MIC and source != "ptt":
+            return False
+        if self.screen_name() not in ("lesson", "cabin"):
+            return False
+        with contextlib.suppress(Exception):
+            return hesitation.hesitant(self.belief["kid"].get("ear"), text)
+        return False
+
+    def _readback(self, text: str, source: str) -> dict | None:
+        """[0.6] Radio readback (mission/readback.py, docs/GAMEPLAY.md §14.1). With Houston's order open on the Now card
+        and no yes / no waiting, a radio turn ("copy", "roger") is graded against sim.readback(order):
+          good     -> {cmd: the card's order, line: "Good readback." once per step}: the order the kid read back is
+                      the one that runs ("copy, shields thirty" is the card's "Shields up to 30", never +30)
+          partial  -> {swallow, line}: a radio turn with no order of its own ("copy", "copy shields") is a readback,
+                      never a new order; Commander hears "Read back: Shields up to 30." once per step, Cadet nothing
+        None otherwise (not a radio turn, or one carrying another order: it runs as an order). Never blocks, never
+        costs, never scored. A readback the ear's end silence cut in two (the next turn within CUT_GAP_S of a turn
+        whose end-of-turn p was under CUT_EOT, the on-device learner's cut-off rule) is graded joined."""
+        st = self._state() or self.belief.get("state")
+        mid = self.belief.get("mission_id")
+        if not st or st.get("pending") or (mid and mid in director.PENDING):
+            return None
+        o = readback_.open_order(st)
+        if o is None:
+            return None
+        k = self.belief["kid"]
+        heard = source in OPEN_MIC
+        prev, now = self.rb_last, self.clock()
+        start = k.get("start") if heard else None
+        joined = text
+        if heard and prev and prev["key"] == o["key"] and start is not None and 0 <= start - prev["end"] < CUT_GAP_S \
+                and prev.get("eot") is not None and prev["eot"] < CUT_EOT:
+            joined = f"{prev['text']} {text}"
+        ear = (k.get("ear") or {}) if heard else {}
+        self.rb_last = {"end": k.get("end") or now, "eot": ear.get("eot"), "text": text, "key": o["key"]} if heard else None
+        g = readback_.grade(joined, o["cmd"])
+        if not g["radio"]:
+            return None
+        if g["good"]:
+            line = None if o["key"] in self.rb_praised else readback_.GOOD
+            self.rb_praised.add(o["key"])
+            return {"cmd": copy.deepcopy(o["cmd"]), "line": line, "swallow": False}
+        if not g["bare"] and mission_nlu.parse(text)["commands"]:
+            return None        # "copy, and send the rover for ice": an order of its own
+        line = None if o["key"] in self.rb_nudged else readback_.line(self.level, g, o["cmd"], o.get("label"))
+        if line:
+            self.rb_nudged.add(o["key"])
+        return {"cmd": None, "line": line, "swallow": True}
 
     def _model_nav(self, out, rt: dict) -> dict | None:
         """Round 7, `on` mode: the model navigates a turn the router did not (runtime.nav_policy: the `nav` head, a
@@ -839,6 +898,19 @@ class Session:
                 self.dm.turn_result({"action": "navigate", "source": "director_model+" + nv["intent"]})
             await self.emit(pre + [decision("nav", P_ANSWER, intent=nv["intent"], arg=nv["arg"], text=text)])
             return
+        rb = None
+        if b["mission_id"] and b["mode"] == "mission":
+            with contextlib.suppress(Exception):
+                rb = self._readback(text, source)
+        if rb and rb["swallow"]:      # a readback that was only "copy" (or part of the order): no new order
+            if self.dm is not None:
+                with contextlib.suppress(Exception):
+                    self.dm.turn_result({"action": "say" if rb["line"] else "none", "say": rb["line"] or "",
+                                         "source": "mission+readback"})
+            self._log_dir(rules="readback", final="readback")
+            await self.emit(pre + ([decision("say", P_ANSWER, text=rb["line"], voice="capcom", situation="readback")]
+                                   if rb["line"] else []))
+            return
         emotion = k.get("emotion")
         ctx: dict = {"session": self.id}   # template rotation in the local brain is deterministic per session
         ctx["level"] = self.level          # Settings: cadet | commander (passed through; docs/VOICES.md)
@@ -854,7 +926,7 @@ class Session:
         guard = bool(director.NAME_GIVEN.search(norm(resolved)))
         with contextlib.suppress(Exception):
             guard = guard or bool(self.gaz is not None and director._hard_pii(read, self.gaz))
-        if self.dm is not None and out is not None:
+        if self.dm is not None and out is not None and not (rb and rb.get("cmd")):
             override = self.dm.decide_turn(out, resolved, guard)
         if override and override["act"] == "command" and not (b["mission_id"] and b["mode"] == "mission"):
             override = None
@@ -870,6 +942,8 @@ class Session:
         else:
             if override and override["act"] == "command":
                 ctx["commands"] = [override["command"]]
+            if rb and rb.get("cmd"):    # a good readback runs the order it read back: the card's own
+                ctx["commands"] = [rb["cmd"]]
             # this cadet's learned aliases and bounded thresholds (app/learn): added after the Director model's step, so
             # its features never see them
             with contextlib.suppress(Exception):
@@ -930,6 +1004,10 @@ class Session:
                     d["text"] = "Okay, we've got this. " + capcom.short(d["text"])
                     d["style"] = steering.style_for(d.get("voice") or "capcom", d["text"], emotion=emotion,
                                                     situation=(d.get("style") or {}).get("situation") or "storm_alert")
+        if rb and rb.get("line"):   # "Good readback." after CAPCOM's own line (its own say: the 20-word budget holds)
+            first = next((d for d in ds if d["t"] == "say"), None)
+            ds.append(decision("say", P_ANSWER, after=first["id"] if first else None, text=rb["line"], voice="capcom",
+                               situation="readback"))
         # Multi-stream: a storm starting within the next shift → one warning alongside the answer.
         if b["mission_id"] and r.get("action") in ("command", "status"):
             ds += self._storm_lookahead()

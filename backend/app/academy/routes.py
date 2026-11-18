@@ -45,6 +45,9 @@ class AttemptReq(BaseModel):
     step_s: float | None = Field(None, ge=0)   # seconds the step has been open (client): no reveal in the first 20 s
     level: Literal["cadet", "commander"] = "cadet"   # Settings (docs/VOICES.md): for the learning design; no effect yet
     rung: int = Field(0, ge=0, le=3)   # the hint rung the card already shows (a find step opens at 1; help climbs)
+    # [0.6] the answer came with hesitation (the session's heard.hes; the client sends it once per step): a miss climbs
+    # one rung further. Never stored, never a score, never said; the reveal still waits for real misses (reveal_due).
+    hes: bool = False
 
 
 class HintReq(BaseModel):
@@ -208,7 +211,8 @@ def _route_progress(inp: dict, extra: dict) -> bool:
 
 def _miss(les: dict, req: AttemptReq, st: dict, extra: dict) -> dict:
     """A real miss: the next rung of the hint ladder (app/academy/guide.py), which always says what to do next."""
-    g = guide.ladder(st, req.misses, req.input.model_dump(exclude_none=True), extra, seen=req.rung)
+    g = guide.ladder(st, req.misses + (1 if req.hes else 0), req.input.model_dump(exclude_none=True), extra,
+                     seen=req.rung)
     if st["accept"]["type"] in ("route", *FIELD_TYPES):
         g["got"] = extra.get("got") or []   # the stops still right (the client keeps those taps)
         if st["accept"]["type"] in FIELD_TYPES and extra.get("next"):

@@ -17,6 +17,7 @@ import { createCoach, coachDone } from "./coach.js";
 import { missionsFlown } from "../explorer.js";
 import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
+import { buzz, momentOf } from "../haptics.js";
 import { createNavigator } from "./navigator.js";   // the landing-site navigator (docs/SITE_NAVIGATOR.md)
 
 
@@ -548,16 +549,31 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const markFirstDone = () => { try { localStorage.setItem(firstKey(), "1"); } catch (e) { /* private mode */ } };
   // No dead air (docs/GAMEPLAY.md §4): ~20 s with nothing done while a job waits -> CAPCOM names the job, at most
   // twice per job. Any order, tap, clock control or word from the kid restarts the silence.
-  const NUDGE_MS = 20000;
-  const nudge = { t: null, left: 0, key: "",
+  // [0.6] Hesitation (docs/GAMEPLAY.md §14.3): a heard turn with fillers or a long pause (the session's `hes` flag on
+  // `heard`) brings that nudge now instead of in 20 s, once per job, if the turn didn't do the job (HES_MS later the
+  // card is the same). It is one of the job's two nudges, never an extra one, and never says why it came early.
+  const NUDGE_MS = 20000, HES_MS = 1500;
+  const nudge = { t: null, h: null, left: 0, key: "", early: new Set(),
     arm(key = "") { this.key = key; this.left = 2; this.wait(); },
     wait() { clearTimeout(this.t); if (this.left <= 0) return; this.t = setTimeout(() => {
       if (screen !== "hud" || !state || tour.active || pending) { this.wait(); return; }
       const c = cardNow(); if (!c || !(c.buttons || []).length || c.key === "steady") return;
-      this.left--; const line = c.offer ? c.text : nudgeLine(state, mclock.state); if (line) { radio("capcom", line); say(line, null, { priority: 4 }); }
+      this.left--; this.speak(c);
       this.wait(); }, NUDGE_MS); },
+    speak(c) { const line = c.offer ? c.text : nudgeLine(state, mclock.state); if (line) { radio("capcom", line); say(line, null, { priority: 4 }); } },
     heard() { if (this.left > 0) this.wait(); },   // the kid spoke or acted: the silence starts again
-    stop() { clearTimeout(this.t); this.left = 0; } };
+    soon() {
+      const c0 = screen === "hud" && state && !tour.active && !pending ? cardNow() : null;
+      if (!c0 || !(c0.buttons || []).length || c0.key === "steady" || this.left <= 0 || this.early.has(c0.key)) return false;
+      this.early.add(c0.key); clearTimeout(this.h);
+      this.h = setTimeout(() => {
+        if (screen !== "hud" || !state || tour.active || pending || this.left <= 0) return;
+        const c = cardNow(); if (!c || c.key !== c0.key) return;   // the turn did the job (or the job changed)
+        this.left--; this.speak(c); this.wait();
+      }, HES_MS);
+      return true;
+    },
+    stop() { clearTimeout(this.t); clearTimeout(this.h); this.left = 0; } };
 
   // ---------- the live mission clock (mission/clock.js) ----------
   let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = null;
@@ -1010,6 +1026,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const seen = new Set();   // lesson concepts that happened this mission (for the debrief)
   function handleEvents(evs) {
     if (!evs.length) return;
+    feel(evs);
     evs.forEach(e => { if (CALLBACKS[e.kind]) seen.add(e.kind); });
     const cbk = evs.map(e => e.kind).find(k => CALLBACKS[k] && !reminded.has(k));
     if (cbk) { const line = remind(cbk); if (line) setTimeout(() => { if (screen === "hud") say(line, { situation: "coach" }); }, 2500); }
@@ -1021,6 +1038,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (comm) renderBanner({ level: "info", title: comm.kind === "comm_open" ? "Earth in view" : "Earth set", text: comm.text });
   }
 
+  /** [0.6] Haptics (haptics.js): the controller's rumble / the tablet's vibration with the moments the cabin already
+   *  shows and sounds: storm warning (short; the alert strip), storm hit (long; the alarm), the boulder field (bump; the
+   *  steer card), rover home (two taps; CAPCOM's line). Settings "Vibrate for alerts" and "Less motion" apply. */
+  function feel(evs) { const k = momentOf(evs); if (k) { try { buzz(k); } catch (e) { /* no haptics here */ } } }
   function stormAlert() {
     const st = state && state.env && state.env.storm;
     a11yAlert(`Solar storm${st && st.real_date ? `, a real event from ${st.real_date}` : ""}. Take shelter or raise the shields.`);
@@ -1526,6 +1547,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
 
   return {
     screen: screenFrame, nav, intent, radioKid: t => radio("kid", t), whatNow, get touring() { return tour.active; },
+    hesitant: () => nudge.soon(),   // [0.6] the session's `heard.hes`: the job's next nudge now (once per job)
     enter, exit, handleText, handleDirector, context,
     applyRemote, alert, showCard, askConfirm, houston,   // [session hook]
     get active() { return screen !== "off"; },

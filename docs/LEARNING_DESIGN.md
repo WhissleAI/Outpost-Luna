@@ -792,3 +792,28 @@ Learning design notes:
   `places.json` with tests.
 - No Mission prep task for Field School (NASA's "Exploring the Moon" Lava Layering activity is the candidate; its
   URL wasn't verified this round).
+
+## 13. Hints that adapt to pauses (0.6, `feat/06-voice-signals`)
+
+The hint ladder (docs/PLAYTEST.md §Guidance, `backend/app/academy/guide.py`) climbs on misses and on "help". Kids who
+stall often don't ask. They say "um ..." and guess. From 0.6, a hesitant answer brings the next rung **one step sooner**:
+- **What counts.** `backend/app/hesitation.py` reads the ear's own signals for the turn: disfluent words (`disfl`:
+  filler, repeat, fragment), the longest pause (`max_pause_s` >= 2.5 s) and a low utterance confidence (`uconf` <
+  0.45). Only heard turns count. Typed and tapped answers never do.
+- **What it does.**
+  - The session puts `hes: true` on the turn's `heard` decision.
+  - If that answer is a miss, the client sends `hes: true` with it (`POST /api/academy/attempt`), and the server's
+    ladder counts one more miss: the first miss shows rung 2 (the label, a card crossed out, the words on the card)
+    instead of rung 1.
+  - In the cabin, the Now card's nudge comes at once instead of after 20 s (docs/GAMEPLAY.md §14.3).
+- **Caps.**
+  - One early rung per step.
+  - The reveal ("Here it is") still waits for real misses and ~20 s (`grade.reveal_due`).
+  - The check ride has no ladder and ignores it.
+- **What it never does.**
+  - It never says "you sound unsure", and no line changes.
+  - The flag lives for one turn, in memory: it is never in the turn log, the routes or history, a profile or a score.
+  - A right answer is a right answer, hesitant or not.
+
+The grown-ups guide says so in one line (`site/guide.html`, "Hints adapt to pauses"), and the About drawer says "Hints
+come when you're stuck, and sooner after a long pause."
