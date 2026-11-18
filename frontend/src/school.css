@@ -106,9 +106,9 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .apanel.is-lesson,.apanel.is-ride{top:var(--gut);right:var(--gut);width:400px;max-height:calc(100% - 2 * var(--gut) - var(--strip-h, 62px) - var(--space-3));
   display:flex;flex-direction:column;border-radius:var(--radius-xl);overflow:hidden;animation:rise var(--dur-slow) var(--ease-out)}
 .apanel.is-ride{width:min(440px,calc(100% - 2 * var(--gut)))}
-/* the check ride's cabin stops where the lesson card starts: nothing of the cabin (view tabs, the Radiation panel) sits
-   under the card (novice playtest 2026-11-16 #28) */
-.m-cabin.a-ridecabin{right:calc(min(440px, 100% - 2 * var(--gut)) + var(--gut) + var(--space-3))}
+/* nothing of the cabin's controls (view tabs, the Radiation panel) sits under the lesson card (novice playtest 2026-11-16
+   #28): [0.3.12] the check ride cabin spans the stage (no globe beside it); its seat view fits left of this card (cabin.css) */
+.m-cabin.a-ridecabin{right:0}
 .a-prompt[tabindex="-1"]:focus{outline:none}   /* Next lands focus on the question (playtest #12): no ring on a <p> */
 .a-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding:var(--space-3) var(--space-4) 0 var(--space-2)}
 .a-back{gap:var(--space-1)}

@@ -46,7 +46,13 @@ def advance(ride: dict, how) -> list:
 
 
 def hud(ride: dict) -> dict:
-    """The few numbers the Academy HUD shows (a subset of the mission State)."""
+    """The few numbers the Academy HUD shows (a subset of the mission State). [0.3.12] `site` names the ride's site on
+    the cabin's clock ("Shift 1 · Shackleton Crater Rim", not "Shift 1 ·"), and `ride` counts the ride's own days
+    ("Day 1 of 2"): the ride starts `start_h` into the mission window, so the sim's own day would read "Day 8"."""
     s = sim.to_state(ride["m"])
-    return {k: s[k] for k in ("day", "shift", "mission_time_h", "resources", "loads", "env", "rover", "shelter", "over",
-                              "outcome", "alerts")}
+    out = {k: s[k] for k in ("day", "shift", "mission_time_h", "resources", "loads", "env", "rover", "shelter", "over",
+                             "outcome", "alerts", "site")}
+    cfg = ride["cfg"]
+    days = max(1, math.ceil(cfg["mission_h"] / 24))
+    out["ride"] = {"day": min(days, (ride["m"].t_h - int(cfg.get("start_h", 0))) // 24 + 1), "days": days}
+    return out

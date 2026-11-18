@@ -13,6 +13,7 @@ import { flowLog } from "../flows.js";   // [flows] a lesson's "continue" is log
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
+import { rideInset } from "../mission/ride.js";   // [0.3.12] the ride cabin fits left of the lesson card
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER } from "../story.js";
@@ -88,6 +89,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
   let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let rideRO = null;   // [0.3.12] the lesson card's width -> the ride cabin's seat view
   let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
   let pendingBadge = null, focusPrompt = false;   // the last step's patch waits for Next; Next lands focus on the question
   // guidance (docs/PLAYTEST.md): the hint-ladder rung and what the server said to draw; per-step state that survives
@@ -715,7 +717,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     let host = document.getElementById("aRideCabin");
     if (!host) { host = document.createElement("section"); host.id = "aRideCabin"; host.className = "m-cabin a-ridecabin"; host.setAttribute("aria-label", "Check ride cabin"); panel.parentNode.insertBefore(host, panel); }
     host.hidden = false; document.body.dataset.ride = "1";
-    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
+    // [0.3.12] one cabin across the stage; the part under the lesson card (--ride-inset) is left out of the seat view
+    const insetRight = () => rideInset(host, panel);
+    host.style.setProperty("--ride-inset", insetRight() + "px");
+    if (!rideRO && typeof ResizeObserver !== "undefined") rideRO = new ResizeObserver(() => { const h = document.getElementById("aRideCabin"); if (!h || h.hidden) return;
+      h.style.setProperty("--ride-inset", rideInset(h, panel) + "px"); if (rideCk && rideCk.relayout) rideCk.relayout(); });
+    if (rideRO) { rideRO.observe(panel); rideRO.observe(host); }
+    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, insetRight, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
     if (ride && ride.state) rideCk.update(ride.state);
     setTimeout(rideCue, 400);
     if (!rideSite) return;
@@ -731,6 +739,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     globe.mission.setSun(e.sun_elev_deg, ride.state.mission_time_h); globe.mission.setEarth(e.earth_elev_deg);
   }
   function endRide() { if (ride) { ride = null; globe.mission.exit(); } rideEl = null; if (rideCk && rideCk.dispose) rideCk.dispose(); rideCk = null;
+    if (rideRO) { rideRO.disconnect(); rideRO = null; }
     const h = document.getElementById("aRideCabin"); if (h) { h.hidden = true; h.innerHTML = ""; } delete document.body.dataset.ride; }
   /** [ride] the step's expected order lights its control in the cabin, one at a time */
   function rideCue() {

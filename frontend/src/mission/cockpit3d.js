@@ -16,7 +16,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 
 /** Panel placement in metres. px = the DOM panel's CSS width; the scale maps it onto `w` metres of console face. */
-const LAYOUT = {
+const BASE_LAYOUT = {
   window: { cx: 0, cy: 1.66, w: 2.3, h: 0.98, r: 0.16, z: -1.7 },
   // the three display units, side by side under the window (DU1 commander-side power, DU2 shared, DU3 radiation)
   displays: { pos: [0, 0.98, -1.5], rot: [-0.42, 0, 0], w: 2.0, px: 1200, pxh: 330, pedestal: true },
@@ -27,6 +27,9 @@ const LAYOUT = {
   comm: { pos: [1.12, 0.62, -1.02], rot: [-0.62, -0.6, 0], w: 0.8, px: 560, pxh: 320 },
   pedestal: { pos: [0, 0.6, -1.12], rot: [-1.0, 0, 0], w: 1.15, px: 800, pxh: 300 },
 };
+/** [0.3.12] The check ride's layout: no Habitat or Comm, so the Rover takes the Habitat's seat (the mirror of
+ *  Radiation, high and facing the seat) instead of the low console whose face ran off-screen and read slanted. */
+export const RIDE_LAYOUT = { rover: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 300 } };
 /** Zoom targets that are part of a bigger console: [object, left fraction, right fraction]. */
 const SUB = { power: ["displays", 0, 1 / 3] };
 const SEAT = { pos: new THREE.Vector3(0, 1.32, 0.78), look: new THREE.Vector3(0, 1.2, -1.6) };
@@ -35,7 +38,23 @@ export const PANELS = [["displays", "Displays"], ["power", "Power"], ["habitat",
 
 const css = (el, name, fb) => (getComputedStyle(el).getPropertyValue(name).trim() || fb);
 
-export function createCockpit3D(host, { panels, hole, glass = null, reduced = () => false, onPanel = () => {} } = {}) {
+/** [0.3.12] The seat view's vertical field of view: the base for the free area's aspect, widened (up to FIT_MAX_FOV)
+ *  until every console's face is inside the free area with `margin` px to spare. `project(fov)` returns the faces'
+ *  projected x range in px for a fov. The panel row scales down instead of being clipped (the check ride's Radiation
+ *  panel was cut and its Rover panel ran off the left edge beside the lesson card). */
+export const FIT_MAX_FOV = 84;
+export function baseFov(aspect) { return aspect < 1.5 ? 66 : aspect < 1.75 ? 60 : 56; }
+export function fitFov(aspect, freeW, project, margin = 12) {
+  let fov = baseFov(aspect);
+  for (; fov < FIT_MAX_FOV; fov += 2) {
+    const [x0, x1] = project(fov);
+    if (x0 >= margin && x1 <= freeW - margin) break;
+  }
+  return Math.min(fov, FIT_MAX_FOV);
+}
+
+export function createCockpit3D(host, { panels, hole, glass = null, reduced = () => false, onPanel = () => {}, insetRight = () => 0, layout = null } = {}) {
+  const LAYOUT = { ...BASE_LAYOUT, ...(layout || {}) };
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); }
   catch (e) { return null; }
@@ -131,7 +150,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   }
 
   // ---------- camera: seat, parallax, dolly ----------
-  let open = null, tween = null, pointer = { x: 0, y: 0 }, size = { w: 1, h: 1 };
+  let open = null, tween = null, pointer = { x: 0, y: 0 }, size = { w: 1, h: 1, fw: 1 };
   // look-around offset (gestures: head pose / grab-drag), clamped; eased toward its target each frame
   // Bounded so the windshield and the consoles always stay in frame (the owner got stuck at ±0.55 rad yaw, the window
   // pushed off to one side). Any look input that stops (the face lost, the camera off, a hand gone) springs back to the
@@ -150,8 +169,8 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     const L = { ...LAYOUT[sub ? sub[0] : id], px: ppx }, vfov = camera.fov * Math.PI / 180, tv = Math.tan(vfov / 2), th = tv * camera.aspect;
     // On-screen size: about 1.15× the panel's CSS pixels (crisp text), never wider than 86% of the stage or taller than
     // the space above the comm strip.
-    const free = size.h - STRIP_PX, tw = Math.min(L.px * 1.15, size.w * 0.86), thh = Math.min(L.pxh * 1.15, free * 0.9);
-    const d = Math.max(pw * size.w / (2 * th * tw), P.h * size.h / (2 * tv * thh));
+    const free = size.h - STRIP_PX, tw = Math.min(L.px * 1.15, size.fw * 0.86), thh = Math.min(L.pxh * 1.15, free * 0.9);
+    const d = Math.max(pw * size.fw / (2 * th * tw), P.h * size.h / (2 * tv * thh));
     // centre the panel in the space above the comm strip: aim a little below it
     const up = new THREE.Vector3(0, 1, 0).applyEuler(P.g.rotation), shift = (STRIP_PX / 2) * (2 * d * tv / size.h);
     const look = c.clone().addScaledVector(up, -shift);
@@ -169,12 +188,28 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   host.addEventListener("pointermove", e => { const r = host.getBoundingClientRect(); pointer.x = (e.clientX - r.left) / r.width - .5; pointer.y = (e.clientY - r.top) / r.height - .5; });
   host.addEventListener("pointerleave", () => { pointer.x = pointer.y = 0; });
 
+  // [0.3.12] the free area: the stage minus a side card that floats over the cabin's right edge (the check ride's lesson
+  // card). The cabin's walls run on behind the card; the seat view is centred and fitted in the free area.
+  const faces = [];
+  Object.values(objs).forEach(P => { P.g.updateMatrixWorld(true); [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => faces.push(P.g.localToWorld(new THREE.Vector3(a * (P.w + 0.12) / 2, b * (P.h + 0.12) / 2, 0)))); });
+  function seatSpan(fov) {
+    camera.fov = fov; camera.updateProjectionMatrix();
+    camera.position.copy(SEAT.pos); camera.lookAt(SEAT.look); camera.updateMatrixWorld(true);
+    let x0 = 1e9, x1 = -1e9;
+    faces.forEach(v => { const p = v.clone().project(camera), x = (p.x + 1) / 2 * size.w; x0 = Math.min(x0, x); x1 = Math.max(x1, x); });
+    return [x0, x1];
+  }
   function resize() {
-    const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return; size = { w, h };
+    const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+    const inset = Math.max(0, Math.min(w * 0.6, +insetRight() || 0)), fw = w - inset;
+    size = { w, h, fw };
     renderer.setSize(w, h, false); renderer.domElement.style.width = w + "px"; renderer.domElement.style.height = h + "px";
-    cssR.setSize(w, h); camera.aspect = w / h;
-    // fit the seat view: the window and all three panels in frame on any aspect
-    camera.fov = w / h < 1.5 ? 66 : w / h < 1.75 ? 60 : 56; camera.updateProjectionMatrix();
+    // the DOM panels (CSS3D) render the free area only: CSS3DRenderer's own view-offset maths assumes a sub-view of a
+    // bigger image, so it renders with the offset off (the WebGL room runs on behind the card with it on)
+    cssR.setSize(fw, h); camera.aspect = fw / h;
+    if (inset > 0) camera.setViewOffset(fw, h, 0, 0, w, h); else camera.clearViewOffset();
+    // fit the seat view: the window and every panel in the free area on any aspect (wider field of view, never clipped)
+    camera.fov = fitFov(fw / h, fw, seatSpan); camera.updateProjectionMatrix();
     if (open) { const p = poseFor(open); target.pos.copy(p.pos); target.look.copy(p.look); if (!tween) { cur.pos.copy(p.pos); cur.look.copy(p.look); } }
   }
   const ro = new ResizeObserver(resize); ro.observe(host); resize();
@@ -218,7 +253,9 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     camera.position.set(cur.pos.x + pointer.x * 0.07 * par, cur.pos.y + bob - pointer.y * 0.035 * par, cur.pos.z);
     camera.lookAt(cur.look.x + pointer.x * 0.03 * par, cur.look.y - pointer.y * 0.02 * par, cur.look.z);
     if (lookC.x || lookC.y) { camera.rotateY(-lookC.x); camera.rotateX(-lookC.y); }
-    renderer.render(scene, camera); cssR.render(cssScene, camera); const r = placeHole();
+    renderer.render(scene, camera);
+    if (camera.view && camera.view.enabled) { camera.view.enabled = false; cssR.render(cssScene, camera); camera.view.enabled = true; } else cssR.render(cssScene, camera);
+    const r = placeHole();
     if (!tween && (open === null)) fitGlass(r);
     frames++; if (now - fpsT > 1000) { fps = Math.round(frames * 1000 / (now - fpsT)); frames = 0; fpsT = now; }
     void dt;
@@ -234,6 +271,9 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     /** Center view: the seat pose, now (any panel closes, any look offset goes). */
     recenter() { lookT.x = lookT.y = 0; lookHold = false; if (open) go(null); },
     /** The camera as the tests see it: the look offset (rad), the open panel, a dolly in flight. */
+    get fov() { return camera.fov; },
+    /** The seat view's faces in px (the tests: every panel inside the free area). */
+    get seatSpan() { const f = camera.fov, r = seatSpan(f); return { x0: r[0], x1: r[1], w: size.w, fw: size.fw, fov: f }; },
     get pose() { return { yaw: lookC.x, pitch: lookC.y, targetYaw: lookT.x, targetPitch: lookT.y, panel: open, moving: !!tween, maxYaw: MAX_YAW, maxPitch: MAX_PITCH }; },
     /** Mark a panel as the one a lean-in would open (null clears). */
     highlight(id) { hl = id || null; Object.entries(objs).forEach(([k, P]) => P.el.classList.toggle("is-hl", k === hl)); },

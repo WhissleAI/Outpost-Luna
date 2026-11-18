@@ -349,3 +349,12 @@ def test_ride_never_says_the_same_sentence_twice(client):
     assert _new_news("Copy. Crew in the shelter.", "Crew in the shelter. Much less radiation, but science stops.") == \
         "Much less radiation, but science stops."
     assert _new_news("Copy. Crew is out. Back to work.", "Crew is out. Science can start again.") == "Science can start again."
+
+
+def test_ride_hud_names_the_site_and_counts_its_own_days(client):
+    """[0.3.12] The cabin clock read "Day 8 · Shift 1 ·" on a two-day ride: the HUD carries the site and the ride's day."""
+    s = client.post("/api/academy/ride").json()["state"]
+    assert s["site"]["name"].startswith("Shackleton")
+    assert s["ride"] == {"day": 1, "days": 2}
+    end = _ride(client, GOOD)["state"]
+    assert end["ride"]["day"] == 2 and end["ride"]["days"] == 2
