@@ -22,6 +22,7 @@ import { missionsFlown, unlocked, isExplorer, isField, isBonus, coreLessons, fie
 import { FIELD_STEP_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
+import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
 const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
@@ -264,6 +265,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (typeof p === "string") { const f = placeById(p); if (f) return { name: f.name.split(" (")[0], lat: f.lat, lon: f.lon }; }
     return (l && LESSON_PLACE[l.id]) || LESSON_PLACE.moon;
   }
+  /** A pin (or its patch in the header strip) tapped: select it and fly there; a second tap opens it. */
+  function pickPin(l, sel) {
+    if (sel && sel.id === l.id) { openLesson(l.id); return; }
+    const at = placeOf(l); mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6);
+  }
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
     view = "map"; L = null; endRide(); setLayout("map");
@@ -284,7 +290,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it to read when it opens (spatial nav skips it)
       b.setAttribute("aria-label", `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, ${EXPLORER.locked(lockedWhen(l))}` : ""}. ${at.name}`);
       b.innerHTML = `<span class="pin-badge">${patch(l.id, { earned: done, size: next ? 64 : 44 })}</span><span class="pin-label">${no ? `<b>${no}</b>` : ""}${esc(l.title)}</span>`;
-      b.onclick = () => { if (sel && sel.id === l.id) { openLesson(l.id); return; } mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6); };
+      b.onclick = () => pickPin(l, sel);
       return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next };
     });
     globe.route.set(stops, n);
@@ -306,6 +312,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       <header class="mp-top">
         <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
         <span class="mp-count" aria-label="${esc(SCHOOL.lessonsCount(coreDone().n, coreDone().of))}">${coreDone().n}<small>/${coreDone().of}</small></span>
+        ${patchStripHtml(earnedPatches(ls, prog.badges), { patch, esc })}
         <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
       </header>
       ${!prog.qualified && nx ? (n === 0 && !nx.ride
@@ -316,6 +323,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       ${card}
       <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
+    // [0.4.1] the earned patches stay in view in the header (the polar view hides the near-side pins: academy/earned.js)
+    panel.querySelectorAll(".mp-patchbtn").forEach(pb => pb.onclick = () => { const l = ls.find(x => x.id === pb.dataset.l); if (l) pickPin(l, sel); });
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
     const nb = panel.querySelector("#aNewLesson"); if (nb) nb.onclick = () => openLesson(nb.dataset.l);
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);

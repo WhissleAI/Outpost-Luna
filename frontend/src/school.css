@@ -57,6 +57,11 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .mp-count{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--color-text)}
 .mp-count small{font-size:var(--text-sm);font-weight:var(--weight-regular);color:var(--color-text-3)}
 .mp-top .chip{min-height:32px;background:var(--color-surface-2);border-color:transparent}
+/* [0.4.1] earned patches, always in view (academy/earned.js): the polar view hides the near-side pins */
+.mp-patches{display:flex;align-items:center;gap:2px;max-width:min(36vw,420px);overflow-x:auto;scrollbar-width:none}
+.mp-patchbtn{display:grid;place-items:center;flex:none;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}
+.mp-patchbtn:hover{transform:scale(1.08)}
+.mp-patchbtn:focus-visible{outline:2px solid var(--color-focus,#8DB2FF);outline-offset:1px}
 /* the story beat on the map: where you are on the arc, and why (a new cadet; the stop before the check ride) */
 .mp-beat{position:absolute;left:var(--gut);top:calc(var(--gut) + 56px);margin:0;max-width:min(420px,calc(100% - 2 * var(--gut)));display:flex;flex-direction:column;gap:2px;
   padding:var(--space-2) var(--space-4);border-radius:var(--radius-lg);background:var(--color-overlay);border:1px solid var(--color-overlay-line);box-shadow:var(--shadow-2);
