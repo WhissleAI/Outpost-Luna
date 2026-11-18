@@ -27,3 +27,33 @@ export const progress = {
   save(p) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch (e) { /* private mode: progress lasts this visit */ } },
   reset() { try { localStorage.removeItem(KEY); } catch (e) { /* none */ } },
 };
+
+// [0.4.1] Lesson resume: reopening the app goes back to a half-done lesson at its step. Stored with the progress
+// (`atm-academy`, so per cadet and kept by Reset): steps = {lessonId: {i, n}} (the step shown, and how many steps the
+// lesson had), current = the lesson last open. Cleared when the lesson is finished. A course that changed under it
+// (another step count, a lesson gone) starts that lesson from the top. Pure: these return a new progress object.
+
+/** Remember that lesson `l` is open at step i. Step 0 is not worth remembering (it starts there anyway). */
+export function saveStep(p, l, i) {
+  const steps = { ...(p.steps || {}) };
+  if (i > 0 && i < l.steps.length) steps[l.id] = { i, n: l.steps.length }; else delete steps[l.id];
+  return { ...p, steps, current: i > 0 ? l.id : (p.current === l.id ? null : p.current || null) };
+}
+/** The lesson is done (or left for good): forget its step. */
+export function clearStep(p, id) {
+  const steps = { ...(p.steps || {}) }; delete steps[id];
+  return { ...p, steps, current: p.current === id ? null : p.current || null };
+}
+/** Where lesson `l` picks up: the saved step when it still fits the lesson, else 0. */
+export function resumeStep(p, l) {
+  const s = l && p && p.steps && p.steps[l.id];
+  if (!s || !Number.isInteger(s.i) || s.n !== l.steps.length || s.i <= 0 || s.i >= l.steps.length) return 0;
+  return s.i;
+}
+/** The half-done lesson to reopen at launch: {lesson, step} or null (none, gone from the course, or back at step 0). */
+export function resumeTarget(p, lessons) {
+  const l = p && p.current && (lessons || []).find(x => x.id === p.current);
+  if (!l || l.ride) return null;
+  const step = resumeStep(p, l);
+  return step ? { lesson: l, step } : null;
+}

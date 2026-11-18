@@ -90,3 +90,57 @@ test("Settings → Videos copy: the v2 video pack (14 NASA videos, ~425 MB, offl
   assert.match(html, /offline/);
   assert.doesNotMatch(html, /first time online/);
 });
+
+// [0.4.1] Settings → For grown-ups: Reset, Clear saved videos, Save diagnostics, What the app has learned and Reset my
+// patches sit in one section behind the 3-second hold; the kids' settings (voice, speed, theme, captions) stay open.
+test("For grown-ups: locked, it shows only the gate's hold and what is inside; open, every grown-up part", async () => {
+  const A = await import("../src/a11y.js");
+  const locked = A.grownupsHtml({ open: false, parts: [{ id: "reset", title: "Reset", html: "<button data-reset-open>" }] });
+  assert.ok(locked.includes("data-gu-open") && locked.includes("rs-hold") && locked.includes(A.GROWNUPS.hold));
+  assert.ok(!locked.includes("data-reset-open"), "nothing inside is reachable before the hold");
+  for (const t of ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Reset my patches"]) assert.ok(locked.includes(t), t);
+  const open = A.grownupsHtml({ open: true, parts: [{ id: "reset", title: "Reset", html: "<b>R</b>" }, { id: "videos", title: "Videos", html: "<b>V</b>" }] });
+  assert.ok(!open.includes("data-gu-open"));
+  assert.match(open, /data-gu="reset"[\s\S]*data-gu="videos"/);
+});
+
+test("For grown-ups: the videos, diagnostics and learning sections are grown-up parts; the kids' sections are not", async () => {
+  const fs = await import("node:fs");
+  const src = f => fs.readFileSync(new URL(f, import.meta.url), "utf8");
+  assert.equal(UI.settingsSection.grownup, true);
+  assert.match(src("../src/diagnostics_ui.js"), /id: "diagnostics"[^\n]*grownup: true/);
+  assert.match(src("../src/learning_ui.js"), /id: "learning"[^\n]*grownup: true/);
+  const a11y = src("../src/a11y.js");
+  // the sidebar: kids' sections first, For grown-ups last; Reset is no longer a section of its own
+  assert.match(a11y, /\["voice", "Voice"\][\s\S]*\["read", "Reading & captions"\], \["display", "Display"\][\s\S]*\["grownups", GROWNUPS\.title\]\]/);
+  assert.doesNotMatch(a11y, /\["reset", "Reset"\]/);
+  // the gate is the shared hold, and closing Settings locks it again
+  assert.match(a11y, /bindHold\(gate, \{ onFire: \(\) => \{ guOpen = true;/);
+  assert.match(a11y, /panel\.hidden = true; scrim\.hidden = true; resetArmed = false; guOpen = false;/);
+  // voice "reset" opens For grown-ups, never past the gate
+  assert.match(a11y, /case "reset": section = "grownups";/);
+});
+
+test("[0.4.1] bindHold: a held Enter on the focused button is not cancelled by the controller poll (only a pad hold is)", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  const saved = { raf: globalThis.requestAnimationFrame, doc: globalThis.document, nav: Object.getOwnPropertyDescriptor(globalThis, "navigator") };
+  const frames = [];
+  globalThis.requestAnimationFrame = f => { frames.push(f); return frames.length; };
+  globalThis.cancelAnimationFrame = () => {};
+  try {
+    const b = fakeButton(); b.isConnected = true;
+    globalThis.document = { activeElement: b };
+    Object.defineProperty(globalThis, "navigator", { value: { getGamepads: () => [] }, configurable: true });
+    let fired = 0;
+    RS.bindHold(b, { onFire: () => { fired++; } });
+    const runFrames = () => { const fs = frames.splice(0); fs.forEach(f => f()); };
+    b.emit("keydown", { key: "Enter" });
+    for (let k = 0; k < 5; k++) runFrames();      // the poll runs every frame with no pad button down
+    mock.timers.tick(3000); await flush();
+    assert.equal(fired, 1, "the keyboard hold lasted its 3 s");
+  } finally {
+    mock.timers.reset();
+    globalThis.requestAnimationFrame = saved.raf; globalThis.document = saved.doc;
+    if (saved.nav) Object.defineProperty(globalThis, "navigator", saved.nav);
+  }
+});

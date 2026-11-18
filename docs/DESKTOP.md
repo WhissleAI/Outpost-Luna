@@ -430,7 +430,7 @@ so this test run used `--no-sandbox`; a normal launch keeps it), no keys in the 
 | Mission cabin | shift started at Shackleton Rim, `shields +5` order, shift advanced, debrief |
 | quit | both children got SIGTERM and exited; `children.json` emptied; no stray processes |
 
-Re-run: `PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/python3 desktop/scripts/smoke.py` (the running app's address and token come from its `engine.json`).
+Re-run: `make smoke-installed` (or `make release-check DMG=...`): the app runs headless on a temp `OUTPOST_USER_DATA` and free ports, and `smoke.py` reads that test app's `engine.json`. `smoke.py` refuses your own app's data folder and ports (docs/RELEASING.md).
 
 ## Signing and notarization (macOS)
 

@@ -144,4 +144,4 @@ rm -rf dist/mac-arm64 dist/builder-debug.yml          # the unpacked app is insi
 step "8/8 done"
 ls -lh dist/*.dmg
 echo "Installer: $ROOT/desktop/dist/$(cd dist && ls -t *.dmg | head -1)  ($(( $(date +%s) - T0 )) s)"
-echo "Smoke test: open it, then: PYTHONPATH=desktop/resources/site/backend desktop/resources/python/bin/python3 desktop/scripts/smoke.py"
+echo "Smoke test (temp data + free ports, never your own app): make smoke-installed APP=\"<this .app>\"  or  make release-check DMG=<this dmg>"

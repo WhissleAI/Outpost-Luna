@@ -273,6 +273,8 @@ export const FIELD = {
   eyebrow: (n, of) => `Field School ${n} of ${of}`,
   openTitle: "Field School is open",
   patchProgress: (n, of) => (n >= of ? `Field School done: ${n} of ${of} patches.` : `Field School: ${n} of ${of} patches.`),
+  lockedTrack: "Opens after your check ride",   // [0.4.1] the map's locked Field School track, and a Field pin's card
+  trackCount: n => `${n} geology lessons`,
 };
 /** Explorer lessons (course.json track "explorer"): locked until the cadet has flown missions (explorer.js). */
 export const EXPLORER = {

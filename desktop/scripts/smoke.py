@@ -1,10 +1,17 @@
-"""Offline smoke test of a running Outpost Luna backend (the desktop app's, or any): voice ask -> answer -> the OS voice,
-a Flight School lesson, and a mission shift. Uses only the bundled backend deps (httpx, websockets).
+"""Offline smoke test of a running Outpost Luna backend: voice ask -> answer -> the OS voice, a Flight School lesson,
+and a mission shift. Uses only the bundled backend deps (httpx, websockets).
 
-    resources/python/bin/python3 desktop/scripts/smoke.py [--base http://127.0.0.1:47310] [--pcm backend/tests/fixtures/bullseye_16k.s16le]
-(PYTHONPATH=desktop/resources/site/backend). Exit 1 on the first failure.
-The running app's address and per-launch token come from its discovery file (engine.json in the app data folder,
-docs/SECURITY.md); --engine points at another one (a test run's OUTPOST_USER_DATA), --base / --token override.
+It WRITES to the app it talks to (a mission, a check ride, the ask history), so it only ever runs against a TEST app:
+one launched headless on its own temp data folder (OUTPOST_USER_DATA) and its own ports, never the owner's installed
+app, its data folder or its ports (47310 / 47210). The usual way:
+
+    make smoke-installed          # /Applications/Outpost Luna.app, headless, temp data + free ports, smoke, quit
+    make release-check DMG=...    # the same smoke as one of the release gates (docs/RELEASING.md)
+
+Run by hand only against such a test app:
+    resources/python/bin/python3 desktop/scripts/smoke.py --engine <test data folder>/engine.json
+(PYTHONPATH=desktop/resources/site/backend). With OUTPOST_USER_DATA set, --engine defaults to its engine.json.
+Exit 1 on the first failure; exit 2 when pointed at the owner's own app (refused, nothing sent).
 """
 from __future__ import annotations
 
@@ -23,13 +30,45 @@ FRAME = 2560  # 80 ms of PCM16 at 16 kHz
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def engine_file() -> Path:
-    """The desktop app's engine.json (desktop/main/engine.js): Electron's userData folder for "Outpost Luna"."""
+OWNER_PORTS = {47310, 47311, 47312, 47210, 47211, 47212}   # the installed app's defaults (release_check.py too)
+
+
+def owner_data_dir() -> Path:
+    """The owner's real data folder (Electron's userData for "Outpost Luna"): never smoke-tested."""
     if sys.platform == "win32":
-        return Path(os.environ.get("APPDATA", Path.home() / "AppData/Roaming")) / "Outpost Luna/engine.json"
+        return Path(os.environ.get("APPDATA", Path.home() / "AppData/Roaming")) / "Outpost Luna"
     if sys.platform == "darwin":
-        return Path.home() / "Library/Application Support/Outpost Luna/engine.json"
-    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Outpost Luna/engine.json"
+        return Path.home() / "Library/Application Support/Outpost Luna"
+    return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "Outpost Luna"
+
+
+def default_engine() -> str | None:
+    """A test app's engine.json: $OUTPOST_USER_DATA/engine.json, or None (then --engine or --base is required)."""
+    ud = os.environ.get("OUTPOST_USER_DATA")
+    return str(Path(ud) / "engine.json") if ud else None
+
+
+def refuse_reason(engine: str | None, base: str | None, owner: Path | None = None) -> str:
+    """Why this run would touch the owner's own app ("" = fine): its data folder, or one of its ports."""
+    owner = owner or owner_data_dir()
+    if engine:
+        try:
+            e = Path(engine).expanduser().resolve()
+            if e == owner.resolve() or owner.resolve() in e.parents:
+                return f"{engine} is in your own app's data folder ({owner}); smoke tests a temp-data test app only"
+        except OSError:
+            pass
+    if base:
+        from urllib.parse import urlparse
+        try:
+            port = urlparse(base).port
+        except ValueError:
+            port = None
+        if port in OWNER_PORTS:
+            return f"{base} is your own app's port; smoke tests a test app on its own ports only"
+    if not engine and not base:
+        return "no test app: pass --engine <test data>/engine.json (or set OUTPOST_USER_DATA), or run `make smoke-installed`"
+    return ""
 
 
 def ok(cond, what):
@@ -76,15 +115,23 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default=None, help="default: the backend in engine.json")
     ap.add_argument("--token", default=os.environ.get("LUNA_TOKEN"), help="default: the token in engine.json")
-    ap.add_argument("--engine", default=str(engine_file()), help="the running app's discovery file")
+    ap.add_argument("--engine", default=default_engine(), help="the TEST app's discovery file (default: $OUTPOST_USER_DATA/engine.json)")
     ap.add_argument("--pcm", default=str(ROOT / "backend/tests/fixtures/bullseye_16k.s16le"))
     a = ap.parse_args()
+    why = refuse_reason(a.engine, a.base)
+    if why:
+        print(f"REFUSED {why}", flush=True)
+        sys.exit(2)
     eng = {}
     try:
-        eng = json.loads(Path(a.engine).read_text(encoding="utf-8"))
+        eng = json.loads(Path(a.engine).read_text(encoding="utf-8")) if a.engine else {}
     except (OSError, ValueError):
         print(f"  -    no engine.json at {a.engine}: using --base / --token")
-    a.base = a.base or eng.get("backend") or "http://127.0.0.1:47310"
+    a.base = a.base or eng.get("backend")
+    why = refuse_reason(None, a.base) if a.base else "engine.json names no backend; pass --base"
+    if why:
+        print(f"REFUSED {why}", flush=True)
+        sys.exit(2)
     headers = {"X-Luna-Token": a.token or eng.get("token") or ""}
     print(f"  -    backend {a.base}, token {'set' if headers['X-Luna-Token'] else 'none'}")
     async with httpx.AsyncClient(base_url=a.base, timeout=60, headers=headers) as c:

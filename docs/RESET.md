@@ -1,15 +1,24 @@
 # Reset Outpost Luna
 
-Settings → **Reset** is the danger zone. It is always the last item in the Settings sidebar, below Help, after a thin
-divider; it turns the warning colour only when it is hovered or selected. Cadets links to it too ("Start over with a
-new cadet? Reset"). Keyboard (Alt+A, the arrows, Enter) and a controller (D-pad, A) reach it like any other section.
-It erases what the app saved on this computer, at one of two levels.
+Settings → **For grown-ups** holds everything that erases or saves files: **Reset**, **Videos** (clear saved videos),
+**Help & diagnostics** (save a diagnostics file), **What the app has learned**, and **Reset my patches**. It is always
+the last item in the Settings sidebar, below Help, after a thin divider; it turns the warning colour only when it is
+hovered or selected. The section is locked: a grown-up holds "Hold for 3 seconds to open" (the shared `bindHold`),
+and it stays open until Settings closes. The kids' settings (Voice, speed, Sound, Listening, Reading & captions,
+Display and theme, Cadets) stay open. Cadets links to it ("Reset the app or erase progress? For grown-ups").
+Keyboard (Alt+A, the arrows, Enter) and a controller (D-pad, A) reach it like any other section.
+
+Reset erases what the app saved on this computer, at one of two levels. **Progress stays** on both levels:
+Flight School and Field School progress (lessons, patches, the check ride, a half-done lesson's step: localStorage
+`atm-academy`), every cadet's call sign, and the missions flown that open bonus lessons. Only **"Hold to erase progress
+too"**, a separate 3-second hold in the same confirm view, erases those as well.
 
 | | Start over | Reset everything |
 |---|---|---|
-| Call signs and every cadet (profiles) | erased | erased |
-| Lessons, patches, explorer unlocks, the check ride | erased | erased |
-| Missions flown, debriefs, the first-mission briefing seen | erased | erased |
+| Call signs and every cadet (profiles) | kept (other cadets keep only their progress) | kept |
+| Lessons, patches, explorer unlocks, the check ride, a half-done lesson's step | kept | kept |
+| ... all of the above, with "Hold to erase progress too" | erased | erased |
+| Debriefs, the first-mission briefing seen | erased | erased |
 | Prefs: voice, theme, Mute, expressiveness, the recorded voice, captions, text size, gestures and their calibration, coach marks seen, the tour seen | erased | erased |
 | The opt-in voice-guide log (turn log) | erased | erased |
 | On-device learning: learned names, speech habits, thresholds, this computer's echo numbers (`docs/ON_DEVICE_LEARNING.md`) | erased | erased |
@@ -21,7 +30,10 @@ It erases what the app saved on this computer, at one of two levels.
 
 ## Safety
 
-- **A confirm view** lists exactly what goes and what stays, and Cancel has focus first.
+- **The For grown-ups gate**: a 3-second hold opens the section; closing Settings locks it again.
+- **A confirm view** lists exactly what goes and what stays, and Cancel has focus first. It has two holds: the level
+  ("Hold to start over" / "Hold to reset everything": progress stays) and "Hold to erase progress too". Once one fires
+  the other is off.
 - **The button must be held for 3 seconds**: "Hold to start over" / "Hold to reset everything". This is the grown-up
   gate's pattern. Any of these works:
   - the mouse, touch or a pen;
@@ -30,9 +42,9 @@ It erases what the app saved on this computer, at one of two levels.
 
   A click, or a hold shorter than 3 s, does nothing.
 - **Esc or Cancel always backs out.**
-- **Voice can open it but never finish it.** "Reset", "reset the app" or "reset everything" opens the Reset panel
-  with both options, and the one asked for has focus. The router sends these phrases to the client's a11y handler.
-  Only the hold resets.
+- **Voice can open it but never finish it.** "Reset", "reset the app" or "reset everything" opens For grown-ups. While
+  it is locked the gate's hold has focus; once a grown-up has opened it, both options show and the one asked for has
+  focus. The router sends these phrases to the client's a11y handler. Only the holds open it and reset.
 
 ## How it works
 
@@ -46,14 +58,18 @@ It erases what the app saved on this computer, at one of two levels.
    - clears its in-memory state;
    - calls `reset_downloaded_assets()` for `all`;
    - returns a one-time token, valid for 60 s.
-3. **The page** removes every `outpost*` / `atm-*` / `atm:*` key from localStorage and sessionStorage, and deletes its
-   IndexedDB databases. Then:
+3. **The page** removes every `outpost*` / `atm-*` / `atm:*` key from localStorage and sessionStorage, except the
+   progress keys (`atm-academy`, `outpost-callsign`, `outpost-missions-flown:*`, and `outpost-profiles` trimmed to each
+   cadet's progress) unless progress is erased too, and deletes its IndexedDB databases. Then:
    - in a browser (the dev stack), it reloads;
-   - in the desktop app, it navigates to `/__outpost/reset?level=…&token=…`.
+   - in the desktop app, it navigates to `/__outpost/reset?level=…&token=…` (`&erase=1` with "erase progress too").
 4. **The desktop shell** (`desktop/main/reset.js`, wired in `main.js`'s `will-navigate`) stops that navigation, then:
    1. confirms the token with `GET /api/reset/confirm`, and does nothing unless the backend confirms the same level;
    2. stops the backend and the model server (the existing `stopAll`), so Windows can delete files a child held open;
-   3. runs `session.clearStorageData` and `clearCache`;
+   3. runs `session.clearStorageData` and `clearCache`. Local Storage, where progress lives, is cleared only with
+      `erase=1`; otherwise the page has already removed everything but progress. The log says which: "reset all:
+      cleared browser storage (kept Flight School progress and call signs)" or "… cleared browser storage and
+      progress";
    4. deletes the level's folders under `app.getPath("userData")`:
       - `cache/tts`, `cache/turnlog` and `cache/learning` for Start over;
       - `cache/` and `hf/` for Reset everything;
@@ -86,10 +102,12 @@ first-run download again (or "Import offline pack").
 - **desktop:** `main/reset.test.js`, on darwin and win32:
   - the folders for each level, and that logs / ports / pids are never deleted;
   - the order: confirm → stop → storage → delete → relaunch;
+  - Local Storage (progress) is cleared only with `erase=1`;
   - nothing happens without the backend's confirmation;
   - an EBUSY lock is retried, then reported.
-- **frontend:** `tests/reset.test.js`: the keys cleared; the copy; the backend first, then the desktop hand-over;
-  voice only opens the panel.
+- **frontend:** `tests/reset.test.js`: the keys cleared, progress kept, and everything with "erase progress too"; the
+  copy; the two holds; the backend first, then the desktop hand-over (`erase=1`); voice only opens the panel.
+  `tests/settings_gate.test.js`: the For grown-ups gate and what sits behind it.
 - **e2e:** `tests/e2e/reset_e2e.py`:
   - finding it: Reset is the last sidebar item below Help, with a divider and no warning colour at rest; the Cadets
     link goes there; the keyboard and a controller reach it; voice "reset" opens the panel; none of these erases;

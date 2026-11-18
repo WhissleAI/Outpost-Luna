@@ -120,7 +120,8 @@ test("first run is dark; a saved choice (Light, System) stays", () => {
 
 test("Save a diagnostics file… and Reset my patches are behind the shared 3-second hold", () => {
   const a11y = src("../src/a11y.js"), dg = src("../src/diagnostics_ui.js");
-  assert.match(a11y, /holdButtonHtml\("Reset my patches", "data-prof-reset"\)/);
+  assert.match(a11y, /holdButtonHtml\(GROWNUPS\.patches, "data-prof-reset"\)/);   // [0.4.1] in For grown-ups
+  assert.match(a11y, /patches: "Reset my patches"/);
   assert.match(a11y, /bindHold\(pr, \{ onFire: \(\) => PA\.resetProgress\(\) \}\)/);
   assert.doesNotMatch(a11y, /Tap again to clear this cadet's patches/);
   assert.match(dg, /holdButtonHtml\(COPY\.save, "data-dg-save"\)/);

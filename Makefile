@@ -184,7 +184,10 @@ desktop-run:     ## Desktop: run the shell against desktop/resources without pac
 release-check:   ## Release gates before every release (docs/RELEASING.md): unit + installed-app smoke + golden ear + fuzz [+ SOAK=1]; DMG=<dmg> (default: newest in desktop/dist), ARGS=...
 	python3 desktop/scripts/release_check.py $(if $(DMG),--dmg "$(DMG)") $(ARGS)
 
+smoke-installed: ## Smoke the INSTALLED app without touching your data: launches APP (default /Applications/Outpost Luna.app) headless + muted on a temp OUTPOST_USER_DATA and free ports, runs desktop/scripts/smoke.py + a voice turn, quits (docs/RELEASING.md)
+	python3 desktop/scripts/release_check.py --app "$(or $(APP),/Applications/Outpost Luna.app)" --gates smoke --report desktop/dist/smoke-installed.json $(ARGS)
+
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

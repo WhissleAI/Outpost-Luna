@@ -179,4 +179,4 @@ Run uv run --no-project python desktop\scripts\win_bundle_check.py runtime deskt
 Write-Host ("Installer: {0}  ({1:N0} MB, {2:N0} s)" -f $exe.FullName, ($exe.Length / 1MB), ((Get-Date) - $T0).TotalSeconds) -ForegroundColor Green
 Write-Host "Release asset: $stable   (attach it: gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe)" -ForegroundColor Green
 Write-Host "Unpacked app (run it without installing): $Root\desktop\dist\win-unpacked\Outpost Luna.exe"
-Write-Host "Smoke test: start the app, then:  `$env:PYTHONPATH='desktop\resources\site\backend'; desktop\resources\python\python.exe desktop\scripts\smoke.py"
+Write-Host "Smoke test (temp data + free ports, never your own app): powershell -ExecutionPolicy Bypass -File desktop\scripts\release-check.ps1 -Gates smoke"

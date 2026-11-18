@@ -2,14 +2,16 @@
 
 1. Make progress: a call sign, patches, prefs, a mission flown, the tour seen (localStorage, as the app keeps them),
    plus files in the backend's per-user cache (a spoken line, a turn log, a saved NASA video, a vector cache).
-2. Finding it: "Reset" is the last sidebar item, below Help, with a divider above it and no warning colour until it is
-   hovered or selected. Cadets links to it ("Start over with a new cadet? Reset"). The keyboard reaches it (Alt+A,
-   arrows, Enter), and so does a controller (D-pad, A, B). Voice "reset" opens the Reset panel itself. None of these
-   erases anything.
+2. Finding it: "For grown-ups" is the last sidebar item, below Help, with a divider above it and no warning colour
+   until it is hovered or selected; it is locked behind a 3-second hold (a click does nothing). Cadets links to it.
+   The keyboard reaches it (Alt+A, arrows, Enter), and so does a controller (D-pad, A, B). Voice "reset" opens it.
+   None of these erases anything.
 3. Start over: the confirm says what goes; a click (not a hold) does nothing; Esc backs out; holding the button 3 s
-   resets. The app comes back at first launch (the call-sign screen), every app key is gone, the spoken-line cache and
-   turn log are empty, and the saved video, the vectors and the bundled media are still there (no re-download).
-4. Reset everything: the video and vector caches are empty too.
+   resets. [0.4.1] Progress stays: the call sign and Flight School progress (and missions flown) are still there, so
+   the app comes back to the map, not the call-sign screen; every other app key is gone; the spoken-line cache and
+   turn log are empty; the saved video, the vectors and the bundled media are still there (no re-download).
+4. Start over with "Hold to erase progress too": every app key is gone; the app comes back at the call-sign screen.
+5. Reset everything: the video and vector caches are empty too.
 
     (backend on :8203 with CACHE_DIR=<dir> serving frontend/dist)
     uv run --no-project --with playwright==1.58.0 python frontend/tests/e2e/reset_e2e.py --base http://127.0.0.1:8203 --cache <dir>
@@ -99,11 +101,19 @@ def pad(pg, i):
     pg.wait_for_timeout(220)
 
 
+def open_grownups(pg):
+    """For grown-ups is locked: hold its gate 3 s (only when it shows the gate)."""
+    until(pg, "() => !!document.querySelector('[data-gu-open], [data-reset-open]')", 3000)
+    if pg.evaluate("() => !!document.querySelector('[data-gu-open]')"):
+        hold(pg, "[data-gu-open]", 3400)
+    return until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000)
+
+
 def open_reset(pg, level):
     pg.mouse.click(*pg.evaluate("() => { const q = document.getElementById('a11yBtn').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }"))
-    until(pg, "() => !!document.querySelector('.a11y-panel:not([hidden]) [data-sec=reset]')", 5000)
-    pg.evaluate("() => document.querySelector('.a11y-panel [data-sec=reset]').click()")
-    until(pg, "() => !!document.querySelector('[data-reset-open]')", 3000)
+    until(pg, "() => !!document.querySelector('.a11y-panel:not([hidden]) [data-sec=grownups]')", 5000)
+    pg.evaluate("() => document.querySelector('.a11y-panel [data-sec=grownups]').click()")
+    open_grownups(pg)
     pg.evaluate(f"() => document.querySelector('[data-reset-open={level}]').click()")
     return until(pg, "() => !!document.querySelector('.rs-confirm [data-reset-hold]')", 3000)
 
@@ -135,18 +145,34 @@ def main():
         pg.mouse.click(*pg.evaluate("() => { const q = document.getElementById('a11yBtn').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }"))
         until(pg, "() => !!document.querySelector('.a11y-panel:not([hidden]) .set-nav')", 5000)
         nav = pg.evaluate("() => [...document.querySelectorAll('.a11y-panel .set-nav [data-sec]')].map(b => b.textContent.trim())")
-        ok(nav[-1] == "Reset" and nav[-2] == "Help", f"the sidebar ends Help, Reset ({nav})")
-        vis = pg.evaluate("""() => { const b = document.querySelector('.a11y-panel .set-nav [data-sec=reset]'), q = b.getBoundingClientRect(), n = b.closest('.set-nav').getBoundingClientRect();
+        ok(nav[-1] == "For grown-ups" and nav[-2] == "Help", f"the sidebar ends Help, For grown-ups ({nav})")
+        ok(not {"Videos", "Help & diagnostics", "What the app has learned", "Reset"} & set(nav), "the grown-up items are not in the sidebar")
+        vis = pg.evaluate("""() => { const b = document.querySelector('.a11y-panel .set-nav [data-sec=grownups]'), q = b.getBoundingClientRect(), n = b.closest('.set-nav').getBoundingClientRect();
           const cs = getComputedStyle(b), line = getComputedStyle(b, '::before');
           return {inView: q.bottom <= n.bottom + 1 && q.height > 0, divider: line.borderTopStyle === 'solid', color: cs.color,
                   help: getComputedStyle(document.querySelector('.a11y-panel .set-nav [data-sec=help]')).color}; }""")
-        ok(vis["inView"] and vis["divider"], f"Reset is in view with a divider above it ({vis})")
+        ok(vis["inView"] and vis["divider"], f"For grown-ups is in view with a divider above it ({vis})")
         ok(vis["color"] == vis["help"], "no warning colour until it is hovered or selected")
-        # Cadets: "Start over with a new cadet? Reset" goes there
+        # locked: a click on the gate does nothing; nothing grown-up is reachable
+        pg.evaluate("() => document.querySelector('.a11y-panel [data-sec=grownups]').click()")
+        until(pg, "() => !!document.querySelector('[data-gu-open]')", 3000)
+        pg.evaluate("() => document.querySelector('[data-gu-open]').click()")
+        pg.wait_for_timeout(400)
+        ok(pg.evaluate("() => !document.querySelector('[data-reset-open], [data-vid-clear], [data-dg-save], [data-lr-reset], [data-prof-reset]')"),
+           "For grown-ups is locked: a click on the gate opens nothing")
+        hold(pg, "[data-gu-open]", 3400)
+        parts = pg.evaluate("() => [...document.querySelectorAll('.gu-part')].map(p => p.dataset.gu)")
+        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000) and {"reset", "videos", "diagnostics", "learning", "patches"} <= set(parts),
+           f"a 3-second hold opens it: Reset, Videos, diagnostics, learning, Reset my patches ({parts})")
+        pg.keyboard.press("Escape")
+        pg.wait_for_timeout(300)
+        # Cadets links there (locked again: Settings was closed)
+        pg.keyboard.press("Alt+a")
+        until(pg, "() => !!document.querySelector('.a11y-panel:not([hidden])')", 4000)
         pg.evaluate("() => document.querySelector('.a11y-panel [data-sec=cadets]').click()")
-        until(pg, "() => !!document.querySelector('[data-sec-go=reset]')", 3000)
-        pg.evaluate("() => document.querySelector('[data-sec-go=reset]').click()")
-        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000), "Cadets → 'Start over with a new cadet? Reset' opens the Reset panel")
+        until(pg, "() => !!document.querySelector('[data-sec-go=grownups]')", 3000)
+        pg.evaluate("() => document.querySelector('[data-sec-go=grownups]').click()")
+        ok(until(pg, "() => !!document.querySelector('[data-gu-open]')", 3000), "Cadets → For grown-ups (locked again after Settings closed)")
         pg.keyboard.press("Escape")
         pg.wait_for_timeout(400)
 
@@ -159,7 +185,12 @@ def main():
             pg.keyboard.press("ArrowDown")
             pg.wait_for_timeout(150)
         pg.keyboard.press("Enter")
-        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000), "keyboard: arrows reach Reset, Enter opens it")
+        ok(until(pg, "() => !!document.querySelector('[data-gu-open]')", 3000), "keyboard: arrows reach For grown-ups, Enter opens it")
+        pg.evaluate("() => document.querySelector('[data-gu-open]').focus()")
+        pg.keyboard.down("Enter")
+        pg.wait_for_timeout(3400)
+        pg.keyboard.up("Enter")
+        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000), "keyboard: Enter held 3 s opens the gate")
         pg.evaluate("() => document.querySelector('[data-reset-open=start]').focus()")
         pg.keyboard.press("Enter")
         ok(until(pg, "() => !!document.querySelector('.rs-confirm[data-level=start]')", 3000), "keyboard: Enter on Start over shows the hold-to-confirm")
@@ -178,14 +209,15 @@ def main():
                 break
             pad(pg, 13)
         pad(pg, 0)
-        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2", 3000), "controller: D-pad reaches Reset, A opens it")
+        ok(until(pg, "() => !!document.querySelector('[data-gu-open]')", 3000), "controller: D-pad reaches For grown-ups, A opens it (locked)")
         pad(pg, 1)
         pad(pg, 1)
         pg.wait_for_timeout(300)
 
-        # ---- voice "reset" opens the Reset panel itself; it never confirms or erases ----
+        # ---- voice "reset" opens For grown-ups (its gate); it never confirms or erases ----
         pg.evaluate("() => window.__outpost.a11y.handleText('reset')")
-        ok(until(pg, "() => document.querySelectorAll('[data-reset-open]').length === 2 && !document.querySelector('.rs-confirm')", 4000), "voice 'reset' opens the Reset panel (both options)")
+        ok(until(pg, "() => !!document.querySelector('[data-gu-open]') && !document.querySelector('.rs-confirm')", 4000), "voice 'reset' opens For grown-ups, at its gate")
+        open_grownups(pg)
         ok(set(before) <= set(pg.evaluate(APP_KEYS)), "… and erases nothing by itself")
         pg.evaluate("() => document.querySelector('[data-reset-open=start]').click()")
         until(pg, "() => !!document.querySelector('.rs-confirm')", 3000)
@@ -197,7 +229,7 @@ def main():
         # ---- Start over: a click is not a hold; a short hold is not enough; 3 s is ----
         ok(open_reset(pg, "start"), "Settings → Reset → Start over shows the confirm")
         what = pg.evaluate("() => document.querySelector('.rs-confirm').innerText")
-        ok("Downloaded voices, crew audio, videos and models stay" in what and "Missions flown" in what, "it says exactly what goes and what stays")
+        ok("Lessons, patches and call signs stay" in what and "Hold to erase progress too" in what, "it says exactly what goes and what stays")
         pg.evaluate("() => document.querySelector('[data-reset-hold]').click()")
         hold(pg, "[data-reset-hold]", 1200)
         pg.wait_for_timeout(500)
@@ -207,14 +239,27 @@ def main():
             hold(pg, "[data-reset-hold]", 3400)
         until(pg, "() => window.__outpost && window.__outpost.a11y", 30000)
         pg.wait_for_timeout(1500)
-        left = [k for k in pg.evaluate(APP_KEYS) if k not in ("outpost-prefs",)]   # silent.py re-seeds its Mute pref
-        ok(not [k for k in left if k in before], f"every app key from before is gone ({left})")
-        ok(until(pg, "() => !!document.getElementById('aCsForm')", 15000), "the app comes back at first launch (the call-sign screen)")
+        left = [k for k in pg.evaluate(APP_KEYS) if k not in ("outpost-prefs", "atm-theme")]   # silent.py re-seeds its Mute pref; the default (dark) theme is written at boot
+        kept = {"outpost-callsign", "atm-academy", "outpost-missions-flown:Nova"}
+        ok(kept <= set(left), f"progress stays: call sign, Flight School progress, missions flown ({left})")
+        ok(not [k for k in left if k in before and k not in kept and k != "outpost-profiles"], f"every other app key from before is gone ({left})")
+        ok(pg.evaluate("() => JSON.parse(localStorage.getItem('atm-academy')).badges.join(',')") == "scout,history", "the patches are the same")
+        ok(until(pg, "() => !document.getElementById('aCsForm') && !!document.querySelector('.mp-top')", 15000), "the app comes back at the map (the call sign stayed)")
         ok(stale(cache, "tts", t_reset) == [] and stale(cache, "turnlog", t_reset) == [],
            f"the spoken-line cache and the turn log hold nothing from before the reset (after: {files(cache, 'tts')})")
         ok(files(cache, "video") and files(cache, "vectors"), f"the saved video and the vectors stay ({files(cache, 'video')}, {files(cache, 'vectors')})")
         ok(pg.evaluate("() => fetch('/api/video/catalog').then(r => r.ok)") and
            pg.evaluate("() => fetch('/media/img/moon4k.jpg', {method: 'HEAD'}).then(r => r.ok)"), "bundled assets still served (no re-download)")
+
+        # ---- Start over with "Hold to erase progress too" ----
+        ok(open_reset(pg, "start"), "Start over again")
+        with pg.expect_navigation(timeout=15000):
+            hold(pg, "[data-reset-erase]", 3400)
+        until(pg, "() => window.__outpost && window.__outpost.a11y", 30000)
+        pg.wait_for_timeout(1500)
+        left = [k for k in pg.evaluate(APP_KEYS) if k not in ("outpost-prefs", "atm-theme")]
+        ok(not [k for k in left if k in before], f"erase progress too: every app key from before is gone ({left})")
+        ok(until(pg, "() => !!document.getElementById('aCsForm')", 15000), "the app comes back at first launch (the call-sign screen)")
 
         # ---- Reset everything ----
         seed_cache(cache)

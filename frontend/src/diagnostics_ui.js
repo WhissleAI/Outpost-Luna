@@ -47,7 +47,7 @@ export async function save({ w = window, fetchFn = fetch, onState = () => {}, na
 }
 
 const section = {
-  id: "diagnostics", title: "Help & diagnostics", after: "storage",
+  id: "diagnostics", title: "Help & diagnostics", after: "storage", grownup: true,   // [0.4.1] in Settings → For grown-ups
   html: () => `<div class="dg-zone">
     <p class="set-help">${esc(COPY.line)}</p>
     <ul class="dg-list" data-dg-items>${items(last).map(t => `<li>${esc(t)}</li>`).join("")}</ul>

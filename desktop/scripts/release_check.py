@@ -194,7 +194,11 @@ class App:
     def install(self) -> dict:
         info = {}
         if self.app_arg:
+            # an installed app (`make smoke-installed`: /Applications/Outpost Luna.app) is launched where it is, read
+            # only; its data folder and ports are never used (temp OUTPOST_USER_DATA, free ports: launch())
             target = self.app_arg
+            if not target.exists():
+                raise GateError(f"no app at {target} (install it first, or pass APP=<path to Outpost Luna.app>)")
             info["installed_from"] = str(target)
         elif IS_MAC:
             mnt = self.work / "mnt"

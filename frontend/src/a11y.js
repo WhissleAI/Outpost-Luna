@@ -9,6 +9,28 @@ import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings →
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./reset.js";   // Settings → Reset (docs/RESET.md)
 
+/** [0.4.1] Settings → For grown-ups: one section, behind the 3-second hold, for everything that erases or saves files.
+ *  Kids' settings (voice, speed, theme, captions…) stay open. Extra sections with `grownup: true` (Videos, Help &
+ *  diagnostics, What the app has learned) are drawn inside it instead of in the sidebar. */
+export const GROWNUPS = {
+  title: "For grown-ups",
+  gate: "Reset, clearing videos, diagnostics and what the app learned. Hold the button for 3 seconds to open them.",
+  hold: "Hold for 3 seconds to open",
+  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Reset my patches"],
+  patches: "Reset my patches",
+  patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
+  sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
+  sayOpen: "Here's Reset. A grown-up can choose Start over or Reset everything.",
+};
+/** The grown-ups section's HTML (pure; tests/settings_gate.test.js). parts: [{id, title, html}] drawn when open. */
+export function grownupsHtml({ open = false, parts = [], esc = x => String(x) } = {}) {
+  if (!open) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">
+      <p class="set-help">${esc(GROWNUPS.gate)}</p>
+      <ul class="gu-list">${GROWNUPS.inside.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+      ${holdButtonHtml(GROWNUPS.hold, "data-gu-open")}</div>`;
+  return parts.map(p => `<section class="gu-part" data-gu="${esc(p.id)}" aria-label="${esc(p.title)}"><h4>${esc(p.title)}</h4>${p.html}</section>`).join("");
+}
+
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
 export const SPEEDS = [0.75, 1, 1.25, 1.5];
@@ -148,8 +170,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // Settings: a modal sheet with a section list (left) and one section at a time (right). Accessibility settings
   // (this module) and Settings v1 prefs (prefs.js, window.__outpost.prefsApi) share it. Everything here works.
   const SECTIONS = [["voice", "Voice"], ["sound", "Sound"], ["listen", "Listening"], ["read", "Reading & captions"], ["display", "Display"],
-    ["cadets", "Cadets"], ["help", "Help"], ["reset", "Reset"]];   // reset: the danger zone, always last (docs/RESET.md)
-  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0;
+    ["cadets", "Cadets"], ["help", "Help"], ["grownups", GROWNUPS.title]];   // the grown-ups section (Reset and the rest): always last (docs/RESET.md)
+  // guOpen: the grown-up held the gate (until Settings closes)
+  let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0, guOpen = false;
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -190,8 +213,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           ${p.active ? `<span class="set-tag">Playing</span>` : `<button type="button" class="btn" data-prof-switch="${p.id}">Switch</button>`}</li>`).join("")}</ul>
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"], ["engineer", "Engineer · real units"]])}
-        <p class="set-help rs-link">Start over with a new cadet? <button type="button" class="btn-link" data-sec-go="reset">Reset</button></p>
-        ${holdButtonHtml("Reset my patches", "data-prof-reset")}<small class="rs-note">For a grown-up: hold for 3 seconds. Clears this cadet's patches.</small>` : "",
+        <p class="set-help rs-link">Reset the app or erase progress? <button type="button" class="btn-link" data-sec-go="grownups">${escH(GROWNUPS.title)}</button></p>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
         <button type="button" class="btn" data-help-video="moon_base_6mo">${escH(MOON_BASE.help)}</button>
@@ -205,15 +227,22 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
           <span><select id="a11yPlace" aria-label="Place on the Moon">${places.filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${escH(p.name)}</option>`).join("")}</select>
           <button type="button" class="pill" id="a11yPlaceGo">Go there</button></span></details>` : ""}
         <p class="a11y-note">Saved on this device only.</p>`,
-      reset: resetView ? confirmHtml(resetView) : zoneHtml(),
+      grownups: "x",   // drawn below, once the grown-up extras are known
     };
     // Sections other modules add (e.g. "Camera & gestures" from the gestures agent): window.__outpost.settingsSections =
     // [{id, title, after?, html() → string, bind?(el)}]. A section with nothing to show is not listed.
     const extraSecs = (O.settingsSections || []).filter(x => x && x.id && x.title && typeof x.html === "function");
     extraSecs.forEach(x => { try { body[x.id] = x.html(); } catch (e) { body[x.id] = ""; } });
     const order = SECTIONS.slice(); extraSecs.forEach(x => { const k = order.findIndex(s => s[0] === (x.after || "listen")); order.splice(k < 0 ? order.length - 1 : k + 1, 0, [x.id, x.title]); });
-    { const r = order.findIndex(s => s[0] === "reset"); if (r >= 0 && r !== order.length - 1) order.push(order.splice(r, 1)[0]); }   // Reset stays last
-    const shown = order.filter(([id]) => body[id]);
+    { const r = order.findIndex(s => s[0] === "grownups"); if (r >= 0 && r !== order.length - 1) order.push(order.splice(r, 1)[0]); }   // For grown-ups stays last
+    // [0.4.1] the grown-up parts: Reset, then the grown-up extras (Videos, diagnostics, learning), then Reset my patches.
+    // An open confirm view stands alone (nothing else to press by mistake next to it).
+    const guExtras = extraSecs.filter(x => x.grownup && body[x.id]);
+    const parts = resetView ? [{ id: "reset", title: "Reset", html: confirmHtml(resetView) }]
+      : [{ id: "reset", title: "Reset", html: zoneHtml() }, ...guExtras.map(x => ({ id: x.id, title: x.title, html: body[x.id] })),
+        ...(PA ? [{ id: "patches", title: GROWNUPS.patches, html: `${holdButtonHtml(GROWNUPS.patches, "data-prof-reset")}<small class="rs-note">${escH(GROWNUPS.patchesNote)}</small>` }] : [])];
+    body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH });
+    const shown = order.filter(([id]) => body[id] && !guExtras.some(x => x.id === id));
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
       <header><h2 id="a11yTitle">Settings</h2><button type="button" class="x" data-close aria-label="Close settings">&times;</button></header>
@@ -224,11 +253,19 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       </div>`;
     fillTranscript();
     unbindReset(); unbindReset = () => {};
-    // [0.4] Cadets → "Reset my patches": the shared 3-second hold (a click or a tap does nothing)
-    const pr = panel.querySelector("[data-prof-reset]");
-    if (pr && PA) { const h = bindHold(pr, { onFire: () => PA.resetProgress() }); unbindReset = () => h.destroy(); }
-    if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
-    const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
+    const undo = [];
+    if (section === "grownups") {
+      const gate = panel.querySelector("[data-gu-open]");
+      // the grown-up gate: the shared 3-second hold (a click or a tap does nothing); open until Settings closes
+      if (gate) { const h = bindHold(gate, { onFire: () => { guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
+      // "Reset my patches": its own 3-second hold too
+      const pr = panel.querySelector("[data-prof-reset]");
+      if (pr && PA) { const h = bindHold(pr, { onFire: () => PA.resetProgress() }); undo.push(() => h.destroy()); }
+      if (guOpen && resetView) undo.push(bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } }));
+      if (guOpen && !resetView) guExtras.forEach(x => { const el = panel.querySelector(`.gu-part[data-gu="${x.id}"]`); if (el && x.bind) { try { const r = x.bind(el); if (r && r.destroy) undo.push(() => r.destroy()); } catch (e) { /* its own bug */ } } });
+    }
+    unbindReset = () => undo.forEach(f => f());
+    const xs = extraSecs.find(x => x.id === section && !x.grownup); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
     // Settings → Voice: exactly two engines. "Your computer's voice" picks the OS voice by itself (Siri on a Mac, the
     // best WinRT voice on Windows): no voice list. "Steer TTS (Whissle)" shows Steer's voices, with previews.
     if (section === "voice" && PA) Promise.resolve(PA.steerState ? PA.steerState() : { state: "off" }).then(async (steer) => {
@@ -271,7 +308,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* the calibration steps aside */ }
       renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
       { const f = panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector(".set-nav button, input"); if (f) f.focus(); }
-    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
+    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
   // [robustness] Settings is modal: while it is up, gestures / keys / the controller move and press inside it, and screen
@@ -288,7 +325,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     return !IN_SETTINGS.has(ev.name);
   }, { priority: 90 });
   // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
-  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; btn.setAttribute("aria-expanded", "false"); } });
+  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
@@ -319,7 +356,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();
     const tl = e.target.closest("[data-turnlog-clear]");
     if (tl) { fetch("/api/turnlog", { method: "DELETE" }).then(() => { tl.textContent = "Deleted"; tl.disabled = true; }).catch(() => { tl.textContent = "Couldn't delete. Try again."; }); }
-    // [0.4] "Reset my patches" is a 3-second hold (bindHold, bound in renderPanel): a click or a tap never clears
+    // [0.4] "Reset my patches" is a 3-second hold (bindHold, bound in renderPanel): a click or a tap never clears.
+    // [0.4.1] It lives in For grown-ups, behind the gate's own hold.
   });
   panel.addEventListener("change", e => {
     const t = e.target;
@@ -483,7 +521,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       case "repeat": { const last = (O.transcript || []).filter(e => e.who !== "describe" && e.who !== "kid").slice(-1)[0]; if (last && say) say(last.text, {}); break; }
       case "panel": open(true); break;
       // voice opens the Reset panel itself (both options); it never confirms. The option asked for gets focus.
-      case "reset": section = "reset"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`); if (b) b.focus(); } reply("Here's Reset. A grown-up can choose Start over or Reset everything."); break;
+      // [0.4.1] Reset lives in For grown-ups: voice opens the section; behind the gate unless a grown-up already opened it
+      case "reset": section = "grownups"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`) || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } reply(guOpen ? GROWNUPS.sayOpen : GROWNUPS.sayLocked); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;
