@@ -125,7 +125,8 @@ def render(j: dict, rng: np.random.Generator) -> tuple[np.ndarray | None, dict]:
             beep = (0.2 * np.sin(2 * np.pi * 1200 * t) + 0.05 * rng.standard_normal(len(t))).astype(np.float32)
             x = np.concatenate([beep, np.zeros(int(0.1 * SR), np.float32), x])
         y, m = speaker_to_mic(x, rng)
-        return y, {"voice": voice, **m}
+        # round 13: our own line, fed to the ear as its reference when it goes to the speaker (echoref.js)
+        return y, {"voice": voice, **m, "_ref": [(0.0, x.astype(np.float32))]}
     if kind == "file":
         f = a["file"]
         p = DATA / f.lstrip("/") if not Path(f).is_absolute() or not Path(f).exists() else Path(f)

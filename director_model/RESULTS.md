@@ -1439,3 +1439,168 @@ terminator": agreement 0.17, now a feature.
 - answer needs lesson-answer coverage in the generated sets (short answers such as "one", "a", option letters) before
   it can be gated again. The backend suite caught what the gate missed.
 - Real kid recordings remain the bottleneck. Every number above is synthetic.
+
+## Round 13 — 2026-11-17 (the ABI 2 ear's read-outs in training, lesson-answer coverage) — NOT SHIPPED: r12 routed config stays
+
+**Every number is on synthetic speech** (round 11's Mac voice bank and Steer TTS through a simulated room and mic,
+decoded by the real ear). Nothing here has been checked on a child. Pipeline: `director_model/run_r13.sh`. Gate:
+`director_model/gate_r13.py`. Logs and gate JSON: `runs/2026-11-17-r13/` (`{xl,s}/gate_r13.log`,
+`xl/gate_ans0.7.log`, `pytest_answer_route.log`).
+
+### The ABI 2 read-outs, train and serve
+
+- **Parity test first** (`backend/tests/test_director_r13.py`). Four kid turns as the ABI 2 live ear sends them (a sure
+  link; an `almost` sound-alike with a low word and a dropped tail word; a typed quantity with a disfluency; a turn over
+  our own playback with leak 0.9, Arc's playback flag and a barge-in read; partials with `n_stable` / `eot`) go through
+  both paths: live (verbatim into the Session, the Shadow's own feature call) and training (`compact` → `messages`).
+  - The feature vectors and word tokens are identical at every step, and the Session keeps the same `k["ear"]`.
+  - The `e13_*` slots are filled at every turn end (uconf, min_wconf, eot, almost / almost_p, dropped, qty, disfl, leak,
+    playback, barge), and only there.
+  - The round-7 slots and `cc` stay 0.
+  - It failed before the replay change (the read-outs were not replayed: `e13_avail` 0 in training).
+- **`replay.py`**: `ABI2_KEYS` (the ABI 2 read-outs plus the pace numbers `speech_s` / `max_pause_s` / `end_silence_s`)
+  are cached by `compact` and posted back by `messages` on the final words. A clip with one final is copied verbatim.
+  With several finals, the read-outs are merged into one turn: the least sure confidence, joined lists, summed dropped
+  words, the loudest leak, any barge / playback, and the last eot. A round-12 decode (no read-outs) replays as before.
+- **Re-decode with the ABI 2 ear.**
+  - **Library:** libarc `1.3.0-outpost.1` (ABI 2), built from this checkout.
+  - **Model:** Arc Transcriber Space at the pinned revision 176d324, read from a hard-linked copy of the shared model
+    dir (the shared dir was not touched; every load sha-verified against `assets.manifest.json`, ear v1).
+  - **Ear settings:** the app's defaults (`EAR_LIVE=1`, `EAR_ALMOST=1`, `EAR_NBEST=0` as shipped since 0.3.10, so
+    `nbest` is empty, as live).
+  - **Jobs:** round 12's 8,755 jobs (relisted with today's names lists), plus 328 new round-13 jobs, plus the 1,328
+    stress clips. All 9,083 + 653 + 675 decoded with no failures, nice 10, 5 processes × 2 threads (~95 min under a
+    load of ~20).
+- **Our playback as the ear's reference** (new): every clip whose bed is the app's own audio is fed the played audio
+  through `EarStream.feed_ref`, stamped when it reaches the speaker, as `echoref.js` does. That covers OS-voice / Nora
+  lines, crew clips, the echo bank, and the app's Steer voices. TV, music and NASA video are not fed, as in the app.
+  1,924 clips carry a `playback_leak`:
+  - kid turns over our audio: median 0.007;
+  - our own echo: median 0.379.
+
+  Only 3 echo clips reach the 0.85 drop rule. The simulated speaker → mic path leaks less than the real laptop of
+  ARC_ABI2 §8 (median 0.75 there).
+- **Read-out coverage** (of 8,210 decodes with words):
+
+  | read-out | decodes |
+  |---|---|
+  | uconf | 99 % |
+  | eot | 94 % |
+  | quantities | 1,074 |
+  | almost | 611 |
+  | disfluencies | 262 |
+  | dropped tail words | 2 |
+
+  On test_voice_heldout turn ends: `e13_avail` 95 %, `e13_leak` > 0 on 19 %, `e13_almost` 8 %, `e13_qty` 10 %,
+  `e13_eot` 89 %. `cc_avail` and `e13_nbest` are 0 everywhere.
+- **`trained_zero`** for an r13 file: the six round-7 slots, `cc_avail` / `cc`, and `e13_nbest` / `e13_nbest_name`.
+  n-best is off in the app; turning it back on would need these two slots re-enabled with it.
+
+### New coverage (`pools_r13.py`)
+
+- **`lesson_answer`**: short answers on a lesson's option steps (choice / predict / compare / vocab_match /
+  earth_view). The forms are:
+  - the option's number ("one", "the first one", "1", "option two");
+  - its letter ("a", "B.", "letter b", "is it a");
+  - its label, or a few words of it;
+  - a short definition.
+
+  Answers are right or wrong; the gold is the grader on the clean words. 70 % come 0.3-2 s after the step's prompt
+  line. Steps are split by (lesson, step), so the held-out set **`cls_lesson_answer`** (160 items, 130 turns, 72
+  routed to `answer`) asks steps no train session saw. It is in `evaluate.CLASS_SETS`.
+- **Train-only `roomtalk_ctrl`**: kids talking to each other with a control word in it ("is it my turn next", "you go
+  next", "skip it no wait", "i'm done you do it"), in prep / cabin / video frames, gold ignore. It targets r12's
+  cls_prep_roomtalk losses. The held-out phrases never train.
+- **Bare form** (train only): 15 % of the train lesson answers reach the Session as the turn's text alone, with no
+  partials and no arc read. That is the backend tests' form; no live ear sends it.
+- **Mixing:** `gen_sessions --r13-p 0.6`: 60 % of hands-free train / val sessions get 1-2 of these items from their own
+  random stream, so every earlier item and draw is unchanged. 204 train, 28 val and 96 test texts were decoded with the
+  ABI 2 ear in the Mac voice bank (test in the held-out voices).
+
+### Data and models
+
+- **ds_r13:** the scripts and seeds of ds_r12, every set regenerated on the ABI 2 decodes (F 275):
+  - train 2,400 + 1,200 coverage sessions (3,600 sessions, 329,816 steps);
+  - val 200;
+  - the 27 gate sets + test_voice_heldout + cls_lesson_answer (12,004 policy turns);
+  - stress_harsh / stress_odd (report only).
+  - Arc Tagger 0.5 loaded (`ARCTAG_LIB`, built from `desktop/vendor/arctag`). The embedder is not loaded, as in round 12
+    (its folder is missing on this machine: the brain's embedding fallbacks are what both rounds trained and gated on).
+- **r13 xl:** 747,293 params, r12's recipe (2,200 steps, `--fp-exec 0.5`). Best step 2,200, val 1.607 (r12: 1.586 on its
+  own val). Val policy: cmd 0.995, ignore 0.95, veto off, nav off, `answer_ignore` none (no gain on val), min words 3.
+- **r13 s:** 34,027 params, val 1.585. Val policy: ignore 0.9, nav 0.7, `answer_ignore` none.
+
+### Class gate (12,004 turns; act ok, wrong in brackets)
+
+- **ship** is what ships: r12 xl in quiet, r10 in hot + echo, the rules elsewhere.
+- **r13** columns are ship with that ONE class handed to the candidate.
+
+| class | turns | rules | ship | r13 xl | r13 s | passes |
+|---|---|---|---|---|---|---|
+| hot | 5,507 | 4,829 (266) | **4,838** (266) | 4,835 (266) | 4,835 (266) | no (xl: test_clean −1, test_asr −1, cls_echo −1, cls_coverage −2) |
+| short | 2,187 | 1,696 (52) | 1,696 | 1,696 | 1,696 | no gain |
+| echo | 991 | 759 (12) | **792** (12) | 788 (12) | 785 (12) | no (xl: test_voice_heldout −2, test_clean −1, test_real −1, cls_coverage −1) |
+| quiet | 3,319 | 2,064 (323) | 2,072 (323) | **2,075 (325)** | 2,065 (323) | no: xl +3 but 2 extra wrong (test_asr "drive the moon uh buggy home" → command, ship ignore; and 1 on test_real) |
+| video | 0 | – | – | – | – | no turn reaches it |
+| nav | 12,004 | 9,348 | 9,398 | 9,398 | 9,442 (**667**) | no: s nav fill +44 ok but 14 more wrong (cls_coverage +10, cls_roomtalk +2, ...) |
+| answer | 12,004 | 9,348 | 9,398 | 9,398 | 9,398 | no gain at the val-fitted policy (`answer_ignore` none) |
+| **routed** | 12,004 | 9,348 (653) | 9,398 (653) | = ship | = ship | nothing to route |
+
+Per set, the routed config equals ship on all 29 sets (no class passed). Stress (report only), act ok / wrong:
+- stress_harsh: rules 221 / 52, ship 219 / 52;
+- stress_odd: rules 207 / 24, ship 207 / 24.
+
+What moved vs round 12:
+- **cls_prep_roomtalk is no longer a loss.** In hot, r13 xl and s equal ship (42 = 42 of the class's 60 turns). r12
+  xl was −8 there. The room-talk-with-a-control coverage did that. The remaining hot losses are elsewhere: "can i go
+  next" (cls_coverage), an echoed "… to 40 percent" (cls_echo), and two plain questions silenced.
+- **echo:** r13 gains where the leak / barge read-out exists (cls_voice_echo_os +1). It loses three to five turns of
+  room talk said while our line is on air ("hey stop pushing", "did you see men", "i'll tell you"), which r10 silences.
+  Most echo-class turns are synthetic (`echo` / `echo2` items replay the heard words, not the decode), so they carry no
+  e13 read-out: the gate cannot show what `e13_leak` would do on real echo.
+- **Ship's totals moved with the data, not the models.** On round 12's sets ship was 9,458 (415 wrong); here 9,398
+  (653 wrong). The words and the turn set changed: ABI 2 decodes, the tail guard, the echo drop rule (leak ≥ 0.85)
+  live in the Session, and the 130 new lesson turns. Both columns are on the same sets.
+
+### answer: offline vs the app
+
+- **Offline:**
+  - At the val-fitted policy, r13 never silences an answer: class = ship.
+  - Forcing r12's `answer_ignore` 0.7 (or 0.9) passes the offline gate: +1 (cls_roomtalk 133 → 134), no set worse, and
+    **cls_lesson_answer 70 = 70** (r13 silences none of the held-out short answers).
+- **The app** (r13 xl exported as `weights_r13`, routed in `answer` only, `answer_ignore` 0.7, the full backend suite):
+  **2 lesson tests still fail**, `test_the_right_answer_by_number_letter_or_meaning_passes[A.]` and `[a]`. Round 12
+  failed 10: all of "one", "a", "the first one", "A dark flat sea of old lava", "mare means a sea of cooled lava".
+  - The coverage fixed the number, label and definition forms.
+  - A bare one-letter turn ("a" with no arc read, no partials) is still silenced.
+  - Two more tests fail only because a third weight file is routed: the ABI 2 isolation test and the routing-layout
+    default-mode test. They check the shipped layout and would be updated with a real ship.
+  - The threshold was chosen on the test sets, against the val fit. So `answer` stays with the rules.
+- Runtime cost of an r13 xl file (export report, numpy, load ~20): 0.46 ms per event p50 (p99 0.55), 918 KB. It would
+  be a third file stepped on every event (≈ +0.5 ms on top of r12 + r10's 1.22 ms).
+
+### What shipped
+
+Nothing. `weights.{json,npz}` (r12 xl, quiet) and `weights_r10.*` (hot + echo) are unchanged, and so is the default
+(`guarded`). Code that did merge into the pipeline:
+- `replay.py` carries the ABI 2 read-outs, with the parity test;
+- `real_ear.py` feeds our playback as the ear's reference and has `r13` jobs;
+- `pools_r13.py` and `gen_sessions --r13-p` add the new items and `cls_lesson_answer`;
+- `gate_r13.py` gates against the shipped routed config.
+
+Backend suite on this branch: 1,349 passed, 3 skipped.
+
+### Next
+
+- **Real echo for the echo class.** `echo` / `echo2` items post the heard words of a decode but not its read-out, so
+  `e13_leak` / `e13_barge` never reach the echo-class gate turns. Replay the decode's full message stream for those
+  items (the app-voice and OS-voice decodes now carry a leak), and calibrate the simulated speaker → mic path to the
+  real-laptop leak (median 0.75, §8 of ARC_ABI2.md, vs 0.38 here).
+- **Live leak on kid turns over our playback.** In the generator, a kid turn said while the guide plays has no
+  reference in its decode (no leak); live, it has one. Render those turns with the playing line underneath and feed it.
+- **answer:** the last two failures are a bare one-letter turn. Either the Director should not decide `answer` when a
+  turn has no ear read-out at all (a runtime guard: `e13_avail` 0 → the rules), or the bare form needs far more weight
+  than 15 % of ~300 train answers. Re-gate with the suite.
+- **The embedder** was not loaded in round 12's or round 13's generation (the model folder is missing here), but it is
+  in the app. Regenerate with it before the next ship.
+- hot / echo stay with r10, quiet with r12. Real kid recordings remain the bottleneck. Every number above is synthetic.
