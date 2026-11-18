@@ -580,6 +580,8 @@ async function boot() {
         showHeard(shownText);
         if (missionUI.running) missionUI.radioKid(shownText);
       }
+      // [0.6] a hesitant turn (fillers, a long pause): the next hint rung comes sooner, once per step (never said why)
+      if (d.hes) { if (missionUI.running) missionUI.hesitant(); if (academyUI.active) academyUI.hesitant(); }
       cancelNudge();
       // [audit2] "next" during the Library tour stopped the tour (this ran before the nav it decided): a flow intent
       // (next, back, resume, pause, repeat, yes) is the flow's own; anything else pauses it (never ends it)

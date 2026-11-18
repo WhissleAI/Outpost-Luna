@@ -39,7 +39,7 @@ The voice bar (mic, state, caption, typing) can be moved: drag its grip, or focu
 | **Word-synchronous timing** | Server word timings (`X-TTS-Words`): real word-boundary cues from the Windows voice; on macOS an estimate anchored on the rendered audio's pauses (docs/VOICE_STEERING.md §4b). Fallbacks: syllable-weighted estimate over the audio length (Deepgram), `speechSynthesis` word boundaries (browser voice). The bar's `data-timing` says which (`timed` / `estimate` / `boundary` / `crew`). |
 | **Transcripts** | Everything said (guide, CAPCOM, crew moments, your own turns, descriptions) in Settings → Transcript. |
 | **Visual alerts** | With every alert: a flashing red screen edge plus a banner with a ⚠ icon and the alert text (mission banners, alert steps). |
-| **Vibration** | `navigator.vibrate([180, 80, 180])` on alerts where supported (phones, tablets). |
+| **Vibration** | `navigator.vibrate([180, 80, 180])` on alerts where supported (phones, tablets). From 0.6, mission moments also rumble a game controller ([Haptics](#haptics)). |
 | **Typing everywhere** | The answer box answers every Academy step, mission order and question; vocab "say it back" also accepts typing. |
 | **"No audio needed"** | A note in Settings → Help: nothing in the app requires hearing. The "listen" vocab step shows the meaning as text too. |
 
@@ -76,6 +76,24 @@ Places/hardware (solid underline; press to fly there) and space words (dotted un
 Shape, never colour alone. Numbers and mission resources are no longer marked (round 2 of docs/UX_ROUNDS.md: too noisy). Marked in
 cards, captions, lesson prompts/feedback and mission event/radio text; the card also gets chips for its words and places.
 Sources: `/api/glossary`, `/api/places`, and the Arc Tagger read-out `mentions` of the latest answer.
+
+### Haptics
+
+`frontend/src/haptics.js` (0.6). Four mission moments are felt as well as seen and heard: a storm warning (short), a
+storm hit (long), the boulder field (a bump) and the rover coming home (two taps). Each one already has a sound or a
+visual (the alarm, the alert strip, the steer card, CAPCOM's line). The haptic is a third channel, never the only one.
+
+- **Game controllers:** `gamepad.vibrationActuator.playEffect("dual-rumble", …)` (Chromium, so the desktop app too) or
+  `hapticActuators[0].pulse` (Firefox), one pulse at a time.
+- **Phones and tablets:** `navigator.vibrate(pattern)`. **Laptops:** nothing happens (no motor).
+- **Settings → Sound → "Vibrate for alerts"** (on by default) turns all of it off, together with the alert vibration
+  above.
+- **Less motion** (or the OS `prefers-reduced-motion`) keeps only the two storm alerts, at 60 % strength. The boulder
+  bump and the rover's taps are decorative and don't play.
+- The same moment arriving twice within 1.5 s (the clock step and the session's state) plays once.
+
+Tests: `frontend/tests/haptics.test.js`. Manual: plug in a controller, start a mission, skip to the storm, and feel
+the long rumble with the alarm. Then turn on Less motion and send the rover: no rumble when it gets home.
 
 ## How to test
 

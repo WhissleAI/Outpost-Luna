@@ -429,3 +429,94 @@ The policies never touch tasks. The only change they see is the nav-call cost on
 - `backend/tests/test_mission_playtest.py`: a first-time player who presses the first button still earns every star.
 - `frontend/tests/gameplay.test.js`: the three cards (choices, free steps, the say line, the field lesson chip, copy
   budgets).
+
+## 14. Voice signals in play (0.6 part 1, `feat/06-voice-signals`)
+
+The ear already sends per-turn signals with every final transcript (`model_server/app/arc_ear.py`, relayed by
+`backend/app/listen.py`, kept on the session as `k["ear"]`, `session.EAR_ABI2`): `eot`, `barge`, `disfl`, `uconf`,
+`min_wconf`, `speech_s`, `max_pause_s`. Before 0.6, gameplay ignored them: they fed only the Director's features and
+the on-device pace and pause habits (`app/learn/habits.py`). Part 1 uses three of them in play, with no camera and
+no new UI. None of it adds a reward, a cost or a score.
+
+### 14.1 Radio readback (`backend/app/mission/readback.py`)
+
+On the radio, a crew reads an order back so the sender knows it was heard right. In the cabin, Houston's order is the
+Now card's order step ("Shields up to 30"). A **radio turn** ("copy", "roger", "wilco", "read back") is graded by keyword
+overlap with `sim.readback(cmd)`, the order in plain words. Numbers count either way ("forty" or "40"), and the
+card's own words count ("air system" for life support, "home" for return).
+
+| The cadet says | Cadet | Commander |
+|---|---|---|
+| "Copy, shields to thirty" (every part) | the card's order runs, then "Good readback." | the same |
+| "Copy" / "copy shields" (a part missing, no other order) | nothing, and no order runs | "Read back: Shields up to 30." (the card's words), once per step |
+| "Copy, send the rover for ice" (another order) | runs that order; no readback line | the same |
+| "Shields to thirty" (no radio call) | an order, as before | the same |
+| "Roger" while a yes / no waits | yes, as before | the same |
+
+- **A good readback runs the card's order**, not a re-parse of the words. "Copy, shields thirty" without "to" would
+  otherwise parse as +30 (`nlu`: a bare number after a load is a change).
+- **Never blocks, never costs.** The order still runs from the panel, a tap, a key or a plain order. Praise comes once
+  per step, and the Commander nudge comes once per step. The sim never learns that a readback happened.
+- **`eot` closes a split readback.** The ear ends a turn after 0.5-0.8 s of silence, so "Copy, shields ... to
+  thirty" can arrive as two turns. When the second starts within `CUT_GAP_S` (1 s) of the first, and the first's
+  end-of-turn probability was under `CUT_EOT` (0.5), the two are graded as one. This is the on-device learner's
+  cut-off rule (`app/learn/live.py`).
+- "Good readback." is its own `say`, `after` CAPCOM's line, so every spoken line stays under 20 words (docs/COPY.md).
+
+### 14.2 Talking over CAPCOM
+
+`barge_in` (the kid talking while the app speaks) keeps its job: the kid wins the floor (docs/SESSION_CONTRACT.md §3
+rule 2). It adds **no line on any level**. "Wait for 'over'" would only fit a dedicated check-ride radio step, and the
+check ride has none (its steps are a predict and four orders). So nothing was added, and there are no penalties
+anywhere (`test_talking_over_capcom_never_adds_a_line`).
+
+### 14.3 Hesitation on the Now card (`backend/app/hesitation.py`)
+
+When a heard turn in the cabin shows hesitation, the session puts `hes: true` on that turn's `heard` decision.
+Hesitation means:
+- two disfluent words, or one in a turn of four words or fewer ("um ... shields?"), from the ear's `disfl`
+  (filler / repeat / fragment), or the filler words in the text for an ear without `disfl`;
+- `max_pause_s` >= 2.5 s;
+- `uconf` < 0.45, the bottom decile of real kid turns (docs/ARC_V2.md).
+
+The client then brings the job's nudge (the "no dead air" line, §4) **now instead of in 20 s**, once per job. It does
+this only if the card is still the same 1.5 s later, meaning the turn didn't do the job itself. It counts as one of
+the job's two nudges, never an extra one. The line never says why it came early, and the flag is never stored, logged
+or shown. Lessons use the same flag (docs/LEARNING_DESIGN.md §13).
+
+Honest limit: the shipped ear ends a turn after 0.5-0.8 s of silence, so `max_pause_s` inside one turn can't reach
+2.5 s today. That branch is for an ear with a longer end silence. In practice, fillers and `uconf` drive it.
+
+### 14.4 Haptics (`frontend/src/haptics.js`, docs/ACCESSIBILITY.md §Haptics)
+
+| Moment | Event | Feel | Paired with |
+|---|---|---|---|
+| Storm warning | `storm_warning`, or a near-miss `solar_storm` (`sep: false`) | short (160 ms) | the alert strip, CAPCOM's warning |
+| Storm hit | `solar_storm` | long (900 ms) | the alarm, the flash, the storm card |
+| Boulder field | `task` ready, step `steer` | bump (90 + 60 ms) | the steer card on the Now card |
+| Rover home | `rover_back` | two soft taps | CAPCOM's line, the rover pill |
+
+A game controller rumbles through `vibrationActuator.playEffect("dual-rumble")` (Chromium) or `hapticActuators[0].pulse`
+(Firefox), one pulse at a time. Phones and tablets use `navigator.vibrate`. Laptops do nothing. Settings → Sound →
+"Vibrate for alerts" turns all of it off. "Less motion" (or the OS reduced-motion setting) keeps only the two storm
+alerts, at 60 %. The same moment arriving from two paths (the clock step and the session's state) buzzes once.
+
+### 14.5 Balance
+
+Nothing here touches the sim: no reward, no cost, no new order. `tests/test_strategy.py` passes unchanged.
+`test_readbacks_add_no_reward` pins that a readback leaves the same mission as the plain order.
+
+### 14.6 Verify
+
+- `backend/tests/test_voice_signals_06.py`:
+  - readback grading (numbers either way, aliases, bare acks);
+  - Cadet praise only, and the Commander nudge once per step;
+  - the card's order runs, another order runs as itself, and a waiting yes / no keeps "roger";
+  - the `eot` join;
+  - barge-in adds no line;
+  - hesitation signals, `hes` only on a lesson or cabin turn and never kept, and the lesson ladder one rung sooner.
+- `frontend/tests/haptics.test.js`:
+  - patterns, settings and reduced motion;
+  - the vibrate pattern and event mapping;
+  - dual-rumble sequencing, the Firefox pulse, the de-duplication;
+  - the single call site.

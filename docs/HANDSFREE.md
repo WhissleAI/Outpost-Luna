@@ -147,3 +147,19 @@ heard as an echo or sent to the sim as a confirm. For a choice, `step_options` h
 
 `tools/handsfree_run.py` does all of this by voice. It counts skips, jobs and clock commands and FAILs without them.
 See docs/GAMEPLAY.md.
+
+## Radio readback, talking over CAPCOM, hesitation (0.6)
+
+- **Readback:** with Houston's order open on the Now card, a radio turn ("copy", "roger", "wilco") is graded against the
+  order (`backend/app/mission/readback.py`, docs/GAMEPLAY.md §14.1).
+  - A full readback runs the card's own order. CAPCOM adds "Good readback." as its own `say`, after its line.
+  - A bare "copy" or a partial readback is never a new order. On Commander it gets one "Read back: <the card's
+    words>." per step. On Cadet it gets nothing.
+  - A radio turn that carries another order ("copy, send the rover for ice") runs that order.
+  - A pending yes / no keeps "roger" as yes.
+  - A readback cut in two by the end silence (the first half's `eot` < 0.5, the second within 1 s) is graded joined.
+- **Talking over CAPCOM:** the ear's `barge_in` keeps its one job (the kid takes the floor, §3 rule 2). No line is
+  added on any level. There is no check-ride radio step, so there is no "wait for 'over'" anywhere.
+- **Hesitation:** a heard turn on a lesson step or in the cabin with fillers, a long pause or a low `uconf`
+  (`backend/app/hesitation.py`) carries `hes: true` on its `heard` decision. The lesson's next hint rung, or the Now
+  card's nudge, comes sooner, once per step (docs/LEARNING_DESIGN.md §13). The flag is never spoken, stored or logged.

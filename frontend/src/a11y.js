@@ -20,7 +20,7 @@ export const DEFAULTS = Object.freeze({
   dyslexia: false,       // Atkinson Hyperlegible + wider spacing
   describe: false,       // audio description: the Director's visual moves, spoken + aria-live
   visualAlerts: true,    // flash + banner icon with every alert chime
-  vibrate: true,         // navigator.vibrate on alerts, where supported
+  vibrate: true,         // navigator.vibrate on alerts, where supported; [0.6] also a controller's rumble (haptics.js)
   captions: true,        // captions for every voice (always on by default)
   captionChars: 42,      // caption line length limit (reading support)
 });
@@ -166,7 +166,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         ${sw("describe", "Describe what happens", "Say out loud when the Moon moves or an alert shows")}`,
       sound: PA ? `${range("volume", "Volume", 0, 2, 0.1, pct)}${range("alarms", "Alarms", 0, 1, 0.05, pct)}
         ${sw("visualAlerts", "Flash for alerts", "The screen edge flashes with every alarm")}
-        ${sw("vibrate", "Vibrate for alerts", "On phones and tablets")}` : "",
+        ${sw("vibrate", "Vibrate for alerts", "Phones, tablets and game controllers")}` : "",
       listen: PA ? `${seg("listen", "How to talk", [["handsfree", "Hands-free"], ["ptt", "Hold to talk"]])}
         <p class="set-help">${P.listen === "ptt" ? "Hold <kbd>Space</kbd> or the mic while you talk." : "The mic listens all the time. <kbd>Space</kbd> still works."}</p>
         ${seg("filter", "Ignore other voices", [["relaxed", "Relaxed"], ["normal", "Normal"], ["strict", "Strict"]])}

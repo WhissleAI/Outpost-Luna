@@ -92,6 +92,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
   let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  // [0.6] hesitation (docs/LEARNING_DESIGN.md §13): the session flags a heard turn with fillers or a long pause
+  // (`heard.hes`, just before the answer it carries). A miss on that answer gets the next hint rung at once (the
+  // server's ladder counts one more miss), once per step. In memory only; never shown, said or stored.
+  const HES_MS = 4000;
+  let hesAt = 0;
+  const hesUsed = new Set();
   let rideRO = null;   // [0.3.12] the lesson card's width -> the ride cabin's seat view
   let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
   let pendingBadge = null, focusPrompt = false;   // the last step's patch waits for Next; Next lands focus on the question
@@ -116,6 +122,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const ui = {
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
+    hesitant: () => { if (ui.active && view === "lesson" && L && !L.ride) hesAt = now(); },   // [0.6] heard.hes
     lessons: () => lessons(),  // the course lessons (mission_learning.js: which explorer lesson a mission unlocked)
     /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
     badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
@@ -664,9 +671,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (field && !input.got && (stepState.got || []).length) input = { ...input, got: stepState.got.slice() };
     let r;
     const step_s = Math.max(0, Math.round((now() - stepAt) / 100) / 10);   // the reveal needs ~20 s (grade.reveal_due)
-    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id, rung: L.ride ? 0 : Math.min(3, gs.rung || 0) }); }
+    const sk = L.id + ":" + i, hes = !L.ride && !!hesAt && now() - hesAt < HES_MS && !hesUsed.has(sk);
+    hesAt = 0;
+    try { r = await academyApi.attempt({ lesson_id: L.id, step: i, input, misses, step_s, ride_id: ride && ride.ride_id, rung: L.ride ? 0 : Math.min(3, gs.rung || 0), ...(hes ? { hes: true } : {}) }); }
     catch (e) { busy = false; feedback = { kind: "retry", text: "I can't reach CAPCOM right now. Try again." }; render(); return true; }
     busy = false;
+    if (hes && r && r.status === "hint") hesUsed.add(sk);   // the one early rung for this step is spent
     // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
     try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type } })); } catch (e) { /* no window */ }
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
