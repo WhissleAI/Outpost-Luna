@@ -156,6 +156,9 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 .mx-wipe{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-warning-soft);color:var(--color-text)}
 .mx-wipe p{margin:0;flex-basis:100%;font-weight:var(--weight-semibold)}
 .mx-link{min-height:var(--control-lg);padding:0 var(--space-3);border:0;background:none;color:var(--color-text-2);font-size:var(--text-md);text-decoration:underline;text-underline-offset:3px}
+/* [0.3.12] the check ride before the lessons are done: the button and the line that says when it opens */
+.mx-ridewrap{display:inline-flex;flex-direction:column;align-items:center;gap:2px}
+.mx-lock{font-size:var(--text-sm);color:var(--color-text-2)}
 .mx-link:hover{color:var(--color-text)} .mx-link:focus-visible{outline:none;box-shadow:var(--focus-ring);border-radius:var(--radius-md)}
 @media (min-width:860px) and (max-height:780px){
   .mx-debrief .mx-story{grid-column:1/-1}

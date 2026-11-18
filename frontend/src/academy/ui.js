@@ -117,6 +117,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
     badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
+    /** [0.3.12] For Mission's "Fly the check ride": core lessons done / total, the ride's id, and the lesson to fly
+     *  next while the ride is not open yet. */
+    rideStatus: () => { const c = coreDone(), r = lessons().find(l => l.ride), nx = coreLessons(lessons()).find(l => !has(l.badge.id));
+      return { ...c, ride: r ? r.id : null, next: nx ? nx.id : null }; },
   };
 
   const lessons = () => (course ? course.lessons : []);

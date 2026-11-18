@@ -18,7 +18,7 @@ import { createMissionUI } from "./mission/ui.js";
 import { installMissionLearning } from "./mission_learning.js";   // Moon Base offer + debrief Learn more (outside mission/ui.js)
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
-import { callSign, HELP } from "./story.js";
+import { callSign, HELP, rideReady } from "./story.js";
 import { chime } from "./sound.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
@@ -144,7 +144,11 @@ async function boot() {
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id), qualified: () => !!academyUI.progress.qualified,
-      goRide: () => setMode("academy") },   // Flight School patches carry over; the check ride gates command (Cadet before)
+      rideStatus: () => academyUI.rideStatus(),
+      // [0.3.12] straight into the check ride, or, before the core lessons are done, into the next lesson (the button
+      // says "Unlocks after 6 lessons (2/6)"); it used to drop the cadet on the map with no reason
+      goRide: () => { const r = academyUI.rideStatus(), id = rideReady(r) ? r.ride : r.next; setMode("academy");
+        if (id) setTimeout(() => academyUI.nav("lesson", id), 400); } },   // Flight School patches carry over; the check ride gates command (Cadet before)
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),

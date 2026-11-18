@@ -368,7 +368,12 @@ export const GATE = {
   doneSub: "Nice work. Pass your check ride to take command.",
   doneSay: cs => `Practice shift done, ${cs}. Pass your check ride to take command.`,
   again: "Practice again",
+  /** [0.3.12] The ride button before the core lessons are done (a novice was dropped on the map with no reason): the
+   *  line under it, and the button opens the next lesson. */
+  rideLocked: (n, of) => `Unlocks after ${of} lessons (${n}/${of})`,
 };
+/** [0.3.12] Can the cadet fly the check ride yet? {n, of} = core lessons done / total. */
+export const rideReady = c => !!c && (+c.of || 0) > 0 && (+c.n || 0) >= +c.of;
 
 /** Spoken offers: said once, as a question. "yes" / "next" takes them (the router's accept_offer). */
 export const OFFER = {
