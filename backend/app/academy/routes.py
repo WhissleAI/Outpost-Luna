@@ -179,12 +179,18 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     ok, extra = grade(st, inp, loads=m.loads)
     if not ok and text_only(inp) and not plausible(st, req.input.text):
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # not a try: the miss counter doesn't move
-    sim_say = ""
+    sim_say, said_override = "", None
     if ok:
         res = m.apply(extra["command"])["result"] if extra.get("command") else {"say": ""}
         if res.get("needs_confirm"):
             res = m.apply({"type": "confirm"})["result"]
         sim_say = _new_news(st["success"], res.get("say", ""))
+        if (extra.get("command") or {}).get("type") == "call_houston" and res.get("ok") and res.get("say"):
+            # [0.3.12] a radio call answers with Houston's own reply (light time included), not CAPCOM's success line
+            # and then Houston's: one reply, 20 words or fewer (it was two, about 33 words)
+            said_override, sim_say = res["say"], ""
+        else:
+            said_override = None
         r["missed"].append(False)
     else:
         r["misses"] += 1
@@ -200,7 +206,7 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     r["step"] += 1
     r["misses"] = 0
     events = [{"kind": e["kind"], "text": e["text"], "source": e.get("source")} for e in evs]
-    said = (st["success"] if ok else "Time's up. " + st["hint"])
+    said = (said_override or st["success"]) if ok else "Time's up. " + st["hint"]
     if r["step"] < len(steps) and not m.over:
         return _out(les["id"], r["step"] - 1, "passed" if ok else "missed", said, next_step=r["step"],
                     state=rides.hud(r), events=events, sim_say=sim_say or None)

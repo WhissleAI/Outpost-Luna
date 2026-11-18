@@ -906,7 +906,8 @@ def _execute(m: Mission, cmd: dict) -> dict:
         m.houston_calls += 1
         nxt = next((st for st in m.storms if st.start_h > m.t_h), None)
         if nxt and nxt.start_h - m.t_h <= 48:
-            tip = f"Active region on the Sun. A storm is {storm_confidence(nxt.event)} in the next two days."
+            # [0.3.12] one reply of 20 words or fewer with the light-time line (docs/COPY.md): it was 24
+            tip = f"Active region on the Sun. Storm {storm_confidence(nxt.event)} within two days."
             if nxt.event["id"] not in m.forecast_heard:
                 m.forecast_heard.add(nxt.event["id"])
                 _good(m, "asked_forecast", "Asked Houston for space weather before a storm.")

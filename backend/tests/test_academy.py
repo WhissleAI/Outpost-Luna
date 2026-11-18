@@ -358,3 +358,16 @@ def test_ride_hud_names_the_site_and_counts_its_own_days(client):
     assert s["ride"] == {"day": 1, "days": 2}
     end = _ride(client, GOOD)["state"]
     assert end["ride"]["day"] == 2 and end["ride"]["days"] == 2
+
+
+def test_ride_houston_answers_once(client):
+    """[0.3.12] Check ride step 2 gave two replies (CAPCOM's success line, then Houston's, ~33 words). One reply, Houston's
+    own, with the 1.3 s light-time line, 20 words or fewer."""
+    out = _ride(client, GOOD[:2])
+    assert out["status"] == "passed" and out["next_step"] == 2
+    assert "sim_say" not in out
+    assert out["say"].startswith("Houston here.") and "1.3 seconds" in out["say"]
+    assert "Copy. Houston sees" not in out["say"]
+    assert len(out["say"].split()) <= 20, out["say"]
+    says = [d for d in out["decisions"] if d["t"] == "say"]
+    assert len(says) == 1 and says[0]["text"] == out["say"]
