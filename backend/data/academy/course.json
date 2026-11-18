@@ -1345,7 +1345,8 @@
       "type": "tap",
       "place": "lcross_centaur_impact",
       "also": [
-       "lcross_impact"
+       "lcross_impact",
+       "cabeus"
       ],
       "radius_deg": 8,
       "label": "Cabeus crater"

@@ -1,7 +1,7 @@
 {
  "schema": "whissle.entities/1",
  "app": "outpost_luna",
- "_note": "The entity registry: every named thing the app knows (docs/ENTITY_LAYER.md). Source of truth for names, aliases, spoken forms, mishearings, relations and relevance; domain payloads stay in the files `ref` points to. Migrated from names_list.py on 2026-11-16.",
+ "_note": "The entity registry: every named thing the app knows (docs/ENTITY_LAYER.md). Source of truth for names, aliases, spoken forms, mishearings, relations and relevance; domain payloads stay in the files `ref` points to. Migrated from names_list.py on 2026-11-16. 2026-11-18: the IAU south-pole craters from places.json (the curated subset of the nasa_views IAU names) are group `pole`, last in every profile: they fill free slots (lesson, video) and are boosted in when relevant (on screen, said, named by the kid), without pushing a shipped name out of a full list (map, library, cabin are at their cap); cabeus / malapert / de_gerlache now ref their places.json records.",
  "screens": {
   "library": {
    "cap": 80,
@@ -29,6 +29,9 @@
     ],
     [
      "crew_past"
+    ],
+    [
+     "pole"
     ]
    ]
   },
@@ -58,6 +61,9 @@
     ],
     [
      "crew_past"
+    ],
+    [
+     "pole"
     ]
    ]
   },
@@ -80,6 +86,9 @@
     ],
     [
      "place"
+    ],
+    [
+     "pole"
     ]
    ]
   },
@@ -95,6 +104,9 @@
     ],
     [
      "place"
+    ],
+    [
+     "pole"
     ]
    ]
   },
@@ -111,6 +123,9 @@
     [
      "mission",
      2
+    ],
+    [
+     "pole"
     ]
    ]
   },
@@ -553,6 +568,106 @@
    }
   },
   {
+   "id": "haworth",
+   "type": "place",
+   "group": "pole",
+   "name": "Haworth",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Haworth crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "haworth"
+   }
+  },
+  {
+   "id": "nobile",
+   "type": "place",
+   "group": "pole",
+   "name": "Nobile",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Nobile crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "nobile"
+   }
+  },
+  {
+   "id": "faustini",
+   "type": "place",
+   "group": "pole",
+   "name": "Faustini",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Faustini crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "faustini"
+   }
+  },
+  {
+   "id": "shoemaker",
+   "type": "place",
+   "group": "pole",
+   "name": "Shoemaker",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Shoemaker crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "shoemaker"
+   }
+  },
+  {
+   "id": "sverdrup",
+   "type": "place",
+   "group": "pole",
+   "name": "Sverdrup",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Sverdrup crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "sverdrup"
+   }
+  },
+  {
+   "id": "amundsen",
+   "type": "place",
+   "group": "pole",
+   "name": "Amundsen",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Amundsen crater"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "amundsen"
+   }
+  },
+  {
+   "id": "schrodinger",
+   "type": "place",
+   "group": "pole",
+   "name": "Schrödinger",
+   "kind": "lunar_feature",
+   "aliases": [
+    "Schrodinger",
+    "Schrodinger basin",
+    "Schroedinger"
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "schrodinger"
+   }
+  },
+  {
    "id": "shackleton_rim",
    "type": "site",
    "group": "site",
@@ -656,7 +771,11 @@
    ],
    "lessons": [
     "life"
-   ]
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "cabeus"
+   }
   },
   {
    "id": "malapert",
@@ -683,7 +802,11 @@
     "comms",
     "life",
     "power"
-   ]
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "malapert"
+   }
   },
   {
    "id": "de_gerlache",
@@ -704,7 +827,11 @@
    ],
    "related": [
     "de_gerlache_rim"
-   ]
+   ],
+   "ref": {
+    "source": "places.json",
+    "id": "de_gerlache"
+   }
   },
   {
    "id": "reid_wiseman",

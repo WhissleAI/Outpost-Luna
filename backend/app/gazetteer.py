@@ -55,6 +55,7 @@ class Place:
     sources: list[dict] = field(default_factory=list)
     voices: list[dict] = field(default_factory=list)
     image: str | None = None
+    source: str = ""  # features: the IAU Gazetteer feature page the coordinates and diameter come from (places.json)
 
     def public(self) -> dict:
         """The /api/places item: features keep the old shape plus `kind`; artifacts add their fields."""

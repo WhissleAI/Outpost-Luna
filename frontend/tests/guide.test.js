@@ -9,6 +9,10 @@ const course = JSON.parse(fs.readFileSync(new URL("../../backend/data/academy/co
 const places = JSON.parse(fs.readFileSync(new URL("../../backend/data/places.json", import.meta.url)));
 const P = Object.fromEntries((Array.isArray(places) ? places : places.places).map(p => [p.id, { ...p, km: p.diameter_km }]));
 const find = id => P[id] || null;
+// [IAU names] a mission site and the crater it is named for are twins in the entity registry (`related`): a step that
+// flies to Malapert Massif shows the Malapert its prompt names
+const REG = JSON.parse(fs.readFileSync(new URL("../../backend/data/entities/outpost_luna.json", import.meta.url))).entities;
+const twins = (a, b) => !!a && REG.some(e => (e.id === a && (e.related || []).includes(b)) || (e.id === b && (e.related || []).includes(a)));
 const route = course.lessons.flatMap(l => l.steps).find(s => s.accept.type === "route");
 
 test("the route step shows both stops, numbered and labelled, before any tap (the owner's stuck moment)", () => {
@@ -57,7 +61,7 @@ test("every place a step names in its prompt is shown, ringed, or under test", (
     for (const [id, p] of Object.entries(P)) {
       const nm = String(p.name).split(" (")[0];
       if (nm.length < 4 || !new RegExp(`\\b${nm}\\b`).test(s.prompt)) continue;
-      const shown = (s.show || []).includes(id) || (s.ring || []).includes(id) || tested.has(id) || s.after_place === id || (s.globe && s.globe.place === id);
+      const shown = (s.show || []).includes(id) || (s.ring || []).includes(id) || tested.has(id) || s.after_place === id || (s.globe && (s.globe.place === id || twins(s.globe.place, id)));
       assert.ok(shown, `${l.id}: "${s.prompt}" names ${nm} but doesn't show it`);
     }
   }

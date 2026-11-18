@@ -751,7 +751,7 @@ Moon rocks tray) when the `nasa_views` pack is installed; without it, the round'
 | Zena Cardman's Iceland training, July 2026 | images.nasa.gov jsc2026e405549 |
 
 Not shown (unverified or unneeded): the Apollo sample total "382 kg"; "Look ODD"; the names of the Lunar Fifteen (the
-NASA page doesn't list them); Copernicus' size (places.json says 93 km, the IAU about 96 km). The station order
+NASA page doesn't list them). (Copernicus' size now uses the IAU's 96 km in places.json and facts.json; it was 93.) The station order
 (photo, describe, sample, bag, call it in) is a kid-sized routine built from the Apollo practice above and the
 Artemis II spoken reports, not a quoted NASA checklist; the lesson calls it "the station order", never NASA's.
 
@@ -785,11 +785,17 @@ Learning design notes:
 
 ### 12.5 Not done
 
-- **The 216 IAU names** in the pack (`names/moon_names.json`) are not wired into the entity registry or the ear's name
-  lists. They exist only when the optional pack is installed, while the registry, the gazetteer and the Director's
-  gazetteer evals are built from versioned repo data; wiring them in means runtime-dependent entities across the ear,
-  the router and `did_you_mean`, which is not contained. Left for a step that copies a curated subset into
-  `places.json` with tests.
+- **The 216 IAU names** in the pack (`names/moon_names.json`) stay pack-only; a curated subset is versioned repo data
+  (`feat/cockpit-patches-names`). The south-pole craters a cadet sees from the outpost or hears in Artemis news are in
+  `places.json` with the IAU Gazetteer's coordinates, diameter and feature page (`source`), a sourced fact sheet in
+  `facts.json`, and registry entries: de Gerlache, Haworth, Nobile, Malapert, Cabeus, Faustini, Shoemaker, Sverdrup,
+  Amundsen, Schrödinger (just outside the pack's 75° S filter; same IAU table), plus Shackleton's source. The seven
+  that were not already registry entities are group `pole`, last in every screen profile: they fill the free slots
+  (lesson, video) and are boosted in when relevant (on screen, said, named), and push no shipped name off a full list
+  (map, library and cabin are at their cap). Left out: Scott (the registry's alias for David Scott, Apollo 15; an alias
+  names one entry) and the mountains (Mons Mouton, Mons Malapert), which kids don't say. `ear_vocab.json` is
+  regenerated (`python -m app.hotlist build`); `tests/test_iau_names.py` checks the numbers against the IAU table and,
+  when the pack is installed, against the pack.
 - No Mission prep task for Field School (NASA's "Exploring the Moon" Lava Layering activity is the candidate; its
   URL wasn't verified this round).
 
