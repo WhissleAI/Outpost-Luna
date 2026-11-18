@@ -11,14 +11,14 @@ import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
 import { createVoice } from "./voice.js";
-import { onEngine, askbarClasses } from "./engine.js";   // [#87] the desktop shell's ear state
+import { onEngine, askbarClasses, warmState, WARM_MS, VOICE_FIX, earFailed, onEarFailed, setEarFailed } from "./engine.js";   // [#87] the desktop shell's ear state
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
 import { installMissionLearning } from "./mission_learning.js";   // Moon Base offer + debrief Learn more (outside mission/ui.js)
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
-import { callSign, HELP } from "./story.js";
+import { callSign, HELP, rideReady } from "./story.js";
 import { chime } from "./sound.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
@@ -144,7 +144,11 @@ async function boot() {
     onContext: f => voice.sendContext(session ? { ...f, session: session.id } : f), askDirector: t => ask(t),
     alertSound: () => { chime(true); setTimeout(() => chime(true), 220); setTimeout(() => chime(true), 440); },
     academy: { badges: () => academyUI.badges(), has: id => academyUI.has(id), qualified: () => !!academyUI.progress.qualified,
-      goRide: () => setMode("academy") },   // Flight School patches carry over; the check ride gates command (Cadet before)
+      rideStatus: () => academyUI.rideStatus(),
+      // [0.3.12] straight into the check ride, or, before the core lessons are done, into the next lesson (the button
+      // says "Unlocks after 6 lessons (2/6)"); it used to drop the cadet on the map with no reason
+      goRide: () => { const r = academyUI.rideStatus(), id = rideReady(r) ? r.ride : r.next; setMode("academy");
+        if (id) setTimeout(() => academyUI.nav("lesson", id), 400); } },   // Flight School patches carry over; the check ride gates command (Cadet before)
     session: {
       onStart: st => { if (useSession()) session.hello({ mode: "mission", mission_id: st.id, role: (missionUI.context() || {}).role || null }); },
       endShift: () => useSession() && session.ui("end_shift"),
@@ -603,25 +607,34 @@ async function boot() {
   new MutationObserver(() => { if (document.getElementById("askbar").classList.contains("is-hearing")) $("liveWords").classList.remove("is-heard"); })
     .observe($("askbar"), { attributes: true, attributeFilter: ["class"] });
   // Model warming up: until the model server reports the ear and the voice loaded, the voice bar says so (typing works).
-  // After ~3 min without them it says voice is offline instead. /api/health is local; polled every 2 s while warming.
+  // [0.3.12] A failed ear is "Voice off · type" at once (engine.js warmState: the health's load error, or the ear's
+  // first {"t":"error"} in voice.js), never minutes of "Starting voice…"; after ~3 min of no answer it is off too.
+  // /api/health is local; polled every 2 s while warming, every 30 s once off (a fixed ear clears it).
+  const paintVoice = st => {
+    const bar = $("askbar"), off = st === "off" || (st !== "ready" && earFailed());
+    bar.classList.toggle("is-warming", st === "warming" && !off);
+    bar.classList.toggle("is-voiceoff", off);
+    if (off) $("spaceHint").lastElementChild.textContent = VOICE_FIX;
+  };
+  let voiceSt = "warming";
+  onEarFailed(on => paintVoice(on ? "off" : voiceSt));
   (function warm(t0 = performance.now()) {
-    const bar = $("askbar");
     fetch("/api/health").then(r => r.json()).then(h => {
-      const m = (h.model_server && h.model_server.models) || {}, ear = m.arc_ear || {}, tts = m.tts || {};
-      const ready = !!(h.model_server && h.model_server.ok && ear.decoder_loaded !== false && tts.loaded !== false);
-      bar.classList.toggle("is-warming", !ready && performance.now() - t0 < 180000);
-      bar.classList.toggle("is-voiceoff", !ready && performance.now() - t0 >= 180000);
-      if (!ready) setTimeout(() => warm(t0), performance.now() - t0 < 180000 ? 2000 : 30000);   // [qa] QA-57: back off once "Voice off"
-    }).catch(() => { bar.classList.add("is-warming"); if (performance.now() - t0 < 180000) setTimeout(() => warm(t0), 2000); else { bar.classList.remove("is-warming"); bar.classList.add("is-voiceoff"); } });
+      voiceSt = warmState(h, performance.now() - t0);
+      if (voiceSt !== "warming") setEarFailed(voiceSt === "off");   // voice.js's hint follows (engine.earNote)
+      paintVoice(voiceSt);
+      if (voiceSt !== "ready") setTimeout(() => warm(t0), voiceSt === "warming" ? 2000 : 30000);   // [qa] QA-57: back off once "Voice off"
+    }).catch(() => { voiceSt = performance.now() - t0 < WARM_MS ? "warming" : "off"; paintVoice(voiceSt); setTimeout(() => warm(t0), voiceSt === "warming" ? 2000 : 30000); });
   })();
   // [#87] The desktop shell's engine state (engine.js): "Ear restarting…" / "Voice off · type" on the voice bar.
   onEngine(st => { const bar = $("askbar"); for (const [c, on] of Object.entries(askbarClasses(st))) bar.classList.toggle(c, on); });
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
   new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
-  // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
+  // A spoken line that is already on screen (the lesson question, the feedback, the brief, [0.3.12] the lead and the
+  // "New" line) is not shown twice: the
   // caption stays in #captionBar for screen readers and the transcript, but folds out of the voice strip (.is-dup).
   const norm = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .m-title, #card:not([hidden]) .card-say")]
+  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .a-lead, #aPanel .a-intro, #aPanel .m-title, #card:not([hidden]) .card-say")]
     .filter(e => e.getClientRects().length).map(e => e.textContent).join(" | "));
   const dupCheck = () => { const bar = $("captionBar"), line = norm((bar.querySelector(".cap-line") || bar).textContent);
     bar.classList.toggle("is-dup", !!line && line.length > 3 && onScreen().includes(line)); };

@@ -349,3 +349,40 @@ def test_ride_never_says_the_same_sentence_twice(client):
     assert _new_news("Copy. Crew in the shelter.", "Crew in the shelter. Much less radiation, but science stops.") == \
         "Much less radiation, but science stops."
     assert _new_news("Copy. Crew is out. Back to work.", "Crew is out. Science can start again.") == "Science can start again."
+
+
+def test_ride_hud_names_the_site_and_counts_its_own_days(client):
+    """[0.3.12] The cabin clock read "Day 8 · Shift 1 ·" on a two-day ride: the HUD carries the site and the ride's day."""
+    s = client.post("/api/academy/ride").json()["state"]
+    assert s["site"]["name"].startswith("Shackleton")
+    assert s["ride"] == {"day": 1, "days": 2}
+    end = _ride(client, GOOD)["state"]
+    assert end["ride"]["day"] == 2 and end["ride"]["days"] == 2
+
+
+def test_ride_houston_answers_once(client):
+    """[0.3.12] Check ride step 2 gave two replies (CAPCOM's success line, then Houston's, ~33 words). One reply, Houston's
+    own, with the 1.3 s light-time line, 20 words or fewer."""
+    out = _ride(client, GOOD[:2])
+    assert out["status"] == "passed" and out["next_step"] == 2
+    assert "sim_say" not in out
+    assert out["say"].startswith("Houston here.") and "1.3 seconds" in out["say"]
+    assert "Copy. Houston sees" not in out["say"]
+    assert len(out["say"].split()) <= 20, out["say"]
+    says = [d for d in out["decisions"] if d["t"] == "say"]
+    assert len(says) == 1 and says[0]["text"] == out["say"]
+
+
+def test_predict_waits_for_a_guess(client):
+    """[0.3.12] Predict before watch: on a guess step, words that are not a guess are never a miss, so they never reveal
+    the answer (it took a few unrelated typed lines and a slow minute to get "Here it is." before any guess)."""
+    from app.academy.content import lesson
+    les = lesson("phases")
+    k = next(j for j, st in enumerate(les["steps"]) if st["accept"]["type"] == "predict")
+    for misses in range(4):
+        r = client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k, "misses": misses, "step_s": 120,
+                                                      "input": {"text": "I think the moon is really cool tonight"}}).json()
+        assert r["status"] == "ignored" and r["say"] == "", r
+    r = client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k,
+                                                  "input": {"choice": les["steps"][k]["accept"]["options"][0]["id"]}}).json()
+    assert r["status"] == "passed"

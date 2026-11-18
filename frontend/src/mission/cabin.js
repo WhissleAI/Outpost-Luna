@@ -14,7 +14,8 @@ import * as story from "../story.js";
 const { callSign } = story;
 import { LOADS } from "./cockpit.js";
 import { icon } from "../assets/icons.js";
-import { createCockpit3D, PANELS } from "./cockpit3d.js";
+import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
+import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
@@ -217,12 +218,10 @@ export function createCabin(root, o = {}) {
     const backEl = document.createElement("button"); backEl.type = "button"; backEl.className = "c3-back"; backEl.hidden = true; backEl.innerHTML = `${ic("back", 18)}<span>Seat</span>`;
     backEl.setAttribute("aria-label", "Back to the seat view");
     cabEl.classList.add("is-3d"); cabEl.prepend(host); cabEl.append(holeEl, backEl);
-    // ride mode (the Flight School check ride): the first time in the seat, so only the displays, habitat and End shift
-    // the check ride's orders are shields, shelter and the rover: those panels and the displays, nothing else
-    const ids = o.mode === "ride" ? ["displays", "radiation", "rover"] : ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
+    const ids = RIDE_PANELS[o.mode] || ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
-    if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "pedestal", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
-    c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
+    if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
+    c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, insetRight: o.insetRight, layout: o.mode === "ride" ? RIDE_LAYOUT : null, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
     if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); HUD.forEach(sel => { const n = holeEl.querySelector(sel); if (n) glassEl.append(n); }); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
@@ -576,8 +575,8 @@ export function createCabin(root, o = {}) {
   const hh = h => String(Math.floor(h % 24)).padStart(2, "0") + ":" + String(Math.floor((h % 1) * 60 / 15) * 15).padStart(2, "0");
   function paintClock(s, tH) {
     const t = tH != null ? tH : (s.clock && s.clock.mission_time_h != null ? s.clock.mission_time_h : s.mission_time_h || 0);
-    const day = Math.min(10, Math.floor(t / 24) + 1), shift = Math.floor((t % 24) / 6) + 1;
-    q("#cbClock").innerHTML = `<b>Day <span class="num">${day}</span> <span class="num cb-hh">${hh(t)}</span></b><small>Shift ${shift} · ${esc(((s.site && s.site.name) || "").split(" (")[0])}</small>`;
+    const shift = Math.floor((t % 24) / 6) + 1;
+    q("#cbClock").innerHTML = `<b>${clockDay(s, t)} <span class="num cb-hh">${hh(t)}</span></b><small>${esc(clockSub(shift, s.site))}</small>`;
   }
   let clockSt = null;
   const HELD = { tour: "On hold: the tour", confirm: "On hold: yes or no?", decision: "On hold: your call", choice: "On hold: your choice",
@@ -817,6 +816,9 @@ export function createCabin(root, o = {}) {
     /** The window's frame between whole hours (the live clock's `live` telemetry): the clock reads smoothly. */
     frame: f => { if (st && f && f.mission_time_h != null) paintClock(st, f.mission_time_h); },
     moment: b => moment(b),
+    /** [0.3.12] the free area changed (the side card's width): refit the seat view */
+    relayout: () => { if (c3) c3.resize(); },
+    get cockpit() { return c3; },
     missionLog: entries => { logEntries = entries || []; paintLog(); }
   };
 }

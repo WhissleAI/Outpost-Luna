@@ -449,6 +449,11 @@ body:not([data-mode="cadet"]) .mcard{display:none}
 
 /* [qa] QA-53: no "Hold to talk" while the voice is starting or off */
 .askbar.is-warming .hint,.askbar.is-voiceoff .hint,.askbar.is-ear-down .hint{visibility:hidden}
+/* [0.3.12] voice off: a grey mic and the one how-to-fix line (engine.js VOICE_FIX) in the hint slot, no Space key */
+.askbar.is-voiceoff .mic{background:none;color:var(--color-text-3);opacity:.6}
+.askbar.is-voiceoff .orb{display:none}
+.askbar.is-voiceoff:not(.is-hearing) .hint{visibility:visible}
+.askbar.is-voiceoff .hint kbd{display:none}
 
 /* "Pretend tech" (src/pretend.js, docs/ACCURACY_AUDIT.md): a small muted-amber sparkle glued to the label's last word.
    Inline and line-height 0: it never changes a button's height, never crosses its border, never wraps on its own. */

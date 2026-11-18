@@ -70,7 +70,14 @@ async def health():
     return {"ok": True, "places": len(S["gaz"].places), "artifacts": len(S["gaz"].artifacts), "clips": len(S["index"].clips),
             "moments": len(S["index"].moments), "facts": len(S["index"].facts), "glossary": len(S["index"].glossary_terms),
             "llm": "none", "brain": "local", "cards": len(knowledge.get(S["gaz"], S["index"].facts).cards),
-            "model_server": await models_client.health()}
+            "model_server": await models_client.health(), "voice": voice_route()}
+
+
+def voice_route() -> dict:
+    """Which ear the voice bar waits for: `ear` is EAR (arc | deepgram), `fallback` whether a failed local ear falls
+    back to Deepgram (listen.py _listen). Without a fallback, a failed ear means voice off (frontend/src/engine.js)."""
+    from .listen import ear_settings
+    return {"ear": ear_settings.ear.strip().lower() or "arc", "fallback": bool(settings.deepgram_api_key)}
 
 
 @app.get("/api/places")

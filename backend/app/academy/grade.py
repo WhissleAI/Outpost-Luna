@@ -236,7 +236,7 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
 
 
 # ---- globe steps (docs/LEARNING_DESIGN.md §3) -------------------------------------------------------------------------
-def _option_of(inp: dict, options: list[dict]) -> str | None:
+def _option_of(inp: dict, options: list[dict], fuzzy: bool = True) -> str | None:
     if inp.get("choice"):
         return inp["choice"] if any(o["id"] == inp["choice"] for o in options) else None
     t = _norm(inp.get("text", ""))
@@ -246,7 +246,7 @@ def _option_of(inp: dict, options: list[dict]) -> str | None:
     if m and 1 <= int(m.group(1)) <= len(options):
         return options[int(m.group(1)) - 1]["id"]
     hits = [o["id"] for o in options if any(_has(t, w) for w in [o["label"], *o.get("say", [])])]
-    if not hits:            # the ear's near-miss of a name ("malapart" for "malapert"): one option, clearly closest
+    if not hits and fuzzy:  # the ear's near-miss of a name ("malapart" for "malapert"): one option, clearly closest
         hits = [o["id"] for o in options if near_name(t, [o["label"], *o.get("say", [])])]
     return hits[0] if len(hits) == 1 else None
 
@@ -270,7 +270,9 @@ def near_name(text: str, names: list[str]) -> bool:
 
 
 def _predict(acc, inp, text):
-    g = _option_of(inp, acc["options"])
+    # [0.3.12] a guess is an option's own words or its number, never a near-miss of a label word ("I think the Moon is
+    # really cool" guessed "It really shrinks" and revealed the answer); place-name near-misses stay for find steps
+    g = _option_of(inp, acc["options"], fuzzy=False)
     return g is not None, ({"guess": g, "correct": g == acc["answer"]} if g else {})
 
 

@@ -35,6 +35,20 @@ export const INTRO = {
   command: "New: give an order. Tap a button, or say it.", keywords: "New: radio practice. Say the order back.",
   video: "New: a NASA video. Guess first, then watch.",
 };
+/** [0.3.12] The intro without its "New:" label: the card shows "New" as a chip, and TTS / captions never say "New:". */
+export const introText = t => String(t || "").replace(/^\s*New:\s*/i, "").replace(/^./, c => c.toUpperCase());
+/** [0.3.12] Predict before watch: where a Try-at-home lesson's "Watch how" videos go. In the Brief (behind its
+ *  disclosure) until the first answer is in, then under the first step's feedback; never on the ride. null: none. */
+export function prepPlace(L, i, answered) {
+  if (!L || !L.prep || L.ride) return null;
+  return i === 0 && answered ? "step" : "brief";
+}
+/** The prep's videos, NASA's first. `nasaOnly` (a core lesson's card): third-party extras ("Not from NASA") stay on the
+ *  Try-at-home card, off the core steps. */
+export function prepVideos(catalog, prepId, { nasaOnly = false } = {}) {
+  return (catalog || []).filter(v => v.prep === prepId && (!nasaOnly || v.nasa !== false))
+    .sort((a, b) => (b.nasa !== false) - (a.nasa !== false));
+}
 /** With the camera on: the same line, saying the gesture (≤ 10 words). `want` fills in the side / answer. */
 export const DO_GESTURE = {
   globe_side: w => `Make a fist and turn it, or point at ${w === "near" ? "Near" : "Far"} side`,

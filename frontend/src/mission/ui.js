@@ -10,7 +10,7 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING } from "../story.js";
+import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING, rideReady } from "../story.js";
 import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./objective.js";
 import { createTour } from "./tour.js";
 import { createCoach, coachDone } from "./coach.js";
@@ -224,6 +224,15 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const earthDays = s => s.window_earth_days ?? Math.round(s.earth_visible_pct / 10);
   /** A first-timer (no mission flown yet on this cadet) sees the recommended pick. */
   let firstPick = false, briefSpoken = false;
+  /** [0.3.12] "Fly the check ride", and before the core lessons are done the line that says when it opens
+   *  ("Unlocks after 6 lessons (2/6)"); academy.goRide() then opens the next lesson instead of dropping the cadet on
+   *  the map with no reason (main.js). */
+  function rideButton(cls, id) {
+    const c = academy && academy.rideStatus ? academy.rideStatus() : null, locked = !!c && !rideReady(c);
+    const line = locked ? GATE.rideLocked(c.n, c.of) : "";
+    const btn = `<button type="button" class="${cls}${locked ? " is-locked" : ""}" id="${id}"${locked ? ` aria-describedby="${id}L"` : ""}>${esc(GATE.ride)}</button>`;
+    return locked ? `<span class="mx-ridewrap">${btn}<span class="mx-lock" id="${id}L">${esc(line)}</span></span>` : btn;
+  }
   /** Before the check ride: the path, and one practice shift (never the site picker or "Commander"). */
   function gate() {
     const fresh = screen !== "gate";
@@ -234,7 +243,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       <h2 class="mx-title">${esc(GATE.title)}</h2>
       <p class="mx-sub">${esc(GATE.sub)}</p>
       <button type="button" class="mx-go" id="mPractice">${esc(GATE.practice)}</button>
-      <button type="button" class="mx-link" id="mRide">${esc(GATE.ride)}</button>`;
+      ${rideButton("mx-link", "mRide")}`;
     $("mPractice").onclick = () => startPractice();
     $("mRide").onclick = () => academy && academy.goRide && academy.goRide();
     site = sites.find(s => s.id === PICKER.recommended) || sites[0]; previewSite();
@@ -251,7 +260,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     debriefEl.hidden = false; debriefEl.classList.add("mx-debrief");
     debriefEl.innerHTML = `<header class="mx-head"><span class="eyebrow">${esc(GATE.tag)} · ${esc(where)}</span></header>
       <div class="mx-db-top"><div><h2 class="mx-title">${esc(GATE.doneTitle)}</h2><p class="mx-sub">${esc(GATE.doneSub)}</p></div></div>
-      <div class="mx-foot"><button type="button" class="mx-go" id="mRide2">${esc(GATE.ride)}</button><button type="button" class="mx-link" id="mPracticeAgain">${esc(GATE.again)}</button></div>`;
+      <div class="mx-foot">${rideButton("mx-go", "mRide2")}<button type="button" class="mx-link" id="mPracticeAgain">${esc(GATE.again)}</button></div>`;
     $("mRide2").onclick = () => academy && academy.goRide && academy.goRide();
     $("mPracticeAgain").onclick = () => startPractice();
     Promise.resolve(say(GATE.doneSay(callSign.spoken("Cadet")))).catch(() => {});

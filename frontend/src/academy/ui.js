@@ -13,12 +13,13 @@ import { flowLog } from "../flows.js";   // [flows] a lesson's "continue" is log
 import { academyApi, progress } from "./client.js";
 import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
+import { rideInset } from "../mission/ride.js";   // [0.3.12] the ride cabin fits left of the lesson card
 import { icon, patch } from "../assets/icons.js";
 import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER } from "../story.js";
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, coreLessons } from "../explorer.js";   // explorer lessons open after missions
-import { marks, doLine, helpLine, INTRO, firstUse, needsTurn } from "./guide.js";
+import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
 const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
@@ -88,6 +89,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
   let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let rideRO = null;   // [0.3.12] the lesson card's width -> the ride cabin's seat view
   let ride = null, rideSite = null, feedback = null, rideEl = null, rideCk = null, nagged = false, stepTap = null;
   let pendingBadge = null, focusPrompt = false;   // the last step's patch waits for Next; Next lands focus on the question
   // guidance (docs/PLAYTEST.md): the hint-ladder rung and what the server said to draw; per-step state that survives
@@ -115,6 +117,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
     badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
+    /** [0.3.12] For Mission's "Fly the check ride": core lessons done / total, the ride's id, and the lesson to fly
+     *  next while the ride is not open yet. */
+    rideStatus: () => { const c = coreDone(), r = lessons().find(l => l.ride), nx = coreLessons(lessons()).find(l => !has(l.badge.id));
+      return { ...c, ride: r ? r.id : null, next: nx ? nx.id : null }; },
   };
 
   const lessons = () => (course ? course.lessons : []);
@@ -297,7 +303,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       ${!prog.qualified && nx ? (n === 0 && !nx.ride
         // [novice playtest 29] the first map: three beats on how it works; then one line on where you are
         ? `<div class="mp-beat mp-intro"><b>${esc(TRANSITION.firstMap.where)} · ${esc(SCHOOL.lessonsCount(0, coreDone().of))}</b><ol>${TRANSITION.firstMap.intro.map(t => `<li>${esc(t)}</li>`).join("")}</ol></div>`
-        : `<p class="mp-beat"><b>${esc(nx.ride ? TRANSITION.toRide.where : `${TRANSITION.firstMap.where} · ${SCHOOL.lessonsCount(coreDone().n, coreDone().of)}`)}</b>${esc(nx.ride ? TRANSITION.toRide.line : `Next: ${nx.title}.`)}</p>`) : ""}
+        // [0.3.12] the count only: the Next up card below already names the lesson (it said it twice)
+        : `<p class="mp-beat"><b>${esc(nx.ride ? TRANSITION.toRide.where : `${TRANSITION.firstMap.where} · ${SCHOOL.lessonsCount(coreDone().n, coreDone().of)}`)}</b>${nx.ride ? esc(TRANSITION.toRide.line) : ""}</p>`) : ""}
       ${card}
       <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
     panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
@@ -339,7 +346,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // Three short lines, not one long one (the spoken limit is about 20 words a line): hello, the brief, the question.
     // They are ONE say (a list of lines): one on-air span, so the ear's hard mute has no gap between them (a gap let
     // room chatter and our own echo in as "answers"; docs/HANDSFREE.md). Leaving the lesson stops it (stop()).
-    say([CAPCOM.lessonHello(callSign.spoken("cadet"), beat), L.brief, L.steps[0].prompt, ...(intro ? [intro] : [])], { situation: "lesson_brief" });
+    say([CAPCOM.lessonHello(callSign.spoken("cadet"), beat), L.brief, L.steps[0].prompt, ...(intro ? [introText(intro)] : [])], { situation: "lesson_brief" });
     if (L.steps[0].alert) alertSound();
   }
 
@@ -381,11 +388,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** [diy videos] "Watch how": the catalog's videos for this task (entry.prep === task id), NASA first, each shown only
    *  when it can play now (online: never a dead button). A non-NASA video says whose it is and "Not from NASA". */
   let prepVideoIds = [];
-  async function fillPrepVideos(p, { where = "prep" } = {}) {
+  async function fillPrepVideos(p, { where = "prep", nasaOnly = false } = {}) {
     prepVideoIds = [];
     const box = panel.querySelector("#aPrepVideos"); if (!box) return;
     let list = [];
-    try { list = (await videoCatalog()).filter(v => v.prep === p.id).sort((a, b) => (b.nasa !== false) - (a.nasa !== false)); } catch (e) { return; }
+    try { list = prepVideos(await videoCatalog(), p.id, { nasaOnly }); } catch (e) { return; }
     // all at once (one slow check never holds the others back)
     const st = await Promise.all(list.map(v => isAvailable(v.id)));
     const ok = list.filter((v, k) => st[k] !== "offline");
@@ -435,10 +442,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
-    // [video fix 0.3.11] a lesson with a Try-at-home task shows its "Watch how" videos at the start (online only), as
-    // 0.3.9 did through the prep card it opened first. Just buttons: never a gate before the lesson (playtest 8).
-    const prepAtStart = firstLook && !!(L.prep && !L.ride);
+    // [video fix 0.3.11] a lesson with a Try-at-home task shows its "Watch how" videos (online only); just buttons, never
+    // a gate before the lesson (playtest 8). [0.3.12] Predict before watch: they wait in the Brief until the first
+    // answer is in (a video showed how before the guess), then sit under the feedback.
+    const prepHere = prepPlace(L, i, waitingNext);
     const how = doLine(st, { gesture: gesturesOn() });
+    // [0.3.12] one instruction per step: the first time a kind of step appears its "New" chip says how, in place of the
+    // "do this" bullet (it said the same thing twice); the bullet comes back once the chip goes
+    const showIntro = !!intro && !waitingNext && !feedback;
     const FB_ICON = { ok: "check", reveal: "explore", shown: "info", progress: "check" };
     const revealSrc = feedback && (feedback.kind === "reveal" || (feedback.kind === "ok" && acc.type === "predict")) && st.reveal && st.reveal.source;
     const fb = feedback ? `<div class="a-feedback is-${feedback.kind}" id="aFeedback" role="status">${FB_ICON[feedback.kind] ? icon(FB_ICON[feedback.kind], { size: 18 }) : ""}<p>${esc(feedback.text)}${revealSrc ? ` ${src(revealSrc)}` : ""}</p></div>` : `<div class="a-feedback" id="aFeedback" role="status"></div>`;
@@ -453,6 +464,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${L.ride && !firstLook ? "" : `<button type="button" class="btn-quiet a-brief-btn" id="aBriefBtn" aria-expanded="false" aria-controls="aBrief">${icon("info", { size: 16 })}${esc(UI.brief)}</button>`}</div>
         ${L.ride && !firstLook ? "" : `<div class="a-brief" id="aBrief" hidden>
           <p>${esc(L.brief)}</p>
+          ${prepHere === "brief" ? `<div class="a-prep-videos" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>` : ""}
           <div class="a-row"><button type="button" class="btn-quiet" id="aReplay">${icon("speaker", { size: 16 })}${esc(UI.replay)}</button>
             ${L.library ? `<button type="button" class="btn-quiet" id="aLib">${icon("library", { size: 16 })}${esc(L.library.label)}</button>` : ""}
             ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></div>`}
@@ -460,13 +472,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           ${firstLook && !L.ride ? `<p class="a-lead">${esc(L.brief)}</p>` : ""}
           <p class="a-prompt" tabindex="-1">${esc(promptOf(st))}</p>
-          ${intro && !waitingNext && !feedback ? `<p class="a-intro"><b>New</b>${esc(intro.replace(/^New: /, ""))}</p>` : ""}
-          ${how && !waitingNext ? `<p class="a-how a-do">${esc(how)}</p>` : ""}
+          ${showIntro ? `<p class="a-intro"><b>New</b>${esc(introText(intro))}</p>` : ""}
+          ${how && !waitingNext && !showIntro ? `<p class="a-how a-do">${esc(how)}</p>` : ""}
           ${gs.phrase && !waitingNext ? `<p class="a-phrase">Say: &ldquo;${esc(gs.phrase)}&rdquo;</p>` : ""}
           ${clip && clipAfter === waitingNext ? `<button type="button" class="btn a-clip" id="aClip">${icon("play", { size: 16 })}Hear ${esc(clip.who)}</button>${clip.note ? `<p class="a-how a-clipnote">${esc(clip.note)}</p>` : ""}` : ""}
           <div class="a-input${waitingNext ? " is-locked" : ""}" id="aInput">${R.html(st, ctx)}</div>
           ${fb}
-          ${prepAtStart ? `<div class="a-prep-videos a-prep-start" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>` : ""}
+          ${prepHere === "step" ? `<div class="a-prep-videos a-prep-start" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>` : ""}
 
         </section>
         ${ride ? `<div id="aRideSlot"></div>` : ""}
@@ -492,7 +504,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // (a Moon step keeps its own focus: the keyboard's Moon reticle, input/spatial.js)
     else if (focusPrompt && panel.querySelector("#aInput button")) { const q = panel.querySelector(".a-prompt"); if (q) q.focus({ preventScroll: true }); }
     focusPrompt = false;
-    if (prepAtStart) fillPrepVideos(L.prep, { where: "lesson" });
+    if (prepHere) fillPrepVideos(L.prep, { where: "lesson", nasaOnly: !isExplorer(L) });
     applyGuide();
     fitBody();
   }
@@ -697,7 +709,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // the question, then (first time only) how this kind of step works, then a "Listen to…" step's own crew clip
     const st = L.steps[i], at = { L, i }, here = () => view === "lesson" && L === at.L && i === at.i && !waitingNext;
     const c = st.clip && st.clip.when !== "after" ? st.clip : null;
-    Promise.resolve(say(intro ? [st.prompt, intro] : st.prompt, sayStyle()))   // one say: one on-air span (docs/HANDSFREE.md)
+    Promise.resolve(say(intro ? [st.prompt, introText(intro)] : st.prompt, sayStyle()))   // one say: one on-air span (docs/HANDSFREE.md)
       .then(() => { if (c && here() && /^listen/i.test(st.prompt)) player.play({ clip_id: c.clip_id, t0: c.t0, t1: c.t1, speaker: c.who, places: [], jargon: [] }); });
     if (L.steps[i].alert) alertSound();
   }
@@ -715,7 +727,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     let host = document.getElementById("aRideCabin");
     if (!host) { host = document.createElement("section"); host.id = "aRideCabin"; host.className = "m-cabin a-ridecabin"; host.setAttribute("aria-label", "Check ride cabin"); panel.parentNode.insertBefore(host, panel); }
     host.hidden = false; document.body.dataset.ride = "1";
-    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
+    // [0.3.12] one cabin across the stage; the part under the lesson card (--ride-inset) is left out of the seat view
+    const insetRight = () => rideInset(host, panel);
+    host.style.setProperty("--ride-inset", insetRight() + "px");
+    if (!rideRO && typeof ResizeObserver !== "undefined") rideRO = new ResizeObserver(() => { const h = document.getElementById("aRideCabin"); if (!h || h.hidden) return;
+      h.style.setProperty("--ride-inset", rideInset(h, panel) + "px"); if (rideCk && rideCk.relayout) rideCk.relayout(); });
+    if (rideRO) { rideRO.observe(panel); rideRO.observe(host); }
+    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, insetRight, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
     if (ride && ride.state) rideCk.update(ride.state);
     setTimeout(rideCue, 400);
     if (!rideSite) return;
@@ -731,6 +749,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     globe.mission.setSun(e.sun_elev_deg, ride.state.mission_time_h); globe.mission.setEarth(e.earth_elev_deg);
   }
   function endRide() { if (ride) { ride = null; globe.mission.exit(); } rideEl = null; if (rideCk && rideCk.dispose) rideCk.dispose(); rideCk = null;
+    if (rideRO) { rideRO.disconnect(); rideRO = null; }
     const h = document.getElementById("aRideCabin"); if (h) { h.hidden = true; h.innerHTML = ""; } delete document.body.dataset.ride; }
   /** [ride] the step's expected order lights its control in the cabin, one at a time */
   function rideCue() {

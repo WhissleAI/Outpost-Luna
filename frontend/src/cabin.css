@@ -402,8 +402,14 @@ html[data-contrast="high"] .cb-glass::after{display:none}
 .cb-grp.c3-panel[data-panel="rover"]{height:300px}
 .cb-grp.c3-panel[data-panel="comm"]{height:320px}
 .c3-panel .cb-plate{gap:var(--space-3)}
-/* check ride: the cabin fills the stage left of the lesson card; the app's own voice bar and captions are in use */
-.a-ridecabin{right:calc(var(--panel-w) + var(--space-4) * 2)}
+/* check ride: [0.3.12] one cabin across the stage, the lesson card floating over its right edge. --ride-inset (academy/ui.js:
+   the card's width + gap) is the part under the card: the 3D seat view is centred and fitted left of it (cockpit3d.js
+   insetRight), and so are the deck, the view switch and the flat fallback. The app's own voice bar and captions are in use. */
+.a-ridecabin{right:0}
+.m-cabin.a-ridecabin .cb-deck,.m-cabin.a-ridecabin .cb>.cb-viewbar{right:calc(var(--ride-inset, 0px) + var(--rail))}
+.a-ridecabin .cb:not(.is-3d){right:var(--ride-inset, 0px)}
+.a-ridecabin.is-ride .cb-ped{display:none}
+.a-ridecabin .cb-grp.c3-panel[data-panel="pedestal"]{grid-template-columns:minmax(0,1fr)}
 .a-ridecabin[hidden]{display:none}
 .a-ridecabin .cb-commrow{display:none}
 /* pedestal: readable lamps from the seat, End shift a proportionate lit push-button (not a slab) */
@@ -466,7 +472,8 @@ html[data-motion="reduce"] .is-point{animation:none}
 /* (the panel the tour or the objective points at keeps its detail: that is the one to read now) */
 .c3[data-panel="seat"] .c3-panel:not(.is-focus) :is(.cb-info,.cb-route,.cb-tl,.cb-fc,.cb-obj,.du-row,.du-loads,.cb-keys,.cb-swst,.cb-db),
 .c3[data-panel="seat"] .cb-cw>h3{display:none!important}
-.c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.35}
+/* [0.3.12] an unlit legend still reads (it was about 2:1 at .35); lit lamps stand out by their fill */
+.c3[data-panel="seat"] .cb-lamp:not(.is-lit){opacity:.72}
 .c3[data-panel="seat"] .cb-screen{display:flex;flex-direction:column;justify-content:center;gap:var(--space-3)}
 .c3[data-panel="seat"] .du-head b{font-size:64px}
 .c3[data-panel="seat"] .du-head span{font-size:var(--text-md)}

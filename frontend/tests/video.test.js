@@ -203,12 +203,20 @@ test("[videos offline] About → Videos credits: YouTube marked, a third-party p
   assert.equal(UI.creditLine({ credit: "NASA/JPL-Caltech (JPL Education)", source: "pack_file" }), "NASA/JPL-Caltech (JPL Education)");
 });
 
-test("[video fix 0.3.11] a lesson with a Try-at-home task shows its Watch how videos at the start (Oreo, 0.3.10 lost it)", async () => {
+test("[video fix 0.3.11 / 0.3.12] a Try-at-home lesson keeps its Watch how videos, in the Brief until the first answer, then under it", async () => {
   const fs = await import("node:fs");
   const s = fs.readFileSync(new URL("../src/academy/ui.js", import.meta.url), "utf8");
-  assert.match(s, /const prepAtStart = firstLook && !!\(L\.prep && !L\.ride\)/);
-  assert.match(s, /prepAtStart \? `<div class="a-prep-videos a-prep-start" id="aPrepVideos"/);
-  assert.match(s, /if \(prepAtStart\) fillPrepVideos\(L\.prep, \{ where: "lesson" \}\)/);
+  const { prepPlace } = await import("../src/academy/guide.js");
+  // 0.3.10 lost them; 0.3.11 put them before the guess; 0.3.12: reachable from the start (Brief), shown after the guess
+  assert.equal(prepPlace({ prep: { id: "x" }, steps: [] }, 0, false), "brief");
+  assert.equal(prepPlace({ prep: { id: "x" }, steps: [] }, 0, true), "step");
+  assert.equal(prepPlace({ prep: { id: "x" }, steps: [] }, 2, false), "brief");
+  assert.equal(prepPlace({ prep: { id: "x" }, ride: {} }, 0, true), null);
+  assert.equal(prepPlace({ steps: [] }, 0, true), null);
+  assert.match(s, /const prepHere = prepPlace\(L, i, waitingNext\)/);
+  assert.match(s, /prepHere === "step" \? `<div class="a-prep-videos a-prep-start" id="aPrepVideos"/);
+  assert.match(s, /prepHere === "brief" \? `<div class="a-prep-videos" id="aPrepVideos"/);
+  assert.match(s, /if \(prepHere\) fillPrepVideos\(L\.prep, \{ where: "lesson", nasaOnly: !isExplorer\(L\) \}\)/);
   // still never a gate: the prep card opens only when asked for
   assert.match(s, /if \(L\.prep && !L\.ride && prep\) \{ showPrep\(\); return; \}/);
 });

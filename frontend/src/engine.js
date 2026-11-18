@@ -27,7 +27,45 @@ export function askbarClasses(s = state) {
 
 /** The hint line under the voice bar while the ear is not there ("" when it is). */
 export function earNote(s = state) {
-  return s.ear === "restarting" ? "Ear restarting…" : s.ear === "down" ? "Voice is off. Type to ask." : "";
+  return s.ear === "restarting" ? "Ear restarting…" : s.ear === "down" ? "Voice is off. Type to ask." : earFail ? VOICE_FIX : "";
+}
+
+// ---- [0.3.12] "Starting voice…" only while the ear is really starting ----
+// The audit's P0: with the ear already failed, the bar said "Starting voice…" for up to 3 minutes. Now the bar turns to
+// "Voice off · type" (grey mic, VOICE_FIX in the hint slot) the moment /api/health reports the ear's load error, or on
+// the ear's first {"t":"error"} (voice.js). A later good start clears it.
+export const WARM_MS = 180000;
+/** The one how-to-fix line while the voice is off (docs/COPY.md: 12 words or fewer, no example commands). */
+export const VOICE_FIX = "Voice didn't load. Restart the app.";
+let earFail = false;
+const failSubs = new Set();
+/** The ear failed (true) or came back (false); fn(on) for the voice bar. */
+export function setEarFailed(on) {
+  on = !!on; if (on === earFail) return; earFail = on;
+  for (const fn of failSubs) { try { fn(on); } catch (e) { console.warn("ear-fail listener:", e); } }
+}
+export function earFailed() { return earFail; }
+export function onEarFailed(fn) { failSubs.add(fn); return () => failSubs.delete(fn); }
+
+/** Is an ear {"t":"error"} message (backend listen.py) a dead ear, not a blip? A failed or disabled local ear with no
+ *  fallback, or a missing / unreachable Deepgram, is dead; the model server still starting ("unreachable", no
+ *  handshake), a full session pool, a reload after a hung decode or a dropped stream ("closed") reconnect by themselves. */
+export function earErrorIsFatal(message) {
+  const m = String(message || "");
+  if (/unreachable|handshake|MAX_SESSIONS|reloading|closed/i.test(m)) return false;
+  return /unavailable|not set|could not reach|deepgram:/i.test(m);
+}
+
+/** /api/health + time since the page started waiting -> "ready" | "warming" | "off". "off" at once when the local ear
+ *  reports a load error and nothing falls back to it (no Deepgram key); a reload after a hung decode is still warming. */
+export function warmState(h, elapsedMs = 0) {
+  const ms = (h && h.model_server) || {}, m = ms.models || {}, ear = m.arc_ear || {}, tts = m.tts || {};
+  const route = (h && h.voice) || {}, cloud = route.ear === "deepgram" || !!route.fallback;
+  const earUp = ear.decoder_loaded !== false || cloud;
+  if (ms.ok && earUp && tts.loaded !== false) return "ready";
+  const failed = !cloud && ear.available === false && !!ear.error && !/reloading/i.test(String(ear.error));
+  if (failed) return "off";
+  return elapsedMs >= WARM_MS ? "off" : "warming";
 }
 
 if (typeof window !== "undefined") window.__lunaEngine = setEngine;
