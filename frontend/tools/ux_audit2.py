@@ -61,6 +61,17 @@ VISUAL = ("mode", "aview", "cabin", "ride", "instr", "panel", "mpanel", "cabinTx
           "mcard", "nudge", "np", "settings", "about", "toast", "keyhelp", "loading", "pressed", "center", "html", "hint", "vbanner", "legend", "qv")
 
 
+
+def hold(pg, sel, ms):
+    """Press and hold a hold-to-confirm button (reset.js bindHold) with the mouse for ms, then let go."""
+    box = pg.locator(sel).first.bounding_box()
+    if not box:
+        raise RuntimeError(f"no {sel} to hold")
+    pg.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    pg.mouse.down()
+    pg.wait_for_timeout(ms)
+    pg.mouse.up()
+
 class Audit:
     def __init__(self, page, out):
         self.page, self.out, self.rows, self.n = page, out, [], 0
@@ -393,8 +404,10 @@ def scenario_settings(p, base, out, errs):
     A.act("mission", "Flight School tab", lambda: pg.click("#modeAcademy"), settle=2500)
     A.act("map", "gear → Help → Pick a place → Go there", lambda: (pg.click("#a11yBtn"), pg.click('.set-nav [data-sec="help"]'), pg.click(".a11y-place summary"), pg.click("#a11yPlaceGo")), settle=3000)
     A.act("map", "Esc", lambda: pg.keyboard.press("Escape"), settle=1000)
-    A.act("map", "gear → Cadets → Reset my patches (once)", lambda: (pg.click("#a11yBtn"), pg.click('.set-nav [data-sec="cadets"]'), pg.click("[data-prof-reset]")), settle=1200)
-    A.act("settings/cadets", "Reset my patches (twice)", lambda: pg.click("[data-prof-reset]"), settle=3000)
+    # [0.4] "Reset my patches" is a 3-second hold (reset.js bindHold): a click (or two) never clears anything. A tap is
+    # checked to do nothing, then the button is pressed and held past HOLD_MS (3 s) with a real pointer.
+    A.act("map", "gear → Cadets → Reset my patches (a tap: nothing)", lambda: (pg.click("#a11yBtn"), pg.click('.set-nav [data-sec="cadets"]'), pg.click("[data-prof-reset]")), settle=1200, expect_change=False)
+    A.act("settings/cadets", "Reset my patches (hold 3.4 s)", lambda: hold(pg, "[data-prof-reset]", 3400), settle=3000)
     A.act("after reset", "open", lambda: None, expect_change=False)
     A.act("map", "say 'open settings'", lambda: (pg.keyboard.press("Escape"), A.say("open settings")), settle=2500)
     A.act("settings", "say 'bigger text'", lambda: A.say("bigger text"), settle=2500)

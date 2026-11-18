@@ -165,11 +165,16 @@ const lm = await loadModel(model("apollo_lm").url);   // a THREE.Group (meshopt 
     Day N" (the sim's `next_comm_window_h`, JPL Horizons) and an arrow with the elevation and its trend. With Earth up,
     the window's long lens shows the Blue Marble Earth as before. Without the pack: the plain note.
   - **Storms** (missions and the check ride): the alert strip shows the SDO frames of 14 May 2024 as a small looping
-    Sun with "The actual Sun, 14 May 2024 · NASA/SDO"; the Radiation console has a bigger Sun monitor while a storm is on
-    or forecast. Less motion holds the flare frame (16:55 UTC). Without the pack: the storm icon.
+    Sun with "The actual Sun, 14 May 2024 · NASA/SDO"; the Radiation console has a bigger Sun monitor (150 px, a ring on
+    AR 13664, "X8.7 flare" on the flare frame) while a storm is on or forecast. Less motion holds the flare frame
+    (16:55 UTC). Without the pack: the storm icon. Each AIA 131 frame is cropped to the whole disc, contrast-stretched to
+    its lit pixels and drawn on a gold ramp (`cabin_views.js toneSun`): AIA colours are false colours, and the native
+    teal read as a dark blob at cabin sizes. The loop starts on the flare frame; frames are toned when the pack loads.
   - **Site view**: NASA's Habitat Demonstration Unit (`hdu.glb`, fitted to 13 m, `terrain.js fitHabitat`) replaces the
     cylinder modules (`terrain.habitat` says which is showing); the solar arrays read lit from either side (a faint
     self-lit cell grid, a light substrate), never as black slabs.
+    The Site camera orbits the middle of the outpost (`terrain.js SITE_FRAME`), close enough that the habitat reads at a
+    glance.
 - **IAU names** (`names/moon_names.json`, 216 features south of 75°S and near the Apollo sites): shipped, not wired.
   TODO(names): feed them to the entity registry / the ear's name lists (backend/app/entities, docs/ENTITY_LAYER.md);
   that touches the Director's gazetteer and its evals, so it is its own change.

@@ -65,20 +65,115 @@ export const whenViews = cb => onViews(cb);
 export const earthPhoto = id => image(id);
 export const sun = () => { const f = sdoFrames(); return f.length ? { frames: f, info: sdoInfo() } : null; };
 
-/** A frame loop on one <img>: ~2.5 s through the day; Less motion holds the flare frame. -> stop() */
-export function loopFrames(img, frames, { reduced = () => false, ms = 140 } = {}) {
-  if (!img || !frames || !frames.length) return () => {};
+// ---------------- [0.4 cabin 2] the Sun you can recognise ----------------
+// The SDO frames are AIA 131 Å: a dim teal disc on black (median ~35/255; the flare frame is exposed down further). At
+// 50-90 px in the cabin that read as a "dark teal blob". Each frame is drawn once into a small canvas, its brightness
+// stretched to the lit pixels (1st…99.7th percentile) and mapped onto a gold ramp (the colour people know the Sun by;
+// AIA colours are false colours anyway, docs/MEDIA.md). The whole disc stays in view, limb and all, so AR 13664 and
+// its X8.7 flare at the west limb are visible; a ring marks the region.
+
+/** AR 13664 in the pack's frames (fraction of the frame, x from the left, y from the top): the brightest spot on every
+ *  frame, at the west limb, where the X8.7 flare went off (measured on sdo/00-17.jpg). */
+export const FLARE_XY = [0.865, 0.615];
+/** The disc's centre and radius (fraction of the frame): the canvas crops to the disc plus a little corona. */
+export const DISC = { cx: 0.5, cy: 0.497, r: 0.43 };
+
+const RAMP = [[0, [0, 0, 0]], [0.18, [70, 10, 0]], [0.45, [214, 82, 10]], [0.72, [255, 170, 48]], [0.9, [255, 226, 140]], [1, [255, 255, 236]]];
+/** The gold ramp: 0..1 -> [r, g, b] (black, deep red, orange, gold, white-hot). Pure. */
+export function sunTone(v) {
+  const x = Math.max(0, Math.min(1, +v || 0));
+  for (let i = 1; i < RAMP.length; i++) {
+    const [b, cb] = RAMP[i]; if (x > b) continue;
+    const [a, ca] = RAMP[i - 1], t = (x - a) / (b - a || 1);
+    return ca.map((c, k) => Math.round(c + (cb[k] - c) * t));
+  }
+  return RAMP[RAMP.length - 1][1].slice();
+}
+
+/** The contrast stretch: [lo, hi] luminance (0-255) at the 1st and 99.7th percentile of the pixels above `floor` (the
+ *  black sky does not count). hist: 256 counts. Pure. */
+export function stretchBounds(hist, floor = 8) {
+  let n = 0; for (let i = floor; i < 256; i++) n += hist[i];
+  if (!n) return [0, 255];
+  const at = q => { let c = 0; for (let i = floor; i < 256; i++) { c += hist[i]; if (c >= q * n) return i; } return 255; };
+  const lo = at(0.01), hi = Math.max(lo + 16, at(0.997));
+  return [lo, Math.min(255, hi)];
+}
+
+/** Recolour RGBA pixels in place: luminance, stretched, a gentle gamma, the gold ramp. -> the same array. Pure. */
+export function toneSun(px) {
+  const hist = new Array(256).fill(0), Y = new Uint8Array(px.length / 4);
+  for (let i = 0, j = 0; i < px.length; i += 4, j++) { const y = Math.round(0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2]); Y[j] = y; hist[y]++; }
+  const [lo, hi] = stretchBounds(hist), lut = [];
+  for (let y = 0; y < 256; y++) lut[y] = sunTone(Math.pow(Math.max(0, Math.min(1, (y - lo) / (hi - lo))), 0.85));
+  for (let i = 0, j = 0; i < px.length; i += 4, j++) { const c = lut[Y[j]]; px[i] = c[0]; px[i + 1] = c[1]; px[i + 2] = c[2]; px[i + 3] = 255; }
+  return px;
+}
+
+const SUN_PX = 320;            // each prepared frame: 320 px square (sharp at the console's largest size, cheap to draw)
+const ready = new Map();       // url -> Promise<canvas | null>, shared by the storm strip and the Radiation console
+/** One frame, loaded, decoded, cropped to the disc and toned. Resolves null when it can't load (the loop skips it). */
+export function prepareFrame(url) {
+  if (ready.has(url)) return ready.get(url);
+  const p = new Promise(res => {
+    if (typeof Image === "undefined" || typeof document === "undefined") { res(null); return; }
+    const im = new Image(); im.decoding = "async";
+    im.onload = () => {
+      try {
+        const c = document.createElement("canvas"); c.width = c.height = SUN_PX;
+        const g = c.getContext("2d", { willReadFrequently: true }), W = im.naturalWidth, H = im.naturalHeight, r = DISC.r * 1.12;
+        g.drawImage(im, (DISC.cx - r) * W, (DISC.cy - r) * H, 2 * r * W, 2 * r * H, 0, 0, SUN_PX, SUN_PX);
+        try { const d = g.getImageData(0, 0, SUN_PX, SUN_PX); toneSun(d.data); g.putImageData(d, 0, 0); }
+        catch (e) { c.dataset.raw = "1"; }   // a cross-origin frame can't be read: the raw frame, brightened by CSS
+        res(c);
+      } catch (e) { res(null); }
+    };
+    im.onerror = () => res(null);
+    im.src = url;
+  });
+  ready.set(url, p);
+  return p;
+}
+/** Warm the frames before a storm needs them: the flare frame first (the one shown first), then the rest in order. */
+export function preloadSun(frames) {
+  if (!frames || !frames.length) return Promise.resolve([]);
+  const first = stillFrame(frames);
+  return prepareFrame(first.url).then(() => Promise.all(frames.map(f => prepareFrame(f.url))));
+}
+/** Where the flare ring sits on a crop of the disc (fractions of the canvas). Pure. */
+export function flareOnCanvas() {
+  const r = DISC.r * 1.12;
+  return [(FLARE_XY[0] - (DISC.cx - r)) / (2 * r), (FLARE_XY[1] - (DISC.cy - r)) / (2 * r)];
+}
+/** The order the loop plays: from the flare frame onward, round the day, so the first thing seen is the storm's Sun
+ *  (never the dark first frame of the day). Pure. */
+export function playOrder(frames) {
+  if (!frames || !frames.length) return [];
+  const k = Math.max(0, frames.indexOf(stillFrame(frames)));
+  return frames.slice(k).concat(frames.slice(0, k));
+}
+
+/** A frame loop on one <canvas>: ~2.5 s through the day from the flare frame, pausing on it; Less motion holds the
+ *  flare frame. A frame that isn't ready yet is skipped (the last one stays up), so it never flashes dark. -> stop() */
+export function loopFrames(cv, frames, { reduced = () => false, ms = 140 } = {}) {
+  if (!cv || !frames || !frames.length) return () => {};
+  const order = playOrder(frames), still = order[0], g = cv.getContext && cv.getContext("2d");
   let i = 0, t = 0, alive = true;
-  // preload so the loop never flashes an empty frame
-  frames.forEach(f => { const p = new Image(); p.decoding = "async"; p.src = f.url; });
+  const fig = cv.closest ? cv.closest(".cb-sunmon, .cb-al-sun") : null;
+  const show = f => prepareFrame(f.url).then(c => {
+    if (!alive || !c || !g) return false;
+    g.clearRect(0, 0, cv.width, cv.height); g.drawImage(c, 0, 0, cv.width, cv.height);
+    cv.classList.toggle("is-raw", !!c.dataset.raw); cv.classList.add("is-ready");
+    if (fig) { const tEl = fig.querySelector(".cb-sun-time"); if (tEl) tEl.textContent = frameTime(f.time);
+      fig.classList.toggle("is-flare", !!f.flare || f === still); }
+    return true;
+  });
   const tick = () => {
     if (!alive) return;
-    const f = reduced() ? stillFrame(frames) : frames[i = (i + 1) % frames.length];
-    if (img.getAttribute("src") !== f.url) img.src = f.url;
-    const tEl = img.parentNode && img.parentNode.querySelector(".cb-sun-time"); if (tEl) tEl.textContent = frameTime(f.time);
-    // a pause on the flare frame, so it reads as the moment of the storm
-    t = setTimeout(tick, reduced() ? 2000 : f === stillFrame(frames) ? 900 : ms);
+    const f = reduced() ? still : order[i = (i + 1) % order.length];
+    show(f).finally(() => { if (alive) t = setTimeout(tick, reduced() ? 2000 : f === still ? 1400 : ms); });
   };
-  img.src = (reduced() ? stillFrame(frames) : frames[0]).url; t = setTimeout(tick, ms);
+  preloadSun(frames);
+  show(still).finally(() => { if (alive) t = setTimeout(tick, 1400); });
   return () => { alive = false; clearTimeout(t); };
 }

@@ -15,21 +15,28 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 
-/** Panel placement in metres. px = the DOM panel's CSS width; the scale maps it onto `w` metres of console face. */
+/** Panel placement in metres. px = the DOM panel's CSS width; the scale maps it onto `w` metres of console face.
+ *  [0.4 cabin 2] The faces turn toward the seat: each one is nearly square-on to the camera (a small yaw and tilt keep
+ *  the room's depth), so their text reads upright from the seat (consoleSkew ≤ MAX_SKEW°, tests/cabin_flat.test.js).
+ *  The old angles (rover / comm yawed 0.6 rad and pitched 0.62, the pedestal laid back 1.0) slanted "Ice · Explore ·
+ *  Home" and "Call Houston" by 13-15°, soft and hard to read. The side consoles sit 4 cm higher, so the Rover's
+ *  Ice · Explore · Home row clears the CAPCOM strip at 1280×720. */
 const BASE_LAYOUT = {
   window: { cx: 0, cy: 1.66, w: 2.3, h: 0.98, r: 0.16, z: -1.7 },
   // the three display units, side by side under the window (DU1 commander-side power, DU2 shared, DU3 radiation)
-  displays: { pos: [0, 0.98, -1.5], rot: [-0.42, 0, 0], w: 2.0, px: 1200, pxh: 330, pedestal: true },
+  displays: { pos: [0, 0.98, -1.5], rot: [-0.24, 0, 0], w: 2.0, px: 1200, pxh: 330, pedestal: true },
   // switch panels round the displays: habitat + rover on the left, radiation + comm on the right, C&W + End shift below
-  habitat: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 340 },
-  rover: { pos: [-1.12, 0.62, -1.02], rot: [-0.62, 0.6, 0], w: 0.8, px: 560, pxh: 300 },
-  radiation: { pos: [1.25, 1.14, -1.2], rot: [-0.22, -0.6, 0], w: 0.8, px: 560, pxh: 340 },
-  comm: { pos: [1.12, 0.62, -1.02], rot: [-0.62, -0.6, 0], w: 0.8, px: 560, pxh: 320 },
-  pedestal: { pos: [0, 0.6, -1.12], rot: [-1.0, 0, 0], w: 1.15, px: 800, pxh: 300 },
+  habitat: { pos: [-1.25, 1.18, -1.2], rot: [-0.06, 0.18, 0], w: 0.8, px: 560, pxh: 340 },
+  rover: { pos: [-1.12, 0.66, -1.02], rot: [-0.2, 0.18, 0], w: 0.8, px: 560, pxh: 300 },
+  radiation: { pos: [1.25, 1.18, -1.2], rot: [-0.06, -0.18, 0], w: 0.8, px: 560, pxh: 340 },
+  comm: { pos: [1.12, 0.66, -1.02], rot: [-0.2, -0.18, 0], w: 0.8, px: 560, pxh: 320 },
+  pedestal: { pos: [0, 0.56, -1.12], rot: [-0.34, 0, 0], w: 1.15, px: 800, pxh: 300 },
 };
+/** The most a console's text may lean from the seat (degrees): its rows off horizontal, its columns off vertical. */
+export const MAX_SKEW = 8;
 /** [0.3.12] The check ride's layout: no Habitat or Comm, so the Rover takes the Habitat's seat (the mirror of
  *  Radiation, high and facing the seat) instead of the low console whose face ran off-screen and read slanted. */
-export const RIDE_LAYOUT = { rover: { pos: [-1.25, 1.14, -1.2], rot: [-0.22, 0.6, 0], w: 0.8, px: 560, pxh: 300 } };
+export const RIDE_LAYOUT = { rover: { pos: [-1.25, 1.14, -1.2], rot: [-0.06, 0.18, 0], w: 0.8, px: 560, pxh: 300 } };
 /** Zoom targets that are part of a bigger console: [object, left fraction, right fraction]. */
 const SUB = { power: ["displays", 0, 1 / 3] };
 const SEAT = { pos: new THREE.Vector3(0, 1.32, 0.78), look: new THREE.Vector3(0, 1.2, -1.6) };
@@ -51,6 +58,27 @@ export function fitFov(aspect, freeW, project, margin = 12) {
     if (x0 >= margin && x1 <= freeW - margin) break;
   }
   return Math.min(fov, FIT_MAX_FOV);
+}
+
+/** How far a console's text leans on screen from the seat, in degrees: the worst of its rows (top, middle, bottom) off
+ *  horizontal and its columns (left, centre, right) off vertical. Pure three.js maths (no DOM): the tests run it on
+ *  every layout at the seat's field of view for common window shapes. -> {id: degrees} */
+export function consoleSkew(layout = null, { w = 1440, h = 900, fov = baseFov(w / h) } = {}) {
+  const L = { ...BASE_LAYOUT, ...(layout || {}) }, cam = new THREE.PerspectiveCamera(fov, w / h, 0.05, 50);
+  cam.position.copy(SEAT.pos); cam.lookAt(SEAT.look); cam.updateMatrixWorld(true);
+  const P = v => { const p = v.project(cam); return [(p.x + 1) / 2 * w, (1 - p.y) / 2 * h]; };
+  const ang = (a, b) => Math.atan2(-(b[1] - a[1]), b[0] - a[0]) * 180 / Math.PI;
+  const out = {};
+  Object.entries(L).forEach(([id, c]) => {
+    if (!c.rot) return;
+    const g = new THREE.Object3D(); g.position.set(...c.pos); g.rotation.copy(new THREE.Euler(c.rot[0], c.rot[1], c.rot[2], "YXZ")); g.updateMatrixWorld(true);
+    const pw = c.w, ph = c.pxh * c.w / c.px, at = (x, y) => P(g.localToWorld(new THREE.Vector3(x, y, 0)));
+    let worst = 0;
+    [-0.45, 0, 0.45].forEach(f => { worst = Math.max(worst, Math.abs(ang(at(-pw / 2, f * ph), at(pw / 2, f * ph))),
+      Math.abs(90 - Math.abs(ang(at(f * pw, -ph / 2), at(f * pw, ph / 2))))); });
+    out[id] = +worst.toFixed(1);
+  });
+  return out;
 }
 
 export function createCockpit3D(host, { panels, hole, glass = null, reduced = () => false, onPanel = () => {}, insetRight = () => 0, layout = null } = {}) {
@@ -135,9 +163,18 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   });
 
   // ---------- light: the window is the key light; the room is dim ----------
-  scene.add(new THREE.HemisphereLight(0xb9c6d8, 0x101216, 0.35));
+  const hemi = new THREE.HemisphereLight(0xb9c6d8, 0x101216, 0.35); scene.add(hemi);
   const win = new THREE.RectAreaLight(0xe8eef8, 4.2, W.w, W.h); win.position.set(W.cx, W.cy, W.z); win.lookAt(W.cx, W.cy - 0.6, 1); scene.add(win);
   const fill = new THREE.PointLight(0xc8d4e6, 0.8, 5, 2); fill.position.set(0, 2.3, 0.2); scene.add(fill);
+  /** [0.4 cabin 2] Storm lighting: the room (walls, frame, console bodies) goes to red alert light; the consoles' own
+   *  faces are DOM and keep their colours, so every value stays readable (the old full-screen dim made them vanish). */
+  let alertOn = false;
+  function setAlert(on) {
+    alertOn = !!on;
+    hemi.color.set(alertOn ? 0xd8584c : 0xb9c6d8); hemi.intensity = alertOn ? 0.3 : 0.35;
+    fill.color.set(alertOn ? 0xff4636 : 0xc8d4e6); fill.intensity = alertOn ? 1.1 : 0.8;
+    win.intensity = alertOn ? 2.6 : 4.2;
+  }
   /** Graphics quality: "low" drops the display glows and the environment reflections and renders at 1× pixels. */
   let quality = "high";
   function setQuality(q) {
@@ -262,7 +299,7 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   raf = requestAnimationFrame(frame);
 
   const api = {
-    open: id => go(id), back: () => go(null), get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
+    open: id => go(id), back: () => go(null), alert: on => setAlert(on), get alerting() { return alertOn; }, get panel() { return open; }, get fps() { return fps; }, setQuality, get quality() { return quality; },
     /** Look around from where the camera is: dx, dy in -1..1 (yaw, pitch), clamped to ±MAX_YAW / ±MAX_PITCH. look(0, 0)
      *  recentres; with no new look input for LOOK_IDLE_MS it springs back by itself (opts.hold: the tour's beats). */
     look(dx, dy, { hold = false } = {}) { lookT.x = Math.max(-1, Math.min(1, +dx || 0)) * MAX_YAW; lookT.y = Math.max(-1, Math.min(1, +dy || 0)) * MAX_PITCH;
@@ -276,6 +313,14 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
     get slant() { camera.updateMatrixWorld(true); const out = {};
       Object.entries(objs).forEach(([id, P]) => { const a = P.g.localToWorld(new THREE.Vector3(-P.w / 2, P.h / 2, 0)).project(camera), b = P.g.localToWorld(new THREE.Vector3(P.w / 2, P.h / 2, 0)).project(camera);
         out[id] = +(Math.atan2((b.y - a.y) * size.h, (b.x - a.x) * size.w) * 180 / Math.PI).toFixed(1); });
+      return out; },
+    /** [0.4 cabin 2] Each console's text lean from the current camera (rows off horizontal, columns off vertical), in
+     *  degrees: tools/mission_ui.py fails the seat view over MAX_SKEW. */
+    get skew() { camera.updateMatrixWorld(true); const out = {}, P = v => { const p = v.project(camera); return [(p.x + 1) / 2 * size.w, (1 - p.y) / 2 * size.h]; };
+      const ang = (a, b) => Math.atan2(-(b[1] - a[1]), b[0] - a[0]) * 180 / Math.PI;
+      Object.entries(objs).forEach(([id, Q]) => { const at = (x, y) => P(Q.g.localToWorld(new THREE.Vector3(x, y, 0))); let worst = 0;
+        [-0.45, 0, 0.45].forEach(f => { worst = Math.max(worst, Math.abs(ang(at(-Q.w / 2, f * Q.h), at(Q.w / 2, f * Q.h))), Math.abs(90 - Math.abs(ang(at(f * Q.w, -Q.h / 2), at(f * Q.w, Q.h / 2))))); });
+        out[id] = +worst.toFixed(1); });
       return out; },
     /** The seat view's faces in px (the tests: every panel inside the free area). */
     get seatSpan() { const f = camera.fov, r = seatSpan(f); return { x0: r[0], x1: r[1], w: size.w, fw: size.fw, fov: f }; },
