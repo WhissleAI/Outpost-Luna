@@ -167,7 +167,7 @@ CLASS_W = {"chatter": 3, "echo": 3, "offer": 2, "panel": 2, "help": 2, "mode": 1
 # round 8 (pools_r8.py): the capabilities added since round 7; mixed into hands-free sessions with --r8-p
 CLASS_W8 = {"video_ctrl": 2, "video_echo": 3, "prep": 2, "prep_roomtalk": 3, "voice_echo_os": 3, "gesture_cooccur": 1,
             "lesson_new": 2, "offers_new": 1}
-R8 = {"p": 0.0, "cov": 0.0}
+R8 = {"p": 0.0, "cov": 0.0, "r13": 0.0}
 _GAPS: list = []
 
 
@@ -223,6 +223,9 @@ def handsfree_script(rng: random.Random, split: str, seed: int) -> dict:
         else:
             items.append({**P.explorer(rng, split), "frame": {"screen": rng.choice(["library", "map"]),
                                                                "step_type": None, "step_options": [], "offer": None}})
+    if R8["r13"] and split in ("train", "val"):      # round 13: lesson answers / room talk naming a control (own stream)
+        import pools_r13 as P13
+        items += P13.r13_items(seed, split, R8["r13"])
     return {"mode": "mission", "site": rng.choice(SITES), "seed": seed, "role": None, "items": items, "hf": True}
 
 
@@ -248,6 +251,9 @@ def coverage_script(seed: int, split: str) -> dict | None:
 
 def class_set_items(cls: str, n: int, seed: int) -> list[dict]:
     rng = random.Random(seed)
+    if cls in R13_CLASSES:
+        import pools_r13 as P13
+        return [P13.lesson_answer_item(rng, "test") for _ in range(n)]
     if cls in R8_CLASSES:
         import pools_r8 as P8
         return [P8.cls_item(cls, rng, "test") for _ in range(n)]
@@ -256,6 +262,7 @@ def class_set_items(cls: str, n: int, seed: int) -> list[dict]:
 
 R8_CLASSES = ("video_ctrl", "video_echo", "prep", "prep_roomtalk", "voice_echo_os", "gesture_cooccur", "lesson_new",
               "offers_new")      # pools_r8.CLASSES_R8
+R13_CLASSES = ("lesson_answer",)   # pools_r13.py
 
 
 def set_script(items: list[dict], mode: str, seed: int, site: str | None = None) -> dict:
@@ -458,7 +465,9 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             msgs = RP.messages(rd[6], dd=round(dd, 3)) if rd is not None else None
             if msgs is not None and not arc_on:
                 msgs = [m for m in msgs if m["t"] != "arc"]
-            if msgs is None:
+            if it.get("bare"):     # round 13 (train only): the turn's text alone, no partials, no arc read, no extras
+                msgs, eager, end_text = [{"t": "turn", "state": "start", "text": ""}], False, " ".join(hw)
+            elif msgs is None:
                 ps = rd[1] if rd is not None else partials(hw, rng)
                 msgs = [{"t": "turn", "state": "start", "text": " ".join(ps[0])}]
                 for j, p in enumerate(ps):
@@ -733,13 +742,15 @@ async def main():
     ap.add_argument("--r8-p", type=float, default=0.35, help="round 8: share of the hands-free class items drawn from "
                     "pools_r8 (video, prep, OS-voice echo, gestures, new lessons and offers)")
     ap.add_argument("--ho-sessions", type=int, default=55, help="round 11: test sessions in the held-out voices")
+    ap.add_argument("--r13-p", type=float, default=0.0, help="round 13: share of hands-free train / val sessions that "
+                    "get 1-2 round-13 items (pools_r13.py: lesson answers, room talk naming a control)")
     ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
                     "in train / val (outcome signals as weak labels)")
     ap.add_argument("--stress-cache", default="", help="round 12: a stress decode cache (report-only set)")
     ap.add_argument("--stress-name", default="stress")
     ap.add_argument("--stress-mode", default="ho", choices=["ho", "items"])
     a = ap.parse_args()
-    R8["p"], R8["cov"] = a.r8_p, a.cov_p
+    R8["p"], R8["cov"], R8["r13"] = a.r8_p, a.cov_p, a.r13_p
     if a.merge:
         merge(Path(a.out), a.merge)
         return
@@ -849,6 +860,8 @@ async def main():
         await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 990_000 + 1000 * ci))
     for ci, cls in enumerate(R8_CLASSES):      # round 8: seeds after round 6's, so those sets never change
         await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 995_000 + 1000 * ci))
+    for ci, cls in enumerate(R13_CLASSES):     # round 13: seeds after round 8's
+        await cls_set(f"cls_{cls}", class_set_items(cls, a.cls_n, 997_000 + 1000 * ci))
     if a.cov_heldout and (not only or "cls_coverage" in only):   # round 8: every gap cell, held-out phrases
         import pools_r8 as P8
         rng = random.Random(999_000)

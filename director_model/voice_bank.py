@@ -270,7 +270,8 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
         if e is None or not len(e):
             noise = meta["noise"] = "room"
         else:
-            e2, m = R8.speaker_to_mic(_norm(e), rng)
+            ref = _norm(e)
+            e2, m = R8.speaker_to_mic(ref, rng)
             delay = float(rng.uniform(-1.0, 1.5))           # the echo's start vs the kid's start
             under = float(rng.uniform(10, 25) if H else rng.uniform(12, 25))   # dB under the kid
             st = int(max(0.0, lead + delay) * SR)
@@ -279,6 +280,9 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
                 y = np.concatenate([y, np.zeros(st + len(e2) - len(y), np.float32)])
             nz = np.zeros_like(y)
             nz[st:st + len(e2)] = e2
+            # round 13: the app's playback as echoref.js hands it to the ear (feed_ref), stamped when it goes to the
+            # speaker: e2's sample 0 (speaker_to_mic adds the output latency after it), less what was trimmed
+            meta["_ref"] = [((st - int(max(0.0, -(lead + delay)) * SR)) / SR, ref)]
             pe = float(np.mean(e2 ** 2)) + 1e-12
             y = y + nz * np.sqrt(ps / (pe * 10 ** (under / 10)))
             meta.update(echo_delay=round(delay, 2), echo_under_db=round(under, 1), **src)
@@ -303,5 +307,7 @@ def render_echo(j: dict, rng: np.random.Generator) -> tuple[np.ndarray | None, d
         meta = {"voice": j["voice"], "vgroup": vgroup(j["voice"])}
     if e is None or not len(e):
         return None, {"skip": "render failed"}
-    y, m = R8.speaker_to_mic(_norm(e), rng)
+    ref = _norm(e)
+    y, m = R8.speaker_to_mic(ref, rng)
+    meta["_ref"] = [(0.0, ref)]   # round 13: our own playback (guide line or crew clip), the ear's reference (echoref.js)
     return y, {**meta, **m}

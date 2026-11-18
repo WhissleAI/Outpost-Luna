@@ -63,7 +63,9 @@ CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "
               "cls_roomtalk", "test_log",
               # round 8 (pools_r8.py): the capabilities added since round 7
               "cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
-              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending"]
+              "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending",
+              # round 13 (pools_r13.py): short answers to lesson option steps ("one", "a", "B.", a few words)
+              "cls_lesson_answer"]
 
 
 class NumpyModel:
