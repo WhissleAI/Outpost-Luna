@@ -124,6 +124,9 @@ async def academy_attempt(req: AttemptReq):
         return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
     if not ok and st["accept"]["type"] == "video":
         return _ignored(les["id"], req.step)          # a video step is never missed: only watch / skip move it on
+    if not ok and st["accept"]["type"] == "predict":
+        return _ignored(les["id"], req.step)          # [0.3.12] a guess step: only a guess moves it on; other words never
+        #                                               count as a miss, so they never reveal the answer before a guess
     last = req.step == len(steps) - 1
     shown = not ok and reveal_due(req.misses + 1, req.step_s)
     if st["accept"]["type"].startswith("vocab_"):     # Space words: slower, enunciated, the word itself stressed
@@ -177,6 +180,8 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     if req.input.text and safety_.has_profanity(req.input.text):
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # [P0] a rude turn is never graded
     ok, extra = grade(st, inp, loads=m.loads)
+    if not ok and (st["accept"] or {}).get("type") == "predict":
+        return _ignored(les["id"], r["step"], state=rides.hud(r))   # [0.3.12] a guess step waits for a guess
     if not ok and text_only(inp) and not plausible(st, req.input.text):
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # not a try: the miss counter doesn't move
     sim_say, said_override = "", None

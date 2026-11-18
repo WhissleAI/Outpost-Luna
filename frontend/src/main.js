@@ -630,10 +630,11 @@ async function boot() {
   onEngine(st => { const bar = $("askbar"); for (const [c, on] of Object.entries(askbarClasses(st))) bar.classList.toggle(c, on); });
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
   new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
-  // A spoken line that is already on screen (the lesson question, the feedback, the brief) is not shown twice: the
+  // A spoken line that is already on screen (the lesson question, the feedback, the brief, [0.3.12] the lead and the
+  // "New" line) is not shown twice: the
   // caption stays in #captionBar for screen readers and the transcript, but folds out of the voice strip (.is-dup).
   const norm = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .m-title, #card:not([hidden]) .card-say")]
+  const onScreen = () => norm([...document.querySelectorAll("#aPanel .a-prompt, #aPanel .a-feedback, #aPanel .a-brief p, #aPanel .a-lead, #aPanel .a-intro, #aPanel .m-title, #card:not([hidden]) .card-say")]
     .filter(e => e.getClientRects().length).map(e => e.textContent).join(" | "));
   const dupCheck = () => { const bar = $("captionBar"), line = norm((bar.querySelector(".cap-line") || bar).textContent);
     bar.classList.toggle("is-dup", !!line && line.length > 3 && onScreen().includes(line)); };

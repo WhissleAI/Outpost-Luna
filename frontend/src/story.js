@@ -55,7 +55,8 @@ export const TRANSITION = {
     where: "Flight School", line: "Earn a patch at each pin. Then fly your check ride.",
     say: "Each pin on the Moon is a lesson. Earn the patches, then command the outpost.",
     /** [novice playtest 29] the first map only: three short beats on how this screen works (on screen, not spoken) */
-    intro: ["This is the Moon. Drag it to spin it.", "Each pin is a lesson. Tap Start lesson.", "Talk to me, or type in the bar below."],
+    // [0.3.12] "Each pin is a lesson. Tap Start lesson." explained the card's own button: the button says it
+    intro: ["This is the Moon. Drag it to spin it.", "Each pin is a lesson.", "Talk to me, or type in the bar below."],
   },
   /** map -> lesson: lessonHello (LESSON_STORY beats) carries it. */
   /** lesson -> patch: the sub line under the patch name. */

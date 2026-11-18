@@ -371,3 +371,18 @@ def test_ride_houston_answers_once(client):
     assert len(out["say"].split()) <= 20, out["say"]
     says = [d for d in out["decisions"] if d["t"] == "say"]
     assert len(says) == 1 and says[0]["text"] == out["say"]
+
+
+def test_predict_waits_for_a_guess(client):
+    """[0.3.12] Predict before watch: on a guess step, words that are not a guess are never a miss, so they never reveal
+    the answer (it took a few unrelated typed lines and a slow minute to get "Here it is." before any guess)."""
+    from app.academy.content import lesson
+    les = lesson("phases")
+    k = next(j for j, st in enumerate(les["steps"]) if st["accept"]["type"] == "predict")
+    for misses in range(4):
+        r = client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k, "misses": misses, "step_s": 120,
+                                                      "input": {"text": "I think the moon is really cool tonight"}}).json()
+        assert r["status"] == "ignored" and r["say"] == "", r
+    r = client.post("/api/academy/attempt", json={"lesson_id": "phases", "step": k,
+                                                  "input": {"choice": les["steps"][k]["accept"]["options"][0]["id"]}}).json()
+    assert r["status"] == "passed"
