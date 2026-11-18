@@ -429,7 +429,14 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     // whose projected box can reach up into that row (Left from "Set shields" used to jump to a console, not "Shelter")
     const row = a !== seatEl && (dir === "left" || dir === "right") ? inCab.filter(it => it.el && inBeam(from, it.rect, dir)) : [];
     const r = row.length ? pickBest(from, row, dir) : -1;
-    const j = r >= 0 ? -1 : pickBest(from, inCab, dir), k = r >= 0 ? row[r].i : j >= 0 ? inCab[j].i : pickBest(from, items, dir); if (k < 0) return false;
+    let j = r >= 0 ? -1 : pickBest(from, inCab, dir), k = r >= 0 ? row[r].i : j >= 0 ? inCab[j].i : pickBest(from, items, dir);
+    // [0.4] the header is folded into the cockpit's bar (body[data-cockpit]): its keys share the bar's row, so Up from the
+    // bar finds nothing above it; it goes to the nearest header key instead (the screen's top edge, as before)
+    if (k < 0 && dir === "up" && a && a.closest && a.closest(".cb-deck") && doc.body.dataset.cockpit === "1") {
+      const cx = from.left + from.width / 2;
+      k = items.reduce((best, it, i) => (it.el && it.el.closest(".topbar") ? (best < 0 || Math.abs(it.rect.left + it.rect.width / 2 - cx) < Math.abs(items[best].rect.left + items[best].rect.width / 2 - cx) ? i : best) : best), -1);
+    }
+    if (k < 0) return false;
     if (items[k].panel) focusSeat(items[k].panel); else { seatEl.hidden = true; focusEl(items[k].el); }
     onMove();
     return true;

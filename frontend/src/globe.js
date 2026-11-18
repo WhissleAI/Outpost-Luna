@@ -172,10 +172,11 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     exit() { mi.on = false; mi.group.visible = false; mlayer.hidden = true; ambient.intensity = 0.35 * Math.PI; pins.visible = true; layer.style.display = "";
       if (ring) { scene.remove(ring); ring = null; } sel = null; label.hidden = true; },
     /** Preview or place the outpost; flies there (south-pole sites are seen from 75°S, the camera's limit). */
-    setSite(site, { dist = 1.75 } = {}) {
+    setSite(site, { dist = 1.75, clamp } = {}) {
       mi.site = site; mi.f = frame(site);
       const p = ll2v(site.lat, site.lon, R * 1.004); outpostDot.position.copy(p); outpostMark.p.copy(p); outpostMark.el.textContent = site.short || "Outpost";
-      flyTo(site.lat, site.lon, dist); label.hidden = true; sel = null; if (ring) { scene.remove(ring); ring = null; }
+      // [0.4] {clamp: false}: the Mission picker looks straight down on the pole (docs/MEDIA.md), not from 75°S
+      flyTo(site.lat, site.lon, dist, clamp === false ? { clamp: false } : undefined); label.hidden = true; sel = null; if (ring) { scene.remove(ring); ring = null; }
     },
     /** Day/night: aim the Sun so it stands sunElev degrees above the outpost's horizon, circling once per lunar day. */
     setSun(sunElevDeg, timeH = 0) { if (!mi.f) return; const d = dirAt(mi.f, sunElevDeg, 140 + timeH * 360 / 708.7); sun.position.copy(d).multiplyScalar(5); sunGlare.position.copy(d).multiplyScalar(80); },
@@ -455,11 +456,14 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   let band = null, paused = false;
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h;
-    if (band) { const hb = h * band; camera.setViewOffset(w, h, 0, (h - hb) / 2, w, h); } else camera.clearViewOffset();
+    if (band || bandX) { const hb = h * (band || 1); camera.setViewOffset(w, h, bandX * w, (h - hb) / 2, w, h); } else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }
   let decorOn = true, userPins = true, userHw = true;   // [qa] Library switches (setDecor keeps them)
-  function setViewport(frac) { band = frac || null; resize(); }
+  /** frac: the band's height share (the view's centre lifts above a bottom strip); [0.4] xFrac: a share of the width to
+   *  shift the view's centre left by (a side panel on the right), 0 by default. */
+  let bandX = 0;
+  function setViewport(frac, xFrac = 0) { band = frac || null; bandX = +xFrac || 0; resize(); }
   new ResizeObserver(resize).observe(stage); resize();
 
   const tmp = new THREE.Vector3();

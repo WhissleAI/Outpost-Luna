@@ -937,3 +937,188 @@ html[data-motion="reduce"] .m-cabin>.cb-coach{animation:none}
 /* [playtest 28] in the cabin the key legend sits above the radio row, never over the CAPCOM caption */
 body[data-cabin="1"][data-mode="mission"] .key-legend{bottom:calc(var(--space-3) + 72px)}
 .c3 .c3-panel .cb-db{font-size:22px}
+
+/* =================== [0.4] the cabin redesign: one cockpit top bar, flat display units, bezel keys, an 18 px floor ===================
+   The owner's goal: a person inside a real spaceflight cabin with a real control bar (Orion's language: flat display
+   units framed by bezel keys, readable annunciators), and real NASA views in the window.
+     1. One overhead bar. The app header folds into it (cabin.js foldHeader: the same nodes, drawn over the bar's two
+        ends): sections at the left, Settings / Mute / Theme / About at the right. Between them, one display unit (the
+        clock, the clock's state, Sun / Earth, Days · Science · Ice, the log key) and three bezel keys (Play, Skip, Menu).
+     2. The window's camera keys (Orbit, Site, Rover, Earth, Center) are one bezel row under the bar, on the right.
+     3. Every word in the HUD is at least 18 px at 1280×720 (docs/MISSION_POLISH_SPEC.md "HUD layout").
+   The cabin stays dark in both themes; the header is dark here too (no light strip over the cockpit). */
+.m-cabin{--deck-h:68px;--now-w:clamp(300px,25vw,400px);--hud-min:18px;
+  --key-face:linear-gradient(180deg,color-mix(in srgb,var(--color-panel-2) 88%,var(--color-on-space)),var(--color-panel-2) 55%,var(--color-panel));
+  --key-edge:color-mix(in srgb,var(--color-space) 80%,var(--color-panel));
+  --key-hi:color-mix(in srgb,var(--color-on-space) 16%,transparent)}
+
+/* 1a. the header, folded: transparent over the bar's ends; its own buttons become bezel keys */
+body[data-cockpit="1"] .topbar{position:fixed;z-index:var(--z-panel);top:12px;left:12px;right:calc(var(--cockpit-right, 0px) + 12px);height:68px;box-sizing:border-box;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 12px;border:0;background:none;pointer-events:none;color:var(--color-on-space)}
+body[data-cockpit="1"] .topbar>*{pointer-events:auto}
+body[data-cockpit="1"] .topbar .appname{display:none}
+body[data-cockpit="1"] .topbar .brand{flex:0 0 auto}
+body[data-cockpit="1"] .topbar .brand-mark{width:32px;height:32px;box-shadow:0 0 0 2px var(--key-edge,#000)}
+body[data-cockpit="1"] .topbar .modes{margin-right:auto;gap:4px;padding:4px;border-radius:8px;background:var(--color-display);box-shadow:inset 0 0 0 1px #000,0 0 0 1px color-mix(in srgb,var(--color-on-space) 10%,transparent)}
+body[data-cockpit="1"] .topbar :is(.modes button,.topnav .btn-icon){min-height:44px;border-radius:6px;border:1px solid color-mix(in srgb,var(--color-space) 80%,var(--color-panel));
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-panel-2) 88%,var(--color-on-space)),var(--color-panel-2) 55%,var(--color-panel));color:var(--color-on-space-2);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--color-on-space) 16%,transparent),0 1px 0 #000}
+body[data-cockpit="1"] .topbar .modes button{padding:0 14px;font-size:16px;font-weight:var(--weight-semibold)}
+body[data-cockpit="1"] .topbar .modes button[aria-pressed="true"]{color:var(--color-on-space);box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 color-mix(in srgb,var(--color-on-space) 16%,transparent),0 1px 0 #000}
+body[data-cockpit="1"] .topbar .topnav{gap:6px}
+body[data-cockpit="1"] .topbar .topnav .btn-icon{width:44px;height:44px}
+body[data-cockpit="1"] .topbar :is(.modes button,.topnav .btn-icon):hover{color:var(--color-on-space);filter:brightness(1.15)}
+body[data-cockpit="1"] .topbar .topnav .btn-icon[aria-pressed="true"]{color:var(--color-lamp-caution);box-shadow:inset 0 3px 0 var(--color-lamp-caution),0 1px 0 #000}
+body[data-cockpit="1"] .topbar :is(.modes button,.topnav button):focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+/* a decision dims the cockpit round the Now card: the folded header dims with the bar */
+body[data-cockpit="1"]:has(.cb.is-takeover) .topbar>*{opacity:.5;transition:opacity var(--dur-slow) var(--ease-out)}
+body[data-cockpit="1"]:has(.cb.is-takeover) .topbar>*:is(:hover,:focus-within){opacity:1}
+body[data-cockpit="1"]:has(.cb-pm:not([hidden]),.cb-ch:not([hidden])) .topbar{visibility:hidden}
+
+/* 1b. the bar: one console strip; the header's groups sit over its ends (--cp-l / --cp-r from cabin.js) */
+.m-cabin .cb-deck{min-height:var(--deck-h);height:var(--deck-h);gap:12px;padding:6px calc(var(--cp-r, 0px) + 12px) 6px calc(var(--cp-l, 0px) + 12px);border-radius:12px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-panel-2) 92%,var(--color-on-space)),var(--color-panel) 70%);border:1px solid var(--key-edge);
+  box-shadow:inset 0 1px 0 var(--key-hi),inset 0 -2px 0 color-mix(in srgb,var(--color-space) 60%,transparent),0 10px 28px color-mix(in srgb,var(--color-space) 60%,transparent);
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+/* the display unit: a flat glass screen in a bezel, phosphor text, two lines */
+.m-cabin .cb-dsp{flex:1 1 auto;min-width:0;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:0;padding:0 12px;border-radius:7px;
+  background:var(--color-display);box-shadow:inset 0 0 0 1px #000,inset 0 0 22px var(--cb-phos-wash),0 0 0 3px var(--color-panel-2),0 0 0 4px var(--key-edge);color:var(--color-phosphor);overflow:hidden}
+.m-cabin .cb-dsp-a{display:flex;align-items:baseline;gap:14px;min-width:0;white-space:nowrap;line-height:1.15}
+.m-cabin .cb-dsp>*{flex:none}
+.m-cabin .cb-deck .cb-clock{flex:0 0 auto}
+.m-cabin .cb-deck .cb-clock b{font-size:21px;line-height:1.15;color:var(--color-phosphor)}
+.m-cabin .cb-deck .cb-clock b .cb-hh{color:var(--color-phosphor);margin-left:6px}
+.m-cabin .cb-deck .cb-clock small{display:none}
+.m-cabin .cb-deck .cb-state{min-width:0;padding:0;font-size:var(--hud-min);gap:6px;color:var(--color-phosphor-dim);flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}
+.m-cabin .cb-deck .cb-state i{width:9px;height:9px}
+.m-cabin .cb[data-clock="run"] .cb-state{color:var(--color-phosphor)}
+.m-cabin .cb[data-clock="run"] .cb-state i{background:var(--color-phosphor);box-shadow:0 0 8px var(--color-phosphor);animation:cbRun 1.6s var(--ease-in-out) infinite}
+.m-cabin .cb[data-clock="held"] .cb-state{color:var(--color-lamp-caution)}
+.m-cabin .cb[data-clock="held"] .cb-state i{background:var(--color-lamp-caution)}
+.m-cabin .cb[data-clock="paused"] .cb-state{color:var(--color-on-space)}
+.m-cabin .cb[data-clock="paused"] .cb-state i{background:none;border-radius:1px;box-shadow:inset 3px 0 0 var(--color-on-space),inset -3px 0 0 var(--color-on-space)}
+html[data-motion="reduce"] .m-cabin .cb-deck .cb-state i{animation:none}
+.m-cabin .cb-deck .cb-sky{flex-direction:row;gap:12px;margin-left:auto;font-size:var(--hud-min);line-height:1.2;color:var(--color-phosphor)}
+.m-cabin .cb-deck .cb-sky em{color:var(--color-phosphor-dim);margin-right:4px}
+.m-cabin .cb-deck .cb-prog{gap:14px;min-width:0;font-size:var(--hud-min);line-height:1.2;white-space:nowrap}
+.m-cabin .cb-deck .cb-prog .pg{display:inline-flex;align-items:baseline;gap:5px;padding:0;border:0;background:none;border-radius:0}
+.m-cabin .cb-deck .cb-prog .pg em{color:var(--color-phosphor-dim);font-size:var(--hud-min)}
+.m-cabin .cb-deck .cb-prog .pg b{font-weight:var(--weight-semibold);color:var(--color-phosphor);font-size:var(--hud-min)}
+.m-cabin .cb-deck .cb-prog .pg b small{font-size:var(--hud-min);font-weight:var(--weight-regular);color:var(--color-phosphor-dim)}
+.m-cabin .cb-deck .cb-prog .pg.is-met b{color:var(--color-on-space)}
+.m-cabin .cb-deck .cb-prog .pg i{display:none}
+.m-cabin .cb-deck .cb-prog .pg .pg-ab-l{display:none}
+.m-cabin .cb-deck .m-sample{font-size:var(--hud-min);padding:0 6px;line-height:1.3}
+/* the log key: a bezel key on the display's edge */
+.m-cabin .cb-deck .cb-logbtn{margin-left:auto;min-height:30px;padding:0 10px;font-size:var(--hud-min)}
+/* 1c. the bezel keys (Play / Skip / Menu, the window's camera keys, the log key) */
+.m-cabin :is(.cb-tbtn,.cb-view,.cb-center,.cb-logbtn){display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;border:1px solid var(--key-edge);
+  background:var(--key-face);color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;font-family:var(--font-ui);font-size:var(--hud-min);font-weight:var(--weight-semibold);
+  white-space:nowrap;cursor:pointer;transition:filter var(--dur-fast),transform var(--dur-fast)}
+.m-cabin :is(.cb-tbtn,.cb-view,.cb-center,.cb-logbtn):hover:not(:disabled){filter:brightness(1.18)}
+.m-cabin :is(.cb-tbtn,.cb-view,.cb-center,.cb-logbtn):active:not(:disabled){transform:translateY(1px)}
+.m-cabin .cb-deck .cb-time{flex:0 0 auto;gap:6px;padding:0;background:none;border:0;box-shadow:none}
+.m-cabin .cb-tbtn{min-height:48px;padding:0 14px}
+.m-cabin .cb-tbtn .ic{width:18px;height:18px}
+/* the primary key while the clock waits: lit (accent legend bar), never a second colour scheme */
+.m-cabin .cb-time[data-state="paused"] .cb-play{background:var(--key-face);color:var(--color-on-space);box-shadow:inset 0 3px 0 var(--color-accent-strong),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.m-cabin .cb-play.is-on{color:var(--color-phosphor)}
+.m-cabin .cb-skip.is-ff{color:var(--color-phosphor);box-shadow:inset 0 3px 0 var(--color-phosphor),0 1px 0 #000}
+/* 2. the window's camera keys: one bezel row under the bar (right) */
+.m-cabin .cb>.cb-viewbar{gap:6px;padding:5px;border-radius:10px;background:var(--color-panel);border:1px solid var(--key-edge);box-shadow:inset 0 1px 0 var(--key-hi),0 8px 22px color-mix(in srgb,var(--color-space) 55%,transparent)}
+.m-cabin .cb-viewbar .cb-views{gap:6px;padding:0;border:0;background:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.m-cabin .cb-view{min-height:44px;min-width:0;padding:0 12px}
+.m-cabin .cb-view svg{width:18px;height:18px}
+.m-cabin .cb-view[aria-pressed="true"]{background:var(--key-face);color:var(--color-phosphor);box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.m-cabin .cb-center{min-height:44px;padding:0 12px}
+.m-cabin .cb[data-offcentre="1"] .cb-center{color:var(--color-on-space);box-shadow:inset 0 3px 0 var(--color-accent-strong),0 0 0 2px color-mix(in srgb,var(--color-accent-strong) 50%,transparent)}
+@media (max-width:1366px){.m-cabin .cb-view svg{display:none}.m-cabin .cb-center span{display:none}}
+/* narrower: the keys keep their glyph and drop the word (the label stays as aria-label and tooltip); the site's sky line
+   and the long section names go first */
+@media (max-width:1366px){.m-cabin .cb-tbtn span{display:none}.m-cabin .cb-tbtn{padding:0 12px;min-width:48px}}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-sky{display:none}.m-cabin .cb-deck .cb-logbtn span{display:none}
+  body[data-cockpit="1"] .topbar .brand{display:none}}
+@media (max-width:1100px){body[data-cockpit="1"] .topbar .modes button{padding:0 10px;font-size:15px}
+  .m-cabin .cb-deck .cb-prog{gap:10px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
+@media (max-width:1024px){.m-cabin{--deck-h:60px;--now-w:280px}body[data-cockpit="1"] .topbar{height:60px}.m-cabin .cb-deck .cb-clock b{font-size:20px}
+  .m-cabin .cb-deck .cb-state{display:none}}
+/* the check ride: the bar has the clock and the sky; the header's ends fold in the same way */
+.m-cabin.a-ridecabin .cb-deck .cb-sky{display:block}
+
+/* 3. the Now card at the 18 px floor (labels, the step, its meta, its buttons, the say line) */
+.m-cabin .cb>.cb-now{font-size:var(--hud-min);gap:8px;padding:10px 14px 14px;border-radius:12px;background:color-mix(in srgb,var(--color-panel) 96%,transparent);
+  border:1px solid var(--key-edge);box-shadow:inset 0 1px 0 var(--key-hi),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent)}
+.m-cabin .cb-now-head{min-height:30px}
+.m-cabin .cb-now-head .cb-now-l{font-size:var(--hud-min);letter-spacing:.06em}
+.m-cabin .cb-now-head .cb-now-title{font-size:var(--hud-min)}
+.m-cabin .cb-now-step{font-size:var(--text-lg)}
+.m-cabin .cb-now.is-takeover .cb-now-step{font-size:22px}
+.m-cabin :is(.cb-now-meta,.cb-now-say,.cb-now-hint,.cb-now-why,.cb-now-ros,.cb-now-lesson,.cb-now-ack){font-size:var(--hud-min)}
+.m-cabin .cb-now-b{font-size:var(--hud-min);min-height:48px}
+.m-cabin .cb-now-bl small,.m-cabin .cb-now-b kbd{font-size:var(--hud-min)}
+.m-cabin .cb-now-b kbd{min-width:26px;height:26px}
+.m-cabin .cb-now-ring{width:30px;height:30px}
+.m-cabin .cb-now-steps i{width:16px;height:5px}
+/* the window's own read-outs: the alert strip, the rover pill, the Earth note, the story moment's eyebrow */
+.m-cabin .cb-alert{font-size:var(--hud-min);min-height:52px}
+.m-cabin .cb-alert b{font-size:var(--hud-min)}
+.m-cabin .cb-al-conf{font-size:var(--hud-min)}
+.m-cabin .cb-rover{font-size:var(--hud-min);padding:4px 14px}
+.m-cabin .cb-moment small{font-size:var(--hud-min)}
+.m-cabin .tv-mark{font-size:16px;margin:-12px 0 0 10px;padding:4px 8px}
+.m-cabin .tv-tag{font-size:var(--hud-min)}
+.m-cabin .tv-credit{font-size:13px}
+
+/* 4. the real Sun in the storm strip (SDO, 14 May 2024), and on the Radiation console */
+.cb-alert.has-sun{min-height:64px;padding-left:8px}
+.cb-al-sun{flex:none;width:52px;height:52px;border-radius:50%;overflow:hidden;background:#000;box-shadow:0 0 0 2px color-mix(in srgb,var(--color-lamp-caution) 55%,transparent),0 0 18px color-mix(in srgb,var(--color-lamp-caution) 40%,transparent)}
+.cb-al-sun img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.12)}
+.cb-al-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.cb-al-l1{display:flex;align-items:center;gap:12px;min-width:0}
+.cb-al-sunc{display:block;font-size:var(--hud-min,18px);line-height:1.2;color:var(--color-on-space-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-radtop{display:flex;align-items:flex-start;gap:var(--space-3);min-width:0}
+.cb-radtop>.cb-info{flex:1;min-width:0}
+.cb-sunmon{flex:0 0 auto;margin:0;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:210px;text-align:center}
+.cb-sunmon[hidden]{display:none}
+.cb-sunmon img{width:96px;height:96px;border-radius:50%;object-fit:cover;background:#000;box-shadow:0 0 0 3px var(--color-display),0 0 22px color-mix(in srgb,var(--color-lamp-caution) 35%,transparent)}
+.cb-sunmon figcaption{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:18px;line-height:1.15;color:var(--color-on-space-2)}
+.cb-sunmon figcaption b{color:var(--color-on-space);font-weight:var(--weight-semibold)}
+.cb-sun-time{font-family:var(--font-mono);font-size:18px;color:var(--color-phosphor-dim)}
+.c3[data-panel="seat"] .c3-panel[data-panel="radiation"] .cb-radtop{justify-content:center}
+
+/* 5. the Earth view with Earth below the horizon: a small inset with the real Earthrise / Earthset photo */
+.m-cabin .cb-earthnote{font-size:var(--hud-min)}
+.m-cabin .cb-earthnote.is-inset{left:auto;right:var(--space-4);top:auto;bottom:calc(var(--space-4) + 40px);transform:none;align-items:stretch;gap:12px;padding:8px 14px 8px 8px;max-width:min(52%,440px)}
+.m-cabin .cb-hole>.cb-earthnote.is-inset{right:calc(var(--inset, 16px) + 4px);bottom:calc(var(--inset, 16px) * .6 + 52px)}
+.cb-ei-img{flex:none;width:132px;height:96px;object-fit:cover;object-position:50% 68%;border-radius:6px;background:#000;box-shadow:0 0 0 1px var(--cb-line)}
+.cb-ei-img.is-earthset{object-fit:contain}
+.cb-ei-t{display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0}
+.cb-ei-t b{font-size:var(--text-lg);line-height:1.2}
+.cb-ei-el{display:inline-flex;align-items:center;gap:6px;color:var(--color-on-space-2)}
+.cb-ei-arrow{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:color-mix(in srgb,var(--color-lamp-info) 22%,transparent);color:var(--color-lamp-info)}
+.cb-ei-arrow.is-down{background:color-mix(in srgb,var(--color-on-space-2) 18%,transparent);color:var(--color-on-space-2)}
+.cb-ei-c{font-size:13px;color:var(--color-on-space-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* 6. the Rover console: its status ("Parked", "Ice run · back in 6 h") sits at the top (cabin.js), never under the
+   CAPCOM strip at the bottom of the screen */
+.m-cabin .cb-deck .cb-prog .pg b .pg-aboard{color:var(--color-phosphor)}
+/* the Seat key (a panel is open) sits under the bar, right of the Now card: never on the folded header */
+.m-cabin .c3-back{top:calc(var(--rail) * 2 + var(--deck-h));left:calc(var(--rail) * 2 + var(--now-w));min-height:44px;font-size:var(--hud-min)}
+/* the sky line in a narrow bar (the check ride): one line that ends in "…", never cut mid-word */
+.m-cabin .cb-deck .cb-sky{display:block;min-width:0;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-cabin .cb-deck .cb-sky span+span{margin-left:12px}
+.m-cabin .cb-dsp-a{overflow:hidden}
+@media (max-width:1200px){.m-cabin:not(.a-ridecabin) .cb-deck .cb-sky{display:none}}
+/* [0.4] the cabin is taller without the header row (the seat view's field of view changed): the pedestal's lamp legends
+   stay ≥ 12 px on screen at 1280×720 (tools/mission_ui.py console_text_checks) */
+.c3 .c3-panel[data-panel="pedestal"] .cb-lamp{font-size:28.5px;letter-spacing:-.01em}
+.m-cabin .cb-deck .cb-state{flex-shrink:0}
+.m-cabin .cb-now :is(.cb-now-b,.cb-now-bl){font-size:var(--hud-min)}
+.m-cabin .cb-deck .cb-logbtn small{font-size:var(--hud-min)}
+/* the check ride's bar is short (the lesson card takes the right of the screen): the header keys get compact and the
+   clock always fits; the sky line goes first */
+body[data-cockpit="1"][data-ride="1"] .topbar .brand{display:none}
+body[data-cockpit="1"][data-ride="1"] .topbar .modes button{padding:0 10px;font-size:15px}
+body[data-cockpit="1"][data-ride="1"] .topbar .topnav .btn-icon{width:40px}
+.m-cabin.a-ridecabin .cb-deck .cb-clock{flex-shrink:0}
+@media (max-width:1366px){.m-cabin.a-ridecabin .cb-deck .cb-sky{display:none}}

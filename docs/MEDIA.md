@@ -159,7 +159,17 @@ const lm = await loadModel(model("apollo_lm").url);   // a THREE.Group (meshopt 
   `setPolarCap` (below).
 - **Library**: a "Moon rocks" button in the toolbar opens the tray (`media/rocks_tray.js`): the six samples and the NASA
   hardware models in a drag-to-turn viewer, with name, mission, type, a short story and the credit link.
-- **Cabin (later step)**: Earthrise / Earthset and the SDO storm frames are ready through `image()` / `sdoFrames()`.
+- **Cabin** (0.4 part 2, `mission/cabin_views.js`, the only cabin module that reads the pack):
+  - **Earth view, Earth below the horizon**: a small inset with the real photo (Apollo 8's Earthrise `AS08-14-2383` while
+    Earth is on its way up; Artemis II's Earthset once it is setting or won't rise again this mission), "Earth rises
+    Day N" (the sim's `next_comm_window_h`, JPL Horizons) and an arrow with the elevation and its trend. With Earth up,
+    the window's long lens shows the Blue Marble Earth as before. Without the pack: the plain note.
+  - **Storms** (missions and the check ride): the alert strip shows the SDO frames of 14 May 2024 as a small looping
+    Sun with "The actual Sun, 14 May 2024 · NASA/SDO"; the Radiation console has a bigger Sun monitor while a storm is on
+    or forecast. Less motion holds the flare frame (16:55 UTC). Without the pack: the storm icon.
+  - **Site view**: NASA's Habitat Demonstration Unit (`hdu.glb`, fitted to 13 m, `terrain.js fitHabitat`) replaces the
+    cylinder modules (`terrain.habitat` says which is showing); the solar arrays read lit from either side (a faint
+    self-lit cell grid, a light substrate), never as black slabs.
 - **IAU names** (`names/moon_names.json`, 216 features south of 75°S and near the Apollo sites): shipped, not wired.
   TODO(names): feed them to the entity registry / the ear's name lists (backend/app/entities, docs/ENTITY_LAYER.md);
   that touches the Director's gazetteer and its evals, so it is its own change.
@@ -167,9 +177,10 @@ const lm = await loadModel(model("apollo_lm").url);   // a THREE.Group (meshopt 
 **Sharp south pole** (UX_ROUNDS round-3 queue: the picker's blurry, over-zoomed pole): `setPolarCap` drapes the site
 navigator's LOLA shaded relief (`site_layers` asset, `relief.png`, south polar stereographic ±210 km, the same projection
 as the navigator's map) over the globe's polar texels, tone-matched to the colour map and faded at its edge. It needs
-only `site_layers` (not `nasa_views`), and is on for every screen that shows the globe. Still open for the cabin
-redesign: the Mission picker flies with `flyTo`'s default 75° clamp (`mission.setSite`), so it sees the pole at a
-slant; passing `{ clamp: false }` (as `poleView` does) would look straight down on the now-sharp relief.
+only `site_layers` (not `nasa_views`), and is on for every screen that shows the globe. The Mission hub and briefing
+(0.4 part 2) look straight down on it: `mission.setSite(site, { clamp: false })` and `flyTo(-89, 0, 1.3, { clamp: false })`
+(`ui.js PICK_VIEW`), with the view's centre shifted into the free area left of the side panel
+(`globe.setViewport(band, xFrac)`) and the site's name on its dot.
 
 ## Lesson step (course.json)
 

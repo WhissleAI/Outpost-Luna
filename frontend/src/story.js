@@ -125,7 +125,7 @@ export const COACH = {
   now: { keys: "Your job is always here. Press T to do it.", pad: "Your job is always here. Go up to it, press A.",
     touch: "Your job is always here. Tap it, or say “yes”." },
   time: { keys: "Time runs by itself. Hold F to speed it up.", pad: "Time runs by itself. Hold RT to speed it up.",
-    touch: "Time runs by itself. Hold Skip ahead to speed it up." },
+    touch: "Time runs by itself. Hold Skip to speed it up." },
   menu: { keys: "Esc pauses. The menu has speed and restart.", pad: "Start pauses. The menu has speed and restart.",
     touch: "Menu pauses. It has speed and restart." },
 };

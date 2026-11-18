@@ -114,6 +114,9 @@ test("the globe keeps the random stars until the real sky has loaded, and every 
   assert.match(src, /scene\.add\(skyMesh\); starPts\.visible = false; res\(true\);/, "the points hide only once the map is in");
   assert.match(src, /\(\) => res\(false\)\)\);   \/\/ a failed load keeps the random stars/);
   for (const k of ["setSky", "setPolarCap", "setHardwareModels", "setOrbiters"]) assert.match(src, new RegExp(`\\b${k},`));
-  const cabin = ["cabin.css", "mission/cabin.js", "mission/cockpit.js", "mission/cockpit3d.js"];
+  // [0.4 part 2] the cabin uses the pack only through mission/cabin_views.js (tests/cabin_views.test.js); the 3D cabin and
+  // its CSS never touch it
+  const cabin = ["cabin.css", "mission/cockpit.js", "mission/cockpit3d.js"];
   for (const f of cabin) assert.doesNotMatch(readFileSync(new URL("../src/" + f, import.meta.url), "utf8"), /nasa_views|views_wire/, f);
+  assert.doesNotMatch(readFileSync(new URL("../src/mission/cabin.js", import.meta.url), "utf8"), /from "\.\.\/media\/nasa_views\.js"|views_wire/);
 });
