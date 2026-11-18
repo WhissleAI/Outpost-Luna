@@ -184,17 +184,20 @@ downloads its models from Dropbox into `%APPDATA%\Outpost Luna\assets\`:
 | `embedder` | MiniLM (the local brain's embedder) | 23 MB | first launch, required |
 | `voice` | the recorded Nora voice pack (889 lines) | 14 MB | first launch, required |
 | `crew` | the Artemis II crew audio | 175 MB | in the background, after the window opens |
-| `videos` | the 8 saved NASA videos | 199 MB | in the background, after the window opens |
+| `videos` | the video pack: 14 NASA videos with captions and posters (38 files) | 425 MB | in the background, after the window opens |
+| `site_layers` | the site navigator's polar map layers (NASA LRO) | 20 MB | in the background, optional |
 | `steer` | the Steer TTS voice | 13 MB | only when you pick Steer in Settings → Voice |
 
-So the first launch needs **510 MB** before the app opens, then about **375 MB more** in the background. Each file is
-checked against its sha256 before it is installed. You can:
+So the first launch needs **510 MB** before the app opens (one time; the screen shows the total, the speed and the time
+left), then about **620 MB more** in the background. After that the app is fully offline: every lesson video plays from
+the pack. Each file is checked against its sha256 before it is installed. You can:
 
 - Watch the progress. The app opens by itself when the four required assets are in.
 - Click **Continue later**. The app quits, and the next launch resumes where it stopped (it doesn't start from 0).
 - Click **Try again** after a network error.
-- Click **Import offline pack…** and pick `outpost-luna-assets-v2.zip` (885 MB: all six assets except Steer). This
-  works with no network at all. Get the zip on another computer (or from a USB stick):
+- Click **Import offline pack…** and pick `outpost-luna-assets-v2.zip` (885 MB: the four required assets, the crew
+  audio and an earlier 8-video set of 199 MB; not Steer or the map layers). This works with no network at all; the
+  rest of the 14-video pack downloads the next time the computer is online. Get the zip on another computer (or from a USB stick):
   [outpost-luna-assets-v2.zip](https://www.dropbox.com/scl/fi/h88nx83klw5i6s6a70ku1/outpost-luna-assets-v2.zip?rlkey=v4446k5cn0csua1a046jl1rn5&dl=1)
   (sha256 `aa0961fbcd6caf7efffe78ff443710a560a885b1afc9f53c74249f0b436d5e8d`).
 
@@ -268,8 +271,9 @@ Do it once with Wi-Fi **on**, then start the app again with Wi-Fi **off**. Note 
     - Swipe an open hand: next or back.
     - **Turn off** in the chip: the webcam light goes off.
     Note the "N frames a second" figure: ___.
-11. **Videos.** Open a lesson with a NASA video. A saved NASA video plays in the app's own player, even with Wi-Fi off.
-    A NASA YouTube clip plays as an embed when online, and says "Needs internet" when offline. Click the YouTube logo
+11. **Videos.** Open a lesson with a NASA video. Every NASA video (14, from the video pack) plays in the app's own
+    player, even with Wi-Fi off. The two optional YouTube extras play as an embed when online, and say "Needs
+    internet" when offline. Click the YouTube logo
     or "Watch on YouTube": a grown-up gate must appear (hold for 3 s), and only then does the browser open. Esc closes
     a video.
 12. **Reset.** Fly a lesson first. Then go to Settings → Reset (the last item):
@@ -337,14 +341,15 @@ Add `--clobber` to replace a file that is already attached. Keep the name as it 
 ## 10. Known limitations
 
 - **Unsigned.** There is no Authenticode certificate yet, so SmartScreen warns once (§5).
-- **First launch needs the internet, or the offline pack.** 510 MB before the app opens; 375 MB more in the
-  background; Steer another 13 MB when picked.
+- **First launch needs the internet, or the offline pack.** 510 MB before the app opens; about 620 MB more in
+  the background (crew audio, the 14-video NASA pack, map layers); Steer another 13 MB when picked.
 - **NSIS 2 GB limit.** An NSIS installer can't hold more than 2 GB. The 0.3 app is **783 MB uncompressed**
   (`dist\win-unpacked`, 7,896 files, measured 2026-11-15), well under it, because the models are no longer bundled.
   (0.1.x bundled them: 1,620 MB.) Compressed, the installer is 192 MB.
 - **x64 only.** There is no ARM64 build.
-- **No app icon yet.** The app shows Electron's default icon, on the Mac too (`desktop/build-resources` has none).
-  A cross-built installer (§12) also lacks the version details, because it is built without Wine.
+- **App icon: native builds only.** The Outpost Luna badge is in `desktop/build-resources` (`icon.ico`, `icon.icns`)
+  and a native Windows build uses it. A cross-built installer (§12) keeps Electron's icon and lacks the version
+  details, because it is built without Wine.
 - **Downloads ignore system proxies.** On a network that only allows a proxy, use the offline pack.
 - **Voices.** The computer's voices come from Windows itself. You can add better ones in Settings → Time & language →
   Speech → Manage voices; they appear in the app within 30 s.
