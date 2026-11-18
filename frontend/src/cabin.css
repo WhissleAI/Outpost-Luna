@@ -952,7 +952,7 @@ html[data-motion="reduce"] .m-cabin>.cb-coach{animation:none}
 @keyframes cbPatchNew{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 4px var(--color-phosphor),0 0 22px var(--color-phosphor)}}
 html[data-motion="reduce"] .cb-patchkey.is-new{animation:none;box-shadow:0 0 0 4px var(--color-phosphor)}
 @media (prefers-reduced-motion:reduce){.cb-patchkey.is-new{animation:none;box-shadow:0 0 0 4px var(--color-phosphor)}}
-.m-cabin .cb>.cb-patchpop{position:absolute;z-index:7;width:min(380px,calc(100% - 24px));max-height:min(70vh,560px);overflow:auto;box-sizing:border-box;
+.m-cabin .cb>.cb-patchpop{position:absolute;z-index:9;width:min(380px,calc(100% - 24px));max-height:min(70vh,560px);overflow:auto;box-sizing:border-box;
   display:flex;flex-direction:column;gap:8px;padding:10px 14px 14px;border-radius:12px;background:color-mix(in srgb,var(--color-panel) 97%,transparent);
   border:1px solid var(--key-edge);color:var(--color-on-space);box-shadow:0 10px 28px color-mix(in srgb,#000 50%,transparent)}
 .m-cabin .cb>.cb-patchpop[hidden]{display:none}

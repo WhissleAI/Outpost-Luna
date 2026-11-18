@@ -449,6 +449,8 @@ export function createCabin(root, o = {}) {
   function openPatches(fromKey) {
     const pop = q("#cbPatchPop"), key = q("#cbPatchKey"); if (!pop || !patchList.length) return;
     pop.hidden = false; key.setAttribute("aria-expanded", "true"); key.classList.add("is-open"); paintPatchPop(); placePatches();
+    // opening it from the seat dollies the camera to the Habitat console: follow the key until the camera settles
+    [250, 600, 1100].forEach(ms => setTimeout(placePatches, ms));
     if (fromKey) { const x = q("#cbPatchPopX"); if (x) x.focus({ preventScroll: true }); }   // shown now: focus moves at once
   }
   /** The card sits beside its key (the Habitat console, wherever the camera has it), inside the cabin, under the deck. */

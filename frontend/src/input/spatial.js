@@ -297,6 +297,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const set = shown(".a11y-panel"); if (set) return { id: "settings", roots: [set] };
     const modal = shown(".gx-calib, [role=dialog][aria-modal=true]"); if (modal) return { id: "modal", roots: [modal] };
     const gl = shown(".hl-card"); if (gl && gl.contains(doc.activeElement)) return { id: "glossary", roots: [gl] };
+    // the cockpit's patch card (mission/patches.js): it sits over the cabin, outside the open Habitat console, so it
+    // holds focus while focus is in it (else the open panel's scope pulled focus straight back to a switch)
+    const pc = shown(".cb-patchpop"); if (pc && pc.contains(doc.activeElement)) return { id: "patches", roots: [pc] };
     // the first-mission cabin tour (mission/tour.js): its card holds focus (Next, Skip tour) until it ends
     const tour = shown(".m-tour"); if (tour) return { id: "tour", roots: [tour] };
     if (in3d()) {
