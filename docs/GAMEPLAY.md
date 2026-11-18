@@ -67,8 +67,9 @@ results. `tools/strategy_sim.py --clock shift|live|event` plays every policy und
 | event, Commander | 1.00 / 627 | 370 (always_shelter) | 0.00 | 0.40 |
 | event, Cadet | 1.00 / 589 | 380 (rover_spam) | 0.00 | — |
 
-The policies never touch a task. Task rewards are small (+2 science per sample or logged reading, a few per mission),
-and the kid only gets them by pressing. Only the kid's own play can earn them, so no fixed rule gains from them.
+The policies never touch a task. Task rewards are small (+2 science per logged reading, 0.5 to 2.5 per sample
+station, +2 for the science stop's rock, a few per mission), and the kid only gets them by pressing. Only the kid's own
+play can earn them, so no fixed rule gains from them. The table above is the older tuning; §13.4 has today's numbers.
 
 ## 3. Tasks (`backend/app/mission/gameplay.py`)
 
@@ -91,9 +92,10 @@ Tasks come from the sim state and the goals, never at random. Each step is one o
 | Save power (Cmdr) | battery < 20% | Science down to 5 (or night mode) | — | 4 |
 | Life support check | air < 55% | Cadet: air system to 40, else send the rover for ice; Cmdr: choice Recycler up / Ice run | LCROSS ice | 6 Air, water and ice |
 | Comm window | Earth up with science waiting | Radio to 10 (downlink) → call Houston. Countdown = Earth sets. | Horizons Earth elevation; 1.3 s each way | 3 Radio |
-| Ice run (rover drive) | ice goal open, calm, rover parked | Cadet: send the rover. Cmdr: pick a route on the **LOLA slope map** (Ridge: flat, +2 h, −2% battery; Crater slope: −2 h, +3% battery). Then **steer past the boulders** (left/right; the slope-map hint names the flatter side; right saves 1 h, wrong costs 1 h, no answer = the rover finds its own way). Then the rover comes back with ice. Readouts: ETA, battery, dose rate. | LRO LOLA slopes plan real traverses (VIPER) | 6 |
+| Ice run (rover drive) | ice goal open, calm, rover parked | Cadet: send the rover. Cmdr: pick a route on the **LOLA slope map** (Ridge: flat, +2 h, −2% battery; Crater slope: −2 h, +3% battery). Then **steer past the boulders** (left/right; the slope-map hint names the flatter side; right saves 1 h, wrong costs 1 h, no answer = the rover finds its own way). [0.5] The **low-Sun calls** (§13.2): tack away from the glare, lights on before the shadow. Then the rover comes back with ice. Readouts: ETA, battery, dose rate, the Sun, the shadow. | LRO LOLA slopes plan real traverses (VIPER); NTRS 20240011393 | 6; Field: Eyes of a geologist |
+| Science stop (§13.3) | mid rover drive, Earth up, the drive's calls made (once a mission) | Pick what to give up for 15 min at a bright rock (the drive's light margin / one sample), then read back Flight's call | JETT5 science ops | Field: Moon rocks tell time |
 | Fix the solar array (Cmdr) | the micrometeorite failure | Check the array → send the rover → test the power | — | 4 |
-| Take a sample / Read the radiation sensor | nothing else to do (every 8 h; Cadet ≤ 4, Cmdr ≤ 6) | Sample (+2 science). Cmdr alternates: read the sensor, then log it Normal / High (+2 if right; quiet Sun < 0.1 mSv/h) | Chang'e 4 LND baseline | 1 Moon / 5 |
+| Sample station / Read the radiation sensor | nothing else to do (every 8 h; Cadet ≤ 4, Cmdr ≤ 6) | [0.5] The **sample station** (§13.1): pick the tool, describe it in one line, call in the bag number (0.5 to 2.5 science). The sensor: read it, then log it Normal / High (+2 if right; quiet Sun < 0.1 mSv/h) | Artemis sampling (Naids 2021); Chang'e 4 LND baseline | Field: Field kit / 5 |
 
 Cadet gets fewer, simpler tasks with big buttons (no repair, no low-power task, no sensor quiz, no route choice).
 Commander gets the trade-offs. A task with a deadline that passes is logged as missed. A storm prep the storm overtakes
@@ -314,3 +316,116 @@ one press away) and 5 (the 12-step tour only in Help).
 - **Cadet site briefing**: three bars (sun, radio, ice) and three lines per site in mission days; the scores, presets
   and sources behind "More". Commander and Engineer keep the full navigator.
 - **Earth view** with Earth below the horizon says so, and the day it rises.
+
+## 13. Field School in the mission: three tasks (0.5 part 2, `feat/05-mission-field`)
+
+Field School (docs/LEARNING_DESIGN.md §12) teaches what crews go out to do. These three mission tasks use it. Each is
+voice-first, with tap and keys that do the same thing. Each is tied to its Field School lesson: the Now card says
+"Field School: Field kit" where a core task says "Lesson 5 helps here". A step can carry its own lesson, so the ice
+run's glare and lights calls point at Eyes of a geologist. The clock holds while the kid decides, describes or reads
+back (`State.task.decision` covers the new step kinds, so `held()` reads "choice"). No step is a fail state.
+
+**Two new step kinds** (`gameplay.py`, beside order, choice, press and wait). They reuse Field School's graders
+(`academy/grade.py`):
+
+- **describe**: the kid's own words, graded on the descriptor kinds they cover (size, shape, bright or dark, texture,
+  shadows). A turn that adds a kind is progress, never a miss ("Good: size. What shape is it?"). The buttons are
+  chips (the sample's own words, such as "Fist-size", "Rounded" or "Bright", one per kind still missing) and
+  **Bag it**. Three kinds end the step by themselves.
+- **sequence**: a readback in order (the items' names in the words, over one turn or several). Its one button reads
+  it back ("Bag 14", "Read it back").
+
+Voice gets to both kinds through the router. When the screen frame carries `step_type: describe | sequence`
+(`ui.js screenFrame`), any cabin turn that isn't a clock or panel word comes back as `task_choice` with the text
+(`turn_router.TASK_FREE`). The card then sends `{"type": "task", "task", "step", "text"}`. A chip or button sends
+`choice`. A plain press finishes the step with what it has. Keys 1 to 4 reach every button, because a describe card
+shows at most three chips plus Bag it.
+
+### 13.1 Sample station (lesson: Field kit)
+
+This replaces the "Take a sample" +2 press: the "sample" turn of the science rotation is now the station. Basis:
+Artemis sampling (Naids et al. 2021: rake, tongs, hammer, scoop, drive tube, numbered bags) and the station order the
+lesson teaches (photo, describe, sample, bag, call it in).
+
+| Step | Kind | What the kid does | Effect |
+|---|---|---|---|
+| Which tool? | choice | "A fist-size rock. Which tool?" Cadet sees 3 tools, Commander 4 (pebbles: rake; a rock: tongs; a boulder: hammer; soil: scoop; layers: drive tube) | A wrong pick teaches ("Rake? Tongs grab one rock.") and the job goes on |
+| Describe it in one line | describe | "It's small and round and really bright", or tap the chips | Kinds covered, up to 3 |
+| Call it in: bag 14 | sequence | "Bag fourteen", or the Bag 14 button | CAPCOM reads it back: "Copy, bag 14: tongs, size, shape and bright or dark. Science +2.5." (Earth down: "Logged: bag 14, tongs. Science +2.5, saved for Earthrise.") |
+
+**Science** = 0.5 for the bagged sample, + 0.5 for the right tool, + 0.5 per descriptor kind (up to 3). That makes
+0.5 to 2.5 per station, where the old press gave +2. A first-time player who presses the first button of every card
+gets 2.0 (three chips), so the playtest's 120 goal still holds (`tests/test_mission_playtest.py`). The card's readout
+shows "Science +2 so far". Bag numbers and the target are seeded per mission and station.
+
+### 13.2 The low-Sun drive (lesson: Eyes of a geologist)
+
+This extends the ice run's existing route and boulder steering; it doesn't duplicate them. Basis: NASA's south-pole
+lighting study (Litaker et al., NTRS 20240011393). The Sun sits 1–2° up. Glare and long shadows hide hazards, so
+drivers tack ±20–30° off the sunline, and lights go on before the rover enters shadow. The navigator calls the
+direction while the driver watches the terrain. The cadet is the navigator.
+
+- **Tack left or right?** ("Glare: Sun 41° left. Tack left or right?": the bearing is in the line, because a small
+  window drops the card's readouts first) The Sun's place is real: its elevation comes
+  from JPL Horizons at the site, it must clear the real LOLA skyline, and its bearing off the nose uses the window's
+  own azimuth convention (`terrain.js sunLon`, the route toward the Shackleton floor). The readout says "Sun 12° left,
+  1.4° up" (or "on the horizon"). The right call is away from the Sun; within 2° of the nose either way works.
+  - The glare comes on the leg that faces the Sun: going out to the crater, or coming home (the opposite heading).
+    With the Sun more than 60° off both headings, or below the skyline (the Shackleton floor never sees it), the ice
+    run has no tack step.
+  - Right: "Sun off the nose. The drivers can see." (no cost). Wrong: +1 h on the drive.
+- **Lights on** ("Shadow ahead. Lights on before we enter.", one option, so "lights" says it). The call opens 2 h
+  before the rover reaches the crater's shadow (the ice is in permanent shadow, `rover_to_ice_h` out). The readout
+  says "Shadow in 2 h".
+- **No call:** once a call is the card's step and ready, 2 h without it costs the drive: the driver slows in the glare
+  (+1 h), or the rover stops at the shadow's edge (+1 h, −1% battery). That cost is sim-consistent: a longer drive
+  means more crew time outside (EVA dose ×1.5) and later ice. It is never a fail state. On the live clock the choice
+  holds time, so only skips (and the policies) ever miss a call.
+
+### 13.3 The science team's replan (lesson: Moon rocks tell time)
+
+Basis: JETT5 science ops. The science room asks for more time at a stop, the Flight Director approves, one CAPCOM
+voice relays, and adding time at one stop costs time elsewhere.
+
+- **When:** a rover drive (ice or science) is 4 h or more out with at least 2 h to go, Earth is up (the science room
+  is on Earth, so there's no replan behind the Moon), it's calm, and the drive's own calls are made. Once a mission.
+- **CAPCOM** (the task's line, one voice): "Science Officer: unusual bright rock. The science room asks for 15
+  minutes."
+- **Choice** "15 min at the bright rock. What do we give up?" The numbers come from the sim:
+  - **Use the margin**: the hint is the light margin, meaning the hours of Sun (Horizons on the LOLA skyline) left
+    after the rover's ETA ("Light margin 5 h."; "Sun stays up all day."; "Sun is down: no margin.").
+  - **Drop a sample**: "−2 science later." (or "No samples left. Free."). It uses up one of
+    the mission's science jobs.
+  - Flight keeps at least 2 h of light. With less, choosing the margin gets "Flight: negative, sunset in 4 h. We skip
+    one sample instead." A roomy margin takes the 15 minutes (`rover.late_min`; every 60 adds an hour to the
+    ETA).
+- **Readback** "Flight approves. Read back: 15 minutes at the rock, copy." By voice, the three parts in order, over one
+  turn or several ("Copy 15 minutes. Then: at the rock."), or the Read it back button. Done: "Readback correct. Bright
+  rock bagged: maybe anorthosite. Science +2."
+
+### 13.4 Balance (tools/strategy_sim.py, 10 seeds × 5 sites)
+
+The policies never touch tasks. The only change they see is the nav-call cost on a Cadet ice run they send (the
+"send" step latches on their dispatch). Scores against `origin/main`, before → after:
+
+| Clock, level | planner | cautious | best fixed rule (rover_spam) |
+|---|---|---|---|
+| live, Commander | 599 → 599 | 591 → 591 | 181 → 181 |
+| event, Commander | 598 → 597 | 585 → 585 | 181 → 181 |
+| live, Cadet | 619 → 619 | 610 → 610 | 164 → 164 |
+| event, Cadet | 620 → 618 | 608 → 607 | 164 → 164 |
+
+`tests/test_strategy.py` passes under all three clocks. Reading the data still beats every fixed rule by more than 150.
+
+### 13.5 Verify
+
+- `backend/tests/test_gameplay.py`:
+  - the station: tool, describe by voice and by chips, bag number by words, points, a lazy station;
+  - the low-Sun drive: the right tack is free, a wrong or missed call costs an hour, lights before the shadow, the
+    Sun from real data, and the glare leg varies by site and time;
+  - the replan: the hints carry the sim's numbers, the readback over two turns, Flight's no with no margin, never
+    without Earth, once a mission;
+  - the router: free text reaches `task_choice`, while clock words still win.
+- `backend/tests/test_mission_playtest.py`: a first-time player who presses the first button still earns every star.
+- `frontend/tests/gameplay.test.js`: the three cards (choices, free steps, the say line, the field lesson chip, copy
+  budgets).

@@ -757,8 +757,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   /** "left", "the ridge", "shelter now": the card's choice that names it. */
   function pickChoice(label) {
     const c = state && cardNow(); if (!c || !c.choice) return false;
-    const l = String(label || "").toLowerCase(), b = c.buttons.find(x => x.label.toLowerCase() === l) || c.buttons.find(x => l && x.label.toLowerCase().includes(l));
-    return b ? taskButton(b) : false;
+    const l = String(label || "").toLowerCase(), b = c.buttons.find(x => x.label.toLowerCase() === l) || (!c.free && c.buttons.find(x => l && x.label.toLowerCase().includes(l)));
+    if (b) return taskButton(b);
+    // [0.5 field] a describe / readback step: the words themselves go to the task ("a big round rock", "bag fourteen")
+    if (c.free && l.trim() && c.step && c.task) { nudge.heard(); coach.did("now"); run({ type: "task", task: c.task, step: c.step.id, text: String(label) }); return true; }
+    return false;
   }
   /** The Now card + the glow on its control + (Cadet) the one bright panel + the ack and the new-task line. */
   function renderCard() {
@@ -1352,7 +1355,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (tour.active) return { screen: "cabin", offer: "tour" };
       const c = state && !pending ? cardNow() : null;
       // a job on the Now card is an offer: "yes" / "do it" presses its button; a choice's words pick it
-      if (c && (c.buttons || []).length && (c.progress || (c.offer && !c.buttons.some(b => b.intent)))) return { screen: "cabin", offer: "task", step_options: c.choice ? c.buttons.map(b => b.label) : [] };
+      if (c && (c.buttons || []).length && (c.progress || (c.offer && !c.buttons.some(b => b.intent)))) return { screen: "cabin", offer: "task", step_options: c.choice ? c.buttons.map(b => b.label) : [], ...(c.free ? { step_type: c.free } : {}) };
       return { screen: "cabin" };
     }
     if (screen === "debrief") return { screen: "debrief", offer: pendingWipe ? "confirm_wipe" : "fly_again" };

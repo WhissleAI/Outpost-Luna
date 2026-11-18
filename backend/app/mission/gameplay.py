@@ -31,10 +31,14 @@ def _lesson_order() -> tuple[dict, dict]:
     from pathlib import Path
     c = json.loads((Path(__file__).resolve().parents[2] / "data" / "academy" / "course.json").read_text())
     ls = [l for l in c["lessons"] if not l.get("ride") and l.get("track", "core") == "core"]   # core lessons only
-    return {l["id"]: k + 1 for k, l in enumerate(ls)}, {l["id"]: l["title"] for l in ls}
+    # [0.5 field] Field School lessons (after the check ride) are named, not numbered: "Field School: Field kit"
+    fs = [l for l in c["lessons"] if l.get("track") == "field"]
+    return ({l["id"]: k + 1 for k, l in enumerate(ls)},
+            {l["id"]: l["title"] for l in ls + fs})
 
 
 LESSON_NO, LESSON_TITLE = _lesson_order()
+FIELD_LESSONS = {"observe", "craters", "rocks", "fieldkit"}
 SAMPLE_SCIENCE = 2.0       # a sample or a logged sensor reading: small, and only when the kid does it
 SCIENCE_TASKS = {"cadet": 4, "commander": 6}
 SCIENCE_EVERY_H = 8
@@ -43,6 +47,25 @@ EXPLORE_EVERY_H = 12
 STEER_AFTER_H = 2          # the boulder field comes up this far into an ice drive
 STEER_WAIT_H = 2           # ...and the rover picks its own way if nobody steers in time
 SHELTER_LEAD_H = 6         # storm prep: the shelter step opens this many hours before a likely storm
+# [0.5 field] mission tasks from Field School (docs/GAMEPLAY.md §13): the sample station, the low-Sun drive's navigator
+# calls and the science team's replan. Rewards stay small (a station is worth 0.5 to 2.5 science; a nav call only
+# avoids a cost) and come only from the kid's own presses, so tests/test_strategy.py's guarantees hold.
+STATION_BAG = 0.5          # a bagged, called-in sample
+STATION_TOOL = 0.5         # ...with the right tool
+STATION_KIND = 0.5         # ...per descriptor kind in the one-line description (size, shape, bright or dark, texture)
+STATION_KINDS = 3          # kinds that count (the Lunar Log Card's three); three ends the describe step by itself
+TACK_AT_H = 1              # the low-Sun leg: an hour out, the route turns into the Sun (NTRS 20240011393)
+DEAD_AHEAD = 2             # degrees: the Sun on the nose, where a tack either way clears it
+GLARE_CONE = 60            # degrees either side of the nose where a 1-2 degree Sun blinds the drivers' cameras
+LIGHTS_LEAD_H = 2          # the lights call opens this long before the rover reaches the crater's shadow
+NAV_WAIT_H = 2             # a nav call nobody makes within this many hours costs the drive (never a fail state)
+NAV_COST_H = 1             # a wrong or missed call: the rover slows (glare) or stops at the shadow's edge
+LIGHTS_COST_PCT = 1.0      # ...and recharges after a stop in the dark
+ROCK_AT_H = 4              # the science team's rock comes up this far into a drive
+REPLAN_MIN = 15            # minutes the science room asks for (JETT5: more time at a stop costs time elsewhere)
+REPLAN_MARGIN_H = 2        # Flight keeps at least this much light margin on a drive
+REPLAN_MAX = 1             # once a mission
+ROCK_SCIENCE = 2.0         # the bright rock, read back and bagged
 RECYCLER_MAX = 60          # the life check never offers the recycler past this (ice is the answer then)
 LIFE_CHECK = 55            # air under this: the life support check (ice, or more recycler power)
 QUIET_RATE = 0.1           # mSv/h: under this the sensor reads "normal" (the quiet-Sun baseline is ~0.06 game)
@@ -390,10 +413,225 @@ def _ice_run(m):
                     ready=lambda m, t: out_for(m) >= STEER_AFTER_H,
                     hint=f"LOLA slope map: the {good} side is flatter.")
     steer["good"] = good
+    # [0.5 field] the low-Sun drive (NASA south-pole lighting study, NTRS 20240011393): the cadet is the navigator.
+    # The Sun sits 1-2 degrees up; where the route turns into it, the drivers tack 20-30 degrees off the sunline, and
+    # they turn the lights on BEFORE the crater's shadow, where hazards hide. A wrong or missed call costs an hour.
+    # The glare comes on the leg that faces the Sun: out to the crater, or back home (the opposite heading). With the
+    # Sun to the side or below the skyline there is no glare call (and no step for it).
+    leg = _glare_leg(m)
+    tack_at = TACK_AT_H if leg == "out" else _shadow_h(m) + 1
+    tack = _choice("tack", "Glare: low Sun ahead. Tack left or right?",
+                   [{"id": "left", "label": "Tack left"}, {"id": "right", "label": "Tack right"}],
+                   ready=lambda m, t: out_for(m) >= tack_at, hint="Tack 20 to 30 degrees away from the Sun.",
+                   why="A low Sun in the cameras hides rocks. Turn it off the nose.")
+    tack["leg"] = leg
+    lights = _choice("lights", "Shadow ahead. Lights on before we enter.", [{"id": "on", "label": "Lights on"}],
+                     ready=lambda m, t: out_for(m) >= _lights_open_h(m),
+                     why="In the shadow, rocks hide. Drivers need lights first.")
+    for x in (tack, lights):
+        x["lesson"] = "observe"
     back = _wait("back", "Rover back with ice", lambda m, t: m.ice_runs > runs, "Ice delivered. Life support up.")
     back["latch"] = True
+    steps = ([first, tack, steer, lights, back] if leg == "out" else [first, steer, lights, back] if leg is None
+             else [first, steer, lights, tack, back])   # the glare on the way home
     return dict(title="Ice run", lesson="life", panel="rover", level="info", priority=40,
-                say="No storm due. Time for an ice run.", steps=[first, steer, back], runs=runs)
+                say="No storm due. Time for an ice run.", steps=steps, runs=runs)
+
+
+# ---- [0.5 field] the low-Sun drive: where the Sun is from the rover's seat ----------------------------------------------
+ICE_TARGET = (-89.67, 129.78)   # Shackleton's floor, where the ice drive heads (frontend terrain.js TARGETS.collect_ice)
+SUN_AZ0, LUNAR_DAY_H = 140.0, 708.7   # the window's Sun azimuth (terrain.js sunLon): 140 deg + one turn per lunar day
+
+
+def _polar(lat: float, lon: float) -> tuple[float, float]:
+    """South polar stereographic (as the window's terrain): map x, y with longitude 0 toward +y."""
+    import math
+    t = 2 * 1737.4 * math.tan(math.pi / 4 + math.radians(lat) / 2)
+    return t * math.sin(math.radians(lon)), t * math.cos(math.radians(lon))
+
+
+def sun_view(m, t_h: float | None = None, leg: str = "out") -> dict:
+    """The Sun from the rover on the ice drive: elevation (JPL Horizons, this site), whether it clears the real LOLA
+    skyline, and its bearing off the nose on this leg (out to the crater, or home: the opposite heading; negative:
+    left). The bearing uses the window's own convention, so the card agrees with what the cabin shows."""
+    import math
+    t = m.t_h if t_h is None else t_h
+    sp = (sim.ephemeris(m.site_id).get("terrain") or {}).get("spot") or sim.site(m.site_id)
+    (sx, sy), (tx, ty) = _polar(sp["lat"], sp["lon"]), _polar(*ICE_TARGET)
+    hdg = math.degrees(math.atan2(tx - sx, ty - sy)) + (0 if leg == "out" else 180)
+    sun_lon = -(SUN_AZ0 + t * 360 / LUNAR_DAY_H)
+    rel = (sun_lon - hdg + 180) % 360 - 180
+    elev = sim._eph_at(m.site_id, "sun_elev_deg", t)
+    up = elev > sim._horizon(m.site_id, "sun", t)
+    side = "ahead" if abs(rel) < DEAD_AHEAD else "left" if rel < 0 else "right"   # dead ahead: either tack works
+    return {"rel": round(rel, 1), "side": side, "elev": round(elev, 2), "up": up,
+            "glare": up and abs(rel) <= GLARE_CONE}
+
+
+def _glare_leg(m) -> str | None:
+    """Which leg of the coming ice drive faces the low Sun ("out" or "home"), or None (Sun to the side or down)."""
+    if sun_view(m, m.t_h + TACK_AT_H)["glare"]:
+        return "out"
+    if sun_view(m, m.t_h + _shadow_h(m) + 1, "home")["glare"]:
+        return "home"
+    return None
+
+
+def _shadow_h(m) -> int:
+    """Hours from the outpost to the crater's shadow (the ice is in permanent shadow): the drive's first leg."""
+    return max(STEER_AFTER_H + 1, int(sim.site(m.site_id).get("rover_to_ice_h", 0)))
+
+
+def _lights_open_h(m) -> int:
+    return max(TACK_AT_H, _shadow_h(m) - LIGHTS_LEAD_H)
+
+
+def _ice_out(m) -> int:
+    rv = m.rover
+    return m.t_h - m.rover_left_h if rv["busy"] and rv["task"] == "collect_ice" else -1
+
+
+def _slow(m, h=NAV_COST_H, pct=0.0):
+    """A wrong or missed nav call: the rover is late (more time outside) and, after a stop in the dark, recharges."""
+    if m.rover["busy"]:
+        m.rover["eta_h"] += h
+    if pct:
+        m.power = max(0.0, m.power - pct)
+
+
+def _nav_auto(m, t, s):
+    """The ice drive's nav calls settle themselves when nobody makes them: no glare (the Sun is down or behind), the
+    drive is over, or the call went unmade for NAV_WAIT_H hours once it was the card's step (that costs an hour)."""
+    if t["kind"] != "ice_run" or s["done"] or s["id"] not in ("tack", "lights") or not t["steps"][0]["done"]:
+        return
+    out = _ice_out(m)
+    if out < 0:
+        s["done"], s["result"] = True, "Drive over."
+        return
+    if s["id"] == "tack" and s["ready_if"](m, t):
+        sv = sun_view(m, leg=s.get("leg") or "out")
+        if not sv["glare"]:
+            s["done"], s["result"] = True, ("No glare: the Sun is down." if not sv["up"] else
+                                            "No glare: the Sun is off the nose.")
+            return
+    i = t["steps"].index(s)
+    if not all(x["done"] for x in t["steps"][:i]) or not s["ready_if"](m, t):
+        return
+    s.setdefault("open_h", m.t_h)
+    if m.t_h - s["open_h"] < NAV_WAIT_H:
+        return
+    if s["id"] == "tack":
+        _slow(m)
+        s["done"], s["result"] = True, "No call. The driver slowed in the glare: 1 h lost."
+    else:
+        _slow(m, pct=LIGHTS_COST_PCT)
+        s["done"], s["result"] = True, "No lights. The rover stopped at the shadow: 1 h lost."
+
+
+# ---- [0.5 field] the sample station (Artemis sampling, Naids et al. 2021; Field School: Field kit) ---------------------
+STATION = {   # what is in front of the crew -> (card line, right tool, one chip word per descriptor kind)
+    "rock": ("A fist-size rock", "tongs", {"size": "Fist-size", "shape": "Rounded", "tone": "Bright", "texture": "Rough"}),
+    "pebbles": ("Loose pebbles", "rake", {"size": "Tiny", "shape": "Round", "tone": "Gray", "texture": "Bumpy"}),
+    "chip": ("A big boulder", "hammer", {"size": "Huge", "shape": "Jagged", "tone": "Dark", "texture": "Cracked"}),
+    "soil": ("Fine soil", "scoop", {"size": "Small", "shape": "Flat", "tone": "Dark", "texture": "Dusty"}),
+    "layers": ("Soil in layers", "tube", {"size": "Deep", "shape": "Flat", "tone": "Gray", "texture": "Grainy"}),
+}
+TOOLS = {"rake": "Rake", "tongs": "Tongs", "hammer": "Hammer", "scoop": "Scoop", "tube": "Drive tube"}
+TOOL_USE = {"rake": "The rake gathers small rocks.", "tongs": "Tongs grab one rock.",
+            "hammer": "The hammer chips a piece off.", "scoop": "The scoop takes fine soil.",
+            "tube": "The drive tube keeps the layers."}
+ASK = {"size": "How big is it?", "shape": "What shape is it?", "tone": "Bright or dark?",
+       "texture": "Smooth or rough?", "shadow": "Any shadows?"}
+_ONES = "zero one two three four five six seven eight nine".split()
+_TENS = {2: "twenty", 3: "thirty", 4: "forty", 5: "fifty", 6: "sixty", 7: "seventy", 8: "eighty", 9: "ninety"}
+_TEENS = "ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split()
+
+
+def _num_words(n: int) -> str:
+    return _TEENS[n - 10] if 10 <= n < 20 else (_TENS[n // 10] + ("" if n % 10 == 0 else " " + _ONES[n % 10]))
+
+
+def _station(m):
+    """Take a sample, the way Artemis crews will: pick the tool, describe it in one line, read the bag number in."""
+    k = _gp(m)["count"].get("station", 0)
+    _gp(m)["count"]["station"] = k + 1
+    rng = random.Random(f"{m.site_id}:{m.seed}:station:{k}")
+    target = rng.choice(sorted(STATION))
+    line, tool, look = STATION[target]
+    others = [x for x in sorted(TOOLS) if x != tool]
+    rng.shuffle(others)
+    tools = others[:2 if m.difficulty == "cadet" else 3] + [tool]
+    rng.shuffle(tools)
+    bag = 10 * (k + 1) + rng.randrange(1, 10)
+    pick = _choice("tool", f"{line}. Which tool?", [{"id": x, "label": TOOLS[x]} for x in tools],
+                   why="The right tool keeps the sample whole.")
+    desc = {"id": "describe", "kind": "describe", "label": "Describe it in one line.", "target": "task",
+            "ready_if": None, "look": look, "need": STATION_KINDS, "got": [],
+            "why": "Size, shape, bright or dark, texture: what a geologist notes."}
+    call = {"id": "bag", "kind": "sequence", "label": f"Call it in: bag {bag}.", "target": "task", "ready_if": None,
+            "items": [{"id": "bag", "label": f"Bag {bag}", "say": [f"bag {bag}", str(bag), _num_words(bag)]}],
+            "button": f"Bag {bag}", "why": "Numbered bags tell Houston where each sample came from."}
+    for x in (pick, desc, call):
+        x["lesson"] = "fieldkit"
+    return dict(title="Sample station", lesson="fieldkit", panel="rover", level="info", priority=10,
+                deadline_h=m.t_h + 4, sub="sample", say=None, steps=[pick, desc, call], tool=tool, bag=bag,
+                target_line=line)
+
+
+def _station_points(t) -> float:
+    got = (t["steps"][1].get("got") or [])
+    right = t["steps"][0].get("picked") == t["tool"]
+    return STATION_BAG + (STATION_TOOL if right else 0) + STATION_KIND * min(STATION_KINDS, len(got))
+
+
+# ---- [0.5 field] the science team's replan (JETT5 science ops: one CAPCOM voice; Flight approves) -----------------------
+def _rover_calls_done(m) -> bool:
+    """The drive's own calls are made (route, tack, boulders, lights): the replan never interrupts one."""
+    return all(all(s["done"] for s in t["steps"] if s["id"] != "back")
+               for t in _active(m) if t["kind"] in ("ice_run", "explore"))
+
+
+def _margin(m) -> dict:
+    """The drive's light margin from the sim: hours of Sun (JPL Horizons on the LOLA skyline) left after the rover's
+    ETA. None when the Sun stays up for the rest of the mission."""
+    eta = m.rover["eta_h"]
+    lit = sim.env_at(m, m.t_h)["lit"]
+    sun_h = sim.next_sun_change_h(m, m.t_h) if lit else 0
+    margin = None if lit and sun_h is None else max(0, (sun_h or 0) - eta)
+    return {"eta_h": eta, "sun_h": sun_h, "lit": lit, "margin_h": margin,
+            "tight": margin is not None and margin < REPLAN_MARGIN_H}
+
+
+def _samples_left(m) -> int:
+    return max(0, SCIENCE_TASKS[m.difficulty] - _gp(m)["count"].get("science", 0))
+
+
+def _replan(m):
+    mg, left = _margin(m), _samples_left(m)
+    if mg["margin_h"] is None:
+        mtxt = "Sun stays up all day."
+    elif not mg["lit"]:
+        mtxt = "Sun is down: no margin."
+    else:
+        mtxt = f"Light margin {mg['margin_h']} h."
+    stxt = f"−{SAMPLE_SCIENCE:g} science later." if left else "No samples left. Free."
+    pick = _choice("trade", f"{REPLAN_MIN} min at the bright rock. What do we give up?",
+                   [{"id": "margin", "label": "Use the margin", "hint": mtxt},
+                    {"id": "sample", "label": "Drop a sample", "hint": stxt}],
+                   hint="Adding time here costs time somewhere else.",
+                   why="Flight keeps a light margin on every drive.")
+    rb = {"id": "readback", "kind": "sequence", "label": f"Flight approves. Read back: {REPLAN_MIN} minutes at the rock, copy.",
+          "target": "task", "ready_if": None, "button": "Read it back",
+          "items": [{"id": "time", "label": f"{REPLAN_MIN} minutes", "say": [f"{REPLAN_MIN} minutes", f"{REPLAN_MIN} min",
+                                                                         f"{REPLAN_MIN}"]},
+                    {"id": "rock", "label": "at the rock", "say": ["rock"]},
+                    {"id": "copy", "label": "copy", "say": ["copy", "copied", "roger"]}],
+          "why": "A readback proves the call was heard right."}
+    for x in (pick, rb):
+        x["lesson"] = "rocks"
+    return dict(title="Science stop", lesson="rocks", panel="rover", level="info", priority=45,
+                deadline_h=m.t_h + 2, say="Science Officer: unusual bright rock. The science room asks for 15 minutes.",
+                steps=[pick, rb], margin=mg)
 
 
 def _repair(m):
@@ -417,6 +655,8 @@ def _science(m):
                            _choice("log", "Log it: normal or high?",
                                    [{"id": "normal", "label": "Normal"}, {"id": "high", "label": "High"}],
                                    hint=f"Quiet Sun: under {QUIET_RATE:g} mSv/h")])
+    if sub == "sample":   # [0.5 field] the sample is a station: tool, describe, bag number
+        return _station(m)
     title, panel, label, ack, why = SCIENCE_PRESS[sub]
     return dict(title=title, lesson="moon", panel=panel, level="info", priority=10, deadline_h=m.t_h + 4,
                 sub=sub, say=None,
@@ -450,6 +690,9 @@ TRIGGERS = [
      (m.science - m.science_sent >= 3 or m.houston_calls == 0)),
     ("sunrise", _sunrise, lambda m: _has_sun_cycle(m) and m.power_save and sim.env_at(m, m.t_h)["lit"] and
      (sim.next_sun_change_h(m, m.t_h) or 99) > sim.SUNSET_NOTICE_H),
+    ("replan", _replan, lambda m: m.rover["busy"] and m.rover["task"] in ("collect_ice", "explore") and
+     m.t_h - m.rover_left_h >= ROCK_AT_H and m.rover["eta_h"] >= 2 and sim.env_at(m, m.t_h)["earth_visible"] and
+     _calm(m) and _gp(m)["count"].get("replan", 0) < REPLAN_MAX and _rover_calls_done(m)),
     ("ice_run", _ice_run, lambda m: not sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
      _calm(m) and m.t_h >= 2 and m.power > 35),
     ("explore", _explore, lambda m: sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
@@ -540,6 +783,7 @@ def _check(m, out) -> list[dict]:
     done_now = []
     for t in _active(m):
         for s in t["steps"]:
+            _nav_auto(m, t, s)   # [0.5 field] the low-Sun drive's calls: no glare, drive over, or unmade (a cost)
             if s.get("ready_if") and not s["done"]:   # a step that becomes doable is news: it stops a skip and the warp
                 r = bool(s["ready_if"](m, t))
                 if r and s.get("was_ready") is False:
@@ -580,7 +824,8 @@ def _done_text(m, t) -> str:
             "comm_window": "Science sent and Houston called.", "repair": "Solar array fixed. Full power.",
             "life_check": "Life support balanced.", "first_power": "Power set for day one.",
             "sunrise": "Outpost awake at sunrise.", "low_power": "Battery saved.",
-            "science": "Science logged.", "explore": "Science drive done. Samples home."}.get(t["kind"], f"{t['title']}: done.")
+            "science": "Science logged.", "explore": "Science drive done. Samples home.",
+            "replan": "Rock sampled. Flight's call read back."}.get(t["kind"], f"{t['title']}: done.")
 
 
 def _trigger(m, out):
@@ -796,6 +1041,8 @@ def task_command(m, cmd: dict) -> dict:
     if s.get("ready_if") and not s["ready_if"](m, t):
         return {"ok": False, "say": _not_ready(m, t, s), "readback": "", "events": []}
     rb = s["label"]
+    if s["kind"] in ("describe", "sequence"):   # [0.5 field] words over turns, or the card's buttons
+        return _free_step(m, t, s, cmd)
     if s["kind"] == "order":   # the card's button runs the real order (the sim's own checks and confirms apply)
         r = sim.apply_command(m, s["cmd"])
         return r
@@ -821,9 +1068,84 @@ def task_command(m, cmd: dict) -> dict:
     return {"ok": True, "say": say, "readback": rb, "ack": say, "events": list(extra.get("events", [])) + out}
 
 
+def _done_step(m, t, s, say, events=None) -> dict:
+    """A task step the kid finished: tick it, say so (the ack), and let the tasks move on."""
+    g = _gp(m)
+    s["done"], s["result"] = True, say
+    g["ack"] = {"t_h": m.t_h, "text": say, "n": g.get("ack_n", 0) + 1}
+    g["ack_n"] = g["ack"]["n"]
+    out: list = []
+    _check(m, out)
+    if not m.over:
+        _trigger(m, out)
+    m.acted["task"] = m.acted.get("task", 0) + 1
+    return {"ok": True, "say": say, "readback": s["label"], "ack": say, "events": list(events or []) + out}
+
+
+def _progress(m, s, say) -> dict:
+    """A turn that added something but didn't finish the step: never a miss (Field School's rule)."""
+    g = _gp(m)
+    g["ack"] = {"t_h": m.t_h, "text": say, "n": g.get("ack_n", 0) + 1}
+    g["ack_n"] = g["ack"]["n"]
+    m.acted["task"] = m.acted.get("task", 0) + 1
+    return {"ok": True, "say": say, "readback": s["label"], "ack": say, "progress": True, "events": []}
+
+
+def _free_step(m, t, s, cmd) -> dict:
+    """[0.5 field] describe (descriptor kinds, Field School's grader) and sequence (a readback in order) steps. The
+    words come from the voice (the router's task_choice with the text) or the voice bar; a chip adds its kind; the
+    card's last button ("Bag it", "Bag 14", "Read it back") finishes the step with what it has."""
+    from ..academy import grade   # lazy: grade imports this package's sim
+    text, choice = (cmd.get("text") or "").strip(), cmd.get("choice")
+    if s["kind"] == "describe":
+        got = list(s.get("got") or [])
+        heard = [choice] if choice in grade.DESCRIBE else grade._describe_heard(text, grade.DESCRIBE_ORDER) if text else []
+        new = [k for k in heard if k not in got]
+        got = [k for k in grade.DESCRIBE_ORDER if k in set(got) | set(heard)]
+        s["got"] = got
+        if len(got) >= s.get("need", STATION_KINDS) or choice == "bag" or (not text and choice is None):
+            say = f"You noted {grade.describe_label(got)}. Now bag it." if got else "Bagged as it is. Next time, describe it."
+            return _done_step(m, t, s, say)
+        missing = [k for k in s["look"] if k not in got]
+        ask = ASK[missing[0]] if missing else "Anything else?"
+        say = f"Good: {grade.describe_label(new)}. {ask}" if new else f"Tell me one thing. {ask}"
+        return _progress(m, s, say)
+    # sequence: the readback
+    items = s["items"]
+    if text and choice is None:
+        ok, ex = grade._sequence({"items": items}, {"got": s.get("got")}, text)
+        s["got"] = ex["got"]
+        if not ok:
+            full = ", ".join(i["label"] for i in items)
+            nxt = next(i["label"] for i in items if i["id"] == ex["next"])
+            say = (f"Copy {', '.join(i['label'] for i in items if i['id'] in ex['got'])}. Then: {nxt}." if ex["got"] else
+                   f"Say it back: {full}.")
+            return _progress(m, s, say)
+    return _done_step(m, t, s, _sequence_done(m, t, s))
+
+
+def _sequence_done(m, t, s) -> str:
+    """What finishing a readback does: the station's sample counts; the science stop's rock is bagged."""
+    if t["kind"] == "science" and s["id"] == "bag":
+        from ..academy import grade
+        pts = _station_points(t)
+        m.science += pts
+        got = t["steps"][1].get("got") or []
+        noted = f", {grade.describe_label(got)}" if got else ""
+        tool = TOOLS[t["steps"][0].get("picked") or t["tool"]].lower()
+        if sim.env_at(m, m.t_h)["earth_visible"]:
+            return f"Copy, bag {t['bag']}: {tool}{noted}. Science +{pts:g}."
+        return f"Logged: bag {t['bag']}, {tool}. Science +{pts:g}, saved for Earthrise."
+    if t["kind"] == "replan":
+        m.science += ROCK_SCIENCE
+        return f"Readback correct. Bright rock bagged: maybe anorthosite. Science +{ROCK_SCIENCE:g}."
+    return "Copy."
+
+
 def _not_ready(m, t, s) -> str:
-    if s["id"] == "steer":
-        return "No boulders yet. The rover is still driving."
+    if s["id"] in ("steer", "tack", "lights"):
+        return {"steer": "No boulders yet. The rover is still driving.", "tack": "No glare yet. The rover is still driving.",
+                "lights": "No shadow yet. The rover is still driving."}[s["id"]]
     if s["id"] == "test":
         return "Not yet. The rover is still fixing the array."
     if s["id"] == "back":
@@ -892,6 +1214,36 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
     if k == "ice_run" and sid == "route":
         return order({**ROVER("collect_ice"), "route": choice},
                      "Ridge route. Slow and steady." if choice == "ridge" else "Crater slope. Fast, but hungry.")
+    if k == "science" and sid == "tool":   # [0.5 field] the station's tool: a wrong pick teaches, never stops the job
+        s["picked"] = choice
+        if choice == t["tool"]:
+            return f"{TOOLS[choice]}. Good pick.", {}
+        return f"{TOOLS[choice]}? {TOOL_USE[t['tool']]}", {}
+    if k == "ice_run" and sid == "tack":
+        if _ice_out(m) < 0:
+            return "Drive over.", {}
+        sv = sun_view(m, leg=s.get("leg") or "out")
+        if choice != sv["side"]:   # away from the Sun: the Sun on the left -> tack right
+            return "Sun off the nose. The drivers can see.", {}
+        _slow(m)
+        return "Into the glare! That cost an hour. Tack away from the Sun.", {}
+    if k == "ice_run" and sid == "lights":
+        return "Lights on. Rolling into the shadow.", {}
+    if k == "replan" and sid == "trade":
+        mg = _margin(m)
+        if choice == "margin" and not mg["tight"]:
+            rv = m.rover
+            rv["late_min"] = rv.get("late_min", 0) + REPLAN_MIN
+            if rv["late_min"] >= 60 and rv["busy"]:
+                rv["eta_h"] += 1
+                rv["late_min"] -= 60
+            return f"Flight approves, {REPLAN_MIN} minutes at the rock.", {}
+        g = _gp(m)
+        g["count"]["science"] = g["count"].get("science", 0) + 1   # the next sample stop is the time we spend here
+        if choice == "margin":
+            why = f"sunset in {mg['sun_h']} h" if mg["lit"] else "no light left"
+            return f"Flight: negative, {why}. We skip one sample instead.", {}
+        return f"Flight approves, {REPLAN_MIN} minutes at the rock. One sample skipped.", {}
     if k == "ice_run" and sid == "steer":
         rv = m.rover
         if not (rv["busy"] and rv["task"] == "collect_ice"):
@@ -906,7 +1258,12 @@ def _resolve(m, t, s, choice) -> tuple[str | None, dict]:
 
 # ---- the view (State fields) -----------------------------------------------------------------------------------------
 def _lesson(lid):
-    return {"id": lid, "n": LESSON_NO.get(lid), "title": LESSON_TITLE.get(lid)} if lid else None
+    if not lid:
+        return None
+    v = {"id": lid, "n": LESSON_NO.get(lid), "title": LESSON_TITLE.get(lid)}
+    if lid in FIELD_LESSONS:
+        v["track"] = "field"
+    return v
 
 
 def _wait_text(m, t, s):
@@ -916,7 +1273,13 @@ def _wait_text(m, t, s):
 
 def _step_view(m, t, s) -> dict:
     ready = (not s.get("ready_if") or bool(s["ready_if"](m, t))) and s["kind"] != "wait"
-    v = {"id": s["id"], "kind": s["kind"], "label": s["label"], "done": s["done"], "ready": ready and not s["done"],
+    label = s["label"]
+    if t["kind"] == "ice_run" and s["id"] == "tack" and ready and not s["done"]:
+        # the data the call needs is in the line itself (a small window drops the card's readouts first)
+        sv = sun_view(m, leg=s.get("leg") or "out")
+        label = ("Glare: Sun dead ahead. Tack left or right?" if sv["side"] == "ahead" else
+                 f"Glare: Sun {abs(sv['rel']):.0f}° {sv['side']}. Tack left or right?")
+    v = {"id": s["id"], "kind": s["kind"], "label": label, "done": s["done"], "ready": ready and not s["done"],
          "target": s.get("target"), "result": s.get("result"),
          "wait": _wait_text(m, t, s) if not ready and not s["done"] else None, "why": s.get("why")}
     if s["kind"] == "order":
@@ -925,13 +1288,36 @@ def _step_view(m, t, s) -> dict:
         v["options"] = [{k: o[k] for k in ("id", "label", "hint") if k in o} for o in s["options"]]
         if s.get("hint"):
             v["hint"] = s["hint"]
+    if s["kind"] == "describe":   # chips for the kinds still missing (the look's own words), then "Bag it"
+        got = s.get("got") or []
+        chips = [{"id": k, "label": w} for k, w in s["look"].items() if k not in got][:3]
+        v.update(options=chips + [{"id": "bag", "label": "Bag it"}], got=list(got), need=s.get("need", STATION_KINDS))
+    if s["kind"] == "sequence":
+        v.update(options=[{"id": "say", "label": s.get("button") or s["items"][-1]["label"]}],
+                 items=[{"id": i["id"], "label": i["label"]} for i in s["items"]], got=list(s.get("got") or []))
+    if s.get("lesson"):
+        v["lesson"] = s["lesson"]
     return v
 
 
 def _readouts(m, t) -> list[dict]:
     r = []
-    if t["kind"] in ("ice_run", "repair") and m.rover["busy"]:
+    if t["kind"] in ("ice_run", "repair", "replan") and m.rover["busy"]:
         r.append({"k": "Rover back in", "v": f"{m.rover['eta_h']} h"})
+    cur = next((s for s in t["steps"] if not s["done"]), None)
+    if t["kind"] == "ice_run" and cur and cur["id"] == "tack" and _ice_out(m) >= 0:   # [0.5 field] read the Sun
+        sv = sun_view(m, leg=cur.get("leg") or "out")
+        up = "on the horizon" if sv["elev"] < 0.5 else f"{sv['elev']:.1f}° up"
+        where = "dead ahead" if sv["side"] == "ahead" else f"{abs(sv['rel']):.0f}° {sv['side']}"
+        r.append({"k": "Sun", "v": f"{where}, {up}"})
+    if t["kind"] == "ice_run" and cur and cur["id"] == "lights" and _ice_out(m) >= 0:
+        r.append({"k": "Shadow in", "v": f"{max(0, _shadow_h(m) - _ice_out(m))} h"})
+    if t["kind"] == "replan":
+        mg = t["margin"]
+        r.append({"k": "Light margin", "v": "all day" if mg["margin_h"] is None else f"{mg['margin_h']} h"})
+        r.append({"k": "Samples left", "v": str(_samples_left(m))})
+    if t["kind"] == "science" and t.get("sub") == "sample":
+        r.append({"k": "Science", "v": f"+{_station_points(t):g} so far"})
     if t["kind"] in ("ice_run", "repair", "storm_prep", "storm_hit"):
         r.append({"k": "Battery", "v": f"{m.power:.0f}%"})
         r.append({"k": "Dose rate", "v": f"{sim.dose_rate(m, m.t_h):.2f} mSv/h"})
@@ -953,11 +1339,12 @@ def task_view(m, t) -> dict:
     left = None
     if t.get("deadline_h") is not None:
         left = round(max(0.0, t["deadline_h"] - m.t_h - m.frac), 2)
-    return {"id": t["id"], "kind": t["kind"], "title": t["title"], "lesson": _lesson(t.get("lesson")),
+    return {"id": t["id"], "kind": t["kind"], "title": t["title"],
+            "lesson": _lesson((cur or {}).get("lesson") or t.get("lesson")),
             "panel": t["panel"], "level": t["level"], "urgent": t["level"] == "warn", "say": t.get("say"),
             "steps": steps, "step": cur, "done_count": sum(s["done"] for s in steps), "total": len(steps),
             "time_left_h": left, "started_h": t["started_h"], "readouts": _readouts(m, t),
-            "decision": bool(cur and cur["kind"] == "choice" and cur["ready"])}
+            "decision": bool(cur and cur["kind"] in ("choice", "describe", "sequence") and cur["ready"])}
 
 
 def view(m) -> dict:

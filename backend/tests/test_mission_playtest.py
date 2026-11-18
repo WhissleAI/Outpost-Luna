@@ -25,7 +25,7 @@ def _follow(mid, n=500):
         st = t and t["step"]
         if st and st["ready"] and st["kind"] != "wait":
             cmd = {"type": "task", "task": t["id"], "step": st["id"]}
-            if st["kind"] == "choice":
+            if st["kind"] in ("choice", "describe", "sequence"):   # [0.5 field] the card's first button
                 cmd["choice"] = st["options"][0]["id"]
             r = registry.apply(mid, cmd)
             if r["result"].get("needs_confirm"):
@@ -79,8 +79,13 @@ def test_the_counter_shows_science_on_board_and_samples_say_where_it_waits():
     p = gameplay.view(m)["progress"]
     assert p["science_sent"] == 0 and p["science_stored"] == 14.0 and p["earth_up"] is False and p["earth_in_h"] > 100
     sp = gameplay._science(m)
-    ack = sp["steps"][0]["ack"] if sp["steps"][0]["kind"] == "press" else ""
-    assert sp.get("sub") == "sensor" or "saved for Earthrise" in ack, ack
+    assert sp.get("sub") == "sample"   # [0.5 field] the first science job is the sample station
+    gameplay._start(m, "science", lambda m: sp, [])
+    t = gameplay._active(m)[-1]
+    sim.apply_command(m, {"type": "task", "task": t["id"], "step": "tool", "choice": t["tool"]})
+    sim.apply_command(m, {"type": "task", "task": t["id"], "step": "describe", "choice": "bag"})
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "bag", "choice": "say"})
+    assert r["ok"] and "saved for Earthrise" in r["say"], r["say"]
 
 
 def test_the_debrief_names_the_missed_goal_and_agrees_with_itself():
