@@ -140,3 +140,6 @@ Director coverage tests green.
 - Playtest fixes (2026-11-16 novice playtest): the Now card's Play after Resume, store-and-forward science and science
   drives, the storm card when the crew is sheltered, time held behind Settings, readable consoles, the kid debrief and
   the Cadet site briefing. Details: docs/GAMEPLAY.md §12.
+- 0.4 part 2, the cabin redesign: one cockpit bar (the header folded in, one display unit for the clock and Days /
+  Science / Ice, bezel keys), the 18 px HUD floor, dark first run, real NASA views in the window. Details:
+  docs/UX_ROUNDS.md "0.4 part 2".

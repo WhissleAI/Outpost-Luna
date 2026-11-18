@@ -7,7 +7,7 @@ import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
-import { zoneHtml, confirmHtml, bindConfirm } from "./reset.js";   // Settings → Reset (docs/RESET.md)
+import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./reset.js";   // Settings → Reset (docs/RESET.md)
 
 // ---------- settings (pure; tests/a11y.test.js) ----------
 
@@ -191,7 +191,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         ${PA.listProfiles().length < 6 ? `<button type="button" class="btn" data-prof-add>Add a cadet</button>` : `<p class="set-note">Up to 6 cadets.</p>`}
         ${seg("level", "Level", [["cadet", "Cadet · 7–9"], ["commander", "Commander · 10–12"], ["engineer", "Engineer · real units"]])}
         <p class="set-help rs-link">Start over with a new cadet? <button type="button" class="btn-link" data-sec-go="reset">Reset</button></p>
-        <button type="button" class="btn-quiet set-danger" data-prof-reset>${resetArmed ? "Tap again to clear this cadet's patches" : "Reset my patches"}</button>` : "",
+        ${holdButtonHtml("Reset my patches", "data-prof-reset")}<small class="rs-note">For a grown-up: hold for 3 seconds. Clears this cadet's patches.</small>` : "",
       help: `<p class="a11y-noaudio" role="note">${noAudio.innerHTML}</p>
         <button type="button" class="btn" data-cabin-tour>${escH(TOUR.replay)}</button>
         <button type="button" class="btn" data-help-video="moon_base_6mo">${escH(MOON_BASE.help)}</button>
@@ -224,6 +224,9 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       </div>`;
     fillTranscript();
     unbindReset(); unbindReset = () => {};
+    // [0.4] Cadets → "Reset my patches": the shared 3-second hold (a click or a tap does nothing)
+    const pr = panel.querySelector("[data-prof-reset]");
+    if (pr && PA) { const h = bindHold(pr, { onFire: () => PA.resetProgress() }); unbindReset = () => h.destroy(); }
     if (section === "reset" && resetView) unbindReset = bindConfirm(panel, { onCancel: () => { const was = resetView; resetView = null; renderPanel(); const b = panel.querySelector(`[data-reset-open="${was}"]`); if (b) b.focus(); } });
     const xs = extraSecs.find(x => x.id === section); if (xs && xs.bind) { try { xs.bind(panel.querySelector(".set-sec")); } catch (e) { /* its own bug */ } }
     // Settings → Voice: exactly two engines. "Your computer's voice" picks the OS voice by itself (Siri on a Mac, the
@@ -316,7 +319,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     if (e.target.closest("[data-prof-add]") && PA) PA.addProfile();
     const tl = e.target.closest("[data-turnlog-clear]");
     if (tl) { fetch("/api/turnlog", { method: "DELETE" }).then(() => { tl.textContent = "Deleted"; tl.disabled = true; }).catch(() => { tl.textContent = "Couldn't delete. Try again."; }); }
-    if (e.target.closest("[data-prof-reset]") && PA) { if (resetArmed) PA.resetProgress(); else { resetArmed = true; renderPanel(); panel.querySelector("[data-prof-reset]").focus(); } }
+    // [0.4] "Reset my patches" is a 3-second hold (bindHold, bound in renderPanel): a click or a tap never clears
   });
   panel.addEventListener("change", e => {
     const t = e.target;

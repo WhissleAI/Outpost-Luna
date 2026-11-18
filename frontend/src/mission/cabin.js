@@ -17,6 +17,7 @@ import { icon } from "../assets/icons.js";
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
+import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -67,6 +68,33 @@ const whyBtn = id => `<button type="button" class="cb-whyb" data-why="${id}" ari
 const kw = v => `${(+v || 0).toFixed(Math.abs(+v || 0) < 10 ? 1 : 0)} kW`;
 const VIEW_ICON = { orbit: "orbit", site: "site", rover: "rover", earth: "earth" };
 
+/** [0.4] The app header folds into the cockpit's own top bar while a cabin is on screen (the mission cabin and the
+ *  check ride): the header's sections and icons stay the same nodes (keyboard path, Mute next to Settings, the tests'
+ *  selectors), drawn over the two ends of the cabin's deck as bezel keys (cabin.css "[0.4]"), and the deck leaves room
+ *  for them. One owner at a time (the newest cabin); dispose gives the header back. -> off() */
+let foldOwner = null;
+export function foldHeader(root, o = {}) {
+  const tb = document.querySelector(".topbar"), deck = root.querySelector(".cb-deck"); if (!tb || !deck) return () => {};
+  const me = {}, html = document.documentElement, vis = e => !!(e && e.getClientRects().length);
+  foldOwner = me; document.body.dataset.cockpit = "1";
+  const place = () => {
+    if (foldOwner !== me || !deck.isConnected) return;
+    html.style.setProperty("--cockpit-right", Math.max(0, Math.round(+(o.insetRight ? o.insetRight() : 0) || 0)) + "px");
+    const D = deck.getBoundingClientRect(); if (!D.width) return;
+    const left = [...tb.querySelectorAll(".brand, .modes")].filter(vis).reduce((m, e) => Math.max(m, e.getBoundingClientRect().right), D.left);
+    const nav = tb.querySelector(".topnav"), right = vis(nav) ? nav.getBoundingClientRect().left : D.right;
+    deck.style.setProperty("--cp-l", Math.max(0, Math.round(left - D.left)) + "px");
+    deck.style.setProperty("--cp-r", Math.max(0, Math.round(D.right - right)) + "px");
+  };
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => requestAnimationFrame(place)) : null;
+  if (ro) { ro.observe(tb); ro.observe(deck); [...tb.children].forEach(c => ro.observe(c)); }
+  addEventListener("resize", place); requestAnimationFrame(place); setTimeout(place, 400);
+  return () => {
+    if (ro) ro.disconnect(); removeEventListener("resize", place);
+    if (foldOwner === me) { foldOwner = null; delete document.body.dataset.cockpit; html.style.removeProperty("--cockpit-right"); }
+  };
+}
+
 export function createCabin(root, o = {}) {
   const cb = { onCommand() {}, onHouston() {}, onEndShift() {}, onDebrief() {}, onView() {}, onClock() {}, onTask() {}, badges: () => [], ...o };
   let view = "site", st = null, prev = null, pages = ["PWR", "LIFE", "RAD"], sel = 0, logLines = [], litBefore = new Set(), masterOn = false;
@@ -84,15 +112,19 @@ export function createCabin(root, o = {}) {
   root.innerHTML = `
   <div class="cb">
     <header class="cb-deck" aria-label="Mission clock">
-      <div class="cb-clock" id="cbClock"></div>
-      <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
+      <div class="cb-dsp" role="group" aria-label="Mission status">
+        <div class="cb-dsp-a">
+          <div class="cb-clock" id="cbClock"></div>
+          ${o.mode === "ride" ? "" : `<span class="cb-state" id="cbState"><i aria-hidden="true"></i><span id="cbHeld" role="status" aria-live="polite"></span></span>`}
+          <div class="cb-sky" id="cbSky" aria-label="Sky"></div>
+        </div>
+        ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
+      </div>
       ${o.mode === "ride" ? "" : `<div class="cb-time" id="cbTime" role="group" aria-label="Mission clock controls" data-state="paused">
-        <span class="cb-state" id="cbState"><i aria-hidden="true"></i><span id="cbHeld" role="status" aria-live="polite"></span></span>
-        <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 16)}<span>Play</span></button>
-        <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip to next event. Hold to fast-forward." title="Tap: skip ahead (E). Hold: fast-forward (hold F)">${ic("next", 16)}<span>Skip ahead</span></button>
-        <button type="button" class="cb-tbtn cb-menub" id="cbMenuBtn" aria-haspopup="dialog" aria-label="Menu: speed, restart, settings" title="Menu (Esc)">${ic("menu", 16)}<span>Menu</span></button>
+        <button type="button" class="cb-tbtn cb-play" id="cbPlay" aria-label="Start the clock">${ic("play", 18)}<span>Play</span></button>
+        <button type="button" class="cb-tbtn cb-skip" id="cbSkip" aria-label="Skip ahead to the next event. Hold to fast-forward." title="Tap: skip ahead (E). Hold: fast-forward (hold F)">${ic("next", 18)}<span>Skip</span></button>
+        <button type="button" class="cb-tbtn cb-menub" id="cbMenuBtn" aria-haspopup="dialog" aria-label="Menu: speed, restart, settings" title="Menu (Esc)">${ic("menu", 18)}<span>Menu</span></button>
       </div>`}
-      ${o.mode === "ride" ? "" : `<div class="cb-prog" id="cbProg" aria-label="Mission progress"></div>`}
     </header>
     <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
     <div class="cb-viewbar" aria-label="Window">
@@ -128,14 +160,16 @@ export function createCabin(root, o = {}) {
       </div>
       <div class="cb-grp" data-panel="rover" role="group" aria-label="Rover panel">
         <div class="cb-plate cb-rv"><h3>Rover</h3>
-          <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
           <div class="cb-rvrow"><span class="cb-rvst" id="cbRvSt"></span>${whyBtn("rover")}</div>
+          <div class="cb-seg">${ROVER.map(([t, n, i]) => `<button type="button" class="cb-rvb" data-task="${t}" aria-pressed="false">${ic(i, 16)}<span>${n}</span></button>`).join("")}</div>
           <svg class="cb-route" id="cbRoute" viewBox="0 0 200 64" aria-hidden="true"></svg>
           <div class="cb-info" id="cbInfoRv"></div>
         </div>
       </div>
       <div class="cb-grp" data-panel="radiation" role="group" aria-label="Radiation panel">
-        <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-info" id="cbInfoRad"></div>
+        <div class="cb-plate cb-shield"><h3>Radiation</h3><div class="cb-radtop"><div class="cb-info" id="cbInfoRad"></div>
+          <figure class="cb-sunmon" id="cbSunMon" hidden><img alt="The Sun in extreme ultraviolet on 14 May 2024, the day of a huge flare (NASA SDO)" decoding="async">
+            <figcaption><b>${esc(SUN_CREDIT.split(", ")[0])},</b><span>${esc(SUN_CREDIT.split(", ").slice(1).join(", "))} · ${esc(SUN_SOURCE)}</span><span class="cb-sun-time"></span></figcaption></figure></div>
           <div class="cb-radrow">${sw("shelter")}
           <div class="cb-knobrow">
             <span class="cb-shl">${pretend("Shields")}${whyBtn("shields")}</span>
@@ -184,7 +218,7 @@ export function createCabin(root, o = {}) {
         <button type="button" class="cb-pm-b" data-m="restart">${ic("replay", 20)}<span>Restart shift</span><small id="cbMenuShift"></small></button>
         <button type="button" class="cb-pm-b" data-m="settings">${ic("settings", 20)}<span>Settings</span></button>
         <button type="button" class="cb-pm-b" data-m="quit">${ic("home", 20)}<span>Quit to hub</span><small>Your mission saves</small></button>
-        <p class="cb-pm-tip">Hold <kbd>F</kbd>, hold <b>Skip ahead</b> or hold <kbd>RT</kbd> to fast-forward.</p>
+        <p class="cb-pm-tip">Hold <kbd>F</kbd>, hold <b>Skip</b> or hold <kbd>RT</kbd> to fast-forward.</p>
       </div>
     </div>
     <div class="cb-ch" id="cbChapter" hidden role="dialog" aria-modal="true" aria-labelledby="cbChT">
@@ -244,6 +278,10 @@ export function createCabin(root, o = {}) {
     }
   }
 
+  // ---- [0.4] the app header folds into the cockpit's top bar; the real NASA views arrive when the pack is installed ----
+  const foldOff = foldHeader(root, o);
+  const viewsOff = whenViews(() => { earthKey = ""; alertKey = ""; sunMonOn = false; if (st) { paintEarthNote(); paintAlert(); } });
+
   // ---- window view switcher ----
   function setView(v, quiet) {
     view = v; root.querySelectorAll(".cb-view").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === v));
@@ -253,14 +291,21 @@ export function createCabin(root, o = {}) {
   }
   /** [playtest 20] The Earth view with Earth below the horizon: say so, and when it rises (Horizons, the sim's own
    *  comm windows), instead of a grey slope and a black sky with no words. */
+  // [0.4] with the nasa_views pack the note is a small inset: the real Earthrise (Apollo 8) or Earthset (Artemis II)
+  // photo, "Earth rises Day N", and an arrow with the elevation and its trend (the sim's Horizons numbers)
+  let earthEl0 = null, earthTrend = null, earthKey = "";
   function paintEarthNote() {
     const n = q("#cbEarthNote"); if (!n) return;
     const e = (st && st.env) || {}, show = view === "earth" && !!st && !e.earth_visible;
-    n.hidden = !show; if (!show) return;
-    const h = e.next_comm_window_h, t = (st.mission_time_h || 0);
-    const day = h != null ? Math.floor((t + h) / 24) + 1 : null;
-    n.innerHTML = `${ic("earth", 18)}<span><b>Earth is below the horizon.</b> ${day == null || day > 10 ? "It won't rise again this mission." : day === Math.floor(t / 24) + 1 ? "It rises later today." : `It rises on Day ${day}.`}</span>`;
+    n.hidden = !show; if (!show) { earthKey = ""; return; }
+    const info = earthBelow(e, st.mission_time_h || 0, earthTrend);
+    const photo = info ? earthPhoto(info.photo) : null;
+    n.classList.toggle("is-inset", !!photo);
+    const key = JSON.stringify([info.line, info.trend, info.el != null ? info.el.toFixed(1) : null, photo && photo.url]);
+    if (key === earthKey) return; earthKey = key;   // the photo is not reloaded every second
+    n.innerHTML = earthInsetHtml(info, photo, ic);
   }
+  function trackEarth(el) { if (el == null) return; if (earthEl0 != null && Math.abs(el - earthEl0) > 0.005) earthTrend = earthEl0; earthEl0 = +el; }
   root.querySelectorAll(".cb-view").forEach(b => b.onclick = () => setView(b.dataset.view));
   if (q("#cbCenter")) q("#cbCenter").onclick = () => { if (c3) c3.recenter(); setView("site"); cb.onCenter && cb.onCenter(); };
   const offT = setInterval(() => { const cab = root.querySelector(".cb"); if (!cab || !c3) return; const p = c3.pose;
@@ -478,7 +523,7 @@ export function createCabin(root, o = {}) {
     if (!s) return; prev = st; st = s;
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
-    paintEarthNote();
+    trackEarth(e.earth_elev_deg); paintEarthNote();
     sky(+e.sun_elev_deg || 0, e.earth_elev_deg, !!e.earth_visible, e.in_sun);
     paintClock(s, null);
     paintDus(); paintSwitches(); paintRover();
@@ -521,6 +566,14 @@ export function createCabin(root, o = {}) {
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 
+  let alertKey = "", stopAlertSun = () => {}, stopSunMon = () => {}, sunMonOn = false;
+  /** [0.4] The Radiation console's Sun monitor: the SDO loop while a storm is on or forecast (only with the pack). */
+  function paintSunMon(on) {
+    const f = q("#cbSunMon"); if (!f) return;
+    const v = on ? realSun() : null; f.hidden = !v;
+    if (!!v === sunMonOn) return; sunMonOn = !!v; stopSunMon();
+    if (v) stopSunMon = loopFrames(f.querySelector("img"), v.frames, { reduced: reducedMo }); else stopSunMon = () => {};
+  }
   /** The alert strip on the window's top edge: the storm (stays while it lasts) or a short-lived warning. No buttons. */
   function alert(a) { clearTimeout(flashT); flash = a; paintAlert(); if (a) flashT = setTimeout(() => { flash = null; paintAlert(); }, 7000); }
   function paintAlert() {
@@ -534,9 +587,16 @@ export function createCabin(root, o = {}) {
       : flash;
     el.hidden = !a; glassEl.classList.toggle("has-alert", !!a);
     const hole = root.querySelector(".cb-hole"); if (hole) hole.classList.toggle("has-alert", !!a);
-    if (!a) { el.innerHTML = ""; return; }
-    el.className = "cb-alert is-" + a.level;
-    el.innerHTML = `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span>`;
+    paintSunMon(!!(stm || wn));
+    if (!a) { el.innerHTML = ""; alertKey = ""; stopAlertSun(); return; }
+    // [0.4] a storm (or its warning) shows the real Sun: the SDO frames of 14 May 2024, credited, in place of the icon
+    const sunV = (stm || wn) && a.icon === "storm" ? realSun() : null;
+    const key = JSON.stringify([a.level, a.title, a.text, a.conf, a.link && a.link.url, !!sunV]);
+    if (key === alertKey) return; alertKey = key;   // the strip repaints every tick: rebuild only on a change (the loop keeps running)
+    stopAlertSun();
+    el.className = "cb-alert is-" + a.level + (sunV ? " has-sun" : "");
+    el.innerHTML = `${sunV ? `<span class="cb-al-sun"><img alt="The real Sun on 14 May 2024 (NASA SDO)" decoding="async"></span>` : `<span class="cb-al-i">${ic(a.icon || (a.level === "info" ? "info" : "warning"), 20)}</span>`}<span class="cb-al-body"><span class="cb-al-l1"><b>${esc(a.title)}</b>${a.conf != null ? `<span class="cb-al-conf" role="meter" aria-label="Forecast confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${a.conf}"><i style="width:${(a.conf * .56).toFixed(0)}px"></i><em>${a.conf}% sure</em></span>` : ""}<span class="cb-al-t">${esc(a.text || "")}${a.link ? ` · <a class="cb-al-src" href="${esc(a.link.url)}" target="_blank" rel="noopener">${esc(a.link.text)}</a>` : ""}</span></span>${sunV ? `<small class="cb-al-sunc">${esc(SUN_CREDIT)} · ${esc(SUN_SOURCE)}</small>` : ""}</span>`;
+    if (sunV) stopAlertSun = loopFrames(el.querySelector(".cb-al-sun img"), sunV.frames, { reduced: reducedMo });
     // [polish 3] the strip says what is happening; what to do about it is on the Now card (one instruction at a time)
     // QA-23: the HUD row below the strip moves down by the strip's real height (it wraps on narrow windows)
     requestAnimationFrame(() => { const h = el.offsetHeight; [hole, glassEl].forEach(n => n && n.style.setProperty("--alert-h", h + "px")); });
@@ -548,7 +608,7 @@ export function createCabin(root, o = {}) {
     const lit = inSun == null ? sunDeg > 0 : !!inSun;
     q("#cbSky").innerHTML = `<span title="Sun elevation ${deg(sunDeg)}"><em>Sun</em> ${lit ? "up" : "down"}</span><span><em>Earth</em> ${earthDeg == null ? (up ? "up" : "down") : up ? deg(earthDeg) : "below"}</span>`;
   }
-  function telemetry(f) { if (!st) return; if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible, f.in_sun != null ? f.in_sun : st.env.in_sun); }
+  function telemetry(f) { if (!st) return; trackEarth(f.earth_elev_deg); if (f.sun_elev_deg != null) sky(f.sun_elev_deg, f.earth_elev_deg, f.comm ? f.comm === "open" : st.env.earth_visible, f.in_sun != null ? f.in_sun : st.env.in_sun); }
   /** Radio log (COMM page) + the fallback caption line (the caption bar takes over when captions are on). */
   function log(who, text, quiet = false) {
     if (!text) return;
@@ -656,7 +716,7 @@ export function createCabin(root, o = {}) {
     const W = l => String(l).toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(w => w.length > 1 && !["to", "the", "an", "or", "and"].includes(w));
     return labels.length > 1 ? labels.map((l, i) => W(l).find(w => labels.every((o, j) => j === i || !W(o).includes(w))) || W(l)[0]).filter(Boolean) : [];
   }
-  const DECKHINT = { skip: "Skip ahead is in the clock bar (E).", warp: "Time speed is in the menu (Esc), or press W.", play: "Play is in the clock bar (K)." };
+  const DECKHINT = { skip: "Skip is in the clock bar (E).", warp: "Time speed is in the menu (Esc), or press W.", play: "Play is in the clock bar (K)." };
   const NOWSAY = (ws, keys) => `Say ${ws.map(w => `“${w}”`).join(" or ")}, or press ${(keys || ws.map((_, i) => String(i + 1))).join(" or ")}.`;
   /** The Now task card: title, the step to do, progress (2 of 3), the countdown, the buttons, the lesson that helps. */
   function card(c, { ack = null, cadet = false } = {}) {
@@ -746,7 +806,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+    dispose() { clearInterval(offT); foldOff(); viewsOff(); stopAlertSun(); stopSunMon(); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
       escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */

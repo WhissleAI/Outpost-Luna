@@ -17,7 +17,7 @@ export const PREF_DEFAULTS = Object.freeze({
   alarms: 1,                 // alarm chimes
   listen: "handsfree",       // "handsfree" | "ptt" (hold Space / the mic to talk)
   filter: "normal",          // background-voice filter: "relaxed" | "normal" | "strict"
-  theme: "system",           // "system" | "light" | "dark"
+  theme: "dark",             // "system" | "light" | "dark". [0.4] first run is dark (the cabin's look); a choice made in Settings or the top bar stays
   graphics: "high",          // "high" | "low"
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12) | "engineer" (Commander in real units, docs/PHYSICS.md)
   improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.

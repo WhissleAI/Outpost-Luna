@@ -745,6 +745,36 @@ Evidence: the 0.3.11 polish audit (headless, 1440×900): voice bar stuck, clippe
   errors were `/api/tts` 502s from a stub model server). Shots: before / after for the voice bar, the ride (question,
   Houston, storm at 1440 and 1280), lessons 1–2 and the Mission gate.
 
+### 0.4 part 2: the cabin redesign, real NASA views
+
+Owner's goal: the inside view looks like a person in a real spaceflight cabin with a real control bar (Orion's language:
+flat display units with bezel keys, readable annunciators), and the window views are real NASA views. Shots:
+before / after at 1440×900 and 1280×720 (seat, Earth below / up, site, orbit, storm, Radiation console, check-ride
+storm, the hub).
+
+- **One cockpit bar.** In the Mission cabin and the check ride the app header folds into the cockpit's top bar
+  (`cabin.js foldHeader`, `body[data-cockpit]`): the same nodes (sections at the left, Settings · Mute · Theme · About at
+  the right, drawn as bezel keys over the bar's ends), so the keyboard path, Mute next to Settings and every selector
+  stay. Between them: **one display unit** (Day and time, the clock's state lamp and word, Sun / Earth, then
+  Days · Science · Ice and the Log key) and three bezel keys (Play, Skip, Menu). The window's camera keys (Orbit, Site,
+  Rover, Earth, Center) are one bezel row under the bar. The light header strip over the cockpit is gone; Up from the
+  bar reaches the header keys (`spatial.js`).
+- **18 px floor** for the HUD (`--hud-min`): the display unit, the keys, the Now card (label, title, meta, buttons, the
+  say line), the alert strip, the rover pill, the Earth note. Narrower windows drop a key's word before its glyph, then
+  the sky line and the brand.
+- **Dark first run** (`PREF_DEFAULTS.theme = "dark"`, the pre-paint script): a choice made in Settings or with the top
+  bar's theme key stays (System follows the OS as before).
+- **No ceiling strip** (`cockpit3d.js`): its white bar showed as a thin line under the top bar at the wider fields of
+  view `fitFov` uses.
+- **Rover console**: its status ("Parked", "Ice run · back in 6 h") is at the top, never under the CAPCOM strip.
+- **Window, real NASA views** (docs/MEDIA.md "NASA views", all optional; without the pack: today's visuals): NASA's
+  HDU habitat at the outpost and lit solar arrays (no black slabs); the Earth view never empty (Earthrise / Earthset
+  inset with "Earth rises Day N" and an arrow when Earth is down); the real Sun (SDO, 14 May 2024) in the storm strip
+  and on the Radiation console, in missions and the check ride.
+- **Mission hub**: straight down on the pole (`{ clamp: false }`), the LOLA relief sharp, the site named on its dot,
+  the view centred in the free area left of the panel.
+- **Settings**: "Save a diagnostics file…" and "Reset my patches" are 3-second holds (`bindHold`), like Reset.
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

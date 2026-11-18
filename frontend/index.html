@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Outpost Luna</title>
-<!-- Theme before first paint: a saved choice wins, else prefers-color-scheme (handled in CSS). -->
-<script>try{var t=localStorage.getItem("atm-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<!-- Theme before first paint: a saved choice wins ("System" follows prefers-color-scheme in CSS); first run is dark (0.4). -->
+<script>try{var t=localStorage.getItem("atm-theme"),p=null;try{p=JSON.parse(localStorage.getItem("outpost-prefs")||"null")}catch(e){}
+if(t!=="light"&&t!=="dark")t=p&&(p.theme==="system"||p.theme==="light")?(p.theme==="light"?"light":""):"dark";if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" type="image/png" href="/logo-64.png?v=2">
 </head>
 <body>

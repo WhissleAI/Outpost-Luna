@@ -22,12 +22,12 @@ from ux_shots import COURSE, answer_for, _Vocab  # noqa: E402
 IGNORE = ("favicon", "/api/voices", "404 (Not Found)")
 
 
-def run(base):
+def run(base, size=(1280, 720)):
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
     errs, log = [], []
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=exe, args=["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"])
-        pg = b.new_page(viewport={"width": 1280, "height": 720})
+        pg = b.new_page(viewport={"width": size[0], "height": size[1]})
         pg.on("console", lambda m: m.type == "error" and not any(x in m.text for x in IGNORE) and errs.append(m.text))
         pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.on("requestfailed", lambda r: print("  requestfailed:", r.url[:160], r.failure))
@@ -118,7 +118,9 @@ def run(base):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--base", default="http://localhost:5240")
-    t0 = time.time(); errs, log = run(ap.parse_args().base)
+    ap.add_argument("--size", default="1280x720", help="the window, WxH (the owner checks 1280x720 and 1440x900)")
+    a = ap.parse_args()
+    t0 = time.time(); errs, log = run(a.base, tuple(map(int, a.size.split("x"))))
     print(f"{len(log)} checks in {time.time() - t0:.0f}s; console errors: {len(errs)}")
     for e in errs: print("  ERR", e[:300])
     sys.exit(1 if errs else 0)

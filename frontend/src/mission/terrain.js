@@ -10,6 +10,7 @@
 // Post: pmndrs postprocessing (bloom for the Sun's glare and the beacons, a light grain + vignette, ACES).
 import * as THREE from "three";
 import { CSM } from "three/examples/jsm/csm/CSM.js";
+import { onViews, model as viewModel, loadModel } from "../media/nasa_views.js";   // [0.4] NASA's HDU habitat (optional pack)
 import { EffectComposer, RenderPass, EffectPass, BloomEffect, NoiseEffect, VignetteEffect, ToneMappingEffect, ToneMappingMode, BlendFunction } from "postprocessing";
 
 const R_MOON = 1737400, SKY = 800e3, DEG = Math.PI / 180;
@@ -91,7 +92,9 @@ function outpost() {
   const g = new THREE.Group(), white = new THREE.MeshStandardMaterial({ color: 0xe7e4dc, roughness: .6, metalness: .15 }),
     gold = new THREE.MeshStandardMaterial({ color: 0xc89c45, roughness: .35, metalness: .85 }), cell = new THREE.MeshStandardMaterial({ color: 0x1c2f57, roughness: .2, metalness: .7 }),
     grey = new THREE.MeshStandardMaterial({ color: 0x777b80, roughness: .7, metalness: .4 });
-  const cyl = (r, l, m, x, y, z, rx = 0, rz = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 28), m); c.position.set(x, y, z); c.rotation.set(rx, 0, rz); g.add(c); return c; };
+  // the habitat modules: simple cylinders, replaced by NASA's Habitat Demonstration Unit when the nasa_views pack is in
+  const modules = new THREE.Group(); g.add(modules);
+  const cyl = (r, l, m, x, y, z, rx = 0, rz = 0) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, 28), m); c.position.set(x, y, z); c.rotation.set(rx, 0, rz); modules.add(c); return c; };
   cyl(2.3, 9, white, 0, 3.2, 0, 0, Math.PI / 2); cyl(2.3, 7, white, 0, 3.2, 6.5, Math.PI / 2, 0); cyl(1.4, 2, gold, 0, 3.2, -3.2, Math.PI / 2, 0);
   [[-3, -1.5], [3, -1.5], [-3, 1.5], [3, 1.5], [-1.6, 8.5], [1.6, 8.5]].forEach(([x, z]) => cyl(.12, 2.4, grey, x, 1.1, z));
   // vertical solar array (at the pole the Sun skims the horizon, so arrays stand upright and turn with it)
@@ -107,9 +110,14 @@ function outpost() {
     for (let y = 0; y <= 224; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke(); }
     g.fillStyle = "rgba(120,150,200,.08)"; for (let x = 0; x < 128; x += 16) for (let y = 0; y < 224; y += 16) g.fillRect(x + 3, y + 3, 4, 4);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; })();
-  const pv = new THREE.MeshStandardMaterial({ map: pvTex, color: 0xffffff, roughness: .18, metalness: .55, envMapIntensity: 1.2 });
-  const back = new THREE.MeshStandardMaterial({ color: 0x9aa1a9, roughness: .7, metalness: .2 });
-  const frameM = new THREE.MeshStandardMaterial({ color: 0x7d838a, roughness: .55, metalness: .6 });   // matte: no bloom halo
+  // [0.4] never a black slab: seen from the shaded side (the Sun skims the horizon behind the array) a metallic cell
+  // face and an unlit substrate rendered pure black against the black sky. The cells keep their blue grid as a faint
+  // self-lit sheen (emissiveMap), the substrate and frame catch the earthshine / regolith bounce (a low emissive), so
+  // the array reads as lit hardware from any side; the sunlit face still gets the full specular look.
+  const pv = new THREE.MeshStandardMaterial({ map: pvTex, color: 0xffffff, roughness: .3, metalness: .35, envMapIntensity: 1.2,
+    emissive: 0x7c9fe0, emissiveMap: pvTex, emissiveIntensity: 2.6 });
+  const back = new THREE.MeshStandardMaterial({ color: 0xb4bbc3, roughness: .7, metalness: .1, emissive: 0x3c434c, emissiveIntensity: 1 });
+  const frameM = new THREE.MeshStandardMaterial({ color: 0x9aa0a7, roughness: .55, metalness: .4, emissive: 0x30353b, emissiveIntensity: 1 });   // matte: no bloom halo
   [-4.4, 4.4].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(8, 14, .12), [back, back, back, back, pv, back]); p.position.x = x; wing.add(p);
     [[0, 7, 8.2, .2], [0, -7, 8.2, .2], [4, 0, .2, 14.2], [-4, 0, .2, 14.2]].forEach(([fx, fy, fw, fh]) => { const f = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, .2), frameM); f.position.set(x + fx, fy, 0); wing.add(f); }); });
   // comm dish aimed at Earth
@@ -119,8 +127,19 @@ function outpost() {
   const beacon = new THREE.Mesh(new THREE.SphereGeometry(.18, 8, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(9, .6, .4) })); beacon.position.set(0, 5.7, 0); g.add(beacon);
   const lamp = new THREE.PointLight(0xffd7a0, 40, 60, 2); lamp.position.set(0, 7, 3); g.add(lamp);   // hab floodlight, for the night
   g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-  g.userData = { wing, array, dish, beacon, lamp };
+  g.userData = { wing, array, dish, beacon, lamp, modules };
   return g;
+}
+
+/** [0.4] Fit a NASA model to the outpost: longest horizontal side `span` metres, standing on the ground (y = 0), centred
+ *  on the old modules. Pure on the THREE group (tested with a stub box). -> the scale used */
+export function fitHabitat(obj, span = 13) {
+  const box = new THREE.Box3().setFromObject(obj), size = box.getSize(new THREE.Vector3());
+  const k = span / Math.max(size.x, size.z, 1e-6);
+  obj.scale.multiplyScalar(k); obj.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(obj), c = b2.getCenter(new THREE.Vector3());
+  obj.position.x -= c.x; obj.position.z -= c.z - 2.5; obj.position.y -= b2.min.y;   // centre on the modules (they ran z −3…10)
+  return k;
 }
 
 export function createTerrainView(host, { reduced = () => false } = {}) {
@@ -198,6 +217,21 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
   const csmPatch = groundMat.onBeforeCompile;
   groundMat.onBeforeCompile = (sh, r) => { csmPatch(sh, r); groundPatch(sh, r); };
 
+  // [0.4] NASA's Habitat Demonstration Unit replaces the cylinders when the nasa_views pack is installed (never without it)
+  let hdu = null, disposedViews = false;
+  const viewsOff = onViews(() => {
+    const m = viewModel("hdu"); if (!m || hdu) return;
+    loadModel(m.url).then(obj => {
+      if (disposedViews || hdu) return;
+      fitHabitat(obj);
+      obj.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true;
+        const mats = [].concat(o.material || []).map(x => { const c = x.clone(); if (c.isMeshStandardMaterial || c.isMeshPhysicalMaterial) { c.envMapIntensity = .8; if ("transmission" in c) c.transmission = 0;
+          // regolith bounce + earthshine: the walls facing away from a grazing Sun still read (a back-lit hab went black)
+          c.emissive = new THREE.Color(0xffffff); c.emissiveMap = c.map || null; c.emissiveIntensity = c.map ? .32 : .12; csm.setupMaterial(c); } return c; });
+        o.material = Array.isArray(o.material) ? mats : mats[0]; });
+      hdu = obj; hdu.name = "hdu"; hab.add(hdu); hab.userData.modules.visible = false;
+    }).catch(e => console.warn("HDU model", e));
+  });
   const S = { site: null, meta: null, levels: {}, h0: 0, view: "site", visible: false, sunEl: 1, sunLon: sunLon(0), earthEl: 3, storm: false, alarm: false,
     rover: { d: 0, dGoal: 0, heading: new THREE.Vector3(0, 0, -1), busy: false, task: null }, cam: null, tween: null, t0: performance.now(), drift: 0,
     frames: [], loading: null, earthUp: true };
@@ -445,9 +479,11 @@ export function createTerrainView(host, { reduced = () => false } = {}) {
     setStorm(on) { S.storm = !!on; },
     get fps() { const f = S.frames; return f.length > 1 ? Math.round((f.length - 1) / ((f[f.length - 1] - f[0]) / 1000)) : 0; },
     get earthAbove() { return S.earthEl > 0; },
+    /** [0.4] "hdu" once NASA's habitat model stands at the outpost, else "modules" (no pack: today's cylinders) */
+    get habitat() { return hdu ? "hdu" : "modules"; },
     get debug() { return { S, camera, terrain, sun, earthshine, hab, rv, renderer }; },
     dispose() {   // [qa] stop everything this view started, and give the GPU context back
-      disposed = true; S.visible = false; cancelAnimationFrame(raf); raf = 0; ro.disconnect(); document.removeEventListener("visibilitychange", onVis);
+      disposed = true; disposedViews = true; viewsOff(); S.visible = false; cancelAnimationFrame(raf); raf = 0; ro.disconnect(); document.removeEventListener("visibilitychange", onVis);
       try { csm.dispose(); composer.dispose(); } catch (e) { /* already gone */ }
       renderer.dispose(); renderer.forceContextLoss(); canvas.remove(); marks.remove();
     },

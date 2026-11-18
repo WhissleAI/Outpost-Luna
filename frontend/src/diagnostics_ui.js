@@ -2,6 +2,7 @@
 // is saved, and "Save a diagnostics file…". In the desktop app the page navigates to /__outpost/diagnostics: the shell
 // asks where to save (a save dialog), the backend builds the zip, the shell writes it, then calls window.__lunaDiag with
 // the result. In a browser (make dev) the page fetches the zip and the browser saves it. Nothing is ever uploaded.
+import { holdButtonHtml, bindHold, HOLD_MS } from "./reset.js";   // [0.4] the shared 3-second hold (Reset, Clear videos)
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -9,6 +10,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "
 export const COPY = {
   line: "For support. No audio, no words, no keys. Never uploaded.",
   save: "Save a diagnostics file…",
+  grownUp: "For a grown-up: hold for 3 seconds.",
   names: "Include the names the app learned (how your child says them)",
   state: { saving: "Saving…", saved: "Saved.", cancelled: "", error: "Couldn't save it. Try again." },
 };
@@ -50,18 +52,23 @@ const section = {
     <p class="set-help">${esc(COPY.line)}</p>
     <ul class="dg-list" data-dg-items>${items(last).map(t => `<li>${esc(t)}</li>`).join("")}</ul>
     <label class="set-help"><input type="checkbox" data-dg-names> ${esc(COPY.names)}</label>
-    <button type="button" class="btn" data-dg-save>${esc(COPY.save)}</button>
+    ${holdButtonHtml(COPY.save, "data-dg-save")}
+    <small class="rs-note">${esc(COPY.grownUp)}</small>
     <p class="set-help" data-dg-state role="status" aria-live="polite"></p></div>`,
-  bind(el) {
+  bind(el, { holdMs = HOLD_MS } = {}) {
     const list = el.querySelector("[data-dg-items]"), btn = el.querySelector("[data-dg-save]"), st = el.querySelector("[data-dg-state]");
     if (!btn) return;
     load().then(c => { if (c && list) list.innerHTML = items(c).map(t => `<li>${esc(t)}</li>`).join(""); });
+    let h = null;
     const onState = s => {
       st.textContent = COPY.state[s] ?? "";
-      btn.disabled = s === "saving";
+      if (s !== "saving" && h) h.rearm();   // saved, cancelled or failed: the hold works again
     };
     const names = el.querySelector("[data-dg-names]");
-    btn.onclick = () => save({ onState, names: !!(names && names.checked) });
+    // a click does nothing: the file is saved only after a 3-second hold (bindHold; a kid tapping round Settings never
+    // opens a save dialog)
+    h = bindHold(btn, { holdMs, onFire: () => save({ onState, names: !!(names && names.checked) }) });
+    return h;
   },
 };
 if (typeof window !== "undefined") {

@@ -279,3 +279,6 @@ html[data-motion="reduce"] .mx-bigstars span{animation:none}
 .mx-grown>summary:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 .mx-grown[open]>summary{margin-bottom:var(--space-3)}
 .mx-grown>*+*{margin-top:var(--space-3)}
+/* [0.4] the hub and the briefing look straight down on the pole: the outpost's name rides on its dot (the picker's
+   own pins take over in "Choose site") */
+body:has(.mpanel.mx-brief:is(.mx-hub,.mx-plan):not([hidden])) .mmark.is-outpost{display:block;font-size:var(--text-md);padding:4px 12px}

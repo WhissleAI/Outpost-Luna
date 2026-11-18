@@ -109,9 +109,8 @@ export function createCockpit3D(host, { panels, hole, glass = null, reduced = ()
   [-1, 1].forEach(s => { const m = new THREE.Mesh(sideG, wall); m.position.set(s * 2.05, 1.5, -0.3); m.rotation.y = -s * (Math.PI / 2 - 0.42); scene.add(m); });
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.4), wall); ceil.position.set(0, 2.55, -0.2); ceil.rotation.x = Math.PI / 2 + 0.12; scene.add(ceil);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.4), dark); floor.position.set(0, 0.0, -0.2); floor.rotation.x = -Math.PI / 2; scene.add(floor);
-  // ceiling light strip + hand rails over the window (Orion-style grab bars)
-  const strip = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.02, 0.08), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: col("--color-on-space"), emissiveIntensity: 0.6 }));
-  strip.position.set(0, 2.42, -0.6); scene.add(strip);
+  // [0.4] no visible ceiling light strip: at the wider fields of view (fitFov) its white bar showed as a thin line under
+  // the cockpit's top bar. The cabin light stays (the `fill` point light below); the ceiling is plain panel.
   // grab bars either side of the window (Orion-style handholds)
   const railG = new THREE.CapsuleGeometry(0.014, 0.42, 4, 10);
   [-1, 1].forEach(sx => { const r = new THREE.Mesh(railG, trim); r.position.set(sx * (W.w / 2 + 0.26), W.cy, W.z + 0.1); scene.add(r);

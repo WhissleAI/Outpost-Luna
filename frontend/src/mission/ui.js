@@ -43,6 +43,8 @@ const LESSONS = [
   ["apollo15_lrv", "Don't drive too far. Apollo 15's rover went 27.8 km but stayed within 5 km of the lander, so the crew could walk back."],
 ];
 
+/** [0.4] The Mission picker's camera: top-down on the south pole (lon 0 = the Earth side at the top of the screen). */
+export const PICK_VIEW = { lat: -89, lon: 0, dist: 1.3, band: .62 };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pct = v => Math.max(0, Math.min(100, +v || 0));
 const src = s => s && s.url ? `<a class="chip-src" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || new URL(s.url).hostname)}</a>` : "";
@@ -380,10 +382,15 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   }
   function previewSite() {
     if (!site) return;
-    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.0 });
+    globe.mission.setSite({ ...site, short: site.name.split(" (")[0] }, { dist: 2.0, clamp: false });
     globe.mission.setSun(1, 0); globe.mission.setEarth(site.earth_visible_pct > 60 ? 3 : -1); globe.mission.setRover(null);
-    // frame the whole south-pole region (all five sites), not just the picked one; the band lifts the pole off the strip
-    globe.setViewport(window.__pickBand || .3); globe.flyTo(-88.6, -40, window.__pickDist || 1.45);
+    // frame the whole south-pole region (all five sites), not just the picked one; the band lifts the pole off the strip.
+    // [0.4] straight down on the pole ({clamp: false}, docs/MEDIA.md): the LOLA relief (site_layers) reads sharp and
+    // flat, the five pins spread out instead of stacking on the slanted limb
+    // the pole sits in the middle of the free area: lifted off the voice bar, left of the side panel
+    const sr = panel.parentNode && panel.parentNode.getBoundingClientRect(), pr = !panel.hidden && panel.getBoundingClientRect();
+    const xs = sr && pr && pr.width && sr.width ? Math.max(0, Math.min(.25, (sr.right - pr.left) / 2 / sr.width)) : 0;
+    globe.setViewport(window.__pickBand || PICK_VIEW.band, xs); globe.flyTo(PICK_VIEW.lat, PICK_VIEW.lon, window.__pickDist || PICK_VIEW.dist, { clamp: false });
   }
 
   // ---------- [polish 4] the Mission hub and the 3-card briefing (docs/MISSION_POLISH_SPEC.md, wave 4) ----------
