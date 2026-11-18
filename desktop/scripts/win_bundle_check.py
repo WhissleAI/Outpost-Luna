@@ -209,7 +209,8 @@ MUST = {
 # The Electron shell's files, inside resources/app.asar (electron-builder.yml `files: main/**/*`).
 SHELL_FILES = ("package.json", "main/main.js", "main/supervisor.js", "main/permissions.js", "main/keys.js", "main/reset.js",
                "main/gate.js", "main/gate.html", "main/splash.html", "main/assets.js", "main/updates.js",
-               "main/firstrun.html", "main/firstrun-preload.js")
+               "main/firstrun.html", "main/firstrun-preload.js",
+               "main/firstrun_progress.js", "main/fonts/inter-latin-wght-normal.woff2")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 PY_FILES = ("python.exe", "python311.dll", "vcruntime140.dll", "vcruntime140_1.dll", "msvcp140.dll", "Lib", "DLLs")
 

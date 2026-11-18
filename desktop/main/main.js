@@ -411,7 +411,7 @@ function frSend(extra = {}) {
 function requiredReady() { return store.status().filter((x) => x.required).every((x) => x.state === "installed"); }
 
 function createFirstRun() {
-  firstrun = new BrowserWindow({ width: 560, height: 470, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
+  firstrun = new BrowserWindow({ width: 560, height: 540, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, "firstrun-preload.js") } });
   firstrun.loadFile(path.join(__dirname, "firstrun.html"));
   firstrun.webContents.on("did-finish-load", () => frSend());
