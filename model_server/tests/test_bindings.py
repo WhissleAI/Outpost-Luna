@@ -162,7 +162,17 @@ def test_onnxruntime_is_pinned_once_and_the_wheel_matches():
     for key, p in LOCK["platforms"].items():
         assert v in p["url"] and p["url"].startswith("https://github.com/microsoft/onnxruntime/releases/download/")
         assert re.fullmatch(r"[0-9a-f]{64}", p["sha256"]) and re.fullmatch(r"[0-9a-f]{64}", p["lib_sha256"]), key
+        # ordered sources (vendor_onnxruntime.cmake): the original GitHub one first, then fallbacks; each archive has
+        # its own sha256, the library extracted from any of them is checked against the one lib_sha256 above
+        src = p["sources"]
+        assert src[0]["url"] == p["url"] and src[0]["sha256"] == p["sha256"], key
+        assert len({s["url"].rsplit("/", 1)[-1] for s in src}) == len(src), key   # distinct cache file names
+        for s in src:
+            assert s["url"].startswith("https://") and re.fullmatch(r"[0-9a-f]{64}", s["sha256"]), (key, s)
+            assert s["lib"].rsplit("/", 1)[-1] == p["lib"].rsplit("/", 1)[-1], (key, s)
     assert {"darwin-arm64", "windows-x64"} <= set(LOCK["platforms"])          # the two installers
+    # github.com/microsoft/onnxruntime went offline (Nov 2026): Windows must have a source that is not GitHub
+    assert any("github.com" not in s["url"] for s in LOCK["platforms"]["windows-x64"]["sources"])
 
 
 def _pinned_dir(tmp_path: Path, name: str, data: bytes = b"ort") -> Path:

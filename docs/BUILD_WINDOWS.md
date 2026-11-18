@@ -111,7 +111,7 @@ While it works, it prints `==> [time] step n/8`. The steps match the Mac build (
 | 3 | Runs `npm ci` for the frontend, then fetches the camera-gesture runtime and models (sha256-pinned) | 1 to 2 min |
 | 4 | Sets up the embedded Python 3.11 and installs the backend and model-server packages: ONNX Runtime, the WinRT and SAPI speech packages, the Steer TTS runtime, and the Visual C++ runtime DLLs. It then builds the frontend and stages the app code, and checks that every DLL import resolves | 3 to 6 min |
 | 5 | Checks `desktop\assets.manifest.json`. No models are bundled: the app downloads them on first launch (§6) | seconds |
-| 6 | Builds `arctag.dll` (MSVC) and `arc.dll` (libarc, the ear: clang-cl or clang) with CMake. Configuring libarc downloads the pinned ONNX Runtime (`onnxruntime-win-x64-1.32.0.zip`, 97 MB, once; cached in `desktop\build\cache\onnxruntime`), checks its sha256, and the script copies `onnxruntime.dll` to `resources\native\onnxruntime\`. Then it checks the Python bindings match `arc.h` / `arctag.h` and that `arc.dll` reports the header's ABI | 1 to 3 min |
+| 6 | Builds `arctag.dll` (MSVC) and `arc.dll` (libarc, the ear: clang-cl or clang) with CMake. Configuring libarc downloads the pinned ONNX Runtime once (cached in `desktop\build\cache\onnxruntime`), checks its sha256, and the script copies `onnxruntime.dll` to `resources\native\onnxruntime\`. GitHub's ONNX Runtime downloads have been offline since Nov 2026, so expect a `...zip failed (22;"HTTP response code said error"); trying the next source` line: the build then fetches Microsoft's NuGet package (`microsoft.ml.onnxruntime.1.32.0.nupkg`, 184 MB) and checks that the `onnxruntime.dll` in it is byte-for-byte the pinned one. No manual steps Then it checks the Python bindings match `arc.h` / `arctag.h` and that `arc.dll` reports the header's ABI | 1 to 3 min |
 | 7 | Runs Electron and electron-builder. This makes `dist\win-unpacked`, then compresses it into the NSIS installer | 3 to 10 min |
 | 8 | Checks the unpacked app: `win_bundle_check.py dlls`, `speech` and `runtime` (§12). Then it prints the installer path | under 1 min |
 
@@ -363,7 +363,7 @@ Add `--clobber` to replace a file that is already attached. Keep the name as it 
 
 After a native Windows build, please confirm and send the output:
 
-1. Step 6 prints `onnxruntime 1.32.0 (windows-x64): ...\onnxruntime\onnxruntime.dll (sha256 ok)` during libarc's
+1. Step 6 prints `onnxruntime 1.32.0 (windows-x64): ...\onnxruntime\onnxruntime.dll from <source> (sha256 ok)` during libarc's
    configure (both generators: LLVM clang + Ninja, and Visual Studio `-T ClangCL`), then
    `C bindings match arc.h and arctag.h` and `desktop\resources\native\arc.dll: ABI 2 (matches arc.h)`.
 2. `desktop\dist\win-unpacked\resources\native\onnxruntime\` holds `onnxruntime.dll`, `onnxruntime.json`,
@@ -405,6 +405,7 @@ After a native Windows build, please confirm and send the output:
 | `main.log`: `assets: ... sha256 mismatch` | Click Try again (the file downloads again). If it repeats, send `main.log` |
 | "not enough disk space for …" | Free the space it names on the system drive (`%APPDATA%` lives there), then Try again |
 | Splash says the backend or model server "keeps stopping" | Send `%APPDATA%\Outpost Luna\logs\*.log` |
+| Step 6: `onnxruntime 1.32.0 (windows-x64): no source in onnxruntime.lock.json could be fetched` | Every source failed (GitHub is offline since Nov 2026; NuGet or the mirror is down too, or a proxy blocks them). Download any URL the message lists in a browser, put the file unchanged in `desktop\build\cache\onnxruntime\`, and run the build again: it is sha256-checked as if downloaded |
 | `models.log`: `libarc not found` or `cannot load ... arc.dll` | Send `models.log`. The app should have `resources\native\arc.dll` |
 | `models.log`: `ONNX Runtime: cannot load ...onnxruntime.dll` | Send `models.log`. libarc loads the pinned `resources\native\onnxruntime\onnxruntime.dll` by path (it needs the VC++ DLLs next to `python.exe`) |
 | `models.log` / `/health`: `ONNX Runtime ... not found next to libarc` or `... damaged or not the pinned build` | `resources\native\onnxruntime\` is missing or altered: rebuild (step 6) or reinstall. Send step 6's output |

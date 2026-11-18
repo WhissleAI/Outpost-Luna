@@ -65,6 +65,13 @@ reason), `FUZZ_SECONDS`, `FUZZ_SEED`, `SOAK=1`, `SOAK_MINUTES`.
 
 ## Mac release
 
+**ONNX Runtime downloads.** github.com/microsoft/onnxruntime has been offline since Nov 2026, so libarc's configure
+tries each source `desktop/vendor/libarc/onnxruntime.lock.json` lists for the platform (GitHub, then Microsoft's
+NuGet package for Windows, then our Dropbox mirror where listed) and checks the library against the one pinned
+sha256 whatever the source; there is nothing to do by hand while one source works. A build machine that already has
+the archive in `desktop/build/cache/onnxruntime/` never downloads. If every source fails, put the archive there
+(unchanged bytes, under its url's file name) and configure again.
+
 1. **Version.** Bump `desktop/package.json` and `frontend/package.json` (plus their lock files), in a PR like
    "Release 0.3.7". Merge it to `main`.
 2. **Build** from a clean `main`, signed and notarized (docs/DESKTOP.md, "Signing and notarization"):

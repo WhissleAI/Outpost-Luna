@@ -128,8 +128,8 @@ if (-not $dll) { Die "arctag.dll was not produced (see the CMake output above)" 
 New-Item -ItemType Directory -Force desktop\resources\native | Out-Null
 Copy-Item $dll desktop\resources\native\arctag.dll -Force
 # libarc (the ear). ONNX Runtime is loaded by path at run time (nothing to link): configuring libarc downloads the
-# pinned build (desktop\vendor\libarc\onnxruntime.lock.json: onnxruntime-win-x64-<v>.zip, sha256-checked, cached in
-# desktop\build\cache\onnxruntime) into desktop\build\libarc\onnxruntime\, copied next to arc.dll below. Needs CMake 3.21+.
+# pinned build (desktop\vendor\libarc\onnxruntime.lock.json: GitHub's zip, else Microsoft's NuGet package or our mirror;
+# sha256-checked, cached in desktop\build\cache\onnxruntime) into desktop\build\libarc\onnxruntime\, copied next to arc.dll below. Needs CMake 3.21+.
 # libarc needs a GCC/Clang-compatible C compiler (C11 atomics, __builtin_popcountll, target attributes): plain MSVC
 # (cl.exe) cannot build it. Order: LLVM clang + Ninja; else Visual Studio's clang-cl toolset (-T ClangCL, the
 # "C++ Clang tools for Windows" component). Install either: winget install --id LLVM.LLVM -e; winget install --id Ninja-build.Ninja -e
