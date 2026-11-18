@@ -2,7 +2,21 @@
 
 There is no CI budget (GitHub Actions is off for this org), so every release is gated **locally**: a person runs
 `make release-check` on the Mac, and `release-check.ps1` on the Windows build machine, against the exact installer
-that will be uploaded. A release ships only when both say `PASS`. Issue #91.
+that will be uploaded. Each installer ships only when its own check says `PASS`. Issue #91.
+
+**Mac first, Windows follows.** The Mac release (dmg) goes out as soon as it passes; the Windows installer is built and
+gated by a teammate on the Windows machine and uploaded to the **same** release when it is ready, usually hours to days
+later. A release without the `.exe` is normal, not a mistake (0.3.9 to 0.3.11 shipped Mac-only), and is safe because:
+
+- the site's download buttons (`site/dl.js`) link each to the newest release that really has its file and show that
+  version, so "Download for Windows" points at the last release with an `.exe` (and moves to the new one the moment
+  the `.exe` is uploaded, with no site change);
+- the README sends Windows users to the download page, never to `releases/latest/download/Outpost-Luna-win-x64.exe`,
+  which 404s while the latest release is Mac-only.
+
+So, for every Mac-only release: say so in the notes (`Windows: follows; until then the Windows download is <last
+version with an .exe>.`), tell the Windows builder the tag, and when the `.exe` is uploaded, edit that line out. Never
+skip the Windows gate to "catch up"; a Windows release may also skip a version and go straight to the newest tag.
 
 Why: 0.3.4 and 0.3.5 shipped with a dead ear. Release signing re-signed the pinned ONNX Runtime, its sha256 no longer
 matched the lock file, and the speech engine refused to load inside the signed app. Unit tests and a dev run both
@@ -68,7 +82,8 @@ reason), `FUZZ_SECONDS`, `FUZZ_SEED`, `SOAK=1`, `SOAK_MINUTES`.
    ```
 
    Keep `desktop/dist/release-check.json`: its gate summaries go in the release PR or notes.
-4. **Publish** under both names. The site and README link the stable name through `releases/latest/download/`:
+4. **Publish** under both names. The site links the stable name through `releases/latest/download/` (dl.js then
+   resolves the newest release that has each file). If Windows follows later, add the line above to `notes.md`:
 
    ```bash
    V=0.3.7
@@ -116,8 +131,9 @@ On the Windows build machine (docs/BUILD_WINDOWS.md), from the same `main` commi
    gh release upload v<version> desktop\dist\Outpost-Luna-win-x64.exe --clobber
    ```
 
-4. **Verify:** "Download for Windows" on the site (`releases/latest/download/Outpost-Luna-win-x64.exe`) must return
-   the uploaded file. Compare its SHA-256: `Get-FileHash`.
+4. **Verify:** "Download for Windows" on the site must now show the new version and return the uploaded file.
+   Compare its SHA-256: `Get-FileHash`. Then remove the "Windows: follows" line from the release notes
+   (`gh release edit v<version> --notes-file notes.md`).
 
 ## When a gate fails
 

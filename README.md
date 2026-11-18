@@ -25,18 +25,29 @@ small button inside the app, used by the lessons.
 
 ## Download
 
-- **Mac** (Apple silicon): **[Outpost-Luna-mac-arm64.dmg](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg)**
-  (246 MB, about 1.2 GB once set up). Signed and notarized by Whissle LLC. Open the DMG, drag Outpost Luna to
-  Applications, open it.
-- **Windows** 10/11 x64: **[Outpost-Luna-win-x64.exe](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-win-x64.exe)**
-  (about 194 MB). The installer is unsigned, so SmartScreen asks: More info → Run anyway. Or
-  [build it from source](#windows).
+The easiest way is the **[download page](https://whissleai.github.io/Outpost-Luna/)**: each button links the newest
+release that has that installer and shows its version. Releases go **Mac first, Windows follows** (a teammate builds
+Windows), so for a while the newest release may be Mac-only and the Windows button points at the previous one.
 
-Both are on [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases/latest); each release lists the
-SHA-256 of its files. On first run the app downloads the models once (about 510 MB: the ear, Arc Tagger, the embedder
-and the voice pack), then runs with no internet, no account and no keys. The Artemis II crew audio and the NASA videos
-download in the background; the Steer voice (13 MB) only if you ask for it in Settings. Or click **Import offline
-pack…** and pick `outpost-luna-assets-v2.zip` (885 MB, no network needed). The NASA YouTube clips need a connection.
+- **Mac** (Apple silicon, macOS 13+): **[Outpost-Luna-mac-arm64.dmg](https://github.com/WhissleAI/Outpost-Luna/releases/latest/download/Outpost-Luna-mac-arm64.dmg)**
+  (274 MB, about 1.5 GB once set up with the videos and crew audio). Signed and notarized by Whissle LLC. Open the
+  DMG, drag Outpost Luna to Applications, open it.
+- **Windows** 10/11 x64: `Outpost-Luna-win-x64.exe` (about 198 MB), from the
+  [download page](https://whissleai.github.io/Outpost-Luna/) or the newest
+  [release](https://github.com/WhissleAI/Outpost-Luna/releases) that lists it (a direct `releases/latest/download/`
+  link 404s while the latest release is still Mac-only). The installer is unsigned, so SmartScreen asks: More info →
+  Run anyway. Or [build it from source](#windows).
+
+Each release on [GitHub Releases](https://github.com/WhissleAI/Outpost-Luna/releases) lists the SHA-256 of its files.
+
+**First run, one time:** the app downloads its models (about 510 MB: the ear, Arc Tagger, the embedder and the voice
+pack) before it opens, then runs with no internet, no account and no keys. In the background it then fetches the
+Artemis II crew audio (175 MB) and the NASA video pack (14 NASA videos with captions, about 425 MB); the Steer voice
+(13 MB) only if you ask for it in Settings. After that, every lesson video plays offline. No network at all? Click
+**Import offline pack…** and pick `outpost-luna-assets-v2.zip` (885 MB): the models, the crew audio and an earlier set
+of 8 NASA videos; the other videos fetch the next time the computer is online. Only the two optional YouTube extras
+(a hands-on crater and an Oreo phases activity) stream, and each has a "Watch on YouTube" link behind the grown-up
+gate.
 
 Website: <https://whissleai.github.io/Outpost-Luna/> (source in `site/`, published with `scripts/publish_site.sh`).
 
@@ -80,8 +91,8 @@ troubleshooting: **[docs/BUILD_WINDOWS.md](docs/BUILD_WINDOWS.md)**. In short, i
 
 3. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost-Luna-win-x64.exe` (the same
    installer as `Outpost Luna Setup <version>.exe`; unsigned: SmartScreen → More info → Run anyway).
-4. First launch downloads the models (510 MB before the app opens, ~375 MB more in the background), or use **Import
-   offline pack…** (link in the guide).
+4. First launch downloads the models (510 MB before the app opens, about 600 MB more in the background: crew audio
+   and the 14-video NASA pack), or use **Import offline pack…** (link in the guide).
 
 To publish a Windows build, attach the installer to the release:
 `gh release upload <tag> desktop\dist\Outpost-Luna-win-x64.exe`.
