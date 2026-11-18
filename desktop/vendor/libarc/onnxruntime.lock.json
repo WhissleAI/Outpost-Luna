@@ -1,5 +1,5 @@
 {
- "_doc": "The ONE place the ONNX Runtime version is pinned (issue #85). libarc's CMake build downloads the archive for the target platform, checks its sha256 and the library's sha256, and copies the library + its licence next to libarc (<build>/onnxruntime/), with onnxruntime.json; the model server loads that copy (model_server/app/nft2.py) and checks its sha256 again at load. model_server/pyproject.toml pins the Python wheel (the embedder, Steer TTS) to the same version; model_server/tests/test_bindings.py fails when the two differ. To move to another version: update version + every platform entry (archive sha256 from the GitHub release's asset digest, lib_sha256 of the extracted library), pyproject.toml's onnxruntime==, uv lock, rebuild, run the ear tests.",
+ "_doc": "The ONE place the ONNX Runtime version is pinned (issue #85). libarc's CMake build (cmake/vendor_onnxruntime.cmake) fetches the archive for the target platform, checks the archive's sha256 and the library's sha256, and copies the library + its licence next to libarc (<build>/onnxruntime/), with onnxruntime.json; the model server loads that copy (model_server/app/nft2.py) and checks its sha256 again at load. Each platform lists ordered \"sources\" (tried in turn: a cached archive first, then each url): every archive is checked against its own sha256, and the library extracted from it against the platform's ONE lib_sha256, so a mirror can only ever yield the exact pinned bytes. github.com/microsoft/onnxruntime went offline in Nov 2026 (release downloads 404), hence the extra sources (NuGet: Microsoft's own package; our Dropbox mirror of the original archive, where listed). A source may set \"licence\" when its licence files sit elsewhere. An archive already in ARC_ORT_CACHE under its url's file name is used without downloading; the top-level url/sha256/root/lib are the original GitHub source (sources[0]), kept for reference. linux-x64/linux-arm64 list only GitHub (no Linux installer ships; add a mirror when one does). model_server/pyproject.toml pins the Python wheel (the embedder, Steer TTS) to the same version (from PyPI); model_server/tests/test_bindings.py fails when the two differ. To move to another version: update version + every platform entry and its sources (archive sha256, lib_sha256 of the extracted library), pyproject.toml's onnxruntime==, uv lock, rebuild, run the ear tests.",
  "version": "1.32.0",
  "c_api_version": 23,
  "licence": ["LICENSE", "ThirdPartyNotices.txt"],
@@ -9,28 +9,71 @@
    "sha256": "8ddca23f532b9d4fbb279ba9b08dab6c0ac94fdc9aec2eb44a1db7049216c043",
    "root": "onnxruntime-osx-arm64-1.32.0",
    "lib": "lib/libonnxruntime.1.32.0.dylib",
-   "lib_sha256": "51c5a25a3dfafd74f62f403e6e0dc7881d97c0e627c703a4d9548c5677abc8fd"
+   "lib_sha256": "51c5a25a3dfafd74f62f403e6e0dc7881d97c0e627c703a4d9548c5677abc8fd",
+   "sources": [
+    {
+     "name": "github",
+     "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-osx-arm64-1.32.0.tgz",
+     "sha256": "8ddca23f532b9d4fbb279ba9b08dab6c0ac94fdc9aec2eb44a1db7049216c043",
+     "root": "onnxruntime-osx-arm64-1.32.0",
+     "lib": "lib/libonnxruntime.1.32.0.dylib"
+    }
+   ]
   },
   "windows-x64": {
    "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-win-x64-1.32.0.zip",
    "sha256": "aaa1d04fcf86bd31e84b90bc0cbde80e632bd0720dcc5d8ba05c4fe45c09d127",
    "root": "onnxruntime-win-x64-1.32.0",
    "lib": "lib/onnxruntime.dll",
-   "lib_sha256": "348c3d29d6995eee37e3451825eaddb7ea7400be3afda6ca2286b12bc775f042"
+   "lib_sha256": "348c3d29d6995eee37e3451825eaddb7ea7400be3afda6ca2286b12bc775f042",
+   "sources": [
+    {
+     "name": "github",
+     "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-win-x64-1.32.0.zip",
+     "sha256": "aaa1d04fcf86bd31e84b90bc0cbde80e632bd0720dcc5d8ba05c4fe45c09d127",
+     "root": "onnxruntime-win-x64-1.32.0",
+     "lib": "lib/onnxruntime.dll"
+    },
+    {
+     "name": "nuget",
+     "url": "https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/1.32.0/microsoft.ml.onnxruntime.1.32.0.nupkg",
+     "sha256": "a9150bc2992cbbb6722070da9910e1ffa989a8bfc67bdd5bb8e745ca755641db",
+     "root": "",
+     "lib": "runtimes/win-x64/native/onnxruntime.dll"
+    }
+   ]
   },
   "linux-x64": {
    "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-x64-1.32.0.tgz",
    "sha256": "bb169b7e374731730d2ae406fb39de7be4b315f413a9132efe896261c31bb503",
    "root": "onnxruntime-linux-x64-1.32.0",
    "lib": "lib/libonnxruntime.so.1.32.0",
-   "lib_sha256": "4213d6d8c42ac4754865849cb139d31fc39127db6a326babf90bbc81a6eb52fc"
+   "lib_sha256": "4213d6d8c42ac4754865849cb139d31fc39127db6a326babf90bbc81a6eb52fc",
+   "sources": [
+    {
+     "name": "github",
+     "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-x64-1.32.0.tgz",
+     "sha256": "bb169b7e374731730d2ae406fb39de7be4b315f413a9132efe896261c31bb503",
+     "root": "onnxruntime-linux-x64-1.32.0",
+     "lib": "lib/libonnxruntime.so.1.32.0"
+    }
+   ]
   },
   "linux-arm64": {
    "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-aarch64-1.32.0.tgz",
    "sha256": "81a46251dd90da4122f4b9ceb4433f836fbc79ee1eddffca7c09033af81a1939",
    "root": "onnxruntime-linux-aarch64-1.32.0",
    "lib": "lib/libonnxruntime.so.1.32.0",
-   "lib_sha256": "fd1db07c49cb1ad11370ef4393a405eef959fa9622fb5b2880f85d025757e719"
+   "lib_sha256": "fd1db07c49cb1ad11370ef4393a405eef959fa9622fb5b2880f85d025757e719",
+   "sources": [
+    {
+     "name": "github",
+     "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.32.0/onnxruntime-linux-aarch64-1.32.0.tgz",
+     "sha256": "81a46251dd90da4122f4b9ceb4433f836fbc79ee1eddffca7c09033af81a1939",
+     "root": "onnxruntime-linux-aarch64-1.32.0",
+     "lib": "lib/libonnxruntime.so.1.32.0"
+    }
+   ]
   }
  }
 }
