@@ -4714,7 +4714,7 @@
    "title": "NASA views (sky, 3D models, Moon rocks, photos)",
    "required": false,
    "file": "outpost-luna-v2-nasa_views.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/bpo6pikpol5x2awr30u0u/outpost-luna-v2-nasa_views.tar?rlkey=pqmolobmvn1k5ifcfyj6ytlmg&dl=1",
    "sha256": "e97b50ce86b714383ca13751cc73379d2c94467aab946d6e2d8f63ecc23845a9",
    "size": 14325760,
    "unpacked_size": 14285786,
@@ -4935,6 +4935,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-18T04:17:11Z",
- "version": "2026.11.18.0417"
+ "published_at": "2026-11-18T06:10:14Z",
+ "version": "2026.11.18.0610"
 }
