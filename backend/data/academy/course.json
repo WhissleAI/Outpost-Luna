@@ -2999,6 +2999,10 @@
      "accept": {
       "type": "sequence",
       "readback": true,
+      "order": {
+       "type": "shelter",
+       "on": true
+      },
       "items": [
        {
         "id": "crew",
@@ -3052,6 +3056,11 @@
      "accept": {
       "type": "sequence",
       "readback": true,
+      "order": {
+       "type": "shelter",
+       "on": true
+      },
+      "radio": true,
       "items": [
        {
         "id": "in",

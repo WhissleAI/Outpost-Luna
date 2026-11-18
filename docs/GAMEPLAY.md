@@ -535,6 +535,11 @@ call: Houston gives the order, the crew reads it back, acts, and confirms.
 3. **Act**: "Crew into the shelter", the real order (the shelter switch, the card's button, or the order by voice).
 4. **Confirm**: "In the shelter, copy" (a `sequence` step, voice or one tap). Houston copies.
 
+One grader: the spoken readback and confirm are graded by `mission/readback.py` (the 0.6 radio readback, §14.1)
+against the shelter order (`order` on the step); the confirm also needs the radio word ("copy"). The chips are the tap
+path (`grade._sequence`). Once the readback is done, the shelter order is an ordinary order step, so "Copy, crew into
+the shelter" there runs it with "Good readback." as in §14.1.
+
 Safety first: a crew sheltered straight away (an order, a tap on the switch) is never held back. The readback is
 marked skipped ("Sheltered. No readback this time."), and the confirm settles itself an hour in (or when the storm
 arrives on a prep). Rewards are unchanged; tests/test_strategy.py policies never touch tasks.

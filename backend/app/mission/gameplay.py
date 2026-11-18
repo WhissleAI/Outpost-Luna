@@ -203,6 +203,7 @@ def _shelter_step():
 # confirms. The readback and the confirm are words (voice) or one tap; an order given straight away still counts (the
 # crew is safe first): the readback is then marked skipped, and the confirm settles itself after CONFIRM_WAIT_H.
 HOUSTON_SHELTER = "Houston: all crew into the shelter. Read it back."
+SHELTER_ON = {"type": "shelter", "on": True}
 CONFIRM_WAIT_H = 1
 
 
@@ -210,7 +211,8 @@ def _readback_step():
     s = {"id": "readback", "kind": "sequence", "label": HOUSTON_SHELTER, "target": "task", "button": "Read it back",
          "items": [{"id": "crew", "label": "All crew", "say": ["all crew", "crew", "everyone", "everybody", "all of us"]},
                    {"id": "shelter", "label": "into the shelter", "say": ["shelter", "inside", "under cover"]}],
-         "why": "A readback proves the order was heard right."}
+         "why": "A readback proves the order was heard right.",
+         "order": SHELTER_ON}   # graded by mission/readback.py (the radio readback's grader), chips as a fallback
     s["ready_if"] = lambda m, t: not m.rover["busy"]
     s["wait_text"] = "Shelter opens when the rover crew is home."
     return s
@@ -221,7 +223,8 @@ def _confirm_step():
             "button": "In the shelter, copy", "ready_if": lambda m, t: m.shelter,
             "items": [{"id": "in", "label": "In the shelter", "say": ["in the shelter", "inside", "sheltered", "in"]},
                       {"id": "copy", "label": "copy", "say": ["copy", "copied", "roger"]}],
-            "why": "Houston can't see inside. Say when the crew is safe."}
+            "why": "Houston can't see inside. Say when the crew is safe.",
+            "order": SHELTER_ON, "radio": True}   # "In the shelter, copy": readback.py, with the radio word
 
 
 def _storm_auto(m, t, s):
@@ -1169,7 +1172,8 @@ def _free_step(m, t, s, cmd) -> dict:
     # sequence: the readback
     items = s["items"]
     if text and choice is None:
-        ok, ex = grade._sequence({"items": items}, {"got": s.get("got")}, text)
+        ok, ex = grade._sequence({"items": items, "order": s.get("order"), "radio": s.get("radio")},
+                                 {"got": s.get("got")}, text)
         s["got"] = ex["got"]
         if not ok:
             full = ", ".join(i["label"] for i in items)

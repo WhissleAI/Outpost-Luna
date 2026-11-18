@@ -535,7 +535,7 @@ LESSONS = [
          # [0.4.1] the storm procedure, as flight controllers run it: Houston calls the order, the cadet reads it
          # back, acts on the console (a wrong order still counts as wrong), then confirms
          step("Storm alert! Houston: all crew into the shelter. Read it back.",
-              {"type": "sequence", "readback": True,
+              {"type": "sequence", "readback": True, "order": {"type": "shelter", "on": True},
                "items": [opt("crew", "All crew", "all crew", "crew", "everyone", "everybody", "all of us"),
                          opt("shelter", "into the shelter", "shelter", "inside", "under cover")]},
               "Readback correct. Now get them in.", "Read Houston's order back.",
@@ -545,7 +545,7 @@ LESSONS = [
               "Copy. Crew in the shelter.", "Radiation is climbing.",
               "Get the whole crew under cover.", wrong={**WRONG_STORM, "shelter_out": "Wrong way. The storm is here."}),
          step("Tell Houston the crew is inside.",
-              {"type": "sequence", "readback": True,
+              {"type": "sequence", "readback": True, "order": {"type": "shelter", "on": True}, "radio": True,
                "items": [opt("in", "In the shelter", "in the shelter", "inside", "sheltered"),
                          opt("copy", "copy", "copy", "copied", "roger")]},
               "Houston copies. Ride it out in there.", "Tell Houston: in the shelter, copy.",

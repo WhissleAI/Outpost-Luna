@@ -590,3 +590,19 @@ def test_skip_line_names_the_job_it_stopped_for():
             assert len(r["say"].split()) <= 20
             return
     pytest.skip("no task-only skip stop in this seed")
+
+
+def test_storm_readback_uses_the_radio_readback_grader():
+    """[0.4.1] The storm's readback and confirm are graded by mission/readback.py (the 0.6 radio readback), not a second
+    grader: any wording that names the shelter reads it back; the confirm also needs the radio word ("copy")."""
+    from app.academy import grade as g
+    from app.mission import readback
+    rb = gameplay._readback_step()
+    cf = gameplay._confirm_step()
+    assert rb["order"] == cf["order"] == {"type": "shelter", "on": True} and readback.keys(rb["order"])
+    acc = lambda s: {"items": s["items"], "order": s["order"], "radio": s.get("radio")}  # noqa: E731
+    for t in ("everyone to the shelter", "copy, crew into the storm shelter", "all crew into the shelter"):
+        assert g._sequence(acc(rb), {}, t)[0], t
+    assert g._sequence(acc(cf), {}, "copy, we're in the shelter")[0]
+    assert not g._sequence(acc(cf), {}, "in the shelter")[0]          # no radio word yet: half a confirm
+    assert not g._sequence(acc(cf), {}, "copy")[0]
