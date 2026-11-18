@@ -11,6 +11,7 @@ COURSE = DATA / "academy" / "course.json"
 ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
                 "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
+                "describe", "sequence", "rounds",   # Field School steps: grade.py FIELD_TYPES
                 "video")   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal; never blocks
 PREP_MAX_STEPS = 3      # a mission-prep task: 3 spoken steps or fewer
 PREP_END = "Tell me when it's ready."   # how a prep task's last line ends: never the trigger word "done" (the open mic
@@ -20,6 +21,12 @@ NUM = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
 VIDEO_HINT = "Tap Watch, or say skip."
+# A describe step's chips (tap / keyboard only kids): two words per descriptor kind; a chip sends its word as the answer
+FIELD_CHIPS = {"size": ("Big", "Small"), "shape": ("Round", "Odd shape"), "tone": ("Bright", "Dark"),
+               "texture": ("Smooth", "Bumpy"), "shadow": ("Long shadows", "No shadows")}
+TRACKS = ("core", "explorer", "field")   # field: Field School, a second track that opens after the check ride
+ROCK_IDS = ("15016", "60025", "76535", "70017", "79115", "65035")   # the nasa_views pack's Apollo samples
+PHOTO_IDS = ("earthrise", "earthset", "art002e014211", "geology_iceland_2026", "geology_iceland_2024")
 
 
 def _video_media() -> dict:
@@ -86,6 +93,16 @@ def public() -> dict:
         if a["type"] == "earth_view":
             acc["place"] = a["place"]
             acc["options"] = [{"id": k, "label": k.capitalize()} for k in ("yes", "no", "sometimes")]
+        if a["type"] == "describe":
+            from .grade import DESCRIBE, describe_cats
+            cats = describe_cats(a)
+            acc |= {"need": min(int(a.get("need") or 3), len(cats)),
+                    "cats": [{"id": c, "label": DESCRIBE[c][0], "chips": list(FIELD_CHIPS[c])} for c in cats]}
+        if a["type"] == "sequence":   # the chips in a fixed shuffled order (by label): the order is the answer
+            acc["items"] = sorted(({"id": o["id"], "label": o["label"]} for o in a["items"]), key=lambda o: o["label"])
+        if a["type"] == "rounds":
+            acc["options"] = [{"id": o["id"], "label": o["label"]} for o in a["options"]]
+            acc["rounds"] = [{k: r[k] for k in ("id", "prompt", "clue", "rock") if r.get(k)} for r in a["rounds"]]
         if a["type"] == "video":
             acc["media"] = a.get("media")
             if (a.get("guess") or {}).get("options"):   # "Guess first": the chips, not the answer (the reply has it)
@@ -176,6 +193,43 @@ def _check_globe_step(s: dict, a: dict) -> list[str]:
     return out
 
 
+def check_field_step(s: dict, a: dict) -> list[str]:
+    """Field School steps (grade.FIELD_TYPES): their parts, and spoken lines that fit docs/COPY.md."""
+    from .grade import DESCRIBE
+    t, out = a.get("type"), []
+    if t == "describe":
+        cats = a.get("descriptors") or list(DESCRIBE)
+        if any(c not in DESCRIBE for c in cats):
+            out.append("describe: unknown descriptor kind")
+        if not 1 <= int(a.get("need") or 3) <= len(cats):
+            out.append("describe: need must be 1..number of descriptor kinds")
+        if not s.get("example") or len(str(s["example"]).split()) > 20:
+            out.append("describe needs an example description (said when CAPCOM shows it), 20 words or fewer")
+    if t == "sequence":
+        items = a.get("items") or []
+        if not 2 <= len(items) <= 6 or len({i.get("id") for i in items}) != len(items):
+            out.append("sequence: 2 to 6 items with unique ids")
+        if any(not i.get("label") or len(i["label"].split()) > 4 for i in items):
+            out.append("sequence: every item needs a label of 4 words or fewer")
+    if t == "rounds":
+        opts, rs = {o["id"] for o in a.get("options") or []}, a.get("rounds") or []
+        if not 2 <= len(opts) <= 5:
+            out.append("rounds: 2 to 5 options")
+        if not 2 <= len(rs) <= 5 or len({r.get("id") for r in rs}) != len(rs):
+            out.append("rounds: 2 to 5 rounds with unique ids")
+        for r in rs:
+            if r.get("answer") not in opts:
+                out.append(f"rounds: {r.get('id')} answer not among options")
+            for k in ("prompt", "hint"):
+                if not r.get(k) or len(str(r[k]).split()) > 12:
+                    out.append(f"rounds: {r.get('id')} needs a {k} of 12 words or fewer")
+            if r.get("rock") and r["rock"] not in ROCK_IDS:
+                out.append(f"rounds: {r.get('id')} rock {r['rock']} is not in the nasa_views pack")
+            if r.get("rock") and not r.get("clue"):
+                out.append(f"rounds: {r.get('id')} shows a rock, so it needs a text clue (no pack: the clue alone)")
+    return out
+
+
 def check_prep(p: dict) -> list[str]:
     """A mission-prep task (lesson.prep): a hands-on job before the lesson, adapted from a NASA activity.
     {id, title, steps: [<= 3 spoken lines], grown_up: bool, source: {title, url}}. The last line ends PREP_END and no
@@ -242,8 +296,14 @@ def check() -> list[str]:
                 probs.append(f"{lid}: number {n} not in {f.get('from')}: {f['text']!r}")
         if l.get("prep") is not None:
             probs += [f"{lid}: {p}" for p in check_prep(l["prep"])]
-        if l.get("track", "core") not in ("core", "explorer"):
-            probs.append(f"{lid}: track must be core or explorer")
+        if l.get("track", "core") not in TRACKS:
+            probs.append(f"{lid}: track must be one of {TRACKS}")
+        if l.get("track") == "field" and (l.get("unlock_after") != "checkride" or l.get("ride")):
+            probs.append(f"{lid}: a Field School lesson opens after the check ride (unlock_after checkride)")
+        ph = l.get("photo")
+        if ph is not None and not (ph.get("id") in PHOTO_IDS and ph.get("alt") and len(str(ph["alt"]).split()) <= 20
+                                   and (ph.get("source") or {}).get("url", "").startswith("https://")):
+            probs.append(f"{lid}: photo needs a nasa_views image id, an alt line (<= 20 words) and a source")
         # an explorer lesson opens after n missions, or (unlock_after: "checkride") once the cadet is qualified
         if l.get("track") == "explorer" and not ((isinstance(l.get("unlock_after_missions"), int)
                                                   and l["unlock_after_missions"] >= 1)
@@ -279,6 +339,7 @@ def check() -> list[str]:
                 from .vocab import check_step
                 probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
             probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
+            probs += [f"{lid}[{i}]: {p}" for p in check_field_step(s, a)]
             probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
         pl = l.get("place")   # the Moon-map pin for this lesson (UX: data-driven map)
         if isinstance(pl, str):

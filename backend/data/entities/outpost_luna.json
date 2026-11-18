@@ -2291,6 +2291,70 @@
    "related": [
     "houston"
    ]
+  },
+  {
+   "id": "lesson_observe",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Eyes of a geologist",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "observe"
+   },
+   "related": [
+    "copernicus"
+   ]
+  },
+  {
+   "id": "lesson_craters",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Craters and lava",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "craters"
+   },
+   "related": [
+    "imbrium",
+    "orientale",
+    "tycho"
+   ]
+  },
+  {
+   "id": "lesson_rocks",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Moon rocks tell time",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "rocks"
+   },
+   "related": [
+    "apollo15_lm_falcon",
+    "apollo16_lm_orion",
+    "apollo17_lm_challenger"
+   ]
+  },
+  {
+   "id": "lesson_fieldkit",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Field kit",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "fieldkit"
+   },
+   "related": [
+    "shackleton_rim"
+   ]
   }
  ]
 }

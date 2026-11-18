@@ -105,10 +105,63 @@ export const PATCHES = {
   history: { name: "Historian", badge: "history", kind: "lesson", shape: "round", border: P.blue, field: P.moon, stitch: P.gold, emblem: historian },
   words: { name: "Word Explorer", badge: "words", kind: "lesson", shape: "round", border: P.sky, field: P.navy, emblem: wordExplorer },
   checkride: { name: "Mission Commander", badge: "commander", kind: "lesson", shape: "shield", border: P.gold, field: P.navy, emblem: commander },
+  // Field School (0.5): four geology lessons after the check ride
+  observe: { name: "Moon Observer", badge: "observer", kind: "lesson", shape: "round", border: P.green, field: P.deep, emblem: moonObserver },
+  craters: { name: "Lava Tracker", badge: "lava", kind: "lesson", shape: "round", border: P.orange, field: P.navy, emblem: lavaTracker },
+  rocks: { name: "Rock Hound", badge: "rockhound", kind: "lesson", shape: "round", border: P.paper, field: P.blue, emblem: rockHound },
+  fieldkit: { name: "Field Ready", badge: "fieldkit", kind: "lesson", shape: "shield", border: P.green, field: P.navy, emblem: fieldReady },
   storm_survivor: { name: "Storm Survivor", kind: "mission", shape: "round", border: P.red, field: P.deep, emblem: stormSurvivor },
   outpost_luna: { name: "Outpost Luna", kind: "mission", shape: "round", border: P.gold, field: P.deep, emblem: outpostLuna },
 };
 
+// Moon Observer (describe like the crew): a big eye whose iris is a cratered Moon, and a cue card's lines
+function moonObserver() {
+  return [
+    pathEl("M24 80Q80 28 136 80Q80 132 24 80Z", P.white),
+    circle(80, 80, 24, P.moon),
+    circle(72, 72, 5, P.moondk, "d"), circle(88, 88, 6.5, P.moondk, "d"), circle(86, 68, 3, P.moondk, "d"),
+    pathEl("M80 56A24 24 0 0 1 80 104A14 24 0 0 0 80 56Z", P.moondk, "d", { opacity: 0.55 }),
+    line("M44 120H76M44 128H66", P.green, 3.5, "d"), line("M84 120H116M84 128H104", P.green, 3.5, "d"),
+    sparkle(124, 40, 6, P.white), sparkle(36, 44, 4.5, P.white),
+  ];
+}
+// Lava Tracker (craters and lava): a rayed crater over a dark lava sea
+function lavaTracker(shape) {
+  const rays = Array.from({ length: 10 }, (_, k) => {
+    const a = (k * Math.PI) / 5 + 0.3, r0 = 18, r1 = k % 2 ? 40 : 52;
+    return `M${f(80 + r0 * Math.cos(a))} ${f(64 + r0 * Math.sin(a))}L${f(80 + r1 * Math.cos(a))} ${f(64 + r1 * Math.sin(a))}`;
+  }).join("");
+  return [
+    ground(shape, 104, 5, P.moondk),
+    line("M30 118Q55 110 80 118T130 118", P.orange, 3, "d", { opacity: 0.8 }),
+    line(rays, P.white, 3, "d", { opacity: 0.8 }),
+    circle(80, 64, 17, P.moon), circle(80, 66, 12, P.moondk), circle(80, 66, 4, P.moon, "d"),
+    sparkle(126, 36, 5, P.white), sparkle(36, 40, 4.5, P.white),
+  ];
+}
+// Rock Hound (Moon rocks tell time): three Apollo samples (dark basalt with holes, pale anorthosite, a breccia)
+function rockHound(shape) {
+  return [
+    ground(shape, 118, 4, P.moondk),
+    pathEl("M30 112L38 84L58 76L72 90L68 114Z", P.foot),
+    circle(44, 92, 3, P.deep, "d"), circle(56, 100, 2.5, P.deep, "d"), circle(50, 106, 2, P.deep, "d"), circle(62, 88, 2, P.deep, "d"),
+    pathEl("M70 114L76 66L98 52L114 72L108 114Z", P.white),
+    line("M80 74L92 64M86 96L102 82M80 106L96 98", P.paper, 2, "d"),
+    pathEl("M104 114L110 92L128 86L138 104L132 116Z", P.moon),
+    circle(116, 98, 3.5, P.moondk, "d"), circle(126, 106, 3, P.foot, "d"), circle(128, 94, 2.5, P.paper, "d"),
+    sparkle(40, 50, 5, P.white), sparkle(126, 52, 4.5, P.white),
+  ];
+}
+// Field Ready (the field kit): crossed geology hammer and scoop over a numbered sample bag
+function fieldReady() {
+  return [
+    pathEl("M52 86H108L104 132H56Z", P.paper),
+    line("M58 96H102", P.moondk, 2.5, "d"), pathEl("M74 106H86V120H74Z", P.green, "d"),
+    g({ transform: "rotate(-35 80 70)" }, [line("M80 30V100", P.gold, 5), pathEl("M66 26H94V38H66Z", P.moon)]),
+    g({ transform: "rotate(35 80 70)" }, [line("M80 44V100", P.gold, 5), pathEl("M70 26Q80 50 90 26Z", P.moon)]),
+    sparkle(124, 40, 5, P.white), sparkle(36, 44, 4.5, P.white),
+  ];
+}
 // Moon Watcher (phases and eclipses): a row of phases over a big Moon half in Earth's shadow
 function moonWatcher() {
   return [

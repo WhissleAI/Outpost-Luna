@@ -137,6 +137,52 @@
    "numbers": [],
    "source": {"title": "NASA Knows: What is lunar regolith? (grades 5-8)", "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/nasa-knows-what-is-lunar-regolith-grades-5-8/"},
    "checked": "2026-11-14: 'This dusty, rocky layer is called lunar regolith'; 'tiny, sharp pieces that can act like little bits of broken glass'."
+  },
+  "crew_describe": {
+   "text": "The Artemis II crew gave spoken and written descriptions of lunar features, guided by a Cue Card. They trained on 15 key lunar features, the Lunar Fifteen. The classroom Lunar Log Card asks about features, shapes, colors and shadows.",
+   "numbers": [15],
+   "source": {"title": "NASA STEM: Artemis II, Observe the Moon", "url": "https://www.nasa.gov/stem-content/artemis-ii-observe-the-moon/"},
+   "also": [{"title": "Evans 2025, Geology Training for Artemis Missions (NASA NTRS 20250004946)", "url": "https://ntrs.nasa.gov/citations/20250004946"}],
+   "checked": "2026-11-17: 'They will be providing both verbal and written descriptions of lunar features'; 'using a Cue Card to guide their orbital observations'; '15 key lunar features'; Lunar Log Card prompts: features, shapes, colors + shadows, what happened there. The crew's colors (brown, tan, gray, green) are in the clip texture-albedo-across-mare at 35-46 s."
+  },
+  "impact_craters": {
+   "text": "Lunar impact craters are left when an asteroid, meteoroid or comet hits the Moon. The spray of broken rock is ejecta, and plumes of ejecta settle back as bright rays. Tycho is about 85 km wide and 110 million years old. A sharp, high rim marks a young crater.",
+   "numbers": [85, 110],
+   "source": {"title": "NASA Science: Lunar Craters", "url": "https://science.nasa.gov/moon/lunar-craters/"},
+   "checked": "2026-11-17: 'the depressions left behind after an asteroid, meteoroid, or comet collides with the Moon'; 'We call this spray of pulverized rock ejecta'; 'Plumes of ejecta that settle back onto the surface form the bright rays'; Tycho 'approximately 53 miles (85 km) in diameter and 110 million years old'; Giordano Bruno's high, sharp rim 'indicate[s] ... a young crater'."
+  },
+  "maria_lava": {
+   "text": "Maria are seas of cooled lava that flooded vast impact basins between 4.2 and 1.2 billion years ago. The bright highlands are older crust that survived the basin-forming impacts.",
+   "numbers": [4.2, 1.2],
+   "source": {"title": "NASA Science: What is the Moon made of?", "url": "https://science.nasa.gov/moon/composition/"},
+   "checked": "2026-11-17: 'Maria are seas of cooled lava which flooded vast impact basins between 4.2 and 1.2 billion years ago'; 'The lunar highlands are older parts of the crust that survived the intense, basin-forming impacts.' The basin came first; the lava filled it later (superposition)."
+  },
+  "apollo_samples": {
+   "text": "Sample 15016 is a basalt: about half of it is holes left by gas bubbles in lava, and it is 3.4 billion years old. Sample 60025 is an anorthosite, about 4.4 billion years old: light crystals that floated up on the magma ocean and made the Moon's first crust, the highlands. Sample 79115 is a regolith breccia: soil and rock bits glued together by impacts, broken off a boulder at Van Serg crater by Apollo 17.",
+   "numbers": [15016, 3.4, 60025, 4.4, 79115, 17],
+   "source": {"title": "NASA Astromaterials 3D: lunar sample stories (15016, 60025, 79115)", "url": "https://ares.jsc.nasa.gov/astromaterials3d/"},
+   "also": [{"title": "Astromaterials 3D sample metadata", "url": "https://ares.jsc.nasa.gov/astromaterials3d/explorer/lunar_sample_metadata.json"}],
+   "checked": "2026-11-17 (lunar_sample_metadata.json): 15016 'Low-Ti Olivine Basalt ... exceptionally vesicular ... about half of its volume ... gas bubbles escaping erupting magma'; '3.4 billion y[ears]'. 60025 'Ferroan Anorthosite and dated to be around 4.4 billion years old'; 'this light-colored mineral floated to the top of the magma ocean, forming the Moon's first crust'; 'The highlands are much older features and primarily anorthositic'. 79115 'regolith breccia ... impact-consolidated conglomerate comprised of lunar soil and fragments'; 'broke off a hand-sized piece from the top of the boulder' at Van Serg Crater, Apollo 17."
+  },
+  "sampling_tools": {
+   "text": "NASA's first eight Artemis geology tools are an extension handle, a contingency sampler, sample bags, a drive tube, a geology hammer, a rake, a scoop and tongs, for rocks, chips, soil and soil cores. On Apollo, tongs picked up small rocks, the rake gathered many small rocks, the hammer chipped rocks and pounded in core tubes, and drive tubes kept the soil's layers by depth.",
+   "numbers": [],
+   "source": {"title": "Naids et al. 2021, Developing Geology Sampling Tools for the Artemis Program (NASA NTRS 20210000242)", "url": "https://ntrs.nasa.gov/api/citations/20210000242/downloads/Developing%20Geology%20Sampling%20Tools_Lunar%20Surface%20Science%20Workshop_FINAL_2021.pdf"},
+   "also": [{"title": "Allton, Lunar Samples: Apollo Collection Tools (NASA JSC)", "url": "https://www.nasa.gov/wp-content/uploads/2019/04/02_allton_corrected_apollo.pdf"}],
+   "checked": "2026-11-17: Naids: 'eight high-priority tools ... Extension Handle, Contingency Sampler, Sample Bags, Drive Tube, Geology Hammer, Rake, Scoop, Tongs ... collection of float, chip, regolith, and regolith-core samples'. Allton: tongs 'Used for picking up small rocks'; rake 'sampling of many small, diverse rocks'; hammer 'Larger head near shaft for pounding core tubes'; cores dissected 'by depth'; 'Tools need to be usable in a spacesuit'."
+  },
+  "sampling_routine": {
+   "text": "On Apollo, one astronaut collected a sample with a scoop or tongs and the partner bagged it. They took 'after' pictures, and Houston logged which numbered bag each sample went in.",
+   "numbers": [],
+   "source": {"title": "NASA Apollo Lunar Surface Journal: Working on the Moon (sample collection bags)", "url": "https://nasa.gov/wp-content/uploads/static/history/alsj/WOTM/WOTM-SCB.html"},
+   "checked": "2026-11-17: 'usually one of them would collect a sample with a scoop or with tongs and, after giving it to his partner for bagging'; 'they would take after pictures'; 'Each of the SCBs was numbered'; 'make sure that Houston knew which bag'. Our station order (photo, describe, sample, bag, report) is a kid-sized routine built from this and the Artemis II spoken descriptions."
+  },
+  "geology_training": {
+   "text": "In July 2026 astronaut Zena Cardman trained with NASA geologists in Iceland's Moon-like lava fields. Artemis II backup crew member Jenni Gibbons trained there in 2024.",
+   "numbers": [2026, 2024],
+   "source": {"title": "NASA Image jsc2026e405549: Artemis geology training in Iceland", "url": "https://images.nasa.gov/details/jsc2026e405549"},
+   "also": [{"title": "NASA Image jsc2024e055124", "url": "https://images.nasa.gov/details/jsc2024e055124"}],
+   "checked": "2026-11-17 (images-api.nasa.gov): 'NASA astronaut Zena Cardman ... observe Iceland's lunar-like landscape during a geology field training expedition' (2026-07-25); 'Jenni Gibbons, participates in geology field training in Iceland' (2024-08-01)."
   }
  }
 }

@@ -81,7 +81,7 @@ def test_course_v3_shape():
     c = content.course()
     assert content.check() == []
     ids = [l["id"] for l in c["lessons"]]
-    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 9
+    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 13   # 9 + 4 Field School lessons
     assert [l["id"] for l in c["lessons"] if l.get("track") == "core" and not l.get("ride")] == \
         ["moon", "phases", "power", "comms", "radiation", "life"]           # 6 core lessons before the ride
     for l in c["lessons"]:
@@ -90,7 +90,8 @@ def test_course_v3_shape():
             continue
         graded = [s for s in l["steps"] if s["accept"]["type"] != "video"]   # video beats ride along, never graded
         assert len(l["steps"]) <= 5 and len(graded) >= 3, l["id"]           # 5 steps or fewer (narration review)
-        assert l.get("clip") or l["steps"][0]["accept"]["type"] == "video", f"{l['id']} has no hook (crew audio or video)"
+        assert l.get("clip") or l.get("photo") or l["steps"][0]["accept"]["type"] == "video", \
+            f"{l['id']} has no hook (crew audio, a NASA photo or video)"
     used = {s["accept"]["type"] for l in c["lessons"] for s in l["steps"]}
     assert set(g.GLOBE_TYPES) <= used          # every globe verb is taught somewhere
 

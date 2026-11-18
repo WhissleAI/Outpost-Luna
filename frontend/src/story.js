@@ -260,7 +260,15 @@ export const TRACKS = [
   { id: "systems", title: "Outpost systems", lessons: ["power", "radiation", "life"] },
   { id: "qual", title: "Qualification", lessons: ["checkride"] },
   { id: "explorer", title: "Explorer", lessons: ["gravity", "history"] },
+  { id: "field", title: "Field School", lessons: ["observe", "craters", "rocks", "fieldkit"] },
 ];
+/** Field School (0.5, course.json track "field"): four geology lessons that open after the check ride (explorer.js). */
+export const FIELD = {
+  name: "Field School",
+  eyebrow: (n, of) => `Field School ${n} of ${of}`,
+  openTitle: "Field School is open",
+  patchProgress: (n, of) => (n >= of ? `Field School done: ${n} of ${of} patches.` : `Field School: ${n} of ${of} patches.`),
+};
 /** Explorer lessons (course.json track "explorer"): locked until the cadet has flown missions (explorer.js). */
 export const EXPLORER = {
   eyebrow: "Bonus lesson",
@@ -282,6 +290,10 @@ export const LESSON_BLURB = {
   life: "Air, water, and the ice LCROSS found.",
   history: "What Apollo left behind for the next crews.",
   checkride: "Two days at Shackleton Rim. Your first solo shift.",
+  observe: "Describe the Moon out loud, like the Artemis II crew.",
+  craters: "Impacts, rays and lava. Which came first?",
+  rocks: "Name real Apollo rocks. The oldest is 4.4 billion years.",
+  fieldkit: "Rake, tongs, hammer, scoop. Pack your geology kit.",
 };
 export const WHY_TITLE = "Why this matters";
 export const WHY = "The first crew landing is planned for Artemis IV, in 2028.";
@@ -336,6 +348,10 @@ export const LESSON_STORY = {
   life: { beat: "No air, no rivers. Let's go looking for ice." },
   history: { beat: "Every crew learns from the crews before." },
   checkride: { beat: "Solo shift. I'm only watching this time." },
+  observe: { beat: "Field School, day one. Geologists look before they touch." },
+  craters: { beat: "Every crater tells a story. Let's read some." },
+  rocks: { beat: "Apollo brought rocks home. Let's meet them." },
+  fieldkit: { beat: "Last stop: pack your field kit for the pole." },
 };
 
 /** CAPCOM's lines that use the call sign (the spoken form is passed in, so a typed name is never read aloud). */

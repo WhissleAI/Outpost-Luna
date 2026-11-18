@@ -33,7 +33,9 @@ Each goal is checked twice: once in a lesson (L1–L7, CR = check ride) and once
 | G11 | Describe a place with crew words (mare, albedo, basin, ejecta, earthrise, regolith) | Observation, vocabulary | L7, in context in all | The cabin labels and CAPCOM's lines | `glossary.json` + the crew clip where each word is said |
 
 Standards hooks for teachers: NGSS 1-ESS1-1 (patterns of Sun and Moon), 5-ESS1-2 (day/night, shadows), MS-ESS1-1
-(Moon phases), MS-ETS1-1/-2 (design under constraints). We cite them; we don't claim alignment review.
+(Moon phases), MS-ETS1-1/-2 (design under constraints). Field School (§12) adds MS-ESS1-3 (scale and properties of
+features: describing size, shape, brightness) and HS-ESS1-6 (planetary surfaces and rocks as evidence for early history:
+impacts, lava, superposition, sample ages). We cite them; we don't claim alignment review.
 
 ## 2. Pedagogy: what we do and why
 
@@ -686,3 +688,79 @@ credited in `source`, never on screen.
 | Regolith: sharp, clingy bits | nasa.gov NASA Knows: What is lunar regolith? |
 
 Not used: a Shackleton location for NASA's Moon Base (the page says "near the lunar South Pole" only).
+
+## 12. Field School: geology after the check ride (0.5, `feat/05-field-school`)
+
+Brief: NASA Space Apps 2026 "Build a Junior Astronaut Mission Trainer". After the check ride the cadet has learned to
+keep an outpost alive; Field School teaches what the crews will go out *to do*: observe, read the land, name the rocks
+and sample them. Research basis: NASA's Artemis geology training (Evans 2025, NTRS 20250004946: observe and describe,
+impact and volcanic processes, sampling, concise reporting); the Artemis II crew's spoken lunar descriptions (NASA STEM
+"Artemis II: Observe the Moon": a Cue Card in orbit, a Lunar Log Card in class, 15 key features, the "Lunar Fifteen");
+NASA Science pages on lunar craters and composition; Astromaterials 3D sample stories; the Artemis tool set (Naids et
+al. 2021) and Apollo practice (Allton, NASA JSC; ALSJ "Working on the Moon").
+
+### 12.1 Structure
+
+- **A second track, after the ride.** `track: "field"`, `unlock_after: "checkride"`. The core count ("Lesson n of 6"),
+  the ride's unlock and the cadet's next lesson are unchanged: a Field lesson is never open before qualifying, so it can
+  never sit between a cadet and the check ride (`explorer.js` `isField` / `isBonus`; `content.check()` enforces the
+  unlock). In the data the four lessons sit after the explorer lessons and before the ride, so the check ride stays the
+  map's last stop; once qualified, the map card says "Field School is open" and the lesson eyebrow reads "Field School
+  n of 4". A finished Field lesson's patch screen counts Field patches, not core lessons.
+- **Each lesson:** a hook (crew audio, or a NASA photo from the optional `nasa_views` pack), a predict step first, at
+  most 5 steps, no two of a type in a row, a patch.
+
+| Lesson | Patch | NGSS | Hook | Steps |
+|---|---|---|---|---|
+| `observe` Eyes of a geologist (pin: Copernicus) | Moon Observer | MS-ESS1-3 | `ohm-crater-ray-systems` 0.9–22.4 s: "brightness, rays, and any albedo or texture variations" | predict "can astronauts see colors?" + after-clip `texture-albedo-across-mare` 35.3–45.7 s ("brown and tan and gray... some green") → find Copernicus → choice "which is a shape word?" → **describe** Copernicus (3 of 5 descriptor kinds) + after-clip `using-geology-terms-describe` 47.3–56.7 s (the crew describing a maple cookie: "structure... color variation and texture") → vocab_match albedo |
+| `craters` Craters and lava (pin: Tycho) | Lava Tracker | MS-ESS1-3, HS-ESS1-6 | `crew-choice-irregular-crater` 69.0–92.9 s: a crater "like an erupting kid science experiment volcano" | predict "what made the round craters?" (impacts, not volcanoes) → find Tycho (rays = splashed ejecta) → choice "what are the maria really?" (cooled lava, never water) → predict "the basin or the lava: which came first?" + after-clip `orientale-basin-ejecta-extent` 32.2–42.3 s ("the Mare's must have come after Orientale") → choice "Tycho's rays lie on top: young or old?" |
+| `rocks` Moon rocks tell time (pin: Apollo 16) | Rock Hound | HS-ESS1-6 | `whole-moon-imaging-orientale` 211.3–222.4 s: newer craters look sharp, older ones have fallen walls | predict "bright highlands or dark maria: older?" ("bright doesn't always mean young") → **rounds**: name 3 real Apollo samples in 3D (15016 basalt, 60025 anorthosite, 79115 breccia) → choice "what did anorthosite crystals make?" → predict "is 60025 older than 15016?" → find Apollo 16 |
+| `fieldkit` Field kit (pin: Shackleton Rim) | Field Ready | MS-ESS1-3, 3-5-ETS1-1 | photo `geology_iceland_2026` (jsc2026e405549: Zena Cardman with NASA geologists in Iceland); without the pack, its one-line description | predict "what is a rake for?" → **rounds**: pick the tool (pebbles: rake; one fist-size rock: tongs; a chip off a boulder: hammer; fine soil: scoop; the soil's layers: drive tube) → choice "why a numbered bag?" → **sequence** readback: photo, describe, sample, bag, call it in |
+
+Misconceptions addressed: craters are volcanoes (`craters` 1, with the crew's own volcano simile as the hook); maria are
+water seas (`craters` 3); bright means young (`rocks` 1, set against Tycho's young bright rays in `craters` 5).
+
+### 12.2 New step types (`grade.py` FIELD_TYPES; renderers in `frontend/src/academy/field_steps.js`)
+
+All three build up over turns, like the route: a turn that adds something is `progress` (never a miss) and the reply's
+`got` comes back with the next answer (`AttemptInput.got`).
+
+| Type | Author fields | Public | Graded | Progress / miss / shown |
+|---|---|---|---|---|
+| `describe` | `need` (default 3), `descriptors?`; step `example` | `need`, `cats[{id,label,chips[2]}]` | descriptor *kinds* covered (size, shape, bright or dark, texture, shadows: the Lunar Log Card's prompts and the crew's talking points), by whole-word lists; nothing is "wrong" | progress: "Good: size. Now, what shape is it?" (praise, then ask for the first missing kind); pass: "You noted size, shape and shadows." + success; miss: praise + the question; rung 2 shows the example on the card; shown: CAPCOM says the example |
+| `sequence` | `items[{id,label,say}]` | `items` (sorted by label: jumbled) | the names in order in the words (one turn or several), or one chip at a time | progress "Yes: Photo. What comes next?"; a wrong chip is a miss; rung 2 lights the next chip; shown: the whole order |
+| `rounds` | `options`, `rounds[{id,prompt,answer,hint,yes,clue?,rock?}]` | options, rounds without answers/hints | the current round's option (words, number or tap) | each right round: the round's `yes` + the next prompt; misses use that round's hint and cross out one of its wrong options; **after 3 misses only that round is shown and the next goes on** (the client resets its miss count on progress), so no round is skipped |
+
+Tap and keyboard only: the describe chips, the sequence chips and the round buttons cover everything. Voice only: the
+hands-free script (`tools/handsfree_run.answer_for`) answers each type, and `tests/test_field_school.py` flies all four
+lessons by voice. A rock round shows the real sample in a turntable (`media/turntable.js`, shared with the Library's
+Moon rocks tray) when the `nasa_views` pack is installed; without it, the round's text clue alone.
+
+### 12.3 Facts and sources (checked 2026-11-17; `learning/concepts.json`)
+
+| On screen / spoken | Source |
+|---|---|
+| The crew gave spoken and written descriptions, with a Cue Card; 15 key features | nasa.gov/stem-content/artemis-ii-observe-the-moon/ |
+| Crew saw brown, tan, gray and green | crew clip `texture-albedo-across-mare` 35–46 s (repo transcript) |
+| Impact craters, ejecta, bright rays; Tycho 85 km, 110 million years | science.nasa.gov/moon/lunar-craters/ |
+| Maria are cooled lava that flooded basins 4.2 to 1.2 billion years ago; highlands are older crust | science.nasa.gov/moon/composition/ |
+| 15016 basalt, gas-bubble holes, 3.4 billion years; 60025 anorthosite, about 4.4 billion years, first crust; 79115 regolith breccia, broken off a boulder by Apollo 17 | Astromaterials 3D `lunar_sample_metadata.json` |
+| Artemis tools: hammer, rake, scoop, tongs, drive tube, sample bags | Naids et al. 2021 (NTRS 20210000242) |
+| Tongs pick up small rocks; the rake gathers many small rocks; drive tubes keep layers by depth | Allton, NASA JSC (nasa.gov PDF) |
+| Bagging, "after" pictures, numbered bags Houston tracked | ALSJ "Working on the Moon" |
+| Zena Cardman's Iceland training, July 2026 | images.nasa.gov jsc2026e405549 |
+
+Not shown (unverified or unneeded): the Apollo sample total "382 kg"; "Look ODD"; the names of the Lunar Fifteen (the
+NASA page doesn't list them); Copernicus' size (places.json says 93 km, the IAU about 96 km). The station order
+(photo, describe, sample, bag, call it in) is a kid-sized routine built from the Apollo practice above and the
+Artemis II spoken reports, not a quoted NASA checklist; the lesson calls it "the station order", never NASA's.
+
+### 12.4 Not done
+
+- **The 216 IAU names** in the pack (`names/moon_names.json`) are not wired into the entity registry or the ear's name
+  lists. They exist only when the optional pack is installed, while the registry, the gazetteer and the Director's
+  gazetteer evals are built from versioned repo data; wiring them in means runtime-dependent entities across the ear,
+  the router and `did_you_mean`, which is not contained. Left for a step that copies a curated subset into
+  `places.json` with tests.
+- No Mission prep task for Field School (NASA's "Exploring the Moon" Lava Layering activity is the candidate; its
+  URL wasn't verified this round).

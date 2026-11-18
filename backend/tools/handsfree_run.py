@@ -49,9 +49,17 @@ def tour_beats(level: str = "cadet") -> list[str]:
 
 
 # ---------------------------------------------------------------------------------------------- what a kid would say
-def answer_for(step: dict, gaz=None, vocab=None) -> str:
+def answer_for(step: dict, gaz=None, vocab=None, got: list | None = None) -> str:
     acc = step["accept"]
     k = acc["type"]
+    # Field School steps (docs/LEARNING_DESIGN.md §12): they build up over turns; `got` is the last reply's
+    if k == "describe":
+        return step.get("example") or "it's big and round, bright, with long shadows"
+    if k == "sequence":
+        return ", then ".join(i["label"].lower() for i in acc["items"])
+    if k == "rounds":
+        r = acc["rounds"][min(len(got or []), len(acc["rounds"]) - 1)]
+        return next(o["label"] for o in acc["options"] if o["id"] == r["answer"]).split(":")[0]
     if k == "choice":
         return next(o["label"] for o in acc["options"] if o["id"] == acc["answer"])
     if k in ("intent", "tap"):
@@ -104,6 +112,7 @@ class Client:
         self.t, self.course, self.gaz, self.vocab, self.log = t, course, gaz, vocab, log
         self.mode, self.view, self.L, self.i, self.misses, self.waiting, self.ride = "academy", "callsign", None, 0, 0, False, None
         self.badges: list[str] = []
+        self.got: list[str] = []             # a Field School step's progress so far (the last reply's `got`)
         self.qualified = False
         self.mscreen, self.site, self.mid = "brief", "shackleton_rim", None
         self.spoken: list[str] = []          # every line the app spoke
@@ -123,9 +132,11 @@ class Client:
         return self.course["lessons"]
 
     def next_lesson(self):
-        # explorer lessons (track "explorer") open only after missions (frontend/src/explorer.js); this run flies none first
+        # explorer lessons (track "explorer") open only after missions (frontend/src/explorer.js); this run flies none
+        # first. Field School (track "field") opens after the check ride (unlock_after: "checkride")
         return next((l for l in self.lessons() if l["badge"]["id"] not in self.badges
-                     and l.get("track", "core") != "explorer"), None)
+                     and l.get("track", "core") != "explorer"
+                     and (l.get("track") != "field" or self.qualified)), None)
 
     def frame(self) -> dict:
         if self.mode == "mission":
@@ -301,6 +312,7 @@ class Client:
 
     async def open(self, L: dict):
         self.L, self.i, self.misses, self.waiting, self.view = L, 0, 0, False, "lesson"
+        self.got = []
         if L.get("ride"):
             self.ride = await self.t.post("/api/academy/ride", {})
         await self.push()
@@ -310,17 +322,19 @@ class Client:
         if self.i + 1 >= len(self.L["steps"]):
             self.view, self.L = "map", None
             return
-        self.i, self.waiting, self.misses = self.i + 1, False, 0
+        self.i, self.waiting, self.misses, self.got = self.i + 1, False, 0, []
         await self.push()
         await self.speak(self.L["steps"][self.i]["prompt"])
 
     async def grade(self, text: str):
         L = self.L
-        r = await self.t.post("/api/academy/attempt", {"lesson_id": L["id"], "step": self.i, "input": {"text": text},
+        inp = {"text": text, **({"got": self.got} if self.got else {})}
+        r = await self.t.post("/api/academy/attempt", {"lesson_id": L["id"], "step": self.i, "input": inp,
                                                        "misses": self.misses,
                                                        "ride_id": (self.ride or {}).get("ride_id")})
         st = r.get("status")
         self.log(f"   GRADE {L['id']}#{self.i}: {st}")
+        self.got = (r.get("got") or []) if st in ("progress", "hint") else []   # a Field step builds up over turns
         if st in ("passed", "missed", "done"):
             if r.get("badge") and (st != "done" or r.get("passed")):
                 self.badges.append(r["badge"]["id"])
@@ -347,6 +361,10 @@ class Client:
                 await self.speak(r.get("say", "") + " " + L["steps"][self.i]["prompt"])
                 return
             await self.push()
+            await self.speak(r.get("say", ""))
+            return
+        if st == "progress":            # a route stop / Field School part that counts: not a miss (academy/ui.js)
+            self.misses = 0
             await self.speak(r.get("say", ""))
             return
         self.misses += 1
@@ -428,7 +446,7 @@ async def script(c: Client, shifts: int = 3):
             await c.say("next")
             continue
         await c.noise() if c.i == 0 else None
-        await c.say(answer_for(c.L["steps"][c.i], c.gaz, c.vocab))
+        await c.say(answer_for(c.L["steps"][c.i], c.gaz, c.vocab, c.got))
     await c.say("yes")                      # the offer: take command of Outpost Luna
     await c.noise()
     await c.say("pick Malapert")
