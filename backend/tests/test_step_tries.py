@@ -264,3 +264,19 @@ def test_a_misheard_option_name_is_still_a_try():
     assert grade.grade(st, {"text": "Malapart must be"})[1].get("choice") == "malapert_massif"
     for chatter in ("oh it s", "okay", "alright so", "rocks"):
         assert not grade.plausible(st, chatter, 0.9)
+
+
+def test_crew_talk_sends_the_exact_answer_to_the_client_as_a_chip(world):
+    """[0.4.1] The `heard` decision for a gated exact answer carries `pick` (the bar's "Heard “…” · Use it" chip);
+    gated chatter carries none; nothing is answered either way."""
+    s = lesson_session(world, PREDICT)
+    hear(s, "no", dd=0.4, advance=2.0)
+    h = [d for d in s.outbox if d["t"] == "heard"][-1]
+    assert h["reason"] == "crew_talk" and h["notice"] and h["pick"]["choice"] and h["pick"]["heard"] == "no"
+    assert answers(s) == []
+    hear(s, "no", dd=0.85, advance=2.0)                        # said again, clearly to us: it answers
+    assert len(answers(s)) == 1
+    s = lesson_session(world, PREDICT)
+    hear(s, "did you feed the dog today", dd=0.4, advance=2.0)
+    h = [d for d in s.outbox if d["t"] == "heard"][-1]
+    assert "pick" not in h and answers(s) == []

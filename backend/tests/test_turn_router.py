@@ -191,3 +191,29 @@ def test_crew_talk_gate_only_where_it_belongs():
     assert route("next lesson", ctx("lesson", dd=0.6, recent=[], **PREDICT))["reason"] != "crew_talk"
     # room talk that names no option stays silent as before (no "Crew talk" flash for every sentence)
     assert route("what time is dinner tonight mom", ctx("lesson", dd=0.3, recent=[], **PREDICT))["reason"] != "crew_talk"
+
+
+def _ride_step(i):
+    from app.academy import content
+    return content.lesson("checkride")["steps"][i]
+
+
+def test_crew_talk_offers_an_exact_answer_back_as_a_chip():
+    """[0.4.1] A quiet kid's exact answer (Arc under dd_strong) is never dropped silently: the reply carries `pick`, the
+    option it names, so the bar shows "Heard “…” · Use it". Chatter that names no option stays a plain ignore."""
+    st = _ride_step(0)   # predict: Yes, Earth is up / No, never from here
+    c = lambda **k: ctx("ride", dd=0.4, recent=[], step=st, step_type="predict",  # noqa: E731
+                        step_options=[o["label"] for o in st["accept"]["options"]], **k)
+    for said, oid in (("yes", "yes"), ("um never", "no"), ("Yes, Earth is up", "yes"), ("B", "no"), ("option one", "yes")):
+        r = route(said, c())
+        assert r["reason"] == "crew_talk" and r["pick"]["choice"] == oid and r["pick"]["heard"], (said, r)
+        assert r["pick"]["label"] in ("Yes, Earth is up", "No, never from here")
+    for said in ("yes I think so but mom said no", "earth is pretty", "what's for dinner"):
+        r = route(said, c())
+        assert "pick" not in r, (said, r)
+    # the Now card: a short turn the matcher pins to one option
+    r = route("left", ctx("cabin", dd=0.5, recent=[], **NOWCHOICE))
+    assert r["reason"] == "crew_talk" and r["pick"] == {"label": "Steer left", "choice": None, "heard": "left"}
+    # said again, clearly to us: it simply answers (no chip)
+    loud = ctx("ride", dd=0.9, recent=[], step=st, step_type="predict", step_options=c().step_options)
+    assert route("yes", loud)["outcome"] == "answer"

@@ -180,6 +180,7 @@ Use this checklist for any new or redesigned lesson. `backend/tests/test_copy.py
 | `OFFER.*` | Once, after the line it follows | Never add "Say yes" or "Say next" |
 | `gameplay.HOUSTON_SHELTER` | [0.4.1] A particle storm (the task's line), or the shelter opening on a likely storm's prep | "Houston: all crew into the shelter. Read it back." Then the readback, the act, and "In the shelter, copy" (docs/GAMEPLAY.md §15.1) |
 | `voice.CREW_TALK` | [0.4.1] On screen only (the voice bar): room talk kept off a guess or a choice | "Crew talk". Never spoken |
+| `crewpick.pickText` | [0.4.1] On screen only: a gated turn that named one option exactly | "Heard “B” · Use it" (the kid's words, 24 characters at most). Never spoken |
 
 ## 5. Glossary: one word for one thing
 

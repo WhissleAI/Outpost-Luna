@@ -556,7 +556,14 @@ only the act step, never a readback.
 On a guess or a choice (a lesson's `predict` / `choice` step, a choice on the Now card) a spoken answer counts only
 when Arc rates it device-directed ≥ `dd_strong` (0.7 at Normal; the Settings listening filter moves it). Lower, the
 router ignores it with reason `crew_talk` (`turn_router.crew_talk`) and the voice bar shows **Crew talk** briefly.
-Typed, tapped and Space-held turns carry no score and are never gated. Navigation, questions and other step kinds keep
+Typed, tapped and Space-held turns carry no score and are never gated.
+
+A quiet kid's exact answer is never dropped silently (the round-7 "stuck kid" fix stays): when the gated words name
+one option exactly (its label or say phrase, its key such as "B" or "two", or on the Now card a short turn the
+matcher pins to one option), the router adds `pick` ({label, choice, heard}) and the bar shows "Crew talk" with one
+chip, **Heard “B” · Use it** (`frontend/src/crewpick.js`). A click, Enter or controller A uses it as a tap on that
+option; saying it again, clearly, answers as usual. The chip takes focus while it shows, goes after 8 s or on the next
+turn, and gives focus back. Chatter that names no option gets no chip. Navigation, questions and other step kinds keep
 their own rules. Room talk that names no option stays silent as before.
 
 ### 15.3 Every mission gets a Field School task

@@ -249,6 +249,7 @@ html:not([data-captions="off"]) .cb-capwrap:has(.caption-bar:not([hidden])) .cb-
 .cb-askslot .askbar[class] .listen-state,.cb-askslot .askbar[class] .listen-state:empty::before{color:var(--color-on-space)}
 .cb-askslot .askbar.is-hearing[class] .listen-state,.cb-askslot .askbar.is-hearing[class] .listen-state:empty::before{color:var(--color-phosphor)}
 .cb-askslot .live-words,.cb-askslot .hint,.cb-askslot .cs-tag{display:none}
+.cb-askslot .crew-pick{margin-left:var(--space-2);border-color:var(--color-phosphor);background:var(--cb-key);color:var(--color-on-space)}
 .cb-askslot .vs-grip{color:var(--cb-text-2)}
 .cb-askslot .ask{flex:1;min-width:0;padding:var(--space-1) var(--space-1) var(--space-1) var(--space-3);gap:var(--space-1)}
 .cb-askslot .ask input{height:var(--control-sm);font:var(--weight-regular) var(--text-sm) var(--font-ui);color:var(--color-on-space);background:none}
