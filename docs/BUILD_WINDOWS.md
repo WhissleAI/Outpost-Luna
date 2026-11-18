@@ -207,17 +207,16 @@ is installed, and whether an update is ready.
 
 ### Automated smoke test (optional, 1 minute)
 
-With the app running:
+`smoke.py` writes to the app it talks to, so it never runs against your own app (it refuses your data folder and the
+default ports). The release check's smoke gate starts a test copy headless on a temp data folder and free ports, runs
+`smoke.py` against it, and quits:
 
 ```powershell
 cd C:\src\atm
-$res = "desktop\dist\win-unpacked\resources"     # installed app: "$env:LOCALAPPDATA\Programs\Outpost Luna\resources"
-$env:PYTHONPATH = "$res\site\backend"; $env:PYTHONUTF8 = "1"
-& "$res\python\python.exe" desktop\scripts\smoke.py
+powershell -ExecutionPolicy Bypass -File desktop\scripts\release-check.ps1 -Gates smoke
 ```
 
-It should print `PASS` lines that end in `ALL PASS`. If the app chose other ports (see `ports.json`), add
-`--base http://127.0.0.1:<backend port>`.
+It should end in `PASS`; the `smoke.py` lines are in `desktop\dist\release-check.json`.
 
 ## 7. Keys you'll need for testing
 

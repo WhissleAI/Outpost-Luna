@@ -101,7 +101,7 @@ export const VIDEOS_COPY = {
   cleared: "Cleared",
 };
 export const settingsSection = {
-  id: "videos", title: "Videos", after: "display",
+  id: "videos", title: "Videos", after: "display", grownup: true,   // [0.4.1] drawn in Settings → For grown-ups
   html: () => `<p class="set-help" data-vid-stat>Videos: checking…</p>
     <p class="set-help">${esc(VIDEOS_COPY.help)}</p>
     ${holdButtonHtml(VIDEOS_COPY.hold, "data-vid-clear")}

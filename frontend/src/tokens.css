@@ -170,7 +170,13 @@
     color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
+/* [0.4.1] The cockpit is always dark, whatever the theme: the Mission cabin (body[data-cabin], its header folded into
+   the bar: body[data-cockpit] .topbar) and the check-ride cockpit (.m-cabin.a-ridecabin). Light stays for the other
+   screens. The same tokens as the dark theme, set on the cockpit's own elements so everything inside inherits them. */
+:root[data-theme="dark"],
+body[data-cabin="1"],
+.m-cabin,
+body[data-cockpit="1"] .topbar {
   --color-bg: #0B0D12;
   --color-surface: #141821;
   --color-surface-2: #1C212C;
@@ -204,7 +210,9 @@
 }
 
 /* ---------- high contrast (Access settings): black / white / yellow, thicker focus ---------- */
-:root[data-contrast="high"] {
+/* the cockpit's own dark tokens (above) never out-rank high contrast */
+:root[data-contrast="high"],
+:root[data-contrast="high"] :is(body[data-cabin="1"], .m-cabin, body[data-cockpit="1"] .topbar) {
   --color-bg: #000000;
   --color-surface: #000000;
   --color-surface-2: #000000;

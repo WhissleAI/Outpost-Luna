@@ -89,6 +89,24 @@ the archive in `desktop/build/cache/onnxruntime/` never downloads. If every sour
    ```
 
    Keep `desktop/dist/release-check.json`: its gate summaries go in the release PR or notes.
+
+   **The installed app too.** Once the notarized dmg is installed in `/Applications`, smoke that copy before
+   publishing:
+
+   ```bash
+   make smoke-installed                                   # or APP=/path/to/Outpost\ Luna.app make smoke-installed
+   ```
+
+   It launches the installed app where it is (read-only), headless and muted, on a **temp** `OUTPOST_USER_DATA` and
+   free ports (never 47310 / 47210), waits for `engine.json` and the ear, runs `desktop/scripts/smoke.py` and the real
+   voice turn, then quits and deletes the temp folder. It is the `smoke` gate of `release_check.py` pointed at the
+   installed app (`--app ... --gates smoke`, report in `desktop/dist/smoke-installed.json`).
+
+   **Never smoke your own app.** `smoke.py` writes (a mission, a check ride, the ask history), so it refuses the
+   owner's data folder (`~/Library/Application Support/Outpost Luna`, `%APPDATA%\Outpost Luna`) and the default ports
+   (exit 2, nothing sent). It runs only against a test app: `--engine <test data>/engine.json`, or
+   `OUTPOST_USER_DATA` set. Launching the installed app by hand with your real data and running `smoke.py` (the 0.3.x
+   way) is not allowed any more.
 4. **Publish** under both names. The site links the stable name through `releases/latest/download/` (dl.js then
    resolves the newest release that has each file). If Windows follows later, add the line above to `notes.md`:
 

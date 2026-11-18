@@ -17,14 +17,16 @@ test("plan: Start over deletes the spoken-line cache, the turn log and on-device
   for (const [u, p] of [[MAC, "darwin"], [WIN, "win32"]]) for (const lv of R.LEVELS) {
     const pl = R.plan(lv, u, p);
     assert.ok(pl.delete.every((d) => !/logs|ports\.json|children\.json/.test(d)), "never the logs, ports or pid file");
-    assert.ok(pl.storages.includes("localstorage") && pl.storages.includes("indexdb"), "the page's storage on both levels");
+    assert.ok(pl.storages.includes("indexdb") && !pl.storages.includes("localstorage"), "IndexedDB on both levels; Local Storage (progress) kept");
+    assert.ok(R.plan(lv, u, p, { erase: true }).storages.includes("localstorage"), "Erase progress too: Local Storage as well");
   }
   assert.throws(() => R.plan("bogus", MAC, "darwin"));
 });
 
 test("parseResetUrl: only our own origin's reset path with a level and a token", () => {
   const o = "http://127.0.0.1:47310";
-  assert.deepStrictEqual(R.parseResetUrl(`${o}/__outpost/reset?level=all&token=abc`, o), { level: "all", token: "abc" });
+  assert.deepStrictEqual(R.parseResetUrl(`${o}/__outpost/reset?level=all&token=abc`, o), { level: "all", token: "abc", erase: false });
+  assert.deepStrictEqual(R.parseResetUrl(`${o}/__outpost/reset?level=start&token=abc&erase=1`, o), { level: "start", token: "abc", erase: true });
   assert.strictEqual(R.parseResetUrl(`${o}/__outpost/reset?level=all`, o), null);
   assert.strictEqual(R.parseResetUrl(`${o}/__outpost/reset?level=wipe&token=a`, o), null);
   assert.strictEqual(R.parseResetUrl(`http://127.0.0.1:9999/__outpost/reset?level=all&token=a`, o), null);
@@ -40,7 +42,7 @@ function fakes(platform, { confirmLevel = "start", lock = 0 } = {}) {
       platform, userData: platform === "win32" ? WIN : MAC, log: (m) => calls.push(`log ${m}`),
       confirm: async (t) => { calls.push(`confirm ${t}`); return confirmLevel; },
       stopChildren: async () => { calls.push("stop"); locked.clear(); },
-      session: { clearStorageData: async (o) => calls.push(`storage ${o.storages.length}`), clearCache: async () => calls.push("cache") },
+      session: { clearStorageData: async (o) => calls.push(`storage ${o.storages.join(",")}`), clearCache: async () => calls.push("cache") },
       fs: { rmSync: (p, o) => {
         // a Windows file lock: rmSync's own retries (maxRetries) ride it out; a lock that never clears is reported
         if (lock && p.endsWith("cache")) { if (!(o && o.maxRetries >= 3)) { const e = new Error("busy"); e.code = "EBUSY"; throw e; } if (lock > 1) { const e = new Error("busy"); e.code = "EBUSY"; throw e; } }
@@ -58,7 +60,16 @@ for (const platform of ["darwin", "win32"]) {
     assert.ok(out.done);
     const order = f.calls.filter((c) => !c.startsWith("log")).map((c) => c.split(" ")[0]);
     assert.deepStrictEqual(order, ["confirm", "stop", "storage", "cache", "rm", "rm", "rm", "relaunch", "exit"]);
-    assert.ok(f.calls.some((c) => c.startsWith("log reset start: cleared")), "the reset is logged");
+    assert.ok(f.calls.some((c) => c.startsWith("log reset start: cleared browser storage (kept Flight School progress and call signs)")), "the reset is logged");
+    assert.ok(!f.calls.find((c) => c.startsWith("storage")).includes("localstorage"), "progress (Local Storage) stays");
+  });
+
+  test(`performReset (${platform}): "Erase progress too" also clears Local Storage, and says so in the log`, async () => {
+    const f = fakes(platform, { confirmLevel: "all" });
+    const out = await R.performReset({ level: "all", token: "t7", erase: true }, f.deps);
+    assert.ok(out.done);
+    assert.ok(f.calls.find((c) => c.startsWith("storage")).includes("localstorage"));
+    assert.ok(f.calls.some((c) => c.startsWith("log reset all: cleared browser storage and progress")));
   });
 
   test(`performReset (${platform}): nothing happens unless the backend confirms the same level`, async () => {

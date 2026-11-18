@@ -34,7 +34,7 @@ export function viewHtml(v) {
 }
 
 const section = {
-  id: "learning", title: COPY.title, after: "diagnostics",
+  id: "learning", title: COPY.title, after: "diagnostics", grownup: true,   // [0.4.1] in Settings → For grown-ups
   html: () => `<div class="lr-zone">
     <p class="set-help">${esc(COPY.line)}</p>
     <div data-lr-view aria-live="polite"></div>

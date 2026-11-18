@@ -466,18 +466,24 @@ def ch_visibility(r):
 
 
 def ch_reset(r):
-    # Settings -> Reset -> Start over, held 3 s, while the surface is open (docs/RESET.md): the app must come back fresh
-    # at first launch with its chrome, never half-reset. Voice opens the confirm (a modal may cover the gear).
-    r.js("() => window.__outpost.a11y.handleText('reset')")   # opens Settings → Reset (both options)
+    # Settings -> For grown-ups -> Reset -> Start over with "Hold to erase progress too", held 3 s, while the surface is
+    # open (docs/RESET.md): the app must come back fresh at first launch with its chrome, never half-reset. Voice opens
+    # For grown-ups (a modal may cover the gear); its gate is a 3-second hold too.
+    def hold(sel):
+        box = r.js(f"() => {{ const q = document.querySelector('{sel}').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }}")
+        r.pg.mouse.move(*box)
+        r.pg.mouse.down()
+        r.wait(3400)
+        r.pg.mouse.up()
+    r.js("() => window.__outpost.a11y.handleText('reset')")   # opens Settings → For grown-ups
+    r.until("() => !!document.querySelector('[data-gu-open], [data-reset-open=start]')", 6000)
+    if r.js("() => !!document.querySelector('[data-gu-open]')"):
+        hold("[data-gu-open]")
     r.until("() => !!document.querySelector('[data-reset-open=start]')", 6000)
     r.js("() => document.querySelector('[data-reset-open=start]').click()")
-    if not r.until("() => !!document.querySelector('.rs-confirm [data-reset-hold]')", 6000):
+    if not r.until("() => !!document.querySelector('.rs-confirm [data-reset-erase]')", 6000):
         raise RuntimeError("the reset confirm did not open")
-    box = r.js("() => { const q = document.querySelector('[data-reset-hold]').getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]; }")
-    r.pg.mouse.move(*box)
-    r.pg.mouse.down()
-    r.wait(3400)
-    r.pg.mouse.up()
+    hold("[data-reset-erase]")
     r.until("() => document.readyState === 'complete' && window.__outpost && window.__outpost.shellNav && !!document.getElementById('aCsForm')", 30000)
     r.wait(1000)
     if r.js("() => Object.keys(localStorage).some(k => /^(outpost-callsign|atm-academy)$/.test(k))"):
