@@ -92,4 +92,5 @@ def test_live_course_is_matched_by_lesson_id():
 def test_course_order_is_the_current_one():
     """The script walks the course in its own order (next_lesson); this is the order the UI and the docs use."""
     assert [L["id"] for L in content.course()["lessons"]] == \
-        ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]
+        ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
+         "observe", "craters", "rocks", "fieldkit", "checkride"]   # Field School before the ride, like explorer lessons

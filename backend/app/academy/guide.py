@@ -141,6 +141,69 @@ def right_option(acc: dict) -> str | None:
     return acc.get("answer")
 
 
+# Field School (grade.FIELD_TYPES). A describe step asks for the first kind still missing, as a question.
+DESCRIBE_ASK = {"size": "how big is it?", "shape": "what shape is it?", "tone": "is it bright or dark?",
+                "texture": "is it smooth or bumpy?", "shadow": "where are the shadows?"}
+
+
+def describe_ask(missing: list[str]) -> str:
+    return DESCRIBE_ASK.get((missing or ["tone"])[0], "what else do you see?")
+
+
+def field_now(acc: dict, got: list | None) -> dict | None:
+    """The part of a Field step the kid is on: the round (rounds) or the next item (sequence)."""
+    got = got or []
+    if acc["type"] == "rounds":
+        rs = acc["rounds"]
+        return rs[min(len(got), len(rs) - 1)]
+    if acc["type"] == "sequence":
+        its = acc["items"]
+        return its[min(len(got), len(its) - 1)]
+    return None
+
+
+def field_help(st: dict, rung: int, got: list | None, lead: str = "") -> dict:
+    """Hint ladder for the Field steps. Rung 1: the hint (this round's own, or the missing descriptor as a question);
+    rung 2: a wrong tool crossed out / the next item named on the card / an example on the card; rung 3 (help only):
+    the answer lights up for the kid to tap."""
+    acc, kind = st["accept"], st["accept"]["type"]
+    out: dict = {"rung": rung, "hint": st.get("hint", "")}
+    if kind == "describe":
+        from .grade import describe_cats, describe_label
+        missing = [c for c in describe_cats(acc) if c not in (got or [])]
+        have = [c for c in describe_cats(acc) if c in (got or [])]
+        praise = f"You have {describe_label(have)}. " if have else ""
+        ask = describe_ask(missing)
+        out["say"] = lead + praise + ask[:1].upper() + ask[1:]
+        out["ask"] = missing[:1]
+        if rung >= 2:
+            out["phrase"] = st.get("example", "")
+            out["say"] = lead + praise + "Try the words on the card."
+        return out
+    now = field_now(acc, got) or {}
+    if kind == "rounds":
+        out["hint"] = now.get("hint", "")
+        out["say"] = lead + _end(now.get("hint", ""))
+        if rung >= 2:
+            wrong = [o["id"] for o in acc["options"] if o["id"] != now.get("answer")]
+            if wrong:
+                out["eliminate"] = wrong[-1]
+            out["say"] += " I crossed one out." if wrong else ""
+        if rung >= 3:
+            out["answer"] = now.get("answer")
+            out["say"] = f"Here's the answer: {option_label(acc, now.get('answer')).split(':')[0]}. Tap it."
+        return out
+    if kind == "sequence":
+        out["say"] = lead + _end(st.get("hint", ""))
+        if rung >= 2:
+            out["phrase"] = now.get("label", "")
+            out["answer"] = now.get("id")
+            out["say"] = lead + "The next one glows on the card."
+        return out
+    out["say"] = lead + _end(st.get("hint", ""))
+    return out
+
+
 def _end(t: str) -> str:
     t = str(t or "").strip()
     return t if not t or t[-1] in ".!?" else t + "."
@@ -159,6 +222,8 @@ def help_rung(st: dict, rung: int, got: list | None = None) -> dict:
         return {**out, "rung": 1, "say": "Any guess is fine. Tap one."}
     if kind == "video":
         return {**out, "rung": 1, "say": "Tap Watch to see it, or Skip."}
+    if kind in ("describe", "sequence", "rounds"):
+        return field_help(st, rung, got)
     target = None
     if kind in PLACE_TYPES:
         target = acc["place"]
@@ -237,6 +302,8 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict, seen: int = 0) -> dict
     if seen >= 1:
         rung = 2
     hint, fail = st["hint"], st["fail"]
+    if kind in ("describe", "sequence", "rounds"):
+        return field_help(st, rung, extra.get("got"), lead=fail + " ")
     out: dict = {"rung": rung, "hint": hint}
     tap = inp.get("tap") or ((inp.get("taps") or [None])[-1] if inp.get("taps") else None)
     name = tapped_name(tap) if kind in (*PLACE_TYPES, "route", "terminator") else None

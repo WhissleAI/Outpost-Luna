@@ -398,7 +398,8 @@ def academy_items(rng: random.Random, lesson: dict, step_i: int) -> dict:
 # ================================================================================================ round 6: hands-free
 # Today's real failure classes (docs/DIRECTOR_LOOP.md). Every item carries the client's screen `frame` (the router's
 # context) and a gold act; lesson answers carry lesson/step so the gold is the Academy grader on the CLEAN words.
-GLOBE_TYPES = ("predict", "globe_side", "terminator", "compare", "route", "earth_view")
+GLOBE_TYPES = ("predict", "globe_side", "terminator", "compare", "route", "earth_view",
+               "describe", "sequence", "rounds")   # + Field School steps (docs/LEARNING_DESIGN.md §12)
 LESSON_CHATTER = ["oh it's", "okay", "alright", "oh it's the", "okay okay", "alright alright", "oh cool", "it's",
                   "oh wait", "yeah", "oh okay", "wait wait", "alright so", "oh it's a", "okay so", "oh nice",
                   "okay okay okay", "oh my gosh", "alright then", "oh it's that", "yeah okay", "oh look", "oh right",
@@ -510,6 +511,19 @@ def globe_answer(rng: random.Random, L: dict, i: int, kind: str) -> str:
         wrong = rng.choice([x for x in ("yes", "no", "sometimes") if x != right])
         w = right if kind == "correct" else wrong
         return wrap.format(w=rng.choice([w, w + " you could", w + " always" if w == "yes" else w]))
+    if t == "describe":   # Field School: a description (3+ descriptor kinds), or one with none
+        if kind == "correct":
+            return rng.choice(["it's big and round with long shadows", "a huge round crater, bright, with bumpy walls",
+                               "it is wide and round and the walls are bright", "big, round, smooth floor, dark shadows"])
+        return rng.choice(["i really like it", "that one is cool", "it looks nice to me", "i don't know what to say"])
+    if t == "sequence":
+        labels = [x["label"].lower() for x in a["items"]]
+        return ", ".join(labels) if kind == "correct" else ", ".join(reversed(labels))
+    if t == "rounds":   # the first round's tool / rock
+        r0 = a["rounds"][0]
+        o = next(x for x in a["options"] if x["id"] == r0["answer"]) if kind == "correct" else \
+            rng.choice([x for x in a["options"] if x["id"] != r0["answer"]])
+        return wrap.format(w=rng.choice([o["label"].split(":")[0].lower()] + list(o.get("say") or [])))
     return "hmm"
 
 

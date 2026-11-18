@@ -19,6 +19,11 @@ Globe steps (docs/LEARNING_DESIGN.md §3, client contract in §9.2):
   route       {stops:[place ids], radius_deg?}      the stops in order: {taps:[...]} or the names in order in the
                                                     words; extra {got, next}
   earth_view  {place}                               yes / no / sometimes, computed from where the place is
+Field School steps (docs/LEARNING_DESIGN.md §12; they build up over turns: the reply's `got` comes back as input):
+  describe    {descriptors?, need}                  a description graded on the descriptor kinds it covers (size,
+                                                    shape, bright or dark, texture, shadows); extra {got, new, missing}
+  sequence    {items:[{id,label,say}]}              a readback in order: the names in order, or chip taps; {got, next}
+  rounds      {options, rounds:[{id,prompt,answer,hint}]}   one question asked over several rounds; {got, next}
 A NASA video step (docs/MEDIA.md; media ids from backend/data/video/catalog.json):
   video       {media}    {video: {watched, seconds, ...}} or a choice always passes (watched, skipped, offline); words
                          pass only when they say watch / skip (VIDEO_WORDS); anything else is ignored, never a miss
@@ -172,6 +177,8 @@ def step_vocab(step: dict | None, options: list[str] | None = None, aliases: boo
         out += COMMAND_VOCAB
     if kind.startswith("vocab_") and acc.get("term"):
         out.append(acc["term"])
+    if kind == "describe":
+        out += [w for c in describe_cats(acc) for w in DESCRIBE[c][1] if " " not in w and len(w) > 3]
     return [re.sub(r"\s*\(.*?\)", "", str(w)).strip() for w in out if w]
 
 
@@ -210,6 +217,8 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
         return c == acc["answer"], {"choice": c}
     if kind in GLOBE_TYPES:
         return GLOBE_TYPES[kind](acc, inp, text)
+    if kind in FIELD_TYPES:
+        return FIELD_TYPES[kind](acc, inp, text)
     # ---- vocab steps (a11y / learning design) ----
     if kind.startswith("vocab_"):
         from . import vocab
@@ -416,6 +425,124 @@ GLOBE_TYPES = {"predict": _predict, "globe_side": _side, "terminator": _terminat
                "route": _route, "earth_view": _earth}
 
 
+# ---- Field School steps (docs/LEARNING_DESIGN.md §12) -----------------------------------------------------------------
+# Three steps that build up over several turns, like the route: the reply carries `got` (what counts so far) and the
+# client sends it back, so "big and round" then "with long shadows" add up to one description.
+#   describe  {descriptors?: [cat ids], need}   a spoken / typed description, graded on how many descriptor kinds it
+#             covers (size, shape, bright or dark, texture, shadows: the Artemis II Lunar Log Card prompts and the
+#             crew's own talking points). Forgiving: any word of a kind counts, nothing is "wrong"; extra {got, new,
+#             missing}
+#   sequence  {items:[{id,label,say}]}   a readback in order (the station routine: photo, describe, sample, bag,
+#             report): the names in order in the words, or one chip tap at a time; extra {got, next}
+#   rounds    {options:[{id,label,say}], rounds:[{id, prompt, answer, hint, clue?, rock?}]}   one question asked
+#             several times over (which tool for each job; which rock is this); extra {got, next, round}
+# A Field step's input may carry `got` from the last reply; the grader keeps only what is valid (a prefix, known ids).
+DESCRIBE = {   # descriptor kind -> (label the kid sees and hears, words that count; matched on whole words)
+    "size": ("size", ["big", "bigger", "biggest", "huge", "giant", "enormous", "large", "wide", "small", "smaller",
+                      "tiny", "little", "km", "kilometers", "kilometres", "miles", "size", "across", "deep", "long",
+                      "short", "tall", "massive"]),
+    "shape": ("shape", ["round", "circle", "circular", "oval", "bowl", "ring", "rings", "rim", "square", "shape",
+                        "lumpy", "jagged", "irregular", "flat", "pointy", "peak", "peaks", "central peak", "bumpy shape",
+                        "star", "straight", "curved", "crater shaped", "hole", "dent", "wall", "walls", "terraced"]),
+    "tone": ("bright or dark", ["bright", "brighter", "brightest", "shiny", "dark", "darker", "darkest", "light",
+                                "lighter", "white", "gray", "grey", "black", "brown", "tan", "green", "albedo",
+                                "glowing", "dull", "pale", "color", "colour", "colors"]),
+    "texture": ("texture", ["smooth", "rough", "bumpy", "rocky", "dusty", "sandy", "soft", "hard", "cracked",
+                            "cracks", "hummocky", "boulders", "pebbles", "texture", "lumps", "grainy", "rays",
+                            "streaks", "ridges", "wrinkly", "pitted", "craters on it", "ejecta"]),
+    "shadow": ("shadows", ["shadow", "shadows", "shadowy", "shade", "shaded", "sunlit", "lit", "sunny side",
+                           "dark side of it", "one side dark", "in the dark"]),
+}
+DESCRIBE_ORDER = list(DESCRIBE)
+
+
+def describe_cats(acc: dict) -> list[str]:
+    return [c for c in acc.get("descriptors") or DESCRIBE_ORDER if c in DESCRIBE]
+
+
+def _describe_heard(text: str, cats: list[str]) -> list[str]:
+    t = _norm(text)
+    # "light" means bright, but "sunlight"/"lit" are shadow words: whole-word matching keeps them apart
+    return [c for c in cats if any(_has(t, w) for w in DESCRIBE[c][1])]
+
+
+def describe_label(cats: list[str]) -> str:
+    """"size, shape and shadows" (the kinds in the course's order)."""
+    ls = [DESCRIBE[c][0] for c in DESCRIBE_ORDER if c in cats]
+    return ls[0] if len(ls) == 1 else ", ".join(ls[:-1]) + " and " + ls[-1] if ls else ""
+
+
+def _describe(acc, inp, text):
+    cats = describe_cats(acc)
+    prior = [c for c in (inp.get("got") or []) if c in cats]
+    words = text or ""
+    if inp.get("choice") and inp["choice"] in DESCRIBE:      # a chip: "Bright or dark" tapped with its word
+        words = f"{words} {DESCRIBE[inp['choice']][1][0]}"
+    heard = _describe_heard(words, cats) if words.strip() else []
+    got = [c for c in DESCRIBE_ORDER if c in set(prior) | set(heard)]
+    new = [c for c in got if c not in prior]
+    need = min(int(acc.get("need") or 3), len(cats))
+    missing = [c for c in cats if c not in got]
+    return len(got) >= need, {"got": got, "new": new, "missing": missing, "need": need}
+
+
+def _seq_hits(text: str, items: list[dict], start: int) -> list[str]:
+    """Item ids named in order in the words, from item `start` on (like the route's names)."""
+    t, pos, out = f" {_norm(text)} ", 0, []
+    for it in items[start:]:
+        hits = [m.start() for w in [it["label"], *it.get("say", [])] if len(_norm(w)) > 1
+                for m in re.finditer(rf"(?<![a-z0-9]){re.escape(_norm(w))}(?![a-z0-9])", t) if m.start() >= pos]
+        if not hits:
+            break
+        pos = min(hits) + 1
+        out.append(it["id"])
+    return out
+
+
+def _valid_prefix(got, ids: list[str]) -> list[str]:
+    out = []
+    for g in got or []:
+        if len(out) < len(ids) and g == ids[len(out)]:
+            out.append(g)
+        else:
+            break
+    return out
+
+
+def _sequence(acc, inp, text):
+    items = acc["items"]
+    ids = [i["id"] for i in items]
+    got = _valid_prefix(inp.get("got"), ids)
+    nxt = ids[len(got)] if len(got) < len(ids) else None
+    if inp.get("choice") and nxt:                       # one chip tapped: it must be the next one
+        if inp["choice"] == nxt:
+            got.append(nxt)
+        else:
+            return False, {"got": got, "next": nxt, "wrong": inp["choice"]}
+    elif text and nxt:
+        got += _seq_hits(text, items, len(got))
+    done = len(got) == len(ids)
+    return done, {"got": got, "next": None if done else ids[len(got)]}
+
+
+def _rounds(acc, inp, text):
+    rs = acc["rounds"]
+    ids = [r["id"] for r in rs]
+    got = _valid_prefix(inp.get("got"), ids)
+    if len(got) >= len(rs):
+        return True, {"got": got, "next": None}
+    cur = rs[len(got)]
+    c = _option_of(inp, acc["options"], fuzzy=False)
+    if c is None or c != cur["answer"]:
+        return False, {"got": got, "next": cur["id"], **({"choice": c} if c else {})}
+    got = got + [cur["id"]]
+    done = len(got) == len(rs)
+    return done, {"got": got, "next": None if done else rs[len(got)]["id"], "choice": c}
+
+
+FIELD_TYPES = {"describe": _describe, "sequence": _sequence, "rounds": _rounds}
+
+
 # ---- paraphrase fallback (local embedder) ------------------------------------------------------------------------------
 SIMILAR = 0.72   # cosine (all-MiniLM-L6-v2) between the answer and the step's reference line
 
@@ -480,7 +607,7 @@ might must may have has had having not no yes yeah yep yup nope okay ok alright 
 oh ohh ooh ah ahh uh uhh um umm hmm mm mmm huh wow whoa hey hi hello sure thing things stuff gonna wanna got get
 gets let lets what whats when where who whom why how which wait sorry please thanks thank maybe guess think mean know
 """.split())
-INDEXED = ("choice", "predict", "compare", "earth_view", "vocab_match", "vocab_fill", "vocab_listen")
+INDEXED = ("choice", "predict", "compare", "earth_view", "vocab_match", "vocab_fill", "vocab_listen", "rounds")
 _KEYS = {"one": 0, "1": 0, "first": 0, "a": 0, "two": 1, "2": 1, "second": 1, "b": 1, "bee": 1, "three": 2, "3": 2,
          "third": 2, "c": 2, "sea": 2, "see": 2, "four": 3, "4": 3, "fourth": 3, "d": 3}
 _KEY_RE = re.compile(r"^(?:(?:it s|its|it is|i think|i pick|i choose|i say|my answer is|the|option|answer|number|"
@@ -511,8 +638,10 @@ VIDEO_WORDS = {"watch": ["Watch", "watch it", "play", "play it", "show me", "yes
 def step_options(acc: dict) -> list[tuple[str, list[str]]]:
     """[(option id, [label, *say words])] in the order the client shows them (its numbers / letters)."""
     kind = acc["type"]
-    if kind in ("choice", "predict", "compare"):
+    if kind in ("choice", "predict", "compare", "rounds"):
         return [(o["id"], [o["label"], *o.get("say", [])]) for o in acc.get("options", [])]
+    if kind == "sequence":
+        return [(o["id"], [o["label"], *o.get("say", [])]) for o in acc.get("items", [])]
     if kind == "earth_view":
         return [(k, [k.capitalize(), *EARTH_WORDS[k]]) for k in ("yes", "no", "sometimes")]
     if kind in ("vocab_match", "vocab_fill", "vocab_listen"):
@@ -558,6 +687,8 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
             return True
         if step and mine & _stem(content_words(" ".join(references(step)))):
             return True
+    if kind == "describe" and _describe_heard(text, describe_cats(acc)):
+        return True       # any descriptor word is a real try (it adds to the description)
     if kind == "command" and any(c.get("type") not in ("confirm", "cancel", "deny")
                                  for c in nlu.parse(text).get("commands", [])):
         return True

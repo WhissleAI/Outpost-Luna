@@ -185,6 +185,7 @@ Use this checklist for any new or redesigned lesson. `backend/tests/test_copy.py
 |---|---|---|
 | **Outpost Luna** | The south-pole base the kid runs | base camp, station, colony |
 | **Flight School** | The Academy: 6 core lessons, the check ride, and 2 explorer lessons unlocked after missions (9 patches) | academy, course, training center |
+| **Field School** | The second track: 4 geology lessons that open after the check ride (4 more patches) | geology module, bonus track |
 | **Lesson** | One Flight School unit | module, level, mission |
 | **Patch** | What a lesson earns, the cloth mission patch | badge, trophy, medal, star |
 | **Check ride** | The final solo test, 2 days at Shackleton Rim | final exam, boss level |

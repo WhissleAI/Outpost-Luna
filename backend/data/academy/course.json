@@ -1,5 +1,5 @@
 {
- "_note": "Flight School v4 (docs/LEARNING_DESIGN.md §11): 6 core lessons, the check ride, and 2 explorer lessons unlocked after missions (`track`, `unlock_after_missions`), in map order (each lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; app/academy/grade.py lists the accept types. A `video` step (app/academy/content.py VIDEO_MEDIA) is predict -> watch -> reveal and never blocks; a lesson's optional `prep` is a hands-on Mission prep task with its NASA activity source.",
+ "_note": "Flight School v4 (docs/LEARNING_DESIGN.md §11): 6 core lessons, the check ride, and 2 explorer lessons unlocked after missions (`track`, `unlock_after_missions`), then Field School (track `field`: 4 geology lessons that open after the check ride, docs/LEARNING_DESIGN.md §12), in map order (each lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a {title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); tests check every number in a fact appears in those files (or is recomputed, for `calc`). Steps accept voice or taps; app/academy/grade.py lists the accept types. A `video` step (app/academy/content.py VIDEO_MEDIA) is predict -> watch -> reveal and never blocks; a lesson's optional `prep` is a hands-on Mission prep task with its NASA activity source.",
  "title": "Junior Astronaut Academy",
  "pass_badge": "commander",
  "retired_badges": [
@@ -1923,6 +1923,983 @@
     }
    ],
    "track": "explorer",
+   "unlock_after": "checkride"
+  },
+  {
+   "id": "observe",
+   "title": "Eyes of a geologist",
+   "minutes": 4,
+   "place": "copernicus",
+   "badge": {
+    "id": "observer",
+    "name": "Moon Observer",
+    "glyph": "O"
+   },
+   "globe": {
+    "lat": 5,
+    "lon": -15,
+    "dist": 3.4
+   },
+   "ngss": [
+    "MS-ESS1-3"
+   ],
+   "clip": {
+    "clip_id": "ohm-crater-ray-systems",
+    "t0": 0.88,
+    "t1": 22.41,
+    "who": "an Artemis II astronaut",
+    "when": "before"
+   },
+   "brief": "The Artemis II crew described the Moon out loud. Let's learn to see like they did.",
+   "facts": [
+    {
+     "text": "The Artemis II crew gave spoken and written descriptions of the Moon, guided by a Cue Card.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA STEM: Artemis II, Observe the Moon",
+      "url": "https://www.nasa.gov/stem-content/artemis-ii-observe-the-moon/"
+     }
+    },
+    {
+     "text": "Before the flight, the crew trained on 15 key lunar features, the Lunar Fifteen.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA STEM: Artemis II, Observe the Moon",
+      "url": "https://www.nasa.gov/stem-content/artemis-ii-observe-the-moon/"
+     }
+    },
+    {
+     "text": "NASA's Lunar Log Card asks what features, shapes, colors and shadows you see.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA STEM: Artemis II, Observe the Moon",
+      "url": "https://www.nasa.gov/stem-content/artemis-ii-observe-the-moon/"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "From orbit, can astronauts see colors on the gray Moon?",
+     "accept": {
+      "type": "predict",
+      "answer": "yes",
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes, some colors",
+        "say": [
+         "yes",
+         "colors",
+         "some"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, only gray",
+        "say": [
+         "no",
+         "only gray",
+         "just gray"
+        ]
+       }
+      ]
+     },
+     "reveal": "Yes. The crew saw brown, tan, and even green.",
+     "clip": {
+      "clip_id": "texture-albedo-across-mare",
+      "t0": 35.3,
+      "t1": 45.7,
+      "who": "an Artemis II astronaut",
+      "when": "after"
+     },
+     "hint": "Guess first. Then hear the crew.",
+     "success": "Right. The crew saw browns and even green.",
+     "fail": "Pick one, then we listen."
+    },
+    {
+     "prompt": "Fly to Copernicus, a big, sharp crater near the middle.",
+     "accept": {
+      "type": "intent",
+      "place": "copernicus"
+     },
+     "globe": {
+      "do": "side",
+      "side": "near"
+     },
+     "hint": "Look left of the middle, above the equator.",
+     "success": "Roger. Copernicus. Now look closely.",
+     "fail": "Not there."
+    },
+    {
+     "prompt": "Geologists note size, shape, brightness, texture and shadows. Which is a shape word?",
+     "accept": {
+      "type": "choice",
+      "answer": "round",
+      "options": [
+       {
+        "id": "round",
+        "label": "Round",
+        "say": [
+         "round"
+        ]
+       },
+       {
+        "id": "bright",
+        "label": "Bright",
+        "say": [
+         "bright"
+        ]
+       },
+       {
+        "id": "bumpy",
+        "label": "Bumpy",
+        "say": [
+         "bumpy"
+        ]
+       }
+      ]
+     },
+     "globe": {
+      "do": "fly",
+      "place": "copernicus"
+     },
+     "hint": "Bright is light. Bumpy is texture.",
+     "success": "Correct. Round is a shape.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Now describe Copernicus like the crew. Size, shape, bright or dark, texture, shadows?",
+     "accept": {
+      "type": "describe",
+      "need": 3
+     },
+     "do": "Say what you see, or tap the words",
+     "globe": {
+      "do": "fly",
+      "place": "copernicus"
+     },
+     "clip": {
+      "clip_id": "using-geology-terms-describe",
+      "t0": 47.3,
+      "t1": 56.7,
+      "who": "the Artemis II crew",
+      "when": "after"
+     },
+     "hint": "Is it big or small? Bright or dark?",
+     "success": "That's a real geologist's report.",
+     "fail": "Tell me more.",
+     "example": "It's big and round, with bright walls, a bumpy floor and long shadows."
+    },
+    {
+     "prompt": "The crew called one spot \"high albedo\". What does albedo mean?",
+     "accept": {
+      "type": "vocab_match",
+      "term": "albedo",
+      "distractors": [
+       "crater",
+       "regolith"
+      ]
+     },
+     "hint": "Think bright or dark.",
+     "success": "Yes. Albedo is how bright a surface is.",
+     "fail": "Not quite."
+    }
+   ],
+   "track": "field",
+   "unlock_after": "checkride"
+  },
+  {
+   "id": "craters",
+   "title": "Craters and lava",
+   "minutes": 5,
+   "place": "tycho",
+   "badge": {
+    "id": "lava",
+    "name": "Lava Tracker",
+    "glyph": "L"
+   },
+   "globe": {
+    "lat": -20,
+    "lon": -12,
+    "dist": 3.4
+   },
+   "ngss": [
+    "MS-ESS1-3",
+    "HS-ESS1-6"
+   ],
+   "clip": {
+    "clip_id": "crew-choice-irregular-crater",
+    "t0": 69.0,
+    "t1": 92.9,
+    "who": "an Artemis II astronaut",
+    "when": "before"
+   },
+   "brief": "One astronaut said a crater looked like a volcano. Let's find out what really made it.",
+   "facts": [
+    {
+     "text": "Impact craters are left when an asteroid, meteoroid or comet hits the Moon.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: Lunar Craters",
+      "url": "https://science.nasa.gov/moon/lunar-craters/"
+     }
+    },
+    {
+     "text": "The spray of broken rock is ejecta. Plumes of ejecta settle back as bright rays.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: Lunar Craters",
+      "url": "https://science.nasa.gov/moon/lunar-craters/"
+     }
+    },
+    {
+     "text": "Tycho is about 85 km wide and 110 million years old: young, for the Moon.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: Lunar Craters",
+      "url": "https://science.nasa.gov/moon/lunar-craters/"
+     }
+    },
+    {
+     "text": "The dark maria are cooled lava that flooded giant impact basins, between 4.2 and 1.2 billion years ago.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: What is the Moon made of?",
+      "url": "https://science.nasa.gov/moon/composition/"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "What made the Moon's round craters?",
+     "accept": {
+      "type": "predict",
+      "answer": "impact",
+      "options": [
+       {
+        "id": "impact",
+        "label": "Space rocks hitting it",
+        "say": [
+         "space rocks",
+         "rocks",
+         "hitting",
+         "asteroids",
+         "meteors",
+         "impact"
+        ]
+       },
+       {
+        "id": "volcano",
+        "label": "Volcanoes erupting",
+        "say": [
+         "volcano",
+         "volcanoes",
+         "erupting"
+        ]
+       },
+       {
+        "id": "quake",
+        "label": "Moonquakes",
+        "say": [
+         "moonquake",
+         "moonquakes",
+         "quake"
+        ]
+       }
+      ]
+     },
+     "reveal": "Space rocks. A crater is an impact, not a volcano.",
+     "hint": "Guess first.",
+     "success": "Right. Each crater is an old impact.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Find Tycho. Look for bright rays, like a splash.",
+     "accept": {
+      "type": "intent",
+      "place": "tycho"
+     },
+     "globe": {
+      "do": "side",
+      "side": "near"
+     },
+     "hint": "It's low on the Moon, with bright streaks.",
+     "success": "Roger. Tycho's rays are splashed rock: ejecta.",
+     "fail": "Not there."
+    },
+    {
+     "prompt": "The dark maria are named seas. What are they really?",
+     "accept": {
+      "type": "choice",
+      "answer": "lava",
+      "options": [
+       {
+        "id": "lava",
+        "label": "Old cooled lava",
+        "say": [
+         "lava",
+         "cooled"
+        ]
+       },
+       {
+        "id": "water",
+        "label": "Dried-up water",
+        "say": [
+         "water",
+         "dried"
+        ]
+       },
+       {
+        "id": "shadow",
+        "label": "Deep shadows",
+        "say": [
+         "shadow",
+         "shadows"
+        ]
+       }
+      ]
+     },
+     "show": [
+      "imbrium"
+     ],
+     "globe": {
+      "do": "fly",
+      "place": "imbrium"
+     },
+     "hint": "They were hot and runny once.",
+     "success": "Correct. Cooled lava, never water.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Lava flooded the giant Imbrium basin. Which came first?",
+     "accept": {
+      "type": "predict",
+      "answer": "basin",
+      "options": [
+       {
+        "id": "basin",
+        "label": "The basin",
+        "say": [
+         "basin",
+         "hole",
+         "crater"
+        ]
+       },
+       {
+        "id": "lava",
+        "label": "The lava",
+        "say": [
+         "lava"
+        ]
+       }
+      ]
+     },
+     "reveal": "The basin. Lava can only fill a hole that's there.",
+     "globe": {
+      "do": "fly",
+      "place": "imbrium"
+     },
+     "clip": {
+      "clip_id": "orientale-basin-ejecta-extent",
+      "t0": 32.2,
+      "t1": 42.3,
+      "who": "an Artemis II astronaut",
+      "when": "after"
+     },
+     "hint": "Guess first.",
+     "success": "Right. The basin first, then the lava.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Tycho's rays lie on top of older ground. Is Tycho young or old?",
+     "accept": {
+      "type": "choice",
+      "answer": "young",
+      "options": [
+       {
+        "id": "young",
+        "label": "Young, for the Moon",
+        "say": [
+         "young",
+         "new",
+         "newer"
+        ]
+       },
+       {
+        "id": "old",
+        "label": "Old as the Moon",
+        "say": [
+         "old",
+         "older"
+        ]
+       }
+      ]
+     },
+     "globe": {
+      "do": "fly",
+      "place": "tycho"
+     },
+     "hint": "What's on top came later.",
+     "success": "Correct. About 110 million years: young!",
+     "fail": "Not that one."
+    }
+   ],
+   "track": "field",
+   "unlock_after": "checkride"
+  },
+  {
+   "id": "rocks",
+   "title": "Moon rocks tell time",
+   "minutes": 5,
+   "place": "apollo16_lm_orion",
+   "badge": {
+    "id": "rockhound",
+    "name": "Rock Hound",
+    "glyph": "B"
+   },
+   "globe": {
+    "place": "apollo16_lm_orion",
+    "dist": 2.6
+   },
+   "ngss": [
+    "HS-ESS1-6"
+   ],
+   "clip": {
+    "clip_id": "whole-moon-imaging-orientale",
+    "t0": 211.3,
+    "t1": 222.4,
+    "who": "an Artemis II astronaut",
+    "when": "before"
+   },
+   "brief": "Apollo crews brought rocks home. Each one tells part of the Moon's story.",
+   "facts": [
+    {
+     "text": "The bright highlands are older crust. The dark maria came later, as lava.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Science: What is the Moon made of?",
+      "url": "https://science.nasa.gov/moon/composition/"
+     }
+    },
+    {
+     "text": "Sample 60025, an anorthosite, is about 4.4 billion years old: a piece of the Moon's first crust.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Astromaterials 3D: lunar sample stories (15016, 60025, 79115)",
+      "url": "https://ares.jsc.nasa.gov/astromaterials3d/"
+     }
+    },
+    {
+     "text": "Sample 15016, a basalt, is 3.4 billion years old. About half of it is holes left by gas bubbles.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Astromaterials 3D: lunar sample stories (15016, 60025, 79115)",
+      "url": "https://ares.jsc.nasa.gov/astromaterials3d/"
+     }
+    },
+    {
+     "text": "Sample 79115 is a breccia: soil and rock bits glued together by impacts. Apollo 17 broke it off a boulder.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Astromaterials 3D: lunar sample stories (15016, 60025, 79115)",
+      "url": "https://ares.jsc.nasa.gov/astromaterials3d/"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "Bright highlands or dark maria: which is older?",
+     "accept": {
+      "type": "predict",
+      "answer": "highlands",
+      "options": [
+       {
+        "id": "highlands",
+        "label": "The bright highlands",
+        "say": [
+         "highlands",
+         "bright"
+        ]
+       },
+       {
+        "id": "maria",
+        "label": "The dark maria",
+        "say": [
+         "maria",
+         "mare",
+         "dark"
+        ]
+       }
+      ]
+     },
+     "reveal": "The highlands. Bright doesn't always mean young.",
+     "hint": "Guess first.",
+     "success": "Right. The highlands are older crust.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Real Apollo rocks! Name each kind.",
+     "accept": {
+      "type": "rounds",
+      "options": [
+       {
+        "id": "basalt",
+        "label": "Basalt: dark lava rock",
+        "say": [
+         "basalt",
+         "lava rock"
+        ]
+       },
+       {
+        "id": "anorthosite",
+        "label": "Anorthosite: light crystals",
+        "say": [
+         "anorthosite",
+         "crystals"
+        ]
+       },
+       {
+        "id": "breccia",
+        "label": "Breccia: bits glued together",
+        "say": [
+         "breccia",
+         "glued",
+         "bits"
+        ]
+       }
+      ],
+      "rounds": [
+       {
+        "id": "r15016",
+        "prompt": "Rock 1: dark, full of little holes. Which kind?",
+        "answer": "basalt",
+        "hint": "The holes were gas bubbles in lava.",
+        "yes": "Yes, basalt. Lava with gas bubbles.",
+        "rock": "15016",
+        "clue": "Sample 15016, Apollo 15: dark, with holes"
+       },
+       {
+        "id": "r60025",
+        "prompt": "Rock 2: pale, made of light crystals. Which kind?",
+        "answer": "anorthosite",
+        "hint": "Light crystals floated up long ago.",
+        "yes": "Yes, anorthosite. The Moon's first crust.",
+        "rock": "60025",
+        "clue": "Sample 60025, Apollo 16: pale crystals"
+       },
+       {
+        "id": "r79115",
+        "prompt": "Rock 3: broken bits stuck together. Which kind?",
+        "answer": "breccia",
+        "hint": "Impacts glued the bits together.",
+        "yes": "Yes, breccia.",
+        "rock": "79115",
+        "clue": "Sample 79115, Apollo 17: bits glued together"
+       }
+      ]
+     },
+     "do": "Turn the rock, then tap its kind",
+     "hint": "Read the clue under the rock.",
+     "success": "Roger. Three real Moon rocks named.",
+     "fail": "Look again."
+    },
+    {
+     "prompt": "Light anorthosite crystals floated up long ago. What did they make?",
+     "accept": {
+      "type": "choice",
+      "answer": "highlands",
+      "options": [
+       {
+        "id": "highlands",
+        "label": "The bright highlands",
+        "say": [
+         "highlands",
+         "bright"
+        ]
+       },
+       {
+        "id": "maria",
+        "label": "The dark maria",
+        "say": [
+         "maria",
+         "mare",
+         "dark"
+        ]
+       },
+       {
+        "id": "rays",
+        "label": "Tycho's rays",
+        "say": [
+         "rays",
+         "tycho"
+        ]
+       }
+      ]
+     },
+     "hint": "Light rock makes bright ground.",
+     "success": "Correct. The Moon's first crust.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Basalt 15016 is 3.4 billion years old. Is anorthosite 60025 older or younger?",
+     "accept": {
+      "type": "predict",
+      "answer": "older",
+      "options": [
+       {
+        "id": "older",
+        "label": "Older",
+        "say": [
+         "older",
+         "old"
+        ]
+       },
+       {
+        "id": "younger",
+        "label": "Younger",
+        "say": [
+         "younger",
+         "young"
+        ]
+       }
+      ]
+     },
+     "reveal": "Older: about 4.4 billion years. The highlands came first.",
+     "hint": "Guess first.",
+     "success": "Right. About 4.4 billion years old.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Apollo 16 found rock 60025 in the bright highlands. Find Apollo 16.",
+     "accept": {
+      "type": "tap",
+      "place": "apollo16_lm_orion",
+      "radius_deg": 8,
+      "label": "Apollo 16"
+     },
+     "globe": {
+      "do": "side",
+      "side": "near"
+     },
+     "hint": "It's just right of the middle.",
+     "success": "Roger. Apollo 16, in the highlands.",
+     "fail": "Not there."
+    }
+   ],
+   "track": "field",
+   "unlock_after": "checkride"
+  },
+  {
+   "id": "fieldkit",
+   "title": "Field kit",
+   "minutes": 4,
+   "place": "shackleton_rim",
+   "badge": {
+    "id": "fieldkit",
+    "name": "Field Ready",
+    "glyph": "F"
+   },
+   "ngss": [
+    "MS-ESS1-3",
+    "3-5-ETS1-1"
+   ],
+   "photo": {
+    "id": "geology_iceland_2026",
+    "alt": "Astronaut Zena Cardman trains with NASA geologists in Iceland's Moon-like lava fields.",
+    "credit": "NASA/James Blair",
+    "source": {
+     "title": "NASA Image jsc2026e405549: Artemis geology training in Iceland",
+     "url": "https://images.nasa.gov/details/jsc2026e405549"
+    }
+   },
+   "brief": "Astronauts practice field geology on Earth. Let's pack your kit for the south pole.",
+   "facts": [
+    {
+     "text": "In July 2026 astronaut Zena Cardman trained with NASA geologists in Iceland's Moon-like lava fields.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Image jsc2026e405549: Artemis geology training in Iceland",
+      "url": "https://images.nasa.gov/details/jsc2026e405549"
+     }
+    },
+    {
+     "text": "NASA's first Artemis geology tools include a hammer, a rake, a scoop, tongs, a drive tube and sample bags.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "Naids et al. 2021, Developing Geology Sampling Tools for the Artemis Program (NASA NTRS 20210000242)",
+      "url": "https://ntrs.nasa.gov/api/citations/20210000242/downloads/Developing%20Geology%20Sampling%20Tools_Lunar%20Surface%20Science%20Workshop_FINAL_2021.pdf"
+     }
+    },
+    {
+     "text": "On Apollo, tongs picked up small rocks and the rake gathered many small rocks at once.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "Naids et al. 2021, Developing Geology Sampling Tools for the Artemis Program (NASA NTRS 20210000242)",
+      "url": "https://ntrs.nasa.gov/api/citations/20210000242/downloads/Developing%20Geology%20Sampling%20Tools_Lunar%20Surface%20Science%20Workshop_FINAL_2021.pdf"
+     }
+    },
+    {
+     "text": "Apollo crews bagged each sample, took pictures after, and told Houston which numbered bag it was in.",
+     "from": [
+      "learning/concepts.json"
+     ],
+     "source": {
+      "title": "NASA Apollo Lunar Surface Journal: Working on the Moon (sample collection bags)",
+      "url": "https://nasa.gov/wp-content/uploads/static/history/alsj/WOTM/WOTM-SCB.html"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "prompt": "Moon geologists carry a rake. What is it for?",
+     "accept": {
+      "type": "predict",
+      "answer": "pebbles",
+      "options": [
+       {
+        "id": "pebbles",
+        "label": "Gathering lots of small rocks",
+        "say": [
+         "small rocks",
+         "pebbles",
+         "gathering"
+        ]
+       },
+       {
+        "id": "smooth",
+        "label": "Smoothing out footprints",
+        "say": [
+         "smoothing",
+         "footprints"
+        ]
+       },
+       {
+        "id": "dig",
+        "label": "Digging a deep hole",
+        "say": [
+         "digging",
+         "deep hole"
+        ]
+       }
+      ]
+     },
+     "reveal": "It gathers lots of small rocks at once.",
+     "hint": "Guess first.",
+     "success": "Right. It gathers many small rocks.",
+     "fail": "Pick one, then we check."
+    },
+    {
+     "prompt": "Pick the right tool for each job.",
+     "accept": {
+      "type": "rounds",
+      "options": [
+       {
+        "id": "rake",
+        "label": "Rake",
+        "say": [
+         "rake"
+        ]
+       },
+       {
+        "id": "tongs",
+        "label": "Tongs",
+        "say": [
+         "tongs",
+         "tong",
+         "grabber",
+         "claw"
+        ]
+       },
+       {
+        "id": "hammer",
+        "label": "Hammer",
+        "say": [
+         "hammer"
+        ]
+       },
+       {
+        "id": "scoop",
+        "label": "Scoop",
+        "say": [
+         "scoop",
+         "spoon",
+         "shovel"
+        ]
+       },
+       {
+        "id": "tube",
+        "label": "Drive tube",
+        "say": [
+         "drive tube",
+         "tube",
+         "core"
+        ]
+       }
+      ],
+      "rounds": [
+       {
+        "id": "pebbles",
+        "prompt": "Lots of loose pebbles. Which tool?",
+        "answer": "rake",
+        "hint": "It gathers many small rocks at once.",
+        "yes": "Yes, the rake."
+       },
+       {
+        "id": "rock",
+        "prompt": "One rock the size of your fist. Which tool?",
+        "answer": "tongs",
+        "hint": "It grabs one rock, like a claw.",
+        "yes": "Yes, tongs."
+       },
+       {
+        "id": "chip",
+        "prompt": "A chip off a big boulder. Which tool?",
+        "answer": "hammer",
+        "hint": "You need to knock a piece off.",
+        "yes": "Yes, the hammer."
+       },
+       {
+        "id": "soil",
+        "prompt": "Fine soil and dust. Which tool?",
+        "answer": "scoop",
+        "hint": "Dig it up, like a big spoon.",
+        "yes": "Yes, the scoop."
+       },
+       {
+        "id": "layers",
+        "prompt": "The soil's layers, top to bottom. Which tool?",
+        "answer": "tube",
+        "hint": "A tube pushed down keeps the layers.",
+        "yes": "Yes, the drive tube."
+       }
+      ]
+     },
+     "do": "Say a tool, or tap it",
+     "hint": "Think about what each tool does.",
+     "success": "Roger. Your field kit is packed.",
+     "fail": "Try another tool."
+    },
+    {
+     "prompt": "Why does each sample get its own numbered bag?",
+     "accept": {
+      "type": "choice",
+      "answer": "where",
+      "options": [
+       {
+        "id": "where",
+        "label": "To know where it came from",
+        "say": [
+         "where",
+         "came from",
+         "know"
+        ]
+       },
+       {
+        "id": "warm",
+        "label": "To keep it warm",
+        "say": [
+         "warm"
+        ]
+       },
+       {
+        "id": "light",
+        "label": "To make it lighter",
+        "say": [
+         "lighter"
+        ]
+       }
+      ]
+     },
+     "hint": "Scientists need to know the spot.",
+     "success": "Correct. Houston logs every bag.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "CAPCOM: \"Photo, describe, sample, bag, call it in.\" Read back the station order.",
+     "accept": {
+      "type": "sequence",
+      "items": [
+       {
+        "id": "photo",
+        "label": "Photo",
+        "say": [
+         "photo",
+         "picture",
+         "camera"
+        ]
+       },
+       {
+        "id": "describe",
+        "label": "Describe",
+        "say": [
+         "describe",
+         "description"
+        ]
+       },
+       {
+        "id": "sample",
+        "label": "Sample",
+        "say": [
+         "sample",
+         "grab",
+         "collect"
+        ]
+       },
+       {
+        "id": "bag",
+        "label": "Bag",
+        "say": [
+         "bag"
+        ]
+       },
+       {
+        "id": "report",
+        "label": "Call it in",
+        "say": [
+         "call it in",
+         "call",
+         "report",
+         "houston",
+         "radio"
+        ]
+       }
+      ]
+     },
+     "do": "Say them in order, or tap them",
+     "hint": "Start with the camera. End with the radio.",
+     "success": "Good readback. That's a geology station.",
+     "fail": "Not that order."
+    }
+   ],
+   "track": "field",
    "unlock_after": "checkride"
   },
   {

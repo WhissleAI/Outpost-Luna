@@ -547,12 +547,251 @@ LESSONS = [
      ]},
 ]
 
+# ---------------------------------------------------------------------------------------------------- Field School
+# A second track that opens after the check ride (docs/LEARNING_DESIGN.md §12): observe and describe like the Artemis II
+# crew, read craters and lava, name real Apollo rocks, and pick the right sampling tool. Sources: concepts.json
+# crew_describe, impact_craters, maria_lava, apollo_samples, sampling_tools, sampling_routine, geology_training.
+TOOLS = [opt("rake", "Rake", "rake"), opt("tongs", "Tongs", "tongs", "tong", "grabber", "claw"),
+         opt("hammer", "Hammer", "hammer"), opt("scoop", "Scoop", "scoop", "spoon", "shovel"),
+         opt("tube", "Drive tube", "drive tube", "tube", "core")]
+ROCKS = [opt("basalt", "Basalt: dark lava rock", "basalt", "lava rock"),
+         opt("anorthosite", "Anorthosite: light crystals", "anorthosite", "crystals"),
+         opt("breccia", "Breccia: bits glued together", "breccia", "glued", "bits")]
+
+
+def rnd(id_, prompt, answer, hint, yes, **kw):
+    return {"id": id_, "prompt": prompt, "answer": answer, "hint": hint, "yes": yes, **kw}
+
+
+FIELD = [
+    # ---------------------------------------------------------------- F1. observe and describe (MS-ESS1-3)
+    {"id": "observe", "title": "Eyes of a geologist", "minutes": 4, "place": "copernicus",
+     "badge": {"id": "observer", "name": "Moon Observer", "glyph": "O"},
+     "globe": {"lat": 5, "lon": -15, "dist": 3.4},
+     "ngss": ["MS-ESS1-3"],
+     "clip": clip("ohm-crater-ray-systems", 0.88, 22.41, "an Artemis II astronaut"),
+     "brief": "The Artemis II crew described the Moon out loud. Let's learn to see like they did.",
+     "facts": [
+         fact("The Artemis II crew gave spoken and written descriptions of the Moon, guided by a Cue Card.", C,
+              S_CONCEPT["crew_describe"]),
+         fact("Before the flight, the crew trained on 15 key lunar features, the Lunar Fifteen.", C,
+              S_CONCEPT["crew_describe"]),
+         fact("NASA's Lunar Log Card asks what features, shapes, colors and shadows you see.", C,
+              S_CONCEPT["crew_describe"]),
+     ],
+     "steps": [
+         step("From orbit, can astronauts see colors on the gray Moon?",
+              {"type": "predict", "answer": "yes",
+               "options": [opt("yes", "Yes, some colors", "yes", "colors", "some"),
+                           opt("no", "No, only gray", "no", "only gray", "just gray")]},
+              "Right. The crew saw browns and even green.", "Pick one, then we listen.",
+              "Guess first. Then hear the crew.",
+              reveal="Yes. The crew saw brown, tan, and even green.",
+              clip=clip("texture-albedo-across-mare", 35.3, 45.7, "an Artemis II astronaut", "after")),
+         step("Fly to Copernicus, a big, sharp crater near the middle.",
+              {"type": "intent", "place": "copernicus"},
+              "Roger. Copernicus. Now look closely.", "Not there.",
+              "Look left of the middle, above the equator.",
+              globe={"do": "side", "side": "near"}),
+         step("Geologists note size, shape, brightness, texture and shadows. Which is a shape word?",
+              {"type": "choice", "answer": "round",
+               "options": [opt("round", "Round", "round"), opt("bright", "Bright", "bright"),
+                           opt("bumpy", "Bumpy", "bumpy")]},
+              "Correct. Round is a shape.", "Not that one.",
+              "Bright is light. Bumpy is texture.",
+              globe={"do": "fly", "place": "copernicus"}),
+         {**step("Now describe Copernicus like the crew. Size, shape, bright or dark, texture, shadows?",
+                 {"type": "describe", "need": 3},
+                 "That's a real geologist's report.", "Tell me more.",
+                 "Is it big or small? Bright or dark?",
+                 do="Say what you see, or tap the words",
+                 globe={"do": "fly", "place": "copernicus"},
+                 clip=clip("using-geology-terms-describe", 47.3, 56.7, "the Artemis II crew", "after")),
+          "example": "It's big and round, with bright walls, a bumpy floor and long shadows."},
+         step("The crew called one spot \"high albedo\". What does albedo mean?",
+              {"type": "vocab_match", "term": "albedo", "distractors": ["crater", "regolith"]},
+              "Yes. Albedo is how bright a surface is.", "Not quite.",
+              "Think bright or dark."),
+     ]},
+    # ---------------------------------------------------------------- F2. impacts, lava, superposition (HS-ESS1-6)
+    {"id": "craters", "title": "Craters and lava", "minutes": 5, "place": "tycho",
+     "badge": {"id": "lava", "name": "Lava Tracker", "glyph": "L"},
+     "globe": {"lat": -20, "lon": -12, "dist": 3.4},
+     "ngss": ["MS-ESS1-3", "HS-ESS1-6"],
+     "clip": clip("crew-choice-irregular-crater", 69.0, 92.9, "an Artemis II astronaut"),
+     "brief": "One astronaut said a crater looked like a volcano. Let's find out what really made it.",
+     "facts": [
+         fact("Impact craters are left when an asteroid, meteoroid or comet hits the Moon.", C,
+              S_CONCEPT["impact_craters"]),
+         fact("The spray of broken rock is ejecta. Plumes of ejecta settle back as bright rays.", C,
+              S_CONCEPT["impact_craters"]),
+         fact("Tycho is about 85 km wide and 110 million years old: young, for the Moon.", C,
+              S_CONCEPT["impact_craters"]),
+         fact("The dark maria are cooled lava that flooded giant impact basins, between 4.2 and 1.2 billion years "
+              "ago.", C, S_CONCEPT["maria_lava"]),
+     ],
+     "steps": [
+         step("What made the Moon's round craters?",
+              {"type": "predict", "answer": "impact",
+               "options": [opt("impact", "Space rocks hitting it", "space rocks", "rocks", "hitting", "asteroids",
+                               "meteors", "impact"),
+                           opt("volcano", "Volcanoes erupting", "volcano", "volcanoes", "erupting"),
+                           opt("quake", "Moonquakes", "moonquake", "moonquakes", "quake")]},
+              "Right. Each crater is an old impact.", "Pick one, then we check.", "Guess first.",
+              reveal="Space rocks. A crater is an impact, not a volcano."),
+         step("Find Tycho. Look for bright rays, like a splash.",
+              {"type": "intent", "place": "tycho"},
+              "Roger. Tycho's rays are splashed rock: ejecta.", "Not there.",
+              "It's low on the Moon, with bright streaks.",
+              globe={"do": "side", "side": "near"}),
+         step("The dark maria are named seas. What are they really?",
+              {"type": "choice", "answer": "lava",
+               "options": [opt("lava", "Old cooled lava", "lava", "cooled"), opt("water", "Dried-up water", "water", "dried"),
+                           opt("shadow", "Deep shadows", "shadow", "shadows")]},
+              "Correct. Cooled lava, never water.", "Not that one.",
+              "They were hot and runny once.",
+              show=["imbrium"], globe={"do": "fly", "place": "imbrium"}),
+         step("Lava flooded the giant Imbrium basin. Which came first?",
+              {"type": "predict", "answer": "basin",
+               "options": [opt("basin", "The basin", "basin", "hole", "crater"),
+                           opt("lava", "The lava", "lava")]},
+              "Right. The basin first, then the lava.", "Pick one, then we check.", "Guess first.",
+              reveal="The basin. Lava can only fill a hole that's there.",
+              globe={"do": "fly", "place": "imbrium"},
+              clip=clip("orientale-basin-ejecta-extent", 32.2, 42.3, "an Artemis II astronaut", "after")),
+         step("Tycho's rays lie on top of older ground. Is Tycho young or old?",
+              {"type": "choice", "answer": "young",
+               "options": [opt("young", "Young, for the Moon", "young", "new", "newer"),
+                           opt("old", "Old as the Moon", "old", "older")]},
+              "Correct. About 110 million years: young!", "Not that one.",
+              "What's on top came later.",
+              globe={"do": "fly", "place": "tycho"}),
+     ]},
+    # ---------------------------------------------------------------- F3. Apollo rocks tell time (HS-ESS1-6)
+    {"id": "rocks", "title": "Moon rocks tell time", "minutes": 5, "place": "apollo16_lm_orion",
+     "badge": {"id": "rockhound", "name": "Rock Hound", "glyph": "B"},
+     "globe": {"place": "apollo16_lm_orion", "dist": 2.6},
+     "ngss": ["HS-ESS1-6"],
+     "clip": clip("whole-moon-imaging-orientale", 211.3, 222.4, "an Artemis II astronaut"),
+     "brief": "Apollo crews brought rocks home. Each one tells part of the Moon's story.",
+     "facts": [
+         fact("The bright highlands are older crust. The dark maria came later, as lava.", C, S_CONCEPT["maria_lava"]),
+         fact("Sample 60025, an anorthosite, is about 4.4 billion years old: a piece of the Moon's first crust.", C,
+              S_CONCEPT["apollo_samples"]),
+         fact("Sample 15016, a basalt, is 3.4 billion years old. About half of it is holes left by gas bubbles.", C,
+              S_CONCEPT["apollo_samples"]),
+         fact("Sample 79115 is a breccia: soil and rock bits glued together by impacts. Apollo 17 broke it off a "
+              "boulder.", C, S_CONCEPT["apollo_samples"]),
+     ],
+     "steps": [
+         step("Bright highlands or dark maria: which is older?",
+              {"type": "predict", "answer": "highlands",
+               "options": [opt("highlands", "The bright highlands", "highlands", "bright"),
+                           opt("maria", "The dark maria", "maria", "mare", "dark")]},
+              "Right. The highlands are older crust.", "Pick one, then we check.", "Guess first.",
+              reveal="The highlands. Bright doesn't always mean young."),
+         step("Real Apollo rocks! Name each kind.",
+              {"type": "rounds", "options": ROCKS,
+               "rounds": [rnd("r15016", "Rock 1: dark, full of little holes. Which kind?", "basalt",
+                              "The holes were gas bubbles in lava.", "Yes, basalt. Lava with gas bubbles.",
+                              rock="15016", clue="Sample 15016, Apollo 15: dark, with holes"),
+                          rnd("r60025", "Rock 2: pale, made of light crystals. Which kind?", "anorthosite",
+                              "Light crystals floated up long ago.", "Yes, anorthosite. The Moon's first crust.",
+                              rock="60025", clue="Sample 60025, Apollo 16: pale crystals"),
+                          rnd("r79115", "Rock 3: broken bits stuck together. Which kind?", "breccia",
+                              "Impacts glued the bits together.", "Yes, breccia.",
+                              rock="79115", clue="Sample 79115, Apollo 17: bits glued together")]},
+              "Roger. Three real Moon rocks named.", "Look again.",
+              "Read the clue under the rock.",
+              do="Turn the rock, then tap its kind"),
+         step("Light anorthosite crystals floated up long ago. What did they make?",
+              {"type": "choice", "answer": "highlands",
+               "options": [opt("highlands", "The bright highlands", "highlands", "bright"),
+                           opt("maria", "The dark maria", "maria", "mare", "dark"),
+                           opt("rays", "Tycho's rays", "rays", "tycho")]},
+              "Correct. The Moon's first crust.", "Not that one.",
+              "Light rock makes bright ground."),
+         step("Basalt 15016 is 3.4 billion years old. Is anorthosite 60025 older or younger?",
+              {"type": "predict", "answer": "older",
+               "options": [opt("older", "Older", "older", "old"), opt("younger", "Younger", "younger", "young")]},
+              "Right. About 4.4 billion years old.", "Pick one, then we check.", "Guess first.",
+              reveal="Older: about 4.4 billion years. The highlands came first."),
+         step("Apollo 16 found rock 60025 in the bright highlands. Find Apollo 16.",
+              {"type": "tap", "place": "apollo16_lm_orion", "radius_deg": 8, "label": "Apollo 16"},
+              "Roger. Apollo 16, in the highlands.", "Not there.",
+              "It's just right of the middle.",
+              globe={"do": "side", "side": "near"}),
+     ]},
+    # ---------------------------------------------------------------- F4. the field kit and the station routine
+    {"id": "fieldkit", "title": "Field kit", "minutes": 4, "place": "shackleton_rim",
+     "badge": {"id": "fieldkit", "name": "Field Ready", "glyph": "F"},
+     "ngss": ["MS-ESS1-3", "3-5-ETS1-1"],
+     "photo": {"id": "geology_iceland_2026", "alt": "Astronaut Zena Cardman trains with NASA geologists in Iceland's Moon-like lava fields.",
+               "credit": "NASA/James Blair", "source": S_CONCEPT["geology_training"]},
+     "brief": "Astronauts practice field geology on Earth. Let's pack your kit for the south pole.",
+     "facts": [
+         fact("In July 2026 astronaut Zena Cardman trained with NASA geologists in Iceland's Moon-like lava fields.",
+              C, S_CONCEPT["geology_training"]),
+         fact("NASA's first Artemis geology tools include a hammer, a rake, a scoop, tongs, a drive tube and sample "
+              "bags.", C, S_CONCEPT["sampling_tools"]),
+         fact("On Apollo, tongs picked up small rocks and the rake gathered many small rocks at once.", C,
+              S_CONCEPT["sampling_tools"]),
+         fact("Apollo crews bagged each sample, took pictures after, and told Houston which numbered bag it was in.",
+              C, S_CONCEPT["sampling_routine"]),
+     ],
+     "steps": [
+         step("Moon geologists carry a rake. What is it for?",
+              {"type": "predict", "answer": "pebbles",
+               "options": [opt("pebbles", "Gathering lots of small rocks", "small rocks", "pebbles", "gathering"),
+                           opt("smooth", "Smoothing out footprints", "smoothing", "footprints"),
+                           opt("dig", "Digging a deep hole", "digging", "deep hole")]},
+              "Right. It gathers many small rocks.", "Pick one, then we check.", "Guess first.",
+              reveal="It gathers lots of small rocks at once."),
+         step("Pick the right tool for each job.",
+              {"type": "rounds", "options": TOOLS,
+               "rounds": [rnd("pebbles", "Lots of loose pebbles. Which tool?", "rake",
+                              "It gathers many small rocks at once.", "Yes, the rake."),
+                          rnd("rock", "One rock the size of your fist. Which tool?", "tongs",
+                              "It grabs one rock, like a claw.", "Yes, tongs."),
+                          rnd("chip", "A chip off a big boulder. Which tool?", "hammer",
+                              "You need to knock a piece off.", "Yes, the hammer."),
+                          rnd("soil", "Fine soil and dust. Which tool?", "scoop",
+                              "Dig it up, like a big spoon.", "Yes, the scoop."),
+                          rnd("layers", "The soil's layers, top to bottom. Which tool?", "tube",
+                              "A tube pushed down keeps the layers.", "Yes, the drive tube.")]},
+              "Roger. Your field kit is packed.", "Try another tool.",
+              "Think about what each tool does.",
+              do="Say a tool, or tap it"),
+         step("Why does each sample get its own numbered bag?",
+              {"type": "choice", "answer": "where",
+               "options": [opt("where", "To know where it came from", "where", "came from", "know"),
+                           opt("warm", "To keep it warm", "warm"), opt("light", "To make it lighter", "lighter")]},
+              "Correct. Houston logs every bag.", "Not that one.",
+              "Scientists need to know the spot."),
+         step("CAPCOM: \"Photo, describe, sample, bag, call it in.\" Read back the station order.",
+              {"type": "sequence",
+               "items": [opt("photo", "Photo", "photo", "picture", "camera"),
+                         opt("describe", "Describe", "describe", "description"),
+                         opt("sample", "Sample", "sample", "grab", "collect"),
+                         opt("bag", "Bag", "bag"),
+                         opt("report", "Call it in", "call it in", "call", "report", "houston", "radio")]},
+              "Good readback. That's a geology station.", "Not that order.",
+              "Start with the camera. End with the radio.",
+              do="Say them in order, or tap them"),
+     ]},
+]
+LESSONS += FIELD
+
 
 # Map / course order (coordinator, 2026-11-14): the basics first, then the outpost systems, then Apollo, then the ride.
 # Owner decision (via the coordinator, 2026-11-14): 6 core lessons before the check ride; "Moon gravity and dust" and
 # "Lessons from Apollo" are explorer lessons, unlocked after missions (gravity after the 1st, Apollo after the 2nd).
 # The check ride stays the last stop; explorer lessons sit before it in the data but never block it.
-ORDER = ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history", "checkride"]
+# Field School (owner brief 2026-11-17) sits after the explorer lessons, before the ride in the data, like them: the
+# check ride stays the last stop on the map, and Field School opens once it is flown (unlock_after: "checkride").
+ORDER = ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
+         "observe", "craters", "rocks", "fieldkit", "checkride"]
+FIELD_IDS = [l["id"] for l in FIELD]   # Field School: a second track after the check ride (unlock_after: "checkride")
 EXPLORER = {"gravity": 1, "history": 0}     # lesson id -> missions to fly before it unlocks
 # Novice playtest 2026-11-16 #22: "Lessons from Apollo" (the trace step) waited for a second mission, out of reach in a
 # new kid's first hour. It opens after the check ride instead (`unlock_after: "checkride"`).
@@ -561,7 +800,8 @@ UNLOCK_AFTER = {"history": "checkride"}
 
 def build() -> dict:
     return {"_note": "Flight School v4 (docs/LEARNING_DESIGN.md §11): 6 core lessons, the check ride, and 2 explorer "
-                     "lessons unlocked after missions (`track`, `unlock_after_missions`), in map order (each "
+                     "lessons unlocked after missions (`track`, `unlock_after_missions`), then Field School (track `field`: 4 "
+                     "geology lessons that open after the check ride, docs/LEARNING_DESIGN.md §12), in map order (each "
                      "lesson's `place` is its Moon-map pin). Authored in tools/build_course.py. Every fact cites a "
                      "{title,url} and names the repo data file(s) it comes from (`from`, relative to backend/data); "
                      "tests check every number in a fact appears in those files (or is recomputed, for `calc`). "
@@ -569,7 +809,8 @@ def build() -> dict:
                      "(app/academy/content.py VIDEO_MEDIA) is predict -> watch -> reveal and never blocks; a lesson's "
                      "optional `prep` is a hands-on Mission prep task with its NASA activity source.",
             "title": "Junior Astronaut Academy", "pass_badge": "commander", "retired_badges": ["words"],
-            "lessons": [{**l, "track": "explorer" if l["id"] in EXPLORER else "core",
+            "lessons": [{**l, "track": "field" if l["id"] in FIELD_IDS else "explorer" if l["id"] in EXPLORER else "core",
+                         **({"unlock_after": "checkride"} if l["id"] in FIELD_IDS else {}),
                          **({"unlock_after_missions": EXPLORER[l["id"]]} if EXPLORER.get(l["id"]) else {}),
                          **({"unlock_after": UNLOCK_AFTER[l["id"]]} if l["id"] in UNLOCK_AFTER else {})}
                         for l in sorted(LESSONS, key=lambda l: ORDER.index(l["id"]))]}

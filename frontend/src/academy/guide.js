@@ -23,6 +23,9 @@ export const DO = {
   keywords: "Say the order back, or type it", vocab_match: "Tap the meaning, or say it",
   vocab_fill: "Tap the missing word, or say it", vocab_say: "Say the word out loud", vocab_listen: "Listen, then tap the word, or say it",
   video: "Pick a guess. Then tap Watch, or Skip",
+  // Field School (0.5): reports that build up over turns
+  describe: "Say what you see, or tap the words", sequence: "Say them in order, or tap them",
+  rounds: "Tap an answer, or say it",
 };
 /** A video step with nothing to guess ("Watch the bright part grow"): no "Guess first" (novice playtest #7). */
 const DO_VIDEO_PLAIN = "Tap Watch, or Skip";
@@ -34,6 +37,9 @@ export const INTRO = {
   predict: "New: a guess. There's no wrong guess here.", earth_view: "New: imagine standing there and looking up.",
   command: "New: give an order. Tap a button, or say it.", keywords: "New: radio practice. Say the order back.",
   video: "New: a NASA video. Guess first, then watch.",
+  describe: "New: a crew report. Say what you see, bit by bit.",
+  sequence: "New: a readback in order. One at a time is fine.",
+  rounds: "New: a few quick rounds, one answer each.",
 };
 /** [0.3.12] The intro without its "New:" label: the card shows "New" as a chip, and TTS / captions never say "New:". */
 export const introText = t => String(t || "").replace(/^\s*New:\s*/i, "").replace(/^./, c => c.toUpperCase());

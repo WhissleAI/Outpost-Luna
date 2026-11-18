@@ -34,6 +34,7 @@ import { initVoiceBar } from "./voicebar.js";
 import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
+import "./academy/field_steps.js";   // [0.5] Field School step renderers (docs/LEARNING_DESIGN.md §12)
 // ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
 import "./media/video.css";
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time

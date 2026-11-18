@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from .. import safety as safety_, steering
 from . import content, guide, ride as rides
-from .grade import REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
+from .grade import FIELD_TYPES, REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
 
 router = APIRouter()
 from .vocab import router as _vocab_router  # noqa: E402  (GET /api/glossary: Space words, docs/VOCABULARY.md)
@@ -33,6 +33,7 @@ class AttemptInput(BaseModel):
     view: dict | None = None                       # globe_side: the camera's centre {lat, lon}
     taps: list[str | dict] | None = Field(None, max_length=12)   # route: the stops tapped so far, in order
     video: dict | None = None                      # video step: {watched, seconds, skipped?, offline?} (docs/MEDIA.md)
+    got: list[str] | None = Field(None, max_length=12)   # Field School steps: the reply's `got`, sent back (grade.py)
 
 
 class AttemptReq(BaseModel):
@@ -124,6 +125,8 @@ async def academy_attempt(req: AttemptReq):
         return _ignored(les["id"], req.step)          # room talk / filler: not a try, no miss, nothing said
     if not ok and st["accept"]["type"] == "video":
         return _ignored(les["id"], req.step)          # a video step is never missed: only watch / skip move it on
+    if st["accept"]["type"] in FIELD_TYPES:
+        return _field_reply(les, req, st, ok, extra)
     if not ok and st["accept"]["type"] == "predict":
         return _ignored(les["id"], req.step)          # [0.3.12] a guess step: only a guess moves it on; other words never
         #                                               count as a miss, so they never reveal the answer before a guess
@@ -149,6 +152,55 @@ async def academy_attempt(req: AttemptReq):
     return _miss(les, req, st, extra)
 
 
+def _field_reply(les: dict, req: AttemptReq, st: dict, ok: bool, extra: dict) -> dict:
+    """Field School steps (grade.FIELD_TYPES) build up over turns, like the route: a turn that adds something is
+    `progress` (never a miss) and carries `got` for the client to send back. A turn that adds nothing is a miss on the
+    hint ladder; after 3 misses (and 20 s) CAPCOM shows it: the whole description or order, or, in a rounds step, just
+    this round's answer, and the next round goes on (no dead ends, and every round is still asked)."""
+    from .grade import describe_label
+    kind, acc, lid = st["accept"]["type"], st["accept"], les["id"]
+    inp = req.input.model_dump(exclude_none=True)
+    last = req.step == len(les["steps"]) - 1
+    prior = inp.get("got") or []
+    got = extra.get("got") or []
+
+    def passed(say: str, shown: bool = False) -> dict:
+        return _out(lid, req.step, "passed", (SHOWN if shown else "") + say, next_step=None if last else req.step + 1,
+                    badge=les["badge"] if last else None, shown=True if shown else None,
+                    shown_answer=_answer_of(st) if shown else None, **extra)
+    if ok:
+        say = st["success"]
+        if kind == "describe":   # praise what they got, then the payoff line
+            say = f"You noted {describe_label(got)}. " + say
+        return passed(say)
+    grew = len(got) > len([g for g in prior if g in got])
+    if kind == "describe" and extra.get("new"):
+        return _out(lid, req.step, "progress", f"Good: {describe_label(extra['new'])}. Now, {guide.describe_ask(extra['missing'])}",
+                    **extra)
+    if kind == "sequence" and grew and extra.get("next"):
+        new = [i["label"] for i in acc["items"] if i["id"] in got[len(prior):]]
+        return _out(lid, req.step, "progress", f"Yes: {', '.join(new)}. What comes next?", **extra)
+    if kind == "rounds" and grew and extra.get("next"):
+        rd = next(r for r in acc["rounds"] if r["id"] == got[-1])
+        nx = next(r for r in acc["rounds"] if r["id"] == extra["next"])
+        return _out(lid, req.step, "progress", f"{rd.get('yes') or 'Yes.'} {nx['prompt']}", **extra)
+    if reveal_due(req.misses + 1, req.step_s):          # CAPCOM shows it
+        if kind == "rounds":
+            rs = acc["rounds"]
+            cur = rs[len(got)]
+            label = guide.option_label(acc, cur["answer"]).split(":")[0]   # "Basalt: dark lava rock" -> "Basalt"
+            got2 = got + [cur["id"]]
+            if len(got2) == len(rs):
+                return passed(f"Here it is: {label}. " + st["success"])
+            nx = rs[len(got2)]
+            return _out(lid, req.step, "progress", f"Here it is: {label}. {nx['prompt']}", got=got2, next=nx["id"],
+                        shown=True, shown_answer={"choice": cur["answer"]})
+        if kind == "describe":
+            return passed(st["example"], shown=True)
+        return passed(st["success"], shown=True)
+    return _miss(les, req, st, extra)
+
+
 def _route_progress(inp: dict, extra: dict) -> bool:
     got = extra.get("got") or []
     return bool(got) and len(got) >= len(inp.get("taps") or []) and extra.get("next") is not None
@@ -157,8 +209,10 @@ def _route_progress(inp: dict, extra: dict) -> bool:
 def _miss(les: dict, req: AttemptReq, st: dict, extra: dict) -> dict:
     """A real miss: the next rung of the hint ladder (app/academy/guide.py), which always says what to do next."""
     g = guide.ladder(st, req.misses, req.input.model_dump(exclude_none=True), extra, seen=req.rung)
-    if st["accept"]["type"] == "route":
+    if st["accept"]["type"] in ("route", *FIELD_TYPES):
         g["got"] = extra.get("got") or []   # the stops still right (the client keeps those taps)
+        if st["accept"]["type"] in FIELD_TYPES and extra.get("next"):
+            g["next"] = extra["next"]
     return _out(les["id"], req.step, "hint", g.pop("say"), **g)
 
 
@@ -259,6 +313,12 @@ def _answer_of(st: dict) -> dict:
         return {"sun_lon": a["sun_lon"]}
     if a["type"] == "keywords":
         return {"say": (references(st) or [""])[0]}
+    if a["type"] == "describe":
+        return {"say": st.get("example", "")}
+    if a["type"] == "sequence":
+        return {"order": [i["id"] for i in a["items"]], "say": ", ".join(i["label"] for i in a["items"])}
+    if a["type"] == "rounds":
+        return {"choice": a["rounds"][-1]["answer"]}
     return {}
 
 
