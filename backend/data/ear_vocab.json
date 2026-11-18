@@ -1,5 +1,5 @@
 {
- "v": "82fbab85e4f2",
+ "v": "52a3e0266524",
  "places": [
   "Shackleton",
   "de Gerlache",
@@ -34,6 +34,13 @@
   "Pythagoras",
   "Mare Humorum",
   "North Pole",
+  "Haworth",
+  "Nobile",
+  "Faustini",
+  "Shoemaker",
+  "Sverdrup",
+  "Amundsen",
+  "Schrödinger",
   "Byrgius Alpha",
   "Earthrise",
   "Earthset"
@@ -485,6 +492,7 @@
    "landing",
    "LCROSS Centaur rocket impact site",
    "LCROSS Shepherding Spacecraft impact site",
+   "Cabeus",
    "Shackleton Rim",
    "shackleton",
    "rim",
@@ -950,6 +958,7 @@
   "landing",
   "LCROSS Centaur rocket impact site",
   "LCROSS Shepherding Spacecraft impact site",
+  "Cabeus",
   "Moon gravity and dust",
   "The feather",
   "feather",
@@ -1104,8 +1113,7 @@
   "Space rocks hitting it",
   "space rocks",
   "rocks",
-  "hitting",
-  "asteroids"
+  "hitting"
  ],
  "orders": [
   "shields",

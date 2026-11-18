@@ -691,7 +691,7 @@ async function boot() {
     if (force || k !== lastScreen) { lastScreen = k; session.ui("screen", f); }
   }
   setInterval(() => pushScreen(false), 400);
-  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe, missionUI });   // what tests read (tools/*.py)
+  Object.assign(window.__outpost = window.__outpost || {}, { screenFrame, floor, globe, missionUI, academyUI });   // what tests read (tools/*.py; academyUI: the cockpit patch key e2e)
 
   // ---- [input] defaults for every intent, the keyboard source, and camera gestures (off until Settings turns them on) ----
   const inCabin = () => missionUI.running && document.body.dataset.cabin === "1";

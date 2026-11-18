@@ -87,9 +87,9 @@
       ]
     },
     "copernicus": {
-      "name": "Copernicus", "type": "crater", "diameter_km": 93, "lat": 9.6, "lon": -20.1, "side": "near",
+      "name": "Copernicus", "type": "crater", "diameter_km": 96, "lat": 9.62, "lon": -20.08, "side": "near",
       "facts": [
-        {"text": "Copernicus is about 93 km wide and nearly 4 km deep.", "source": "IAU Gazetteer of Planetary Nomenclature / NASA LRO", "numbers": [93, 4, 3.8]},
+        {"text": "Copernicus is about 96 km wide and nearly 4 km deep.", "source": "IAU Gazetteer of Planetary Nomenclature / NASA LRO", "numbers": [96, 4, 3.8]},
         {"text": "It has stair-step walls and mountains in the middle.", "source": "NASA LRO / LROC", "numbers": []},
         {"text": "It is about 800 million years old.", "source": "NASA LRO / LROC (Apollo 12 sample ages)", "numbers": [800000000, 12]}
       ]
@@ -117,6 +117,87 @@
         {"text": "Its floor never gets sunlight, so it is super cold and may hold ice.", "source": "NASA LRO / LOLA", "numbers": []},
         {"text": "It is about 4 km deep.", "source": "NASA LRO / LOLA", "numbers": [4, 4.2]},
         {"text": "Artemis astronauts plan to land in the south pole region.", "source": "NASA Artemis program", "numbers": []}
+      ]
+    },
+    "de_gerlache": {
+      "name": "de Gerlache", "type": "crater", "diameter_km": 33, "lat": -88.48, "lon": -88.34, "side": "limb",
+      "facts": [
+        {"text": "de Gerlache is a crater about 33 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [33]},
+        {"text": "It is named for Adrien de Gerlache, a Belgian explorer who sailed to Antarctica.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "Its rim is one of NASA's candidate landing regions near the south pole.", "source": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)", "numbers": []}
+      ]
+    },
+    "haworth": {
+      "name": "Haworth", "type": "crater", "diameter_km": 51, "lat": -87.45, "lon": -5.17, "side": "limb",
+      "facts": [
+        {"text": "Haworth is a crater about 51 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [51]},
+        {"text": "It is named for Walter Haworth, an English chemist who won the Nobel Prize in 1937.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [1937]},
+        {"text": "Its floor stays in shadow all the time, so it is super cold.", "source": "NASA LRO / LOLA", "numbers": []},
+        {"text": "The Haworth area is one of NASA's candidate landing regions near the south pole.", "source": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)", "numbers": []}
+      ]
+    },
+    "nobile": {
+      "name": "Nobile", "type": "crater", "diameter_km": 79, "lat": -85.28, "lon": 53.27, "side": "limb",
+      "facts": [
+        {"text": "Nobile is a crater about 79 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [79]},
+        {"text": "It is named for Umberto Nobile, an Italian explorer who flew airships over the Arctic.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "NASA picked the edge of Nobile for its VIPER ice-hunting rover.", "source": "NASA Science: VIPER", "numbers": []}
+      ]
+    },
+    "malapert": {
+      "name": "Malapert", "type": "crater", "diameter_km": 72, "lat": -85.0, "lon": 11.4, "side": "limb",
+      "facts": [
+        {"text": "Malapert is a crater about 72 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [72]},
+        {"text": "It is named for Charles Malapert, a Belgian astronomer who lived about 400 years ago.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [400]},
+        {"text": "The Malapert Massif, a big mountain nearby, is one of NASA's candidate landing regions.", "source": "NASA Provides Update on Artemis III Moon Landing Regions (Oct 2024)", "numbers": []}
+      ]
+    },
+    "cabeus": {
+      "name": "Cabeus", "type": "crater", "diameter_km": 101, "lat": -85.33, "lon": -42.13, "side": "limb",
+      "facts": [
+        {"text": "Cabeus is a crater about 101 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [101, 100]},
+        {"text": "It is named for Niccolo Cabeo, an Italian astronomer.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "In 2009 NASA's LCROSS mission crashed a rocket into Cabeus, and scientists found water in the cloud it kicked up.", "source": "NSSDCA Master Catalog: LCROSS; NASA Science: LCROSS", "numbers": [2009]}
+      ]
+    },
+    "faustini": {
+      "name": "Faustini", "type": "crater", "diameter_km": 42, "lat": -87.18, "lon": 84.31, "side": "limb",
+      "facts": [
+        {"text": "Faustini is a crater about 42 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [42]},
+        {"text": "It is named for Arnaldo Faustini, an Italian polar geographer.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "Its floor stays in shadow all the time, so it is super cold.", "source": "NASA LRO / LOLA", "numbers": []}
+      ]
+    },
+    "shoemaker": {
+      "name": "Shoemaker", "type": "crater", "diameter_km": 52, "lat": -88.14, "lon": 45.91, "side": "limb",
+      "facts": [
+        {"text": "Shoemaker is a crater about 52 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [52]},
+        {"text": "It is named for Eugene Shoemaker, an American scientist who studied craters and helped train the Apollo astronauts in geology.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "In 1999 the Lunar Prospector spacecraft was crashed into this crater, carrying some of Gene Shoemaker's ashes.", "source": "NSSDCA Master Catalog: Lunar Prospector; NASA", "numbers": [1999]},
+        {"text": "Its floor stays in shadow all the time, so it is super cold.", "source": "NASA LRO / LOLA", "numbers": []}
+      ]
+    },
+    "sverdrup": {
+      "name": "Sverdrup", "type": "crater", "diameter_km": 33, "lat": -88.32, "lon": -153.39, "side": "limb",
+      "facts": [
+        {"text": "Sverdrup is a crater about 33 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [33]},
+        {"text": "It is named for Otto Sverdrup, a Norwegian polar explorer.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []}
+      ]
+    },
+    "amundsen": {
+      "name": "Amundsen", "type": "crater", "diameter_km": 103, "lat": -84.44, "lon": 83.07, "side": "limb",
+      "facts": [
+        {"text": "Amundsen is a crater about 103 km wide near the Moon's south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [103]},
+        {"text": "It is named for Roald Amundsen, who led the first team to reach Earth's South Pole, in 1911.", "source": "IAU Gazetteer of Planetary Nomenclature; Encyclopaedia Britannica: Roald Amundsen", "numbers": [1911]},
+        {"text": "Its rim was a NASA candidate landing region in 2022.", "source": "NASA: candidate south pole landing regions (Aug 2022)", "numbers": [2022]}
+      ]
+    },
+    "schrodinger": {
+      "name": "Schrödinger", "type": "basin", "diameter_km": 316, "lat": -74.73, "lon": 132.93, "side": "far",
+      "facts": [
+        {"text": "Schrödinger is a basin about 316 km wide on the Moon's far side, near the south pole.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": [316]},
+        {"text": "It is named for Erwin Schrödinger, an Austrian physicist who won a Nobel Prize.", "source": "IAU Gazetteer of Planetary Nomenclature", "numbers": []},
+        {"text": "It is one of the youngest big basins on the Moon.", "source": "NASA LRO / LROC", "numbers": []}
       ]
     },
     "tsiolkovskiy": {

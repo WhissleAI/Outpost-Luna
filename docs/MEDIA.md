@@ -175,9 +175,9 @@ const lm = await loadModel(model("apollo_lm").url);   // a THREE.Group (meshopt 
     self-lit cell grid, a light substrate), never as black slabs.
     The Site camera orbits the middle of the outpost (`terrain.js SITE_FRAME`), close enough that the habitat reads at a
     glance.
-- **IAU names** (`names/moon_names.json`, 216 features south of 75°S and near the Apollo sites): shipped, not wired.
-  TODO(names): feed them to the entity registry / the ear's name lists (backend/app/entities, docs/ENTITY_LAYER.md);
-  that touches the Director's gazetteer and its evals, so it is its own change.
+- **IAU names** (`names/moon_names.json`, 216 features south of 75°S and near the Apollo sites): shipped with the pack.
+  A curated subset (the south-pole craters) is copied into the versioned `places.json`, `facts.json` and the entity
+  registry, so the ear, the gazetteer and the Director know them without the pack (docs/LEARNING_DESIGN.md §12.5).
 
 **Sharp south pole** (UX_ROUNDS round-3 queue: the picker's blurry, over-zoomed pole): `setPolarCap` drapes the site
 navigator's LOLA shaded relief (`site_layers` asset, `relief.png`, south polar stereographic ±210 km, the same projection

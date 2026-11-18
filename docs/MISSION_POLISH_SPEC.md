@@ -143,3 +143,8 @@ Director coverage tests green.
 - 0.4 part 2, the cabin redesign: one cockpit bar (the header folded in, one display unit for the clock and Days /
   Science / Ice, bezel keys), the 18 px HUD floor, dark first run, real NASA views in the window. Details:
   docs/UX_ROUNDS.md "0.4 part 2".
+- Cockpit patches (`feat/cockpit-patches-names`): the earned Flight School and Field School patches sit on the Habitat
+  console (the bar's display unit is full at 1440 px and below), as one key: "Patches", the newest five, the count.
+  Enter / Space / a click opens a card over the cabin naming every patch with its school (18 px), Esc closes it and
+  focus goes back. A patch earned while the cabin is up repaints the key at once and is announced
+  (`outpost:patches`, mission/patches.js; tests: frontend/tests/cockpit_patches.test.js, tests/e2e/cockpit_patches_e2e.py).

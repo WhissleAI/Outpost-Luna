@@ -490,7 +490,7 @@ LESSONS = [
               "Right. Water hid in regolith, the Moon's dust.", "Pick one, then we check.", "Guess first.",
               reveal="To dig up buried stuff. LCROSS found about 155 kg of water."),
          step("The LCROSS rocket hit Cabeus crater, near the south pole. Find Cabeus crater.",
-              {"type": "tap", "place": "lcross_centaur_impact", "also": ["lcross_impact"], "radius_deg": 8,
+              {"type": "tap", "place": "lcross_centaur_impact", "also": ["lcross_impact", "cabeus"], "radius_deg": 8,
                "label": "Cabeus crater"},
               "Roger. Cabeus crater, 2009.", "Not there.", "It's close to the south pole, in the middle.",
               globe={"do": "pole", "pole": "south"}),

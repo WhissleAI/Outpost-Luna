@@ -13,7 +13,8 @@ import "../cabin.css";
 import * as story from "../story.js";
 const { callSign } = story;
 import { LOADS } from "./cockpit.js";
-import { icon } from "../assets/icons.js";
+import { icon, patch } from "../assets/icons.js";
+import { normPatches, patchSig, newPatches, keyLabel, trackSummary, patchKeyHtml, patchListHtml } from "./patches.js";   // the cockpit's patch key
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
@@ -156,7 +157,7 @@ export function createCabin(root, o = {}) {
 
     <section class="cb-controls" aria-label="Controls">
       <div class="cb-grp" data-panel="habitat" role="group" aria-label="Habitat panel">
-        <div class="cb-plate cb-hab"><h3>Habitat</h3><div class="cb-info" id="cbInfoHab"></div><div class="cb-sws">${sw("heaters")}${sw("science")}</div><ol class="cb-obj" id="cbObj" hidden></ol></div>
+        <div class="cb-plate cb-hab"><h3>Habitat</h3><div class="cb-info" id="cbInfoHab"></div><div class="cb-sws">${sw("heaters")}${sw("science")}${o.mode === "ride" ? "" : `<div class="cb-patchrow"><button type="button" class="cb-patchkey" id="cbPatchKey" hidden aria-haspopup="dialog" aria-expanded="false" aria-controls="cbPatchPop" title="Your patches"></button><span class="cb-vh" id="cbPatchNews" role="status" aria-live="polite"></span></div>`}</div><ol class="cb-obj" id="cbObj" hidden></ol></div>
       </div>
       <div class="cb-grp" data-panel="rover" role="group" aria-label="Rover panel">
         <div class="cb-plate cb-rv"><h3>Rover</h3>
@@ -205,6 +206,11 @@ export function createCabin(root, o = {}) {
       <p class="cb-why-f" id="cbWhyF"></p><p class="cb-why-eq" id="cbWhyEq"></p>
       <p class="cb-why-src" id="cbWhySrc"></p>
     </aside>
+    ${o.mode === "ride" ? "" : `<section class="cb-patchpop" id="cbPatchPop" hidden role="dialog" aria-modal="false" aria-labelledby="cbPatchPopT">
+      <header><b id="cbPatchPopT">Your patches</b><button type="button" class="cb-patchpop-x" id="cbPatchPopX" aria-label="Close your patches">${ic("close", 16)}</button></header>
+      <p class="cb-patchsum" id="cbPatchSum"></p>
+      <ul class="cb-patchlist" id="cbPatchList"></ul>
+    </section>`}
     <section class="cb-commrow" aria-label="Radio">
       <div class="cb-capwrap"><p class="cb-caption" id="cbCap"><b id="cbCapWho">CAPCOM</b> <span id="cbCapTxt">Standing by.</span></p><div class="cb-capslot" id="cbCapSlot"></div></div>
       <div class="cb-askslot" id="cbAskSlot" role="group" aria-label="Talk to CAPCOM"></div>
@@ -413,6 +419,72 @@ export function createCabin(root, o = {}) {
   root.addEventListener("click", onWhyTap, true); addEventListener("resize", placeWhy);
   const whyOff = () => { root.removeEventListener("click", onWhyTap, true); removeEventListener("resize", placeWhy); clearTimeout(whyT); };
 
+  // ---- earned patches (Flight School + Field School): a key on the display unit, a card that names them ----
+  // The Academy hands its badges() over (academy/ui.js); a patch earned while the cabin is up repaints at once
+  // ("outpost:patches"), and update() re-checks now and then (a mode switch can land a patch behind the cabin).
+  let patchList = [], patchAt = 0;
+  function paintPatches(force) {
+    const key = q("#cbPatchKey"); if (!key) return;
+    let now = []; try { now = normPatches(cb.badges()); } catch (e) { now = []; }
+    patchAt = Date.now();
+    if (!force && patchSig(now) === patchSig(patchList)) return;
+    const fresh = patchList.length || force === "earned" ? newPatches(patchList, now) : [];
+    patchList = now;
+    key.hidden = !now.length;
+    key.innerHTML = patchKeyHtml(now, { patch, esc });
+    key.setAttribute("aria-label", keyLabel(now.length));
+    if (fresh.length) {
+      const last = fresh[fresh.length - 1];
+      q("#cbPatchNews").textContent = `New patch: ${last.name}`;
+      key.classList.remove("is-new"); void key.offsetWidth; key.classList.add("is-new");
+    }
+    if (!now.length) closePatches();
+    paintPatchPop();
+  }
+  function paintPatchPop() {
+    const pop = q("#cbPatchPop"); if (!pop || pop.hidden) return;
+    q("#cbPatchSum").textContent = trackSummary(patchList);
+    q("#cbPatchList").innerHTML = patchListHtml(patchList, { patch, esc });
+  }
+  function openPatches(fromKey) {
+    const pop = q("#cbPatchPop"), key = q("#cbPatchKey"); if (!pop || !patchList.length) return;
+    pop.hidden = false; key.setAttribute("aria-expanded", "true"); key.classList.add("is-open"); paintPatchPop(); placePatches();
+    if (fromKey) { const x = q("#cbPatchPopX"); if (x) x.focus({ preventScroll: true }); }   // shown now: focus moves at once
+  }
+  /** The card sits beside its key (the Habitat console, wherever the camera has it), inside the cabin, under the deck. */
+  function placePatches() {
+    const pop = q("#cbPatchPop"), key = q("#cbPatchKey"), cab = q(".cb"); if (!pop || pop.hidden || !cab) return;
+    const K = key.getBoundingClientRect(), C = cab.getBoundingClientRect(), w = pop.offsetWidth || 380, h = pop.offsetHeight || 300;
+    const deck = q(".cb-deck"), top0 = deck ? deck.getBoundingClientRect().bottom - C.top + 12 : 12;
+    const right = K.right - C.left + 12 + w <= C.width - 12, x = right ? K.right - C.left + 12 : K.left - C.left - 12 - w;
+    pop.style.left = Math.round(Math.max(12, Math.min(x, C.width - w - 12))) + "px";
+    pop.style.top = Math.round(Math.max(top0, Math.min(K.bottom - C.top - h, C.height - h - 12))) + "px";
+  }
+  function closePatches(back) {
+    const pop = q("#cbPatchPop"), key = q("#cbPatchKey"); if (!pop || pop.hidden) return;
+    pop.hidden = true; key.setAttribute("aria-expanded", "false"); key.classList.remove("is-open");
+    if (back) key.focus({ preventScroll: true });
+  }
+  let patchOff = () => {};
+  if (q("#cbPatchKey")) {
+    const togglePatches = byKey => (q("#cbPatchPop").hidden ? openPatches(byKey) : closePatches(byKey));
+    q("#cbPatchKey").onclick = e => togglePatches(e.detail === 0);   // detail 0: a controller A (select) or a scripted click
+    // keyboard: Enter / Space toggle the card (focus moves into it), Esc on the key closes it; the app's global keys
+    // (Enter = select, Esc = back to the menu) never see these
+    q("#cbPatchKey").addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); if (!e.repeat) togglePatches(true); }
+      else if (e.key === "Escape" && !q("#cbPatchPop").hidden) { e.preventDefault(); e.stopPropagation(); closePatches(true); }
+    });
+    q("#cbPatchPopX").onclick = e => closePatches(true);
+    q("#cbPatchPop").addEventListener("keydown", e => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closePatches(true); } });
+    q("#cbPatchKey").addEventListener("animationend", () => q("#cbPatchKey").classList.remove("is-new"));
+    const onEarned = e => paintPatches(e && e.detail && e.detail.id ? "earned" : true);   // no id: the course landed, nothing new
+    const onResize = () => placePatches();
+    addEventListener("outpost:patches", onEarned); addEventListener("resize", onResize);
+    patchOff = () => { removeEventListener("outpost:patches", onEarned); removeEventListener("resize", onResize); };
+    paintPatches(true);
+  }
+
   // ---- display pages ----
   const bar = (v, max = 100, limit = null) => `<span class="du-bar${limit != null && v / max >= limit ? " is-red" : ""}"><i style="width:${clamp(v / max * 100)}%"></i>${limit != null ? `<em style="left:${limit * 100}%"></em>` : ""}</span>`;
   const row = (k, v, cls = "") => `<div class="du-row ${cls}"><span>${k}</span><b>${v}</b></div>`;
@@ -522,6 +594,7 @@ export function createCabin(root, o = {}) {
 
   function update(s) {
     if (!s) return; prev = st; st = s;
+    if (Date.now() - patchAt > 3000) paintPatches();
     const r = s.resources, e = s.env || {};
     if (!prev) setView(view, true);
     trackEarth(e.earth_elev_deg); paintEarthNote();
@@ -814,9 +887,11 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); foldOff(); viewsOff(); stopAlertSun(); stopSunMon(); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+    dispose() { clearInterval(offT); foldOff(); viewsOff(); stopAlertSun(); stopSunMon(); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff(); patchOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
       escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
+    /** The earned patches the key shows (ids), and a repaint (tests; the Academy fires "outpost:patches"). */
+    get patches() { return patchList.map(b => b.id); }, paintPatches: () => paintPatches("earned"),
     /** The mission's Earth/Sun spans (client.windows) for the Comm timeline. */
     setWindows(w) { wins = w || null; if (st) paintInfo(st); },
     /** Highlight one control at a time (the check ride's next order): "heaters" | "science" | "shelter" | "shields" |

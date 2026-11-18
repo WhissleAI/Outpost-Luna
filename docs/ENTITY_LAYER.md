@@ -61,7 +61,7 @@ Screen profiles live in the same file:
             "brief": {"same_as": "cabin"}}
 ```
 
-Outpost Luna's file (136 entities) was migrated from the tables that used to be hard-coded in `names_list.py`:
+Outpost Luna's file (136 entities then; 147 today, incl. the IAU south-pole craters, group `pole`, docs/LEARNING_DESIGN.md §12.5) was migrated from the tables that used to be hard-coded in `names_list.py`:
 places, sites, crew, missions, craft, hardware and old crew. The migration also added:
 - the mission loads (`load_*`, from `mission/nlu.py` LOADS) as `control` entities;
 - the units;

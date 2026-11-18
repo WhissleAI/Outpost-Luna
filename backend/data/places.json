@@ -1,5 +1,5 @@
 {
- "source": "Hand-curated starter gazetteer; coordinates from the IAU Gazetteer of Planetary Nomenclature. Integrity and Carroll are crew-proposed names whose locations are estimated from the crew's spoken directions.",
+ "source": "Hand-curated starter gazetteer; coordinates and diameters from the IAU Gazetteer of Planetary Nomenclature (IAU WGPSN / USGS Astrogeology, https://planetarynames.wr.usgs.gov/; each IAU place's `source` is its feature page). The south-pole craters are a curated subset of the nasa_views pack's IAU names (names/moon_names.json; docs/LEARNING_DESIGN.md §12.5). Integrity and Carroll are crew-proposed names whose locations are estimated from the crew's spoken directions.",
  "places": [
   {
    "id": "tranquillitatis",
@@ -187,16 +187,17 @@
   {
    "id": "copernicus",
    "name": "Copernicus",
-   "lat": 9.6,
-   "lon": -20.1,
-   "diameter_km": 93,
+   "lat": 9.62,
+   "lon": -20.08,
+   "diameter_km": 96.07,
    "estimated": false,
    "fact": "A big, sharp crater with terraced walls and mountains in the middle. Scientists call it the 'Monarch of the Moon.'",
    "aliases": [
     "copernicus",
     "monarch"
    ],
-   "kind": "feature"
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/1296"
   },
   {
    "id": "imbrium",
@@ -252,7 +253,8 @@
     "artemis four",
     "first south pole landing"
    ],
-   "kind": "feature"
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/5450"
   },
   {
    "id": "tsiolkovskiy",
@@ -376,6 +378,159 @@
     "top of the moon"
    ],
    "kind": "feature"
+  },
+  {
+   "id": "de_gerlache",
+   "name": "de Gerlache",
+   "lat": -88.48,
+   "lon": -88.34,
+   "diameter_km": 32.71,
+   "estimated": false,
+   "fact": "de Gerlache is a crater about 33 km wide right beside Shackleton, near the Moon's south pole. It is named for Adrien de Gerlache, a Belgian explorer who sailed to Antarctica.",
+   "aliases": [
+    "de gerlache",
+    "de gerlache crater",
+    "gerlache"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/1439"
+  },
+  {
+   "id": "haworth",
+   "name": "Haworth",
+   "lat": -87.45,
+   "lon": -5.17,
+   "diameter_km": 51.42,
+   "estimated": false,
+   "fact": "Haworth is a crater about 51 km wide near the Moon's south pole. Its floor stays in shadow all the time, so it is super cold. It is named for Walter Haworth, a chemist who won a Nobel Prize.",
+   "aliases": [
+    "haworth",
+    "haworth crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/14502"
+  },
+  {
+   "id": "nobile",
+   "name": "Nobile",
+   "lat": -85.28,
+   "lon": 53.27,
+   "diameter_km": 79.27,
+   "estimated": false,
+   "fact": "Nobile is a crater about 79 km wide near the Moon's south pole. It is named for Umberto Nobile, an Italian who flew airships over the Arctic.",
+   "aliases": [
+    "nobile",
+    "nobile crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/4321"
+  },
+  {
+   "id": "malapert",
+   "name": "Malapert",
+   "lat": -85.0,
+   "lon": 11.4,
+   "diameter_km": 72.38,
+   "estimated": false,
+   "fact": "Malapert is a crater about 72 km wide near the Moon's south pole, named for Charles Malapert, a Belgian astronomer. The tall Malapert Massif is close by.",
+   "aliases": [
+    "malapert",
+    "malapert crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/3603"
+  },
+  {
+   "id": "cabeus",
+   "name": "Cabeus",
+   "lat": -85.33,
+   "lon": -42.13,
+   "diameter_km": 100.58,
+   "estimated": false,
+   "fact": "Cabeus is a crater about 101 km wide near the Moon's south pole. In 2009 NASA's LCROSS mission crashed a rocket into it, and scientists found water in the cloud it kicked up.",
+   "aliases": [
+    "cabeus",
+    "cabeus crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/953"
+  },
+  {
+   "id": "faustini",
+   "name": "Faustini",
+   "lat": -87.18,
+   "lon": 84.31,
+   "diameter_km": 42.48,
+   "estimated": false,
+   "fact": "Faustini is a crater about 42 km wide near the Moon's south pole. Its floor stays in shadow all the time. It is named for Arnaldo Faustini, an Italian who made maps of the polar regions.",
+   "aliases": [
+    "faustini",
+    "faustini crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/1919"
+  },
+  {
+   "id": "shoemaker",
+   "name": "Shoemaker",
+   "lat": -88.14,
+   "lon": 45.91,
+   "diameter_km": 51.82,
+   "estimated": false,
+   "fact": "Shoemaker is a crater about 52 km wide near the Moon's south pole. It is named for Gene Shoemaker, a scientist who helped teach the Apollo astronauts about rocks.",
+   "aliases": [
+    "shoemaker",
+    "shoemaker crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/5494"
+  },
+  {
+   "id": "sverdrup",
+   "name": "Sverdrup",
+   "lat": -88.32,
+   "lon": -153.39,
+   "diameter_km": 32.83,
+   "estimated": false,
+   "fact": "Sverdrup is a crater about 33 km wide near the Moon's south pole. It is named for Otto Sverdrup, a Norwegian explorer of the icy polar seas.",
+   "aliases": [
+    "sverdrup",
+    "sverdrup crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/5782"
+  },
+  {
+   "id": "amundsen",
+   "name": "Amundsen",
+   "lat": -84.44,
+   "lon": 83.07,
+   "diameter_km": 103.39,
+   "estimated": false,
+   "fact": "Amundsen is a crater about 103 km wide near the Moon's south pole. It is named for Roald Amundsen, who led the first team to reach Earth's South Pole, in 1911.",
+   "aliases": [
+    "amundsen",
+    "amundsen crater"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/247"
+  },
+  {
+   "id": "schrodinger",
+   "name": "Schrödinger",
+   "lat": -74.73,
+   "lon": 132.93,
+   "diameter_km": 316.39,
+   "estimated": false,
+   "fact": "Schrödinger is a giant crater, a basin about 316 km wide, on the far side near the south pole. It is one of the youngest big basins on the Moon. It is named for Erwin Schrödinger, a famous physicist.",
+   "aliases": [
+    "schrodinger",
+    "schroedinger",
+    "schrodinger basin",
+    "schrödinger"
+   ],
+   "kind": "feature",
+   "source": "https://planetarynames.wr.usgs.gov/Feature/5381"
   }
  ]
 }

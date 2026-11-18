@@ -127,8 +127,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
     hesitant: () => { if (ui.active && view === "lesson" && L && !L.ride) hesAt = now(); },   // [0.6] heard.hes
     lessons: () => lessons(),  // the course lessons (mission_learning.js: which explorer lesson a mission unlocked)
-    /** Earned patches, for the Mission cockpit: [{id, name, patch (inline SVG), lesson}] */
-    badges: () => lessons().filter(l => has(l.badge.id)).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }) })),
+    /** Earned patches, for the Mission cockpit (mission/patches.js): [{id, name, patch (inline SVG), lesson, track}];
+     *  track: "core" (Flight School), "field" (Field School), "explorer" (bonus) or "ride" (the check ride) */
+    badges: () => (course ? null : fetchCourse().catch(() => {}), lessons().filter(l => has(l.badge.id))).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }),
+      track: l.ride ? "ride" : isField(l) ? "field" : isExplorer(l) ? "explorer" : "core" })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
     /** [0.3.12] For Mission's "Fly the check ride": core lessons done / total, the ride's id, and the lesson to fly
      *  next while the ride is not open yet. */
@@ -137,6 +139,18 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   };
 
   const lessons = () => (course ? course.lessons : []);
+  // The course, fetched once. Mission mode asks for the badges before Flight School was ever opened (the app can start
+  // in Mission): the first ask fetches the course, and "outpost:patches" (no id: nothing newly earned) repaints the
+  // cockpit's patch key when it lands.
+  let coursePending = null;
+  function fetchCourse() {
+    if (course) return Promise.resolve(course);
+    return coursePending || (coursePending = academyApi.course().then(c => {
+      if (!course) course = c;
+      try { dispatchEvent(new CustomEvent("outpost:patches", { detail: {} })); } catch (e) { /* tests */ }
+      return course;
+    }, e => { coursePending = null; throw e; }));
+  }
   // [0.5] the pack can land mid-lesson: a photo hook or a rock step then shows the real thing
   try { onViews(() => { if (ui.active && view === "lesson" && L && !L.ride && (L.photo || L.steps.some(x => (x.accept || {}).type === "rounds"))) render(); }); } catch (e) { /* tests */ }
   /** The step that carries the lesson's crew-audio hook: the first one that isn't a video. */
@@ -178,7 +192,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       setLayout("map"); panel.innerHTML = `<p class="a-wait">Loading Flight School…</p>`;
       // [audit2] the course failing once was a dead end ("Close the app and open it again"): keep trying, like the Moon does
       for (let tries = 0; !course; tries++) {
-        try { course = await academyApi.course(); }
+        try { course = await fetchCourse(); }
         catch (e) {
           if (!ui.active) return;
           if (!tries) panel.innerHTML = `<p class="a-wait is-error"><b>Can&rsquo;t reach Flight School</b><span>Trying again. If this stays, close the app and open it again.</span></p>`;
@@ -852,6 +866,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!prog.badges.includes(badge.id)) prog.badges.push(badge.id);
     if (qualifies) prog.qualified = true;
     progress.save(prog); onProgress(prog);
+    // the Mission cockpit's patch key repaints at once (mission/cabin.js paintPatches), even while the cabin is up
+    try { dispatchEvent(new CustomEvent("outpost:patches", { detail: { id: badge.id } })); } catch (e) { /* tests */ }
   }
   function showBadge(badge, commander) {
     if (view !== "lesson") return;

@@ -932,6 +932,40 @@ html[data-motion="reduce"] .m-cabin>.cb-coach{animation:none}
 .c3 .c3-panel .cb-tl,.c3 .c3-panel .cb-fc,.c3 .c3-panel .cb-obj{font-size:22px}
 .c3 .c3-panel .cb-ptt-t{font-size:28px}
 .c3 .c3-panel .cb-ptt small{font-size:22px}
+/* the patch key (mission/patches.js): the cadet's earned Flight School + Field School patches on the Habitat console,
+   like patches on a spacecraft panel; console text, sized by the consoles' floor above. The card it opens is HUD:
+   every word at 18 px (--hud-min). */
+.cb-patchrow{display:flex;justify-content:center;align-items:center;min-width:0}
+.cb-patchkey{display:inline-flex;flex-direction:column;align-items:center;gap:4px;max-width:100%;min-height:44px;padding:6px 10px;border-radius:var(--radius-md);
+  border:1px solid var(--cb-line);background:var(--color-panel-2);color:var(--color-on-space);font:inherit;font-size:var(--text-sm);font-weight:var(--weight-semibold);cursor:pointer;line-height:1}
+.cb-patchkey[hidden]{display:none}
+.cb-patchkey:hover{filter:brightness(1.18)}
+.cb-patchkey:focus-visible,.cb-patchpop-x:focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+.cb-patchkey.is-open{box-shadow:inset 0 -3px 0 var(--color-phosphor)}
+.cb-patchart{display:inline-flex;align-items:center;min-width:0}
+.cb-patchart svg{display:block;flex:none;filter:drop-shadow(0 1px 1px #000)}
+.cb-patchart svg+svg{margin-left:-10px}
+.cb-patchn{color:var(--color-phosphor);font-variant-numeric:tabular-nums}
+.c3 .c3-panel .cb-patchkey{font-size:26px;min-height:64px}
+.cb-patchl{white-space:nowrap}
+.cb-patchkey.is-new{animation:cbPatchNew 1.4s var(--ease-out) 2}
+@keyframes cbPatchNew{0%,100%{box-shadow:none}40%{box-shadow:0 0 0 4px var(--color-phosphor),0 0 22px var(--color-phosphor)}}
+html[data-motion="reduce"] .cb-patchkey.is-new{animation:none;box-shadow:0 0 0 4px var(--color-phosphor)}
+@media (prefers-reduced-motion:reduce){.cb-patchkey.is-new{animation:none;box-shadow:0 0 0 4px var(--color-phosphor)}}
+.m-cabin .cb>.cb-patchpop{position:absolute;z-index:7;width:min(380px,calc(100% - 24px));max-height:min(70vh,560px);overflow:auto;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:8px;padding:10px 14px 14px;border-radius:12px;background:color-mix(in srgb,var(--color-panel) 97%,transparent);
+  border:1px solid var(--key-edge);color:var(--color-on-space);box-shadow:0 10px 28px color-mix(in srgb,#000 50%,transparent)}
+.m-cabin .cb>.cb-patchpop[hidden]{display:none}
+.m-cabin .cb-patchpop header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.m-cabin .cb-patchpop header b{font-size:var(--hud-min);font-weight:var(--weight-semibold)}
+.m-cabin .cb-patchpop-x{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:8px;border:1px solid var(--key-edge);background:var(--key-face);color:var(--color-on-space);cursor:pointer}
+.m-cabin .cb-patchsum{margin:0;font-size:var(--hud-min);color:var(--color-on-space-2)}
+.m-cabin .cb-patchlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.m-cabin .cb-patchli{display:flex;align-items:center;gap:12px}
+.m-cabin .cb-patchli svg{flex:none}
+.m-cabin .cb-patchli span{display:flex;flex-direction:column;min-width:0}
+.m-cabin .cb-patchli b{font-size:var(--hud-min);font-weight:var(--weight-semibold);line-height:1.2}
+.m-cabin .cb-patchli small{font-size:var(--hud-min);color:var(--color-on-space-2);line-height:1.2}
 /* [0.4 cabin 2] the status under Call Houston and End shift is a reading: full strength (≥ 4.5:1 in a storm too) */
 .c3 .c3-panel :is(.cb-ptt,.cb-end) small{opacity:1}
 .c3 .c3-panel .cb-ptt.is-nosignal small{color:var(--color-on-space)}

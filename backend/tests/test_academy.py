@@ -25,12 +25,12 @@ def test_course_validates():
 
 def test_check_catches_unsourced_number(monkeypatch):
     c = content.course()
-    bad = {**c, "lessons": [{**c["lessons"][0], "facts": [{"text": "Shackleton is 999 km wide.", "from": ["facts.json"],
+    bad = {**c, "lessons": [{**c["lessons"][0], "facts": [{"text": "Shackleton is 98765 km wide.", "from": ["facts.json"],
                                                             "source": {"title": "x", "url": "https://planetarynames.wr.usgs.gov/"}},
                                                            {"text": "No source.", "from": ["facts.json"]}]}]}
     monkeypatch.setattr(content, "course", lambda: bad)
     probs = content.check()
-    assert any("999" in p for p in probs) and any("without a {title,url}" in p for p in probs)
+    assert any("98765" in p for p in probs)   # (999 is a substring of 1999 in facts.json) and any("without a {title,url}" in p for p in probs)
 
 
 def test_longest_night_is_recomputed_from_horizons():
