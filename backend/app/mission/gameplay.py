@@ -66,6 +66,7 @@ REPLAN_MIN = 15            # minutes the science room asks for (JETT5: more time
 REPLAN_MARGIN_H = 2        # Flight keeps at least this much light margin on a drive
 REPLAN_MAX = 1             # once a mission
 ROCK_SCIENCE = 2.0         # the bright rock, read back and bagged
+STATION_DUE_H = 48         # [0.4.1] no sample station by the end of chapter 1: the rover crew stops for one on a drive
 RECYCLER_MAX = 60          # the life check never offers the recycler past this (ice is the answer then)
 LIFE_CHECK = 55            # air under this: the life support check (ice, or more recycler power)
 QUIET_RATE = 0.1           # mSv/h: under this the sensor reads "normal" (the quiet-Sun baseline is ~0.06 game)
@@ -198,6 +199,46 @@ def _shelter_step():
     return s
 
 
+# [0.4.1] the storm procedure, as flight controllers run it: Houston calls the order, the crew reads it back, acts, and
+# confirms. The readback and the confirm are words (voice) or one tap; an order given straight away still counts (the
+# crew is safe first): the readback is then marked skipped, and the confirm settles itself after CONFIRM_WAIT_H.
+HOUSTON_SHELTER = "Houston: all crew into the shelter. Read it back."
+SHELTER_ON = {"type": "shelter", "on": True}
+CONFIRM_WAIT_H = 1
+
+
+def _readback_step():
+    s = {"id": "readback", "kind": "sequence", "label": HOUSTON_SHELTER, "target": "task", "button": "Read it back",
+         "items": [{"id": "crew", "label": "All crew", "say": ["all crew", "crew", "everyone", "everybody", "all of us"]},
+                   {"id": "shelter", "label": "into the shelter", "say": ["shelter", "inside", "under cover"]}],
+         "why": "A readback proves the order was heard right.",
+         "order": SHELTER_ON}   # graded by mission/readback.py (the radio readback's grader), chips as a fallback
+    s["ready_if"] = lambda m, t: not m.rover["busy"]
+    s["wait_text"] = "Shelter opens when the rover crew is home."
+    return s
+
+
+def _confirm_step():
+    return {"id": "confirm", "kind": "sequence", "label": "Crew inside? Tell Houston.", "target": "task",
+            "button": "In the shelter, copy", "ready_if": lambda m, t: m.shelter,
+            "items": [{"id": "in", "label": "In the shelter", "say": ["in the shelter", "inside", "sheltered", "in"]},
+                      {"id": "copy", "label": "copy", "say": ["copy", "copied", "roger"]}],
+            "why": "Houston can't see inside. Say when the crew is safe.",
+            "order": SHELTER_ON, "radio": True}   # "In the shelter, copy": readback.py, with the radio word
+
+
+def _storm_auto(m, t, s):
+    """The storm procedure's words never block safety: a crew sheltered without a readback skips it; the confirm
+    settles itself an hour in (or when the storm arrives on a prep)."""
+    if t["kind"] not in ("storm_hit", "storm_prep") or s["done"] or s["id"] not in ("readback", "confirm") \
+            or not m.shelter:
+        return
+    if s["id"] == "readback":
+        s["done"], s["result"] = True, "Sheltered. No readback this time."
+    elif m.shelter_h >= CONFIRM_WAIT_H or (t["kind"] == "storm_prep" and _storm(m)):
+        s["done"], s["result"] = True, "Houston saw the crew go in."
+
+
 def _all_clear(m):
     return dict(title="All clear: crew out", lesson="radiation", panel="radiation", level="info", priority=85,
                 key=("clear", m.t_h // 6), say=None,
@@ -210,9 +251,9 @@ def _storm_hit(m):
     st = _storm(m)
     steps = [_order("rover", "Rover home", "rover:return", HOME, lambda m, t: _rover_home(m), "Rover turning home.",
                     why="Outside, the crew has no shelter from the particles."),
-             _shelter_step()]
+             _readback_step(), _shelter_step(), _confirm_step()]
     return dict(title="Storm! Shelter the crew", lesson="radiation", panel="radiation", level="warn", priority=100,
-                deadline_h=st.start_h + st.dur_h, key=("storm", st.event["id"]), say=None, steps=steps)
+                deadline_h=st.start_h + st.dur_h, key=("storm", st.event["id"]), say=HOUSTON_SHELTER, steps=steps)
 
 
 def _storm_prep(m):
@@ -232,7 +273,9 @@ def _storm_prep(m):
         sh["wait_text"] = lambda m, t: ("Shelter opens when the rover crew is home." if m.rover["busy"] else
                                         f"Shelter opens in {max(1, int((_warning(m) or {}).get('eta_h', SHELTER_LEAD_H)) - SHELTER_LEAD_H)} h. "
                                         "Keep working, or skip ahead.")
-        steps.append(sh)
+        rb = _readback_step()   # [0.4.1] Houston calls it when the shelter opens: read back, act, confirm
+        rb["ready_if"], rb["wait_text"] = sh["ready_if"], sh["wait_text"]
+        steps += [rb, sh, _confirm_step()]
     else:   # a "possible" storm: a real call to make, with no right answer known yet
         decide = _choice("decide", "Possible storm. Shelter now, or wait?",
                          [{"id": "shelter", "label": "Shelter now"}, {"id": "wait", "label": "Wait and watch"}],
@@ -645,9 +688,23 @@ def _repair(m):
                               ready=lambda m, t: m.array_eff >= 1)])
 
 
+def _station_due(m) -> bool:
+    """[0.4.1] Every mission gets at least one sample station (Field School: Field kit)."""
+    return not _gp(m)["count"].get("station")
+
+
+def _station_stop(m) -> bool:
+    """[0.4.1] The guaranteed station when the lab never gets a quiet hour (Malapert's long drives and nights): past
+    STATION_DUE_H with no station yet, the rover crew stops for one on a drive whose calls are made. Rewards as usual."""
+    rv = m.rover
+    return (_station_due(m) and m.t_h >= STATION_DUE_H and rv["busy"] and rv["task"] in ("collect_ice", "explore")
+            and rv["eta_h"] >= 2 and _calm(m) and not m.shelter and _rover_calls_done(m))
+
+
 def _science(m):
     n = _gp(m)["count"].get("science", 0)
-    sub = SCIENCE_ROTATION[n % len(SCIENCE_ROTATION)]
+    # the first science job is always the station (a replan's dropped sample used to rotate it away)
+    sub = "sample" if _station_due(m) else SCIENCE_ROTATION[n % len(SCIENCE_ROTATION)]
     if sub == "sensor":
         return dict(title="Read the radiation sensor", lesson="radiation", panel="radiation", level="info", priority=10,
                     deadline_h=m.t_h + 4, sub="sensor", say=None,
@@ -656,7 +713,10 @@ def _science(m):
                                    [{"id": "normal", "label": "Normal"}, {"id": "high", "label": "High"}],
                                    hint=f"Quiet Sun: under {QUIET_RATE:g} mSv/h")])
     if sub == "sample":   # [0.5 field] the sample is a station: tool, describe, bag number
-        return _station(m)
+        t = _station(m)
+        if m.rover["busy"]:   # [0.4.1] the guaranteed stop on a drive: above the drive's own card, below a replan
+            t.update(priority=44, say="Rover crew: a quick sample stop on the way.")
+        return t
     title, panel, label, ack, why = SCIENCE_PRESS[sub]
     return dict(title=title, lesson="moon", panel=panel, level="info", priority=10, deadline_h=m.t_h + 4,
                 sub=sub, say=None,
@@ -698,8 +758,8 @@ TRIGGERS = [
     ("explore", _explore, lambda m: sim.objectives(m)["ice"]["met"] and not m.rover["busy"] and not m.shelter and
      _calm(m) and m.power > 50 and sim.env_at(m, m.t_h)["lit"] and m.t_h <= sim.MISSION_H - 24 and
      _gp(m)["count"].get("explore", 0) < EXPLORE_TASKS),
-    ("science", _science, lambda m: m.t_h >= 3 and not m.shelter and not m.power_save and _calm(m) and
-     _gp(m)["count"].get("science", 0) < SCIENCE_TASKS[m.difficulty]),
+    ("science", _science, lambda m: (m.t_h >= 3 and not m.shelter and not m.power_save and _calm(m) and
+     _gp(m)["count"].get("science", 0) < SCIENCE_TASKS[m.difficulty]) or _station_stop(m)),
 ]
 PRIORITY = {k: i for i, (k, _, _) in enumerate(TRIGGERS)}
 
@@ -784,6 +844,7 @@ def _check(m, out) -> list[dict]:
     for t in _active(m):
         for s in t["steps"]:
             _nav_auto(m, t, s)   # [0.5 field] the low-Sun drive's calls: no glare, drive over, or unmade (a cost)
+            _storm_auto(m, t, s)   # [0.4.1] the storm's readback and confirm never block a sheltered crew
             if s.get("ready_if") and not s["done"]:   # a step that becomes doable is news: it stops a skip and the warp
                 r = bool(s["ready_if"](m, t))
                 if r and s.get("was_ready") is False:
@@ -811,8 +872,6 @@ def _check(m, out) -> list[dict]:
             _close(m, t, "missed", out)
         elif t["kind"] in ("storm_prep",) and _storm(m):
             _close(m, t, "missed", out, "The storm arrived before the prep was done.")
-        elif t["kind"] == "storm_hit" and m.shelter:
-            _close(m, t, "done", out, "Crew sheltered through the storm.")
         elif t["kind"] == "first_power" and m.t_h > 0:
             _close(m, t, "missed", out)
     return done_now
@@ -834,8 +893,8 @@ def _trigger(m, out):
     for kind, builder, when in TRIGGERS:
         if kind in kinds or g["cool"].get(kind, -1) > m.t_h:
             continue
-        if kind == "science" and kinds:   # a sample is what you do when nothing else needs you
-            continue
+        if kind == "science" and kinds and not (_station_stop(m) and kinds <= {"ice_run", "explore"}):
+            continue   # a sample is what you do when nothing else needs you (or the guaranteed stop on a drive)
         try:
             if not when(m):
                 continue
@@ -1113,7 +1172,8 @@ def _free_step(m, t, s, cmd) -> dict:
     # sequence: the readback
     items = s["items"]
     if text and choice is None:
-        ok, ex = grade._sequence({"items": items}, {"got": s.get("got")}, text)
+        ok, ex = grade._sequence({"items": items, "order": s.get("order"), "radio": s.get("radio")},
+                                 {"got": s.get("got")}, text)
         s["got"] = ex["got"]
         if not ok:
             full = ", ".join(i["label"] for i in items)
@@ -1139,6 +1199,10 @@ def _sequence_done(m, t, s) -> str:
     if t["kind"] == "replan":
         m.science += ROCK_SCIENCE
         return f"Readback correct. Bright rock bagged: maybe anorthosite. Science +{ROCK_SCIENCE:g}."
+    if s["id"] == "readback":
+        return "Readback correct. Get them in."
+    if s["id"] == "confirm":
+        return "Houston copies. Ride it out in there."
     return "Copy."
 
 

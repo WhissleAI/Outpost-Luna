@@ -114,9 +114,59 @@ def test_storm_prep_from_a_warning_and_its_steps_tick_off():
     assert t["kind"] == "storm_prep" and t["lesson"]["n"] == 5 and t["time_left_h"] > 0   # radiation, core lesson 5
     r = sim.apply_command(m, {"type": "shelter", "on": True})      # by voice / tap: the same order
     assert r["ack"] == "Crew sheltered. Good."
+    t = task(m)   # [0.4.1] sheltered straight away: the readback is skipped, the confirm is next
+    assert t["kind"] == "storm_prep" and t["step"]["id"] == "confirm" and t["step"]["ready"]
+    assert next(s for s in t["steps"] if s["id"] == "readback")["done"]
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "confirm", "text": "in the shelter, copy"})
+    assert r["ok"] and r["say"].startswith("Houston copies")
     assert task(m) is None or task(m)["kind"] != "storm_prep"
     log = sim.to_state(m)["mission_log"]
     assert any(e["title"] == "Storm prep" for e in log)
+
+
+def _to_storm_hit(seed_range=range(40)):
+    for seed in seed_range:
+        m = sim.new_mission("m", "shackleton_rim", seed, level="cadet")
+        sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+        while not m.over and not (sim.env_at(m, m.t_h)["storm"] and sim.env_at(m, m.t_h)["storm"].event.get("sep")):
+            sim.advance(m, 1)
+        t = task(m)
+        if not m.over and t and t["kind"] == "storm_hit" and not m.rover["busy"]:
+            return m, t
+    pytest.skip("no particle storm with the rover home in these seeds")
+
+
+def test_storm_procedure_readback_act_confirm():
+    """[0.4.1] Houston calls the order, the cadet reads it back, acts, then confirms (voice or one tap each)."""
+    m, t = _to_storm_hit()
+    assert t["say"] == gameplay.HOUSTON_SHELTER and words(t["say"]) <= 20
+    assert [s["id"] for s in t["steps"]] == ["rover", "readback", "shelter", "confirm"]
+    assert t["step"]["id"] == "readback" and t["step"]["kind"] == "sequence" and t["decision"]
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "readback", "text": "all crew"})
+    assert r["ok"] and r.get("progress") and not m.shelter                     # half a readback: not done, no miss
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "readback", "text": "into the shelter"})
+    assert r["ok"] and r["say"].startswith("Readback correct") and not m.shelter   # a readback is words, not the act
+    t = task(m)
+    assert t["step"]["id"] == "shelter" and t["step"]["cmd"] == {"type": "shelter", "on": True}
+    r = sim.apply_command(m, t["step"]["cmd"])
+    assert m.shelter and r["ack"] == "Crew sheltered. Good."
+    t = task(m)
+    assert t["kind"] == "storm_hit" and t["step"]["id"] == "confirm" and t["step"]["options"][0]["label"] == "In the shelter, copy"
+    r = sim.apply_command(m, {"type": "task", "task": t["id"], "step": "confirm", "choice": "say"})   # the one tap
+    assert r["ok"] and r["say"].startswith("Houston copies")
+    assert task(m) is None or task(m)["kind"] != "storm_hit"
+    assert any(e["title"] == "Storm! Shelter the crew" for e in sim.to_state(m)["mission_log"])
+
+
+def test_storm_procedure_never_blocks_a_crew_that_shelters_first():
+    """An order given at once still counts: the readback is skipped, the confirm settles itself an hour in."""
+    m, t = _to_storm_hit()
+    sim.apply_command(m, {"type": "shelter", "on": True})
+    t = task(m)
+    rb = next(s for s in t["steps"] if s["id"] == "readback")
+    assert m.shelter and rb["done"] and "No readback" in rb["result"] and t["step"]["id"] == "confirm"
+    sim.step(m, gameplay.CONFIRM_WAIT_H + 0.01)
+    assert task(m) is None or task(m)["kind"] != "storm_hit"
 
 
 def test_commander_possible_storm_is_a_real_decision():
@@ -540,3 +590,34 @@ def test_skip_line_names_the_job_it_stopped_for():
             assert len(r["say"].split()) <= 20
             return
     pytest.skip("no task-only skip stop in this seed")
+
+
+def test_storm_readback_uses_the_radio_readback_grader():
+    """[0.4.1] The storm's readback and confirm are graded by mission/readback.py (the 0.6 radio readback), not a second
+    grader: any wording that names the shelter reads it back; the confirm also needs the radio word ("copy")."""
+    from app.academy import grade as g
+    from app.mission import readback
+    rb = gameplay._readback_step()
+    cf = gameplay._confirm_step()
+    assert rb["order"] == cf["order"] == {"type": "shelter", "on": True} and readback.keys(rb["order"])
+    acc = lambda s: {"items": s["items"], "order": s["order"], "radio": s.get("radio")}  # noqa: E731
+    for t in ("everyone to the shelter", "copy, crew into the storm shelter", "all crew into the shelter"):
+        assert g._sequence(acc(rb), {}, t)[0], t
+    assert g._sequence(acc(cf), {}, "copy, we're in the shelter")[0]
+    assert not g._sequence(acc(cf), {}, "in the shelter")[0]          # no radio word yet: half a confirm
+    assert not g._sequence(acc(cf), {}, "copy")[0]
+
+
+def test_a_slow_clock_frame_never_runs_past_a_choice():
+    """[0.4.1] A live-clock slice of several hours stops where a step becomes doable (the boulders), so the client's
+    held clock gets the choice; the rest of the slice runs after it, and the hours are never lost."""
+    m = sim.new_mission("m", "shackleton_rim", 2, level="cadet")
+    sim.apply_command(m, {"type": "allocate", "to": "shields", "amount": {"kind": "percent", "value": 30}})
+    sim.step(m, 2)
+    sim.apply_command(m, task(m)["step"]["cmd"])            # send the rover for ice
+    sim.step(m, 6)                                           # one slow frame: six hours at once
+    t = task(m)
+    assert t["step"]["id"] == "steer" and t["step"]["ready"] and t["decision"] and m.frac >= 1
+    h = m.t_h + m.frac
+    sim.step(m, 0)                                           # the leftover hours still run later
+    assert m.t_h + m.frac == pytest.approx(h)

@@ -2994,8 +2994,45 @@
      "fail": "Negative. Call Houston."
     },
     {
-     "prompt": "Solar particle storm! Based on the real May 2024 storm. Your order?",
+     "prompt": "Storm alert! Houston: all crew into the shelter. Read it back.",
      "alert": true,
+     "accept": {
+      "type": "sequence",
+      "readback": true,
+      "order": {
+       "type": "shelter",
+       "on": true
+      },
+      "items": [
+       {
+        "id": "crew",
+        "label": "All crew",
+        "say": [
+         "all crew",
+         "crew",
+         "everyone",
+         "everybody",
+         "all of us"
+        ]
+       },
+       {
+        "id": "shelter",
+        "label": "into the shelter",
+        "say": [
+         "shelter",
+         "inside",
+         "under cover"
+        ]
+       }
+      ]
+     },
+     "do": "Say it back, or tap the words",
+     "hint": "Say it back: all crew into the shelter.",
+     "success": "Readback correct. Now get them in.",
+     "fail": "Read Houston's order back."
+    },
+    {
+     "prompt": "Get the crew into the shelter.",
      "accept": {
       "type": "command",
       "expect": {
@@ -3003,17 +3040,53 @@
        "on": true
       }
      },
-     "advance": "storm",
      "wrong": {
       "shields": "Shields help a little. The shelter is safer.",
       "heaters": "Heaters fight cold, not radiation.",
       "rover_ice": "Ice can wait. Keep the crew safe.",
       "houston": "Houston agrees: get under cover.",
-      "shelter_out": "Not yet. The storm is coming."
+      "shelter_out": "Wrong way. The storm is here."
      },
      "hint": "Get the whole crew under cover.",
      "success": "Copy. Crew in the shelter.",
      "fail": "Radiation is climbing."
+    },
+    {
+     "prompt": "Tell Houston the crew is inside.",
+     "accept": {
+      "type": "sequence",
+      "readback": true,
+      "order": {
+       "type": "shelter",
+       "on": true
+      },
+      "radio": true,
+      "items": [
+       {
+        "id": "in",
+        "label": "In the shelter",
+        "say": [
+         "in the shelter",
+         "inside",
+         "sheltered"
+        ]
+       },
+       {
+        "id": "copy",
+        "label": "copy",
+        "say": [
+         "copy",
+         "copied",
+         "roger"
+        ]
+       }
+      ]
+     },
+     "advance": "storm",
+     "do": "Say it, or tap the words",
+     "hint": "Say: in the shelter, copy.",
+     "success": "Houston copies. Ride it out in there.",
+     "fail": "Tell Houston: in the shelter, copy."
     },
     {
      "prompt": "The storm has passed. Bring the crew out of the shelter.",

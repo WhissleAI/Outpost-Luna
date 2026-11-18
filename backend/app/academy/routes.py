@@ -242,6 +242,15 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # [0.3.12] a guess step waits for a guess
     if not ok and text_only(inp) and not plausible(st, req.input.text):
         return _ignored(les["id"], r["step"], state=rides.hud(r))   # not a try: the miss counter doesn't move
+    if not ok and (st["accept"] or {}).get("type") == "sequence":
+        # [0.4.1] a readback / confirm builds up over turns: words that add to it are progress, never a miss
+        prior, got = inp.get("got") or [], extra.get("got") or []
+        if len(got) > len([g for g in prior if g in got]) and extra.get("next"):
+            items = st["accept"]["items"]
+            said = ", ".join(i["label"] for i in items if i["id"] in got)
+            nxt = next(i["label"] for i in items if i["id"] == extra["next"])
+            return _out(les["id"], r["step"], "progress", f"Copy: {said}. Then: {nxt}.", got=got, next=extra["next"],
+                        state=rides.hud(r))
     sim_say, said_override = "", None
     if ok:
         res = m.apply(extra["command"])["result"] if extra.get("command") else {"say": ""}
@@ -280,7 +289,7 @@ def _ride_attempt(les: dict, req: AttemptReq) -> dict:
     score = len(r["missed"]) - missed
     passed = missed <= les["ride"]["max_missed"] and not m.over
     # Spoken: the score only. The HUD in `state` shows power, life support and dose; `fact` is on screen, never spoken.
-    summary = f"Check ride done. {score} of {len(steps)} orders right."
+    summary = f"Check ride done. {score} of {len(steps)} steps right."
     if passed:
         return _out(les["id"], len(steps) - 1, "done", said + " " + summary + " You're qualified, Commander.",
                     badge=les["badge"], unlocks="mission", passed=True, score=score, state=rides.hud(r), events=events,

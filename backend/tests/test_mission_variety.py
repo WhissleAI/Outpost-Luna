@@ -99,3 +99,18 @@ def test_jobs_vary_and_each_step_says_why():
             for s in g["tasks"][i]["steps"]:
                 seen[bool(s.get("why") or s.get("hint"))] += 1
     assert seen[True] / sum(seen.values()) >= 0.8, seen
+
+
+@pytest.mark.parametrize("level", ["cadet", "commander", "engineer"])
+@pytest.mark.parametrize("site", SITES)
+def test_every_mission_gets_a_sample_station(site, level):
+    """[0.4.1] Every mission has at least one Field School task: the sample station shows up, even at Malapert where
+    the lab never gets a quiet hour (the rover crew stops for it on a drive). Low-Sun calls stay on ice runs; one
+    replan a mission at most."""
+    for seed in (0, 1, 3, 7):
+        m = sim.new_mission("v", site, seed, level=level)
+        _novice(m)
+        tasks = list(m.gp["tasks"].values())
+        assert any(t["kind"] == "science" and t.get("sub") == "sample" for t in tasks), (site, level, seed)
+        assert m.gp["count"].get("replan", 0) <= gameplay.REPLAN_MAX
+        assert all(t["kind"] == "ice_run" for t in tasks if any(s["id"] == "tack" for s in t["steps"]))

@@ -130,7 +130,7 @@ export function createCabin(root, o = {}) {
     <section class="cb-mlog" id="cbMlog" hidden aria-label="Mission log"></section>
     <div class="cb-viewbar" aria-label="Window">
       <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
-      ${o.mode === "ride" ? "" : `<button type="button" class="cb-center" id="cbCenter" aria-keyshortcuts="R" title="Center view (R)">${ic("site", 16)}<span>Center view</span></button>`}
+      ${o.mode === "ride" ? "" : `<button type="button" class="cb-center" id="cbCenter" aria-keyshortcuts="R" title="Look ahead (R)">${ic("site", 16)}<span>Look ahead</span></button>`}
     </div>
     <section class="cb-now" id="cbNow" hidden aria-label="Now">
       <div class="cb-now-head"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span>
@@ -189,7 +189,7 @@ export function createCabin(root, o = {}) {
           <div class="cb-lamps" role="list">${LAMPS.map(([id, t, lvl]) => `<span class="cb-lamp is-${lvl}" id="cbl-${id}" role="listitem">${t}<span class="cb-vh">: off</span></span>`).join("")}</div>
         </div>
         <div class="cb-plate cb-ped">
-          <button type="button" class="cb-end" id="cbEnd"><span>${o.mode === "ride" ? "End shift" : "End shift early"}</span><small id="cbEndSub"></small></button>
+          ${o.mode === "ride" ? `<button type="button" class="cb-end" id="cbEnd"><span>End shift</span><small id="cbEndSub"></small></button>` : ""}
           <button type="button" class="cb-db" id="cbDb">See debrief</button>
         </div>
       </div>
@@ -222,6 +222,7 @@ export function createCabin(root, o = {}) {
         <div class="cb-pm-speed" role="group" aria-label="Time speed"><span>${ic("speed", 20)}Time speed</span>
           <span class="cb-pm-seg">${[1, 2, 4].map(w => `<button type="button" class="cb-pm-sp" data-m="speed" data-warp="${w}" aria-pressed="${w === 1}" aria-label="Time speed ${w} times">${w}×</button>`).join("")}</span></div>
         <button type="button" class="cb-pm-b" data-m="restart">${ic("replay", 20)}<span>Restart shift</span><small id="cbMenuShift"></small></button>
+        <button type="button" class="cb-pm-b" data-m="end_shift" id="cbEnd">${ic("next", 20)}<span>End shift early</span><small id="cbEndSub"></small></button>
         <button type="button" class="cb-pm-b" data-m="settings">${ic("settings", 20)}<span>Settings</span></button>
         <button type="button" class="cb-pm-b" data-m="quit">${ic("home", 20)}<span>Quit to hub</span><small>Your mission saves</small></button>
         <p class="cb-pm-tip">Hold <kbd>F</kbd>, hold <b>Skip</b> or hold <kbd>RT</kbd> to fast-forward.</p>
@@ -344,7 +345,7 @@ export function createCabin(root, o = {}) {
   // ---- master alarm, Houston, end shift ----
   q("#cbMaster").onclick = () => { masterOn = false; paintMaster(); };
   q("#cbPtt").onclick = () => cb.onHouston();
-  q("#cbEnd").onclick = () => cb.onEndShift();
+  if (o.mode === "ride") q("#cbEnd").onclick = () => cb.onEndShift();   // [0.4.1] the mission's is in the Menu (data-m)
   // ---- the live clock: play / pause, time warp, skip to next event (mission/clock.js owns the timing) ----
   if (q("#cbPlay")) {
     q("#cbPlay").onclick = () => cb.onClock("toggle");
@@ -490,6 +491,10 @@ export function createCabin(root, o = {}) {
   // ---- display pages ----
   const bar = (v, max = 100, limit = null) => `<span class="du-bar${limit != null && v / max >= limit ? " is-red" : ""}"><i style="width:${clamp(v / max * 100)}%"></i>${limit != null ? `<em style="left:${limit * 100}%"></em>` : ""}</span>`;
   const row = (k, v, cls = "") => `<div class="du-row ${cls}"><span>${k}</span><b>${v}</b></div>`;
+  // [0.4.1] plain words for the dose: "1.2 of 50", "0.06 an hour"; the unit (millisieverts, mSv) in the tooltip.
+  // Engineer keeps the real unit on the face.
+  const msv = (st0, v, perH) => st0 && st0.engineer ? `${v} mSv${perH ? "/h" : ""}` :
+    `<span title="${perH ? "Millisieverts (mSv) an hour" : "Millisieverts (mSv): the radiation dose"}">${v}${perH ? " an hour" : ""}</span>`;
   const big = (name, val, unit, warn, why) => `<header class="du-head${warn ? " is-warn" : ""}"><span>${name}${why ? whyBtn(why) : ""}</span><b>${val}<small>${unit}</small></b></header>`;
   function page(p) {
     const s = st; if (!s) return "";
@@ -502,8 +507,8 @@ export function createCabin(root, o = {}) {
     if (p === "LIFE") return `${big("Life support", Math.round(r.life_support_pct), "%", r.life_support_pct < 25, "life_support")}${bar(r.life_support_pct)}
       ${row("Air system", Math.round(L.life_support) + "%")}${row(pretend("Greenhouse"), Math.round(L.greenhouse) + "%")}${row(`Heaters${whyBtn("heaters")}`, U ? `${kw(U.heater_kw)} · ${U.heater_duty_pct}% duty` : Math.round(L.heaters) + "%")}${U && U.outside_k != null ? row("Outside", `${U.outside_k} K · ${U.outside_c} °C`) : ""}`;
     if (p === "RAD") { const hot = (r.dose_rate_msv_h || 0) > .1;
-      return `${big("Dose", (+r.dose_msv).toFixed(1), ` / ${lim} mSv`, r.dose_msv / lim > .7, "dose")}${bar(r.dose_msv, lim, .8)}
-      ${row("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`, hot ? "is-warn" : "")}${row(pretend("Shields"), Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
+      return `${big("Dose", (+r.dose_msv).toFixed(1), s.engineer ? ` / ${lim} mSv` : msv(s, ` of ${lim}`), r.dose_msv / lim > .7, "dose")}${bar(r.dose_msv, lim, .8)}
+      ${row("Rate", msv(s, (+r.dose_rate_msv_h || 0).toFixed(2), true), hot ? "is-warn" : "")}${row(pretend("Shields"), Math.round(L.shields) + "%")}${row("Shelter", s.shelter ? "Crew inside" : "Open")}`; }
     return `${big("Comms", e.earth_visible ? "Open" : "Closed", "", false)}
       ${row(e.earth_visible ? "Radio delay" : "Next window", e.earth_visible ? `${((e.comm_delay_s || 2.6) / 2).toFixed(1)} s each way` : `${e.next_comm_window_h ?? "?"} h`)}
       <ol class="du-log">${logLines.slice(-3).map(l => `<li><b>${esc(l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM")}</b> ${esc(l.text)}</li>`).join("")}</ol>`;
@@ -575,10 +580,10 @@ export function createCabin(root, o = {}) {
       .map(([k, v]) => ({ text: `${k === "ice" ? "Ice" : k === "science" ? "Science" : k} ${Math.round(v.got || 0)} / ${v.goal}`, done: !!v.met })) : null;
     if (obj) { obj.hidden = !(O && O.length); if (O && O.length) obj.innerHTML = O.slice(0, 4).map(o => `<li class="${o.done ? "is-done" : ""}">${ic(o.done ? "star" : "todo", 14)}<span>${esc(o.text || o.title || "")}</span></li>`).join(""); }
     const rad = q("#cbInfoRad"), wn = stormWarning(s);
-    if (rad) rad.innerHTML = irow("Dose", `${(+r.dose_msv).toFixed(1)} / ${lim} mSv`, mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
-      + irow("Rate", `${(+r.dose_rate_msv_h || 0).toFixed(2)} mSv/h`) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : wn.word ? ` · ${wn.word}` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
+    if (rad) rad.innerHTML = irow("Dose", s.engineer ? `${(+r.dose_msv).toFixed(1)} / ${lim} mSv` : msv(s, `${(+r.dose_msv).toFixed(1)} of ${lim}`), mbar(r.dose_msv, lim, r.dose_msv / lim > .7 ? "is-warn" : ""))
+      + irow("Rate", msv(s, (+r.dose_rate_msv_h || 0).toFixed(2), true)) + (s.shelter_ready_in_h > 0 ? irow("Shelter ready in", `${s.shelter_ready_in_h} h`) : "") + (wn ? irow("Warning", `${wn.lead != null ? `~${wn.lead} h` : "soon"}${wn.conf != null ? ` · ${wn.conf}% sure` : wn.word ? ` · ${wn.word}` : ""}`, wn.conf != null ? mbar(wn.conf, 100, "is-caution") : "") : "");
     const ri = q("#cbInfoRv"); if (ri) ri.innerHTML = (rv.busy ? irow("Back in", `${rv.eta_h} h`) : "") + (rv.battery_pct != null ? irow("Battery", Math.round(rv.battery_pct) + "%", mbar(rv.battery_pct)) : "")
-      + (rv.dose_msv != null ? irow("Rover dose", (+rv.dose_msv).toFixed(1) + " mSv") : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
+      + (rv.dose_msv != null ? irow("Rover dose", msv(s, (+rv.dose_msv).toFixed(1))) : "") + (s.ice_runs != null ? irow("Ice runs", s.ice_runs) : "");
     const rt = q("#cbRoute"); if (rt) { const tot = TOTAL_H[rv.task] || 8, pr = rv.busy ? clamp(1 - (rv.eta_h || 0) / tot, 0, 1) : 0, out = rv.task === "return" ? 1 - pr : pr < .5 ? pr * 2 : (1 - pr) * 2;
       const x = 20 + out * 160, y = 40 - Math.sin(out * Math.PI) * 18;
       rt.innerHTML = `<path class="r-line" d="M20 40 Q100 4 180 40"/><circle class="r-base" cx="20" cy="40" r="6"/><circle class="r-goal" cx="180" cy="40" r="6"/>
@@ -740,9 +745,10 @@ export function createCabin(root, o = {}) {
     const bit = (cls, title, name, val, of, p) => `<span class="pg${cls}" title="${title}"><em>${name}</em><b class="num">${val}<small>/${of}</small></b><i style="--p:${(p * 100).toFixed(1)}%"></i></span>`;
     // [playtest 4] science gathered but not home yet counts too: "+14 on board" under the sent-home number
     const aboard = Math.round(P.science_stored || 0);
-    const sciTitle = `Science sent home${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
+    // [0.4.1] plain words: "Science home 0/120 · 1 to send" (it was "Science 0/120 +1 on board")
+    const sciTitle = `Science sent home: ${Math.round(P.science_sent)} of ${P.science_goal}${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
     el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
-      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard}<span class="pg-ab-l"> on board</span></small>` : ""}</b>`)
+      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science home", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard} to send</small>` : ""}</b>`)
       + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
       + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
   }

@@ -84,8 +84,8 @@ Tasks come from the sim state and the goals, never at random. Each step is one o
 | Task | Comes from | Steps (Cadet / Commander) | NASA basis | Lesson |
 |---|---|---|---|---|
 | Set your power | arrival | Shields up (any power change counts) | — | 4 Power |
-| Storm prep | a `storm_warning` | Rover home → (Cmdr: shields to 40) → crew into the shelter, which opens **6 h before** a likely storm; a "possible" storm is a choice: Shelter now / Wait and watch. Countdown = the forecast. | DONKI SEP forecasts; Orion's shelter is good for about a day | 5 Radiation |
-| Storm! Shelter the crew | a particle storm hits, crew outside | Rover home → shelter | DONKI | 5 |
+| Storm prep | a `storm_warning` | Rover home → (Cmdr: shields to 40) → **the storm procedure** (§15) when the shelter opens **6 h before** a likely storm; a "possible" storm is a choice: Shelter now / Wait and watch. Countdown = the forecast. | DONKI SEP forecasts; Orion's shelter is good for about a day | 5 Radiation |
+| Storm! Shelter the crew | a particle storm hits, crew outside | Rover home → **the storm procedure** (§15): Houston's order, read it back → crew into the shelter → "In the shelter, copy" | DONKI; flight-loop readbacks | 5 |
 | All clear: crew out | shelter, no storm, no warning | Crew out of the shelter | (always_shelter fails the goals) | 5 |
 | Night power-down | `sunset_soon`, or dark with night mode off | Night mode on → heaters to 10 → (long night ≥ 48 h, e.g. Malapert: air system to 45) → rover home before dark. Countdown = sunset. | Horizons sunset; landers hibernate (Chang'e 4) | 4 |
 | Sunrise: wake the outpost | Sun up, night mode on | Night mode off | Horizons | 4 |
@@ -95,7 +95,7 @@ Tasks come from the sim state and the goals, never at random. Each step is one o
 | Ice run (rover drive) | ice goal open, calm, rover parked | Cadet: send the rover. Cmdr: pick a route on the **LOLA slope map** (Ridge: flat, +2 h, −2% battery; Crater slope: −2 h, +3% battery). Then **steer past the boulders** (left/right; the slope-map hint names the flatter side; right saves 1 h, wrong costs 1 h, no answer = the rover finds its own way). [0.5] The **low-Sun calls** (§13.2): tack away from the glare, lights on before the shadow. Then the rover comes back with ice. Readouts: ETA, battery, dose rate, the Sun, the shadow. | LRO LOLA slopes plan real traverses (VIPER); NTRS 20240011393 | 6; Field: Eyes of a geologist |
 | Science stop (§13.3) | mid rover drive, Earth up, the drive's calls made (once a mission) | Pick what to give up for 15 min at a bright rock (the drive's light margin / one sample), then read back Flight's call | JETT5 science ops | Field: Moon rocks tell time |
 | Fix the solar array (Cmdr) | the micrometeorite failure | Check the array → send the rover → test the power | — | 4 |
-| Sample station / Read the radiation sensor | nothing else to do (every 8 h; Cadet ≤ 4, Cmdr ≤ 6) | [0.5] The **sample station** (§13.1): pick the tool, describe it in one line, call in the bag number (0.5 to 2.5 science). The sensor: read it, then log it Normal / High (+2 if right; quiet Sun < 0.1 mSv/h) | Artemis sampling (Naids 2021); Chang'e 4 LND baseline | Field: Field kit / 5 |
+| Sample station / Read the radiation sensor | nothing else to do (every 8 h; Cadet ≤ 4, Cmdr ≤ 6); [0.4.1] the first science job is always the station, and a mission with none by hour 48 gets one on a drive (§15.3) | [0.5] The **sample station** (§13.1): pick the tool, describe it in one line, call in the bag number (0.5 to 2.5 science). The sensor: read it, then log it Normal / High (+2 if right; quiet Sun < 0.1 mSv/h) | Artemis sampling (Naids 2021); Chang'e 4 LND baseline | Field: Field kit / 5 |
 
 Cadet gets fewer, simpler tasks with big buttons (no repair, no low-power task, no sensor quiz, no route choice).
 Commander gets the trade-offs. A task with a deadline that passes is logged as missed. A storm prep the storm overtakes
@@ -152,7 +152,7 @@ The step's control glows on its panel too. On Cadet only that panel stays bright
 | Pause / run | "pause the clock", "start the clock", "resume" | Play/Pause | **K** | View / Share | open palm pauses (and stops speech) |
 | Time warp | "time warp four", "normal time" | 1x 2x 4x | **W** | LT / L2 | — |
 | Skip to next event | "skip to next event", "skip ahead", "fast forward" | Skip ahead | **E** | RT / R2 | — |
-| End shift early | "end shift" | End shift early (pedestal) | — | — | — |
+| End shift early | "end shift" | Menu → End shift early ([0.4.1] off the console) | **Esc**, then the arrows | Start, then the D-pad | — |
 
 The router adds the cabin-only intents `skip_event`, `time_pause`, `time_resume`, `time_warp {1|2|4}` and
 `task_choice` (`backend/app/turn_router.py`). The screen frame carries `offer: "task"` and the choice labels as
@@ -191,7 +191,7 @@ The owner played at 1440×879 and found four problems:
 - Monospace and sans fonts were mixed.
 
 **Layout.** The glass carries only what belongs to the view: the alert strip, the rover pill and the story moments.
-The view tabs and **Center view** (R) are screen-docked on the right wall under the deck, so they stay on screen
+The view tabs and **Look ahead** (R; it was "Center view") are screen-docked on the right wall under the deck, so they stay on screen
 whatever the camera does; the look is bounded and springs back to the seat (docs/GESTURES.md). A story banner ("Day 1 / On our own") has the glass's centre to itself, and the rover pill
 steps aside while it shows. The sky readout ("Sun up · Earth below") sits in the deck after the clock, because the
 bottom of the glass is behind the consoles. During a storm, Up from the seat goes straight to the alert strip's main
@@ -520,3 +520,69 @@ Nothing here touches the sim: no reward, no cost, no new order. `tests/test_stra
   - the vibrate pattern and event mapping;
   - dual-rumble sequencing, the Firefox pulse, the de-duplication;
   - the single call site.
+
+## 15. Mission and voice clarity (0.4.1, `fix/041-b`)
+
+### 15.1 The storm procedure (mission storms and the check ride)
+
+Before, a storm asked the cadet to guess one order out of six buttons. Now it runs the way flight controllers work a
+call: Houston gives the order, the crew reads it back, acts, and confirms.
+
+1. **Houston calls it.** "Houston: all crew into the shelter. Read it back." (9 words; `gameplay.HOUSTON_SHELTER`). In
+   a mission storm it is the task's spoken line; on a likely storm's prep it is the card's step once the shelter opens.
+2. **Read it back**: a `sequence` step (All crew → into the shelter). Voice ("all crew into the shelter", over one turn
+   or two) or the card's one button. A readback is words: nobody moves yet.
+3. **Act**: "Crew into the shelter", the real order (the shelter switch, the card's button, or the order by voice).
+4. **Confirm**: "In the shelter, copy" (a `sequence` step, voice or one tap). Houston copies.
+
+One grader: the spoken readback and confirm are graded by `mission/readback.py` (the 0.6 radio readback, §14.1)
+against the shelter order (`order` on the step); the confirm also needs the radio word ("copy"). The chips are the tap
+path (`grade._sequence`). Once the readback is done, the shelter order is an ordinary order step, so "Copy, crew into
+the shelter" there runs it with "Good readback." as in §14.1.
+
+Safety first: a crew sheltered straight away (an order, a tap on the switch) is never held back. The readback is
+marked skipped ("Sheltered. No readback this time."), and the confirm settles itself an hour in (or when the storm
+arrives on a prep). Rewards are unchanged; tests/test_strategy.py policies never touch tasks.
+
+**Check ride** (`tools/build_course.py`): the storm step is now three steps. Read it back (`sequence`, `readback:
+true`: its chips in the order heard, `alert`), get the crew in (`command`: the console's order buttons, still graded,
+so "Leave the shelter" or "Shields up" during the alert is a miss with its reason), and "In the shelter, copy"
+(`sequence`, then the storm passes). A readback that adds words is progress, never a miss
+(`routes._ride_attempt`). The result line counts steps ("7 of 7 steps right"). In a ride the cabin's controls answer
+only the act step, never a readback.
+
+### 15.2 Crew talk
+
+On a guess or a choice (a lesson's `predict` / `choice` step, a choice on the Now card) a spoken answer counts only
+when Arc rates it device-directed ≥ `dd_strong` (0.7 at Normal; the Settings listening filter moves it). Lower, the
+router ignores it with reason `crew_talk` (`turn_router.crew_talk`) and the voice bar shows **Crew talk** briefly.
+Typed, tapped and Space-held turns carry no score and are never gated.
+
+A quiet kid's exact answer is never dropped silently (the round-7 "stuck kid" fix stays): when the gated words name
+one option exactly (its label or say phrase, its key such as "B" or "two", or on the Now card a short turn the
+matcher pins to one option), the router adds `pick` ({label, choice, heard}) and the bar shows "Crew talk" with one
+chip, **Heard “B” · Use it** (`frontend/src/crewpick.js`). A click, Enter or controller A uses it as a tap on that
+option; saying it again, clearly, answers as usual. The chip takes focus while it shows, goes after 8 s or on the next
+turn, and gives focus back. Chatter that names no option gets no chip. Navigation, questions and other step kinds keep
+their own rules. Room talk that names no option stays silent as before.
+
+### 15.3 Every mission gets a Field School task
+
+The first science job is always the sample station (a replan's dropped sample used to rotate it away). Where the lab
+never gets a quiet hour (Malapert's long drives and nights), a mission with no station by hour 48
+(`STATION_DUE_H`) gets one on a drive whose calls are made: "Rover crew: a quick sample stop on the way." It sits
+above the drive's card and below a replan; rewards are the station's usual 0.5 to 2.5. The low-Sun calls stay on ice
+runs, and the replan stays once a mission. `tests/test_mission_variety.py` flies every site and level.
+
+### 15.4 Cockpit clarity
+
+- **Look ahead** (R, or say "look ahead" / "center"): the seat view. It was "Center view".
+- **End shift early** moved off the console next to the master alarm into the Menu (Esc), under Restart shift. The
+  keyboard path is Esc, then the arrows. The check ride keeps its own End shift.
+- Plain words: the progress strip says "Science home 0/120 +1 to send" (it was "+1 on board"). The hub and the
+  briefing say "Talk to Earth 4½ of 10 days" (it was "Radio 4.5 of 10 days") and "Ice: a 7-hour drive" (it was "Ice
+  7 h away"). The radiation readouts say "1.2 of 50" and "0.06 an hour", with millisieverts (mSv) in the tooltip.
+  Engineer keeps the units on the face.
+- The voice bar's state word ("Starting voice…", "Didn't catch that", "Crew talk") is never cut. The typing field and
+  the "Hold to talk" hint give way first.
+

@@ -10,7 +10,8 @@ import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional 
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
-import { createVoice } from "./voice.js";
+import { createVoice, CREW_TALK } from "./voice.js";
+import { createCrewPick } from "./crewpick.js";   // [0.4.1] crew talk: "Heard “…” · Use it"
 import { onEngine, askbarClasses, warmState, WARM_MS, VOICE_FIX, earFailed, onEarFailed, setEarFailed } from "./engine.js";   // [#87] the desktop shell's ear state
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
@@ -571,7 +572,10 @@ async function boot() {
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
       voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
-      if (d.outcome === "ignore") { if (d.notice) voice.notice(); releaseHold(600); return; }   // not for us: a held tour plays on
+      // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
+      // a quiet exact answer comes back as one chip (crewpick.js); anything else heard clears an old one
+      if (d.reason === "crew_talk" && d.pick) crewPick.show(d.pick); else crewPick.hide();
+      if (d.outcome === "ignore") { if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined); releaseHold(600); return; }
       // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
       // all; the offline word list catches what the tagger misses (profanity.js)
       const shownText = d.safety ? "" : maskProfanity(d.text);
@@ -600,6 +604,16 @@ async function boot() {
   // [input] A router decision is a voice intent on the bus: screens (onIntent, priority 10) get it first, then the
   // shell's defaults, then shellNav below (input/defaults.js). Gestures and keys emit the same intents.
   const runNav = (intent, arg, text) => emitIntent(intent, { arg, text }, "voice");
+  // [0.4.1] the crew-talk chip: a lesson option is tapped as it is on screen; a Now-card choice goes as its label
+  const crewPick = createCrewPick(document, p => {
+    const opt = p.choice != null && document.querySelector(`#aPanel .a-choice[data-c="${CSS.escape(String(p.choice))}"]:not([disabled])`);
+    if (opt) { opt.click(); return true; }
+    if (p.choice == null && p.label) { emitIntent("task_choice", { arg: p.label, text: p.label }, "tap"); return true; }
+    return false;
+  });
+  try { (window.__outpost = window.__outpost || {}).crewPick = crewPick; } catch (e) { /* no window */ }   // tools / tests
+  // Enter (keys emit "select" on the focused control) and controller A use the chip while it has focus
+  onIntent("select", () => (crewPick.pick && crewPick.el && document.activeElement === crewPick.el ? (crewPick.el.click(), true) : false), { priority: 50 });
   /** What was heard, shown briefly in the comm strip (never a transcript; the full log is in Access → Transcript). */
   let heardT = 0;
   function showHeard(text) {

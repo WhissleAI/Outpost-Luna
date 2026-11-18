@@ -178,6 +178,9 @@ Use this checklist for any new or redesigned lesson. `backend/tests/test_copy.py
 | `CAPCOM.firstShift` | **First mission only.** Said once right after `missionStart`, and again only after a silence with no order yet. Never more than that. | 12 words or fewer: "Set your power, then end the shift." |
 | `RIDE.mars` | **On screen only**, on the check-ride result card. The backend also sends it as `fact` on the ride's `done` reply. | Never spoken |
 | `OFFER.*` | Once, after the line it follows | Never add "Say yes" or "Say next" |
+| `gameplay.HOUSTON_SHELTER` | [0.4.1] A particle storm (the task's line), or the shelter opening on a likely storm's prep | "Houston: all crew into the shelter. Read it back." Then the readback, the act, and "In the shelter, copy" (docs/GAMEPLAY.md §15.1) |
+| `voice.CREW_TALK` | [0.4.1] On screen only (the voice bar): room talk kept off a guess or a choice | "Crew talk". Never spoken |
+| `crewpick.pickText` | [0.4.1] On screen only: a gated turn that named one option exactly | "Heard “B” · Use it" (the kid's words, 24 characters at most). Never spoken |
 
 ## 5. Glossary: one word for one thing
 

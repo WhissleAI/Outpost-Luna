@@ -708,7 +708,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     busy = true; if (btn) btn.classList.add("is-busy");
     const acc0 = L.steps[i].accept;
     if (acc0.type === "route" && !input.taps && !L.ride) input = { ...input, taps: stepState.taps.slice() };   // "...then Ohm" after tapping Orientale
-    const field = FIELD_STEP_TYPES.includes(acc0.type) && !L.ride;   // [0.5] a Field step builds up: send what counts so far
+    // [0.5] a Field step builds up: send what counts so far ([0.4.1] the check ride's readback and confirm too)
+    const field = FIELD_STEP_TYPES.includes(acc0.type) && (!L.ride || acc0.type === "sequence");
     if (field && !input.got && (stepState.got || []).length) input = { ...input, got: stepState.got.slice() };
     let r;
     const step_s = Math.max(0, Math.round((now() - stepAt) / 100) / 10);   // the reveal needs ~20 s (grade.reveal_due)
@@ -822,7 +823,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!rideRO && typeof ResizeObserver !== "undefined") rideRO = new ResizeObserver(() => { const h = document.getElementById("aRideCabin"); if (!h || h.hidden) return;
       h.style.setProperty("--ride-inset", rideInset(h, panel) + "px"); if (rideCk && rideCk.relayout) rideCk.relayout(); });
     if (rideRO) { rideRO.observe(panel); rideRO.observe(host); }
-    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, insetRight, onCommand: c => { const t = RIDE_WORDS(c); if (t) answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
+    rideCk = createCabin(host, { mode: "ride", terrain: true, site: rideSite, insetRight, onCommand: c => { const t = RIDE_WORDS(c); if (t && L && L.steps[i] && L.steps[i].accept.type === "command") answer({ text: t }); }, onEndShift() {}, onHouston() {}, onDebrief() {} });
     if (ride && ride.state) rideCk.update(ride.state);
     setTimeout(rideCue, 400);
     if (!rideSite) return;

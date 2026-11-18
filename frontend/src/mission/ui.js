@@ -225,6 +225,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   /** "Sun on your mission: N of 10 days" (window_sun_days from the learning design; derived from the window % until it lands). */
   const sunDays = s => s.window_sun_days ?? Math.round((s.window_sunlit_pct ?? s.sunlight_pct) / 10);
   const earthDays = s => s.window_earth_days ?? Math.round(s.earth_visible_pct / 10);
+  /** [0.4.1] half days in plain words: 4.5 -> "4½" (never "4.5 of 10 days") */
+  const dd = d => (Number.isInteger(+d) ? String(d) : `${Math.floor(+d)}½`);
   /** A first-timer (no mission flown yet on this cadet) sees the recommended pick. */
   let firstPick = false, briefSpoken = false;
   /** [0.3.12] "Fly the check ride", and before the core lessons are done the line that says when it opens
@@ -294,10 +296,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         <div class="mx-cols" aria-hidden="true"><span></span><span>${ic("sun")}Sun</span><span>${ic("earth")}Earth</span><span>${ic("ice")}Ice<small>away</small></span></div>
         ${sites.map(s => `
         <button type="button" class="mx-site" role="radio" data-site="${esc(s.id)}" aria-checked="${s === site}" tabindex="${s === site ? 0 : -1}"
-          aria-label="${esc(s.name)}: Sun on ${sunDays(s)} of 10 days, Earth in view on ${earthDays(s)} of 10 days, ${iceLabel(s)}">
+          aria-label="${esc(s.name)}: Sun on ${dd(sunDays(s))} of 10 days, Earth in view on ${dd(earthDays(s))} of 10 days, ${iceLabel(s)}">
           <b>${esc(s.name)}${firstPick && s.id === PICKER.recommended ? `<em class="mx-rectag">${esc(PICKER.recTag)}</em>` : ""}<em class="mx-tag2">${siteTag(s)}</em>${s === site && s.sunlight_pct != null ? `<small>${s.power_from ? `Power by cable from the ${pretendLabel("rim")}` : `About ${Math.round(s.sunlight_pct)}% sunlight (yearly average)`}</small>` : ""}</b>
-          <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${sunDays(s)}<small>/10</small></span>
-          <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${earthDays(s)}<small>/10</small></span>
+          <span class="mx-v${sunDays(s) >= 8 ? " is-best" : ""}">${dd(sunDays(s))}<small>/10</small></span>
+          <span class="mx-v${earthDays(s) >= 8 ? " is-best" : ""}">${dd(earthDays(s))}<small>/10</small></span>
           <span class="mx-v${s.ice ? " is-best" : ""}">${s.ice ? "Here" : s.rover_to_ice_h ? `${s.rover_to_ice_h}<small> h</small>` : "No"}</span>
         </button>`).join("")}
       </div>
@@ -328,16 +330,16 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const nv = createNavigator({
     panel, say: t => say(t), onPick: id => pickSite(id), onStart: () => toPlan(), active: () => screen === "brief",
     missionText: id => { const s = sites.find(x => x.id === id); if (!s) return "";
-      const parts = [`Sun ${sunDays(s)} of 10 days`, `radio ${earthDays(s)} of 10 days`,
-        s.ice ? "ice right here" : s.rover_to_ice_h ? `ice run ${s.rover_to_ice_h} h each way` : ""];
+      const parts = [`Sun ${dd(sunDays(s))} of 10 days`, `talk to Earth ${dd(earthDays(s))} of 10 days`,
+        s.ice ? "ice right here" : s.rover_to_ice_h ? `ice a ${s.rover_to_ice_h}-hour drive each way` : ""];
       if (s.rover_slope_power) parts.push(`steep drive +${s.rover_slope_power}% battery`);
       return parts.filter(Boolean).join(" · ") + "."; },
     // [playtest 15] the Cadet briefing: three bars and three short lines per site, in mission days (the hub's words)
     simple: () => levelNow() === "cadet",
     kidLines: id => { const s = sites.find(x => x.id === id); if (!s) return [];
       const sd = sunDays(s), ed = earthDays(s), ih = s.ice ? 0 : (s.rover_to_ice_h || 0);
-      return [{ icon: "sun", p: sd / 10, short: `Sun ${sd}/10`, text: `Sun for power: ${sd} of 10 days` },
-        { icon: "earth", p: ed / 10, short: `Radio ${ed}/10`, text: ed > 0 ? `Radio with Earth: ${ed} of 10 days` : "No radio with Earth this mission" },
+      return [{ icon: "sun", p: sd / 10, short: `Sun ${dd(sd)}/10`, text: `Sun for power: ${dd(sd)} of 10 days` },
+        { icon: "earth", p: ed / 10, short: `Earth ${dd(ed)}/10`, text: ed > 0 ? `Talk to Earth: ${dd(ed)} of 10 days` : "No talking to Earth this mission" },
         { icon: "ice", p: 1 - Math.min(1, ih / 12), short: s.ice ? "Ice here" : `Ice ${ih} h`, text: s.ice ? "Ice right here" : `Ice: a ${ih}-hour drive` }]; },
   });
   try { (window.__outpost = window.__outpost || {}).navigator = nv; } catch (e) { /* */ }   // tests/e2e/site_navigator_e2e.py
@@ -398,8 +400,9 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // Mission tab -> hub (one card: the mission, its site, Start; the navigator is one press away) -> briefing (Goal,
   // Danger, Bonus; Take command) -> the cabin. The NASA video is a chip on the hub (mission_learning.js), never a yes / no.
   const missionNo = () => { try { return missionsFlown(callSign.get()) + 1; } catch (e) { return 1; } };
-  const hubFacts = s => [["sun", `Sun ${sunDays(s)} of 10 days`], ["earth", `Radio ${earthDays(s)} of 10 days`],
-    ["ice", s.ice ? "Ice right here" : s.rover_to_ice_h ? `Ice ${s.rover_to_ice_h} h away` : "No ice nearby"]]
+  // [0.4.1] plain words: "Talk to Earth 4½ of 10 days", "Ice: a 7-hour drive" (were "Radio 4.5 of 10 days", "Ice 7 h away")
+  const hubFacts = s => [["sun", `Sun ${dd(sunDays(s))} of 10 days`], ["earth", `Talk to Earth ${dd(earthDays(s))} of 10 days`],
+    ["ice", s.ice ? "Ice right here" : s.rover_to_ice_h ? `Ice: a ${s.rover_to_ice_h}-hour drive` : "No ice nearby"]]
     .map(([i, t]) => `<span>${ic(i, 16)}${esc(t)}</span>`).join("");
   function hub() {
     if (!qualified()) { gate(); return; }
@@ -697,6 +700,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (a === "resume") return closeMenu(true);
     if (a === "speed") { mclock.setWarp(+v); menuWas = true; cockpit.clock(mclock.state); return true; }   // picking a speed means "run at it"
     if (a === "restart") return restartShift();
+    if (a === "end_shift") { closeMenu(true); endShift(); return true; }   // [0.4.1] moved off the console into the Menu
     if (a === "settings") { closeMenu(false); const A = window.__outpost && window.__outpost.a11y; if (A && A.open) A.open(true); return true; }
     if (a === "quit") { closeMenu(false); mclock.pause(); hub(); return true; }   // [polish 4] the real hub: Resume Day N (the save), or a new mission
     return false;

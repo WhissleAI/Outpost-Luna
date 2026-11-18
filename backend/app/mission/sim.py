@@ -626,7 +626,13 @@ def step(m: Mission, dt_h: float) -> list:
     m.frac += max(0.0, min(float(dt_h or 0.0), 24.0))
     while m.frac >= 1.0 - 1e-9 and not m.over:
         m.frac = max(0.0, m.frac - 1.0)
+        n = len(out)
         _tick(m, out)
+        # [0.4.1] a task step that just became doable (the drive's boulders, a readback) stops this slice: the client
+        # holds the clock for it, and the rest of the slice runs after. A slow frame (a busy PC posting several hours
+        # at once) never runs a choice past its own auto-resolve. Deterministic, so a replayed journal matches.
+        if any(e["kind"] == "task" and e.get("phase") == "ready" for e in out[n:]):
+            break
     if m.over:
         m.frac = 0.0
     return out

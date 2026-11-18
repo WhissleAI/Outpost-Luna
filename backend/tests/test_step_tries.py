@@ -210,19 +210,15 @@ def test_a_yes_no_counts_once_the_question_settled_or_when_clearly_directed(worl
     s = lesson_session(world, PREDICT)
     hear(s, "yes", dd=0.85, advance=0.3)
     assert _routed(s, "yes")["outcome"] == "answer" and len(answers(s)) == 1
-    # Arc unsure, but the question finished and the step has been open >= 1.5 s: the kid's answer
+    # [0.4.1] crew talk: on a predict step Arc unsure (< dd_strong) never answers, however settled the question
     s = lesson_session(world, PREDICT)
     line(s, "q", "Apollo 13 went farther from Earth than anyone. Did Artemis II beat it?", dur=1.2, gap=0.0)
     hear(s, "no", dd=0.55, advance=1.0)
-    assert _routed(s, "no")["outcome"] == "answer" and len(answers(s)) == 1
-    # Arc unsure and only 0.5 s into the step (nothing playing): not yet
-    s = lesson_session(world, PREDICT)
-    hear(s, "yes", dd=0.55, advance=0.5)
-    assert _routed(s, "yes")["reason"] == "room_yes_no" and answers(s) == []
-    # longer answers are graded as usual; earth_view follows the same rule
+    assert _routed(s, "no")["reason"] == "crew_talk" and answers(s) == []
     s = lesson_session(world, PREDICT)
     hear(s, "yes it went farther", dd=0.55, advance=0.5)
-    assert _routed(s, "yes it went farther")["outcome"] == "answer"
+    assert _routed(s, "yes it went farther")["reason"] == "crew_talk" and answers(s) == []
+    # earth_view keeps the settled-question rule
     ctx = R.Ctx(screen="lesson", step_type="earth_view", step_options=["Yes", "No", "Sometimes"], source="listen", dd=0.5, step_age=0.6)
     assert R.route("yes", ctx)["reason"] == "room_yes_no"
     assert R.route("yes", R.Ctx(screen="lesson", step_type="earth_view", step_options=["Yes", "No", "Sometimes"], source="listen", dd=0.5, step_age=3.0))[
@@ -268,3 +264,19 @@ def test_a_misheard_option_name_is_still_a_try():
     assert grade.grade(st, {"text": "Malapart must be"})[1].get("choice") == "malapert_massif"
     for chatter in ("oh it s", "okay", "alright so", "rocks"):
         assert not grade.plausible(st, chatter, 0.9)
+
+
+def test_crew_talk_sends_the_exact_answer_to_the_client_as_a_chip(world):
+    """[0.4.1] The `heard` decision for a gated exact answer carries `pick` (the bar's "Heard “…” · Use it" chip);
+    gated chatter carries none; nothing is answered either way."""
+    s = lesson_session(world, PREDICT)
+    hear(s, "no", dd=0.4, advance=2.0)
+    h = [d for d in s.outbox if d["t"] == "heard"][-1]
+    assert h["reason"] == "crew_talk" and h["notice"] and h["pick"]["choice"] and h["pick"]["heard"] == "no"
+    assert answers(s) == []
+    hear(s, "no", dd=0.85, advance=2.0)                        # said again, clearly to us: it answers
+    assert len(answers(s)) == 1
+    s = lesson_session(world, PREDICT)
+    hear(s, "did you feed the dog today", dd=0.4, advance=2.0)
+    h = [d for d in s.outbox if d["t"] == "heard"][-1]
+    assert "pick" not in h and answers(s) == []

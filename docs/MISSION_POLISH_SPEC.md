@@ -148,3 +148,7 @@ Director coverage tests green.
   Enter / Space / a click opens a card over the cabin naming every patch with its school (18 px), Esc closes it and
   focus goes back. A patch earned while the cabin is up repaints the key at once and is announced
   (`outpost:patches`, mission/patches.js; tests: frontend/tests/cockpit_patches.test.js, tests/e2e/cockpit_patches_e2e.py).
+- 0.4.1 group B, mission and voice clarity: the storm procedure (Houston's order, readback, act, confirm) in mission
+  storms and the check ride; "Crew talk" for room talk on a guess or a choice; Look ahead; End shift early in the
+  Menu; plain words for science, radio days, the ice drive and the dose; a sample station in every mission. Details:
+  docs/GAMEPLAY.md §15.

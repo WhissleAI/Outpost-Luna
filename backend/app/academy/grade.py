@@ -520,7 +520,13 @@ def _sequence(acc, inp, text):
         else:
             return False, {"got": got, "next": nxt, "wrong": inp["choice"]}
     elif text and nxt:
-        got += _seq_hits(text, items, len(got))
+        if acc.get("order"):   # [0.4.1] a radio readback of an order: graded by mission/readback.py, the one grader
+            from ..mission import readback as rb
+            g = rb.grade(text, acc["order"])
+            if g["of"] and g["hit"] == g["of"] and (g["radio"] or not acc.get("radio")):
+                got = list(ids)
+        if len(got) < len(ids):
+            got += _seq_hits(text, items, len(got))
     done = len(got) == len(ids)
     return done, {"got": got, "next": None if done else ids[len(got)]}
 

@@ -194,7 +194,7 @@ def test_public_field_steps_hide_the_answers():
             if a["type"] == "rounds":
                 assert all("answer" not in r and "hint" not in r for r in a["rounds"])
                 assert all(set(o) == {"id", "label"} for o in a["options"])
-            if a["type"] == "sequence":   # shown out of order
+            if a["type"] == "sequence" and not a.get("readback"):   # shown out of order (a readback: as heard)
                 full = content.lesson(l["id"])["steps"][l["steps"].index(s)]["accept"]["items"]
                 assert [o["id"] for o in a["items"]] != [o["id"] for o in full]
             if a["type"] == "describe":

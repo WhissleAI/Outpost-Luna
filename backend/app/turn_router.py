@@ -959,6 +959,13 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         strong = len(ws) >= 3 and (dd is None or dd >= ctx.dd_strong)
         if not strong:
             return out("ignore", "speaking")
+    # 2b. [0.4.1] Crew talk: on a guess or a choice (a lesson's predict / choice step, a choice on the Now card) a spoken
+    #     answer counts only when Arc is sure it was for us (dd >= dd_strong, 0.7 at Normal). Two kids debating "yes"
+    #     / "no" never pick for them; the bar says "Crew talk" and a tap or Space still answers.
+    if crew_talk(raw, ctx, dd, nav):
+        # a quiet kid's exact answer is never dropped silently: the bar offers it back as a one-tap chip
+        pick = crew_talk_pick(raw, ctx, nav)
+        return out("ignore", "crew_talk", notice=True, **({"pick": pick} if pick else {}))
     # 3. Not for us: Arc says the kid is talking to someone else. Except the open step's own answer, said as it is
     #    written ("Right now" for the option "Right now"): Arc rates short exact answers as not directed, and the live
     #    run showed a kid stuck on that step forever (round 7, handsfree_run --audio).
@@ -1018,6 +1025,52 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         return out("question", "directed")       # the brain answers or stays quiet (never the fallback unless a question)
     # [audit2] a typed turn was meant for us: never silent (the bar shows "Didn't catch that")
     return out("ignore", "unclear", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
+
+
+CREW_TALK_STEPS = ("predict", "choice")   # [0.4.1] guess / pick steps where room talk must never answer
+
+
+def crew_talk(text: str, ctx: Ctx, dd: float | None, nav: tuple | None = None) -> bool:
+    """[0.4.1] A heard turn Arc rates under dd_strong (0.7 at Normal) that would answer a guess or a choice: a lesson's
+    predict / choice step (its option words), or a choice on the Now card (the router's task_choice). Typed, tapped and
+    Space turns carry no dd and are never gated; navigation and questions are unaffected."""
+    if dd is None or dd >= ctx.dd_strong:
+        return False
+    if ctx.screen in ("lesson", "ride") and ctx.step_type in CREW_TALK_STEPS:
+        if nav and nav[0] != "a11y":
+            return False
+        return bool(_plausible(text, ctx, dd, strict=True) or _names_option(text, ctx) or _option_key(text, ctx)
+                    or BARE_YESNO.match(norm(text)))
+    return bool(ctx.screen == "cabin" and ctx.offer == "task" and ctx.step_type not in TASK_FREE and nav
+                and nav[0] == "task_choice")
+
+
+def crew_talk_pick(text: str, ctx: Ctx, nav: tuple | None = None) -> dict | None:
+    """[0.4.1] A crew-talk turn that names one option exactly: the whole turn (after "um", "I think") is an option's
+    label or say phrase, or its key ("B", "two"); on the Now card, a short turn the task_choice matcher pins to one
+    option. -> {"label": the option as shown, "choice": its id (lesson steps), "heard": the kid's words}. None for
+    chatter. The client shows "Heard “…” · Use it"; using it is a tap on that option."""
+    heard = " ".join((text or "").split())[:40]
+    if ctx.screen == "cabin":
+        if nav and nav[0] == "task_choice" and nav[1] and len(norm(text).split()) <= 3:
+            return {"label": nav[1], "choice": None, "heard": heard}
+        return None
+    q = _LEAD.sub("", norm(text)).strip()
+    if not q:
+        return None
+    if ctx.step and ctx.step.get("accept"):
+        from .academy.grade import option_index, step_options
+        opts = step_options(ctx.step["accept"])
+        labels = {oid: say[0] for oid, say in opts}
+        k = option_index(text, len(opts))
+        if k is not None:
+            return {"label": labels[opts[k][0]], "choice": opts[k][0], "heard": heard}
+        hit = [oid for oid, say in opts if any(norm(w) == q for w in say if w)]
+        if len(hit) == 1:
+            return {"label": labels[hit[0]], "choice": hit[0], "heard": heard}
+        return None
+    hit = [o for o in ctx.step_options if norm(o) == q]
+    return {"label": hit[0], "choice": None, "heard": heard} if len(hit) == 1 else None
 
 
 YESNO_STEPS = ("predict", "earth_view")

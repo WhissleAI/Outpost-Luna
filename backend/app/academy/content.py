@@ -100,6 +100,8 @@ def public() -> dict:
                     "cats": [{"id": c, "label": DESCRIBE[c][0], "chips": list(FIELD_CHIPS[c])} for c in cats]}
         if a["type"] == "sequence":   # the chips in a fixed shuffled order (by label): the order is the answer
             acc["items"] = sorted(({"id": o["id"], "label": o["label"]} for o in a["items"]), key=lambda o: o["label"])
+            if a.get("readback"):     # [0.4.1] a readback repeats Houston's words: the chips in the order heard
+                acc["items"], acc["readback"] = [{"id": o["id"], "label": o["label"]} for o in a["items"]], True
         if a["type"] == "rounds":
             acc["options"] = [{"id": o["id"], "label": o["label"]} for o in a["options"]]
             acc["rounds"] = [{k: r[k] for k in ("id", "prompt", "clue", "rock") if r.get(k)} for r in a["rounds"]]
