@@ -47,3 +47,8 @@ test("the voice bar's state word is never cut: the field and the hint give way f
   assert.doesNotMatch(cab, /\.cb-askslot \.listen\{[^}]*max-width:40%/);
   assert.match(cab, /\.cb-askslot \.listen-state\{flex:none;/);
 });
+
+test("the key-hint chip sits beside a card header's control, never over the card's subtitle (patches card, 1440×900)", () => {
+  const keys = src("../src/input/keys.js");
+  assert.match(keys, /a\.closest\("\[role=dialog\] header"\) && r\.left - w - 6 >= 4\) \{ x = r\.left - w - 6;/);
+});

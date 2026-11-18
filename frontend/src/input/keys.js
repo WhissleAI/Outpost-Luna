@@ -211,7 +211,9 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
     hint.textContent = html.dataset.input === "pad" ? t.replace("Enter", "A").replace("Esc", "B") : t;
     hint.hidden = false;
     const w = hint.offsetWidth || 40, h = hint.offsetHeight || 18;
-    const x = Math.max(4, Math.min(innerWidth - w - 4, r.right - w + 6)), y = r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(4, r.top - h - 6);
+    let x = Math.max(4, Math.min(innerWidth - w - 4, r.right - w + 6)), y = r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(4, r.top - h - 6);
+    // [0.4.1] a control in a card's header (the patches card's close): the chip sits beside it, never over the subtitle
+    if (a.closest && a.closest("[role=dialog] header") && r.left - w - 6 >= 4) { x = r.left - w - 6; y = r.top + (r.height - h) / 2; }
     hint.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
   }
   doc.addEventListener("focusin", () => requestAnimationFrame(paintHint));
