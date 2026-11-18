@@ -132,6 +132,44 @@ const { watched, seconds } = await openVideo("psr", { context: "debrief" });   /
   calibration (`outpost:modal-open`), and Settings opened by voice closes the video, so no sheet is ever left inert
   under the video's `<dialog>`.
 
+## NASA views (0.4): `frontend/src/media/nasa_views.js`
+
+The optional `nasa_views` asset (built by `scripts/nasa_views_build.py`, packed by `scripts/asset_pack.py`; sources and
+credits in `backend/data/SOURCES.md` "NASA views") holds the real star sky, NASA 3D models, six Apollo Moon rocks,
+Earthrise / Earthset and Artemis geology-training photos, SDO frames of the 14 May 2024 storm and IAU names near the
+south pole. The desktop app downloads it in the background after the UI is up (`fetchOptional`, never on the first-run
+screen); the backend serves it (`GET /api/views`, `GET /api/views/file/<folder>/<name>`, `POST /api/views/want`;
+`backend/app/nasa_views.py`, `NASA_VIEWS_DIR`). Without it every screen keeps today's visuals.
+
+```js
+import { onViews, image, images, sdoFrames, sdoInfo, rocks, model, loadModel } from "./media/nasa_views.js";
+onViews(v => {                                   // called once the pack is installed (never without it)
+  const er = image("earthrise");                 // {url, title, caption, credit, nasa_id, source, w, h, tags}
+  const sun = sdoFrames();                       // [{url, time}] — sdoInfo() has the title, region and credit
+});
+const lm = await loadModel(model("apollo_lm").url);   // a THREE.Group (meshopt GLB), cached per url, cloned per call
+```
+
+`window.__outpost.views` is the same API. Used today (not the cabin):
+
+- **Globe** (`globe.js`, wired by `views_wire.js`): `setSky` (SVS Deep Star Maps 2020 on a sky sphere, the random
+  points stay until it has loaded), `setHardwareModels` (the Apollo LM at the six Apollo LM markers; the HTML marker keeps
+  focus, hover and tap), `setOrbiters` (LRO polar, LADEE "2013–14"; Library only, frozen with Less motion),
+  `setPolarCap` (below).
+- **Library**: a "Moon rocks" button in the toolbar opens the tray (`media/rocks_tray.js`): the six samples and the NASA
+  hardware models in a drag-to-turn viewer, with name, mission, type, a short story and the credit link.
+- **Cabin (later step)**: Earthrise / Earthset and the SDO storm frames are ready through `image()` / `sdoFrames()`.
+- **IAU names** (`names/moon_names.json`, 216 features south of 75°S and near the Apollo sites): shipped, not wired.
+  TODO(names): feed them to the entity registry / the ear's name lists (backend/app/entities, docs/ENTITY_LAYER.md);
+  that touches the Director's gazetteer and its evals, so it is its own change.
+
+**Sharp south pole** (UX_ROUNDS round-3 queue: the picker's blurry, over-zoomed pole): `setPolarCap` drapes the site
+navigator's LOLA shaded relief (`site_layers` asset, `relief.png`, south polar stereographic ±210 km, the same projection
+as the navigator's map) over the globe's polar texels, tone-matched to the colour map and faded at its edge. It needs
+only `site_layers` (not `nasa_views`), and is on for every screen that shows the globe. Still open for the cabin
+redesign: the Mission picker flies with `flyTo`'s default 75° clamp (`mission.setSite`), so it sees the pole at a
+slant; passing `{ clamp: false }` (as `poleView` does) would look straight down on the now-sharp relief.
+
 ## Lesson step (course.json)
 
 ```json

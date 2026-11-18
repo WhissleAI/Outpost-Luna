@@ -125,6 +125,7 @@ function envFor(name) {
     MEDIA_AUDIO_DIR: a.MEDIA_AUDIO_DIR,   // crew audio (optional asset; served once it is installed)
     VIDEO_PACK_DIR: a.VIDEO_PACK_DIR,     // the pinned NASA videos (optional asset; copied into the video cache)
     SITE_LAYERS_DIR: a.SITE_LAYERS_DIR,   // the site navigator's polar map layers (optional asset, docs/SITE_NAVIGATOR.md)
+    NASA_VIEWS_DIR: a.NASA_VIEWS_DIR,     // 0.4 real NASA views: star map, 3D models, Moon rocks, images (optional asset)
     VOICE_PACK_DIR: a.VOICE_PACK_DIR,
     // Settings -> About / Storage: GET /api/assets reads the summary, POST /api/assets/check asks for a check
     ASSETS_STATE_FILE: path.join(store.dir, "summary.json"),

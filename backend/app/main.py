@@ -162,6 +162,7 @@ app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 from .learn.api import router as learn_router; app.include_router(learn_router)  # noqa: E402  (on-device learning, docs/ON_DEVICE_LEARNING.md)
+from .nasa_views import router as views_router; app.include_router(views_router)  # noqa: E402  (0.4 real NASA views, optional asset)
 
 @app.get("/api/turnlog")
 def turnlog_stats():

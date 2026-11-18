@@ -58,3 +58,20 @@ the Moon Trek WMTS layers (e.g. `WAC_POLE_ILL_PCT_SOUTH_100M`, verified via its 
 South polar stereographic, lon 0 up, ±210 km, 2048 × 2048 PNG each: `relief` (LOLA shaded relief, 2.5× vertical
 exaggeration), `sunlight`, `slope`, `ice` (PSR + surface-stable ice), `earth`, plus `layers.json` (legend, unit, ramp,
 credit) and `NOTICE`. NASA data are not subject to copyright in the United States.
+
+## NASA views (`nasa_views` asset)
+
+0.4 "Real NASA views": an optional asset (`NASA_VIEWS_DIR`, ~14 MB) built at **build time** by
+`scripts/nasa_views_build.py` (`make nasa-views`), which fetches, converts and decimates, then deletes the raw downloads.
+The app never fetches these; without the asset it keeps its own visuals. `index.json` lists every file with its title,
+credit and source; `NOTICE` carries the credit line *"Uses NASA open data and 3D models (NASA 3D Resources;
+NASA/Astromaterials 3D, CC0; USGS Astrogeology); not endorsed by NASA."* and one line per item.
+
+| Part | Source | What we did |
+|---|---|---|
+| `sky/starmap_4k.jpg` | NASA/GSFC SVS [4851, Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851): `starmap_2020_4k.exr` (Hipparcos-2, Tycho-2, Gaia DR2 + Milky Way) | Linear EXR → gamma 2.2 (SVS's own print tone), JPG q88, 4096 × 2048. Plate carrée, celestial ICRF/J2000; RA 0h at the centre (`ra0_u` 0.5), RA increasing to the left. svs.gsfc.nasa.gov sends no intermediate certificate: fetched with `backend/data/video/intermediates.pem` |
+| `models/*.glb` | [NASA 3D Resources](https://science.nasa.gov/3d-resources/): Apollo Lunar Module, Habitat Demonstration Unit (parts 1 + 2, merged), RASSOR, JSC Mission Control Room, Lunar Reconnaissance Orbiter (B), LADEE | `scripts/nasa_views_glb.mjs` (gltf-transform 4.5): merge, base at y = 0, weld, simplify (RASSOR 12 %: 6.3 → 1.4 MB), textures ≤ 1024 px WebP, `EXT_meshopt_compression`. Scaled to metres where the source is not (HDU cm; LADEE to its 2.37 m height, NSSDCA 2013-047A) |
+| `rocks/*.glb` | [Astromaterials 3D](https://ares.jsc.nasa.gov/astromaterials3d/) (NASA JSC ARES; public domain, credit NASA): 15016, 60025, 76535, 70017, 79115, 65035, web-resolution photogrammetry OBJ + texture (`<sample>_A3D_EXPLORER_metadata.json` names the files) | Simplified to 20 % (40 k triangles), smooth normals, texture 1024 px WebP, meshopt; centred, metres. Name, story: condensed by hand from each sample's own story in `lunar_sample_metadata.json`; type, mission, site and mass (only where the story states it) from that JSON |
+| `images/*.jpg` | [NASA Image and Video Library](https://images.nasa.gov/): AS08-14-2383 (Earthrise), art002e009284 (Earthset), art002e014211, jsc2026e405549, jsc2024e055124 | `~orig.jpg` → ≤ 2048 px, JPG q85, EXIF dropped. Ids checked through images-api.nasa.gov; Axiom (`com-axiom`, `axemu-axiom`) ids are refused by the builder |
+| `sdo/*.jpg` | [SDO](https://sdo.gsfc.nasa.gov/) AIA 131 browse frames of 2024-05-14 (`assets/img/browse/2024/05/14/`) | 18 frames at 1024 px: 15 spread over the day plus 16:25 / 16:40 / 16:55 / 17:10 round the X8.7 flare from AR 13664 (peak 16:51 UTC); the peak frame is `"flare": true` |
+| `names/moon_names.json` | [Gazetteer of Planetary Nomenclature](https://planetarynames.wr.usgs.gov/) (IAU WGPSN / USGS Astrogeology), `MOON_nomenclature_center_pts.zip` | IAU-adopted features at or south of 75° S plus those within 1.5° of an Apollo landing site (216, 33 KB): name, lat, lon (−180..180), km, type, short origin. Not yet wired into the entity registry |

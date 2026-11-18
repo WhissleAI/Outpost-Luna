@@ -6,6 +6,7 @@ import "./mission.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
+import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional nasa_views pack)
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
@@ -117,6 +118,7 @@ async function boot() {
   };
   const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss });
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
+  wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,

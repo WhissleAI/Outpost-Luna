@@ -20,6 +20,8 @@ Assets (id -> what, where it is installed under <per-user data>/assets/<id>/, re
     videos     the pinned NASA videos (<id>.mp4/.vtt/.jpg), NASA               optional   VIDEO_PACK_DIR
     site_layers  the site navigator's polar map layers (5 PNG + layers.json), optional   SITE_LAYERS_DIR
                NASA LRO via backend/pipeline/site_physics.py (`make site-layers` first)
+    nasa_views   real NASA sky, hardware models, Moon rocks, photos, SDO frames,  optional   NASA_VIEWS_DIR
+               IAU names (index.json + NOTICE): scripts/nasa_views_build.py (`make nasa-views` builds and packs it)
 
 Each tar is deterministic (sorted, mtime 0, uid/gid 0), so rebuilding from the same sources gives the same sha256 and
 the manifest's public links stay valid. A tar whose sha256 changes loses its url (null) until scripts/upload_assets.py
@@ -267,6 +269,21 @@ def src_site_layers():
 # ---- end site_layers -------------------------------------------------------------------------------------------------
 
 
+# ---- nasa_views (0.4 "Real NASA views"; backend/data/SOURCES.md) -----------------------------------------------------
+def src_nasa_views():
+    """The staged folder scripts/nasa_views_build.py writes (index.json + NOTICE + sky/ models/ rocks/ images/ sdo/
+    names/), backend/data/cache/nasa_views by default. Every file index.json lists must be there."""
+    d = Path(os.environ.get("NASA_VIEWS_SRC", ROOT / "backend/data/cache/nasa_views"))
+    if not (d / "index.json").exists() or not (d / "NOTICE").exists():
+        sys.exit(f"{d}: NASA views missing: run `make nasa-views` (scripts/nasa_views_build.py) first")
+    import nasa_views_build
+    bad = nasa_views_build.validate_index(json.loads((d / "index.json").read_text(encoding="utf-8")), d)
+    if bad:
+        sys.exit(f"{d}/index.json: " + "; ".join(bad))
+    return [(p.relative_to(d).as_posix(), p) for p in sorted(d.rglob("*")) if p.is_file() and not p.name.startswith(".")]
+# ---- end nasa_views --------------------------------------------------------------------------------------------------
+
+
 # id, title, required, source, licence files, env var + subfolder the app points at
 ASSETS = [
     ("ear", "Speech model (Arc Transcriber Space)", True, src_ear, ["LICENSE", "NOTICE"], "ARC_SPACE_DIR", "nft2"),
@@ -278,6 +295,8 @@ ASSETS = [
     ("videos", "NASA videos", False, src_videos, ["NOTICE"], "VIDEO_PACK_DIR", ""),
     # the site navigator's map layers (optional; the app shows "Map layers downloading…" until they are in)
     ("site_layers", "Landing-site map layers (NASA LRO)", False, src_site_layers, ["NOTICE"], "SITE_LAYERS_DIR", ""),
+    # real NASA sky, models, rocks and photos (optional; without it the app keeps its procedural visuals)
+    ("nasa_views", "NASA views (sky, 3D models, Moon rocks, photos)", False, src_nasa_views, ["NOTICE"], "NASA_VIEWS_DIR", ""),
 ]
 
 
@@ -344,6 +363,10 @@ def build(only: set[str] | None) -> dict:
             a.setdefault("version", "1"); a.setdefault("min_app", "0.3.0")
             a["note"] = ("Optional: the site navigator's polar map layers (NASA LRO LOLA + Diviner; "
                          "backend/pipeline/site_physics.py). The app works without them.")
+        if aid == "nasa_views":   # new in 0.4; url null until uploaded (scripts/upload_assets.py)
+            a.setdefault("version", "1"); a.setdefault("min_app", "0.4.0")
+            a["note"] = ("Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO "
+                         "frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.")
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
             a["fallback"] = {"kind": "files", "base": HF,

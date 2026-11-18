@@ -49,12 +49,14 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   const moon = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 96), new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 }));
   scene.add(moon);
 
-  { // stars
+  // stars: 1,400 random points until the real sky (the nasa_views pack's NASA SVS Deep Star Maps) is in (setSky)
+  const starPts = (() => {
     const g = new THREE.BufferGeometry(), n = 1400, p = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(30 + Math.random() * 20); p.set([v.x, v.y, v.z], i * 3); }
     g.setAttribute("position", new THREE.BufferAttribute(p, 3));
-    scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc8d0ff, size: 0.08, sizeAttenuation: true, transparent: true, opacity: .7 })));
-  }
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xc8d0ff, size: 0.08, sizeAttenuation: true, transparent: true, opacity: .7 }));
+    scene.add(pts); return pts;
+  })();
 
   const pins = new THREE.Group(); scene.add(pins);
   const pinMat = new THREE.MeshBasicMaterial({ color: 0xffc35a }), pinEst = new THREE.MeshBasicMaterial({ color: 0x7cc7ff });
@@ -316,6 +318,138 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     });
   }
 
+  // ---------- 0.4 real NASA views (media/nasa_views.js): star sky, south-pole relief, hardware models ----------
+  // All optional: each setter is called once its data is in; until then (or if a load fails) today's visuals stay.
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  let skyMesh = null;
+  /** The real sky: SVS Deep Star Maps 2020 on a sphere around everything, replacing the random points. The celestial
+   *  pole is tilted by the obliquity (23.44°) so the ecliptic lies along the Moon's equator (within its 1.5°). */
+  function setSky(url, opt = {}) {
+    return new Promise(res => new THREE.TextureLoader().load(url, t => {
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso; t.wrapS = THREE.RepeatWrapping;
+      if (opt.flipX) t.repeat.x = -1;
+      t.offset.x = opt.offsetU || 0;
+      if (skyMesh) { scene.remove(skyMesh); skyMesh.geometry.dispose(); skyMesh.material.map.dispose(); skyMesh.material.dispose(); }
+      skyMesh = new THREE.Mesh(new THREE.SphereGeometry(60, 64, 32),
+        new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide, depthWrite: false, color: new THREE.Color(opt.dim || 0.85, opt.dim || 0.85, opt.dim || 0.85) }));
+      skyMesh.rotation.x = 23.44 * Math.PI / 180; skyMesh.renderOrder = -1;
+      scene.add(skyMesh); starPts.visible = false; res(true);
+    }, undefined, () => res(false)));   // a failed load keeps the random stars
+  }
+
+  let cap = null;
+  /** A sharp south pole: the LOLA shaded relief (site_layers' relief.png, south polar stereographic, lon 0 up, ±extentKm)
+   *  draped over the globe's blurry polar texels, fading out at its edge. Same projection as the site navigator's map. */
+  function setPolarCap(url, extentKm = 210, { tone = [0.686, 0.674, 0.647], contrast = 0.8 } = {}) {
+    return new Promise(res => new THREE.ImageLoader().load(url, img => {
+      const t = new THREE.CanvasTexture(matchTone(img, tone, contrast));
+      t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = maxAniso;
+      const N = 96, E = extentKm, pos = [], nor = [], uv = [], idx = [];
+      for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+        const x = -E + 2 * E * i / N, y = -E + 2 * E * j / N, r = Math.hypot(x, y);
+        const lat = 2 * Math.atan(r / (2 * MOON_KM)) * 180 / Math.PI - 90, lon = Math.atan2(x, y) * 180 / Math.PI;
+        const v = ll2v(lat, lon, R * 1.0006), n = v.clone().normalize();
+        pos.push(v.x, v.y, v.z); nor.push(n.x, n.y, n.z); uv.push(i / N, j / N);
+      }
+      const at = (i, j) => j * (N + 1) + i;
+      // wind the triangles so their front faces look out from the Moon (checked on the first one)
+      const A = new THREE.Vector3(...pos.slice(0, 3)), B = new THREE.Vector3(...pos.slice(3, 6)), C = new THREE.Vector3(...pos.slice(at(0, 1) * 3, at(0, 1) * 3 + 3));
+      const out = B.clone().sub(A).cross(C.clone().sub(A)).dot(A) > 0;
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const a = at(i, j), b = at(i + 1, j), c = at(i, j + 1), d = at(i + 1, j + 1);
+        if (out) idx.push(a, b, c, b, d, c); else idx.push(a, c, b, b, c, d);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+      const fade = document.createElement("canvas"); fade.width = fade.height = 256;
+      { const c = fade.getContext("2d"), gr = c.createRadialGradient(128, 128, 0, 128, 128, 128);
+        gr.addColorStop(0, "#fff"); gr.addColorStop(.62, "#fff"); gr.addColorStop(1, "#000"); c.fillStyle = "#000"; c.fillRect(0, 0, 256, 256); c.fillStyle = gr; c.fillRect(0, 0, 256, 256); }
+      if (cap) { moon.remove(cap); cap.geometry.dispose(); cap.material.dispose(); }
+      cap = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, alphaMap: new THREE.CanvasTexture(fade), transparent: true, roughness: 1, metalness: 0,
+        depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+      cap.name = "polar-cap"; moon.add(cap); res(true);
+    }, undefined, () => res(false)));
+  }
+
+  /** The LOLA hillshade is darker and far more contrasty than the colour map around it: shift it to the colour map's
+   *  polar mean (tone, sRGB 0..1) with a gentler contrast, so the sharp pole reads as the same Moon, not a patch. */
+  function matchTone(img, tone, contrast) {
+    const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+    let sum = 0, n = 0;
+    for (let i = 0; i < px.length; i += 64) { sum += px[i]; n++; }
+    const mean = sum / Math.max(1, n) / 255;
+    for (let i = 0; i < px.length; i += 4) {
+      const v = (px[i] / 255 - mean) * contrast;
+      px[i] = 255 * Math.min(1, Math.max(0, tone[0] + v)); px[i + 1] = 255 * Math.min(1, Math.max(0, tone[1] + v)); px[i + 2] = 255 * Math.min(1, Math.max(0, tone[2] + v));
+    }
+    g.putImageData(d, 0, 0); return c;
+  }
+
+  // Hardware in 3D: a model stands on the surface at its marker (the HTML marker stays: focus, hover, tap, its card),
+  // and orbiters circle the Moon. Not to scale (a real LM is 7 m): sized to read at the Library's zoom.
+  const hw3d = new THREE.Group(), orbit3d = new THREE.Group(); hw3d.name = "hw3d"; orbit3d.name = "orbiters";
+  scene.add(hw3d, orbit3d);
+  const UP = new THREE.Vector3(0, 1, 0);
+  /** Scale a model so its largest side is `size`, its base at y = 0, centred on x/z. -> a wrapper group */
+  function fit(obj, size) {
+    const box = new THREE.Box3().setFromObject(obj), dim = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+    const k = size / Math.max(dim.x, dim.y, dim.z, 1e-6);
+    obj.position.set(-c.x * k, -box.min.y * k, -c.z * k); obj.scale.setScalar(k);
+    const w = new THREE.Group(); w.add(obj); return w;
+  }
+  /** models: (artifact) -> a fresh THREE.Object3D or null. Each artifact with a model loses its diamond. -> count */
+  function setHardwareModels(modelFor, size = 0.03) {
+    let n = 0;
+    hw3d.clear();
+    ghosts.forEach(g => {
+      const obj = modelFor(g.a);
+      g.el.classList.toggle("has-model", !!obj);
+      if (!obj) return;
+      const w = fit(obj, size), nrm = ll2v(g.a.lat, g.a.lon).normalize();
+      w.position.copy(nrm.clone().multiplyScalar(R * 1.0005)); w.quaternion.setFromUnitVectors(UP, nrm);
+      w.name = "hw:" + g.a.id; hw3d.add(w); n++;
+    });
+    return n;
+  }
+  const orbiters = [];
+  /** list: [{id, obj, label, incl (deg, 90 = polar), alt (Moon radii above the surface), period (s), phase (0..1)}] */
+  function setOrbiters(list) {
+    orbiters.splice(0).forEach(o => o.tag.remove()); orbit3d.clear();
+    list.forEach(o => {
+      const w = fit(o.obj, o.size || 0.055); orbit3d.add(w);
+      const tag = document.createElement("span"); tag.className = "orb-tag"; tag.textContent = o.label; tag.setAttribute("aria-hidden", "true"); layer.append(tag);
+      const inc = (o.incl || 0) * Math.PI / 180;
+      orbiters.push({ ...o, w, tag, r: R * (1 + (o.alt || 0.08)), n1: new THREE.Vector3(1, 0, 0), n2: new THREE.Vector3(0, Math.sin(inc), Math.cos(inc)) });
+    });
+    return orbiters.length;
+  }
+  const oc = new THREE.Vector3(), od = new THREE.Vector3();
+  /** A point in space hidden behind the Moon (the camera's line to it passes through the sphere first). */
+  function occluded(p) {
+    od.copy(p).sub(camera.position); const t = -camera.position.dot(od) / od.lengthSq();
+    return t > 0 && t < 1 && oc.copy(od).multiplyScalar(t).add(camera.position).length() < R;
+  }
+  function tickViews(now) {
+    const on = layer.style.display !== "none" && document.body.dataset.mode === "cadet";
+    hw3d.visible = orbit3d.visible = on;
+    if (!orbiters.length) return;
+    const w = stage.clientWidth, h = stage.clientHeight;
+    orbiters.forEach(o => {
+      const th = 2 * Math.PI * ((o.phase || 0) + (lessMotion() ? 0 : now / 1000 / (o.period || 60)));
+      const p = o.n1.clone().multiplyScalar(Math.cos(th)).add(o.n2.clone().multiplyScalar(Math.sin(th))).multiplyScalar(o.r);
+      const v = o.n2.clone().multiplyScalar(Math.cos(th)).sub(o.n1.clone().multiplyScalar(Math.sin(th)));
+      o.w.position.copy(p); o.w.up.copy(p).normalize(); o.w.lookAt(p.clone().add(v));
+      const hide = !on || occluded(p);
+      o.tag.style.visibility = hide ? "hidden" : "";
+      if (hide) return;
+      tmp.copy(p).project(camera);
+      o.tag.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px)`;
+    });
+  }
+
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
   let band = null, paused = false;
@@ -357,7 +491,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       label.style.left = ((tmp.x + 1) / 2 * stage.clientWidth) + "px"; label.style.top = ((1 - tmp.y) / 2 * stage.clientHeight) + "px";
       label.style.opacity = facing ? 1 : 0;
     }
-    tickMission(); tickRoute(); tickGuide();
+    tickMission(); tickRoute(); tickGuide(); tickViews(now);
     if (!paused) renderer.render(scene, camera); requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -407,6 +541,9 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     /** Stop any flight in progress where it is. */
     halt() { endFly(); },
     route, guide,
+    // 0.4 real NASA views (media/nasa_views.js; all optional, today's visuals until called)
+    setSky, setPolarCap, setHardwareModels, setOrbiters,
+    get skyReal() { return !!skyMesh; }, get polarCap() { return !!cap; },
     /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
     clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },
     /** Settings → Display → Graphics: "low" renders at 1× pixel ratio (lighter on older laptops). */
