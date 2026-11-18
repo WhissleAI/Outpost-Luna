@@ -16,7 +16,7 @@ import { maskProfanity, hasProfanity } from "./profanity.js";
 import { paintLinked } from "./highlight.js";   // the ear's linked names, marked in the kid's words
 import * as echoref from "./echoref.js";       // what we play -> the ear's echo reference (libarc ABI 2)
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
-import { onEngine, earNote } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
+import { onEngine, earNote, earErrorIsFatal, setEarFailed, earFailed } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
 export { spaceAction, micErrorText };
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
@@ -346,7 +346,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
 
   const listener = createListener({
     message(m) {
-      if (m.t === "ready") { idle(); if (lastContext) listener.send(lastContext); }
+      if (m.t === "ready") { if (earFailed()) { setEarFailed(false); note(earNote() || HOLD); } idle(); if (lastContext) listener.send(lastContext); }   // [0.3.12] an ear that answers clears "Voice off"
       else if (m.t === "arc") { arcSeen = true; if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
       else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
       else if (m.t === "words" || m.t === "turn") {
@@ -371,7 +371,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "end") { if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
-      else if (m.t === "error") { console.warn("ear error:", m.message); note(earNote() || "Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
+      else if (m.t === "error") { console.warn("ear error:", m.message); if (earErrorIsFatal(m.message)) setEarFailed(true); note(earNote() || "Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
     },
     level,
     close() { if (mode === "ws") { mode = "off"; kidTalking = false; if (floor) floor.setKid(false); set("off"); earLost(); } },

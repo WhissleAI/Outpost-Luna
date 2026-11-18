@@ -77,3 +77,51 @@ test("a mic that was never on is not opened by the ear coming back (no mic witho
   await tick();
   assert.equal(cur.starts, 0);
 });
+
+// ---- [0.3.12] P0: no "Starting voice…" for minutes when the ear already failed ----
+const H = (ear, extra = {}) => ({ model_server: { ok: true, models: { arc_ear: ear, tts: { loaded: true } } }, ...extra });
+
+test("warmState: a loaded ear is ready; a starting model server is warming; an ear load error is off at once", () => {
+  assert.equal(E.warmState(H({ available: true, decoder_loaded: true, error: null }), 1000), "ready");
+  assert.equal(E.warmState({ model_server: { ok: false, error: "model server unreachable" } }, 1000), "warming");
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: "FileNotFoundError: libarc not built" }), 500), "off");
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: "ARC_EAR=off (disabled)" }), 0), "off");
+  // a reload after a hung decode comes back by itself: still warming
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: "reloading after a hung decode (x)" }), 500), "warming");
+  // no error yet (still loading): warming until the 3-minute limit, then off
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: null }), 10000), "warming");
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: null }), E.WARM_MS), "off");
+  // Deepgram serves the voice (configured, or the fallback for a failed local ear): ready
+  assert.equal(E.warmState(H({ available: false, decoder_loaded: false, error: "x" }, { voice: { ear: "arc", fallback: true } }), 0), "ready");
+});
+
+test("earErrorIsFatal: a dead ear vs a blip that reconnects", () => {
+  assert.equal(E.earErrorIsFatal("local ear unavailable (FileNotFoundError: libarc not built) and no DEEPGRAM_API_KEY"), true);
+  assert.equal(E.earErrorIsFatal("DEEPGRAM_API_KEY is not set on the backend"), true);
+  assert.equal(E.earErrorIsFatal("local ear unavailable (model server unreachable: ConnectError) and no DEEPGRAM_API_KEY"), false);
+  assert.equal(E.earErrorIsFatal("local ear unavailable (META_MAX_SESSIONS reached) and no DEEPGRAM_API_KEY"), false);
+  assert.equal(E.earErrorIsFatal("local ear closed"), false);
+  assert.ok(E.VOICE_FIX.split(/\s+/).length <= 12, "one short line (COPY.md)");
+});
+
+test("the ear's first fatal error turns the hint to the fix line at once; an ear that answers clears it", async () => {
+  await els.mic.onclick(); await tick();
+  const seen = []; const off = E.onEarFailed(on => seen.push(on));
+  ear.message({ t: "error", message: "local ear unavailable (FileNotFoundError: libarc not built) and no DEEPGRAM_API_KEY" });
+  assert.equal(E.earFailed(), true);
+  assert.equal(hint(), E.VOICE_FIX);
+  ear.close();
+  assert.equal(hint(), E.VOICE_FIX, "the reconnect back-off keeps the fix line, not 'Reconnecting…'");
+  ear.message({ t: "ready" });
+  assert.equal(E.earFailed(), false);
+  assert.equal(hint(), "Hold to talk");
+  off();
+  assert.deepEqual(seen, [true, false]);
+});
+
+test("a blip (ear closed) is not voice off", async () => {
+  await els.mic.onclick(); await tick();
+  ear.message({ t: "error", message: "local ear closed" });
+  assert.equal(E.earFailed(), false);
+  assert.equal(hint(), "Voice paused. Reconnecting…");
+});

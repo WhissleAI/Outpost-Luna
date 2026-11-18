@@ -142,7 +142,9 @@ def health() -> dict:
     return {
         "arc_meta": {"loaded": up, "error": STATE["error"], "model": MODEL, "load_s": STATE["load_s"],
                      "sessions": STATE["sessions"], "max_sessions": meta_settings.meta_max_sessions},
-        "arc_ear": {"available": up, "model": MODEL, "revision": ARC_REVISION[:7], "backend": STATE["backend"],
+        # error: why the ear is not up (a failed load, ARC_EAR=off, a reload after a hung decode); the voice bar reads
+        # it to say "Voice off · type" at once instead of "Starting voice…" for minutes (frontend/src/engine.js)
+        "arc_ear": {"available": up, "error": None if up else STATE["error"], "model": MODEL, "revision": ARC_REVISION[:7], "backend": STATE["backend"],
                     "decoder_loaded": up, "load_s": STATE["load_s"], "rss_after_load_mb": STATE["rss_mb"],
                     "rss_load_delta_mb": STATE["rss_delta_mb"], "rss_now_mb": _rss_mb(),
                     # libarc ABI / version, the ONNX Runtime it runs on (pinned | wheel | env) and the model files'
