@@ -8,7 +8,8 @@ Checks:
   guide.html or the README, or behind a <details> disclosure (exempt).
 - Every page: the NASA disclaimer line in the footer; no LLM vendor or model names; nothing about kids or ages.
 - Every <img>: alt, width and height (no layout shift).
-- index.html: both download buttons (the Windows one carries data-win for dl.js) and the video slot
+- index.html: both download buttons (data-mac / data-win for dl.js, which links each to the newest release that has
+  its file and shows that version) and the video slot
   (<figure data-film="media/outpost-luna">, see site/film.js).
 """
 from __future__ import annotations
@@ -93,9 +94,8 @@ def check(path: Path) -> list[str]:
             for s in re.split(r"(?<=[.!?])\s+", txt):
                 if words(s) > 20:
                     errs.append(f"{name}: sentence over 20 words: {s!r}")
-        hrefs = [a.get("href", "") for a in p.links]
-        if not any(h.endswith("/Outpost-Luna-mac-arm64.dmg") for h in hrefs):
-            errs.append(f"{name}: no Download for Mac link")
+        if not any("data-mac" in a and a.get("href", "").endswith("/Outpost-Luna-mac-arm64.dmg") for a in p.links):
+            errs.append(f"{name}: no Download for Mac link with data-mac")
         if not any("data-win" in a and a.get("href", "").endswith("/Outpost-Luna-win-x64.exe") for a in p.links):
             errs.append(f"{name}: no Download for Windows link with data-win")
         if not any(f.get("data-film") == "media/outpost-luna" for f in p.figs):

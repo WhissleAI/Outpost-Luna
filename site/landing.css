@@ -87,6 +87,8 @@ h1 em { font-style: normal; color: var(--acc); }
 .btn.primary { background: var(--btn); color: var(--btn-ink); border-color: var(--btn); }
 .btn.primary:hover { background: var(--btn-hover); border-color: var(--btn-hover); }
 .btn.ghost { background: transparent; box-shadow: none; }
+.btn .ver { font-weight: 500; font-size: 12px; opacity: .75; font-variant-numeric: tabular-nums; }
+.btn .ver[hidden] { display: none; }
 .fine { color: var(--ink-3); font-size: 13.5px; margin: 16px 0 0; }
 .fine a { color: var(--ink-2); }
 
