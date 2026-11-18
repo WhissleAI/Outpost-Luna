@@ -26,6 +26,10 @@ site-physics:    ## Landing-site navigator numbers from NASA LRO + Horizons -> b
 site-layers:     ## The navigator's polar map layers + the site-layers tar/sha256 (backend/data/cache), then drop the raster cache
 	cd backend && uv run python -m pipeline.site_physics fetch && uv run python -m pipeline.site_physics layers && uv run python -m pipeline.site_physics clean
 
+nasa-views:      ## 0.4 NASA views asset: sky, 3D models, Moon rocks, photos, SDO, IAU names -> backend/data/cache/nasa_views + its tar (scripts/nasa_views_build.py)
+	uv run --no-project --with OpenEXR==3.5.4 --with numpy --with pillow --with certifi python -I scripts/nasa_views_build.py
+	uv run --project backend python scripts/asset_pack.py --only nasa_views --no-zip
+
 media-desktop:   ## Trimmed mono crew clips for the desktop installer -> backend/data/media/desktop (after `make data`)
 	cd backend && uv run --with imageio-ffmpeg==0.6.0 python -m pipeline.trim_media
 
@@ -183,4 +187,4 @@ release-check:   ## Release gates before every release (docs/RELEASING.md): unit
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check site-physics site-layers ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: release-check site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop

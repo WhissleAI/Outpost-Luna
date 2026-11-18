@@ -4708,6 +4708,224 @@
    "note": "Optional: the site navigator's polar map layers (NASA LRO LOLA + Diviner; backend/pipeline/site_physics.py). The app works without them.",
    "max_app": null,
    "requires": []
+  },
+  {
+   "id": "nasa_views",
+   "title": "NASA views (sky, 3D models, Moon rocks, photos)",
+   "required": false,
+   "file": "outpost-luna-v2-nasa_views.tar",
+   "url": null,
+   "sha256": "e97b50ce86b714383ca13751cc73379d2c94467aab946d6e2d8f63ecc23845a9",
+   "size": 14325760,
+   "unpacked_size": 14285786,
+   "n_files": 39,
+   "env": "NASA_VIEWS_DIR",
+   "subdir": "",
+   "licence": [
+    "NOTICE"
+   ],
+   "files": [
+    {
+     "path": "NOTICE",
+     "size": 3104,
+     "sha256": "2ab16b6613e18966ebc7779065bfa5bea57affaa72cb3f8facbd6fb57cde7e4d"
+    },
+    {
+     "path": "images/art002e014211.jpg",
+     "size": 35480,
+     "sha256": "d4d4139844a70795924551bbf1e6bd2747fc27dbe1155d2524690760e4912478"
+    },
+    {
+     "path": "images/earthrise.jpg",
+     "size": 160885,
+     "sha256": "0d0f9e5ed08bcc7c21f280ec3d7ced2e9146705d7976c9e8bf7b58f4996c0880"
+    },
+    {
+     "path": "images/earthset.jpg",
+     "size": 76791,
+     "sha256": "cdfbb11cd1d8f4a8c12720515366b364aa53b52cd8c78de7ee0209e82277daf6"
+    },
+    {
+     "path": "images/geology_iceland_2024.jpg",
+     "size": 374191,
+     "sha256": "664fbc475866dbc1abf91e2b87d56d29181e0835ef911860c852a986d460e136"
+    },
+    {
+     "path": "images/geology_iceland_2026.jpg",
+     "size": 686080,
+     "sha256": "8a4f2fd68da12954d6e223b8d7b95c3f6172b60242910d783a49ba2173bc601a"
+    },
+    {
+     "path": "index.json",
+     "size": 10641,
+     "sha256": "959456dd451d8b3cf478b7a67cebda429d0f0360c5bdd2536741a8be0834e6e5"
+    },
+    {
+     "path": "models/apollo_lm.glb",
+     "size": 716216,
+     "sha256": "1f3e9ab652bfb66960328a5167081ae89f08bd7ecc2261c4d2bcf6ce3f5a2125"
+    },
+    {
+     "path": "models/hdu.glb",
+     "size": 152848,
+     "sha256": "1b95b642b67126ec560cba664393248140496333f01000b5f27dccc6a377497f"
+    },
+    {
+     "path": "models/ladee.glb",
+     "size": 393532,
+     "sha256": "62932fe9c5e0969cc281b5d26b9ff0fc3313ad5107c6ea3eb3b49e814e32d654"
+    },
+    {
+     "path": "models/lro.glb",
+     "size": 246328,
+     "sha256": "b9a9aa622976bcbe53811a8584fc2d5ad8753bde3d89ec7ae5b35fc86d5d8412"
+    },
+    {
+     "path": "models/mcc.glb",
+     "size": 60292,
+     "sha256": "7786f5612d69846792bde24a5ee1f53cbc66a4b4ab55e4bb3ed5d4ff15b2608f"
+    },
+    {
+     "path": "models/rassor.glb",
+     "size": 1442744,
+     "sha256": "90e3452f67d1abe136b1bc9e62464daa6ce1d548693b70afe4f2fbb8396023b7"
+    },
+    {
+     "path": "names/moon_names.json",
+     "size": 32963,
+     "sha256": "44fb06bf6518839afbfa250e5f3bb1de80edd9a995f9ed25edb4072033dd8236"
+    },
+    {
+     "path": "rocks/15016.glb",
+     "size": 1314200,
+     "sha256": "55e1f5d9630f7b6c865c575559a56818174f33086fc57cd851a485d5d0ea5455"
+    },
+    {
+     "path": "rocks/60025.glb",
+     "size": 788580,
+     "sha256": "bc25eaa1bc4e0a0797bedaacb099c1bfd85a83ca14032db886dac04a64049040"
+    },
+    {
+     "path": "rocks/65035.glb",
+     "size": 1066424,
+     "sha256": "8ab2a72a02807ecb4138759ff7c28353bc761a2c6c4ad865390a75492874c51f"
+    },
+    {
+     "path": "rocks/70017.glb",
+     "size": 747568,
+     "sha256": "0454e7d71f99d0858a0cfa0eb56fde89d92a27d97f18e6b22b92ae875868b269"
+    },
+    {
+     "path": "rocks/76535.glb",
+     "size": 512392,
+     "sha256": "4f729462c014b9a9e0fc75c0c0d2db9ed98eb47672b4629e64596d53bdb3ee4f"
+    },
+    {
+     "path": "rocks/79115.glb",
+     "size": 458348,
+     "sha256": "fe238a2d1c1e9fbf775957c4e26c5ae005ad2f25fe3eaf15a3aa1460c1d87c89"
+    },
+    {
+     "path": "sdo/00.jpg",
+     "size": 141715,
+     "sha256": "326e3682cc349f7769562516647b4a5dd2d97c84223e473187c2f853e25a412d"
+    },
+    {
+     "path": "sdo/01.jpg",
+     "size": 141666,
+     "sha256": "e0814ee3f8c541b4b6536c60baf6ee8f997cc93575eaf18bcd4caddf2f9aac4f"
+    },
+    {
+     "path": "sdo/02.jpg",
+     "size": 141349,
+     "sha256": "0be27bcc6ca4441e21a72ff6cea84761e4c41b46861233692bd4e442a302195e"
+    },
+    {
+     "path": "sdo/03.jpg",
+     "size": 141461,
+     "sha256": "fc3c33f18d140072ce810366d3b56d1aaa174ed5c13c8c84213d13159803703f"
+    },
+    {
+     "path": "sdo/04.jpg",
+     "size": 140993,
+     "sha256": "35e34305e8420335ebc3c5c6f9c95091916d35adc2db0b8a5f22e49b9bfee972"
+    },
+    {
+     "path": "sdo/05.jpg",
+     "size": 140885,
+     "sha256": "3705ac20412bbf9e25026b1ec00faf0acea167fc19bd6d95787a11b2ce4dc339"
+    },
+    {
+     "path": "sdo/06.jpg",
+     "size": 141476,
+     "sha256": "7acdf300e7b7968eb89ca5e37ef0e3b0c20174f8fbdae9807a341931ee0e8ac2"
+    },
+    {
+     "path": "sdo/07.jpg",
+     "size": 141523,
+     "sha256": "31c41e231669e419c37a7e9dab301e19b7b6f8250270c45b8f7f10afb8b35d65"
+    },
+    {
+     "path": "sdo/08.jpg",
+     "size": 141280,
+     "sha256": "f5f27c9af5a01792f82c8da9250eb426275fcaff74547920bfc11b1b49c7df32"
+    },
+    {
+     "path": "sdo/09.jpg",
+     "size": 140722,
+     "sha256": "127cbfffba66310e24592a66ff2ee6766f998b1011544706a6f744dddc9cbb54"
+    },
+    {
+     "path": "sdo/10.jpg",
+     "size": 140842,
+     "sha256": "6ebbdd3b27f263a1fcd2815858c3318f4f387428caf69dc771275114aa3267d1"
+    },
+    {
+     "path": "sdo/11.jpg",
+     "size": 140651,
+     "sha256": "2da917b5a2d27855af0369bcd5e1091527df19d4fa271c3b637360d705c809ba"
+    },
+    {
+     "path": "sdo/12.jpg",
+     "size": 339289,
+     "sha256": "8bd6eae62cdbec8b1460a6a6755b7d4d753b84182bc0f66b045cdf16025d9771"
+    },
+    {
+     "path": "sdo/13.jpg",
+     "size": 318685,
+     "sha256": "aeabcf2ca685721d682d0eb6a8e5d59946fbc5467591615fb1994bfaeb127333"
+    },
+    {
+     "path": "sdo/14.jpg",
+     "size": 141293,
+     "sha256": "56c4c8da097ccf3a0c6bb7a5c0b49c25a4e76d879ae3df5712bf5620eb320482"
+    },
+    {
+     "path": "sdo/15.jpg",
+     "size": 140689,
+     "sha256": "b3337b397c196eff98980034feac8c66ac29272cadf055e2fd56520bdbe209c2"
+    },
+    {
+     "path": "sdo/16.jpg",
+     "size": 140447,
+     "sha256": "8c12a50292ec872876b4f1d89f92f63599b58e04fb11b49b029351947b259e1a"
+    },
+    {
+     "path": "sdo/17.jpg",
+     "size": 140185,
+     "sha256": "79f9fe78aa81525a3f6e7d4e57866f7a36632e620c89f33c7b2142697aa2a9a8"
+    },
+    {
+     "path": "sky/starmap_4k.jpg",
+     "size": 2091028,
+     "sha256": "58de4981adc5b703791b4171748ba2bb0bcfc2c319b72841cbd795e8d5099bba"
+    }
+   ],
+   "version": "1",
+   "min_app": "0.4.0",
+   "note": "Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.",
+   "max_app": null,
+   "requires": []
   }
  ],
  "offline_pack": {
@@ -4717,6 +4935,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-17T19:02:20Z",
- "version": "2026.11.17.1902"
+ "published_at": "2026-11-18T04:17:11Z",
+ "version": "2026.11.18.0417"
 }

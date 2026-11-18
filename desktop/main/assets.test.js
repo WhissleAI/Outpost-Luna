@@ -283,3 +283,43 @@ test("videos v1 installed, the 0.3.11 manifest wants v2: outdated, fetched after
     assert.equal(store.check(a), "outdated");               // tried again next launch; the old videos still play
   } finally { srv.close(); }
 });
+
+test("nasa_views (0.4): optional, fetched in the background, never blocks start; a damaged tar never installs", async () => {
+  const U = require("./updates");
+  const m = A.loadManifest(path.join(__dirname, "..", "assets.manifest.json"));
+  const nv = m.assets.find((x) => x.id === "nasa_views");
+  assert.ok(nv, "the bundled manifest lists nasa_views");
+  assert.equal(nv.required, false);
+  assert.ok(!nv.on_demand, "fetched after the UI is up (fetchOptional), not only on demand");
+  assert.equal(nv.env, "NASA_VIEWS_DIR");
+  assert.ok(A.cmpVersion(nv.min_app, "0.4.0") >= 0, "only 0.4+ apps know how to show it");
+  assert.match(nv.sha256, /^[0-9a-f]{64}$/);
+  assert.ok(nv.size > 1e6 && nv.size <= 40e6, `pack size ${nv.size}`);
+  assert.ok(nv.licence.includes("NOTICE") && nv.files.some((f) => f.path === "NOTICE") && nv.files.some((f) => f.path === "index.json"));
+  for (const f of nv.files) assert.match(f.sha256, /^[0-9a-f]{64}$/, f.path);
+  assert.ok(!A.REQUIRED_IDS.includes("nasa_views"));
+  // a tiny stand-in pack, served: the store installs it and points NASA_VIEWS_DIR at it
+  const files = { "index.json": Buffer.from('{"pack":"nasa_views"}'), "NOTICE": Buffer.from("Uses NASA open data; not endorsed by NASA.\n") };
+  const t = tar(files);
+  const a = { ...nv, url: null, file: "nv.tar", sha256: sha(t), size: t.length, unpacked_size: 100,
+    files: Object.entries(files).map(([p, b]) => ({ path: p, size: b.length })) };
+  const dir = tmp();
+  const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 1 });
+  assert.deepEqual(U.setupNeeds(store.status(), { assets: [a] }), { required: [], optional: ["nasa_views"] });
+  await assert.rejects(store.ensure(["nasa_views"]), /no download link/);   // not uploaded yet: logged, next launch tries again
+  const bad = Buffer.from(t); bad[600] ^= 0xff;
+  const { srv, base } = await serve({ "/nv.tar": t, "/bad.tar": bad });
+  try {
+    await assert.rejects(store.download({ ...a, url: base + "/bad.tar" }), /sha256 mismatch/);
+    assert.equal(store.check(a), "missing");
+    await store.download({ ...a, url: base + "/nv.tar" });
+    assert.equal(store.check(a), "installed");
+    assert.equal(store.envPaths().NASA_VIEWS_DIR, path.join(dir, "nasa_views"));
+    assert.ok(fs.existsSync(path.join(dir, "nasa_views", "index.json")));
+  } finally { srv.close(); }
+});
+
+test("main.js hands NASA_VIEWS_DIR to the backend", () => {
+  const src = fs.readFileSync(path.join(__dirname, "main.js"), "utf8");
+  assert.match(src, /NASA_VIEWS_DIR: a\.NASA_VIEWS_DIR/);
+});
