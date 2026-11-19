@@ -202,8 +202,8 @@ def units(m) -> dict:
     draw = S.draw_per_h(m)
     t_out = outside_k(m)
     return {"battery_kwh": round(kwh(m.power), 1), "battery_capacity_kwh": model()["battery_kwh"]["value"],
-            "soc_pct": round(m.power, 1), "solar_kw": round(kw(gen), 2), "backup_kw": round(kw(S.BACKUP_GEN), 2),
-            "load_kw": round(kw(draw), 2), "net_kw": round(kw(gen + S.BACKUP_GEN - draw), 2),
+            "soc_pct": round(m.power, 1), "solar_kw": round(kw(gen), 2), "backup_kw": round(kw(m.backup_gen), 2),
+            "load_kw": round(kw(draw), 2), "net_kw": round(kw(gen + m.backup_gen - draw), 2),
             "heater_kw": round(heater_kw(m), 2), "heater_duty_pct": round(heater_duty(m) * 100),
             "heater_rated_kw": round(heater_rated_kw(), 2),
             "outside_k": None if t_out is None else round(t_out), "outside_c": None if t_out is None else round(c_of_k(t_out)),
@@ -249,7 +249,7 @@ def _power(m, env) -> dict:
 
 def _battery(m, env) -> dict:
     S = _sim()
-    gen = S.SOLAR_GEN * m.array_eff * env["sun_frac"] + S.BACKUP_GEN
+    gen = S.SOLAR_GEN * m.array_eff * env["sun_frac"] + m.backup_gen
     draw = S.draw_per_h(m)
     net = gen - draw
     B = model()["battery_kwh"]["value"]
@@ -375,7 +375,7 @@ def account(m, env: dict, gen: float, draw: float, p: float, r: float, r_open: f
         L.update(solar=0.0, load=0.0, heater=0.0, rover=0.0, nights=[], storms={}, min_power=power_before)
     used = draw * p
     heat = used * load_share(m, "heaters")
-    L["solar"] += gen - S.BACKUP_GEN
+    L["solar"] += gen - m.backup_gen
     L["load"] += used
     L["heater"] += heat
     L["min_power"] = min(L["min_power"], m.power)

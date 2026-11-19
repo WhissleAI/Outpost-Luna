@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import random
 
-from . import physics, sim
+from . import campaign, physics, sim
 
 
 
@@ -115,7 +115,7 @@ ARC = ["arrival", "settle", "comm_gap", "first_dark", "forecast", "crisis", "rec
 
 def _gp(m) -> dict:
     g = m.gp
-    if not g:
+    if "tasks" not in g:   # (campaign.apply_start may have put its own record in first)
         g.update(tasks={}, order=[], beats=[], log=[], cool={}, count={}, seq=0, calls_seen=0, ack=None)
     return g
 
@@ -157,7 +157,7 @@ HOME = ROVER("return")
 
 
 def _rover_home(m) -> bool:
-    return not m.rover["busy"] or m.rover["task"] == "return_home"
+    return not sim.crew_out(m) or m.rover["task"] == "return_home"
 
 
 def _warning(m):
@@ -170,7 +170,7 @@ def _storm(m):
 
 def _night_len(m, from_h: int) -> int:
     """Hours the coming night lasts (Horizons): what the Sun strip shows. 0 if the Sun doesn't set."""
-    tbl = sim.sky_table(m.site_id)[0]
+    tbl = sim.sky_table(sim.sky_key(m))[0]
     k, n = from_h, 0
     while k < len(tbl) and tbl[k]:
         k += 1
@@ -194,7 +194,7 @@ def _shelter_step():
     s = _order("shelter", "Crew into the shelter", "shelter", {"type": "shelter", "on": True},
                lambda m, t: m.shelter, "Crew sheltered. Good.", why="Thick walls block most of the storm's particles.")
     s["live"] = True   # stays honest: a crew that walks out mid-storm is asked back in
-    s["ready_if"] = lambda m, t: not m.rover["busy"]
+    s["ready_if"] = lambda m, t: not sim.crew_out(m)
     s["wait_text"] = "Shelter opens when the rover crew is home."
     return s
 
@@ -213,7 +213,7 @@ def _readback_step():
                    {"id": "shelter", "label": "into the shelter", "say": ["shelter", "inside", "under cover"]}],
          "why": "A readback proves the order was heard right.",
          "order": SHELTER_ON}   # graded by mission/readback.py (the radio readback's grader), chips as a fallback
-    s["ready_if"] = lambda m, t: not m.rover["busy"]
+    s["ready_if"] = lambda m, t: not sim.crew_out(m)
     s["wait_text"] = "Shelter opens when the rover crew is home."
     return s
 
@@ -267,10 +267,10 @@ def _storm_prep(m):
     if w["confidence"] == "likely":
         # shelter early, not too early: the shelter is good for about a day (Orion), and science stops inside
         sh = _shelter_step()
-        sh["ready_if"] = lambda m, t: not m.rover["busy"] and (_warning(m) or {}).get("eta_h", 0) <= SHELTER_LEAD_H
+        sh["ready_if"] = lambda m, t: not sim.crew_out(m) and (_warning(m) or {}).get("eta_h", 0) <= SHELTER_LEAD_H
         # a kid can't do "6 hours before" sums: the card counts down to the moment the shelter opens, and that moment
         # stops a skip (a "task" event, phase "ready")
-        sh["wait_text"] = lambda m, t: ("Shelter opens when the rover crew is home." if m.rover["busy"] else
+        sh["wait_text"] = lambda m, t: ("Shelter opens when the rover crew is home." if sim.crew_out(m) else
                                         f"Shelter opens in {max(1, int((_warning(m) or {}).get('eta_h', SHELTER_LEAD_H)) - SHELTER_LEAD_H)} h. "
                                         "Keep working, or skip ahead.")
         rb = _readback_step()   # [0.4.1] Houston calls it when the shelter opens: read back, act, confirm
@@ -296,7 +296,7 @@ def _budget(m) -> dict:
     full = sim.draw_per_h(m) / (sim.POWER_SAVE_DRAW if m.power_save else 1.0)
     out = {}
     for k, d in (("night", full * sim.POWER_SAVE_DRAW), ("full", full)):
-        net = d - sim.BACKUP_GEN
+        net = d - m.backup_gen
         out[k] = {"kw": physics.kw(d), "lasts_h": (int(m.power / net) if net > 0 else None)}
     return out
 
@@ -313,8 +313,12 @@ def _engineer_night_steps(m) -> list:
                      hint="Energy = power × time")
     rated = physics.heater_rated_kw()
     names = {25: "Low", 50: "Half", 75: "High"}
+    # [campaign] a long night: the card says the low duty is a risk (the water lines freeze; the long-night lesson)
+    cold = dark >= 24
     duty = _choice("duty", "Heater duty cycle?",
-                   [{"id": str(d), "label": f"{names[d]} {d}%", "hint": f"{rated * d / 100:.2f} kW average"} for d in DUTIES],
+                   [{"id": str(d), "label": f"{names[d]} {d}%",
+                     "hint": f"{rated * d / 100:.2f} kW average" + (", pipes may freeze" if cold and d == DUTIES[0] else ""),
+                     **({"risky": True} if cold and d == DUTIES[0] else {})} for d in DUTIES],
                    hint=f"Heater {rated:.1f} kW when on")
     return [budget, duty]
 
@@ -342,7 +346,7 @@ def _night_prep(m):
     if _night_len(m, m.t_h) >= 48:   # a long night (Malapert): the recycler needs the spare power
         steps.append(_order("air", "Air system to 45", "load:life_support", ALLOC("life_support", 45),
                             lambda m, t: m.loads["life_support"] >= 45, "Air system up. Ready for the long dark."))
-    if m.rover["busy"]:
+    if sim.crew_out(m):
         steps.append(_order("rover", "Rover home before dark", "rover:return", HOME, lambda m, t: _rover_home(m),
                             "Rover heading home before dark."))
     sun_key = m.t_h + (sun_h or 0) if env["lit"] else ("dark", m.t_h // 24)
@@ -377,7 +381,7 @@ def _low_power(m):
 
 
 def _life_check(m):
-    if m.difficulty == "cadet" and m.loads["life_support"] < 40:
+    if m.difficulty == "cadet" and (m.loads["life_support"] < 40 or campaign.stranded(m)):   # no rover: the recycler
         steps = [_order("air", "Air system to 40", "load:life_support", ALLOC("life_support", 40),
                         lambda m, t: m.loads["life_support"] >= 40 or m.rover["task"] == "collect_ice",
                         "Air system up. Good.")]
@@ -400,9 +404,39 @@ def _life_check(m):
                 say="Life support check. The air is dropping.", steps=steps)
 
 
+def _rescue(m):
+    """[campaign] Rover rescue (campaign.py): the rover is stuck out on the plain with a flat battery. Find its beacon,
+    let sunlight charge its panels, drive it home. The ice run and the science drives wait for it."""
+    out = sim.site(m.site_id).get("rover_to_ice_h", 8)
+    find = _press("beacon", "Find the rover's beacon", f"Beacon found. {out} hours out, battery flat.",
+                  why="Know where it is before you send help.")
+    sun = _wait("sun", "Wait for sunlight on its panels",
+                lambda m, t: t["steps"][0]["done"] and sim.env_at(m, m.t_h)["lit"], "Sun on the panels. It's charging.")
+    sun["latch"] = True
+    drive = _order("drive", "Drive it home", "rover:return", HOME,
+                   lambda m, t: m.rover["task"] != "stranded", "Rover rolling home.",
+                   why="Its panels charged in the sunlight. Now it can drive.")
+    drive["ready_if"] = lambda m, t: sim.env_at(m, m.t_h)["lit"]
+    drive["wait_text"] = "Waiting for sunlight on its panels."
+    home = _wait("home", "Rover home", lambda m, t: not m.rover["busy"], "Rover's home. Rescue done.")
+    home["latch"] = True
+    return dict(title="Rover rescue", lesson="power", panel="rover", level="caution", priority=88,
+                deadline_h=campaign.RESCUE_BY_H, say="Our rover is stuck out on the plain. Let's bring it home.",
+                steps=[find, sun, drive, home])
+
+
 def _comm_window(m):
     calls = m.houston_calls
     closes = sim.comm_closes_in_h(m, m.t_h)
+    if m.comm == "relay" and not sim.env_at(m, m.t_h)["earth_elev_deg"] > 0:   # [campaign] far-side relay
+        steps = [_order("radio", "Radio to 10: send science", "load:comms", ALLOC("comms", 10),
+                        lambda m, t: m.loads["comms"] >= 10, "Downlink through the relay.",
+                        why="The relay is only overhead for a few hours."),
+                 _order("houston", "Call Houston", "houston", {"type": "call_houston", "text": "Outpost Luna, check in."},
+                        lambda m, t: m.houston_calls > calls, "Houston copies through the relay.",
+                        why="Each pass is a chance to talk to Earth.")]
+        return dict(title="Relay pass", lesson="comms", panel="comm", level="info", priority=50, cool_h=8,
+                    deadline_h=m.t_h + (closes if closes else campaign.RELAY_PASS_H), say=None, steps=steps)
     steps = [_order("radio", "Radio to 10: send science", "load:comms", ALLOC("comms", 10),
                     lambda m, t: m.loads["comms"] >= 10, "Downlink running. Science is going home.",
                     why="Science only counts once it reaches Earth."),
@@ -731,19 +765,20 @@ def _calm(m) -> bool:
 
 def _has_sun_cycle(m) -> bool:
     """The outpost's arrays have nights in this mission (a cabled site: its rim arrays, on the real skyline)."""
-    return not all(sim.sky_table(m.site_id)[0])
+    return not all(sim.sky_table(sim.sky_key(m))[0])
 
 
 TRIGGERS = [
     ("storm_hit", _storm_hit, lambda m: (lambda st: bool(st and st.event.get("sep")) and not m.shelter)(_storm(m))),
     ("first_power", _first_power, lambda m: m.t_h == 0 and not m.acted.get("allocate")),
+    ("rescue", _rescue, lambda m: campaign.stranded(m)),   # [campaign] Rover rescue
     ("storm_prep", _storm_prep, lambda m: _warning(m) is not None and not _storm(m)),
     ("night_prep", _night_prep, lambda m: _has_sun_cycle(m) and not m.power_save and (
         (lambda e, h: (e["lit"] and h is not None and h <= sim.SUNSET_NOTICE_H) or not e["lit"])(
             sim.env_at(m, m.t_h), sim.next_sun_change_h(m, m.t_h)))),
     ("low_power", _low_power, lambda m: m.difficulty == "commander" and m.power < 20 and not m.power_save),
     ("all_clear", _all_clear, lambda m: m.shelter and not _storm(m) and _warning(m) is None),
-    ("life_check", _life_check, lambda m: m.life < LIFE_CHECK and not m.rover["busy"] and not m.shelter and
+    ("life_check", _life_check, lambda m: m.life < LIFE_CHECK and not sim.crew_out(m) and not m.shelter and
      not _storm(m)),
     ("repair", _repair, lambda m: m.array_eff < 1),
     ("comm_window", _comm_window, lambda m: sim.env_at(m, m.t_h)["earth_visible"] and m.t_h > 0 and
@@ -816,7 +851,8 @@ def _gate_rover(s, home_only=False):
     free = (lambda m: not m.rover["busy"]) if home_only else _rover_free
     s["ready_if"] = (lambda m, t: free(m) and rdy(m, t)) if rdy else (lambda m, t: free(m))
     wt = s.get("wait_text")
-    s["wait_text"] = lambda m, t: (f"The rover is out. Back in about {m.rover['eta_h']} h." if m.rover["busy"] else
+    s["wait_text"] = lambda m, t: ("The rover is stuck out on the plain. Rescue it first." if campaign.stranded(m) else
+                                   f"The rover is out. Back in about {m.rover['eta_h']} h." if m.rover["busy"] else
                                    None if home_only else
                                    "Waits until the crew is out of the shelter." if m.shelter else
                                    "Battery too low for the rover. It waits for the Sun." if m.power < _rover_charge(m) else
@@ -994,14 +1030,14 @@ DOWNLINK_H = 4                               # Earth-up hours a chapter needs to
 
 def lab_hours(m, n: int) -> int:
     """Hours the lab can run in chapter n: the arrays lit (Horizons + LOLA) and no particle storm on (the shelter)."""
-    lit = sim.sky_table(m.site_id)[0]
+    lit = sim.sky_table(sim.sky_key(m))[0]
     return sum(1 for h in range(n * CHAPTER_H, min((n + 1) * CHAPTER_H, len(lit)))
                if lit[h] and not any(st.active(h) and st.event.get("sep") for st in m.storms))
 
 
 def earth_hours(m, n: int) -> int:
     """Hours Earth is above the outpost's horizon in chapter n (Horizons + the LOLA skyline, sim.sky_table)."""
-    earth = sim.sky_table(m.site_id)[1]
+    earth = sim.sky_table(sim.sky_key(m))[1]
     return sum(earth[n * CHAPTER_H:(n + 1) * CHAPTER_H])
 
 
@@ -1062,6 +1098,7 @@ def _chapters(m, out):
 def update(m, out: list):
     """Called by sim._tick after every mission hour (and after each order, with no time passing)."""
     _gp(m)
+    campaign.track(m)   # [campaign] the mission's own goals (campaign.py)
     _chapters(m, out)
     _beats(m, out)
     _check(m, out)
@@ -1349,7 +1386,7 @@ def _step_view(m, t, s) -> dict:
     if s["kind"] == "order":
         v["cmd"] = s["cmd"]
     if s["kind"] == "choice":
-        v["options"] = [{k: o[k] for k in ("id", "label", "hint") if k in o} for o in s["options"]]
+        v["options"] = [{k: o[k] for k in ("id", "label", "hint", "risky") if k in o} for o in s["options"]]
         if s.get("hint"):
             v["hint"] = s["hint"]
     if s["kind"] == "describe":   # chips for the kinds still missing (the look's own words), then "Bag it"
@@ -1387,7 +1424,7 @@ def _readouts(m, t) -> list[dict]:
         r.append({"k": "Dose rate", "v": f"{sim.dose_rate(m, m.t_h):.2f} mSv/h"})
     if t["kind"] == "comm_window":
         r.append({"k": "Science to send", "v": f"{max(0.0, m.science - m.science_sent):.0f}"})
-        r.append({"k": "Sent home", "v": f"{m.science_sent:.0f} / {sim.SCIENCE_GOAL:.0f}"})
+        r.append({"k": "Sent home", "v": f"{m.science_sent:.0f} / {sim.science_goal(m):.0f}"})
     if t["kind"] == "science" and t.get("reading") is not None:
         r.append({"k": "Sensor", "v": f"{t['reading']:.2f} mSv/h"})
     if t["kind"] in ("night_prep", "low_power", "sunrise"):
@@ -1430,7 +1467,7 @@ def view(m) -> dict:
                         "title": CHAPTERS[min(_ch(m)["n"], len(CHAPTERS) - 1)], "done": g.get("chapters", [])},
             "progress": {"day": min(m.t_h // 24 + 1, 10), "days_done": round(min(m.t_h, sim.MISSION_H) / 24, 1),
                          "days_total": sim.MISSION_H // 24, "science_sent": round(m.science_sent, 1),
-                         "science_goal": sim.SCIENCE_GOAL, "ice": m.ice_runs, "ice_goal": sim.ICE_GOAL,
+                         "science_goal": sim.science_goal(m), "goals": campaign.goals(m), "ice": m.ice_runs, "ice_goal": sim.ICE_GOAL,
                          # [playtest 4] gathered but not home yet: stored on board until Earth is up (the counter
                          # shows it, so a "Science +2" visibly counts while Earth is down)
                          "science_stored": round(max(0.0, m.science - m.science_sent), 1),

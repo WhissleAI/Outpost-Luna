@@ -20,6 +20,7 @@ class StartReq(BaseModel):
     seed: int | None = None
     roles: list[str] | None = None
     level: Literal["cadet", "commander", "engineer"] = "cadet"
+    campaign: str | None = None   # [campaign] docs/GAMEPLAY.md §16: which campaign mission (Missions 2+ fix the site)
     practice: bool = False   # [polish 2] the academy's practice shift: never auto-saved over the real mission   # Settings (docs/VOICES.md): the band, ages 7-9 / 10-12; engineer = Commander in real units
 
 
@@ -47,12 +48,19 @@ def mission_sites():
     return {"sites": [sim.public_site(s) for s in sim.sites()]}
 
 
+@router.get("/api/mission/campaign")
+def mission_campaign():
+    """[campaign] The campaign's missions for the hub: n, id, title, site, one-line briefing, danger, goals."""
+    from . import campaign
+    return {"missions": campaign.public()}
+
+
 @router.post("/api/mission/start")
 def mission_start(req: StartReq):
     try:
-        m = registry.create(req.site, req.seed, req.roles, level=req.level, save=not req.practice)
-    except KeyError:
-        raise HTTPException(404, f"unknown site {req.site!r}")
+        m = registry.create(req.site, req.seed, req.roles, level=req.level, save=not req.practice, campaign=req.campaign)
+    except KeyError as e:
+        raise HTTPException(404, f"unknown site or campaign mission: {e}")
     return sim.to_state(m)
 
 

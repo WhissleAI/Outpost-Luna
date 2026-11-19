@@ -39,6 +39,10 @@ rounding); `frontend/tests/fixtures/navigator_cases.json` is checked by both tes
 
 ## Into the mission
 
+The navigator picks the site for Mission 1. Missions 2 to 6 of the campaign fly their own sites (Malapert Massif,
+Shackleton Crater Floor, de Gerlache Rim, Connecting Ridge, Shackleton Rim; docs/GAMEPLAY.md §16): a site picked here
+always flies Mission 1's way.
+
 Picking a site and taking command flies it on its real numbers, through the sim's existing site parameters
 (`sites.json` and `ephemeris_<site>.json`; `docs/MISSION_CONTRACT.md`), never a fork:
 

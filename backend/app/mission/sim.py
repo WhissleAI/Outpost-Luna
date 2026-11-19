@@ -187,6 +187,10 @@ class Mission:
     # the mission at that point: Restart shift, and the chapter auto-save (registry.py) are both a replay.
     journal: list = field(default_factory=list)
     marks: dict = field(default_factory=lambda: {0: 0})   # shift index (t_h // SHIFT_H) -> journal length on entering it
+    # [campaign] docs/GAMEPLAY.md §16 (campaign.py): which mission of the campaign, and the twists it sets at the start
+    campaign: str = "first_light"
+    comm: str = "earth"                           # "relay": a relay satellite's passes carry the radio (far-side relay)
+    backup_gen: float = BACKUP_GEN                # %/h; the power-budget mission flies without it
 
     @property
     def difficulty(self) -> str:
@@ -212,13 +216,19 @@ class Mission:
 # ---------------------------------------------------------------- setup
 
 def new_mission(mid: str, site_id: str, seed: int | None = None, roles: list[str] | None = None,
-                level: str = "commander", difficulty: str | None = None) -> Mission:
+                level: str = "commander", difficulty: str | None = None, campaign: str | None = None) -> Mission:
+    """campaign (campaign.py): a campaign mission's id; it fixes the site (Mission 1 keeps the one asked for)."""
+    cm = campaign or "first_light"
+    if cm not in _campaign.BY_ID:
+        raise KeyError(f"unknown campaign mission {cm!r}")
+    site_id = _campaign.BY_ID[cm]["site"] or site_id
     s = site(site_id)  # KeyError on unknown site
     seed = 0 if seed is None else int(seed)
     difficulty = difficulty or level or "commander"   # `difficulty` is the older name for `level`
     if difficulty not in LEVELS:
         raise ValueError(f"level must be one of {LEVELS}")
-    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=difficulty)
+    m = Mission(id=mid, site_id=s["id"], seed=seed, roles=list(roles or []), level=difficulty, campaign=cm)
+    _campaign.apply_start(m)
     _schedule(m)
     m.log.append({"t_h": 0, "kind": "event", "text": f"Outpost online at {s['name']}. Ten days to go."})
     gameplay.update(m, [])   # the arrival beat and the first job
@@ -230,6 +240,12 @@ def _schedule(m: Mission) -> None:
     rng = random.Random(f"{m.site_id}:{m.seed}")
     cat = storms_catalog()["events"]
     m.storms = []
+    fixed = _campaign.storms(m)
+    if fixed:   # [campaign] storm season: the mission's own real storms, the same at every level and seed
+        by_id = {e["id"]: e for e in cat}
+        m.storms = [Storm(start, storm_duration_h(by_id[eid]), by_id[eid]) for eid, start in fixed]
+        m.failure_h = 10 ** 6
+        return
     if m.difficulty == "cadet":   # two real particle events, no false alarms, no array failure
         picks = rng.sample([e for e in cat if e.get("sep")], 2)
         slots = [STORM_SLOTS[0], STORM_SLOTS[2]]
@@ -310,6 +326,11 @@ def _horizon(site_id: str, body: str, t: float) -> float:
     return h if body == "sun" else min(h, 0)
 
 
+def sky_key(m: Mission) -> str:
+    """The sky tables' key: the site, plus "|relay" when a relay satellite carries the radio (campaign far-side relay)."""
+    return m.site_id + ("|relay" if m.comm == "relay" else "")
+
+
 def env_at(m: Mission, t: float) -> dict:
     s = site(m.site_id)
     psite, eff = _power_site(s)
@@ -324,23 +345,26 @@ def env_at(m: Mission, t: float) -> dict:
     earth = _eph_at(m.site_id, "earth_elev_deg", t)
     cearth = _eph_at(cs["id"], "earth_elev_deg", t)
     earth_visible = cearth > _horizon(cs["id"], "earth", t)
+    if m.comm == "relay" and not earth_visible:   # [campaign] the relay's pass: the radio reaches Earth through it
+        earth_visible = _campaign.relay_up(t)
     storm = next((st for st in m.storms if st.active(t)), None)
     return {"sun_elev_deg": round(sun, 3), "in_sun": in_sun, "lit": lit, "sun_frac": sun_frac,
             "earth_elev_deg": round(earth, 3), "earth_visible": earth_visible, "storm": storm}
 
 
 @lru_cache(maxsize=None)
-def sky_table(site_id: str) -> tuple[tuple[bool, ...], tuple[bool, ...]]:
+def sky_table(site_id: str) -> tuple[tuple[bool, ...], tuple[bool, ...]]:   # site_id: a site, or sky_key(m)
     """(lit, earth_visible) for every whole mission hour 0..MISSION_H at a site: env_at's own rule, computed once.
     lit = the outpost's solar arrays see the Sun (its own Sun; a cabled site's rim arrays). Sun and Earth depend only on
     the site (Horizons + the LOLA skyline), never on the mission, so the table is exact."""
-    probe = Mission(id="sky", site_id=site_id, seed=0)
+    base, _, comm = site_id.partition("|")
+    probe = Mission(id="sky", site_id=base, seed=0, comm=comm or "earth")
     rows = [env_at(probe, t) for t in range(MISSION_H + 1)]
     return tuple(r["lit"] for r in rows), tuple(r["earth_visible"] for r in rows)
 
 
 def _sky(m: Mission, key: int, t: float) -> bool:
-    tbl = sky_table(m.site_id)[key]
+    tbl = sky_table(sky_key(m))[key]
     return tbl[max(0, min(int(t), len(tbl) - 1))] if float(t).is_integer() else env_at(m, t)[("in_sun", "earth_visible")[key]]
 
 
@@ -364,7 +388,7 @@ def _change_tables(site_id: str) -> dict:
 def _table_at(m: Mission, key: str, t: float):
     if not float(t).is_integer() or not 0 <= t <= MISSION_H:
         return None
-    return _change_tables(m.site_id)[key][int(t)]
+    return _change_tables(sky_key(m))[key][int(t)]
 
 
 def next_sun_change_h(m: Mission, t: float) -> int | None:
@@ -397,6 +421,14 @@ def comm_closes_in_h(m: Mission, t: float) -> int | None:
 
 # ---------------------------------------------------------------- physics
 
+UNCREWED = ("stranded", "rescue_home")   # [campaign] Rover rescue: the rover alone (no crew outside), stuck or driving home
+
+
+def crew_out(m: Mission) -> bool:
+    """The rover crew is outside (the shelter waits for them; they take extra dose)."""
+    return bool(m.rover["busy"]) and m.rover["task"] not in UNCREWED
+
+
 def draw_per_h(m: Mission) -> float:
     w = sum(m.loads[k] * LOAD_WEIGHT[k] for k in LOADS) / sum(DEFAULT_LOADS[k] * LOAD_WEIGHT[k] for k in LOADS)
     d = BASE_DRAW * w
@@ -414,14 +446,14 @@ def dose_rate(m: Mission, t: float, env: dict | None = None) -> float:
         shelter = g["shelter_factor_storm"] if storm else g["shelter_factor_quiet"]
     else:
         shelter = 1.0
-    eva = 1.5 if (m.rover["busy"] and m.rover["task"] != "return_home") else 1.0  # crew out driving
+    eva = 1.5 if (crew_out(m) and m.rover["task"] != "return_home") else 1.0  # crew out driving
     return base * mult * (1 - shield) * shelter * eva
 
 
 def _step_hour(m: Mission, out_events: list):
     t = m.t_h
     env = env_at(m, t)
-    gen = SOLAR_GEN * m.array_eff * env["sun_frac"] + BACKUP_GEN
+    gen = SOLAR_GEN * m.array_eff * env["sun_frac"] + m.backup_gen
     draw = draw_per_h(m)
     if m.power + gen - draw >= 0:
         p = 1.0
@@ -459,7 +491,7 @@ def _step_hour(m: Mission, out_events: list):
 
 def _rover_tick(m: Mission, out: list):
     rv = m.rover
-    if not rv["busy"]:
+    if not rv["busy"] or rv["task"] == "stranded":   # [campaign] a stranded rover waits for its rescue
         return
     rv["eta_h"] -= 1
     if rv["eta_h"] > 0:
@@ -479,6 +511,8 @@ def _rover_tick(m: Mission, out: list):
     elif task == "explore":
         m.science += EXPLORE_SCIENCE
         text = f"Rover's back with samples. Science up {EXPLORE_SCIENCE:.0f}."
+    elif task == "rescue_home":
+        text = "Rover's home. Rescue done."
     rv.update(busy=False, task=None, eta_h=0)
     _emit(m, out, "rover_back", text)
 
@@ -846,6 +880,17 @@ def _execute(m: Mission, cmd: dict) -> dict:
         if task == "return":
             if not rv["busy"]:
                 return {"ok": False, "say": "The rover is already home.", "readback": rb, "events": []}
+            if rv["task"] == "stranded":   # [campaign] rover rescue: it drives home once sunlight has charged it
+                if not env_at(m, m.t_h)["lit"]:
+                    return {"ok": False, "say": "The rover's battery is flat. Wait for sunlight on its panels.",
+                            "readback": rb, "events": []}
+                rv.update(task="rescue_home", eta_h=max(4, site(m.site_id).get("rover_to_ice_h", 8)))
+                say = f"Rover charged and rolling. Home in {rv['eta_h']} hours."
+                m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
+                return {"ok": True, "say": say, "readback": rb, "events": []}
+            if rv["task"] == "rescue_home":
+                return {"ok": False, "say": f"The rover is already driving home. Back in {rv['eta_h']} hours.",
+                        "readback": rb, "events": []}
             rv.update(task="return_home", eta_h=max(1, rv["eta_h"] // 2))
             say = f"Rover turning around. Home in {rv['eta_h']} hours."
             m.log.append({"t_h": m.t_h, "kind": "command", "text": say})
@@ -890,7 +935,7 @@ def _execute(m: Mission, cmd: dict) -> dict:
         if on and not m.shelter and m.t_h < m.shelter_rest_until and not env_at(m, m.t_h)["storm"]:
             return {"ok": False, "say": f"The crew needs rest first. Shelter ready in {m.shelter_rest_until - m.t_h} hours.",
                     "readback": rb, "events": []}
-        if on and m.rover["busy"]:
+        if on and crew_out(m):
             return {"ok": False, "say": "The rover crew is still outside. Call them home first.", "readback": rb,
                     "events": []}
         m.shelter = on
@@ -975,18 +1020,27 @@ def alerts(m: Mission, t: float | None = None) -> list[str]:
     return a
 
 
+def science_goal(m: Mission) -> float:
+    return 80.0 if "science80" in _campaign.spec(m)["goals"] else SCIENCE_GOAL
+
+
 def objectives(m: Mission) -> dict:
     """Mission goals (docs/LEARNING_DESIGN.md T5): science sent home and an ice run. Bonus stars for Cadet;
-    part of the grade for Commander."""
-    sci = {"goal": SCIENCE_GOAL, "got": round(m.science_sent, 1), "met": m.science_sent >= SCIENCE_GOAL}
+    part of the grade for Commander. [campaign] Missions 2+ have their own two goals (campaign.py): `goals` lists the
+    mission's two and `met` counts them; science and ice stay for the progress strip and the tasks."""
+    sg = science_goal(m)
+    sci = {"goal": sg, "got": round(m.science_sent, 1), "met": m.science_sent >= sg}
     ice = {"goal": ICE_GOAL, "got": m.ice_runs, "met": m.ice_runs >= ICE_GOAL}
-    return {"science": sci, "ice": ice, "met": sci["met"] + ice["met"]}
+    goals = _campaign.goals(m)
+    return {"science": sci, "ice": ice, "goals": goals, "met": sum(g["met"] for g in goals)}
 
 
 def score(m: Mission) -> int:
     """300 for bringing the crew through, up to 300 for the goals, 40 per good call, minus extra dose."""
     survival = 300 if m.outcome == "survived" else int(240 * m.t_h / MISSION_H)
     goals = min(m.science_sent, 200.0) + 50 * min(m.ice_runs, 2)
+    if _campaign.is_campaign(m):   # [campaign] the mission's own two goals, 150 each (Mission 1's goals top out near it)
+        goals = 150 * objectives(m)["met"]
     calls = 40 * min(len(m.good_calls), 6)
     return max(0, int(round(survival + goals + calls - 6 * max(0.0, m.dose - QUIET_DOSE))))
 
@@ -1010,7 +1064,7 @@ def to_state(m: Mission) -> dict:
     env = env_at(m, m.t_h)
     st = env["storm"]
     return {
-        "id": m.id, "site": public_site(site(m.site_id)), "seed": m.seed,
+        "id": m.id, "site": public_site(site(m.site_id)), "seed": m.seed, "campaign": _campaign.public(m.campaign),
         "day": min(m.t_h // 24 + 1, 10), "shift": (m.t_h % 24) // SHIFT_H + 1, "mission_time_h": m.t_h,
         "over": m.over, "outcome": m.outcome,
         "resources": {"power_pct": round(m.power, 1), "life_support_pct": round(m.life, 1),
@@ -1139,9 +1193,12 @@ def debrief(m: Mission) -> dict:
     lessons.append({"text": sun_text, "source": {"title": "JPL Horizons API", "url": eph["source"]["url"]}})
     timeline = list(m.shifts)
     obj = objectives(m)
+    missed = next((g for g in obj["goals"] if not g["met"]), None)
     why = {
         # [playtest 19] one kid line that agrees with the stars and the checklist below it
-        "survived": (f"Your crew made it through all 10 days at {s['name']}, and both goals are done."
+        "survived": (f"Your crew made it through all 10 days at {s['name']}, and both goals are done." if obj["met"] == 2
+                     else f"The crew was safe all 10 days. Missed: {missed['label'].lower()}.")
+        if _campaign.is_campaign(m) else (f"Your crew made it through all 10 days at {s['name']}, and both goals are done."
                      if obj["met"] == 2 else
                      f"The crew was safe all 10 days. Science home: {obj['science']['got']:.0f} of {SCIENCE_GOAL:.0f}."
                      if obj["ice"]["met"] else
@@ -1184,8 +1241,11 @@ def debrief(m: Mission) -> dict:
                       "science": round(m.science, 1), "science_sent": round(m.science_sent, 1)},
             "timeline": timeline, "lessons": lessons[:4], "data_used": data_used,
             "difficulty": m.difficulty, "level": m.level, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
-            "try": TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else
-                                "goals_science" if obj["ice"]["met"] else "goals_ice" if obj["science"]["met"] else "goals"),
+            "try": (_campaign.TRY.get(missed["id"]) if _campaign.is_campaign(m) and m.outcome == "survived" and missed
+                    and missed["id"] in _campaign.TRY else
+                    TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else
+                                 "goals_science" if obj["ice"]["met"] else "goals_ice" if obj["science"]["met"] else "goals")),
+            "campaign": _campaign.public(m.campaign),
             # cause -> effect in real numbers, with sources (physics.py); Engineer also shows each line's equation
             "numbers": physics.numbers(m), "engineer": m.engineer}
 
@@ -1202,5 +1262,6 @@ TRY_NEXT = {   # one "try" line per way a mission ends (docs/LEARNING_DESIGN.md 
 }
 
 
+from . import campaign as _campaign  # noqa: E402  (campaign missions: twists and goals, docs/GAMEPLAY.md §16)
 from . import gameplay  # noqa: E402  (the gameplay layer reads this module's API at call time)
 from . import physics  # noqa: E402  (the physics read-outs read this module's API at call time)

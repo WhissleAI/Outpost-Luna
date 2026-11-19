@@ -105,6 +105,19 @@ export const HUB = {
   video: "Watch the 1-min briefing",
   say: (cs, site) => `Mission ready at ${site}, ${cs}. Press Start.`,
 };
+/** [campaign] Missions 2+ (docs/GAMEPLAY.md §16): the hub's mission strip, the briefing's labels, the goals' words. Each
+ *  mission's own title, one-line briefing, danger and goals come from the server (backend/app/mission/campaign.py). */
+export const CAMPAIGN = {
+  strip: "Missions",
+  locked: n => `Mission ${n}. Locked: win Mission ${n - 1} first.`,
+  won: "Done",
+  pick: (n, title) => `Mission ${n}: ${title}`,
+  goal: "Goal", danger: "Danger", bonus: "Also",
+  keepOk: "OK", keepMissed: "Missed",
+  say: (cs, n, title, site) => `Mission ${n}, ${title}, at ${site}, ${cs}. Press Start.`,
+  unlocked: (n, title) => `Mission ${n} is open: ${title}.`,
+  goalsBoth: "Both mission goals done.", goalsOne: "One mission goal done.", goalsNone: "No mission goals done yet.",
+};
 /** The briefing: three cards, 12 words or fewer each, then Take command. */
 export const BRIEFING = {
   eyebrow: "Briefing",

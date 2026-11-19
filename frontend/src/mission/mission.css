@@ -205,6 +205,18 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .a11y-vbanner{display:none!importa
 .mx-hubfacts .ic{color:var(--color-text-2)}
 .mx-hubwhat{margin:var(--space-1) 0 0;font-size:var(--text-md);line-height:var(--leading-snug);color:var(--color-text)}
 .mx-hubwhat[hidden]{display:none}
+/* [campaign] the mission strip (docs/GAMEPLAY.md §16): one numbered key per mission, the open ones lit, the locked dimmed */
+.mx-camp{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.mx-campb{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:var(--control-md);min-height:var(--control-md);padding:0 var(--space-2);
+  border:1px solid var(--color-line-strong);border-radius:var(--radius-md);background:var(--color-surface-2);color:var(--color-text);
+  font-family:var(--font-mono);font-size:var(--text-md);font-weight:var(--weight-semibold);cursor:pointer}
+.mx-campb:hover:not(:disabled){background:var(--color-surface-3)}
+.mx-campb:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.mx-campb.is-on{border-color:var(--color-accent);background:var(--color-accent-soft);color:var(--color-text)}
+.mx-campb.is-won .ic{color:var(--color-success, var(--color-accent))}
+.mx-campb:disabled{opacity:.45;cursor:not-allowed}
+.mx-hubrec.is-site .ic{color:var(--color-text-2)}
+.mx-hubline{margin:var(--space-1) 0 0;font-size:var(--text-md);line-height:var(--leading-snug);color:var(--color-text)}
 .mx-hubrow{display:grid;grid-template-columns:1fr;gap:var(--space-2)}
 .mx-hub .mx-continue~.mx-go,.mx-hub .mx-go.is-second{background:var(--color-surface-2);color:var(--color-text);border:1px solid var(--color-line-strong)}
 .mx-hubrow .mx-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:var(--control-md);padding:0 var(--space-3);font-size:var(--text-sm)}

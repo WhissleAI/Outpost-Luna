@@ -18,6 +18,8 @@ export async function createMissionClient() {
   return {
     sample: false, sites: sites.sites,
     start: body => post("/api/mission/start", body),
+    /** [campaign] The campaign's missions for the hub (docs/GAMEPLAY.md §16). -> {missions: [...]} */
+    campaign: () => j("/api/mission/campaign"),
     get: id => j("/api/mission/" + enc(id)),
     command: (id, command) => post(`/api/mission/${enc(id)}/command`, { command }),
     advance: (id, shifts = 1) => post(`/api/mission/${enc(id)}/advance`, { shifts }),

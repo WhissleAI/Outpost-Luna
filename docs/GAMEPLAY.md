@@ -586,3 +586,44 @@ runs, and the replan stays once a mission. `tests/test_mission_variety.py` flies
 - The voice bar's state word ("Starting voice…", "Didn't catch that", "Crew talk") is never cut. The typing field and
   the "Hold to talk" hint give way first.
 
+
+## 16. The campaign: Missions 2 to 6 (`feat/mission-variety`, `backend/app/mission/campaign.py`)
+
+After Mission 1 the game had nothing new to offer but another site. Now five more missions follow it, each at another
+real south-pole site, with its own two goals and one twist, unlocked one at a time by winning the one before. They
+are the same campaign: the same hub, briefing, chapter cards, Now card, debrief and stars.
+
+| # | Mission | Site | Twist | Goals |
+|---|---|---|---|---|
+| 1 | First light | any (Shackleton Rim recommended) | the classic | 120 science home · ice |
+| 2 | The long night | Malapert Massif | starts in a 71-hour night (Horizons + LOLA), another 74 h at the end; tanks full | battery never empty · air and water never under 25% |
+| 3 | Storm season | Shackleton Crater Floor | four real 2024 particle storms (DONKI: 03-23, 05-09, 09-17, 10-09), two back-to-back pairs | dose under 25 mSv · ice |
+| 4 | Rover rescue | de Gerlache Rim | the rover starts stranded 17 h out with a flat battery | rover home by day 3 · ice |
+| 5 | Far-side relay | Connecting Ridge | Earth is up only 33 h here; a relay satellite passes every 12 h for 4 h (a game schedule; the idea is Chang'e 4's Queqiao) | 3 calls to Houston · 80 science home |
+| 6 | Power budget | Shackleton Rim | no backup generator; the 53-hour night | battery never under 15% · 80 science home |
+
+- **Hub** (`mission/ui.js` `hub`, `mission/campaign.js`). "Mission N · 10 days", then the mission strip (1 to 6: open
+  ones lit, the one on the card outlined, won ones ticked, locked ones dimmed with a lock and "Locked: win Mission N
+  first"), then the card: the mission's title over its site, its one-line briefing and the site's sun / radio / ice
+  facts, and Start. Mission 1 keeps Choose site and What's this mission?; a later mission flies its own site. LB / RB
+  (N / P) step through the open missions once there is more than one (with only Mission 1 open they step sites, as
+  before). Wins are kept on this computer per call sign (`outpost-campaign:<call sign>`).
+- **Briefing**: "Mission 4: Rover rescue" with Goal (the first goal), Danger (the twist) and Also (the second goal);
+  CAPCOM says the mission's line. Start sends `campaign` with the site (`POST /api/mission/start`).
+- **In the cabin**: the progress strip shows the mission's two goals instead of science and ice ("Rover home 0/1",
+  "Battery never empty OK"); the chapter cards and their three stars are unchanged. Rover rescue adds a job
+  (`gameplay._rescue`): find the beacon → wait for sunlight on its panels → drive it home → rover home; the stranded
+  rover has no crew aboard, so the shelter never waits for it (`sim.crew_out`). The relay's passes open a "Relay pass"
+  card (radio to 10, call Houston). On a long night the Engineer's heater duty card marks Low as "pipes may freeze".
+- **Debrief**: stars = the mission's goals met + one for two good calls, as before; the checklist is the crew and the
+  two goals; "Missed: rover home by day 3." and the try line for that goal. A win says "Mission 5 is open: Far-side
+  relay." and Next mission puts it on the hub. After Mission 6, Next mission goes back to Mission 1's site list.
+- **Deterministic**: a mission's twist is data applied once at `new_mission` (`campaign.apply_start`, fixed storms in
+  `_schedule`); the sky tables key on `sim.sky_key` (`connecting_ridge|relay`). The autosave and Restart shift carry
+  the campaign id and replay the same mission. `GET /api/mission/campaign` lists the missions; `GET /api/mission/saved`
+  says which one is saved ("Resume Mission 5, Day 3 at Connecting Ridge").
+- **Tests** (`tests/test_campaign.py`): every mission at every level and four seeds is won by a player who follows the
+  card (the main goal always, both goals in at least half the runs), and every chapter card comes; a player who only
+  skips time misses the goals; each mission's goals and main goal are its own and Missions 2 to 6 fly five different
+  sites; the twists; determinism; the autosave and Restart shift; the API. Mission 1 and `tests/test_strategy.py`
+  are unchanged.

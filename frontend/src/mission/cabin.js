@@ -18,6 +18,7 @@ import { normPatches, patchSig, newPatches, keyLabel, trackSummary, patchKeyHtml
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
+import { goalBit } from "./campaign.js";   // [campaign] Missions 2+: their own goals on the progress strip
 import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, preloadSun, flareOnCanvas, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
@@ -747,6 +748,14 @@ export function createCabin(root, o = {}) {
     const aboard = Math.round(P.science_stored || 0);
     // [0.4.1] plain words: "Science home 0/120 · 1 to send" (it was "Science 0/120 +1 on board")
     const sciTitle = `Science sent home: ${Math.round(P.science_sent)} of ${P.science_goal}${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
+    // [campaign] Missions 2+ show their own two goals (docs/GAMEPLAY.md §16); Mission 1 keeps science and ice
+    const goalsHtml = s.campaign && s.campaign.n > 1 && Array.isArray(P.goals) && P.goals.length
+      ? P.goals.map(goalBit).filter(Boolean).map(g => bit(g.met ? " is-met" : "", esc(g.title), esc(g.name), esc(g.val), g.of, g.p).replace("<small>/</small>", "")).join("") : "";
+    if (goalsHtml) {
+      el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml
+        + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
+      return;
+    }
     el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
       + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science home", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard} to send</small>` : ""}</b>`)
       + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
