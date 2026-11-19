@@ -14,7 +14,7 @@ import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./
  *  diagnostics, What the app has learned) are drawn inside it instead of in the sidebar. */
 export const GROWNUPS = {
   title: "For grown-ups",
-  gate: "Reset, videos, diagnostics, what the app learned and the school network. Hold the button for 3 seconds to open them.",
+  gate: "Reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
   inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
   patches: "Reset my patches",
