@@ -76,6 +76,26 @@ def situation(rec: dict | None, text: str) -> str:
     return "quiet"
 
 
+def bare_turn(rec: dict | None, n_words: int) -> bool:
+    """Round 14 (round 13 "Next"): a heard turn end with no ear read-out at all: no partial words since its start, no
+    ear extras on the final words (no ABI 2 read-out: e13_avail 0, no names / decoder text). The backend tests' form
+    ("a" with no arc read and no partials); no live ear sends it. The model never decides such a turn (it may not
+    answer it, silence it or navigate it): the rules do. Typed turns are not heard turns and are unaffected.
+    ONE definition: Shadow (runtime) and director_model/evaluate.py (`bare` in the dataset meta)."""
+    return bool(rec) and rec.get("kind") == "turn_end" and not n_words and not rec.get("e13") and not rec.get("ear")
+
+
+def turn_words_next(kind: str, n: int) -> int:
+    """The partial / final word messages seen since the current heard turn started, after an event of `kind` (bare_turn
+    reads it at the turn end). A turn start opens the count; a turn end or typed turn closes it (the next turn counts
+    from 0 even when no turn start precedes it). ONE definition: Shadow and gen_sessions.label_session."""
+    if kind == "turn_start":
+        return 0
+    if kind == "words":
+        return n + 1
+    return n
+
+
 def allowed(thr: dict, cls: str) -> bool:
     """`guarded`: may a model act in this class? Only the classes the weights' policy lists (none = nowhere), either
     for the weights themselves (`classes`) or routed to another weight file (`routes`, round 12)."""
@@ -353,10 +373,12 @@ class Shadow:
         self.prev: dict | None = None
         self.cur: dict | None = None
         self.n = 0
+        self.turn_words = 0                # round 14: partial / final words seen since the current turn started
 
     def step(self, ev: dict, read: dict | None = None) -> dict | None:
         self._close()
         rec = FX.record(self.sess, ev, read)
+        self.turn_words = turn_words_next(rec["kind"], self.turn_words)
         out = None
         if self.run_model:
             m = model()
@@ -370,7 +392,10 @@ class Shadow:
                     for name, mr in rm.items():
                         ro[name], self.rstate[name] = mr.step(self.rstate.get(name), x, toks, wtok, wfeat)
                     out = {**out, "_routed": ro}
-        self.cur = {"rec": rec, "out": out, "decisions": [], "r": None, "i": self.n}
+        self.cur = {"rec": rec, "out": out, "decisions": [], "r": None, "i": self.n,
+                    "bare": bare_turn(rec, self.turn_words)}
+        if rec["kind"] in ("turn_end", "typed"):
+            self.turn_words = 0
         self.prev = rec
         self.n += 1
         STATS["steps"] += 1
@@ -387,6 +412,35 @@ class Shadow:
 
     def flush(self):
         self._close()
+
+    def bare(self) -> bool:
+        """The current step is a heard turn end with no ear read-out at all (bare_turn): the rules decide it."""
+        return bool((self.cur or {}).get("bare"))
+
+    def explain(self, out: dict | None, text: str) -> dict:
+        """The turn log (turnlog.py v2), read-only: at this turn end, the situation class, whether the bare-turn guard
+        holds, the primary model's act / p (`shadow`) and each routed file's (`routed`), and (guarded) which weight file each path would
+        consult: the class's policy turn, the navigation fill and the lesson-answer silencing (None = the rules)."""
+        rec = (self.cur or {}).get("rec") or {}
+        md = mode()
+        cls = situation(rec, text)
+        d: dict = {"mode": md, "cls": cls, "bare": self.bare()}
+        m = model() if md != "off" else None
+        if m is not None:
+            d["weights"] = f"{m.meta.get('data') or '?'}/{m.meta.get('size_name') or '?'}"
+        if out:
+            a, p = self.model_act(out)
+            d["shadow"] = {"act": a, "p": round(p, 3)}        # the primary weights' own choice (shadow), act or not
+            ro = out.get("_routed") or {}
+            if ro:
+                d["routed"] = {n: {"act": self.model_act(o)[0], "p": round(self.model_act(o)[1], 3)} for n, o in ro.items()}
+        if md == "guarded" and m is not None:
+            thr = m.meta.get("policy") or DEFAULT_POLICY
+            who = lambda c: (thr.get("routes") or {}).get(c) or ("weights" if c in (thr.get("classes") or ()) else None)  # noqa: E731
+            d["picked"] = {"turn": who(cls), "nav": who("nav"), "answer": who("answer")}
+        elif md == "on" and m is not None:
+            d["picked"] = {"turn": "weights", "nav": "weights", "answer": "weights"}
+        return d
 
     def model_act(self, out: dict | None) -> tuple[str, float]:
         if not out:
@@ -424,7 +478,7 @@ class Shadow:
         """A lesson step's answer (router outcome `answer`), `on` mode: True = the model is sure enough it is room
         chatter / not an answer to silence it (answer_policy). Off unless the weights carry a fitted threshold."""
         md = mode()
-        if md not in ("on", "guarded") or not out:
+        if md not in ("on", "guarded") or not out or self.bare():
             return False
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
@@ -436,7 +490,7 @@ class Shadow:
     def decide_nav(self, out: dict | None, offer: str | None) -> str | None:
         """`on` mode, a routed turn the router did not navigate: the model's navigation intent, or None."""
         md = mode()
-        if md not in ("on", "guarded") or not out:
+        if md not in ("on", "guarded") or not out or self.bare():
             return None
         m = model()
         thr = (m.meta.get("policy") if m is not None else None) or DEFAULT_POLICY
@@ -449,7 +503,7 @@ class Shadow:
         """At a turn end, `on` mode: the model's decision if it may override the rules, else None (rules decide).
         -> {"act": "ignore"|"ask_clarify"|"command", "command"?: Command}."""
         md = mode()
-        if md not in ("on", "guarded") or not out:
+        if md not in ("on", "guarded") or not out or self.bare():
             return None
         from ..mission import nlu
         rc = [c for c in map(nlu.valid, nlu.parse(text).get("commands") or []) if c]

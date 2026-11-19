@@ -60,7 +60,7 @@ SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlin
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "engine": "os", "steer_voice": None, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
                  "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
-                 "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the opt-in on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md)
+                 "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md): ON by default in the client, which sends it on every connect; off here so a client that never sends prefs (tools, the generator) writes nothing
 LEVELS = ("cadet", "commander", "engineer")   # engineer: Commander missions in real units (docs/PHYSICS.md)
 LISTEN = ("handsfree", "ptt")
 # libarc ABI 2 read-outs on the ear's final words (model_server/app/arc_ear.py abi2_view): kept on k["ear"] under their
@@ -139,7 +139,7 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
             pass
     if m.get("listen") in LISTEN:
         p["listen"] = m["listen"]
-    if "improve" in m:    # only an explicit true turns the turn log on
+    if "improve" in m:    # only an explicit true turns the turn log on (the client's default is true)
         p["improve"] = m.get("improve") is True
     if "profile" in m:    # the active cadet profile ("p1".."p6"): whose on-device learning applies (app/learn)
         from .learn import store as _ls
@@ -220,6 +220,9 @@ class Session:
         # Settings "Help improve the voice guide" (prefs.improve, off by default): text-only turn log on this device.
         self.tlog = turnlog.SessionLog(self)
         self._tl: dict | None = None           # the turn being logged (begin in _turn, written when decided)
+        self._dm_out: dict | None = None       # the learned Director's outputs at the current turn end (turn log v2)
+        self._tl_text: str | None = None       # the current turn's words (the situation class; never written)
+        self.pending_clip: tuple | None = None  # a Playtest session's audio of the last heard turn: (norm text, pcm, ts)
         # The entity layer (docs/ENTITY_LAYER.md): what was talked about, by entity id (in memory only, never stored)
         from .entities import EntityMemory, registry
         self.memory = EntityMemory(registry(), clock)
@@ -455,6 +458,8 @@ class Session:
                     await self.set_floor("kid")
             elif st == "end":
                 k.update(open=False, end=self.clock(), words=m.get("text") or k["words"])
+                if m.get("_pcm"):   # a grown-up's Playtest session: this turn's audio (playtest.py), for the turn log only
+                    self.pending_clip = (norm(k["words"]), m["_pcm"], self.clock())
                 await self.on_turn(k["words"], source="listen")
         elif t == "arc":
             if m.get("command_complete") is not None:
@@ -727,7 +732,12 @@ class Session:
                 ents = self.memory.note_turn(ear.get("names"), ear.get("spoken") or text, self.screen_name())
         # the opt-in turn log keeps no words of a turn Arc marked private or unsafe: it is stored as private (the
         # guard path), so a false PII flag costs only the text in the log, never the turn on screen
+        self._dm_out, self._tl_text = None, text
         self._tl = self.tlog.begin(text, source, ctx_r, rt, k)
+        clip, self.pending_clip = self.pending_clip, None
+        if self._tl is not None and clip and source in OPEN_MIC and clip[0] == norm(text) and \
+                self.clock() - clip[2] <= 10.0:
+            self._tl["_pcm"] = clip[1]
         if self._tl is not None and ents:   # entity ids + how they were heard (no words)
             self._tl["entities"] = [{"id": e["id"], "how": e["how"], "p": e["p"], "state": e["state"]} for e in ents]
         if self._tl is not None and (sf["pii"] or sf["mask"]):
@@ -740,18 +750,28 @@ class Session:
             self._tl = None
 
     def _log_dir(self, **d):
-        if self._tl is not None:
-            self._tl["_dir"] = {k_: v for k_, v in d.items() if v is not None}
+        """The turn log's `director` (what the rules, the model and the runtime decided) and, v2, `seen`: what the
+        learned Director saw at this turn end (runtime.Shadow.explain + features.record, numbers only)."""
+        if self._tl is None:
+            return
+        self._tl["_dir"] = {k_: v for k_, v in d.items() if v is not None}
+        if self.dm is not None:
+            with contextlib.suppress(Exception):
+                ex = self.dm.explain(self._dm_out, self._tl_text or "")
+                self._tl["_dir"].update({k_: v for k_, v in ex.items() if k_ not in ("cls", "bare")})
+                self._tl["seen"] = turnlog.seen_view((self.dm.cur or {}).get("rec"), ex)
 
     async def _routed(self, text: str, source: str, ctx_r: router_.Ctx, rt: dict):
         b, k = self.belief, self.belief["kid"]
         out = None
+        rules0 = rt["outcome"] if rt["outcome"] in ("ignore", "navigate", "answer") else None   # before any model act
         if rt["outcome"] in ("ignore", "navigate", "answer") and self.dm is not None:
             # The learned Director steps on every routed turn end (the same stream it was trained on); on a lesson
             # step's answer it may silence the turn (room chatter: "oh, it's", "okay") when it is sure enough
             # (runtime.answer_policy; off unless the shipped weights carry a fitted threshold).
             with contextlib.suppress(Exception):
                 out = self.dm.step(self._end_event(text, source, rt), {"available": False})
+            self._dm_out = out
             nv = self._model_nav(out, rt)
             if nv is not None:
                 rt = nv
@@ -768,7 +788,7 @@ class Session:
             if self.dm is not None:
                 with contextlib.suppress(Exception):
                     self.dm.turn_result({"action": "none", "source": "router+" + rt["reason"]})
-            self._log_dir(rules="ignore", model=ma, p=_p(mp), final="ignore")
+            self._log_dir(rules=rules0 or "ignore", model=ma, p=_p(mp), final="ignore")
             k["open"] = False
             if b["floor"] == "kid":
                 b["floor"] = "none"
@@ -781,7 +801,7 @@ class Session:
                     self.dm.turn_result({"action": "navigate" if rt["outcome"] == "navigate" else "answer_step",
                                          "source": "router+" + str(rt.get("intent") or rt["outcome"])})
             fin = "navigate" if rt["outcome"] == "navigate" else "answer"
-            self._log_dir(rules=fin, model=ma, p=_p(mp), final=fin)
+            self._log_dir(rules=rules0 or fin, model=ma, p=_p(mp), final=fin)
             # The client owns the screens: it runs the navigation / grades the step answer (one decision, visual).
             k["open"] = False
             if b["floor"] == "kid":
@@ -893,10 +913,18 @@ class Session:
         if self.dm is not None:
             with contextlib.suppress(Exception):
                 out = self.dm.step(self._end_event(text, source, rt), read)
+            self._dm_out = out
         nv = self._model_nav(out, rt)
         if nv is not None:          # round 7: the model's navigation of a question / order turn (fitted, guarded)
             with contextlib.suppress(Exception):
                 self.dm.turn_result({"action": "navigate", "source": "director_model+" + nv["intent"]})
+            ma, mp = self.dm.model_act(out)
+            est = "answer"
+            with contextlib.suppress(Exception):
+                est = "command" if [c for c in map(mission_nlu.valid, mission_nlu.parse(resolved).get("commands")
+                                                    or []) if c] else "answer"
+            self._log_dir(rules=est, rules_est=True, model=ma, p=_p(mp), override="navigate", final="navigate",
+                          source="director_model")
             await self.emit(pre + [decision("nav", P_ANSWER, intent=nv["intent"], arg=nv["arg"], text=text)])
             return
         rb = None
@@ -965,9 +993,18 @@ class Session:
             from .director_model import features as _fx
             ma, mp = self.dm.model_act(out) if (self.dm is not None and out is not None) else (None, None)
             rc = _fx.rules_command(r) if not override else None
-            self._log_dir(rules=None if override else _fx.rules_act(r), rules_cmd=(rc or {}).get("type"),
+            fc = _fx.rules_command(r) or ((ctx.get("commands") or [None])[0] if override else None)
+            # v2: when the model overrode, direct() never ran: the rules' act is estimated from the deterministic parse
+            # (a command it reads, else the answer path), flagged rules_est, so the import can still score the rules
+            est = None
+            if override:
+                with contextlib.suppress(Exception):
+                    est = "command" if [c for c in map(mission_nlu.valid, mission_nlu.parse(resolved).get("commands")
+                                                        or []) if c] else "answer"
+            self._log_dir(rules=est if override else _fx.rules_act(r), rules_est=True if override else None,
+                          rules_cmd=(rc or {}).get("type"),
                           model=ma, p=_p(mp), override=(override or {}).get("act"), final=_fx.rules_act(r),
-                          source=r.get("source"),
+                          source=r.get("source"), _cmd=fc,
                           confirm=bool(r.get("needs_confirm")) or any(d.get("t") == "ask_confirm"
                                                                        for d in r.get("decisions") or []))
             self._tl["_guard"] = guard or r.get("action") == "guard"

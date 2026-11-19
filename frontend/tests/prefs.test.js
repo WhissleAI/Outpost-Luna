@@ -27,12 +27,18 @@ test("prefs: the barge-in thresholds follow the voice filter (relaxed / normal /
   delete globalThis.window;
 });
 
-test("prefs: 'Help improve the voice guide' is off by default and only an explicit true turns it on", () => {
-  assert.equal(PREF_DEFAULTS.improve, false);
-  assert.equal(normalizePrefs({}).improve, false);
-  assert.equal(normalizePrefs({ improve: "true" }).improve, false);
-  assert.equal(normalizePrefs({ improve: 1 }).improve, false);
-  assert.equal(normalizePrefs({ improve: true }).improve, true);
+test("prefs: 'Help improve the voice guide' is on by default; an explicit off stays off; old saved prefs turn on once", () => {
+  assert.equal(PREF_DEFAULTS.improve, true);
+  assert.equal(normalizePrefs({}).improve, true);
+  assert.equal(normalizePrefs({}).improve_v, 2);
+  // before 0.4.3 every saved profile held improve:false (the old default) and no improve_v: on, once
+  assert.equal(normalizePrefs({ improve: false, volume: 0.5 }).improve, true);
+  // after the migration the switch is the grown-up's choice: an explicit false stays off
+  const off = normalizePrefs({ ...normalizePrefs({ improve: false }), improve: false });
+  assert.equal(off.improve, false);
+  assert.equal(normalizePrefs(JSON.parse(JSON.stringify(off))).improve, false, "survives a save and a reload");
+  assert.equal(normalizePrefs({ improve_v: 2, improve: true }).improve, true);
+  assert.equal(normalizePrefs({ improve_v: 2, improve: "no" }).improve, true, "only an explicit false is off");
 });
 
 // [qa] QA-17: every per-cadet store is in the profile (camera & gestures, the mission tier), so switching cadets swaps them.

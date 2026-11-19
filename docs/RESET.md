@@ -20,7 +20,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
 | ... all of the above, with "Hold to erase progress too" | erased | erased |
 | Debriefs, the first-mission briefing seen | erased | erased |
 | Prefs: voice, theme, Mute, expressiveness, the recorded voice, captions, text size, gestures and their calibration, coach marks seen, the tour seen | erased | erased |
-| The opt-in voice-guide log (turn log) | erased | erased |
+| The voice-guide log (turn log, and any playtest audio) | erased | erased |
 | On-device learning: learned names, speech habits, thresholds, this computer's echo numbers (`docs/ON_DEVICE_LEARNING.md`) | erased | erased |
 | Spoken-line cache (TTS) | erased | erased |
 | Live server state: missions, sessions, check rides, standing orders | erased | erased |

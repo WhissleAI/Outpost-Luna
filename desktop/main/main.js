@@ -37,6 +37,7 @@ const AS = require("./assets"); // first-run assets
 const U = require("./updates"); // asset updates (remote manifest, staged swap, rollback)
 const E = require("./engine");  // per-launch token, engine.json, restart back-off, hang watch (docs/SECURITY.md)
 const D = require("./diag");    // structured logs, crash-free sessions, the diagnostics file (docs/DIAGNOSTICS.md)
+const PT = require("./playtest");   // Settings -> For grown-ups -> "Export playtest" (docs/DIRECTOR_LOOP.md §1b)
 const AU = require("./appupdate"); // Settings -> "Check for updates" (GitHub releases; manual unless opted in)
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
@@ -297,6 +298,8 @@ function createMain(origin) {
     if (r) { e.preventDefault(); resetApp(r, origin); return; }
     // Settings → Help & diagnostics → "Save a diagnostics file…" (#92): the user picks where; nothing is uploaded
     if (D.isDiagUrl(url, origin)) { e.preventDefault(); saveDiagnostics(origin, /[?&]names=1\b/.test(url)); return; }
+    // Settings → For grown-ups → "Export playtest": the grown-up picks where; nothing is uploaded
+    if (PT.isExportUrl(url, origin)) { e.preventDefault(); exportPlaytest(origin); return; }
     // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and opens the browser
     const up = AU.parseUpdateUrl(url, origin);
     if (up) { e.preventDefault(); if (up.do === "check") checkAppUpdate("Settings"); else openUpdateTarget(up.what); return; }
@@ -383,6 +386,34 @@ async function saveDiagnostics(origin, names = false) {
     log("diagnostics: not saved:", e.message);
     diagState("error");
   } finally { diagBusy = false; }
+}
+
+// ---- Settings → For grown-ups → Playtest session → "Export playtest" (playtest.js) ----------------------------------
+let ptBusy = false;
+function ptState(state) {
+  if (win && !win.isDestroyed()) win.webContents.executeJavaScript(`window.__lunaPlaytest && window.__lunaPlaytest(${JSON.stringify({ state })})`).catch(() => {});
+}
+async function exportPlaytest(origin) {
+  if (ptBusy || !win) return;
+  ptBusy = true;
+  try {
+    // OUTPOST_PLAYTEST_SAVE_PATH: test runs only (like OUTPOST_DIAG_SAVE_PATH): no dialog, this file
+    let file = (TESTING && process.env.OUTPOST_PLAYTEST_SAVE_PATH) || "";
+    if (!file) {
+      const r = await dialog.showSaveDialog(win, { title: "Export playtest",
+        defaultPath: path.join(app.getPath("downloads"), PT.defaultName()), filters: [{ name: "Zip", extensions: ["zip"] }] });
+      if (r.canceled || !r.filePath) { ptState("cancelled"); return; }
+      file = r.filePath;
+    }
+    ptState("saving");
+    const bytes = await PT.saveExport({ backend: origin, token: TOKEN, appVersion: APP_VERSION, file });
+    log(`playtest: exported a ${Math.round(bytes / 1024)} KB file`);
+    jlog.event("playtest_exported", { bytes });
+    ptState("saved");
+  } catch (e) {
+    log("playtest: not exported:", e.message);
+    ptState("error");
+  } finally { ptBusy = false; }
 }
 
 let resetting = false;

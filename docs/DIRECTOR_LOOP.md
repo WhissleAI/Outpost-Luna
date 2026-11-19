@@ -3,7 +3,7 @@
 The Director routes every turn: it answers, acts, navigates or stays quiet. The learned Director
 (`backend/app/director_model/`) gets better only from turns it has not seen yet, so we keep feeding it:
 
-1. real use, from families who opt in (the turn log);
+1. real use (the turn log, on by default since 0.4.3), and playtests a grown-up runs with consent (turn log + audio);
 2. today's failure classes, made into generated sessions and held-out sets;
 3. a retrain that ships only when it beats both the rules and the weights already shipped.
 
@@ -11,6 +11,8 @@ The Director routes every turn: it answers, acts, navigates or stays quiet. The 
 make director-loop                                   # import -> real ear -> generate -> train -> evaluate -> gate -> export
 make director-loop LOG=~/Downloads/turnlog           # the same, with a family's turn log imported first
 make director-import LOG=~/Downloads/turnlog         # import only (writes data/real_turns.json + data/review/review.jsonl)
+make director-import LOG=~/Downloads/outpost-luna-playtest-2026-11-19.zip   # a playtest export (also its audio clips)
+make director-eval-real LOG=<folder | .jsonl | .zip> # the shipped routed config vs the rules on those real turns
 ```
 
 Every run writes `director_model/runs/<date>/report.md` (the before / after table and the gate decision) and
@@ -18,8 +20,11 @@ Every run writes `director_model/runs/<date>/report.md` (the before / after tabl
 
 ## Cadence
 
-- **After every playtest.** Ask the family to turn on Settings → Listening → "Help improve the voice guide" before
-  the session. Copy the turn log folder afterwards, with their consent. Run `make director-loop LOG=<folder>`.
+- **After every playtest.** A grown-up opens Settings → For grown-ups → Voice log and playtest → Start playtest,
+  confirms permission, and plays. Afterwards: Export playtest (one zip, saved where they choose). With their consent,
+  run `make director-eval-real LOG=<zip>` (how the shipped Director did on real turns) and
+  `make director-loop LOG=<zip>`.
+- **Any family log** (the turn log is on by default): copy the turn log folder, with consent, and import it the same way.
 - **Weekly otherwise**, and whenever the router changes (new intents or screens) or a new Arc Mini / Arc Tagger
   ships (`NEW_EAR=1`, see `director_model/RETRAIN.md`).
 - Read `report.md`. A FAIL keeps the shipped weights and lists each set that blocked the update. Fix the data or the
@@ -27,20 +32,33 @@ Every run writes `director_model/runs/<date>/report.md` (the before / after tabl
 
 ## 1. The turn log (privacy model)
 
-**Off by default.** The Settings switch is "Help improve the voice guide" (`prefs.improve`). It is stored per cadet
-profile on the device, like every other setting. Only an explicit `true` turns logging on (`normalizePrefs`,
-`session.clean_prefs`). With it off, nothing is written.
+**On by default since 0.4.3** (it was opt-in and off before; the Director had never heard a real kid). The Settings
+switch is Listening → "Help improve the voice guide" (`prefs.improve`), stored per cadet profile on the device, like
+every other setting. Settings → For grown-ups → "Voice log and playtest" says plainly that it is on and what it keeps.
 
-**What one turn holds.** All of it is text, written by `backend/app/turnlog.py`:
+- **Turning it off sticks.** An explicit off stays off. Prefs saved before 0.4.3 held the old off-by-default
+  (`improve: false` with no `improve_v`); they turn on once (`normalizePrefs`, the `improve_v: 2` migration flag).
+  An opt-out made before 0.4.3 cannot be told apart from that default, so it turns on once too; turning it off again
+  sticks.
+- **The backend logs only on the client's word.** It logs when the client's prefs say `improve: true` (the app sends
+  its prefs on every connect) or while a playtest runs. A client that never sends prefs (headless tools, the
+  generator) writes nothing.
+
+**What one turn holds.** All of it is text, written by `backend/app/turnlog.py` (`v` 2 since 0.4.3; the importer reads
+1 and 2):
 
 | field | content |
 |---|---|
 | `text` | The heard words, lowercased, after redaction (below). A turn the privacy guard caught is stored as `<private>`. |
 | `arc` | Arc's `device_directed`, `command_complete` and dialogue act. |
 | `frame` | The client's screen: the screen name, the step type and options, the pending offer, the lesson id and step. |
-| `audio` | Booleans and a share: was our voice playing or on air, and how much the words overlap our recent lines. The audio itself is never stored. |
+| `audio` | Booleans and a share: was our voice playing or on air, and how much the words overlap our recent lines. The audio itself is never in the log. |
 | `router` | The router's outcome, reason and intent. |
-| `director` | What the rules decided, what the model decided (act and probability), the override, the final act, and whether a confirm was asked. |
+| `director` | What the rules decided (`rules`; `rules_est` when the model overrode and the rules never ran, estimated from the parse), the model's act and p (`model`, `p`), the override, the final act, whether a confirm was asked, the order that ran (`cmd`: type and app slots only). v2: `mode`, the weights (`weights`), the primary model's own choice (`shadow`), each routed file's (`routed`), and which file each path consulted (`picked`: the class's turn, the navigation fill, the lesson-answer silencing; null = the rules). |
+| `ear` (v2) | The ear's ABI 2 read-out on the final words, numbers and enums only: `uconf`, `min_wconf`, `eot`, `dropped`, decoder agreement (`agree`, `dec`), name links (`names`: p, state, kind; never the name), almost matches (p only), quantities (kind, small values), disfluency count, `playback_leak` / `playback`, `barge` / `barge_p`, `speech_s` / `max_pause_s` / `end_silence_s`. Null for typed turns. |
+| `seen` (v2) | What the learned Director saw at the turn end (`features.record`, numbers and flags only): the situation class (`cls`: hot / short / echo / video / quiet), the bare-turn guard (`bare`), and the e13 / link / hot / entity views. |
+| `room` (v2) | The room-state estimate (calm / busy / too loud) and its numbers, when the session has the estimator (`session.room_state`); null until it ships. |
+| `wav` (v2) | Only in a playtest: the file name of this turn's audio clip (`playtest/<turn id>.wav`). |
 | `t`, `day` | Seconds since the session's first logged turn, and the calendar day. No clock time. |
 | `s`, `id` | A random per-session tag. It is never the session id. |
 
@@ -52,32 +70,79 @@ profile on the device, like every other setting. Only an explicit `true` turns l
 | `negate` | "no", "stop", "back" or "not that" within 6 s. |
 | `retap` | The same tap twice within 6 s, right after a turn. |
 | `hint` | The lesson step went to retry or hint right after a turn the router sent to it as the answer. |
+| `pass` (v2) | The lesson step passed right after a turn the router sent to it as the answer. |
+| `undo` (v2) | The next order within 20 s took the order back: a cancel, the same switch flipped, power moved back. |
 | `confirm_cancel` / `confirm_yes` | How a confirm we asked for was answered. |
 
-**Redaction**, before anything is written (`turnlog.redact`):
+**Redaction**, before anything is written (`turnlog.redact`, `ear_view`, `seen_view`):
 
 - Call signs: the 12 built-in ones, plus the kid's own when the client sends it.
 - Names after "my name is", "call me", "I'm called", "my call sign is".
 - Anything after "I live at/on/in", "my address is", "my school is".
 - Phone-like numbers. Short numbers stay, because "shields to 40" is the signal we need.
+- The v2 fields hold numbers, booleans and short enum labels only. The ear's words, spoken form, decoder text, clean
+  text, name candidates and entities never enter them (`backend/tests/test_turnlog_v2.py` plants a name, a call sign
+  and a sound-alike candidate and checks none reach the log).
 
-**Never stored:** audio, names, the session id, the device, and clock times.
+**Never stored:** audio (outside a playtest), names, the session id, the device, and clock times.
 
 **Storage.** The log lives in `<app data>/turnlog/turns.jsonl`. The desktop app keeps it in its per-user cache folder;
 `TURNLOG_DIR` overrides the location. The file rotates to `turns.1.jsonl` at 2.5 MB, so the folder never holds much
 more than 5 MB.
 
-`GET /api/turnlog` returns the size and turn count. `DELETE /api/turnlog`, the "Delete what's saved" button in
-Settings, erases the log.
+`GET /api/turnlog` returns the size, turn count and playtest clips. `DELETE /api/turnlog`, the "Delete what's saved"
+button in Settings → Listening, erases the log and any playtest audio.
 
-**Leaving the device.** The app never uploads the log. A developer reads it only when a family hands the folder over.
+**Leaving the device.** The app never uploads the log. A developer reads it only when a family hands the folder (or a
+playtest export) over.
 
 The import (`director_model/import_logs.py`) behaves as follows:
 
 - It skips `<private>` turns and any text that still carries a redaction tag.
-- Imported turns go to `director_model/data/real_turns.json` and `data/review/`. Both are git-ignored and never
-  committed.
+- Imported turns go to `director_model/data/real_turns.json` and `data/review/`; playtest clips to
+  `data/real_audio/`. All are git-ignored and never committed.
 - Delete them when the family asks, or when the playtest is over.
+
+## 1b. Playtest session (grown-ups, with audio)
+
+Settings → For grown-ups (behind the 3-second hold) → **Voice log and playtest** → Start playtest.
+
+1. **Consent.** A short screen: each thing the child says is saved as audio; it stays on this computer; it stops when
+   you press Stop or close the app. "Start playtest" stays disabled until the grown-up ticks "I'm the parent or
+   guardian, or I have their permission." The backend refuses to start without that consent
+   (`POST /api/playtest/start {"consent": true}` with the page's own header).
+2. **While it runs.** The turn log is on even if the switch was off. The mic relay (`/ws/listen`) keeps the last 40 s
+   of the mic audio it already sends to the ear, in memory, and cuts each heard turn (1 s before the ear's turn start
+   to its end). The turn log writes it as `turnlog/playtest/<turn id>.wav` (16 kHz mono) and names it in the turn's
+   `wav`. A private turn (the privacy guard) never gets audio. A small **PLAYTEST** tag with a red lamp shows in the
+   top bar.
+3. **Export playtest…** writes ONE zip where the grown-up chooses: a save dialog in the desktop app
+   (`desktop/main/playtest.js`), a download in the browser build. The zip holds `turns.jsonl` (+ `turns.1.jsonl`),
+   `playtest/*.wav`, `manifest.json` (format, app version, turn log version, day, counts) and a README.
+4. **Off again** when the grown-up presses Stop, when the page closes (a reload, a profile switch), after 3 hours, and
+   when the app quits (the playtest lives in the backend process only). The audio stays until "Delete what's saved".
+
+**On the developer's side:**
+
+```
+make director-import LOG=outpost-luna-playtest-2026-11-19.zip   # labels + data/real_audio/<zip>/{*.wav,clips.jsonl}
+cd model_server && uv run python ../director_model/import_logs.py decode --audio ../director_model/data/real_audio/<zip>
+python3 director_model/import_logs.py retest                    # data/real_retest.json: held-out real-turn decodes
+make director-eval-real LOG=outpost-luna-playtest-2026-11-19.zip
+```
+
+The importer reads zip members by name only (never extracting paths). `decode` runs each clip through the app's own
+ear (`EarStream`) and stores the decode in the real-ear cache form, so the generator replays the real message stream
+(`gen_sessions` set `test_log_audio`). `retest` keeps only clips whose words hash to the held-out split (`--all` for a
+report-only set that may overlap training words).
+
+## 1c. The class gate on real turns (`make director-eval-real`)
+
+`director_model/eval_real.py` needs no model run: a v2 turn carries what the app decided live on every path. Per
+situation class (plus `nav` and `answer`, and `all`), it prints turns, act ok and wrong actions for the rules and for
+the shipped config, and the extra wrong actions (shipped wrong where the rules were right). Gold is the import's weak
+label at ≥ 0.6, or a reviewed label. It says which weights and mode decided the turns, and warns when that is not what
+this checkout ships. v1 turns count under `unknown`.
 
 ## 2. Import: weak labels from outcome signals
 
@@ -179,8 +244,8 @@ On a PASS, the old weights are copied to `runs/<date>/weights_before/` for rollb
 
 - **Proxy signals, not ground truth.** Weak labels are only a proxy. A "no" may answer CAPCOM's question rather than
   complain. That is why low-confidence turns go to a person, and why reviewed labels beat weak ones.
-- **No real children in the generated sets.** Kid voices are TTS. Until enough families opt in, `test_log` is empty and
-  the gate rests on generated sets.
+- **No real children in the generated sets.** Kid voices are TTS. Until real logs and playtests arrive, `test_log` and
+  `test_log_audio` are empty and the gate rests on generated sets.
 - **Rules fixes shrink what is left for the model.** When the router learns a class (for example
   `grade.plausible` silencing lesson chatter), the rules column rises and the model's room on that class shrinks.
   The gate still checks it never falls below.

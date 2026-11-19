@@ -70,7 +70,7 @@ to a grown-up you trust.") and a flag on the grown-ups' side (`GET /api/safety/f
 ## PII false positives
 
 `safety.pii.leak` fires at 0.6–1.0 on almost every short utterance above, none of which carries personal data. The app
-therefore treats a PII tag only as "keep the words out of the opt-in turn log"; it never hides text on screen or blocks a
+therefore treats a PII tag only as "keep the words out of the turn log"; it never hides text on screen or blocks a
 turn (`tests/test_safety.py::test_a_false_pii_flag_does_not_hide_normal_text`).
 
 | Input | Expected | Actual |

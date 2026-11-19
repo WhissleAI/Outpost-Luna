@@ -29,7 +29,7 @@ Code: `backend/app/entities/` (app-agnostic). Data: `backend/data/entities/outpo
  session ───────── "yes" to the offer = the name; story callback "You asked about Tycho earlier."
  Director model ── round-12 features: ear_* (link) + ent_* (memory), appended
  UI ────────────── linked names marked in the kid's words (solid when sure, dotted + "?" when the app will ask)
- turn log (opt-in) entity ids + how heard + p, never words
+ turn log ──────── entity ids + how heard + p, never words
 ```
 
 ## 1. The registry
@@ -122,12 +122,12 @@ Who reads it:
 | Director rules | `director._link` acts on the linked id (`ear_place` → `place_of`, through `ref`), not a re-match of the text; `linked_entity(read, ("site",))` gives the mission's dispatch its `target_id` |
 | Story | `recall_line(id)`: "You asked about Tycho earlier." When the kid returns to a place they named ≥ 120 s ago, at most once per 5 min per place, it is prefixed to the explorer answer |
 | Learned Director | the `ent_*` features (below) |
-| Turn log (opt-in) | `entities: [{id, how, p, state}]` per turn: ids, never words |
+| Turn log | `entities: [{id, how, p, state}]` per turn: ids, never words |
 
 Privacy:
 - Nothing is persisted.
 - The memory dies with the session.
-- The opt-in turn log follows its existing rules (local file, redacted text, off by default).
+- The opt-in turn log follows its existing rules (local file, redacted text, on by default since 0.4.3, docs/DIRECTOR_LOOP.md).
 
 ## 4. Director features (round 12; append-only)
 
