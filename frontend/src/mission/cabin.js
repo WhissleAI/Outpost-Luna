@@ -30,7 +30,8 @@ const deg = v => `${v >= 0 ? "+" : "−"}${Math.abs(+v || 0).toFixed(1)}°`;
 const PAGES = [["PWR", "Power"], ["LIFE", "Life support"], ["RAD", "Radiation"], ["COMM", "Comms"]];
 /** Window views: ORBIT is the globe, the others the LOLA terrain. */
 export const VIEWS = [["orbit", "Orbit"], ["site", "Site"], ["rover", "Rover"], ["earth", "Earth"]];
-const TASK = { collect_ice: "Ice run", explore: "Exploring", repair_array: "Array fix", return: "Heading home" };
+const TASK = { collect_ice: "Ice run", explore: "Exploring", repair_array: "Array fix", return: "Heading home", return_home: "Heading home",
+  stranded: "Stuck, battery flat", rescue_home: "Driving home" };   // [campaign] Rover rescue
 const TOTAL_H = { collect_ice: 10, explore: 8, repair_array: 5, return: 5 };
 /** Caution & warning: [id, legend, level, lit(state)]. Red = warning, amber = caution, blue = status (never an alarm). */
 const LAMPS = [
@@ -549,10 +550,10 @@ export function createCabin(root, o = {}) {
       const t = b.dataset.task, on = busy && rv.task === t;
       b.setAttribute("aria-pressed", on); b.disabled = t === "return" ? !busy || rv.task === "return" : busy;
     });
-    q("#cbRvSt").textContent = busy ? `${TASK[rv.task] || "Out"} · back in ${rv.eta_h} h` : "Parked";
+    q("#cbRvSt").textContent = busy ? (rv.task === "stranded" ? TASK.stranded : `${TASK[rv.task] || "Out"} · back in ${rv.eta_h} h`) : "Parked";
     const ro = q("#cbRover"); ro.hidden = !busy;
     if (busy) { const p = clamp(1 - (rv.eta_h || 0) / (TOTAL_H[rv.task] || 8), 0, 1);
-      ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.eta_h} h</span>`; }
+      ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.task === "stranded" ? "" : `${rv.eta_h} h`}</span>`; }
   }
   const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
   function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
