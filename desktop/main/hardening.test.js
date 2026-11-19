@@ -57,11 +57,11 @@ test("the built page has no inline script (the CSP would stop it)", () => {
   assert.doesNotMatch(html, /\son[a-z]+="/, "no inline event handlers");
 });
 
-test("links: https on the cited sites, our repo and site; nothing else", () => {
+test("links: the cited sites, our repo and site (https); nothing else", () => {
   for (const u of ["https://www.nasa.gov/moon-base/", "https://kauai.ccmc.gsfc.nasa.gov/DONKI/", "https://doi.org/10.1126/sciadv.aaz1334",
-    "https://planetarynames.wr.usgs.gov/Feature/5450", "https://github.com/WhissleAI/Outpost-Luna/releases/latest", "https://whissleai.github.io/Outpost-Luna/"])
+    "https://planetarynames.wr.usgs.gov/Feature/5450", "http://imbrium.mit.edu/DATA/", "https://github.com/WhissleAI/Outpost-Luna/releases/latest", "https://whissleai.github.io/Outpost-Luna/"])
     assert.equal(H.linkAllowed(u), true, u);
-  for (const u of ["http://www.nasa.gov/", "https://evil.example/", "https://nasa.gov.evil.example/", "https://github.com/someone/else",
+  for (const u of ["http://github.com/WhissleAI/Outpost-Luna", "https://evil.example/", "http://evil.example/", "https://nasa.gov.evil.example/", "https://github.com/someone/else",
     "file:///etc/passwd", "smb://fileserver/share", "ms-settings:privacy", "https://user:pw@www.nasa.gov/", "javascript:alert(1)"])
     assert.equal(H.linkAllowed(u), false, u);
 });

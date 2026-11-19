@@ -10,8 +10,8 @@
 //                  the YouTube embed, connections only to our origin, no plugins, no <base>, no framing by others
 //   navigation(url, origin)   will-navigate: "ours" stays; everything else is stopped, and a web link we allow opens in
 //                  the system browser ("youtube" behind the grown-up gate)
-//   linkAllowed(url)  which links may open in the system browser at all: https on the science and NASA sites the app
-//                  cites, our own repo and site; never a file:, a custom scheme or an unknown host
+//   linkAllowed(url)  which links may open in the system browser at all: the science and NASA sites the app cites, our
+//                  own repo and site (https); never a file:, a custom scheme or an unknown host
 "use strict";
 
 const WEB_PREFS = Object.freeze({ sandbox: true, contextIsolation: true, nodeIntegration: false, nodeIntegrationInWorker: false,
@@ -48,8 +48,10 @@ const OUR_REPO = "/whissleai/outpost-luna";
 
 function linkAllowed(url) {
   let u; try { u = new URL(url); } catch { return false; }
-  if (u.protocol !== "https:" || u.username || u.password) return false;
+  if (!/^https?:$/.test(u.protocol) || u.username || u.password) return false;
   const h = u.hostname.toLowerCase();
+  // a few cited data sources are http only (imbrium.mit.edu); our own pages must be https
+  if (u.protocol === "http:" && (h === "github.com" || h === "whissleai.github.io")) return false;
   if (h === "github.com") return u.pathname.toLowerCase() === OUR_REPO || u.pathname.toLowerCase().startsWith(OUR_REPO + "/");
   if (h === "whissleai.github.io") return u.pathname === "/Outpost-Luna" || u.pathname.startsWith("/Outpost-Luna/");
   return LINK_HOSTS.some((d) => h === d || h.endsWith("." + d));
