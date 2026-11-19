@@ -60,6 +60,15 @@ function activeProfileId() { try { const s = JSON.parse(get(PROFILES) || "null")
 const get = k => { try { return store ? store.getItem(k) : null; } catch (e) { return null; } };
 const set = (k, v) => { try { if (!store) return; if (v == null) store.removeItem(k); else store.setItem(k, v); } catch (e) { /* private mode */ } };
 
+/** The automatic room state (room.js via voice.js, never stored): {room: "calm"|"busy"|"loud", room_listen: "open"|"hold"|
+ *  "type"}. The server raises its dd gates one level in a busy / loud room and ignores open-mic turns while the room
+ *  asks for hold to talk (docs/SESSION_CONTRACT.md §7). */
+export function roomWire(O = typeof window !== "undefined" ? window.__outpost : null) {
+  const r = O && O.room;
+  if (!r || typeof r.snapshot !== "function") return { room: "calm", room_listen: "open" };
+  const s = r.snapshot();
+  return { room: s.state || "calm", room_listen: s.mode === "open" || !s.mode ? "open" : s.mode === "type" ? "type" : "hold" };
+}
 /** Any stored object → valid prefs (unknown keys dropped, values clamped to their options). */
 export function normalizePrefs(x) {
   const o = { ...PREF_DEFAULTS }, s = x && typeof x === "object" ? x : {};
@@ -119,7 +128,7 @@ export function createPrefs({ globe = null } = {}) {
   const wire = (rate = 1) => ({ t: "prefs", type: "prefs", voice: P.voice || null, voice_all: P.voice_all, pack: P.pack !== false,
     engine: P.engine === "steer" ? "steer" : "os", steer_voice: P.steer_voice || null, rate: Math.max(0.6, Math.min(1.6, rate)),
     volume: P.volume, expressiveness: P.expressiveness, filter: P.filter, level: P.level, listen: P.listen, improve: P.improve === true,
-    profile: activeProfileId() });   // whose on-device learning applies (backend app/learn; never the call sign)
+    profile: activeProfileId(), ...roomWire() });   // whose on-device learning applies (backend app/learn; never the call sign)
   /** What the server applied ({t:"prefs", applied}); Settings shows it. */
   let applied = null;
   const setApplied = a => { applied = a || null; dispatchEvent(new CustomEvent("outpost:prefs-applied", { detail: applied })); };

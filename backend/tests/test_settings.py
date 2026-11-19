@@ -206,7 +206,8 @@ def test_prefs_over_the_websocket(world):
         ack = ws.receive_json()
     assert ack == {"t": "prefs", "applied": {"voice": v, "voice_all": False, "rate": 0.75, "expressiveness": 0.2,
                                              "filter": "strict", "level": "commander", "listen": "handsfree", "volume": 1.0,
-                                             "improve": False, "pack": True, "engine": "os", "steer_voice": None}}
+                                             "improve": False, "pack": True, "engine": "os", "steer_voice": None,
+                                             "room": "calm", "room_listen": "open"}}   # the automatic room state (additive)
     s = sessions.get("ws-set-1", create=False)
     assert s.level == "commander" and s.filter_thresholds() == tr.FILTERS["strict"]
 

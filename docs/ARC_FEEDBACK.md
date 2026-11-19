@@ -210,3 +210,31 @@ confidence (or an `unclear` flag) instead of nothing, and bias short turns towar
 
 **Ask:** kid-speech and classroom-babble data in training, and a per-utterance confidence that drops with these
 conditions so the app knows when to ask instead of act.
+
+### Room noise / classroom chatter as an ear read-out (2026-11-19, `feat/classroom-teacher`)
+
+The app is going into schools. A classroom has 20+ voices near the laptop, and the open mic keeps catching them. The
+app now estimates the room on its own (`frontend/src/room.js`, docs/HANDSFREE.md "Room state") from a mic RMS
+percentile, `device_directed`, `uconf`, `playback_leak` and how the router treated recent turns. It goes stricter in a
+busy room, asks for hold to talk, and offers typing in a loud one. Every input is a proxy, and the mic level is the
+weakest one: the browser's noise suppression and gain control move it, and it cannot tell one loud kid from twenty
+quiet ones.
+
+| what we need | what we use today | why it is not enough |
+|---|---|---|
+| "is this a busy room" per turn and rolling | 15th percentile of browser mic RMS over 10 s, without our playback | AGC / NS on real laptops change it; set on synthetic beds only (fixture p20 0.021-0.026 = busy) |
+| "this turn is classroom chatter, not the kid" | `device_directed` < floor, router ignore reasons | dd AUC 0.70 on our banks (SPEECH_SIGNALS_AUDIT §3); babble-under-a-kid is not in its training |
+| speech-to-noise of the kid's turn | the turn's loudest frame / that floor | the frame includes the babble |
+
+Asks:
+1. A per-turn **`room_noise`** read-out on the final words: the estimated noise level (dB, or speech-to-noise ratio) under
+   the turn's speech, computed inside the ear where the VAD and the encoder see it.
+2. A rolling **`room` event** every ~1 s while the stream is open (also between turns): `{noise_db, babble_p, talkers?}`,
+   where `babble_p` = P(several voices talking at once nearby). This is the "classroom chatter" signal, and it should
+   work with the app's echo reference (our own playback is not chatter).
+3. Calibrated on child speech over classroom babble at SNR 0-20 dB. Any v2 `room.onnx` head (docs/ARC_V2.md) that comes
+   close is welcome: we would read it in shadow first, as with the v2 room read-outs.
+
+What the app would do with it: replace the RMS floor in `room.js` with `room_noise` / `babble_p`, keeping the same
+hysteresis and the same effects. The estimator's thresholds and test harness (`frontend/tools/room_harness.mjs`) are
+ready to re-tune against it.

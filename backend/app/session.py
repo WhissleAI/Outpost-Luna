@@ -60,9 +60,14 @@ SPOKEN_BEATS = ("settle", "comm_gap", "first_dark", "ice_return", "final_downlin
 # Settings (docs/VOICES.md). The client owns persistence: it sends {t|type: "prefs", …} after hello on every connect.
 PREF_DEFAULTS = {"voice": None, "voice_all": False, "engine": "os", "steer_voice": None, "rate": 1.0, "expressiveness": steering.EXPR_DEFAULT,
                  "filter": "normal", "level": "cadet", "listen": "handsfree", "volume": 1.0,
-                 "improve": False, "pack": True}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md): ON by default in the client, which sends it on every connect; off here so a client that never sends prefs (tools, the generator) writes nothing
+                 "improve": False, "pack": True, "room": "calm", "room_listen": "open"}   # pack: the recorded guide voice for fixed lines (docs/VOICE_PACK.md); improve: the on-device turn log (turnlog.py, docs/DIRECTOR_LOOP.md): ON by default in the client, which sends it on every connect; off here so a client that never sends prefs (tools, the generator) writes nothing
 LEVELS = ("cadet", "commander", "engineer")   # engineer: Commander missions in real units (docs/PHYSICS.md)
 LISTEN = ("handsfree", "ptt")
+# The automatic room state (frontend/src/room.js, docs/HANDSFREE.md "Room state"): never a setting, never stored. A busy or
+# loud room raises the dd gates one level above the kid's filter; room_listen hold / type ignores open-mic turns (as
+# listen="ptt" does) until the room is calm again. Space and typed turns always count.
+ROOM_STATES = ("calm", "busy", "loud")
+ROOM_LISTEN = ("open", "hold", "type")
 # libarc ABI 2 read-outs on the ear's final words (model_server/app/arc_ear.py abi2_view): kept on k["ear"] under their
 # own keys. The round-7 `conf` / `alts` stay null / [] (the shipped Director weights were trained with them empty).
 EAR_ABI2 = ("almost", "quantities", "clean_text", "uconf", "min_wconf", "nbest", "walts", "disfl", "n_dropped",
@@ -139,6 +144,10 @@ def clean_prefs(m: dict, cur: dict | None = None) -> dict:
             pass
     if m.get("listen") in LISTEN:
         p["listen"] = m["listen"]
+    if m.get("room") in ROOM_STATES:
+        p["room"] = m["room"]
+    if m.get("room_listen") in ROOM_LISTEN:
+        p["room_listen"] = m["room_listen"]
     if "improve" in m:    # only an explicit true turns the turn log on (the client's default is true)
         p["improve"] = m.get("improve") is True
     if "profile" in m:    # the active cadet profile ("p1".."p6"): whose on-device learning applies (app/learn)
@@ -283,10 +292,16 @@ class Session:
         return self.prefs.get("level") or "cadet"
 
     def ptt_only(self) -> bool:
-        return self.prefs.get("listen") == "ptt"
+        return self.prefs.get("listen") == "ptt" or self.prefs.get("room_listen") in ("hold", "type")
+
+    def room_state(self) -> dict:
+        """The client's automatic room state (frontend/src/room.js via prefs `room` / `room_listen`), for the turn log
+        (turnlog._room): labels only, never audio."""
+        return {"state": self.prefs.get("room") or "calm", "listen": self.prefs.get("room_listen") or "open",
+                "filter": router_.room_filter(self.prefs.get("filter"), self.prefs.get("room"))}
 
     def filter_thresholds(self) -> tuple[float, float]:
-        return router_.thresholds(self.prefs.get("filter"))
+        return router_.thresholds(router_.room_filter(self.prefs.get("filter"), self.prefs.get("room")))
 
     def _with_prefs(self, d: dict):
         """A say decision gets the kid's voice / rate / expressiveness on its style; /api/tts applies them."""

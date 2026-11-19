@@ -205,6 +205,7 @@ async function boot() {
   installPretendExplain({ speak: t => speak(t, { priority: 2 }) });   // the guide's line is captioned like any other
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
+  addEventListener("outpost:room", () => sendPrefs());   // the automatic room state (room.js): the server's dd gates follow it
   // the turn log (prefs.improve, or a grown-up's Playtest session): the Academy's grade of a step, so the server can mark
   // a step that passed or went to hint (the server ignores it when the log is off)
   addEventListener("outpost:lesson-result", e => { if (useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
@@ -583,7 +584,7 @@ async function boot() {
     prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
-      voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
+      voice.decided(d.outcome, d.text, d);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
       // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
       // a quiet exact answer comes back as one chip (crewpick.js); anything else heard clears an old one
       if (d.reason === "crew_talk" && d.pick) crewPick.show(d.pick); else crewPick.hide();

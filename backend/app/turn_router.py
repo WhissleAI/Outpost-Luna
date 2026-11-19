@@ -55,6 +55,16 @@ def thresholds(level: str | None) -> tuple[float, float]:
     return FILTERS.get(level or "normal", FILTERS["normal"])
 
 
+# A busy or loud room (the client's automatic room state, frontend/src/room.js) raises the filter one level, never lower
+# than the kid's choice: relaxed -> normal -> strict -> strict.
+STRICTER = {"relaxed": "normal", "normal": "strict", "strict": "strict"}
+
+
+def room_filter(level: str | None, room: str | None) -> str:
+    lv = level if level in FILTERS else "normal"
+    return STRICTER[lv] if room in ("busy", "loud") else lv
+
+
 # Non-lexical sounds and fillers. A turn made only of these is never for us.
 FILLER = {
     "oh", "ohh", "ooh", "oo", "o", "ah", "ahh", "aah", "a", "uh", "uhh", "um", "umm", "hm", "hmm", "hmmm", "mm", "mmm",

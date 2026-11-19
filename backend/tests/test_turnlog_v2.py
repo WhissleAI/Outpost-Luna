@@ -177,6 +177,15 @@ def test_room_state_is_logged_when_the_estimator_is_present(logdir):
     assert r["room"] == {"state": "busy", "level_db": -31.2, "voices": 2, "note": None}
 
 
+def test_a_logged_turn_carries_the_automatic_room_state(logdir):
+    clock = Clock()
+    s = sess(clock)
+    asyncio.run(s.handle({"type": "prefs", "room": "busy", "room_listen": "hold"}))
+    asyncio.run(s.handle({"t": "typed", "text": "what is a crater"}))
+    (r,) = [x for x in lines(logdir) if x["k"] == "turn"]
+    assert r["room"] == {"state": "busy", "listen": "hold", "filter": "strict"}
+
+
 def test_playtest_needs_consent_and_logs_even_with_the_switch_off(logdir):
     with pytest.raises(ValueError):
         playtest.start(False)
