@@ -1247,6 +1247,7 @@ def debrief(m: Mission) -> dict:
             "difficulty": m.difficulty, "level": m.level, "objectives": obj, "stars": stars(m), "good_calls": list(m.good_calls),
             "try": (_campaign.TRY.get(missed["id"]) if _campaign.is_campaign(m) and m.outcome == "survived" and missed
                     and missed["id"] in _campaign.TRY else
+                    _campaign.next_line(m) if m.outcome == "survived" and obj["met"] == 2 else
                     TRY_NEXT.get(m.outcome if m.outcome != "survived" or obj["met"] == 2 else
                                  "goals_science" if obj["ice"]["met"] else "goals_ice" if obj["science"]["met"] else "goals")),
             "campaign": _campaign.public(m.campaign),

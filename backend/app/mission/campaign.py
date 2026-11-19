@@ -165,3 +165,10 @@ def goal(m, gid: str) -> dict:
 
 def goals(m) -> list[dict]:
     return [goal(m, g) for g in spec(m)["goals"]]
+
+
+def next_line(m) -> str:
+    """The debrief's "try" line after a full win: the next mission of the campaign, or a new site after the last."""
+    n = spec(m)["n"]
+    nxt = next((x for x in MISSIONS if x["n"] == n + 1), None)
+    return f"Next: Mission {nxt['n']}, {nxt['title']}." if nxt else "Campaign done. Fly Mission 1 at a new site."

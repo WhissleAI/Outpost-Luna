@@ -627,3 +627,5 @@ are the same campaign: the same hub, briefing, chapter cards, Now card, debrief 
   skips time misses the goals; each mission's goals and main goal are its own and Missions 2 to 6 fly five different
   sites; the twists; determinism; the autosave and Restart shift; the API. Mission 1 and `tests/test_strategy.py`
   are unchanged.
+
+![Mission hub, Mission 4](img/campaign/hub_m4_1440x900.jpg) ![Rover rescue in the cabin](img/campaign/cabin_rover_rescue_1440x900.jpg)

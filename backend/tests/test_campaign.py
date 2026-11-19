@@ -169,3 +169,10 @@ def test_debrief_names_the_missed_goal():
     assert d["campaign"]["n"] == 4
     if m.outcome == "survived":
         assert "missed" in d["why"].lower() and d["try"] == campaign.TRY["rescue"]
+
+
+def test_a_full_win_points_at_the_next_mission():
+    m = follow_card(sim.new_mission("c", "x", 0, level="cadet", campaign="rover_rescue"))
+    assert sim.objectives(m)["met"] == 2 and sim.debrief(m)["try"] == "Next: Mission 5, Far-side relay."
+    m = follow_card(sim.new_mission("c", "x", 0, level="cadet", campaign="power_budget"))
+    assert sim.debrief(m)["try"].startswith("Campaign done")
