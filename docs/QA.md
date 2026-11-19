@@ -12,13 +12,17 @@ status says otherwise).
 
 | | P0 | P1 | P2 | total |
 |---|---|---|---|---|
-| qa: fixed here | 0 | 10 | 35 | 45 |
-| qa: open (logged, not fixed) | 0 | 0 | 8 | 8 |
-| routed to `fix/rc-polish` | 1 | 2 | 4 | 7 |
-| routed to `fix/story-onboarding` | 0 | 1 | 7 | 8 |
-| routed to `fix/guidance` | 0 | 0 | 6 | 6 |
-| routed to `feat/keys` | 0 | 0 | 0 | 0 |
-| **total** | **1** | **13** | **60** | **74** |
+| fixed by `qa` (this sweep, and `fix/qa-tidy-open` on 2026-11-19) | 0 | 10 | 44 | 54 |
+| fixed by `fix/rc-polish` | 1 | 2 | 4 | 7 |
+| fixed by `fix/story-onboarding` | 0 | 1 | 7 | 8 |
+| fixed by `fix/guidance` | 0 | 0 | 6 | 6 |
+| closed by design (QA-67) | 0 | 0 | 1 | 1 |
+| **open** | **0** | **0** | **0** | **0** |
+| **total** | **1** | **13** | **62** | **76** |
+
+Status re-checked against main on 2026-11-19 (`fix/qa-tidy-open`): every "routed" row was looked up in the current
+code and, where it is a screen, run headless; each now says where and how it was fixed. QA-75 and QA-76 were found
+during that pass.
 
 The owner's six reports map to QA-01 (lesson card over Mission), and to the in-flight work: the voice bar shake and the
 double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Trace it: Orientale, then up to Ohm"
@@ -40,9 +44,9 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 
 | ID | Sev | Area | Repro | Expected | Actual | Shot | Owner | Status |
 |---|---|---|---|---|---|---|---|---|
-| QA-01 | P0 | Screens | Start any lesson, then press Library or Mission | The lesson card goes away | It stays on top, covering the picker. Cause: school.css `.apanel.is-lesson{display:flex}` beats `.apanel[hidden]{display:none}`. No global `[hidden]{display:none!important}` exists, so any `.x.is-y{display:…}` can leak the same way | `img/qa/qa-01-lesson-card-over-picker.jpg` | fix/rc-polish | routed |
+| QA-01 | P0 | Screens | Start any lesson, then press Library or Mission | The lesson card goes away | It stays on top, covering the picker. Cause: school.css `.apanel.is-lesson{display:flex}` beats `.apanel[hidden]{display:none}`. No global `[hidden]{display:none!important}` exists, so any `.x.is-y{display:…}` can leak the same way | `img/qa/qa-01-lesson-card-over-picker.jpg` | fix/rc-polish | fixed fc7d76d (fix/rc-polish): a global `[hidden]{display:none!important}` (tokens.css), `.apanel[hidden]` !important (school.css) and a per-mode screen guard; re-checked 2026-11-19 on main |
 | QA-02 | P2 | Story | Press Start lesson on lesson 1 | CAPCOM speaks as CAPCOM; no offer after the kid already started | "Day one. CAPCOM pulls up a map of the Moon." is narrator copy in the CAPCOM voice. "Ready, Pulsar?" is spoken after Start, and the brief starts without waiting | | fix/story-onboarding | fixed (fix/story-onboarding): beats are first person ("Let's start with a map of the Moon"), "Here we go, <cs>." instead of an unanswered question; a test bans third-person CAPCOM and stray questions |
-| QA-03 | P2 | Flight School | The map | "Lesson n of 6", patches n/7, "Check ride" | "Lesson 1 of 7", "0/7" | | fix/guidance | routed |
+| QA-03 | P2 | Flight School | The map | "Lesson n of 6", patches n/7, "Check ride" | "Lesson 1 of 7", "0/7" | | fix/guidance | fixed ba70f74 (fix/guidance): core lessons only, "Lesson n of 6" (explorer.js `coreLessons`, academy/ui.js `lessonNo`); the check ride says "Check ride", never "Lesson 7"; the patch line counts core lessons |
 | QA-04 | P1 | Voice bar | The ear socket closes (model server restarted or full) | Kid-safe words; the mic comes back | "Voice hiccup: local ear closed" is shown for good, the mic goes off, and nothing retries | `img/qa/qa-04-voice-hiccup-and-leak.jpg` | qa | fixed b56f7f7 |
 | QA-05 | P1 | Voice bar | `/ws/listen` fails once (backend still starting) | The mic works once it can | `wsBroken` latches until a reload | | qa | fixed b56f7f7 |
 | QA-06 | P1 | Settings: Less motion | Less motion on, Library, Far side or tap a place | No flying or spinning | The globe flies 1.3 s, the ring pulses, and an OS change while open is ignored | | qa | fixed 2a6b494 |
@@ -67,7 +71,7 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 | QA-25 | P2 | Cabin / data | The power page's load list, the radiation page, the storm strip "Shields 40", the check-ride "Shields up" | Pretend tech is tagged wherever it is shown | Only the shields knob and the Greenhouse rows carry the tag | | fix/story-onboarding | fixed (fix/story-onboarding): tag on the power list (Shields, Greenhouse), the RAD page Shields row, the storm strip's shields button and the ride's Shields order; tags stay visible at the seat |
 | QA-26 | P2 | Cabin | Finish mission → "Fly again" or "yes" | A paused mission isn't wiped by accident | The paused debrief offers Fly again, which restarts from shift 1 with no confirm. "Finish mission" doesn't finish anything | | fix/story-onboarding | fixed (fix/story-onboarding): the paused debrief's primary is Resume mission; Fly again / Pick a new site / "fly again" ask "Start over?" first (offer `confirm_wipe`); "Finish mission" is now "See debrief" |
 | QA-27 | P2 | Cabin / data | A storm with few particles (sep:false) | "Storm at Earth" | The cabin titles every storm "Solar particle storm" while CAPCOM says "few particles here" | | fix/story-onboarding | fixed (fix/story-onboarding): sep:false storms are "Storm at Earth · Few particles here" (caution, no shelter buttons); the Now strip says keep working |
-| QA-28 | P2 | Course data | Lesson "Talk to Houston" | One number per fact | course.json says Malapert's Earth was up "9 of 10 days"; the picker and debrief say 9.5 | | fix/guidance | routed |
+| QA-28 | P2 | Course data | Lesson "Talk to Houston" | One number per fact | course.json says Malapert's Earth was up "9 of 10 days"; the picker and debrief say 9.5 | | fix/guidance | fixed 744038d (fix/guidance): one number from the sim. Checked 2026-11-19: course.json "Malapert. Earth was up 7 of 10 days" and `/api/mission/sites` `window_earth_days` 7.0 for Malapert (the picker shows 7/10) |
 | QA-29 | P1 | Errors | Start the app with the backend down, then bring it up | The app recovers on its own | "Close the app and open it again." and a dead end (no retry) | `img/qa/qa-29-offline-dead-end.jpg` | qa | fixed 2a6b494 (retries every 3 s) |
 | QA-30 | P1 | Performance | Switch Library ⇄ Mission 12× with a mission running | Flat memory | +534 nodes, +45 listeners, +0.43 MB per switch. The Escape listener on `#mCabin` kept every old cockpit (renderer, scene, PMREM) alive; dispose didn't free the GPU | | qa | fixed d704f9b |
 | QA-31 | P1 | Performance | Start a mission, restart the backend, go to Library | No traffic while away | The telemetry socket reconnects every second forever, and stays subscribed in other modes | | qa | fixed d704f9b |
@@ -97,23 +101,25 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 | QA-55 | P2 | Picker | Hover a site row | Its pin lights (FLOWS picker-hover) | Only the label pill lights; `.mx-dot.is-hot` never applies | | qa | fixed 42821f3 |
 | QA-56 | P2 | Settings: Text size | Text size 150% | Library surfaces scale too | Find it, the Library toolbar, the globe label and About stay at 100% | | qa | fixed 42821f3 |
 | QA-57 | P2 | Performance | Model server never ready | Back off | `/api/health` polled every 2 s forever after "Voice off" | | qa | fixed 42821f3 |
-| QA-58 | P2 | Flight School map | 1440 wide | The lesson blurb fits | "Near side, far side, and Shackleton crater at the pol…" is cut off | `img/qa/qa-58-map-blurb-truncated.jpg` | fix/guidance | routed |
-| QA-59 | P2 | Course data | The radiation lesson | Units on every number | "inside the ISS (523)", no unit. The debrief side (sim.py) is fixed here | | fix/guidance | routed (course.json) |
-| QA-60 | P2 | Places data | Ask "Mare Orientale" | The name matches the size | "Mare Orientale … 930 km": 930 km is the basin, the mare is about 300 km. The lessons use the name | | fix/guidance | routed |
-| QA-61 | P2 | Picker perf | Leave the picker open | Idle CPU | The pins' SVG is rebuilt with 10 `querySelector` calls every frame, even with a still globe | | qa | open |
-| QA-62 | P2 | Touch targets | Library toolbar (34 px), hardware markers (26 px), debrief × (36 px), pin labels (28 px) | ≥ 44 px (DESIGN_SYSTEM) | Below | | qa | open |
-| QA-63 | P2 | Library | "Hear the crew" when `/api/clips` fails | Feedback | Nothing happens | | qa | open |
+| QA-58 | P2 | Flight School map | 1440 wide | The lesson blurb fits | "Near side, far side, and Shackleton crater at the pol…" is cut off | `img/qa/qa-58-map-blurb-truncated.jpg` | fix/guidance | fixed 84a2a17 (fix/guidance): `.mp-sub` wraps to two lines (school.css), never cut mid-word |
+| QA-59 | P2 | Course data | The radiation lesson | Units on every number | "inside the ISS (523)", no unit. The debrief side (sim.py) is fixed here | | fix/guidance | fixed 744038d (fix/guidance): course.json says "523 microsieverts a day" |
+| QA-60 | P2 | Places data | Ask "Mare Orientale" | The name matches the size | "Mare Orientale … 930 km": 930 km is the basin, the mare is about 300 km. The lessons use the name | | fix/guidance | fixed 744038d (fix/guidance): the 930 km feature is "Orientale Basin" in places.json, facts.json and every prompt; "mare orientale" stays an alias |
+| QA-61 | P2 | Picker perf | Leave the picker open | Idle CPU | The pins' SVG is rebuilt with 10 `querySelector` calls every frame, even with a still globe | | qa | fixed fix/qa-tidy-open: `mission/pin_layout.js` computes the layout as numbers plus a key rounded to what is drawn; `mission/ui.js` looks the nodes up once and writes styles and the SVG only when the key changes (camera move, resize, a new pick). Idle picker, 10 s headless: pin DOM writes 148 → 0, layouts 148 → 3, style recalcs 166 → 24, script 0.10 → 0.03 s. The navigator map was already event-driven (its loop stops when still) |
+| QA-62 | P2 | Touch targets | Library toolbar (34 px), hardware markers (26 px), debrief × (36 px), pin labels (28 px) | ≥ 44 px (DESIGN_SYSTEM) | Below | | qa | fixed fix/qa-tidy-open: the visuals keep their size, a transparent `::after` gives a 44 px hit area (docs/DESIGN_SYSTEM.md "Kid-sized targets"). Measured headless: Library toolbar 34 → 44, top-bar modes 34 → 44, hardware markers 26 → 45, pin labels 28 → 44 (rows now 46 px apart so hit areas never overlap), debrief × and crew Stop 36 → 44 |
+| QA-63 | P2 | Library | "Hear the crew" when `/api/clips` fails | Feedback | Nothing happens | | qa | fixed fix/qa-tidy-open: the crew bar says "Couldn't load the crew audio." with a Try again button (player.js `failed`), on a failed `/api/clips` fetch or a failed audio file; a failed fetch is not cached, so Try again refetches. Checked headless with `/api/clips` returning 503, then recovering. `img/qa/qa-63-crew-audio-retry.jpg` |
 | QA-64 | P2 | Mission data | A storm warning | Particles arrive in minutes to hours (COPY.md) | "Particle storm likely within 6 hours" (Commander) / 12 h (Cadet), a fixed lead from `WARN_LEAD_H`; the sensor "a few hours' warning" vs "up to 1 hour" in course.json | | qa | fixed (fix/story-onboarding), product call: lead times kept (Cadet 12 h, Commander 6 h); copy says "Houston: particles likely within hours. Forecast: N hours (game)." and the strip "Forecast ~N h (game)" |
-| QA-65 | P2 | Debrief | A low-power mission | A real takeaway | "Battery's low." (the callback line) fills a takeaway slot | | qa | open |
-| QA-66 | P2 | Cabin | Return to a mission the server already finished | The debrief | The stale Day 1 HUD (only reachable when the sim moves while away, e.g. via the API) | | qa | open (edge) |
-| QA-67 | P2 | Data | "NASA Provides Update on Artemis III Moon Landing Regions" as a link title | — | It's NASA's real headline, not our claim; left as is | | qa | open (note) |
+| QA-65 | P2 | Debrief | A low-power mission | A real takeaway | "Battery's low." (the callback line) fills a takeaway slot | | qa | fixed fix/qa-tidy-open: each callback has a whole-sentence `takeaway` (story.js `CALLBACKS`, `callbackTakeaway`), e.g. "When the battery runs low, turn down science and save power for life support." |
+| QA-66 | P2 | Cabin | Return to a mission the server already finished | The debrief | The stale Day 1 HUD (only reachable when the sim moves while away, e.g. via the API) | | qa | fixed fix/qa-tidy-open: entering Mission with a running mission first fetches the server state (`mission/ui.js` `freshState`); if it is over, the debrief opens. Checked headless: start, go to Library, finish the mission through the API, come back: the debrief, no cabin. `img/qa/qa-66-finished-mission-debrief.jpg` |
+| QA-67 | P2 | Data | "NASA Provides Update on Artemis III Moon Landing Regions" as a link title | — | It's NASA's real headline, not our claim; left as is | | qa | closed (by design): NASA's own headline, quoted as a link title |
 | QA-68 | P2 | Mission audio | Return to Mission while a red edge flash is on | The flash ends with its alert | The visual-alert flash and banner can outlive the alert after a mode switch | | fix/rc-polish | fixed 910fb4b |
 | QA-69 | P2 | Story | Debrief "New site" | A verb first (COPY.md buttons) | "New site"; the storm strip's "Shields 40" also has no verb | | fix/story-onboarding | fixed (fix/story-onboarding): "Pick a new site", "Set shields to 40" (strip and CAPCOM card), "Shelter the crew", "Resume mission", "See debrief" |
-| QA-70 | P2 | Library | 1280×720 Library with the voice bar | No overlap | The NASA credit sits under the voice bar at 800 px wide (not at 1280/1440) | | qa | open (below the supported size) |
+| QA-70 | P2 | Library | 1280×720 Library with the voice bar | No overlap | The NASA credit sits under the voice bar at 800 px wide (not at 1280/1440) | | qa | fixed (no longer reproduces): the Library has no on-globe NASA credit now (credits live in About). Checked 2026-11-19 at 800×720 and 1280×720: nothing sits under the voice bar |
 | QA-71 | P2 | Flight School | Know your Moon: tap a place | One voice | The same fact is played twice in two voices (owner report) | | fix/rc-polish | fixed (success line + "after" crew clip; floor dedupe) |
-| QA-72 | P2 | Flight School | "Trace it: Orientale, then up to Ohm" | A newcomer can do it | Impossible without knowing where Ohm is (owner report) | | fix/guidance | routed (owner report) |
+| QA-72 | P2 | Flight School | "Trace it: Orientale, then up to Ohm" | A newcomer can do it | Impossible without knowing where Ohm is (owner report) | | fix/guidance | fixed ba70f74 + 744038d (fix/guidance): the step turns the globe to the far side, shows and numbers both places ("Tap the glowing places in order: 1, then 2"), and the hint ladder says "Orientale Basin is the big bullseye. Ohm is above it." |
 | QA-73 | P2 | Cabin | First mission | Direction | The cabin gives no direction (owner report) | | fix/story-onboarding | fixed (fix/story-onboarding): the first-mission cabin tour, the Now strip, "what do I do?" (docs/STORY.md) |
 | QA-74 | P2 | Errors | The session socket fails to connect (backend busy) | Falls back to /api/ask quietly | Forwarding floor events to the null session threw "Cannot read properties of null (reading 'ui' / 'playback')" on every playback event (seen in ux_flow) | | qa | fixed 21ce6a3 |
+| QA-75 | P2 | Library | Play crew audio with a place card open | The bar clears the toolbar and the card | The bar sat over the toolbar (Tour / Far side unreachable) and, at 1280, ran under the card, hiding Stop | `img/qa/qa-63-crew-audio-retry.jpg` | qa | fixed fix/qa-tidy-open: in the Library the bar sits under the toolbar and is narrowed to clear the card (styles.css) |
+| QA-76 | P2 | Picker | Choose site with no map layers on the computer | A one-line note | "Map layers are not on this computer yet." wrapped into a five-line blob in the top-left corner (the pending map has no size) | `img/qa/qa-61-62-picker-1440.jpg` | qa | fixed fix/qa-tidy-open: the note stays on one line at the gutter (navigator.css) |
 
 ## Checked and fine
 
@@ -130,7 +136,7 @@ double speech (`fix/rc-polish`), chatter graded as misses (`fix/rc-polish`), "Tr
 An action every 4 s for 10 minutes (Library asks, tour, Far/Near side, card ×, Flight School, Settings, Mission, Find it),
 sampled after a forced GC (CDP `Performance.getMetrics`). There's no growth: the heap settles at about 14 MB, nodes swing
 with the screen shown, and listeners stay flat. Main-thread CPU is about 7.5 s a minute (the globe, the cabin and the
-picker's per-frame pin redraw, QA-61). No console errors.
+picker's per-frame pin redraw, QA-61; the pin redraw is now change-only). No console errors.
 
 | t (s) | JS heap (MB) | DOM nodes | listeners | main-thread CPU (s, cumulative) |
 |---|---|---|---|---|

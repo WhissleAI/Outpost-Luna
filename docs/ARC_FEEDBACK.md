@@ -145,3 +145,68 @@ Patterns for the Arc team:
 - **Short words**: "ice" -> "eyes", "end" -> "and"; the bias fixes most of these when the screen expects them.
 - **Silence** on a screen with a hot list sometimes decodes as "Oh. Oh." (base: nothing); a no-speech gate before the
   decoder would stop it.
+
+## Name recognition: wrong links, hard names, short turns (19 Nov 2026, fix/qa-tidy-open)
+
+From `director_model/RESULTS.md` round 11 ("Ear findings for the Arc team", 997 name mentions on synthetic Mac /
+Eloquence / Steer voices) and `docs/SPEECH_SIGNALS_AUDIT.md` (830-clip paired re-decode, link_p calibration). All on
+synthetic voices: real kid speech will be worse.
+
+### 1. A wrong link is worse than no link
+
+| what | number | where |
+|---|---|---|
+| mention linked to the WRONG entity | 6 % overall, **12 % on the cabin screen** | round 11 |
+| linked wrong, paired re-decode with the new 80-entry lists | 8.5 % overall, 10.1 % library, 19.6 % map | audit §5 |
+| link right when p ≥ 0.999 | 85.5 % (old lists), 93 % (new) | audit, "Is link_p calibrated?" |
+| link right when 0.9 ≤ p < 0.999 | 47.7 % (old), 65-79 % (new) | same |
+| abstains reported at p = 1.0 | 60 of 264 | same |
+
+A wrong link is rewritten in the list spelling, so every matcher downstream sees a clean, confident, wrong name and
+the app flies to the wrong place. The app now acts only at `LINK_ACT_P = 0.99` and asks "Did you mean X?" below it.
+
+**Ask:** below p 0.99, return `abstain` (with the top candidate in a side field) instead of `linked`. Make link_p
+mean P(this entity is what was said), so one threshold works, and give the linked / abstain / not_in_list decision
+its own `p_state`. An abstain should never carry p 1.0.
+
+### 2. Names the ear can't hear
+
+| name | right | heard as |
+|---|---|---|
+| Tsiolkovskiy | **0 / 27** | "siakowski", "syalkovski" |
+| Byrgius A | 15 % | "by gsr" |
+| Malapert Massif | 17 % | once "vavilov" |
+| Sea of Rains | 20 % | "sea of rain" |
+| Ohm | 24 % | 8 of 33 vanish |
+| Mare Humorum | 25 % | "emma snare him" |
+| de Gerlache | 31 % | "the jelly" |
+| Sea of Tranquility / Crises | 32-40 % | "z of tranquility", "c of crisi" |
+| South Pole | heard as "shackleton" 6 of 23 | |
+
+Overall, the words are right 61 % of the time, linked right 50 %, abstain 4 %, wrong 6 %, not_in_list 6 %, no name
+returned 33 %.
+
+**Ask:** pronunciation hints per entry (a respelling or phonemes: "tsee-ol-KOV-skee", "duh zher-LASH"), used by the
+bias and the linker, so a name with no common English spelling can be reached at all. Let a near-miss that differs only by a
+plural or a letter still link ("sea of rain" → Sea of Rains, "c of crisi" → Sea of Crises). Keep a one-word
+name such as Ohm from vanishing when it's on the list (it's dropped, not misheard).
+
+### 3. Short turns come back empty
+
+Empty decodes are 7.4 % overall, but **49 % of 1-word turns and 21 % of 2-word turns** ("hmm", "help", "this one",
+"yeah"); 3+ words: 5 %. These are a kid's most common answers to a question card, and "help" is the one word that has
+to work.
+
+**Ask:** short-turn handling: when the VAD saw speech but the decode is empty, return the best guess with a low
+confidence (or an `unclear` flag) instead of nothing, and bias short turns toward the screen's expected answers
+(yes / no / help / the options on screen).
+
+### 4. Where it is worst (WER)
+
+- By voice group: natural Mac voices 30 % (Moira 17 %, Tessa 21 %, Samantha 22 %, Ralph 60 %), Eloquence 49 %,
+  Steer TTS 10-12 %; novelty voices 74 %, sung 84 % (stress set).
+- By noise: room noise 32 %, none 33 %, music 37 %, babble 40 %, our OS-voice echo 40 %, TV 49 %, crew-clip echo
+  51 %. Reverb adds about 9 points. The laptop band costs nothing.
+
+**Ask:** kid-speech and classroom-babble data in training, and a per-utterance confidence that drops with these
+conditions so the app knows when to ask instead of act.

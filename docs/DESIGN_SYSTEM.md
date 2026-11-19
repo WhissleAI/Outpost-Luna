@@ -16,6 +16,10 @@ hard-code a value.
 - **No emoji in the UI.** Use `icon(name)` and `patch(id)` from `frontend/src/assets/icons.js` (owned by the Art agent).
 - **Kid-sized targets.** Interactive controls are at least `--control-md` (44px). A primary action is
   `--control-lg` (52px).
+  A control that has to look smaller (a 34px toolbar pill, a 36px `--control-sm` icon button, a 26px globe marker, a
+  28px pin label) keeps its look and gets a 44px hit area from a transparent `::after` (`position:relative` on the
+  control, `inset` negative by the shortfall). Neighbours' hit areas must not overlap: space rows so they don't
+  (the picker's pin rows are 46px apart). Examples: `.hud button`, `.ghost`, `.mx-x`, `.mx-pin`, `.np-stop` (QA-62).
 
 ## Tokens
 

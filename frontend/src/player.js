@@ -8,6 +8,8 @@ import { normMoment } from "./api.js";
 import { toClipTime, toFileTime } from "./cliptime.js";   // trimmed desktop audio: clip time <-> <audio> time
 
 const MAX_LINE = 14;   // words per karaoke line when the transcript has no punctuation
+/** [QA-63] when the crew audio can't load: say so in plain words and offer a retry (was: nothing happened). */
+export const CREW_FAIL = { who: "Crew audio", line: "Couldn't load the crew audio.", retry: "Try again" };
 
 /** Split moment words [a, b] into caption lines: utterance ends, sentence punctuation, long pauses, ≤ MAX_LINE. */
 function lines(clip, a, b) {
@@ -94,7 +96,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     const m = normMoment(raw), my = ++seq;
     halt(true);
     let clip;
-    try { clip = await api.clip(m.clip_id); } catch (e) { return false; }
+    try { clip = await api.clip(m.clip_id); } catch (e) { if (my === seq) failed(raw); return false; }
     if (my !== seq) return false;
     const W = clip.words, t1 = m.t1 ?? clip.dur;
     let a = W.findIndex(w => w[0] >= m.t0 - 0.3); if (a < 0) a = 0;
@@ -114,6 +116,17 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
     try { await audio.play(); } catch (e) { bar.classList.add("is-blocked"); }   // autoplay blocked: tap the bar
     if (floor && P && P.m === m) floor.crewPlayback("start", m.clip_id);
     return true;
+  }
+
+  /** [QA-63] the bar says the clip didn't load, with a Try again button (the Stop button closes it). */
+  function failed(raw) {
+    whoEl.textContent = CREW_FAIL.who; whereEl.textContent = "";
+    lineEl.classList.remove("is-explain"); lineEl.textContent = CREW_FAIL.line + " ";
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "np-retry"; b.textContent = CREW_FAIL.retry;
+    b.onclick = e => { if (e && e.stopPropagation) e.stopPropagation(); play(raw); };
+    lineEl.append(b);
+    bar.classList.add("is-error"); bar.hidden = false;
   }
 
   function follow(id, ring = true) {
@@ -200,7 +213,7 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   /** End the moment (fade out). `quiet` skips the end callback (another moment or answer is taking over). */
   function stop(quiet, natural) { seq++; halt(quiet, natural); }
   function halt(quiet, natural) {
-    const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked", "is-paused");
+    const was = P; P = null; bar.hidden = true; bar.classList.remove("is-blocked", "is-paused", "is-error");
     { const n = document.getElementById("npPaused"); if (n) n.textContent = ""; }
     if (was && floor) floor.crewPlayback(natural ? "end" : "interrupted", was.m.clip_id);
     if (!audio.paused) fadeTo(audio, 0, 200).then(() => { audio.pause(); audio.volume = 1; });
@@ -208,6 +221,8 @@ export function createPlayer({ api, globe, placeById, isKidTalking, onPlace, onE
   }
 
   audio.addEventListener("ended", () => { if (P) stop(false, true); });
+  // [QA-63] the audio file itself failed (missing, or the server went away mid-clip): same plain line + Try again
+  audio.addEventListener("error", () => { if (!P || !audio.error) return; const m = P.m; stop(true); failed(m); });
 
   return {
     play, stop, pause: userPause, resume: userResume,
