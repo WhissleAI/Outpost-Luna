@@ -544,7 +544,11 @@ def _hour_events(m: Mission, t: int, env_before: dict, out: list):
               if env["lit"] else ("Sunset on the rim. Batteries only now." if cabled else
                                   "Sunset. Batteries only until the Sun returns."),
               {"title": "JPL Horizons", "url": "https://ssd-api.jpl.nasa.gov/doc/horizons.html"})
-    if env_before["earth_visible"] != env["earth_visible"]:
+    if env_before["earth_visible"] != env["earth_visible"] and m.comm == "relay":   # [campaign] far-side relay
+        _emit(m, out, "comm_open" if env["earth_visible"] else "comm_closed",
+              "Relay overhead. You can call Houston." if env["earth_visible"] else
+              f"The relay has set. Next pass in {_campaign.RELAY_EVERY_H - _campaign.RELAY_PASS_H} hours.")
+    elif env_before["earth_visible"] != env["earth_visible"]:
         _emit(m, out, "comm_open" if env["earth_visible"] else "comm_closed",
               "Earth is up. You can call Houston." if env["earth_visible"] else
               "Earth has set. No radio until it rises.",
