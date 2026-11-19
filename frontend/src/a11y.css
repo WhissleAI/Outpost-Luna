@@ -150,6 +150,11 @@ html[data-contrast="high"] .apanel.is-home{background:#000}
 .rs-link .btn-link{border:0;background:none;padding:0;color:var(--color-accent);text-decoration:underline;font:inherit;cursor:pointer}
 .rs-zone{display:grid;gap:var(--space-2);justify-items:start}
 .dg-zone{display:grid;gap:var(--space-2);justify-items:start}
+/* Settings → For grown-ups → School network (network_ui.js, docs/SCHOOL_IT.md) */
+.nw-zone{display:grid;gap:var(--space-2);justify-items:start}
+.nw-zone .set-help{margin:0}
+.nw-off-h{margin-top:var(--space-2)!important;color:var(--color-text)}
+.nw-off{color:var(--color-text-2)}
 .au-zone{display:grid;gap:var(--space-2);justify-items:start}
 .au-ver{margin:0;font-size:var(--text-md);font-weight:var(--weight-semibold)}
 .au-ver span{font-family:var(--font-mono);font-weight:var(--weight-regular);color:var(--color-text-2)}

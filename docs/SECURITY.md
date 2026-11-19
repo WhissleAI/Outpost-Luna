@@ -89,3 +89,30 @@ which stays locked to its origin) GETs GitHub's latest-release API with no auth 
 for a check or name what to open (`download` / `release` / `site`); the URL comes from the main process's own result
 and must be https on `github.com/WhissleAI/Outpost-Luna` or `whissleai.github.io/Outpost-Luna` before
 `shell.openExternal`. Nothing is installed. Details: [`docs/DESKTOP.md`](DESKTOP.md) "App updates".
+
+## The desktop shell: hardening in one place (`desktop/main/hardening.js`)
+
+| What | How | Test |
+|---|---|---|
+| Every window | `WEB_PREFS`: `sandbox`, `contextIsolation`, no `nodeIntegration` (page, workers, subframes), no `<webview>`, no spell-check (Windows would download dictionaries from Google), `webSecurity` on. No remote module anywhere. `web-contents-created` refuses `<webview>` and new windows for every web contents | `hardening.test.js` reads `main.js` and `gate.js`: every `webPreferences` is `...WEB_PREFS` |
+| The page's CSP | added by the session to every response from our origin (`permissions.js`, replacing any the server sent): scripts from our origin only (+ `'wasm-unsafe-eval'` for the gesture models), no inline script (the theme scripts are files: `frontend/public/theme-*.js`), frames only `https://www.youtube-nocookie.com`, connections only to our origin, `object-src 'none'`, `frame-ancestors 'none'` | `hardening.test.js`, `permissions.test.js` |
+| Navigation and new windows | `navigation()`: our origin stays; a YouTube link goes behind the grown-up gate; another link opens in the system browser only when `linkAllowed()` (https on the science and NASA sites the app cites, our repo and site); anything else (another loopback port, `file:`, a custom scheme, an unknown host) is refused and logged. The window is never replaced or opened | `hardening.test.js` |
+| Devices on the network | Chromium's media router (Cast / DIAL discovery over mDNS and SSDP) is off by switch | `hardening.test.js` |
+| Listening | both servers on `127.0.0.1` (`launch.py HOST`); `app/netgate.py` refuses any listening socket on a non-loopback address in either server | `test_loopback_only.py` (backend and model server, started exactly as the app starts them: not reachable on this computer's network address; `lsof` shows `127.0.0.1` only), `test_school_network.py` |
+
+## School network mode (`docs/SCHOOL_IT.md`)
+
+No outbound connection except to an IT admin's allow list (none by default). Turned on by a machine policy (a
+`policy.json` in the machine-wide folder or the install folder, or `OUTPOST_SCHOOL_NETWORK=1`; locked on) or by a
+grown-up in Settings → For grown-ups → School network (`<userData>/network.json`). Enforced in one place per process:
+
+| Process | Where | A blocked request |
+|---|---|---|
+| The page | `session.webRequest.onBeforeRequest` (`permissions.js`, `policy`) | cancelled before it leaves, logged `blocked (school network)` |
+| The shell | `globalThis.fetch` = `netpolicy.gateFetch` (first-run and optional assets, asset and app update checks); each redirect hop checked | throws `{kind: "school", offline: true}` before the real fetch is called |
+| Backend, model server | `app/netgate.py install()`: httpx transports (each hop), `websockets.connect`, `socket.getaddrinfo`, and a `sys.addaudithook` on `socket.connect` / `sendto` (mDNS / SSDP multicast included). With the mode on at launch, uvicorn runs the plain asyncio loop so the audit hook sees every connect | `httpx.ConnectError` / `ConnectionRefusedError` before any socket: callers behave as offline |
+
+Tests: `backend/tests/test_school_network.py` (a blocked request raises before name lookup, socket backstop, mDNS / SSDP
+sends refused, loopback still works, the switch applies without a restart, a machine policy locks it, a broken policy
+file fails closed, the two `netgate.py` copies match), `desktop/main/netpolicy.test.js` (policy files per OS, the gated
+fetch never calls the real one for a blocked host, redirects), `permissions.test.js` (the session filter).

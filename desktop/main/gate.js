@@ -1,7 +1,8 @@
 // The grown-up gate (docs/MEDIA.md): a link out of a NASA video (the YouTube logo, "Watch on YouTube", the title)
-// opens in the system browser only after a grown-up holds a button for 3 seconds (gate.html). Everything else that
-// leaves the app keeps the old rule (main.js: http(s) links open in the browser). No Electron import: tested with fakes.
+// opens in the system browser only after a grown-up holds a button for 3 seconds (gate.html). Any other web link opens
+// in the browser only when it is on hardening.js's list (linkAllowed). No Electron import: tested with fakes.
 "use strict";
+const { WEB_PREFS } = require("./hardening");
 
 /** "youtube": needs the gate; "external": another web link (opens as before); "ours": our own page; null: never. */
 function classifyOpen(url, origin) {
@@ -24,7 +25,7 @@ function createGate({ makeWindow, file, log = () => {} }) {
     return (open = new Promise((resolve) => {
       const w = makeWindow({ parent, modal: true, width: 520, height: 300, resizable: false, minimizable: false, maximizable: false,
         fullscreenable: false, title: "Ask a grown-up", backgroundColor: "#05070d", show: false,
-        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+        webPreferences: { ...WEB_PREFS } });
       let done = false;
       const finish = (ok) => { if (done) return; done = true; open = null; log("grown-up gate", ok ? "opened" : "declined", url.slice(0, 120)); if (!w.isDestroyed()) w.close(); resolve(ok); };
       w.webContents.on("page-title-updated", (_e, title) => { if (title === "go") finish(true); else if (title === "no") finish(false); });

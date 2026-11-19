@@ -4,7 +4,7 @@
     python launch.py models  --port 47210
 
 Puts the right dependency folder (resources/site/<backend|models>) and app folder on sys.path, then runs uvicorn on
-127.0.0.1 only. A watchdog thread exits the process when the parent (Electron, MOON_PARENT_PID) is gone, so a crashed or
+127.0.0.1 only (HOST). A watchdog thread exits the process when the parent (Electron, MOON_PARENT_PID) is gone, so a crashed or
 force-quit app never leaves a model server holding 1 GB of RAM. Electron also kills the tree on quit and reaps stale
 pids on the next start; this is the third line of defence.
 """
@@ -20,6 +20,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent            # resources/app
 RES = HERE.parent                                  # resources
 LAYOUT = {"backend": ("site/backend", "backend"), "models": ("site/models", "model_server")}
+HOST = "127.0.0.1"   # loopback only, never 0.0.0.0: nothing on the school / home network can reach the servers
 OFFLINE_KEYS = ("DEEPGRAM_API_KEY", "NASA_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "HF_TOKEN")
 
 
@@ -66,9 +67,13 @@ def main() -> None:
     os.environ["ORT_DISABLE_TELEMETRY"] = "1"
     if os.environ.get("MOON_PARENT_PID"):
         watch_parent(int(os.environ["MOON_PARENT_PID"]))
+    # School network mode (app/netgate.py, docs/SCHOOL_IT.md): the outbound gate goes in before anything can connect.
+    # When it is on at launch the plain asyncio loop runs (not uvloop), so the socket-level backstop sees every connect.
+    from app import netgate
+    netgate.install()
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=a.port, log_level=os.environ.get("MOON_LOG_LEVEL", "info"),
-                access_log=False)
+    uvicorn.run("app.main:app", host=HOST, port=a.port, log_level=os.environ.get("MOON_LOG_LEVEL", "info"),
+                access_log=False, loop="asyncio" if netgate.enforcing() else "auto")
 
 
 if __name__ == "__main__":

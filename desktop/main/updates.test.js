@@ -324,7 +324,7 @@ test("main.js: setup is unconditional; no launch-time re-check; the opt-in path 
   assert.doesNotMatch(src, /runUpdates\("launch"\)/, "no silent check 30 s after launch");
   const calls = [...src.matchAll(/runUpdates\("(\w+)"\)/g)].map((m) => m[1]).sort();
   assert.deepEqual(calls, ["Settings", "auto"], "only the button and the opt-in check");
-  assert.match(src, /if \(assetAutoScheduled \|\| !U\.autoCheckDue\(r, assetGate\)\) return;/);
+  assert.match(src, /if \(assetAutoScheduled \|\| netPol\.school_network \|\| !U\.autoCheckDue\(r, assetGate\)\) return;/, "opt-in, and never in school network mode");
   assert.match(src, /did-finish-load", helloAssets/);
 });
 

@@ -23,6 +23,10 @@
 //  10. app updates (appupdate.js, docs/DESKTOP.md "App updates"): Settings -> App version -> "Check for updates" asks
 //      GitHub for the latest release (manual; or once a day on launch when the user opted in) and "Download" opens the
 //      installer in the system browser. Nothing is installed by the app.
+//  11. School network mode (netpolicy.js, docs/SCHOOL_IT.md): an IT admin's machine policy or a grown-up's switch stops
+//      every outbound connection except to an allow list (none by default): the page's (session.webRequest), the
+//      shell's own downloads (globalThis.fetch is gated) and both servers' (LUNA_NET_POLICY -> app/netgate.py).
+//      Hardening in one place (hardening.js): every window's webPreferences, the page's CSP, navigation and links.
 "use strict";
 const { app, BrowserWindow, session, shell, dialog, systemPreferences, Menu, ipcMain } = require("electron");
 const fs = require("fs");
@@ -39,12 +43,22 @@ const E = require("./engine");  // per-launch token, engine.json, restart back-o
 const D = require("./diag");    // structured logs, crash-free sessions, the diagnostics file (docs/DIAGNOSTICS.md)
 const PT = require("./playtest");   // Settings -> For grown-ups -> "Export playtest" (docs/DIRECTOR_LOOP.md §1b)
 const AU = require("./appupdate"); // Settings -> "Check for updates" (GitHub releases; manual unless opted in)
+const NP = require("./netpolicy");  // School network mode: the policy and the gated fetch (docs/SCHOOL_IT.md)
+const H = require("./hardening");   // webPreferences, CSP, navigation and link allow-lists, Chromium features off
 
 // Tests and demos run against their own data folder, never the owner's real "Outpost Luna" one.
 if (process.env.OUTPOST_USER_DATA) app.setPath("userData", process.env.OUTPOST_USER_DATA);
 const RES = app.isPackaged ? process.resourcesPath : path.join(__dirname, "..", "resources");
 const USER = app.getPath("userData");                   // ~/Library/Application Support/Outpost Luna, %APPDATA%\Outpost Luna
 const LOGS = path.join(USER, "logs");
+// School network mode (netpolicy.js): the machine policy is read once (an IT admin changes it, then the app restarts);
+// the grown-up's switch (<userData>/network.json, written by the backend) is re-read when it changes.
+const MACHINE_POLICY = NP.readMachine({ execPath: process.execPath });
+const USER_NET_FILE = path.join(USER, NP.USER_NAME);
+let netPol = NP.effective(MACHINE_POLICY, NP.readUser(USER_NET_FILE));
+globalThis.fetch = NP.gateFetch(globalThis.fetch, () => netPol, (...a) => log(...a));   // every shell download goes through it
+// Chromium never looks for other devices on the network (Cast / DIAL discovery uses mDNS and SSDP)
+app.commandLine.appendSwitch("disable-features", H.CHROMIUM_OFF.join(","));
 const PY = S.IS_WIN ? path.join(RES, "python", "python.exe") : path.join(RES, "python", "bin", "python3");
 const LAUNCH = path.join(RES, "app", "launch.py");
 const LIB = { darwin: "libarctag.dylib", win32: "arctag.dll" }[process.platform] || "libarctag.so";
@@ -98,7 +112,8 @@ async function choosePorts() {
 function envFor(name) {
   const common = { MOON_PARENT_PID: String(process.pid), HF_HOME: path.join(USER, "hf"), LUNA_TOKEN: TOKEN,
     LUNA_LOG_DIR: LOGS, LUNA_DATA_DIR: USER,   // [#92] <svc>.jsonl logs + metrics/daily-<svc>.json (app/diag.py)
-    ORT_DISABLE_TELEMETRY: "1" };   // ONNX Runtime's built-in Microsoft telemetry: off (no network after setup)
+    ORT_DISABLE_TELEMETRY: "1",     // ONNX Runtime's built-in Microsoft telemetry: off (no network after setup)
+    LUNA_NET_POLICY: JSON.stringify(MACHINE_POLICY) };   // School network mode: the machine policy (app/netgate.py)
   if (name === "models") {
     const a = store.envPaths();   // the installed assets (assets.js): <userData>/assets/<id>
     return S.childEnv({
@@ -271,25 +286,42 @@ async function waitHealthy() {
 // The one way out: a NASA video's YouTube embed (permissions.allowYouTube). It plays from the loopback origin as it is
 // (measured in Electron 44: no error 153), so no Referer is set; OUTPOST_YT_REFERER=1 turns that fallback on.
 function lockDownSession(origin) {
-  P.lockDownSession(session.defaultSession, origin, { log, systemPreferences, referer: process.env.OUTPOST_YT_REFERER === "1" });
+  P.lockDownSession(session.defaultSession, origin, { log, systemPreferences, referer: process.env.OUTPOST_YT_REFERER === "1",
+    policy: () => netPol, csp: H.csp(origin) });
+  session.defaultSession.setSpellCheckerEnabled(false);   // Windows would download dictionaries from Google
+}
+/** The grown-up's switch changed (the backend wrote network.json): the page and the shell follow at once. */
+function watchNetPolicy() {
+  fs.watchFile(USER_NET_FILE, { interval: 1000 }, () => {
+    const was = netPol.school_network;
+    netPol = NP.effective(MACHINE_POLICY, NP.readUser(USER_NET_FILE));
+    if (was !== netPol.school_network) { log(`school network: ${netPol.school_network ? "on" : "off"} (${netPol.source})`); jlog.event("school_network", { on: netPol.school_network, source: netPol.source }); }
+  });
+}
+/** A web link the page asked for: allow-listed (hardening.linkAllowed) and not switched off by the policy. */
+function openLink(url, kind) {
+  if (!netPol.open_links) { log("link not opened (policy: open_links off)", url.slice(0, 120)); return; }
+  if (kind === "youtube") gate(win, url).then((ok) => { if (ok) shell.openExternal(url); });   // [media] grown-up gate
+  else if (kind === "external") shell.openExternal(url);
+  else log("link refused (not on the list)", url.slice(0, 120));
 }
 const gate = G.createGate({ makeWindow: (o) => new BrowserWindow(o), file: path.join(__dirname, "gate.html"), log });
 
 function createSplash() {
   splash = new BrowserWindow({ width: 460, height: 300, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
-    webPreferences: { sandbox: true, contextIsolation: true } });
+    webPreferences: { ...H.WEB_PREFS } });
+  splash.webContents.on("will-navigate", (e) => e.preventDefault());
   splash.loadFile(path.join(__dirname, "splash.html"));
   splash.once("ready-to-show", () => reveal(splash));
 }
 
 function createMain(origin) {
   win = new BrowserWindow({ width: 1440, height: 900, minWidth: 960, minHeight: 640, show: false, backgroundColor: "#05070d",
-    title: "Outpost Luna", webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+    title: "Outpost Luna", webPreferences: { ...H.WEB_PREFS } });
   K.installKeys({ Menu, win, packaged: app.isPackaged, appName: "Outpost Luna" });   // [keys]
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    const kind = G.classifyOpen(url, origin);
-    if (kind === "youtube") gate(win, url).then((ok) => { if (ok) shell.openExternal(url); });   // [media] grown-up gate
-    else if (kind === "external") shell.openExternal(url);
+  win.webContents.setWindowOpenHandler(({ url }) => {   // no new windows, ever: a link opens in the system browser, or not
+    const kind = H.navigation(url, origin, G.classifyOpen);
+    if (kind !== "ours") openLink(url, kind);
     return { action: "deny" };
   });
   win.webContents.on("will-navigate", (e, url) => {
@@ -303,7 +335,8 @@ function createMain(origin) {
     // Settings → App version → "Check for updates" / "Download": the shell asks GitHub and opens the browser
     const up = AU.parseUpdateUrl(url, origin);
     if (up) { e.preventDefault(); if (up.do === "check") checkAppUpdate("Settings"); else openUpdateTarget(up.what); return; }
-    if (!url.startsWith(origin)) { e.preventDefault(); if (/^https?:/.test(url)) shell.openExternal(url); }
+    const kind = H.navigation(url, origin, G.classifyOpen);
+    if (kind !== "ours") { e.preventDefault(); openLink(url, kind); }
   });
   win.once("ready-to-show", () => {
     reveal(win);
@@ -431,6 +464,7 @@ function resetApp(r, origin) {
 
 // ---- first run: assets (assets.js) ---------------------------------------------------------------------------------
 const OFFLINE_MSG = "You're offline. Connect to the internet, or import the offline pack from a USB stick.";
+const SCHOOL_MSG = "School network mode is on, so nothing downloads. Import the offline pack from a USB stick.";
 let firstrun = null, frAbort = null, frState = {}, frWaiters = [], frBusy = false;
 const progress = {};        // id -> bytes done (for the screen)
 
@@ -444,7 +478,8 @@ function requiredReady() { return store.status().filter((x) => x.required).every
 
 function createFirstRun() {
   firstrun = new BrowserWindow({ width: 560, height: 540, frame: false, resizable: false, show: false, backgroundColor: "#05070d",
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, "firstrun-preload.js") } });
+    webPreferences: { ...H.WEB_PREFS, preload: path.join(__dirname, "firstrun-preload.js") } });
+  firstrun.webContents.on("will-navigate", (e) => e.preventDefault());
   firstrun.loadFile(path.join(__dirname, "firstrun.html"));
   firstrun.webContents.on("did-finish-load", () => frSend());
   firstrun.once("ready-to-show", () => reveal(firstrun));
@@ -467,7 +502,7 @@ async function fetchRequired() {
     if (e.name !== "AbortError") {
       log("assets: first run failed:", e.message);
       frSend({ busy: false, problem: true, title: "Outpost Luna isn't ready yet",
-        message: AS.isNetworkError(e) ? OFFLINE_MSG : e.disk ? e.message : `The download stopped (${e.message}). Try again, or import the offline pack.` });
+        message: e.school ? SCHOOL_MSG : AS.isNetworkError(e) ? OFFLINE_MSG : e.disk ? e.message : `The download stopped (${e.message}). Try again, or import the offline pack.` });
     }
   } finally { frBusy = false; }
   if (requiredReady()) { const w = frWaiters; frWaiters = []; w.forEach((r) => r()); }
@@ -535,6 +570,7 @@ function watchWanted() {
 /** After the UI is up: the optional assets (crew audio, videos), quietly; a failure waits for the next launch. An
  *  `on_demand` asset (the Steer voice) is never fetched here: only when the kid picks it in Settings (watchWanted). */
 async function fetchOptional() {
+  if (netPol.school_network) { log("assets: optional downloads skipped (school network mode)"); return; }
   const todo = U.setupNeeds(store.status(), store.manifest).optional;   // empty once setup is done: no request at all
   for (const id of todo) {
     if (quitting) return;
@@ -569,7 +605,7 @@ let assetAutoScheduled = false;
 async function helloAssets() {
   if (assetAutoScheduled || !win || win.isDestroyed()) return;
   const r = await win.webContents.executeJavaScript("window.__lunaAssets ? window.__lunaAssets() : null").catch(() => null);
-  if (assetAutoScheduled || !U.autoCheckDue(r, assetGate)) return;
+  if (assetAutoScheduled || netPol.school_network || !U.autoCheckDue(r, assetGate)) return;
   assetAutoScheduled = true;   // one per launch, even if the page reloads
   assetGate.mark();            // the attempt counts: at most one request a day, online or not
   setTimeout(() => runUpdates("auto"), U.AUTO_CHECK_DELAY_MS);   // non-blocking, after the UI is up
@@ -624,6 +660,12 @@ async function stopAll() {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  // Every web contents, now and later: no <webview>, no new windows unless a handler set later says otherwise (the main
+  // window's sends links to the system browser and still denies the window)
+  app.on("web-contents-created", (_e, wc) => {
+    wc.on("will-attach-webview", (e) => { e.preventDefault(); log("webview refused"); });
+    wc.setWindowOpenHandler(() => ({ action: "deny" }));
+  });
   app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
   app.whenReady().then(async () => {
     if (HEADLESS && app.dock) app.dock.hide();
@@ -632,6 +674,8 @@ if (!app.requestSingleInstanceLock()) {
     const { previous } = tracker.begin();   // [#92] a session = one launch; the last one unfinished = not crash-free
     jlog.event("launch", { version: APP_VERSION, platform: process.platform, arch: process.arch, previous_session: previous });
     log(`Outpost Luna ${app.getVersion()} (${process.platform} ${process.arch}); resources ${RES}; data ${USER}`);
+    if (netPol.school_network) log(`school network: on (${netPol.source}${MACHINE_POLICY.source ? ": " + MACHINE_POLICY.source : ""}); allowed: ${netPol.allow_hosts.join(", ") || "nothing"}`);
+    watchNetPolicy();
     createSplash();
     if (!fs.existsSync(PY)) return fail(`Embedded Python missing: ${PY}`);
     try {

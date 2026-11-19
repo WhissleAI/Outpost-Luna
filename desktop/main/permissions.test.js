@@ -141,3 +141,33 @@ test("Referer fallback: off by default; on, it is sent to YouTube hosts only", (
   assert.equal(hdr(ORIGIN + "/api/video/catalog").Referer, undefined);
   assert.equal(hdr("https://images-assets.nasa.gov/x").Referer, undefined);
 });
+
+test("School network mode: the page's off-origin requests stop at the session unless allowed; ours never do", () => {
+  const s = fakeSession(), logs = [];
+  let pol = { school_network: true, allow_hosts: [] };
+  lockDownSession(s, ORIGIN, { log: (...a) => logs.push(a.join(" ")), policy: () => pol });
+  const go = (url, resourceType) => { let r; s.filter({ url, resourceType }, (x) => { r = x; }); return !r.cancel; };
+  assert.equal(go(ORIGIN + "/api/network"), true);
+  assert.equal(go("ws://127.0.0.1:47310/ws/listen"), true);
+  assert.equal(go("data:image/png;base64,AAAA"), true);
+  assert.equal(go("https://www.youtube-nocookie.com/embed/jdkMHkF7BaA", "subFrame"), false, "the embed is off with nothing allowed");
+  assert.equal(go("https://i.ytimg.com/vi/x/hqdefault.jpg", "image"), false);
+  assert.ok(logs.some((l) => l.startsWith("blocked (school network)")), logs.join("\n"));
+  pol = { school_network: true, allow_hosts: ["youtube-nocookie.com"] };   // an admin allowed the embed host only
+  assert.equal(go("https://www.youtube-nocookie.com/embed/jdkMHkF7BaA", "subFrame"), true);
+  assert.equal(go("https://i.ytimg.com/vi/x/hqdefault.jpg", "image"), false, "its other hosts still need listing");
+  pol = { school_network: false, allow_hosts: [] };   // switched off again: the old rules
+  assert.equal(go("https://i.ytimg.com/vi/x/hqdefault.jpg", "image"), true);
+  assert.equal(go("https://evil.example/x.js", "script"), false, "never allowed, school network or not");
+});
+
+test("CSP: added to every response from our origin (any CSP the server sent is replaced), not to others", () => {
+  const s = fakeSession();
+  s.webRequest.onHeadersReceived = (h) => { s.hdr = h; };
+  lockDownSession(s, ORIGIN, { csp: "default-src 'self'" });
+  const run = (url, responseHeaders) => { let r; s.hdr({ url, responseHeaders }, (x) => { r = x; }); return r.responseHeaders; };
+  const h = run(ORIGIN + "/", { "content-type": ["text/html"], "content-security-policy": ["default-src *"] });
+  assert.deepEqual(h["Content-Security-Policy"], ["default-src 'self'"]);
+  assert.equal(h["content-security-policy"], undefined);
+  assert.equal(run("https://www.youtube-nocookie.com/embed/x", { a: ["1"] })["Content-Security-Policy"], undefined);
+});

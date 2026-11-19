@@ -2,7 +2,7 @@
 // captions/transcripts, keyboard + ARIA helpers (docs/ACCESSIBILITY.md).
 // Settings live in localStorage only ("outpost-a11y"); they are never sent to the server.
 import { TOUR, MOON_BASE } from "./story.js";
-import { isAvailable, openVideo, OFFLINE_LINE } from "./media/video.js";   // Help: replay NASA's Moon Base video
+import { isAvailable, openVideo, offlineLine } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
 import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
@@ -14,13 +14,16 @@ import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./
  *  diagnostics, What the app has learned) are drawn inside it instead of in the sidebar. */
 export const GROWNUPS = {
   title: "For grown-ups",
-  gate: "Reset, clearing videos, diagnostics and what the app learned. Hold the button for 3 seconds to open them.",
+  gate: "Reset, videos, diagnostics, what the app learned and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "Reset my patches"],
+  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
   sayOpen: "Here's Reset. A grown-up can choose Start over or Reset everything.",
+  // School network (network_ui.js, docs/SCHOOL_IT.md): voice opens it; only a grown-up's hold and tap change it
+  sayNetLocked: "Here's School network, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
+  sayNetOpen: "Here's School network. A grown-up can switch it.",
 };
 /** Settings → Listening: the turn log switch (prefs.improve, on by default since 0.4.3; docs/DIRECTOR_LOOP.md §1). */
 export const IMPROVE = {
@@ -105,6 +108,7 @@ export function parseCommand(text) {
   // voice can only OPEN the reset confirm; the 3-second hold is the only way to do it
   if (/^(reset|start over|erase) (everything|it all|all)$|^(reset|erase) (the )?(whole )?(app|game|outpost luna) (and )?(downloads|everything)$/.test(t)) return { cmd: "reset", arg: "all" };
   if (/^(reset|reset (the |my )?(whole )?(app|game|progress|outpost luna)|start the (whole )?(app|game) over|erase (my )?(progress|everything))$/.test(t)) return { cmd: "reset", arg: "start" };
+  if (/^(open )?(the )?school (network|mode)( mode| settings)?$/.test(t)) return { cmd: "network" };   // opens it, never switches it
   let m = t.match(/^(?:press|tap|click|choose|pick|select) (?:the )?(.+?)(?: button)?$/);
   if (m) return { cmd: "press", arg: m[1] };
   m = t.match(/^(?:option|answer|number) (\d|one|two|three|four)$/);
@@ -353,7 +357,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       const id = vb2.dataset.helpVideo;
       isAvailable(id).then(st => {
         if (st !== "offline") { open(false); openVideo(id, { context: "help" }); return; }
-        vb2.textContent = OFFLINE_LINE; vb2.disabled = true;
+        vb2.textContent = offlineLine(); vb2.disabled = true;
       });
     }
     if (e.target.closest("[data-cabin-tour]")) { open(false); if (setMode && document.body.dataset.mode !== "mission") setMode("mission"); dispatchEvent(new CustomEvent("outpost:tour")); }
@@ -529,6 +533,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       // voice opens the Reset panel itself (both options); it never confirms. The option asked for gets focus.
       // [0.4.1] Reset lives in For grown-ups: voice opens the section; behind the gate unless a grown-up already opened it
       case "reset": section = "grownups"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`) || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } reply(guOpen ? GROWNUPS.sayOpen : GROWNUPS.sayLocked); break;
+      case "network": section = "grownups"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector("[data-nw-sw]:not([disabled])") || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } reply(guOpen ? GROWNUPS.sayNetOpen : GROWNUPS.sayNetLocked); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }
       default: return false;

@@ -113,7 +113,8 @@ test("first run is dark; a saved choice (Light, System) stays", () => {
   assert.equal(PREF_DEFAULTS.theme, "dark");
   assert.equal(normalizePrefs({ theme: "system" }).theme, "system");
   assert.equal(normalizePrefs({ theme: "light" }).theme, "light");
-  const html = src("../index.html");
+  const html = src("../public/theme-boot.js");   // a file, not inline: the desktop CSP allows no inline script
+  assert.match(src("../index.html"), /<script src="\/theme-boot\.js"><\/script>/);
   assert.match(html, /p\.theme==="system"\|\|p\.theme==="light"/);
   assert.match(html, /:"dark";if\(t\)document\.documentElement\.dataset\.theme=t/);
 });

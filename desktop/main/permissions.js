@@ -2,6 +2,7 @@
 // check harness (desktop/scripts/camera_check/), and unit-tested with fakes (permissions.test.js). No Electron import
 // here: the session and systemPreferences are passed in.
 "use strict";
+const NP = require("./netpolicy");   // School network mode (docs/SCHOOL_IT.md)
 
 // NASA video (docs/MEDIA.md): the one way off our origin. A youtube-nocookie embed (the only frame we let in) and the
 // player traffic it needs; never a YouTube page as the main window or a frame. NASA files are NOT here: the backend
@@ -57,15 +58,31 @@ function allowYouTube(u, resourceType) {
  * `referer`: send Referer: https://ai.whissle.outpostluna/ to YouTube hosts only (its player refuses to play with no
  * Referer, error 153); off when the loopback origin is accepted as it is.
  */
-function lockDownSession(ses, origin, { log = () => {}, platform = process.platform, systemPreferences = null, referer = false } = {}) {
+function lockDownSession(ses, origin, { log = () => {}, platform = process.platform, systemPreferences = null, referer = false,
+  policy = null, csp = null } = {}) {
   const ours = (u) => { try { return new URL(u).origin === origin; } catch { return false; } };
+  const ourWs = origin.replace("http", "ws");
   ses.webRequest.onBeforeRequest((d, cb) => {
     const u = d.url;
-    const ok = ours(u) || u.startsWith(origin.replace("http", "ws")) || /^(data|blob|devtools|chrome-extension|file):/.test(u) ||
-      allowYouTube(u, d.resourceType);
-    if (!ok) log("blocked", (d.resourceType ? d.resourceType + " " : "") + u.slice(0, 160));
+    const local = ours(u) || u === ourWs || u.startsWith(ourWs + "/") || /^(data|blob|devtools|chrome-extension|file):/.test(u);
+    let ok = local || allowYouTube(u, d.resourceType);
+    // School network mode (netpolicy.js, docs/SCHOOL_IT.md): off our origin, only the hosts an IT admin allowed
+    if (ok && !local && policy && !NP.urlAllowed(u, policy())) {
+      ok = false;
+      log("blocked (school network)", (d.resourceType ? d.resourceType + " " : "") + u.slice(0, 160));
+    } else if (!ok) log("blocked", (d.resourceType ? d.resourceType + " " : "") + u.slice(0, 160));
     cb({ cancel: !ok });
   });
+  // The page's Content-Security-Policy (hardening.js csp): on every response from our origin, whatever the server sent
+  if (csp && ses.webRequest.onHeadersReceived) {
+    ses.webRequest.onHeadersReceived((d, cb) => {
+      if (!ours(d.url)) return cb({ responseHeaders: d.responseHeaders });
+      const h = {};
+      for (const [k, v] of Object.entries(d.responseHeaders || {})) if (k.toLowerCase() !== "content-security-policy") h[k] = v;
+      h["Content-Security-Policy"] = [csp];
+      cb({ responseHeaders: h });
+    });
+  }
   if (referer && ses.webRequest.onBeforeSendHeaders) {
     ses.webRequest.onBeforeSendHeaders((d, cb) => {
       if (!isYouTubeHost(d.url)) return cb({ requestHeaders: d.requestHeaders });

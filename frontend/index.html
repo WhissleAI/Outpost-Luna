@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Outpost Luna</title>
 <!-- Theme before first paint: a saved choice wins ("System" follows prefers-color-scheme in CSS); first run is dark (0.4). -->
-<script>try{var t=localStorage.getItem("atm-theme"),p=null;try{p=JSON.parse(localStorage.getItem("outpost-prefs")||"null")}catch(e){}
-if(t!=="light"&&t!=="dark")t=p&&(p.theme==="system"||p.theme==="light")?(p.theme==="light"?"light":""):"dark";if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script src="/theme-boot.js"></script>
   <link rel="icon" type="image/png" href="/logo-64.png?v=2">
 </head>
 <body>
@@ -231,16 +230,6 @@ if(t!=="light"&&t!=="dark")t=p&&(p.theme==="system"||p.theme==="light")?(p.theme
 
 <script type="module" src="/src/main.js"></script>
 <!-- Theme toggle: kept out of main.js so it works even when the backend is down. -->
-<script>
-(function(){
-  var root=document.documentElement, btn=document.getElementById("themeBtn");
-  var mq=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)");
-  function current(){return root.dataset.theme||(mq&&mq.matches?"dark":"light")}
-  function sync(){var d=current()==="dark";btn.setAttribute("aria-label",d?"Switch to light mode":"Switch to dark mode");btn.dataset.mode=d?"dark":"light"}
-  btn.addEventListener("click",function(){var n=current()==="dark"?"light":"dark";root.dataset.theme=n;try{localStorage.setItem("atm-theme",n)}catch(e){}sync()});
-  if(mq&&mq.addEventListener)mq.addEventListener("change",sync);
-  sync();
-})();
-</script>
+<script src="/theme-toggle.js"></script>
 </body>
 </html>

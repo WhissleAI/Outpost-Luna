@@ -32,7 +32,9 @@ export function view(s) {
       if (s.download) return { line: `Outpost Luna ${s.latest} is available`, notes: s.notes || "", action: { what: "download", label: "Download" } };
       return { line: `${s.latest} is out${s.others && s.others.length ? ` for ${list(s.others)}` : ""}; ${s.platform && s.platform !== "this computer" ? `the ${s.platform} installer` : "an installer for this computer"} is coming`,
         notes: s.notes || "", action: { what: "release", label: "Open the release page" } };
-    case "error": return { line: `Couldn't check right now. You can also download from ${SITE}`, notes: "", action: { what: "site", label: "Open the site" } };
+    case "error":
+      if (s.reason === "school") return { line: "Update checks are off on the school network.", notes: "", action: null };   // docs/SCHOOL_IT.md
+      return { line: `Couldn't check right now. You can also download from ${SITE}`, notes: "", action: { what: "site", label: "Open the site" } };
     default: return { line: "", notes: "", action: null };
   }
 }

@@ -46,6 +46,7 @@ import "./learning_ui.js";      // Settings → What the app has learned (on-dev
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
+import "./network_ui.js";       // Settings → For grown-ups → School network (docs/SCHOOL_IT.md)
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
 import { emitIntent, onIntent } from "./input/intents.js";

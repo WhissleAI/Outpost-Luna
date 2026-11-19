@@ -38,14 +38,17 @@ export function moreVoicesHint(ua = typeof navigator !== "undefined" ? navigator
  *  button or "Downloading Steer voice…". Pure. */
 export function engineChoiceHtml(P, steer, esc = x => String(x)) {
   const st = (steer && steer.state) || "missing", ready = st === "ready";
-  const note = ready ? "Whissle's expressive voice, with exact captions. Pick a voice below." : st === "downloading" ? "Downloading Steer voice…"
-    : st === "missing" && steer && steer.downloadable ? "Downloads when you pick it" : "Not available on this computer";
+  // School network mode (docs/SCHOOL_IT.md): nothing downloads, so no "Get" button that would only fail
+  const school = (() => { try { return !!(window.__outpost.network && window.__outpost.network.school_network); } catch (e) { return false; } })();
+  const getIt = st === "missing" && steer && steer.downloadable && !school;
+  const note = ready ? "Whissle's expressive voice, with exact captions. Pick a voice below." : st === "downloading" && !school ? "Downloading Steer voice…"
+    : getIt ? "Downloads when you pick it" : school && !ready ? "Off on the school network" : "Not available on this computer";
   const opt = (v, label, small, on, dis) => `<label class="set-voice"><input type="radio" name="p-engine" data-p="engine" value="${v}" ${on ? "checked" : ""} ${dis ? "disabled" : ""}>
     <span><b>${esc(label)}</b><small>${esc(small)}</small></span></label>`;
   return `<fieldset class="set-seg" data-engine-state="${esc(st)}"><legend>Voice</legend><div class="set-vlist">
     ${opt("os", "Your computer's voice", "Siri on a Mac, the best Windows voice on a PC", P.engine !== "steer" || !ready, false)}
     ${opt("steer", "Steer TTS (Whissle)", note, P.engine === "steer" && ready, !ready)}
-    ${st === "missing" && steer && steer.downloadable ? `<button type="button" class="btn-quiet" data-get-steer>Get the Steer voice (13 MB)</button>` : ""}</div></fieldset>`;
+    ${getIt ? `<button type="button" class="btn-quiet" data-get-steer>Get the Steer voice (13 MB)</button>` : ""}</div></fieldset>`;
 }
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";

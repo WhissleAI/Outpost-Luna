@@ -1,7 +1,8 @@
 # Reset Outpost Luna
 
 Settings → **For grown-ups** holds everything that erases or saves files: **Reset**, **Videos** (clear saved videos),
-**Help & diagnostics** (save a diagnostics file), **What the app has learned**, and **Reset my patches**. It is always
+**Help & diagnostics** (save a diagnostics file), **What the app has learned**, **School network** (`docs/SCHOOL_IT.md`)
+and **Reset my patches**. It is always
 the last item in the Settings sidebar, below Help, after a thin divider; it turns the warning colour only when it is
 hovered or selected. The section is locked: a grown-up holds "Hold for 3 seconds to open" (the shared `bindHold`),
 and it stays open until Settings closes. The kids' settings (Voice, speed, Sound, Listening, Reading & captions,
