@@ -45,6 +45,8 @@ import "./storage_ui.js";   // Settings → Storage & updates (desktop asset ver
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./progress.css";
 import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
+import "./class_editor.css";
+import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
@@ -170,6 +172,11 @@ async function boot() {
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
+  // [class] Settings → Class lessons → Preview: the course again (the preview joined it), then the lesson, as a cadet sees it
+  addEventListener("outpost:class-open", e => {
+    const id = e.detail && e.detail.id; if (!id) return;
+    academyUI.reloadCourse().catch(() => {}).then(() => { setMode("academy"); setTimeout(() => academyUI.nav("lesson", id), 400); });
+  });
   const missionLearning = installMissionLearning({
     missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking("mission_stop"),
     lessons: () => academyUI.lessons(),

@@ -9,7 +9,8 @@
 //     by pack, apart from NASA's: they never count toward "n of 9 patches".
 // "Print" prints the sheet alone (progress.css, imported by main.js so this module loads under node --test, @media print): one cadet per page, light paper, no app chrome.
 // Pure builders below (tests/progress.test.js); the section object at the end plugs into Settings (a11y.js).
-import { patch as defaultPatch, icon } from "./assets/icons.js";
+import { icon } from "./assets/icons.js";
+import { anyPatch as defaultPatch, registerClassLessons } from "./academy/class_patch.js";   // Class lessons: the same letter patch as on the map
 import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./explorer.js";
 import { debriefStory } from "./mission/objective.js";
 
@@ -187,6 +188,7 @@ async function getJson(fetchFn, url) {
 export async function loadData({ fetchFn, storage } = {}) {
   const cadets = readCadets(storage);
   const course = await getJson(fetchFn, "/api/academy/course");
+  if (course && Array.isArray(course.lessons)) registerClassLessons(course.lessons);
   const ids = [...new Set(cadets.flatMap(c => c.flown.slice(-5)))].filter(id => /^m-[0-9a-f]{4,16}$/.test(id));
   const debriefs = {};
   await Promise.all(ids.map(async id => { debriefs[id] = await getJson(fetchFn, `/api/mission/${id}/debrief`); }));
