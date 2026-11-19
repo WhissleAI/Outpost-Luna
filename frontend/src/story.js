@@ -289,6 +289,17 @@ export const FIELD = {
   lockedTrack: "Opens after your check ride",   // [0.4.1] the map's locked Field School track, and a Field pin's card
   trackCount: n => `${n} geology lessons`,
 };
+/** Class lessons (teacher-written packs, track "class", docs/CURRICULUM.md): always open, never in the core count,
+ *  never NASA's facts (their facts carry the teacher's own sources). */
+export const CLASS = {
+  name: "Class lessons",
+  eyebrow: title => `Class lesson · ${title}`,
+  facts: "Class facts",
+  patch: "Class patch earned.",
+  track: (done, of) => `${done} of ${of} done`,
+  preview: "Preview",
+  previewNote: "Preview: no patch is saved.",
+};
 /** Explorer lessons (course.json track "explorer"): locked until the cadet has flown missions (explorer.js). */
 export const EXPLORER = {
   eyebrow: "Bonus lesson",

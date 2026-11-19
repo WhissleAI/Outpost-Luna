@@ -14,12 +14,13 @@ import { academyApi, progress, saveStep, clearStep, resumeStep, resumeTarget } f
 import { sayStyle } from "../floor.js";
 import { createCabin } from "../mission/cabin.js";   // [ride] the check ride sits in the real cabin
 import { rideInset } from "../mission/ride.js";   // [0.3.12] the ride cabin fits left of the lesson card
-import { icon, patch } from "../assets/icons.js";
+import { icon } from "../assets/icons.js";
+import { anyPatch as patch, registerClassLessons } from "./class_patch.js";   // Class lessons draw a letter patch (docs/CURRICULUM.md)
 import { APP_TAGLINE } from "../brand.js";
-import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER, FIELD } from "../story.js";
+import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER, FIELD, CLASS } from "../story.js";
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
-import { missionsFlown, unlocked, isExplorer, isField, isBonus, coreLessons, fieldLessons } from "../explorer.js";   // explorer lessons open after missions; Field School after the ride
-import { pinInnerHtml, fieldTrackHtml } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
+import { missionsFlown, unlocked, isExplorer, isField, isBonus, isClass, coreLessons, fieldLessons } from "../explorer.js";   // explorer lessons open after missions; Field School after the ride
+import { pinInnerHtml, fieldTrackHtml, classTrackHtml } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
 import { FIELD_STEP_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
@@ -130,10 +131,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     /** Earned patches, for the Mission cockpit (mission/patches.js): [{id, name, patch (inline SVG), lesson, track}];
      *  track: "core" (Flight School), "field" (Field School), "explorer" (bonus) or "ride" (the check ride) */
     badges: () => (course ? null : fetchCourse().catch(() => {}), lessons().filter(l => has(l.badge.id))).map(l => ({ id: l.badge.id, name: l.badge.name, lesson: l.id, patch: patch(l.id, { size: 22 }),
-      track: l.ride ? "ride" : isField(l) ? "field" : isExplorer(l) ? "explorer" : "core" })),
+      track: l.ride ? "ride" : isField(l) ? "field" : isExplorer(l) ? "explorer" : isClass(l) ? "class" : "core" })),
     has: lessonId => { const l = lessons().find(x => x.id === lessonId); return !!(l && has(l.badge.id)); },
     /** [0.3.12] For Mission's "Fly the check ride": core lessons done / total, the ride's id, and the lesson to fly
      *  next while the ride is not open yet. */
+    /** Class packs changed (Settings → For grown-ups → Class lessons): fetch the course again; the map repaints. */
+    reloadCourse,
     rideStatus: () => { const c = coreDone(), r = lessons().find(l => l.ride), nx = coreLessons(lessons()).find(l => !has(l.badge.id));
       return { ...c, ride: r ? r.id : null, next: nx ? nx.id : null }; },
   };
@@ -146,11 +149,23 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function fetchCourse() {
     if (course) return Promise.resolve(course);
     return coursePending || (coursePending = academyApi.course().then(c => {
-      if (!course) course = c;
+      if (!course) { course = c; registerClassLessons(c.lessons); }
       try { dispatchEvent(new CustomEvent("outpost:patches", { detail: {} })); } catch (e) { /* tests */ }
       return course;
     }, e => { coursePending = null; throw e; }));
   }
+  /** [class] the course again (a teacher saved, imported or removed a Class pack, or started a preview). A lesson on
+   *  screen keeps playing; the map repaints with the new pins. */
+  function reloadCourse() {
+    return academyApi.course().then(c => {
+      course = c; coursePending = null; registerClassLessons(c.lessons);
+      try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().filter(l => !isClass(l)).length; } catch (e) { /* tests */ }
+      if (ui.active && view === "map") showMap(true);
+      try { dispatchEvent(new CustomEvent("outpost:patches", { detail: {} })); } catch (e) { /* tests */ }
+      return course;
+    });
+  }
+  try { addEventListener("outpost:class-changed", () => { reloadCourse().catch(() => {}); }); } catch (e) { /* tests */ }
   // [0.5] the pack can land mid-lesson: a photo hook or a rock step then shows the real thing
   try { onViews(() => { if (ui.active && view === "lesson" && L && !L.ride && (L.photo || L.steps.some(x => (x.accept || {}).type === "rounds"))) render(); }); } catch (e) { /* tests */ }
   /** The step that carries the lesson's crew-audio hook: the first one that isn't a video. */
@@ -164,14 +179,14 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** When a locked lesson opens, in words: a Field School lesson says "Opens after your check ride". */
   const lockedText = l => (isField(l) ? FIELD.lockedTrack : EXPLORER.locked(lockedWhen(l)));
   /** [novice playtest 14] a bonus lesson that opened and isn't flown yet: the map card offers it by name. */
-  const newLesson = () => lessons().find(l => isBonus(l) && open(l) && !has(l.badge.id)) || null;
+  const newLesson = () => lessons().find(l => isBonus(l) && !isClass(l) && open(l) && !has(l.badge.id)) || null;
   /** [0.5] "Field School 2 of 4" (a Field lesson's place in its own track). */
   const fieldNo = l => { const fs = fieldLessons(lessons()); return { n: fs.indexOf(l) + 1, of: fs.length }; };
   /** The eyebrow over a lesson: its number in the core track, Field School's count, "Bonus lesson", or the ride. */
-  const eyebrowOf = l => (l.ride ? UI.ride : isField(l) ? FIELD.eyebrow(fieldNo(l).n, fieldNo(l).of) : isExplorer(l) ? EXPLORER.eyebrow : UI.lesson(lessonNo(l).n, lessonNo(l).of));
+  const eyebrowOf = l => (l.preview ? `${CLASS.preview} · ${CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name)}` : isClass(l) ? CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name) : l.ride ? UI.ride : isField(l) ? FIELD.eyebrow(fieldNo(l).n, fieldNo(l).of) : isExplorer(l) ? EXPLORER.eyebrow : UI.lesson(lessonNo(l).n, lessonNo(l).of));
   /** [novice playtest 9] one count: the core lessons ("3 of 6"), then the check ride; bonus lessons apart. */
   const coreDone = () => { const c = coreLessons(lessons()); return { n: c.filter(l => has(l.badge.id)).length, of: c.length }; };
-  const nextLesson = () => lessons().find(l => !has(l.badge.id) && open(l)) || null;
+  const nextLesson = () => lessons().find(l => !l.preview && !has(l.badge.id) && open(l)) || null;
   const speakLine = (t, r) => { if (t) say(t, sayStyle(r)); };   // r: the attempt response; its say.style steers
   /** Panel layout for this view. The Moon is always the backdrop: home and map are overlays on it, lesson / patch /
    *  ride are glass cards. The route pins live only on the map; the place dots only on steps that ask for a tap. */
@@ -202,7 +217,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       }
     }
     if (!ui.active) return;
-    try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().length; } catch (e) { /* tests */ }
+    try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().filter(l => !isClass(l)).length; } catch (e) { /* tests */ }   // NASA patches only
     if (resume()) return;
     // [0.4.1] reopening the app: a half-done lesson comes back at its step (academy/client.js resumeTarget)
     if (!booted) {
@@ -214,7 +229,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   }
   /** [0.4.1] Remember the step on screen (progress storage), so the app can reopen the lesson there. */
   function rememberStep() {
-    if (!L || L.ride) return;
+    if (!L || L.ride || L.preview) return;
     const np = saveStep(prog, L, i);
     if (np.current !== (prog.current || null) || JSON.stringify(np.steps) !== JSON.stringify(prog.steps || {})) { prog = np; progress.save(prog); }
   }
@@ -295,7 +310,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   // ---------- course map = the Moon: each lesson is a pin on a real place, the route ends at the south-pole outpost ----------
   /** Lessons in the order the map shows them (track by track), so the numbers read 1, 2, 3… along the route. */
-  const shownOrder = () => lessons();   // course.json is in map order (near side first, then the pole)
+  const shownOrder = () => lessons().filter(l => !l.preview);   // course.json is in map order (near side first, then the pole); Class lessons after; a preview never shows
   let mapSel = null;   // the pin the cadet tapped (null = the next lesson)
   /** A lesson's place on the Moon: course data first, then the fallback table. */
   function placeOf(l) {
@@ -327,11 +342,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.dataset.l = l.id;
       const no = l.ride || isBonus(l) ? "" : String(lessonNo(l).n);
       if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it to read when it opens (spatial nav skips it)
-      b.setAttribute("aria-label", `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, locked. ${lockedText(l)}` : ""}. ${at.name}`);
+      b.setAttribute("aria-label", `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : isClass(l) ? CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name) + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, locked. ${lockedText(l)}` : ""}. ${at.name}`);
       // [0.4.1] the core lesson number always shows on the pin; a locked pin carries a lock
       b.innerHTML = pinInnerHtml({ patchHtml: patch(l.id, { earned: done, size: next ? 64 : 44 }), no, locked: !open(l), title: l.title, esc, lockIcon: icon("lock", { size: 12 }) });
       b.onclick = () => pickPin(l, sel);
-      return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next };
+      if (isClass(l)) b.classList.add("is-class");
+      return { id: l.id, lat: at.lat, lon: at.lon, el: b, done, next: !!next, noLeg: isClass(l) };   // Class pins: no route leg
     });
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
@@ -362,6 +378,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         // [0.3.12] the count only: the Next up card below already names the lesson (it said it twice)
         : `<p class="mp-beat"><b>${esc(nx.ride ? TRANSITION.toRide.where : `${TRANSITION.firstMap.where} · ${SCHOOL.lessonsCount(coreDone().n, coreDone().of)}`)}</b>${nx.ride ? esc(TRANSITION.toRide.line) : ""}</p>`) : ""}
       ${fieldTrackHtml({ qualified: prog.qualified, fieldLessons: fieldLessons(ls), copy: FIELD, esc, lockIcon: icon("lock", { size: 16 }) })}
+      ${classTrackHtml({ lessons: ls.filter(isClass), has, copy: CLASS, esc, patch })}
       </div>
       ${card}
       <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
@@ -371,6 +388,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
     // [0.4.1] the locked Field School track: selects its first lesson (the card says when it opens)
     const ft = panel.querySelector("#aFieldTrack"); if (ft) ft.onclick = () => { const l = ls.find(x => x.id === ft.dataset.l); if (l) pickPin(l, sel); };
+    // [class] a Class pack's row: selects its next lesson (its pin and card), a second press opens it
+    panel.querySelectorAll("[data-class-pack]").forEach(cb => cb.onclick = () => { const l = ls.find(x => x.id === cb.dataset.l); if (l) pickPin(l, sel); });
     const nb = panel.querySelector("#aNewLesson"); if (nb) nb.onclick = () => openLesson(nb.dataset.l);
     const st = panel.querySelector("#aStart"); if (st) st.onclick = () => openLesson(st.dataset.l);
     const pm = panel.querySelector("#aPrepMap"); if (pm) pm.onclick = () => openLesson(pm.dataset.l, { prep: true });   // Mission prep, from the map
@@ -540,7 +559,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${prepHere === "brief" ? `<div class="a-prep-videos" id="aPrepVideos" role="group" aria-label="${esc(PREP.watchGroup)}" hidden></div>` : ""}
           <div class="a-row"><button type="button" class="btn-quiet" id="aReplay">${icon("speaker", { size: 16 })}${esc(UI.replay)}</button>
             ${L.library ? `<button type="button" class="btn-quiet" id="aLib">${icon("library", { size: 16 })}${esc(L.library.label)}</button>` : ""}
-            ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></div>`}
+            ${L.facts && L.facts.length ? `<details class="a-facts"><summary>${esc(isClass(L) ? CLASS.facts : UI.facts)} (${L.facts.length})</summary><ul>${L.facts.map(f => `<li>${esc(f.text)} ${src(f.source)}</li>`).join("")}</ul></details>` : ""}</div></div>`}
         <section class="a-step${st.alert ? " is-alert" : ""}" aria-live="polite">
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           ${firstLook && !L.ride ? `<p class="a-lead">${esc(L.brief)}</p>` : ""}
@@ -863,6 +882,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   // ---------- patches ----------
   function award(badge, qualifies) {
+    if (L && L.preview) return;            // [class] a teacher's preview earns nothing and saves nothing
     if (L) prog = clearStep(prog, L.id);   // [0.4.1] a finished lesson starts from the top next time
     if (!prog.badges.includes(badge.id)) prog.badges.push(badge.id);
     if (qualifies) prog.qualified = true;
@@ -879,7 +899,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <span class="a-bigpatch">${patch(L.id, { earned: true, size: 168 })}</span>
         <p class="eyebrow">${esc(commander ? UI.qualified : UI.patchEarned)}</p>
         <h2 class="m-title">${esc(badge.name)}</h2>
-        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : isField(L) ? esc(FIELD.patchProgress(fieldLessons(lessons()).filter(l => has(l.badge.id)).length, fieldNo(L).of)) : isExplorer(L) ? esc(TRANSITION.bonusPatch) : esc(TRANSITION.patchProgress(coreDone().n, coreDone().of))}</p>
+        <p class="a-badge-sub">${commander ? esc(TRANSITION.qualified.line) : isField(L) ? esc(FIELD.patchProgress(fieldLessons(lessons()).filter(l => has(l.badge.id)).length, fieldNo(L).of)) : isExplorer(L) ? esc(TRANSITION.bonusPatch) : isClass(L) ? esc(L.preview ? CLASS.previewNote : CLASS.patch) : esc(TRANSITION.patchProgress(coreDone().n, coreDone().of))}</p>
         <div class="a-actions">
           ${commander ? `<button type="button" class="btn-primary" id="aGoMission">${esc(UI.commander)}${icon("chevron-right")}</button>`
             : nx ? `<button type="button" class="btn-primary" id="aNextLesson">${esc(UI.next)}: ${esc(nx.ride ? UI.ride : nx.title)}${icon("chevron-right")}</button>` : ""}

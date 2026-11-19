@@ -60,8 +60,33 @@ def normalize(c: dict) -> dict:
 
 
 @lru_cache(maxsize=1)
-def course() -> dict:
+def nasa_course() -> dict:
+    """The NASA course as written in course.json (check() and the copy tests read this)."""
     return normalize(json.loads(COURSE.read_text()))
+
+
+@lru_cache(maxsize=1)
+def course() -> dict:
+    """The course the app plays: the NASA lessons, then the teacher-written Class lessons (classpacks.py,
+    docs/CURRICULUM.md; `track: "class"`). A broken pack is skipped by the loader, never raised."""
+    c = nasa_course()
+    try:
+        from . import classpacks
+        extra = classpacks.lessons()
+    except Exception:   # noqa: BLE001  (Class lessons never stop the NASA course)
+        extra = []
+    return {**c, "lessons": c["lessons"] + extra} if extra else c
+
+
+def reload() -> None:
+    """Class packs changed: drop every cached lesson list (the course, the voice titles, the session's lesson table)."""
+    course.cache_clear()
+    try:
+        from .. import hotlist, session
+        hotlist._lesson_titles.cache_clear()
+        session._CACHE.pop("lessons", None)
+    except Exception:   # noqa: BLE001
+        pass
 
 
 def lesson(lesson_id: str) -> dict | None:
@@ -264,7 +289,7 @@ def check_prep(p: dict) -> list[str]:
 def check() -> list[str]:
     """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data."""
     probs: list[str] = []
-    c = course()
+    c = nasa_course()
     data_text = {p: p.read_text() for p in DATA.rglob("*.json") if "academy" not in p.parts}
     every = "\n".join(data_text.values())
     for l in c["lessons"]:

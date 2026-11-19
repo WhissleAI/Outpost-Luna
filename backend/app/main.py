@@ -165,6 +165,7 @@ from .mission.routes import router as mission_router; app.include_router(mission
 from .mission.navigator import router as navigator_router; app.include_router(navigator_router)  # noqa: E402  (site navigator)
 from .session import router as session_router; app.include_router(session_router)  # noqa: E402  (docs/SESSION_CONTRACT.md)
 from .academy.routes import router as academy_router; app.include_router(academy_router)  # noqa: E402  (Academy)
+from .academy.class_routes import router as class_router; app.include_router(class_router)  # noqa: E402  (Class lessons, docs/CURRICULUM.md)
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
 app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.md)

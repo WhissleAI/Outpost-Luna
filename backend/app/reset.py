@@ -79,7 +79,9 @@ def targets(level: str) -> dict[str, list[Path]]:
     from . import turnlog
     from .learn import store as learn_store
     start = [turnlog.log_dir(), settings.tts_cache(), learn_store.learn_dir()]   # learn: on-device learning
-    return {"start": start, "all": start + [settings.video_cache(), settings.vector_cache()]}
+    from .academy import classpacks
+    # Class lessons (docs/CURRICULUM.md) are a grown-up's work, not progress: only Reset everything removes them
+    return {"start": start, "all": start + [settings.video_cache(), settings.vector_cache(), classpacks.class_dir()]}
 
 
 def reset(level: str) -> dict:
@@ -93,6 +95,8 @@ def reset(level: str) -> dict:
     for d in targets(level)[level]:
         cleared[str(d)] = _rm_tree_contents(d)
     if level == "all":
+        from .academy import classpacks
+        classpacks.reload()
         from . import video
         try:
             video.cache().clear()

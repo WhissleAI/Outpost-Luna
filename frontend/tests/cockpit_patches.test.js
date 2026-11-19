@@ -63,7 +63,7 @@ test("the cabin draws the key on the Habitat console, opens the card by keyboard
   assert.match(ui, /dispatchEvent\(new CustomEvent\("outpost:patches", \{ detail: \{\} \}\)\)/, "the course landing repaints the key");
   assert.match(cab, /paintPatches\(e && e\.detail && e\.detail\.id \? "earned" : true\)/, "only a real award is announced");
   assert.match(src("../src/input/spatial.js"), /shown\("\.cb-patchpop"\); if \(pc && pc\.contains\(doc\.activeElement\)\) return \{ id: "patches", roots: \[pc\] \}/, "keys mode keeps focus in the card");
-  assert.match(ui, /track: l\.ride \? "ride" : isField\(l\) \? "field" : isExplorer\(l\) \? "explorer" : "core"/);
+  assert.match(ui, /track: l\.ride \? "ride" : isField\(l\) \? "field" : isExplorer\(l\) \? "explorer" : isClass\(l\) \? "class" : "core"/);
 });
 
 test("the card keeps the 18 px HUD floor; the console key is sized like the console's own labels", () => {

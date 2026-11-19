@@ -262,6 +262,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       // legs: solid between two done stops, dotted into the next stop, nothing else. Stops may carry their own state
       // ({done, next}); otherwise the first `rdone` stops are the done ones.
       const A = rstops[i - 1], B = rstops[i];
+      if (A.noLeg || B.noLeg) continue;   // a Class lesson pin: on the Moon, off the NASA route
       const dn = x => (x.done != null ? !!x.done : rstops.indexOf(x) < rdone), nx = x => (x.next != null ? !!x.next : rstops.indexOf(x) === rdone);
       const solid = dn(A) && dn(B), dotted = dn(A) && nx(B);
       if (!solid && !dotted) continue;

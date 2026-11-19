@@ -13,7 +13,8 @@ import "../cabin.css";
 import * as story from "../story.js";
 const { callSign } = story;
 import { LOADS } from "./cockpit.js";
-import { icon, patch } from "../assets/icons.js";
+import { icon } from "../assets/icons.js";
+import { anyPatch as patch } from "../academy/class_patch.js";   // Class lesson patches too (docs/CURRICULUM.md)
 import { normPatches, patchSig, newPatches, keyLabel, trackSummary, patchKeyHtml, patchListHtml } from "./patches.js";   // the cockpit's patch key
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
