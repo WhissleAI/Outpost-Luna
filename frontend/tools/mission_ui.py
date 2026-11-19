@@ -34,7 +34,11 @@ SIZES = "1280x720,1440x879,1440x900,1920x1080,1024x640"
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
   localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'cadet', graphics:'low'}));
-  localStorage.setItem('outpost-tour-done:Comet','1'); localStorage.setItem('outpost-moonbase-seen:Comet','1'); window.__hourMs = 2000; window.__missionSeed = 2; }catch(e){}"""
+  localStorage.setItem('outpost-tour-done:Comet','1'); localStorage.setItem('outpost-moonbase-seen:Comet','1'); window.__hourMs = 2000; window.__missionSeed = 2; window.__outpostTest = 1; }catch(e){}"""
+# [0.4.2] window.__outpostTest turns on the cabin's test hooks (window.__cabinTest: moment, panel, storm) in a built app
+# too, not only under the dev server. Without it every hook call was a silent no-op on a packaged build or a
+# backend-served dist, and the run reported 'the story banner did not show' and 'no visible Why? button: power'
+# (the Displays panel never opened) although the product was fine (frontend/src/mission/ui.js gates the hooks).
 # seed 2 at Shackleton Rim (Cadet): the first storm is at hour 62, so the ice run's boulders come first, every run
 
 # The HUD elements a kid reads in the seat view. Selectors that don't exist in a build are simply skipped.
@@ -467,6 +471,12 @@ def main(base, shots, tag, sizes, camera=True, navigator_only=False, navigator=T
                 continue
             got = to_steer(pg)
             pg.wait_for_timeout(1500)
+            if not pg.evaluate("() => !!(window.__cabinTest && window.__cabinTest.moment && window.__cabinTest.panel)"):
+                # a missing hook is the tool's problem, not a product finding: say so, and don't measure a half-driven cabin
+                bad[f"{vw}x{vh}"] = nf + ["the cabin test hooks are missing (window.__cabinTest): the banner, Why? and storm checks can't run"]
+                print(f"FAIL {vw}x{vh}  test hooks missing")
+                pg.close()
+                continue
             if pg.evaluate("() => { const c = document.querySelector('.c3'); return !!(c && c.dataset.panel && c.dataset.panel !== 'seat'); }"):
                 pg.keyboard.press("Escape")   # a Cadet offer opened a panel: the kid goes back to the seat, where the HUD is measured
                 pg.wait_for_timeout(1500)
