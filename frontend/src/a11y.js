@@ -14,9 +14,9 @@ import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./
  *  diagnostics, What the app has learned) are drawn inside it instead of in the sidebar. */
 export const GROWNUPS = {
   title: "For grown-ups",
-  gate: "Reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
+  gate: "Progress, class lessons, reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
+  inside: ["See progress", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
@@ -249,7 +249,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     // An open confirm view stands alone (nothing else to press by mistake next to it).
     const guExtras = extraSecs.filter(x => x.grownup && body[x.id]);
     const parts = resetView ? [{ id: "reset", title: "Reset", html: confirmHtml(resetView) }]
-      : [{ id: "reset", title: "Reset", html: zoneHtml() }, ...guExtras.map(x => ({ id: x.id, title: x.title, html: body[x.id] })),
+      : [...guExtras.filter(x => x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })), { id: "reset", title: "Reset", html: zoneHtml() }, ...guExtras.filter(x => !x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })),   // `first`: Progress opens the section
         ...(PA ? [{ id: "patches", title: GROWNUPS.patches, html: `${holdButtonHtml(GROWNUPS.patches, "data-prof-reset")}<small class="rs-note">${escH(GROWNUPS.patchesNote)}</small>` }] : [])];
     body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH });
     const shown = order.filter(([id]) => body[id] && !guExtras.some(x => x.id === id));

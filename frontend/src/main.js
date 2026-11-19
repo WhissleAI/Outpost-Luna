@@ -43,6 +43,8 @@ import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChang
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
+import "./progress.css";
+import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")

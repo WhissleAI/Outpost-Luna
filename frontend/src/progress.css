@@ -1,0 +1,56 @@
+/* Settings → For grown-ups → Progress (progress.js). Reuses the debrief's stars / grade / checks / "Try next"
+   (mission/mission.css .mx-*) and the cadet list's avatar (a11y.css .set-av); tokens only. */
+.pg-zone{display:flex;flex-direction:column;gap:var(--space-3)}
+.pg-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap}
+.pg-bar .set-help{margin:0;flex:1;min-width:12rem}
+.pg-sheet{display:flex;flex-direction:column;gap:var(--space-3)}
+.pg-paused,.pg-printed{margin:0;color:var(--color-text-2);font-size:var(--text-sm)}
+.pg-cadet{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-3) var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-lg);background:var(--color-surface)}
+.pg-cadet.is-active{border-color:var(--color-accent)}
+.pg-head{display:flex;align-items:center;gap:var(--space-3)}
+.pg-head h4{margin:0;flex:1;min-width:0;font-size:var(--text-lg);font-weight:var(--weight-semibold);overflow-wrap:anywhere}
+.pg-head .set-tag.pg-q{color:var(--color-success,#2e9d5b)}
+.pg-stats{justify-content:flex-start;flex-wrap:wrap;gap:var(--space-5)}
+.pg-stats div{align-items:flex-start}
+.pg-stats dd small{font-size:var(--text-sm);color:var(--color-text-3);font-family:inherit;font-weight:var(--weight-regular,400)}
+.pg-cur{margin:0;font-size:var(--text-sm);color:var(--color-text-2)}
+.pg-cur b{color:var(--color-text);margin-right:var(--space-1)}
+.pg-block{display:flex;flex-direction:column;gap:var(--space-2)}
+.pg-block h5{margin:0;font-size:var(--text-xs);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase;color:var(--color-text-3)}
+.pg-block .set-help{margin:0}
+.pg-patches{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr));gap:var(--space-2)}
+.pg-patches li{display:flex;flex-direction:column;align-items:center;gap:var(--space-1);text-align:center;font-size:var(--text-sm);line-height:var(--leading-snug)}
+.pg-lessons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-1)}
+.pg-lessons li{display:flex;align-items:center;gap:var(--space-3);font-size:var(--text-sm)}
+.pg-lessons li span{flex:1;min-width:0}
+.pg-lessons li small{color:var(--color-text-3)}
+.pg-lessons li.is-done small{color:var(--color-success,#2e9d5b);font-weight:var(--weight-semibold)}
+.pg-glyph{flex:none;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;font-weight:var(--weight-bold);font-size:calc(var(--s) * .4);
+  border:3px solid currentColor;color:var(--color-accent);background:var(--color-accent-soft)}
+.pg-glyph.is-locked{color:var(--color-text-3);background:transparent;border-style:dashed}
+.pg-missions{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.pg-mission{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-surface-2)}
+.pg-mission.is-counted{flex-direction:row;align-items:baseline;flex-wrap:wrap;gap:var(--space-2);font-size:var(--text-sm)}
+.pg-mission.is-counted small{color:var(--color-text-3)}
+.pg-mhead{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.pg-mname{flex:1;min-width:8rem}
+.pg-stars span{animation:none}
+.pg-score dd{font-size:var(--text-lg)}
+.pg-checks li{font-size:var(--text-sm)}
+.pg-checks .mx-ck{width:22px;height:22px}
+.pg-mtry,.pg-try{margin:0;font-size:var(--text-sm)}
+#pgPrint{display:none}
+
+/* Print: the sheet alone (progress.js printSheet copies it to #pgPrint), light paper, one cadet per page. */
+@media print{
+  body.pg-printing > :not(#pgPrint){display:none !important}
+  body.pg-printing{background:#fff !important;overflow:visible !important;height:auto !important}
+  #pgPrint{display:block;position:static;color:#0F1218;background:#fff;font-size:12pt;
+    --color-bg:#fff;--color-surface:#fff;--color-surface-2:#F2F4F7;--color-line:#C3C9D2;--color-text:#0F1218;--color-text-2:#465062;--color-text-3:#5E6878;
+    --color-accent:#2A55CC;--color-accent-soft:#E7EDFC;--color-accent-strong:#3563E9;--color-on-accent-strong:#fff;--color-warning:#B26B00;--color-success:#1F7A43}
+  #pgPrint .pg-cadet{break-after:page;page-break-after:always;border:0;padding:0;background:#fff}
+  #pgPrint .pg-cadet:last-child{break-after:auto;page-break-after:auto}
+  #pgPrint .pg-mission,.pg-patches li{break-inside:avoid}
+  #pgPrint .set-av{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #pgPrint .patch,#pgPrint .pg-glyph,#pgPrint .mx-bigstars{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
