@@ -111,3 +111,5 @@ when a grown-up saves one, to a place they choose; nothing is uploaded.
 
 Nothing else is left: no service, no scheduled task, no registry run key, no kernel extension. Settings → For grown-ups
 → Reset → Reset everything also clears the user's data from inside the app.
+
+![School network on, 1440x900](img/school/school_on_1440x900.jpg)
