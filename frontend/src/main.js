@@ -12,7 +12,7 @@ import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
 import { createVoice, CREW_TALK } from "./voice.js";
 import { createCrewPick } from "./crewpick.js";   // [0.4.1] crew talk: "Heard “…” · Use it"
-import { onEngine, askbarClasses, warmState, WARM_MS, VOICE_FIX, earFailed, onEarFailed, setEarFailed } from "./engine.js";   // [#87] the desktop shell's ear state
+import { onEngine, engineState, askbarClasses, warmState, WARM_MS, VOICE_FIX, earFailed, onEarFailed, setEarFailed } from "./engine.js";   // [#87] the desktop shell's ear state
 import { createMissions } from "./missions.js";
 import { initAbout } from "./about.js";
 import { createMissionUI } from "./mission/ui.js";
@@ -646,7 +646,9 @@ async function boot() {
     }).catch(() => { voiceSt = performance.now() - t0 < WARM_MS ? "warming" : "off"; paintVoice(voiceSt); setTimeout(() => warm(t0), voiceSt === "warming" ? 2000 : 30000); });
   })();
   // [#87] The desktop shell's engine state (engine.js): "Ear restarting…" / "Voice off · type" on the voice bar.
-  onEngine(st => { const bar = $("askbar"); for (const [c, on] of Object.entries(askbarClasses(st))) bar.classList.toggle(c, on); });
+  const paintEngine = st => { const bar = $("askbar"); for (const [c, on] of Object.entries(askbarClasses(st))) bar.classList.toggle(c, on); };
+  onEngine(paintEngine);
+  paintEngine(engineState());   // [ipad] a shell's boot state (engine.js __lunaEngineBoot) paints before any change
   // Cards keep clear of the voice strip, whose height changes as the caption comes and goes (--strip-h).
   new ResizeObserver(() => { const a = $("askbar"); if (a.closest("#stage")) $("stage").style.setProperty("--strip-live", a.offsetHeight + "px"); }).observe($("askbar"));
   // A spoken line that is already on screen (the lesson question, the feedback, the brief, [0.3.12] the lead and the
