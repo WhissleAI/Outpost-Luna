@@ -230,6 +230,9 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
     y = np.concatenate([np.zeros(int(lead * SR), np.float32), x, np.zeros(int(tail * SR), np.float32)])
     ps = float(np.mean(x ** 2))
     noise = str(rng.choice(NOISES, p=NOISE_P))
+    over = j.get("under")               # round 14 (real_ear r14 jobs): the kid talks over our own line, always
+    if over:
+        noise = "os_echo"
     if noise == "babble" and len(bab_pool) < 3:
         noise = "room"
     meta["noise"] = noise
@@ -259,7 +262,11 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
             y = mix_at(y, nz, snr, ps)
             meta.update(snr_db=round(snr, 1), src=src)
     elif noise in ("os_echo", "crew_echo"):
-        if noise == "os_echo":
+        if over:                        # round 14: the line that was playing, in the voice the app played it in
+            ov, line = over["voice"], over["line"]
+            e = say(line, ov)
+            src = {"echo_voice": ov, "line": line, "over_play": True}
+        elif noise == "os_echo":
             ov = str(rng.choice(R8.OS_VOICES))
             line = str(rng.choice(app_lines()))
             e = say(line, ov)
@@ -272,8 +279,19 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
         else:
             ref = _norm(e)
             e2, m = R8.speaker_to_mic(ref, rng)
-            delay = float(rng.uniform(-1.0, 1.5))           # the echo's start vs the kid's start
-            under = float(rng.uniform(10, 25) if H else rng.uniform(12, 25))   # dB under the kid
+            if over:
+                # round 14: our line started 0.3-2 s before the kid (they talk over it); the kid from 3 dB under to
+                # 12 dB over our echo (docs/ARC_ABI2.md section 8: kid turns over playback, -6..+5 dB around it)
+                delay = float(rng.uniform(-2.0, -0.3))
+                under = float(rng.uniform(-3, 12))
+            else:
+                delay = float(rng.uniform(-1.0, 1.5))           # the echo's start vs the kid's start
+                under = float(rng.uniform(10, 25) if H else rng.uniform(12, 25))   # dB under the kid
+            if over and lead + delay < 0:   # round 14: the clip opens on our line (the ear hears it from its start)
+                pad = int(-(lead + delay) * SR) + 1
+                y = np.concatenate([np.zeros(pad, np.float32), y])
+                lead += pad / SR
+                meta["speech_s"] = [round(v + pad / SR, 3) for v in meta["speech_s"]]
             st = int(max(0.0, lead + delay) * SR)
             e2 = e2[int(max(0.0, -(lead + delay)) * SR):]
             if st + len(e2) > len(y):
@@ -284,14 +302,19 @@ def render_kid(j: dict, rng: np.random.Generator, bab_pool: list) -> tuple[np.nd
             # speaker: e2's sample 0 (speaker_to_mic adds the output latency after it), less what was trimmed
             meta["_ref"] = [((st - int(max(0.0, -(lead + delay)) * SR)) / SR, ref)]
             pe = float(np.mean(e2 ** 2)) + 1e-12
-            y = y + nz * np.sqrt(ps / (pe * 10 ** (under / 10)))
+            fmix = float(np.sqrt(ps / (pe * 10 ** (under / 10))))
+            y = y + nz * fmix
             meta.update(echo_delay=round(delay, 2), echo_under_db=round(under, 1), **src)
+            if m.get("_path"):        # round 14: the room, for the decode's canceller warm-up (render_r8.warm_up)
+                meta["_path"] = {**m["_path"], "mix": m["_path"].get("mix", 1.0) * fmix}
     if noise == "room":
         snr = float(rng.uniform(15, 30))
         y = mix_at(y, pink(len(y), rng), snr, ps)
         meta["snr_db"] = round(snr, 1)
     bab_pool.append(clean)
     del bab_pool[:-40]
+    if meta.get("_path"):         # the clip's final level change applies to its echo too
+        meta["_path"]["mix"] *= 0.7 / (np.abs(y).max() + 1e-9)
     return _norm(y, 0.7), meta
 
 

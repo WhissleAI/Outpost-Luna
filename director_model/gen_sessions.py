@@ -311,6 +311,24 @@ def real_stream(d: dict):
     return hw, ps, "eager" in states, dd, cc, extra, d
 
 
+def burn_turn(rng: random.Random, rd0, hw0, typed: bool, bare) -> None:
+    """Round 14: draw from `rng` exactly what the round-13 path drew for a turn a round-14 replay replaced (its partials,
+    eager draw and per-message timing), so every later item of the session draws as before (only the echo / echo2 /
+    over-playback turns change)."""
+    if typed or bare:
+        return
+    msgs = RP.messages(rd0[6]) if rd0 is not None else None
+    if msgs is None:
+        ps = rd0[1] if rd0 is not None else partials(hw0, rng)
+        if rd0 is None:
+            rng.random()
+        n = len(ps)
+    else:
+        n = sum(m["t"] == "words" for m in msgs[:-1])
+    for _ in range(n):
+        rng.uniform(0.7, 1.5)
+
+
 async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p=0.12, real=None,
               repeat_p: float = 0.0) -> tuple[list, dict]:
     """-> (sink steps, turn annotations by turn id). real = (RealEar, group, p): replay real Arc decodes of the turn
@@ -336,7 +354,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
     frame = None
     queue = list(enumerate(script["items"]))
     rrng = random.Random(script["seed"] * 31 + 7)       # its own stream: the repeat draws never shift the others
-    from real_ear import frame_key, MODE_SCREEN
+    from real_ear import frame_key, MODE_SCREEN, OVERPLAY
     while queue:
         tid, it = queue.pop(0)
         clock.t += rng.uniform(1.5, 9.0)
@@ -419,6 +437,12 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 mode != "academy" else None
             d = real[0].get(real[1], it["text"], rng, fk)
             rd = real_stream(d) if d else None
+        if it.get("decode") and rd is None:
+            # round 14: a playtest turn's own audio through the real ear (import_logs.py -> data/real_retest.json,
+            # set test_log_audio): replayed as a real decode (replay.messages), no draws
+            rd = real_stream(it["decode"])
+        orng = random.Random(f"{script['seed']}:{tid}:r14")   # round 14: the draws added below (never shift `rng`)
+        rd0 = rd
         if op == "echo2" and noise is not None and real is not None:
             grp = "app_os" if (it.get("audio") or {}).get("kind") == "os_voice" else "app"   # round 8: OS / Nora voices
             d = real[0].get(grp, it["lines"][0], rng) or (real[0].get("app", it["lines"][0], rng) if grp != "app" else None)
@@ -427,12 +451,32 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 k = min(len(hy), len(cw))
                 a0 = int(round(len(hy) * (len(FX.words_of(it["lines"][0])) - len(cw)) / max(1, len(FX.words_of(it["lines"][0])))))
                 if k:
-                    it = {**it, "heard": " ".join(hy[max(0, min(a0, len(hy) - k)):][:k])}
-        if op == "video_leak" and real is not None and noise is not None and rd is None:
+                    it = {**it, "heard": " ".join(hy[max(0, min(a0, len(hy) - k)):][:k])}   # round 13 (kept: `rng` order)
+                    # round 14 (round 13 "Next"): replay the decode's FULL live message stream (replay.messages: its
+                    # partials, arc read and final words WITH playback_leak / playback / barge / eot) instead of that
+                    # slice of its words: the echo-class turns carry the ear's echo read-out (e13_leak / e13_barge)
+                    rd = real_stream(d)
+        if op == "echo" and noise is not None and real is not None and playing is not None:
+            # round 14: our playing line as the real ear decoded it in the app's voices, when the cache has that line
+            ptxt = playing.get("text") or ""
+            d = real[0].get("app", ptxt, orng) or real[0].get("app_os", ptxt, orng)
+            if d and d.get("hyp") and FX.words_of(d["hyp"]):
+                rd = real_stream(d)
+        if it.get("during_play") and op not in ("echo", "echo2") and real is not None and noise is not None and \
+                real[1] in ("train", "val", "test"):
+            # round 14: a kid turn said over our playback, decoded with a line under it fed as the ear's reference
+            # (real_ear.py r14 jobs): its final words carry the live playback_leak; else as before
+            fk = frame_key(it.get("frame") or {"screen": MODE_SCREEN.get(mode, "map")}) if it.get("frame") or \
+                mode != "academy" else None
+            d = real[0].get(OVERPLAY + real[1], it["text"], orng, fk)
+            if d and d.get("hyp") and FX.words_of(d["hyp"]):
+                rd = real_stream(d)
+        if op == "video_leak" and real is not None and noise is not None and rd0 is None:
             d = real[0].get("video", it["text"], rng)   # the NASA narration / music through the real ear
-            rd = real_stream(d) if d else None
-        if rd is not None:
-            hw, al = rd[0], None
+            rd0 = rd = real_stream(d) if d else None
+        # the round-13 words first (so `rng` draws exactly as before), then a round-14 replay replaces them
+        if rd0 is not None:
+            hw, al = rd0[0], None
         elif "heard" in it and noise is not None:
             hw, al = FX.words_of(it["heard"]), None
         elif "heard_fallback" in it and noise is not None and rng.random() < 0.6:
@@ -442,7 +486,10 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             hw, al = em.corrupt(cw, rng, noisy=noisy, level=level)
         else:
             hw, al = list(cw), list(range(len(cw)))
-        if not hw:
+        hw0 = hw
+        if rd is not rd0:
+            hw, al = rd[0], None
+        if not hw or not hw0:      # (not hw0: the round-13 path skipped this turn here; so does round 14, for `rng`)
             continue
         ann = {"tid": tid, "item": it, "clean": cw, "heard": hw, "al": al, "words": [], "end": None,
                "lesson": (it["lesson"], it["step"]) if it.get("lesson") else lesson_step if mode == "academy" else None,
@@ -450,9 +497,17 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
         anns[tid] = ann
         dd_rng = it.get("dd") or ((0.3, 0.7) if op == "echo" else (0.55, 0.98))
         dd = rng.uniform(*dd_rng)
-        if rd is not None and rd[3] is not None and rng.random() < 0.5:
+        # round 14: `rng` draws exactly as before (only when the round-13 path had a real decode with a dd); a replay
+        # added above (echo / echo2 / over playback) draws from its own stream
+        u = rng.random() if rd0 is not None and rd0[3] is not None else None
+        if rd is not None and rd[3] is not None and (orng.random() if u is None else u) < 0.5:
             dd = rd[3]       # Arc's own device_directed on the rendered audio (TTS: always "to the device")
-        typed = rng.random() < typed_p and not playing and op != "echo" and rd is None
+        u_typed = rng.random()
+        typed = u_typed < typed_p and not playing and op != "echo" and rd is None
+        jr = rng
+        if rd is not rd0:        # round 14: a replay replaced the round-13 turn: burn its draws, jitter on its own stream
+            burn_turn(rng, rd0, hw0, u_typed < typed_p and not playing and op != "echo" and rd0 is None, it.get("bare"))
+            jr = orng
         if typed:
             i0 = sess.dm.n
             await sess.handle({"t": "typed", "text": " ".join(hw), "source": "typed"})
@@ -468,7 +523,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
             if it.get("bare"):     # round 13 (train only): the turn's text alone, no partials, no arc read, no extras
                 msgs, eager, end_text = [{"t": "turn", "state": "start", "text": ""}], False, " ".join(hw)
             elif msgs is None:
-                ps = rd[1] if rd is not None else partials(hw, rng)
+                ps = rd[1] if rd is not None else partials(hw, jr)
                 msgs = [{"t": "turn", "state": "start", "text": " ".join(ps[0])}]
                 for j, p in enumerate(ps):
                     if j == len(ps) - 1 and arc_on:
@@ -476,8 +531,12 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                     wm = {"t": "words", "text": " ".join(p)}
                     if j == len(ps) - 1 and rd is not None and rd[5]:
                         wm.update(final=True, **rd[5])      # the ear's n-best / confidence / hot match (round 7)
+                    elif j == len(ps) - 1 and rd is None and isinstance(it.get("ear"), dict):
+                        # round 14: an imported turn-log v2 turn's ear read-out as it was live (numbers / enums only,
+                        # session k["ear"] keys): the turn end carries its ABI 2 read-out (e13_*) as in the app
+                        wm.update(final=True, **it["ear"])
                     msgs.append(wm)
-                eager = rd[2] if rd is not None else rng.random() < 0.4
+                eager = rd[2] if rd is not None else jr.random() < 0.4
                 end_text = " ".join(hw)
             else:
                 eager = False                      # Arc Transcriber Space sends no eager turn state
@@ -485,7 +544,7 @@ async def run(script: dict, rng: random.Random, noise=None, arc_on=True, typed_p
                 msgs = msgs[:-1]
             for m in msgs:
                 if m["t"] == "words":
-                    clock.t += 0.32 * rng.uniform(0.7, 1.5)
+                    clock.t += 0.32 * jr.uniform(0.7, 1.5)
                     if pend_line is not None and clock.t >= pend_line[0]:
                         await sess.handle({"t": "playback", "kind": "guide", "state": "start", "id": pend_line[1],
                                            "text": pend_line[2]})
@@ -568,8 +627,10 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
     yw = {k: np.full((T, FX.W), -1, np.int8) for k in FX.WORD_HEADS}
     metas = []
     prev = None
+    n_words = 0
     for t, st in enumerate(sink):
         rec = st["rec"]
+        n_words = RT.turn_words_next(rec["kind"], n_words)
         feats[t] = FX.step_feats(rec, prev)
         toks[t], wtok[t], wfeat[t] = FX.step_tokens(rec)
         prev = rec
@@ -580,6 +641,10 @@ def label_session(sink, anns, clean_anns, clean_sink, meta_base: dict):
         metas.append({"kind": rec["kind"], "now": rec["now"], "rules_act": st["rules_act"], "floor": rec["floor"],
                       "rules_barge": any(d["t"] == "floor" and d.get("holder") == "kid" for d in st["decisions"])
                       and rec["kind"] == "words"})
+        if RT.bare_turn(rec, n_words):     # round 14: no ear read-out at all: the runtime lets the rules decide
+            metas[-1]["bare"] = True
+        if rec["kind"] in ("turn_end", "typed"):
+            n_words = 0
     for tid, ann in anns.items():
         it = ann["item"]
         final = ann["heard"]
@@ -718,6 +783,21 @@ def merge(out: Path, n: int):
     print(f"merged {n} shards: {len(arrs['off']) - 1} sessions, {len(arrs['feats'])} steps")
 
 
+def embedder_problem(h: dict | None) -> str | None:
+    """Round 14 (round 13 "Next"): why the model server's embedder is not usable for generation (None = loaded).
+    `h` is GET /health from the private model server (models_client.health); {} / None = not reachable."""
+    if not h:
+        return f"no model server at {os.environ.get('MODEL_SERVER_URL')}"
+    e = h.get("embedder")
+    if e is None and h.get("error"):
+        return str(h["error"])
+    if not isinstance(e, dict):
+        return "the model server reports no embedder"
+    if not e.get("loaded"):
+        return str(e.get("error") or "not loaded (EMBED_MODEL_DIR missing?)")
+    return None
+
+
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(HERE / "data" / "ds"))
@@ -746,6 +826,9 @@ async def main():
                     "get 1-2 round-13 items (pools_r13.py: lesson answers, room talk naming a control)")
     ap.add_argument("--repeat-p", type=float, default=0.5, help="round 7: P(the kid repeats a wrongly ignored turn) "
                     "in train / val (outcome signals as weak labels)")
+    ap.add_argument("--allow-no-embedder", action="store_true",
+                    help="round 14: generate even when the model server's embedder is not loaded (the app has it: "
+                         "rounds 12-13 silently trained without it). Default: stop with an error")
     ap.add_argument("--stress-cache", default="", help="round 12: a stress decode cache (report-only set)")
     ap.add_argument("--stress-name", default="stress")
     ap.add_argument("--stress-mode", default="ho", choices=["ho", "items"])
@@ -754,6 +837,14 @@ async def main():
     if a.merge:
         merge(Path(a.out), a.merge)
         return
+    why = embedder_problem(await models_client.health())
+    if why:
+        msg = (f"the model server's embedder is not loaded ({why}). The app has it, so sessions generated without it "
+               "train the Director on the brain's embedding fallbacks (rounds 12-13 did, silently). Start the model "
+               "server with EMBED_MODEL_DIR=... (see the docstring), or pass --allow-no-embedder to accept it.")
+        if not a.allow_no_embedder:
+            raise SystemExit("gen_sessions: " + msg)
+        print("WARNING gen_sessions: " + msg, flush=True)
     from real_ear import RealEar
     RE = None if a.no_real else RealEar()
     if RE is not None:
@@ -912,6 +1003,13 @@ async def main():
         for x in logged:
             x.pop("conf", None)
         await cls_set("test_log", logged)
+    rt_f = HERE / "data" / "real_retest.json"     # round 14: playtest turns' own audio, decoded (import_logs.py)
+    if rt_f.exists():
+        rt = [dict(x) for x in json.loads(rt_f.read_text()).get("items") or [] if x.get("decode")]
+        for x in rt:
+            x.pop("conf", None)
+        if rt:
+            await cls_set("test_log_audio", rt)
     print(f"done in {time.time() - t0:.0f} s")
 
 

@@ -365,6 +365,118 @@ def cmd_r13(a):
     print(f"{len(new)} new jobs, {len(have)} total -> {JOBS}")
 
 
+OVERPLAY = "overplay_"        # round 14: group prefix of the kid-over-playback jobs (overplay_train / _val / _test)
+
+
+def overplay_group(split: str) -> str:
+    return OVERPLAY + split
+
+
+def cmd_r14(a):
+    """Round 14 (round 13 "Next": live leak on kid turns over our playback). Live, a kid turn said while our line plays
+    reaches the ear WITH that line as the canceller's reference (echoref.js), so its final words carry a playback_leak;
+    round 13's decodes of those turns had no line under them and no reference. New jobs, in their own groups
+    (overplay_train / _val / _test: no earlier cache key changes), for every kid turn the generator says during our
+    playback (items with during_play) in the sessions gen_sessions builds (train 10_000 + k, val 500_000 + k, test
+    900_000 + k), in the Mac voice bank (test in the held-out voices), each with `under` = one of the app's lines in
+    an OS voice the app speaks with: voice_bank.render_kid puts it under the kid through the calibrated speaker -> mic
+    path (render_r8.speaker_to_mic, profile laptop) and the decode feeds it as the ear's reference (meta["_ref"])."""
+    sys.argv = [sys.argv[0]]
+    import gen_sessions as G  # noqa: E402  (backend env)
+    import render_r8 as R8
+    import voice_bank as VB
+    CACHE.mkdir(parents=True, exist_ok=True)
+    have = {j["key"]: j for j in load_jobs()}
+    new = []
+    lines = VB.app_lines()
+    voices = {"test": [v for v in VB.HELDOUT if v not in VB.NOVELTY + VB.SUNG],
+              "val": [v for v in VB.VAL if v not in VB.NOVELTY + VB.SUNG],
+              "train": [v for v in VB.TRAIN if v not in VB.NOVELTY + VB.SUNG]}
+
+    def add(split, it, fr):
+        g = overplay_group(split)
+        fk = frame_key(fr)
+        k = key_of(g, it["text"] + "#" + fk, 0)
+        if k in have:
+            return
+        rng = random.Random(k)
+        j = {"key": k, "group": g, "text": it["text"], "var": 0, "seed": rng.randrange(1 << 30), "frame": fr,
+             "fk": fk, "vb": "mac", "names": screen_names_of(fr), "cat": it.get("cat"),
+             "gold_act": (it.get("gold") or {}).get("act"), "r14": True, "voice": rng.choice(voices[split]),
+             "under": {"line": rng.choice(lines), "voice": rng.choice(R8.OS_VOICES)}}
+        have[k] = j
+        new.append(j)
+
+    for split, n, seed0 in (("train", a.train, 10_000), ("val", a.val, 500_000), ("test", a.test, 900_000)):
+        n0 = len(new)
+        for k in range(n):
+            rng = random.Random(seed0 + k)
+            sc = G.kind_script(rng, split, seed0 + k, hf_p=a.hf_p if split != "test" else 0.0)
+            lesson = None
+            for it in sc["items"]:
+                if it.get("op") == "lesson":
+                    lesson = (it["lesson_id"], it["step"])
+                if not it.get("during_play") or it.get("op") in ("echo", "echo2") or not it.get("text"):
+                    continue
+                fr = it.get("frame")
+                if fr is None:
+                    fr = {"screen": MODE_SCREEN.get(sc["mode"], "map")}
+                    if sc["mode"] == "academy" and lesson:
+                        fr.update(lesson_id=lesson[0], step=lesson[1])
+                add(split, it, fr)
+        print(f"r14 {overplay_group(split)} jobs: {len(new) - n0}", flush=True)
+    with open(JOBS, "a") as f:
+        for j in new:
+            f.write(json.dumps(j) + "\n")
+    print(f"{len(new)} new jobs, {len(have)} total -> {JOBS}")
+
+
+def cmd_leak(a):
+    """Round 14: the simulated speaker -> mic path's own-line playback_leak (model_server env, like `decode`):
+    --n of the app's lines (voice_bank.app_lines) in the OS voices the app speaks with (`say -o`: silent, in memory),
+    each through render_r8.speaker_to_mic with every --profiles profile (the same line and voice for each), decoded by
+    the app's ear with the line fed as its reference at the moment it goes to the speaker (echoref.js). Prints the
+    median / p10 / p90 leak of the finals per profile (the real laptop, docs/ARC_ABI2.md section 8: median 0.75).
+      cd model_server && uv run python ../director_model/real_ear.py leak --n 60 --profiles r13,laptop
+    EAR_WARM_LINES=0 measures a fresh canceller per clip (round 13's decode); the default warms it (render_r8.warm_up;
+    only the laptop profile carries the room it needs)."""
+    import numpy as np
+    sys.path.insert(0, os.getcwd())
+    from app import arc_ear, arcmeta
+    import render_r8 as R8
+    import voice_bank as VB
+    arcmeta.load()
+    if not arcmeta.STATE.get("decoder"):
+        raise SystemExit(f"Arc ear not loaded: {arcmeta.STATE.get('error')}")
+    rng0 = random.Random(a.seed)
+    lines = VB.app_lines()
+    picks = [(rng0.choice(lines), rng0.choice(R8.OS_VOICES), rng0.randrange(1 << 30)) for _ in range(a.n)]
+    res: dict = {}
+    for prof in a.profiles.split(","):
+        leaks, n_fin, n_clips = [], 0, 0
+        for line, voice, seed in picks:
+            x = VB.say(line, voice)
+            if x is None or not len(x):
+                continue
+            ref = VB._norm(x)
+            y, m = R8.speaker_to_mic(ref, np.random.default_rng(seed), profile=prof)
+            pcm = (np.clip(y, -1, 1) * 32767).astype("<i2").tobytes()
+            es = arc_ear.EarStream("assistant")
+            msgs = ear_feed(es, pcm, [(0.0, ref)], m, np.random.default_rng(seed + 1))
+            es.close()
+            n_clips += 1
+            for m in msgs:
+                if m["t"] == "words" and m.get("final") and (m.get("text") or "").strip():
+                    n_fin += 1
+                    if m.get("playback_leak") is not None:
+                        leaks.append(float(m["playback_leak"]))
+        q = (lambda p: round(float(np.percentile(leaks, p)), 3)) if leaks else (lambda p: None)
+        res[prof] = {"clips": n_clips, "finals": n_fin, "with_leak": len(leaks), "p10": q(10), "median": q(50),
+                     "p90": q(90), "flag_0.85": round(sum(v >= 0.85 for v in leaks) / max(1, len(leaks)), 3)}
+        print(prof, json.dumps(res[prof]), flush=True)
+    return res
+
+
 def load_jobs() -> list[dict]:
     return [json.loads(line) for line in open(JOBS)] if JOBS.exists() else []
 
@@ -464,6 +576,34 @@ def iter_audio(jobs):
 
 
 # ------------------------------------------------------------------------------------------------- 3. decode
+def ear_feed(es, x: bytes, refs: list, rmeta: dict, rng) -> list[dict]:
+    """Feed one clip (int16 PCM) and its own playback references to an EarStream, as the app does -> the clip's
+    messages. Round 14: a clip with our playback in it, rendered through the calibrated laptop path (rmeta["_path"]),
+    is preceded by render_r8.warm_up (earlier playback through the same room, with its reference), so the canceller has
+    adapted as it has live; the warm-up's messages are dropped and the clip's references are shifted after it."""
+    import numpy as np
+    import render_r8 as R8
+    path = rmeta.pop("_path", None)
+    wx, wrefs, ws = R8.warm_up(refs, path, rng)
+    if ws:
+        rmeta["warm_s"] = round(ws, 2)
+        wrefs = list(wrefs)
+        for i in range(0, len(wx), 2560):
+            while wrefs and wrefs[0][0] <= i / 2 / SR + 0.08:
+                at, r = wrefs.pop(0)
+                es.feed_ref(np.asarray(r, np.float32), float(at))
+            es.feed_all(wx[i:i + 2560])
+    refs = [(at + ws, r) for at, r in refs]
+    msgs: list = []
+    for i in range(0, len(x), 2560):
+        while refs and refs[0][0] <= ws + i / 2 / SR + 0.08:
+            at, r = refs.pop(0)
+            es.feed_ref(np.asarray(r, np.float32), float(at))
+        msgs += es.feed_all(x[i:i + 2560])
+    msgs += es.flush_all()
+    return msgs
+
+
 def _decode_worker(args):
     wid, nproc, jobs, threads = args
     os.environ["ARC_META_THREADS"] = str(threads)
@@ -499,14 +639,8 @@ def _decode_worker(args):
         refs = sorted(rmeta.pop("_ref", None) or [], key=lambda r: r[0])
         if refs:
             rmeta["ref"] = [[round(float(at), 3), round(len(r) / SR, 2)] for at, r in refs]
-        msgs = []
         import numpy as np
-        for i in range(0, len(x), 2560):
-            while refs and refs[0][0] <= i / 2 / SR + 0.08:
-                at, r = refs.pop(0)
-                es.feed_ref(np.asarray(r, np.float32), float(at))
-            msgs += es.feed_all(x[i:i + 2560])
-        msgs += es.flush_all()
+        msgs = ear_feed(es, x, refs, rmeta, np.random.default_rng(j["seed"] + 1))
         es.close()
         xr = {"names": [], "spoken": "", "tags": [], "audio_events": [], "dh": [], "directed": [],
               "ends": es.ends, "audio_s": round(es.audio_s, 3)}
@@ -549,6 +683,10 @@ def cmd_decode(a):
         while held or va or tr:
             todo += held[:2] + va[:1] + tr[:1]
             held, va, tr = held[2:], va[1:], tr[1:]
+    elif a.order == "r14":     # round 14: the kid-over-playback jobs first, then as r13
+        pri = {"val": 2, "train": 3}
+        todo.sort(key=lambda j: (0 if j.get("r14") else 1 if j.get("r13") else 2 + pri.get(j["group"], 0),
+                                 j.get("var", 0)))
     elif a.order == "r13":     # round 13: the new jobs first (lesson answers, room talk), then the gate's sets, val, train
         pri = {"val": 2, "train": 3}
         todo.sort(key=lambda j: (0 if j.get("r13") else 1 + pri.get(j["group"], 0), j.get("var", 0)))
@@ -611,8 +749,10 @@ def cmd_stats(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["jobs", "decode", "stats", "relist", "r13"])
+    ap.add_argument("cmd", choices=["jobs", "decode", "stats", "relist", "r13", "r14", "leak"])
     ap.add_argument("--r13-p", type=float, default=0.6, help="r13: gen_sessions --r13-p")
+    ap.add_argument("--n", type=int, default=60, help="leak: lines per profile")
+    ap.add_argument("--profiles", default="r13,laptop", help="leak: render_r8.SPEAKER_PROFILES to compare")
     ap.add_argument("--src", default="", help="relist: the cache whose jobs are re-keyed")
     ap.add_argument("--train", type=int, default=3000)
     ap.add_argument("--val", type=int, default=150)
@@ -633,4 +773,5 @@ if __name__ == "__main__":
     ap.add_argument("--classes", default="", help="jobs for these class sets only (comma list), nothing else")
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
-    {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats, "relist": cmd_relist, "r13": cmd_r13}[a.cmd](a)
+    {"jobs": cmd_jobs, "decode": cmd_decode, "stats": cmd_stats, "relist": cmd_relist, "r13": cmd_r13,
+     "r14": cmd_r14, "leak": cmd_leak}[a.cmd](a)

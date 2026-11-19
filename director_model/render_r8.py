@@ -92,22 +92,111 @@ def music(rng: np.random.Generator, dur: float) -> np.ndarray:
     return x + beat
 
 
-def speaker_to_mic(x: np.ndarray, rng: np.random.Generator, noise_pool: list | None = None) -> tuple[np.ndarray, dict]:
-    """A laptop speaker heard by its own mic: high-pass ~250 Hz, small-room reverb, -10..-25 dB, steady room noise."""
+# Round 14: the speaker -> mic path, calibrated to the real laptop of docs/ARC_ABI2.md section 8 (MacBook Pro M3 Pro,
+# built-in speakers at 75 %): round trip 141-159 ms, our echo at the mic -29 dBFS (0 dB block) to -44 dBFS (-18 dB),
+# room floor -57.5 dBFS; the speaker sits centimetres from the mic, so the direct path dominates a short laptop-room
+# reverb. Real own-line playback_leak median there: 0.75. The round-8..13 path ("r13": 0.1-0.4 s latency, a long
+# reverb whose tail carried ~20 dB more energy than the direct path, -10..-25 dB, a -55..-42 dB floor) gave a median
+# leak of 0.38 on round 13's echo clips: the canceller cannot explain a tail that loud. SPEAKER_PROFILE=r13 (or
+# profile="r13") reproduces the round-13 renders exactly (same draws).
+SPEAKER_PROFILES = ("laptop", "r13")
+SPEAKER_PROFILE = os.environ.get("SPEAKER_PROFILE", "laptop")
+LAPTOP = {"delay_s": (0.141, 0.159), "rt60": (0.12, 0.3), "drr_db": (6.0, 16.0), "echo_dbfs": (-44.0, -29.0),
+          "floor_dbfs": (-59.0, -56.0)}
+
+
+def speaker_to_mic(x: np.ndarray, rng: np.random.Generator, noise_pool: list | None = None,
+                   profile: str | None = None) -> tuple[np.ndarray, dict]:
+    """A laptop speaker heard by its own mic: high-pass ~250 Hz (small drivers), a short room reverb under the direct
+    path, the output latency, the echo level and the room floor of the real laptop (profile "laptop", round 14), or
+    the round-8..13 path (profile "r13"). The reference the ear gets is `x` stamped at sample 0 (the moment the line is
+    handed to the speaker, as echoref.js stamps it); the latency is added after it."""
     from scipy.signal import butter, fftconvolve, lfilter
-    b, a = butter(2, 250 / (SR / 2), "high")
-    y = lfilter(b, a, x).astype(np.float32)
-    rt = float(rng.uniform(0.25, 0.7))
-    n = int(rt * SR)
-    rir = rng.standard_normal(n) * np.exp(-6.9 * np.arange(n) / n)
-    rir[0] = 1.0 / rng.uniform(0.2, 0.6)
-    y = fftconvolve(y, rir)[: len(y) + n // 3].astype(np.float32)
-    gain_db = float(rng.uniform(-25, -10))
-    y = y / (np.abs(y).max() + 1e-9) * 0.5 * 10 ** (gain_db / 20)
-    lead, tail = rng.uniform(0.1, 0.4), 1.0
-    y = np.concatenate([np.zeros(int(lead * SR), np.float32), y, np.zeros(int(tail * SR), np.float32)])
-    room = rng.standard_normal(len(y)).astype(np.float32) * 10 ** (float(rng.uniform(-55, -42)) / 20)
-    return y + room, {"rt60": round(rt, 2), "gain_db": round(gain_db, 1)}
+    prof = profile or SPEAKER_PROFILE
+    hp = 250.0 if prof == "r13" else LAPTOP.get("hp_hz", 250.0)
+    if hp:
+        b, a = butter(2, hp / (SR / 2), "high")
+        y = lfilter(b, a, x).astype(np.float32)
+    else:
+        y = np.asarray(x, np.float32)
+    if prof == "r13":
+        rt = float(rng.uniform(0.25, 0.7))
+        n = int(rt * SR)
+        rir = rng.standard_normal(n) * np.exp(-6.9 * np.arange(n) / n)
+        rir[0] = 1.0 / rng.uniform(0.2, 0.6)
+        y = fftconvolve(y, rir)[: len(y) + n // 3].astype(np.float32)
+        gain_db = float(rng.uniform(-25, -10))
+        y = y / (np.abs(y).max() + 1e-9) * 0.5 * 10 ** (gain_db / 20)
+        lead, tail = rng.uniform(0.1, 0.4), 1.0
+        y = np.concatenate([np.zeros(int(lead * SR), np.float32), y, np.zeros(int(tail * SR), np.float32)])
+        room = rng.standard_normal(len(y)).astype(np.float32) * 10 ** (float(rng.uniform(-55, -42)) / 20)
+        return y + room, {"rt60": round(rt, 2), "gain_db": round(gain_db, 1), "profile": "r13"}
+    L = LAPTOP
+    rt = float(rng.uniform(*L["rt60"]))
+    drr = float(rng.uniform(*L["drr_db"]))
+    n = max(2, int(rt * SR))
+    tail = rng.standard_normal(n) * np.exp(-6.9 * np.arange(n) / n)
+    tail[:int(0.002 * SR)] = 0.0                       # the first reflections arrive a few ms after the direct sound
+    tail = tail / (np.sqrt(np.sum(tail ** 2)) + 1e-9) * 10 ** (-drr / 20)
+    tail[0] = 1.0                                      # the direct path (unit energy) over the reverb tail
+    y = fftconvolve(y, tail)[: len(y) + n // 3].astype(np.float32)
+    act = np.abs(y) > 0.05 * (np.abs(y).max() + 1e-9)
+    rms = float(np.sqrt(np.mean(y[act] ** 2))) if act.any() else 1e-9
+    level = float(rng.uniform(*L["echo_dbfs"]))
+    gain = 10 ** (level / 20) / (rms + 1e-12)
+    y = y * gain
+    delay = float(rng.uniform(*L["delay_s"]))
+    y = np.concatenate([np.zeros(int(delay * SR), np.float32), y, np.zeros(SR, np.float32)]).astype(np.float32)
+    floor = float(rng.uniform(*L["floor_dbfs"]))
+    room = rng.standard_normal(len(y)).astype(np.float32) * 10 ** (floor / 20)
+    # `_path`: this room, so the decode can warm the ear's canceller up on earlier playback through the SAME path
+    # (warm_up below); private: real_ear pops it before writing the render meta
+    return y + room, {"rt60": round(rt, 2), "drr_db": round(drr, 1), "echo_dbfs": round(level, 1),
+                      "delay_ms": round(delay * 1000), "floor_dbfs": round(floor, 1), "profile": "laptop",
+                      "_path": {"hp": hp, "tail": tail.astype(np.float32), "gain": gain, "delay": delay,
+                                "floor": floor, "mix": 1.0}}
+
+
+# Round 14: the ear's echo canceller adapts to the room over the lines it hears. Live, the stream has heard our earlier
+# lines before the turn (it reopens only after EAR_STREAM_MAX_S idle: 24 restarts in the 25 min of section 8); a decode
+# that opens a fresh stream per clip starts it unconverged. Measured (real_ear.py leak, the app's ear): a dry,
+# perfectly aligned echo through a fresh stream read a median leak of 0.53 at the laptop's 150 ms latency (0.72 at
+# 0 ms); after 2 earlier lines through the same path, 0.85. WARM_LINES earlier lines (the clip's own reference again,
+# through the same room: the canceller learns the room, not the words) are decoded before the clip, and their messages
+# dropped. 0 = round 13's fresh stream.
+WARM_LINES = int(os.environ.get("EAR_WARM_LINES", "1"))
+WARM_GAP_S = 1.5
+
+
+def apply_path(x: np.ndarray, P: dict, rng: np.random.Generator) -> np.ndarray:
+    """`x` through a room speaker_to_mic drew (its `_path`): the same filter, reverb, level, latency and floor, times
+    the mix factor the caller applied to that echo in its clip."""
+    from scipy.signal import butter, fftconvolve, lfilter
+    y = np.asarray(x, np.float32)
+    if P.get("hp"):
+        b, a = butter(2, P["hp"] / (SR / 2), "high")
+        y = lfilter(b, a, y).astype(np.float32)
+    t = P["tail"]
+    y = fftconvolve(y, t)[: len(y) + len(t) // 3].astype(np.float32) * float(P["gain"]) * float(P.get("mix", 1.0))
+    y = np.concatenate([np.zeros(int(P["delay"] * SR), np.float32), y, np.zeros(int(WARM_GAP_S * SR), np.float32)])
+    return (y + rng.standard_normal(len(y)).astype(np.float32) * 10 ** (P["floor"] / 20)).astype(np.float32)
+
+
+def warm_up(refs: list, P: dict | None, rng: np.random.Generator, n: int | None = None):
+    """-> (int16 PCM bytes, [(at, ref)], seconds) of `n` earlier playbacks to feed the ear before a clip whose own
+    playback (refs) went through room P; (b"", [], 0.0) when there is nothing to warm (no reference / no path)."""
+    n = WARM_LINES if n is None else n
+    if not n or not refs or not P:
+        return b"", [], 0.0
+    segs, rr, t = [], [], 0.0
+    src = refs[0][1]
+    for _ in range(n):
+        y = apply_path(src, P, rng)
+        rr.append((t, src))
+        segs.append(y)
+        t += len(y) / SR
+    x = np.concatenate(segs)
+    return (np.clip(x, -1, 1) * 32767).astype("<i2").tobytes(), rr, t
 
 
 def render(j: dict, rng: np.random.Generator) -> tuple[np.ndarray | None, dict]:
