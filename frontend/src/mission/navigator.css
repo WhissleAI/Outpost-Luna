@@ -53,7 +53,9 @@
 .nv-map{position:absolute;z-index:calc(var(--z-stage) + 3);border-radius:var(--radius-lg);overflow:hidden;background:#05060a;box-shadow:var(--shadow-2);
   border:1px solid var(--color-glass-line,rgba(255,255,255,.15))}
 .nv-map[hidden]{display:none}
-.nv-map.is-pending{background:transparent;box-shadow:none;border:0;overflow:visible;pointer-events:none}
+.nv-map.is-pending{left:var(--gut);top:var(--gut);background:transparent;box-shadow:none;border:0;overflow:visible;pointer-events:none}
+/* [QA-76] the pending map has no size of its own: keep the note on one line (it wrapped into a five-line blob in the corner) */
+.nv-map.is-pending .nv-pending{white-space:nowrap}
 .nv-pending{position:absolute;left:0;top:0;margin:0;display:inline-flex;align-items:center;gap:var(--space-2);min-height:36px;padding:0 var(--space-4);border-radius:var(--radius-full);
   background:var(--color-glass,rgba(10,12,20,.7));color:var(--color-on-space,#fff);font-size:var(--text-sm);font-weight:var(--weight-semibold);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}

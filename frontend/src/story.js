@@ -416,13 +416,22 @@ export const OFFER = {
  *  `n` is that lesson's number among the core lessons, in course order (as the map numbers them and as
  *  backend gameplay.LESSON_NO derives it); learning_v1.test.js and test_learning_v1.py check it against the course. */
 export const CALLBACKS = {
-  solar_storm: { lesson: "radiation", n: 5, text: "Solar particle storm. Shields up, or crew to the shelter." },
-  low_power: { lesson: "power", n: 3, text: "Battery's low. Turn down what you don't need." },
-  sunset: { lesson: "power", n: 3, text: "Sunset. Give the heaters a little more." },
-  life_support_low: { lesson: "life", n: 6, text: "Life support is low. The rover can fetch ice." },
-  comm_closed: { lesson: "comms", n: 4, text: "Earth has set. No radio until it rises." },
-  dose_alert: { lesson: "radiation", n: 5, text: "Dose is climbing. Shields, or the shelter." },
+  solar_storm: { lesson: "radiation", n: 5, text: "Solar particle storm. Shields up, or crew to the shelter.",
+    takeaway: "In a particle storm, raise the shields or move the crew to the shelter." },
+  low_power: { lesson: "power", n: 3, text: "Battery's low. Turn down what you don't need.",
+    takeaway: "When the battery runs low, turn down science and save power for life support." },
+  sunset: { lesson: "power", n: 3, text: "Sunset. Give the heaters a little more.",
+    takeaway: "After sunset the heaters need more power, so charge the battery while the Sun is up." },
+  life_support_low: { lesson: "life", n: 6, text: "Life support is low. The rover can fetch ice.",
+    takeaway: "When life support runs low, send the rover to fetch ice for water and air." },
+  comm_closed: { lesson: "comms", n: 4, text: "Earth has set. No radio until it rises.",
+    takeaway: "When Earth sets, the radio is out, so call Houston while Earth is up." },
+  dose_alert: { lesson: "radiation", n: 5, text: "Dose is climbing. Shields, or the shelter.",
+    takeaway: "When the dose climbs, use the shields or the shelter before it reaches the limit." },
 };
+/** [QA-65] The debrief's takeaway for a lesson that came back: one whole sentence (the radio line's first sentence was
+ *  only "Battery's low."). */
+export const callbackTakeaway = kind => (CALLBACKS[kind] && (CALLBACKS[kind].takeaway || CALLBACKS[kind].text)) || null;
 export const callbackLine = (kind, earned) => {
   const c = CALLBACKS[kind]; if (!c) return null;
   return (earned ? `Remember Lesson ${c.n}? ` : `Lesson ${c.n} covers this. `) + c.text;

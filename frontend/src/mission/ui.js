@@ -10,7 +10,7 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING, rideReady } from "../story.js";
+import { callSign, CAPCOM, callbackLine, callbackTakeaway, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING, rideReady } from "../story.js";
 import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./objective.js";
 import { createTour } from "./tour.js";
 import { createCoach, coachDone } from "./coach.js";
@@ -19,6 +19,7 @@ import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
 import { buzz, momentOf } from "../haptics.js";
 import { createNavigator } from "./navigator.js";   // the landing-site navigator (docs/SITE_NAVIGATOR.md)
+import { pinLayout } from "./pin_layout.js";   // [QA-61] the picker pins redraw only when the picture changes
 
 
 
@@ -149,8 +150,20 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (!client.sample) await nv.load();   // real NASA numbers per site + map layers (falls back to the plain picker)
       if (g !== gen || !entered) return;   // QA-19: left Mission while the sites loaded: no picker over another mode
     }
-    if (state && !state.over) { if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
+    if (state && !state.over) {
+      // [QA-66] the sim can move while we're away (the API, another window): take the server's state first, so a mission
+      // it already finished opens on its debrief, not on a stale Day 1 HUD
+      const fresh = await freshState(state.id);
+      if (g !== gen || !entered) return;
+      if (fresh) { prev = state; applyState(fresh, true); }
+      if (state.over) { mclock.pause(); showDebrief(); return; }
+      if (!unsub) unsub = client.subscribe(state.id, onTelemetry); showHud(); return; }   // [qa] telemetry again
     hub();
+  }
+  /** [QA-66] The server's current state for this mission, or null (sample data, offline, or a mission it no longer has). */
+  async function freshState(id) {
+    if (!client || client.sample || typeof client.get !== "function") return null;
+    try { const s = await client.get(id); return s && s.id === id ? s : null; } catch (e) { return null; }
   }
   // In the cabin the ask dock and the caption line live in the panel's bottom comm row (never over the window or a
   // display unit); outside it they go back where index.html put them. Same nodes, so #q / #mic / Ask keep working.
@@ -360,25 +373,25 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       b.onpointerenter = () => hot(b.dataset.site, true); b.onpointerleave = () => hot(b.dataset.site, false);
     });
     pinEl.hidden = false; cancelAnimationFrame(pinRaf);
-    const svg = pinEl.querySelector(".mx-leads");
+    // [QA-61] look the nodes up once, and write only when the picture changes (camera move, resize, a new pick):
+    // a still globe used to cost an SVG rebuild, 10 querySelector calls and a forced layout every frame
+    const svg = pinEl.querySelector(".mx-leads"), els = new Map();
+    pinEl.querySelectorAll("[data-site]").forEach(n => { const e = els.get(n.dataset.site) || {}; e[n.tagName === "I" ? "dot" : "lab"] = n; els.set(n.dataset.site, e); });
+    let lastKey = "";
     const tick = () => {
-      if (screen !== "brief") { pinEl.hidden = true; return; }
-      const P = sites.map(s => ({ s, p: globe.project(s.lat, s.lon) })).filter(o => o.p.facing);
-      const minX = Math.min(...P.map(o => o.p.x)), LH = 34;
-      const col = P.slice().sort((a, b) => a.p.y - b.p.y);
-      // label column left of the cluster, centred on it vertically, one row per site
-      const H = pinEl.clientHeight || innerHeight, cy = col.reduce((t, o) => t + o.p.y, 0) / (col.length || 1);
-      // keep the label column clear of the voice bar (bottom ~150px of the stage)
-      const y0 = Math.max(24, Math.min(cy - (col.length - 1) * LH / 2, H - 150 - (col.length - 1) * LH)), lx = minX - 64;
-      let lines = "";
-      col.forEach((o, k) => {
-        const id = CSS.escape(o.s.id), dot = pinEl.querySelector(`.mx-dot[data-site="${id}"]`), lab = pinEl.querySelector(`.mx-pin[data-site="${id}"]`);
-        const ly = y0 + k * LH;
-        dot.style.transform = `translate(${o.p.x.toFixed(1)}px,${o.p.y.toFixed(1)}px)`;
-        lab.style.transform = `translate(calc(${lx.toFixed(1)}px - 100%),${ly.toFixed(1)}px)`;
-        lines += `<path d="M${(lx + 4).toFixed(1)} ${ly.toFixed(1)}H${(lx + 24).toFixed(1)}L${o.p.x.toFixed(1)} ${o.p.y.toFixed(1)}" class="${o.s === site ? "is-sel" : ""}" data-site="${esc(o.s.id)}"/>`;
-      });
-      svg.innerHTML = lines;
+      if (screen !== "brief" || pinEl.hidden) { pinEl.hidden = true; pinRaf = 0; return; }
+      const P = [];
+      for (const s of sites) { const p = globe.project(s.lat, s.lon); if (p.facing) P.push({ id: s.id, x: p.x, y: p.y }); }
+      const L = pinLayout(P, pinEl.clientHeight || innerHeight, site && site.id);
+      if (L.key !== lastKey) {
+        lastKey = L.key;
+        for (const r of L.rows) {
+          const e = els.get(r.id); if (!e || !e.dot || !e.lab) continue;
+          e.dot.style.transform = `translate(${r.dot[0]}px,${r.dot[1]}px)`;
+          e.lab.style.transform = `translate(calc(${r.lab[0]}px - 100%),${r.lab[1]}px)`;
+        }
+        svg.innerHTML = L.lines;
+      }
       pinRaf = requestAnimationFrame(tick);
     };
     tick();
@@ -1234,7 +1247,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
     // [qa] at most two data lessons, so a Flight School callback or the "Next time" tip still gets a slot of the three
     const tks = (d.lessons || []).filter(l => l && l.text && !/Artemis III/i.test(l.text)).slice(0, 2).map(l => ({ text: takeaway(l.text), source: l.source }));
-    [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(CALLBACKS[k].text), source: null, lesson: CALLBACKS[k].n }); });
+    [...new Set([...seen].map(k => CALLBACKS[k].lesson))].forEach(id => { const k = [...seen].find(x => CALLBACKS[x].lesson === id); tks.push({ text: takeaway(callbackTakeaway(k)), source: null, lesson: CALLBACKS[k].n }); });   // [QA-65] a whole sentence, not "Battery's low."
     const story = debriefStory(d, state);   // the mission as a story: three beats, what to try next, one clear choice
     if (!tks.length) lessons().forEach(l => tks.push({ text: takeaway(l.text), source: { ...l.source, title: l.name } }));
     // [qa] "DONKI 2017-09-04T23:52:00-SEP-001 (NASA CCMC)" → "NASA DONKI, 2017-09-04"; a colon in a time is not a break

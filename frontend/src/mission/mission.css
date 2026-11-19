@@ -42,8 +42,10 @@
   top:50%;bottom:auto;max-height:calc(100% - 2 * var(--space-4));transform:translate(-50%,-50%);animation:mxIn var(--dur-slow) var(--ease-out)}
 @keyframes mxIn{from{opacity:0}}
 .mx-debrief .mx-head{margin-bottom:calc(var(--space-3) * -1)}
-.mx-x{width:var(--control-sm);height:var(--control-sm);display:grid;place-items:center;border:0;border-radius:var(--radius-full);background:none;color:var(--color-text-2);cursor:pointer;padding:0}
+.mx-x{position:relative;width:var(--control-sm);height:var(--control-sm);display:grid;place-items:center;border:0;border-radius:var(--radius-full);background:none;color:var(--color-text-2);cursor:pointer;padding:0}
 .mx-x:hover{background:var(--color-surface-2);color:var(--color-text)}
+/* [QA-62] 44px hit area around the 36px icon button (DESIGN_SYSTEM: kid-sized targets) */
+.mx-x::after{content:"";position:absolute;inset:-4px;border-radius:50%}
 .mx-x svg{width:20px;height:20px}
 .mx-db-top{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-5)}
 .mx-score{display:flex;gap:var(--space-5);margin:0}
@@ -118,6 +120,8 @@ body:has(.m-debrief.mx-debrief:not([hidden])) .stage{--panel-w:0px}
 .mx-pin{position:absolute;left:0;top:0;margin-top:-14px;min-height:28px;padding:0 var(--space-3);border:1px solid var(--color-glass-line);border-radius:var(--radius-full);
   background:var(--color-glass);color:var(--color-on-space-2);font-family:var(--font-ui);font-size:var(--text-sm);font-weight:var(--weight-semibold);white-space:nowrap;
   pointer-events:auto;cursor:pointer;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:color var(--dur-fast),background var(--dur-fast)}
+/* [QA-62] 44px hit area around the 28px label; rows are 46px apart (pin_layout.js PIN_ROW), so hit areas never overlap */
+.mx-pin::after{content:"";position:absolute;inset:-9px 0}   /* -9: measured from inside the 1px border */
 .mx-pin:hover,.mx-pin.is-hot{color:var(--color-on-space);border-color:var(--color-on-space-2)}
 .mx-pin.is-sel{background:var(--color-on-space);color:var(--color-space);border-color:var(--color-on-space)}
 body:has(.mpanel.mx-brief:not([hidden])) .mmark.is-outpost,body:has(.mpanel.mx-brief:not([hidden])) .mmark.is-earth{display:none}
