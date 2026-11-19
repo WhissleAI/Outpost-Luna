@@ -1604,3 +1604,68 @@ Backend suite on this branch: 1,349 passed, 3 skipped.
 - **The embedder** was not loaded in round 12's or round 13's generation (the model folder is missing here), but it is
   in the app. Regenerate with it before the next ship.
 - hot / echo stay with r10, quiet with r12. Real kid recordings remain the bottleneck. Every number above is synthetic.
+
+## Round 14 (code only, 2026-11-19) — the fixes from round 13 "Next". No round was run, nothing shipped
+
+No data was generated and no model was trained. These are the pipeline fixes round 13 asked for, so the next round
+starts from them. The shipped routed config (r12 xl in quiet, r10 in hot + echo) is unchanged.
+
+- **Runtime guard for turns with no ear read-out** (`runtime.bare_turn`, `turn_words_next`, `Shadow.bare`). A heard turn
+  end with no partial words since its start and no ear extras on its final words is the backend tests' bare form; no
+  live ear sends it. The model never decides such a turn: it cannot silence it as an `answer`, navigate it, or override
+  it. The rules decide. `evaluate.py` scores it the same way (`bare` in the dataset meta). This was the cause of round 13's last two
+  lesson failures (the bare "a"). `backend/tests/test_director_r14.py` covers it: in `guarded`, a model sure of ignore
+  is routed in every class. The bare "a" still goes to the step, and `decide_nav` / `decide_turn` return None. The same
+  "a" with the ear's ABI 2 read-out is silenced.
+- **The echo class hears real echo.** `echo2` items now replay the app-voice decode's FULL live message stream
+  (`replay.messages`): its partials, arc read and final words, with `playback_leak` / `playback` / `barge` / `eot`. Before,
+  they posted a slice of its words as `heard`, with no read-out. `echo` items use the decode of the line that is
+  playing when the cache has it (`app` / `app_os`). The round-13 words are still computed, so every later item draws
+  `rng` exactly as before (`burn_turn`, checked on 25 hands-free sessions: identical turn streams).
+- **Kid turns over our playback carry a live leak** (`real_ear.py r14`, groups `overplay_train` / `_val` / `_test`).
+  Each kid turn the generator says while our line plays is rendered in the Mac voice bank with one of the app's lines
+  under it, in an OS voice the app speaks with. The line starts 0.3–2 s before the kid; the kid is 3 dB under to 12 dB
+  over our echo. That line is fed as the ear's reference. The generator replays these decodes for those turns.
+  Not decoded yet: `real_ear.py r14` then `decode --order r14`.
+- **The simulated speaker → mic path is calibrated to the real laptop** (ARC_ABI2.md §8). `render_r8.speaker_to_mic`
+  profile `laptop` (the default) uses:
+  - a 141–159 ms latency;
+  - a short reverb under the direct path;
+  - echo at -44..-29 dBFS;
+  - a -59..-56 dBFS floor.
+
+  `SPEAKER_PROFILE=r13` reproduces round 13's renders sample for sample. The main finding is that the path was not the gap: **the
+  canceller's state was.** Each decode opened a fresh EarStream, so the canceller started unconverged on every clip.
+  Live, it has adapted on the lines before. Even a perfectly dry, aligned echo read only ~0.53 through a fresh stream
+  at 150 ms latency (0.72 at 0 ms). The decode now warms the canceller first (`render_r8.warm_up`,
+  `EAR_WARM_LINES=1`): one earlier playback through the same room, with its reference, whose messages are dropped. Only
+  laptop-profile renders carry the room this needs.
+- **Measured** (`real_ear.py leak`, the app's ear: libarc 1.3.0-outpost.2 ABI 2, Arc Transcriber Space nft2, 40 app
+  lines in the OS voices, the same lines and voices for each row; real laptop: median 0.75, 26 % at or above 0.85):
+
+  | path | finals with a leak | p10 | median | p90 | ≥ 0.85 |
+  |---|---|---|---|---|---|
+  | r13 (round 13's path, fresh canceller) | 23 / 40 clips | 0.13 | 0.28 | 0.54 | 0 % |
+  | laptop, fresh canceller (`EAR_WARM_LINES=0`) | 40 | 0.38 | 0.52 | 0.65 | 2.5 % |
+  | **laptop, warmed (1 line: the default)** | 39 | 0.69 | **0.83** | 0.89 | 38 % |
+
+  - Other side runs: 2 warm lines gave a median of 0.85 (12 clips). More reverb (DRR 2–12 dB instead of 6–16)
+    changed nothing once warmed (0.82). Echo level and room floor barely moved the fresh-canceller median (0.55–0.58,
+    10 clips each).
+  - The warmed path now sits slightly above the real laptop (0.83 vs 0.75; 38 % vs 26 % at the 0.85 drop rule). Most
+    likely the cause is the real speaker's distortion, which a linear path does not model.
+  - So the next round's echo turns will be dropped by the leak rule a little more often than on the real laptop.
+    Kid-over-playback leak on the new path is not measured yet (the `r14` jobs are not decoded).
+- **The embedder check.** `gen_sessions.py` stops with a clear error when the model server's embedder is not loaded.
+  Rounds 12 and 13 trained without it, silently. `--allow-no-embedder` overrides the check with a warning
+  (`RETRAIN.md`).
+- **Imported turns replay what the app heard** (for the turn log v2 / playtest importer):
+  - Logged items may carry `ear`, the live ABI 2 read-out (numbers and enums only). It is posted on the final words of
+    the synthetic replay, so their turn ends have `e13_avail` 1.
+  - `data/real_retest.json` items carry `decode`, a playtest turn's own WAV through the real ear. They form the new
+    held-out set **`test_log_audio`** (in `evaluate.CLASS_SETS` and `loop.CLASS_SETS`), replayed like real decodes.
+    It is skipped when the file is missing.
+
+Next: decode the `r14` jobs and re-decode the echo-bed jobs with the calibrated, warmed path (a fresh cache: cached
+decodes keep the old path). Then run a full round with the embedder loaded, and with real playtest turns as `test_log` /
+`test_log_audio`.

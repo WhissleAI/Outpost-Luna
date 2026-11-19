@@ -169,18 +169,19 @@ app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 from .learn.api import router as learn_router; app.include_router(learn_router)  # noqa: E402  (on-device learning, docs/ON_DEVICE_LEARNING.md)
+from .playtest import router as playtest_router; app.include_router(playtest_router)  # noqa: E402  (a grown-up's Playtest session, docs/DIRECTOR_LOOP.md)
 from .nasa_views import router as views_router; app.include_router(views_router)  # noqa: E402  (0.4 real NASA views, optional asset)
 
 @app.get("/api/turnlog")
 def turnlog_stats():
-    """Settings -> "Help improve the voice guide": how much the opt-in turn log holds on this device (docs/DIRECTOR_LOOP.md)."""
+    """Settings -> "Help improve the voice guide": how much the turn log holds on this device (docs/DIRECTOR_LOOP.md)."""
     from . import turnlog
     return turnlog.STORE.stats()
 
 
 @app.delete("/api/turnlog")
 def turnlog_clear():
-    """Delete the turn log on this device (Settings: "Delete what's saved")."""
+    """Delete the turn log on this device, and any playtest audio (Settings: "Delete what's saved")."""
     from . import turnlog
     return {"deleted_files": turnlog.STORE.clear()}
 

@@ -60,7 +60,7 @@ SETS = ["test_clean", "test_asr", "test_real", "test_ear", "test_h40", "test_h40
         "test_voice_heldout"]
 # round 6: today's real failure classes (gen_sessions.py cls_set; pools.CLASSES) and the imported real turns
 CLASS_SETS = ["cls_chatter", "cls_echo", "cls_offer", "cls_panel", "cls_help", "cls_mode", "cls_globe", "cls_mishear",
-              "cls_roomtalk", "test_log",
+              "cls_roomtalk", "test_log", "test_log_audio",   # round 14: playtest turns' audio through the real ear
               # round 8 (pools_r8.py): the capabilities added since round 7
               "cls_video_ctrl", "cls_video_echo", "cls_prep", "cls_prep_roomtalk", "cls_voice_echo_os",
               "cls_gesture_cooccur", "cls_lesson_new", "cls_offers_new", "cls_coverage", "cls_coverage_pending",
@@ -168,7 +168,7 @@ def on_outcome(m: dict, o: dict, thr: dict):
     or {"nav": intent})."""
     ra, rc = rules_out(m)
     route = m.get("route")
-    if route == "navigate":                  # the router navigated; the model is never asked (session._routed)
+    if route == "navigate" or m.get("bare"):  # the router navigated / a bare heard turn (runtime.bare_turn): rules
         return ra, rc
     nv = RT.nav_policy(o, thr, offer=bool(m.get("offer"))) if route is not None else None
     if nv:                                   # round 7: the model navigates where the router did not (fitted, guarded)
@@ -193,7 +193,7 @@ def guarded_outcome(m: dict, o: dict, thr: dict, pols: dict | None = None):
     output (o["_routed"][name]) under its own policy (pols[name]): runtime.pick, the runtime's own choice."""
     ra, rc = rules_out(m)
     route = m.get("route")
-    if route == "navigate":
+    if route == "navigate" or m.get("bare"):   # round 14: a bare heard turn (runtime.bare_turn): the rules decide
         return ra, rc
     pk = RT.pick(thr, "nav", o, pols)
     if pk:

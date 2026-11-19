@@ -62,6 +62,11 @@ MODEL_SERVER_URL=http://127.0.0.1:8290 uv run --project backend python director_
     --out director_model/data/ds --train 3000 --val 300 --test 300
 ```
 
+**The embedder must be loaded** (`EMBED_MODEL_DIR` above: the app has it, so the `ent_*` / embedding features and the
+rules teacher depend on it). Since round 14 `gen_sessions.py` asks the model server's `/health` first and stops with an
+error naming why when the embedder is missing or not loaded (rounds 12 and 13 trained on the brain's embedding
+fallbacks without noticing). `--allow-no-embedder` generates anyway, with a warning, for a deliberate comparison only.
+
 If the knowledge cards changed, refresh their question snapshot first (`director_model/data/card_questions.json`;
 the one-liner is in the round-1 notes of `RESULTS.md`). If `features.py` changed (a new Arc output became a feature),
 `F` changes: everything downstream must be retrained (the runtime refuses weights with a different `F`).
@@ -98,3 +103,14 @@ the guard/PII rows unchanged. Otherwise keep the previous weights, or set `DIREC
 
 Features are append-only (`features.F_R5`): older weights read their prefix, so a code change never forces a retrain.
 Keep it that way. Add new Arc outputs at the end of `FEATS`, never in the middle.
+
+## Round 14: echo and kid-over-playback decodes
+
+- `real_ear.py r14` adds jobs (groups `overplay_train` / `_val` / `_test`) for every kid turn the generator says over
+  our playback, rendered with one of the app's lines under it and that line fed as the ear's reference. Decode them with
+  `real_ear.py decode --order r14`; the generator then replays them for those turns (their live `playback_leak`).
+- The `echo` / `echo2` items replay the app-voice decodes' full message stream (with the leak / barge read-out).
+- The simulated speaker -> mic path is the calibrated laptop (`render_r8.SPEAKER_PROFILE`, default `laptop`);
+  `SPEAKER_PROFILE=r13` reproduces round-13 renders. `real_ear.py leak --n 60 --profiles r13,laptop` (model server env)
+  measures the own-line leak each gives (the real laptop: median 0.75, `docs/ARC_ABI2.md` section 8). Re-decode the
+  echo-bed jobs (`NEW_EAR=1` or a fresh cache) after changing the profile: cached decodes keep the old path.

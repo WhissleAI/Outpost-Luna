@@ -3,11 +3,13 @@
 The learned Director needs real kids' speech for every screen and every thing a kid can say there. That is the coverage
 inventory, `director_model/coverage.json` (`docs/DIRECTOR_COVERAGE.md`).
 
-There are two ways to get it, and both stay on the computer they are recorded on:
+There are three ways to get it, and all stay on the computer they are recorded on:
 
 1. **A guided session** (`director_model/collect.py`): a 15-minute walk through prompts that cover the inventory.
 2. **The in-app turn log** (Settings → "Help improve the voice guide", `docs/DIRECTOR_LOOP.md` §1): what the app hears
-   in real use. It is passive, off by default, and holds text only.
+   in real use. It is passive, on by default since 0.4.3, and holds text only.
+3. **A playtest session in the app** (Settings → For grown-ups → Voice log and playtest, `docs/DIRECTOR_LOOP.md` §1b):
+   real play with a grown-up's consent; the turn log plus each kid turn's audio, exported as one zip.
 
 Nobody uploads anything. A family or a tester hands a folder over by hand (USB stick, a shared drive they choose), or
 deletes it.
@@ -81,12 +83,12 @@ That gives every priority cell 3+ real speakers, and gives the gate a real `test
 
 ## 5. The passive path (the in-app turn log)
 
-`backend/app/turnlog.py`, opt-in. Round 8 adds two things the new capabilities need:
+`backend/app/turnlog.py`, on by default since 0.4.3 (v2 adds the ear's read-out and what the Director saw:
+`docs/DIRECTOR_LOOP.md` §1). Round 8 added two things the new capabilities need:
 
 - `audio.kind`: what was playing (guide / capcom / crew / **video**), so the video's audio leaking into the mic
   becomes a labelled negative;
 - `gesture`: a hand gesture within 2 s before the turn (voice + gesture co-occur).
 
 `import_logs.py` now also keeps the router's navigation intent as the gold `nav` (the Director's nav head label) and
-replays the gesture next to the turn. Everything else is unchanged: text only, redacted, off by default, deletable
-from Settings.
+replays the gesture next to the turn. Everything else is unchanged: text only, redacted, deletable from Settings.

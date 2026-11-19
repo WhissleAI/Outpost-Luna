@@ -15,3 +15,6 @@ turnlog/
 data/smoke/
 data/*.log
 data/collected_turns.json
+# playtest audio, its decodes and the re-test set built from them (import_logs.py): never in git
+data/real_audio/
+data/real_retest.json

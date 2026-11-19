@@ -16,11 +16,17 @@ export const GROWNUPS = {
   title: "For grown-ups",
   gate: "Reset, clearing videos, diagnostics and what the app learned. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Reset my patches"],
+  inside: ["Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
   sayOpen: "Here's Reset. A grown-up can choose Start over or Reset everything.",
+};
+/** Settings → Listening: the turn log switch (prefs.improve, on by default since 0.4.3; docs/DIRECTOR_LOOP.md §1). */
+export const IMPROVE = {
+  label: "Help improve the voice guide",
+  help: "Keeps what it heard as text, on this computer only. No audio, no names.",
+  clear: "Delete what's saved",
 };
 /** The grown-ups section's HTML (pure; tests/settings_gate.test.js). parts: [{id, title, html}] drawn when open. */
 export function grownupsHtml({ open = false, parts = [], esc = x => String(x) } = {}) {
@@ -194,8 +200,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
         <p class="set-help">${P.listen === "ptt" ? "Hold <kbd>Space</kbd> or the mic while you talk." : "The mic listens all the time. <kbd>Space</kbd> still works."}</p>
         ${seg("filter", "Ignore other voices", [["relaxed", "Relaxed"], ["normal", "Normal"], ["strict", "Strict"]])}
         <p class="set-help">Strict ignores more room chatter.</p>
-        <label class="a11y-sw"><input type="checkbox" data-pb="improve" ${PA.value.improve ? "checked" : ""}><span><b>Help improve the voice guide</b><small>Saves what it heard as text on this computer. No audio, no names. Nothing is sent.</small></span></label>
-        ${PA.value.improve ? `<button type="button" class="btn-quiet" data-turnlog-clear>Delete what's saved</button>` : ""}` : "",
+        <label class="a11y-sw"><input type="checkbox" data-pb="improve" ${PA.value.improve ? "checked" : ""}><span><b>${escH(IMPROVE.label)}</b><small>${escH(IMPROVE.help)}</small></span></label>
+        <button type="button" class="btn-quiet" data-turnlog-clear>${escH(IMPROVE.clear)}</button>` : "",
       read: `${sw("captions", "Captions", "Every voice as text, word by word")}
         <label class="a11y-range"><b>Caption line length <output>${S.captionChars}</output></b>
           <input type="range" min="24" max="80" step="2" value="${S.captionChars}" data-k="captionChars"></label>

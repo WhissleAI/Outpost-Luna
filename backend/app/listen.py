@@ -37,7 +37,7 @@ import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from . import diag, session as sessions
+from . import diag, playtest, session as sessions
 from .config import settings
 from .gazetteer import Gazetteer
 from .keyterms import base_keyterms
@@ -170,6 +170,9 @@ async def listen(ws: WebSocket):
     sid = {"id": ws.query_params.get("session")}
     stat = {"ear": None, "turns": 0, "errors": 0, "t0": time.perf_counter()}   # [#92] counts only, never words
     diag.METRICS.inc("listen_sessions")
+    # a grown-up's Playtest session (playtest.py): the mic audio this relay already forwards, kept in memory only while
+    # one runs, cut per kid turn and handed to the session (never to the client, never in a log line)
+    ws.state.playtest = rec = playtest.Recorder()
 
     async def send(m: dict):
         _count(m, stat)
@@ -177,7 +180,10 @@ async def listen(ws: WebSocket):
             async with lock:
                 await ws.send_json(m)
         if sid["id"] and m.get("t") in ("words", "turn", "arc", "emotion", "echo_delay"):
-            await sessions.post(sid["id"], m)
+            clip = None
+            with contextlib.suppress(Exception):
+                clip = rec.mark(m)
+            await sessions.post(sid["id"], {**m, "_pcm": clip} if clip else m)
 
     try:
         await _listen(ws, send, sid)
@@ -217,6 +223,12 @@ async def _listen(ws: WebSocket, send, sid: dict):
             await ws.close()
             return
     await run_deepgram(ws, send, sid, fallback_from)
+
+
+def _keep(ws: WebSocket, b: bytes) -> None:
+    """The mic audio, for a running Playtest session only (playtest.Recorder; a no-op otherwise)."""
+    with contextlib.suppress(Exception):
+        ws.state.playtest.feed(b)
 
 
 REF_MAX_B64 = 16000 * 2 * 12 * 4 // 3 + 8     # one reference message: at most 12 s of 16 kHz PCM16
@@ -283,6 +295,7 @@ async def run_arc(ws: WebSocket, send, sid: dict, arc):
                 await send({"t": "error", "message": "local ear closed"})
                 break
             if msg.get("bytes") is not None:
+                _keep(ws, msg["bytes"])
                 await arc.send(msg["bytes"])
             elif msg.get("text"):
                 with contextlib.suppress(ValueError, AttributeError):
@@ -383,6 +396,7 @@ async def run_deepgram(ws: WebSocket, send, sid: dict, fallback_from: dict | Non
             if msg["type"] == "websocket.disconnect":
                 break
             if msg.get("bytes") is not None:
+                _keep(ws, msg["bytes"])
                 await dg.send(msg["bytes"])
                 await tee_meta(msg["bytes"])
             elif msg.get("text"):

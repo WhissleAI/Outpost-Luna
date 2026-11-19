@@ -115,9 +115,13 @@ DL_RUN ?= director_model/runs/$(DL_DATE)
 DL_EAR ?= 1
 DL_GEN_ARGS ?= --train 2400 --val 200 --test 200 --hf-p 0.3 --cls-n 160
 
-director-import: ## Opt-in turn logs -> labelled training turns (data/real_turns.json) + a review file (LOG=folder or .jsonl)
-	@test -n "$(LOG)" || (echo "usage: make director-import LOG=path/to/turnlog" && exit 2)
+director-import: ## Turn logs -> labelled training turns (data/real_turns.json) + a review file (LOG=folder, .jsonl or a playtest .zip: its clips go to data/real_audio/)
+	@test -n "$(LOG)" || (echo "usage: make director-import LOG=path/to/turnlog-or-playtest.zip" && exit 2)
 	python3 director_model/import_logs.py --log $(LOG)
+
+director-eval-real: ## The class gate of the SHIPPED routed Director vs the rules on real logged turns (LOG=folder, .jsonl or playtest .zip; EVAL_OUT=file.json)
+	@test -n "$(LOG)" || (echo "usage: make director-eval-real LOG=path/to/turnlog-or-playtest.zip" && exit 2)
+	python3 director_model/eval_real.py --log $(LOG) $(if $(EVAL_OUT),--out $(EVAL_OUT),)
 
 director-loop: ## import (LOG=...) -> real ear -> generate -> train -> evaluate vs shipped + rules -> gate -> export; report in director_model/runs/<date>
 	python3 director_model/loop.py preflight
@@ -190,4 +194,4 @@ smoke-installed: ## Smoke the INSTALLED app without touching your data: launches
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop

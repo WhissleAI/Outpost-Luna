@@ -202,7 +202,7 @@ This was reported mid-audit: the packaged app "keeps flickering badly", and the 
   never shown.
 - **Crisis or grooming cue:** one gentle CAPCOM line ("Let's take a break. Talk to a grown-up you trust.") and a flag at
   `GET /api/safety/flags`, with no words.
-- **PII tags** only keep the words out of the opt-in turn log. The tagger's PII tag fires on almost everything.
+- **PII tags** only keep the words out of the turn log. The tagger's PII tag fires on almost everything.
 - **Tagger misses** go to `docs/ARC_FEEDBACK.md` for the Arc team. On the owner's own "shit shit oh" the tagger returned
   no profanity tag, a 0.99 `pii.leak` and `device_directed` 0.91.
 - **Tagger latency.** The tagger call is capped at 300 ms a turn, so a busy model server never holds up routing.

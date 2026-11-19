@@ -1,5 +1,6 @@
-"""The opt-in, on-device turn log (app/turnlog.py, docs/DIRECTOR_LOOP.md): off by default, text only, redacted,
-capped with rotation, and outcome signals joined by turn id."""
+"""The on-device turn log (app/turnlog.py, docs/DIRECTOR_LOOP.md): on by default in the client (prefs.improve), written
+only on the client's word, text only, redacted, capped with rotation, and outcome signals joined by turn id. v2 fields
+and the playtest: test_turnlog_v2.py."""
 import asyncio
 import json
 
@@ -60,7 +61,9 @@ def turn(s, clock, text, dd=0.9, dt=3.0):
     asyncio.run(s.handle({"t": "turn", "state": "end", "text": text}))
 
 
-def test_off_by_default_writes_nothing(logdir):
+def test_a_session_without_the_clients_word_writes_nothing(logdir):
+    # the client turns it on (prefs.improve, default true, sent on every connect); headless tools and the generator
+    # never send prefs, so the backend's own default stays off
     assert sessions.PREF_DEFAULTS["improve"] is False
     clock = Clock()
     s = sess(clock, improve=False)

@@ -20,7 +20,8 @@ export const PREF_DEFAULTS = Object.freeze({
   theme: "dark",             // "system" | "light" | "dark". [0.4] first run is dark (the cabin's look); a choice made in Settings or the top bar stays
   graphics: "high",          // "high" | "low"
   level: "cadet",            // "cadet" (7–9) | "commander" (10–12) | "engineer" (Commander in real units, docs/PHYSICS.md)
-  improve: false,            // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). Off by default.
+  improve: true,             // "Help improve the voice guide": the on-device, text-only turn log (docs/DIRECTOR_LOOP.md). [0.4.3] On by default; an explicit off stays off.
+  improve_v: 2,              // [0.4.3] migration flag: a stored improve:false without it was the old off-by-default, turned on once
   muted: false,              // the top bar's Mute: every sound off, captions and text stay (mute.js); output only, never the mic
   update_check: false,       // Settings → App version → "Check for updates automatically" (app_update_ui.js). Off by default.
   assets_check: false,       // Settings → Storage & updates → "Check for new models and media automatically" (storage_ui.js). Off by default.
@@ -69,9 +70,12 @@ export function normalizePrefs(x) {
   pick("engine", ["os", "steer"]);
   if (typeof s.steer_voice === "string") o.steer_voice = s.steer_voice.slice(0, 32);
   o.pack = s.pack !== false;          // on unless explicitly turned off
-  o.improve = s.improve === true;     // opt-in only: anything but an explicit true is off
+  // [0.4.3] on by default. Prefs saved before 0.4.3 (no improve_v) held the old off-by-default: they turn on once. After
+  // that only an explicit false (the Settings switch) is off, and it stays off.
+  o.improve = s.improve_v === 2 ? s.improve !== false : true;
+  o.improve_v = 2;
   o.muted = s.muted === true;
-  o.update_check = s.update_check === true;   // opt-in only, like improve
+  o.update_check = s.update_check === true;   // opt-in only
   o.assets_check = s.assets_check === true;   // opt-in only: no network after setup unless a grown-up turns it on
   return o;
 }

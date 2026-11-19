@@ -44,6 +44,7 @@ import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
+import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
 // ---- end [a11y] ----
 // ---- [input] one intent bus for voice, tap, keys and camera gestures (docs/GESTURES.md) ----
@@ -194,8 +195,9 @@ async function boot() {
   installPretendExplain({ speak: t => speak(t, { priority: 2 }) });   // the guide's line is captioned like any other
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
-  // the opt-in turn log (prefs.improve): the Academy's grade of a step, so the server can mark a step that went to hint
-  addEventListener("outpost:lesson-result", e => { if (prefs.value.improve && useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
+  // the turn log (prefs.improve, or a grown-up's Playtest session): the Academy's grade of a step, so the server can mark
+  // a step that passed or went to hint (the server ignores it when the log is off)
+  addEventListener("outpost:lesson-result", e => { if (useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
   initHighlight({ api, say: a11ySay, playCrew: m => { stopSpeaking("highlight_crew"); player.play(m); }, flyTo: id => { const f = placeById(id); if (f) { globe.showFeature(f); turn.lastPlace = f.id; } } });
   // ---- end [a11y] ----
 
