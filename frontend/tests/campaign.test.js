@@ -54,3 +54,16 @@ test("campaign copy keeps the budgets", () => {
   assert.ok(words(CAMPAIGN.unlocked(3, "Storm season")) <= 12);
   for (const k of ["goalsBoth", "goalsOne", "goalsNone"]) assert.ok(words(CAMPAIGN[k]) <= 12);
 });
+
+test("debrief: a campaign mission's checklist is the crew and its two goals; Mission 1 keeps ice and science", async () => {
+  const { debriefStory } = await import("../src/mission/objective.js");
+  const goals = [{ id: "rescue", label: "Rover home by day 3", met: true }, { id: "ice", label: "Bring ice home", met: false }];
+  const st = { site: { name: "de Gerlache Crater Rim" }, mission_time_h: 240, resources: { dose_limit_msv: 50, dose_msv: 12 } };
+  const d = { outcome: "survived", campaign: { n: 4 }, objectives: { goals, science: { met: false }, ice: { met: false } }, try: "Send the rover for ice when no storm is due.", timeline: [] };
+  const s = debriefStory(d, st);
+  assert.deepEqual(s.checks.map(c => [c.ok, c.text]).slice(1), [[true, "Rover home by day 3"], [false, "Bring ice home"]]);
+  assert.equal(s.beats[2], CAMPAIGN.goalsOne);
+  const m1 = debriefStory({ ...d, campaign: { n: 1 } }, st);
+  assert.equal(m1.checks.length, 3);
+  assert.notEqual(m1.checks[1].text, "Rover home by day 3");
+});
