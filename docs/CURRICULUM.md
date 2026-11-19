@@ -104,7 +104,7 @@ Class lesson always open and a *bonus* lesson (`isBonus`): it never blocks the c
   the Class lessons part: "room-12.json: skipped. lessons[0].place: Pick the lesson's place on the Moon from the
   list."). The loader catches everything: a broken pack never stops the app or the NASA course.
 - **Joining the course:** `content.course()` = the NASA lessons, then the Class lessons, pack by pack. `content.check()`
-  and the copy tests read `nasa_course()` only. After a save, import, delete or preview, `content.reload()` drops every
+  skips `track: "class"` (those are checked by `classpacks.validate`), and the copy tests read course.json. After a save, import, delete or preview, `content.reload()` drops every
   cached lesson list (the course, the voice titles in `hotlist`, the session's lesson table), and the page fires
   `outpost:class-changed`; Flight School fetches the course again and repaints the map.
 - **Writes** need the app's own page: same origin and `X-Outpost-Class: 1` (like Reset), so another web page can't

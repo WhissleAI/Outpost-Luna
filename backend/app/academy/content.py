@@ -289,10 +289,10 @@ def check_prep(p: dict) -> list[str]:
 def check() -> list[str]:
     """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data."""
     probs: list[str] = []
-    c = nasa_course()
+    c = course()
     data_text = {p: p.read_text() for p in DATA.rglob("*.json") if "academy" not in p.parts}
     every = "\n".join(data_text.values())
-    for l in c["lessons"]:
+    for l in [x for x in c["lessons"] if x.get("track") != "class"]:   # Class lessons: classpacks.validate
         lid = l.get("id", "?")
         for k in ("id", "title", "brief", "steps", "badge", "facts"):
             if not l.get(k):

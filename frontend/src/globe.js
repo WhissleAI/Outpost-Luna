@@ -247,6 +247,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     for (let it = 0; it < 12; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
       const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
       if (d >= need) return;
+      if (d < 0.5) { a.bx -= need / 2; b.bx += need / 2; return; }   // two lessons on the same place (a Class pin on a NASA one): side by side
       const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
     }));
     rstops.forEach(s => {
