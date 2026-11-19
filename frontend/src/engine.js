@@ -5,7 +5,13 @@
 // What the page does with it: the voice bar shows "Ear restarting…" (.is-ear-restarting, styles.css) or "Voice off ·
 // type" (.is-ear-down) while typing keeps working, and voice.js reconnects the mic as soon as the ear is back.
 
-let state = { ear: "ok", backend: "ok" };
+// [ipad] A shell with no local ear (the iPad app, docs/IPAD.md) says so before the page's scripts run:
+// window.__lunaEngineBoot = {ear: "none"}. "none" is not a failure: no "Starting voice…", no mic opened for the ear,
+// the voice bar says "Voice off · type" and the mic button uses the system's speech recognition when there is one.
+// The desktop shell and a browser never set it, so nothing changes for them.
+const BOOT = typeof window !== "undefined" && window.__lunaEngineBoot && typeof window.__lunaEngineBoot === "object"
+  ? window.__lunaEngineBoot : {};
+let state = { ear: "ok", backend: "ok", ...(BOOT.ear ? { ear: String(BOOT.ear) } : {}) };
 const subs = new Set();
 
 export function engineState() { return state; }
@@ -22,12 +28,16 @@ export function setEngine(next) {
 
 /** The voice bar's classes for an engine state (only the ear matters: without the backend there is no page). */
 export function askbarClasses(s = state) {
-  return { "is-ear-restarting": s.ear === "restarting", "is-ear-down": s.ear === "down" };
+  return { "is-ear-restarting": s.ear === "restarting", "is-ear-down": s.ear === "down" || s.ear === "none" };
 }
+
+/** [ipad] This device has no local ear (the shell said "none"): type, or the system's own speech recognition. */
+export function noEar(s = state) { return s.ear === "none"; }
 
 /** The hint line under the voice bar while the ear is not there ("" when it is). */
 export function earNote(s = state) {
-  return s.ear === "restarting" ? "Ear restarting…" : s.ear === "down" ? "Voice is off. Type to ask." : earFail ? VOICE_FIX : "";
+  return s.ear === "restarting" ? "Ear restarting…" : s.ear === "down" ? "Voice is off. Type to ask."
+    : s.ear === "none" ? NO_EAR_NOTE : earFail ? VOICE_FIX : "";
 }
 
 // ---- [0.3.12] "Starting voice…" only while the ear is really starting ----
@@ -37,6 +47,8 @@ export function earNote(s = state) {
 export const WARM_MS = 180000;
 /** The one how-to-fix line while the voice is off (docs/COPY.md: 12 words or fewer, no example commands). */
 export const VOICE_FIX = "Voice didn't load. Restart the app.";
+/** [ipad] The hint while this device has no local ear (docs/COPY.md: short, verb first). */
+export const NO_EAR_NOTE = "Type to ask. Or tap the mic.";
 let earFail = false;
 const failSubs = new Set();
 /** The ear failed (true) or came back (false); fn(on) for the voice bar. */
@@ -58,7 +70,8 @@ export function earErrorIsFatal(message) {
 
 /** /api/health + time since the page started waiting -> "ready" | "warming" | "off". "off" at once when the local ear
  *  reports a load error and nothing falls back to it (no Deepgram key); a reload after a hung decode is still warming. */
-export function warmState(h, elapsedMs = 0) {
+export function warmState(h, elapsedMs = 0, s = state) {
+  if (s.ear === "none") return "ready";      // [ipad] nothing to warm up: the voice bar is "Voice off · type" (askbarClasses)
   const ms = (h && h.model_server) || {}, m = ms.models || {}, ear = m.arc_ear || {}, tts = m.tts || {};
   const route = (h && h.voice) || {}, cloud = route.ear === "deepgram" || !!route.fallback;
   const earUp = ear.decoder_loaded !== false || cloud;

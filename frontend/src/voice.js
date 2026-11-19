@@ -16,7 +16,7 @@ import { maskProfanity, hasProfanity } from "./profanity.js";
 import { paintLinked } from "./highlight.js";   // the ear's linked names, marked in the kid's words
 import * as echoref from "./echoref.js";       // what we play -> the ear's echo reference (libarc ABI 2)
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
-import { onEngine, earNote, earErrorIsFatal, setEarFailed, earFailed } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
+import { onEngine, earNote, earErrorIsFatal, setEarFailed, earFailed, noEar } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
 export { spaceAction, micErrorText };
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
@@ -395,9 +395,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     rec.onerror = e => { if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture") micBlocked(e); };
   }
   const canWS = !!(navigator.mediaDevices && window.AudioWorkletNode);
-  if (!canWS && !SR) { set("error", "Type to ask"); micBtn.hidden = true; } else { micBtn.hidden = false; set("off"); }
+  if ((!canWS || noEar()) && !SR) { set("error", "Type to ask"); micBtn.hidden = true; } else { micBtn.hidden = false; set("off"); }
+  if (noEar()) note(earNote());
 
   async function startAlwaysOn() {
+    if (noEar()) return false;   // [ipad] no local ear on this device: the mic button is the system's recognition (srStart)
     if (mode === "ws" || starting || wsBroken || !canWS) return mode === "ws";
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
