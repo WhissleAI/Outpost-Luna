@@ -1306,9 +1306,12 @@ html[data-motion="reduce"] .cb-sys .is-point{animation:none}
   100%{transform:none;box-shadow:inset 0 1px 0 var(--key-hi),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent)}}
 .m-cabin [data-done]:not(.cb-now){animation:ctlDone 1.1s var(--ease-out)}
 @keyframes ctlDone{0%,45%{box-shadow:0 0 0 3px var(--color-phosphor),0 0 22px color-mix(in srgb,var(--color-phosphor) 55%,transparent);transform:scale(1.04)}100%{transform:none}}
-html[data-motion="reduce"] .m-cabin .cb>.cb-now[data-done],html[data-motion="reduce"] .m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}
-@media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-now[data-done],.m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}}
-@keyframes doneColour{0%,45%{box-shadow:0 0 0 3px var(--color-phosphor);background-color:color-mix(in srgb,var(--color-phosphor) 18%,var(--color-panel))}100%{}}
+/* less motion: a still colour for as long as the mark is on (cabin.js pulse() takes it off after 1.3 s); a11y.css cuts
+   every animation to 0.01 ms there, so an animated colour would never be seen */
+html[data-motion="reduce"] .m-cabin .cb>.cb-now[data-done],html[data-motion="reduce"] .m-cabin [data-done]:not(.cb-now){animation:none;transform:none;
+  box-shadow:0 0 0 3px var(--color-phosphor);background-color:color-mix(in srgb,var(--color-phosphor) 18%,var(--color-panel))}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-now[data-done],.m-cabin [data-done]:not(.cb-now){animation:none;transform:none;
+  box-shadow:0 0 0 3px var(--color-phosphor);background-color:color-mix(in srgb,var(--color-phosphor) 18%,var(--color-panel))}}
 /* the chapter card is an event: the stamp, then the stars land one by one on the cue's beat (sound.js STAR_MS) */
 .cb-ch-stamp{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin:0;padding:4px 12px;border-radius:999px;font-size:var(--text-md,1rem);font-weight:var(--weight-semibold);
   color:var(--color-space);background:var(--color-phosphor);letter-spacing:.02em}

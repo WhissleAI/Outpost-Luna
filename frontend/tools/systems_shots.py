@@ -149,7 +149,10 @@ def run(base, level, size, shots):
         ok(n >= 1 and pg.evaluate("() => !!document.querySelector('#cbNow[data-done]')"), f"{tag}: the done pulse marks the Now card ({n} nodes)")
         an = pg.evaluate("() => { const n = document.getElementById('cbNow'); return { name: getComputedStyle(n).animationName, run: n.getAnimations().map(a => a.animationName + ':' + a.playState + ':' + Math.round(a.currentTime || 0)) }; }")
         ok("nowDone" in an["name"], f"{tag}: the Now card plays the pulse ({an})")
+        # a screenshot of the 3D cabin can take longer than the 1.1 s pulse: hold the frame at its peak for the picture
+        pg.evaluate("() => document.querySelectorAll('[data-done]').forEach(n => n.getAnimations().forEach(a => { a.pause(); a.currentTime = 300; }))")
         shot("04-pulse")
+        pg.evaluate("() => document.querySelectorAll('[data-done]').forEach(n => n.getAnimations().forEach(a => a.finish()))")
         pg.evaluate("() => { document.documentElement.dataset.motion = 'reduce'; }")   # less motion: colour only
         pg.wait_for_timeout(1400)
         pg.evaluate("() => window.__cabinTest.pulse()")

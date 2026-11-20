@@ -682,7 +682,7 @@ uses the cockpit bar's look (bezel keys, phosphor read-outs). Every label is 20 
 - **Objective done.** When the sim acknowledges a step ("Shields up. Good.") or a job moves on a step, the Now card
   and the control that did it pulse once (about 1 s): a small lift and a phosphor ring. The control is the one the
   player last used (a drawer key, a console switch), else the job's own control, in the drawer when it is open.
-  Less motion (Settings or the OS) keeps only the colour: no lift, no scale.
+  Less motion (Settings or the OS) keeps only the colour: a still phosphor ring and tint while the mark is on, no lift, no scale.
 - **Chapter complete.** The chapter card is an event: a "Chapter complete" stamp, then the stars land one by one
   (450 ms apart). Each earned star drops in with a ring and its plate flashes gold; a missed one fades in grey. A cue
   plays through `sound.js` (`starCue`): one rising note per star on the beat it lands, and a soft chord for three. No

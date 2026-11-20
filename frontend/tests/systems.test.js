@@ -173,8 +173,12 @@ test("wave 5: the done pulse marks the Now card and the control (colour only wit
   const cabin = src("../src/mission/cabin.js"), css = src("../src/cabin.css"), ui = src("../src/mission/ui.js");
   assert.match(cabin, /marks\.forEach\(n => \{ void n\.offsetWidth; n\.dataset\.done = "1"; \}\)/);
   assert.match(ui, /if \(done && cockpit\.pulse\) cockpit\.pulse\(\);/);
-  assert.match(css, /html\[data-motion="reduce"\] \.m-cabin \.cb>\.cb-now\[data-done\],html\[data-motion="reduce"\] \.m-cabin \[data-done\]:not\(\.cb-now\)\{animation:doneColour/);
-  assert.ok(!/transform/.test(css.match(/@keyframes doneColour\{[^}]*\}[^}]*\}/)[0]), "the reduced-motion pulse never moves");
+  // less motion: a still colour while the mark is on (a11y.css cuts every animation to 0.01 ms there), never a move
+  const red = css.match(/html\[data-motion="reduce"\] \.m-cabin \.cb>\.cb-now\[data-done\],html\[data-motion="reduce"\] \.m-cabin \[data-done\]:not\(\.cb-now\)\{([^}]*)\}/);
+  assert.ok(red, "a reduced-motion rule for the pulse");
+  assert.match(red[1], /animation:none;transform:none;/);
+  assert.match(red[1], /box-shadow:0 0 0 3px var\(--color-phosphor\)/);
+  assert.match(cabin, /pulseT = setTimeout\(\(\) => marks\.forEach\(n => delete n\.dataset\.done\), 1300\)/);
 });
 
 test("wave 5: the chapter cue plays one note per star on the beat the stars land", () => {
