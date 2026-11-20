@@ -22,7 +22,7 @@ export const INTENTS = Object.freeze({
   next: "next step / lesson / panel / view / pin",
   back: "back (the router's 'go back')",
   start: "start", accept_offer: "yes to the current offer", decline_offer: "no to the current offer",
-  repeat: "say that again", settings: "open settings", a11y: "an accessibility command (text)",
+  repeat: "say that again", settings: "open settings", brain: "My Brain: what I've learned and how the outpost thinks (B, voice 'my brain')", a11y: "an accessibility command (text)",
   map: "the course map", lesson: "open lesson (arg)", academy: "Flight School", library: "the Library", go_mission: "Mission",
   take_command: "start the shift", pick_site: "pick a landing site (arg)",
   site_layer: "navigator: a map layer (arg: sunlight|slope|ice|earth|off)", site_query: "navigator: which site wins (arg: ice|sunlight|earth|slope|best)",

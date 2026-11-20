@@ -246,6 +246,7 @@ NAV_SAY = {
     "repeat": ["say that again", "repeat that", "what did you say", "come again"],
     "slower": ["slow down", "speak slower", "slower please"], "faster": ["speak faster", "speed up", "faster"],
     "settings": ["open settings", "show the settings", "accessibility settings"],
+    "brain": ["my brain", "open my brain", "what have i learned"],   # [brain] My Brain (docs/BRAIN.md)
     "map": ["go to the map", "back to the map", "the patch map", "show me my patches"],
     "academy": ["go to the academy", "flight school", "back to the lessons"],
     "library": ["open the library", "explore the moon", "go to the library"],

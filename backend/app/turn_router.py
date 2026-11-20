@@ -174,6 +174,9 @@ NAV: list[tuple[str, re.Pattern]] = [
     ("slower", re.compile(r"^(?:speak |talk )?(?:slower|slow down|more slowly)(?: please)?$")),
     ("faster", re.compile(r"^(?:speak |talk )?(?:faster|speed up|quicker)(?: please)?$")),
     ("settings", re.compile(r"^(?:access |open |show )?(?:the )?(?:accessibility|settings)(?: settings| panel)?$")),
+    # [brain] My Brain (frontend/src/brain.js, docs/BRAIN.md): what I've learned and how the outpost thinks
+    ("brain", re.compile(r"^(?:open |show (?:me )?|go to )?(?:my |the )?(?:brain|flight log|star map)$|"
+                         r"^what (?:have|did) i learn(?:ed)?(?: so far)?$|^how (?:do|does) (?:you|the outpost|the app) think$")),
     ("lesson", re.compile(r"^(?:start |open |go to |play |do |begin )?lesson (?:number )?(\w+)$")),
     ("map", re.compile(r"^(?:go )?(?:back )?(?:to )?(?:the )?(?:(?:patch|course|lesson|academy) ?)?map$|^(?:show (?:me )?)?"
                        r"(?:my |the )?patch(?:es)?(?: map)?$|^(?:go |take me |let s go )?(?:back )?(?:to )?(?:the )?map$|"

@@ -136,7 +136,10 @@ test("keys: the remote map", () => {
 });
 
 test("keys: A–D pick only while lettered answers are up (then C is answer C, not captions)", () => {
-  assert.equal(K("a"), null); assert.equal(K("b"), null);
+  assert.equal(K("a"), null);
+  // [brain] B opens My Brain, like C toggles captions, except while lettered answers are up (then B is answer B)
+  assert.deepEqual(K("b"), { intent: "brain", args: {} });
+  assert.deepEqual(K("b", {}, { lettered: true }), { intent: "pick", args: { n: 2 } });
   assert.deepEqual(K("a", {}, { lettered: true }), { intent: "pick", args: { n: 1 } });
   assert.deepEqual(K("c", {}, { lettered: true }), { intent: "pick", args: { n: 3 } });
   assert.deepEqual(K("D", {}, { lettered: true }), { intent: "pick", args: { n: 4 } });

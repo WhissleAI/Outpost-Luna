@@ -3,7 +3,7 @@
 //
 //   arrows → move {dir}          Enter / Space-tap → select      Esc / Backspace → back (never quits)
 //   M → mic   H / ? → help        1–4, A–D → pick {n}             N / P → next / prev   Y / N → yes / no in a confirm
-//   S → settings   C → captions   V → window view   O → open the lit panel   / → the text box   Space held → talk
+//   S → settings   B → My Brain   C → captions   V → window view   O → open the lit panel   / → the text box   Space held → talk
 //
 // The pure part (keyAction, helpRows, screenName) is unit-tested in tests/keys.test.js; installKeys() is the DOM glue:
 // keyboard-vs-pointer mode, the Space tap/hold split, the help sheet, the key-hint chip, the optional focus sound and
@@ -45,6 +45,7 @@ export function keyAction(ev, c = {}) {
     case "m": return ev.shift ? { intent: "mute", args: {} } : { intent: "mic", args: {} };   // Shift+M: the top bar's Mute
     case "h": return { intent: "help", args: {} };
     case "s": return { intent: "settings", args: {} };
+    case "b": return { intent: "brain", args: {} };   // [brain] My Brain (brain.js)
     case "c": return { intent: "captions", args: {} };
     case "v": return { intent: "view_next", args: {} };
     case "o": return { intent: "panel_open", args: {} };
@@ -78,7 +79,7 @@ export function screenName(s) {
 const SCREEN_TITLE = { home: "Home", map: "Moon map", lesson: "Lesson", lesson_moon: "Lesson on the Moon", patch: "Patch earned", ride: "Check ride",
   picker: "Site picker", tour: "Cabin tour", cabin_seat: "Cabin, seat view", cabin_panel: "Cabin, panel open", debrief: "Debrief", library: "Library", settings: "Settings", app: "Outpost Luna" };
 const GLOBAL_ROWS = [["← ↑ → ↓", "Move"], ["Enter", "Select"], ["Space", "Tap: select. Hold: talk"], ["Esc", "Back"], ["M", "Mic on or off"], ["Shift+M", "Sound on or off"],
-  ["/", "Type instead"], ["S", "Settings"], ["C", "Captions"], ["H", "These keys"]];
+  ["/", "Type instead"], ["S", "Settings"], ["B", "My Brain"], ["C", "Captions"], ["H", "These keys"]];
 const SCREEN_ROWS = {
   home: [["1–3", "Pick a call sign"], ["/", "Type your own"]],
   map: [["← → ↑ ↓", "Move between lesson pins"], ["Enter", "Pick a pin, then start it"], ["N", "Start the next lesson"], ["Y", "Take the offer"]],

@@ -167,7 +167,7 @@ export function installDefaultIntents({ nav, stopAll, globe, inCabin = () => fal
 }
 
 /** Intents the shell's nav() understands (the hands-free router's nav vocabulary). */
-export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", "decline_offer", "repeat", "slower", "faster", "settings",
+export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", "decline_offer", "repeat", "slower", "faster", "settings", "brain",
   "a11y", "answer", "academy", "library", "go_mission", "lesson", "map", "take_command", "pick_site", "debrief", "fly_again",
   "new_site", "view_orbit", "view_site", "view_rover", "view_earth", "panel_power", "panel_comm", "panel_habitat", "panel_rover",
   "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "mute_sound", "unmute_sound", "recenter",

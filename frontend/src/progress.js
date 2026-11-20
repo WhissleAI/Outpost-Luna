@@ -1,10 +1,13 @@
 // Settings → For grown-ups → Progress: a summary for parents and teachers, one card per call sign on this computer.
-// It reads only what the app already keeps (nothing new is tracked or stored):
+// [brain] It is the grown-ups' side of the Brain (docs/BRAIN.md §4). It reads what the app already keeps, plus the one
+// small on-device aggregate the Brain added (brain_store.js "outpost-brain": per-lesson practice counts, no words):
 //   - each cadet's Flight School progress ("atm-academy": patches, qualified, the half-done lesson) and call sign, from
 //     the live keys for the cadet playing and from the cadet snapshots in "outpost-profiles" for the others (prefs.js);
 //   - missions flown ("outpost-missions-flown:<call sign>", explorer.js), and, for a mission the app still holds while it
 //     runs, its debrief (GET /api/mission/{id}/debrief: stars, grade, the three checks, "Try next");
 //   - the paused mission on this computer (GET /api/mission/saved);
+//   - each cadet's practice counts (brain.js practiceHtml) and, on the playing cadet's card, this computer's counts
+//     (GET /api/brain/summary: turns, voice vs typing, room, safety catches, what the app adapted; never words);
 //   - lesson titles and patches from the course (GET /api/academy/course). Class lessons (track "class") are listed
 //     by pack, apart from NASA's: they never count toward "n of 9 patches".
 // "Print" prints the sheet alone (progress.css, imported by main.js so this module loads under node --test, @media print): one cadet per page, light paper, no app chrome.
@@ -13,13 +16,14 @@ import { icon } from "./assets/icons.js";
 import { anyPatch as defaultPatch, registerClassLessons } from "./academy/class_patch.js";   // Class lessons: the same letter patch as on the map
 import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./explorer.js";
 import { debriefStory } from "./mission/objective.js";
+import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 export const COPY = {
   title: "Progress",
-  line: "Lessons, patches and missions for each cadet on this computer.",
+  line: "Lessons, practice, patches and missions for each cadet on this computer, and how the app works with them.",
   print: "Print",
   loading: "Loading progress…",
   none: "No cadets yet.",
@@ -143,8 +147,9 @@ export function missionHtml(n, d) {
     ${story.tryLine ? `<p class="mx-try pg-mtry"><b>${esc(COPY.tryTitle)}</b> ${esc(story.tryLine)}</p>` : ""}</li>`;
 }
 
-/** One cadet's card. debriefs: {missionId: debrief|null}. */
-export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch } = {}) {
+/** One cadet's card. debriefs: {missionId: debrief|null}; brain: the cadet's practice counts (brain_store.js);
+ *  summary: GET /api/brain/summary (shown on the playing cadet's card only: it is this computer's, not one cadet's). */
+export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined } = {}) {
   const s = summarize(cadet, lessons), name = cadet.callsign || COPY.newCadet;
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   const tag = cadet.academy.qualified ? `<span class="set-tag pg-q">${esc(COPY.qualified)}</span>` : "";
@@ -162,16 +167,18 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch 
     <dl class="mx-score pg-stats">${stat(COPY.lessons, `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(COPY.nasaPatches, `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${stat(COPY.missions, cadet.flown.length)}</dl>
     ${s.current ? `<p class="pg-cur"><b>${esc(COPY.inProgress)}</b> ${esc(s.current.title)}, ${esc(COPY.step(s.current.i, s.current.n))}</p>` : ""}
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
+    ${brain ? practiceHtml(brain, lessons) : ""}
     ${classes}${missions}
+    ${cadet.active && summary !== undefined ? computerHtml(summary) : ""}
     ${s.next.length ? `<p class="mx-try pg-try"><b>${esc(COPY.tryTitle)}</b> ${s.next.map(esc).join(" ")}</p>` : ""}</article>`;
 }
 
 /** The whole sheet. saved: GET /api/mission/saved's body (the paused mission on this computer) or null. */
-export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "" } = {}) {
+export function sheetHtml({ cadets = [], lessons = [], debriefs = {}, saved = null, patch = defaultPatch, date = "", brains = {}, summary = undefined } = {}) {
   if (!cadets.length) return `<p class="set-help">${esc(COPY.none)}</p>`;
   const pause = saved && saved.site_name ? `<p class="pg-paused">${esc(COPY.paused(String(saved.site_name).split(" (")[0], saved.day || 1))}</p>` : "";
   return `<div class="pg-sheet">${date ? `<p class="pg-printed">${esc(COPY.printedOn(date))}</p>` : ""}${pause}
-    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch })).join("")}</div>`;
+    ${cadets.map(c => cadetHtml(c, lessons, { debriefs, patch, brain: brains[c.id] || null, summary })).join("")}</div>`;
 }
 
 /** The part's frame (drawn at once; bind() fills the sheet). */
@@ -193,7 +200,11 @@ export async function loadData({ fetchFn, storage } = {}) {
   const debriefs = {};
   await Promise.all(ids.map(async id => { debriefs[id] = await getJson(fetchFn, `/api/mission/${id}/debrief`); }));
   const saved = await getJson(fetchFn, "/api/mission/saved");
-  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved };
+  // [brain] each cadet's practice counts (on this device), and this computer's counts for the playing cadet's card
+  const brains = Object.fromEntries(cadets.map(c => [c.id, brainOf(c.id, storage)]));
+  const act = cadets.find(c => c.active), pid = act && /^p\d{1,2}$/.test(act.id) ? act.id : "p1";
+  const summary = await getJson(fetchFn, `/api/brain/summary?profile=${pid}`);
+  return { cadets, lessons: (course && course.lessons) || [], debriefs, saved: saved && saved.saved !== undefined ? saved.saved : saved, brains, summary };
 }
 
 /** Print the sheet alone: a copy at the body's top level (#pgPrint), everything else hidden by progress.css. */
