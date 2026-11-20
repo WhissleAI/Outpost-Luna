@@ -89,6 +89,68 @@ link (`entity`). The first partial comes later than before (a whole-segment deco
 partials): a 2-word barge-in is heard ~0.3 s later. The torch-free model server also drops ~440 MB of site-packages
 (torch 379 MB, transformers 59 MB) from the installer.
 
+## Lighter ear (0.4.3): what was tried, what ships
+
+The ear asset was 460.5 MB (the 4-bit trunk 37 MB; the conformer encoder's `encoder.weights` 282 MB, part int8 already,
+part float32; the text decoder `decoder/model.safetensors` 96 MB float32; `adapters.safetensors` 19 MB float32).
+`model_server/tools/ear_quant.py` makes the candidates; `model_server/tools/ear_ab.py` compares two of them on the same
+audio through the app's own `EarStream` (live mode, 80 ms chunks, the app's names lists, libarc + the pinned ONNX Runtime
+1.32.0, 2 threads), every message, field by field; `director_model/ear_parity.py` replays the same jobs into the
+backend (the shipped Director + router). The bar was fixed before any number was looked at: every read-out must hold,
+else only the parts that pass ship. Sets: the 40 golden-gate clips, the smoke gate's Orientale clip, 60 Artemis II crew
+segments (101 clips, 139 final turns, 104 heard names). A decoded twice is identical on every field (run-to-run noise
+0), so no bar was widened.
+
+| read-out (B vs shipped A) | bar | int8 encoder + fp16 decoder/adapters (278 MB) | int8 encoder only (349 MB) | **fp16 decoder + adapters (403 MB): ships** |
+|---|---|---|---|---|
+| WER golden / crew (pooled) | +0.5 pt pooled | 1.62 / 12.14% (+0.06 pt) | 1.62 / 12.14% (+0.06 pt) | 1.62 / 12.07% (0) |
+| final text identical | >= 95% | **92.8%** (crew 89.7%) | **92.8%** | 100% |
+| words that differ | <= 2% | 0.56% | 0.56% | 0 |
+| turns per clip identical / empty flips | 98% / 0.5% | 100% / 0 | 100% / 0 | 100% / 0 |
+| names (entity, state) identical | >= 98% | 98.1% | 98.1% | 100% |
+| link accuracy / wrong / abstain vs gold | -1 / +0.5 / 1 pt | 72.6 / 10.8 / 22.1% (abstain +0.8) | same | 72.6 / 10.8 / 21.4% (identical) |
+| link p mean abs delta, ECE | 0.03, +0.01 | 0.0006, 0.093 vs 0.093 | same | 0, identical |
+| device_directed decision at 0.5 | >= 98% | **97.8%** | **97.8%** | 100% |
+| app dd / directed head mean abs delta | 0.02 | 0.006 / 0.004 | same | 0 / 0 |
+| act, intent, command_complete, quantities, disfluency kinds, playback, leak, barge | >= 97% | 100% | 100% | 100% |
+| inline tags | >= 97% | 98.0% (spans 95.3%) | same | 100% |
+| partials: n_stable / text agreement | within 5% | 94.8% / 93.5% | same | 100% |
+| first partial / turn end p50, p90 | 50 ms | identical | identical | identical |
+
+Every difference of the full int8 candidate comes from the int8 encoder (the encoder-only candidate matches it field for
+field). It misses three lines (final text identical, device-directed decision, partial stability), so **the int8
+encoder does not ship**. Float16 storage of the decoder and the adapters changes the weights (rounded to the nearest
+float16, ~5e-4 relative; libarc's `arc_store.c convert()` widens them back to float32 at load), but no read-out moves:
+every field of every message is identical at the precision the ear reports. So that part ships: the ear asset is
+460.5 -> 403 MB, RSS after load about 60 MB lower (fewer file-backed pages: 940-970 -> 845-915 MB), load time the same
+(2.1-2.9 s). RTF: the same kernels, all float32 after load; measured interleaved on a machine at load 30-45 it varied
+more between two runs of the same model (0.167-0.311) than between the two models (A 0.167 / 0.169 / 0.311, fp16 0.21 /
+0.24 / 0.265). Downstream (`director_model/real_ear.py` round-11 jobs: 275 held-out kid turns in the Mac voices + 100 echo-bank clips
+of our own lines through speaker -> mic, then `ear_parity.py`: the shipped Director + router on each). These renders are
+NOT repeatable (the noise bed, e.g. a video playing on a TV, and the Mac voices differ between runs), so the shipped ear
+was decoded twice to measure that spread: A vs A again: text identical 84.3%, words that differ 7.5%, WER 51.9 / 55.6%,
+app decisions identical 80.3%, Director act identical 96.7%, echo bank 100/100. A vs fp16: 84.0%, 7.9%, WER 55.2%,
+decisions 80.0%, Director act 97.0%, echo bank 100/100: inside the spread on every line (the bar widens by exactly the
+A-vs-A noise). A follow-up worth measuring: the encoder's float32 MatMuls stored float16 (cast back at session init),
+which would keep float32 arithmetic and save ~74 MB.
+
+Crew audio (the `crew` asset, re-encoded for size; docs/DESKTOP.md "Crew audio in the installer"): the shipped ear on
+the same 60 crew segments, WER vs the Deepgram refs / name links. The ear is very sensitive to tiny audio changes on this
+noisy material: re-encoding at the SAME settings (24 kHz / 48 kbps) already changes 12% of its words vs the shipped
+files, so WER vs the refs is the measure, not agreement with the old transcript.
+
+| crew audio | size (74 files) | WER | links |
+|---|---|---|---|
+| shipped files, 24 kHz / 48 kbps | 175.3 MB | 11.93% | 65.3% |
+| segments re-encoded 24 kHz / 48 kbps (the method's own spread) | | 12.29% | 61.2% |
+| segments 24 kHz / 40 kbps | ~146 MB | 12.78% | 61.2% |
+| segments 22.05 kHz / 40 kbps | ~146 MB | 13.00% | 59.2% |
+| segments 16 kHz / 48 kbps | 175 MB | 12.93% | 65.3% |
+| segments 24 kHz / 32 kbps | ~117 MB | 12.57% | 63.3% |
+| segments 16 kHz / 32 kbps | ~117 MB | 14.70% | 67.4% |
+| trimmed files 16 kHz / 32 kbps | 116.9 MB | 13.78% | 59.2% |
+| **trimmed files 24 kHz / 32 kbps: ships** | **116.8 MB** | **12.00%** | **67.3%** |
+
 # History: Arc v1.1 Mini (replaced)
 
 

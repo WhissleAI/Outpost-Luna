@@ -72,6 +72,27 @@ def test_pinned_video_comes_from_the_pack_offline(tmp_path, monkeypatch):
     assert video.from_pack({**v, "id": "bad_vid"}, "video") is False
 
 
+def test_pack_copy_of_a_nasa_file_is_accepted(tmp_path, monkeypatch):
+    """Video pack v3 carries a lighter re-encode of each NASA file (catalog `pack`): it is copied like the original,
+    the original (pack v2, still installed on older setups) still is, and anything else is not."""
+    orig, lite = b"the NASA original bytes", b"lighter"
+    v = {"id": "lite_vid", "source": "nasa_file", "prefetch": True, "file_url": "https://images-assets.nasa.gov/x.mp4",
+         "bytes": len(orig), "sha256": hashlib.sha256(orig).hexdigest(),
+         "pack": {"derive": "-c:v libx264", "bytes": len(lite), "sha256": hashlib.sha256(lite).hexdigest()}}
+    pack = tmp_path / "pack"
+    pack.mkdir()
+    monkeypatch.setattr(settings, "video_pack_dir", pack)
+    for i, (body, ok) in enumerate(((lite, True), (orig, True), (b"lightex", False), (b"x" * len(lite), False))):
+        monkeypatch.setattr(settings, "cache_dir", tmp_path / f"cache{i}")
+        (pack / "lite_vid.mp4").write_bytes(body)
+        assert video.from_pack(v, "video") is ok, body
+        assert video.pack_copy_ok(v, pack / "lite_vid.mp4") is ok
+    assert not any("pack" in p for p in video.validate([v]))
+    bad = {**v, "pack": {"derive": "-c:v libx264", "bytes": 3}}
+    assert any("pack needs its bytes and sha256" in p for p in video.validate([bad]))
+    assert any("only a pinned nasa_file" in p for p in video.validate([{**v, "prefetch": False}]))
+
+
 def test_voice_pack_dir_setting(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "voice_pack_dir", tmp_path)
     assert REAL_PACK_VERSION() == ""

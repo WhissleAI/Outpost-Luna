@@ -6,7 +6,7 @@ Run after fetch_media.py (the desktop builds do). Cross-platform, no bash: Pytho
 imageio-ffmpeg wheel ships for macOS, Windows and Linux (falls back to an `ffmpeg` on PATH if the wheel is missing).
 
   in:  data/media/audio/<stem>.mp3            NASA originals (96-192 kbps, mostly dual-mono stereo); never modified
-  out: data/media/desktop/audio/<stem>.mp3    the kept stretches back to back, mono 24 kHz, 48 kbps CBR
+  out: data/media/desktop/audio/<stem>.mp3    the kept stretches back to back, mono 24 kHz, 32 kbps CBR
        data/media/desktop/trim.json           {params, clips: {<file name>: {src_sha256, dur, segs: [[orig_t0, file_t0, len]]}}}
 
 electron-builder ships data/media/desktop as the app's media/ (so trim.json lands at media/trim.json). The backend adds
@@ -32,8 +32,10 @@ from pathlib import Path
 DATA = Path(__file__).resolve().parents[1] / "data"
 SRC = DATA / "media/audio"
 OUT = DATA / "media/desktop"
-SR = 24000            # Hz: MPEG-2 Layer III; the crew loop audio is narrowband, 12 kHz of bandwidth is plenty
-BITRATE = "48k"       # CBR: exact seeking in every browser (a VBR MP3 without a TOC seeks approximately)
+SR = 24000            # Hz: MPEG-2 Layer III. 16 kHz was tried for 0.4.3 and cost the ear +1.9-2.4 pt WER on crew segments
+#                       (docs/LOCAL_EAR.md "Lighter ear"); 24 kHz keeps 12 kHz of bandwidth
+BITRATE = "32k"       # CBR: exact seeking in every browser (a VBR MP3 without a TOC seeks approximately). Was 48 kbps
+#                       (175 MB); docs/DESKTOP.md "Crew audio in the installer" has the before / after checks
 MARGIN = 1.0          # s kept before and after every playable span (the player polls every 60 ms, then fades 200 ms)
 JOIN = 3.0            # s: gaps shorter than this are kept, so short pauses stay and the file has few joins
 VOCAB_SPAN = (2.0, 4.0)   # frontend/src/highlight.js + academy/vocab.js play [t - 2, t + 4] of a vocab term's source

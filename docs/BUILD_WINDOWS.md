@@ -26,7 +26,7 @@ powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1
 2. Clone the repo to `C:\src\atm` (§2).
 3. Run `powershell -ExecutionPolicy Bypass -File desktop\scripts\build-windows.ps1` (§3). It takes about 15 to 30 minutes.
 4. Run `desktop\dist\win-unpacked\Outpost Luna.exe`, or install `desktop\dist\Outpost Luna Setup 0.3.3.exe` (§5).
-5. On first launch the app downloads its models (510 MB, required), or you click **Import offline pack…** (§6).
+5. On first launch the app downloads its models (452 MB, required; 510 MB until the 0.4.3 packs are uploaded), or you click **Import offline pack…** (§6).
 6. Go through the tester checklist (§8) and send it back with the logs from `%APPDATA%\Outpost Luna\logs` (§9).
 7. Run the release gates on the installer: `powershell -ExecutionPolicy Bypass -File desktop\scripts\release-check.ps1`
    (about 10 minutes, silent; it must end in `PASS`). See [RELEASING.md](RELEASING.md).
@@ -179,17 +179,17 @@ downloads its models from Dropbox into `%APPDATA%\Outpost Luna\assets\`:
 
 | asset | what | size | when |
 |---|---|---|---|
-| `ear` | Arc Transcriber Space (the speech recognizer) | 461 MB | first launch, required |
+| `ear` | Arc Transcriber Space (the speech recognizer) | 403 MB | first launch, required |
 | `tagger` | Arc Tagger v0.3 | 12 MB | first launch, required |
 | `embedder` | MiniLM (the local brain's embedder) | 23 MB | first launch, required |
 | `voice` | the recorded Nora voice pack (889 lines) | 14 MB | first launch, required |
-| `crew` | the Artemis II crew audio | 175 MB | in the background, after the window opens |
+| `crew` | the Artemis II crew audio | 117 MB | in the background, after the window opens |
 | `videos` | the video pack: 14 NASA videos with captions and posters (38 files) | 425 MB | in the background, after the window opens |
 | `site_layers` | the site navigator's polar map layers (NASA LRO) | 20 MB | in the background, optional |
 | `steer` | the Steer TTS voice | 13 MB | only when you pick Steer in Settings → Voice |
 
-So the first launch needs **510 MB** before the app opens (one time; the screen shows the total, the speed and the time
-left), then about **620 MB more** in the background. After that the app is fully offline: every lesson video plays from
+So the first launch needs **452 MB** (510 MB until the 0.4.3 packs are uploaded) before the app opens (one time; the screen shows the total, the speed and the time
+left), then about **360 MB more** in the background. After that the app is fully offline: every lesson video plays from
 the pack. Each file is checked against its sha256 before it is installed. You can:
 
 - Watch the progress. The app opens by itself when the four required assets are in.
@@ -237,7 +237,7 @@ It should end in `PASS`; the `smoke.py` lines are in `desktop\dist\release-check
 Do it once with Wi-Fi **on**, then start the app again with Wi-Fi **off**. Note anything odd, even if it worked.
 
 1. **First launch.** On a fresh Windows account (or after deleting `%APPDATA%\Outpost Luna`): the "Getting Outpost
-   Luna ready" screen shows about 510 MB and its progress. Note how long it takes: ___ min. Then check:
+   Luna ready" screen shows about 452 MB (510 MB before the 0.4.3 upload) and its progress. Note how long it takes: ___ min. Then check:
    - Click **Continue later** halfway, and start the app again: it resumes, it doesn't start from 0.
    - With Wi-Fi off from the start: the screen says you're offline and offers the pack. **Import offline pack…** with
      the zip (§6) installs everything with no network.
@@ -278,7 +278,7 @@ Do it once with Wi-Fi **on**, then start the app again with Wi-Fi **off**. Note 
 12. **Reset.** Fly a lesson first. Then go to Settings → Reset (the last item):
     - **Start over**: a plain click does nothing. Holding **Hold to start over** for 3 s closes the app, and it
       restarts by itself at the call-sign screen. Nothing downloads again.
-    - **Reset everything**: the app restarts at the **"Getting Outpost Luna ready"** screen and downloads the 510 MB
+    - **Reset everything**: the app restarts at the **"Getting Outpost Luna ready"** screen and downloads the 452 MB
       again (or takes the offline pack). `%APPDATA%\Outpost Luna\assets`, `cache` and `hf` were emptied; `logs` stays.
     - `main.log` must not say `could not delete`. If it does, send the line: that is a Windows file lock.
 13. **Mute.** Press Shift+M (or click Mute in the top bar). Every sound stops: the voice, crew audio, videos and the
@@ -296,7 +296,7 @@ build-windows.ps1: pass / fail (if fail: the last 40 lines)    build time: ___ m
 compilers printed in step 1 (arctag / libarc):
 Windows version (winver) / CPU / RAM / GPU / is your Windows user name plain ASCII?
 SmartScreen "Run anyway" worked? firewall dialog? console window?
-first launch: 510 MB took ___ min; Continue later resumed? offline pack import worked? background crew+videos done?
+first launch: 452 MB took ___ min; Continue later resumed? offline pack import worked? background crew+videos done?
 start to Flight School: 2nd ___ s, offline ___ s
 smoke.py: ALL PASS? (paste the output if not)
 ear with my voice: "show me Tycho" opened Tycho? Sea of Tranquility? feel of the delay: ___
@@ -340,7 +340,7 @@ Add `--clobber` to replace a file that is already attached. Keep the name as it 
 ## 10. Known limitations
 
 - **Unsigned.** There is no Authenticode certificate yet, so SmartScreen warns once (§5).
-- **First launch needs the internet, or the offline pack.** 510 MB before the app opens; about 620 MB more in
+- **First launch needs the internet, or the offline pack.** 452 MB before the app opens; about 360 MB more in
   the background (crew audio, the 14-video NASA pack, map layers); Steer another 13 MB when picked.
 - **NSIS 2 GB limit.** An NSIS installer can't hold more than 2 GB. The 0.3 app is **783 MB uncompressed**
   (`dist\win-unpacked`, 7,896 files, measured 2026-11-15), well under it, because the models are no longer bundled.

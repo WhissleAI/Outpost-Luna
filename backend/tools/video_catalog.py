@@ -6,6 +6,10 @@
     uv run python tools/video_catalog.py --derive   # (re)build the NASA pack_files: download each one's NASA original
                                                     # (origin_url, checked against origin_sha256), re-encode it with
                                                     # ffmpeg (`derive`), grab a poster, then pin bytes + sha256
+    uv run python tools/video_catalog.py --pack [--only a,b]   # the video pack's lighter copies of pinned NASA files
+                                                    # (`pack`: {derive, bytes, sha256}): the NASA file (VIDEO_ORIG_SRC,
+                                                    # the dev cache, or nasa.gov; checked against its sha256) re-encoded
+                                                    # with pack.derive into LOCAL_DIR/pack/<id>.mp4, bytes + sha256 pinned
 
 Never run by the app; a maintainer runs it when the catalog changes. YouTube ids are checked with YouTube's public
 oEmbed endpoint (the uploader must be a NASA channel, or the channel NON_NASA_YOUTUBE names for that id).
@@ -71,14 +75,54 @@ def derive(c: httpx.Client, v: dict) -> None:
     print(f"    derived {out} ({out.stat().st_size / 1e6:.1f} MB)")
 
 
+def original(c: httpx.Client, v: dict) -> Path:
+    """A pinned NASA file, checked against the catalog's sha256: VIDEO_ORIG_SRC (e.g. an installed app's video pack),
+    else the dev video cache, else downloaded into the dev cache."""
+    name = video.names(v)["video"]
+    for d in [Path(x) for x in os.environ.get("VIDEO_ORIG_SRC", "").split(os.pathsep) if x] + [video.cache().root]:
+        p = d / name
+        if p.is_file() and p.stat().st_size == v["bytes"] and video.file_sha256(p) == v["sha256"]:
+            return p
+    print(f"    downloading {v['file_url']}", flush=True)
+    return video.cache().download(v["file_url"], name, size=v["bytes"], sha256=v["sha256"], pinned=True, client=c)
+
+
+def pack(c: httpx.Client, v: dict) -> None:
+    """NASA file -> LOCAL_DIR/pack/<id>.mp4 with pack.derive (the video pack's copy; captions and poster unchanged)."""
+    ff = shutil.which("ffmpeg")
+    if not ff:
+        sys.exit("--pack needs ffmpeg on PATH")
+    out = LOCAL_DIR / "pack" / f"{v['id']}.mp4"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    src = original(c, v)
+    tmp = out.with_name(out.stem + ".part.mp4")
+    subprocess.run([ff, "-v", "error", "-y", "-i", str(src), *shlex.split(v["pack"]["derive"]), str(tmp)], check=True)
+    tmp.replace(out)
+    v["pack"]["bytes"], v["pack"]["sha256"] = out.stat().st_size, video.file_sha256(out)
+    print(f"    pack copy {out} ({v['bytes'] / 1e6:.1f} -> {out.stat().st_size / 1e6:.1f} MB)", flush=True)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--pin", action="store_true", help="download the pinned files and record bytes + sha256")
     ap.add_argument("--derive", action="store_true", help="rebuild the NASA pack_files from their originals (ffmpeg)")
+    ap.add_argument("--pack", action="store_true", help="rebuild the video pack's lighter copies of NASA files (ffmpeg)")
+    ap.add_argument("--only", default="", help="--pack: these ids only (comma list)")
     a = ap.parse_args()
     path = video.catalog_path()
     items = json.loads(path.read_text(encoding="utf-8"))
     bad = 0
+    only = {x for x in a.only.split(",") if x}
+    if a.pack:
+        with httpx.Client(follow_redirects=True, timeout=60.0, headers=UA, verify=video.tls()) as c:
+            for v in items:
+                if v.get("pack") and (not only or v["id"] in only):
+                    pack(c, v)
+        path.write_text(json.dumps(items, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        probs = video.validate(items)
+        for p in probs:
+            print("catalog:", p)
+        return 1 if probs else 0
     with httpx.Client(follow_redirects=True, timeout=60.0, headers=UA, verify=video.tls()) as c:
         for v in items:
             if v["source"] == "youtube":

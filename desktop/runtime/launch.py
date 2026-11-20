@@ -17,6 +17,12 @@ import threading
 import time
 from pathlib import Path
 
+# Never write bytecode into the bundle (it is signed: a new or rewritten .pyc breaks `codesign --verify --strict`). The
+# shell also sets PYTHONDONTWRITEBYTECODE=1; this covers a hand run. The bundle's .pyc are unchecked-hash, built by
+# build_python.precompile, so nothing is ever stale. (PYTHONPYCACHEPREFIX is NOT used: Python would then read bytecode
+# only from that folder and ignore the bundle's own, compiling every module from source on each launch.)
+sys.dont_write_bytecode = True
+
 HERE = Path(__file__).resolve().parent            # resources/app
 RES = HERE.parent                                  # resources
 LAYOUT = {"backend": ("site/backend", "backend"), "models": ("site/models", "model_server")}

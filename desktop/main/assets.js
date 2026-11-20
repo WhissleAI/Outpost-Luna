@@ -454,7 +454,20 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     }
     if (a.fallback && a.fallback.kind === "files") return fromFiles(a, opts);
     if (a.fallback && a.fallback.kind === "tar_members") return fromTarMembers(a, opts);
+    if (a.fallback && a.fallback.kind === "pack") return fromPrevious(a, opts);
     throw new Error(`${a.id}: no download link yet (import the offline pack)`);
+  }
+
+  /** kind "pack": the asset's PREVIOUS published version (its own tar, files and fallback), installed as that version
+   *  when the new one has no link yet or its link fails (a lighter ear / media pack before its upload). state.json
+   *  records the previous version and its files, so the model check and the size check use those, and a later update
+   *  (updates.js) replaces it with the new version once that is downloadable. */
+  async function fromPrevious(a, opts) {
+    const fb = a.fallback;
+    log(`assets: ${a.id} v${a.version || "?"} ${a.url ? "failed" : "has no link yet"}; installing v${fb.version || "?"} (the previous pack)`);
+    const prev = { ...a, version: fb.version, file: fb.file, url: fb.url, sha256: fb.sha256, size: fb.size,
+      unpacked_size: fb.unpacked_size, files: fb.files, fallback: fb.fallback || null };
+    return downloadOne(prev, opts);
   }
 
   /** Download every asset of ids that is not installed (in manifest order). -> the ids done. */

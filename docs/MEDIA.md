@@ -21,6 +21,7 @@ A list of entries:
 | `captions`, `poster` | pack_file only, true/false: the pack also carries `<id>.vtt` / `<id>.jpg` |
 | `permission` | a third-party pack_file only: the record of the owner's written permission (who, when) |
 | `bytes`, `sha256` | the download / pack check (`prefetch` items must have `bytes`; a pack_file must have `sha256`) |
+| `pack` | a pinned nasa_file only: `{derive, bytes, sha256}`, the video pack's lighter copy of it (video pack v3, below). `tools/video_catalog.py --pack` makes it from the NASA file with the ffmpeg arguments in `derive` and pins its bytes + sha256; the backend accepts either the NASA file or this copy from the installed pack (`video.pack_copy_ok`). Streaming and the dev cache still use the NASA file |
 | `duration_s` | sets the button label ("Watch (2 min)") and the watched threshold |
 | `credit` | starts with "NASA" (a non-NASA video: its channel and "not from NASA", or "used with permission" for a pack_file). Shown under the player and in About → Videos |
 | `nasa`, `channel` | optional; `nasa: false` marks one of the few hand-picked non-NASA videos (below) |
@@ -55,8 +56,24 @@ rocks; 2:43), the crater_drop task's NASA Watch how. JPL hosts it only as a 293 
 and pins `bytes` and `sha256`. NASA hosts no Oreo-phases video (Space Place's Oreo activity is a printable page only),
 so `oreo_phases` keeps `moon_phases_2025` as its NASA Watch how.
 
-**The video pack**: 8 videos, 199.4 MB before; 14 videos, **424.9 MB** now (38 files with captions, posters and the
-NOTICE). The largest file is 75.6 MB.
+**The video pack**: 8 videos, 199.4 MB before; 14 videos, 424.9 MB in v2 (38 files with captions, posters and the
+NOTICE; the largest file 75.6 MB).
+
+**Video pack v3 (0.4.3): the same 14 videos, lighter.** The 12 pinned NASA files are carried as `pack` copies: H.264
+High (level 4.0, yuv420p), `-preset slow -crf 23 -maxrate 1100k -bufsize 2200k`, AAC-LC 96 kbps, faststart, at the
+NASA file's own resolution and frame rate (`derive` in the catalog). `ltv`, `moon_weather` and `phases_loop` missed the
+bar at 1.1 Mbps and use `-maxrate 1600k -bufsize 3200k`. H.264 High + AAC in MP4 is what every player the app has
+decodes (Chromium in Electron on Mac and Windows, WKWebView on the iPad); HEVC / AV1 were not used (decode is not
+certain on every Windows PC and older iPad). Captions, posters, `hammer_feather` and the `pack_file` `diy_crater_nasa`
+are byte-identical. The 12 files: **399.7 MB -> 182.3 MB**. The bar (fixed before encoding), every frame compared at
+the source resolution with libvmaf `vmaf_v0.6.1` + SSIM: VMAF mean >= 90 and 5th-percentile frame >= 75, SSIM (Y) >= 0.95,
+duration within 0.1 s, same resolution / frame rate / audio channels. Per file (MB before -> after, VMAF mean / p5,
+SSIM Y): far_side_view 45.4 -> 11.0 (93.6 / 88.7, 0.981), ltv 24.7 -> 15.9 (92.9 / 79.8, 0.985), lunar_dust 46.1 ->
+20.0 (94.1 / 89.9, 0.988), lunar_eclipse 35.6 -> 12.7 (95.5 / 92.4, 0.990), meet_crew 39.4 -> 14.4 (93.2 / 85.7,
+0.986), moon_base_6mo 19.7 -> 9.7 (91.2 / 80.7, 0.974), moon_phases_2025 75.6 -> 39.8 (95.4 / 94.1, 0.989),
+moon_weather 26.4 -> 14.3 (93.0 / 85.0, 0.978), phases_loop 3.8 -> 3.0 (91.5 / 88.2, 0.984), psr 32.9 -> 17.1 (92.1 /
+82.6, 0.972), south_pole_shadows 20.7 -> 10.9 (94.4 / 90.4, 0.990), water_extraction 29.4 -> 13.4 (95.0 / 91.4, 0.984).
+The app accepts either the NASA file or the pack copy (`video.pack_copy_ok`); online streaming still plays NASA's file.
 
 ### "Watch how" videos for Mission prep (hand-picked, some not from NASA)
 
