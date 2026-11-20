@@ -4,6 +4,7 @@
 //   arrows → move {dir}          Enter / Space-tap → select      Esc / Backspace → back (never quits)
 //   M → mic   H / ? → help        1–4, A–D → pick {n}             N / P → next / prev   Y / N → yes / no in a confirm
 //   S → settings   B → My Brain   C → captions   V → window view   O → open the lit panel   / → the text box   Space held → talk
+//   [ / ] → the cabin's Systems drawer: previous / next panel (the controller's LB / RB)
 //
 // The pure part (keyAction, helpRows, screenName) is unit-tested in tests/keys.test.js; installKeys() is the DOM glue:
 // keyboard-vs-pointer mode, the Space tap/hold split, the help sheet, the key-hint chip, the optional focus sound and
@@ -37,6 +38,9 @@ export function keyAction(ev, c = {}) {
   if (k === "?" || k === "/" && ev.shift) return { intent: "help", args: {} };
   if (k === "/") return { intent: "focus_input", args: {} };
   if (/^[1-9]$/.test(k)) return { intent: "pick", args: { n: +k } };
+  // the cabin's Systems drawer, the keyboard's LB / RB (docs/GAMEPLAY.md §17): [ previous panel, ] next panel
+  if (k === "[" || k === "{" || ev.code === "BracketLeft") return { intent: "systems", args: { arg: "prev" } };
+  if (k === "]" || k === "}" || ev.code === "BracketRight") return { intent: "systems", args: { arg: "next" } };
   if (k === "=" || k === "+") return { act: "zoom", f: 1.25 };
   if (k === "-" || k === "_") return { act: "zoom", f: 0.8 };
   const l = k.length === 1 ? k.toLowerCase() : "";
@@ -89,7 +93,7 @@ const SCREEN_ROWS = {
   ride: [["1–5", "Pick an order"], ["N", "Next step"]],
   picker: [["↑ ↓", "Pick a site"], ["N or P", "Next or previous site"], ["Y", "Take command"]],
   tour: [["Enter or N", "Next"], ["Esc", "Skip tour"], ["← →", "Next or Skip tour button"]],
-  cabin_seat: [["R", "Look ahead"], ["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["Esc", "Pause menu: speed, restart or end the shift, settings"], ["Hold F", "Fast-forward"], ["W", "Time speed 1x, 2x, 4x"], ["E", "Skip to next event"], ["I", "Why? Explain a gauge"],
+  cabin_seat: [["[ or ]", "Systems: power, radiation, rover (previous or next panel)"], ["R", "Look ahead"], ["T or Y", "Do the Now job"], ["1–4", "Pick a choice on the Now card"], ["K", "Pause or run the clock"], ["Esc", "Pause menu: speed, restart or end the shift, settings"], ["Hold F", "Fast-forward"], ["W", "Time speed 1x, 2x, 4x"], ["E", "Skip to next event"], ["I", "Why? Explain a gauge"],
     ["← → ↑ ↓", "Light a panel (it starts on the one Now points at)"], ["Enter or O", "Open it"], ["V or N or P", "Window view"], ["Y or N", "Yes or no to CAPCOM"]],
   cabin_panel: [["← → ↑ ↓", "Move between controls"], ["← →", "Turn a knob"], ["N or P", "Next or previous panel"], ["Esc", "Back to the seat"], ["T", "Do the Now job"], ["K", "Pause or run the clock"], ["E", "Skip to next event"], ["I", "Why? Explain this panel's gauge"]],
   debrief: [["Y", "Fly again"], ["Enter", "Select"]],
@@ -97,8 +101,8 @@ const SCREEN_ROWS = {
   settings: [["↑ ↓", "Move"], ["← →", "Change a slider or choice"], ["Esc", "Close"]],
   app: [],
 };
-const PAD_ROWS = [["D-pad or Left-stick", "Move"], ["A or Cross", "Select"], ["B or Circle", "Back"], ["X or Square", "Mic"], ["Y or Triangle", "These keys"],
-  ["LB or RB", "Previous or next"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings (cabin: the pause menu)"],
+const PAD_ROWS = [["D-pad or Left-stick", "Move"], ["A or Cross", "Select"], ["B or Circle", "Back"], ["X or Square", "Mic"], ["Y or Triangle", "These keys (Systems open: Why? for the gauge)"],
+  ["LB or RB", "Previous or next (cabin: the Systems panels)"], ["Right-stick", "Turn the Moon, look around the cabin"], ["Start", "Settings (cabin: the pause menu)"],
   ["View or Share", "Cabin: pause or run the clock"], ["RT or R2", "Cabin: tap to skip ahead, hold to fast-forward"], ["LT or L2", "Cabin: time speed"]];
 /** The help sheet's rows: [{title, rows}] for this screen, everywhere, and (when one is connected) the controller. */
 export function helpRows(screen, { pad = false } = {}) {
@@ -227,7 +231,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
     if (e.defaultPrevented || e.isComposing) return;
     const t = e.target, typing = isTextField(t) || (t && t.closest && !!t.closest("[contenteditable=true]"));
     if (e.key === " " || e.code === "Space") return;   // Space: the capture handler below (tap = select, hold = talk)
-    const a = keyAction({ key: e.key, shift: e.shiftKey, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, repeat: e.repeat },
+    const a = keyAction({ key: e.key, code: e.code, shift: e.shiftKey, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, repeat: e.repeat },
       { typing, value: valueControl(t), lettered: lettered(), confirm: confirmWaiting() });
     if (!a) return;
     if (a.act === "leave_input") {

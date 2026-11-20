@@ -383,6 +383,39 @@ def main():
         press("Backspace", 1300)
         ok(act()["cabin"] == "seat", "panel: Backspace also goes back to the seat")
 
+        # the Systems drawer (docs/GAMEPLAY.md §17): ] / [ open and step it, the arrows work its controls, I explains its
+        # gauge, Esc closes it and focus goes back to the Systems key
+        SYS = "() => { const s = document.getElementById('cbSys'); return s && !s.hidden ? s.dataset.sys : ''; }"
+        IN_SYS = "() => document.getElementById('cbSys').contains(document.activeElement)"
+        press("]", 900)
+        ok(js(SYS) != "" and until(IN_SYS, 3000), f"systems: ] opens the drawer ({js(SYS)}), focus moves inside")
+        shot("07b-cabin-systems")
+        p0 = js(SYS)
+        press("]", 800)
+        ok(js(SYS) not in ("", p0) and js(IN_SYS), f"systems: ] steps to the next panel ({js(SYS)}), focus stays inside")
+        press("[", 800)
+        ok(js(SYS) == p0, "systems: [ steps back")
+        press_until(["]"], "() => document.getElementById('cbSys').dataset.sys === 'radiation'", n=5, ms=700)
+        SH_UP = "() => document.activeElement.matches('#cbSys [data-act=shields][data-d=\"10\"]')"
+        got = press_until(["ArrowDown"], SH_UP, n=8) or press_until(["ArrowRight", "ArrowDown"], SH_UP, n=6)
+        ok(got, "systems: the arrows reach Shields + on the Radiation panel")
+        s0 = js("() => +document.getElementById('cbShVal').textContent")
+        if s0 < 60:
+            press("Enter", 2200)
+            ok(until("() => +document.getElementById('cbShVal').textContent !== %d" % s0, 10000), "systems: Enter on Shields + sends the console's order (the knob moves too)")
+        press("i", 900)
+        ok(js("() => { const w = document.getElementById('cbWhy'); return !!w && !w.hidden; }"), "systems: I opens the Why card of the drawer's gauge")
+        press("Escape", 600)
+        ok(js("() => document.getElementById('cbWhy').hidden") and js(SYS) == "radiation", "systems: Esc closes the Why card first, the drawer stays")
+        press_until(["Escape"], "() => document.getElementById('cbSys').hidden", n=2, ms=700)
+        ok(js("() => document.getElementById('cbSys').hidden") and act()["id"] == "cbSysKey", "systems: Esc closes the drawer, focus back on the Systems key")
+        press("Enter", 800)
+        ok(js(SYS) != "", "systems: Enter on the Systems key opens it again")
+        press("Escape", 700)
+        ok(not js("() => !!document.querySelector('#cbMenu:not([hidden])')"), "systems: that Esc closed the drawer, not the pause menu")
+        press_until(["ArrowDown"], "() => document.activeElement.id === 'seatFocus'", n=6)
+        ok(act()["id"] == "seatFocus", "systems: Down from the Systems key goes back to the consoles")
+
         # storm (forced by the dev hook: a state, not an input) → the Now card carries the decision ([polish 3]: the alert
         # strip has no buttons); Up from the seat reaches its "Crew into the shelter", Enter sends it
         js("() => window.__cabinTest.storm(true)")
@@ -415,7 +448,8 @@ def main():
         # End shift + finish: the pedestal
         ok(seat_to("pedestal"), "seat: reach the pedestal (End shift)")
         press("Enter", 1300)
-        if js("() => !document.getElementById('cbEnd').disabled"):
+        # [0.4.1] the mission's End shift lives in the Menu (Esc); only the check ride keeps one on the pedestal
+        if js("() => { const e = document.querySelector('[data-panel=pedestal] #cbEnd'); return !!e && !e.disabled; }"):
             ok(in_panel_to("() => document.activeElement.id === 'cbEnd'"), "pedestal: arrows reach End shift")
             press("Enter", 4000)
             ok(True, "pedestal: Enter ends the shift")

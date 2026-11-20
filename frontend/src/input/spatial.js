@@ -157,7 +157,7 @@ const FOCUSABLE = "button, a[href], input:not([type=hidden]), select, textarea, 
  *  picker's NASA source links (Up from Take command goes straight to the site rows; Tab and a click still open a source). */
 const SKIP = ".vs-grip, .skip-link, .ghost, .mx-pin, .gx-grip, .sr-only, .key-hint, .key-legend, .nv-detail a, .nv-crit a";
 const REGIONS = [".topbar", "#keysHelp", ".set-nav", ".set-sec", ".a11y-panel", "dialog", ".hl-card", "#card", "#missionCard", ".route", "#aPanel", "#mPanel", "#mDebrief",
-  ".hud", ".nowplaying", "#askbar", "#mCabin", ".moon-focus", ".gx-ui"];
+  ".hud", ".nowplaying", "#askbar", ".cb-sys", "#mCabin", ".moon-focus", ".gx-ui"];
 /** The cabin's console panels, in reading order (the head-look layout of docs/GESTURES.md). */
 export const SEAT_PANELS = ["habitat", "rover", "displays", "radiation", "comm", "pedestal"];
 const PANEL_NAME = { habitat: "Habitat", rover: "Rover", displays: "Displays and power", radiation: "Radiation", comm: "Comm", pedestal: "Caution and warning, End shift" };
@@ -302,6 +302,9 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     const pc = shown(".cb-patchpop"); if (pc && pc.contains(doc.activeElement)) return { id: "patches", roots: [pc] };
     // the first-mission cabin tour (mission/tour.js): its card holds focus (Next, Skip tour) until it ends
     const tour = shown(".m-tour"); if (tour) return { id: "tour", roots: [tour] };
+    // the cabin's Systems drawer (mission/systems.js): its panel, the Now card and the window keys (the Systems key);
+    // Esc / B closes it and focus goes back to the Systems key
+    const sys = in3d() && shown("#cbSys"); if (sys) return { id: "systems", roots: [sys, shown("#mCabin .cb-now"), shown("#mCabin .cb-viewbar"), shown("#mCabin .cb-why")] };
     if (in3d()) {
       const p = cabinPanel() || "seat";
       if (p !== "seat") { const open = doc.querySelector("#mCabin .c3-panel.is-open"); if (open) return { id: "panel:" + p, roots: [open, shown(".c3-back")] }; }
@@ -320,7 +323,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
   }
 
   // ---- what to focus when nothing is (a new screen, a re-render) ----
-  const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
+  const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", "#cbSys .is-point", "#cbSys .sys-body button:not(.sys-why):not(:disabled)", "#cbSys .sys-tab[aria-selected=true]", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
     "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mBriefGo", "#mDebrief[data-primary=next] #mNext", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
   function primary(sc = scope()) {
     if (sc.seat) return null;
@@ -470,7 +473,8 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
     if (!keysMode()) return;
     const sc = scope(), a = doc.activeElement;
     // the cabin camera moved (a panel opened by voice, a click, Esc): follow it
-    if (in3d() && !(sc.seat || sc.id.startsWith("panel:"))) { was3d = true; lastPanel = cabinPanel() || "seat"; }   // a sheet or the tour is up: leave its focus alone
+    if (in3d() && !(sc.seat || sc.id.startsWith("panel:") || sc.id === "systems")) { was3d = true; lastPanel = cabinPanel() || "seat"; }   // a sheet or the tour is up: leave its focus alone
+    else if (sc.id === "systems") { was3d = true; lastPanel = cabinPanel() || "seat"; }   // the drawer: its focus is checked below
     else if (in3d()) {
       // the cabin just appeared (or keys just started in it): the seat, unless focus already sits on a cabin control
       // (a kid who clicked "Steer left" and then pressed an arrow keeps that button)
@@ -487,7 +491,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
         restore(); return; }
     } else { lastPanel = "seat"; was3d = false; }
     const roots = sc.roots.filter(Boolean);
-    const ok = a === seatEl ? atSeat() && !seatEl.hidden
+    const ok = a === seatEl ? atSeat() && !seatEl.hidden && sc.id !== "systems"
       : !!(a && a !== doc.body && a.isConnected && visible(a) && (sc.id === "screen" || within(a, roots) || (isTextField(a) && !sc.id.match(/^(help|settings|dialog|modal)$/))));
     if (!ok) { restore(); return; }
     // a screen that was still loading when focus was restored (the picker's "Loading…"): once its primary action

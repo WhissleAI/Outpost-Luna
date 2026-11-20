@@ -629,3 +629,69 @@ are the same campaign: the same hub, briefing, chapter cards, Now card, debrief 
   are unchanged.
 
 ![Mission hub, Mission 4](img/campaign/hub_m4_1440x900.jpg) ![Rover rescue in the cabin](img/campaign/cabin_rover_rescue_1440x900.jpg)
+
+## 17. The Systems drawer and the feedback moments (wave 3 and wave 5, `feat/mission-systems-drawer`)
+
+docs/MISSION_POLISH_SPEC.md wave 3 (the drawer) and the thin part of wave 5 (the pulses, the chapter moment). Shots:
+`docs/img/systems/` (each level at 1440×900, 1280×720 and 1024×640; `frontend/tools/systems_shots.py`).
+
+### 17.1 The drawer (`mission/systems.js`)
+
+The cabin's systems as one big panel at a time, on the right wall under the window keys, down to the radio row. It
+uses the cockpit bar's look (bezel keys, phosphor read-outs). Every label is 20 px or more; the main read-out is 44 px.
+
+| Level (Settings → Level) | Panels | Extra |
+|---|---|---|
+| Cadet | Power, Radiation, Rover | Power has three switches: Night mode, Heaters, Science |
+| Commander | + Life support, Radio | Power has Night mode and the power split (each system, − and +) |
+| Engineer | the same five | real units (kWh, kW, mSv, K) and each gauge's equation with today's numbers (the Why card's line) |
+
+- **Ways in.** The **Systems** key (the end of the window-key row, its word always shown), LB / RB on a controller,
+  <kbd>[</kbd> / <kbd>]</kbd> on the keyboard (docs/KEYBOARD.md), and voice: "show power", "show the shields", "open
+  life support", "the radio panel", "systems", "next panel", "previous panel", "close systems". A console's name ("the
+  power panel", "open the comms") opens its drawer panel when the level has it, else the 3D console as before. "Show me
+  the rover" is still the rover window view; "check the power" is still a question for CAPCOM.
+- **Where it opens.** At the panel of the Now job's control (Shields up to 30 opens Radiation), else the last panel,
+  else Power. LB / RB step through the level's panels and wrap. The tabs (one icon key per panel) jump straight there.
+- **The same orders.** Every control calls the order its 3D twin calls (`commandFor`): Shields − / + (0 to 60 in
+  tens), the shelter, Night mode, the heaters and science switches, the power split's ±5, the rover's Ice / Explore /
+  Home (with the console's own disabled rules) and Call Houston.
+- **One instruction.** The drawer never says what to do. When it is open and the Now job's control is in one of its
+  panels, that panel comes up and the control wears the cabin's glow (`.is-point`). When it is closed, it stays closed:
+  the Now card's button does the job. A control a level hides (a Cadet's Call Houston) is never a dead end, because
+  the Now card's button always works. During a takeover the drawer dims with the deck.
+- **Why cards.** Each gauge has its (i). A controller's Y, or <kbd>I</kbd>, with the drawer open opens the Why card of
+  the focused (i), else the panel's gauge. The card sits beside the drawer, never on it. B or Esc closes the card first,
+  then the drawer.
+- **Focus.** Opening by key or pad moves focus inside (the glowing control, else the first control). The arrows move
+  within the drawer, the Now card and the window keys. Esc / B closes it, and focus goes back to the Systems key. The
+  drawer never holds the clock.
+- **The 3D cabin stays as the art.** While the drawer is open the consoles go quiet (half opacity, desaturated) but
+  stay clickable; opening a console closes the drawer, and opening the drawer brings the camera back to the seat.
+  With the drawer closed the consoles are unchanged: in the screenshots the Now card and the bar already sit above
+  them, Cadet's focus dimming quiets the panels a job doesn't need, and a console dimmed all the time would work
+  against the storm-contrast floor the cabin keeps (`mission_ui.py storm_checks`). Quiet while the drawer is open,
+  full strength otherwise.
+
+### 17.2 Feedback (wave 5)
+
+- **Objective done.** When the sim acknowledges a step ("Shields up. Good.") or a job moves on a step, the Now card
+  and the control that did it pulse once (about 1 s): a small lift and a phosphor ring. The control is the one the
+  player last used (a drawer key, a console switch), else the job's own control, in the drawer when it is open.
+  Less motion (Settings or the OS) keeps only the colour: no lift, no scale.
+- **Chapter complete.** The chapter card is an event: a "Chapter complete" stamp, then the stars land one by one
+  (450 ms apart). Each earned star drops in with a ring and its plate flashes gold; a missed one fades in grey. A cue
+  plays through `sound.js` (`starCue`): one rising note per star on the beat it lands, and a soft chord for three. No
+  stars still gets one soft note. Mute and the muted test runs play nothing. With less motion the stars fade in on the
+  same beat.
+
+### 17.3 Verify
+
+- `frontend/tests/systems.test.js`: the level disclosure, targets to panels and controls, LB / RB stepping, the voice
+  words, the same orders as the consoles, the panels' HTML per level, the keys and the controller wiring, Esc order,
+  the 20 px floor in the drawer's CSS, the pulse and the cue's beat.
+- `backend/tests/test_router_panels.py`: the router sends the drawer's words as `systems` in the cabin only, and keeps
+  "show me the rover" and "check the power".
+- `frontend/tests/e2e/keys_e2e.py` and `gamepad_e2e.py`: open, step, a control by the arrows, the Why card, Esc / B order.
+- `frontend/tools/systems_shots.py`: every level and size, the 20 px floor, the drawer clear of the Now card and on
+  screen, the Why card beside it, the pulse and the chapter card.

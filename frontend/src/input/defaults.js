@@ -171,7 +171,7 @@ export const ROUTER_INTENTS = new Set(["next", "back", "start", "accept_offer", 
   "a11y", "answer", "academy", "library", "go_mission", "lesson", "map", "take_command", "pick_site", "debrief", "fly_again",
   "new_site", "view_orbit", "view_site", "view_rover", "view_earth", "panel_power", "panel_comm", "panel_habitat", "panel_rover",
   "panel_radiation", "panel_back", "repeat_step", "end_shift", "skip_event", "time_pause", "time_resume", "time_warp", "task_choice", "mute_sound", "unmute_sound", "recenter",
-  "site_layer", "site_query", "site_preset", "why",   // the landing-site navigator (docs/SITE_NAVIGATOR.md), the cabin's Why? cards
+  "site_layer", "site_query", "site_preset", "why", "systems",   // the landing-site navigator (docs/SITE_NAVIGATOR.md), the cabin's Why? cards
   "resume", "pause",     // [flows] the router's flow words (turn_router FLOW_NAV); flows.js takes them first
   // [flows] Mission prep's own words (turn_router PREP_CMDS): "done", "skip", "wait", "help" were decided by the router
   // and then dropped here (not in this set), so voice never moved the prep card

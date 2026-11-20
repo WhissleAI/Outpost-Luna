@@ -379,6 +379,45 @@ def panel_intent(q: str) -> tuple[str, str] | None:
     return None
 
 
+# The cabin's Systems drawer (frontend mission/systems.js systemWord, docs/GAMEPLAY.md §17): "show power", "the radio
+# panel", "systems", "next panel", "close systems". -> ("systems", arg) with arg a panel id, next | prev | close, or None
+# (open it). Runs after panel_intent, so "open the power panel" keeps its panel_power (the client opens the drawer's
+# panel for it). "show me the rover" stays the rover view; "check the power" stays a status question for CAPCOM.
+SYS_NAMES = [(re.compile(r"^(?:power|energy|battery|batteries)$"), "power"), (re.compile(r"^(?:radiation|rad|shields?|dose)$"), "radiation"),
+             (re.compile(r"^rover$"), "rover"), (re.compile(r"^(?:life support|air|air system|habitat|hab)$"), "life"),
+             (re.compile(r"^(?:radio|comms?|communications?)$"), "radio")]
+SYS_OPEN = re.compile(r"^(?:(?:show|open|bring up|pull up)(?: me)?(?: the| my)? )?systems?(?: drawer| panels?)?$")
+SYS_CLOSE = re.compile(r"^(?:close|hide|shut)(?: the)? (?:systems?|drawer|systems? drawer)$")
+SYS_STEP = re.compile(r"^(next|previous|prev|last|back one) (?:panel|system|page)$")
+SYS_SHOW = re.compile(r"^(?:show|open|bring up|pull up|go to|switch to)(?: me)?(?: the| my)? (.+?)(?: (panel|system|systems|page))?$")
+SYS_NAMED = re.compile(r"^(?:the )?(.+?) (?:panel|system|page)$")
+
+
+def _sys_name(w: str) -> str | None:
+    return next((sid for pat, sid in SYS_NAMES if pat.match(w)), None)
+
+
+def systems_intent(q: str) -> tuple[str, str | None] | None:
+    if SYS_OPEN.match(q):
+        return "systems", None
+    if SYS_CLOSE.match(q):
+        return "systems", "close"
+    m = SYS_STEP.match(q)
+    if m:
+        return "systems", "next" if m.group(1) == "next" else "prev"
+    m = SYS_SHOW.match(q)
+    if m:
+        sid = _sys_name(m.group(1))
+        if sid and not (sid == "rover" and q.startswith("show") and not m.group(2)):
+            return "systems", sid
+    m = SYS_NAMED.match(q)
+    if m:
+        sid = _sys_name(m.group(1))
+        if sid:
+            return "systems", sid
+    return None
+
+
 PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|build (?:it )?(?:at|on)|i choose|i pick)"
                   r" (?:the )?(.+)$")
 
@@ -678,6 +717,9 @@ def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
         pn = panel_intent(q)
         if pn:
             return pn
+        sy = systems_intent(q)
+        if sy:
+            return sy
         # a choice on the task card (route, steer, shelter or wait, normal or high); a readback is graded on its words,
         # never matched to its one button ("bag twelve" is not "Bag 14")
         if ctx.offer == "task" and ctx.step_type != "sequence":

@@ -1,7 +1,7 @@
 // Game controllers (PlayStation, Xbox, generic "standard" mapping) as one more remote (docs/KEYBOARD.md §Controller).
 // Off until a controller connects ("Controller connected" toast); then a rAF poll maps it to the SAME intents the keys
 // emit: D-pad / left stick → move, A/Cross → select, B/Circle → back, X/Square → mic, Y/Triangle → help,
-// shoulders → prev / next, right stick → spin the Moon (spin, the same rate control as the fist) or look around the cabin (look). In the cabin the live
+// shoulders → prev / next (in the cabin: the Systems drawer's panels), right stick → spin the Moon (spin, the same rate control as the fist) or look around the cabin (look). In the cabin the live
 // mission clock: View/Select/Share → pause or run, RT/R2 → skip to next event, LT/L2 → time warp (docs/GAMEPLAY.md).
 // Outside the cabin the triggers zoom the Moon: RT/R2 closer, LT/L2 farther, as far as you press them (zoom_rate).
 // Settings → Keyboard & controller → Left-handed swaps the sticks. The pure part (readPad, createPadReader) is unit-tested.
@@ -54,6 +54,13 @@ export function createPadReader({ delay = 380, repeat = () => 150 } = {}) {
 }
 
 /** deps: { settings() → {lefty, repeat}, repeatMs(), inCabin(), onConnect(on, id), setMode() } */
+/** The Systems drawer's gauge (its focused (i), else the panel's main gauge) while it is open, else null. */
+function systemsGauge() {
+  const el = typeof document !== "undefined" && document.getElementById("cbSys"); if (!el || el.hidden) return null;
+  const f = document.activeElement, w = f && el.contains(f) && f.dataset ? f.dataset.why : null;
+  return w || el.dataset.gauge || null;
+}
+
 export function installGamepad({ settings = () => ({}), repeatMs = () => 150, inCabin = () => false, onConnect = () => {}, setMode = () => {} } = {}) {
   if (typeof navigator === "undefined" || !navigator.getGamepads) return null;
   const reader = createPadReader({ repeat: repeatMs });
@@ -71,6 +78,9 @@ export function installGamepad({ settings = () => ({}), repeatMs = () => 150, in
         if ((a.intent === "skip_event" || a.intent === "time_warp") && !inCabin()) return;   // the triggers zoom outside the cabin
         if (a.intent === "skip_event") { rtAt = performance.now(); rtFF = false; return; }   // decided on release (below)
         if (a.intent === "settings" && inCabin()) { emitIntent("pause_menu", {}, "gamepad"); return; }   // Start: the pause menu
+        // [systems] in the cabin LB / RB step the Systems drawer (docs/GAMEPLAY.md §17), and Y with it open is the gauge's Why card
+        if ((a.intent === "prev" || a.intent === "next") && inCabin() && emitIntent("systems", { arg: a.intent }, "gamepad")) return;
+        if (a.intent === "help" && inCabin()) { const g = systemsGauge(); if (g && emitIntent("why", { gauge: g }, "gamepad")) return; }
         emitIntent(a.intent, a.args, "gamepad"); return;
       }
       if ("zoom" in a) {

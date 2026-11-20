@@ -36,6 +36,7 @@ export const INTENTS = Object.freeze({
   time_warp: "time warp {warp?: 1|2|4}; none = the next speed (W)", time_toggle: "pause / run the mission clock (K)",
   pause_menu: "the cabin's pause menu: resume, time speed, restart shift, settings, quit to hub (Esc at the seat, Start, voice 'pause')",
   time_ff: "hold to fast-forward {on: true|false} (hold F, hold Skip ahead, hold RT)",
+  systems: "the cabin's Systems drawer {arg?: next|prev|close|toggle|power|radiation|rover|life|radio}; none = open it ([ / ], LB / RB, voice 'show power', 'next panel')",
   task_step: "do the Now card's step (T)", why: "the cabin's \"Why?\" card for a gauge {arg?: power|battery|life_support|dose|heaters|shields|rover} (I, voice 'why is power low?')", task_choice: "pick a choice on the Now card (arg: its label)",
   recenter: "cabin: Look ahead, the seat pose (R, voice 'center'; a gesture may emit it)",
   mute: "sound on / off: the top bar's Mute (Shift+M)", mute_sound: "sound off (voice: mute)", unmute_sound: "sound on (voice: unmute)",

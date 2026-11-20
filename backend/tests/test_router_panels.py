@@ -22,7 +22,13 @@ PANELS = [
     ("close the panel", "panel_back"), ("seat", "panel_back"), ("okay open the comm panel please", "panel_comm"),
 ]
 ORDERS = ["turn off the radio", "radio off", "shields to 40", "more power to the heaters", "send the rover for ice",
-          "check the power", "show the power"]
+          "check the power", "how is the power"]
+# the Systems drawer (docs/GAMEPLAY.md §17): "show power" shows the panel (it was a status question for CAPCOM; "check the
+# power" still is one)
+SYSTEMS = [("show power", "power"), ("show the power", "power"), ("show me the radiation", "radiation"), ("show the shields", "radiation"),
+           ("open life support", "life"), ("show the radio", "radio"), ("show me the air", "life"), ("systems", None), ("show systems", None),
+           ("open the systems", None), ("next panel", "next"), ("previous panel", "prev"), ("close systems", "close"), ("hide the drawer", "close"),
+           ("the life support panel", "life"), ("show the rover panel", "panel_rover")]
 VBAR = [("move the voice bar to the top", "move the voice bar to the top"),
         ("move the voice bar to the top right", "move the voice bar to the top right"),
         ("put the voice bar on the right", "move the voice bar to the right"),
@@ -46,6 +52,19 @@ def test_panel_phrases_route_to_navigation_in_the_cabin(text, intent):
 @pytest.mark.parametrize("text", ORDERS)
 def test_orders_and_status_stay_orders(text):
     assert route(text, cabin())["outcome"] == "order"
+
+
+@pytest.mark.parametrize("text,arg", SYSTEMS)
+def test_systems_drawer_words_route_to_navigation(text, arg):
+    r = route(text, cabin())
+    if arg == "panel_rover":   # a console's name with "panel" keeps its panel intent (the client opens the drawer's panel)
+        assert (r["outcome"], r.get("intent")) == ("navigate", "panel_rover"), r
+        return
+    assert (r["outcome"], r.get("intent"), r.get("arg")) == ("navigate", "systems", arg), r
+
+
+def test_systems_words_only_in_the_cabin():
+    assert route("next panel", Ctx(screen="map", source="listen", dd=0.9)).get("intent") != "systems"
 
 
 def test_rover_view_is_not_the_rover_panel():

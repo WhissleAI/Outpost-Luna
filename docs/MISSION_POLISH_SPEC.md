@@ -152,3 +152,11 @@ Director coverage tests green.
   storms and the check ride; "Crew talk" for room talk on a guess or a choice; Look ahead; End shift early in the
   Menu; plain words for science, radio days, the ice drive and the dose; a sample station in every mission. Details:
   docs/GAMEPLAY.md §15.
+- Wave 3 and the rest of wave 5 (`feat/mission-systems-drawer`): the **Systems drawer**, one big panel at a time on the
+  right wall (labels 20 px and up), opened by the Systems key, LB / RB, [ / ] or "show power" / "next panel". Level
+  disclosure: Cadet Power, Radiation, Rover; Commander adds Life support and Radio; Engineer adds the units and the
+  equations. The same controls send the same orders; the Now card stays the one instruction (the drawer opens at the
+  job's panel and lights its control, and the Now button always does the job). Y / I on a gauge opens its Why card.
+  The 3D consoles stay as the cabin's art and go quiet while the drawer is open. Feedback: an objective done pulses the
+  Now card and the control that did it (colour only with less motion); the chapter card is an event (a stamp, the
+  stars landing one by one, a cue through sound.js). Details: docs/GAMEPLAY.md §17.

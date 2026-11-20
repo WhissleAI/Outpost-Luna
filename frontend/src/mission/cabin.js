@@ -20,6 +20,8 @@ import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
 import { goalBit } from "./campaign.js";   // [campaign] Missions 2+: their own goals on the progress strip
+import { createSystems } from "./systems.js";   // the Systems drawer (docs/GAMEPLAY.md §17)
+import { starCue } from "../sound.js";
 import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, preloadSun, flareOnCanvas, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
@@ -233,6 +235,7 @@ export function createCabin(root, o = {}) {
     </div>
     <div class="cb-ch" id="cbChapter" hidden role="dialog" aria-modal="true" aria-labelledby="cbChT">
       <div class="cb-ch-box">
+        <p class="cb-ch-stamp" aria-hidden="true">${ic("check", 18)}<span>Chapter complete</span></p>
         <p class="cb-ch-eye" id="cbChEye"></p>
         <h2 id="cbChT"></h2>
         <ul class="cb-ch-stars" id="cbChStars" aria-label="Stars"></ul>
@@ -246,6 +249,15 @@ export function createCabin(root, o = {}) {
   const glassEl = q(".cb-glass");
   // only what belongs to the view rides on the glass; the clock, the controls and the Now panel are the cabin's own
   const HUD = [".cb-alert", ".cb-rover", ".cb-moment", ".cb-earthnote"];
+
+  // ---- the Systems drawer (systems.js): one big panel at a time on the right wall; its key ends the window-key row ----
+  let sys = null;
+  if (o.mode !== "ride") {
+    sys = createSystems(q(".cb"), { onCommand: c => cb.onCommand(c), onHouston: () => cb.onHouston(), level: () => (cb.level ? cb.level() : "commander"),
+      log: () => logLines.slice(-3).map(l => ({ who: l.who === "kid" ? callSign.shown() : l.who === "houston" ? "Houston" : "CAPCOM", text: l.text })),
+      onToggle: on => { if (on && c3 && c3.panel) c3.back(); placeWhy(); requestAnimationFrame(fitNow); (cb.onSystems || (() => {}))(on); } });
+    q(".cb-viewbar").append(sys.key);
+  }
 
   // ---- 3D cabin (cockpit3d.js): the panels above become real DOM mounted on the console faces; flat grid if no WebGL ----
   let c3 = null, qualityOff = () => {}, escOff = () => {}, ownTv = null;
@@ -265,7 +277,7 @@ export function createCabin(root, o = {}) {
     const ids = RIDE_PANELS[o.mode] || ["displays", "habitat", "rover", "radiation", "pedestal", "comm"];
     const panelEls = Object.fromEntries(ids.map(k => [k, q(`[data-panel="${k}"]`)]));
     if (o.mode === "ride") { root.classList.add("is-ride"); ["habitat", "comm"].forEach(k => { const el = q(`[data-panel="${k}"]`); if (el) el.hidden = true; }); }
-    c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, insetRight: o.insetRight, layout: o.mode === "ride" ? RIDE_LAYOUT : null, onPanel: id => { backEl.hidden = !id; cb.onPanel && cb.onPanel(id); } });
+    c3 = createCockpit3D(host, { panels: panelEls, hole: holeEl, glass: glassEl, reduced: reducedMo, insetRight: o.insetRight, layout: o.mode === "ride" ? RIDE_LAYOUT : null, onPanel: id => { backEl.hidden = !id; if (id && sys) sys.close(); cb.onPanel && cb.onPanel(id); } });
     if (!c3) { cabEl.classList.remove("is-3d"); host.remove(); backEl.remove(); HUD.forEach(sel => { const n = holeEl.querySelector(sel); if (n) glassEl.append(n); }); holeEl.remove(); }
     else {
       // graphics quality (Settings): "low" = fewer lights, no reflections, 1× pixels
@@ -384,6 +396,9 @@ export function createCabin(root, o = {}) {
     const C = cab.getBoundingClientRect(), V = vb && vb.getClientRects().length ? vb.getBoundingClientRect() : null;
     el.style.top = `${Math.round((V ? V.bottom : C.top + 120) - C.top + 8)}px`;
     el.style.right = `${Math.round(V ? C.right - V.right : 16)}px`;
+    // the drawer is open: the card sits beside it, never on it
+    const S = sys && sys.isOpen ? sys.el.getBoundingClientRect() : null;
+    if (S && S.width) el.style.right = `${Math.round(C.right - S.left + 8)}px`;
   }
   function paintWhy() {
     const el = q("#cbWhy"); if (!el || el.hidden || !whyId) return;
@@ -408,7 +423,8 @@ export function createCabin(root, o = {}) {
   }
   function closeWhy() {
     clearTimeout(whyT); const el = q("#cbWhy"); if (!el || el.hidden) return;
-    const back = root.querySelector(`.cb-whyb[data-why="${whyId}"]`), had = el.contains(document.activeElement);
+    // the drawer's own (i) first: focusing a console's (i) would dolly the camera into it (and close the drawer)
+    const back = (sys && sys.isOpen && sys.el.querySelector(`.cb-whyb[data-why="${whyId}"]`)) || (sys && sys.isOpen ? sys.el.querySelector(".sys-body button") : null) || root.querySelector(`.cb-whyb[data-why="${whyId}"]`), had = el.contains(document.activeElement);
     el.hidden = true; whyId = null; root.querySelectorAll(".cb-whyb.is-open").forEach(n => n.classList.remove("is-open"));
     // keyboard / controller: focus goes back to the (i) it came from (a tap or a voice ask leaves focus alone, so the
     // seat view never dollies into a console just because a card closed)
@@ -419,9 +435,17 @@ export function createCabin(root, o = {}) {
   // capture on the root: a tap on (i) opens its card even in the seat view (where a tap on a console opens the console)
   const onWhyTap = e => { const b = e.target.closest && e.target.closest("[data-why]"); if (!b || !root.contains(b)) return;
     e.preventDefault(); e.stopPropagation(); const c = whyId === b.dataset.why ? (closeWhy(), null) : openWhy(b.dataset.why, e.detail === 0 ? "key" : "tap"); if (c) cb.onWhy && cb.onWhy(c, "tap"); };   // detail 0: Enter or a controller A
+  // [systems] the control a player last used, as a Now target ("shields", "rover:collect_ice"): the done pulse lands on it
+  let used = null;
+  const usedOf = b => { const t = b.closest("[data-target]"); if (t) return t.dataset.target;
+    const swb = b.closest(".cb-sw[data-sw]"); if (swb) return swb.dataset.sw;
+    if (b.closest(".cb-knobrow")) return "shields"; const rvb = b.closest(".cb-rvb[data-task]"); if (rvb) return "rover:" + rvb.dataset.task;
+    if (b.closest(".cb-sk.is-night")) return "night"; if (b.closest(".cb-sk.is-act, .du-load")) return "load:" + LOADS[sel][0];
+    if (b.closest("#cbPtt")) return "houston"; return null; };
+  const onUse = e => { const b = e.target.closest && e.target.closest("button, [role=slider]"); if (!b || !root.contains(b)) return; const t = usedOf(b); if (t) used = { t, at: Date.now() }; };
   // [qa] root (#mCabin) outlives this cabin: both listeners go in dispose()
-  root.addEventListener("click", onWhyTap, true); addEventListener("resize", placeWhy);
-  const whyOff = () => { root.removeEventListener("click", onWhyTap, true); removeEventListener("resize", placeWhy); clearTimeout(whyT); };
+  root.addEventListener("click", onWhyTap, true); root.addEventListener("click", onUse, true); addEventListener("resize", placeWhy);
+  const whyOff = () => { root.removeEventListener("click", onWhyTap, true); root.removeEventListener("click", onUse, true); removeEventListener("resize", placeWhy); clearTimeout(whyT); };
 
   // ---- earned patches (Flight School + Field School): a key on the display unit, a card that names them ----
   // The Academy hands its badges() over (academy/ui.js); a patch earned while the cabin is up repaints at once
@@ -650,6 +674,7 @@ export function createCabin(root, o = {}) {
     q("#cbEndSub").textContent = s.over ? "Mission over" : o.mode === "ride" ? `Shift ${s.shift} of 4` : `Jump to shift ${s.shift % 4 + 1}`;
     paintProg(s);
     applyCue(false); paintInfo(s); paintWhy();
+    if (sys) sys.update(s);
     if (ownTv) { ownTv.setSun(+e.sun_elev_deg || 0, s.mission_time_h || 0); ownTv.setEarth(e.earth_elev_deg); ownTv.setRover(s.rover || {}, 0); ownTv.setStorm(!!(e.storm && e.storm.active)); }
   }
 
@@ -701,6 +726,7 @@ export function createCabin(root, o = {}) {
     if (!text) return;
     const last = logLines[logLines.length - 1]; if (last && last.text === text) return;
     logLines.push({ who, text }); logLines = logLines.slice(-12);
+    if (sys && st) sys.update(st);   // the Radio panel's last three lines
     if (quiet) { if (pages.includes("COMM")) paintDus(); return; }   // [polish 3] in the radio log, not the caption line
     if (pages.includes("COMM")) paintDus();
     q("#cbCapWho").textContent = who === "kid" ? callSign.shown() : who === "houston" ? "Houston" : "CAPCOM";
@@ -710,6 +736,7 @@ export function createCabin(root, o = {}) {
     const b = q("#cbPtt"); b.classList.toggle("is-calling", !!on); b.disabled = !!on;
     b.style.setProperty("--trip", ms + "ms");
     q(".cb-ptt-t span").textContent = on ? "Signal travelling" : "Call Houston";
+    if (sys) sys.calling(on);
     if (on) q("#cbPttSub").textContent = `${(ms / 2000).toFixed(1)} s each way`;
     else if (st) q("#cbPttSub").textContent = st.env.earth_visible ? "Earth in view" : "No signal";
   }
@@ -803,8 +830,22 @@ export function createCabin(root, o = {}) {
     };
     tick();
   }
-  let cardKey = "";
+  let cardKey = "", pointT = null, pulseT = 0;
   const ringMax = {};
+  /** [wave 5] An objective done: a short pulse on the Now card and on the control that did it (the one the player
+   *  last used, else the job's own control), in the drawer if it is open, else on its console. Reduced motion: colour
+   *  only (cabin.css). The marks are data attributes: the card's className is rebuilt every tick. */
+  const CTL = { heaters: '.cb-sw[data-sw="heaters"]', science: '.cb-sw[data-sw="science"]', shelter: '.cb-sw[data-sw="shelter"]', shields: ".cb-knobrow",
+    night: ".cb-sk.is-night", houston: "#cbPtt", rover: v => `.cb-rvb[data-task="${v}"]`, load: v => `.du-load[data-k="${v}"]` };
+  function pulse() {
+    const now = q("#cbNow"), t = used && Date.now() - used.at < 8000 ? used.t : pointT; used = null;
+    const [k, v] = String(t || "").split(":"), c = CTL[k], ctl = (sys && sys.controlFor(t)) || (c ? q(typeof c === "function" ? c(v) : c) : null);
+    const marks = [now, ctl].filter(n => n && !n.hidden);
+    root.querySelectorAll("[data-done]").forEach(n => delete n.dataset.done);
+    marks.forEach(n => { void n.offsetWidth; n.dataset.done = "1"; });
+    clearTimeout(pulseT); pulseT = setTimeout(() => marks.forEach(n => delete n.dataset.done), 1300);
+    return marks;
+  }
   const flat = t => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   /** The word a kid can say for each option: the one word no other option has ("Steer left" / "Steer right" -> left,
    *  right). The router's task_choice matches the same words (backend turn_router.task_choice). */
@@ -906,7 +947,7 @@ export function createCabin(root, o = {}) {
     /** Gesture hooks (feat/gestures via the intent bus): look-around, highlight, next / previous panel. */
     look: (dx, dy, opts) => c3 && c3.look(dx, dy, opts), recenter: () => { if (c3) c3.recenter(); setView("site"); }, get pose() { return c3 ? c3.pose : null; }, highlightPanel: id => c3 && c3.highlight(id), get highlighted() { return c3 ? c3.highlighted : null; },
     nextPanel: () => stepPanel(1), prevPanel: () => stepPanel(-1), get panel() { return c3 ? c3.panel : null }, get is3d() { return !!c3; }, get fps() { return c3 ? c3.fps : null; },
-    dispose() { clearInterval(offT); foldOff(); viewsOff(); stopAlertSun(); stopSunMon(); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff(); patchOff();   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
+    dispose() { clearInterval(offT); foldOff(); viewsOff(); stopAlertSun(); stopSunMon(); clearTimeout(momentT); cancelAnimationFrame(markRaf); clearTimeout(fitT); whyOff(); escOff(); patchOff(); if (sys) sys.dispose(); sys = null; clearTimeout(pulseT);   // [qa] a dead cabin's banner timer once hid the new cabin's banner (root outlives it)
       escOff = () => {}; if (c3) c3.dispose(); c3 = null; qualityOff(); if (ownTv) { ownTv.hide(); ownTv.dispose(); ownTv = null; } },
     setQuality: q => c3 && c3.setQuality(q),
     /** The earned patches the key shows (ids), and a repaint (tests; the Academy fires "outpost:patches"). */
@@ -921,6 +962,8 @@ export function createCabin(root, o = {}) {
      *  night | houston | rover:<task> | load:<key>. Returns the nodes lit. */
     point(target) {
       root.querySelectorAll(".is-point").forEach(n => n.classList.remove("is-point"));
+      pointT = target || null;
+      if (sys) sys.point(target);
       if (!target) return [];
       const [k, v] = String(target).split(":");
       const sel = { window: ".cb-views", du: `[data-du="${v}"]`, panel: v === "power" ? '[data-du="0"]' : `[data-panel="${v}"]`, lamps: ".cb-lamps",
@@ -929,11 +972,19 @@ export function createCabin(root, o = {}) {
         play: "#cbPlay", skip: "#cbSkip", warp: "#cbMenuBtn", task: ".cb-now:not(.is-choice) .cb-now-b.is-hot" }[k];
       // [flows] "Time warp?" glows the 4× button, not the whole 1× / 2× / 4× group: a novice pressing the glowing group
       // toggled between 1× and 2× forever (tools/play_mission.py at 1440×879: "All steady. Time warp?" never moved on)
-      const nodes = sel ? [...root.querySelectorAll(sel)] : [];
+      const nodes = sel ? [...root.querySelectorAll(sel)].filter(n => !n.closest(".cb-sys")) : [];
+      const sn = sys && sys.controlFor(target); if (sn) nodes.push(sn);
       if (k === "window") { const h = root.querySelector(".cb-hole") || glassEl; if (h) nodes.push(h); }
       nodes.forEach(n => n.classList.add("is-point"));
       return nodes;
     },
+    /** The Systems drawer: systems(true | false, id?) opens (at a panel) or closes it; systemsStep(±1) is LB / RB. */
+    systems(open, id, opts = {}) { if (!sys) return false; return open ? sys.open(id || null, opts) : sys.close(opts); },
+    systemsStep: (d, opts = {}) => !!(sys && sys.step(d, opts)),
+    get systemsOpen() { return !!(sys && sys.isOpen); }, get systemsPanel() { return sys ? sys.current : null; },
+    get systemsList() { return sys ? sys.list : []; }, get systemsGauge() { return sys ? sys.gauge : null; },
+    /** [wave 5] the objective-done pulse (Now card + the control that did it); returns the nodes marked. */
+    pulse: () => pulse(),
     /** Progressive disclosure (Cadet): the panel the tour or the objective is about stays bright, the rest dim. A panel
      *  with an alarm is never dimmed. null: everything bright. */
     focus(panelId) {
@@ -968,7 +1019,12 @@ export function createCabin(root, o = {}) {
       const sciOn = stored ? "Gathered. Saved on board for Earthrise" : "Science sent home";
       const sciOff = sc ? (stored ? `Gathered ${Math.round(sc.got)} of ${Math.round(sc.goal)}` : `Sent home ${Math.round(sc.sent)} of ${Math.round(sc.goal)}`) : "Missed";
       const S = [["safe", "Safe", "Crew dose and air in range", "Missed"], ["powered", "Powered", "Battery never under 20%", "Missed"], ["science", "Science", sciOn, sciOff]];
-      q("#cbChStars").innerHTML = S.map(([k, n, d, off]) => `<li class="${rec.stars[k] ? "is-on" : ""}"><span class="cb-ch-star">${ic("star", 34)}</span><b>${n}</b><small>${rec.stars[k] ? d : off}</small></li>`).join("");
+      // [wave 5] the stars land one by one (cabin.css --i), each with a note of the cue (sound.js; Mute and the tests are silent)
+      let on = 0;
+      q("#cbChStars").innerHTML = S.map(([k, n, d, off], i) => `<li class="${rec.stars[k] ? "is-on" : ""}" style="--i:${rec.stars[k] ? on++ : i}"><span class="cb-ch-star">${ic("star", 44)}</span><b>${n}</b><small>${rec.stars[k] ? d : off}</small></li>`).join("");
+      const box = q("#cbChapter .cb-ch-box"); box.classList.remove("is-land"); void box.offsetWidth; box.classList.add("is-land");
+      box.dataset.count = String(rec.count || 0);
+      try { starCue(rec.count || 0); } catch (e) { /* no audio */ }
       q("#cbChCap").textContent = rec.capcom || "";
       q("#cbChGoT").textContent = rec.last ? "Open your debrief" : "Next chapter";
       requestAnimationFrame(() => q("#cbChGo").focus({ preventScroll: true }));

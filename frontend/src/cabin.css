@@ -1191,3 +1191,146 @@ body[data-cockpit="1"][data-ride="1"] .topbar .modes button{padding:0 10px;font-
 body[data-cockpit="1"][data-ride="1"] .topbar .topnav .btn-icon{width:40px}
 .m-cabin.a-ridecabin .cb-deck .cb-clock{flex-shrink:0}
 @media (max-width:1366px){.m-cabin.a-ridecabin .cb-deck .cb-sky{display:none}}
+
+/* ---------- [systems] the Systems drawer (mission/systems.js, docs/GAMEPLAY.md §17) ----------
+   One big panel at a time on the right wall, under the window keys and down to the radio row: a display unit in the
+   cockpit bar's language (bezel keys, phosphor read-outs). Every label is 20 px and up; read-outs are bigger. The 3D
+   consoles behind it are the cabin's art: while it is open they go quiet (dim, desaturated), and it never says what to
+   do (the Now card does; the job's control here wears the same glow as on a console). */
+.m-cabin{--sys-label:20px;--sys-w:clamp(380px,30vw,460px)}
+.m-cabin .cb-syskey{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 14px;border-radius:6px;border:1px solid var(--key-edge);
+  background:var(--key-face);color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;font-family:var(--font-ui);font-size:var(--hud-min);
+  font-weight:var(--weight-semibold);white-space:nowrap;cursor:pointer;transition:filter var(--dur-fast),transform var(--dur-fast)}
+.m-cabin .cb-syskey:hover{filter:brightness(1.18)}
+.m-cabin .cb-syskey:active{transform:translateY(1px)}
+.m-cabin .cb-syskey .ic{width:18px;height:18px}
+.m-cabin .cb-syskey.is-open{color:var(--color-phosphor);box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.m-cabin .cb-viewbar .cb-syskey{margin-left:4px;position:relative}
+.m-cabin .cb-viewbar .cb-syskey::before{content:"";position:absolute;left:-7px;top:6px;bottom:6px;width:1px;background:var(--key-edge)}
+.m-cabin .cb>.cb-sys{position:absolute;z-index:6;right:var(--rail);top:120px;bottom:12px;width:var(--sys-w);max-width:calc(100% - var(--now-w) - 4 * var(--rail));box-sizing:border-box;
+  display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;border-radius:12px;color:var(--color-on-space);font-family:var(--font-ui);font-size:var(--sys-label);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--color-panel-2) 92%,var(--color-on-space)),var(--color-panel) 70%);border:1px solid var(--key-edge);
+  box-shadow:inset 0 1px 0 var(--key-hi),inset 0 -2px 0 color-mix(in srgb,var(--color-space) 60%,transparent),0 14px 36px color-mix(in srgb,var(--color-space) 60%,transparent);
+  animation:sysIn var(--dur-base) var(--ease-out)}
+.m-cabin .cb>.cb-sys[hidden]{display:none}
+@keyframes sysIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+html[data-motion="reduce"] .m-cabin .cb>.cb-sys{animation:none}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-sys{animation:none}}
+.cb-sys .sys-head{display:flex;align-items:center;gap:10px;min-height:44px}
+.cb-sys .sys-t{margin:0;font-size:24px;line-height:1.15;font-weight:var(--weight-semibold);color:var(--color-on-space)}
+.cb-sys .sys-n{font-size:var(--sys-label);color:var(--color-phosphor-dim);font-variant-numeric:tabular-nums}
+.cb-sys .sys-x{margin-left:auto;display:inline-grid;place-items:center;width:44px;height:44px;padding:0;border-radius:8px;border:1px solid var(--key-edge);background:var(--key-face);
+  color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi);cursor:pointer}
+.cb-sys .sys-tabs{display:flex;align-items:center;gap:6px}
+.cb-sys .sys-tl{display:flex;gap:6px;flex:1;min-width:0}
+.cb-sys .sys-tab{flex:1;display:inline-grid;place-items:center;min-height:48px;min-width:44px;padding:0;border-radius:6px;border:1px solid var(--key-edge);background:var(--key-face);
+  color:var(--color-on-space-2,var(--color-on-space));box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;cursor:pointer}
+.cb-sys .sys-tab[aria-selected="true"]{color:var(--color-phosphor);box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.cb-sys .sys-kb{flex:none;display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 6px;border-radius:6px;border:1px solid var(--cb-line);background:var(--color-display);
+  color:var(--color-phosphor);font-family:var(--font-mono);font-size:var(--sys-label);line-height:1}
+html[data-input="pointer"] .cb-sys .sys-kb{opacity:.55}
+.cb-sys .sys-body{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:2px 2px 4px;overscroll-behavior:contain}
+/* the main gauge: a display unit with its read-out big, the (i) beside its name */
+.cb-sys .sys-gauge{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:10px;background:var(--color-display);box-shadow:inset 0 0 0 1px var(--cb-line)}
+.cb-sys .sys-gl{display:flex;align-items:center;gap:8px;font-size:var(--sys-label);color:var(--color-phosphor-dim);letter-spacing:.04em}
+.cb-sys .sys-gv{display:flex;align-items:baseline;gap:6px;color:var(--color-phosphor)}
+.cb-sys .sys-gv b{font-family:var(--font-mono);font-size:44px;line-height:1;font-weight:var(--weight-semibold)}
+.cb-sys .sys-gv small{font-size:var(--sys-label);color:var(--color-phosphor-dim)}
+.cb-sys .sys-gv.sys-gtext b{font-family:var(--font-ui);font-size:30px}
+.cb-sys .sys-gauge.is-warn .sys-gv{color:var(--color-lamp-caution)}
+.cb-sys .sys-bar{position:relative;display:block;height:10px;border-radius:5px;background:color-mix(in srgb,var(--color-on-space) 12%,transparent);overflow:visible}
+.cb-sys .sys-bar i{display:block;height:100%;border-radius:inherit;background:var(--color-phosphor)}
+.cb-sys .sys-bar.is-warn i{background:var(--color-lamp-caution)}
+.cb-sys .sys-bar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--color-lamp-warning)}
+.cb-sys .sys-eq{margin:2px 0 0;font-family:var(--font-mono);font-size:var(--sys-label);line-height:1.35;color:var(--color-phosphor);overflow-wrap:anywhere}
+.cb-sys .sys-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:0 4px;border-bottom:1px solid color-mix(in srgb,var(--cb-line) 70%,transparent)}
+.cb-sys .sys-row span{display:inline-flex;align-items:center;gap:6px;color:var(--cb-text-2,var(--color-on-space-2))}
+.cb-sys .sys-row b{font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums;color:var(--color-on-space);text-align:right}
+.cb-sys .sys-row.is-warn b{color:var(--color-lamp-caution)}
+.cb-sys .sys-row.is-caution b{color:var(--color-lamp-caution)}
+.cb-sys .sys-why{display:inline-grid;place-items:center;width:36px;height:36px;padding:0;border:1px solid var(--cb-line);border-radius:50%;background:none;color:var(--cb-text-2,var(--color-on-space-2));cursor:pointer}
+.cb-sys .sys-why.is-open{color:var(--color-phosphor);border-color:var(--color-phosphor)}
+/* switches: a big key with its lamp word (On / Off), the cabin's switch language */
+.cb-sys .sys-sws{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.cb-sys .sys-sw,.cb-sys .sys-rv,.cb-sys .sys-call{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:56px;padding:0 14px;border-radius:8px;
+  border:1px solid var(--key-edge);background:var(--key-face);color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;font:inherit;font-size:var(--sys-label);
+  font-weight:var(--weight-semibold);text-align:left;cursor:pointer}
+.cb-sys .sys-sw .sys-lamp{font-family:var(--font-mono);font-size:var(--sys-label);padding:2px 8px;border-radius:4px;background:var(--color-display);color:var(--cb-text-2,var(--color-on-space-2))}
+.cb-sys .sys-sw.is-on .sys-lamp{color:var(--color-space);background:var(--color-phosphor)}
+.cb-sys .sys-sw.is-on{box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.cb-sys .sys-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cb-sys .sys-rv{flex-direction:column;justify-content:center;gap:4px;min-height:72px;text-align:center}
+.cb-sys .sys-rv[aria-pressed="true"]{color:var(--color-phosphor);box-shadow:inset 0 3px 0 var(--color-phosphor),inset 0 1px 0 var(--key-hi),0 1px 0 #000}
+.cb-sys .sys-call{justify-content:center;gap:10px}
+.cb-sys :is(.sys-sw,.sys-rv,.sys-call,.sys-mini,.sys-tab):disabled{opacity:.45;cursor:default}
+.cb-sys :is(.sys-sw,.sys-rv,.sys-call,.sys-mini,.sys-tab,.sys-x):hover:not(:disabled){filter:brightness(1.18)}
+.cb-sys :is(.sys-sw,.sys-rv,.sys-call,.sys-mini,.sys-tab,.sys-x):active:not(:disabled){transform:translateY(1px)}
+.cb-sys .sys-mini{display:inline-grid;place-items:center;width:48px;height:48px;padding:0;border-radius:8px;border:1px solid var(--key-edge);background:var(--key-face);
+  color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;font:600 26px/1 var(--font-ui);cursor:pointer}
+.cb-sys .sys-knob{display:flex;align-items:center;gap:10px;min-height:64px;padding:6px 12px;border-radius:10px;background:var(--color-display);box-shadow:inset 0 0 0 1px var(--cb-line)}
+.cb-sys .sys-knob .sys-kl{flex:1;display:inline-flex;align-items:center;gap:6px;font-weight:var(--weight-semibold)}
+.cb-sys .sys-knob>b{min-width:72px;text-align:center;font-family:var(--font-mono);font-size:32px;color:var(--color-phosphor)}
+.cb-sys .sys-knob>b small{font-size:var(--sys-label);color:var(--color-phosphor-dim)}
+/* the power split (Commander, Engineer): one row per system, − and + beside it */
+.cb-sys .sys-h{margin:4px 0 0;font-size:var(--sys-label);color:var(--color-phosphor-dim);letter-spacing:.04em}
+.cb-sys .sys-split{display:flex;flex-direction:column;gap:6px}
+.cb-sys .sys-load{display:grid;grid-template-columns:minmax(0,1fr) 64px 44px 48px 48px;align-items:center;gap:8px;min-height:52px;padding:2px 4px 2px 10px;border-radius:8px;
+  background:color-mix(in srgb,var(--color-display) 70%,transparent)}
+.cb-sys .sys-ln{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-sys .sys-lv{display:block;height:8px;border-radius:4px;background:color-mix(in srgb,var(--color-on-space) 12%,transparent);overflow:hidden}
+.cb-sys .sys-lv i{display:block;height:100%;background:var(--color-phosphor)}
+.cb-sys .sys-load>b{text-align:right;font-family:var(--font-mono);color:var(--color-phosphor)}
+.cb-sys .sys-log{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.cb-sys .sys-log li{font-size:var(--sys-label);line-height:1.3;color:var(--color-on-space)}
+.cb-sys .sys-log b{font-family:var(--font-mono);color:var(--color-phosphor);margin-right:6px}
+.cb-sys :is(button,[tabindex]):focus-visible{outline:3px solid var(--color-focus);outline-offset:2px}
+/* the Now job's control in the drawer: the cabin's glow, never a second instruction */
+.cb-sys .is-point{outline:3px solid var(--color-accent-strong);outline-offset:3px;animation:cbPoint 1.8s var(--ease-in-out) infinite}
+html[data-motion="reduce"] .cb-sys .is-point{animation:none}
+/* the 3D consoles go quiet while the drawer is up (they stay clickable: a console opened closes the drawer) */
+.m-cabin .cb.has-sys .c3-panel:not([data-alarm]){opacity:.5;filter:saturate(.4);transition:opacity var(--dur-base),filter var(--dur-base)}
+/* a decision's takeover: the drawer dims with the deck, so the Now card is the one thing to press */
+.m-cabin .cb.is-takeover>.cb-sys{opacity:.55;transition:opacity var(--dur-slow) var(--ease-out)}
+.m-cabin .cb.is-takeover>.cb-sys:is(:hover,:focus-within){opacity:1}
+@media (max-width:1366px){.m-cabin .cb-viewbar .cb-syskey{padding:0 12px}}
+@media (max-width:1100px){.m-cabin .cb-viewbar .cb-syskey .ic{display:none}}
+@media (max-height:700px){.cb-sys .sys-gv b{font-size:36px}.cb-sys .sys-gauge{padding:8px 12px}.cb-sys .sys-row{min-height:34px}.cb-sys .sys-sw{min-height:48px}
+  .cb-sys .sys-rv{min-height:60px}.cb-sys .sys-head{min-height:40px}.cb-sys .sys-tab{min-height:44px}}
+
+/* ---------- [wave 5] feedback: an objective done, a chapter complete ---------- */
+/* the Now card and the control that did it: one short phosphor pulse (a lift and a ring); reduced motion: colour only */
+.m-cabin .cb>.cb-now[data-done]{animation:nowDone 1.1s var(--ease-out)}
+@keyframes nowDone{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-phosphor) 0%,transparent)}
+  25%{transform:scale(1.025);box-shadow:0 0 0 3px var(--color-phosphor),0 0 36px color-mix(in srgb,var(--color-phosphor) 45%,transparent)}
+  100%{transform:none;box-shadow:inset 0 1px 0 var(--key-hi),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent)}}
+.m-cabin [data-done]:not(.cb-now){animation:ctlDone 1.1s var(--ease-out)}
+@keyframes ctlDone{0%,30%{box-shadow:0 0 0 3px var(--color-phosphor),0 0 22px color-mix(in srgb,var(--color-phosphor) 55%,transparent);transform:scale(1.04)}100%{transform:none}}
+html[data-motion="reduce"] .m-cabin .cb>.cb-now[data-done],html[data-motion="reduce"] .m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}
+@media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-now[data-done],.m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}}
+@keyframes doneColour{0%,45%{box-shadow:0 0 0 3px var(--color-phosphor);background-color:color-mix(in srgb,var(--color-phosphor) 18%,var(--color-panel))}100%{}}
+/* the chapter card is an event: the stamp, then the stars land one by one on the cue's beat (sound.js STAR_MS) */
+.cb-ch-stamp{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin:0;padding:4px 12px;border-radius:999px;font-size:var(--text-md,1rem);font-weight:var(--weight-semibold);
+  color:var(--color-space);background:var(--color-phosphor);letter-spacing:.02em}
+.cb-ch-box.is-land .cb-ch-stamp{animation:chStamp .5s var(--ease-out) both}
+@keyframes chStamp{from{opacity:0;transform:scale(1.4)}to{opacity:1;transform:none}}
+.cb-ch-box h2{font-size:28px}
+.cb-ch-stars li{position:relative;padding:var(--space-4) var(--space-2)}
+.cb-ch-stars b{font-size:20px}
+.cb-ch-stars small{font-size:18px;line-height:1.25}
+.cb-ch-box.is-land .cb-ch-stars li .cb-ch-star{animation:chMiss .4s ease-out both;animation-delay:calc(var(--i, 0) * 450ms + 450ms)}
+.cb-ch-box.is-land .cb-ch-stars li.is-on .cb-ch-star{animation:chLand .55s cubic-bezier(.2,1.4,.4,1) both;animation-delay:calc(var(--i, 0) * 450ms + 450ms)}
+.cb-ch-box.is-land .cb-ch-stars li.is-on::after{content:"";position:absolute;left:50%;top:38px;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;pointer-events:none;
+  box-shadow:0 0 0 3px var(--color-lamp-caution,#f5c542);opacity:0;animation:chRing .7s ease-out both;animation-delay:calc(var(--i, 0) * 450ms + 650ms)}
+.cb-ch-box.is-land .cb-ch-stars li.is-on{animation:chPlate .6s ease-out both;animation-delay:calc(var(--i, 0) * 450ms + 450ms)}
+@keyframes chLand{0%{opacity:0;transform:scale(2.4) rotate(-25deg)}70%{opacity:1;transform:scale(.92)}100%{opacity:1;transform:none}}
+@keyframes chMiss{from{opacity:0}to{opacity:.6}}
+@keyframes chRing{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes chPlate{0%{background:var(--cb-plate)}40%{background:color-mix(in srgb,var(--color-lamp-caution,#f5c542) 22%,var(--cb-plate))}100%{background:var(--cb-plate)}}
+/* reduced motion: no flight, no ring; each earned star fades in on its beat, the plate's colour still flashes */
+html[data-motion="reduce"] .cb-ch-box.is-land :is(.cb-ch-stamp,.cb-ch-stars li .cb-ch-star){animation:none}
+html[data-motion="reduce"] .cb-ch-box.is-land .cb-ch-stars li.is-on .cb-ch-star{animation:chFade .3s linear both;animation-delay:calc(var(--i, 0) * 450ms + 450ms)}
+html[data-motion="reduce"] .cb-ch-box.is-land .cb-ch-stars li.is-on::after{display:none}
+@media (prefers-reduced-motion:reduce){.cb-ch-box.is-land :is(.cb-ch-stamp,.cb-ch-stars li .cb-ch-star){animation:none}
+  .cb-ch-box.is-land .cb-ch-stars li.is-on .cb-ch-star{animation:chFade .3s linear both;animation-delay:calc(var(--i, 0) * 450ms + 450ms)}
+  .cb-ch-box.is-land .cb-ch-stars li.is-on::after{display:none}}
+@keyframes chFade{from{opacity:0}to{opacity:1}}
