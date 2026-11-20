@@ -479,3 +479,28 @@ body[data-camera=on] .a-key[data-n]::before{content:attr(data-n);font-size:var(-
 .ar-dig .f-seq-chips{display:flex;flex-direction:row;flex-wrap:wrap}
 .ar-src a,.ar-law a,.ar-credit a{white-space:normal}
 .ar-law>svg{flex:none;margin-top:2px}
+
+/* Speech learning steps (academy/speech_steps.js, docs/SPEECH_LEARNING.md): read, vocab, summary */
+.sp-read,.sp-vocab,.sp-summary{display:flex;flex-direction:column;gap:var(--space-3)}
+.sp-passage{padding:var(--space-3);border-radius:var(--radius-md);border:1px solid var(--color-line);background:var(--color-surface)}
+.sp-phead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-2);margin-bottom:var(--space-2)}
+.sp-phead h3{margin:0;font-size:var(--text-md, 1rem);font-weight:var(--weight-semibold)}
+.sp-tools{display:inline-flex;flex-wrap:wrap;gap:var(--space-1);margin:0}
+.sp-text{line-height:1.6;font-size:var(--text-md, 1rem);color:var(--color-text)}
+.sp-text.is-find{display:flex;flex-direction:column;gap:var(--space-1)}
+.sp-text .sp-sent{justify-content:flex-start;text-align:left;min-height:40px;line-height:1.4}
+.sp-src{margin:var(--space-2) 0 0;font-size:var(--text-sm)}
+.sp-aloud{padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px dashed var(--color-line);font-size:var(--text-sm)}
+.sp-aloud p{margin:0 0 var(--space-1)}
+.sp-lines{margin:0;padding-left:1.1em}
+.sp-count{margin:0;font-size:var(--text-sm);color:var(--color-text-2);font-variant-numeric:tabular-nums}
+.sp-q{display:flex;flex-direction:column;gap:var(--space-2)}
+.sp-qp{margin:0;font-weight:var(--weight-semibold)}
+.sp-n{margin:0}
+.sp-def{margin:0;font-size:var(--text-lg, 1.15rem);line-height:1.4}
+.sp-type{display:flex;gap:var(--space-2)}
+.sp-type input{flex:1;min-width:0;min-height:40px;padding:0 var(--space-2);border-radius:var(--radius-sm, 6px);border:1px solid var(--color-line);background:var(--color-bg, transparent);color:var(--color-text);font:inherit}
+.sp-tell{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);border-radius:var(--radius-md);border:1px solid var(--color-line);background:var(--color-surface)}
+.sp-tell-how{display:flex;align-items:center;gap:var(--space-2);margin:0}
+.sp-pts{margin:0}
+.pg-speech-rows{list-style:none;margin:0 0 var(--space-2);padding:0;display:flex;flex-direction:column;gap:2px;font-size:var(--text-sm)}

@@ -2904,6 +2904,569 @@
    "unlock_after": "checkride"
   },
   {
+   "id": "reading",
+   "title": "Read like a scientist",
+   "minutes": 5,
+   "place": "cabeus",
+   "badge": {
+    "id": "reader",
+    "name": "Reader",
+    "glyph": "R"
+   },
+   "globe": {
+    "place": "cabeus",
+    "dist": 2.3
+   },
+   "brief": "Scientists read to learn. Read about Moon ice, then answer.",
+   "facts": [
+    {
+     "text": "Craters that never see the Sun are some of the coldest spots measured in the solar system: LRO measured below -246 C there. NASA's Moon Base page gives about -203 C for shadowed craters in general.",
+     "source": {
+      "title": "NASA Science: Weather on the Moon",
+      "url": "https://science.nasa.gov/moon/weather-on-the-moon/"
+     },
+     "from": [
+      "learning/concepts.json"
+     ]
+    },
+    {
+     "text": "The LCROSS Centaur, about 2,300 kg, hit Cabeus crater in 2009. Its plume held about 155 kg of water, about 5.6% of the soil by mass. The crater was about 25 to 30 m wide.",
+     "source": {
+      "title": "Colaprete et al. 2010, Detection of water in the LCROSS ejecta plume, Science 330",
+      "url": "https://doi.org/10.1126/science.1186986"
+     },
+     "from": [
+      "learning/concepts.json"
+     ]
+    }
+   ],
+   "track": "explorer",
+   "unlock_after": "checkride",
+   "steps": [
+    {
+     "type": "video",
+     "media": "psr",
+     "say": "Some craters near the south pole never see the Sun. Watch.",
+     "reveal": "Those dark craters stay icy cold.",
+     "prompt": "Some craters near the south pole never see the Sun. Watch.",
+     "accept": {
+      "type": "video",
+      "media": "psr"
+     },
+     "success": "Those dark craters stay icy cold.",
+     "hint": "Tap Watch, or say skip.",
+     "fail": "Tap Watch, or say skip."
+    },
+    {
+     "prompt": "Could ice last on the Moon, where the Sun is so hot?",
+     "accept": {
+      "type": "predict",
+      "answer": "dark",
+      "options": [
+       {
+        "id": "dark",
+        "label": "Yes, in dark craters",
+        "say": [
+         "dark",
+         "crater",
+         "craters",
+         "shadow"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, never",
+        "say": [
+         "no",
+         "never"
+        ]
+       },
+       {
+        "id": "night",
+        "label": "Only at night",
+        "say": [
+         "night"
+        ]
+       }
+      ]
+     },
+     "reveal": "Good guess. Let's read and find out.",
+     "hint": "Any guess is fine.",
+     "success": "Good guess. Let's read and find out.",
+     "fail": "Pick one first."
+    },
+    {
+     "prompt": "Read about ice on the Moon. Then answer three questions.",
+     "do": "Read, then tap or say your answer",
+     "accept": {
+      "type": "read",
+      "passage": {
+       "title": "Ice in the dark",
+       "text": "Near the Moon's south pole, some craters are so deep that sunlight never reaches their floors. These dark craters are some of the coldest places measured in the solar system. LRO measured below minus 246 degrees Celsius there. That is cold enough to keep ice frozen for a very long time. In 2009, NASA's LCROSS mission crashed a rocket stage into Cabeus crater. The cloud it kicked up held water. Moon ice could give astronauts water, air and rocket fuel.",
+       "source": {
+        "title": "NASA Science: water and ice on the Moon",
+        "url": "https://science.nasa.gov/moon/moon-water-and-ices/"
+       }
+      },
+      "questions": [
+       {
+        "id": "q1",
+        "kind": "choice",
+        "prompt": "Why does the ice stay frozen?",
+        "options": [
+         {
+          "id": "a",
+          "label": "Sunlight never reaches the floor",
+          "say": [
+           "sunlight",
+           "never",
+           "dark",
+           "no sun",
+           "shadow"
+          ]
+         },
+         {
+          "id": "b",
+          "label": "It rains on the Moon",
+          "say": [
+           "rain",
+           "rains"
+          ]
+         },
+         {
+          "id": "c",
+          "label": "Astronauts keep it cold",
+          "say": [
+           "astronauts"
+          ]
+         }
+        ],
+        "answer": "a",
+        "hint": "Look at the first sentence.",
+        "yes": "Right. No sunlight, so it stays cold."
+       },
+       {
+        "id": "q2",
+        "kind": "say",
+        "prompt": "What did LCROSS crash into?",
+        "any": [
+         [
+          "cabeus",
+          "cabeus crater",
+          "a crater",
+          "the crater",
+          "crater"
+         ]
+        ],
+        "answer_line": "Cabeus crater.",
+        "hint": "Find the sentence with 2009.",
+        "yes": "Yes. Cabeus crater."
+       },
+       {
+        "id": "q3",
+        "kind": "find",
+        "prompt": "Find the sentence that says what ice could give astronauts.",
+        "answer": 6,
+        "hint": "It is near the end.",
+        "yes": "You found it."
+       }
+      ]
+     },
+     "hint": "Read it again. The answer is in the text.",
+     "success": "Nice reading. Water, air and fuel.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "What does ice mean?",
+     "accept": {
+      "type": "vocab_match",
+      "term": "ice",
+      "distractors": [
+       "regolith",
+       "lava"
+      ]
+     },
+     "do": "Tap the meaning, or say it",
+     "hint": "Think of a frozen pond.",
+     "success": "Yes. Frozen water.",
+     "fail": "Not that one."
+    }
+   ]
+  },
+  {
+   "id": "wordlab",
+   "title": "Word lab",
+   "minutes": 4,
+   "place": "aristarchus",
+   "badge": {
+    "id": "wordsmith",
+    "name": "Word Smith",
+    "glyph": "W"
+   },
+   "globe": {
+    "place": "aristarchus",
+    "dist": 2.4
+   },
+   "brief": "Space words are tools. Practise four, and use one.",
+   "facts": [
+    {
+     "text": "Regolith is the Moon's dusty, rocky soil.",
+     "from": [
+      "glossary.json"
+     ],
+     "source": {
+      "title": "NASA Knows: What is lunar regolith? (grades 5-8)",
+      "url": "https://www.nasa.gov/learning-resources/for-kids-and-students/nasa-knows-what-is-lunar-regolith-grades-5-8/"
+     }
+    }
+   ],
+   "track": "explorer",
+   "unlock_after": "checkride",
+   "steps": [
+    {
+     "prompt": "What does albedo mean?",
+     "accept": {
+      "type": "vocab_match",
+      "term": "albedo",
+      "distractors": [
+       "relief",
+       "limb"
+      ]
+     },
+     "do": "Tap the meaning, or say it",
+     "hint": "Think bright snow and dark coal.",
+     "success": "Yes. How bright a surface is.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Word lab. Say or pick the word for each meaning.",
+     "do": "Say the word, or tap it",
+     "accept": {
+      "type": "vocab",
+      "ask": 4,
+      "items": [
+       {
+        "id": "crater",
+        "term": "crater",
+        "kind": "word",
+        "distractors": [
+         "basin"
+        ],
+        "traps": [
+         {
+          "word": "creator",
+          "note": "A creator makes things."
+         }
+        ],
+        "hint": "It starts with cr."
+       },
+       {
+        "id": "lava",
+        "term": "lava",
+        "kind": "word",
+        "distractors": [
+         "regolith"
+        ],
+        "traps": [
+         {
+          "word": "larva",
+          "note": "A larva is a baby insect."
+         }
+        ],
+        "hint": "Volcanoes make it."
+       },
+       {
+        "id": "terminator",
+        "term": "terminator",
+        "kind": "word",
+        "distractors": [
+         "limb"
+        ],
+        "traps": [
+         {
+          "word": "exterminator",
+          "note": "An exterminator gets rid of bugs."
+         }
+        ],
+        "hint": "Where day meets night."
+       },
+       {
+        "id": "regolith",
+        "term": "regolith",
+        "kind": "sentence",
+        "sentences": [
+         {
+          "label": "Our boots left prints in the regolith.",
+          "ok": true
+         },
+         {
+          "label": "The regolith sang a song to us.",
+          "ok": false
+         },
+         {
+          "label": "We drank a cup of regolith.",
+          "ok": false
+         }
+        ],
+        "hint": "Regolith is Moon soil. Say what it does."
+       }
+      ]
+     },
+     "hint": "Listen to the meaning, then say the word.",
+     "success": "Word lab done. Great work.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "One more word. Say it out loud: hummocky!",
+     "accept": {
+      "type": "vocab_say",
+      "term": "hummocky"
+     },
+     "do": "Say the word out loud",
+     "hint": "Say it slowly: hum, ock, ee.",
+     "success": "Yes! Hummocky means lots of small bumps.",
+     "fail": "Say it again."
+    }
+   ],
+   "clip": {
+    "clip_id": "aristarchus",
+    "t0": 34.0,
+    "t1": 40.0,
+    "who": "an Artemis II astronaut",
+    "when": "before"
+   }
+  },
+  {
+   "id": "retell",
+   "title": "Tell it back",
+   "minutes": 5,
+   "place": "apollo15_lm_falcon",
+   "badge": {
+    "id": "storyteller",
+    "name": "Storyteller",
+    "glyph": "T"
+   },
+   "brief": "Watch a real Moon test. Then tell it back in your words.",
+   "facts": [
+    {
+     "text": "At the end of the last Apollo 15 moonwalk in 1971, Commander David Scott dropped a hammer and a feather. They hit the ground together.",
+     "source": {
+      "title": "NSSDCA: The Apollo 15 Hammer-Feather Drop",
+      "url": "https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo_15_feather_drop.html"
+     },
+     "from": [
+      "learning/concepts.json"
+     ]
+    }
+   ],
+   "track": "explorer",
+   "unlock_after": "checkride",
+   "steps": [
+    {
+     "type": "video",
+     "media": "hammer_feather",
+     "say": "On the Moon, a hammer and a feather drop together. Guess, then watch.",
+     "reveal": "Together. No air slows the feather.",
+     "guess": {
+      "options": [
+       {
+        "id": "hammer",
+        "label": "The hammer first",
+        "say": [
+         "hammer"
+        ]
+       },
+       {
+        "id": "same",
+        "label": "Both at once",
+        "say": [
+         "both",
+         "same",
+         "together"
+        ]
+       }
+      ],
+      "answer": "same"
+     },
+     "prompt": "On the Moon, a hammer and a feather drop together. Guess, then watch.",
+     "accept": {
+      "type": "video",
+      "media": "hammer_feather",
+      "guess": {
+       "options": [
+        {
+         "id": "hammer",
+         "label": "The hammer first",
+         "say": [
+          "hammer"
+         ]
+        },
+        {
+         "id": "same",
+         "label": "Both at once",
+         "say": [
+          "both",
+          "same",
+          "together"
+         ]
+        }
+       ],
+       "answer": "same"
+      }
+     },
+     "success": "Together. No air slows the feather.",
+     "hint": "Tap Watch, or say skip.",
+     "fail": "Tap Watch, or say skip."
+    },
+    {
+     "prompt": "Now tell me what happened, in your words.",
+     "do": "Talk, then tap Done",
+     "accept": {
+      "type": "summary",
+      "source": {
+       "kind": "video",
+       "media": "hammer_feather"
+      },
+      "need": 2,
+      "points": [
+       {
+        "id": "drop",
+        "label": "an astronaut dropped a hammer and a feather",
+        "ask": "What did the astronaut drop?",
+        "say": [
+         "dropped a hammer and a feather",
+         "hammer and feather",
+         "hammer and a feather",
+         "dropped a hammer",
+         "let go of a hammer and a feather"
+        ],
+        "terms": [
+         "hammer",
+         "feather"
+        ]
+       },
+       {
+        "id": "together",
+        "label": "they hit the ground together",
+        "ask": "What happened when they landed?",
+        "say": [
+         "landed at the same time",
+         "hit the ground together",
+         "fell together",
+         "same time",
+         "landed together",
+         "fell at the same speed",
+         "both hit the ground"
+        ]
+       },
+       {
+        "id": "air",
+        "label": "the Moon has no air to slow the feather",
+        "ask": "Why didn't the feather float down slowly?",
+        "say": [
+         "no air",
+         "there is no air",
+         "no air on the moon",
+         "nothing to slow it",
+         "no wind",
+         "vacuum"
+        ]
+       },
+       {
+        "id": "who",
+        "label": "it was Apollo 15, with David Scott",
+        "ask": "Which mission was it?",
+        "say": [
+         "apollo 15",
+         "apollo fifteen",
+         "david scott",
+         "commander scott"
+        ],
+        "terms": [
+         "Apollo 15",
+         "David Scott"
+        ]
+       }
+      ],
+      "example": "On the Moon, David Scott dropped a hammer and a feather. They hit the ground together, because there is no air."
+     },
+     "hint": "Tell me what you saw, start to end.",
+     "success": "Thanks for telling it back.",
+     "fail": "Tell me more."
+    },
+    {
+     "prompt": "Back on Earth, would they land together?",
+     "accept": {
+      "type": "predict",
+      "answer": "no",
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes, together",
+        "say": [
+         "yes",
+         "together"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, the feather is slower",
+        "say": [
+         "no",
+         "slower",
+         "feather"
+        ]
+       }
+      ]
+     },
+     "reveal": "On Earth, air slows the feather.",
+     "hint": "Any guess is fine.",
+     "success": "Right. On Earth, air slows the feather.",
+     "fail": "Pick one first."
+    },
+    {
+     "prompt": "Which mission did the hammer and feather test?",
+     "accept": {
+      "type": "choice",
+      "answer": "a15",
+      "options": [
+       {
+        "id": "a15",
+        "label": "Apollo 15",
+        "say": [
+         "apollo 15",
+         "fifteen",
+         "15"
+        ]
+       },
+       {
+        "id": "a11",
+        "label": "Apollo 11",
+        "say": [
+         "apollo 11",
+         "eleven",
+         "11"
+        ]
+       },
+       {
+        "id": "art2",
+        "label": "Artemis II",
+        "say": [
+         "artemis",
+         "artemis two",
+         "artemis 2"
+        ]
+       }
+      ]
+     },
+     "do": "Tap an answer, or say it",
+     "hint": "Commander David Scott flew on it in 1971.",
+     "success": "Right. Apollo 15, in 1971.",
+     "fail": "Not that one."
+    }
+   ]
+  },
+  {
    "id": "checkride",
    "title": "Check ride",
    "minutes": 5,

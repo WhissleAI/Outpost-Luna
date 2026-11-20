@@ -2482,6 +2482,52 @@
    "related": [
     "shackleton_rim"
    ]
+  },
+  {
+   "id": "lesson_reading",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Read like a scientist",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "reading"
+   },
+   "related": [
+    "cabeus"
+   ]
+  },
+  {
+   "id": "lesson_wordlab",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Word lab",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "wordlab"
+   },
+   "related": [
+    "aristarchus"
+   ]
+  },
+  {
+   "id": "lesson_retell",
+   "type": "lesson",
+   "group": "lesson",
+   "name": "Tell it back",
+   "kind": "product",
+   "ear": false,
+   "ref": {
+    "source": "academy/course.json",
+    "id": "retell"
+   },
+   "related": [
+    "apollo15_lm_falcon",
+    "david_scott"
+   ]
   }
  ]
 }

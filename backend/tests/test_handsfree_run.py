@@ -93,4 +93,4 @@ def test_course_order_is_the_current_one():
     """The script walks the course in its own order (next_lesson); this is the order the UI and the docs use."""
     assert [L["id"] for L in content.course()["lessons"]] == \
         ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
-         "observe", "craters", "rocks", "fieldkit", "checkride"]   # Field School before the ride, like explorer lessons
+         "observe", "craters", "rocks", "fieldkit", "reading", "wordlab", "retell", "checkride"]   # Field School before the ride, like explorer lessons

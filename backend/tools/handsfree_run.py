@@ -66,6 +66,23 @@ def answer_for(step: dict, gaz=None, vocab=None, got: list | None = None) -> str
         return next(o["label"] for o in acc["options"] if o["id"] == r["answer"]).split(":")[0]
     if k == "choice":
         return next(o["label"] for o in acc["options"] if o["id"] == acc["answer"])
+    # speech learning steps (docs/SPEECH_LEARNING.md): one question / word per turn; the summary in one go
+    if k in ("read", "vocab"):
+        from app.academy import speech
+        cur = speech.current(acc, got)
+        if cur is None:
+            return "next"
+        if k == "read":
+            if cur["kind"] == "choice":
+                return next(o["label"] for o in cur["options"] if o["id"] == cur["answer"])
+            if cur["kind"] == "find":
+                return speech.sentences(acc["passage"]["text"])[int(cur["answer"])]
+            return cur["any"][0][0]
+        if cur.get("kind", "word") == "word":
+            return cur["term"]
+        return f"I think the {cur['term']} is all around the outpost today"
+    if k == "summary":
+        return acc.get("example") or "next"
     if k in ("intent", "tap"):
         name = gaz.places[acc["place"]].name if gaz and acc["place"] in gaz.places else acc["place"].replace("_", " ")
         return ("show me " if k == "intent" else "") + re.sub(r"\s*\(.*?\)", "", name)

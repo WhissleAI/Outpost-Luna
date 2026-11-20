@@ -409,7 +409,9 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         }
         if (!ptt.held && !kidTalking && (gated || outputBusy())) { gate(m); return; }
         if (m.t === "words") {
-          if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; if (Array.isArray(m.names)) turnLinks = turnLinks.concat(m.names); } else interim = m.text || "";
+          if (m.final) { finalBuf += (m.text || "") + " "; interim = ""; if (Array.isArray(m.names)) turnLinks = turnLinks.concat(m.names);
+            // the ear's speaking time for this stretch (numbers only): a read-aloud step's words a minute (academy/speech_steps.js)
+            if (typeof m.speech_s === "number") { try { dispatchEvent(new CustomEvent("outpost:ear-final", { detail: { speech_s: m.speech_s, max_pause_s: m.max_pause_s } })); } catch (e) { /* */ } } } else interim = m.text || "";
           if (idleStart && !isFiller(turnText())) { idleStart = false; bargeIn("turn_start", turnText()); set("hearing"); }
           showWords();
         }
