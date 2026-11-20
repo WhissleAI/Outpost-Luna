@@ -38,11 +38,16 @@ from functools import lru_cache
 from ..gazetteer import Gazetteer
 from .. import soundalike
 from ..mission import nlu, sim
-from .content import DATA
+from . import arch_steps
+from .content import DATA, dev_course
 
 
 @lru_cache(maxsize=1)
 def gaz() -> Gazetteer:
+    """The places a find step names: the Moon's, or (dev flag OUTPOST_DEV_COURSE) the course's own places file."""
+    dc = dev_course()
+    if dc and (DATA / "courses" / dc / "places.json").exists():
+        return Gazetteer(DATA / "courses" / dc / "places.json", artifacts=False)
     return Gazetteer(DATA / "places.json")
 
 
@@ -219,6 +224,8 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
         return GLOBE_TYPES[kind](acc, inp, text)
     if kind in FIELD_TYPES:
         return FIELD_TYPES[kind](acc, inp, text)
+    if kind in arch_steps.GRADERS:   # layers, rings, hillshade, decide (docs/COURSES.md §3.2)
+        return arch_steps.GRADERS[kind](acc, inp, text)
     # ---- vocab steps (a11y / learning design) ----
     if kind.startswith("vocab_"):
         from . import vocab
@@ -546,7 +553,9 @@ def _rounds(acc, inp, text):
     return done, {"got": got, "next": None if done else rs[len(got)]["id"], "choice": c}
 
 
-FIELD_TYPES = {"describe": _describe, "sequence": _sequence, "rounds": _rounds}
+FIELD_TYPES = {"describe": _describe, "sequence": _sequence, "rounds": _rounds,
+               # archaeology steps that build up over turns the same way (app/academy/arch_steps.py)
+               "layers": arch_steps._layers, "hillshade": arch_steps._hillshade}
 
 
 # ---- paraphrase fallback (local embedder) ------------------------------------------------------------------------------
@@ -613,7 +622,8 @@ might must may have has had having not no yes yeah yep yup nope okay ok alright 
 oh ohh ooh ah ahh uh uhh um umm hmm mm mmm huh wow whoa hey hi hello sure thing things stuff gonna wanna got get
 gets let lets what whats when where who whom why how which wait sorry please thanks thank maybe guess think mean know
 """.split())
-INDEXED = ("choice", "predict", "compare", "earth_view", "vocab_match", "vocab_fill", "vocab_listen", "rounds")
+INDEXED = ("choice", "predict", "compare", "earth_view", "vocab_match", "vocab_fill", "vocab_listen", "rounds",
+           "decide")
 _KEYS = {"one": 0, "1": 0, "first": 0, "a": 0, "two": 1, "2": 1, "second": 1, "b": 1, "bee": 1, "three": 2, "3": 2,
          "third": 2, "c": 2, "sea": 2, "see": 2, "four": 3, "4": 3, "fourth": 3, "d": 3}
 _KEY_RE = re.compile(r"^(?:(?:it s|its|it is|i think|i pick|i choose|i say|my answer is|the|option|answer|number|"
@@ -655,6 +665,8 @@ def step_options(acc: dict) -> list[tuple[str, list[str]]]:
         return [(o["id"], [o["label"]] + ([o["term"]] if kind != "vocab_match" else [])) for o in vocab.options(acc)]
     if kind == "globe_side":
         return [(k, ["", *SIDE_WORDS[k]]) for k in ("near", "far")]
+    if kind in arch_steps.ARCH_TYPES:
+        return arch_steps.step_options(acc)
     if kind == "video":   # Watch / Skip, and a "Guess, then watch" step's guess chips (the client takes the guess)
         return [(k, w) for k, w in VIDEO_WORDS.items()] + \
             [(o["id"], [o["label"], *o.get("say", [])]) for o in (acc.get("guess") or {}).get("options", [])]
@@ -695,6 +707,8 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
             return True
     if kind == "describe" and _describe_heard(text, describe_cats(acc)):
         return True       # any descriptor word is a real try (it adds to the description)
+    if kind == "rings" and arch_steps.plausible(acc, text):
+        return True       # a year is a real try at a tree-ring match
     if kind == "command" and any(c.get("type") not in ("confirm", "cancel", "deny")
                                  for c in nlu.parse(text).get("commands", [])):
         return True

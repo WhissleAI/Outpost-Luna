@@ -21,7 +21,9 @@ import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, 
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, isField, isBonus, isClass, coreLessons, fieldLessons } from "../explorer.js";   // explorer lessons open after missions; Field School after the ride
 import { pinInnerHtml, fieldTrackHtml, classTrackHtml } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
-import { FIELD_STEP_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
+import { FIELD_STEP_TYPES as MOON_FIELD_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
+import { ARCH_BUILDUP_TYPES } from "./arch_steps.js";   // [courses] layers and hillshade build up over turns the same way
+const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES];
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
@@ -510,7 +512,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
    *  with its credit, or, without the pack, its one-line description (the lesson never waits for it). */
   function photoHook(l) {
     const p = l && l.photo; if (!p) return "";
-    const im = viewImage(p.id), credit = `<a class="chip-src" href="${esc((p.source && p.source.url) || (im && im.source) || "")}" target="_blank" rel="noopener">${esc(p.credit || "NASA")}</a>`;
+    const im = p.url ? { url: p.url, source: p.source && p.source.url } : viewImage(p.id), credit = `<a class="chip-src" href="${esc((p.source && p.source.url) || (im && im.source) || "")}" target="_blank" rel="noopener">${esc(p.credit || "NASA")}</a>`;
     return im ? `<figure class="a-photo"><img src="${esc(im.url)}" alt="${esc(p.alt)}" loading="lazy"><figcaption>${esc(p.alt)} ${credit}</figcaption></figure>`
       : `<p class="a-photo-alt">${icon("camera", { size: 16 })}<span>${esc(p.alt)} ${credit}</span></p>`;
   }
@@ -534,7 +536,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
     const E = STEP_RENDERERS[acc.type];
     const R = typeof E === "function"
-      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext, state: stepState }))
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext, state: stepState, guide: gs }))
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
@@ -568,6 +570,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           ${st.alert ? `<p class="a-alert">${icon("warning", { size: 16 })}<span>Alert</span></p>` : ""}
           ${firstLook && !L.ride ? `<p class="a-lead">${esc(L.brief)}</p>` : ""}
           ${i === hookAt(L) && !waitingNext ? photoHook(L) : ""}
+          ${st.quote ? `<blockquote class="a-quote"><p>${esc(st.quote.text)}</p><cite>${esc(st.quote.who)} ${src(st.quote.source)}</cite></blockquote>` : ""}
           <p class="a-prompt" tabindex="-1">${esc(promptOf(st))}</p>
           ${showIntro ? `<p class="a-intro"><b>New</b>${esc(introText(intro))}</p>` : ""}
           ${how && !waitingNext && !showIntro ? `<p class="a-how a-do">${esc(how)}</p>` : ""}
@@ -769,10 +772,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const acc = L.steps[i].accept, sa = r.shown ? r.shown_answer || {} : null;
       if (field && r.got) stepState.got = r.got;   // [0.5] the locked card shows the whole report / order
       // shown = CAPCOM showed the answer (3 misses); a predict guess is never wrong, it reveals the real number
-      const kind = sa ? "shown" : (acc.type === "predict" || acc.type === "video") && r.correct === false ? "reveal" : "ok";
+      const kind = sa ? "shown" : (acc.type === "predict" || acc.type === "video") && r.correct === false ? "reveal" : acc.type === "decide" && r.best === false ? "reveal" : "ok";
+      if (acc.type === "decide" && r.law) stepState.law = r.law;   // [courses] the law card stays on the locked step
       // a video step's guess chip (novice playtest #7): the kid's guess and the answer light up after the video or Skip
       const vg = acc.type === "video" && r.answer ? { chosen: r.guess || null, right: r.answer } : null;
-      feedback = { kind, text: r.say, chosen: vg ? vg.chosen : input && input.choice, right: vg ? vg.right : sa && (sa.choice || sa.side), data: r.data || null };
+      feedback = { kind, text: r.say, chosen: vg ? vg.chosen : input && input.choice || (acc.type === "decide" ? r.choice : null), right: vg ? vg.right : sa ? (sa.choice || sa.side) : acc.type === "decide" && r.better ? r.better : null, data: r.data || null };
       // [novice playtest 2] "Here it is" on the day/night step points at the line: drawn, labelled and in view
       if (acc.type === "terminator") gs = { ...gs, line_lon: acc.sun_lon - 90, label_line: true };
       // the reveal on the Moon: the traced route, or the far side turned toward the kid

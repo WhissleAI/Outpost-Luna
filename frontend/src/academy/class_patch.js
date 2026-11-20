@@ -6,6 +6,7 @@ import { patch as artPatch } from "../assets/icons.js";
 const PAL = { navy: "#1A2B4C", deep: "#0E1A30", white: "#F3EFE4", gold: "#F0B43C" };
 // fields per pack (stable: the pack id picks one), all from the patch palette
 const FIELDS = ["#2C5AA0", "#4FA46A", "#E86F2C", "#C73A2E", "#5B9BE6", "#7F8898"];
+const EARTH = ["#8A5A35", "#A0703C", "#6E7B3A", "#9A4E2F", "#7A6248", "#B08442"];   // course patches: earth tones
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const dim = v => (typeof v === "number" ? `${v}` : esc(v));
 const hash = s => [...String(s || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -14,9 +15,12 @@ const REG = new Map();   // lesson id and badge id -> {name, glyph, field}
 /** Register the course's Class lessons (academy/ui.js calls this whenever the course loads). */
 export function registerClassLessons(lessons) {
   REG.clear();
-  (lessons || []).filter(l => l && l.track === "class" && l.badge).forEach(l => {
+  // [courses] a course's own lessons (ids "<course>:<id>", docs/COURSES.md §4.4) draw the same round patch with their
+  // glyph, on an earth-tone field (§3.4) until the course ships drawn art
+  (lessons || []).filter(l => l && (l.track === "class" || String(l.id || "").includes(":")) && l.badge).forEach(l => {
+    const course = l.track !== "class";
     const v = { name: l.badge.name || l.title, glyph: String(l.badge.glyph || l.title || "C").slice(0, 1).toUpperCase(),
-      field: FIELDS[hash((l.pack && l.pack.id) || l.id) % FIELDS.length] };
+      field: course ? EARTH[hash(l.id) % EARTH.length] : FIELDS[hash((l.pack && l.pack.id) || l.id) % FIELDS.length] };
     REG.set(l.id, v); REG.set(l.badge.id, v);
   });
 }

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -12,7 +13,8 @@ ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "vocab_match", "vocab_say", "vocab_fill", "vocab_listen",   # vocab: app/academy/vocab.py
                 "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
                 "describe", "sequence", "rounds",   # Field School steps: grade.py FIELD_TYPES
-                "video")   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal; never blocks
+                "video",   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal; never blocks
+                "layers", "rings", "hillshade", "decide")   # archaeology steps: app/academy/arch_steps.py
 PREP_MAX_STEPS = 3      # a mission-prep task: 3 spoken steps or fewer
 PREP_END = "Tell me when it's ready."   # how a prep task's last line ends: never the trigger word "done" (the open mic
                                         # would hear our own "done" back, docs/COPY.md); the button still says Done
@@ -65,10 +67,48 @@ def nasa_course() -> dict:
     return normalize(json.loads(COURSE.read_text()))
 
 
+DEV_COURSE_ENV = "OUTPOST_DEV_COURSE"
+
+
+def dev_course() -> str | None:
+    """Dev / test flag (until the course platform lands, docs/COURSES.md P1): OUTPOST_DEV_COURSE=<id> plays that
+    course's lessons (backend/data/courses/<id>/course.json) in place of the Moon's. Unset (always, for players):
+    None, and nothing changes."""
+    cid = os.environ.get(DEV_COURSE_ENV, "").strip()
+    if not re.fullmatch(r"[a-z][a-z0-9-]{1,23}", cid) or cid == "moon":
+        return None
+    return cid if (DATA / "courses" / cid / "course.json").exists() else None
+
+
+def course_file(cid: str) -> dict:
+    """A course's lessons as written (backend/data/courses/<id>/course.json): bare ids, as authored."""
+    return normalize(json.loads((DATA / "courses" / cid / "course.json").read_text()))
+
+
+def prefixed(c: dict, cid: str) -> dict:
+    """Course-scoped ids (docs/COURSES.md §4.4): every lesson and badge id becomes `<course>:<id>`, so a course's
+    progress never collides with the Moon's bare ids (`atm-academy`)."""
+    def p(x: str) -> str:
+        return x if not x or x.startswith(cid + ":") else f"{cid}:{x}"
+    out = []
+    for l in c.get("lessons", []):
+        l = {**l, "id": p(l["id"]), "badge": {**l["badge"], "id": p(l["badge"]["id"])}}
+        if isinstance(l.get("unlock_after"), str) and l["unlock_after"] != "checkride":
+            l["unlock_after"] = p(l["unlock_after"])
+        out.append(l)
+    pb = c.get("pass_badge")
+    return {**c, "lessons": out, "course": cid,
+            **({"pass_badge": {**pb, "id": p(pb["id"])}} if isinstance(pb, dict) and pb.get("id") else {})}
+
+
 @lru_cache(maxsize=1)
 def course() -> dict:
     """The course the app plays: the NASA lessons, then the teacher-written Class lessons (classpacks.py,
-    docs/CURRICULUM.md; `track: "class"`). A broken pack is skipped by the loader, never raised."""
+    docs/CURRICULUM.md; `track: "class"`). A broken pack is skipped by the loader, never raised.
+    Dev flag (dev_course()): another course's lessons, ids prefixed, no Class lessons."""
+    dc = dev_course()
+    if dc:
+        return prefixed(course_file(dc), dc)
     c = nasa_course()
     try:
         from . import classpacks
@@ -95,6 +135,8 @@ def lesson(lesson_id: str) -> dict | None:
 
 def public() -> dict:
     """The course for the client: everything except the answer keys (choices keep their labels)."""
+    c = course()
+
     def step(s: dict) -> dict:
         a = s["accept"]
         acc = {"type": a["type"]}
@@ -137,10 +179,19 @@ def public() -> dict:
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
+        if a["type"] in ARCH_TYPES:                  # layers, rings, hillshade, decide (arch_steps.py)
+            from .arch_steps import public_accept as arch_public
+            acc = arch_public(a, course=c.get("course"))
         return {k: v for k, v in s.items() if k not in ("accept",)} | {"accept": acc}
-    c = course()
-    return {"title": c["title"], "pass_badge": c["pass_badge"],
-            "lessons": [{k: v for k, v in l.items() if k != "steps"} | {"steps": [step(s) for s in l["steps"]]}
+    def lesson_out(l: dict) -> dict:
+        ph = l.get("photo")
+        if isinstance(ph, dict) and ph.get("file") and c.get("course"):   # a course pack's photo: its media URL
+            from .arch_steps import media_url
+            l = {**l, "photo": {**ph, "url": media_url(c["course"], ph["file"])}}
+        return l
+    extra = {k: c[k] for k in ("course", "roles", "reading_level", "globe", "teacher_note") if c.get(k)}
+    return {"title": c["title"], "pass_badge": c["pass_badge"], **extra,
+            "lessons": [{k: v for k, v in lesson_out(l).items() if k != "steps"} | {"steps": [step(s) for s in l["steps"]]}
                         for l in c["lessons"]]}
 
 
@@ -286,10 +337,14 @@ def check_prep(p: dict) -> list[str]:
     return out
 
 
-def check() -> list[str]:
-    """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data."""
+ARCH_TYPES = ("layers", "rings", "hillshade", "decide")
+
+
+def check(c: dict | None = None) -> list[str]:
+    """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data. `c`: another
+    course's lessons (course_file(id)); the course the app plays by default."""
     probs: list[str] = []
-    c = course()
+    c = c if c is not None else course()
     data_text = {p: p.read_text() for p in DATA.rglob("*.json") if "academy" not in p.parts}
     every = "\n".join(data_text.values())
     for l in [x for x in c["lessons"] if x.get("track") != "class"]:   # Class lessons: classpacks.validate
@@ -328,7 +383,11 @@ def check() -> list[str]:
         if l.get("track") == "field" and (l.get("unlock_after") != "checkride" or l.get("ride")):
             probs.append(f"{lid}: a Field School lesson opens after the check ride (unlock_after checkride)")
         ph = l.get("photo")
-        if ph is not None and not (ph.get("id") in PHOTO_IDS and ph.get("alt") and len(str(ph["alt"]).split()) <= 20
+        if ph is not None and ph.get("file"):   # a course pack's photo (backend/data/courses/<id>/media + credits)
+            if not (ph.get("alt") and len(str(ph["alt"]).split()) <= 20 and ph.get("credit")
+                    and (ph.get("source") or {}).get("url", "").startswith("https://")):
+                probs.append(f"{lid}: photo needs an alt line (<= 20 words), a credit and a source")
+        elif ph is not None and not (ph.get("id") in PHOTO_IDS and ph.get("alt") and len(str(ph["alt"]).split()) <= 20
                                    and (ph.get("source") or {}).get("url", "").startswith("https://")):
             probs.append(f"{lid}: photo needs a nasa_views image id, an alt line (<= 20 words) and a source")
         # an explorer lesson opens after n missions, or (unlock_after: "checkride") once the cadet is qualified
@@ -368,6 +427,9 @@ def check() -> list[str]:
             probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
             probs += [f"{lid}[{i}]: {p}" for p in check_field_step(s, a)]
             probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
+            if a.get("type") in ARCH_TYPES:
+                from .arch_steps import check_step as arch_check
+                probs += [f"{lid}[{i}]: {p}" for p in arch_check(s)]
         pl = l.get("place")   # the Moon-map pin for this lesson (UX: data-driven map)
         if isinstance(pl, str):
             from .grade import where

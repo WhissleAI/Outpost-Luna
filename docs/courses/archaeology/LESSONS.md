@@ -3,10 +3,19 @@
 Draft content for course #2 (`docs/COURSES.md` §3). Steps use the course.json step types
 (`backend/app/academy/content.py` `ACCEPT_TYPES`). Four new types are marked **NEW** and specified in `COURSES.md` §3.2.
 
-**Status: draft.**
-- Every fact needs its source opened and checked before it ships (`docs/LEARNING_DESIGN.md` §7.3).
-- Facts tagged [check] come from search results only (`COURSES.md` §1).
-- Copy follows `docs/COPY.md`: short and plain, verb first. Prompts are at most 20 words.
+**Status: built (P3, `feat/archaeology-content`).** The playable lessons are `backend/data/courses/archaeology/course.json`
+(the course pack's folder: `places.json`, `entities.json`, `ear_vocab.json`, `sources.json`, `rings/`, `media/`). The
+tables below were the drafts; where the built lesson differs, the JSON wins (and the differences are listed in
+"What changed from the drafts" at the end).
+- Every fact cites `sources.json` by `source_id`: 40 sources, each opened and checked on 2026-11-19, quote verbatim.
+- Play it today (until the platform's course switcher lands): backend `OUTPOST_DEV_COURSE=archaeology`, then the Vite
+  dev server at `/?course=archaeology`. A built app never reads the flag; Moon players see nothing new.
+- Reading level: grades 9-12 (owner decision 2). Prompts ≤ 20 words; spoken replies ≤ 20; hints ≤ 14.
+
+> **Teacher note (review before a pilot).** This course is a draft for teacher review. Before a classroom pilot,
+> review it, especially *Who decides?*, *Many voices* and *Mesa Verde, around 1280*, with Crow Canyon's education team
+> or a tribal cultural office. No tribe has endorsed it. (Also in `course.json` `teacher_note`, which the teacher
+> pack shows; owner decision 3 is still open.)
 
 Rules for every lesson (`COURSES.md` §1.5):
 - Park-level locations only.
@@ -16,8 +25,10 @@ Rules for every lesson (`COURSES.md` §1.5):
 - Say "moved", never "vanished".
 - Tribal views come from tribal or NPS / Crow Canyon sources that tribes helped write. CAPCOM never speaks for a tribe.
 
-Voice roles (owner decision 2, `COURSES.md` §7): **Field Director** (CAPCOM's role) and **the Lab** (Houston's role,
-which answers after a delay).
+Voice roles (owner decision 1): keep **CAPCOM** and **Houston**, presented through the analogy. The **Field Director**
+is "your CAPCOM on the dig" and **the Lab** is "your Houston: results come back after a delay" (a radiocarbon lab can
+take days or weeks: Beta Analytic "3-14 business days", NOSAMS weeks). Lesson 1's brief says it out loud; `course.json`
+`roles` holds the lines for the platform.
 
 ---
 
@@ -178,3 +189,24 @@ Field Scout · Sky Surveyor · Layer Reader · Ring Counter · Object Reader · 
 Lead · (explorer) Moon Watcher.
 - Ids: `archaeology:<id>`.
 - Shape: the round mission-patch, with an earth-tone ring.
+
+## What changed from the drafts (P3)
+
+- **27, not 26.** Mesa Verde's pages now say "27 Pueblos and Tribes"; the 2018 PDF lists 26. The lessons say 27.
+- **Far View Reservoir** (the drafts' "Mummy Lake"): NPS calls it "Far View Reservoir (currently dry)" and does not
+  say what it held; its purpose is debated. The hillshade step names it that way.
+- **Cliff dwellings:** "late 1190s to late 1270s" (NPS article); other NPS pages say 1180-1280 or 1180-1300.
+- **ARPA** covers "public lands or Indian lands", not "federal land". **NHPA §304** says agencies "shall withhold".
+- **Chimney Rock:** 25 affiliated tribes; USFS says the ancestral people "would have seen" the moonrises. The lesson
+  frames it as an interpretation in a `decide` step.
+- **Tree rings:** NCEI publishes only raw measurements for CO652, so `rings/itrdb_co652.json` is a standard chronology
+  built from the 197 series (negative-exponential detrending, biweight mean; method in its `derivation`). No licence
+  is stated on the record; it asks for the citation, which the step and the fact carry.
+- **L5 describe** uses the existing descriptor kinds (tone, texture, size); **L8** replaces the "evidence kinds"
+  describe with a `decide` step (several causes), so the Moon's describe kinds are untouched.
+- **L7** shows a descendant's words on screen (NPS ranger TJ Atsye, Laguna Pueblo, NPS audio tour); the app's voice
+  never reads them.
+- **L9 capstone** is a 5-step preview of Survey season (consult, look, record, order, keep locations private) until
+  the P4 mission replaces it.
+- **Not found with a clean licence:** an NPS mano/metate photo, a tree-ring photo, a Chimney Rock photo (USFS pages
+  credit named photographers). The lessons use text there.

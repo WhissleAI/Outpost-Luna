@@ -25,7 +25,10 @@ S: dict = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     diag.setup("backend")   # [#92] JSON-lines log + metrics + the daily summary (app/diag.py, docs/DIAGNOSTICS.md)
-    S["gaz"] = Gazetteer(settings.data_dir / "places.json")
+    from .academy.content import dev_course   # dev flag OUTPOST_DEV_COURSE: that course's places (docs/COURSES.md P3)
+    dc = dev_course()
+    cp = settings.data_dir / "courses" / str(dc) / "places.json"
+    S["gaz"] = Gazetteer(cp, artifacts=False) if dc and cp.exists() else Gazetteer(settings.data_dir / "places.json")
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
     asyncio.create_task(_warm_brain())

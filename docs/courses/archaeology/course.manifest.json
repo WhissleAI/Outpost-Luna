@@ -1,5 +1,5 @@
 {
- "_note": "DRAFT manifest for course #2 (docs/COURSES.md §3, §4.1). Shape-checked by backend/tests/test_courses.py; its data files do not exist yet (they are `planned`). Moves to backend/data/courses/archaeology.json with status `pack` in P3.",
+ "_note": "DRAFT manifest for course #2 (docs/COURSES.md §3, §4.1). P3 (feat/archaeology-content): its data files now exist in backend/data/courses/archaeology/ (the course pack's folder; media/ is the pack's heavy part and is not in the installer). The platform (P1/P2) moves this to backend/data/courses/archaeology.json with status `pack` and asset id `course_archaeology`. Until then the lessons play behind the dev flag OUTPOST_DEV_COURSE=archaeology (backend) + /?course=archaeology (Vite dev server).",
  "format": "outpost-luna-course",
  "version": 1,
  "id": "archaeology",
@@ -8,27 +8,103 @@
  "status": "draft",
  "subject": "Social studies (history, geography, civics) with science methods",
  "grades": "9-12",
- "globe": {"body": "earth", "name": "Earth", "km": 6371.0, "map": "/course/archaeology/earth5400.jpg",
-           "site_maps": ["mesa_verde_hillshade"]},
+ "globe": {
+  "body": "earth",
+  "name": "Earth",
+  "km": 6371.0,
+  "map": "/api/courses/archaeology/media/earth5400.jpg",
+  "site_maps": [
+   "mesa_verde_hillshade"
+  ]
+ },
  "gazetteer": "courses/archaeology/places.json",
  "entities": "courses/archaeology/entities.json",
- "ear": {"vocab": "courses/archaeology/ear_vocab.json", "names": "entities"},
+ "ear": {
+  "vocab": "courses/archaeology/ear_vocab.json",
+  "names": "entities"
+ },
  "lessons": {
   "source": "courses/archaeology/course.json",
-  "tracks": ["core", "field"],
-  "ids": ["what_is", "survey", "layers", "dating", "stuff", "law", "voices", "mesa_verde", "capstone"]
+  "tracks": [
+   "core"
+  ],
+  "ids": [
+   "what_is",
+   "survey",
+   "layers",
+   "dating",
+   "stuff",
+   "law",
+   "voices",
+   "mesa_verde",
+   "capstone",
+   "chimney_rock"
+  ]
  },
- "missions": {"kind": "survey_season", "sites": "courses/archaeology/seasons.json"},
+ "missions": {
+  "kind": "survey_season",
+  "sites": "courses/archaeology/seasons.json"
+ },
  "concepts": "courses/archaeology/concepts.json",
  "voice_pack": "courses/archaeology/voice_pack/index.json",
- "assets": {"required": ["ear", "tagger", "embedder", "voice", "course_archaeology"], "optional": ["course_archaeology_lidar"]},
+ "assets": {
+  "required": [
+   "ear",
+   "tagger",
+   "embedder",
+   "voice",
+   "course_archaeology"
+  ],
+  "optional": [
+   "course_archaeology_lidar"
+  ]
+ },
  "standards": [
-  {"framework": "Colorado Academic Standards: Social Studies (2022), high school",
-   "codes": ["History 1.1", "Geography 3.1", "Geography 4.2", "Geography 4.3", "Civics 6.1", "Civics 7.2"]},
-  {"framework": "C3 Framework", "codes": ["D1", "D2.His", "D2.Geo", "D3", "D4"]},
-  {"framework": "NGSS (methods analogy)", "codes": ["HS-ESS1-6"]},
-  {"framework": "AP Human Geography", "codes": ["Unit 1", "Unit 5"]}
+  {
+   "framework": "Colorado Academic Standards: Social Studies (2022), high school",
+   "codes": [
+    "History 1.1",
+    "Geography 3.1",
+    "Geography 4.2",
+    "Geography 4.3",
+    "Civics 6.1",
+    "Civics 7.2"
+   ]
+  },
+  {
+   "framework": "C3 Framework",
+   "codes": [
+    "D1",
+    "D2.His",
+    "D2.Geo",
+    "D3",
+    "D4"
+   ]
+  },
+  {
+   "framework": "NGSS (methods analogy)",
+   "codes": [
+    "HS-ESS1-6"
+   ]
+  },
+  {
+   "framework": "AP Human Geography",
+   "codes": [
+    "Unit 1",
+    "Unit 5"
+   ]
+  }
  ],
- "sensitivity": {"site_coordinates": "park-level only", "human_remains": "never shown", "sacred_sites": "named only as tribes and parks publish them"},
- "class_packs": true
+ "sensitivity": {
+  "site_coordinates": "park-level only",
+  "human_remains": "never shown",
+  "sacred_sites": "named only as tribes and parks publish them"
+ },
+ "class_packs": true,
+ "reading_level": "9-12",
+ "sources": "courses/archaeology/sources.json",
+ "rings": [
+  "courses/archaeology/rings/itrdb_co652.json"
+ ],
+ "media": "courses/archaeology/media"
 }

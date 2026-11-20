@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 
+from .arch_steps import ARCH_TYPES, hint as arch_hint
 from .grade import _ang, gaz
 
 PLACE_TYPES = ("tap", "intent")
@@ -224,6 +225,8 @@ def help_rung(st: dict, rung: int, got: list | None = None) -> dict:
         return {**out, "rung": 1, "say": "Tap Watch to see it, or Skip."}
     if kind in ("describe", "sequence", "rounds"):
         return field_help(st, rung, got)
+    if kind in ARCH_TYPES:   # layers, rings, hillshade, decide (arch_steps.py)
+        return arch_hint(st, rung, got)
     target = None
     if kind in PLACE_TYPES:
         target = acc["place"]
@@ -304,6 +307,8 @@ def ladder(st: dict, misses: int, inp: dict, extra: dict, seen: int = 0) -> dict
     hint, fail = st["hint"], st["fail"]
     if kind in ("describe", "sequence", "rounds"):
         return field_help(st, rung, extra.get("got"), lead=fail + " ")
+    if kind in ARCH_TYPES:
+        return arch_hint(st, rung, extra.get("got"), extra, lead=fail + " ")
     out: dict = {"rung": rung, "hint": hint}
     tap = inp.get("tap") or ((inp.get("taps") or [None])[-1] if inp.get("taps") else None)
     name = tapped_name(tap) if kind in (*PLACE_TYPES, "route", "terminator") else None

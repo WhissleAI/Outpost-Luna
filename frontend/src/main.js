@@ -6,6 +6,7 @@ import "./mission.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
+import { devCourseBody } from "./academy/dev_course.js";
 import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional nasa_views pack)
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
@@ -36,6 +37,7 @@ import { createPrefs } from "./prefs.js";
 import "./academy/vocab.js";
 import "./academy/globe_steps.js";   // [learning-v3] globe step renderers (docs/LEARNING_DESIGN.md §3)
 import "./academy/field_steps.js";   // [0.5] Field School step renderers (docs/LEARNING_DESIGN.md §12)
+import "./academy/arch_steps.js";   // [courses] archaeology step renderers: layers, rings, hillshade, decide (docs/COURSES.md §3.2)
 // ---- [media] NASA video: the overlay, the lesson's video step, Settings → Videos, the credits (docs/MEDIA.md) ----
 import "./media/video.css";
 import { installPretendExplain } from "./pretend.js";   // "pretend tech": say why, the first time
@@ -126,7 +128,8 @@ async function boot() {
     const m = document.body.dataset.mode, f = m === "academy" ? academyUI.screen() : null;
     if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice("Tap on the Moon");
   };
-  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss });
+  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss,
+    body: devCourseBody(location.search, import.meta.env.DEV) });   // [courses] dev harness only (academy/dev_course.js)
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
   wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
   const player = createPlayer({

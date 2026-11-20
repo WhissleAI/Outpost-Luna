@@ -16,7 +16,8 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DIR = DATA / "courses"
@@ -149,3 +150,25 @@ def summary(m: dict) -> dict:
 @router.get("/api/courses")
 def list_courses():
     return {"active": active(), "courses": [summary(c) for c in courses()], "problems": problems()}
+
+
+MEDIA_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,80}\.(?:jpg|png|json)$")
+MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json"}
+
+
+def media_dir(course_id: str) -> Path:
+    """A course pack's media folder: backend/data/courses/<id>/media (in the repo, for packs being built; the platform's
+    course pack installs the same layout, docs/COURSES.md §4.2). Not in the installer (build_python.py skips media)."""
+    return DIR / course_id / "media"
+
+
+@router.get("/api/courses/{course_id}/media/{name}")
+def course_media(course_id: str, name: str):
+    """A course's pictures and data files (maps, hillshades, photos): one flat folder, names checked."""
+    if not ID.match(course_id) or not MEDIA_NAME.match(name):
+        raise HTTPException(404, "no such file")
+    p = media_dir(course_id) / name
+    if not p.is_file():
+        raise HTTPException(404, "no such file")
+    return FileResponse(p, media_type=MEDIA_TYPES[name.rsplit(".", 1)[1]],
+                        headers={"Cache-Control": "public, max-age=86400"})
