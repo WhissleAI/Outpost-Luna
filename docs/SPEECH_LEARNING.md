@@ -1,7 +1,7 @@
 # Speech learning: read, vocab, summary
 
 Status: **v1 shipped** (branch `feat/speech-learning-steps`). Three course-agnostic step types and an offline feedback
-engine, plus one sample lesson per type in the Moon course. The optional local-LLM rewrite is a **documented spike, off**
+engine, plus one sample lesson per type in the Moon course. The optional local-LLM rewrite was evaluated and is a **documented spike, off**
 (§4).
 
 Where the idea came from: a teammate's list, via the owner. "Read a short article and answer questions; vocabulary
@@ -99,7 +99,46 @@ chat, no new facts. Its output goes through `feedback.guard` (above, including A
 template on any failure (off, slow, down, unsafe, off-rubric). The server must be on loopback
 (`feedback.llm_url` refuses any other host), so School network mode is untouched and nothing leaves the computer.
 
-LLM_EVAL_RESULTS
+**Evaluation (2026-11-19, this MacBook Pro M3 Pro, 18 GB).** Prebuilt llama.cpp (b12552, macOS arm64) on
+127.0.0.1 only, one server at a time, `nice -n 15`, `-c 2048`, Metal, Q4_K_M GGUFs. 30 synthetic summaries (kid voice,
+ear-style lowercase, short, off-topic, a made-up fact, a sneaky rude word) over three rubrics: the hammer-feather video,
+the Moon-ice article, and an Archaeology tree-ring one at the grades 9-12 level. Coverage per case comes from
+`speech.grade_summary`, so the eval matches the product. Tool: `backend/tools/summary_llm_eval.py` (`--dry` runs
+coverage and the template alone, no server). **The shared machine never dropped below a load of 25 (25-59 during the
+runs), so the latencies are pessimistic.** Quality was rated by the evaluating agent with labels visible (not blind).
+
+| Model (Q4_K_M) | Licence | Download | Server RAM | p50 / p95 latency | Tokens/s | Guard pass (old prompt / new prompt) | Better / same / worse than the template (new prompt, passed only) | Wrong but passed the first guard | Passed after the guard fixes |
+|---|---|---|---|---|---|---|---|---|---|
+| Qwen2.5-1.5B-Instruct | Apache-2.0 | 1.12 GB | 1.21 GB | 0.57 / 0.86 s | 71 | 17% / 43% | 1 / 6 / 6 of 13 | 2 | 7 of 30, none wrong |
+| SmolLM2-1.7B-Instruct | Apache-2.0 | 1.06 GB | 1.43 GB | 0.94 / 1.30 s | 40 | 13% / 47% | 3 / 8 / 3 of 14 | 2 | 12 of 30, none wrong |
+| Phi-3.5-mini-instruct | MIT | 2.39 GB | 1.57 GB | 1.92 / 2.44 s (old prompt p95 10.1 s) | 24 | 0% / 0% | none passed | 0 | 0 of 30 |
+
+"Wrong but passed": a rewrite that praised the point the cadet missed and re-taught one they told ("you mentioned the
+ring pattern is matched to a master chronology" when they hadn't). Phi wrote the warmest lines but added facts
+("keeping them permanently frozen") and turned a cadet's guess ("around 1275") into a stated fact.
+
+**What changed because of it** (all in `feedback.py`, all tested):
+- The guard now checks every sentence: a sentence that praises ("you said / mentioned / covered...") must not name an
+  untold point (`praised_uncovered`); a "one more" sentence must not re-teach a told point (`covered_as_missing`); the
+  missing point must sit in a "one more / remember / add" sentence (`missing_not_framed`); numbers may come only from
+  the rubric, never from the cadet's words. Re-scored on the saved outputs: every wrong rewrite is now caught.
+- The rewrite prompt is the evaluation's v2 (talk to the cadet as "you", exactly 2 sentences, one worked example),
+  which took the guard pass from 13-17% to 43-47% before the stricter guard.
+- The template no longer opens with praise when no key point was told.
+
+**Bar to ship behind a grown-up setting**, set before the runs: guard pass 90% or more; no wrong or unsuitable output
+passing the guard; the rewrite better than the template in at least half the cases it passes; p95 at most 2.5 s on this
+M3 Pro; RAM at most 1.5 GB and a download at most 1.2 GB (8 GB Macs and the iPad).
+
+**Decision: do not ship. It stays a documented spike** (`OUTPOST_SUMMARY_LLM=1` plus a loopback
+`OUTPOST_SUMMARY_LLM_URL`, developers only; no grown-up setting, no pack in the asset manifest). Quality is the
+blocker, not resources: Qwen2.5-1.5B and SmolLM2-1.7B both fit the latency, RAM and download limits (and would fit an
+8 GB Mac; the iPad would need the 1 GB class too), but they pass the guard on 40% of summaries at best, and when they
+pass they are better than the template about one time in five. The template is always correct, always in budget and
+instant. Most length failures come from the Moon budget (14 words a sentence) against 10-word point labels; a
+grades 9-12 course gives the rewrite more room and is the place to try again. Re-run the tool when a better small
+model with an open licence appears, and ship only if it clears the bar above.
+
 
 ## 5. Progress, the Brain and privacy
 

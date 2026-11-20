@@ -72,7 +72,7 @@ def template(acc: dict, covered: list[str], missing: list[str], level: dict | No
     """The v1 feedback: 2-3 sentences. Names the covered points (up to 2 when space is short) and one missing point."""
     lv = level or LEVELS[DEFAULT_LEVEL]
     cov, miss = labels(acc, covered), labels(acc, missing[:1])
-    opener = _pick(OPENERS, key + "|" + ",".join(covered))
+    opener = _pick(OPENERS, key + "|" + ",".join(covered)) if cov else ""   # no praise for an off-topic turn
     tail = f"One more key point: {miss[0]}." if miss else _pick(ALL_DONE, key)
     for n in (len(cov), 2, 1):
         said = f"You said {_join(cov[:n])}." if cov else ""
@@ -96,6 +96,8 @@ def progress_line(acc: dict, new: list[str], missing: list[str]) -> str:
 
 
 # ---- the guard (every rewrite passes it, or the template is used) ---------------------------------------------------
+PRAISE = re.compile(r"\byou (said|told|mentioned|covered|explained|noted|got|described)\b", re.I)
+MORE = re.compile(r"\b(one more|missing|add|adding|remember|next time|forgot|left out)\b", re.I)
 def _allowed(acc: dict, kid_text: str) -> set[str]:
     words = list(WARM)
     for p in acc["points"]:
@@ -135,8 +137,9 @@ def guard(text: str, acc: dict, covered: list[str], missing: list[str], kid_text
     cls = safety.classify(t, safety_tags)
     if cls["mask"] or cls["care"]:
         return False, "safety"
+    # numbers only from the rubric: a cadet's guess ("around 1275") must never come back stated as a fact
     allowed_text = " ".join([*(p["label"] for p in acc["points"]), *(w for p in acc["points"] for w in p.get("say", [])),
-                             kid_text or "", acc.get("example", "")])
+                             acc.get("example", "")])
     nums_ok = set(re.findall(r"\d+(?:\.\d+)?", allowed_text))
     if any(n not in nums_ok for n in re.findall(r"\d+(?:\.\d+)?", t)):
         return False, "new_number"
@@ -148,17 +151,28 @@ def guard(text: str, acc: dict, covered: list[str], missing: list[str], kid_text
         return False, "missing_not_named"
     if covered and not any(_names(t, lab, 0.5) for lab in labels(acc, covered)):
         return False, "covered_not_named"
-    other_missing = labels(acc, missing[1:])
-    for lab in other_missing:   # a point the cadet did not cover must not be praised as covered
-        if _names(t, lab, 0.8) and re.search(r"\byou (said|told|mentioned|covered|explained)\b", t, re.I):
+    miss_labs, cov_labs = labels(acc, missing), labels(acc, covered)
+    for sen in ss:   # sentence by sentence: what is praised was told; what is "one more" was not
+        praise, more = PRAISE.search(sen), MORE.search(sen)
+        if praise and any(_names(sen, lab, 0.6) for lab in miss_labs):
             return False, "praised_uncovered"
+        if more and not any(_names(sen, lab, 0.6) for lab in miss_labs[:1]) and any(_names(sen, lab, 0.8) for lab in cov_labs):
+            return False, "covered_as_missing"
+    if missing and not any(MORE.search(sen) and _names(sen, miss_labs[0], 0.6) for sen in ss):
+        return False, "missing_not_framed"   # the missing point must read as one more, not as a fact they said
     return True, "ok"
 
 
 # ---- the optional local rewrite (spike) ---------------------------------------------------------------------------
-SYSTEM = ("You rewrite feedback for a student's spoken summary. Use ONLY the facts given. Write 2 or 3 short, warm "
-          "sentences. Name what the student covered and the one missing point. Never grade, score or say wrong. "
-          "No new facts, no numbers that are not given, no questions, no lists, no emoji.")
+# v2 (docs/SPEECH_LEARNING.md §4): second person, exactly 2 sentences, one worked example; it took the guard pass from
+# 13-17% to 43-47% in the evaluation (backend/tools/summary_llm_eval.py)
+SYSTEM = ("You give feedback to a child about their spoken summary. Talk to the child as \"you\". Use ONLY the "
+          "facts given. Write exactly 2 short, warm sentences: first say what they covered, then name the one "
+          "missing point. Never grade, never say wrong, no new facts, no numbers that are not given, no questions.")
+SHOT_USER = ('Student said: "the feather and hammer fell together"\nCovered: they landed at the same time\n'
+             'Missing: there is no air on the Moon to slow the feather\nAt most 14 words per sentence, 36 words in all.\n'
+             'Feedback:')
+SHOT_REPLY = "Nice work: you said they landed at the same time. One more key point: there is no air on the Moon to slow the feather."
 
 
 def prompt(acc: dict, covered: list[str], missing: list[str], kid_text: str, level: dict) -> list[dict]:
@@ -167,7 +181,8 @@ def prompt(acc: dict, covered: list[str], missing: list[str], kid_text: str, lev
             f"Covered: {'; '.join(cov) or 'nothing yet'}\n"
             f"Missing: {miss[0] if miss else 'none'}\n"
             f"At most {level['sentence']} words per sentence, {level['total']} words in all.\nFeedback:")
-    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": SYSTEM}, {"role": "user", "content": SHOT_USER},
+            {"role": "assistant", "content": SHOT_REPLY}, {"role": "user", "content": user}]
 
 
 def llm_url() -> str | None:

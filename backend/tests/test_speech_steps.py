@@ -213,6 +213,23 @@ def test_guard_rejects_unsafe_off_rubric_and_off_shape(text, why):
     assert not ok and reason.startswith(why), reason
 
 
+def test_guard_catches_what_the_evaluation_found():
+    """docs/SPEECH_LEARNING.md §4: a rewrite praising the missed point, re-teaching a covered one, or echoing the
+    cadet's number as a fact never reaches the screen."""
+    praise_missed = "Great job: you mentioned there is no air on the Moon. One more key point: they dropped a hammer and a feather."
+    assert fb.guard(praise_missed, ACC, ["drop"], ["air"]) == (False, "praised_uncovered")
+    unframed = "You said an astronaut dropped a hammer and a feather. The Moon has no air to slow the feather."
+    assert fb.guard(unframed, ACC, ["drop"], ["air"]) == (False, "missing_not_framed")
+    kid = "they dropped a hammer and a feather in 1975"
+    echo = "You said they dropped a hammer and a feather in 1975. One more key point: the Moon has no air."
+    assert fb.guard(echo, ACC, ["drop"], ["air"], kid_text=kid) == (False, "new_number")
+
+
+def test_template_has_no_praise_when_nothing_was_told():
+    lines = fb.template(ACC, [], ["drop", "together"], fb.LEVELS["moon"])
+    assert lines == ["One more key point: an astronaut dropped a hammer and a feather."] or not any(o in lines for o in fb.OPENERS)
+
+
 def test_guard_takes_arc_tagger_safety_tags():
     good = "You said they dropped a hammer and a feather. One more key point: the Moon has no air to slow the feather."
     assert fb.guard(good, ACC, ["drop"], ["air"])[0]
@@ -233,7 +250,7 @@ def test_feedback_template_by_default_and_rewrite_only_when_asked():
 
 def test_feedback_rewrite_passes_guard_or_falls_back(monkeypatch):
     async def good(msgs):
-        assert "Covered: an astronaut dropped a hammer and a feather" in msgs[1]["content"]
+        assert "Covered: an astronaut dropped a hammer and a feather" in msgs[-1]["content"]
         return "You said an astronaut dropped a hammer and a feather. One more key point: the Moon has no air."
 
     async def unsafe(msgs):
