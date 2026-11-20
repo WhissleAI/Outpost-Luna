@@ -163,3 +163,113 @@ See docs/GAMEPLAY.md.
 - **Hesitation:** a heard turn on a lesson step or in the cabin with fillers, a long pause or a low `uconf`
   (`backend/app/hesitation.py`) carries `hes: true` on its `heard` decision. The lesson's next hint rung, or the Now
   card's nudge, comes sooner, once per step (docs/LEARNING_DESIGN.md §13). The flag is never spoken, stored or logged.
+
+## Room state (automatic, 2026-11-19, `feat/classroom-teacher`)
+
+Schools asked for this: a classroom is noisy, and the owner rejected teacher-chosen noise presets. So the app decides on
+its own how to listen. There is one estimator, `frontend/src/room.js`, wired in `voice.js`. It is never a setting. The
+kid's Settings → Listening choice stays, and the room only ever makes listening **stricter** than that choice.
+
+| room | what changes | the voice bar (`#spaceHint`; in the comm row too) |
+|---|---|---|
+| calm | nothing: open mic, the kid's filter | the usual "Hold to talk" |
+| busy (floor up, or chatter turns) | the filter one level stricter (relaxed → normal → strict): the client barge gate (`barge.js filterLevels`), the room-talk check in `voice.js`, and the server router's dd gates (`session.filter_thresholds` → `turn_router.room_filter`) | nothing, while turns still work |
+| busy, open mic keeps catching chatter (≥ 4 room-talk turns in 30 s) | hold to talk: open-mic turns are dropped on the client and ignored by the server (`ptt_only`). Space, holding the mic button, or a tap of the mic / **M** / controller **X** talks: a tap latches one turn that ends with the ear's turn end | "Busy room: hold the mic to talk" |
+| loud (floor very high), or voice keeps failing (≥ 3 fails in 40 s) | hold to talk, typing offered | "Noisy room: hold the mic, or type" |
+| still loud 20 s later, or one more fail | typing: the text box takes the keyboard once (never from another text box or under Settings); its placeholder says the line | "Too noisy: type instead" |
+| calm again | open voice, silently | back to "Hold to talk" |
+
+**Evidence** (read on the moment, never stored or logged):
+- The **noise floor** is the 15th percentile of mic RMS over the last 125 frames (10 s) taken while none of our audio plays.
+  Frames under our own voice or a held Space turn are skipped, and none older than 30 s count. A kid talking leaves
+  gaps; classroom babble does not.
+- **Room talk** comes from these sources:
+  - the router's ignore reasons `crew_talk`, `not_directed`, `chatter`, `room_yes_no`, `callsign_other` (`voice.decided(outcome, text, d)`);
+  - Arc `device_directed` under the effective floor;
+  - a turn the router ignored with speech-to-noise under 2 (the turn's loudest frame over the floor);
+  - held barge-ins for `not_directed` / `not_rated`;
+  - open-mic turns heard while hold to talk is on, which are still read for evidence.
+- **Failures** are a directed turn the app could not use (`notice`, `unclear`), `uconf` under 0.35 on a directed turn,
+  or the same words again within 20 s of an ignore.
+- Space and typed turns are never room talk.
+
+**Hysteresis:**
+- Entering and leaving use separate levels. Busy starts at floor ≥ 0.016 held for 4 s and ends under 0.009 held for 8 s.
+  Loud starts at ≥ 0.05 held for 3 s and ends under 0.03 held for 8 s.
+- Chatter starts busy at 3 turns making up ≥ 60 % of the open-mic turns, and allows calm only at ≤ 1 turn.
+- Every state has a minimum dwell: busy 10 s, loud 15 s.
+- Evidence slides out of 30 s / 40 s windows.
+- Hold to talk, once asked, stays for the whole busy spell. It never flips back and forth.
+
+**Session wire (additive):** the client sends `room` (`calm|busy|loud`) and `room_listen` (`open|hold|type`) with its
+`prefs` message whenever the room changes (`prefs.roomWire`, `outpost:room`). See docs/SESSION_CONTRACT.md §7.
+
+**Numbers** come from `node frontend/tools/room_harness.mjs`, which is also the last test in `tests/room.test.js`.
+- Each scenario is a stream of 80 ms mic levels plus turn messages.
+- The levels are real where the repo has them:
+  - the mic hiss floor (0.0012);
+  - the six recorded room-noise beds of `tests/fixtures/barge` (p20 0.021-0.026), from `tools/barge_clips.py`;
+  - the kid command clips' speech frames (at -22 dBFS).
+- Babble at an SNR is that kid level minus the SNR, with talker fluctuation (log-normal, sigma 0.35).
+- Times are seconds from the scenario start, including ~3 s of floor warm-up.
+- Flaps count a state left and re-entered within 20 s.
+
+| scenario | busy at s | loud at s | hold at s | offer / type at s | switches | flaps | recover s | end | ok |
+|---|---|---|---|---|---|---|---|---|---|
+| quiet, kid talks (5 min) | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| quiet, kid's long answers | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| quiet, a grown-up remark /40 s | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| quiet, one loud cheer (1.5 s) | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| quiet, door slams x3 in 20 s | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| recorded bed noise_cabin_237374 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| recorded bed noise_cafe_370973 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| recorded bed noise_cafe_437461 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| recorded bed noise_room_108695 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| recorded bed noise_room_426767 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| recorded bed noise_room_641306 | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| babble SNR 25 dB | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| babble SNR 20 dB | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| babble SNR 15 dB | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| babble SNR 10 dB | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| babble SNR 5 dB | 7.1 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+| babble SNR 0 dB | - | 6.2 | - | 6.2 / 26.2 | 1 | 0 | - | loud/type | yes |
+| 2 kids chatting near the mic (quiet floor) | 16.1 | - | 20.6 | - / - | 1 | 0 | - | busy/hold | yes |
+| busy bed + chatter turns | 17.2 | - | 22.3 | - / - | 1 | 0 | - | busy/hold | yes |
+| voice keeps failing (Didn't catch that) | 7.1 | 22 | - | 22 / 30 | 2 | 0 | - | loud/type | yes |
+| loud room (SNR 0) then quiet | 99.8 | 6.2 | 99.8 | 6.2 / 26.2 | 3 | 0 | 19.8 | calm/open | yes |
+| classroom babble 60 s then quiet | 12.6 | - | - | - / - | 2 | 0 | 10 | calm/open | yes |
+| chatter spell 60 s then quiet | 11.4 | - | 17.6 | - / - | 2 | 0 | 22.6 | calm/open | yes |
+| floor wobbling at the busy edge | - | - | - | - / - | 0 | 0 | - | calm/open | yes |
+| floor swinging across both edges | 21.2 | - | - | - / - | 8 | 0 | - | calm/open | yes |
+| busy bed, our audio playing a lot | 21.2 | - | - | - / - | 1 | 0 | - | busy/open | yes |
+
+**Reading the numbers:**
+- Quiet rooms never switch. That holds with a kid talking 60 % of the time, a grown-up remark every 40 s, a cheer, and
+  door slams.
+- Every recorded noise bed and babble at SNR ≤ 10 dB reads busy in about 4 s once the floor is known. In busy, only the
+  stricter filter changes and nothing is shown.
+- SNR 15 dB and quieter stays calm.
+- Two kids chatting near the mic reach hold to talk in about 20 s.
+- Voice that keeps failing reaches typing in about 30 s.
+- A busy room calms about 10 s after it goes quiet. Coming down from loud takes about 20 s (via busy, holding the mic).
+- A floor swinging across both edges over 75 s follows the room (8 switches in 5 min) with no flapping.
+
+**Caveats:**
+- The browser's `noiseSuppression` / `autoGainControl` change the mic level on real laptops. Steady fan noise is
+  removed before we see it, and babble mostly is not. The thresholds were set on the fixture mic chain, not on a real
+  classroom: recalibrate them on the first school recordings.
+- Arc asked to predict a room-noise / chatter signal directly: docs/ARC_FEEDBACK.md (2026-11-19).
+
+**Tests:** `frontend/tests/room.test.js` (estimator, hysteresis, dwell, effects, the harness) and
+`frontend/tests/room_voice.test.js`:
+- busy → the line plus open-mic dropped plus a mic tap still talks;
+- loud → typing;
+- the barge gate one level stricter;
+- the router's ignored room talk drives busy → hold.
+
+`backend/tests/test_room_state.py` covers `room_filter`, the session thresholds, and hold / type ignoring open mic but
+not Space or typed turns.
+
+**Screenshots / tools:** `window.__outpost.room.force("busy")` gives hold to talk. `force("loud")` offers typing, and
+`force("loud", "type")` gives typing. `force(null)` returns to automatic from calm. `window.__outpost.room.snapshot()`
+returns `{state, mode, floor, line, filter}`.

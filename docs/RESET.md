@@ -9,6 +9,16 @@ and it stays open until Settings closes. The kids' settings (Voice, speed, Sound
 Display and theme, Cadets) stay open. Cadets links to it ("Reset the app or erase progress? For grown-ups").
 Keyboard (Alt+A, the arrows, Enter) and a controller (D-pad, A) reach it like any other section.
 
+**Progress** is the first part inside it (`frontend/src/progress.js`, `progress.css`): one card per cadet on this
+computer, for parents and teachers. It shows lessons done ("n of 6"), NASA patches (class lessons never count here),
+a half-done lesson's step, Class lessons by pack (track `class`), missions flown, and up to two "Try next" lines in the
+order the app opens them. A mission shows stars, grade, site and the debrief's three checks only while the app still
+holds that mission (the server keeps them in memory until it quits); after a restart it is counted, nothing more.
+A paused mission on this computer is named at the top. It reads only what the app already saves (`atm-academy`,
+`outpost-profiles` snapshots, `outpost-missions-flown:<call sign>`, `GET /api/academy/course`, `/api/mission/saved`,
+`/api/mission/{id}/debrief`) and stores nothing. No time spent: the app does not save it. **Print** prints the sheet
+alone (a copy at the body's top level, `@media print`): light paper, one cadet per page, no app chrome.
+
 Reset erases what the app saved on this computer, at one of two levels. **Progress stays** on both levels:
 Flight School and Field School progress (lessons, patches, the check ride, a half-done lesson's step: localStorage
 `atm-academy`), every cadet's call sign, and the missions flown that open bonus lessons. Only **"Hold to erase progress

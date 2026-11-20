@@ -22,12 +22,14 @@ export function markMissionFlown(id, cs, storage = typeof localStorage !== "unde
 export const isExplorer = l => !!(l && l.track === "explorer");
 /** Field School (course.json track "field", 0.5): a second track of geology lessons that opens after the check ride. */
 export const isField = l => !!(l && l.track === "field");
-/** Not a core lesson: an explorer (bonus) lesson or a Field School lesson. Neither ever blocks the check ride. */
-export const isBonus = l => isExplorer(l) || isField(l);
+/** A teacher-written Class lesson (track "class", docs/CURRICULUM.md): always open, never in the core count. */
+export const isClass = l => !!(l && l.track === "class");
+/** Not a core lesson: an explorer (bonus) lesson, a Field School lesson or a Class lesson. None ever blocks the check ride. */
+export const isBonus = l => isExplorer(l) || isField(l) || isClass(l);
 /** Is this lesson open to the cadet now? Core lessons always are. An explorer lesson with `unlock_after: "checkride"`
  *  opens once the cadet is qualified (novice playtest 2026-11-16 #22: Apollo's trace step in the first hour); so does
  *  every Field School lesson. */
-export const unlocked = (l, flown, qualified = false) => !isBonus(l) ||
+export const unlocked = (l, flown, qualified = false) => !isBonus(l) || isClass(l) ||
   (l.unlock_after === "checkride" || isField(l) ? !!qualified : flown >= (l.unlock_after_missions || 1));
 /** The explorer lessons that opened exactly at `flown` missions (the debrief offers these). */
 export const newlyUnlocked = (lessons, flown) => (lessons || []).filter(l => isExplorer(l) && l.unlock_after !== "checkride" && (l.unlock_after_missions || 1) === flown);

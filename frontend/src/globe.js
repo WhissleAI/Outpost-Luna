@@ -247,6 +247,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     for (let it = 0; it < 12; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
       const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
       if (d >= need) return;
+      if (d < 0.5) { a.bx -= need / 2; b.bx += need / 2; return; }   // two lessons on the same place (a Class pin on a NASA one): side by side
       const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
     }));
     rstops.forEach(s => {
@@ -262,6 +263,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       // legs: solid between two done stops, dotted into the next stop, nothing else. Stops may carry their own state
       // ({done, next}); otherwise the first `rdone` stops are the done ones.
       const A = rstops[i - 1], B = rstops[i];
+      if (A.noLeg || B.noLeg) continue;   // a Class lesson pin: on the Moon, off the NASA route
       const dn = x => (x.done != null ? !!x.done : rstops.indexOf(x) < rdone), nx = x => (x.next != null ? !!x.next : rstops.indexOf(x) === rdone);
       const solid = dn(A) && dn(B), dotted = dn(A) && nx(B);
       if (!solid && !dotted) continue;

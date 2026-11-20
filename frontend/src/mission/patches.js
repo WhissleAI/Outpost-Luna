@@ -11,7 +11,7 @@
 // docs/MISSION_POLISH_SPEC.md).
 
 /** Which school a patch belongs to (course.json `track`), as the card says it. */
-export const TRACK = { core: "Flight School", field: "Field School", explorer: "Bonus lesson", ride: "Check ride" };
+export const TRACK = { core: "Flight School", field: "Field School", explorer: "Bonus lesson", ride: "Check ride", class: "Class lesson" };
 /** How many patches the key itself shows (the rest are counted). */
 export const KEY_MAX = 3;
 

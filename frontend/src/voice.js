@@ -17,6 +17,7 @@ import { paintLinked } from "./highlight.js";   // the ear's linked names, marke
 import * as echoref from "./echoref.js";       // what we play -> the ear's echo reference (libarc ABI 2)
 import { videoCommand } from "./media/commands.js";   // [media] the video overlay's four voice controls
 import { onEngine, earNote, earErrorIsFatal, setEarFailed, earFailed, noEar } from "./engine.js";      // [#87] the desktop shell's "ear restarting" / "voice off"
+import { createRoom, effectiveFilter } from "./room.js";   // the automatic room state: calm / busy / loud (docs/HANDSFREE.md)
 export { spaceAction, micErrorText };
 
 const CLASSES = ["is-idle", "is-listening", "is-hearing", "is-thinking", "is-speaking", "is-notice"];
@@ -53,10 +54,19 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   let mode = "off", wsBroken = false, starting = false, srOn = false;
   let lastContext = null;
   let finalBuf = "", interim = "", turnAsked = false, kidTalking = false, state = "off";
-  const ptt = { held: false, tail: null };
+  const ptt = { held: false, tail: null, latch: false, latchT: 0 };
   const turnText = () => (finalBuf + " " + interim).trim();
   /** Settings → Listening → "Hold to talk": open-mic turns are ignored; only Space / a held mic turn counts. */
-  const pttOnly = () => !!(window.__outpost && window.__outpost.prefs && window.__outpost.prefs.listen === "ptt");
+  const prefListen = () => !!(window.__outpost && window.__outpost.prefs && window.__outpost.prefs.listen === "ptt");
+  // ----- the room (room.js): busy / loud rooms make listening stricter on their own, never looser than Settings -----
+  // A busy room raises the filter one level (here, in barge.js and on the server); when open mic keeps catching chatter
+  // it asks for hold to talk; a loud room, or voice that keeps failing, offers typing and then switches to it. Calm
+  // again: open voice, silently. One short line in the bar says what changed (roomChanged).
+  const roomEst = createRoom({ onChange: (s, p) => roomChanged(s, p) });
+  const roomLine = () => roomEst.snapshot().line;
+  /** Hold to talk: Settings → Listening → "Hold to talk", or the room asked for it. Space / the mic / controller X talk. */
+  const pttOnly = () => prefListen() || roomEst.mode !== "open";
+  const prefFilter = () => (window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter) || "normal";
 
   // ----- mic level meter (#micLevel, in the listen row) -----
   const meter = document.createElement("span");
@@ -110,6 +120,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   }
   function level(rms) {
     track(rms);
+    roomEst.frame(rms, { playing: outputBusy() || ptt.held });   // our own voice and a held Space turn are not the room
     if (gated && !gated.timer) check();   // the energy test runs per frame: no waiting for the ear's next message
     let v = Math.min(1, Math.sqrt(Math.max(0, rms)) * 2.2);   // perceptual-ish: quiet speech still moves the bar
     v = v < NOISE_FLOOR ? 0 : (v - NOISE_FLOOR) / (1 - NOISE_FLOOR);
@@ -165,6 +176,35 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   }
   const HOLD = hintEl.lastElementChild.textContent || "Hold to talk";
   const note = text => { hintEl.lastElementChild.textContent = text; };
+  // ----- the room's effects on the bar: one short line, the hold-to-talk mic, typing (room.js) -----
+  const qEl = $("q"), Q_PLACEHOLDER = qEl ? qEl.placeholder : "";
+  function roomChanged(s, p) {
+    if (bar.dataset) bar.dataset.room = s.mode;
+    if (hintEl.dataset) hintEl.dataset.room = s.mode;
+    if (!earNote()) note(s.line || HOLD);
+    if (qEl) qEl.placeholder = s.mode === "type" ? s.line : Q_PLACEHOLDER;
+    // typing: the text box takes the keyboard once (not from another text box, not under Settings or a dialog)
+    if (s.mode === "type" && p.mode !== "type" && qEl && typeof document.querySelector === "function") {
+      const a = document.activeElement, busy = a && a !== document.body && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
+      const modal = document.querySelector(".a11y-panel:not([hidden]), dialog[open]");
+      if (!busy && !modal) { try { qEl.focus({ preventScroll: true }); } catch (e) { /* hidden */ } }
+    }
+    if (s.mode === "open" && ptt.latch) release();
+    try { dispatchEvent(new CustomEvent("outpost:room", { detail: { ...s, filter: effectiveFilter(prefFilter(), s.state) } })); } catch (e) { /* tests */ }
+  }
+  // the turn's speech-to-noise: its loudest 80 ms frame in the last 1.5 s over the room's floor
+  const turnSnr = () => { const now = performance.now(), f = roomEst.floor; const pk = mic.filter(x => now - x.t < 1500).reduce((a, x) => Math.max(a, x.rms), 0);
+    return f > 0 && pk > 0 ? pk / f : null; };
+  const roomTurns = [];   // [{q, text, dd, uconf, snr, ptt, at}] heard turns waiting for the router's decision
+  function roomTurn({ text, ptt: viaPtt }) {
+    roomTurns.push({ q: keyOf(text), text, dd: turnDD, uconf: turnUconf, snr: turnSnr(), ptt: !!viaPtt, at: Date.now() });
+    while (roomTurns.length > 6) roomTurns.shift();
+  }
+  /** An open-mic turn heard while hold to talk is on: never sent, but still evidence (room talk, or calm again). */
+  function roomOpenMic(text) {
+    const lo = (BARGE[effectiveFilter(prefFilter(), roomEst.state)] || BARGE.normal)[0];
+    roomEst.turn({ text, outcome: null, dd: turnDD, lo, uconf: turnUconf, snr: turnSnr() });
+  }
   // [qa] The ear can drop (model server restarted, too many sessions): never show the server's words to a kid; reconnect
   // on our own with a back-off, and put "Hold to talk" back once the mic is live again.
   let retryT = 0, retries = 0, userOff = false, everOn = false;
@@ -249,6 +289,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
       oldRefs: saidRefs(3000, ECHO_LINES_MS) }))) { if (exp) wordsEl.textContent = ""; kidDone(); return; }   // filler / echo: no state change at all
     recEnd("asked", text);
     const viaPtt = pttTurn; pttTurn = false;
+    roomTurn({ text, ptt: viaPtt });
     // "Thinking" waits for the router (decided()): an ignored turn goes back to "Listening" with no flash. A decision
     // that already arrived (the server's ear relay can beat the client's own turn end) is used at once.
     const q = keyOf(text), now = Date.now(), early = decisions.find(d => d.q === q && now - d.at < DISPLAY.DECIDED_MS);
@@ -256,7 +297,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     pending = null;
     // The client already knows most room talk: Arc says it was for someone else (the router's not_directed rule), or
     // it is rude. Those never start the "Thinking" clock; a late "yes, it's for us" from the router still shows it.
-    const lo = (BARGE[(window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter) || "normal"] || BARGE.normal)[0];
+    const lo = (BARGE[effectiveFilter(prefFilter(), roomEst.state)] || BARGE.normal)[0];
     const roomTalk = !exp && ((turnDD != null && turnDD < lo) || hasProfanity(text));
     if (early) { if (early.outcome === "ignore") idle(); else thinking(); }
     else if (roomTalk) { idle(); pending = { q, timer: 0 }; }
@@ -304,7 +345,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
 
   // An open-mic turn heard while audio plays: held back until it passes the barge-in check (barge.js decideBarge), or
   // dropped at its end (echo, room talk, noise). A check that waits on a timing window runs again when it ends.
-  let gated = null, turnDD = null, turnSafety = null, pttTurn = false, idleStart = false;
+  let gated = null, turnDD = null, turnSafety = null, pttTurn = false, idleStart = false, turnUconf = null;
   let arcSeen = false;   // this ear sends Arc metadata: a turn it never rated (noise, far-off chatter) can't interrupt
   function gate(m) {
     if (m.t === "turn" && (m.state === "start" || m.state === "resumed")) {
@@ -342,6 +383,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     if (d.act === "wait" && d.retryMs) { g.timer = setTimeout(() => { if (gated === g) check(); }, d.retryMs); return; }
     if (g.ended) {                                          // echo / chatter / noise: dropped, the line plays on
       gated = null;
+      roomEst.held(d.reason);
       if (g.text || d.reason !== "no_words") logBarge({ kind: "held", reason: d.reason, text: g.text, energy: en ? +en.turn.toFixed(4) : null, loud: en ? en.loud : null,
         need: en ? +en.need.toFixed(4) : null, ms: Math.round(performance.now() - g.t0), playing: outputBusy(), dd: turnDD });
     }
@@ -349,11 +391,16 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
 
   const listener = createListener({
     message(m) {
-      if (m.t === "ready") { if (earFailed()) { setEarFailed(false); note(earNote() || HOLD); } idle(); if (lastContext) listener.send(lastContext); }   // [0.3.12] an ear that answers clears "Voice off"
+      if (m.t === "ready") { if (earFailed()) { setEarFailed(false); note(earNote() || roomLine() || HOLD); } idle(); if (lastContext) listener.send(lastContext); }   // [0.3.12] an ear that answers clears "Voice off"
       else if (m.t === "arc") { arcSeen = true; if (typeof m.device_directed === "number") turnDD = m.device_directed; if (Array.isArray(m.safety)) turnSafety = m.safety; }
-      else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) { /* Settings → Listening: hold to talk */ }
+      else if ((m.t === "words" || m.t === "turn") && pttOnly() && !ptt.held && !ptt.tail && !pttTurn) {   // hold to talk (Settings or the room)
+        if (m.t === "turn" && m.state === "start") { turnDD = null; turnUconf = null; }
+        if (m.t === "words" && m.final && typeof m.uconf === "number") turnUconf = m.uconf;
+        if (m.t === "turn" && m.state === "end" && (m.text || "").trim()) roomOpenMic((m.text || "").trim());   // still room evidence
+      }
       else if (m.t === "words" || m.t === "turn") {
-        if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; turnLinks = []; }
+        if (m.t === "turn" && m.state === "start") { turnDD = null; turnSafety = null; turnLinks = []; turnUconf = null; }
+        if (m.t === "words" && m.final && typeof m.uconf === "number") turnUconf = m.uconf;
         // While the guide or the crew plays, the mic also hears our speakers: open-mic speech is gated (§3.2).
         // A turn that began in silence and has no real word yet when one of our lines starts: from now on it is gated
         // like any turn heard while we play (it must not take the floor and cut the new line).
@@ -371,7 +418,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
         else if (m.state === "start") { turnAir = airNow(); turnAsked = false; finalBuf = ""; interim = m.text || "";
           if (isFiller(m.text || "")) idleStart = true; else { idleStart = false; bargeIn("turn_start", m.text || ""); set("hearing"); } }
         else if (m.state === "resumed") { kidTalking = true; if (floor) floor.setKid(true); turnAsked = false; set("hearing"); }
-        else if (m.state === "end") { if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
+        else if (m.state === "end") { if (ptt.held && ptt.latch && (m.text || turnText())) { release(); return; } if (ptt.held) return; idleStart = false; if (!turnAsked) askTurn((m.text || turnText()).trim()); }
       }
       else if (m.t === "emotion") { if (m.label) onEmotion(m.label); }
       else if (m.t === "error") { console.warn("ear error:", m.message); if (earErrorIsFatal(m.message)) setEarFailed(true); note(earNote() || "Voice paused. Reconnecting…"); }   // a kid never reads "sent 1011 (internal error)"
@@ -404,7 +451,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     starting = true; set("thinking", "Mic on…");
     const ok = await listener.start(); starting = false;
     if (ok === true && typeof listener.clock === "function") echoref.bind(listener);
-    if (ok === true) { mode = "ws"; retries = 0; userOff = false; everOn = true; note(earNote() || HOLD); idle(); return true; }
+    if (ok === true) { mode = "ws"; retries = 0; userOff = false; everOn = true; note(earNote() || roomLine() || HOLD); idle(); return true; }
     if (ok !== "mic") { wsBroken = true; set("off"); earLost(); }   // [qa] retry with a back-off (the ear may be warming up)       // "mic": micBlocked already showed why
     return false;
   }
@@ -417,7 +464,7 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     const n = earNote(s);
     if (n) { note(n); return; }
     if (s.ear !== "ok" || prev.ear === "ok") return;
-    note(HOLD);
+    note(roomLine() || HOLD);
     if (mode === "ws" || userOff || !everOn) return;
     clearTimeout(retryT); retryT = 0; retries = 0; wsBroken = false;
     startAlwaysOn().then(ok => { if (!ok && !userOff && mode !== "ws") earLost(); });
@@ -428,6 +475,8 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   addEventListener("pointerdown", firstGesture, true); addEventListener("keydown", firstGesture, true);
 
   micBtn.onclick = async () => {
+    if (skipClick) { skipClick = false; return; }                     // the press-and-hold above already talked
+    if (mode === "ws" && pttOnly()) { if (ptt.held) release(); else pttDown({ latch: true }); return; }   // hold to talk: a tap talks
     if (mode === "ws") { stopAlwaysOn(); return; }
     if (srOn) { rec.stop(); return; }
     userOff = false; wsBroken = false;   // [qa] a tap always tries the local ear again (it may have been warming up)
@@ -444,16 +493,32 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     e.preventDefault();
     if (act === "blur" && document.activeElement && document.activeElement.blur) document.activeElement.blur();
     if (e.repeat || ptt.held) return;
+    await pttDown();
+  });
+  /** Push-to-talk starts: Space held, the mic held, or (latch) a tap of the mic / M / controller X in hold-to-talk. A
+   *  latched turn ends with the ear's turn end (or a second tap, or LATCH_MS). */
+  const LATCH_MS = 12000;
+  async function pttDown({ latch = false } = {}) {
     ptt.held = true; pttTurn = true; if (ptt.tail) { clearTimeout(ptt.tail); ptt.tail = null; }
+    clearTimeout(ptt.latchT); ptt.latch = latch; if (latch) ptt.latchT = setTimeout(release, LATCH_MS);
     if (gated) clearTimeout(gated.timer);
     gated = null; idleStart = false;
     bargeIn("ptt"); turnAsked = false; finalBuf = ""; interim = ""; wordsEl.textContent = "";
     if (mode !== "ws" && !wsBroken) await startAlwaysOn();
     set("hearing");
     if (mode !== "ws" && ptt.held) srStart();
+  }
+  // Hold to talk on the mic button itself (pointer / touch): press = talk, let go = send. A click (keyboard Enter, the
+  // M key, controller X) taps a latched turn instead (micBtn.onclick).
+  let micHeld = false, skipClick = false;
+  if (micBtn.addEventListener) micBtn.addEventListener("pointerdown", e => {
+    if (!pttOnly() || e.button !== 0 || mode !== "ws") return;
+    e.preventDefault(); micHeld = true; skipClick = true; pttDown();
   });
+  const micUp = () => { if (!micHeld) return; micHeld = false; release(); };
+  if (micBtn.addEventListener) ["pointerup", "pointercancel", "pointerleave"].forEach(ev => micBtn.addEventListener(ev, micUp));
   function release() {
-    if (!ptt.held) return; ptt.held = false;
+    if (!ptt.held) return; ptt.held = false; ptt.latch = false; clearTimeout(ptt.latchT);
     ptt.tail = setTimeout(() => {
       ptt.tail = null;
       if (mode === "ws") { if (!turnAsked) askTurn(turnText()); }
@@ -464,6 +529,14 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
   addEventListener("keyup", e => { if (e.code !== "Space" || !ptt.held) return; e.preventDefault(); release(); });
   addEventListener("blur", release);
 
+  // tests / tools / screenshots: window.__outpost.roomEst.force("busy") (or "loud", "loud","type"; null = automatic)
+  (window.__outpost = window.__outpost || {}).room = {
+    get state() { return roomEst.state; }, get mode() { return roomEst.mode; }, get floor() { return roomEst.floor; },
+    snapshot: () => ({ ...roomEst.snapshot(), filter: effectiveFilter(prefFilter(), roomEst.state) }),
+    filter: pref => effectiveFilter(pref || prefFilter(), roomEst.state), force: (st, m) => roomEst.force(st, m),
+  };
+  { const iv = setInterval(() => roomEst.tick(), 1000); if (iv && iv.unref) iv.unref(); }   // evidence decays with no new frames (mic off)
+
   return {
     /** Show the guide speaking / thinking / back to listening. Never overrides the kid's own turn. */
     show(s) { if (kidTalking || ptt.held) return; if (s === "idle") idle(); else set(s); },
@@ -472,8 +545,11 @@ export function createVoice({ onTurn, onBargeIn, onKidDone, onEmotion, isOutputB
     links() { return turnLinks; },
     /** The router's decision for a turn (main.js forwards every `heard` decision): "ignore" ends it quietly (no
      *  "Thinking", no words); anything else shows "Thinking" until the reply speaks. */
-    decided(outcome, text) {
+    decided(outcome, text, d = null) {
       const q = keyOf(text), now = Date.now();
+      { const i = roomTurns.findIndex(x => x.q && (x.q === q || x.q.includes(q) || q.includes(x.q)) && now - x.at < DISPLAY.DECIDED_MS);
+        if (i >= 0) { const u = roomTurns.splice(i, 1)[0];
+          roomEst.turn({ ...u, outcome, reason: (d && d.reason) || "", notice: !!(d && d.notice), lo: (BARGE[effectiveFilter(prefFilter(), roomEst.state)] || BARGE.normal)[0] }); } }
       if (recov && !recov.outcome) recov.outcome = outcome;
       decisions.push({ q, outcome, at: now });
       while (decisions.length > 8 || (decisions[0] && now - decisions[0].at > DISPLAY.DECIDED_MS)) decisions.shift();

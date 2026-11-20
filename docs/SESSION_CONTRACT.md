@@ -112,3 +112,14 @@ Nothing above was changed; these were only added (details: `docs/VOICE_STEERING.
 - **`/api/tts`** replies carry `X-TTS-Engine: os|deepgram`, `X-TTS-Voice` (the OS voice used), `X-TTS-Style`,
   `X-TTS-Words`, and `X-TTS-Fallback` when the OS voice was skipped; OS-voice audio is `audio/wav`, Deepgram
   `audio/mpeg`. `tts_voice` is a persona role or an installed OS voice id (`GET /api/voices`, docs/VOICES.md).
+
+## 7. Additive fields (automatic room state, 2026-11-19)
+
+Nothing above was changed; these were only added (details: `docs/HANDSFREE.md` "Room state"):
+- **`prefs`**: `room` (`"calm"|"busy"|"loud"`) and `room_listen` (`"open"|"hold"|"type"`). The client's automatic room
+  estimator (`frontend/src/room.js`) sets them, never the kid, and they are never stored. A busy or loud room raises the
+  dd gates one level above `filter` (`turn_router.room_filter`: relaxed → normal → strict); `filter` itself keeps the
+  kid's choice. With `room_listen` `hold` or `type`, open-mic turns are ignored as with `listen: "ptt"`; `ptt` and
+  `typed` turns always count. Defaults `calm` / `open`; other values are ignored. The ack's `applied` carries both.
+- **Rule 2 (the kid always wins):** in a busy room the client's barge gate uses the stricter level too
+  (`barge.js filterLevels`).

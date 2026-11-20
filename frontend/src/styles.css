@@ -471,6 +471,11 @@ body:not([data-mode="cadet"]) .mcard{display:none}
   .dock-row{height:54px}
 }
 @media (hover:none){ .hint{display:none} }
+/* the automatic room state (room.js): its one line stays visible on touch screens too, and "type instead" has no key */
+@media (hover:none){ .hint[data-room="hold"],.hint[data-room="offer"],.hint[data-room="type"]{display:flex} }
+.hint:is([data-room="hold"],[data-room="offer"],[data-room="type"]) kbd{display:none}   /* the room line names the mic itself; "Type instead" keeps its room (it was cut to "Type inste" at 1440) */
+.ask:has(.hint:is([data-room="hold"],[data-room="offer"])) input{min-width:7.5em}
+.hint[data-room="hold"],.hint[data-room="offer"],.hint[data-room="type"]{color:var(--color-text-2)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
   .askbar.is-hearing .orb i,.askbar.is-speaking .orb i{height:12px}

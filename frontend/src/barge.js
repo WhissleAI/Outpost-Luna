@@ -50,8 +50,10 @@ const STOP_WORD = /\b(?:stop|wait|pause|quiet|shush|enough|skip|next|never ?mind
 export const saysStop = text => STOP_WORD.test(normWords(text).join(" "));
 
 function filterLevels() {
-  const f = typeof window !== "undefined" && window.__outpost && window.__outpost.prefs && window.__outpost.prefs.filter;
-  return BARGE[f] || BARGE.normal;
+  const O = typeof window !== "undefined" && window.__outpost;
+  const f = O && O.prefs && O.prefs.filter;
+  // a busy or loud room (room.js, voice.js) raises it one level on its own; never looser than the kid's choice
+  return BARGE[O && O.room && typeof O.room.filter === "function" ? O.room.filter(f || "normal") : f] || BARGE.normal;
 }
 
 /**

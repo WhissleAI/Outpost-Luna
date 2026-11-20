@@ -24,3 +24,24 @@ export function fieldTrackHtml({ qualified, fieldLessons, copy, esc, lockIcon = 
       <span><b>${esc(copy.name)}</b> · ${esc(copy.lockedTrack)}</span>
       <small>${esc(copy.trackCount(fieldLessons.length))}</small></button>`;
 }
+
+/** The map's Class lesson rows (teacher-written packs, docs/CURRICULUM.md): one button per pack, next to the Field School
+ *  track. It selects the pack's first lesson not yet done (or its first), so its pin and card come up like any other.
+ *  lessons: the course's Class lessons (preview ones already left out); has(badgeId) → earned. */
+export function classTrackHtml({ lessons, has, copy, esc, patch }) {
+  const packs = [];
+  (lessons || []).forEach(l => {
+    const id = (l.pack && l.pack.id) || "class";
+    let p = packs.find(x => x.id === id);
+    if (!p) packs.push(p = { id, title: (l.pack && l.pack.title) || copy.name, lessons: [] });
+    p.lessons.push(l);
+  });
+  return packs.map(p => {
+    const done = p.lessons.filter(l => has(l.badge.id)).length, pick = p.lessons.find(l => !has(l.badge.id)) || p.lessons[0];
+    return `<button type="button" class="mp-track is-class" data-class-pack="${esc(p.id)}" data-l="${esc(pick.id)}"
+      aria-label="${esc(`${copy.name}: ${p.title}. ${copy.track(done, p.lessons.length)}`)}">
+      <span class="mp-track-patch" aria-hidden="true">${patch(pick.id, { earned: has(pick.badge.id), size: 28 })}</span>
+      <span><b>${esc(copy.name)}</b> · ${esc(p.title)}</span>
+      <small>${esc(copy.track(done, p.lessons.length))}</small></button>`;
+  }).join("");
+}

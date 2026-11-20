@@ -1,0 +1,34 @@
+{
+ "format": "outpost-luna-class-pack",
+ "version": 1,
+ "id": "room-12",
+ "title": "Room 12 Moon unit",
+ "author": "Sample pack",
+ "lessons": [
+  {
+   "id": "craters",
+   "title": "Craters up close",
+   "brief": "Big craters tell the Moon's story. Let's visit two of them.",
+   "place": "copernicus",
+   "patch": {"name": "Crater Spotter", "glyph": "C"},
+   "facts": [
+    {"text": "Copernicus is a crater about 96 km wide.",
+     "source": {"title": "IAU Gazetteer of Planetary Nomenclature: Copernicus", "url": "https://planetarynames.wr.usgs.gov/Feature/1296"}},
+    {"text": "Shackleton crater is about 21 km wide. The south pole sits on its edge.",
+     "source": {"title": "IAU Gazetteer of Planetary Nomenclature: Shackleton", "url": "https://planetarynames.wr.usgs.gov/Feature/5450"}}
+   ],
+   "steps": [
+    {"kind": "predict", "prompt": "What made most of the round craters on the Moon?",
+     "options": ["Space rocks hitting", "Old volcanoes"], "answer": 0,
+     "reveal": "Space rocks. Each hit blasted out a round crater.", "hint": "Think of things falling from space."},
+    {"kind": "place", "prompt": "Find Copernicus, a big sharp crater on the near side.", "place": "copernicus",
+     "success": "Roger. Copernicus, about 96 km wide."},
+    {"kind": "choice", "prompt": "Which crater has the south pole on its edge?",
+     "options": ["Shackleton", "Copernicus", "Tycho"], "answer": 0,
+     "success": "Correct. Shackleton, at the south pole.", "hint": "It's the one at the very bottom."},
+    {"kind": "say", "prompt": "What do we call rock thrown out when a crater forms?",
+     "words": ["ejecta"], "success": "Roger. Ejecta, the splash of rock.", "hint": "It starts with e, like eject."}
+   ]
+  }
+ ]
+}

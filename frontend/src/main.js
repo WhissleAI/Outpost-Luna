@@ -43,6 +43,10 @@ import { initVideo, isOpen as videoOpen, handleVoice as videoVoice, onVideoChang
 import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
+import "./progress.css";
+import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
+import "./class_editor.css";
+import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
 import "./playtest_ui.js";      // Settings → For grown-ups → Voice log and playtest (docs/DIRECTOR_LOOP.md §1b)
 import "./app_update_ui.js";    // Settings → App version: "Check for updates" (desktop only; docs/DESKTOP.md "App updates")
@@ -168,6 +172,11 @@ async function boot() {
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
+  // [class] Settings → Class lessons → Preview: the course again (the preview joined it), then the lesson, as a cadet sees it
+  addEventListener("outpost:class-open", e => {
+    const id = e.detail && e.detail.id; if (!id) return;
+    academyUI.reloadCourse().catch(() => {}).then(() => { setMode("academy"); setTimeout(() => academyUI.nav("lesson", id), 400); });
+  });
   const missionLearning = installMissionLearning({
     missionUI, say: t => guideSay(t, { voice: CAPCOM_VOICE }), stop: () => stopSpeaking("mission_stop"),
     lessons: () => academyUI.lessons(),
@@ -196,6 +205,7 @@ async function boot() {
   installPretendExplain({ speak: t => speak(t, { priority: 2 }) });   // the guide's line is captioned like any other
   const sendPrefs = () => { if (useSession()) session.sendRaw(prefs.wire(a11y ? a11y.settings.speed : 1)); };
   prefs.on(() => sendPrefs());
+  addEventListener("outpost:room", () => sendPrefs());   // the automatic room state (room.js): the server's dd gates follow it
   // the turn log (prefs.improve, or a grown-up's Playtest session): the Academy's grade of a step, so the server can mark
   // a step that passed or went to hint (the server ignores it when the log is off)
   addEventListener("outpost:lesson-result", e => { if (useSession() && e.detail) session.sendRaw({ t: "ui", event: "lesson_result", status: e.detail.status, step_type: e.detail.step_type }); }); addEventListener("outpost:a11y", e => { if (e.detail && "speed" in e.detail) sendPrefs(); });
@@ -574,7 +584,7 @@ async function boot() {
     prefs: d => prefs.setApplied(d.applied),   // Settings v1: what the session applied
     // [hands-free] what the router made of a turn (only a used turn is logged; a clearly-directed miss shows a chip)
     heard: d => {
-      voice.decided(d.outcome, d.text);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
+      voice.decided(d.outcome, d.text, d);   // [P0] the bar's "Thinking" waits for this; an ignored turn leaves no trace
       // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
       // a quiet exact answer comes back as one chip (crewpick.js); anything else heard clears an old one
       if (d.reason === "crew_talk" && d.pick) crewPick.show(d.pick); else crewPick.hide();
