@@ -54,7 +54,7 @@ test("read: a short-answer question has a type box that sends the words", () => 
 });
 
 test("vocab: the meaning, word buttons, the plan comes from spaced repetition and stays for the step", () => {
-  const acc = { type: "vocab", ask: 2, terms: { a: "crater", b: "lava" }, items: [
+  const acc = { type: "vocab", ask: 2, items: [
     { id: "a", kind: "word", define: "A round hole.", options: [{ id: "o1", label: "crater" }, { id: "o2", label: "creator" }] },
     { id: "b", kind: "word", define: "Melted rock.", options: [{ id: "o1", label: "lava" }, { id: "o2", label: "larva" }] }] };
   const state = {}, sent = [];
@@ -81,6 +81,18 @@ test("summary: words collect over turns, 'that's it' sends the whole summary, ty
   el.forms[0].input.value = "they landed together"; el.forms[0].onsubmit({ preventDefault() {} });
   assert.equal(sent[1].long_text, "they landed together");
   clearTimeout(state.rec.timer);
+});
+
+test("with a page (document present) the live counters look the card up without recursing", () => {
+  const seen = [];
+  globalThis.document = { querySelector: sel => { seen.push(sel); return null; } };
+  try {
+    const state = {};
+    R.summary({ acc: { type: "summary", source: { kind: "video", media: "x" }, need: 1, points: [{ id: "p" }] }, answer: () => {}, state });
+    assert.equal(state.onText("a few words here"), true);
+    assert.ok(seen.includes("#aInput .sp-count"));
+    clearTimeout(state.rec.timer);
+  } finally { delete globalThis.document; }
 });
 
 test("addSegment, wordCount, readingSeconds", () => {

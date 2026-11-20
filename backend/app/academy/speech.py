@@ -429,8 +429,7 @@ def public_accept(acc: dict) -> dict:
                 pi["term"] = it["term"]
                 pi["options"] = [{"id": o["id"], "label": o["label"]} for o in sentence_options(it)]
             items.append(pi)
-        return {"type": t, "items": items, "ask": vocab_plan(acc, None).__len__(),
-                "terms": {it["id"]: it["term"] for it in acc["items"]}}
+        return {"type": t, "items": items, "ask": len(vocab_plan(acc, None))}   # item ids, never the words (answers)
     if t == "summary":
         src = dict(acc["source"])
         if src.get("passage"):
@@ -564,6 +563,8 @@ def check_step(s: dict, acc: dict) -> list[str]:
             if not it.get("term"):
                 out.append(f"vocab: {iid} needs a term")
                 continue
+            if it["id"] != str(it["term"]).lower():
+                out.append(f"vocab: {iid} id must be the word in lower case (spaced repetition keys on it)")
             if not define_of(it):
                 out.append(f"vocab: {iid} needs a define line (or a glossary term)")
             elif len(define_of(it).split()) > 20:

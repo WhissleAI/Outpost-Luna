@@ -19,7 +19,7 @@ O.stepRenderers = O.stepRenderers || {};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const gotOf = ctx => (ctx.state && Array.isArray(ctx.state.got) ? ctx.state.got : []);
 const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
-const q$ = sel => (typeof document !== "undefined" ? q$(sel) : null);
+const q$ = sel => (typeof document !== "undefined" ? document.querySelector(sel) : null);
 
 export const SPEECH_STEP_TYPES = ["read", "vocab", "summary"];
 
@@ -133,7 +133,7 @@ O.stepRenderers.read = ctx => {
 export function stepPlan(ctx) {
   const st = ctx.state || {};
   if (Array.isArray(st.plan) && st.plan.length) return st.plan;
-  const items = (ctx.acc.items || []).map(it => ({ id: it.id, term: (ctx.acc.terms || {})[it.id] || it.term || it.id }));
+  const items = (ctx.acc.items || []).map(it => ({ id: it.id, term: it.id }));   // spaced repetition keys on the item id (by convention, the word)
   const course = store.courseOf(ctx.lesson && ctx.lesson.id);
   const plan = store.planFor(items, store.load(), course).slice(0, ctx.acc.ask || items.length);
   st.plan = plan;
@@ -142,7 +142,7 @@ export function stepPlan(ctx) {
 O.stepRenderers.vocab = ctx => {
   const acc = ctx.acc, got = gotOf(ctx), plan = stepPlan(ctx), byId = Object.fromEntries((acc.items || []).map(i => [i.id, i]));
   const k = Math.min(got.length, plan.length - 1), it = byId[plan[k]] || (acc.items || [])[0] || {};
-  const term = (acc.terms || {})[it.id] || it.term || "";
+  const term = it.term || "";   // a sentence item names its word; a word item never does (it is the answer)
   const body = it.kind === "sentence"
     ? `<p class="sp-def"><b>${esc(term)}</b>: ${esc(it.define)}</p><p class="a-how">${esc(COPY.sentenceHow(term))}</p>
        <div class="a-choices sp-opts sp-sentences" role="group" aria-label="Sentences">${(it.options || []).map((o, j) => `<button type="button" class="a-choice sp-opt" data-c="${esc(o.id)}"><span class="a-key" aria-hidden="true">${j + 1}</span><span>${esc(o.label)}</span></button>`).join("")}</div>

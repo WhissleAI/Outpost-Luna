@@ -97,9 +97,10 @@ export function applyReply(s, { lesson_id, step_type, status, reply = {}, input 
     if (got > prior && !reply.shown) addCount(s, course, "questions", got - prior);
     if (status === "passed") addCount(s, course, "read");
   }
-  if (step_type === "vocab" && reply.term) {
-    if (got > prior || status === "passed") recordWord(s, course, reply.term, !reply.shown, now);
-    else if (status === "hint") recordWord(s, course, reply.term, false, now);
+  const word = reply.item || reply.term;   // the item id (by convention the word itself)
+  if (step_type === "vocab" && word) {
+    if (got > prior || status === "passed") recordWord(s, course, word, !reply.shown, now);
+    else if (status === "hint") recordWord(s, course, word, false, now);
   }
   if (step_type === "summary" && status === "passed") { addCount(s, course, "summaries"); addCount(s, course, "points", got); }
   return s;

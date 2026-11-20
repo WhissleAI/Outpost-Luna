@@ -754,7 +754,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // [brain] and the cadet's own practice counts (brain_store.js: ids and counts only, on this device; docs/BRAIN.md)
     try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type,
       lesson: L.id, shown: !!r.shown, misses, helped: !L.ride && (gs.rung || 0) > baseRung, hes: hes && r.status === "hint", step_s, ride: !!L.ride,
-      lesson_id: L.id, reply: r, input, preview: !!L.preview } }));   // + speech steps' counts (academy/speech_steps.js) } catch (e) { /* no window */ }
+      lesson_id: L.id, reply: r, input, preview: !!L.preview } })); } catch (e) { /* no window */ }   // + speech steps' counts (academy/speech_steps.js)
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
     if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }
