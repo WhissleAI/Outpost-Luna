@@ -13,7 +13,7 @@
    "title": "Speech model (Arc Transcriber Space)",
    "required": true,
    "file": "outpost-luna-v2-ear-176d324-fp16-2.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/8fktj99ycxnrjei0do31u/outpost-luna-v2-ear-176d324-fp16-2.tar?rlkey=fkv28zjf40p45kgmmzrn8rxyr&dl=1",
    "sha256": "66c3092d7e375e708dc7ae44ae29aa8b35674a80ffa61481e1201f0992b84a4f",
    "size": 403025920,
    "unpacked_size": 403004221,
@@ -4261,7 +4261,7 @@
    "title": "Artemis II crew audio",
    "required": false,
    "file": "outpost-luna-v2-crew-2.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/kdmv9ebanqn83tjvrndpj/outpost-luna-v2-crew-2.tar?rlkey=w5jnvfsu4eproj0d6828dl0i6&dl=1",
    "sha256": "8483e217810d1914129cfb4b4adce7f880a3f556d396f7502633ce1c9a1c61fe",
    "size": 116961280,
    "unpacked_size": 116891644,
@@ -4980,7 +4980,7 @@
    "title": "NASA videos",
    "required": false,
    "file": "outpost-luna-v2-videos-3.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/z1o55cmtccc9u9lhd5egv/outpost-luna-v2-videos-3.tar?rlkey=r9q5mq68r8rgkvlat4rckmwp3&dl=1",
    "sha256": "ce875e1f349302895495046b5204ccf08e5cdaafb3550627ba2101b4ee0902a3",
    "size": 207462400,
    "unpacked_size": 207425428,
@@ -5663,7 +5663,7 @@
    "title": "Course: Archaeology",
    "required": false,
    "file": "outpost-luna-v2-course_archaeology.tar",
-   "url": null,
+   "url": "https://www.dropbox.com/scl/fi/vspyiobww2d8h5y2438mk/outpost-luna-v2-course_archaeology.tar?rlkey=mfivqzgdwxbf4s71c9dbzvs2j&dl=1",
    "sha256": "c86b8eac430e647e3b619fe2edae35fd889e0c35062927e4ed31573d4bb822c9",
    "size": 4608000,
    "unpacked_size": 4589438,
@@ -5779,6 +5779,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-20T16:16:11Z",
- "version": "2026.11.20.1616"
+ "published_at": "2026-11-20T18:14:03Z",
+ "version": "2026.11.20.1814"
 }
