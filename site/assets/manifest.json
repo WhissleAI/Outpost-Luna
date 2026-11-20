@@ -409,7 +409,10 @@
       }
      ]
     }
-   }
+   },
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-ear-176d324-fp16-2.tar"
+   ]
   },
   {
    "id": "tagger",
@@ -457,7 +460,10 @@
    "version": "1",
    "min_app": "0.1.0",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-tagger.tar"
+   ]
   },
   {
    "id": "embedder",
@@ -494,7 +500,10 @@
    "version": "1",
    "min_app": "0.1.0",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-embedder.tar"
+   ]
   },
   {
    "id": "voice",
@@ -4078,7 +4087,10 @@
    "version": "1",
    "min_app": "0.1.0",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-voice.tar"
+   ]
   },
   {
    "id": "steer",
@@ -4250,7 +4262,10 @@
    "note": "On demand: downloaded when Steer TTS is picked in Settings -> Voice. Not in the offline zip yet (outpost-luna-assets-v2.zip predates it); url null until uploaded: the public v1 model package is the source (fallback tar_members).",
    "max_app": null,
    "requires": [],
-   "on_demand": true
+   "on_demand": true,
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-steer.tar"
+   ]
   },
   {
    "id": "crew",
@@ -4968,7 +4983,10 @@
       "size": 41421
      }
     ]
-   }
+   },
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-crew-2.tar"
+   ]
   },
   {
    "id": "videos",
@@ -5383,7 +5401,10 @@
       "sha256": "1df744d0db3f67ee1dd3638cbc7797e51c01423a0dc14ea75565b905c3a9d1c4"
      }
     ]
-   }
+   },
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-videos-3.tar"
+   ]
   },
   {
    "id": "site_layers",
@@ -5434,7 +5455,10 @@
    "min_app": "0.3.0",
    "note": "Optional: the site navigator's polar map layers (NASA LRO LOLA + Diviner; backend/pipeline/site_physics.py). The app works without them.",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-site_layers.tar"
+   ]
   },
   {
    "id": "nasa_views",
@@ -5652,7 +5676,10 @@
    "min_app": "0.4.0",
    "note": "Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.",
    "max_app": null,
-   "requires": []
+   "requires": [],
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-nasa_views.tar"
+   ]
   },
   {
    "id": "course_archaeology",
@@ -5774,7 +5801,10 @@
     "subject": "Social studies (history, geography, civics) with science methods",
     "grades": "9-12"
    },
-   "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable."
+   "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable.",
+   "mirrors": [
+    "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-course_archaeology.tar"
+   ]
   }
  ],
  "offline_pack": {
@@ -5784,6 +5814,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-20T18:14:03Z",
- "version": "2026.11.20.1814"
+ "published_at": "2026-11-20T19:48:47Z",
+ "version": "2026.11.20.1948"
 }

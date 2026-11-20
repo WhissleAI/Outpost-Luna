@@ -40,6 +40,7 @@ def catalog(tmp_path, monkeypatch):
     m = json.loads(courses.ASSETS_MANIFEST.read_text())
     m["assets"].append({"id": "course_testland", "title": "Course: Testland", "required": False, "on_demand": True,
                         "file": "outpost-luna-v2-course_testland.tar", "url": "https://www.dropbox.com/x/t.tar?dl=1",
+                        "mirrors": ["https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/t.tar"],
                         "sha256": sha, "size": size, "unpacked_size": sum(f["size"] for f in files), "version": "1",
                         "files": files})
     man = tmp_path / "assets.manifest.json"
@@ -119,6 +120,15 @@ def test_school_network_mode_blocks_and_says_so(catalog, client, monkeypatch):
     # a host the school allows downloads as usual
     monkeypatch.setattr(netgate, "policy", lambda: {"school_network": True, "allow_hosts": ["www.dropbox.com"]})
     assert client.post("/api/courses/packs/testland/get").json()["state"] == "installed"
+
+
+def test_school_network_allows_a_pack_whose_mirror_host_is_allowed(catalog, client, monkeypatch):
+    from app import netgate
+    monkeypatch.setattr(netgate, "policy", lambda: {"school_network": True, "allow_hosts": ["github.com"]})
+    assert tl(client.get("/api/courses/packs").json())["blocked"] is False
+    assert client.post("/api/courses/packs/testland/get").json()["state"] == "installed"
+    assert course_packs.sources({"url": "a", "mirrors": ["a", "b", None]}) == ["a", "b"]
+    assert course_packs.school_blocks([]) is True
 
 
 def test_not_enough_disk_space_says_how_much(catalog, client, monkeypatch):

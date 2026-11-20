@@ -50,7 +50,7 @@ def catalog(manifest: Path | None = None) -> list[dict]:
             out.append({"id": a["id"][len(PREFIX):], "asset": a["id"], "title": a.get("title") or a["id"],
                         "size": int(a.get("size") or 0), "unpacked_size": int(a.get("unpacked_size") or a.get("size") or 0),
                         "version": str(a.get("version") or "1"), "sha256": a.get("sha256"), "file": a.get("file"),
-                        "url": a.get("url"), "files": a.get("files") or [],
+                        "url": a.get("url"), "urls": sources(a), "files": a.get("files") or [],
                         "card": card(a["id"][len(PREFIX):], a.get("course"))})
     return out
 
@@ -99,14 +99,26 @@ def free_bytes() -> int | None:
         return None
 
 
-def school_blocks(url: str | None) -> bool:
-    """School network mode is on and this pack's host is not on its allow-list (docs/SCHOOL_IT.md)."""
+def sources(a: dict) -> list[str]:
+    """The pack's download links in order: its url, then its mirrors (the same tar; desktop/main/assets.js sourcesOf)."""
+    out = []
+    for u in [a.get("url"), *(a.get("mirrors") if isinstance(a.get("mirrors"), list) else [])]:
+        if isinstance(u, str) and u and u not in out:
+            out.append(u)
+    return out
+
+
+def school_blocks(urls: str | list[str] | None) -> bool:
+    """School network mode is on and none of this pack's hosts (url or a mirror) is on its allow-list
+    (docs/SCHOOL_IT.md)."""
+    if isinstance(urls, str) or urls is None:
+        urls = [urls] if urls else []
     try:
         from . import netgate
         pol = netgate.policy()
         if not pol.get("school_network"):
             return False
-        return not (url and netgate.url_allowed(url, pol))
+        return not any(netgate.url_allowed(u, pol) for u in urls)
     except Exception:   # noqa: BLE001  (unknown policy: let the downloader's own gate decide)
         return False
 
@@ -150,7 +162,7 @@ def listing() -> dict:
     packs = []
     for e in catalog():
         packs.append({k: e[k] for k in ("id", "title", "size", "unpacked_size", "version")} | e["card"] | state(e)
-                     | {"active": e["id"] == act, "blocked": school_blocks(e["url"])})
+                     | {"active": e["id"] == act, "blocked": school_blocks(e["urls"])})
     from .config import settings
     return {"managed": _assets() is not None, "downloadable": downloadable(), "free_bytes": free_bytes(), "packs": packs,
             "school_network": any(p["blocked"] for p in packs) or _school_on(), "assets_dir": bool(settings.assets_dir)}
@@ -232,7 +244,7 @@ def get_pack(cid: str):
     st = state(e)
     if st["state"] in ("installed", "downloading", "queued"):
         return st
-    if school_blocks(e["url"]):
+    if school_blocks(e["urls"]):
         raise HTTPException(403, SCHOOL_MSG)
     need, free = e["size"] + e["unpacked_size"], free_bytes()
     if free is not None and free < need:

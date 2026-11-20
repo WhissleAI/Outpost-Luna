@@ -8,7 +8,8 @@ Both are written together with the same content; backend/tests/test_asset_manife
 
 Schema 2: {schema, version, published_at, remote_url, pack, folder, note, assets: [entry], offline_pack}
   entry: id, title, version (bump on every new sha256), file, url (https Dropbox dl=1 / Hugging Face / GitHub; null =
-         not uploaded), sha256, size, required, min_app / max_app (app versions it works with, null = open),
+         not uploaded), mirrors? ([https url]: the identical tar elsewhere, tried in order after url; GitHub release
+         assets via upload_assets_github.py; optional, so older apps ignore it and the schema stays 2), sha256, size, required, min_app / max_app (app versions it works with, null = open),
          requires ([{id, min_version}]: other assets it needs), min_version (only meaningful in the bundled copy: older
          installs are replaced in the foreground), licence, files [{path, size, sha256}] (sha256 per file: re-checked by the model server at load), env, subdir, fallback?
 """

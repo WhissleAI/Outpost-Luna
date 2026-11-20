@@ -38,6 +38,17 @@ Dropbox link (`dl=1`), sha256, size, every file inside (path + size) and its lic
 (`scripts/asset_pack.py`) builds the tars + the offline zip and rewrites the manifest; `make asset-upload`
 (`scripts/upload_assets.py`, `DROPBOX_TOKEN_FILE=<file>`, never committed) uploads them to `/Outpost Luna/assets/v2/`
 with the chunked upload-session API, makes public links and checks each one anonymously.
+`scripts/upload_assets_github.py` puts the same tars on the GitHub pre-release `assets-v2` (never "latest", so the
+site's `releases/latest` links still mean the app) and writes those links into each entry's `mirrors`.
+
+**Mirrors.** An entry may list `mirrors`: extra links to the identical tar (same sha256). The app tries `url`, then
+each mirror in order, then the entry's `fallback`. A `.part` left by one source resumes from the next (HTTP Range; the
+bytes are the same), and the sha256 check decides: a source with the wrong bytes is refused and the next one is tried.
+A host that cannot be reached (DNS, a School network block) moves on to the next source; only when every source is
+unreachable does the first-run screen say "offline". `fallback: {kind: "pack"}` and `kind: "tar_members"` take
+`mirrors` too. Older apps ignore the field (the schema stays 2). Why: on 2026-11-20 Dropbox had a major outage and
+every first-run download failed with HTTP 503; every asset now has a GitHub mirror. 0.5.0 and older only read `url`
+and `fallback`, so they get the mirrors from the first app update that has this downloader (0.5.1).
 
 | id | what | required | download | installed as |
 |---|---|---|---|---|
@@ -117,7 +128,8 @@ The flow (`desktop/main/updates.js`):
 Integrity and security:
 - https only, and every entry needs a sha256;
 - a manifest that does not parse or validate is ignored as a whole, as is one with any URL outside the allow-list
-  (dropbox.com, dropboxusercontent.com, huggingface.co, github.com / github.io / githubusercontent.com);
+  (dropbox.com, dropboxusercontent.com, huggingface.co, github.com / github.io / githubusercontent.com), `mirrors`
+  included;
 - a remote entry never changes where an asset is installed: `env` / `subdir` always come from the bundled manifest;
 - **future hardening:** sign the manifest (e.g. minisign) and ship the public key in the app.
 
@@ -134,8 +146,14 @@ checkout answers `{managed: false}` and the section is hidden.
 1. Build it: `make asset-pack` (all assets) or `uv run --project backend python scripts/asset_pack.py --only ear
    --no-zip`. A changed tar gets a new sha256, the next `version` and `url: null` in both manifest copies. Set
    `min_app` / `max_app` / `requires` by hand when the asset needs a particular app.
-2. Upload it: `DROPBOX_TOKEN_FILE=<file holding the token> python3 scripts/upload_assets.py --only <file>.tar`. This
-   uploads, makes the public `dl=1` link, verifies it anonymously and writes the URL into both copies.
+2. Upload it **to both hosts**:
+   `DROPBOX_TOKEN_FILE=<file holding the token> python3 scripts/upload_assets.py --only <file>.tar` (uploads, makes
+   the public `dl=1` link, verifies it anonymously, writes `url` into both copies), then
+   `python3 scripts/upload_assets_github.py --only <id>` (needs `gh auth login` with write access: checks the tar's
+   sha256 against the manifest, `gh release upload` to the pre-release `assets-v2`, verifies it anonymously, writes
+   `mirrors` into both copies). `--dir <folder>` (repeatable) finds tars outside `desktop/build/assets`. A re-packed
+   tar has a new file name, so the old file stays on both hosts for older apps. If Dropbox is down, the GitHub step
+   alone is enough to unblock first runs on 0.5.1+ (set `url` once Dropbox is back).
 3. Check: `git diff site/assets/manifest.json`, then commit (through a PR, like any change).
 4. Publish: `bash scripts/publish_site.sh`. Installed apps pick it up on their next online launch and use it on the
    launch after that.
@@ -149,7 +167,7 @@ The pieces, also runnable on their own:
 | `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` wheel (on a Windows target also the pinned pywinrt + comtypes speech packages, checked present); trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
 | `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 32 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
-| `make asset-pack` / `make asset-upload` | the first-run assets (above) |
+| `make asset-pack` / `make asset-upload` / `make asset-mirror` | the first-run assets (above) |
 | `make desktop-libarc` | CMake build of `desktop/vendor/libarc` (libarc + the Arc Transcriber Space backend) -> `libarc.dylib` / `arc.dll`, plus the pinned ONNX Runtime it loads at run time -> `native/onnxruntime/` (see "The engine boundary") |
 | `make bindings` | regenerate the model server's C bindings from `arc.h` / `arctag.h` (`model_server/tools/gen_bindings.py`) |
 | `make desktop-arctag` | CMake build of `desktop/vendor/arctag` (arc-tagger-c sources, native backend only) -> `libarctag.dylib` / `arctag.dll` |
