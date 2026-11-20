@@ -4929,7 +4929,7 @@
   },
   {
    "id": "course_archaeology",
-   "version": "3",
+   "version": "1",
    "min_app": "0.1.0",
    "max_app": null,
    "requires": [],
