@@ -28,6 +28,8 @@ const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES, ...SPEECH_
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
+import { courseState } from "../courses.js";
+import { options as pickOptions, shouldOffer as offerPick, mountPick, WELCOME_KEY } from "../course_pick.js";   // [courses] the first-run course pick
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
 const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
 import { runDirective, GLOBE_STEP_TYPES } from "./globe_steps.js";   // guidance: docs/PLAYTEST.md
@@ -228,6 +230,11 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!ui.active) return;
     try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().filter(l => !isClass(l)).length; } catch (e) { /* tests */ }   // NASA patches only
     if (resume()) return;
+    // [courses] the pick was open when the kid left Flight School: it comes back (a choice is never made for them)
+    if (pickPending && callSign.get()) { view = "callsign"; afterCallSign(callSign.spoken("Cadet")); return; }
+    // [courses] the reload after the first-run pick switched course: the welcome, on the new course's map
+    let fresh = false; try { fresh = sessionStorage.getItem(WELCOME_KEY) === "1"; if (fresh) sessionStorage.removeItem(WELCOME_KEY); } catch (e) { /* */ }
+    if (fresh && callSign.get()) { booted = true; welcome(callSign.spoken("Cadet")); return; }
     // [0.4.1] reopening the app: a half-done lesson comes back at its step (academy/client.js resumeTarget)
     if (!booted) {
       booted = true;
@@ -250,6 +257,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (!ui.active) { panel.hidden = true; return; }   // already suspended (Mission → Library): keep the lesson
     suspended =view === "lesson" && L && !L.ride ? { L, i, misses, waitingNext, feedback, nagged, stepKey, stepAt, gs, stepState, intro, pendingBadge } : null;
     ui.active = false; view = "off"; panel.hidden = true; busy = false;
+    if (picker) { picker.destroy(); picker = null; }
     endRide(); leaveCatalog(); globe.route.clear(); globe.setViewport(null); if (globe.guide) globe.guide.clear();
   }
   function resume() {
@@ -292,7 +300,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const input = panel.querySelector("#aCsIn");
     const err = panel.querySelector("#aCsErr");
     // [audit2] an empty Start used to do nothing at all: say what's missing, on the card
-    const done = v => { if (!callSign.set(v)) { err.textContent = CALLSIGN_COPY.empty; err.hidden = false; input.focus(); return; } const cs = callSign.spoken("Cadet"); if (back) { say(CALLSIGN_COPY.saved(cs), { situation: "badge" }); back(); } else welcome(cs); };
+    const done = v => { if (!callSign.set(v)) { err.textContent = CALLSIGN_COPY.empty; err.hidden = false; input.focus(); return; } const cs = callSign.spoken("Cadet"); if (back) { say(CALLSIGN_COPY.saved(cs), { situation: "badge" }); back(); } else afterCallSign(cs); };
     const select = v => { input.value = v; err.hidden = true; panel.querySelectorAll(".a-csb").forEach(b => b.setAttribute("aria-pressed", b.dataset.cs === v)); };
     panel.querySelectorAll(".a-csb").forEach(b => b.onclick = () => select(b.dataset.cs));
     input.addEventListener("input", () => select(input.value));
@@ -301,17 +309,40 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // Shuffle deals six new call signs and suggests the first ("surprise me" by voice picks one and goes: handleText).
     panel.querySelector("#aCsRand").onclick = () => { csDeck = shuffled(); showCallSign(back, true); panel.querySelector("#aCsRand").focus(); };
     if (!back && !reshuffled) say(CALLSIGN_COPY.say, { situation: "lesson_brief" });
+    if (!back) pickList = loadPickList();   // [courses] the course pick's catalog, ready by the time Start is pressed
+  }
+
+  // ---------- [courses] the first-run course pick (course_pick.js): after the call sign, before the welcome ----------
+  let pickList = null, picker = null, pickPending = false;
+  /** The pick's options when this cadet gets the pick, else null (a course already stored, only the Moon, no backend). */
+  function loadPickList() {
+    if (typeof fetch !== "function") return Promise.resolve(null);
+    const t = new Promise(res => setTimeout(() => res(null), 2500));   // never hold the welcome up for a slow backend
+    return Promise.race([t, fetch("/api/courses/packs").then(r => (r.ok ? r.json() : null)).catch(() => null)])
+      .then(d => { if (!d) return null; const o = pickOptions(d, courseState.courses); return offerPick(o, localStorage) ? o : null; })
+      .catch(() => null);
+  }
+  async function afterCallSign(cs) {
+    if (view !== "callsign") return;
+    view = "coursewait";
+    const opts = await (pickList || loadPickList());
+    if (view !== "coursewait") return;
+    if (!opts) { welcome(cs); return; }
+    view = "coursepick"; setLayout("home"); pickPending = true;
+    picker = mountPick(panel, { opts, eyebrow: APP_TAGLINE, say: (t, o) => say(t, o || { situation: "lesson_brief" }),
+      onDone: () => { picker = null; pickPending = false; welcome(callSign.spoken("Cadet")); } });
   }
 
   /** First launch -> map: the welcome, where you are on the story, and the first offer (each its own short line). */
   function welcome(cs) {
     showMap(true);
-    say([`Copy that, ${cs}. Welcome to Flight School.`, TRANSITION.firstMap.say, OFFER.firstLesson], { situation: "badge" });   // one on-air span
+    say([`Copy that, ${cs}. Welcome to ${TRANSITION.firstMap.where}.`, TRANSITION.firstMap.say, OFFER.firstLesson], { situation: "badge" });   // one on-air span
   }
   /** "What do I do?" outside a lesson (the router's help; lessons keep their own hint ladder). */
   function whatNow() {
     if (!ui.active) return null;
     if (view === "callsign") return HELP.callsign;
+    if (view === "coursepick" && picker) return picker.help();
     if (view === "map") return help();   // [audit2] names the button the card really shows
     if (view === "badge") return prog.qualified ? HELP.mapQualified : HELP.patch;
     return null;
@@ -949,7 +980,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** What the router needs to know about this screen. */
   function screen() {
     if (!ui.active) return null;
-    if (view === "callsign") return { screen: "callsign" };
+    if (view === "callsign" || view === "coursewait") return { screen: "callsign" };
+    if (view === "coursepick" && picker) return { screen: "coursepick", step_options: picker.names };
     if (view === "map") { const nx = nextLesson(); return { screen: "map", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
     if (view === "badge") { const nx = nextLesson(); return { screen: "patch", offer: prog.qualified ? "mission" : nx ? "next_lesson" : null }; }
     // the router's prep screen (turn_router.PREP_CMDS): done / skip / wait / help
@@ -965,7 +997,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** A navigation intent. True when the Academy ran it. */
   function nav(intent, arg) {
     if (!ui.active) return false;
-    if (view === "callsign") return false;
+    if (view === "callsign" || view === "coursewait") return false;
+    if (view === "coursepick") return picker ? picker.nav(intent, arg) : false;
     const nx = nextLesson();
     if (intent === "lesson") { if (lessons().some(l => l.id === arg)) { stop(); openLesson(arg); return true; } return false; }
     if (view === "prep") {   // Mission prep: the router's prep_* intents; yes / next / a thumbs-up is Done; no is Skip
@@ -1008,10 +1041,12 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   async function handleText(text) {
     if (!ui.active) return false;
     const t = text.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    if (view === "coursepick" && picker) return picker.handleText(text);
+    if (view === "coursewait") return true;
     if (view === "callsign") {
       const hit = CALLSIGNS.find(c => t.includes(c.toLowerCase()));
-      if (hit) { callSign.set(hit); welcome(hit); return true; }
-      if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); welcome(c); return true; }
+      if (hit) { callSign.set(hit); afterCallSign(hit); return true; }
+      if (/surprise|random|any|you pick|pick for me/.test(t)) { const c = CALLSIGNS[Math.floor(Math.random() * CALLSIGNS.length)]; callSign.set(c); afterCallSign(c); return true; }
       // [audit2] a short name typed in the voice bar: put it in the field, so the screen shows what happens next
       const typed = String(text || "").replace(/[^\p{L}\p{N} '-]/gu, "").trim();
       if (csTyped && typed && typed.length <= 18 && typed.split(/\s+/).length <= 3) { csTyped(typed); say(CALLSIGN_COPY.typed); return true; }

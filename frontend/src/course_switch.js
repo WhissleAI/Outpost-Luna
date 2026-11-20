@@ -1,8 +1,9 @@
 // The course switcher (docs/COURSES.md §4.2): a chip next to the app name names the course being played; tapping it
 // (or Enter / A on it, or saying "switch course") opens a short list of the installed courses. Picking one asks once
 // ("Switch to Archaeology? Your Moon patches stay."), then switches (courses.js setCourse: the app reloads on the new
-// course). Hidden while only one course is installed, so today's players see nothing new.
-// P2 adds "Get more courses" (Settings → For grown-ups → Storage) for courses that are not downloaded yet.
+// course). P2 adds "Get more courses" (Settings → For grown-ups → Course storage, behind the hold) for courses that are
+// not downloaded yet. The chip shows once two courses are installed, or (first-run pick round) with only the Moon when
+// the catalog has a course this computer can download, so the feature is discoverable; hidden otherwise (the iPad).
 import { courseState, installed, setCourse } from "./courses.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -39,9 +40,9 @@ export function confirmHtml(to, from) {
 }
 
 /** Wire the chip and its dialog. -> {open, close, paint, isOpen}. */
-export function installCourseSwitch({ chip = document.getElementById("courseChip"), doc = document, onMore = null, set = setCourse } = {}) {
+export function installCourseSwitch({ chip = document.getElementById("courseChip"), doc = document, onMore = null, more = () => false, set = setCourse } = {}) {
   let box = null, back = null;
-  const visible = () => installed().length > 1;
+  const visible = () => installed().length > 1 || (!!onMore && !!more());
   function paint() {
     if (!chip) return;
     chip.hidden = !visible();
@@ -57,7 +58,7 @@ export function installCourseSwitch({ chip = document.getElementById("courseChip
   }
   function view(html) {
     box.querySelector(".crs-card").innerHTML = html;
-    const f = box.querySelector("[data-crs-yes]") || box.querySelector(".crs-item:not(.is-on)") || box.querySelector("button");
+    const f = box.querySelector("[data-crs-yes]") || box.querySelector(".crs-item:not(.is-on)") || box.querySelector("[data-crs-more]") || box.querySelector("button");
     if (f) f.focus();
   }
   function open() {

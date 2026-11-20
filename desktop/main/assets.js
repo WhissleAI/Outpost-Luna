@@ -430,7 +430,15 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
   async function downloadTracked(a, opts) {
     fs.mkdirSync(path.join(dir, ".active"), { recursive: true });
     fs.writeFileSync(flag(".active", a.id), "");
-    try { return await downloadOne(a, opts); }
+    // [courses] "<done> <total>" bytes in the flag, at most once a percent, so the backend can show real progress
+    // (course_packs.py progress(): the first-run course pick and Course storage)
+    let pct = -1;
+    const onProgress = (p) => {
+      if (opts.onProgress) opts.onProgress(p);
+      const n = p && p.total > 0 ? Math.floor((100 * p.done) / p.total) : -1;
+      if (n > pct) { pct = n; try { fs.writeFileSync(flag(".active", a.id), `${p.done} ${p.total}`); } catch { /* best effort */ } }
+    };
+    try { return await downloadOne(a, { ...opts, onProgress }); }
     finally {
       fs.rmSync(flag(".active", a.id), { force: true });
       if (check(a) === "installed") fs.rmSync(flag(".want", a.id), { force: true });

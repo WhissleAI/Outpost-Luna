@@ -202,6 +202,8 @@ def hot_lists(frame: dict | None, step: dict | None = None) -> dict:
     elif screen == "callsign":
         st += V["callsigns"] + ["call me", "surprise me", "you pick"]
         wide += V["crew"]
+    elif screen == "coursepick":  # [courses] the first-run course pick: the course names, then skip
+        st += list(fr.get("step_options") or []) + ["the moon", "skip"]
     elif screen == "debrief":
         st += ["fly again", "another site", "learn more"] + V["sites"]
         wide += V["orders"] + V["places"]

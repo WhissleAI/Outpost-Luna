@@ -35,6 +35,10 @@ Owners:
 | view / state | trigger | shot |
 |---|---|---|
 | Home (first run) | no call sign stored | `home` |
+| Course pick (first run) | Start on the call sign, when this cadet has no course stored and the catalog has a course this computer can download (or one is installed). `course_pick.js` | "Pick your course": The Moon (Junior Astronaut Academy · grades 3-8 · Built in · starts now), then each catalog course (Archaeology: "Field Archaeology: the Mesa Verde region", grades 9-12 · 4.6 MB) and Skip. Focus on the Moon (Enter / A starts it); 1-2 or arrows pick; voice "the moon", "archaeology", "skip" | `pick_*` (course_pick_e2e) |
+| Course pick: downloading | a pack course picked | "Getting Archaeology…", a real progress bar (desktop bytes), "Start on the Moon instead" (focused) | `pick_progress_*` |
+| Course pick: can't get it | offline, School network mode, a failed download or 3 min without finishing | the plain reason ("You're offline, so Archaeology can't download. Starting on the Moon."), "You can get it later in For grown-ups → Course storage.", Start on the Moon (focused) | `pick_offline_*`, `pick_school_*`, `pick_failed_*` |
+| Course pick: switched | the pack installed | the app reloads on the course, its map, "Copy that, Comet. Welcome to Field School." | `pick_arch_welcome_*` |
 | Change call sign | the call-sign chip on the map | (same view, with "Use it") |
 | Moon map (new cadet) | call sign set, 0 patches | `map` |
 | Moon map (returning) | some patches earned | `map_mid` |

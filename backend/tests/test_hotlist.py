@@ -51,3 +51,9 @@ def test_session_hot_words_follow_the_screen():
     assert "heaters" in s.hot_words()["step"]
     s.screen = {"screen": "callsign"}
     assert "Comet" in s.hot_words()["step"]
+
+
+def test_the_first_run_course_pick_biases_the_course_names():
+    from app.hotlist import hot_lists
+    h = hot_lists({"screen": "coursepick", "step_options": ["The Moon", "Archaeology"]})
+    assert {"The Moon", "Archaeology", "skip"} <= set(h["step"])

@@ -19,6 +19,24 @@ test("hidden while only the Moon is installed", () => {
   assert.equal(chip.hidden, true); assert.equal(sw.visible(), false); assert.equal(sw.open(), false);
 });
 
+test("with only the Moon, the chip still shows when a catalog course can be downloaded (Get more courses)", async () => {
+  C.courseState.courses = [MOON]; C.courseState.info = MOON; C.courseState.active = "moon";
+  const chip = { hidden: true, textContent: "", setAttribute() {}, addEventListener() {} };
+  globalThis.document = { documentElement: { dataset: {} } };
+  let more = false;
+  const sw = S.installCourseSwitch({ chip, doc: {}, onMore: () => {}, more: () => more });
+  assert.equal(chip.hidden, true);                 // nothing to get (the iPad, an empty catalog)
+  more = true; sw.paint();
+  assert.equal(chip.hidden, false); assert.equal(sw.visible(), true);
+  // no "Get more courses" route (onMore unset): still hidden
+  assert.equal(S.installCourseSwitch({ chip: { ...chip, setAttribute() {}, addEventListener() {} }, doc: {}, more: () => true }).visible(), false);
+  const U = await import("../src/course_store_ui.js");
+  assert.equal(U.moreCourses({ downloadable: true, packs: [{ id: "archaeology", state: "missing" }] }), true);
+  assert.equal(U.moreCourses({ downloadable: true, packs: [{ id: "archaeology", state: "installed" }] }), false);
+  assert.equal(U.moreCourses({ downloadable: false, managed: false, packs: [{ id: "archaeology", state: "missing" }] }), false);
+  assert.equal(U.moreCourses(null), false);
+});
+
 test("shown with two courses; drafts never count", () => {
   C.courseState.courses = [MOON, ARCH, { id: "geo", title: "Geo", status: "draft" }];
   assert.deepEqual(C.installed().map(c => c.id), ["moon", "archaeology"]);

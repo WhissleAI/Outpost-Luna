@@ -324,7 +324,7 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
 
   // ---- what to focus when nothing is (a new screen, a re-render) ----
   const PRIMARY = ["#keysHelp [data-close]", ".m-tour .t-next", "#cbSys .is-point", "#cbSys .sys-body button:not(.sys-why):not(:disabled)", "#cbSys .sys-tab[aria-selected=true]", ".a11y-panel .set-nav [aria-current=page]", "dialog[open] .x", "#aNext", ".a-choice:not([disabled])", ".a-order", ".v-opt",
-    "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#mStart", "#mBriefGo", "#mDebrief[data-primary=next] #mNext", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
+    "#aRetry", "#aGoMission", "#aNextLesson", "#aStart", "#aCsGo", "#aPanel .a-crs-opt.is-default", "#aCrpMoon", "#aCrpCancel", "#mStart", "#mBriefGo", "#mDebrief[data-primary=next] #mNext", "#mAgain", ".cb-offer button", "#card .card-actions button", "#cardClose"];
   function primary(sc = scope()) {
     if (sc.seat) return null;
     const cands = candidates(sc.roots);

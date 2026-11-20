@@ -259,6 +259,26 @@ test("steer: an on-demand ask (.want/<id>) is listed until installed; .active ma
   } finally { srv.close(); }
 });
 
+test("courses: a running download writes '<done> <total>' bytes into .active/<id> (the first-run pick shows it)", async () => {
+  const { tarBuf, asset } = fixture();
+  const { srv, base } = await serve({ "/c.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, id: "course_testland", required: false, on_demand: true, url: base + "/c.tar" };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
+    const seen = [], calls = [];
+    const orig = fs.writeFileSync;
+    fs.writeFileSync = function (f, d, ...r) { if (String(f).endsWith(path.join(".active", "course_testland"))) seen.push(String(d)); return orig.call(this, f, d, ...r); };
+    try { await store.download("course_testland", { onProgress: (p) => calls.push(p.phase) }); }
+    finally { fs.writeFileSync = orig; }
+    assert.equal(seen[0], "");                                       // the flag first, then bytes
+    const last = seen[seen.length - 1].split(" ").map(Number);
+    assert.ok(seen.length >= 2 && last[1] > 0 && last[0] === last[1], seen.join("|"));
+    assert.ok(calls.includes("download"));                           // the caller's own onProgress still runs
+    assert.ok(!fs.existsSync(path.join(dir, ".active/course_testland")));
+  } finally { srv.close(); }
+});
+
 test("videos v1 installed, the 0.3.11 manifest wants v2: outdated, fetched after the UI is up, the old pack kept on failure", async () => {
   const U = require("./updates");
   const m = A.loadManifest(path.join(__dirname, "..", "assets.manifest.json"));

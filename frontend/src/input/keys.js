@@ -169,7 +169,7 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
   const lettered = () => [...doc.querySelectorAll("#aPanel .a-choice:not([disabled]) .a-key")].some(k => vis(k) && /^[A-D]$/.test(k.textContent.trim()));
   const wipeBtn = k => { const b = doc.querySelector(`.mx-wipe [data-w="${k}"]`); return vis(b) ? b : null; };   // QA-26: "start over?" on a paused debrief
   const confirmWaiting = () => !!(mission && mission.pending) || !!wipeBtn("no") || [...doc.querySelectorAll('[data-intent="no"], #card .card-actions button, .cb-offer-b')].some(b => vis(b) && /^no$/i.test(b.textContent.trim()));
-  const PICK_LISTS = ["#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", ".a-csb", ".mx-site", ".cb-offer-b", ".cb-now-btns .cb-now-b", "#card .card-actions button"];
+  const PICK_LISTS = ["#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", ".a-csb", "#aPanel .a-crs-opt", ".mx-site", ".cb-offer-b", ".cb-now-btns .cb-now-b", "#card .card-actions button"];
   function pickList() { for (const s of PICK_LISTS) { const l = [...doc.querySelectorAll(s)].filter(b => vis(b) && !b.disabled); if (l.length) return l; } return []; }
 
   // ---- the help sheet ----

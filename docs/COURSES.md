@@ -481,7 +481,8 @@ there for it. The turn log records `course` (an enum) next to `screen`.
   `outpost` mission gets the season engine in P4), the keyterm lists in `keyterms.py` (the Moon's), the voice pack
   (one per course in P3), and the learned Director's training data (§4.5; the runtime's guarded mode for new courses).
 
-**The switcher.** A chip by the app name (`course_switch.js`, `#courseChip`), hidden while one course is installed.
+**The switcher.** A chip by the app name (`course_switch.js`, `#courseChip`), hidden while one course is installed
+(since §4.10: shown with only the Moon when the catalog has a course this computer can download).
 Tap, Enter / A on it, or say "switch course" (`a11y.js`): a short list, then one confirm ("Switch to Archaeology? Your
 Moon patches stay."). Esc or Cancel backs out.
 
@@ -520,7 +521,8 @@ in the SAME `desktop/assets.manifest.json` and Dropbox folder (decision 6). `mak
   this course can't download here. Import the offline pack from a USB stick."); a disk without room for the tar and its
   files says how much is needed. The offline pack zip can carry course tars (they install like any asset).
 - Removing the course being played switches to the Moon first. Patches stay. The Moon cannot be removed.
-- The top-bar chip appears once two courses are installed; its "Get more courses" opens For grown-ups.
+- The top-bar chip appears once two courses are installed, or with only the Moon when a catalog course can be
+  downloaded here (§4.10); its "Get more courses" opens For grown-ups.
 
 **Archaeology is the first pack.** Its source is `backend/data/courses/archaeology.json` (moved from the docs draft;
 status `pack`, reading level 9-12 / teen, labels "Field School" / "Field patches", 100 Deepgram keyterms from its ear
@@ -538,6 +540,47 @@ goes only with "erase progress too".
 **iPad** (`docs/IPAD.md`): unaffected. The shell runs the same backend with no desktop downloader, so `GET
 /api/courses/packs` reports `managed: false` and nothing downloads; a course would ship in the app bundle (point
 `COURSE_PACKS_DIR` at it). The chip stays hidden with only the Moon.
+
+### 4.10 First-run course pick
+
+**What a new cadet sees.** Call sign → Start → **"Pick your course"** (same home look over the globe, `course_pick.js`,
+mounted by `academy/ui.js` after the call sign and before the welcome):
+- **The Moon** first: "Junior Astronaut Academy · grades 3-8 · Built in · starts now". It has focus, so Enter / A (or
+  "Skip", or saying "skip") starts it at once, exactly as before.
+- **Every catalog course**: its title, one line (`program`) and "grades · size" ("Field Archaeology: the Mesa Verde region",
+  "grades 9-12 · 4.6 MB"). The catalog entry carries a `course` card (`program`, `subject`, `grades`), which
+  `scripts/asset_pack.py course_card` copies from the source manifest (metadata only: the tar and its sha256 do not change);
+  `GET /api/courses/packs` returns it per pack, plus `downloadable` (the desktop downloader or `COURSE_PACK_SRC`).
+- Picking a pack course downloads it through the same path as Course storage (`POST …/<id>/get`: the desktop's `.want`
+  flag, or the local-file fallback), shows **real progress** (the desktop writes `"<done> <total>"` bytes into
+  `.active/<asset>` at most once a percent; the listing's `progress`), then switches (`setCourse`: the app reloads on the
+  course and the map says "Copy that, Comet. Welcome to Field School.").
+- **Can't get it:** offline (`navigator.onLine`, or the desktop's offline reason), School network mode (`blocked`, or a
+  403), a failed download (the desktop's `.failed` reason, no source, a damaged tar), or 3 minutes without finishing: the
+  plain reason ("School network mode is on, so Archaeology can't download here. Starting on the Moon."), then "You can
+  get it later in For grown-ups → Course storage." and **Start on the Moon** (focused). "Start on the Moon instead"
+  during a download stops waiting (the desktop may still finish it; the chip then offers it).
+- Reach: keys (1-2, arrows, Enter; `input/keys.js` / `choices.js` / `spatial.js` know `.a-crs-opt`), the controller (the
+  same focus), voice (the router's `coursepick` screen takes a course name or a skip word: `turn_router.course_pick_word`;
+  the ear's step list biases the names, `hotlist.py`).
+
+**Who gets it.** A cadet with no stored course (`outpost-course`, the per-call-sign profile key) on the call-sign screen,
+when there is more than the Moon to offer: a catalog course this computer can download, or an installed one. The choice
+is stored for the call sign, "moon" too, so a cadet who picked is never asked again; a second call sign created later
+(Settings → Cadets → Add) gets the same pick. No catalog, no downloader (the iPad shell) or a slow backend (2.5 s):
+straight to the welcome, as before. Leaving Flight School while the pick is open brings it back on return.
+
+**Policy.** This is the one place a kid may download a course: once, at first run, from our catalog only. Removing a
+course stays behind the grown-up hold (Course storage). After first run, the course chip shows even with only the Moon
+installed whenever a catalog course can be downloaded, and its "Get more courses" opens For grown-ups → Course storage
+(behind the hold), so the feature can be found; the hold's list names "Get or remove courses".
+
+**Tests.** `frontend/tests/course_pick.test.js` (options, who gets it, voice, the download, offline / school / failed /
+timeout / refused → the Moon, the controller), `course_switch.test.js` (the Moon-only chip), backend
+`test_course_packs.py` (the card, `downloadable`, progress), `test_turn_router.py`, `test_hotlist.py`, desktop
+`assets.test.js` (the progress bytes). End to end: `frontend/tests/e2e/course_pick_e2e.py` (keys, voice, the progress,
+offline, School network mode, a failed download, a second call sign, the Moon-only chip; the real Archaeology pack
+through `COURSE_PACK_SRC`), and `keys_e2e.py` walks the pick by keys.
 
 ---
 

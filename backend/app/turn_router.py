@@ -425,7 +425,7 @@ PICK = re.compile(r"^(?:pick|choose|select|land (?:at|on)|go to|let s go to|buil
 @dataclass
 class Ctx:
     """What the router knows about the app at this turn (session.belief + the client's screen frame)."""
-    screen: str = "map"                # map|callsign|lesson|lesson_done|ride|patch|brief|cabin|debrief|library|video|prep
+    screen: str = "map"                # map|callsign|coursepick|lesson|lesson_done|ride|patch|brief|cabin|debrief|library|video|prep
     step_type: str | None = None       # the lesson step's accept.type (choice, keywords, command, tap, intent, vocab_*)
     step_options: list[str] = field(default_factory=list)   # choice labels (an answer that names one is an answer)
     step: dict | None = None           # the open course step (content.lesson(lesson_id).steps[i]): what a try sounds like
@@ -966,6 +966,23 @@ def prep_command(text: str) -> str | None:
     return next((name for name, rx in PREP_CMDS if rx.match(q)), None)
 
 
+COURSE_SKIP = re.compile(r"^(?:skip|skip it|skip this|not now|no thanks|no|nope|later|you pick|pick for me|any|"
+                         r"just start|start|let s go|lets go|go)$")
+
+
+def course_pick_word(text: str, ctx: Ctx) -> bool:
+    """[courses] The first-run course pick: a course's name (its step_options: "The Moon", "Archaeology") or a skip
+    word. Short turns only (a name said inside a long sentence is room talk)."""
+    q = re.sub(r"^(?:okay |ok |um |uh |so |i want |i ll take |let s do |lets do |i pick |pick )+|(?: please| course)+$", "",
+               norm(text or "")).strip()
+    if not q or len(q.split()) > 5:
+        return False
+    if COURSE_SKIP.match(q) or COURSE_SKIP.match(norm(text or "")):
+        return True
+    names = {norm(o) for o in ctx.step_options} | {re.sub(r"^the ", "", norm(o)) for o in ctx.step_options}
+    return q in names or re.sub(r"^the ", "", q) in names
+
+
 def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     """-> {"outcome": ignore|navigate|answer|order|question, "reason", "intent"?, "arg"?, "notice"?}."""
     raw = (text or "").strip()
@@ -993,6 +1010,8 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
     if heard and not explicit and echo(raw, ctx):
         return out("ignore", "echo")
     dd = ctx.dd if heard and not explicit else None
+    if ctx.screen == "coursepick" and course_pick_word(raw, ctx):
+        return out("answer", "course")   # first run: "the moon", "archaeology", "skip" (academy/ui.js handleText)
     if ctx.screen == "prep":             # Mission prep: done / skip / wait / help; a real question still works
         if prep_missing(raw):
             return out("navigate", "prep", intent="prep_help", arg="missing")
