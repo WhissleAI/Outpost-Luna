@@ -635,6 +635,9 @@ are the same campaign: the same hub, briefing, chapter cards, Now card, debrief 
 docs/MISSION_POLISH_SPEC.md wave 3 (the drawer) and the thin part of wave 5 (the pulses, the chapter moment). Shots:
 `docs/img/systems/` (each level at 1440×900, 1280×720 and 1024×640; `frontend/tools/systems_shots.py`).
 
+![Cadet: Radiation](img/systems/cadet-radiation-1440x900.jpg) ![Engineer: Power with the numbers](img/systems/engineer-power-1440x900.jpg)
+![Objective done](img/systems/pulse-1440x900.jpg) ![Chapter complete](img/systems/chapter-landing-1440x900.jpg)
+
 ### 17.1 The drawer (`mission/systems.js`)
 
 The cabin's systems as one big panel at a time, on the right wall under the window keys, down to the radio row. It
@@ -647,7 +650,8 @@ uses the cockpit bar's look (bezel keys, phosphor read-outs). Every label is 20 
 | Engineer | the same five | real units (kWh, kW, mSv, K) and each gauge's equation with today's numbers (the Why card's line) |
 
 - **Ways in.** The **Systems** key (the end of the window-key row, its word always shown), LB / RB on a controller,
-  <kbd>[</kbd> / <kbd>]</kbd> on the keyboard (docs/KEYBOARD.md), and voice: "show power", "show the shields", "open
+  <kbd>[</kbd> / <kbd>]</kbd> on the keyboard (docs/KEYBOARD.md; both only in the cabin: on the hub the same buttons
+  move along the mission strip, so the two never fight), and voice: "show power", "show the shields", "open
   life support", "the radio panel", "systems", "next panel", "previous panel", "close systems". A console's name ("the
   power panel", "open the comms") opens its drawer panel when the level has it, else the 3D console as before. "Show me
   the rover" is still the rover window view; "check the power" is still a question for CAPCOM.

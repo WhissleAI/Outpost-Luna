@@ -44,7 +44,7 @@ Code:
 | <kbd>K</kbd> | `time_toggle` | Cabin: pauses or runs the mission clock (docs/GAMEPLAY.md). |
 | <kbd>W</kbd> | `time_warp` | Cabin: time warp 1x → 2x → 4x. |
 | <kbd>E</kbd> | `skip_event` | Cabin: skip to the next event. |
-| <kbd>[</kbd> / <kbd>]</kbd> | `systems {arg: prev / next}` | Cabin: the **Systems drawer** (docs/GAMEPLAY.md §17), the keyboard's LB / RB. Opens it (at the Now job's panel) and steps its panels; they wrap. Esc closes it. Also <kbd>{</kbd> / <kbd>}</kbd>, and the same physical keys on any layout (`code` BracketLeft / BracketRight). |
+| <kbd>[</kbd> / <kbd>]</kbd> | `systems {arg: prev / next}` | Cabin: the **Systems drawer** (docs/GAMEPLAY.md §17), the keyboard's LB / RB. Opens it (at the Now job's panel) and steps its panels; they wrap. Esc closes it. Outside the cabin they are previous / next, like LB / RB (the hub's mission strip, the picker's sites), so the drawer and the hub never fight. Also <kbd>{</kbd> / <kbd>}</kbd>, and the same physical keys on any layout (`code` BracketLeft / BracketRight). |
 | <kbd>/</kbd> | `focus_input` | Focuses the text box: the call-sign field on Home, the voice bar's field everywhere else. |
 | <kbd>Shift</kbd>+arrows, <kbd>+</kbd> <kbd>−</kbd> | rotate / zoom | On the Moon: turn it, and zoom. |
 | <kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd>, <kbd>Alt</kbd>+<kbd>Y</kbd>/<kbd>N</kbd>, <kbd>Alt</kbd>+<kbd>.</kbd>, <kbd>Alt</kbd>+<kbd>A</kbd>/<kbd>W</kbd>/<kbd>P</kbd> | (unchanged) | The existing shortcuts: next / prev, yes / no, stop, settings, "where am I", pick a place. The new keys never use a modifier, so the two sets can't collide. |
@@ -130,7 +130,7 @@ instead of "Enter".
 | B / Circle | `back` |
 | X / Square | `mic` |
 | Y / Triangle | `help`. In the cabin with the Systems drawer open: `why` for the focused (i), else the panel's gauge |
-| LB / RB (L1 / R1) | `prev` / `next`. In the cabin: `systems` (the drawer's previous / next panel; it opens at the Now job's panel) |
+| LB / RB (L1 / R1) | `prev` / `next` (the hub: another mission). In the cabin only: `systems` (the drawer's previous / next panel; it opens at the Now job's panel) |
 | Right stick | Outside the cabin: `spin` (spins the Moon at a rate, with easing and a little momentum: the same rate control as the camera fist, docs/GESTURES.md §Fist spin). In the cabin: `look`, which looks around and lights the aimed panel, the same as the head gesture. |
 | Start / Options | `settings` |
 

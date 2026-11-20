@@ -1301,10 +1301,11 @@ html[data-motion="reduce"] .cb-sys .is-point{animation:none}
 /* the Now card and the control that did it: one short phosphor pulse (a lift and a ring); reduced motion: colour only */
 .m-cabin .cb>.cb-now[data-done]{animation:nowDone 1.1s var(--ease-out)}
 @keyframes nowDone{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--color-phosphor) 0%,transparent)}
-  25%{transform:scale(1.025);box-shadow:0 0 0 3px var(--color-phosphor),0 0 36px color-mix(in srgb,var(--color-phosphor) 45%,transparent)}
+  15%{transform:scale(1.025);box-shadow:0 0 0 3px var(--color-phosphor),0 0 36px color-mix(in srgb,var(--color-phosphor) 45%,transparent)}
+  50%{transform:none;box-shadow:0 0 0 3px var(--color-phosphor),0 0 24px color-mix(in srgb,var(--color-phosphor) 30%,transparent)}
   100%{transform:none;box-shadow:inset 0 1px 0 var(--key-hi),0 10px 28px color-mix(in srgb,var(--color-space) 55%,transparent)}}
 .m-cabin [data-done]:not(.cb-now){animation:ctlDone 1.1s var(--ease-out)}
-@keyframes ctlDone{0%,30%{box-shadow:0 0 0 3px var(--color-phosphor),0 0 22px color-mix(in srgb,var(--color-phosphor) 55%,transparent);transform:scale(1.04)}100%{transform:none}}
+@keyframes ctlDone{0%,45%{box-shadow:0 0 0 3px var(--color-phosphor),0 0 22px color-mix(in srgb,var(--color-phosphor) 55%,transparent);transform:scale(1.04)}100%{transform:none}}
 html[data-motion="reduce"] .m-cabin .cb>.cb-now[data-done],html[data-motion="reduce"] .m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}
 @media (prefers-reduced-motion:reduce){.m-cabin .cb>.cb-now[data-done],.m-cabin [data-done]:not(.cb-now){animation:doneColour 1.1s linear}}
 @keyframes doneColour{0%,45%{box-shadow:0 0 0 3px var(--color-phosphor);background-color:color-mix(in srgb,var(--color-phosphor) 18%,var(--color-panel))}100%{}}

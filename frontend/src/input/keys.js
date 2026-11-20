@@ -249,6 +249,9 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
     // Enter on a text field submits (native); Enter on a native <select> / summary keeps its own behaviour
     if (a.intent === "select" && t && t.tagName === "SELECT") return;
     e.preventDefault();
+    // [ / ] are the keyboard's LB / RB, scoped by screen like the controller's: the cabin's Systems drawer in the
+    // cabin, previous / next everywhere else (the hub's mission strip, the picker's sites), so the two never fight
+    if (a.intent === "systems" && !inCabin()) { emitIntent(a.args.arg, {}, "keyboard"); return; }
     emitIntent(a.intent, a.args, "keyboard");
   });
   addEventListener("keyup", e => {
