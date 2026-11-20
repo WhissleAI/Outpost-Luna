@@ -43,6 +43,11 @@ reading level (owner decision 2, `docs/COURSES.md` §7); voice, typing, keys and
   comes, CAPCOM asks one key point's question ("What happened when they landed?"), and after three tries shows a model
   summary and the lesson goes on.
 
+![Read: the passage and its first question](img/speech/speech_read_1440x900.jpg)
+![Read it aloud: counts only](img/speech/speech_aloud_1440x900.jpg)
+![Word lab: a sound-alike caught](img/speech/speech_vocab_trap_1440x900.jpg)
+![Tell it back: the feedback](img/speech/speech_summary_feedback_1280x720.jpg)
+
 **Teachers and parents**
 - Settings → For grown-ups → Progress gains a **Reading and speaking** block per cadet, per course: passages read,
   questions answered, read-aloud sessions and words read, words practised / learned / to review, summaries told and key

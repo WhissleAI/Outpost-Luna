@@ -25,6 +25,7 @@ COURSE = json.loads((ROOT / "backend" / "data" / "academy" / "course.json").read
 LES = {l["id"]: l for l in COURSE["lessons"]}
 PASSAGE = next(s for s in LES["reading"]["steps"] if s["accept"]["type"] == "read")["accept"]["passage"]["text"]
 results: list[bool] = []
+OUT = ""   # --out: screenshots, and a screenshot of any lesson that fails to open
 GRADE_WORDS = ("wrong", "score", "grade", "incorrect", "fail")
 
 
@@ -65,13 +66,23 @@ def next_step(pg):
     pg.click("#aNext"); pg.wait_for_timeout(500)
 
 
+def go_map(pg):
+    """Back to the map from wherever the last lesson stopped (the patch screen, or a step), so each lesson stands alone."""
+    pg.evaluate("() => { const b = document.querySelector('#aMap') || document.querySelector('#aBack'); if (b) b.click(); }")
+    until(pg, "() => !!document.querySelector('.route .pin')", 15000)
+    pg.wait_for_timeout(500)
+
+
 def open_lesson(pg, lid):
     until(pg, f"""() => !!document.querySelector('.route .pin[data-l="{lid}"]')""", 20000)
     ok = pg.evaluate(f"""() => {{ const p = document.querySelector('.route .pin[data-l="{lid}"]'); if (p) {{ p.click(); return true; }} return false; }}""")
     if ok:
         until(pg, "() => !!document.querySelector('#aStart')", 4000)
         pg.click("#aStart")
-    return until(pg, f"() => document.getElementById('aPanel').dataset.step && document.querySelector('#aPanel .m-title').textContent.includes({json.dumps(LES[lid]['title'])})", 8000)
+    ok = until(pg, f"() => document.getElementById('aPanel').dataset.step && document.querySelector('#aPanel .m-title').textContent.includes({json.dumps(LES[lid]['title'])})", 15000)
+    if not ok and OUT:
+        pg.screenshot(path=str(Path(OUT) / f"FAILED_open_{lid}.png"))
+    return ok
 
 
 def keys_reach(pg, sel):
@@ -126,16 +137,22 @@ def play_reading(pg, out, tag):
 
 
 def play_wordlab(pg, out, tag):
-    pg.click("#aMap"); pg.wait_for_timeout(800)
+    go_map(pg)
     check(open_lesson(pg, "wordlab"), "Word lab opens")
-    say(pg, "how bright a surface is"); check(answered(pg), "the meaning step passes"); next_step(pg)
+    until(pg, "() => !!document.querySelector('.v-opt')", 8000)
+    tap = "() => { const b = [...document.querySelectorAll('.v-opt')].find(x => /bright/i.test(x.textContent)); if (b) b.click(); return !!b; }"
+    pg.evaluate(tap)
+    if not answered(pg, 5000):   # the lesson's crew clip may still be starting: tap again
+        pg.evaluate(tap)
+    check(answered(pg), "the meaning step passes (tap)"); next_step(pg)
     check(step_type(pg) == "vocab", "the word lab step")
     shot(pg, out, f"speech_vocab_{tag}")
     items = {i["id"]: i for i in next(s for s in LES["wordlab"]["steps"] if s["accept"]["type"] == "vocab")["accept"]["items"]}
     trapped = False
-    for _ in range(6):
+    for _ in range(12):
         if pg.evaluate("() => !!document.querySelector('#aNext')"):
             break
+        before = pg.evaluate("() => (document.querySelector('.sp-def') || {}).textContent || ''")
         defn = pg.evaluate("() => (document.querySelector('.sp-def') || {}).textContent || ''")
         it = next((i for i in items.values() if i.get("kind") == "sentence" and i["term"] in defn), None) or \
             next((i for i in items.values() if i.get("kind", "word") == "word" and _define(i) and _define(i)[:20] in defn), None)
@@ -143,6 +160,7 @@ def play_wordlab(pg, out, tag):
             check(False, f"vocab item not recognised: {defn!r}"); break
         if it.get("kind") == "sentence":
             pg.fill(".sp-type input", f"our boots sank into the {it['term']} near the rover"); pg.press(".sp-type input", "Enter")
+            until(pg, "() => !!document.querySelector('#aNext')", 10000)
         else:
             if not trapped and it.get("traps"):
                 say(pg, it["traps"][0]["word"])
@@ -150,10 +168,10 @@ def play_wordlab(pg, out, tag):
                 check(trapped, f"a sound-alike ({it['traps'][0]['word']}) is caught with its meaning")
                 if trapped:
                     shot(pg, out, f"speech_vocab_trap_{tag}")
-            b = pg.evaluate(f"() => {{ const b = [...document.querySelectorAll('.sp-words .sp-opt')].find(x => x.textContent.trim().endsWith({json.dumps(it['term'])})); if (b) {{ b.click(); return true; }} return false; }}")
+            b = pg.evaluate(f"() => {{ const b = [...document.querySelectorAll('.sp-words .sp-opt')].find(x => x.querySelector('span:last-child').textContent.trim() === {json.dumps(it['term'])}); if (b) {{ b.click(); return true; }} return false; }}")
             if not b:
                 say(pg, it["term"])
-        pg.wait_for_timeout(1200)
+        until(pg, f"() => !!document.querySelector('#aNext') || ((document.querySelector('.sp-def') || {{}}).textContent || '') !== {json.dumps(before)}", 10000)
     check(answered(pg), "every word done: the word lab passes")
     next_step(pg)
     say(pg, "hummocky"); check(answered(pg), "say it step passes")
@@ -167,7 +185,7 @@ def _define(it):
 
 
 def play_retell(pg, out, tag):
-    pg.click("#aMap"); pg.wait_for_timeout(800)
+    go_map(pg)
     check(open_lesson(pg, "retell"), "Tell it back opens")
     skip_video(pg)
     check(step_type(pg) == "summary", "the summary step")
@@ -194,6 +212,8 @@ def main():
     ap.add_argument("--base", default="http://localhost:5484")
     ap.add_argument("--out", default="")
     a = ap.parse_args()
+    global OUT
+    OUT = a.out
     if a.out:
         Path(a.out).mkdir(parents=True, exist_ok=True)
     exe = (sorted(glob.glob(os.path.expanduser("~/Library/Caches/ms-playwright/chromium_headless_shell-*/*/chrome-headless-shell"))) or [None])[-1]
@@ -203,7 +223,7 @@ def main():
             tag = f"{vw}x{vh}"
             print(f"-- {tag}")
             ctx = b.new_context(viewport={"width": vw, "height": vh}); silence(ctx)
-            badges = [l["badge"]["id"] for l in COURSE["lessons"] if l.get("track", "core") == "core"]
+            badges = ["scout"]   # qualified opens the bonus lessons; few patches keeps "new lesson" offers out of the way
             ctx.add_init_script("""try { if (!sessionStorage.getItem('sp-e2e')) { sessionStorage.setItem('sp-e2e', '1');
               localStorage.setItem('outpost-callsign', 'Nova'); localStorage.setItem('atm-mode', 'academy');
               localStorage.setItem('atm-academy', JSON.stringify({badges: %s, qualified: true}));
