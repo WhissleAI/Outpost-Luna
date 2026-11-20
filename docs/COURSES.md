@@ -581,6 +581,8 @@ timeout / refused → the Moon, the controller), `course_switch.test.js` (the Mo
 `assets.test.js` (the progress bytes). End to end: `frontend/tests/e2e/course_pick_e2e.py` (keys, voice, the progress,
 offline, School network mode, a failed download, a second call sign, the Moon-only chip; the real Archaeology pack
 through `COURSE_PACK_SRC`), and `keys_e2e.py` walks the pick by keys.
+Screenshots: `img/courses/first_run_*.jpg` (the pick, the progress, offline, School network mode, a failed download, the
+Archaeology welcome, the Moon-only chip; 1440x900 and 1280x720).
 
 ---
 
