@@ -219,6 +219,8 @@ export function installKeys({ globe = null, places = [], mission = null, inCabin
     let x = Math.max(4, Math.min(innerWidth - w - 4, r.right - w + 6)), y = r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(4, r.top - h - 6);
     // [0.4.1] a control in a card's header (the patches card's close): the chip sits beside it, never over the subtitle
     if (a.closest && a.closest("[role=dialog] header") && r.left - w - 6 >= 4) { x = r.left - w - 6; y = r.top + (r.height - h) / 2; }
+    // a gauge's small (i): the chip sits to its right, never over the big number under it (the Systems drawer)
+    else if (a.matches && a.matches(".cb-whyb") && r.right + w + 6 <= innerWidth - 4) { x = r.right + 6; y = r.top + (r.height - h) / 2; }
     hint.style.transform = `translate(${x.toFixed(0)}px,${y.toFixed(0)}px)`;
   }
   doc.addEventListener("focusin", () => requestAnimationFrame(paintHint));
