@@ -35,7 +35,21 @@ from pydantic import BaseModel
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 DIR = DATA / "courses"
-ASSETS_MANIFEST = Path(__file__).resolve().parents[2] / "desktop" / "assets.manifest.json"
+def _assets_manifest() -> Path:
+    """The first-run asset catalog. Packaged app: the desktop shell passes ASSETS_MANIFEST (its Resources copy); the
+    bundle also has it at Resources/assets.manifest.json (app/backend/app/courses.py -> parents[3]). Dev checkout:
+    desktop/assets.manifest.json. Before this, a packaged app looked for <Resources>/app/desktop/... (missing), so it
+    listed no course packs and skipped the Moon's built-in manifest."""
+    here = Path(__file__).resolve()
+    env = os.environ.get("ASSETS_MANIFEST")
+    for c in ([Path(env)] if env else []) + [here.parents[2] / "desktop" / "assets.manifest.json",
+                                             here.parents[3] / "assets.manifest.json"]:
+        if c.is_file():
+            return c
+    return here.parents[2] / "desktop" / "assets.manifest.json"
+
+
+ASSETS_MANIFEST = _assets_manifest()
 FORMAT, VERSION = "outpost-luna-course", 1
 ID = re.compile(r"^[a-z][a-z0-9-]{1,23}$")
 BODIES = ("moon", "earth", "site")            # a globe (moon, earth) or a flat site map (later)
@@ -137,6 +151,8 @@ def validate(m: dict, data: Path = DATA, known_assets: set[str] | None = None) -
         p = (data / rel).resolve()
         if data.resolve() not in p.parents:
             err(at, "A path inside backend/data." if data == DATA else "A path inside the course pack.")
+        elif at == "voice_pack" and data == DATA:
+            pass   # the built-in voice pack is a first-run asset (VOICE_PACK_DIR), not shipped in backend/data
         elif not p.exists():
             (planned.append(rel) if status == "draft" else err(at, f"{rel}: no such file."))
     if not errs and status != "draft" and isinstance(les, dict) and les["source"].endswith(".json"):
@@ -288,6 +304,9 @@ def path(key: str, m: dict | None = None) -> Path | None:
     ear.vocab, lessons.source, missions.sites. None when the course has none."""
     m = m or current()
     rel = dict(_files(m)).get(key)
+    if key == "voice_pack" and rel and root(m) == DATA:   # the built-in pack lives where the app installed it
+        from .config import settings
+        return settings.voice_pack() / Path(rel).name
     return root(m) / rel if rel else None
 
 

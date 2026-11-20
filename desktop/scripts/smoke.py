@@ -189,6 +189,13 @@ async def main():
             print(f"  -    voice pack: none in this build ({vp})")
 
         # 2. Flight School: the course, one lesson step graded (keyword or paraphrase via the local embedder)
+        # [courses] the packaged app must see the Moon as a course and list the downloadable packs (a 0.4.x build
+        # looked for the asset catalog in a dev-only path: no packs, and the Moon skipped as "voice_pack: no such file")
+        cs = (await c.get("/api/courses")).json()
+        ok(any(x.get("id") == "moon" for x in cs.get("courses", [])) and not cs.get("problems"),
+           f"courses: the Moon is registered, no problems ({cs.get('problems') or 'none'})")
+        pk = (await c.get("/api/courses/packs")).json()
+        ok(len(pk.get("packs", [])) >= 1, f"courses: the catalog lists course packs ({[p.get('id') for p in pk.get('packs', [])]})")
         course = (await c.get("/api/academy/course")).json()
         lessons = course.get("lessons") or [le for tr in course.get("tracks", []) for le in tr.get("lessons", [])]
         ok(len(lessons) > 0, f"Flight School course: {len(lessons)} lessons")

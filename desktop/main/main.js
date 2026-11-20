@@ -147,6 +147,7 @@ function envFor(name) {
     ASSETS_STATE_FILE: path.join(store.dir, "summary.json"),
     ASSETS_CHECK_FILE: path.join(store.dir, "check-request"),
     ASSETS_DIR: store.dir,                // the backend asks for an optional asset (.want/<id>) and shows its state
+    ASSETS_MANIFEST: MANIFEST,            // [courses] the catalog the backend lists course packs from (and checks built-ins against)
     // the pinned videos come from the asset pack: no second download of the same files from nasa.gov
     ...(vids && vids.url ? { VIDEO_PREFETCH: "0" } : {}),
   });
