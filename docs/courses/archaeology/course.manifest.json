@@ -1,0 +1,34 @@
+{
+ "_note": "DRAFT manifest for course #2 (docs/COURSES.md §3, §4.1). Shape-checked by backend/tests/test_courses.py; its data files do not exist yet (they are `planned`). Moves to backend/data/courses/archaeology.json with status `pack` in P3.",
+ "format": "outpost-luna-course",
+ "version": 1,
+ "id": "archaeology",
+ "title": "Archaeology",
+ "program": "Field Archaeology: the Mesa Verde region",
+ "status": "draft",
+ "subject": "Social studies (history, geography, civics) with science methods",
+ "grades": "9-12",
+ "globe": {"body": "earth", "name": "Earth", "km": 6371.0, "map": "/course/archaeology/earth5400.jpg",
+           "site_maps": ["mesa_verde_hillshade"]},
+ "gazetteer": "courses/archaeology/places.json",
+ "entities": "courses/archaeology/entities.json",
+ "ear": {"vocab": "courses/archaeology/ear_vocab.json", "names": "entities"},
+ "lessons": {
+  "source": "courses/archaeology/course.json",
+  "tracks": ["core", "field"],
+  "ids": ["what_is", "survey", "layers", "dating", "stuff", "law", "voices", "mesa_verde", "capstone"]
+ },
+ "missions": {"kind": "survey_season", "sites": "courses/archaeology/seasons.json"},
+ "concepts": "courses/archaeology/concepts.json",
+ "voice_pack": "courses/archaeology/voice_pack/index.json",
+ "assets": {"required": ["ear", "tagger", "embedder", "voice", "course_archaeology"], "optional": ["course_archaeology_lidar"]},
+ "standards": [
+  {"framework": "Colorado Academic Standards: Social Studies (2022), high school",
+   "codes": ["History 1.1", "Geography 3.1", "Geography 4.2", "Geography 4.3", "Civics 6.1", "Civics 7.2"]},
+  {"framework": "C3 Framework", "codes": ["D1", "D2.His", "D2.Geo", "D3", "D4"]},
+  {"framework": "NGSS (methods analogy)", "codes": ["HS-ESS1-6"]},
+  {"framework": "AP Human Geography", "codes": ["Unit 1", "Unit 5"]}
+ ],
+ "sensitivity": {"site_coordinates": "park-level only", "human_remains": "never shown", "sacred_sites": "named only as tribes and parks publish them"},
+ "class_packs": true
+}

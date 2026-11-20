@@ -1,0 +1,30 @@
+{
+ "_note": "Course manifest v1 (docs/COURSES.md §4.1). The Moon is course #1: this file only POINTS at the data the app already uses; nothing reads it to change behaviour yet (app/courses.py, GET /api/courses). Paths are relative to backend/data; `assets` are ids in desktop/assets.manifest.json.",
+ "format": "outpost-luna-course",
+ "version": 1,
+ "id": "moon",
+ "title": "The Moon",
+ "program": "Junior Astronaut Academy",
+ "status": "builtin",
+ "subject": "Earth and space science",
+ "grades": "3-8",
+ "globe": {"body": "moon", "name": "Moon", "km": 1737.4, "map": "/media/img/moon4k.jpg"},
+ "gazetteer": "places.json",
+ "entities": "entities/outpost_luna.json",
+ "ear": {"vocab": "ear_vocab.json", "names": "entities"},
+ "lessons": {
+  "source": "academy/course.json",
+  "tracks": ["core", "explorer", "field"],
+  "ids": ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
+          "observe", "craters", "rocks", "fieldkit", "checkride"]
+ },
+ "missions": {"kind": "outpost", "sites": "mission/sites.json"},
+ "concepts": "learning/concepts.json",
+ "voice_pack": "voice_pack/index.json",
+ "assets": {"required": ["ear", "tagger", "embedder", "voice"],
+            "optional": ["steer", "crew", "videos", "site_layers", "nasa_views"]},
+ "standards": [{"framework": "NGSS", "note": "hooks the lessons cite, not an alignment review (docs/BRAIN.md §4)",
+                "codes": ["1-ESS1-1", "5-ESS1-2", "MS-ESS1-1", "MS-ESS1-3", "HS-ESS1-6", "5-PS2-1",
+                          "MS-ETS1-1", "MS-ETS1-2", "3-5-ETS1-1"]}],
+ "class_packs": true
+}
