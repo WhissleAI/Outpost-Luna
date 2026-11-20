@@ -461,6 +461,15 @@ cd model_server && uv run pytest tests/test_platform_win.py tests/test_tts_os.py
 cd backend && uv run pytest tests/test_windows_paths.py tests/test_reset.py tests/test_video.py tests/test_assets_api.py
 ```
 
+**Last cross-build (2026-11-20, `main` at 0.5.1, c85738d):** steps 1 to 8 passed. The NSIS installer
+`Outpost Luna Setup 0.5.1.exe` is 187 MB, built in 215 s; its payload equals `win-unpacked` (837 MB, 7,164 files).
+`dlls`: 222 DLL/PYD files, every import resolves. `speech`: WinRT SpeechSynthesis, Media.Core, Storage.Streams,
+Foundation, Foundation.Collections, comtypes (SAPI) and steertts_edge are all present. `runtime`: RUNTIME OK
+(onnxruntime.dll 1.32.0 at its sha256, the Electron shell's 22 files). `compare` against the Mac app: PARITY OK, the
+same 309 app files. The Windows-mocked tests pass: backend 56 (Windows paths, reset, video, assets API, course
+packs) and model server 64 (platform, OS voices, Steer). 0.5.x adds courses and course packs, the first-run course
+pick, and GitHub mirrors for every first-run asset (`assets-v2`); none of these needs a Windows-specific step.
+
 **Last cross-build (2026-11-15, `main` at 0.3.0 + this guide's PR):** steps 1 to 8 passed, including the NSIS
 installer (`Outpost Luna Setup 0.3.3.exe`, 192 MB; 9.4 min on a Mac at load average ~30). `dlls`: 231 DLL/PYD files,
 every import resolves. `speech`: all 8 present. `runtime`: RUNTIME OK. The installer's payload, unpacked with 7-Zip, is
