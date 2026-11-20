@@ -12,7 +12,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field, model_validator
 
-from . import arcmeta, diag, embed, tts_os, tts_steer
+from . import netgate
+netgate.install()   # School network mode + loopback-only listening: the one outbound gate (app/netgate.py, docs/SCHOOL_IT.md)
+from . import arcmeta, diag, embed, tts_os, tts_steer  # noqa: E402
 from .arctag import ArcTagger
 from . import tag_stream
 from .config import settings

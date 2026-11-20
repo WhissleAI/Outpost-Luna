@@ -461,6 +461,9 @@ def online(kind: str = "nasa") -> bool:
     """Can we reach NASA (or YouTube)? One HEAD, remembered for PROBE_TTL_S. VIDEO_OFFLINE=1 forces no."""
     if settings.video_offline:
         return False
+    from . import netgate
+    if not netgate.url_allowed(PROBE[kind]):   # School network mode (docs/SCHOOL_IT.md): not even a probe
+        return False
     at, ok = _probe.get(kind, (0.0, False))
     if time.monotonic() - at < (PROBE_TTL_S if ok else PROBE_FAIL_TTL_S):
         return ok

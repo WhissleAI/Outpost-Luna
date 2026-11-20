@@ -21,9 +21,9 @@
 import { floor } from "../floor.js";
 import { onIntent } from "../input/intents.js";
 import { icon } from "../assets/icons.js";
-import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, stallWatch, YT_STALL_MS } from "./commands.js";
+import { videoCommand, INTENT_CMD, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, NO_PLAY_LESSON, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE, stallWatch, YT_STALL_MS } from "./commands.js";
 
-export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, NO_PLAY_LINE, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE };
+export { videoCommand, watchLabel, lengthLabel, NEEDS_NET, OFFLINE_LINE, needsNet, offlineLine, NO_PLAY_LINE, watchedEnough, youtubeSrc, youtubeWatchUrl, WATCH_ON_YOUTUBE };
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const YT_ORIGIN = "https://www.youtube-nocookie.com";
@@ -289,8 +289,10 @@ function run({ v, status, fb: fbAll, fbCached = true, context, resolve }) {
     const fb = fbAll && (kind !== "offline" || fbCached) && fbAll.id !== item.id ? fbAll : null;
     const poster = item.poster_src || (fbAll && fbAll.poster_src);
     stage.innerHTML = `<div class="vid-off" role="status">
-        ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}" onerror="this.remove()">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
-        <p class="vid-off-line">${esc(kind === "offline" ? OFFLINE_LINE : NO_PLAY_LINE)}${context === "lesson" ? ` ${esc(NO_PLAY_LESSON)}` : ""}</p></div>`;
+        ${poster ? `<img class="vid-off-img" alt="" src="${esc(poster)}">` : `<span class="vid-off-ico">${icon("moon", { size: 48 })}</span>`}
+        <p class="vid-off-line">${esc(kind === "offline" ? offlineLine() : NO_PLAY_LINE)}${context === "lesson" ? ` ${esc(NO_PLAY_LESSON)}` : ""}</p></div>`;
+    const img = stage.querySelector(".vid-off-img");   // no inline onerror: the app's CSP allows no inline script
+    if (img) img.onerror = () => img.remove();
     // [videos offline] a YouTube video that won't play here (the bot card, an embed error) and has no NASA file to offer
     // instead: "Watch on YouTube" opens the youtube.com page in the system browser, where a signed-in grown-up usually
     // passes the bot check. The desktop shell opens it only after the grown-up gate's 3-second hold (gate.js).

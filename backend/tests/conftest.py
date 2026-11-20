@@ -1,5 +1,10 @@
 import os
 
+# School network mode (app/netgate.py): the suites never read this computer's machine policy or a launching shell's
+for _k in ("LUNA_NET_POLICY", "OUTPOST_SCHOOL_NETWORK", "OUTPOST_ALLOW_HOSTS", "OUTPOST_POLICY_FILE"):
+    os.environ.pop(_k, None)
+os.environ["OUTPOST_POLICY_SEARCH"] = "0"
+
 os.environ.setdefault("VIDEO_PREFETCH", "0")   # NASA video: tests never start the background download (app/video.py)
 # [#84] app/local_guard.py: Starlette's TestClient sends Host: testserver; no per-launch token unless a test sets one
 # (tests/test_local_guard.py wraps the app in its own guard with a token).

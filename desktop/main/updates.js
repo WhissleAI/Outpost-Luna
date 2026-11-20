@@ -179,7 +179,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
     let m;
     try { m = await fetchManifest(remoteUrl, { fetchImpl, timeoutMs }); }
     catch (e) {
-      status.state = AS.isNetworkError(e) || e.offline ? "offline" : "error";
+      status.state = e.school ? "school" : AS.isNetworkError(e) || e.offline ? "offline" : "error";   // "school": docs/SCHOOL_IT.md
       status.error = e.message;
       log(`assets: update check: ${status.state} (${e.message})`);
       return null;

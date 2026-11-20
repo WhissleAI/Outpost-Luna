@@ -8,7 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import diag, diagnostics, knowledge, models_client, reset, video
+from . import netgate
+netgate.install()   # School network mode + loopback-only listening: the one outbound gate (app/netgate.py, docs/SCHOOL_IT.md)
+from . import diag, diagnostics, knowledge, models_client, network_api, reset, video  # noqa: E402
 from .listen import router as listen_router
 from .local_guard import LocalGuard, env_options as local_guard_options
 from .config import settings
@@ -166,6 +168,7 @@ from .academy.routes import router as academy_router; app.include_router(academy
 from .tts import router as tts_router; app.include_router(tts_router)  # noqa: E402  (audio floor: GET /api/tts)
 app.include_router(video.router)  # NASA video: catalog, offline cache, captions (docs/MEDIA.md)
 app.include_router(reset.router)  # Settings → Reset Outpost Luna (docs/RESET.md)
+network_api.setup(); app.include_router(network_api.router)  # Settings → For grown-ups → School network (docs/SCHOOL_IT.md)
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 from .learn.api import router as learn_router; app.include_router(learn_router)  # noqa: E402  (on-device learning, docs/ON_DEVICE_LEARNING.md)

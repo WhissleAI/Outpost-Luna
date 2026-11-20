@@ -353,7 +353,10 @@ The build refuses to bundle any `.env*` file. With no defaults changed, `make de
   `session.webRequest` and logged as `blocked` in `main.log`. Today that means the Google Fonts stylesheet in
   `frontend/index.html` (and `a11y.js`'s Atkinson Hyperlegible): it fails at once and the UI falls back to system fonts.
   Follow-up for the frontend owner: self-host those fonts (e.g. `@fontsource/*`) so the offline app looks like the web app.
-  External links open in the system browser (they will not load offline, which is fine).
+  A link opens in the system browser only when it is on `hardening.js`'s list (the sites the app cites); YouTube links
+  behind the grown-up gate. The page's CSP and every window's webPreferences: `docs/SECURITY.md` "The desktop shell".
+- **School network mode:** an IT admin's policy or a grown-up's switch stops every outbound connection except an
+  allow list (none by default), in the page, the shell and both servers (`docs/SCHOOL_IT.md`).
 - **App updates:** the app asks GitHub for a newer version only when you press Settings -> App version -> Check for
   updates, or once a day on launch if you turned on "Check for updates automatically" (off by default). One request
   from the main process, nothing about you in it; nothing is downloaded or installed by the app ("App updates" above).

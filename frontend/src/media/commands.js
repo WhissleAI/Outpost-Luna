@@ -29,6 +29,12 @@ export function lengthLabel(seconds) {
 export const watchLabel = v => `Watch (${lengthLabel(v && v.duration_s)})`;
 export const NEEDS_NET = "Needs internet";
 export const OFFLINE_LINE = "Needs internet. Ask a grown-up to connect.";
+// School network mode (docs/SCHOOL_IT.md, network_ui.js): the internet is off on purpose, so "connect" is the wrong ask
+export const SCHOOL_NET = "Off on the school network";
+export const SCHOOL_LINE = "Off on the school network. Saved videos still play.";
+const school = () => { try { return !!(window.__outpost && window.__outpost.network && window.__outpost.network.school_network); } catch (e) { return false; } };
+export const needsNet = (on = school()) => (on ? SCHOOL_NET : NEEDS_NET);
+export const offlineLine = (on = school()) => (on ? SCHOOL_LINE : OFFLINE_LINE);
 /** The player failed while we ARE online (YouTube error 2/5/100/101/150/153, an unknown id): not "Needs internet". */
 export const NO_PLAY_LINE = "This video won't play here.";
 /** In a lesson, a video that can't play is never a dead end: closing it gives the step's answer (playtest #25). */

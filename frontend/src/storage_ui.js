@@ -24,6 +24,7 @@ export function updateLine(s) {
     case "downloading": return `Downloading an update${u.downloading ? ` (${u.downloading})` : ""}…`;
     case "paused": return "Update paused while you play.";
     case "offline": return "Offline: can't check for updates.";
+    case "school": return "Off on the school network.";   // School network mode (docs/SCHOOL_IT.md)
     case "error": return "Couldn't check for updates. Try again later.";
     case "up_to_date": return "Up to date.";
     default: return u.checked_at ? "Up to date." : "Not checked yet.";
