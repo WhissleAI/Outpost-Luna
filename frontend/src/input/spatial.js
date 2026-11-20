@@ -430,7 +430,10 @@ export function createSpatial({ globe = null, places = [], mission = null, inCab
       ...candidates([cab, doc.querySelector(".topbar")]).filter(c => c !== a && !c.closest(".c3-panel")).map(el => ({ el, rect: el.getBoundingClientRect() })),
     ];
     // the top bar is the edge here too: reached only when nothing in the cabin lies that way
-    const inCab = items.map((it, i) => ({ ...it, i })).filter(it => !(it.el && it.el.closest(".topbar")) || (a && a.closest && a.closest(".topbar")));
+    // except sideways along the cockpit's bar (body[data-cockpit]): the header keys share its row, so Left from the bar's
+    // Log key reaches Library (it used to drop to the window keys, and Library was out of reach from the gear)
+    const deckRow = (dir === "left" || dir === "right") && doc.body.dataset.cockpit === "1" && !!(a && a.closest && a.closest(".cb-deck"));
+    const inCab = items.map((it, i) => ({ ...it, i })).filter(it => !(it.el && it.el.closest(".topbar")) || deckRow || (a && a.closest && a.closest(".topbar")));
     // sideways from a control (the alert strip, the deck, the Now panel): a control in the same row wins over a 3D console,
     // whose projected box can reach up into that row (Left from "Set shields" used to jump to a console, not "Shelter")
     const row = a !== seatEl && (dir === "left" || dir === "right") ? inCab.filter(it => it.el && inBeam(from, it.rect, dir)) : [];

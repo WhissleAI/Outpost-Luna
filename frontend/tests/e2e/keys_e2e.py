@@ -278,12 +278,12 @@ def main():
         shot("05a-hub")
         # [ / ] are the keyboard's LB / RB, scoped by screen: on the hub they move to another mission (or site), in the
         # cabin they are the Systems drawer (below), so the two never fight
-        t0 = js("() => document.querySelector('#mPanel .mx-title').textContent")
+        title0 = js("() => document.querySelector('#mPanel .mx-title').textContent")
         press("]", 900)
-        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") != t0 and not js("() => !!document.querySelector('#cbSys:not([hidden])')"),
+        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") != title0 and not js("() => !!document.querySelector('#cbSys:not([hidden])')"),
            "hub: ] shows the next mission (no Systems drawer)")
         press("[", 900)
-        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") == t0, "hub: [ goes back")
+        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") == title0, "hub: [ goes back")
         until("() => document.activeElement && document.activeElement.id === 'mStart'", 3000, "hub primary after [ ]")
         ok(press_until(["ArrowDown"], "() => document.activeElement.id === 'mHubSite'", n=4), "hub: Down reaches Choose site")
         press("Enter", 1500)
