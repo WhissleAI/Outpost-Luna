@@ -780,15 +780,18 @@ export function createCabin(root, o = {}) {
     // [campaign] Missions 2+ show their own two goals (docs/GAMEPLAY.md §16); Mission 1 keeps science and ice
     const goalsHtml = s.campaign && s.campaign.n > 1 && Array.isArray(P.goals) && P.goals.length
       ? P.goals.map(goalBit).filter(Boolean).map(g => bit(g.met ? " is-met" : "", esc(g.title), esc(g.name), esc(g.val), g.of, g.p).replace("<small>/</small>", "")).join("") : "";
+    const logBtn = `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
+    // a state tick rebuilds the strip: the Log key keeps keyboard / controller focus (it was dropped, and the arrows'
+    // focus watcher sent it back to the seat: Up from the Now card bounced off the Log key, tests/e2e/keys_e2e.py)
+    const set = html => { if (el.innerHTML === html) return; const had = el.contains(document.activeElement); el.innerHTML = html;
+      if (had) { const b = el.querySelector(".cb-logbtn"); if (b) b.focus({ preventScroll: true }); } };
     if (goalsHtml) {
-      el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml
-        + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
+      set(bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml + logBtn);
       return;
     }
-    el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
+    set(bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
       + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science home", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard} to send</small>` : ""}</b>`)
-      + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
-      + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
+      + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice) + logBtn);
   }
   let logEntries = [];
   function toggleLog(force) { const el = q("#cbMlog"); el.hidden = force != null ? !force : !el.hidden; paintLog(); if (st) paintProg(st); }
