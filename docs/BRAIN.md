@@ -158,3 +158,15 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 - **Mission decisions as counts** (shelter on time, readbacks). Debriefs are live only, so a small aggregate like §5
   would keep them.
 - **A teacher roll-up across computers.** Out of scope: nothing leaves the device.
+
+## 9. Screenshots
+
+These are the cadet's side and the grown-ups' side at 1440x900 and 1280x720. `frontend/tests/e2e/brain_e2e.py --out`
+makes them again.
+
+![My Brain, 1440x900](img/brain/brain_cadet_1440x900.jpg)
+![My Brain, 1280x720](img/brain/brain_cadet_1280x720.jpg)
+![My Brain: voice and how the outpost thinks](img/brain/brain_cadet_bottom_1280x720.jpg)
+![Grown-ups: Practice](img/brain/brain_grownup_1440x900.jpg)
+![Grown-ups: Practice, 1280x720](img/brain/brain_grownup_1280x720.jpg)
+![Grown-ups: talk, safety, adapted, controls](img/brain/brain_grownup_computer_1280x720.jpg)
