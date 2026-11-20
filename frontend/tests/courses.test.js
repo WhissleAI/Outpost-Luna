@@ -128,3 +128,22 @@ test("the course choice and the pre-courses copy are profile keys and progress k
     assert.ok(reset.isProgressKey(k), k);
   }
 });
+
+test("the Brain reads big ideas from the course and keeps counts per course", async () => {
+  const B = await import("../src/brain.js");
+  C.courseState.active = "moon"; C.courseState.info = { id: "moon", big_ideas: {} };
+  assert.equal(B.lessonKey("phases"), "phases");                  // the Moon: bare, so saved counts stay valid
+  assert.equal(B.skillOf({ id: "phases" }).star, "Phases");        // the table (the manifest has the same, tests below)
+  C.courseState.active = "archaeology"; C.courseState.info = { id: "archaeology", big_ideas: { dating: { star: "Tree rings", idea: "Dating by rings.", codes: ["HS-ESS1-6"] } } };
+  assert.equal(B.lessonKey("dating"), "archaeology:dating");
+  assert.deepEqual(B.skillOf({ id: "dating", title: "Dating" }), { star: "Tree rings", idea: "Dating by rings.", ngss: ["HS-ESS1-6"] });
+  C.courseState.active = "moon"; C.courseState.info = { id: "moon", big_ideas: {} };
+});
+
+test("the Moon manifest's big ideas equal the Brain's table", async () => {
+  const { readFileSync } = await import("node:fs");
+  const B = await import("../src/brain.js");
+  const m = JSON.parse(readFileSync(new URL("../../backend/data/courses/moon.json", import.meta.url), "utf8"));
+  for (const [id, s] of Object.entries(B.SKILLS)) assert.deepEqual({ star: m.big_ideas[id].star, idea: m.big_ideas[id].idea, ngss: m.big_ideas[id].codes }, s, id);
+  assert.deepEqual(Object.keys(m.big_ideas).sort(), Object.keys(B.SKILLS).sort());
+});
