@@ -4929,7 +4929,7 @@
   },
   {
    "id": "course_archaeology",
-   "version": "2",
+   "version": "3",
    "min_app": "0.1.0",
    "max_app": null,
    "requires": [],
@@ -4937,9 +4937,9 @@
    "required": false,
    "file": "outpost-luna-v2-course_archaeology.tar",
    "url": null,
-   "sha256": "d8a8441ae8e3c6efe6ec76eac062fecd2e5633be592b1881c402c7e2f6b9c127",
+   "sha256": "c86b8eac430e647e3b619fe2edae35fd889e0c35062927e4ed31573d4bb822c9",
    "size": 4608000,
-   "unpacked_size": 4587535,
+   "unpacked_size": 4589438,
    "n_files": 19,
    "env": "",
    "subdir": "",
@@ -4947,8 +4947,8 @@
    "files": [
     {
      "path": "course.json",
-     "size": 66472,
-     "sha256": "0cec4cc0fe5dae3f8c18074ca490647e1f59e8be6aed424656f00f942fbd6ffa"
+     "size": 68375,
+     "sha256": "8d44da502e0df07ed469487c892e9ab1988ebfbcb09804f8b3330df5d70de8fb"
     },
     {
      "path": "course.manifest.json",
@@ -5052,6 +5052,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-20T06:30:53Z",
- "version": "2026.11.20.0630"
+ "published_at": "2026-11-20T07:45:10Z",
+ "version": "2026.11.20.0745"
 }
