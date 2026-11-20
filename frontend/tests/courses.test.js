@@ -61,9 +61,11 @@ test("readStore migrates in place once and keeps the original save as atm-academ
 
 test("per-course views: writing one course leaves the others alone", () => {
   let s = C.migrateAcademy(V1);
-  s = C.mergeView(s, "archaeology", { badges: ["trowel"], qualified: false, steps: { dating: { i: 2, n: 5 } }, current: "dating" });
+  s = C.mergeView(s, "archaeology", { badges: ["archaeology:trowel"], qualified: false, steps: { "archaeology:dating": { i: 2, n: 5 } }, current: "archaeology:dating" });
   assert.deepEqual(C.courseView(s, "moon"), { badges: V1.badges, qualified: true, steps: V1.steps, current: "power" });
-  assert.deepEqual(C.courseView(s, "archaeology"), { badges: ["trowel"], qualified: false, steps: { dating: { i: 2, n: 5 } }, current: "dating" });
+  // another course's view uses its lessons' own (prefixed) ids, as the backend serves them
+  assert.deepEqual(C.courseView(s, "archaeology"), { badges: ["archaeology:trowel"], qualified: false, steps: { "archaeology:dating": { i: 2, n: 5 } }, current: "archaeology:dating" });
+  assert.equal(C.qid("archaeology", "archaeology:dating"), "archaeology:dating");   // idempotent
   // the Moon earns a patch and finishes its lesson: archaeology is untouched
   const m = C.courseView(s, "moon");
   s = C.mergeView(s, "moon", { ...m, badges: [...m.badges, "power-patch"], steps: {}, current: null });

@@ -47,3 +47,14 @@ test("the globe frames places by the body's own radius (the Moon's by default)",
   assert.ok(G.angRadius(f, 6371) < G.angRadius(f));
   assert.ok(G.frameDistance({ km: 3000 }, 6371) < G.frameDistance({ km: 3000 }));
 });
+
+test("unlock_after a lesson id: a bonus lesson opens once that lesson is done", async () => {
+  const E = await import("../src/explorer.js");
+  const chimney = { id: "archaeology:chimney_rock", track: "explorer", unlock_after: "archaeology:mesa_verde" };
+  assert.equal(E.unlocked(chimney, 0, false, () => false), false);
+  assert.equal(E.unlocked(chimney, 0, false, id => id === "archaeology:mesa_verde"), true);
+  assert.equal(E.unlocked(chimney, 5, true), false);                       // no done() given: stays shut
+  assert.equal(E.unlocked({ id: "history", track: "explorer", unlock_after_missions: 1 }, 1, false), true);   // the Moon's rule unchanged
+  assert.equal(E.unlocked({ id: "x", track: "explorer", unlock_after: "checkride" }, 0, true), true);
+  assert.deepEqual(E.newlyUnlocked([chimney], 1), []);
+});

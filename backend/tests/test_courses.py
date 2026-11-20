@@ -13,7 +13,7 @@ from app.academy import content
 
 ROOT = Path(__file__).resolve().parents[2]
 MOON = json.loads((courses.DIR / "moon.json").read_text())
-ARCH = json.loads((ROOT / "docs/courses/archaeology/course.manifest.json").read_text())
+ARCH = json.loads((ROOT / "backend/data/courses/archaeology.json").read_text())
 
 
 def test_the_moon_manifest_is_valid_and_points_at_real_files():
@@ -27,7 +27,7 @@ def test_the_moon_lessons_are_exactly_the_course_the_app_plays():
 
 
 def test_the_moon_assets_are_the_desktop_manifest_assets():
-    known = courses.asset_ids()
+    known = {a for a in courses.asset_ids() if not a.startswith("course_")}   # course packs are other courses' assets
     assert set(MOON["assets"]["required"]) == {"ear", "tagger", "embedder", "voice"}
     assert set(MOON["assets"]["required"]) | set(MOON["assets"]["optional"]) == known
 
@@ -88,3 +88,10 @@ def test_api_lists_the_moon_as_the_active_course():
     d = r.json()
     assert d["active"] == "moon" and [c["id"] for c in d["courses"]] == ["moon"] and d["problems"] == []
     assert d["courses"][0]["lessons"] == 16 and d["courses"][0]["globe"]["body"] == "moon"
+
+
+def test_the_archaeology_pack_is_in_the_catalog_on_demand():
+    m = json.loads(courses.ASSETS_MANIFEST.read_text())
+    a = next(x for x in m["assets"] if x["id"] == "course_archaeology")
+    assert a["on_demand"] is True and a["required"] is False and {"course.json", "course.manifest.json"} <= {f["path"] for f in a["files"]}
+    assert any(f["path"] == "media/earth5400.jpg" for f in a["files"])

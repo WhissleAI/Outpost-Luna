@@ -182,7 +182,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   // core lessons only: explorer lessons and the check ride aren't numbered (the patch total still counts every lesson)
   const lessonNo = l => { const ls = coreLessons(lessons()); return { n: ls.indexOf(l) + 1, of: ls.length }; };
   const has = id => prog.badges.includes(id);
-  const open = l => unlocked(l, missionsFlown(callSign.get()), prog.qualified);
+  const lessonDone = id => { const x = lessons().find(y => y.id === id); return !!(x && x.badge && has(x.badge.id)); };
+  const open = l => unlocked(l, missionsFlown(callSign.get()), prog.qualified, lessonDone);
   const lockedWhen = l => (l.unlock_after === "checkride" ? "checkride" : l.unlock_after_missions);
   /** When a locked lesson opens, in words: a Field School lesson says "Opens after your check ride". */
   const lockedText = l => (isField(l) ? FIELD.lockedTrack : EXPLORER.locked(lockedWhen(l)));

@@ -326,7 +326,7 @@ test("main.js hands NASA_VIEWS_DIR to the backend", () => {
 
 // ---- course packs (docs/COURSES.md §4.2): the first assets a grown-up can delete ----
 function coursePack() {
-  const files = { "course.json": Buffer.from('{"id":"testland"}'), "lessons.json": Buffer.from("{}"), "media/earth.jpg": crypto.randomBytes(5000) };
+  const files = { "course.manifest.json": Buffer.from('{"id":"testland"}'), "lessons.json": Buffer.from("{}"), "media/earth.jpg": crypto.randomBytes(5000) };
   const t = tar(files);
   return { tarBuf: t, asset: { id: "course_testland", title: "Course: Testland", required: false, on_demand: true, file: "x-course.tar",
     sha256: sha(t), size: t.length, unpacked_size: 5100, env: "", subdir: "", files: Object.entries(files).map(([p, b]) => ({ path: p, size: b.length })) } };

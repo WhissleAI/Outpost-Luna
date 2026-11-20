@@ -55,10 +55,10 @@ def test_a_pack_joins_the_registry(packs):
 def test_a_broken_or_misplaced_pack_is_skipped_with_a_reason(packs):
     make_pack(packs, cid="ok")
     (packs / "course_bad").mkdir()
-    (packs / "course_bad" / "course.json").write_text("{nope")
+    (packs / "course_bad" / courses.PACK_FILE).write_text("{nope")
     d = make_pack(packs, cid="wrong")
     (d.parent / "course_elsewhere").mkdir()
-    (d / "course.json").rename(d.parent / "course_elsewhere" / "course.json")
+    (d / courses.PACK_FILE).rename(d.parent / "course_elsewhere" / courses.PACK_FILE)
     make_pack(packs, cid="sneaky", gazetteer="../../../etc/passwd")
     make_pack(packs, cid="built", status="builtin")
     courses.courses.cache_clear()
@@ -147,7 +147,7 @@ def test_api_lists_and_switches(packs, client):
     assert moon["big_ideas"]["phases"]["star"] == "Phases" and moon["standards"][0]["framework"] == "NGSS"
     assert client.post("/api/courses/active", json={"id": "nope"}).status_code == 404
     assert client.post("/api/courses/active", json={"id": "testland"}).json() == {"active": "testland"}
-    assert [l["id"] for l in client.get("/api/academy/course").json()["lessons"]][:2] == ["moon", "phases"]
+    assert [l["id"] for l in client.get("/api/academy/course").json()["lessons"]][:2] == ["testland:moon", "testland:phases"]   # another course: <course>:<id>
     assert client.get("/api/courses/testland/media/earth.jpg").status_code == 200
     for bad in ("course.json", "..%2Fcourse.json", "nothing.jpg", "lessons.json"):
         assert client.get(f"/api/courses/testland/media/{bad}").status_code == 404

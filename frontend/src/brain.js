@@ -15,7 +15,7 @@ import { callSign } from "./story.js";
 import { isClass, isExplorer, isField } from "./explorer.js";
 import { readCadets, summarize } from "./progress.js";
 import { activeProfile } from "./learning_ui.js";
-import { courseState, qid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
+import { courseState, qid, splitQid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -72,7 +72,7 @@ export const SKILLS = {
  *  "<course>:<id>" in another course, so two courses' lessons never share counts. */
 export const lessonKey = (id, course = courseState.active) => (!course || course === "moon" ? id : qid(course, id));
 /** [courses] The course's own big ideas (manifest big_ideas, docs/COURSES.md §4.8), else the table above (the Moon's). */
-const courseSkill = l => { const b = l && ((courseState.info && courseState.info.big_ideas) || {})[l.id];
+const courseSkill = l => { const b = l && ((courseState.info && courseState.info.big_ideas) || {})[splitQid(l.id).id];
   return b && b.star ? { star: b.star, idea: b.idea || "", ngss: Array.isArray(b.codes) ? b.codes : [] } : null; };
 export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
 

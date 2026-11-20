@@ -59,13 +59,17 @@ def client():
 
 
 def test_the_catalog_lists_course_packs_only(catalog):
-    assert [e["id"] for e in course_packs.catalog()] == ["testland"]
+    assert "testland" in [e["id"] for e in course_packs.catalog()]
     assert course_packs.entry("testland")["asset"] == "course_testland"
+
+
+def tl(r):
+    return next(p for p in r["packs"] if p["id"] == "testland")
 
 
 def test_install_switch_remove_and_back_to_the_moon(catalog, client):
     r = client.get("/api/courses/packs").json()
-    assert r["packs"][0]["state"] == "missing" and r["managed"] is False
+    assert tl(r)["state"] == "missing" and r["managed"] is False
     assert client.post("/api/courses/packs/testland/get").json() == {"state": "installed"}
     assert [c["id"] for c in client.get("/api/courses").json()["courses"]] == ["moon", "testland"]
     assert client.post("/api/courses/active", json={"id": "testland"}).json()["active"] == "testland"
@@ -111,7 +115,7 @@ def test_school_network_mode_blocks_and_says_so(catalog, client, monkeypatch):
     monkeypatch.setattr(netgate, "policy", lambda: {"school_network": True, "allow_hosts": []})
     r = client.post("/api/courses/packs/testland/get")
     assert r.status_code == 403 and "School network mode is on" in r.json()["detail"]
-    assert client.get("/api/courses/packs").json()["packs"][0]["blocked"] is True
+    assert tl(client.get("/api/courses/packs").json())["blocked"] is True
     # a host the school allows downloads as usual
     monkeypatch.setattr(netgate, "policy", lambda: {"school_network": True, "allow_hosts": ["www.dropbox.com"]})
     assert client.post("/api/courses/packs/testland/get").json()["state"] == "installed"
@@ -131,13 +135,13 @@ def test_with_the_desktop_app_it_asks_through_flag_files(catalog, client, monkey
     courses.courses.cache_clear()
     assert client.post("/api/courses/packs/testland/get").json() == {"state": "queued"}
     assert (assets / ".want" / "course_testland").exists()
-    assert client.get("/api/courses/packs").json()["packs"][0]["state"] == "queued"
+    assert tl(client.get("/api/courses/packs").json())["state"] == "queued"
     (assets / ".active").mkdir(); (assets / ".active" / "course_testland").write_text("")
-    assert client.get("/api/courses/packs").json()["packs"][0]["state"] == "downloading"
+    assert tl(client.get("/api/courses/packs").json())["state"] == "downloading"
     # the desktop app failed it (assets.js store.failed): said plainly, and a new ask clears it
     (assets / ".active" / "course_testland").unlink(); (assets / ".want" / "course_testland").unlink()
     (assets / ".failed").mkdir(); (assets / ".failed" / "course_testland").write_text("You're offline.")
-    p = client.get("/api/courses/packs").json()["packs"][0]
+    p = tl(client.get("/api/courses/packs").json())
     assert p["state"] == "failed" and p["reason"] == "You're offline."
     client.post("/api/courses/packs/testland/get")
     assert not (assets / ".failed" / "course_testland").exists()

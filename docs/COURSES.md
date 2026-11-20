@@ -308,9 +308,9 @@ The full script, with what to click and what to say, is in `docs/courses/archaeo
 
 ### 4.1 The course manifest (`outpost-luna-course` v1)
 
-One JSON per course: `backend/data/courses/<id>.json` for built-ins, `<assets>/course_<id>/course.json` for downloaded
+One JSON per course: `backend/data/courses/<id>.json` for built-ins, `<assets>/course_<id>/course.manifest.json` for downloaded
 packs. Schema, validator and loader: `backend/app/courses.py` (spike). The Moon's manifest:
-`backend/data/courses/moon.json`. The Archaeology draft: `docs/courses/archaeology/course.manifest.json`.
+`backend/data/courses/moon.json`. The Archaeology draft: `backend/data/courses/archaeology.json`.
 
 | Field | Meaning | Read by |
 |---|---|---|
@@ -452,7 +452,7 @@ A course that is gone (pack removed) falls back to the Moon. Switching (`setCour
 `outpost:course-changed` and reloads the app, as a profile switch does: every module and the globe start clean.
 
 **The registry.** Built-ins from `backend/data/courses/*.json` (status `builtin`), then packs from
-`<COURSE_PACKS_DIR or ASSETS_DIR>/course_<id>/course.json` (status `pack`, paths relative to the pack folder, which must
+`<COURSE_PACKS_DIR or ASSETS_DIR>/course_<id>/course.manifest.json` (status `pack`, paths relative to the pack folder, which must
 be named after the id). A broken manifest is skipped with a reason (`problems`). A pack's own files are served
 read-only at `/course/<id>/<path>` (its Earth map).
 
@@ -502,7 +502,7 @@ the mission layer (a course without an `outpost` mission never starts one). Pins
 **A pack's source and its build.** The content author writes `backend/data/courses/<id>.json` (status `pack`, paths
 under `courses/<id>/`) and the folder `backend/data/courses/<id>/` (lessons, places, entities, ear vocab, `media/`).
 In the app that source is not a course; `OUTPOST_DEV_COURSE=<id>` plays it from source (the author's dev loop).
-`make asset-pack` (scripts/asset_pack.py) turns every such source into the asset `course_<id>`: `course.json`
+`make asset-pack` (scripts/asset_pack.py) turns every such source into the asset `course_<id>`: `course.manifest.json`
 rewritten relative to the pack (`courses.to_pack`), every file of the folder, validated as it will load; optional,
 `on_demand` (never fetched by the background downloader), a version, a sha256 for the tar, a size and sha256 per file,
 in the SAME `desktop/assets.manifest.json` and Dropbox folder (decision 6). `make asset-upload` uploads it.
@@ -521,6 +521,15 @@ in the SAME `desktop/assets.manifest.json` and Dropbox folder (decision 6). `mak
   files says how much is needed. The offline pack zip can carry course tars (they install like any asset).
 - Removing the course being played switches to the Moon first. Patches stay. The Moon cannot be removed.
 - The top-bar chip appears once two courses are installed; its "Get more courses" opens For grown-ups.
+
+**Archaeology is the first pack.** Its source is `backend/data/courses/archaeology.json` (moved from the docs draft;
+status `pack`, reading level 9-12 / teen, labels "Field School" / "Field patches", 100 Deepgram keyterms from its ear
+vocab, hard terms first) plus `backend/data/courses/archaeology/` (#168). `course_archaeology` (4.6 MB, 19 files, with
+the NASA Blue Marble 5400×2700 in `media/`) is in the catalog with `url: null` until it is uploaded. Lessons of another
+course are served with `<course>:` ids (`content.prefixed`), and the client keeps them as they are. A bonus lesson may
+name `unlock_after: <lesson id>` (explorer.js: it opens once that lesson's patch is earned; Chimney Rock after Mesa
+Verde). The content branch's stopgaps are gone: `OUTPOST_DEV_COURSE` now just loads and plays a pack source through the
+registry, and `academy/dev_course.js` / `?course=` are removed (the globe reads the active course).
 
 **Reset.** "Start over" keeps downloaded courses and the cadet's course. "Reset everything" deletes the assets folder
 (course packs included) and the backend's active-course file, so the computer plays the Moon. Progress for every course

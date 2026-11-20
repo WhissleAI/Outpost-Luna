@@ -1,0 +1,225 @@
+{
+ "_note": "Course #2 (docs/COURSES.md §3, §4.8-4.9). A pack SOURCE: status `pack`, paths under courses/archaeology/. In the app it is the downloadable asset course_archaeology (scripts/asset_pack.py builds it from this file + the folder); OUTPOST_DEV_COURSE=archaeology plays it from source. Its lessons were written in feat/archaeology-content (#168).",
+ "format": "outpost-luna-course",
+ "version": 1,
+ "id": "archaeology",
+ "title": "Archaeology",
+ "program": "Field Archaeology: the Mesa Verde region",
+ "status": "pack",
+ "subject": "Social studies (history, geography, civics) with science methods",
+ "grades": "9-12",
+ "reading_level": {
+  "grades": "9-12",
+  "register": "teen",
+  "note": "decision 2: high-school register; budgets = words per line",
+  "budgets": {
+   "prompt": 24,
+   "title": 6,
+   "hint": 16,
+   "success": 16,
+   "fail": 10,
+   "reveal": 20
+  }
+ },
+ "labels": {
+  "course": "Archaeology",
+  "school": "Field School",
+  "lessons": "Lessons",
+  "patches": "Field patches",
+  "patch": "patch"
+ },
+ "globe": {
+  "body": "earth",
+  "name": "Earth",
+  "km": 6371.0,
+  "map": "/api/courses/archaeology/media/earth5400.jpg",
+  "site_maps": [
+   "mesa_verde_hillshade"
+  ]
+ },
+ "gazetteer": "courses/archaeology/places.json",
+ "entities": "courses/archaeology/entities.json",
+ "ear": {
+  "vocab": "courses/archaeology/ear_vocab.json",
+  "names": "entities",
+  "keyterms": [
+   "archaeology",
+   "archeology",
+   "archaeologist",
+   "archeologist",
+   "dendrochronology",
+   "tree-ring dating",
+   "tree ring dating",
+   "dendro",
+   "stratigraphy",
+   "strata",
+   "stratum",
+   "law of superposition",
+   "superposition",
+   "radiocarbon dating",
+   "radiocarbon",
+   "carbon dating",
+   "carbon-14",
+   "C-14",
+   "kiva",
+   "kivas",
+   "pithouse",
+   "pit house",
+   "pithouses",
+   "metate",
+   "metates",
+   "mano",
+   "manos",
+   "potsherd",
+   "sherd",
+   "shard",
+   "potsherds",
+   "pot shard",
+   "midden",
+   "middens",
+   "trash heap",
+   "lidar",
+   "LiDAR",
+   "light detection and ranging",
+   "hillshade",
+   "hill shade",
+   "shaded relief",
+   "transect",
+   "transects",
+   "pedestrian survey",
+   "survey",
+   "stewardship",
+   "steward",
+   "consultation",
+   "consult",
+   "tribal consultation",
+   "repatriation",
+   "repatriate",
+   "major lunar standstill",
+   "lunar standstill",
+   "standstill",
+   "Douglas fir",
+   "Douglas-fir",
+   "yucca",
+   "yucca sandal",
+   "Hopi",
+   "Hopi Tribe",
+   "Zuni",
+   "Pueblo of Zuni",
+   "Zuni Pueblo",
+   "Acoma",
+   "Pueblo of Acoma",
+   "Laguna",
+   "Pueblo of Laguna",
+   "Taos Pueblo",
+   "Taos",
+   "Santa Clara Pueblo",
+   "Santa Clara",
+   "Ohkay Owingeh",
+   "Ute Mountain Ute",
+   "Ute Mountain Ute Tribe",
+   "Southern Ute",
+   "Southern Ute Indian Tribe",
+   "Navajo Nation",
+   "Navajo",
+   "Diné",
+   "Dine",
+   "Pueblo peoples",
+   "Pueblo people",
+   "Puebloan",
+   "Pueblos",
+   "Ancestral Puebloans",
+   "Ancestral Pueblo people",
+   "Ancestral Pueblo",
+   "Mesa Verde",
+   "Mesa Verde National Park",
+   "Four Corners",
+   "Four Corners Monument",
+   "Chimney Rock",
+   "Chimney Rock National Monument",
+   "Companion Rock",
+   "Hovenweep",
+   "Hovenweep National Monument",
+   "Canyons of the Ancients",
+   "Chaco Canyon",
+   "Chaco Culture National Historical Park"
+  ]
+ },
+ "lessons": {
+  "source": "courses/archaeology/course.json",
+  "tracks": [
+   "core"
+  ],
+  "ids": [
+   "what_is",
+   "survey",
+   "layers",
+   "dating",
+   "stuff",
+   "law",
+   "voices",
+   "mesa_verde",
+   "capstone",
+   "chimney_rock"
+  ]
+ },
+ "assets": {
+  "required": [
+   "ear",
+   "tagger",
+   "embedder",
+   "voice",
+   "course_archaeology"
+  ],
+  "optional": [
+   "course_archaeology_lidar"
+  ]
+ },
+ "standards": [
+  {
+   "framework": "Colorado Academic Standards: Social Studies (2022), high school",
+   "codes": [
+    "History 1.1",
+    "Geography 3.1",
+    "Geography 4.2",
+    "Geography 4.3",
+    "Civics 6.1",
+    "Civics 7.2"
+   ]
+  },
+  {
+   "framework": "C3 Framework",
+   "codes": [
+    "D1",
+    "D2.His",
+    "D2.Geo",
+    "D3",
+    "D4"
+   ]
+  },
+  {
+   "framework": "NGSS (methods analogy)",
+   "codes": [
+    "HS-ESS1-6"
+   ]
+  },
+  {
+   "framework": "AP Human Geography",
+   "codes": [
+    "Unit 1",
+    "Unit 5"
+   ]
+  }
+ ],
+ "sensitivity": {
+  "site_coordinates": "park-level only",
+  "human_remains": "never shown",
+  "sacred_sites": "named only as tribes and parks publish them"
+ },
+ "class_packs": true,
+ "sources": "courses/archaeology/sources.json",
+ "rings": [
+  "courses/archaeology/rings/itrdb_co652.json"
+ ],
+ "media": "courses/archaeology/media"
+}

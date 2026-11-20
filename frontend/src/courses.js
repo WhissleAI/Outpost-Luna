@@ -8,8 +8,8 @@
 // - Ids are course-prefixed: "<course>:<id>" (moon:phases, moon:scout). The progress store ("atm-academy") keeps
 //   every course's patches, the qualified flag and the half-done lesson under prefixed ids (v2). A v1 save (bare ids,
 //   from before courses) migrates losslessly: every bare id is the Moon's, and the original is kept untouched under
-//   "atm-academy.v1" (a progress key: only "erase progress too" removes it). The lesson UI still works on one course's
-//   bare ids: courseView() / mergeView() translate.
+//   "atm-academy.v1" (a progress key: only "erase progress too" removes it). The lesson UI sees the ids its lessons use
+//   (bare on the Moon, prefixed elsewhere, as the backend serves them): courseView() / mergeView() translate.
 // - Switching: setCourse() stores the choice, tells the backend, fires `outpost:course-changed`, then the app
 //   reloads (as a profile switch does) so every module, the globe included, starts clean on the new course.
 // Pure helpers first (tests/courses.test.js), then the small client.
@@ -24,7 +24,8 @@ export const validCourse = c => typeof c === "string" && CID.test(c);
 
 // ---------------------------------------------------------------- ids (pure)
 /** "<course>:<id>" */
-export const qid = (course, id) => `${validCourse(course) ? course : DEFAULT_COURSE}:${id}`;
+export const qid = (course, id) => { const c = validCourse(course) ? course : DEFAULT_COURSE, s = String(id ?? "");
+  return s.startsWith(c + ":") ? s : `${c}:${s}`; };   // idempotent: an id already in the course stays as it is
 /** "<course>:<id>" → {course, id}. A bare id (a v1 save, a class lesson) is the Moon's. */
 export function splitQid(q) {
   const s = String(q ?? ""), i = s.indexOf(":");
@@ -62,7 +63,9 @@ export function migrateAcademy(raw) {
 /** One course's progress in the shape the lesson UI has always used: {badges: [bare], qualified, steps: {bare}, current}. */
 export function courseView(store, course = DEFAULT_COURSE) {
   const s = store && store.v === STORE_V ? store : migrateAcademy(store);
-  const bare = q => splitQid(q).id;
+  // the ids the course's lessons use: bare on the Moon (as always), "<course>:<id>" elsewhere (the backend serves another
+  // course's lessons prefixed, app/academy/content.py prefixed())
+  const bare = q => (course === DEFAULT_COURSE ? splitQid(q).id : q);
   const steps = {};
   for (const [k, v] of Object.entries(s.steps)) if (inCourse(k, course)) steps[bare(k)] = { ...v };
   return { badges: s.badges.filter(b => inCourse(b, course)).map(bare), qualified: s.qualified.includes(course),

@@ -101,7 +101,7 @@ export function summarize(cadet, lessons = []) {
   const got = new Set(cadet.academy.badges), has = l => got.has(badgeOf(l));
   const nasa = ls.filter(l => !isClass(l)), core = coreLessons(nasa), field = fieldLessons(nasa);
   const flown = cadet.flown.length, q = cadet.academy.qualified;
-  const open = l => unlocked(l, flown, q);
+  const open = l => unlocked(l, flown, q, id => { const x = ls.find(y => y.id === id); return !!(x && has(x)); });
   // Class lessons by pack, in course order
   const packs = [];
   ls.filter(isClass).forEach(l => {

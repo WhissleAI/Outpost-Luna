@@ -8,10 +8,10 @@ Where manifests come from (the registry, `courses()`):
   - built in: `backend/data/courses/<id>.json` (`status: "builtin"`; paths relative to backend/data). The Moon is
     course #1, always installed, never removable, and its manifest only POINTS at the files the app read before
     courses existed, so playing the Moon is byte-for-byte what it was.
-  - downloaded packs (P2): `<packs>/course_<id>/course.json` (`status: "pack"`; paths relative to that folder), where
+  - downloaded packs (P2): `<packs>/course_<id>/course.manifest.json` (`status: "pack"`; paths relative to that folder), where
     <packs> is COURSE_PACKS_DIR, else the desktop app's assets folder (ASSETS_DIR / settings.assets_dir). A pack is the
     first-run asset `course_<id>` (desktop/assets.manifest.json, decision 6: the same Dropbox folder and catalog).
-  - `status: "draft"` (docs/courses/<id>/course.manifest.json) is shape-checked only, never loaded.
+  - `status: "draft"` (a pack source left as draft) is shape-checked only, never loaded.
 
 The active course is per computer on the backend (`<cache or data>/course_state/active.json`, or ACTIVE_COURSE_FILE)
 and per call sign on the client (frontend/src/courses.js "outpost-course", a profile key): the client tells the backend
@@ -50,7 +50,7 @@ DEFAULT_LEVEL = {"grades": "3-8", "register": "kid",
 DEFAULT_LABELS = {"course": "Moon", "school": "Flight School", "lessons": "Lessons", "patches": "NASA patches",
                   "patch": "patch"}
 LABEL_KEYS = tuple(DEFAULT_LABELS)
-PACK_FILE = "course.json"
+PACK_FILE = "course.manifest.json"   # not course.json: a course folder keeps its lessons in that name
 
 router = APIRouter()
 _LOCK = threading.Lock()
@@ -172,7 +172,7 @@ def to_pack(m: dict) -> tuple[dict, str]:
 
 # ------------------------------------------------------------------------------------------- where things live
 def packs_dir() -> Path | None:
-    """Where downloaded course packs are installed (`<dir>/course_<id>/course.json`), or None (a dev checkout)."""
+    """Where downloaded course packs are installed (`<dir>/course_<id>/course.manifest.json`), or None (a dev checkout)."""
     env = os.environ.get("COURSE_PACKS_DIR") or os.environ.get("ASSETS_DIR")
     if env:
         return Path(env)
@@ -206,7 +206,10 @@ def courses() -> tuple[dict, ...]:
     known = asset_ids()
 
     def add(m: dict, where: str, data: Path, want_status: tuple[str, ...]) -> None:
-        errs, _ = validate(m, data=data, known_assets=(known or None) if data == DATA else None)
+        # built-ins name only assets the catalog has; a pack (or a pack's source) names its own, which the catalog
+        # gets when the pack is built and uploaded
+        builtin = data == DATA and m.get("status") == "builtin"
+        errs, _ = validate(m, data=data, known_assets=(known or None) if builtin else None)
         if not errs and m.get("status") not in want_status:
             errs = [{"at": "status", "msg": f"Expected {' or '.join(want_status)} here."}]
         if errs:

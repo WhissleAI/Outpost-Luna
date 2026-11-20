@@ -306,7 +306,7 @@ COURSES_SRC = ROOT / "backend/data/courses"
 
 def src_course(f: Path):
     """A course pack from its source: backend/data/courses/<id>.json (status "pack") + backend/data/courses/<id>/.
-    The pack holds course.json (paths rewritten relative to the pack, app/courses.py to_pack), every file of the folder
+    The pack holds course.manifest.json (paths rewritten relative to the pack, app/courses.py to_pack), every file of the folder
     (lessons, places, entities, ear vocab, media/). The globe map a manifest names as /api/courses/<id>/media/<name>
     must be in media/, or given as COURSE_EARTH_MAP (the NASA Blue Marble, docs/COURSES.md §6)."""
     sys.path.insert(0, str(ROOT / "backend"))
@@ -329,7 +329,9 @@ def src_course(f: Path):
     errs, _ = validate(pack, data=folder)
     if errs:
         sys.exit(f"{f.name}: the pack would not load: {errs[0]['at']}: {errs[0]['msg']}")
-    files.append(("course.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))
+    if "course.manifest.json" in have:
+        sys.exit(f"{f.name}: course.manifest.json is the pack's own name; rename that file in {folder}")
+    files.append(("course.manifest.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))
     return files
 
 
