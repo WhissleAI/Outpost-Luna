@@ -44,6 +44,8 @@ import { fillCredits } from "./media/video_ui.js";
 import "./storage_ui.js";   // Settings → Storage & updates (desktop asset versions and updates)
 import "./learning_ui.js";      // Settings → What the app has learned (on-device learning, docs/ON_DEVICE_LEARNING.md)
 import "./progress.css";
+import "./brain.css";
+import { installBrain, COPY as BRAIN_COPY } from "./brain.js";   // [brain] My Brain (docs/BRAIN.md)
 import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
 import "./class_editor.css";
 import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
@@ -172,6 +174,8 @@ async function boot() {
     onProgress: p => { document.body.dataset.qualified = p.qualified ? "1" : ""; },
   });
   document.body.dataset.qualified = academyUI.progress.qualified ? "1" : "";
+  // [brain] My Brain: the top bar's button, the map's call-sign chip, B, voice (docs/BRAIN.md)
+  const brain = installBrain({ setMode: m => setMode(m), editCallSign: () => academyUI.editCallSign() });
   // [class] Settings → Class lessons → Preview: the course again (the preview joined it), then the lesson, as a cadet sees it
   addEventListener("outpost:class-open", e => {
     const id = e.detail && e.detail.id; if (!id) return;
@@ -685,6 +689,7 @@ async function boot() {
       if (academyUI.active) await academyUI.answerText(text);
       return;
     }
+    if (intent === "brain") { if (brain) { const was = brain.isOpen; brain.toggle(); if (!was && text) guideSay(BRAIN_COPY.say, { voice: CAPCOM_VOICE }); } return; }   // [brain] B, voice "my brain"
     if (intent === "academy") { setMode("academy"); return; }
     if (intent === "library") { setMode("cadet"); return; }
     if (intent === "go_mission") { setMode("mission"); return; }

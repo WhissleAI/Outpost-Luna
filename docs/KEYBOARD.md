@@ -182,6 +182,7 @@ still work.
 | | Mic on / off | — | — | M | the mic button |
 | | Help | "what can I do?" (spoken list) | — | H, ? (sheet) | Settings → Keyboard & controller → Show all keys |
 | | Settings | "open settings" | — | S, Alt+A | the gear |
+| | My Brain | "my brain", "what have I learned" | — | B (A–D answers win on a lettered step) | the top bar's My Brain, the map's call-sign chip |
 | | Captions | (Settings) | — | C | Settings → Reading & captions |
 | | Type | — | — | / | click the field |
 | | Where am I | "where am I?" | — | Alt+W | — |

@@ -53,7 +53,7 @@ export function engineChoiceHtml(P, steer, esc = x => String(x)) {
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
 /** The keys that belong to one cadet. */
-export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier"];   // [qa] + camera and mission tier
+export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier", "outpost-brain"];   // [qa] + camera and mission tier; [brain] practice counts
 
 const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 function activeProfileId() { try { const s = JSON.parse(get(PROFILES) || "null"); return s && typeof s.active === "string" ? s.active : "p1"; } catch (e) { return "p1"; } }
@@ -197,8 +197,8 @@ export function createPrefs({ globe = null } = {}) {
     s.list.push({ id, data: null }); s.active = id; restore(null);
     set(PROFILES, JSON.stringify(s)); location.reload(); return true;
   }
-  /** Clear this cadet's patches and qualification (the call sign and settings stay). */
-  function resetProgress() { set("atm-academy", null); location.reload(); }
+  /** Clear this cadet's patches, qualification and practice counts (the call sign and settings stay). */
+  function resetProgress() { set("atm-academy", null); set("outpost-brain", null); location.reload(); }   // [brain] practice counts go with the patches
 
   return {
     get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire, setApplied, get applied() { return applied; },

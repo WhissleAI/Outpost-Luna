@@ -1,0 +1,58 @@
+/* My Brain (brain.js): the About drawer's frame (styles.css .about), the debrief's score row (.mx-score), the cadet
+   list's avatar (.set-av); tokens only. The star map is inline SVG coloured from tokens. */
+.tb-brain{display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--control-sm);padding:0 var(--space-3);border-radius:var(--radius-full);
+  font-size:var(--text-sm);font-weight:var(--weight-semibold);color:var(--color-text-2)}
+.tb-brain svg{width:18px;height:18px;flex:none;color:var(--color-accent)}
+.tb-brain:hover{color:var(--color-text);background:var(--color-surface-2)}
+.tb-brain[aria-expanded="true"]{color:var(--color-text);background:var(--color-accent-soft)}
+@media (max-width:1100px){ .tb-brain span{display:none} .tb-brain{padding:0;width:var(--control-sm);justify-content:center} }
+
+.brain .about-bar .eyebrow{display:inline-flex;align-items:center;gap:var(--space-2)}
+.bm-body{gap:var(--space-5)}
+.bm-head{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.bm-head .set-av{width:48px;height:48px;font-size:var(--text-lg)}
+.bm-who{flex:1;min-width:10rem}
+.bm-who h1{margin:0;font-size:var(--text-xl);font-weight:var(--weight-bold);overflow-wrap:anywhere}
+.bm-who p{margin:0;color:var(--color-text-2);font-size:var(--text-sm);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-caps);text-transform:uppercase}
+.bm-head .btn{display:inline-flex;align-items:center;gap:var(--space-2)}
+.bm-stats{justify-content:flex-start;flex-wrap:wrap;gap:var(--space-5)}
+.bm-stats div{align-items:flex-start}
+.bm-stats dd small{font-size:var(--text-sm);color:var(--color-text-3);font-family:inherit;font-weight:var(--weight-regular)}
+.bm-sec{display:flex;flex-direction:column;gap:var(--space-2)}
+.bm-sec h2{margin:0;font-size:var(--text-lg);font-weight:var(--weight-bold)}
+.bm-line{margin:0;color:var(--color-text-2);font-size:var(--text-sm);max-width:60ch}
+
+/* the star map: a night-sky panel in both themes */
+.bm-map{display:block;width:100%;height:auto;border-radius:var(--radius-lg);background:#0B1020;border:1px solid var(--color-line)}
+.bm-link{stroke:#3A4560;stroke-width:1.5;stroke-dasharray:3 4}
+.bm-link.is-lit{stroke:#8FB0FF;stroke-dasharray:none;stroke-width:2}
+.bm-star polygon{fill:#4A5570}
+.bm-star text{fill:#8A94AA;font:600 11px var(--font-ui)}
+.bm-star.is-practising polygon{fill:#B9C8F0}
+.bm-star.is-practising text{fill:#C9D3EA}
+.bm-star.is-lit polygon{fill:#FFD66B}
+.bm-star.is-lit text{fill:#FFFFFF}
+.bm-glow{fill:#FFD66B;opacity:.18}
+.bm-legend{list-style:none;margin:0;padding:0;display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:var(--text-sm);color:var(--color-text-2)}
+.bm-legend li{display:inline-flex;align-items:center;gap:var(--space-2)}
+.bm-legend i{width:12px;height:12px;border-radius:50%;background:#4A5570}
+.bm-legend .is-lit i{background:#E9B634}
+.bm-legend .is-practising i{background:#8FA6DE}
+
+.bm-next ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:var(--space-1);font-size:var(--text-md)}
+.bm-next .btn-primary{align-self:flex-start;display:inline-flex;align-items:center;gap:var(--space-2)}
+.bm-voice{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.bm-voice li{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-surface-2);font-size:var(--text-md)}
+.bm-voice svg{flex:none;margin-top:2px;color:var(--color-accent)}
+.bm-think{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:var(--space-2);counter-reset:bm}
+.bm-think li{display:flex;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--color-line);border-radius:var(--radius-md);background:var(--color-surface)}
+.bm-think b{display:block;font-size:var(--text-md)}
+.bm-think p{margin:var(--space-1) 0 0;color:var(--color-text-2);font-size:var(--text-sm)}
+.bm-ic{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent)}
+
+/* the grown-ups' side (progress.js): the practice table and this computer's counts */
+.pg-tbl table{min-width:560px}
+.pg-tbl td small{display:block;color:var(--color-text-3);font-size:var(--text-xs)}
+.pg-tbl td small.bm-ngss{margin-top:2px}
+.pg-ctl{margin:0;padding-left:1.2em;font-size:var(--text-sm);color:var(--color-text-2);display:flex;flex-direction:column;gap:2px}
+@media print{ #pgPrint .pg-tbl{overflow:visible;border:0} #pgPrint .pg-tbl table{min-width:0} }

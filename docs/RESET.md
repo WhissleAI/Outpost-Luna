@@ -16,7 +16,8 @@ order the app opens them. A mission shows stars, grade, site and the debrief's t
 holds that mission (the server keeps them in memory until it quits); after a restart it is counted, nothing more.
 A paused mission on this computer is named at the top. It reads only what the app already saves (`atm-academy`,
 `outpost-profiles` snapshots, `outpost-missions-flown:<call sign>`, `GET /api/academy/course`, `/api/mission/saved`,
-`/api/mission/{id}/debrief`) and stores nothing. No time spent: the app does not save it. **Print** prints the sheet
+`/api/mission/{id}/debrief`), plus the Brain's practice counts (`outpost-brain`, docs/BRAIN.md §5: per-lesson tries and
+time on graded steps, no words) and this computer's counts (`GET /api/brain/summary`). **Print** prints the sheet
 alone (a copy at the body's top level, `@media print`): light paper, one cadet per page, no app chrome.
 
 Reset erases what the app saved on this computer, at one of two levels. **Progress stays** on both levels:
@@ -70,7 +71,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
    - calls `reset_downloaded_assets()` for `all`;
    - returns a one-time token, valid for 60 s.
 3. **The page** removes every `outpost*` / `atm-*` / `atm:*` key from localStorage and sessionStorage, except the
-   progress keys (`atm-academy`, `outpost-callsign`, `outpost-missions-flown:*`, and `outpost-profiles` trimmed to each
+   progress keys (`atm-academy`, `outpost-callsign`, `outpost-brain`, `outpost-missions-flown:*`, and `outpost-profiles` trimmed to each
    cadet's progress) unless progress is erased too, and deletes its IndexedDB databases. Then:
    - in a browser (the dev stack), it reloads;
    - in the desktop app, it navigates to `/__outpost/reset?level=…&token=…` (`&erase=1` with "erase progress too").

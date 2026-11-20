@@ -546,6 +546,19 @@ def main():
         press("ArrowDown", 400)
         press("Escape", 700)
         ok(not js("() => document.getElementById('about').open") and act()["id"] == "aboutBtn", "About: Esc closes, focus back on About")
+        # [brain] My Brain (docs/BRAIN.md): arrows reach it in the top bar, Enter opens, arrows move inside, Esc closes;
+        # B opens it from anywhere and B again closes it
+        ok(press_until(["ArrowLeft"], "() => document.activeElement.id === 'brainBtn'", n=8), "top bar: arrows reach My Brain")
+        press("Enter", 1200)
+        ok(js("() => document.getElementById('brain').open"), "My Brain opens with Enter")
+        ok(press_until(["ArrowDown"], "() => !!(document.activeElement && document.activeElement.closest('#brain') && document.activeElement.matches('[data-bm-cs], [data-bm-go]'))", n=8),
+           "My Brain: arrows reach its buttons")
+        press("Escape", 700)
+        ok(not js("() => document.getElementById('brain').open") and act()["id"] == "brainBtn", "My Brain: Esc closes, focus back on My Brain")
+        press("b", 1000)
+        ok(js("() => document.getElementById('brain').open"), "B opens My Brain")
+        press("b", 700)
+        ok(not js("() => document.getElementById('brain').open"), "B again closes My Brain")
         press("h", 600)
         ok(js("() => !document.getElementById('keysHelp').hidden"), "H opens the keys sheet for this screen")
         ok("Library" in js("() => document.getElementById('keysHelp').textContent"), "help: lists this screen's keys")

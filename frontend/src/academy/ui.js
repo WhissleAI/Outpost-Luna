@@ -97,7 +97,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
   // [0.6] hesitation (docs/LEARNING_DESIGN.md §13): the session flags a heard turn with fillers or a long pause
   // (`heard.hes`, just before the answer it carries). A miss on that answer gets the next hint rung at once (the
-  // server's ladder counts one more miss), once per step. In memory only; never shown, said or stored.
+  // server's ladder counts one more miss), once per step. The pause itself is never shown, said or stored; only the
+  // count of early hints the app gave (its own action) goes to the Brain's practice counts (brain_store.js "pause").
   const HES_MS = 4000;
   let hesAt = 0;
   const hesUsed = new Set();
@@ -107,12 +108,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   let booted = false;   // [0.4.1] the first Flight School entry of this launch reopens a half-done lesson at its step
   // guidance (docs/PLAYTEST.md): the hint-ladder rung and what the server said to draw; per-step state that survives
   // a re-render (the route's taps); the first-use intro line for this step
-  let gs = { rung: 0 }, stepState = { taps: [] }, intro = null;
+  let gs = { rung: 0 }, stepState = { taps: [] }, intro = null, baseRung = 0;   // baseRung: the glow a step starts with (not a hint)
   const freshStep = () => {
     const st = L && L.steps[i], acc = (st && st.accept) || {};
     // [novice playtest 5] a find-a-place step never tests a place nobody showed: its target already glows (rung 1,
     // no name); help and misses climb to the label, then to "here it is"
     gs = !L || L.ride || !["intent", "tap"].includes(acc.type) || !acc.place || (st.ring || []).includes(acc.place) ? { rung: 0 } : { rung: 1, focus: [acc.place] };
+    baseRung = gs.rung || 0;
     stepState = { taps: [] }; pendingBadge = null;
     // a terminator step's night side never leaks into the next step or lesson (it re-locks the Sun when it renders)
     if (globe.setSunDir) globe.setSunDir(null);
@@ -127,6 +129,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     active: false, enter, exit, handleText, onTap, onArtifact, get progress() { return prog; },
     screen, nav, answerText,   // hands-free: the session routes every turn (backend/app/turn_router.py)
     hesitant: () => { if (ui.active && view === "lesson" && L && !L.ride) hesAt = now(); },   // [0.6] heard.hes
+    editCallSign: () => { if (ui.active) showCallSign(() => showMap(true)); },   // [brain] My Brain's "Change call sign"
     lessons: () => lessons(),  // the course lessons (mission_learning.js: which explorer lesson a mission unlocked)
     /** Earned patches, for the Mission cockpit (mission/patches.js): [{id, name, patch (inline SVG), lesson, track}];
      *  track: "core" (Flight School), "field" (Field School), "explorer" (bonus) or "ride" (the check ride) */
@@ -369,7 +372,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
         <h1 class="mp-title">${esc(SCHOOL.eyebrow)}</h1>
         <span class="mp-count" aria-label="${esc(SCHOOL.lessonsCount(coreDone().n, coreDone().of))}">${coreDone().n}<small>/${coreDone().of}</small></span>
         ${patchStripHtml(earnedPatches(ls, prog.badges), { patch, esc })}
-        <button type="button" class="chip a-csedit" id="aCsEdit" title="${esc(UI.callsign)}">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
+        <button type="button" class="chip a-csedit" id="aCsEdit" title="My Brain">${icon("astronaut", { size: 16 })}${esc(cs)}</button>
       </header>
       <div class="mp-left">
       ${!prog.qualified && nx ? (n === 0 && !nx.ride
@@ -382,7 +385,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       </div>
       ${card}
       <p class="mp-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>`;
-    panel.querySelector("#aCsEdit").onclick = () => showCallSign(() => showMap(true));
+    // [brain] the cadet chip opens My Brain (brain.js: stars, voice, how the outpost thinks); it has "Change call sign"
+    panel.querySelector("#aCsEdit").onclick = () => { const O = window.__outpost || {}; if (O.brain && O.brain.open) O.brain.open(); else showCallSign(() => showMap(true)); };
     // [0.4.1] the earned patches stay in view in the header (the polar view hides the near-side pins: academy/earned.js)
     panel.querySelectorAll(".mp-patchbtn").forEach(pb => pb.onclick = () => { const l = ls.find(x => x.id === pb.dataset.l); if (l) pickPin(l, sel); });
     const go = panel.querySelector("#aGoMission"); if (go) go.onclick = () => goMission();
@@ -739,7 +743,9 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     busy = false;
     if (hes && r && r.status === "hint") hesUsed.add(sk);   // the one early rung for this step is spent
     // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
-    try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type } })); } catch (e) { /* no window */ }
+    // [brain] and the cadet's own practice counts (brain_store.js: ids and counts only, on this device; docs/BRAIN.md)
+    try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type,
+      lesson: L.id, shown: !!r.shown, misses, helped: !L.ride && (gs.rung || 0) > baseRung, hes: hes && r.status === "hint", step_s, ride: !!L.ride } })); } catch (e) { /* no window */ }
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
     if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }

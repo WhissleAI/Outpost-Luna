@@ -173,6 +173,7 @@ network_api.setup(); app.include_router(network_api.router)  # Settings → For 
 from . import voices as _voices; app.include_router(_voices.router)  # noqa: E402  (Settings: GET /api/voices, docs/VOICES.md)
 from .assets_api import router as assets_router; app.include_router(assets_router)  # noqa: E402  (Settings: About / Storage)
 from .learn.api import router as learn_router; app.include_router(learn_router)  # noqa: E402  (on-device learning, docs/ON_DEVICE_LEARNING.md)
+from .brain import router as brain_router; app.include_router(brain_router)  # noqa: E402  (the Brain: grown-up counts, docs/BRAIN.md)
 from .playtest import router as playtest_router; app.include_router(playtest_router)  # noqa: E402  (a grown-up's Playtest session, docs/DIRECTOR_LOOP.md)
 from .nasa_views import router as views_router; app.include_router(views_router)  # noqa: E402  (0.4 real NASA views, optional asset)
 from .courses import router as courses_router; app.include_router(courses_router)  # noqa: E402  (read-only course manifests, docs/COURSES.md)

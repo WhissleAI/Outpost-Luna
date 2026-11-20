@@ -41,7 +41,7 @@ PENDING_SCREENS: dict = {}
 PROBES = {"a11y": "what do i do", "skip_event": "skip to the next event", "time_pause": "pause the clock",
           "time_resume": "start the clock", "time_warp": "time warp", "cabin_tour": "show me around",
           "skip_tour": "skip the tour", "repeat": "say that again", "slower": "slow down", "faster": "speak faster",
-          "settings": "open settings", "lesson": "lesson one", "map": "go to the map", "academy": "go to the academy",
+          "settings": "open settings", "brain": "open my brain", "lesson": "lesson one", "map": "go to the map", "academy": "go to the academy",
           "library": "open the library", "go_mission": "go to mission", "take_command": "take command",
           "debrief": "show me the debrief", "fly_again": "fly again", "new_site": "another site",
           "view_orbit": "zoom out", "view_rover": "show me the rover", "view_site": "back to the outpost",

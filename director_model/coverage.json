@@ -34,6 +34,7 @@
   "academy",
   "accept_offer",
   "back",
+  "brain",
   "cabin_tour",
   "debrief",
   "decline_offer",
@@ -99,9 +100,9 @@
   "vocab_say"
  ],
  "summary": {
-  "cells": 439,
+  "cells": 449,
   "covered": 73,
-  "gap": 366,
+  "gap": 376,
   "pending": 0,
   "by_kind": {
    "answer": {
@@ -130,7 +131,7 @@
     "pending": 0
    },
    "navigate": {
-    "cells": 295,
+    "cells": 305,
     "covered": 16,
     "pending": 0
    },
@@ -179,7 +180,7 @@
    "screen": "brief",
    "intent": "ignore:echo_os_voice",
    "kind": "ignore",
-   "train": 80,
+   "train": 78,
    "heldout": 31,
    "gap": []
   },
@@ -201,10 +202,10 @@
    "intent": "nav:a11y",
    "kind": "navigate",
    "probe": "what do i do",
-   "train": 28,
+   "train": 29,
    "heldout": 15,
    "gap": [
-    "train 28 < 40"
+    "train 29 < 40"
    ]
   },
   {
@@ -236,6 +237,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "brief|nav:brain",
+   "screen": "brief",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -636,8 +650,8 @@
    "screen": "cabin",
    "intent": "cmd:allocate",
    "kind": "order",
-   "train": 4706,
-   "heldout": 442,
+   "train": 4718,
+   "heldout": 441,
    "gap": []
   },
   {
@@ -645,7 +659,7 @@
    "screen": "cabin",
    "intent": "cmd:call_houston",
    "kind": "order",
-   "train": 359,
+   "train": 362,
    "heldout": 29,
    "gap": []
   },
@@ -654,8 +668,8 @@
    "screen": "cabin",
    "intent": "cmd:cancel",
    "kind": "order",
-   "train": 276,
-   "heldout": 12,
+   "train": 277,
+   "heldout": 13,
    "gap": []
   },
   {
@@ -663,8 +677,8 @@
    "screen": "cabin",
    "intent": "cmd:confirm",
    "kind": "order",
-   "train": 444,
-   "heldout": 55,
+   "train": 442,
+   "heldout": 54,
    "gap": []
   },
   {
@@ -672,7 +686,7 @@
    "screen": "cabin",
    "intent": "cmd:dispatch",
    "kind": "order",
-   "train": 1282,
+   "train": 1279,
    "heldout": 139,
    "gap": []
   },
@@ -681,7 +695,7 @@
    "screen": "cabin",
    "intent": "cmd:end_shift",
    "kind": "order",
-   "train": 364,
+   "train": 362,
    "heldout": 28,
    "gap": []
   },
@@ -702,7 +716,7 @@
    "screen": "cabin",
    "intent": "cmd:query",
    "kind": "order",
-   "train": 673,
+   "train": 672,
    "heldout": 60,
    "gap": []
   },
@@ -711,7 +725,7 @@
    "screen": "cabin",
    "intent": "cmd:rule",
    "kind": "order",
-   "train": 337,
+   "train": 342,
    "heldout": 49,
    "gap": []
   },
@@ -720,7 +734,7 @@
    "screen": "cabin",
    "intent": "cmd:shelter_off",
    "kind": "order",
-   "train": 224,
+   "train": 223,
    "heldout": 31,
    "gap": []
   },
@@ -729,7 +743,7 @@
    "screen": "cabin",
    "intent": "cmd:shelter_on",
    "kind": "order",
-   "train": 502,
+   "train": 501,
    "heldout": 2,
    "gap": [
     "held-out 2 < 8"
@@ -750,7 +764,7 @@
    "intent": "guard:pii",
    "kind": "guard",
    "train": 225,
-   "heldout": 20,
+   "heldout": 19,
    "gap": []
   },
   {
@@ -758,8 +772,8 @@
    "screen": "cabin",
    "intent": "ignore:chatter",
    "kind": "ignore",
-   "train": 345,
-   "heldout": 28,
+   "train": 343,
+   "heldout": 26,
    "gap": []
   },
   {
@@ -820,6 +834,19 @@
    "intent": "nav:accept_offer",
    "kind": "navigate",
    "probe": "yes",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "cabin|nav:brain",
+   "screen": "cabin",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -999,7 +1026,7 @@
    "intent": "nav:panel_comm",
    "kind": "navigate",
    "probe": "open the comm panel",
-   "train": 87,
+   "train": 86,
    "heldout": 30,
    "gap": []
   },
@@ -1317,8 +1344,8 @@
    "screen": "cabin",
    "intent": "question",
    "kind": "answer",
-   "train": 1326,
-   "heldout": 105,
+   "train": 1321,
+   "heldout": 107,
    "gap": []
   },
   {
@@ -1414,6 +1441,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "callsign|nav:brain",
+   "screen": "callsign",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1799,7 +1839,7 @@
    "intent": "nav:accept_offer",
    "kind": "navigate",
    "probe": "yes",
-   "train": 69,
+   "train": 71,
    "heldout": 37,
    "gap": []
   },
@@ -1809,6 +1849,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "debrief|nav:brain",
+   "screen": "debrief",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -1835,10 +1888,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 22,
+   "train": 23,
    "heldout": 8,
    "gap": [
-    "train 22 < 40"
+    "train 23 < 40"
    ]
   },
   {
@@ -2226,6 +2279,19 @@
    ]
   },
   {
+   "cell": "lesson_done|nav:brain",
+   "screen": "lesson_done",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "lesson_done|nav:debrief",
    "screen": "lesson_done",
    "intent": "nav:debrief",
@@ -2537,7 +2603,7 @@
    "screen": "lesson",
    "intent": "ignore:echo",
    "kind": "ignore",
-   "train": 142,
+   "train": 139,
    "heldout": 34,
    "gap": []
   },
@@ -2565,10 +2631,10 @@
    "intent": "nav:a11y",
    "kind": "navigate",
    "probe": "what do i do",
-   "train": 37,
+   "train": 36,
    "heldout": 15,
    "gap": [
-    "train 37 < 40"
+    "train 36 < 40"
    ]
   },
   {
@@ -2577,10 +2643,10 @@
    "intent": "nav:academy",
    "kind": "navigate",
    "probe": "go to the academy",
-   "train": 28,
+   "train": 27,
    "heldout": 0,
    "gap": [
-    "train 28 < 40",
+    "train 27 < 40",
     "held-out 0 < 8"
    ]
   },
@@ -2600,6 +2666,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "lesson|nav:brain",
+   "screen": "lesson",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -2905,7 +2984,7 @@
    "screen": "lesson",
    "intent": "step:choice:answer",
    "kind": "lesson",
-   "train": 360,
+   "train": 359,
    "heldout": 71,
    "gap": []
   },
@@ -2923,8 +3002,8 @@
    "screen": "lesson",
    "intent": "step:command:answer",
    "kind": "lesson",
-   "train": 164,
-   "heldout": 24,
+   "train": 179,
+   "heldout": 23,
    "gap": []
   },
   {
@@ -2932,8 +3011,8 @@
    "screen": "lesson",
    "intent": "step:command:wrong",
    "kind": "lesson",
-   "train": 167,
-   "heldout": 12,
+   "train": 150,
+   "heldout": 14,
    "gap": []
   },
   {
@@ -2941,7 +3020,7 @@
    "screen": "lesson",
    "intent": "step:compare:answer",
    "kind": "lesson",
-   "train": 153,
+   "train": 155,
    "heldout": 31,
    "gap": []
   },
@@ -2959,7 +3038,7 @@
    "screen": "lesson",
    "intent": "step:describe:answer",
    "kind": "lesson",
-   "train": 51,
+   "train": 50,
    "heldout": 15,
    "gap": []
   },
@@ -3119,8 +3198,8 @@
    "screen": "lesson",
    "intent": "step:sequence:answer",
    "kind": "lesson",
-   "train": 51,
-   "heldout": 13,
+   "train": 77,
+   "heldout": 16,
    "gap": []
   },
   {
@@ -3128,11 +3207,10 @@
    "screen": "lesson",
    "intent": "step:sequence:wrong",
    "kind": "lesson",
-   "train": 29,
-   "heldout": 2,
+   "train": 86,
+   "heldout": 3,
    "gap": [
-    "train 29 < 40",
-    "held-out 2 < 8"
+    "held-out 3 < 8"
    ]
   },
   {
@@ -3203,7 +3281,7 @@
    "screen": "lesson",
    "intent": "step:vocab_match:answer",
    "kind": "lesson",
-   "train": 62,
+   "train": 63,
    "heldout": 24,
    "gap": []
   },
@@ -3251,8 +3329,8 @@
    "screen": "library",
    "intent": "guard:pii",
    "kind": "guard",
-   "train": 219,
-   "heldout": 29,
+   "train": 223,
+   "heldout": 27,
    "gap": []
   },
   {
@@ -3260,8 +3338,8 @@
    "screen": "library",
    "intent": "ignore:chatter",
    "kind": "ignore",
-   "train": 540,
-   "heldout": 73,
+   "train": 541,
+   "heldout": 70,
    "gap": []
   },
   {
@@ -3269,7 +3347,7 @@
    "screen": "library",
    "intent": "ignore:echo",
    "kind": "ignore",
-   "train": 401,
+   "train": 397,
    "heldout": 39,
    "gap": []
   },
@@ -3300,10 +3378,10 @@
    "intent": "nav:a11y",
    "kind": "navigate",
    "probe": "what do i do",
-   "train": 35,
+   "train": 34,
    "heldout": 20,
    "gap": [
-    "train 35 < 40"
+    "train 34 < 40"
    ]
   },
   {
@@ -3338,6 +3416,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "library|nav:brain",
+   "screen": "library",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -3650,7 +3741,7 @@
    "intent": "question",
    "kind": "answer",
    "train": 4668,
-   "heldout": 478,
+   "heldout": 479,
    "gap": []
   },
   {
@@ -3693,7 +3784,7 @@
    "screen": "map",
    "intent": "ignore:echo_os_voice",
    "kind": "ignore",
-   "train": 71,
+   "train": 69,
    "heldout": 25,
    "gap": []
   },
@@ -3702,7 +3793,7 @@
    "screen": "map",
    "intent": "ignore:roomtalk",
    "kind": "ignore",
-   "train": 69,
+   "train": 70,
    "heldout": 30,
    "gap": []
   },
@@ -3753,6 +3844,19 @@
    ]
   },
   {
+   "cell": "map|nav:brain",
+   "screen": "map",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
    "cell": "map|nav:debrief",
    "screen": "map",
    "intent": "nav:debrief",
@@ -3771,10 +3875,10 @@
    "intent": "nav:decline_offer",
    "kind": "navigate",
    "probe": "no thanks",
-   "train": 12,
+   "train": 13,
    "heldout": 17,
    "gap": [
-    "train 12 < 40"
+    "train 13 < 40"
    ]
   },
   {
@@ -4055,7 +4159,7 @@
    "screen": "map",
    "intent": "question",
    "kind": "answer",
-   "train": 447,
+   "train": 450,
    "heldout": 0,
    "gap": [
     "held-out 0 < 8"
@@ -4145,6 +4249,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "patch|nav:brain",
+   "screen": "patch",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -4491,7 +4608,7 @@
    "screen": "prep",
    "intent": "ignore:roomtalk",
    "kind": "ignore",
-   "train": 346,
+   "train": 347,
    "heldout": 160,
    "gap": []
   },
@@ -4529,10 +4646,10 @@
    "screen": "prep",
    "intent": "nav:prep_wait",
    "kind": "navigate",
-   "train": 34,
+   "train": 33,
    "heldout": 33,
    "gap": [
-    "train 34 < 40"
+    "train 33 < 40"
    ]
   },
   {
@@ -4648,6 +4765,19 @@
    "intent": "nav:back",
    "kind": "navigate",
    "probe": "go back",
+   "train": 0,
+   "heldout": 0,
+   "gap": [
+    "train 0 < 40",
+    "held-out 0 < 8"
+   ]
+  },
+  {
+   "cell": "ride|nav:brain",
+   "screen": "ride",
+   "intent": "nav:brain",
+   "kind": "navigate",
+   "probe": "open my brain",
    "train": 0,
    "heldout": 0,
    "gap": [
@@ -5402,7 +5532,7 @@
    "screen": "video",
    "intent": "ignore:video_audio",
    "kind": "ignore",
-   "train": 375,
+   "train": 376,
    "heldout": 160,
    "gap": []
   },
@@ -5411,7 +5541,7 @@
    "screen": "video",
    "intent": "nav:video_pause",
    "kind": "navigate",
-   "train": 74,
+   "train": 71,
    "heldout": 45,
    "gap": []
   },
@@ -5429,7 +5559,7 @@
    "screen": "video",
    "intent": "nav:video_skip",
    "kind": "navigate",
-   "train": 55,
+   "train": 56,
    "heldout": 40,
    "gap": []
   },
