@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- [courses spike] docs/COURSES.md §6: the app's own globe (src/globe.js createGlobe) drawing Earth instead of the Moon,
+     with one park-level pin. Dev server only (not in the build): http://localhost:<vite port>/tools/spike_earth_globe.html
+     ?map=<url> picks the Earth map (default: the bundled 1024x512 Blue Marble, /terrain/earth.jpg). Screenshot:
+     frontend/tools/spike_earth_globe.py. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earth globe spike</title>
+<link rel="stylesheet" href="/src/tokens.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #05070d; color: #e8ecf4; font: 15px/1.4 system-ui, sans-serif; }
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
+  #label { position: absolute; transform: translate(14px, -50%); padding: 6px 12px; border-radius: 8px; background: rgba(10,14,24,.8); white-space: nowrap; pointer-events: none; }
+  #loading { position: absolute; left: 24px; top: 24px; }
+  .ghosts { display: none; }
+  #note { position: absolute; right: 24px; top: 24px; max-width: 360px; padding: 10px 14px; border-radius: 10px;
+          background: rgba(10,14,24,.8); font-size: 13px; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="loading">Loading the Earth map…</div><div id="label" hidden></div></div>
+<div id="note">Spike: the Outpost Luna globe with <b>body = Earth</b>. Map: NASA Blue Marble (public domain).
+  Pin: Mesa Verde National Park (park-level location, as NPS publishes it).</div>
+<script type="module">
+  import { createGlobe } from "/src/globe.js";
+  const q = new URLSearchParams(location.search);
+  const body = { name: "Earth", km: 6371.0, map: q.get("map") || "/terrain/earth.jpg" };
+  // Park-level coordinates only (the NPS visitor-area location), never a site's: docs/COURSES.md §1.6.
+  const mesaVerde = { id: "mesa_verde", name: "Mesa Verde National Park", lat: 37.18, lon: -108.49, km: 30, kind: "park" };
+  const g = createGlobe({ stage: document.getElementById("stage"), label: document.getElementById("label"),
+    loading: document.getElementById("loading"), places: [mesaVerde], onTap: () => {}, body });
+  window.__spike = { globe: g, body };
+  g.showFeature(mesaVerde, { dist: +(q.get("dist") || 1.75) });
+</script>
+</body>
+</html>

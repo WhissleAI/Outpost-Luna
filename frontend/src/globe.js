@@ -1,8 +1,19 @@
 // The three.js Moon: LRO color map, place pins, ghost-hardware markers (HTML over the canvas), highlight ring, fly-to, tap-to-pick.
+// [courses] createGlobe's optional `body` ({map, km, name}) swaps the sphere's map and size for another course's globe
+// (docs/COURSES.md §4.3); left out, it is the Moon exactly as before (MOON_BODY).
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 const R = 1, MOON_KM = 1737.4;
+/** The globe's body when a course names none: the Moon, its LRO colour map and its radius (docs/COURSES.md §4.3). */
+export const MOON_BODY = Object.freeze({ name: "Moon", map: "/media/img/moon4k.jpg", km: MOON_KM });
+/** A course's globe body ({map, km, name}), filled from the Moon for anything left out. Pure (tested). */
+export function globeBody(b) {
+  if (!b || typeof b !== "object") return MOON_BODY;
+  const km = Number(b.km) > 0 ? Number(b.km) : MOON_KM;
+  return { name: typeof b.name === "string" && b.name ? b.name : (km === MOON_KM ? MOON_BODY.name : "Globe"),
+           map: typeof b.map === "string" && b.map ? b.map : MOON_BODY.map, km };
+}
 
 const ll2v = (lat, lon, r = R) => {
   const phi = (90 - lat) * Math.PI / 180, th = (lon + 180) * Math.PI / 180;
@@ -28,7 +39,8 @@ export function frameDistance(f) {
 /** A feature's angular radius in degrees. */
 export const angRadius = f => (f.km / 2) / MOON_KM * 180 / Math.PI;
 
-export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {}, onMiss = () => {} }) {
+export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {}, onMiss = () => {}, body }) {
+  const BODY = globeBody(body), BODY_KM = BODY.km;
   const features = places.filter(f => f.kind !== "artifact"), artifacts = places.filter(f => f.kind === "artifact");
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -43,8 +55,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   const sun = new THREE.DirectionalLight(0xfff4e0, 1.15 * Math.PI); scene.add(sun);
   sun.position.copy(ll2v(10, -40).multiplyScalar(5));
 
-  const tex = new THREE.TextureLoader().load("/media/img/moon4k.jpg", () => loading.remove(), undefined,
-    () => { loading.textContent = "Couldn't load the Moon map."; });
+  const tex = new THREE.TextureLoader().load(BODY.map, () => loading.remove(), undefined,
+    () => { loading.textContent = `Couldn't load the ${BODY.name} map.`; });
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const moon = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 96), new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 }));
   scene.add(moon);
@@ -82,7 +94,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
 
   function highlight(f) {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); }
-    const ang = Math.max((f.km / 2) / MOON_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
+    const ang = Math.max((f.km / 2) / BODY_KM, 0.035), r = Math.sin(ang), h = Math.cos(ang);
     ring = new THREE.Mesh(new THREE.RingGeometry(r * (f.kind === "artifact" ? 0.86 : 0.965), r, 96), ringMat);
     const n = ll2v(f.lat, f.lon).normalize();
     ring.position.copy(n.clone().multiplyScalar(h * R + 0.004)); ring.lookAt(n.clone().multiplyScalar(5));
