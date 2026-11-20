@@ -22,7 +22,7 @@ def _touch() -> None:
 
 
 def create(site: str, seed: int | None = None, roles: list[str] | None = None, level: str = "cadet",
-           save: bool = True) -> sim.Mission:
+           save: bool = True, campaign: str | None = None) -> sim.Mission:
     """level (Settings / session prefs.level): cadet | commander, the difficulty band (docs/LEARNING_DESIGN.md §6.5)."""
     _touch()
     if len(MISSIONS) >= MAX_MISSIONS:  # drop the oldest
@@ -30,7 +30,7 @@ def create(site: str, seed: int | None = None, roles: list[str] | None = None, l
     mid = "m-" + secrets.token_hex(4)
     if seed is None:
         seed = secrets.randbelow(1_000_000)
-    m = sim.new_mission(mid, site, seed, roles, level=level)
+    m = sim.new_mission(mid, site, seed, roles, level=level, campaign=campaign)
     m.gp["level0"] = m.level   # a saved game and Restart shift replay from this level (later changes are journaled)
     if not save:
         m.gp["nosave"] = True  # a practice run never overwrites the player's saved mission
@@ -92,7 +92,7 @@ def skip(mid: str) -> dict:
 def _rebuild(m: sim.Mission, upto: int) -> sim.Mission:
     """A fresh mission with m's id, site, seed and level, with the first `upto` journaled inputs replayed."""
     level0 = m.gp.get("level0") or m.level
-    n = sim.new_mission(m.id, m.site_id, m.seed, m.roles, level=level0)
+    n = sim.new_mission(m.id, m.site_id, m.seed, m.roles, level=level0, campaign=m.campaign)
     n.gp["level0"] = level0
     for e in m.journal[:upto]:
         sim.replay(n, e)
@@ -136,7 +136,7 @@ def _autosave(m: sim.Mission, force: bool = False) -> None:
     try:
         d = save_dir()
         d.mkdir(parents=True, exist_ok=True)
-        body = {"v": SAVE_V, "id": m.id, "site": m.site_id, "seed": m.seed, "roles": m.roles,
+        body = {"v": SAVE_V, "id": m.id, "site": m.site_id, "seed": m.seed, "roles": m.roles, "campaign": m.campaign,
                 "level0": m.gp.get("level0", m.level), "journal": m.journal, "chapter": done, "t_h": m.t_h,
                 "over": m.over, "saved_at": time.time()}
         tmp = d / "mission.json.tmp"
@@ -159,8 +159,13 @@ def saved() -> dict | None:
         int(b["t_h"]), int(b["chapter"]), int(b["seed"])
     except (KeyError, TypeError, ValueError):
         return None
+    from . import campaign
+    cm = b.get("campaign") or campaign.FIRST
+    if cm not in campaign.BY_ID:
+        return None
     return {"site": b["site"], "site_name": name, "chapter": b["chapter"], "day": b["t_h"] // 24 + 1,
-            "level": b.get("level0"), "t_h": b["t_h"]}
+            "level": b.get("level0"), "t_h": b["t_h"], "campaign": cm, "mission_n": campaign.BY_ID[cm]["n"],
+            "mission_title": campaign.BY_ID[cm]["title"]}
 
 
 def resume() -> sim.Mission | None:
@@ -169,7 +174,8 @@ def resume() -> sim.Mission | None:
         b = json.loads((save_dir() / "mission.json").read_text())
         _touch()
         mid = "m-" + secrets.token_hex(4)
-        m = sim.new_mission(mid, b["site"], b["seed"], b.get("roles"), level=b.get("level0") or "cadet")
+        m = sim.new_mission(mid, b["site"], b["seed"], b.get("roles"), level=b.get("level0") or "cadet",
+                            campaign=b.get("campaign"))
         m.gp["level0"] = b.get("level0") or m.level
         with LOCK:
             for e in b["journal"]:

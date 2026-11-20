@@ -22,7 +22,8 @@
 // clock: {started, running, warp} from mission/clock.js (optional; the strip works without it).
 //
 // nowObjective(state, clock?) -> {key, text, target, panel, level} | null: the card's strip fields (older callers).
-import { NOW, DEBRIEF } from "../story.js";
+import { NOW, DEBRIEF, CAMPAIGN } from "../story.js";
+import { goalChecks } from "./campaign.js";   // [campaign] Missions 2+: the debrief checklist
 
 const n0 = v => Math.max(0, Math.round(+v || 0));
 
@@ -201,8 +202,16 @@ export function debriefStory(d = {}, st = {}) {
   const so = O.science || {}, io = O.ice || {}, fin = d.final || {};
   const got = Math.round(so.got ?? fin.science_sent ?? 0), goal = Math.round(so.goal || 120);
   const aboard = Math.max(0, Math.round((fin.science ?? got) - (fin.science_sent ?? got)));
+  const crew = { ok: !hurt && outcome !== "life_support_out" && outcome !== "power_out", text: hurt ? DEBRIEF.checkHurt : paused ? DEBRIEF.checkSafeSoFar : won ? DEBRIEF.checkSafe : DEBRIEF.checkLost };
+  // [campaign] Missions 2+: the crew, then the mission's own two goals (the same facts as the stars)
+  const camp = (d.campaign || st.campaign || {}).n > 1 && Array.isArray(O.goals) && O.goals.length;
+  if (camp) {
+    const met = O.goals.filter(g => g.met).length;
+    beats[2] = paused || won ? (met === 2 ? CAMPAIGN.goalsBoth : met ? CAMPAIGN.goalsOne : CAMPAIGN.goalsNone) : end;
+    return { beats, end, tryLine: firstSentence(d.try) || DEBRIEF.tryDefault, checks: [crew, ...goalChecks(O.goals)], choice: paused ? "resume" : "again", won, paused };
+  }
   const checks = [
-    { ok: !hurt && outcome !== "life_support_out" && outcome !== "power_out", text: hurt ? DEBRIEF.checkHurt : paused ? DEBRIEF.checkSafeSoFar : won ? DEBRIEF.checkSafe : DEBRIEF.checkLost },
+    crew,
     { ok: ice, text: DEBRIEF.checkIce(+io.got || 0) },
     { ok: sci, text: DEBRIEF.checkScience(got, goal, aboard) },
   ];

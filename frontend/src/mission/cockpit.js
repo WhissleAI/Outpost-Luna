@@ -191,7 +191,7 @@ export function createCockpit(root, o = {}) {
     // rover + shelter
     const rv = s.rover || {}, busy = !!rv.busy;
     q("#ckRoverSt").textContent = busy ? TASK[rv.task] || rv.task : "Parked";
-    q("#ckRoverTgt").textContent = busy ? `${TARGET[rv.task] || "Out"} · back in ${rv.eta_h} h` : "At the outpost. Ready to roll.";
+    q("#ckRoverTgt").textContent = busy ? (rv.task === "stranded" ? "Stuck on the plain, battery flat" : `${TARGET[rv.task] || "Out"} · back in ${rv.eta_h} h`) : "At the outpost. Ready to roll.";
     const p = busy ? 1 - (rv.eta_h || 0) / (TOTAL_H[rv.task] || 8) : 0, f = p < .5 ? p * 2 : (1 - p) * 2;
     if (path) { const L = path.getTotalLength(), P = path.getPointAtLength(clamp(f, 0, 1) * L); const d = q("#ckRoverDot"); d.setAttribute("cx", P.x.toFixed(1)); d.setAttribute("cy", P.y.toFixed(1)); }
     root.querySelectorAll("[data-task]").forEach(b => { b.disabled = busy; });

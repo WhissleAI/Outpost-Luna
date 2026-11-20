@@ -10,11 +10,11 @@ import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
 const ic = (n, size = 14) => icon(n, { size });
-import { callSign, CAPCOM, callbackLine, callbackTakeaway, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING, rideReady } from "../story.js";
+import { callSign, CAPCOM, callbackLine, callbackTakeaway, CALLBACKS, DEBRIEF, OFFER, PICKER, HELP, PRETEND_TECH, PRETEND_TECH_TIP, GATE, NOW, HUB, BRIEFING, CAMPAIGN, rideReady } from "../story.js";
+import * as CM from "./campaign.js";   // [campaign] Missions 2+ on the hub (docs/GAMEPLAY.md §16)
 import { nowCard, nowSpoken, nudgeLine, debriefStory, houstonRelay } from "./objective.js";
 import { createTour } from "./tour.js";
 import { createCoach, coachDone } from "./coach.js";
-import { missionsFlown } from "../explorer.js";
 import { createMissionClock } from "./clock.js";
 import { radioBeep } from "../sound.js";
 import { buzz, momentOf } from "../haptics.js";
@@ -72,6 +72,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const $ = id => document.getElementById(id);
   const cabinEl = $("mCabin"), panel = $("mPanel"), banner = $("mBanner"), signal = $("mSignal"), debriefEl = $("mDebrief");
   let client = null, sites = [], site = null, state = null, prev = null, roles = new Set(), unsub = null, live = null;
+  let campaignList = CM.FALLBACK, cm = null;   // [campaign] the missions, and the one on the hub
   let screen = "off", pending = null, bannerT = null, siteSeed = null, cockpit = null, logHistory = [];
   // The window's surface views (SITE / ROVER / EARTH) on real LOLA terrain. One WebGL view for the whole session: its
   // host moves into each new cabin. ORBIT is the globe itself.
@@ -147,6 +148,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       panel.hidden = false; panel.innerHTML = `<p class="m-wait">Loading mission sites…</p>`;
       const c = await createMissionClient();
       client = client || c; sites = client.sites || [];
+      if (client.campaign) { try { const r = await client.campaign(); if (r && Array.isArray(r.missions) && r.missions.length) campaignList = r.missions; } catch (e) { /* Mission 1 only */ } }
       if (!client.sample) await nv.load();   // real NASA numbers per site + map layers (falls back to the plain picker)
       if (g !== gen || !entered) return;   // QA-19: left Mission while the sites loaded: no picker over another mode
     }
@@ -412,7 +414,35 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   // ---------- [polish 4] the Mission hub and the 3-card briefing (docs/MISSION_POLISH_SPEC.md, wave 4) ----------
   // Mission tab -> hub (one card: the mission, its site, Start; the navigator is one press away) -> briefing (Goal,
   // Danger, Bonus; Take command) -> the cabin. The NASA video is a chip on the hub (mission_learning.js), never a yes / no.
-  const missionNo = () => { try { return missionsFlown(callSign.get()) + 1; } catch (e) { return 1; } };
+  const missionNo = () => (cm && cm.n) || 1;   // [campaign] the mission's number in the campaign
+  const won = () => CM.wonIds(callSign.get());
+  const openCount = () => CM.unlockedCount(campaignList, won());
+  /** [campaign] the mission on the hub: the one picked, while it is open; else the next one up */
+  function pickMission(m) {
+    const open = campaignList.slice(0, openCount());
+    cm = (m && open.find(x => x.id === m.id)) || (cm && open.find(x => x.id === cm.id)) || CM.nextUp(campaignList, won());
+    if (CM.isCampaign(cm)) site = sites.find(s => s.id === cm.site) || site;
+    return cm;
+  }
+  /** [campaign] the mission strip: 1 to 6, the locked ones dimmed with a lock (shown once the campaign has a list) */
+  function stripHtml() {
+    if (campaignList.length < 2) return "";
+    const n = openCount(), w = new Set(won());
+    return `<nav class="mx-camp" aria-label="${esc(CAMPAIGN.strip)}">${campaignList.map((m, i) => {
+      const locked = i >= n, cur = cm && m.id === cm.id;
+      return `<button type="button" class="mx-campb${cur ? " is-on" : ""}${w.has(m.id) ? " is-won" : ""}" data-cm="${esc(m.id)}" ${locked ? "disabled" : ""}
+        aria-pressed="${cur ? "true" : "false"}" aria-label="${esc(locked ? CAMPAIGN.locked(m.n) : CAMPAIGN.pick(m.n, m.title) + (w.has(m.id) ? `, ${CAMPAIGN.won}` : ""))}" title="${esc(locked ? CAMPAIGN.locked(m.n) : m.title)}">${locked ? ic("lock", 14) : w.has(m.id) ? ic("check", 14) : ""}<span>${m.n}</span></button>`;
+    }).join("")}</nav>`;
+  }
+  /** [campaign] LB / RB on the hub: another open mission (with only Mission 1 open: another site, as before) */
+  function stepMission(d) {
+    const open = campaignList.slice(0, openCount());
+    if (open.length < 2) return false;
+    const i = Math.max(0, open.findIndex(x => cm && x.id === cm.id));
+    pickMission(open[(i + d + open.length) % open.length]);
+    if (!CM.isCampaign(cm)) site = sites.find(s => s.id === PICKER.recommended) || site;
+    hub(); return true;
+  }
   // [0.4.1] plain words: "Talk to Earth 4½ of 10 days", "Ice: a 7-hour drive" (were "Radio 4.5 of 10 days", "Ice 7 h away")
   const hubFacts = s => [["sun", `Sun ${dd(sunDays(s))} of 10 days`], ["earth", `Talk to Earth ${dd(earthDays(s))} of 10 days`],
     ["ice", s.ice ? "Ice right here" : s.rover_to_ice_h ? `Ice: a ${s.rover_to_ice_h}-hour drive` : "No ice nearby"]]
@@ -423,32 +453,40 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     nv.hide(); if (pinEl) pinEl.hidden = true;
     screen = "hub"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; hideCabin(); card.hide(); if (tour.active) tour.end(false);
     firstPick = !firstDone();
+    pickMission();
     if (!site) site = sites.find(s => s.id === PICKER.recommended) || sites[0];
     if (!site) return;
-    const nm = site.name.split(" (")[0], rec = site.id === PICKER.recommended;
+    const nm = site.name.split(" (")[0], rec = site.id === PICKER.recommended, camp = CM.isCampaign(cm);
     panel.classList.remove("nv", "mx-plan"); panel.classList.add("mx-brief", "mx-hub"); panel.style.maxHeight = "";
+    // [campaign] Missions 2+: the mission's title over its site, and its own one-line briefing; the site is the mission's
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">${esc(HUB.eyebrow(missionNo()))}</span>${sampleTag()}</header>
+      ${stripHtml()}
       <div class="mx-hubcard">
-        <h2 class="mx-title">${esc(nm)}</h2>
-        <p class="mx-hubrec">${rec ? `${ic("star", 14)}${esc(HUB.rec)}` : esc(siteTag(site))}</p>
+        <h2 class="mx-title">${esc(camp ? cm.title : nm)}</h2>
+        <p class="mx-hubrec${camp ? " is-site" : ""}">${camp ? `${ic("site", 14)}${esc(nm)}` : rec ? `${ic("star", 14)}${esc(HUB.rec)}` : esc(siteTag(site))}</p>
+        ${camp ? `<p class="mx-hubline">${esc(cm.line)}</p>` : ""}
         <p class="mx-hubfacts">${hubFacts(site)}</p>
-        <p class="mx-hubwhat" id="mHubWhatT" hidden>${esc(HUB.whatLine)}</p>
+        ${camp ? "" : `<p class="mx-hubwhat" id="mHubWhatT" hidden>${esc(HUB.whatLine)}</p>`}
       </div>
       <button type="button" class="mx-go" id="mStart"><span>${esc(HUB.start)}</span></button>
-      <div class="mx-hubrow">
+      ${camp ? "" : `<div class="mx-hubrow">
         <button type="button" class="mx-btn" id="mHubSite">${ic("map", 16)}<span>${esc(HUB.choose)}</span></button>
         <button type="button" class="mx-btn" id="mHubWhat" aria-expanded="false" aria-controls="mHubWhatT">${ic("info", 16)}<span>${esc(HUB.what)}</span></button>
-      </div>`;
+      </div>`}`;
     $("mStart").onclick = () => toPlan();
-    $("mHubSite").onclick = () => picker();
-    $("mHubWhat").onclick = () => hubWhat();
+    if ($("mHubSite")) $("mHubSite").onclick = () => picker();
+    if ($("mHubWhat")) $("mHubWhat").onclick = () => hubWhat();
+    panel.querySelectorAll("[data-cm]").forEach(b => { b.onclick = () => { const m = campaignList.find(x => x.id === b.dataset.cm); if (!m || b.disabled) return;
+      pickMission(m); if (!CM.isCampaign(cm)) site = sites.find(s => s.id === PICKER.recommended) || site; hub(); const f = panel.querySelector(`[data-cm="${m.id}"]`); if (f) f.focus({ preventScroll: true });
+      Promise.resolve(say(CM.isCampaign(cm) ? cm.line : HUB.whatLine)).catch(() => {}); }; });
     previewSite();
     offerContinue();
-    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say(HUB.say(callSign.spoken(), nm))).catch(() => {}); }
+    if (fresh && !briefSpoken) { briefSpoken = true; Promise.resolve(say(camp ? CAMPAIGN.say(callSign.spoken(), cm.n, cm.title, nm) : HUB.say(callSign.spoken(), nm))).catch(() => {}); }
     try { dispatchEvent(new CustomEvent("outpost:mission-hub")); } catch (e) { /* old browsers */ }   // mission_learning.js adds the video chip
   }
   function hubWhat() {
+    if (CM.isCampaign(cm)) { Promise.resolve(say(cm.line)).catch(() => {}); return true; }   // [campaign] its own line
     const t = $("mHubWhatT"), b = $("mHubWhat"); if (!t || !b) return false;
     t.hidden = false; b.setAttribute("aria-expanded", "true");
     Promise.resolve(say(HUB.whatLine)).catch(() => {});
@@ -461,18 +499,19 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (!site) return;
     nv.hide(); if (pinEl) pinEl.hidden = true;
     screen = "plan"; debriefEl.hidden = true; banner.hidden = true; panel.hidden = false; card.hide();
-    const nm = site.name.split(" (")[0];
+    const nm = site.name.split(" (")[0], camp = CM.isCampaign(cm) && cm.site === site.id;
+    if (!camp && CM.isCampaign(cm)) cm = campaignList[0];   // a site picked in the navigator flies Mission 1's way
     panel.classList.remove("nv", "mx-hub"); panel.classList.add("mx-brief", "mx-plan"); panel.style.maxHeight = "";
     panel.innerHTML = `
       <header class="mx-head"><span class="eyebrow">${esc(BRIEFING.eyebrow)} · ${esc(nm)}</span>${sampleTag()}</header>
-      <h2 class="mx-title">${esc(BRIEFING.title)}</h2>
-      <ol class="mx-cards">${BRIEFING.cards.map(c => `<li class="mx-card is-${c.k}"><span class="mx-card-i">${ic(c.icon, 22)}</span><b>${esc(c.label)}</b><span class="mx-card-t">${esc(c.text)}</span></li>`).join("")}</ol>
+      <h2 class="mx-title">${esc(camp ? CAMPAIGN.pick(cm.n, cm.title) : BRIEFING.title)}</h2>
+      <ol class="mx-cards">${(camp ? CM.briefCards(cm) : BRIEFING.cards).map(c => `<li class="mx-card is-${c.k}"><span class="mx-card-i">${ic(c.icon, 22)}</span><b>${esc(c.label)}</b><span class="mx-card-t">${esc(c.text)}</span></li>`).join("")}</ol>
       <button type="button" class="mx-go" id="mBriefGo"><span>${esc(BRIEFING.go)}</span></button>
       <button type="button" class="mx-link" id="mBriefBack">${esc(BRIEFING.back)}</button>`;
     $("mBriefGo").onclick = () => start();
     $("mBriefBack").onclick = () => hub();
     previewSite();
-    Promise.resolve(say(BRIEFING.say)).catch(() => {});
+    Promise.resolve(say(camp ? cm.say : BRIEFING.say)).catch(() => {});
   }
 
   let starting = false;
@@ -492,7 +531,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const checked = !isPractice && screen === "brief" && panel.querySelector('.mx-site[aria-checked="true"]');
     if (checked) site = sites.find(s => s.id === checked.dataset.site) || site;
     window.__outpost && (window.__outpost.missionSite = site && site.id);   // tools/picker_select.py reads it
-    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level, ...(isPractice ? { practice: true } : {}) }); } catch (e) { st = null; }
+    const cmId = !isPractice && CM.isCampaign(cm) && cm.site === site.id ? cm.id : null;   // [campaign]
+    try { st = await client.start({ site: site.id, seed: siteSeed, roles: [...roles], level, ...(cmId ? { campaign: cmId } : {}), ...(isPractice ? { practice: true } : {}) }); } catch (e) { st = null; }
     starting = false;
     document.querySelectorAll("#mStart, #mBriefGo, #mAgain").forEach(b => { b.disabled = false; });
     if (!alive(g)) return;   // left Mission while it started (even if the kid is back on a new screen generation)
@@ -542,7 +582,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (!alive(g) || (screen !== "brief" && screen !== "hub") || !r || !r.saved) return;
       const v = r.saved; panel.querySelectorAll(".mx-continue").forEach(n => n.remove());
       panel.insertAdjacentHTML("afterbegin", `<div class="mx-continue" role="group" aria-label="Saved mission">
-        <span>${ic("check")}<b>Resume Day ${v.day} at ${esc(v.site_name.split(" (")[0])}</b><small>Saved automatically · Chapter ${Math.min(5, v.chapter + 1)} of 5</small></span>
+        <span>${ic("check")}<b>Resume ${v.mission_n > 1 ? `Mission ${v.mission_n}, ` : ""}Day ${v.day} at ${esc(v.site_name.split(" (")[0])}</b><small>Saved automatically · Chapter ${Math.min(5, v.chapter + 1)} of 5</small></span>
         <button type="button" class="mx-go" id="mContinue" aria-label="Resume day ${v.day} at ${esc(v.site_name.split(" (")[0])}">Resume</button></div>`);
       const go = panel.querySelector("#mStart"); if (go && !/new/i.test(go.textContent)) go.textContent = "New mission";
       panel.querySelector("#mContinue").onclick = () => (v.live && state && !state.over ? showHud() : resumeSaved());
@@ -556,6 +596,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     if (!alive(g)) return;
     if (!st) { capcom({ say: "That saved mission can't be opened. Pick a site to start a new one." }); return; }
     site = sites.find(s => s.id === (st.site && st.site.id)) || site;
+    cm = campaignList.find(x => st.campaign && x.id === st.campaign.id) || cm;   // [campaign]
     enterMission(st, null, true);
   }
 
@@ -1242,7 +1283,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     const paused = outcome === "in_progress" || !outcome;
     const won = outcome === "survived" || outcome === "success";
     const head = won ? "Mission complete" : paused ? "Mission paused" : "Mission over";
-    const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : firstSentence(d.why);
+    // [campaign] a win opens the next mission (kept per call sign); the debrief says which, under the result
+    const cmNow = campaignList.find(x => state.campaign && x.id === state.campaign.id), before = openCount();
+    if (won && cmNow && !practice) CM.markWon(cmNow.id, callSign.get());
+    const opened = won && openCount() > before ? campaignList[openCount() - 1] : null;
+    const sub = paused ? `Day ${state.day} of 10. Your outpost is waiting.` : [firstSentence(d.why), opened ? CAMPAIGN.unlocked(opened.n, opened.title) : ""].filter(Boolean).join(" ");
     (d.timeline || []).forEach(t => (t.events || []).forEach(k => { if (CALLBACKS[k]) seen.add(k); }));
     // takeaways: the debrief's own lessons first (each with its source), then Flight School lessons that came back
     // [qa] at most two data lessons, so a Flight School callback or the "Next time" tip still gets a slot of the three
@@ -1329,9 +1374,14 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     say(DEBRIEF.wipeAsk);
   }
   let pendingWipe = null;
-  /** [polish 4] Next mission: the next site in the list, on the hub (Start, or Choose site). */
+  /** [polish 4] Next mission: [campaign] the next mission in the campaign (just opened by this win), on the hub; after the
+   *  last one, or without a campaign, the next site in the list. */
   function nextMission() {
-    const go = () => { if (unsub) unsub(); unsub = null; const cur = state && state.site ? state.site.id : site && site.id; state = null;
+    const go = () => { if (unsub) unsub(); unsub = null; const cur = state && state.site ? state.site.id : site && site.id;
+      const curCm = state && state.campaign ? state.campaign.id : cm && cm.id; state = null;
+      const ci = campaignList.findIndex(x => x.id === curCm), nx = ci >= 0 ? campaignList[ci + 1] : null;
+      if (nx && openCount() > ci + 1) { pickMission(nx); hub(); return; }
+      cm = campaignList[0];
       const i = sites.findIndex(x => x.id === cur); site = sites.length ? sites[(i + 1) % sites.length] : site; hub(); };
     leaveMission(go); return true;
   }
@@ -1437,7 +1487,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       site = s; previewSite(); if (onHub) hub(); else picker(); say(`${s.name.split(" (")[0]}. Good choice. Say start when you're ready.`); return true;
     }
     // [polish 4] hub -> briefing -> cabin: "start" / "take command" / "yes" moves one screen on; back goes to the hub
-    if (screen === "hub" && (intent === "next" || intent === "prev")) { stepSite(intent === "next" ? 1 : -1); return true; }   // LB / RB: another site
+    if (screen === "hub" && (intent === "next" || intent === "prev")) { if (!stepMission(intent === "next" ? 1 : -1)) stepSite(intent === "next" ? 1 : -1); return true; }   // LB / RB: another mission (or site)
     if ((screen === "brief" || screen === "hub") && ["take_command", "start", "next", "accept_offer", "yes"].includes(intent)) { toPlan(); return true; }
     if (screen === "plan" && ["take_command", "start", "next", "accept_offer", "yes"].includes(intent)) { start(); return true; }
     if (screen === "hub" && intent === "new_site") { picker(); return true; }
@@ -1506,8 +1556,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     addEventListener("blur", letGo);
   }
   const onBus = {
-    next: () => (screen === "brief" || screen === "hub") ? (stepSite(1), true) : false,
-    prev: () => (screen === "brief" || screen === "hub") ? (stepSite(-1), true) : false,
+    next: () => (screen === "brief" || screen === "hub") ? ((screen === "hub" && stepMission(1)) || stepSite(1), true) : false,
+    prev: () => (screen === "brief" || screen === "hub") ? ((screen === "hub" && stepMission(-1)) || stepSite(-1), true) : false,
     new_site: () => screen === "hub" ? (picker(), true) : false,
     yes: () => (screen === "brief" || screen === "hub") ? (toPlan(), true) : screen === "plan" ? (start(), true) : screen === "gate" ? (startPractice(), true) : screen === "debrief" ? (debriefEl.dataset.primary === "next" && !pendingWipe ? nextMission() : nav("fly_again")) : false,
     call_houston: () => screen === "hud" ? (callHouston(), true) : false,

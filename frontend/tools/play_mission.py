@@ -31,7 +31,7 @@ import silent  # noqa: E402,F401  (owner rule: every browser run is muted and he
 SEED = """try{ localStorage.clear(); localStorage.setItem('atm-theme','dark'); localStorage.setItem('outpost-callsign','Comet');
   localStorage.setItem('atm-academy', JSON.stringify({badges:['scout','history','radio','sun','storm','ice','commander'], qualified:true}));
   localStorage.setItem('atm-mode','mission'); localStorage.setItem('outpost-prefs', JSON.stringify({level:'%s', graphics:'%s'}));
-  window.__hourMs = %s; }catch(e){}"""
+  window.__hourMs = %s; %s }catch(e){}"""
 
 # What a kid sees: the Now card, its buttons, the glow, the clock, any tour / confirm, the progress strip.
 LOOK = """() => {
@@ -79,7 +79,18 @@ def click(pg, sel, idx=0):
     return f"dom-click (covered by {hit and hit['on']})"
 
 
-def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="high"):
+def campaign_seed(base, mission):
+    """[campaign] --campaign <id>: the missions before it are won (outpost-campaign:<call sign>), so the hub offers it."""
+    if not mission:
+        return ""
+    import urllib.request
+    ids = [m["id"] for m in json.load(urllib.request.urlopen(base.rstrip("/") + "/api/mission/campaign", timeout=10))["missions"]]
+    if mission not in ids:
+        raise SystemExit(f"unknown campaign mission {mission!r}: {ids}")
+    return "localStorage.setItem('outpost-campaign:Comet', %s);" % json.dumps(json.dumps(ids[:ids.index(mission)]))
+
+
+def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="high", mission=""):
     vw, vh = size
     log, seen_keys, shots_taken = [], set(), 0
     t0 = time.time()
@@ -87,11 +98,16 @@ def play(base, level, size, shots, fast_ms, real_first_shift, max_s, graphics="h
         b = p.chromium.launch(executable_path=chromium(), args=["--mute-audio", "--autoplay-policy=no-user-gesture-required", "--use-gl=angle", "--use-angle=swiftshader"])
         pg = b.new_page(viewport={"width": vw, "height": vh})
         pg.set_default_timeout(120000)
-        pg.add_init_script(SEED % (level, graphics, "0" if real_first_shift else fast_ms))
+        pg.add_init_script(SEED % (level, graphics, "0" if real_first_shift else fast_ms, campaign_seed(base, mission)))
         pg.goto(base)
         pg.wait_for_selector("#mStart")
         pg.wait_for_timeout(1500)
-        tag = f"{level}-{vw}x{vh}"
+        tag = f"{level}-{mission + '-' if mission else ''}{vw}x{vh}"
+        if mission:   # [campaign] the hub offers the mission; check it is the one on the card, then go
+            hub = pg.evaluate("() => ({title: (document.querySelector('.mx-hub .mx-title') || {}).textContent, "
+                              "on: (document.querySelector('.mx-campb.is-on') || {dataset: {}}).dataset.cm})")
+            log.append({"moment": "hub", "should": f"the hub offers {mission}", "obvious": hub["on"] == mission,
+                        "reacted": True, "seen": f"{hub['title']} ({hub['on']})"})
 
         def shot(name):
             nonlocal shots_taken
@@ -241,6 +257,7 @@ if __name__ == "__main__":
     ap.add_argument("--real-first-shift", action="store_true", help="time the first shift on the shipped clock")
     ap.add_argument("--max-s", type=int, default=900)
     ap.add_argument("--graphics", default="high", choices=["high", "low"], help="Settings -> graphics (low: a slow PC)")
+    ap.add_argument("--campaign", default="", help="[campaign] fly this campaign mission (the ones before it count as won)")
     a = ap.parse_args()
     for d in (a.shots, a.log):
         if d:
@@ -248,7 +265,7 @@ if __name__ == "__main__":
     ok = True
     for sz in a.sizes.split(","):
         size = tuple(map(int, sz.split("x")))
-        log, fst = play(a.base, a.level, size, a.shots, a.fast_ms, a.real_first_shift, a.max_s, a.graphics)
+        log, fst = play(a.base, a.level, size, a.shots, a.fast_ms, a.real_first_shift, a.max_s, a.graphics, a.campaign)
         s = summary(log)
         print(f"== {a.level} {sz}: {s['actions']} actions, {s['obvious']} obvious, {s['reacted']} reacted, "
               f"{s['competing']} with a competing instruction, {s['takeovers']} takeovers, finished={s['finished']}"

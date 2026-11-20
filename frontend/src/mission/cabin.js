@@ -18,6 +18,7 @@ import { normPatches, patchSig, newPatches, keyLabel, trackSummary, patchKeyHtml
 import { createCockpit3D, PANELS, RIDE_LAYOUT } from "./cockpit3d.js";
 import { clockDay, clockSub, RIDE_PANELS } from "./ride.js";   // [0.3.12] the check ride's clock and panels
 import { createTerrainView } from "./terrain.js";
+import { goalBit } from "./campaign.js";   // [campaign] Missions 2+: their own goals on the progress strip
 import { whenViews, earthBelow, earthInsetHtml, earthPhoto, sun as realSun, loopFrames, preloadSun, flareOnCanvas, SUN_CREDIT, SUN_SOURCE } from "./cabin_views.js";   // [0.4] real NASA views (optional pack)
 
 const DONKI = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/";
@@ -29,7 +30,8 @@ const deg = v => `${v >= 0 ? "+" : "−"}${Math.abs(+v || 0).toFixed(1)}°`;
 const PAGES = [["PWR", "Power"], ["LIFE", "Life support"], ["RAD", "Radiation"], ["COMM", "Comms"]];
 /** Window views: ORBIT is the globe, the others the LOLA terrain. */
 export const VIEWS = [["orbit", "Orbit"], ["site", "Site"], ["rover", "Rover"], ["earth", "Earth"]];
-const TASK = { collect_ice: "Ice run", explore: "Exploring", repair_array: "Array fix", return: "Heading home" };
+const TASK = { collect_ice: "Ice run", explore: "Exploring", repair_array: "Array fix", return: "Heading home", return_home: "Heading home",
+  stranded: "Stuck, battery flat", rescue_home: "Driving home" };   // [campaign] Rover rescue
 const TOTAL_H = { collect_ice: 10, explore: 8, repair_array: 5, return: 5 };
 /** Caution & warning: [id, legend, level, lit(state)]. Red = warning, amber = caution, blue = status (never an alarm). */
 const LAMPS = [
@@ -548,10 +550,10 @@ export function createCabin(root, o = {}) {
       const t = b.dataset.task, on = busy && rv.task === t;
       b.setAttribute("aria-pressed", on); b.disabled = t === "return" ? !busy || rv.task === "return" : busy;
     });
-    q("#cbRvSt").textContent = busy ? `${TASK[rv.task] || "Out"} · back in ${rv.eta_h} h` : "Parked";
+    q("#cbRvSt").textContent = busy ? (rv.task === "stranded" ? TASK.stranded : `${TASK[rv.task] || "Out"} · back in ${rv.eta_h} h`) : "Parked";
     const ro = q("#cbRover"); ro.hidden = !busy;
     if (busy) { const p = clamp(1 - (rv.eta_h || 0) / (TOTAL_H[rv.task] || 8), 0, 1);
-      ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.eta_h} h</span>`; }
+      ro.innerHTML = `<span>Rover · ${esc(TASK[rv.task] || "Out")}</span><i style="--p:${(p * 100).toFixed(0)}%" aria-hidden="true"></i><span>${rv.task === "stranded" ? "" : `${rv.eta_h} h`}</span>`; }
   }
   const PANEL_ORDER = ["habitat", "rover", "power", "displays", "radiation", "comm", "pedestal"];
   function stepPanel(d) { if (!c3) return; const i = PANEL_ORDER.indexOf(c3.panel); c3.open(PANEL_ORDER[(i + d + PANEL_ORDER.length) % PANEL_ORDER.length]); }
@@ -747,6 +749,14 @@ export function createCabin(root, o = {}) {
     const aboard = Math.round(P.science_stored || 0);
     // [0.4.1] plain words: "Science home 0/120 · 1 to send" (it was "Science 0/120 +1 on board")
     const sciTitle = `Science sent home: ${Math.round(P.science_sent)} of ${P.science_goal}${aboard ? `. ${aboard} more on board, sent when Earth is up` : ""}`;
+    // [campaign] Missions 2+ show their own two goals (docs/GAMEPLAY.md §16); Mission 1 keeps science and ice
+    const goalsHtml = s.campaign && s.campaign.n > 1 && Array.isArray(P.goals) && P.goals.length
+      ? P.goals.map(goalBit).filter(Boolean).map(g => bit(g.met ? " is-met" : "", esc(g.title), esc(g.name), esc(g.val), g.of, g.p).replace("<small>/</small>", "")).join("") : "";
+    if (goalsHtml) {
+      el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml
+        + `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
+      return;
+    }
     el.innerHTML = bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
       + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science home", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard} to send</small>` : ""}</b>`)
       + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice)
