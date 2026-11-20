@@ -402,3 +402,21 @@ def test_check_step_catches_authoring_mistakes():
     assert speech.check_step({}, bad_vocab)
     bad_sum = {"type": "summary", "source": {"kind": "video", "media": "nope"}, "points": [{"id": "p", "label": "x"}]}
     assert len(speech.check_step({}, bad_sum)) >= 3
+
+
+def test_archaeology_reads_the_parks_own_mesa_verde_summary():
+    """The Archaeology course (grades 9-12) uses the same read step: Mesa Verde's facts as one NPS-sourced passage,
+    with 'A.D.' never taken for a sentence end."""
+    import json as _j
+    c = _j.loads((content.DATA / "courses" / "archaeology" / "course.json").read_text())
+    st = next(s for l in c["lessons"] if l["id"] == "mesa_verde" for s in l["steps"] if s["accept"]["type"] == "read")
+    acc = st["accept"]
+    assert acc["passage"]["source"]["url"].startswith("https://www.nps.gov/")
+    ss = speech.sentences(acc["passage"]["text"])
+    assert len(ss) == 4 and ss[0].endswith("lived in pithouses.") and "A.D. 1276" in ss[3]
+    assert speech.check_step(st, acc) == []
+    ok, ex = speech.grade_read(acc, {"choice": "pit"}, "")
+    ok, ex = speech.grade_read(acc, {"text": "twelve eighty one", "got": ex["got"]}, "twelve eighty one")
+    ok, ex = speech.grade_read(acc, {"text": "the fourth one", "got": ex["got"]}, "the fourth one")
+    assert ok and ex["got"] == ["q1", "q2", "q3"]
+    assert speech.sentences("Dr. Lee dug at St. Mary's. It rained.") == ["Dr. Lee dug at St. Mary's.", "It rained."]

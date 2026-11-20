@@ -1,7 +1,7 @@
 # Speech learning: read, vocab, summary
 
 Status: **v1 shipped** (branch `feat/speech-learning-steps`). Three course-agnostic step types and an offline feedback
-engine, plus one sample lesson per type in the Moon course. The optional local-LLM rewrite was evaluated and is a **documented spike, off**
+engine, one sample lesson per type in the Moon course, and a `read` step in Archaeology (Mesa Verde). The optional local-LLM rewrite was evaluated and is a **documented spike, off**
 (§4).
 
 Where the idea came from: a teammate's list, via the owner. "Read a short article and answer questions; vocabulary
@@ -47,6 +47,11 @@ reading level (owner decision 2, `docs/COURSES.md` §7); voice, typing, keys and
 ![Read it aloud: counts only](img/speech/speech_aloud_1440x900.jpg)
 ![Word lab: a sound-alike caught](img/speech/speech_vocab_trap_1440x900.jpg)
 ![Tell it back: the feedback](img/speech/speech_summary_feedback_1280x720.jpg)
+
+- **Archaeology** (grades 9-12): *Mesa Verde, around 1280* now ends with a `read` step: the park's own summary (four
+  facts from the lesson, sourced to the NPS Mesa Verde PDF), then three questions: what the first people lived in, the
+  last tree-ring date (1281), and the sentence that names more than one cause for the move south. It replaced the
+  lesson's "Say one reason people may have moved" step, whose point the find question keeps.
 
 **Teachers and parents**
 - Settings → For grown-ups → Progress gains a **Reading and speaking** block per cadet, per course: passages read,
@@ -191,7 +196,7 @@ fewer), `need`, the example, the video id. Word items without `define` use the g
 | Graders, fluency, client view, checks | `backend/app/academy/speech.py` |
 | Feedback template, guard, optional rewrite | `backend/app/academy/feedback.py` |
 | Attempt / hint / fluency routes | `backend/app/academy/routes.py` (`_speech_attempt`, `speech_help`, `/api/academy/fluency`) |
-| Lessons and the passage | `backend/data/academy/course.json` (`reading`, `wordlab`, `retell`), `backend/data/learning/reading.json` |
+| Lessons and the passage | `backend/data/academy/course.json` (`reading`, `wordlab`, `retell`), `backend/data/learning/reading.json`; Archaeology: `backend/data/courses/archaeology/course.json` (`mesa_verde`, last step) |
 | Renderers | `frontend/src/academy/speech_steps.js` (+ `school.css`) |
 | Counts and spaced repetition | `frontend/src/academy/speech_store.js`, `frontend/src/brain_store.js` (`speech` section) |
 | Progress | `frontend/src/progress.js` (`speechHtml`) |
@@ -207,8 +212,8 @@ screenshots at 1440x900 and 1280x720).
 
 ## 8. What's next
 
-- **Archaeology**: one `read` step from an NPS Mesa Verde passage once `feat/archaeology-content` lands (the step type
-  and the grades 9-12 budgets are ready; nothing course-specific is in code).
+- **Archaeology**: a `vocab` step (dendrochronology, stratigraphy, kiva, with sound-alike traps) and a `summary` after
+  the tree-ring video; the grades 9-12 feedback budget is ready. Teacher review before a classroom pilot still applies.
 - The learned Director sees `read`, `vocab`, `summary` as unknown step types ("none"), like Field School's types did,
   until a retrain appends them to `STEP_TYPES`.
 - Calibrate `SUMMARY_SIM` on real kid summaries (opt-in playtests only), and measure the ear's read-aloud word accuracy

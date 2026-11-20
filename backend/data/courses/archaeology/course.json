@@ -1883,30 +1883,82 @@
      "fail": "Pick one."
     },
     {
-     "prompt": "Say one reason people may have moved.",
+     "prompt": "Read the park's own summary. Then answer three questions.",
+     "do": "Read, then tap, say or type your answer",
      "accept": {
-      "type": "keywords",
-      "any": [
-       [
-        "drought",
-        "dry",
-        "crop",
-        "crops",
-        "farming",
-        "water",
-        "conflict",
-        "war",
-        "social",
-        "religious",
-        "religion",
-        "resources",
-        "change"
-       ]
+      "type": "read",
+      "passage": {
+       "title": "Mesa Verde, from the park",
+       "text": "People first settled at Mesa Verde about A.D. 550 and lived in pithouses. Most cliff dwellings were built from the late 1190s to the late 1270s. The last tree-ring date in the region is 1281. There is consensus the Great Drought of A.D. 1276 to 1299 played a role in the move south, alongside social, political and economic factors.",
+       "source": {
+        "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+        "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf"
+       }
+      },
+      "questions": [
+       {
+        "id": "q1",
+        "kind": "choice",
+        "prompt": "What did the first people here live in?",
+        "options": [
+         {
+          "id": "pit",
+          "label": "Pithouses",
+          "say": [
+           "pithouses",
+           "pit houses",
+           "pithouse"
+          ]
+         },
+         {
+          "id": "cliff",
+          "label": "Cliff dwellings",
+          "say": [
+           "cliff",
+           "cliff dwellings"
+          ]
+         },
+         {
+          "id": "tents",
+          "label": "Tents",
+          "say": [
+           "tents",
+           "tent"
+          ]
+         }
+        ],
+        "answer": "pit",
+        "hint": "Look at the first sentence.",
+        "yes": "Right. Pithouses, from about A.D. 550."
+       },
+       {
+        "id": "q2",
+        "kind": "say",
+        "prompt": "What is the last tree-ring date in the region?",
+        "any": [
+         [
+          "1281",
+          "twelve eighty one",
+          "twelve eighty-one"
+         ]
+        ],
+        "answer_line": "1281.",
+        "hint": "Find the sentence about tree rings.",
+        "yes": "Yes. 1281."
+       },
+       {
+        "id": "q3",
+        "kind": "find",
+        "prompt": "Find the sentence that names more than one cause for the move.",
+        "answer": 3,
+        "hint": "Look for drought and other factors.",
+        "yes": "That's the one. Several causes, not one."
+       }
       ]
      },
-     "hint": "Think about rain, crops and neighbors.",
-     "success": "That's one. Researchers and descendants weigh several together.",
-     "fail": "Not the word I need."
+     "hint": "The answers are in the park's text.",
+     "success": "Good reading. Researchers and descendants weigh several causes together.",
+     "fail": "Not that one."
     }
    ],
    "facts": [

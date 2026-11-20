@@ -66,7 +66,16 @@ def content(text: str) -> list[str]:
 def sentences(text: str) -> list[str]:
     """The passage's sentences, in order (the find-the-sentence question counts them from 1)."""
     t = " ".join(str(text or "").split())
-    return [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"“(])", t) if s.strip()]
+    out: list[str] = []
+    for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9\"“(])", t):
+        if out and ABBREV.search(out[-1]):   # "A.D. 550", "U.S. law", "Dr. Smith": not a sentence end
+            out[-1] += " " + s
+        elif s.strip():
+            out.append(s.strip())
+    return out
+
+
+ABBREV = re.compile(r"(?:\b(?:[A-Z]\.){1,3}|\b(?:Mr|Mrs|Ms|Dr|St|Mt|vs|ca|approx|No)\.)$")
 
 
 def word_close(a: str, b: str, ratio: float = POINT_WORD_RATIO) -> bool:
