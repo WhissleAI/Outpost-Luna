@@ -95,3 +95,18 @@ def test_the_archaeology_pack_is_in_the_catalog_on_demand():
     a = next(x for x in m["assets"] if x["id"] == "course_archaeology")
     assert a["on_demand"] is True and a["required"] is False and {"course.json", "course.manifest.json"} <= {f["path"] for f in a["files"]}
     assert any(f["path"] == "media/earth5400.jpg" for f in a["files"])
+
+
+def test_packaged_layout_finds_the_catalog_and_keeps_the_moon(tmp_path, monkeypatch):
+    """A packaged app: the shell passes ASSETS_MANIFEST, and backend/data ships without the voice pack (a first-run
+    asset). Before the fix the catalog was looked up in a dev-only path (no course packs) and the Moon was skipped."""
+    import json as _json
+    from app import courses as C
+    cat = tmp_path / "assets.manifest.json"
+    cat.write_text((C.Path(C.__file__).resolve().parents[2] / "desktop" / "assets.manifest.json").read_text())
+    monkeypatch.setenv("ASSETS_MANIFEST", str(cat))
+    assert C._assets_manifest() == cat
+    moon = _json.loads((C.DIR / "moon.json").read_text())
+    moon["voice_pack"] = "voice_pack/not_shipped_in_the_bundle.json"
+    errs, _ = C.validate(moon, data=C.DATA, known_assets=C.asset_ids(cat))
+    assert not [e for e in errs if e["at"] == "voice_pack"], errs
