@@ -142,9 +142,25 @@ def main():
             pin = act()
             ok("pin" in pin["cls"], f"map: Up moves onto a lesson pin ({pin['label'][:30]})")
             # (learning v1: locked explorer pins are on the map too; Enter on one shows when it opens, not a Start button)
-            press_until(["ArrowDown", "ArrowLeft", "ArrowRight"], "() => document.activeElement.classList.contains('pin') && !document.activeElement.classList.contains('is-locked') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=4)
+            # the open pins are few now (Field School and the speech lessons sit locked round "Know your Moon", and the globe's
+            # turn decides which is nearest), so a fixed Down/Left/Right walk sometimes ended on a locked pin, where Enter
+            # rightly shows "opens after your check ride" and no Start: steer toward the nearest open pin instead, one
+            # arrow at a time (locked pins in the way are fine to cross)
+            want2 = "() => document.activeElement.classList.contains('pin') && !document.activeElement.classList.contains('is-locked') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"])
+            steer = """() => { const a = document.activeElement, r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+              const t = [...document.querySelectorAll('.pin:not(.is-locked)')].filter(p => p !== a && p.dataset.l !== %s && p.getClientRects().length)
+                .map(p => { const q = p.getBoundingClientRect(); return [q.left + q.width / 2 - cx, q.top + q.height / 2 - cy]; })
+                .sort((u, v) => Math.hypot(...u) - Math.hypot(...v))[0];
+              return t ? (Math.abs(t[0]) > Math.abs(t[1]) ? (t[0] > 0 ? 'ArrowRight' : 'ArrowLeft') : (t[1] > 0 ? 'ArrowDown' : 'ArrowUp')) : null; }""" % json.dumps(pin["l"])
+            for _ in range(10):
+                if js(want2):
+                    break
+                k = js(steer)
+                if not k:
+                    break
+                press(k, 450)
             pin2 = act()
-            ok("pin" in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically")
+            ok("pin" in pin2["cls"] and "is-locked" not in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically (to an open one)")
             shot("02-map-pin")
             press("Enter", 1200)
             ok(until("() => document.querySelector('#aStart') && document.querySelector('#aStart').dataset.l === %s" % json.dumps(pin2["l"]), 8000), "map: Enter on a pin selects it (the card shows that lesson)")

@@ -350,7 +350,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.className = `pin a-lcard${done ? " is-done" : ""}${next ? " is-next" : ""}${sel && sel.id === l.id ? " is-sel" : ""}`;
       b.dataset.l = l.id;
       const no = l.ride || isBonus(l) ? "" : String(lessonNo(l).n);
-      if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it to read when it opens (spatial nav skips it)
+      if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it (or Enter) to read when it opens
       b.setAttribute("aria-label", `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : isClass(l) ? CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name) + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, locked. ${lockedText(l)}` : ""}. ${at.name}`);
       // [0.4.1] the core lesson number always shows on the pin; a locked pin carries a lock
       b.innerHTML = pinInnerHtml({ patchHtml: patch(l.id, { earned: done, size: next ? 64 : 44 }), no, locked: !open(l), title: l.title, esc, lockIcon: icon("lock", { size: 12 }) });
