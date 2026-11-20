@@ -813,6 +813,11 @@ sees Power, Radiation, Rover; Commander adds Life support and Radio; Engineer ad
 Now card stays the one instruction; the 3D consoles stay as the art. An objective done pulses the Now card and its
 control; the chapter card lands its stars one by one with a cue. Details and shots: docs/GAMEPLAY.md §17.
 
+The Log key moved from the end of the progress strip to the window-key row, beside Systems: the bar's display clips
+its overflow, and the strip (Days · Science home · Ice · Log) was wider than the display at 1024, 1280 and 1440, so the
+Log key was never on screen (keyboard focus could still land on it, unseen). Under 1600 px the strip says "Science"
+(not "Science home") and "+3" (not "+3 to send"), so Ice fits too; the tooltip keeps the full words.
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

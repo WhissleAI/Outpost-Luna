@@ -79,6 +79,11 @@ test("one cockpit bar: the header folds in, the clock state and Days / Science /
   const deck = cab.slice(cab.indexOf('<header class="cb-deck"'), cab.indexOf("</header>"));
   assert.match(deck, /class="cb-dsp"[\s\S]*id="cbClock"[\s\S]*id="cbState"[\s\S]*id="cbSky"[\s\S]*id="cbProg"/);
   assert.match(deck, /id="cbPlay"[\s\S]*id="cbSkip"[\s\S]*id="cbMenuBtn"/);
+  // the Log key is a window key (beside Systems, over the log it opens), not the end of the progress strip: the display's
+  // overflow:hidden cut it off there at 1024, 1280 and 1440 wide
+  assert.doesNotMatch(deck, /cb-logbtn/);
+  const vbar = cab.slice(cab.indexOf('<div class="cb-viewbar"'), cab.indexOf('<section class="cb-now"'));
+  assert.match(vbar, /class="cb-logbtn" id="cbLog" hidden aria-expanded="false" aria-controls="cbMlog"/);
   assert.match(css, /body\[data-cockpit="1"\] \.topbar\{position:fixed;/);
   assert.match(css, /padding:6px calc\(var\(--cp-r, 0px\) \+ 12px\) 6px calc\(var\(--cp-l, 0px\) \+ 12px\)/);
 });

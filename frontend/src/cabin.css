@@ -775,7 +775,7 @@ html[data-motion="reduce"] .m-cabin .cb>.cb-now.is-takeover{animation:none}
 .m-cabin .cb-view{gap:6px;padding:0 var(--space-2)}
 /* narrower windows: words win over icons (a kid reads "Rover", not a glyph); the deck drops the long site name first */
 @media (max-width:1366px){.m-cabin .cb-view svg{display:none}.m-cabin .cb-view{min-width:0}}
-@media (max-width:1200px){.m-cabin .cb-deck .cb-clock small{display:none}.m-cabin .cb-logbtn span{display:none}}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-clock small{display:none}}
 @media (max-width:1100px){.m-cabin .cb-state{min-width:0}.m-cabin .cb-deck{gap:var(--space-2)}.m-cabin .cb-deck .cb-prog{gap:4px}}
 @media (max-width:1024px){.m-cabin{--now-w:224px;--deck-h:48px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
 @media (max-height:700px){.m-cabin .cb-now-ros,.m-cabin .cb-now-hint,.m-cabin .cb-now-why{display:none}}
@@ -1064,7 +1064,8 @@ html[data-motion="reduce"] .m-cabin .cb-deck .cb-state i{animation:none}
 .m-cabin .cb-deck .cb-prog .pg .pg-ab-l{display:none}
 .m-cabin .cb-deck .m-sample{font-size:var(--hud-min);padding:0 6px;line-height:1.3}
 /* the log key: a bezel key on the display's edge */
-.m-cabin .cb-deck .cb-logbtn{margin-left:auto;min-height:30px;padding:0 10px;font-size:var(--hud-min)}
+.m-cabin .cb-viewbar .cb-logbtn{flex:0 0 auto;margin:0;min-height:44px;padding:0 12px;font-size:var(--hud-min)}
+.m-cabin .cb-viewbar .cb-logbtn[hidden]{display:none}
 /* 1c. the bezel keys (Play / Skip / Menu, the window's camera keys, the log key) */
 .m-cabin :is(.cb-tbtn,.cb-view,.cb-center,.cb-logbtn){display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:6px;border:1px solid var(--key-edge);
   background:var(--key-face);color:var(--color-on-space);box-shadow:inset 0 1px 0 var(--key-hi),0 1px 0 #000;font-family:var(--font-ui);font-size:var(--hud-min);font-weight:var(--weight-semibold);
@@ -1089,8 +1090,9 @@ html[data-motion="reduce"] .m-cabin .cb-deck .cb-state i{animation:none}
 @media (max-width:1366px){.m-cabin .cb-view svg{display:none}.m-cabin .cb-center span{display:none}}
 /* narrower: the keys keep their glyph and drop the word (the label stays as aria-label and tooltip); the site's sky line
    and the long section names go first */
-@media (max-width:1366px){.m-cabin .cb-tbtn span{display:none}.m-cabin .cb-tbtn{padding:0 12px;min-width:48px}}
-@media (max-width:1200px){.m-cabin .cb-deck .cb-sky{display:none}.m-cabin .cb-deck .cb-logbtn span{display:none}
+@media (max-width:1366px){.m-cabin .cb-tbtn span{display:none}.m-cabin .cb-tbtn{padding:0 12px;min-width:48px}
+  .m-cabin .cb-viewbar .cb-logbtn svg{display:none}}
+@media (max-width:1200px){.m-cabin .cb-deck .cb-sky{display:none}
   body[data-cockpit="1"] .topbar .brand{display:none}}
 @media (max-width:1100px){body[data-cockpit="1"] .topbar .modes button{padding:0 10px;font-size:15px}
   .m-cabin .cb-deck .cb-prog{gap:10px}.m-cabin .cb-deck .cb-prog .pg:nth-child(2) em{display:none}}
@@ -1171,6 +1173,8 @@ html[data-motion="reduce"] .cb-sun-cv{transition:none}
 /* 6. the Rover console: its status ("Parked", "Ice run · back in 6 h") sits at the top (cabin.js), never under the
    CAPCOM strip at the bottom of the screen */
 .m-cabin .cb-deck .cb-prog .pg b .pg-aboard{color:var(--color-phosphor)}
+/* the strip fits the display: under 1600 px "Science home" is "Science" and "+3 to send" is "+3" (the title says it in full) */
+@media (max-width:1600px){.m-cabin .cb-deck .cb-prog{gap:10px}.m-cabin .cb-deck .cb-prog :is(.pg-home,.pg-ab-l){display:none}}
 /* the Seat key (a panel is open) sits under the bar, right of the Now card: never on the folded header */
 .m-cabin .c3-back{top:calc(var(--rail) * 2 + var(--deck-h));left:calc(var(--rail) * 2 + var(--now-w));min-height:44px;font-size:var(--hud-min)}
 /* the sky line in a narrow bar (the check ride): one line that ends in "…", never cut mid-word */
@@ -1183,7 +1187,7 @@ html[data-motion="reduce"] .cb-sun-cv{transition:none}
 .c3 .c3-panel[data-panel="pedestal"] .cb-lamp{font-size:28.5px;letter-spacing:-.01em}
 .m-cabin .cb-deck .cb-state{flex-shrink:0}
 .m-cabin .cb-now :is(.cb-now-b,.cb-now-bl){font-size:var(--hud-min)}
-.m-cabin .cb-deck .cb-logbtn small{font-size:var(--hud-min)}
+.m-cabin .cb-viewbar .cb-logbtn small{font-size:var(--hud-min)}
 /* the check ride's bar is short (the lesson card takes the right of the screen): the header keys get compact and the
    clock always fits; the sky line goes first */
 body[data-cockpit="1"][data-ride="1"] .topbar .brand{display:none}

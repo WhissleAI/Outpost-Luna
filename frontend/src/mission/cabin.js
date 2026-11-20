@@ -136,6 +136,7 @@ export function createCabin(root, o = {}) {
     <div class="cb-viewbar" aria-label="Window">
       <div class="cb-views" role="group" aria-label="Window view">${VIEWS.map(([id, n]) => `<button type="button" class="cb-view" data-view="${id}" aria-pressed="${id === "site"}">${ic(VIEW_ICON[id], 16)}<span>${n}</span></button>`).join("")}</div>
       ${o.mode === "ride" ? "" : `<button type="button" class="cb-center" id="cbCenter" aria-keyshortcuts="R" title="Look ahead (R)">${ic("site", 16)}<span>Look ahead</span></button>`}
+      ${o.mode === "ride" ? "" : `<button type="button" class="cb-logbtn" id="cbLog" hidden aria-expanded="false" aria-controls="cbMlog" aria-label="Mission log, 0 entries" title="Mission log">${ic("todo", 16)}<span>Log</span><small class="num" hidden></small></button>`}
     </div>
     <section class="cb-now" id="cbNow" hidden aria-label="Now">
       <div class="cb-now-head"><b class="cb-now-l">${esc((story.NOW || {}).label || "Now")}</b><span class="cb-now-title" id="cbNowTitle"></span>
@@ -374,7 +375,7 @@ export function createCabin(root, o = {}) {
     root.querySelectorAll("#cbMenu [data-m]").forEach(b => b.onclick = () => (cb.onMenu || (() => {}))(b.dataset.m, b.dataset.warp));
     q("#cbChGo").onclick = () => (cb.onChapter || (() => {}))("go");
   }
-  if (q("#cbProg")) q("#cbProg").addEventListener("click", e => { if (e.target.closest(".cb-logbtn")) toggleLog(); });
+  if (q("#cbLog")) q("#cbLog").onclick = () => toggleLog();
   // the Now panel folds to its one line (title + the step), remembered on this device
   let folded = false; try { folded = localStorage.getItem("outpost-now-folded") === "1"; } catch (e) { /* blocked */ }
   const paintFold = () => { const n = q("#cbNow"), b = q("#cbNowFold"); n.classList.toggle("is-folded", folded); b.setAttribute("aria-expanded", String(!folded));
@@ -769,8 +770,9 @@ export function createCabin(root, o = {}) {
   }
   function paintProg(s) {
     const P = s.progress, el = q("#cbProg"); if (!el) return;
-    if (!P) { el.innerHTML = ""; el.hidden = true; return; }
-    el.hidden = false;
+    const lb = q("#cbLog");
+    if (!P) { el.innerHTML = ""; el.hidden = true; if (lb) lb.hidden = true; return; }
+    el.hidden = false; if (lb) lb.hidden = false;
     const sci = Math.min(1, P.science_sent / (P.science_goal || 120)), ice = Math.min(1, P.ice / (P.ice_goal || 1));
     const bit = (cls, title, name, val, of, p) => `<span class="pg${cls}" title="${title}"><em>${name}</em><b class="num">${val}<small>/${of}</small></b><i style="--p:${(p * 100).toFixed(1)}%"></i></span>`;
     // [playtest 4] science gathered but not home yet counts too: "+14 on board" under the sent-home number
@@ -780,18 +782,18 @@ export function createCabin(root, o = {}) {
     // [campaign] Missions 2+ show their own two goals (docs/GAMEPLAY.md §16); Mission 1 keeps science and ice
     const goalsHtml = s.campaign && s.campaign.n > 1 && Array.isArray(P.goals) && P.goals.length
       ? P.goals.map(goalBit).filter(Boolean).map(g => bit(g.met ? " is-met" : "", esc(g.title), esc(g.name), esc(g.val), g.of, g.p).replace("<small>/</small>", "")).join("") : "";
-    const logBtn = `<button type="button" class="cb-logbtn" aria-expanded="${!q("#cbMlog").hidden}" aria-controls="cbMlog" aria-label="Mission log, ${logEntries.length} entries">${ic("todo", 16)}<span>Log</span>${logEntries.length ? `<small class="num">${logEntries.length}</small>` : ""}</button>`;
-    // a state tick rebuilds the strip: the Log key keeps keyboard / controller focus (it was dropped, and the arrows'
-    // focus watcher sent it back to the seat: Up from the Now card bounced off the Log key, tests/e2e/keys_e2e.py)
-    const set = html => { if (el.innerHTML === html) return; const had = el.contains(document.activeElement); el.innerHTML = html;
-      if (had) { const b = el.querySelector(".cb-logbtn"); if (b) b.focus({ preventScroll: true }); } };
+    // the Log key sits in the window-key row, beside Systems, over the log it opens (it was at the end of this strip, where
+    // the display's overflow cut it off at every window size): a tick only updates its count, so focus stays put
+    if (lb) { lb.setAttribute("aria-expanded", String(!q("#cbMlog").hidden)); lb.setAttribute("aria-label", `Mission log, ${logEntries.length} entries`);
+      const n = lb.querySelector("small"); n.hidden = !logEntries.length; n.textContent = logEntries.length ? String(logEntries.length) : ""; }
+    const set = html => { if (el.innerHTML !== html) el.innerHTML = html; };   // a state tick skips no-op rebuilds
     if (goalsHtml) {
-      set(bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml + logBtn);
+      set(bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total) + goalsHtml);
       return;
     }
     set(bit("", "Days survived", "Days", P.days_done.toFixed(1), P.days_total, P.days_done / P.days_total)
-      + bit(sci >= 1 ? " is-met" : "", sciTitle, "Science home", Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard} to send</small>` : ""}</b>`)
-      + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice) + logBtn);
+      + bit(sci >= 1 ? " is-met" : "", sciTitle, `Science<span class="pg-home"> home</span>`, Math.round(P.science_sent), P.science_goal, sci).replace("</b>", `${aboard ? `<small class="pg-aboard"> +${aboard}<span class="pg-ab-l"> to send</span></small>` : ""}</b>`)
+      + bit(ice >= 1 ? " is-met" : "", "Ice runs", "Ice", P.ice, P.ice_goal, ice));
   }
   let logEntries = [];
   function toggleLog(force) { const el = q("#cbMlog"); el.hidden = force != null ? !force : !el.hidden; paintLog(); if (st) paintProg(st); }

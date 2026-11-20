@@ -162,7 +162,9 @@ def run(base, level, size, shots):
         pg.keyboard.press("Escape")
         pg.wait_for_timeout(300)
         pg.evaluate("() => window.__cabinTest.chapter({ safe: true, powered: true, science: level === 'cadet' })".replace("level", repr(level)))
-        pg.wait_for_timeout(400)
+        # the card fades in first (cb-pm-in): on a slow machine a fixed 400 ms caught the frame before it, an empty cabin
+        pg.wait_for_function("() => { const c = document.getElementById('cbChapter'); return !!c && !c.hidden && +getComputedStyle(c).opacity > 0.95; }", timeout=15000)
+        pg.wait_for_timeout(150)
         shot("05-chapter-landing")
         pg.wait_for_timeout(1800)
         ok(pg.evaluate("() => !document.getElementById('cbChapter').hidden && document.activeElement.id === 'cbChGo'"), f"{tag}: the chapter card is up, focus on its button")

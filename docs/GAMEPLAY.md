@@ -127,7 +127,7 @@ dispatch takes `"route": "ridge" | "slope"` for an ice run.
 
 - Each beat shows its title and objective over the glass for about 5 s. The view turns to the Earth or the rover for
   6 s, but only from the seat's site view.
-- The beat goes into the **mission log**, the Log button on the progress strip. The log also gets each finished task
+- The beat goes into the **mission log**, the Log key in the window-key row (beside Systems). The log also gets each finished task
   ("Ice run complete. Life support up."), each missed one, and each good call.
 - The session Director speaks the beats with no sim line of their own (`SPOKEN_BEATS`). Without a session the cabin
   speaks them.

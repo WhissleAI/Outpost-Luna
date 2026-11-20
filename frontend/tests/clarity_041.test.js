@@ -27,8 +27,8 @@ test("End shift early lives in the Menu (off the console by the master alarm); t
 
 test("plain words: science home, Earth days in halves, the ice drive, the dose with mSv in the tooltip", () => {
   const cab = src("../src/mission/cabin.js"), ui = src("../src/mission/ui.js");
-  assert.match(cab, /"Science home"/);
-  assert.match(cab, /to send<\/small>/);
+  assert.match(cab, /Science<span class="pg-home"> home<\/span>/);   // "home" drops under 1600 px so the strip fits (cabin.css)
+  assert.match(cab, /to send<\/span><\/small>/);
   assert.doesNotMatch(cab, /pg-ab-l"> on board/);
   assert.match(ui, /`\$\{Math\.floor\(\+d\)\}½`/);
   assert.match(ui, /Talk to Earth \$\{dd\(earthDays\(s\)\)\} of 10 days/);
