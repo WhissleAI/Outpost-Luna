@@ -495,9 +495,9 @@ stay off on another body: the real-sky / hardware / rocks / sharp-pole views (`w
 the mission layer (a course without an `outpost` mission never starts one). Pins and the gazetteer are the course's
 (`/api/places` reads the active course's places).
 - The Earth map ships IN the course pack (`media/<name>`, served at `/api/courses/<id>/media/<name>`), never in the
-  installer. The plan is the NASA Blue Marble 5400×2700 (§6). On 2026-11-19 `eoimages.gsfc.nasa.gov` was unreachable from
-  the build machine, so the screenshots use NASA's Blue Marble Next Generation 3600×1800 (Wikimedia Commons copy,
-  public domain). The pack builder takes any map as `COURSE_EARTH_MAP`; put the 5400 file there for the real pack.
+  installer: Archaeology carries the NASA Blue Marble 5400×2700 (`media/earth5400.jpg`, credits in `media/credits.json`).
+  The builder can take another map as `COURSE_EARTH_MAP`.
+- Screenshots (the real Archaeology pack, installed through the local fallback): `img/courses/p2_*.jpg`.
 
 **A pack's source and its build.** The content author writes `backend/data/courses/<id>.json` (status `pack`, paths
 under `courses/<id>/`) and the folder `backend/data/courses/<id>/` (lessons, places, entities, ear vocab, `media/`).
