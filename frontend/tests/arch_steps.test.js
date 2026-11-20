@@ -8,7 +8,6 @@ import { readFileSync } from "node:fs";
 globalThis.window = globalThis.window || {};
 const A = await import("../src/academy/arch_steps.js");
 const { DO, INTRO } = await import("../src/academy/guide.js");
-const { devCourseBody } = await import("../src/academy/dev_course.js");
 const { anyPatch, registerClassLessons } = await import("../src/academy/class_patch.js");
 const R = window.__outpost.stepRenderers;
 
@@ -108,13 +107,6 @@ test("no inline handlers or scripts in any renderer (the app's CSP)", () => {
   assert.doesNotMatch(all, /\son[a-z]+=|<script/i);
   const src = readFileSync(new URL("../src/academy/arch_steps.js", import.meta.url), "utf8");
   assert.doesNotMatch(src, /eval\(|new Function/);
-});
-
-test("dev harness: only the dev server reads ?course=, and only for a known course", () => {
-  assert.equal(devCourseBody("?course=archaeology", false), undefined);   // a built app: never
-  assert.equal(devCourseBody("", true), undefined);
-  assert.equal(devCourseBody("?course=nope", true), undefined);
-  assert.equal(devCourseBody("?course=archaeology", true).name, "Earth");
 });
 
 test("course lessons draw a round letter patch; Moon ids keep their drawn art", () => {

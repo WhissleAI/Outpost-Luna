@@ -84,6 +84,12 @@ voice, captions and saved videos work as before. What needs the internet says "O
 would be: unsaved NASA videos, new downloads, update checks. Do the first run before deploying, or import the
 offline pack (a `.zip`, e.g. from a USB stick) with **Import offline pack…** on the first-run screen: with the mode on, nothing downloads.
 
+## Course packs
+
+A grown-up can download a course pack (Settings → For grown-ups → Course storage). It comes from the same Dropbox folder
+as the first-run downloads, so no new host is needed. In School network mode a download whose host is not allowed is
+refused with a plain message; locked machines import the offline pack (it can carry course packs) instead.
+
 ## What stays on the computer
 
 Nothing below leaves the computer, ever. All of it is in the user's own folder:

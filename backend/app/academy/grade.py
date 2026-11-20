@@ -39,18 +39,16 @@ from ..gazetteer import Gazetteer
 from .. import soundalike
 from ..mission import nlu, sim
 from . import arch_steps
-from .content import DATA, dev_course
+from .content import DATA
 from . import speech
 from .speech import SPEECH_TYPES
 
 
 @lru_cache(maxsize=1)
 def gaz() -> Gazetteer:
-    """The places a find step names: the Moon's, or (dev flag OUTPOST_DEV_COURSE) the course's own places file."""
-    dc = dev_course()
-    if dc and (DATA / "courses" / dc / "places.json").exists():
-        return Gazetteer(DATA / "courses" / dc / "places.json", artifacts=False)
-    return Gazetteer(DATA / "places.json")
+    """The active course's places (app/courses.py; the Moon: places.json + artifacts.json)."""
+    from .. import courses
+    return Gazetteer(courses.path("gazetteer") or DATA / "places.json")
 
 
 def _norm(text: str) -> str:

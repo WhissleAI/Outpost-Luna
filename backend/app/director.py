@@ -167,6 +167,16 @@ SAY_AGAIN = "Say again? I missed that."
 UNKNOWN = "I don't know that one yet."
 TRY = "Try: “show me the giant bullseye” or “where did Apollo 11 land?”"
 GUARD = "Let's keep names and addresses private. Ask me about the Moon."
+
+
+def _course_line(key: str, default: str) -> str:
+    """A content line the active course may replace (manifest `lines`, app/courses.py). The Moon has none: its lines
+    are the ones written here. The rules themselves (floor, privacy, navigation, hint ladder) stay course-agnostic."""
+    try:
+        from . import courses
+        return courses.line(key, default)
+    except Exception:   # noqa: BLE001
+        return default
 MISSION = "Want a mission? Find the giant bullseye on the far side."
 NO_MOMENT = "The crew didn't talk about this place. Here it is."
 
@@ -435,7 +445,7 @@ async def _direct(text: str, read: dict, gaz: Gazetteer, index: MomentIndex, con
 
     # 1. Privacy first: never send a child's address, phone or name anywhere (no LLM call).
     if _hard_pii(read, gaz) or NAME_GIVEN.search(q):
-        return {**out, "action": "guard", "say": GUARD, "source": "arc" if read.get("available") else "rules"}
+        return {**out, "action": "guard", "say": _course_line("guard", GUARD), "source": "arc" if read.get("available") else "rules"}
 
     # 1b. Mission mode: commands, status, Houston. Non-mission questions fall through to the Moon explorer below.
     if ctx.get("mission"):

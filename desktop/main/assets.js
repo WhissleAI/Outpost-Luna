@@ -394,6 +394,32 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     catch { return []; }
   }
 
+  // Course packs (docs/COURSES.md §4.2) are the first assets a grown-up can delete: the backend asks with
+  // <assets>/.remove/<id> (it may already have moved <id>/ aside to .old-<id>, so the course leaves its list at once).
+  // remove() is the installer's move-aside in reverse: rename <id>/ to .old-<id>, delete it (retrying Windows locks),
+  // drop the state record and any .want / .failed flag. Built-in assets (the required ones) are never removable.
+  // A failed on-demand download leaves <assets>/.failed/<id> with the reason, so the backend can say it plainly.
+  function removals() {
+    try { return fs.readdirSync(path.join(dir, ".remove")).filter((id) => removable(id)); } catch { return []; }
+  }
+  const removable = (id) => /^course_[a-z][a-z0-9-]{1,23}$/.test(id) && !(byId[id] && byId[id].required);
+  async function remove(id) {
+    if (!removable(id)) throw new Error(`${id}: not a removable asset`);
+    if (inflight.has(id)) { try { await inflight.get(id); } catch { /* a stopped download: remove what is there */ } }
+    const dst = home(id), old = path.join(dir, `.old-${id}`);
+    if (fs.existsSync(dst)) {
+      await fsp.rm(old, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+      await renameRetry(dst, old);
+    }
+    await fsp.rm(old, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    const s = readState(); if (s[id]) { delete s[id]; writeState(s); }
+    for (const k of [".remove", ".want", ".failed"]) fs.rmSync(flag(k, id), { force: true });
+    return true;
+  }
+  function failed(id, why) {
+    try { fs.mkdirSync(path.join(dir, ".failed"), { recursive: true }); fs.writeFileSync(flag(".failed", id), String(why || "").slice(0, 200)); } catch { /* best effort */ }
+  }
+
   const inflight = new Map();   // id -> its running download (the background loop and an on-demand ask share it)
   function download(a, opts = {}) {
     if (typeof a === "string") a = byId[a];
@@ -501,7 +527,8 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     return out;
   }
 
-  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState, writeState, want, wanted };
+  return { dir, manifest, check, status, download, ensure, importOfflinePack, envPaths, home, readState, writeState, want, wanted,
+    remove, removals, removable, failed };
 }
 
 /** "1.10" vs "1.9": numeric dotted compare (updates.js has the same rule). */

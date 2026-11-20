@@ -109,6 +109,7 @@ export function parseCommand(text) {
   if (/^(reset|start over|erase) (everything|it all|all)$|^(reset|erase) (the )?(whole )?(app|game|outpost luna) (and )?(downloads|everything)$/.test(t)) return { cmd: "reset", arg: "all" };
   if (/^(reset|reset (the |my )?(whole )?(app|game|progress|outpost luna)|start the (whole )?(app|game) over|erase (my )?(progress|everything))$/.test(t)) return { cmd: "reset", arg: "start" };
   if (/^(open )?(the )?school (network|mode)( mode| settings)?$/.test(t)) return { cmd: "network" };   // opens it, never switches it
+  if (/^(switch|change|pick|choose|open) (the |a |my )?(course|courses|subject)s?$|^(other|more) courses$/.test(t)) return { cmd: "course" };   // opens the switcher (course_switch.js); picking still asks once
   let m = t.match(/^(?:press|tap|click|choose|pick|select) (?:the )?(.+?)(?: button)?$/);
   if (m) return { cmd: "press", arg: m[1] };
   m = t.match(/^(?:option|answer|number) (\d|one|two|three|four)$/);
@@ -337,6 +338,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
   addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
+  // [courses] the switcher's "Get more courses": For grown-ups (behind the hold), where Course storage lives
+  addEventListener("outpost:course-storage", () => { section = "grownups"; resetView = null; if (panel.hidden) open(true); else renderPanel(); { const b = panel.querySelector('[data-crs-act="get"]') || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
   btn.addEventListener("click", () => open());
@@ -533,6 +536,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       // voice opens the Reset panel itself (both options); it never confirms. The option asked for gets focus.
       // [0.4.1] Reset lives in For grown-ups: voice opens the section; behind the gate unless a grown-up already opened it
       case "reset": section = "grownups"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector(`[data-reset-open="${c.arg}"]`) || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } reply(guOpen ? GROWNUPS.sayOpen : GROWNUPS.sayLocked); break;
+      case "course": { const cs = window.__outpost && window.__outpost.courseSwitch; if (cs && cs.visible()) { cs.open(); reply("Pick a course."); } else reply("The Moon is the only course on this computer."); break; }
       case "network": section = "grownups"; resetView = null; if (panel.hidden) open(true); else { try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* */ } renderPanel(); } { const b = panel.querySelector("[data-nw-sw]:not([disabled])") || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } reply(guOpen ? GROWNUPS.sayNetOpen : GROWNUPS.sayNetLocked); break;
       case "press": { const b = findControl(c.arg, controls()); if (!b) return false; b.focus({ preventScroll: true }); b.click(); describe(`Pressed ${(b.getAttribute("aria-label") || b.textContent).trim()}.`, { quiet: true }); break; }
       case "nth": { const opts = [...document.querySelectorAll("#aPanel .a-choice, #aPanel .v-opt")].filter(isVisible); const b = opts[c.arg - 1]; if (!b) return false; b.focus(); b.click(); break; }

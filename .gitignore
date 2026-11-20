@@ -29,3 +29,6 @@ backend/data/class/
 backend/data/learning_state/
 # videos only the video pack carries (backend/tools/video_catalog.py --derive, or a licensed drop-in): never in git
 backend/data/video/local/
+
+# Courses: the per-computer active course in a dev checkout (app/courses.py; the desktop app: its per-user cache folder)
+backend/data/course_state/

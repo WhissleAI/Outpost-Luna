@@ -29,10 +29,14 @@ export const isBonus = l => isExplorer(l) || isField(l) || isClass(l);
 /** Is this lesson open to the cadet now? Core lessons always are. An explorer lesson with `unlock_after: "checkride"`
  *  opens once the cadet is qualified (novice playtest 2026-11-16 #22: Apollo's trace step in the first hour); so does
  *  every Field School lesson. */
-export const unlocked = (l, flown, qualified = false) => !isBonus(l) || isClass(l) ||
-  (l.unlock_after === "checkride" || isField(l) ? !!qualified : flown >= (l.unlock_after_missions || 1));
+export const unlocked = (l, flown, qualified = false, done = null) => !isBonus(l) || isClass(l) ||
+  (afterLesson(l) && !isField(l) ? !!(done && done(l.unlock_after)) :
+    l.unlock_after === "checkride" || isField(l) ? !!qualified : flown >= (l.unlock_after_missions || 1));
+/** [courses] `unlock_after: <lesson id>`: a bonus lesson that opens once that lesson is done (a course without missions,
+ *  e.g. Archaeology's optional Chimney Rock lesson after Mesa Verde). */
+export const afterLesson = l => !!(l && typeof l.unlock_after === "string" && l.unlock_after && l.unlock_after !== "checkride");
 /** The explorer lessons that opened exactly at `flown` missions (the debrief offers these). */
-export const newlyUnlocked = (lessons, flown) => (lessons || []).filter(l => isExplorer(l) && l.unlock_after !== "checkride" && (l.unlock_after_missions || 1) === flown);
+export const newlyUnlocked = (lessons, flown) => (lessons || []).filter(l => isExplorer(l) && !l.unlock_after && (l.unlock_after_missions || 1) === flown);
 /** Core lessons only: "Lesson n of 6" (the check ride, explorer and Field School lessons aren't in that count). */
 export const coreLessons = lessons => (lessons || []).filter(l => !l.ride && !isBonus(l));
 /** Field School lessons, in course order: "Field School 2 of 4". */

@@ -323,3 +323,51 @@ test("main.js hands NASA_VIEWS_DIR to the backend", () => {
   const src = fs.readFileSync(path.join(__dirname, "main.js"), "utf8");
   assert.match(src, /NASA_VIEWS_DIR: a\.NASA_VIEWS_DIR/);
 });
+
+// ---- course packs (docs/COURSES.md §4.2): the first assets a grown-up can delete ----
+function coursePack() {
+  const files = { "course.manifest.json": Buffer.from('{"id":"testland"}'), "lessons.json": Buffer.from("{}"), "media/earth.jpg": crypto.randomBytes(5000) };
+  const t = tar(files);
+  return { tarBuf: t, asset: { id: "course_testland", title: "Course: Testland", required: false, on_demand: true, file: "x-course.tar",
+    sha256: sha(t), size: t.length, unpacked_size: 5100, env: "", subdir: "", files: Object.entries(files).map(([p, b]) => ({ path: p, size: b.length })) } };
+}
+
+test("course pack: downloads on demand, then removes cleanly (folder, state record, flags)", async () => {
+  const { tarBuf, asset } = coursePack();
+  const { srv, base } = await serve({ "/c.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, url: base + "/c.tar" };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
+    store.want(a.id);
+    assert.deepEqual(store.wanted(), ["course_testland"]);
+    await store.download(a.id);
+    assert.equal(store.check(a), "installed");
+    assert.ok(fs.existsSync(path.join(dir, "course_testland/media/earth.jpg")));
+    // the backend asks for it to go (and may have moved it aside already)
+    fs.mkdirSync(path.join(dir, ".remove"), { recursive: true }); fs.writeFileSync(path.join(dir, ".remove/course_testland"), "");
+    assert.deepEqual(store.removals(), ["course_testland"]);
+    await store.remove("course_testland");
+    assert.equal(store.check(a), "missing");
+    assert.ok(!fs.existsSync(path.join(dir, "course_testland")) && !fs.existsSync(path.join(dir, ".old-course_testland")));
+    assert.equal(store.readState().course_testland, undefined);
+    assert.deepEqual(store.removals(), []);
+    // already moved aside by the backend: still cleaned up
+    await store.download(a.id);
+    fs.renameSync(path.join(dir, "course_testland"), path.join(dir, ".old-course_testland"));
+    await store.remove("course_testland");
+    assert.ok(!fs.existsSync(path.join(dir, ".old-course_testland")) && store.readState().course_testland === undefined);
+  } finally { srv.close(); }
+});
+
+test("course pack: built-in assets are never removable; a failure is recorded for the backend", async () => {
+  const dir = tmp();
+  const { asset } = fixture();
+  const store = A.createStore({ dir, manifest: { assets: [asset, coursePack().asset] } });
+  assert.equal(store.removable("ear"), false); assert.equal(store.removable("course_testland"), true);
+  await assert.rejects(store.remove("ear"), /not a removable asset/);
+  fs.mkdirSync(path.join(dir, ".remove"), { recursive: true }); fs.writeFileSync(path.join(dir, ".remove/ear"), "");
+  assert.deepEqual(store.removals(), []);
+  store.failed("course_testland", "School network mode is on, so nothing downloads.");
+  assert.match(fs.readFileSync(path.join(dir, ".failed/course_testland"), "utf8"), /School network/);
+});

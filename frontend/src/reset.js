@@ -23,7 +23,7 @@ export const HOLD_MS = 3000;
 export const PREFIXES = ["outpost", "atm-", "atm:"];
 /** Progress a reset keeps (unless "Erase progress too"): Flight School / Field School progress, the call sign, the
  *  missions flown per call sign (bonus lessons open after them). */
-export const PROGRESS_KEYS = ["atm-academy", "outpost-callsign", "outpost-brain"];   // [brain] practice counts (brain_store.js)
+export const PROGRESS_KEYS = ["atm-academy", "atm-academy.v1", "outpost-callsign", "outpost-course", "outpost-brain"];   // [brain] practice counts (brain_store.js); [courses] the pre-courses save and the cadet's course
 export const PROGRESS_PREFIXES = ["outpost-missions-flown:"];
 const PROFILES = "outpost-profiles";   // other cadets' saved keys (prefs.js): kept, trimmed to their progress
 export const isProgressKey = k => PROGRESS_KEYS.includes(k) || PROGRESS_PREFIXES.some(p => k.startsWith(p));

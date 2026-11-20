@@ -62,28 +62,42 @@ def normalize(c: dict) -> dict:
     return c
 
 
+def lessons_path() -> Path:
+    """The active course's lesson file (app/courses.py): the Moon's is COURSE, as before courses existed."""
+    try:
+        from .. import courses
+        return courses.path("lessons.source") or COURSE
+    except Exception:   # noqa: BLE001  (the Moon always loads)
+        return COURSE
+
+
 @lru_cache(maxsize=1)
 def nasa_course() -> dict:
-    """The NASA course as written in course.json (check() and the copy tests read this)."""
-    return normalize(json.loads(COURSE.read_text()))
+    """The active course's own lessons as written in its course.json (the Moon: academy/course.json; check() and the
+    copy tests read this). The name stays from when the Moon was the only course."""
+    return normalize(json.loads(lessons_path().read_text()))
 
 
-DEV_COURSE_ENV = "OUTPOST_DEV_COURSE"
+DEV_COURSE_ENV = "OUTPOST_DEV_COURSE"   # app/courses.py: plays a pack's source from the repo (the author's dev loop)
 
 
 def dev_course() -> str | None:
-    """Dev / test flag (until the course platform lands, docs/COURSES.md P1): OUTPOST_DEV_COURSE=<id> plays that
-    course's lessons (backend/data/courses/<id>/course.json) in place of the Moon's. Unset (always, for players):
-    None, and nothing changes."""
-    cid = os.environ.get(DEV_COURSE_ENV, "").strip()
-    if not re.fullmatch(r"[a-z][a-z0-9-]{1,23}", cid) or cid == "moon":
+    """The active course when it is not the Moon (app/courses.py), else None. (The name is from the content branch's
+    stopgap flag; the flag now just makes app/courses.py load and play that course from source.)"""
+    try:
+        from .. import courses
+        a = courses.active()
+        return None if a == courses.DEFAULT else a
+    except Exception:   # noqa: BLE001
         return None
-    return cid if (DATA / "courses" / cid / "course.json").exists() else None
 
 
 def course_file(cid: str) -> dict:
-    """A course's lessons as written (backend/data/courses/<id>/course.json): bare ids, as authored."""
-    return normalize(json.loads((DATA / "courses" / cid / "course.json").read_text()))
+    """A course's lessons as written (its manifest's lesson file; else backend/data/courses/<id>/course.json): bare ids."""
+    from .. import courses
+    m = courses.get(cid)
+    f = courses.path("lessons.source", m) if m else None
+    return normalize(json.loads((f or DATA / "courses" / cid / "course.json").read_text()))
 
 
 def prefixed(c: dict, cid: str) -> dict:
@@ -106,11 +120,9 @@ def prefixed(c: dict, cid: str) -> dict:
 def course() -> dict:
     """The course the app plays: the NASA lessons, then the teacher-written Class lessons (classpacks.py,
     docs/CURRICULUM.md; `track: "class"`). A broken pack is skipped by the loader, never raised.
-    Dev flag (dev_course()): another course's lessons, ids prefixed, no Class lessons."""
+    Another course (app/courses.py active, not the Moon): its lessons with `<course>:` ids, then its own Class lessons."""
     dc = dev_course()
-    if dc:
-        return prefixed(course_file(dc), dc)
-    c = nasa_course()
+    c = prefixed(nasa_course(), dc) if dc else nasa_course()
     try:
         from . import classpacks
         extra = classpacks.lessons()
@@ -344,6 +356,23 @@ def check_prep(p: dict) -> list[str]:
 ARCH_TYPES = ("layers", "rings", "hillshade", "decide")
 
 
+def level_problems(l: dict, level: dict | None = None) -> list[str]:
+    """Lines over the course's reading-level budgets (decision 2: each course carries its own level; the Moon's are
+    docs/COPY.md's). Words per line: the title, and each step's prompt / say, hint, success, fail, reveal."""
+    from .. import courses
+    b = (level or courses.reading_level())["budgets"]
+    lid, out = l.get("id", "?"), []
+    if len(str(l.get("title", "")).split()) > b["title"]:
+        out.append(f"{lid}: title over {b['title']} words (the course's reading level)")
+    for i, s in enumerate(l.get("steps", [])):
+        for k, bk in (("prompt", "prompt"), ("say", "prompt"), ("hint", "hint"), ("success", "success"),
+                      ("fail", "fail"), ("reveal", "reveal")):
+            v = s.get(k)
+            if isinstance(v, str) and len(v.split()) > b[bk]:
+                out.append(f"{lid} step {i + 1}: {k} over {b[bk]} words (the course's reading level)")
+    return out
+
+
 def check(c: dict | None = None) -> list[str]:
     """Problems with the course: missing fields, unsourced facts, numbers not found in the cited data. `c`: another
     course's lessons (course_file(id)); the course the app plays by default."""
@@ -356,6 +385,7 @@ def check(c: dict | None = None) -> list[str]:
         for k in ("id", "title", "brief", "steps", "badge", "facts"):
             if not l.get(k):
                 probs.append(f"{lid}: missing {k}")
+        probs += level_problems(l)
         if len(re.findall(r"[.!?](?:\s|$)", l.get("brief", ""))) > 3:
             probs.append(f"{lid}: brief longer than 3 sentences")
         for f in l.get("facts", []):

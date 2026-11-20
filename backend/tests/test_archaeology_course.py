@@ -17,12 +17,14 @@ ROOT = Path(__file__).resolve().parents[2]
 D = content.DATA / "courses" / "archaeology"
 RAW = json.loads((D / "course.json").read_text())
 SOURCES = {s["id"]: s for s in json.loads((D / "sources.json").read_text())["sources"]}
-MANIFEST = json.loads((ROOT / "docs/courses/archaeology/course.manifest.json").read_text())
+MANIFEST = json.loads((ROOT / "backend/data/courses/archaeology.json").read_text())
 IDS = ["what_is", "survey", "layers", "dating", "stuff", "law", "voices", "mesa_verde", "capstone", "chimney_rock"]
 words = lambda t: len(str(t or "").split())   # noqa: E731
 
 
 def _drop_caches():
+    from app import courses
+    courses.reload_all()                 # the registry (OUTPOST_DEV_COURSE loads the pack source) and every course cache
     content.reload()
     g.gaz.cache_clear()
     arch_steps.series.cache_clear()

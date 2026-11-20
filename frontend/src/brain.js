@@ -15,12 +15,13 @@ import { callSign } from "./story.js";
 import { isClass, isExplorer, isField } from "./explorer.js";
 import { readCadets, summarize } from "./progress.js";
 import { activeProfile } from "./learning_ui.js";
+import { courseState, qid, splitQid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // Every lesson step the Academy grades lands in the practice counts (ids and counts only; brain_store.js).
-if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) store.add(e.detail); });
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") window.addEventListener("outpost:lesson-result", e => { if (e && e.detail) store.add({ ...e.detail, lesson: lessonKey(e.detail.lesson) }); });
 
 export const COPY = {
   title: "My Brain",
@@ -67,7 +68,13 @@ export const SKILLS = {
   rocks: { star: "Rock ages", idea: "Reading the Moon's age from its rocks and surface.", ngss: ["HS-ESS1-6"] },
   fieldkit: { star: "Field kit", idea: "Field tools and the sampling routine.", ngss: ["MS-ESS1-3", "3-5-ETS1-1"] },
 };
-export const skillOf = l => SKILLS[l && l.id] || { star: String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
+/** [courses] The practice-count key for a lesson id: bare on the Moon (the counts saved before courses stay valid),
+ *  "<course>:<id>" in another course, so two courses' lessons never share counts. */
+export const lessonKey = (id, course = courseState.active) => (!course || course === "moon" ? id : qid(course, id));
+/** [courses] The course's own big ideas (manifest big_ideas, docs/COURSES.md §4.8), else the table above (the Moon's). */
+const courseSkill = l => { const b = l && ((courseState.info && courseState.info.big_ideas) || {})[splitQid(l.id).id];
+  return b && b.star ? { star: b.star, idea: b.idea || "", ngss: Array.isArray(b.codes) ? b.codes : [] } : null; };
+export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
 
 const trackOf = l => (l.ride || (!isClass(l) && !isExplorer(l) && !isField(l)) ? "core" : isField(l) ? "field" : isExplorer(l) ? "explorer" : "class");
 const badgeId = l => (l && l.badge && l.badge.id) || "";
@@ -86,8 +93,8 @@ export function streak(days, today = store.dayOf()) {
 /** One row per lesson practised, in course order: counts, first-try share and minutes (pure). */
 export function practice(brain, lessons = []) {
   const b = store.clean(brain);
-  return (lessons || []).filter(l => l && l.id && b.lessons[l.id] && b.lessons[l.id].steps + b.lessons[l.id].misses > 0).map(l => {
-    const c = b.lessons[l.id], sk = skillOf(l);
+  return (lessons || []).filter(l => l && l.id && b.lessons[lessonKey(l.id)] && b.lessons[lessonKey(l.id)].steps + b.lessons[lessonKey(l.id)].misses > 0).map(l => {
+    const c = b.lessons[lessonKey(l.id)], sk = skillOf(l);
     return { id: l.id, title: l.title || l.id, idea: sk.idea, ngss: sk.ngss, track: trackOf(l), ...c,
       firstPct: c.steps ? Math.round((100 * c.first) / c.steps) : 0, mins: Math.round(c.secs / 60) };
   });
@@ -111,7 +118,7 @@ export function stars(lessons, academy, brain) {
   const got = new Set((academy && academy.badges) || []), b = store.clean(brain), steps = (academy && academy.steps) || {};
   return (lessons || []).filter(l => l && l.id && l.badge && !l.preview).map(l => {
     const sk = skillOf(l);
-    const state = got.has(badgeId(l)) ? "lit" : (b.lessons[l.id] || steps[l.id]) ? "practising" : "dim";
+    const state = got.has(badgeId(l)) ? "lit" : (b.lessons[lessonKey(l.id)] || steps[l.id]) ? "practising" : "dim";
     return { id: l.id, star: sk.star, title: l.title || l.id, track: trackOf(l), state };
   });
 }

@@ -4926,6 +4926,123 @@
    "note": "Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.",
    "max_app": null,
    "requires": []
+  },
+  {
+   "id": "course_archaeology",
+   "version": "1",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": [],
+   "title": "Course: Archaeology",
+   "required": false,
+   "file": "outpost-luna-v2-course_archaeology.tar",
+   "url": null,
+   "sha256": "c86b8eac430e647e3b619fe2edae35fd889e0c35062927e4ed31573d4bb822c9",
+   "size": 4608000,
+   "unpacked_size": 4589438,
+   "n_files": 19,
+   "env": "",
+   "subdir": "",
+   "licence": [],
+   "files": [
+    {
+     "path": "course.json",
+     "size": 68375,
+     "sha256": "8d44da502e0df07ed469487c892e9ab1988ebfbcb09804f8b3330df5d70de8fb"
+    },
+    {
+     "path": "course.manifest.json",
+     "size": 4134,
+     "sha256": "07eb227819a5a731a6f7ea7d56f5707e23d342b8ca4c2ab12f89ce3155816f60"
+    },
+    {
+     "path": "ear_vocab.json",
+     "size": 2546,
+     "sha256": "048392f2e76d4539ee40859ad31f22b6333fbe8246fcb1bbb2fb06d1e82a9d86"
+    },
+    {
+     "path": "entities.json",
+     "size": 15715,
+     "sha256": "415bd58421a610ddb67e6661602127a812854fa218d737855b3c69c1146e3c9e"
+    },
+    {
+     "path": "media/credits.json",
+     "size": 6517,
+     "sha256": "126fa14d9d6ac55e82cb02e97c291621ef4bedf2c609973a9ace59f163111ea9"
+    },
+    {
+     "path": "media/earth5400.jpg",
+     "size": 1616254,
+     "sha256": "2048023ccc62250c677c0f4b03d4362f997b130eb0154a6cad00aa1b27c390b9"
+    },
+    {
+     "path": "media/far_view_high_sun.jpg",
+     "size": 195820,
+     "sha256": "0229448000973f90ce6995a7f0ca099ebae76a37acf0eb18780b742ef5a5f48d"
+    },
+    {
+     "path": "media/far_view_low_sun.jpg",
+     "size": 226952,
+     "sha256": "497f7854d000e8bc4587d53b89600599a5d491b47ed7d6620d63c1cdb4796e73"
+    },
+    {
+     "path": "media/four_corners.jpg",
+     "size": 596599,
+     "sha256": "bc44c6ad749b92a824bb89a9bf2906856e5ef81351292434af79302d7ad94256"
+    },
+    {
+     "path": "media/photo_cliff_palace.jpg",
+     "size": 230491,
+     "sha256": "6bc7a1462b5a65e9d7eb772acca8c0048f235b3a23513f4dc688ad68c3e40bc9"
+    },
+    {
+     "path": "media/photo_far_view_house.jpg",
+     "size": 170069,
+     "sha256": "54105a612f07d52cc3eb1e6f07aefa6cbd82974c5b42c7da6e3bd6a02e4cad6f"
+    },
+    {
+     "path": "media/photo_far_view_kivas_tower.jpg",
+     "size": 300626,
+     "sha256": "6775873499df487fb00693cbd6a6de1e31f22c69539712f8817128d67bd25134"
+    },
+    {
+     "path": "media/photo_far_view_reservoir.jpg",
+     "size": 342618,
+     "sha256": "e19a84f0b3f37e131d61c46ac471b7844a4972818490c464f66fd40cca00ec9a"
+    },
+    {
+     "path": "media/photo_long_house.jpg",
+     "size": 236910,
+     "sha256": "96e788e500217dc9f80571e08b83d369551710a74b07fafb334270243d81c699"
+    },
+    {
+     "path": "media/photo_pithouse_mesa_top.jpg",
+     "size": 269273,
+     "sha256": "09d630d88e69cfa7d34bb93df9554962a6a258d4a44647fe3d1ebfac38152236"
+    },
+    {
+     "path": "media/photo_spruce_tree_house.jpg",
+     "size": 243826,
+     "sha256": "6c1f39cfb112e7f0f2c2491a0c38095537598e2be7440338a89f4eca99ac1d37"
+    },
+    {
+     "path": "places.json",
+     "size": 2640,
+     "sha256": "5d6eec2bf71feb7f7995d70624be66da6536f51659ef9e12bba648683e6bdd8a"
+    },
+    {
+     "path": "rings/itrdb_co652.json",
+     "size": 22486,
+     "sha256": "6a118fc99be7742a74cb9eae651b991689d8c49eb80fa1dabf94a9fc299be244"
+    },
+    {
+     "path": "sources.json",
+     "size": 37587,
+     "sha256": "ae60b9ce33e4885d74ec088f16a16d86fe2eb5a6b0abd4263c6737490fd4c205"
+    }
+   ],
+   "on_demand": true,
+   "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable."
   }
  ],
  "offline_pack": {
@@ -4935,6 +5052,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-18T06:10:14Z",
- "version": "2026.11.18.0610"
+ "published_at": "2026-11-20T07:45:10Z",
+ "version": "2026.11.20.0745"
 }

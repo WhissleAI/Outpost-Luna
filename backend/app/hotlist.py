@@ -99,6 +99,22 @@ def source_hash() -> str:
 
 @lru_cache(maxsize=1)
 def vocab() -> dict:
+    """Every vocabulary list for the active course (app/courses.py). The Moon: the lists below, as always. Another
+    course: the app's own lists (orders, navigation, help: course-agnostic) with the course's ear vocab file
+    (manifest `ear.vocab`, the same schema) replacing the lists it carries (places, terms, lessons)."""
+    base = moon_vocab()
+    try:
+        from . import courses
+        if courses.is_moon():
+            return base
+        f = courses.path("ear.vocab")
+        own = json.loads(f.read_text()) if f and f.exists() else {}
+    except Exception:  # noqa: BLE001  (a broken course file falls back to the app's lists)
+        return base
+    return {**base, **{k: v for k, v in own.items() if isinstance(v, list)}}
+
+
+def moon_vocab() -> dict:
     """Every vocabulary list. The committed data file (data/ear_vocab.json, `python -m app.hotlist build`) when its
     version matches the sources' hash; otherwise rebuilt from the JSON (the lists always follow the course)."""
     v = source_hash()

@@ -74,7 +74,12 @@ def default_names() -> list[dict]:
 
 @lru_cache(maxsize=1)
 def keyterms() -> tuple[str, ...]:
-    return tuple(base_keyterms(Gazetteer(settings.data_dir / "places.json")))
+    """Deepgram keyterms for the active course: its manifest `ear.keyterms`, else (the Moon) the lunar lists."""
+    from . import courses
+    own = courses.keyterms()
+    if own is not None:
+        return tuple(own[:50])
+    return tuple(base_keyterms(Gazetteer(courses.path("gazetteer") or settings.data_dir / "places.json")))
 
 
 def flux_url() -> str:

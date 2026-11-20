@@ -8,8 +8,8 @@ Draft content for course #2 (`docs/COURSES.md` §3). Steps use the course.json s
 tables below were the drafts; where the built lesson differs, the JSON wins (and the differences are listed in
 "What changed from the drafts" at the end).
 - Every fact cites `sources.json` by `source_id`: 40 sources, each opened and checked on 2026-11-19, quote verbatim.
-- Play it today (until the platform's course switcher lands): backend `OUTPOST_DEV_COURSE=archaeology`, then the Vite
-  dev server at `/?course=archaeology`. A built app never reads the flag; Moon players see nothing new.
+- Play it: it is the course pack `course_archaeology` (docs/COURSES.md §4.9): Settings → For grown-ups → Course storage
+  → Get, then the course chip. From source (authors): backend `OUTPOST_DEV_COURSE=archaeology`.
 - Reading level: grades 9-12 (owner decision 2). Prompts ≤ 20 words; spoken replies ≤ 20; hints ≤ 14.
 
 > **Teacher note (review before a pilot).** This course is a draft for teacher review. Before a classroom pilot,

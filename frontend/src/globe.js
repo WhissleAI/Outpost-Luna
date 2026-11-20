@@ -30,14 +30,14 @@ export const angDist = (a, b) => Math.acos(Math.min(1, ll2v(a.lat, a.lon).normal
  * The camera distance that frames a place: its diameter fills about a third of the view (38° field), clamped so a small
  * crater is never closer than 2.2 and a sea never farther than 3.4 (the default view is 3.6). Hardware markers: 2.3.
  */
-export function frameDistance(f) {
+export function frameDistance(f, bodyKm = MOON_KM) {
   if (!f) return 2.5;
   if (f.kind === "artifact") return 2.3;
-  const diam = (f.km || 0) / MOON_KM;   // radians across
+  const diam = (f.km || 0) / bodyKm;   // radians across (the body's radius: the Moon's unless a course names another)
   return Math.max(2.2, Math.min(3.4, 1.9 + diam * 2.2));
 }
 /** A feature's angular radius in degrees. */
-export const angRadius = f => (f.km / 2) / MOON_KM * 180 / Math.PI;
+export const angRadius = (f, bodyKm = MOON_KM) => (f.km / 2) / bodyKm * 180 / Math.PI;
 
 export function createGlobe({ stage, label, loading, places, onTap, onArtifact = () => {}, onMiss = () => {}, body }) {
   const BODY = globeBody(body), BODY_KM = BODY.km;
@@ -124,7 +124,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   // selecting a place eases the zoom to frame it (the flight eases the distance with the turn): small craters come
   // closer, the big seas fit the view, whatever the kid zoomed to before (frameDistance)
   function showFeature(f, { dist } = {}) {
-    highlight(f); flyTo(f.lat, f.lon, dist || frameDistance(f));
+    highlight(f); flyTo(f.lat, f.lon, dist || frameDistance(f, BODY_KM));
     if (!mi.on && !sunLock) sun.position.copy(ll2v(f.lat + 15, f.lon - 40).multiplyScalar(5));
   }
   // ---------- Flight School globe verbs (docs/LEARNING_DESIGN.md §3) ----------
@@ -517,7 +517,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   /** Nearest named place to a point, scored by distance minus a share of its radius. */
   function nearest(p) {
     let best = null, bd = 1e9;
-    features.forEach(f => { const d = angDist(p, f) - angRadius(f) * 0.6; if (d < bd) { bd = d; best = f; } });
+    features.forEach(f => { const d = angDist(p, f) - angRadius(f, BODY_KM) * 0.6; if (d < bd) { bd = d; best = f; } });
     return { f: best, d: bd };
   }
 

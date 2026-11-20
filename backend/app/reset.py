@@ -6,7 +6,7 @@ Two levels:
          pack, crew audio, NASA videos) stay, so nothing has to download again.
   all    "Reset everything": the above, plus the NASA video cache and the embedding vector cache, plus the first-run
          downloads (reset_downloaded_assets, a hook: today's builds bundle every asset, so it has nothing to delete
-         yet).
+         yet). Downloaded course packs live in that folder too, and the active course returns to the Moon.
 Progress, the call sign and every pref live in the browser (localStorage), and the shell clears them. In the desktop
 app, Electron also clears its session storage and the per-user folders it owns, then relaunches (desktop/main/reset.js).
 
@@ -103,6 +103,14 @@ def reset(level: str) -> dict:
         except Exception:   # noqa: BLE001 (best effort; the folder was emptied above)
             pass
         cleared["assets"] = len(reset_downloaded_assets())
+        # Courses (docs/COURSES.md §4.4): downloaded course packs go with the assets folder, so the computer plays the
+        # Moon again (a cadet's own choice, in the browser, is cleared by the shell too)
+        from . import courses
+        try:
+            courses.state_file().unlink(missing_ok=True)
+        except OSError:
+            pass
+        courses.reload_all()
     return {"level": level, "cleared": cleared, "memory": clear_memory()}
 
 

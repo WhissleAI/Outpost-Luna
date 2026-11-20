@@ -1,10 +1,10 @@
 # Courses: from a Moon app to a school of courses
 
-Status: **plan + spike** (branch `docs/courses-plan`). Nothing in this doc is built yet except the spike in §6.
-**P3 content (branch `feat/archaeology-content`):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` /
-`decide` step types (`backend/app/academy/arch_steps.py`, `frontend/src/academy/arch_steps.js`), the course pack's data
-and media (`backend/data/courses/archaeology/`), verified sources, and the ear measurement (`docs/ARC_FEEDBACK.md`).
-They play behind a dev flag until P1/P2 land (`docs/courses/archaeology/LESSONS.md`).
+Status: **P1 + P2 built** (courses exist, the Moon is course #1, §4.8; the Earth globe and downloadable course packs,
+§4.9). P0 was the plan + spike (§6). P3 (the Archaeology lessons) is the content branch.
+**P3 content (#168, merged):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` / `decide` step
+types, the course pack's data and media (`backend/data/courses/archaeology/`), verified sources and the ear measurement
+(`docs/ARC_FEEDBACK.md`). It is the course pack `course_archaeology` (§4.9).
 First new course: **Archaeology**, shown to a high-school archaeology teacher in Colorado.
 Course drafts: `docs/courses/archaeology/` (`LESSONS.md`, `DEMO.md`, `course.manifest.json`).
 
@@ -308,9 +308,9 @@ The full script, with what to click and what to say, is in `docs/courses/archaeo
 
 ### 4.1 The course manifest (`outpost-luna-course` v1)
 
-One JSON per course: `backend/data/courses/<id>.json` for built-ins, `<assets>/course_<id>/course.json` for downloaded
+One JSON per course: `backend/data/courses/<id>.json` for built-ins, `<assets>/course_<id>/course.manifest.json` for downloaded
 packs. Schema, validator and loader: `backend/app/courses.py` (spike). The Moon's manifest:
-`backend/data/courses/moon.json`. The Archaeology draft: `docs/courses/archaeology/course.manifest.json`.
+`backend/data/courses/moon.json`. The Archaeology draft: `backend/data/courses/archaeology.json`.
 
 | Field | Meaning | Read by |
 |---|---|---|
@@ -376,9 +376,9 @@ packs. Schema, validator and loader: `backend/app/courses.py` (spike). The Moon'
 
 ### 4.4 IDs, progress and privacy
 
-- **Namespacing.** Moon lesson and badge ids stay bare (`moon`, `scout`), so no existing progress migrates. Other
-  courses use `<course>:<id>` (`archaeology:dating`). `atm-academy` badges, `outpost-brain` practice counts and the turn
-  log's lesson ids all take the prefix. Class packs already use `c-<pack>-<lesson>`.
+- **Namespacing.** Stored ids are `<course>:<id>` for every course, the Moon included (`moon:scout`,
+  `archaeology:dating`); a pre-courses save migrates losslessly (§4.8). Lesson files and the backend keep bare ids inside
+  one course. `outpost-brain` practice counts carry their `course`. Class packs already use `c-<pack>-<lesson>`.
 - **Per course, on the device.** Nothing new leaves the computer. A course adds data files (read-only) and counts. The
   turn log records `course` as an enum next to `screen` (no words).
 - **Reset.** "Start over" and "Reset everything" behave as today (`docs/RESET.md`). "Reset everything" also removes
@@ -432,6 +432,112 @@ Effort: S ≤ 1 day, M 2–4 days, L 1–2 weeks (one agent).
 | voice pack is Moon lines | record course lines (the voice pack pipeline) | M | low |
 | knowledge cards are Moon | per-course cards | M | low |
 | iPad bundle | ship course tars in the bundle | S | low |
+
+### 4.8 P1 as built: the course contract
+
+**Manifest fields added in P1** (all optional, so the Archaeology draft still validates; `app/courses.py validate`):
+
+| Field | Shape | Read by |
+|---|---|---|
+| `reading_level` | `{grades, register: kid \| teen, budgets: {prompt, title, hint, success, fail, reveal}}` (words per line) | `content.check()` (`level_problems`), `/api/courses`. Unset budgets keep the Moon's (prompt 20, title 6, hint 12, success 12, fail 8, reveal 20: the longest Moon line today) |
+| `labels` | `{course, school, lessons, patches, patch}` short words | the chip, the Flight School tab (`school`), Progress ("NASA patches" → the course's word) |
+| `ear.keyterms` | up to 100 names | `listen.keyterms()` (Deepgram). Unset (the Moon): the lunar lists in `app/keyterms.py` |
+| `lines` | `{guard: "..."}` content lines for the rules Director | `director._course_line()`. Unset (the Moon): the lines in code |
+| `big_ideas` | `{<lessonId>: {star, idea, codes}}` | the Brain's star map (moved from `brain.js SKILLS`; the Moon's are in `moon.json`) |
+
+**Active course.** Per call sign on the client (`outpost-course`, a profile key in `prefs.js`; default and absent = the
+Moon), per computer on the backend (`<cache or data>/course_state/active.json`, `ACTIVE_COURSE_FILE` in tests). At launch
+`courses.js syncCourse()` reads `GET /api/courses` and, when the backend plays another course, `POST /api/courses/active`.
+A course that is gone (pack removed) falls back to the Moon. Switching (`setCourse`) stores the choice, posts it, fires
+`outpost:course-changed` and reloads the app, as a profile switch does: every module and the globe start clean.
+
+**The registry.** Built-ins from `backend/data/courses/*.json` (status `builtin`), then packs from
+`<COURSE_PACKS_DIR or ASSETS_DIR>/course_<id>/course.manifest.json` (status `pack`, paths relative to the pack folder, which must
+be named after the id). A broken manifest is skipped with a reason (`problems`). A pack's own files are served
+read-only at `/course/<id>/<path>` (its Earth map).
+
+**One switch drops every course cache together** (`courses.reload_all()`): the lessons (`content.nasa_course`,
+`course`), the hotlist lesson titles, the session's tables, the entity registry (so the ear's names list,
+`names_list.py`), the ear vocab (`hotlist.vocab`), the Deepgram keyterms, the lesson grader's gazetteer and sites, the
+class packs, and the backend's gazetteer (`main.S["gaz"]`, via `courses.on_change`). Class packs carry `course`
+(default `moon`) and only the active course's packs join its lessons; the rest stay on disk.
+
+**Ids and the migration.** Ids are course-prefixed, `<course>:<id>`. The progress store `atm-academy` is v2:
+`{v: 2, badges: ["moon:scout", …], qualified: ["moon"], steps: {"moon:power": {i, n}}, current: {moon: "moon:power"}}`.
+A v1 save (bare ids, before courses) migrates on first read: every bare id becomes the Moon's, unknown fields ride
+along, and the original string is kept untouched as `atm-academy.v1` (a profile key and a progress key: "Start over"
+keeps it; "erase progress too" and Settings → Cadets → Reset progress remove it). The lesson UI still sees one course
+with bare ids (`courseView` / `mergeView`), so its code did not change. Tests: `frontend/tests/courses.test.js`.
+Note: an app older than P1 reading a v2 store would not see the Moon's patches (prefixed ids); the v1 copy is still
+there for it. The turn log records `course` (an enum) next to `screen`.
+
+**What stays per course (P1)** and what is already agnostic:
+- Agnostic: the registry, switching, ids and progress, the lesson engine and grading, the entity layer and the ear's
+  names-list derivation, the router and the rules Director's logic (floor, privacy, navigation, hint ladder).
+- Per course, read from the manifest: lessons, places, entity registry (names lists), ear vocab, keyterms, reading
+  level, labels, standards, big ideas, the guard line.
+- Still Moon code, to move when a course needs it: the other content lines and regexes in `director.py` (`EARTHRISE`,
+  the hardware and cheese lines), the knowledge cards (`knowledge/cards.py`), the mission sim (a course without an
+  `outpost` mission gets the season engine in P4), the keyterm lists in `keyterms.py` (the Moon's), the voice pack
+  (one per course in P3), and the learned Director's training data (§4.5; the runtime's guarded mode for new courses).
+
+**The switcher.** A chip by the app name (`course_switch.js`, `#courseChip`), hidden while one course is installed.
+Tap, Enter / A on it, or say "switch course" (`a11y.js`): a short list, then one confirm ("Switch to Archaeology? Your
+Moon patches stay."). Esc or Cancel backs out.
+
+
+### 4.9 P2 as built: the Earth globe and course packs
+
+**Globe.** `main.js` hands `createGlobe` the active course's `globe` (`{body, name, km, map}`); on the Moon it passes
+nothing, so the Moon is `MOON_BODY` exactly as before. `frameDistance` / `angRadius` take the body's radius (default the
+Moon's), so places frame by their real size on Earth; `ll2v` and every coordinate maths are unchanged. Moon-only layers
+stay off on another body: the real-sky / hardware / rocks / sharp-pole views (`wireViews`), the sample hardware, and
+the mission layer (a course without an `outpost` mission never starts one). Pins and the gazetteer are the course's
+(`/api/places` reads the active course's places).
+- The Earth map ships IN the course pack (`media/<name>`, served at `/api/courses/<id>/media/<name>`), never in the
+  installer: Archaeology carries the NASA Blue Marble 5400×2700 (`media/earth5400.jpg`, credits in `media/credits.json`).
+  The builder can take another map as `COURSE_EARTH_MAP`.
+- Screenshots (the real Archaeology pack, installed through the local fallback): `img/courses/p2_*.jpg`.
+
+**A pack's source and its build.** The content author writes `backend/data/courses/<id>.json` (status `pack`, paths
+under `courses/<id>/`) and the folder `backend/data/courses/<id>/` (lessons, places, entities, ear vocab, `media/`).
+In the app that source is not a course; `OUTPOST_DEV_COURSE=<id>` plays it from source (the author's dev loop).
+`make asset-pack` (scripts/asset_pack.py) turns every such source into the asset `course_<id>`: `course.manifest.json`
+rewritten relative to the pack (`courses.to_pack`), every file of the folder, validated as it will load; optional,
+`on_demand` (never fetched by the background downloader), a version, a sha256 for the tar, a size and sha256 per file,
+in the SAME `desktop/assets.manifest.json` and Dropbox folder (decision 6). `make asset-upload` uploads it.
+
+**Download, remove, switch** (`backend/app/course_packs.py`, `GET /api/courses/packs`, `POST …/<id>/get`,
+`POST …/<id>/remove`; Settings → For grown-ups → Course storage, `course_store_ui.js`):
+- With the desktop app, the backend asks through the flag files the Steer voice already uses: `.want/<asset>` (the
+  desktop downloads it at once: sha256, atomic install), `.active/<asset>` while it downloads, `.failed/<asset>` with
+  the reason when it stops (school network, offline, disk), and `.remove/<asset>` (assets.js `store.remove`: move
+  aside, delete with Windows retries, drop the state record). The backend moves the folder aside first so the course
+  leaves the list at once.
+- Without it (dev checkout, tests): a local-file fallback installs the tar from `COURSE_PACK_SRC`, sha256-checked,
+  unsafe paths refused, swapped in atomically.
+- Before a download: School network mode blocks a host it does not allow and says so ("School network mode is on, so
+  this course can't download here. Import the offline pack from a USB stick."); a disk without room for the tar and its
+  files says how much is needed. The offline pack zip can carry course tars (they install like any asset).
+- Removing the course being played switches to the Moon first. Patches stay. The Moon cannot be removed.
+- The top-bar chip appears once two courses are installed; its "Get more courses" opens For grown-ups.
+
+**Archaeology is the first pack.** Its source is `backend/data/courses/archaeology.json` (moved from the docs draft;
+status `pack`, reading level 9-12 / teen, labels "Field School" / "Field patches", 100 Deepgram keyterms from its ear
+vocab, hard terms first) plus `backend/data/courses/archaeology/` (#168). `course_archaeology` (4.6 MB, 19 files, with
+the NASA Blue Marble 5400×2700 in `media/`) is in the catalog with `url: null` until it is uploaded. Lessons of another
+course are served with `<course>:` ids (`content.prefixed`), and the client keeps them as they are. A bonus lesson may
+name `unlock_after: <lesson id>` (explorer.js: it opens once that lesson's patch is earned; Chimney Rock after Mesa
+Verde). The content branch's stopgaps are gone: `OUTPOST_DEV_COURSE` now just loads and plays a pack source through the
+registry, and `academy/dev_course.js` / `?course=` are removed (the globe reads the active course).
+
+**Reset.** "Start over" keeps downloaded courses and the cadet's course. "Reset everything" deletes the assets folder
+(course packs included) and the backend's active-course file, so the computer plays the Moon. Progress for every course
+goes only with "erase progress too".
+
+**iPad** (`docs/IPAD.md`): unaffected. The shell runs the same backend with no desktop downloader, so `GET
+/api/courses/packs` reports `managed: false` and nothing downloads; a course would ship in the app bundle (point
+`COURSE_PACKS_DIR` at it). The chip stays hidden with only the Moon.
 
 ---
 
