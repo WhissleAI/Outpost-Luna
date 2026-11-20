@@ -39,7 +39,7 @@ All of these are optional after setup. In School network mode none of them is co
 
 | When | Host | Why |
 |---|---|---|
-| First run only (or import the offline pack instead) | `www.dropbox.com`, `*.dropboxusercontent.com`; fallback `huggingface.co` | the speech model, safety tagger, search model and recorded voice (about 510 MB), checked by SHA-256 |
+| First run only (or import the offline pack instead) | `www.dropbox.com`, `*.dropboxusercontent.com`; mirror `github.com` (`/WhissleAI/Outpost-Luna/releases/download/assets-…`) which redirects to `release-assets.githubusercontent.com` (older links: `objects.githubusercontent.com`); fallback `huggingface.co` | the speech model, safety tagger, search model and recorded voice (about 510 MB), checked by SHA-256. The same files are on Dropbox and on GitHub; the app tries Dropbox first, then GitHub. To allow the downloads, allow one set or both |
 | After first run, in the background, once | the same | optional parts: crew audio, the NASA video pack, map layers, NASA views (about 630 MB) |
 | Only if a grown-up presses "Check for new models and media" or turns on the daily check (off by default) | `whissleai.github.io` | the list of model and media updates |
 | Only if a grown-up presses "Check for updates" or turns on the daily check (off by default) | `api.github.com` | is there a newer version? Nothing is downloaded or installed by the app |
@@ -68,7 +68,9 @@ macOS: `launchctl setenv OUTPOST_SCHOOL_NETWORK 1` in a login script). `OUTPOST_
 somewhere else.
 
 - **allow_hosts**: hosts the app may still reach, e.g. `["nasa.gov"]` for NASA videos (an entry also allows its
-  subdomains). Empty means nothing.
+  subdomains). Empty means nothing. For the first-run and optional downloads, allow
+  `["www.dropbox.com", "dropboxusercontent.com"]` or the GitHub mirror `["github.com", "release-assets.githubusercontent.com",
+  "objects.githubusercontent.com"]` (each redirect hop is checked, so a mirror needs its download host too).
 - **open_links**: `false` stops the app opening links in the browser.
 - A machine policy locks the mode on: Settings shows "Turned on by this computer's IT admin" and the switch is off
   limits. A policy file that cannot be read counts as on, with nothing allowed.
@@ -86,8 +88,8 @@ offline pack (a `.zip`, e.g. from a USB stick) with **Import offline pack…** o
 
 ## Course packs
 
-A grown-up can download a course pack (Settings → For grown-ups → Course storage). It comes from the same Dropbox folder
-as the first-run downloads, so no new host is needed. In School network mode a download whose host is not allowed is
+A grown-up can download a course pack (Settings → For grown-ups → Course storage). It comes from the same hosts as the
+first-run downloads (Dropbox, with the GitHub mirror), so no new host is needed. In School network mode a download whose host is not allowed is
 refused with a plain message; locked machines import the offline pack (it can carry course packs) instead.
 
 ## What stays on the computer

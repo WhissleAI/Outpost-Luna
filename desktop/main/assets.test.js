@@ -70,6 +70,7 @@ function serve(routes, { cut = 0 } = {}) {
   const srv = http.createServer((req, res) => {
     const body = routes[req.url.split("?")[0]];
     hits.push({ url: req.url, range: req.headers.range || null });
+    if (typeof body === "number") { res.writeHead(body); return res.end("<html>outage</html>"); }   // a status only (503)
     if (!body) { res.writeHead(404); return res.end(); }
     const m = /bytes=(\d+)-/.exec(req.headers.range || "");
     if (m) {
@@ -295,7 +296,7 @@ test("videos v1 installed, the 0.3.11 manifest wants v2: outdated, fetched after
   const { srv, base } = await serve({});                  // the v2 pack is not reachable (404)
   try {
     // neither the new pack nor its fallback (the previous published pack) is reachable
-    const a = { ...vid, url: base + "/videos.tar", fallback: vid.fallback && { ...vid.fallback, url: base + "/prev.tar" } };
+    const a = { ...vid, url: base + "/videos.tar", mirrors: [], fallback: vid.fallback && { ...vid.fallback, url: base + "/prev.tar" } };
     const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
     assert.equal(store.check(a), "outdated");
     const needs = U.setupNeeds(store.status(), { assets: [a] });
@@ -324,7 +325,7 @@ test("nasa_views (0.4): optional, fetched in the background, never blocks start;
   // a tiny stand-in pack, served: the store installs it and points NASA_VIEWS_DIR at it
   const files = { "index.json": Buffer.from('{"pack":"nasa_views"}'), "NOTICE": Buffer.from("Uses NASA open data; not endorsed by NASA.\n") };
   const t = tar(files);
-  const a = { ...nv, url: null, file: "nv.tar", sha256: sha(t), size: t.length, unpacked_size: 100,
+  const a = { ...nv, url: null, mirrors: [], file: "nv.tar", sha256: sha(t), size: t.length, unpacked_size: 100,
     files: Object.entries(files).map(([p, b]) => ({ path: p, size: b.length })) };
   const dir = tmp();
   const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 1 });
@@ -441,4 +442,135 @@ test("a lighter pack before its upload (url null) or with a broken link installs
       fetchImpl: async () => ({ status: 200, text: async () => JSON.stringify({ assets: [{ ...v2, fallback: { ...prev, url: "https://www.dropbox.com/v1.tar?dl=1" } }] }) }) });
     assert.deepEqual((await none.check()).updates, []);
   } finally { srv.close(); }
+});
+
+// ---- mirrors (2026-11-20: Dropbox outage, every first-run asset 503'd): url, then each mirror, then the fallback ----
+
+test("mirrors: the primary link 503s -> the first mirror is used, sha256 checked, installed", async () => {
+  const { tarBuf, asset, files } = fixture();
+  const { srv, hits, base } = await serve({ "/dbx/ear.tar": 503, "/gh/ear.tar": tarBuf });
+  try {
+    const dir = tmp(), logs = [];
+    const a = { ...asset, url: base + "/dbx/ear.tar", mirrors: [base + "/gh/ear.tar"] };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 2, log: (m) => logs.push(m) });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    assert.deepEqual(fs.readFileSync(path.join(dir, "ear/nft2/big.bin")), files["nft2/big.bin"]);
+    assert.equal(hits.filter((h) => h.url === "/dbx/ear.tar").length, 2, "the primary got its retries first");
+    assert.ok(logs.some((l) => /HTTP 503.*trying mirror/.test(l)));
+  } finally { srv.close(); }
+});
+
+test("mirrors: a .part from a primary that dropped mid-download resumes from the mirror (Range)", async () => {
+  const { tarBuf, asset } = fixture();
+  let served = false;
+  const srvP = http.createServer((req, res) => {   // primary: half the tar once, then 503 for good
+    if (!served) { served = true; res.writeHead(200, { "Content-Length": tarBuf.length }); res.write(tarBuf.subarray(0, 40000)); return setTimeout(() => res.destroy(), 20); }
+    res.writeHead(503); res.end();
+  });
+  await new Promise((r) => srvP.listen(0, "127.0.0.1", r));
+  const { srv, hits, base } = await serve({ "/gh/ear.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, url: `http://127.0.0.1:${srvP.address().port}/ear.tar`, mirrors: [base + "/gh/ear.tar"] };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 2 });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    assert.deepEqual(hits.map((h) => h.range), ["bytes=40000-"], "the mirror sent only the rest");
+  } finally { srv.close(); srvP.close(); }
+});
+
+test("mirrors: a mirror with the wrong bytes is refused -> the next mirror", async () => {
+  const { tarBuf, asset } = fixture();
+  const { srv, hits, base } = await serve({ "/dbx/ear.tar": 503, "/m1/ear.tar": Buffer.from(tarBuf).fill(9, 600, 700),
+    "/m2/ear.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, url: base + "/dbx/ear.tar", mirrors: [base + "/m1/ear.tar", base + "/m2/ear.tar"] };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 2 });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    assert.ok(hits.some((h) => h.url === "/m1/ear.tar") && hits.some((h) => h.url === "/m2/ear.tar"));
+    assert.equal(A.sha256File && (await A.sha256File(path.join(dir, "ear/nft2/big.bin"))).length, 64);
+  } finally { srv.close(); }
+});
+
+test("mirrors: an unreachable mirror host (DNS / School network block) moves on, not 'offline'", async () => {
+  const { tarBuf, asset } = fixture();
+  const { srv, base } = await serve({ "/gh/ear.tar": tarBuf });
+  try {
+    const dir = tmp();
+    const a = { ...asset, url: "http://127.0.0.1:1/ear.tar", mirrors: [base + "/gh/ear.tar"] };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 2 });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    // every source unreachable: still the offline error (the first-run screen's "no internet" message)
+    const b = { ...asset, url: "http://127.0.0.1:1/ear.tar", mirrors: ["http://127.0.0.1:1/gh.tar"] };
+    const s2 = A.createStore({ dir: tmp(), manifest: { assets: [b] }, backoffMs: 1, retries: 2 });
+    await assert.rejects(s2.download(b), (e) => A.isNetworkError(e));
+  } finally { srv.close(); }
+});
+
+test("mirrors: every link fails -> the existing fallback kind still runs", async () => {
+  const { tarBuf, asset, files } = fixture();
+  const routes = { "/dbx/ear.tar": 503, "/gh/ear.tar": 502 };
+  for (const [p, b] of Object.entries(files)) routes["/hf/" + p] = b;
+  const { srv, hits, base } = await serve(routes);
+  try {
+    const dir = tmp(), logs = [];
+    const a = { ...asset, url: base + "/dbx/ear.tar", mirrors: [base + "/gh/ear.tar"],
+      fallback: { kind: "files", base: base + "/hf/", files: Object.entries(files).map(([p, b]) => ({ path: p, size: b.length, sha256: sha(b) })) } };
+    const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1, retries: 2, log: (m) => logs.push(m) });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    assert.ok(hits.some((h) => h.url === "/gh/ear.tar"), "the mirror was tried before the fallback");
+    assert.ok(logs.some((l) => /HTTP 502\); using the fallback source/.test(l)), "the fallback says why: the last link's error");
+    // the previous-pack fallback (kind pack) carries its own mirrors too
+    const prevRoutes = await serve({ "/v1dbx.tar": 503, "/v1gh.tar": tarBuf, "/v2.tar": 503 });
+    try {
+      const v2 = { ...asset, version: "2", url: prevRoutes.base + "/v2.tar",
+        fallback: { kind: "pack", version: "1", file: "v1.tar", url: prevRoutes.base + "/v1dbx.tar", mirrors: [prevRoutes.base + "/v1gh.tar"],
+          sha256: asset.sha256, size: asset.size, unpacked_size: asset.unpacked_size, files: asset.files } };
+      const s3 = A.createStore({ dir: tmp(), manifest: { assets: [v2] }, backoffMs: 1, retries: 1 });
+      await s3.download(v2);
+      assert.equal(s3.readState().ear.version, "1");
+    } finally { prevRoutes.srv.close(); }
+  } finally { srv.close(); }
+});
+
+test("mirrors: an entry without mirrors (an old manifest) downloads exactly as before", async () => {
+  const { tarBuf, asset } = fixture();
+  const { srv, hits, base } = await serve({ "/ear.tar": tarBuf });
+  try {
+    const a = { ...asset, url: base + "/ear.tar" };
+    assert.deepEqual(A.sourcesOf(a), [base + "/ear.tar"]);
+    assert.deepEqual(A.sourcesOf({ url: null, mirrors: "x" }), []);
+    assert.deepEqual(A.sourcesOf({ url: "u", mirrors: ["u", "m", null] }), ["u", "m"]);
+    const store = A.createStore({ dir: tmp(), manifest: { assets: [a] }, backoffMs: 1 });
+    await store.download(a);
+    assert.equal(store.check(a), "installed");
+    assert.deepEqual(hits.map((h) => h.url), ["/ear.tar"]);
+    // a 4xx on the only link still fails at once (no fallback, no retries), as before
+    const b = { ...asset, url: base + "/gone.tar" };
+    await assert.rejects(A.createStore({ dir: tmp(), manifest: { assets: [b] }, backoffMs: 1 }).download(b), /HTTP 404/);
+  } finally { srv.close(); }
+});
+
+test("mirrors: the manifest check accepts https mirrors on allowed hosts only; updates use them too", async () => {
+  const U = require("./updates");
+  const { tarBuf, asset } = fixture();
+  const e = { ...asset, version: "1", url: "https://www.dropbox.com/x.tar?dl=1" };
+  assert.deepEqual(U.validateManifest({ assets: [{ ...e, mirrors: ["https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/x.tar"] }] }), []);
+  assert.ok(U.validateManifest({ assets: [{ ...e, mirrors: ["https://evil.example/x.tar"] }] }).length);
+  assert.ok(U.validateManifest({ assets: [{ ...e, mirrors: ["http://github.com/x.tar"] }] }).length);
+  assert.ok(U.validateManifest({ assets: [{ ...e, mirrors: "https://github.com/x.tar" }] }).length);
+  // the bundled manifest: every mirror is a GitHub release download, and the whole manifest validates
+  const m = A.loadManifest(path.join(__dirname, "..", "assets.manifest.json"));
+  assert.deepEqual(U.validateManifest(m), []);
+  for (const a of m.assets) for (const u of a.mirrors || []) {
+    assert.match(u, /^https:\/\/github\.com\/WhissleAI\/Outpost-Luna\/releases\/download\/assets-v\d+\//);
+    assert.ok(u.endsWith("/" + a.file), `${a.id}: the mirror serves the same file name`);
+  }
+  for (const id of A.REQUIRED_IDS) assert.ok((m.assets.find((x) => x.id === id).mirrors || []).length, `${id} has a mirror`);
+  void tarBuf;
 });

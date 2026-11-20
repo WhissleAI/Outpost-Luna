@@ -335,3 +335,21 @@ test("ONNX Runtime telemetry is off in every child (launch.py, the model server 
   assert.match(fs.readFileSync(path.join(root, "model_server", "app", "__init__.py"), "utf8"), rx);
   assert.match(fs.readFileSync(path.join(__dirname, "main.js"), "utf8"), /ORT_DISABLE_TELEMETRY: "1"/);
 });
+
+test("an update whose Dropbox link 503s is staged from its GitHub mirror (same sha256); mirror hosts are allow-listed", async (t) => {
+  const s = setup(t);
+  await installV1(s);
+  const mirror = "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/ear-v2.tar";
+  const v2 = asset("ear", "2", "ear version two, from the mirror", { min_app: "0.2.0", mirrors: [mirror] });
+  const remote = { schema: 2, version: "c", assets: [v2.entry] };
+  const store = A.createStore({ dir: s.dir, manifest: U.effectiveManifest(s.bundled, null, s.app) });
+  const seen = [];
+  const base = fakeFetch({ [REMOTE]: remote, [mirror]: v2.tar }, seen);
+  const fetchImpl = async (url, o) => (url === v2.entry.url ? (seen.push(url), new Response("outage", { status: 503 })) : base(url, o));
+  const up = U.createUpdater({ store, bundled: s.bundled, appVersion: s.app, log: logs(), paceMs: 0, fetchImpl });
+  assert.equal((await up.run()).state, "ready");
+  assert.ok(seen.indexOf(v2.entry.url) < seen.indexOf(mirror), "the primary first, then the mirror");
+  for (const h of ["github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"]) {
+    assert.ok(U.hostAllowed(`https://${h}/x.tar`), h);
+  }
+});

@@ -160,6 +160,9 @@ asset-pack:      ## Desktop: first-run assets -> desktop/build/assets (one .tar 
 asset-upload:    ## Desktop: upload the asset pack to Dropbox, public dl=1 links into the manifest (DROPBOX_TOKEN_FILE=<file holding the token>)
 	python3 scripts/upload_assets.py
 
+asset-mirror:    ## Desktop: mirror the asset tars on the GitHub pre-release assets-v2, links into the manifest's mirrors (gh auth)
+	python3 scripts/upload_assets_github.py
+
 desktop-libarc:  ## Desktop: build libarc (the ear: libarc.dylib / arc.dll / libarc.so) + its pinned ONNX Runtime -> desktop/resources/native
 	cmake -S desktop/vendor/libarc -B desktop/build/libarc -DCMAKE_BUILD_TYPE=Release
 	cmake --build desktop/build/libarc --config Release
@@ -194,4 +197,4 @@ smoke-installed: ## Smoke the INSTALLED app without touching your data: launches
 desktop-clean:   ## Desktop: remove build outputs (resources, build caches, dist)
 	rm -rf desktop/resources desktop/build desktop/dist
 
-.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop
+.PHONY: release-check smoke-installed site-physics site-layers nasa-views ear-model asset-pack asset-upload asset-mirror desktop-libarc bindings voice-pack-lines voice-pack voice-pack-check help setup data transcribe transcribe-dg index meta dev models backend frontend test build health director-real-ear director-retrain director-import director-eval-real director-loop

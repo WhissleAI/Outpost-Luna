@@ -429,7 +429,7 @@ VIDEO_PACK_MIN_APP = "0.4.3"   # the first app whose video.py accepts the catalo
 def previous_pack(prev: dict) -> dict:
     """A published manifest entry -> a fallback of kind "pack" (desktop/main/assets.js fromPrevious)."""
     fb = {"kind": "pack", "version": str(prev.get("version", "1"))}
-    for k in ("file", "url", "sha256", "size", "unpacked_size", "n_files", "files"):
+    for k in ("file", "url", "mirrors", "sha256", "size", "unpacked_size", "n_files", "files"):
         if k in prev:
             fb[k] = prev[k]
     inner = prev.get("fallback")
@@ -468,7 +468,9 @@ def build(only: set[str] | None) -> dict:
             fname = vname
         url = prev.get("url") if same else None
         keep = {k: prev[k] for k in ("version", "min_app", "max_app", "requires", "min_version") if prev and k in prev}
-        a = {"id": aid, **keep, "title": title, "required": req, "file": fname, "url": url, "sha256": sha, "size": size,
+        # mirrors (scripts/upload_assets_github.py) serve the same bytes: kept with the url, dropped with it
+        mirrors = {"mirrors": prev["mirrors"]} if same and prev.get("mirrors") else {}
+        a = {"id": aid, **keep, "title": title, "required": req, "file": fname, "url": url, **mirrors, "sha256": sha, "size": size,
              "unpacked_size": sum(x["size"] for x in listing), "n_files": len(listing), "env": env, "subdir": sub,
              "licence": lic, "files": listing}
         if aid == "steer":   # until the Dropbox upload: its files out of the public v1 model package

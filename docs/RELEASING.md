@@ -130,6 +130,18 @@ the archive in `desktop/build/cache/onnxruntime/` never downloads. If every sour
 
    Then open <https://whissleai.github.io/Outpost-Luna/> and check that "Download for Mac" resolves to the same file.
 
+## First-run assets: upload to both
+
+The app's downloads (models, voice, crew audio, videos, course packs) are not part of a release; they ship through the
+asset manifest (docs/DESKTOP.md, "How to ship an asset update"). Every new or re-packed tar goes to **both** hosts:
+Dropbox (`scripts/upload_assets.py`, the `url`) and the GitHub pre-release `assets-v2`
+(`scripts/upload_assets_github.py`, the `mirrors`). Then commit both manifest copies and `bash scripts/publish_site.sh`.
+A release whose bundled manifest has an asset without a mirror depends on Dropbox alone for it: on 2026-11-20 a
+Dropbox outage stopped every first run with HTTP 503.
+
+Never mark `assets-v2` (or any `assets-*` tag) as latest, and never put an app installer on it: the site and the app
+update check read `releases/latest`, and `site/dl.js` picks releases by their installer file names.
+
 ## Windows release
 
 On the Windows build machine (docs/BUILD_WINDOWS.md), from the same `main` commit:

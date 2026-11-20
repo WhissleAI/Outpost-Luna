@@ -46,3 +46,23 @@ def test_repacked_asset_gets_a_new_name_and_the_previous_pack_as_fallback(tmp_pa
     # rebuilt again before the upload: the next name, and still the last PUBLISHED pack as fallback
     b = run(tmp_path, monkeypatch, b"newer bytes", {**a, "version": "2"})
     assert b["file"] == "outpost-luna-v2-crew-3.tar" and b["fallback"]["file"] == prev["file"]
+
+
+GH = "https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v2/outpost-luna-v2-crew.tar"
+
+
+def test_mirrors_stay_with_the_same_bytes_and_ride_into_the_previous_pack(tmp_path, monkeypatch):
+    prev = {**published(tmp_path, monkeypatch), "mirrors": [GH]}
+    assert run(tmp_path, monkeypatch, b"old bytes", prev)["mirrors"] == [GH]
+    a = run(tmp_path, monkeypatch, b"new bytes", prev)
+    assert "mirrors" not in a and a["url"] is None          # new bytes: no link and no mirror until uploaded again
+    assert a["fallback"]["kind"] == "pack" and a["fallback"]["mirrors"] == [GH]
+
+
+def test_upload_assets_github_set_mirror_replaces_only_its_own_release_links():
+    spec = importlib.util.spec_from_file_location("upload_assets_github", ROOT / "scripts/upload_assets_github.py")
+    G = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(G)
+    e = {"mirrors": ["https://github.com/WhissleAI/Outpost-Luna/releases/download/assets-v1/x.tar", "https://example.org/x.tar"]}
+    G.set_mirror(e, G.mirror_url(G.REPO, "assets-v2", "x.tar"), G.REPO)
+    assert e["mirrors"] == [G.mirror_url(G.REPO, "assets-v2", "x.tar"), "https://example.org/x.tar"]

@@ -5,7 +5,8 @@
 // installed into <userData>/assets/<id>/ (OUTPOST_ASSETS_DIR overrides) and recorded in <userData>/assets/state.json.
 //
 //   createStore({ dir, manifest })   .status()  cheap size check of every asset -> installed | missing | corrupt
-//                                     .download(asset, { onProgress, signal })   resume (.part + Range), sha256, install
+//                                     .download(asset, { onProgress, signal })   resume (.part + Range), sha256, install:
+//                                       its url, then each of its `mirrors` (the same tar), then its `fallback`
 //                                     .ensure(ids, ...)   download what is not installed, in order
 //                                     .importOfflinePack(zip, ...)   the offline zip (asset tars + manifest), no network
 //   extractTar, readZipEntries, isNetworkError, freeBytes   helpers (exported for the tests)
@@ -190,6 +191,36 @@ async function readZipEntries(zipPath) {
   } finally { await fh.close(); }
 }
 
+/** A tar's download links in order: its `url`, then each of its `mirrors` (extra links to the IDENTICAL tar, same
+ *  sha256: GitHub release assets, scripts/upload_assets_github.py). Duplicates and non-strings are dropped. */
+function sourcesOf(x) {
+  const out = [];
+  for (const u of [x && x.url, ...(x && Array.isArray(x.mirrors) ? x.mirrors : [])]) {
+    if (typeof u === "string" && u && !out.includes(u)) out.push(u);
+  }
+  return out;
+}
+
+/**
+ * Try fn(url) on each source in order; the first that works wins. A source that fails (an HTTP error, a sha256 mismatch,
+ * or a network error that may be its host only: a DNS failure, a School network block) moves on to the next. When every
+ * source fails, throws the last error that was NOT a network error (so the caller's fallback runs), or, when all of them
+ * were network errors, the first one (the first-run screen says "offline"). A cancel stops at once.
+ */
+async function trySources(urls, fn, log = () => {}, what = "") {
+  let net = null, other = null;
+  for (let i = 0; i < urls.length; i++) {
+    try { return await fn(urls[i], i); }
+    catch (e) {
+      if (e.name === "AbortError") throw e;
+      if (isNetworkError(e) && !e.midstream) net = net || e; else other = e;
+      if (i < urls.length - 1) log(`assets: ${what} from ${hostOf(urls[i])} failed (${e.message}); trying mirror ${hostOf(urls[i + 1])}`);
+    }
+  }
+  throw other || net || new Error(`${what}: no download link`);
+}
+function hostOf(u) { try { return new URL(u).host; } catch { return "?"; } }
+
 const sleep = (ms, signal) => new Promise((res, rej) => {
   const t = setTimeout(res, ms);
   if (signal) signal.addEventListener("abort", () => { clearTimeout(t); rej(abortError()); }, { once: true });
@@ -313,8 +344,9 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
 
   async function fromTar(a, { onProgress, signal }) {
     const part = path.join(dl, a.file + ".part");
-    await withRetry(a.id, async () => {
-      await downloadTo(a.url, part, { size: a.size, signal, fetchImpl,
+    // every source serves the same bytes, so a .part from one resumes from the next (Range); a sha256 mismatch deletes it
+    await trySources(sourcesOf(a), (url) => withRetry(a.id, async () => {
+      await downloadTo(url, part, { size: a.size, signal, fetchImpl,
         onBytes: (n) => onProgress && onProgress({ id: a.id, phase: "download", done: n, total: a.size }) });
       onProgress && onProgress({ id: a.id, phase: "verify", done: a.size, total: a.size });
       const got = await sha256File(part);
@@ -322,7 +354,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
         await fsp.rm(part, { force: true });   // damaged or replaced: start over
         throw new Error(`${a.id}: sha256 mismatch`);
       }
-    }, signal);
+    }, signal), log, a.id);
     onProgress && onProgress({ id: a.id, phase: "install", done: a.size, total: a.size });
     await installTar(a, part);
   }
@@ -360,11 +392,11 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
   async function fromTarMembers(a, { onProgress, signal }) {
     const fb = a.fallback;
     const part = path.join(dl, fb.file + ".part");
-    await withRetry(`${a.id} (fallback)`, async () => {
-      await downloadTo(fb.url, part, { size: fb.size, signal, fetchImpl,
+    await trySources(sourcesOf(fb), (url) => withRetry(`${a.id} (fallback)`, async () => {
+      await downloadTo(url, part, { size: fb.size, signal, fetchImpl,
         onBytes: (n) => onProgress && onProgress({ id: a.id, phase: "download", done: n, total: fb.size }) });
       if (fb.sha256 && (await sha256File(part)) !== fb.sha256) { await fsp.rm(part, { force: true }); throw new Error(`${a.id}: fallback sha256 mismatch`); }
-    }, signal);
+    }, signal), log, `${a.id} (fallback)`);
     onProgress && onProgress({ id: a.id, phase: "install", done: fb.size, total: fb.size });
     const want = new Map(fb.members.map((m) => [safeRel(m.from), m]));
     const staging = path.join(dir, ".staging", a.id);
@@ -453,7 +485,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
       e.disk = true;
       throw e;
     }
-    if (a.url) {
+    if (sourcesOf(a).length) {
       try { return await fromTar(a, opts); }
       catch (e) {
         if (e.name === "AbortError" || isNetworkError(e) || !a.fallback) throw e;
@@ -473,7 +505,7 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
   async function fromPrevious(a, opts) {
     const fb = a.fallback;
     log(`assets: ${a.id} v${a.version || "?"} ${a.url ? "failed" : "has no link yet"}; installing v${fb.version || "?"} (the previous pack)`);
-    const prev = { ...a, version: fb.version, file: fb.file, url: fb.url, sha256: fb.sha256, size: fb.size,
+    const prev = { ...a, version: fb.version, file: fb.file, url: fb.url, mirrors: fb.mirrors || [], sha256: fb.sha256, size: fb.size,
       unpacked_size: fb.unpacked_size, files: fb.files, fallback: fb.fallback || null };
     return downloadOne(prev, opts);
   }
@@ -576,4 +608,4 @@ function requiredBytes(manifest) {
 }
 
 module.exports = { REQUIRED_IDS, renameRetry, renameRetrySync, clearAll, loadManifest, assetsDir, createStore, extractTar, readZipEntries, downloadTo,
-  isNetworkError, freeBytes, sha256File, requiredBytes, safeRel, cmpVersion };
+  isNetworkError, freeBytes, sha256File, requiredBytes, safeRel, cmpVersion, sourcesOf, trySources };

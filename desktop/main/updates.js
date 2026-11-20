@@ -18,7 +18,8 @@
 // every entry) is ignored as a whole. Signing the manifest (minisign) is future hardening.
 //
 // Manifest (schema 2): { schema, version, published_at, assets: [entry] }
-//   entry: id, title, version, file, url (https, allow-listed; null = not uploaded yet), sha256, size, required,
+//   entry: id, title, version, file, url (https, allow-listed; null = not uploaded yet), mirrors ([https url]: the same
+//          tar elsewhere, tried in order after url; optional, older apps ignore it), sha256, size, required,
 //          min_app / max_app (the app versions it works with, inclusive; null = no bound), requires ([{id,
 //          min_version}]: other assets it needs), min_version (in the BUNDLED manifest: the oldest installed version
 //          this app build accepts; older is replaced in the foreground), licence, files [{path, size}], env, subdir,
@@ -62,11 +63,13 @@ function validateManifest(m, { allow = ALLOW_HOSTS } = {}) {
     if (!(Number.isFinite(a.size) && a.size > 0)) err.push(`${id}: size missing`);
     if (typeof a.file !== "string" || !/^[\w.-]+$/.test(a.file)) err.push(`${id}: bad file name`);
     if (a.url != null && !hostAllowed(a.url, allow)) err.push(`${id}: url not https on an allowed host`);
+    if (a.mirrors != null && (!Array.isArray(a.mirrors) || a.mirrors.some((u) => !hostAllowed(u, allow)))) err.push(`${id}: mirrors must be https urls on allowed hosts`);
     // kind "files": a base URL + per-file sha256; kind "tar_members": one https tar (sha256) whose listed members are
     // taken; kind "pack": the previous published version (its tar url + sha256 + files), itself with a fallback
     for (let fb = a.fallback, depth = 0; fb; fb = fb.kind === "pack" ? fb.fallback : null, depth++) {
       if (depth > 2) { err.push(`${id}: fallback nested too deep`); break; }
       if (!hostAllowed(fb.base || fb.url, allow)) err.push(`${id}: fallback not https on an allowed host`);
+      if (fb.mirrors != null && (!Array.isArray(fb.mirrors) || fb.mirrors.some((u) => !hostAllowed(u, allow)))) err.push(`${id}: fallback mirrors must be https urls on allowed hosts`);
       if ((fb.kind === "tar_members" || fb.kind === "pack") && !SHA_RE.test(fb.sha256 || "")) err.push(`${id}: fallback tar sha256`);
       if (fb.kind === "pack" && (!(Number.isFinite(fb.size) && fb.size > 0) || typeof fb.file !== "string" || !/^[\w.-]+$/.test(fb.file))) err.push(`${id}: fallback pack size / file`);
       for (const f of fb.files || []) {
@@ -168,7 +171,7 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
       const cur = st[r.id];
       if (!cur || !store.manifest.assets.some((b) => b.id === r.id)) continue;    // not installed, or unknown to this build
       if (cur.sha256 === r.sha256) continue;
-      if (!r.url) continue;                                                      // not uploaded yet
+      if (!AS.sourcesOf(r).length) continue;                                    // not uploaded yet
       if ((rejected[r.id] || []).includes(r.sha256)) continue;                   // rolled back once: never again
       if (!appCompatible(r, appVersion)) { log(`assets: update ${r.id} v${r.version} needs app ${r.min_app || "*"}..${r.max_app || "*"}; this is ${appVersion}`); continue; }
       if (cmpVersion(r.version || "1", cur.version || "1") < 0) continue;       // never downgrade
@@ -225,12 +228,14 @@ function createUpdater({ store, bundled, appVersion, remoteUrl = REMOTE_URL, log
   async function stage(r, { signal } = {}) {
     status.state = "downloading"; status.downloading = r.id;
     const part = path.join(dl, r.file + ".update.part");
-    await AS.downloadTo(r.url, part, { size: r.size, signal, fetchImpl, pace: pace(signal) });
-    const got = await AS.sha256File(part);
-    if (got !== r.sha256) {
-      await fsp.rm(part, { force: true });
-      throw new Error(`${r.id}: update sha256 mismatch (refused)`);
-    }
+    await AS.trySources(AS.sourcesOf(r), async (url) => {   // its url, then each mirror (the same tar)
+      await AS.downloadTo(url, part, { size: r.size, signal, fetchImpl, pace: pace(signal) });
+      const got = await AS.sha256File(part);
+      if (got !== r.sha256) {
+        await fsp.rm(part, { force: true });
+        throw new Error(`${r.id}: update sha256 mismatch (refused)`);
+      }
+    }, log, `update ${r.id}`);
     const tmp = path.join(pendDir, r.id + ".unpack");
     await fsp.rm(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     await fsp.mkdir(tmp, { recursive: true });
