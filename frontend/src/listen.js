@@ -25,6 +25,21 @@ class Pcm16 extends AudioWorkletProcessor {
 }
 registerProcessor("pcm16-80ms", Pcm16);`;
 
+/** The worklet's same-origin URL: the desktop CSP (script-src 'self') blocks blob: worklets, which made a working mic
+ *  fail with "Another app is using the mic" (AbortError from addModule). */
+export const WORKLET_PATH = "/pcm16_worklet.js";   // frontend/public/: copied as-is (Vite would inline a small src/ file as a data: URL, which the CSP also blocks)
+const workletUrl = () => (typeof location !== "undefined" ? new URL(WORKLET_PATH, location.href).href : WORKLET_PATH);
+/** Load the PCM16 worklet: the same-origin file first, a blob of the same code as a fallback (a page without a CSP). */
+export async function loadPcmWorklet(ctx) {
+  try { await ctx.audioWorklet.addModule(workletUrl()); return "file"; }
+  catch (e) {
+    const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
+    try { await ctx.audioWorklet.addModule(url); return "blob"; }
+    catch (e2) { const err = new Error("The mic's audio worklet failed to load"); err.name = "WorkletError"; throw err; }
+    finally { URL.revokeObjectURL(url); }
+  }
+}
+
 export function createListener(on) {
   let ws = null, ctx = null, stream = null, node = null, src = null, live = false;
   let sent = 0;            // 16 kHz samples sent on this socket: the mic stream's clock (echoref.js stamps playback with it)
@@ -49,8 +64,7 @@ export function createListener(on) {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       if (ctx.state === "suspended") ctx.resume().catch(() => {});
-      const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-      await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
+      await loadPcmWorklet(ctx);
       src = ctx.createMediaStreamSource(stream);
       node = new AudioWorkletNode(ctx, "pcm16-80ms");
       node.port.onmessage = e => {

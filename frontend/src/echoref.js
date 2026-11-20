@@ -15,7 +15,7 @@
 // Not covered: NASA videos (a <video> element with no Web Audio graph), YouTube (an iframe), the browser-voice
 // fallback (speechSynthesis) and UI beeps. Muted playback sends nothing (nothing reaches the mic).
 
-import { WORKLET } from "./listen.js";
+import { loadPcmWorklet } from "./listen.js";
 
 const SR = 16000;
 const MAX_S = 10;              // one message: at most 10 s (the relay takes up to 12)
@@ -66,8 +66,7 @@ export async function fromBlob(blob, playedS = 0, muted = false) {
 /** Tap a Web Audio node (the crew graph's output): what it plays goes to the ear as it plays. Returns an off(). */
 export async function tapNode(ctx, node) {
   try {
-    const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
-    await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
+    await loadPcmWorklet(ctx);   // same-origin file (the CSP blocks blob: worklets)
     const cap = new AudioWorkletNode(ctx, "pcm16-80ms");
     const silent = ctx.createGain(); silent.gain.value = 0;
     let quiet = 0;
