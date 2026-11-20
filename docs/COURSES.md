@@ -1,6 +1,7 @@
 # Courses: from a Moon app to a school of courses
 
-Status: **plan + spike** (branch `docs/courses-plan`). Nothing in this doc is built yet except the spike in §6.
+Status: **P1 built** (courses exist, the Moon is course #1, §4.8). P0 was the plan + spike (§6). P2 (the Earth globe and
+downloadable course packs) is next.
 **P3 content (branch `feat/archaeology-content`):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` /
 `decide` step types (`backend/app/academy/arch_steps.py`, `frontend/src/academy/arch_steps.js`), the course pack's data
 and media (`backend/data/courses/archaeology/`), verified sources, and the ear measurement (`docs/ARC_FEEDBACK.md`).
@@ -376,9 +377,9 @@ packs. Schema, validator and loader: `backend/app/courses.py` (spike). The Moon'
 
 ### 4.4 IDs, progress and privacy
 
-- **Namespacing.** Moon lesson and badge ids stay bare (`moon`, `scout`), so no existing progress migrates. Other
-  courses use `<course>:<id>` (`archaeology:dating`). `atm-academy` badges, `outpost-brain` practice counts and the turn
-  log's lesson ids all take the prefix. Class packs already use `c-<pack>-<lesson>`.
+- **Namespacing.** Stored ids are `<course>:<id>` for every course, the Moon included (`moon:scout`,
+  `archaeology:dating`); a pre-courses save migrates losslessly (§4.8). Lesson files and the backend keep bare ids inside
+  one course. `outpost-brain` practice counts carry their `course`. Class packs already use `c-<pack>-<lesson>`.
 - **Per course, on the device.** Nothing new leaves the computer. A course adds data files (read-only) and counts. The
   turn log records `course` as an enum next to `screen` (no words).
 - **Reset.** "Start over" and "Reset everything" behave as today (`docs/RESET.md`). "Reset everything" also removes
@@ -432,6 +433,59 @@ Effort: S ≤ 1 day, M 2–4 days, L 1–2 weeks (one agent).
 | voice pack is Moon lines | record course lines (the voice pack pipeline) | M | low |
 | knowledge cards are Moon | per-course cards | M | low |
 | iPad bundle | ship course tars in the bundle | S | low |
+
+### 4.8 P1 as built: the course contract
+
+**Manifest fields added in P1** (all optional, so the Archaeology draft still validates; `app/courses.py validate`):
+
+| Field | Shape | Read by |
+|---|---|---|
+| `reading_level` | `{grades, register: kid \| teen, budgets: {prompt, title, hint, success, fail, reveal}}` (words per line) | `content.check()` (`level_problems`), `/api/courses`. Unset budgets keep the Moon's (prompt 20, title 6, hint 12, success 12, fail 8, reveal 20: the longest Moon line today) |
+| `labels` | `{course, school, lessons, patches, patch}` short words | the chip, the Flight School tab (`school`), Progress ("NASA patches" → the course's word) |
+| `ear.keyterms` | up to 100 names | `listen.keyterms()` (Deepgram). Unset (the Moon): the lunar lists in `app/keyterms.py` |
+| `lines` | `{guard: "..."}` content lines for the rules Director | `director._course_line()`. Unset (the Moon): the lines in code |
+| `big_ideas` | `{<lessonId>: {star, idea, codes}}` | the Brain's star map (moved from `brain.js SKILLS`; the Moon's are in `moon.json`) |
+
+**Active course.** Per call sign on the client (`outpost-course`, a profile key in `prefs.js`; default and absent = the
+Moon), per computer on the backend (`<cache or data>/course_state/active.json`, `ACTIVE_COURSE_FILE` in tests). At launch
+`courses.js syncCourse()` reads `GET /api/courses` and, when the backend plays another course, `POST /api/courses/active`.
+A course that is gone (pack removed) falls back to the Moon. Switching (`setCourse`) stores the choice, posts it, fires
+`outpost:course-changed` and reloads the app, as a profile switch does: every module and the globe start clean.
+
+**The registry.** Built-ins from `backend/data/courses/*.json` (status `builtin`), then packs from
+`<COURSE_PACKS_DIR or ASSETS_DIR>/course_<id>/course.json` (status `pack`, paths relative to the pack folder, which must
+be named after the id). A broken manifest is skipped with a reason (`problems`). A pack's own files are served
+read-only at `/course/<id>/<path>` (its Earth map).
+
+**One switch drops every course cache together** (`courses.reload_all()`): the lessons (`content.nasa_course`,
+`course`), the hotlist lesson titles, the session's tables, the entity registry (so the ear's names list,
+`names_list.py`), the ear vocab (`hotlist.vocab`), the Deepgram keyterms, the lesson grader's gazetteer and sites, the
+class packs, and the backend's gazetteer (`main.S["gaz"]`, via `courses.on_change`). Class packs carry `course`
+(default `moon`) and only the active course's packs join its lessons; the rest stay on disk.
+
+**Ids and the migration.** Ids are course-prefixed, `<course>:<id>`. The progress store `atm-academy` is v2:
+`{v: 2, badges: ["moon:scout", …], qualified: ["moon"], steps: {"moon:power": {i, n}}, current: {moon: "moon:power"}}`.
+A v1 save (bare ids, before courses) migrates on first read: every bare id becomes the Moon's, unknown fields ride
+along, and the original string is kept untouched as `atm-academy.v1` (a profile key and a progress key: "Start over"
+keeps it; "erase progress too" and Settings → Cadets → Reset progress remove it). The lesson UI still sees one course
+with bare ids (`courseView` / `mergeView`), so its code did not change. Tests: `frontend/tests/courses.test.js`.
+Note: an app older than P1 reading a v2 store would not see the Moon's patches (prefixed ids); the v1 copy is still
+there for it. The turn log records `course` (an enum) next to `screen`.
+
+**What stays per course (P1)** and what is already agnostic:
+- Agnostic: the registry, switching, ids and progress, the lesson engine and grading, the entity layer and the ear's
+  names-list derivation, the router and the rules Director's logic (floor, privacy, navigation, hint ladder).
+- Per course, read from the manifest: lessons, places, entity registry (names lists), ear vocab, keyterms, reading
+  level, labels, standards, big ideas, the guard line.
+- Still Moon code, to move when a course needs it: the other content lines and regexes in `director.py` (`EARTHRISE`,
+  the hardware and cheese lines), the knowledge cards (`knowledge/cards.py`), the mission sim (a course without an
+  `outpost` mission gets the season engine in P4), the keyterm lists in `keyterms.py` (the Moon's), the voice pack
+  (one per course in P3), and the learned Director's training data (§4.5; the runtime's guarded mode for new courses).
+
+**The switcher.** A chip by the app name (`course_switch.js`, `#courseChip`), hidden while one course is installed.
+Tap, Enter / A on it, or say "switch course" (`a11y.js`): a short list, then one confirm ("Switch to Archaeology? Your
+Moon patches stay."). Esc or Cancel backs out.
+
 
 ---
 

@@ -70,6 +70,15 @@ _PHONE = re.compile(r"\b(my (?:phone|phone number|number|mom s number|dad s numb
 _LONGNUM = re.compile(r"\b\d{5,}\b|\b(?:\d+\s+){3,}\d+\b")
 
 
+def _course() -> str:
+    """The active course id (app/courses.py), "moon" if anything is off."""
+    try:
+        from . import courses
+        return courses.active()
+    except Exception:   # noqa: BLE001
+        return "moon"
+
+
 def redact(text: str, names: list[str] | tuple = ()) -> str:
     """Lowercased, punctuation-free words with call signs, names, addresses and phone-like numbers replaced."""
     q = norm(text or "")
@@ -348,6 +357,7 @@ class SessionLog:
             "text": redact(text, self._names()), "nw": len(ws), "src": source,
             "arc": {"dd": _r(arc.get("device_directed")), "cc": _r(arc.get("command_complete")),
                     "act": list(arc.get("act") or [])[:4]},
+            "course": _course(),   # an enum (the course id), next to the screen: never words (docs/COURSES.md §4.4)
             "frame": {"screen": ctx.screen, "step_type": ctx.step_type, "offer": ctx.offer,
                       "options": [redact(o) for o in (ctx.step_options or [])][:6],
                       "lesson_id": (self.sess.screen or {}).get("lesson_id"), "step": (self.sess.screen or {}).get("step")},

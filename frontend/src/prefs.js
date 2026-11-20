@@ -50,10 +50,11 @@ export function engineChoiceHtml(P, steer, esc = x => String(x)) {
     ${opt("steer", "Steer TTS (Whissle)", note, P.engine === "steer" && ready, !ready)}
     ${getIt ? `<button type="button" class="btn-quiet" data-get-steer>Get the Steer voice (13 MB)</button>` : ""}</div></fieldset>`;
 }
+import { validCourse, viewOfRaw } from "./courses.js";
 const KEY = "outpost-prefs";
 const PROFILES = "outpost-profiles";
 /** The keys that belong to one cadet. */
-export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier", "outpost-brain"];   // [qa] + camera and mission tier; [brain] practice counts
+export const PROFILE_KEYS = ["outpost-callsign", "atm-academy", "atm-academy.v1", "outpost-course", "outpost-a11y", KEY, "outpost-voicebar", "atm-theme", "outpost-gestures", "outpost-tier", "outpost-brain"];   // [qa] + camera and mission tier; [brain] practice counts; [courses] the cadet's course + the pre-courses save
 
 const store = (() => { try { return window.localStorage; } catch (e) { return null; } })();
 function activeProfileId() { try { const s = JSON.parse(get(PROFILES) || "null"); return s && typeof s.active === "string" ? s.active : "p1"; } catch (e) { return "p1"; } }
@@ -176,8 +177,8 @@ export function createPrefs({ globe = null } = {}) {
     return s;
   }
   const summary = data => {
-    const d = data || {}; let prog = { badges: [] }; try { prog = JSON.parse(d["atm-academy"] || "null") || prog; } catch (e) { /* none */ }
-    return { callsign: d["outpost-callsign"] || "", patches: (prog.badges || []).length, qualified: !!prog.qualified };
+    const d = data || {}, prog = viewOfRaw(d["atm-academy"], validCourse(d["outpost-course"]) ? d["outpost-course"] : "moon");   // courses.js: per course, prefixed ids
+    return { callsign: d["outpost-callsign"] || "", patches: prog.badges.length, qualified: !!prog.qualified };
   };
   /** [{id, callsign, patches, qualified, active}] */
   function listProfiles() {
@@ -198,7 +199,7 @@ export function createPrefs({ globe = null } = {}) {
     set(PROFILES, JSON.stringify(s)); location.reload(); return true;
   }
   /** Clear this cadet's patches, qualification and practice counts (the call sign and settings stay). */
-  function resetProgress() { set("atm-academy", null); set("outpost-brain", null); location.reload(); }   // [brain] practice counts go with the patches
+  function resetProgress() { set("atm-academy", null); set("atm-academy.v1", null); set("outpost-brain", null); location.reload(); }   // every course's patches, the pre-courses copy, [brain] practice counts
 
   return {
     get value() { return P; }, update, on(f) { subs.add(f); return () => subs.delete(f); }, wire, setApplied, get applied() { return applied; },

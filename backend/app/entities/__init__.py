@@ -19,5 +19,9 @@ __all__ = ["SCHEMA", "Entity", "Registry", "EntityMemory", "Moment", "ear_list",
 
 @lru_cache(maxsize=1)
 def registry() -> Registry:
-    """This app's registry (Outpost Luna: data/entities/outpost_luna.json)."""
-    return Registry.load(APP_REGISTRY)
+    """The active course's registry (app/courses.py manifest `entities`; the Moon: data/entities/outpost_luna.json)."""
+    try:
+        from .. import courses
+        return Registry.load(courses.path("entities") or APP_REGISTRY)
+    except Exception:   # noqa: BLE001  (a broken course file never takes the ear's names list down)
+        return Registry.load(APP_REGISTRY)

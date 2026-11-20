@@ -24,6 +24,19 @@ def mission_saves(tmp_path_factory, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def course_state(tmp_path_factory, monkeypatch):
+    """Courses (app/courses.py): the active-course file and the installed packs live in a temp folder, never data/ or
+    this computer's assets folder; every test starts on the Moon."""
+    d = tmp_path_factory.mktemp("courses")
+    monkeypatch.setenv("ACTIVE_COURSE_FILE", str(d / "active.json"))
+    monkeypatch.setenv("COURSE_PACKS_DIR", str(d / "packs"))
+    from app import courses
+    courses.courses.cache_clear()
+    yield
+    courses.courses.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def no_embedder(monkeypatch, request):
     """Tests run without the model server's embedder (rules + card aliases only) unless a test patches embed itself."""
     if "real_embedder" in request.keywords:

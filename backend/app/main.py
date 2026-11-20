@@ -15,6 +15,7 @@ from .listen import router as listen_router
 from .local_guard import LocalGuard, env_options as local_guard_options
 from .config import settings
 from .gazetteer import Gazetteer
+from . import courses
 from .director import _voice as voice_moment, direct
 from .moments import MomentIndex, public
 from .readout import summarize
@@ -22,13 +23,20 @@ from .readout import summarize
 S: dict = {}
 
 
+def course_gazetteer() -> Gazetteer:
+    """The active course's places (docs/COURSES.md §4.3; the Moon: places.json + artifacts.json, as always)."""
+    return Gazetteer(courses.path("gazetteer") or settings.data_dir / "places.json")
+
+
+def _swap_gaz() -> None:
+    S["gaz"] = course_gazetteer()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     diag.setup("backend")   # [#92] JSON-lines log + metrics + the daily summary (app/diag.py, docs/DIAGNOSTICS.md)
-    from .academy.content import dev_course   # dev flag OUTPOST_DEV_COURSE: that course's places (docs/COURSES.md P3)
-    dc = dev_course()
-    cp = settings.data_dir / "courses" / str(dc) / "places.json"
-    S["gaz"] = Gazetteer(cp, artifacts=False) if dc and cp.exists() else Gazetteer(settings.data_dir / "places.json")
+    S["gaz"] = course_gazetteer()
+    courses.on_change(_swap_gaz)   # a course switch swaps the places
     S["index"] = MomentIndex(settings.data_dir / "index/clips.json")
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
     asyncio.create_task(_warm_brain())

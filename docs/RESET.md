@@ -71,7 +71,7 @@ too"**, a separate 3-second hold in the same confirm view, erases those as well.
    - calls `reset_downloaded_assets()` for `all`;
    - returns a one-time token, valid for 60 s.
 3. **The page** removes every `outpost*` / `atm-*` / `atm:*` key from localStorage and sessionStorage, except the
-   progress keys (`atm-academy`, `outpost-callsign`, `outpost-brain`, `outpost-missions-flown:*`, and `outpost-profiles` trimmed to each
+   progress keys (`atm-academy` and its pre-courses copy `atm-academy.v1`, `outpost-callsign`, `outpost-course`, `outpost-brain`, `outpost-missions-flown:*`, and `outpost-profiles` trimmed to each
    cadet's progress) unless progress is erased too, and deletes its IndexedDB databases. Then:
    - in a browser (the dev stack), it reloads;
    - in the desktop app, it navigates to `/__outpost/reset?level=…&token=…` (`&erase=1` with "erase progress too").

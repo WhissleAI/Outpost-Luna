@@ -144,6 +144,8 @@ def validate(pack, *, nasa_titles: set[str] | None = None) -> tuple[list[dict], 
     if not (isinstance(pack.get("id"), str) and SLUG.match(pack["id"])):
         _err(errs, "id", "The pack id must be 1 to 24 letters, numbers or hyphens, lower case.")
     _text(errs, "title", pack.get("title"), name="a pack title", words=6, chars=PACK_TITLE_CHARS)
+    if "course" in pack and not (isinstance(pack["course"], str) and re.match(r"^[a-z][a-z0-9-]{1,23}$", pack["course"])):
+        _err(errs, "course", "The course id, like moon (leave it out for the Moon).")
     lessons = pack.get("lessons")
     if not isinstance(lessons, list) or not lessons:
         _err(errs, "lessons", "Add at least one lesson.")
@@ -397,11 +399,27 @@ def problems() -> list[dict]:
 
 
 def lessons() -> list[dict]:
-    """Every Class lesson, pack by pack (pack files in name order), then the preview lesson (hidden from the map)."""
-    out = [l for p in packs() for l in p["lessons"]]
+    """Every Class lesson of the active course, pack by pack (pack files in name order), then the preview lesson (hidden
+    from the map). A pack names its course (`course`, default "moon", docs/COURSES.md §4.3): another course's packs stay
+    on disk and come back when that course is played."""
+    act = _active_course()
+    out = [l for p in packs() for l in p["lessons"] if pack_course(p["source"]) == act]
     if _STATE["preview"]:
         out += _STATE["preview"]
     return out
+
+
+def pack_course(pack: dict) -> str:
+    c = pack.get("course") if isinstance(pack, dict) else None
+    return c if isinstance(c, str) and c else "moon"
+
+
+def _active_course() -> str:
+    try:
+        from .. import courses
+        return courses.active()
+    except Exception:   # noqa: BLE001
+        return "moon"
 
 
 def _changed() -> None:

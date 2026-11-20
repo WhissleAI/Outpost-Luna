@@ -18,6 +18,7 @@ import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./expl
 import { debriefStory } from "./mission/objective.js";
 import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
 import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
+import { activeCourse, courseLabel, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -69,10 +70,9 @@ const parse = s => { try { return JSON.parse(s || "null"); } catch (e) { return 
 const get = (storage, k) => { try { return storage ? storage.getItem(k) : null; } catch (e) { return null; } };
 const flownKey = cs => "outpost-missions-flown:" + (cs || "cadet");
 
-function academyOf(raw) {
-  const p = parse(raw);
-  return { badges: p && Array.isArray(p.badges) ? p.badges.filter(b => typeof b === "string") : [], qualified: !!(p && p.qualified),
-    steps: p && p.steps && typeof p.steps === "object" ? p.steps : {}, current: p && typeof p.current === "string" ? p.current : null };
+/** One cadet's saved progress for a course (courses.js: per course, prefixed ids; a v1 save reads as the Moon's). */
+function academyOf(raw, course = activeCourse()) {
+  return viewOfRaw(raw, course);
 }
 
 /** Every cadet profile on this computer → [{id, active, callsign, academy, flown}]. The playing cadet's data is in the
@@ -86,7 +86,7 @@ export function readCadets(storage = typeof localStorage !== "undefined" ? local
     const read = k => (live ? get(storage, k) : (d[k] ?? null));
     const callsign = String(read("outpost-callsign") || "").slice(0, 18);
     const fl = parse(get(storage, flownKey(callsign)));
-    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy")), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [],
+    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy"), activeCourse(storage)), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [],
       speech: speechSummary(parseSpeech((parse(read("outpost-brain")) || {}).speech)) };   // the Brain's speech section
   });
 }
@@ -184,7 +184,7 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
   return `<article class="pg-cadet${cadet.active ? " is-active" : ""}" data-cadet="${esc(cadet.id)}" aria-label="${esc(name)}">
     <header class="pg-head"><span class="set-av" aria-hidden="true">${esc(name.slice(0, 1).toUpperCase())}</span>
       <h4>${esc(name)}</h4>${tag}${cadet.active ? `<span class="set-tag pg-now">${esc(COPY.playing)}</span>` : ""}</header>
-    <dl class="mx-score pg-stats">${stat(COPY.lessons, `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(COPY.nasaPatches, `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${stat(COPY.missions, cadet.flown.length)}</dl>
+    <dl class="mx-score pg-stats">${stat(courseLabel("lessons", COPY.lessons), `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(courseLabel("patches", COPY.nasaPatches), `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${stat(COPY.missions, cadet.flown.length)}</dl>
     ${s.current ? `<p class="pg-cur"><b>${esc(COPY.inProgress)}</b> ${esc(s.current.title)}, ${esc(COPY.step(s.current.i, s.current.n))}</p>` : ""}
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
     ${brain ? practiceHtml(brain, lessons) : ""}

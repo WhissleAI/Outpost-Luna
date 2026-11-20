@@ -1,0 +1,21 @@
+/* The course switcher (course_switch.js): a chip by the app name, and a short list. Console look: tokens only. */
+.course-chip{margin-left:var(--space-2);padding:2px var(--space-2);border:1px solid var(--color-line-strong);border-radius:var(--radius-full);
+  background:var(--color-surface-2);color:var(--color-text);font:inherit;font-size:var(--text-sm);font-weight:var(--weight-semibold);
+  min-height:28px;cursor:pointer;white-space:nowrap}
+.course-chip:hover{border-color:var(--color-accent)}
+.course-chip:focus-visible{outline:var(--focus-width) solid var(--color-focus);outline-offset:var(--focus-offset)}
+.course-chip[hidden]{display:none}
+.crs-scrim{position:fixed;inset:0;z-index:60;display:grid;place-items:start center;padding:72px 16px 16px;background:var(--color-scrim)}
+.crs-card{width:min(420px,100%);background:var(--color-panel);color:var(--color-text);border:1px solid var(--color-line-strong);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-3);padding:var(--space-5)}
+.crs-title{margin:0 0 var(--space-1);font-size:var(--text-lg)}
+.crs-line{margin:0 0 var(--space-4);color:var(--color-text-2);font-size:var(--text-sm)}
+.crs-list{list-style:none;margin:0 0 var(--space-4);padding:0;display:grid;gap:var(--space-2)}
+.crs-item{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:var(--space-3) var(--space-4);
+  min-height:var(--control-lg);border:1px solid var(--color-line);border-radius:var(--radius-md);background:var(--color-surface);color:inherit;font:inherit;cursor:pointer}
+.crs-item small{color:var(--color-text-2);font-size:var(--text-xs)}
+.crs-item.is-on{border-color:var(--color-accent);background:var(--color-accent-soft)}
+.crs-item:hover,.crs-item:focus-visible{border-color:var(--color-accent);outline:none;box-shadow:var(--focus-ring)}
+.crs-actions{display:flex;gap:var(--space-2);justify-content:flex-end;flex-wrap:wrap}
+.crs-err{min-height:1em;margin:0 0 var(--space-2);color:var(--color-danger);font-size:var(--text-sm)}
+body[data-cockpit="1"] .course-chip{display:none}

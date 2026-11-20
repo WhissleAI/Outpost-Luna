@@ -21,6 +21,9 @@ import { installMissionLearning } from "./mission_learning.js";   // Moon Base o
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP, rideReady } from "./story.js";
+import { courseState, courseLabel, syncCourse } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
+import { installCourseSwitch } from "./course_switch.js";
+import "./course_switch.css";
 import { chime } from "./sound.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
@@ -99,7 +102,7 @@ async function boot() {
   let places;
   // [qa] Offline: keep trying (the desktop app's backend may still be starting), so this is never a dead end.
   for (let tries = 0; !places; tries++) {
-    try { places = await api.places(); }
+    try { if (!courseState.synced) await syncCourse(); places = await api.places(); }   // the cadet's course first: its places, lessons, names
     catch (e) {
       if (!tries) { $("loading").innerHTML = "<b>Can&rsquo;t reach Outpost Luna</b><span>Trying again. If this stays, close the app and open it again.</span>"; $("loading").classList.add("is-error"); }
       await new Promise(res => setTimeout(res, 3000));
@@ -861,6 +864,9 @@ async function boot() {
   (window.__outpost = window.__outpost || {}).screenInvariant = screenInvariant;
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
+  // [courses] the chip names the course (hidden with one course installed); another course names its own school
+  window.__outpost.courseSwitch = installCourseSwitch({ onMore: () => window.__outpost.openStorage && window.__outpost.openStorage() });
+  if (courseState.active !== "moon") $("modeAcademy").textContent = courseLabel("school", "Flight School");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
   $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");   // [qa] a second press goes back
   // A new cadet starts in the Academy; a qualified one in Mission.
