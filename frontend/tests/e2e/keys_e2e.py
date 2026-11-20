@@ -142,9 +142,25 @@ def main():
             pin = act()
             ok("pin" in pin["cls"], f"map: Up moves onto a lesson pin ({pin['label'][:30]})")
             # (learning v1: locked explorer pins are on the map too; Enter on one shows when it opens, not a Start button)
-            press_until(["ArrowDown", "ArrowLeft", "ArrowRight"], "() => document.activeElement.classList.contains('pin') && !document.activeElement.classList.contains('is-locked') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"]), n=4)
+            # the open pins are few now (Field School and the speech lessons sit locked round "Know your Moon", and the globe's
+            # turn decides which is nearest), so a fixed Down/Left/Right walk sometimes ended on a locked pin, where Enter
+            # rightly shows "opens after your check ride" and no Start: steer toward the nearest open pin instead, one
+            # arrow at a time (locked pins in the way are fine to cross)
+            want2 = "() => document.activeElement.classList.contains('pin') && !document.activeElement.classList.contains('is-locked') && document.activeElement.dataset.l !== %s" % json.dumps(pin["l"])
+            steer = """() => { const a = document.activeElement, r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+              const t = [...document.querySelectorAll('.pin:not(.is-locked)')].filter(p => p !== a && p.dataset.l !== %s && p.getClientRects().length)
+                .map(p => { const q = p.getBoundingClientRect(); return [q.left + q.width / 2 - cx, q.top + q.height / 2 - cy]; })
+                .sort((u, v) => Math.hypot(...u) - Math.hypot(...v))[0];
+              return t ? (Math.abs(t[0]) > Math.abs(t[1]) ? (t[0] > 0 ? 'ArrowRight' : 'ArrowLeft') : (t[1] > 0 ? 'ArrowDown' : 'ArrowUp')) : null; }""" % json.dumps(pin["l"])
+            for _ in range(10):
+                if js(want2):
+                    break
+                k = js(steer)
+                if not k:
+                    break
+                press(k, 450)
             pin2 = act()
-            ok("pin" in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically")
+            ok("pin" in pin2["cls"] and "is-locked" not in pin2["cls"] and pin2["l"] != pin["l"], "map: arrows move between pins geographically (to an open one)")
             shot("02-map-pin")
             press("Enter", 1200)
             ok(until("() => document.querySelector('#aStart') && document.querySelector('#aStart').dataset.l === %s" % json.dumps(pin2["l"]), 8000), "map: Enter on a pin selects it (the card shows that lesson)")
@@ -276,6 +292,15 @@ def main():
         until("() => document.activeElement && document.activeElement.id === 'mStart'", 5000, "hub primary")
         ok(press_until(["ArrowUp"], "() => document.activeElement.id === 'mStart'", n=3), "hub: focus is on Start")
         shot("05a-hub")
+        # [ / ] are the keyboard's LB / RB, scoped by screen: on the hub they move to another mission (or site), in the
+        # cabin they are the Systems drawer (below), so the two never fight
+        title0 = js("() => document.querySelector('#mPanel .mx-title').textContent")
+        press("]", 900)
+        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") != title0 and not js("() => !!document.querySelector('#cbSys:not([hidden])')"),
+           "hub: ] shows the next mission (no Systems drawer)")
+        press("[", 900)
+        ok(js("() => document.querySelector('#mPanel .mx-title').textContent") == title0, "hub: [ goes back")
+        until("() => document.activeElement && document.activeElement.id === 'mStart'", 3000, "hub primary after [ ]")
         ok(press_until(["ArrowDown"], "() => document.activeElement.id === 'mHubSite'", n=4), "hub: Down reaches Choose site")
         press("Enter", 1500)
         ok(until("() => !!document.querySelector('#mPanel:not(.mx-hub) .mx-site[aria-checked=true]')", 10000), "hub: Enter on Choose site opens the site navigator")
@@ -383,6 +408,39 @@ def main():
         press("Backspace", 1300)
         ok(act()["cabin"] == "seat", "panel: Backspace also goes back to the seat")
 
+        # the Systems drawer (docs/GAMEPLAY.md §17): ] / [ open and step it, the arrows work its controls, I explains its
+        # gauge, Esc closes it and focus goes back to the Systems key
+        SYS = "() => { const s = document.getElementById('cbSys'); return s && !s.hidden ? s.dataset.sys : ''; }"
+        IN_SYS = "() => document.getElementById('cbSys').contains(document.activeElement)"
+        press("]", 900)
+        ok(js(SYS) != "" and until(IN_SYS, 3000), f"systems: ] opens the drawer ({js(SYS)}), focus moves inside")
+        shot("07b-cabin-systems")
+        p0 = js(SYS)
+        press("]", 800)
+        ok(js(SYS) not in ("", p0) and js(IN_SYS), f"systems: ] steps to the next panel ({js(SYS)}), focus stays inside")
+        press("[", 800)
+        ok(js(SYS) == p0, "systems: [ steps back")
+        press_until(["]"], "() => document.getElementById('cbSys').dataset.sys === 'radiation'", n=5, ms=700)
+        SH_UP = "() => document.activeElement.matches('#cbSys [data-act=shields][data-d=\"10\"]')"
+        got = press_until(["ArrowDown"], SH_UP, n=8) or press_until(["ArrowRight", "ArrowDown"], SH_UP, n=6)
+        ok(got, "systems: the arrows reach Shields + on the Radiation panel")
+        s0 = js("() => +document.getElementById('cbShVal').textContent")
+        if s0 < 60:
+            press("Enter", 2200)
+            ok(until("() => +document.getElementById('cbShVal').textContent !== %d" % s0, 10000), "systems: Enter on Shields + sends the console's order (the knob moves too)")
+        press("i", 900)
+        ok(js("() => { const w = document.getElementById('cbWhy'); return !!w && !w.hidden; }"), "systems: I opens the Why card of the drawer's gauge")
+        press("Escape", 600)
+        ok(js("() => document.getElementById('cbWhy').hidden") and js(SYS) == "radiation", "systems: Esc closes the Why card first, the drawer stays")
+        press_until(["Escape"], "() => document.getElementById('cbSys').hidden", n=2, ms=700)
+        ok(js("() => document.getElementById('cbSys').hidden") and act()["id"] == "cbSysKey", "systems: Esc closes the drawer, focus back on the Systems key")
+        press("Enter", 800)
+        ok(js(SYS) != "", "systems: Enter on the Systems key opens it again")
+        press("Escape", 700)
+        ok(not js("() => !!document.querySelector('#cbMenu:not([hidden])')"), "systems: that Esc closed the drawer, not the pause menu")
+        press_until(["ArrowDown"], "() => document.activeElement.id === 'seatFocus'", n=6)
+        ok(act()["id"] == "seatFocus", "systems: Down from the Systems key goes back to the consoles")
+
         # storm (forced by the dev hook: a state, not an input) → the Now card carries the decision ([polish 3]: the alert
         # strip has no buttons); Up from the seat reaches its "Crew into the shelter", Enter sends it
         js("() => window.__cabinTest.storm(true)")
@@ -415,7 +473,8 @@ def main():
         # End shift + finish: the pedestal
         ok(seat_to("pedestal"), "seat: reach the pedestal (End shift)")
         press("Enter", 1300)
-        if js("() => !document.getElementById('cbEnd').disabled"):
+        # [0.4.1] the mission's End shift lives in the Menu (Esc); only the check ride keeps one on the pedestal
+        if js("() => { const e = document.querySelector('[data-panel=pedestal] #cbEnd'); return !!e && !e.disabled; }"):
             ok(in_panel_to("() => document.activeElement.id === 'cbEnd'"), "pedestal: arrows reach End shift")
             press("Enter", 4000)
             ok(True, "pedestal: Enter ends the shift")

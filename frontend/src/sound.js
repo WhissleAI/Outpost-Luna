@@ -51,6 +51,32 @@ export function radioBeep() {
   o.connect(g).connect(out); o.start(t + 0.13); o.stop(t + 0.28);
 }
 
+/** When each chapter star lands (ms after the card opens): the same beat as cabin.css (.cb-ch-stars, --i). */
+export const STAR_MS = [450, 900, 1350];
+/** Notes of the chapter cue: one rising bell note per star earned, on the beat the star lands, then a soft chord when
+ *  all three are in. Plain sine partials like chime(), Volume-scaled; Mute (levels().master 0) plays nothing. -> notes */
+export function starCueNotes(n) {
+  const k = Math.max(0, Math.min(3, n | 0)), hz = [659.25, 783.99, 987.77];
+  const notes = Array.from({ length: k }, (_, i) => ({ at: STAR_MS[i] / 1000, hz: hz[i], amp: 1, len: 0.45 }));
+  if (k === 3) notes.push({ at: STAR_MS[2] / 1000 + 0.32, hz: 1318.5, amp: 0.5, len: 0.9 }, { at: STAR_MS[2] / 1000 + 0.32, hz: 987.77, amp: 0.4, len: 0.9 });
+  if (!k) notes.push({ at: 0.45, hz: 523.25, amp: 0.6, len: 0.4 });   // no star: one soft note, the moment still lands
+  return notes;
+}
+export function starCue(n) {
+  const L = (typeof window !== "undefined" && window.__outpost && window.__outpost.levels) || { master: 1 };
+  if (!L.master) return [];
+  const a = ac(); if (!a) return [];
+  const t0 = a.currentTime + 0.01, out = a.createGain(); out.gain.value = 0.1 * L.master; out.connect(a.destination);
+  const notes = starCueNotes(n);
+  notes.forEach(({ at, hz, amp, len }) => {
+    const o = a.createOscillator(), g = a.createGain(), t = t0 + at;
+    o.type = "sine"; o.frequency.value = hz;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(out); o.start(t); o.stop(t + len + 0.02);
+  });
+  return notes;
+}
+
 /** Smoothly move an <audio> element's volume to `to` over `ms`. */
 export function fadeTo(el, to, ms = 180) {
   return new Promise(res => {

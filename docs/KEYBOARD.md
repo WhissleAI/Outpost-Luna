@@ -36,6 +36,7 @@ Code:
 | <kbd>S</kbd> | `settings` | Opens Settings. |
 | <kbd>C</kbd> | `captions` | Turns captions on or off, with a toast. While lettered answers are up, C is answer C. |
 | <kbd>R</kbd> | `recenter` | Cabin: **Center view**. The camera goes back to the seat pose (any panel closes, any look offset goes, the window shows the site). Voice: "center", "look forward", "reset view". |
+| <kbd>I</kbd> | `why` | Cabin: the "Why?" card for the lit gauge (docs/PHYSICS.md); with the Systems drawer open, the drawer's focused (i), else its panel's gauge. |
 | <kbd>V</kbd> | `view_next` | Cycles the cabin window view: Orbit → Site → Rover → Earth. |
 | <kbd>O</kbd> | `panel_open` | Opens the lit cabin panel. |
 | <kbd>T</kbd> | `task_step` | Cabin: does the Now panel's step (its button wears a **T**). <kbd>Y</kbd> does too when no yes/no waits. |
@@ -43,6 +44,7 @@ Code:
 | <kbd>K</kbd> | `time_toggle` | Cabin: pauses or runs the mission clock (docs/GAMEPLAY.md). |
 | <kbd>W</kbd> | `time_warp` | Cabin: time warp 1x → 2x → 4x. |
 | <kbd>E</kbd> | `skip_event` | Cabin: skip to the next event. |
+| <kbd>[</kbd> / <kbd>]</kbd> | `systems {arg: prev / next}` | Cabin: the **Systems drawer** (docs/GAMEPLAY.md §17), the keyboard's LB / RB. Opens it (at the Now job's panel) and steps its panels; they wrap. Esc closes it. Outside the cabin they are previous / next, like LB / RB (the hub's mission strip, the picker's sites), so the drawer and the hub never fight. Also <kbd>{</kbd> / <kbd>}</kbd>, and the same physical keys on any layout (`code` BracketLeft / BracketRight). |
 | <kbd>/</kbd> | `focus_input` | Focuses the text box: the call-sign field on Home, the voice bar's field everywhere else. |
 | <kbd>Shift</kbd>+arrows, <kbd>+</kbd> <kbd>−</kbd> | rotate / zoom | On the Moon: turn it, and zoom. |
 | <kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd>, <kbd>Alt</kbd>+<kbd>Y</kbd>/<kbd>N</kbd>, <kbd>Alt</kbd>+<kbd>.</kbd>, <kbd>Alt</kbd>+<kbd>A</kbd>/<kbd>W</kbd>/<kbd>P</kbd> | (unchanged) | The existing shortcuts: next / prev, yes / no, stop, settings, "where am I", pick a place. The new keys never use a modifier, so the two sets can't collide. |
@@ -79,7 +81,7 @@ The arrows never land on the two grips: Tab reaches them.
   3. a `<dialog>` (About);
   4. an `aria-modal` dialog (calibration);
   5. a glossary card that has focus;
-  6. an **open cabin panel** (the panel plus the Seat button);
+  6. the cabin's **Systems drawer** (the drawer, the Now card and the window keys), then an **open cabin panel** (the panel plus the Seat button);
   7. the **cabin seat**: the panels, the window views, the alert strip, the comm row and the top bar;
   8. a **lesson card**: the card, the Moon reticle on a Moon step, the site pins of a compare step, and the answer card.
 
@@ -111,6 +113,7 @@ pin, so the card shows that lesson, and the second <kbd>Enter</kbd> starts it.
 
 - **Entering the cabin.** The seat takes focus: the panel the **Now** objective points at (cabin.js `point()`, `.is-point`), else the lit panel, else Displays. Inside a panel opened to answer the objective, its glowing control is focused first.
 - **Seat view.** Focus sits on a proxy (`#seatFocus`) that stands over the lit panel and draws its ring. The arrows move across the six console faces (Habitat, Rover, Displays and power, Radiation, Comm, and the pedestal with Caution and warning and End shift). The focused face is lit (`missionUI.intent("highlight_panel")`, the head-look highlight), and the chip says "Enter · open". The arrows also reach the window views, the comm row and the top bar. While the Now card asks for a decision (a storm, CAPCOM's yes / no), **Up** from the seat goes to its first button. **Enter** or **O** opens the lit panel.
+- **The Systems drawer** (docs/GAMEPLAY.md §17). <kbd>]</kbd> / <kbd>[</kbd> (LB / RB) open it and step its panels; Enter on the Systems key toggles it. While it is open the arrows move inside the drawer, the Now card and the window keys (a scope, like a sheet). Opening it by key or pad puts focus on the glowing control, else the first control. Esc / B closes a Why card first, then the drawer, then (next press) opens the pause menu; focus goes back to the Systems key.
 - **Inside a panel.** The arrows move between the panel's controls. The shield knob turns with <kbd>←</kbd> <kbd>→</kbd>. **N / P** go to the next / previous panel. **Esc** or **Backspace** goes back to the seat, and focus returns to the panel just left. A panel opened by voice, a gesture or a click also pulls focus inside it while keys are in use.
 
 ## Gamepad (`gamepad.js`)
@@ -126,8 +129,8 @@ instead of "Enter".
 | A / Cross | `select` |
 | B / Circle | `back` |
 | X / Square | `mic` |
-| Y / Triangle | `help` |
-| LB / RB (L1 / R1) | `prev` / `next` |
+| Y / Triangle | `help`. In the cabin with the Systems drawer open: `why` for the focused (i), else the panel's gauge |
+| LB / RB (L1 / R1) | `prev` / `next` (the hub: another mission). In the cabin only: `systems` (the drawer's previous / next panel; it opens at the Now job's panel) |
 | Right stick | Outside the cabin: `spin` (spins the Moon at a rate, with easing and a little momentum: the same rate control as the camera fist, docs/GESTURES.md §Fist spin). In the cabin: `look`, which looks around and lights the aimed panel, the same as the head gesture. |
 | Start / Options | `settings` |
 
@@ -221,6 +224,10 @@ still work.
 | **Cabin, panel** | Use a control | the order ("shields to 40") | point + dwell | arrows + Enter; knob ← → | click |
 | | Next / previous panel | "open the rover panel" | swipe | N / P | — |
 | | Back to the seat | "back to my seat" | sit back | Esc, Backspace | Seat |
+| **Cabin, Systems drawer** | Open it, next / previous panel | "systems", "show power", "next panel" | — | ] / [; LB / RB | the Systems key, a tab |
+| | Use a control | the order ("shields to 40") | point + dwell | arrows + Enter; A | click |
+| | Why? for a gauge | "why is power low?" | — | I; Y | the (i) |
+| | Close it | "close systems" | — | Esc, Backspace; B | × |
 | **Storm (Now card)** | Crew into the shelter, Shields to 40 | "everyone to the shelter", "shields to 40" | point | Up from the seat, Enter (or T) | the Now card's button |
 | **Confirm (risky order)** | Yes / No on the Now card | "yes" / "no" | thumbs up / down | Y / N (N means no while it waits) | Yes / No |
 | **Houston** | Call Houston | "call Houston" | — (raise hand removed: an open hand is always stop) | Comm panel → Call Houston, Enter | Call Houston |

@@ -805,6 +805,19 @@ with the Radiation console open, the Rover console, the check-ride storm, the Si
 - **ux_audit2.py** holds "Reset my patches" for 3.4 s with a real pointer (a tap first, which must do nothing) instead
   of clicking it twice.
 
+### 0.4 part 2 follow-up: the Systems drawer and the feedback moments
+
+The cabin's systems as one big panel at a time on the right wall (the Systems key at the end of the window keys, LB /
+RB, [ / ], "show power", "next panel"), labels 20 px and up, the console look (bezel keys, phosphor read-outs). Cadet
+sees Power, Radiation, Rover; Commander adds Life support and Radio; Engineer adds the units and the equations. The
+Now card stays the one instruction; the 3D consoles stay as the art. An objective done pulses the Now card and its
+control; the chapter card lands its stars one by one with a cue. Details and shots: docs/GAMEPLAY.md §17.
+
+The Log key moved from the end of the progress strip to the window-key row, beside Systems: the bar's display clips
+its overflow, and the strip (Days · Science home · Ice · Log) was wider than the display at 1024, 1280 and 1440, so the
+Log key was never on screen (keyboard focus could still land on it, unseen). Under 1600 px the strip says "Science"
+(not "Science home") and "+3" (not "+3 to send"), so Ice fits too; the tooltip keeps the full words.
+
 ## Copy requests (for the copy owner)
 
 - **Mission (from Mission UX):**

@@ -6,6 +6,7 @@ import { registerFlow, flowLog, pauseCaption } from "../flows.js";   // [flows] 
 import { sayStyle, stopSpeaking } from "../floor.js";
 import { parseCommand } from "./mock.js";
 import { createCabin } from "./cabin.js";
+import { systemWord } from "./systems.js";   // the Systems drawer's voice words (docs/GAMEPLAY.md §17)
 import { createTerrainView } from "./terrain.js";
 import "./mission.css";
 import { icon } from "../assets/icons.js";
@@ -103,6 +104,10 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
         r.update(state); setTimeout(() => r.cue(target), 300); window.__ride = r; },
       panel(id) { if (!cockpit) return; if (id) cockpit.openPanel(id); else cockpit.seat(); },
       calling() { if (cockpit) cockpit.calling(true, 2600); },
+      // [wave 5] the feedback moments for screenshots (tools/systems_shots.py): a chapter card, the objective-done pulse
+      chapter(stars = { safe: true, powered: true, science: true }) { const count = Object.values(stars).filter(Boolean).length;
+        showChapter({ n: 2, of: 5, title: "The long night", days: [3, 4], stars, count, capcom: count === 3 ? "Perfect shift, crew." : "Good shift. Keep the science moving.", last: false }); },
+      pulse() { return cockpit && cockpit.pulse ? cockpit.pulse().length : 0; },
       // a story moment on the glass (tools/mission_ui.py checks it never sits on the rover pill, the tabs or the Now panel)
       moment(title = "On our own") { if (cockpit && cockpit.moment) cockpit.moment({ title, visual: "earthset", objective: "No radio for now. Keep the crew safe.", t_h: (state && state.mission_time_h) || 0 }); },
       debrief(outcome, extra = {}) { if (!state) return; fakeDebrief = fakeDb(outcome, extra); if (outcome !== "in_progress") { state.over = true; state.outcome = outcome; } showDebrief(); },
@@ -221,8 +226,35 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const PANEL_WORDS = [[/\b(power|display|displays|main) (panel|displays?)\b|\bopen (the )?power\b/, "power"], [/\b(habitat|hab|shelter) panel\b|\bopen (the )?(habitat|hab)\b/, "habitat"],
     [/\b(comm|comms|radio|houston) panel\b|\bopen (the )?comms?\b/, "comm"], [/\brover panel\b/, "rover"], [/\b(radiation|shield|shields|storm) panel\b/, "radiation"], [/\b(back to (my |the )?seat|close (the )?panel|seat view)\b|^back$/, "seat"]];
   function panelWord(text) {
-    const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit || !cockpit.is3d) return false;
-    if (m[1] === "seat") cockpit.seat(); else cockpit.openPanel(m[1]); return true;
+    const tl = String(text || "").toLowerCase().trim(), m = PANEL_WORDS.find(([re]) => re.test(tl)); if (!m || !cockpit) return false;
+    if (m[1] === "seat") { if (cockpit.systemsOpen) cockpit.systems(false); if (cockpit.is3d) cockpit.seat(); return true; }
+    if (openSystemFor(m[1])) return true;
+    if (!cockpit.is3d) return false;
+    cockpit.openPanel(m[1]); return true;
+  }
+  /** [systems] A console's name ("the power panel") opens its drawer panel when this level has it; the 3D console
+   *  otherwise (a Cadet's Comm and Habitat stay in the cabin's art, the Now card's button still does their job). */
+  const SYS_OF_PANEL = { power: "power", displays: "power", radiation: "radiation", rover: "rover", habitat: "life", comm: "radio" };
+  function openSystemFor(panelId) {
+    const id = SYS_OF_PANEL[panelId]; if (!id || !cockpit || !cockpit.systems || !(cockpit.systemsList || []).includes(id)) return false;
+    return cockpit.systems(true, id);
+  }
+  /** "show power", "next panel", "systems", "close systems", LB / RB, [ / ], the Systems key's words. */
+  function systemsAct(arg) {
+    if (screen !== "hud" || !cockpit || !cockpit.systems || tour.active) return false;
+    if (cockpit.menuOpen || cockpit.chapterOpen) return false;
+    nudge.heard();
+    // keys or a controller: focus goes into the drawer (and back to the Systems key when it closes); voice and a
+    // pointer leave focus where it is
+    const focus = ["keys", "pad"].includes(document.documentElement.dataset.input), o = { focus };
+    if (arg === "close") return cockpit.systems(false, null, o);
+    if (arg === "next" || arg === "prev") return cockpit.systemsStep(arg === "next" ? 1 : -1, o);
+    if (arg === "toggle") return cockpit.systemsOpen ? cockpit.systems(false, null, o) : cockpit.systems(true, null, o);
+    if (cockpit.systems(true, arg || null, o)) return true;
+    // a panel this level leaves out ("show the radio" as a Cadet): its 3D console, as before the drawer
+    const con = { radio: "comm", life: "habitat" }[arg];
+    if (con && cockpit.is3d) { cockpit.openPanel(con); return true; }
+    return false;
   }
   function exit() { nv.hide(); coach.stop(); if (tour.active) tour.end(false); gen++; entered = false; screen = "off"; if (unsub) { unsub(); unsub = null; } /* [qa] no telemetry stream while away */ hideCabin(); globe.mission.exit(); panel.hidden = true; panel.classList.remove("mx-brief"); banner.hidden = true; debriefEl.hidden = true; signal.hidden = true; }
 
@@ -633,6 +665,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
     stop() { clearTimeout(this.t); clearTimeout(this.h); this.left = 0; } };
 
   // ---------- the live mission clock (mission/clock.js) ----------
+  let lastProg = null;   // [wave 5] {task, done}: the Now card's step count, for the done pulse
   let lastTask = null, lastAck = 0, ackShown = null, ackUntil = 0, beatsSeen = new Set(), decisionAt = 0, stepping = null;
   // ---------- [polish 3] one instruction at a time (docs/MISSION_POLISH_SPEC.md, problem 3) ----------
   // Every question CAPCOM asks in the cabin (a yes / no, the Director's offer) is the Now card: never a second card in
@@ -841,13 +874,19 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   function renderCard() {
     if (!cockpit || !state || screen !== "hud") return;
     const c = tour.active ? null : cardNow();
+    let done = false;
     if (state.ack && state.ack.n !== lastAck) {   // "Shields up. Good.": shown on the card, said once
-      lastAck = state.ack.n; ackShown = state.ack.text; ackUntil = Date.now() + 4500;
+      lastAck = state.ack.n; ackShown = state.ack.text; ackUntil = Date.now() + 4500; done = true;
       if (!tour.active) { radio("capcom", ackShown); say(ackShown, null, { priority: 4 }); }
     }
     const ack = Date.now() < ackUntil ? ackShown : null;
     if (cockpit.card) cockpit.card(c, { ack, cadet: levelNow() === "cadet" }); else if (cockpit.objective) cockpit.objective(c);
     if (tour.active) return;
+    // [wave 5] an objective done (the sim's ack, or one more step of the same job): the Now card and its control pulse
+    const pg = c && c.progress && c.task ? { task: c.task, done: c.progress.done } : null;
+    if (!done && pg && lastProg && pg.task === lastProg.task && pg.done > lastProg.done) done = true;
+    lastProg = pg || (c && c.task ? lastProg : null);
+    if (done && cockpit.pulse) cockpit.pulse();
     cockpit.point(c ? c.target : null);
     cockpit.focus(c && levelNow() === "cadet" ? c.panel : null);
     const t = state.task;
@@ -921,6 +960,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       onChapter: () => chapterGo(),
       onTask: b => taskButton(b),
       onWhy: c => sayWhy(c),
+      level: () => levelNow(),
+      onSystems: () => {},
     });
     mclock.attach(); cockpit.clock(mclock.state);
     dockIn();
@@ -954,6 +995,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
   const TASK_GAUGE = { storm_prep: "dose", storm_hit: "dose", all_clear: "dose", night_prep: "heaters", sunrise: "power", low_power: "battery",
     life_check: "life_support", ice_run: "rover", repair: "power", first_power: "shields", comm_window: "battery", science: "dose" };
   function whyGauge() {
+    if (cockpit && cockpit.systemsGauge) return cockpit.systemsGauge;   // [systems] the drawer's panel (or its focused (i))
     const lit = cockpit && (cockpit.highlighted || (cockpit.panel && cockpit.panel !== "seat" ? cockpit.panel : null));
     if (lit && PANEL_GAUGE[lit]) return PANEL_GAUGE[lit];
     const t = state && state.task; if (t && TASK_GAUGE[t.kind]) return TASK_GAUGE[t.kind];
@@ -1149,6 +1191,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
           !c.buttons.every(o => o.label.toLowerCase().split(/[^a-z]+/).includes(x))); });
         if (hit.length === 1) { radio("kid", text); taskButton(hit[0]); return true; } } }
     radio("kid", text);
+    { const sw = systemWord(text); if (sw) return systemsAct(sw.close ? "close" : sw.step ? (sw.step > 0 ? "next" : "prev") : sw.open) !== false; }
     if (panelWord(text)) return true;
     const tl = text.toLowerCase(), vw = VIEW_WORDS.find(([re]) => re.test(tl));
     if (vw && cockpit) { cockpit.setView(vw[1]); return true; }
@@ -1475,7 +1518,11 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (["accept_offer", "yes"].includes(intent) && !pending && doTaskStep()) return true;
     }
     if (intent === "help") { const t = whatNow(); if (!t) return false; if (screen === "hud") radio("capcom", t); say(t); return true; }
+    if (intent === "systems") return systemsAct(arg);
+    if (intent === "back" && screen === "hud" && cockpit && cockpit.systemsOpen) return cockpit.systems(false);
     const pn = { panel_power: "power", panel_habitat: "habitat", panel_comm: "comm", panel_rover: "rover", panel_radiation: "radiation", panel_back: "seat" }[intent];
+    if (pn && screen === "hud" && cockpit && pn === "seat" && cockpit.systemsOpen) { cockpit.systems(false); if (cockpit.is3d) cockpit.seat(); return true; }
+    if (pn && screen === "hud" && pn !== "seat" && openSystemFor(pn)) return true;   // [systems] the drawer's panel, when the level has it
     if (pn) { if (screen === "hud" && cockpit && cockpit.is3d) { pn === "seat" ? cockpit.seat() : cockpit.openPanel(pn); return true; } return false; }
     const vw = { view_orbit: "orbit", view_rover: "rover", view_site: "site" }[intent];
     if (vw) { if (screen === "hud" && cockpit) { cockpit.setView(vw); return true; } return false; }
@@ -1531,6 +1578,7 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       case "pause_menu": return openMenu();
       case "time_ff": return clockAction("ff", !!(arg && arg.on));
       case "why": return openWhy(arg && (arg.gauge || arg.arg), "key");
+      case "systems": return systemsAct(arg && typeof arg === "object" ? arg.arg : arg);
       default: return nav(name, arg);
     }
   }
@@ -1575,6 +1623,8 @@ export function createMissionUI({ globe, card, placeById, say: say0, alertSound,
       if (screen !== "hud" || !cockpit || tour.active) return false;
       if (cockpit.chapterOpen) return chapterGo();
       if (cockpit.menuOpen) return closeMenu(true);
+      if (cockpit.whyOpen && ev && ["keyboard", "gamepad"].includes(ev.source)) { cockpit.whyClose(); return true; }   // B: the Why card first
+      if (cockpit.systemsOpen) return cockpit.systems(false, null, { focus: true });   // [systems] Esc / B closes the drawer first
       return ev && ["keyboard", "gamepad"].includes(ev.source) ? openMenu() : false;
     },
     why: (a, ev) => screen === "hud" ? openWhy(a && (a.gauge || a.arg), ev && ev.source === "voice" ? "voice" : "key") : false,   // "why is power low?", the I key
