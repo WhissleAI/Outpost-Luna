@@ -133,6 +133,15 @@ def main():
             press("Backspace", 100)
             ok(js("() => document.getElementById('aCsIn').value") == "Nova", "home: letters and Backspace type in the field (M, Backspace aren't shortcuts there)")
             press("Enter", 1500)
+            # [courses] a backend with a downloadable course shows the first-run pick (course_pick.js): focus on the
+            # Moon, 2 / Down reach the next course, Enter on the Moon starts it
+            if until("() => !!document.querySelector('#aPanel .a-crs-opt')", 4000):
+                ok(until("() => document.activeElement && document.activeElement.dataset.crs === 'moon'", 3000), "course pick: focus starts on the Moon")
+                press("ArrowDown", 400)
+                ok((act().get("cls") or "").startswith("a-crs-opt") and "is-default" not in act()["cls"], "course pick: Down reaches the next course")
+                press("ArrowUp", 400)
+                ok("is-default" in (act().get("cls") or ""), "course pick: Up goes back to the Moon")
+                press("Enter", 1500)
             ok(until("() => !!document.querySelector('.mp-card')", 20000), "home: Enter in the field saves the call sign → Moon map")
 
             # ---------------- the Moon map: pins ----------------

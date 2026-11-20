@@ -47,6 +47,31 @@ body[data-aview="home"] .card,body[data-aview="map"] .card,body[data-aview="home
    While it shows, the credit lines move up above it. */
 :is(html[data-input="keys"], html[data-input="pad"]) :is(.h-credit, .mp-credit){bottom:calc(var(--gut) + 40px)}
 html[data-contrast="high"] .apanel.is-home{background:#000}
+/* [courses] the first-run course pick (course_pick.js): after the call sign, same home look over the globe */
+.crp-form{width:100%;max-width:460px}
+.crp-sub{margin:0}
+.crp-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-2);width:100%}
+.a-crs-opt{position:relative;width:100%;display:flex;align-items:flex-start;gap:var(--space-3);text-align:left;padding:var(--space-3) var(--space-4);
+  min-height:var(--control-lg);border-radius:var(--radius-md);border:1px solid rgba(243,245,248,.24);background:rgba(255,255,255,.06);
+  color:var(--color-on-space);font:inherit;cursor:pointer;transition:border-color var(--dur-fast),background var(--dur-fast)}
+.a-crs-opt:hover{border-color:var(--color-on-space-2);background:rgba(255,255,255,.1)}
+.a-crs-opt:focus-visible{outline:none;border-color:var(--color-on-space);box-shadow:0 0 0 3px rgba(141,178,255,.5)}
+.a-crs-opt .a-key{flex:none;display:grid;place-items:center;width:24px;height:24px;margin-top:1px;border-radius:var(--radius-sm);
+  border:1px solid rgba(243,245,248,.3);font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-on-space-2)}
+.crp-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crp-txt b{font-size:var(--text-md);font-weight:var(--weight-semibold)}
+.crp-line{font-size:var(--text-sm);color:var(--color-on-space)}
+.crp-meta{font-size:var(--text-xs);color:var(--color-on-space-2);font-family:var(--font-mono);letter-spacing:.02em}
+.crp-actions{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.apanel.is-home .crp-actions .btn-quiet{color:var(--color-on-space-2)}
+.apanel.is-home .crp-actions .btn-quiet:hover{color:var(--color-on-space)}
+.crp-title{font-size:var(--text-xl)}
+.crp-wrap .h-copy .crp-title{font-size:var(--text-2xl)}
+.crp-bar{width:100%;height:8px;border-radius:var(--radius-full);background:rgba(255,255,255,.12);overflow:hidden}
+.crp-bar i{display:block;height:100%;background:var(--color-accent);border-radius:inherit;transition:width var(--dur-base) var(--ease-out)}
+.crp-state,.crp-later{margin:0;font-size:var(--text-sm);color:var(--color-on-space-2)}
+.crp-later{color:var(--color-on-space)}
+html[data-contrast="high"] .a-crs-opt{border-color:#fff;background:#000}
 
 /* ---------- the Moon map: pins on real places, one Next-up card ---------- */
 .apanel.is-map{inset:0;pointer-events:none;animation:fade var(--dur-slow) var(--ease-out)}

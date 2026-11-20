@@ -5769,6 +5769,11 @@
     }
    ],
    "on_demand": true,
+   "course": {
+    "program": "Field Archaeology: the Mesa Verde region",
+    "subject": "Social studies (history, geography, civics) with science methods",
+    "grades": "9-12"
+   },
    "note": "A course pack (docs/COURSES.md \u00a74.2): installed into <assets>/course_<id>/, removable."
   }
  ],

@@ -23,7 +23,7 @@ import { callSign, HELP, rideReady, SCHOOL, TRANSITION } from "./story.js";
 import { courseState, courseLabel, syncCourse } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
 import { installCourseSwitch } from "./course_switch.js";
 import "./course_switch.css";
-import "./course_store_ui.js";   // Settings → For grown-ups → Course storage: download / remove / switch (docs/COURSES.md §4.2)
+import { moreCourses } from "./course_store_ui.js";   // Settings → For grown-ups → Course storage: download / remove / switch (docs/COURSES.md §4.2)
 import { chime } from "./sound.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
@@ -875,7 +875,7 @@ async function boot() {
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // [courses] the chip names the course (hidden with one course installed); another course names its own school
-  window.__outpost.courseSwitch = installCourseSwitch({ onMore: () => { try { dispatchEvent(new CustomEvent("outpost:course-storage")); } catch (e) { /* */ } } });
+  window.__outpost.courseSwitch = installCourseSwitch({ onMore: () => { try { dispatchEvent(new CustomEvent("outpost:course-storage")); } catch (e) { /* */ } }, more: () => moreCourses() });
   if (courseState.active !== "moon") $("modeAcademy").textContent = courseLabel("school", "Flight School");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
   $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");   // [qa] a second press goes back

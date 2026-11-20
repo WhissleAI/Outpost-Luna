@@ -217,3 +217,15 @@ def test_crew_talk_offers_an_exact_answer_back_as_a_chip():
     # said again, clearly to us: it simply answers (no chip)
     loud = ctx("ride", dd=0.9, recent=[], step=st, step_type="predict", step_options=c().step_options)
     assert route("yes", loud)["outcome"] == "answer"
+
+
+def test_first_run_course_pick_takes_a_course_name_or_skip():
+    """[courses] The first-run pick (academy/ui.js "coursepick"): a course's name or a skip word is the answer; a
+    question still works; a name inside a long sentence is not a pick."""
+    c = lambda **k: ctx("coursepick", step_options=["The Moon", "Moon", "Archaeology"], **k)  # noqa: E731
+    for t in ("the moon", "moon", "Archaeology", "archaeology please", "I want archaeology", "skip", "not now", "pick for me", "the moon course"):
+        assert route(t, c())["reason"] == "course", t
+    assert route("archaeology", c(source="typed", dd=None))["outcome"] == "answer"
+    assert route("we were talking about archaeology at lunch with my friend today", c())["reason"] != "course"
+    assert route("what is archaeology?", c())["outcome"] == "question"
+    assert route("archaeology", ctx("map"))["reason"] != "course"   # only on the pick screen

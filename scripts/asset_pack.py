@@ -382,6 +382,17 @@ def course_assets() -> list:
         if isinstance(m, dict) and m.get("status") == "pack":
             out.append((f"course_{m['id']}", f"Course: {m['title']}", False, (lambda f=f: src_course(f)), [], "", ""))
     return out
+
+
+def course_card(aid: str) -> dict:
+    """What the catalog says about a course before it is downloaded (the first-run pick, Course storage:
+    app/course_packs.py card): program, subject and grades from the source manifest. Metadata only, so the tar (and
+    its sha256) does not change."""
+    try:
+        m = json.loads((COURSES_SRC / f"{aid[len('course_'):]}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: m[k] for k in ("program", "subject", "grades") if isinstance(m.get(k), str) and m[k].strip()}
 # ---- end course packs ------------------------------------------------------------------------------------------------
 
 
@@ -481,6 +492,8 @@ def build(only: set[str] | None) -> dict:
         if aid.startswith("course_"):   # a course pack: downloaded when a grown-up picks it (Storage / the switcher)
             a.setdefault("version", "1")   # older apps never fetch it: on_demand, and they have no courses
             a["on_demand"] = True
+            if course_card(aid):
+                a["course"] = course_card(aid)
             a["note"] = "A course pack (docs/COURSES.md §4.2): installed into <assets>/course_<id>/, removable."
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}

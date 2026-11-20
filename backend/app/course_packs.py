@@ -50,8 +50,25 @@ def catalog(manifest: Path | None = None) -> list[dict]:
             out.append({"id": a["id"][len(PREFIX):], "asset": a["id"], "title": a.get("title") or a["id"],
                         "size": int(a.get("size") or 0), "unpacked_size": int(a.get("unpacked_size") or a.get("size") or 0),
                         "version": str(a.get("version") or "1"), "sha256": a.get("sha256"), "file": a.get("file"),
-                        "url": a.get("url"), "files": a.get("files") or []})
+                        "url": a.get("url"), "files": a.get("files") or [],
+                        "card": card(a["id"][len(PREFIX):], a.get("course"))})
     return out
+
+
+CARD_KEYS = ("program", "subject", "grades")
+
+
+def card(cid: str, meta: dict | None = None) -> dict:
+    """What a course says about itself before it is downloaded (the first-run pick, Course storage): {program,
+    subject, grades}. From the catalog entry's `course` (scripts/asset_pack.py copies it from the source manifest),
+    else from the source manifest in a dev checkout (backend/data/courses/<id>.json), else empty."""
+    m = meta if isinstance(meta, dict) else None
+    if m is None:
+        try:
+            m = json.loads((courses.DIR / f"{cid}.json").read_text())
+        except (OSError, ValueError):
+            m = {}
+    return {k: str(m[k]) for k in CARD_KEYS if isinstance(m.get(k), (str, int)) and str(m[k]).strip()}
 
 
 def entry(cid: str) -> dict | None:
@@ -102,7 +119,7 @@ def state(e: dict) -> dict:
     for kind, st in ((".active", "downloading"), (".want", "queued")):
         f = _flag(kind, e["asset"])
         if f is not None and f.exists():
-            return {"state": st}
+            return {"state": st} | ({"progress": progress(f)} if st == "downloading" and progress(f) is not None else {})
     f = _flag(".failed", e["asset"])
     if f is not None and f.exists():
         try:
@@ -113,14 +130,29 @@ def state(e: dict) -> dict:
     return {"state": "missing"}
 
 
+def progress(f: Path) -> float | None:
+    """How far a download is, 0..1: the desktop app writes "<done> <total>" bytes into .active/<asset> (assets.js)."""
+    try:
+        done, total = (int(x) for x in f.read_text(encoding="utf-8").split()[:2])
+    except (OSError, ValueError):
+        return None
+    return round(min(1.0, max(0.0, done / total)), 3) if total > 0 else None
+
+
+def downloadable() -> bool:
+    """Can this computer download a course pack at all: the desktop app runs the downloads, or a local source folder
+    (dev, tests). The iPad shell has neither (docs/IPAD.md), so it never offers one."""
+    return _assets() is not None or bool(os.environ.get("COURSE_PACK_SRC"))
+
+
 def listing() -> dict:
     act = courses.active()
     packs = []
     for e in catalog():
-        packs.append({k: e[k] for k in ("id", "title", "size", "unpacked_size", "version")} | state(e)
+        packs.append({k: e[k] for k in ("id", "title", "size", "unpacked_size", "version")} | e["card"] | state(e)
                      | {"active": e["id"] == act, "blocked": school_blocks(e["url"])})
     from .config import settings
-    return {"managed": _assets() is not None, "free_bytes": free_bytes(), "packs": packs,
+    return {"managed": _assets() is not None, "downloadable": downloadable(), "free_bytes": free_bytes(), "packs": packs,
             "school_network": any(p["blocked"] for p in packs) or _school_on(), "assets_dir": bool(settings.assets_dir)}
 
 

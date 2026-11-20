@@ -2,7 +2,8 @@
 // built in. A course pack downloads from the same catalog and Dropbox folder as the app's other downloads
 // (backend/app/course_packs.py; the desktop app does the download). Removing a course keeps its patches; removing the
 // course being played switches to the Moon first. School network mode blocks a download and says so; so does a full
-// disk. Behind the grown-up hold, so a kid can switch courses (the top-bar chip) but not download or delete one.
+// disk. Behind the grown-up hold, so a kid can switch courses (the top-bar chip) but not download or delete one; the
+// one exception is the first-run course pick (course_pick.js): a new cadet may download one catalog course, once.
 import { courseState, setCourse, syncCourse } from "./courses.js";
 import { size } from "./storage_ui.js";
 
@@ -57,7 +58,10 @@ export function listHtml(d) {
 const refreshChip = fetchFn => syncCourse({ fetchFn }).then(() => { if (O.courseSwitch) O.courseSwitch.paint(); }).catch(() => {});
 
 let last = null;
-const load = (fetchFn = fetch) => fetchFn("/api/courses/packs").then(r => (r.ok ? r.json() : null)).then(d => (last = d)).catch(() => null);
+const load = (fetchFn = fetch) => fetchFn("/api/courses/packs").then(r => (r.ok ? r.json() : null))
+  .then(d => { last = d; if (O.courseSwitch) O.courseSwitch.paint(); return d; }).catch(() => null);
+/** A catalog course this computer could download (the chip's "Get more courses" with only the Moon installed). Pure. */
+export const moreCourses = (d = last) => !!(d && (d.downloadable || d.managed) && (d.packs || []).some(p => p.state !== "installed"));
 
 const section = {
   id: "courses", title: COPY.title, after: "progress", grownup: true,

@@ -61,7 +61,7 @@ const optionOf = el => ({ label: labelOf(el), yes: el.hasAttribute("data-yes"), 
 // The on-screen choice sets, most specific first (the first one with visible, enabled buttons is "the" choice).
 // The same lists the number keys use (input/keys.js), plus the video step, the prep card and the wipe confirm.
 export const CHOICE_LISTS = [".mx-wipe [data-w]", "#aPanel [data-intent=yes], #aPanel [data-intent=no]", ".cb-offer-b",
-  "#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", "#aPanel .vs-row button", ".a-csb", ".mx-site",
+  "#aPanel .a-choice", "#aPanel .v-opt", "#aPanel .a-order", "#aPanel .vs-row button", ".a-csb", "#aPanel .a-crs-opt", ".mx-site",
   ".cb-now-btns .cb-now-b", "#card .card-actions button"];
 
 const vis = el => !!(el && !el.hidden && !el.closest("[hidden]") && el.getClientRects().length && getComputedStyle(el).visibility !== "hidden");

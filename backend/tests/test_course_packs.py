@@ -175,3 +175,45 @@ def test_reset_everything_returns_to_the_moon_start_over_keeps_the_course(catalo
     assert courses.active() == "testland"          # Start over: downloads (and the course) stay
     reset.reset("all")
     assert courses._read_state() == "moon" and courses.active() == "moon"
+
+
+def test_the_listing_carries_each_course_card_and_whether_it_can_download(catalog, client, monkeypatch):
+    """The first-run course pick (frontend/src/course_pick.js) shows each course's one line and reading level before it
+    is downloaded: the catalog's `course` card, else the source manifest in a dev checkout."""
+    d = client.get("/api/courses/packs").json()
+    assert d["downloadable"] is True                     # a local source folder (COURSE_PACK_SRC)
+    assert tl(d).get("grades") is None                   # testland has no card and no source manifest
+    m = json.loads(courses.ASSETS_MANIFEST.read_text())
+    next(a for a in m["assets"] if a["id"] == "course_testland")["course"] = {"program": "Field Testing", "grades": "9-12", "x": 1}
+    courses.ASSETS_MANIFEST.write_text(json.dumps(m))
+    p = tl(client.get("/api/courses/packs").json())
+    assert p["program"] == "Field Testing" and p["grades"] == "9-12" and "x" not in p
+    # the real catalog's Archaeology card (scripts/asset_pack.py course_card, the same fields as its source)
+    src = json.loads((courses.DIR / "archaeology.json").read_text())
+    assert course_packs.card("archaeology") == {k: src[k] for k in ("program", "subject", "grades")}
+    real = json.loads((Path(course_packs.__file__).resolve().parents[2] / "desktop" / "assets.manifest.json").read_text())
+    assert next(a for a in real["assets"] if a["id"] == "course_archaeology")["course"] == course_packs.card("archaeology")
+    # no desktop downloader and no local source (the iPad shell): nothing is offered
+    monkeypatch.delenv("COURSE_PACK_SRC")
+    monkeypatch.delenv("ASSETS_DIR", raising=False)
+    from app.config import settings
+    monkeypatch.setattr(settings, "assets_dir", None)
+    assert client.get("/api/courses/packs").json()["downloadable"] is False
+
+
+def test_a_running_download_reports_its_progress(catalog, client, monkeypatch, tmp_path):
+    assets = tmp_path / "assets"
+    monkeypatch.delenv("COURSE_PACK_SRC")
+    monkeypatch.setenv("ASSETS_DIR", str(assets))
+    monkeypatch.setenv("COURSE_PACKS_DIR", str(assets))
+    courses.courses.cache_clear()
+    client.post("/api/courses/packs/testland/get")
+    (assets / ".active").mkdir()
+    f = assets / ".active" / "course_testland"
+    f.write_text("")                                     # just started: no bytes yet
+    assert "progress" not in tl(client.get("/api/courses/packs").json())
+    f.write_text("2304000 4608000")                      # assets.js writes "<done> <total>"
+    p = tl(client.get("/api/courses/packs").json())
+    assert p["state"] == "downloading" and p["progress"] == 0.5
+    f.write_text("junk")
+    assert "progress" not in tl(client.get("/api/courses/packs").json())
