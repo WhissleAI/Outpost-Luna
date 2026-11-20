@@ -35,7 +35,7 @@ const ctxOf = (acc, extra = {}) => { const sent = []; return { sent, ctx: { step
 
 test("the build-up types ride the Field steps' `got` loop; every type has a do-line and an intro", () => {
   const ui = readFileSync(new URL("../src/academy/ui.js", import.meta.url), "utf8");
-  assert.match(ui, /const FIELD_STEP_TYPES = \[\.\.\.MOON_FIELD_TYPES, \.\.\.ARCH_BUILDUP_TYPES\]/);
+  assert.match(ui, /const FIELD_STEP_TYPES = \[\.\.\.MOON_FIELD_TYPES, \.\.\.ARCH_BUILDUP_TYPES(, \.\.\.SPEECH_STEP_TYPES)?\]/);   // + speech steps (docs/SPEECH_LEARNING.md)
   assert.deepEqual(A.ARCH_BUILDUP_TYPES, ["layers", "hillshade"]);
   for (const t of A.ARCH_STEP_TYPES) {
     assert.ok(R[t], t);

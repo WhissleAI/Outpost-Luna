@@ -167,6 +167,14 @@ test("the three Moon sample lessons have drawn patches; a lesson without art get
   assert.match(CP.anyPatch("archaeology:dating"), />D<\/text>/);
 });
 
+test("each speech step has a do-line and a first-use intro", async () => {
+  const { DO, INTRO } = await import("../src/academy/guide.js");
+  for (const t of SP.SPEECH_STEP_TYPES) {
+    assert.ok(DO[t] && DO[t].split(/\s+/).length <= 10, t);
+    assert.ok(INTRO[t] && INTRO[t].startsWith("New:") && INTRO[t].split(/\s+/).length <= 12, t);
+  }
+});
+
 test("copy budgets: buttons are 1-3 words, card lines 12 words or fewer, no grade words", () => {
   for (const k of ["listen", "aloud", "done", "again", "send", "hear", "watch"]) assert.ok(SP.COPY[k].split(" ").length <= 3, k);
   for (const k of ["aloudOn", "findHow", "sayHow", "pickHow", "tellHow"]) assert.ok(SP.COPY[k].split(" ").length <= 12, k);
