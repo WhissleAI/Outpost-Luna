@@ -238,3 +238,119 @@ Asks:
 What the app would do with it: replace the RMS floor in `room.js` with `room_noise` / `babble_p`, keeping the same
 hysteresis and the same effects. The estimator's thresholds and test harness (`frontend/tools/room_harness.mjs`) are
 ready to re-tune against it.
+
+## Archaeology course: terms the ear must hear (2026-11-19, feat/archaeology-content)
+
+The second course is Archaeology. It is built around Mesa Verde and the Four Corners: dating, survey, the law, and
+consultation with tribal nations (docs/COURSES.md, docs/courses/archaeology/). We will not ship a second ear for each
+course. Arc Transcriber Space stays the only ear, and each course sends its own names list, which biases the words and
+links the names. This section lists the words that list has to carry and how well today's ear hears them.
+
+### The terms (63 entries, the names list we send)
+
+| group | entries | `kind` sent |
+|---|---|---|
+| sites | Cliff Palace, Spruce Tree House, Long House, Balcony House, Far View House, Pipe Shrine House, Mummy Lake, Hovenweep, Chimney Rock, Companion Rock | `site` |
+| places | Mesa Verde, Mesa Verde National Park, Chapin Mesa, Wetherill Mesa, Canyons of the Ancients, Crow Canyon, Cortez, Four Corners, Chaco Canyon, Montezuma County, Colorado | `place` |
+| nations and peoples | Hopi, Zuni, Acoma, Laguna, Taos Pueblo, Santa Clara Pueblo, Ohkay Owingeh, Ute Mountain Ute, Southern Ute, Navajo Nation, Diné, Jicarilla Apache, Ancestral Puebloans, Puebloan | `organization` (there is no `people` or `nation` kind) |
+| laws | NAGPRA, ARPA, NHPA, Section 106, Antiquities Act | `law` |
+| terms | dendrochronology, stratigraphy, superposition, radiocarbon, kiva, pithouse, metate, mano, potsherd, sherd, midden, lidar, hillshade, transect, pedestrian survey, repatriation, stewardship, consultation, archaeology, archaeologist, Douglas fir, yucca sandal | `product` (there is no `term` kind) |
+| sky | lunar standstill | `celestial` |
+
+Example utterances from the lessons: "show me Mesa Verde", "take me to Chimney Rock", "it's called dendrochronology",
+"the beam was cut in 1275", "that's a potsherd", "a midden is a trash heap", "NAGPRA returns ancestors to tribes",
+"ask the tribes first", "every eighteen point six years", "the Hopi and Zuni", "the Diné are the Navajo people",
+"Ohkay Owingeh is in New Mexico", "Chimney Rock marks the lunar standstill".
+
+### Measured (synthetic voices, clean)
+
+We had 110 utterances: the 63 entries said on their own, plus 47 short sentences. Each was rendered in 4 macOS voices
+(Samantha en-US, Daniel en-GB, Karen en-AU, Rishi en-IN), for 440 clips. Each clip was decoded in process through
+`arc_ear.EarStream`, the same way the app's socket decodes it, twice: once with no list, and once with the list above
+sent as `{"t":"context","names":[...]}`. These are adult-sounding voices with no noise, so students in a classroom will
+score lower than this.
+
+| | no list | with the list |
+|---|---|---|
+| WER, all (1,376 words) | 31.9% | 17.9% |
+| WER, single terms / sentences | 58.0% / 20.3% | 30.0% / 12.5% |
+| term hit rate (416 mentions; exact spelling in the decoded text) | 36.8% | 67.1% |
+| hit rate: sites / places / nations / laws / terms | 47 / 56 / 21 / 53 / 31% | 80 / 78 / 55 / 69 / 64% |
+| clips with no words at all (all of them single words) | 38 / 440 | 38 / 440 |
+
+Name links with the list, per mention: 36.1% correct, 0.2% wrong, 2.4% abstain, 5.5% `not_in_list`, 55.8% not
+returned. By group, sites link 75%, places 70%, nations 46%, laws 6% and terms 7%. Of the 156 links returned, 6 (3.8%)
+were wrong or to an entry nobody said. Four of those six turned "Navajo people" into "Navajo Nation".
+
+Worst terms (hit rate without / with the list) and what the ear wrote:
+
+| term | no list | list | heard as |
+|---|---|---|---|
+| ARPA | 0% | 0% | (nothing), "I'll par" |
+| NHPA | 0% | 0% | (nothing) |
+| Pipe Shrine House | 0% | 0% | "hike shine house", "By Trinity House", "Mesa Verde National Park schroinhouse" |
+| Puebloan | 0% | 0% | "who blown", "ku blown", "who malone" |
+| sherd | 0% | 0% | (nothing), "shirt", "should" |
+| Diné | 0% | 12% | (nothing), "dinner", "DNA", "dena of" |
+| dendrochronology | 0% | 12% | "dendrocrinology"; with the list, "dendrochro" (cut off) |
+| lidar | 0% | 12% | (nothing), "lighter", "light off" |
+| Acoma | 0% | 25% | "okhoma", "akamar", "archaeology" |
+| yucca sandal | 0% | 25% | "jako sandal", "yaka sandal", "yako sandra" |
+| pithouse | 25% | 25% | (nothing), "pit" |
+| Jicarilla Apache | 0% | 38% | "gikerilla / jagarillo / jakarila apache" |
+| Ohkay Owingeh | 0% | 38% | "okay all inject", "okay ainja"; with the list, "okay owingeh" (linked 3/8) |
+| Ute Mountain Ute | 0% | 38% | "yut mountain yut"; with the list, "yuc mountain yuc", "yucca mountain yuc" |
+| potsherd | 0% | 38% | (nothing), "pot shirt", "pork shard" |
+| kiva | 50% | 50% | heard alone 4/4; "a kiva" becomes "akiva" in every sentence |
+
+What the course does about it today (`backend/data/courses/archaeology/entities.json`, `ear_vocab.json`):
+- Names said differently from how they are spelled carry aliases ("Dine", "Navajo", "N H P A", "A R P A", "pit
+  house"), and the mishearings measured above are recorded as `mishears` ("dendrocrinology", "akiva", "pot shirt",
+  "okay owingeh", "yut mountain yut", "hike shine house"), so the registry can map them back.
+- The academy grades a step on the words (and their sound-alikes against the step's own vocabulary), never on the link
+  alone, so a right transcript with no link still counts.
+- Wiring the course's list into the live ear (the active course's names list and keyterms) is the course platform's
+  job (docs/COURSES.md P1/P2); these numbers are what that list gets today.
+
+### Data we can supply
+
+1. Public pages and transcripts from NPS (Mesa Verde, Hovenweep, Chaco Culture, Aztec Ruins), USFS (Chimney Rock) and
+   BLM (Canyons of the Ancients), including the ranger-talk and park-film transcripts.
+2. The course's own lesson text (docs/courses/archaeology/LESSONS.md): every line a student is asked to say or answer.
+3. Crow Canyon Archaeological Center materials, with their permission.
+4. Read-aloud of the lesson lines by our voice tooling: the macOS voices, the Nora voice pack, and the Steer TTS voices
+   pitched toward kids, with classroom noise added (director_model/voice_bank.py). This feeds the evaluation only. It is
+   not training speech.
+5. The tribal nations' own published names and pronunciation guides, where a nation offers them. Any recorded speech
+   from nation members needs the nation's consent.
+
+### Success bar (natural voices, with the names list)
+
+| measure | today (macOS voices) | target |
+|---|---|---|
+| term hit rate, all | 67.1% | >= 90% |
+| wrong links (of links returned) | 3.8% | <= 2% |
+| lowest tribal nation name | 0% (Puebloan) | >= 80% for every nation |
+| laws linked when said | 6% | >= 80% |
+| single words that come back empty | 15% of single-term clips | <= 2% |
+
+**Ask:**
+1. Hear tribal nation names. Puebloan, Diné, Acoma, Jicarilla Apache, Ohkay Owingeh and Ute Mountain Ute are all at or
+   below 38% even with the list. Please add them to training, with the nations' own pronunciations.
+2. Add generic `kind` values beyond lunar_feature / site / spacecraft / mission / crew: `place`, `term`, `law`,
+   `people` (or `nation`). Laws are sent as `law` and terms as `product` today, and they almost never link: 6% and 7%,
+   even when the words are right ("Section 106" and "Antiquities Act" are heard 100% of the time and linked 0%). Nations
+   sent as `organization` link 46%.
+3. Stop the bias from cutting off list names: "dendrochronology" comes out as "dendrochro", "Canyons of the Ancients"
+   as "canyons of the anci" (it replaced "Crow Canyon is near Cortez" outright for 2 voices), and "yucca" turns into
+   "yuc". A biased span should finish the whole entry or none of it.
+4. Do not return empty decodes for single words. In these voices, 38 of 252 one-word clips (ARPA, NHPA, sherd, lidar,
+   Diné, metate, pithouse, potsherd and others) came back with no words, even from the raw clip decode. Students often
+   answer a lesson question with one word. If this is the synthetic-voice rejection, we need to know, so we can
+   evaluate with other voices.
+5. Letter-by-letter acronyms (ARPA, NHPA, "N A G P R A"): produce the acronym when a list entry matches the spelled
+   letters.
+6. Word boundaries after "a": "a kiva" comes out as "akiva" (0 of 4 in sentences). Prefer a list word over gluing it to
+   the article.
+
+The test set, decode and scoring scripts and the per-utterance results were kept outside the repo; the decode is in process with `model_server` `arc_ear.EarStream` and macOS `say -o` (silent, nothing played).

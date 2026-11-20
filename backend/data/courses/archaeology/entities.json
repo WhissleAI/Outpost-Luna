@@ -294,7 +294,8 @@
     "Pipe Shrine"
    ],
    "mishears": [
-    "pipe shine house"
+    "pipe shine house",
+    "hike shine house"
    ],
    "lessons": [
     "survey"
@@ -408,7 +409,8 @@
     "Pueblo of Acoma"
    ],
    "mishears": [
-    "a coma"
+    "a coma",
+    "okhoma"
    ],
    "say": "AH-koh-muh"
   },
@@ -456,7 +458,8 @@
    "aliases": [],
    "mishears": [
     "okay owing a",
-    "okay o wing a"
+    "okay owingeh",
+    "okay ainja"
    ],
    "say": "oh-KAY oh-WING-eh"
   },
@@ -470,7 +473,8 @@
     "Ute Mountain Ute Tribe"
    ],
    "mishears": [
-    "you mountain you"
+    "you mountain you",
+    "yut mountain yut"
    ]
   },
   {
@@ -499,7 +503,7 @@
    ],
    "mishears": [
     "dinay",
-    "the nay"
+    "dena"
    ],
    "say": "Diné: dih-NEH"
   },
@@ -515,8 +519,8 @@
     "Pueblos"
    ],
    "mishears": [
-    "pueblo and",
-    "pebble"
+    "who blown",
+    "pueblo and"
    ]
   },
   {
@@ -566,7 +570,8 @@
    ],
    "mishears": [
     "dendro chronology",
-    "then throw chronology",
+    "dendrocrinology",
+    "dendrochro",
     "den drew chronology"
    ],
    "lessons": [
@@ -639,7 +644,7 @@
    "mishears": [
     "keeva",
     "kiwa",
-    "key va"
+    "akiva"
    ],
    "lessons": [
     "stuff",
@@ -713,8 +718,8 @@
     "pot shard"
    ],
    "mishears": [
-    "pot heard",
-    "pot shirt"
+    "pot shirt",
+    "pork shard"
    ],
    "lessons": [
     "stuff",
@@ -892,12 +897,13 @@
    "name": "ARPA",
    "kind": "product",
    "aliases": [
-    "Archaeological Resources Protection Act"
+    "Archaeological Resources Protection Act",
+    "A R P A"
    ],
    "mishears": [
-    "arpa",
     "our pa",
-    "are pa"
+    "are pa",
+    "i ll par"
    ],
    "lessons": [
     "law"
@@ -914,7 +920,7 @@
    ],
    "mishears": [
     "nag pra",
-    "nag prah",
+    "n a gp are",
     "nagra"
    ],
    "lessons": [
@@ -930,7 +936,8 @@
    "kind": "product",
    "aliases": [
     "National Historic Preservation Act",
-    "Section 106"
+    "Section 106",
+    "N H P A"
    ],
    "mishears": [
     "section one oh six"
