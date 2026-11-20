@@ -338,6 +338,8 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
   addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
+  // [courses] the switcher's "Get more courses": For grown-ups (behind the hold), where Course storage lives
+  addEventListener("outpost:course-storage", () => { section = "grownups"; resetView = null; if (panel.hidden) open(true); else renderPanel(); { const b = panel.querySelector('[data-crs-act="get"]') || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } });
   // the session's echo of what it applied: refresh the Voice section's "In use" line
   addEventListener("outpost:prefs-applied", () => { if (!panel.hidden && section === "voice") { const f = document.activeElement && document.activeElement.dataset; renderPanel(); if (f && f.p) { const e = panel.querySelector(`[data-p="${f.p}"]:checked, input[type=range][data-p="${f.p}"]`); if (e) e.focus(); } } });
   btn.addEventListener("click", () => open());

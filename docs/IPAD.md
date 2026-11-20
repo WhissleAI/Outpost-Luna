@@ -162,3 +162,10 @@ xcrun devicectl device process launch --device <identifier> ai.whissle.outpostlu
 - Export compliance is declared (`ITSAppUsesNonExemptEncryption = NO`); age rating, screenshots at the iPad sizes.
 - Content rights: CC BY-NC models (the ear, when it lands) need the licence check for App Store distribution.
 - Then the ear (§1), the Nora voice pack, crew audio and videos as on-demand downloads, and camera gestures.
+
+## Courses (docs/COURSES.md §4.9)
+
+The iPad shell plays the Moon course only. There is no asset downloader on iOS v1, so Settings → For grown-ups →
+Course storage lists nothing to download (`GET /api/courses/packs`: `managed: false`) and the course chip stays hidden.
+A future course would ship inside the app bundle: set `COURSE_PACKS_DIR` to the bundled folder holding `course_<id>/`.
+

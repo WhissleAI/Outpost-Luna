@@ -1,11 +1,10 @@
 # Courses: from a Moon app to a school of courses
 
-Status: **P1 built** (courses exist, the Moon is course #1, §4.8). P0 was the plan + spike (§6). P2 (the Earth globe and
-downloadable course packs) is next.
-**P3 content (branch `feat/archaeology-content`):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` /
-`decide` step types (`backend/app/academy/arch_steps.py`, `frontend/src/academy/arch_steps.js`), the course pack's data
-and media (`backend/data/courses/archaeology/`), verified sources, and the ear measurement (`docs/ARC_FEEDBACK.md`).
-They play behind a dev flag until P1/P2 land (`docs/courses/archaeology/LESSONS.md`).
+Status: **P1 + P2 built** (courses exist, the Moon is course #1, §4.8; the Earth globe and downloadable course packs,
+§4.9). P0 was the plan + spike (§6). P3 (the Archaeology lessons) is the content branch.
+**P3 content (#168, merged):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` / `decide` step
+types, the course pack's data and media (`backend/data/courses/archaeology/`), verified sources and the ear measurement
+(`docs/ARC_FEEDBACK.md`). It is the course pack `course_archaeology` (§4.9).
 First new course: **Archaeology**, shown to a high-school archaeology teacher in Colorado.
 Course drafts: `docs/courses/archaeology/` (`LESSONS.md`, `DEMO.md`, `course.manifest.json`).
 
@@ -486,6 +485,50 @@ there for it. The turn log records `course` (an enum) next to `screen`.
 Tap, Enter / A on it, or say "switch course" (`a11y.js`): a short list, then one confirm ("Switch to Archaeology? Your
 Moon patches stay."). Esc or Cancel backs out.
 
+
+### 4.9 P2 as built: the Earth globe and course packs
+
+**Globe.** `main.js` hands `createGlobe` the active course's `globe` (`{body, name, km, map}`); on the Moon it passes
+nothing, so the Moon is `MOON_BODY` exactly as before. `frameDistance` / `angRadius` take the body's radius (default the
+Moon's), so places frame by their real size on Earth; `ll2v` and every coordinate maths are unchanged. Moon-only layers
+stay off on another body: the real-sky / hardware / rocks / sharp-pole views (`wireViews`), the sample hardware, and
+the mission layer (a course without an `outpost` mission never starts one). Pins and the gazetteer are the course's
+(`/api/places` reads the active course's places).
+- The Earth map ships IN the course pack (`media/<name>`, served at `/api/courses/<id>/media/<name>`), never in the
+  installer. The plan is the NASA Blue Marble 5400×2700 (§6). On 2026-11-19 `eoimages.gsfc.nasa.gov` was unreachable from
+  the build machine, so the screenshots use NASA's Blue Marble Next Generation 3600×1800 (Wikimedia Commons copy,
+  public domain). The pack builder takes any map as `COURSE_EARTH_MAP`; put the 5400 file there for the real pack.
+
+**A pack's source and its build.** The content author writes `backend/data/courses/<id>.json` (status `pack`, paths
+under `courses/<id>/`) and the folder `backend/data/courses/<id>/` (lessons, places, entities, ear vocab, `media/`).
+In the app that source is not a course; `OUTPOST_DEV_COURSE=<id>` plays it from source (the author's dev loop).
+`make asset-pack` (scripts/asset_pack.py) turns every such source into the asset `course_<id>`: `course.json`
+rewritten relative to the pack (`courses.to_pack`), every file of the folder, validated as it will load; optional,
+`on_demand` (never fetched by the background downloader), a version, a sha256 for the tar, a size and sha256 per file,
+in the SAME `desktop/assets.manifest.json` and Dropbox folder (decision 6). `make asset-upload` uploads it.
+
+**Download, remove, switch** (`backend/app/course_packs.py`, `GET /api/courses/packs`, `POST …/<id>/get`,
+`POST …/<id>/remove`; Settings → For grown-ups → Course storage, `course_store_ui.js`):
+- With the desktop app, the backend asks through the flag files the Steer voice already uses: `.want/<asset>` (the
+  desktop downloads it at once: sha256, atomic install), `.active/<asset>` while it downloads, `.failed/<asset>` with
+  the reason when it stops (school network, offline, disk), and `.remove/<asset>` (assets.js `store.remove`: move
+  aside, delete with Windows retries, drop the state record). The backend moves the folder aside first so the course
+  leaves the list at once.
+- Without it (dev checkout, tests): a local-file fallback installs the tar from `COURSE_PACK_SRC`, sha256-checked,
+  unsafe paths refused, swapped in atomically.
+- Before a download: School network mode blocks a host it does not allow and says so ("School network mode is on, so
+  this course can't download here. Import the offline pack from a USB stick."); a disk without room for the tar and its
+  files says how much is needed. The offline pack zip can carry course tars (they install like any asset).
+- Removing the course being played switches to the Moon first. Patches stay. The Moon cannot be removed.
+- The top-bar chip appears once two courses are installed; its "Get more courses" opens For grown-ups.
+
+**Reset.** "Start over" keeps downloaded courses and the cadet's course. "Reset everything" deletes the assets folder
+(course packs included) and the backend's active-course file, so the computer plays the Moon. Progress for every course
+goes only with "erase progress too".
+
+**iPad** (`docs/IPAD.md`): unaffected. The shell runs the same backend with no desktop downloader, so `GET
+/api/courses/packs` reports `managed: false` and nothing downloads; a course would ship in the app bundle (point
+`COURSE_PACKS_DIR` at it). The chip stays hidden with only the Moon.
 
 ---
 

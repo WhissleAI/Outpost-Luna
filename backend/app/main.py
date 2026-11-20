@@ -188,6 +188,7 @@ from .brain import router as brain_router; app.include_router(brain_router)  # n
 from .playtest import router as playtest_router; app.include_router(playtest_router)  # noqa: E402  (a grown-up's Playtest session, docs/DIRECTOR_LOOP.md)
 from .nasa_views import router as views_router; app.include_router(views_router)  # noqa: E402  (0.4 real NASA views, optional asset)
 from .courses import router as courses_router; app.include_router(courses_router)  # noqa: E402  (read-only course manifests, docs/COURSES.md)
+from .course_packs import router as course_packs_router; app.include_router(course_packs_router)  # noqa: E402  (course packs: download / remove, docs/COURSES.md §4.2)
 
 @app.get("/api/turnlog")
 def turnlog_stats():

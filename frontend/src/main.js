@@ -6,7 +6,6 @@ import "./mission.css";
 import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
-import { devCourseBody } from "./academy/dev_course.js";
 import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional nasa_views pack)
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
@@ -20,10 +19,11 @@ import { createMissionUI } from "./mission/ui.js";
 import { installMissionLearning } from "./mission_learning.js";   // Moon Base offer + debrief Learn more (outside mission/ui.js)
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
-import { callSign, HELP, rideReady } from "./story.js";
+import { callSign, HELP, rideReady, SCHOOL, TRANSITION } from "./story.js";
 import { courseState, courseLabel, syncCourse } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
 import { installCourseSwitch } from "./course_switch.js";
 import "./course_switch.css";
+import "./course_store_ui.js";   // Settings → For grown-ups → Course storage: download / remove / switch (docs/COURSES.md §4.2)
 import { chime } from "./sound.js";
 import { maskProfanity, hasProfanity } from "./profanity.js";   // [P0] kid text is never shown unmasked
 // ---- audio floor (floor.js owns guide/crew/effects; docs/SESSION_CONTRACT.md §3-4) ----
@@ -109,8 +109,17 @@ async function boot() {
     }
   }
   if ($("loading").classList.contains("is-error")) { $("loading").classList.remove("is-error"); $("loading").textContent = "Loading the Moon…"; }
+  if (courseState.active !== "moon") {   // [courses] the few map lines that name the Moon or Flight School; the rest of a
+    // course's copy (spoken lines, story beats) comes with its content (docs/COURSES.md P3)
+    const school = courseLabel("school", "Flight School"), body = (courseState.info.globe && courseState.info.globe.name) || courseState.info.title;
+    SCHOOL.eyebrow = school; TRANSITION.firstMap.where = school;
+    TRANSITION.firstMap.intro = [`This is ${body === "Earth" ? "Earth" : `the ${body}`}. Drag it to spin it.`, ...TRANSITION.firstMap.intro.slice(1)];
+    TRANSITION.firstMap.say = "Each pin is a lesson. Earn the patches.";
+    if (courseState.info.missions !== "outpost") $("modeMission").hidden = true;   // no outpost mission in this course (a season engine is P4)
+  }
+  if (courseState.active !== "moon") { $("loading").textContent = `Loading ${courseState.info.title}…`; $("stage").setAttribute("aria-label", (courseState.info.globe && courseState.info.globe.name) || courseState.info.title); }
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
-  const sample = !places.some(p => p.kind === "artifact");
+  const sample = courseState.active === "moon" && !places.some(p => p.kind === "artifact");   // Moon hardware samples: the Moon course only
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
   const byId = Object.fromEntries(places.map(f => [f.id, f]));
   const placeById = id => byId[id] || null;
@@ -131,10 +140,11 @@ async function boot() {
     const m = document.body.dataset.mode, f = m === "academy" ? academyUI.screen() : null;
     if (m === "cadet" || (f && f.screen === "lesson" && TAP_STEPS.includes(f.step_type))) voice.notice("Tap on the Moon");
   };
-  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss,
-    body: devCourseBody(location.search, import.meta.env.DEV) });   // [courses] dev harness only (academy/dev_course.js)
+  // [courses] the course's body: the Moon (unchanged, MOON_BODY) or another course's globe (Earth: the pack's Blue Marble)
+  const onMoon = courseState.active === "moon" || !courseState.info.globe || courseState.info.globe.body === "moon";
+  const globe = createGlobe({ stage: $("stage"), label: $("label"), loading: $("loading"), places, onTap, onArtifact, onMiss, body: onMoon ? undefined : courseState.info.globe });
   window.__outpost.globe = globe;   // the playtest (frontend/tools/playtest.py) reads where a step's places are on screen
-  wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
+  if (onMoon) wireViews({ globe, stage: $("stage"), hudRow: $("tourBtn").parentElement });   // Moon-only: its real sky, hardware models, rocks, sharp pole   // real sky, LM / LRO / LADEE models, Moon rocks tray, sharp south pole
   const player = createPlayer({
     api, globe, placeById, isKidTalking: () => voice.kidTalking,
     onPlace: id => { turn.lastPlace = id; }, onEnd: scheduleNudge,
@@ -865,7 +875,7 @@ async function boot() {
   $("modeMission").onclick = () => setMode("mission");
   $("modeAcademy").onclick = () => setMode("academy");
   // [courses] the chip names the course (hidden with one course installed); another course names its own school
-  window.__outpost.courseSwitch = installCourseSwitch({ onMore: () => window.__outpost.openStorage && window.__outpost.openStorage() });
+  window.__outpost.courseSwitch = installCourseSwitch({ onMore: () => { try { dispatchEvent(new CustomEvent("outpost:course-storage")); } catch (e) { /* */ } } });
   if (courseState.active !== "moon") $("modeAcademy").textContent = courseLabel("school", "Flight School");
   // The Moon library (the explorer) is a place you visit, not a mode: the button toggles back to where you were.
   $("libraryBtn").onclick = () => setMode(document.body.dataset.mode === "cadet" ? lastMode : "cadet");   // [qa] a second press goes back

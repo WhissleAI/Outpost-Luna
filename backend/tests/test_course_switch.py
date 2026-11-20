@@ -148,10 +148,10 @@ def test_api_lists_and_switches(packs, client):
     assert client.post("/api/courses/active", json={"id": "nope"}).status_code == 404
     assert client.post("/api/courses/active", json={"id": "testland"}).json() == {"active": "testland"}
     assert [l["id"] for l in client.get("/api/academy/course").json()["lessons"]][:2] == ["moon", "phases"]
-    assert client.get("/course/testland/earth.jpg").status_code == 200
-    for bad in ("course.json", "../course_testland/course.json", "nothing.jpg"):
-        assert client.get(f"/course/testland/{bad}").status_code == 404
-    assert client.get("/course/moon/places.json").status_code == 404     # built-ins serve nothing here
+    assert client.get("/api/courses/testland/media/earth.jpg").status_code == 200
+    for bad in ("course.json", "..%2Fcourse.json", "nothing.jpg", "lessons.json"):
+        assert client.get(f"/api/courses/testland/media/{bad}").status_code == 404
+    assert client.get("/api/courses/moon/media/places.json").status_code == 404     # the Moon has no media folder
     client.post("/api/courses/active", json={"id": "moon"})
 
 
@@ -177,3 +177,19 @@ def test_the_turn_log_names_the_course():
 def test_the_ear_vocab_is_the_moons_on_the_moon():
     hotlist.vocab.cache_clear()
     assert hotlist.vocab() == hotlist.moon_vocab()
+
+
+def test_a_pack_source_in_the_repo_plays_only_in_the_dev_loop(tmp_path, monkeypatch):
+    src = json.loads((courses.DIR / "moon.json").read_text()) | {"id": "devland", "status": "pack", "title": "Devland"}
+    f = courses.DIR / "devland.json"
+    f.write_text(json.dumps(src))
+    try:
+        courses.courses.cache_clear()
+        assert courses.get("devland") is None                      # in the app: a source, not an installed course
+        monkeypatch.setenv("OUTPOST_DEV_COURSE", "devland")
+        courses.courses.cache_clear()
+        assert courses.get("devland") is not None and courses.root(courses.get("devland")) == courses.DATA
+        assert courses.media_dir("devland") == courses.DIR / "devland" / "media"
+    finally:
+        f.unlink()
+        courses.courses.cache_clear()

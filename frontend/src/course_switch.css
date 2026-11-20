@@ -19,3 +19,10 @@
 .crs-actions{display:flex;gap:var(--space-2);justify-content:flex-end;flex-wrap:wrap}
 .crs-err{min-height:1em;margin:0 0 var(--space-2);color:var(--color-danger);font-size:var(--text-sm)}
 body[data-cockpit="1"] .course-chip{display:none}
+/* Settings → For grown-ups → Course storage (course_store_ui.js) */
+.crs-store{list-style:none;margin:0 0 var(--space-3);padding:0;display:grid;gap:var(--space-2)}
+.crs-store li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);padding:var(--space-3);border:1px solid var(--color-line);border-radius:var(--radius-md);background:var(--color-surface)}
+.crs-name{display:flex;flex-direction:column;gap:2px;flex:1 1 180px;min-width:0}
+.crs-name small,.crs-note{color:var(--color-text-2);font-size:var(--text-xs)}
+.crs-acts{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.crs-note{flex-basis:100%}

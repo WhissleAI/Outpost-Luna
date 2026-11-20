@@ -300,6 +300,50 @@ ASSETS = [
 ]
 
 
+# ---- course packs (docs/COURSES.md §4.2, decision 6: the same catalog and Dropbox folder) -----------------------------
+COURSES_SRC = ROOT / "backend/data/courses"
+
+
+def src_course(f: Path):
+    """A course pack from its source: backend/data/courses/<id>.json (status "pack") + backend/data/courses/<id>/.
+    The pack holds course.json (paths rewritten relative to the pack, app/courses.py to_pack), every file of the folder
+    (lessons, places, entities, ear vocab, media/). The globe map a manifest names as /api/courses/<id>/media/<name>
+    must be in media/, or given as COURSE_EARTH_MAP (the NASA Blue Marble, docs/COURSES.md §6)."""
+    sys.path.insert(0, str(ROOT / "backend"))
+    from app.courses import to_pack, validate
+    m = json.loads(f.read_text(encoding="utf-8"))
+    pack, base = to_pack(m)
+    folder = ROOT / "backend/data" / base
+    if not folder.is_dir():
+        sys.exit(f"{f.name}: its folder {folder} is missing")
+    files = [(p.relative_to(folder).as_posix(), p) for p in sorted(folder.rglob("*"))
+             if p.is_file() and not any(x.startswith(".") for x in p.relative_to(folder).parts)]
+    have = {r for r, _ in files}
+    mp = str((pack.get("globe") or {}).get("map") or "")
+    pre = f"/api/courses/{pack['id']}/media/"
+    if mp.startswith(pre) and f"media/{mp[len(pre):]}" not in have:
+        em = os.environ.get("COURSE_EARTH_MAP")
+        if not em or not Path(em).is_file():
+            sys.exit(f"{f.name}: media/{mp[len(pre):]} missing: put the map there or set COURSE_EARTH_MAP")
+        files.append((f"media/{mp[len(pre):]}", Path(em)))
+    errs, _ = validate(pack, data=folder)
+    if errs:
+        sys.exit(f"{f.name}: the pack would not load: {errs[0]['at']}: {errs[0]['msg']}")
+    files.append(("course.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))
+    return files
+
+
+def course_assets() -> list:
+    """One optional, on-demand asset per course pack source (none until a course's content is in the repo)."""
+    out = []
+    for f in sorted(COURSES_SRC.glob("*.json")):
+        m = json.loads(f.read_text(encoding="utf-8"))
+        if isinstance(m, dict) and m.get("status") == "pack":
+            out.append((f"course_{m['id']}", f"Course: {m['title']}", False, (lambda f=f: src_course(f)), [], "", ""))
+    return out
+# ---- end course packs ------------------------------------------------------------------------------------------------
+
+
 def tarinfo(name: str, size: int) -> tarfile.TarInfo:
     ti = tarfile.TarInfo(name)
     ti.size, ti.mtime, ti.mode, ti.uid, ti.gid, ti.uname, ti.gname = size, 0, 0o644, 0, 0, "", ""
@@ -332,7 +376,7 @@ def build(only: set[str] | None) -> dict:
     old = asset_manifest.read()
     old_by = {a["id"]: a for a in old.get("assets", [])}
     assets = []
-    for aid, title, req, src, lic, env, sub in ASSETS:
+    for aid, title, req, src, lic, env, sub in ASSETS + course_assets():
         prev = old_by.get(aid)
         if only and aid not in only and prev:
             assets.append(prev)
@@ -367,6 +411,10 @@ def build(only: set[str] | None) -> dict:
             a.setdefault("version", "1"); a.setdefault("min_app", "0.4.0")
             a["note"] = ("Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO "
                          "frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.")
+        if aid.startswith("course_"):   # a course pack: downloaded when a grown-up picks it (Storage / the switcher)
+            a.setdefault("version", "1")   # older apps never fetch it: on_demand, and they have no courses
+            a["on_demand"] = True
+            a["note"] = "A course pack (docs/COURSES.md §4.2): installed into <assets>/course_<id>/, removable."
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
             a["fallback"] = {"kind": "files", "base": HF,

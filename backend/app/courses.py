@@ -149,6 +149,27 @@ def validate(m: dict, data: Path = DATA, known_assets: set[str] | None = None) -
     return errs, planned
 
 
+def to_pack(m: dict) -> tuple[dict, str]:
+    """A pack's source manifest (paths relative to backend/data, all under courses/<id>/) -> (the manifest the pack
+    carries, paths relative to the pack folder; the source folder "courses/<id>"). Pure; scripts/asset_pack.py uses it.
+    Raises ValueError for a path outside the course's own folder."""
+    base = f"courses/{m['id']}/"
+
+    def rel(at: str, p: str) -> str:
+        if not p.startswith(base) or ".." in p.split("/"):
+            raise ValueError(f"{at}: {p} is outside {base}")
+        return p[len(base):]
+    out = json.loads(json.dumps({k: v for k, v in m.items() if not k.startswith("_")}))
+    out["status"] = "pack"
+    for k in FILE_KEYS:
+        if isinstance(out.get(k), str):
+            out[k] = rel(k, out[k])
+    for k, sub in (("ear", "vocab"), ("lessons", "source"), ("missions", "sites")):
+        if isinstance(out.get(k), dict) and isinstance(out[k].get(sub), str):
+            out[k][sub] = rel(f"{k}.{sub}", out[k][sub])
+    return out, base.rstrip("/")
+
+
 # ------------------------------------------------------------------------------------------- where things live
 def packs_dir() -> Path | None:
     """Where downloaded course packs are installed (`<dir>/course_<id>/course.json`), or None (a dev checkout)."""
@@ -195,11 +216,19 @@ def courses() -> tuple[dict, ...]:
         else:
             out.append(m if data == DATA else {**m, "_root": str(data)})
 
+    dev = os.environ.get("OUTPOST_DEV_COURSE", "")
     for f in sorted(DIR.glob("*.json")) if DIR.is_dir() else []:
         try:
             m = json.loads(f.read_text())
         except (OSError, ValueError) as e:
             _PROBLEMS.append(f"{f.name}: skipped. {e}")
+            continue
+        if isinstance(m, dict) and m.get("status") == "pack":
+            # a pack's SOURCE in the repo (backend/data/courses/<id>.json + courses/<id>/): what scripts/asset_pack.py
+            # builds the course_<id> asset from. Not installed in the app; played from source only with
+            # OUTPOST_DEV_COURSE=<id> (the content author's dev loop).
+            if m.get("id") == dev:
+                add(m, f.name, DATA, ("pack",))
             continue
         add(m, f.name, DATA, ("builtin",))
     pd = packs_dir()
@@ -358,28 +387,6 @@ def list_courses():
     return {"active": active(), "courses": [summary(c) for c in courses()], "problems": problems()}
 
 
-MEDIA_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,80}\.(?:jpg|png|json)$")
-MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json"}
-
-
-def media_dir(course_id: str) -> Path:
-    """A course pack's media folder: backend/data/courses/<id>/media (in the repo, for packs being built; the platform's
-    course pack installs the same layout, docs/COURSES.md §4.2). Not in the installer (build_python.py skips media)."""
-    return DIR / course_id / "media"
-
-
-@router.get("/api/courses/{course_id}/media/{name}")
-def course_media(course_id: str, name: str):
-    """A course's pictures and data files (maps, hillshades, photos): one flat folder, names checked."""
-    if not ID.match(course_id) or not MEDIA_NAME.match(name):
-        raise HTTPException(404, "no such file")
-    p = media_dir(course_id) / name
-    if not p.is_file():
-        raise HTTPException(404, "no such file")
-    return FileResponse(p, media_type=MEDIA_TYPES[name.rsplit(".", 1)[1]],
-                        headers={"Cache-Control": "public, max-age=86400"})
-
-
 class Pick(BaseModel):
     id: str
 
@@ -391,3 +398,29 @@ def pick_course(p: Pick):
     except KeyError:
         raise HTTPException(404, "That course is not on this computer.")
     return {"active": active()}
+
+
+MEDIA_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,80}\.(?:jpg|png|json)$")
+MEDIA_TYPES = {"jpg": "image/jpeg", "png": "image/png", "json": "application/json"}
+
+
+def media_dir(course_id: str) -> Path | None:
+    """A course's media folder (its Earth map, hillshades, photos): `<pack>/media` for an installed pack, and
+    backend/data/courses/<id>/media for a pack's source in the repo (the content author's dev loop)."""
+    m = get(course_id)
+    if m is not None and m.get("_root"):
+        return Path(m["_root"]) / "media"
+    return DIR / course_id / "media" if ID.match(course_id) else None
+
+
+@router.get("/api/courses/{course_id}/media/{name}")
+def course_media(course_id: str, name: str):
+    """A course's pictures and data files: one flat folder, names checked, read-only."""
+    d = media_dir(course_id) if ID.match(course_id) else None
+    if d is None or not MEDIA_NAME.match(name):
+        raise HTTPException(404, "no such file")
+    p = d / name
+    if not p.is_file():
+        raise HTTPException(404, "no such file")
+    return FileResponse(p, media_type=MEDIA_TYPES[name.rsplit(".", 1)[1]],
+                        headers={"Cache-Control": "public, max-age=86400"})

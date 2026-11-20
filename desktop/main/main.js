@@ -558,11 +558,27 @@ let wantBusy = false;
 function watchWanted() {
   setInterval(async () => {
     if (wantBusy || quitting) return;
+    const gone = store.removals()[0];   // a grown-up removed a course pack (Settings → Storage; docs/COURSES.md §4.2)
+    if (gone) {
+      wantBusy = true;
+      try { await store.remove(gone); log(`assets: ${gone} removed (asked for)`); }
+      catch (e) { log(`assets: ${gone} not removed yet (${e.message})`); }
+      finally { wantBusy = false; }
+      return;
+    }
     const id = store.wanted()[0];
     if (!id) return;
     wantBusy = true;
     try { await store.download(id); log(`assets: ${id} installed (asked for)`); }
-    catch (e) { log(`assets: ${id} not downloaded (${e.message})`); }
+    catch (e) {
+      log(`assets: ${id} not downloaded (${e.message})`);
+      // a course pack: said plainly in Settings → Storage (backend/app/course_packs.py reads it) and the ask is dropped,
+      // so a blocked or offline download doesn't retry every 2 s (the Steer voice keeps its old behaviour)
+      if (store.removable(id)) {
+        store.failed(id, e.school ? SCHOOL_MSG : AS.isNetworkError(e) ? OFFLINE_MSG : e.disk ? e.message : "The download stopped. Try again.");
+        try { require("fs").rmSync(require("path").join(store.dir, ".want", id), { force: true }); } catch { /* */ }
+      }
+    }
     finally { wantBusy = false; }
   }, 2000);
 }

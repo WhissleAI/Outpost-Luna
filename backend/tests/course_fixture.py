@@ -27,12 +27,13 @@ def make_pack(packs: Path, cid: str = "testland", title: str = "Testland", lesso
     reg["entities"] = [{"id": "mesa_verde", "type": "place", "group": "place", "name": "Mesa Verde", "kind": "site",
                         "aliases": ["Mesa Verde National Park"]}] + reg["entities"][:5]
     (d / "entities.json").write_text(json.dumps(reg))
-    (d / "earth.jpg").write_bytes(b"\xff\xd8\xff\xe0 not really a jpeg")
+    (d / "media").mkdir(exist_ok=True)
+    (d / "media" / "earth.jpg").write_bytes(b"\xff\xd8\xff\xe0 not really a jpeg")
     m = {"format": courses.FORMAT, "version": courses.VERSION, "id": cid, "title": title, "program": "Test program",
          "status": "pack", "subject": "Testing", "grades": "9-12",
          "reading_level": {"grades": "9-12", "register": "teen", "budgets": {"prompt": 30, "hint": 16}},
          "labels": {"course": title, "school": "Field School", "patches": "Field patches"},
-         "globe": {"body": "earth", "name": "Earth", "km": 6371.0, "map": f"/course/{cid}/earth.jpg"},
+         "globe": {"body": "earth", "name": "Earth", "km": 6371.0, "map": f"/api/courses/{cid}/media/earth.jpg"},
          "gazetteer": "places.json", "entities": "entities.json",
          "ear": {"names": "entities", "keyterms": ["Mesa Verde", "dendrochronology", "kiva"]},
          "lessons": {"source": "lessons.json", "tracks": ["core"], "ids": [l["id"] for l in les]},
