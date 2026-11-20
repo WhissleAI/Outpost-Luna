@@ -49,7 +49,7 @@ test("Learn more names only known NASA videos; the online-only pick is a YouTube
 
 test("course video steps name known videos and keep the contract shape", () => {
   const vs = COURSE.lessons.flatMap(l => l.steps.filter(s => s.type === "video").map(s => [l.id, s]));
-  assert.equal(vs.length, 7);
+  assert.equal(vs.length, 9);
   for (const [lid, s] of vs) {
     assert.ok(VIDEO_IDS.has(s.media), `${lid}: ${s.media}`);
     assert.ok(s.say && s.reveal && s.prompt === s.say && s.accept.type === "video", lid);

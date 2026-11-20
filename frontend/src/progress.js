@@ -17,6 +17,7 @@ import { anyPatch as defaultPatch, registerClassLessons } from "./academy/class_
 import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./explorer.js";
 import { debriefStory } from "./mission/objective.js";
 import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
+import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -54,6 +55,12 @@ export const COPY = {
   nextClass: t => `Class lesson: ${t}.`,
   nextMission: "A mission at a new site.",
   firstMission: "A first mission, from the Mission tab.",
+  speechTitle: "Reading and speaking",
+  speechCourse: c => ({ moon: "Moon" }[c] || c.charAt(0).toUpperCase() + c.slice(1)),
+  reading: (n, q) => `Passages read ${n}, questions answered ${q}`,
+  aloud: (n, w) => `Read aloud ${n} ${n === 1 ? "time" : "times"}, ${w} words read`,
+  words: (p, l, r) => `Words practised ${p}, learned ${l}, to review ${r}`,
+  summaries: (n, k) => `Summaries told ${n}, key points ${k}`,
   printedOn: d => `Outpost Luna progress · ${d}`,
 };
 
@@ -79,7 +86,8 @@ export function readCadets(storage = typeof localStorage !== "undefined" ? local
     const read = k => (live ? get(storage, k) : (d[k] ?? null));
     const callsign = String(read("outpost-callsign") || "").slice(0, 18);
     const fl = parse(get(storage, flownKey(callsign)));
-    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy")), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [] };
+    return { id: p.id, active: live, callsign, academy: academyOf(read("atm-academy")), flown: Array.isArray(fl) ? fl.filter(x => typeof x === "string") : [],
+      speech: speechSummary(parseSpeech((parse(read("outpost-brain")) || {}).speech)) };   // the Brain's speech section
   });
 }
 
@@ -147,6 +155,18 @@ export function missionHtml(n, d) {
     ${story.tryLine ? `<p class="mx-try pg-mtry"><b>${esc(COPY.tryTitle)}</b> ${esc(story.tryLine)}</p>` : ""}</li>`;
 }
 
+/** Reading, words and summaries (counts only, never what was said), one line each per course. Pure. */
+export function speechHtml(speech) {
+  const rows = Object.entries(speech || {});
+  if (!rows.length) return "";
+  return `<section class="pg-block pg-speech"><h5>${esc(COPY.speechTitle)}</h5>${rows.map(([c, x]) => `<ul class="pg-speech-rows" aria-label="${esc(COPY.speechCourse(c))}">
+      ${rows.length > 1 ? `<li class="pg-speech-course"><b>${esc(COPY.speechCourse(c))}</b></li>` : ""}
+      ${x.read || x.questions ? `<li>${esc(COPY.reading(x.read, x.questions))}</li>` : ""}
+      ${x.aloud ? `<li>${esc(COPY.aloud(x.aloud, x.aloud_words))}</li>` : ""}
+      ${x.practised ? `<li>${esc(COPY.words(x.practised, x.learned, x.review))}</li>` : ""}
+      ${x.summaries ? `<li>${esc(COPY.summaries(x.summaries, x.points))}</li>` : ""}</ul>`).join("")}</section>`;
+}
+
 /** One cadet's card. debriefs: {missionId: debrief|null}; brain: the cadet's practice counts (brain_store.js);
  *  summary: GET /api/brain/summary (shown on the playing cadet's card only: it is this computer's, not one cadet's). */
 export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch, brain = null, summary = undefined } = {}) {
@@ -168,7 +188,7 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
     ${s.current ? `<p class="pg-cur"><b>${esc(COPY.inProgress)}</b> ${esc(s.current.title)}, ${esc(COPY.step(s.current.i, s.current.n))}</p>` : ""}
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
     ${brain ? practiceHtml(brain, lessons) : ""}
-    ${classes}${missions}
+    ${classes}${speechHtml(cadet.speech)}${missions}
     ${cadet.active && summary !== undefined ? computerHtml(summary) : ""}
     ${s.next.length ? `<p class="mx-try pg-try"><b>${esc(COPY.tryTitle)}</b> ${s.next.map(esc).join(" ")}</p>` : ""}</article>`;
 }

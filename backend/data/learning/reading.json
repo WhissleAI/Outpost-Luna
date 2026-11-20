@@ -1,0 +1,18 @@
+{
+ "_note": "Passages for the speech learning steps (docs/SPEECH_LEARNING.md). Written only from facts already checked in learning/concepts.json and glossary.json; each keeps its source.",
+ "passages": {
+  "ice_craters": {
+   "title": "Ice in the dark",
+   "text": "Near the Moon's south pole, some craters are so deep that sunlight never reaches their floors. These dark craters are some of the coldest places measured in the solar system. LRO measured below minus 246 degrees Celsius there. That is cold enough to keep ice frozen for a very long time. In 2009, NASA's LCROSS mission crashed a rocket stage into Cabeus crater. The cloud it kicked up held water. Moon ice could give astronauts water, air and rocket fuel.",
+   "source": {
+    "title": "NASA Science: water and ice on the Moon",
+    "url": "https://science.nasa.gov/moon/moon-water-and-ices/"
+   },
+   "from": [
+    "learning/concepts.json#psr_cold",
+    "learning/concepts.json#lcross",
+    "glossary.json#ice"
+   ]
+  }
+ }
+}

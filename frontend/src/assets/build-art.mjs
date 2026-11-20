@@ -110,6 +110,10 @@ export const PATCHES = {
   craters: { name: "Lava Tracker", badge: "lava", kind: "lesson", shape: "round", border: P.orange, field: P.navy, emblem: lavaTracker },
   rocks: { name: "Rock Hound", badge: "rockhound", kind: "lesson", shape: "round", border: P.paper, field: P.blue, emblem: rockHound },
   fieldkit: { name: "Field Ready", badge: "fieldkit", kind: "lesson", shape: "shield", border: P.green, field: P.navy, emblem: fieldReady },
+  // Speech learning (docs/SPEECH_LEARNING.md): read a passage, a word lab, tell it back
+  reading: { name: "Reader", badge: "reader", kind: "lesson", shape: "round", border: P.ice, field: P.deep, emblem: reader },
+  wordlab: { name: "Word Smith", badge: "wordsmith", kind: "lesson", shape: "round", border: P.gold, field: P.blue, emblem: wordSmith },
+  retell: { name: "Storyteller", badge: "storyteller", kind: "lesson", shape: "round", border: P.orange, field: P.navy, emblem: storyteller },
   storm_survivor: { name: "Storm Survivor", kind: "mission", shape: "round", border: P.red, field: P.deep, emblem: stormSurvivor },
   outpost_luna: { name: "Outpost Luna", kind: "mission", shape: "round", border: P.gold, field: P.deep, emblem: outpostLuna },
 };
@@ -277,6 +281,39 @@ function wordExplorer(s) {
     pathEl("M80 106C92 98 110 96 126 100V130C110 126 92 128 80 136Z", P.paper),
     line("M43 109C53 107 63 108 72 112M43 118C53 116 63 117 72 121M88 112C97 108 107 107 117 109M88 121C97 117 107 116 117 118", P.moondk, 2.5, "d"),
     sparkle(116, 40, 6.5, P.white), sparkle(44, 44, 5, P.white),
+  ];
+}
+// Reader (read like a scientist): an open book, and above it a dark crater with ice glinting on its floor
+function reader() {
+  return [
+    pathEl("M34 70Q80 40 126 70Q80 84 34 70Z", P.moondk),
+    pathEl("M46 70Q80 52 114 70Q80 78 46 70Z", P.deep, "d"),
+    sparkle(80, 66, 7, P.ice), sparkle(98, 69, 4, P.ice, "d"), sparkle(63, 69, 3.5, P.ice, "d"),
+    pathEl("M80 96C68 88 50 86 34 90V126C50 122 68 124 80 132Z", P.white),
+    pathEl("M80 96C92 88 110 86 126 90V126C110 122 92 124 80 132Z", P.paper),
+    line("M43 101C53 99 63 100 72 104M43 110C53 108 63 109 72 113M88 104C97 100 107 99 117 101M88 113C97 109 107 108 117 110", P.moondk, 2.5, "d"),
+    sparkle(120, 40, 5.5, P.white), sparkle(40, 42, 4.5, P.white),
+  ];
+}
+// Word Smith (the word lab): a speech bubble with sound waves inside, and a small crescent Moon
+function wordSmith() {
+  return [
+    pathEl("M36 52H124Q132 52 132 60V100Q132 108 124 108H72L52 126L56 108H36Q28 108 28 100V60Q28 52 36 52Z", P.white),
+    line("M52 80V80M64 70V90M76 62V98M88 72V88M100 66V94M112 78V82", P.blue, 5),
+    crescent(118, 36, 13, 124, 31, 11, P.gold),
+    sparkle(38, 36, 5, P.white),
+  ];
+}
+// Storyteller (tell it back): a microphone with sound arcs, and the Apollo 15 feather beside it
+function storyteller() {
+  return [
+    pathEl("M66 46Q66 34 78 34Q90 34 90 46V82Q90 94 78 94Q66 94 66 82Z", P.moon),
+    line("M70 52H86M70 62H86M70 72H86", P.moondk, 2.5, "d"),
+    line("M56 78Q56 106 78 106Q100 106 100 78M78 106V124M64 126H92", P.white, 4.5),
+    line("M106 54Q114 64 106 74M114 46Q128 64 114 82", P.gold, 3.5, "d"),
+    pathEl("M44 112Q30 82 48 52Q60 80 44 112Z", P.white),
+    line("M44 112L47 60", P.moondk, 2, "d"),
+    sparkle(124, 104, 5, P.white),
   ];
 }
 function commander(s) {

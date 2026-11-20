@@ -87,4 +87,4 @@ def test_api_lists_the_moon_as_the_active_course():
     assert r.status_code == 200
     d = r.json()
     assert d["active"] == "moon" and [c["id"] for c in d["courses"]] == ["moon"] and d["problems"] == []
-    assert d["courses"][0]["lessons"] == 13 and d["courses"][0]["globe"]["body"] == "moon"
+    assert d["courses"][0]["lessons"] == 16 and d["courses"][0]["globe"]["body"] == "moon"

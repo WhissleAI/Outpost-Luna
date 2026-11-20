@@ -1,7 +1,7 @@
 // Class lesson patches (docs/CURRICULUM.md): a teacher's lesson has no drawn art, so its patch is the round mission
 // patch shape (assets/build-art.mjs OUTLINE.round: the same field, stitch ring and merrowed border, in the same palette)
 // with the lesson's letter. Earned: full colour; not yet: the dashed outline the drawn patches use. Pure: no DOM.
-import { patch as artPatch } from "../assets/icons.js";
+import { patch as artPatch, patchId } from "../assets/icons.js";
 
 const PAL = { navy: "#1A2B4C", deep: "#0E1A30", white: "#F3EFE4", gold: "#F0B43C" };
 // fields per pack (stable: the pack id picks one), all from the patch palette
@@ -14,6 +14,7 @@ const hash = s => [...String(s || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0
 const REG = new Map();   // lesson id and badge id -> {name, glyph, field}
 /** Register the course's Class lessons (academy/ui.js calls this whenever the course loads). */
 export function registerClassLessons(lessons) {
+  registerLetterPatches(lessons);
   REG.clear();
   // [courses] a course's own lessons (ids "<course>:<id>", docs/COURSES.md §4.4) draw the same round patch with their
   // glyph, on an earth-tone field (§3.4) until the course ships drawn art
@@ -50,6 +51,15 @@ export function classPatchSvg({ name = "Class", glyph = "C", field = FIELDS[0] }
 
 /** patch() for any lesson: a registered Class lesson draws its letter patch; everything else the drawn art. */
 export function anyPatch(id, opts = {}) {
-  const c = REG.get(id);
+  const c = REG.get(id) || (patchId(id) ? null : LETTER.get(id));
   return c ? classPatchSvg(c, opts) : artPatch(id, opts);
+}
+
+// Lessons without drawn art (the speech lessons, a course's new lessons): the same letter patch, from their badge glyph
+const LETTER = new Map();
+export function registerLetterPatches(lessons) {
+  (lessons || []).filter(l => l && l.badge && l.track !== "class" && !patchId(l.id) && !patchId(l.badge.id)).forEach(l => {
+    const v = { name: l.badge.name || l.title, glyph: String(l.badge.glyph || l.title || "?").slice(0, 1).toUpperCase(), field: FIELDS[hash(l.id) % FIELDS.length] };
+    LETTER.set(l.id, v); LETTER.set(l.badge.id, v);
+  });
 }

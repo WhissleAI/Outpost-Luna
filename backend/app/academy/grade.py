@@ -40,6 +40,8 @@ from .. import soundalike
 from ..mission import nlu, sim
 from . import arch_steps
 from .content import DATA, dev_course
+from . import speech
+from .speech import SPEECH_TYPES
 
 
 @lru_cache(maxsize=1)
@@ -146,7 +148,8 @@ def grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict]
     step's own short vocabulary (round 7, app/soundalike.py: "rover go get eyes" -> ice, "four side" -> far side,
     "malapart" -> Malapert). extra["heard_as"] then says what it was read as."""
     ok, extra = _grade(step, inp, loads)
-    if ok or not text_only(inp or {}):
+    # a vocab quiz's sound-alike traps ("larva" for lava) must never be repaired into the word (app/academy/speech.py)
+    if ok or not text_only(inp or {}) or (step.get("accept") or {}).get("type") in ("vocab", "summary"):
         return ok, extra
     fixed, edits = soundalike.repair(inp["text"], step_vocab(step))
     if not edits:
@@ -184,6 +187,8 @@ def step_vocab(step: dict | None, options: list[str] | None = None, aliases: boo
         out.append(acc["term"])
     if kind == "describe":
         out += [w for c in describe_cats(acc) for w in DESCRIBE[c][1] if " " not in w and len(w) > 3]
+    if kind in SPEECH_TYPES:
+        out += speech.step_vocab(acc)
     return [re.sub(r"\s*\(.*?\)", "", str(w)).strip() for w in out if w]
 
 
@@ -226,6 +231,12 @@ def _grade(step: dict, inp: dict, loads: dict | None = None) -> tuple[bool, dict
         return FIELD_TYPES[kind](acc, inp, text)
     if kind in arch_steps.GRADERS:   # layers, rings, hillshade, decide (docs/COURSES.md §3.2)
         return arch_steps.GRADERS[kind](acc, inp, text)
+    if kind == "read":            # speech learning steps (app/academy/speech.py); the summary's embedder and tagger
+        return speech.grade_read(acc, inp, text)   # hits come from routes.py (async), words alone here
+    if kind == "vocab":
+        return speech.grade_vocab(acc, inp, text)
+    if kind == "summary":
+        return speech.grade_summary(acc, inp, inp.get("long_text") or text)
     # ---- vocab steps (a11y / learning design) ----
     if kind.startswith("vocab_"):
         from . import vocab
@@ -691,6 +702,8 @@ def plausible(step: dict | None, text: str, dd: float | None = None, dd_min: flo
     if not t.strip():
         return False
     cw = content_words(text)
+    if kind in SPEECH_TYPES:      # a passage answer, a word, a summary (app/academy/speech.py)
+        return speech.plausible(acc, text)
     opts = step_options(acc) if step else [(str(k), [o]) for k, o in enumerate(options or [])]
     if opts and kind != "globe_side" and option_index(text, len(opts)) is not None:
         return True

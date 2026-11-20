@@ -16,7 +16,7 @@
   "source": "academy/course.json",
   "tracks": ["core", "explorer", "field"],
   "ids": ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
-          "observe", "craters", "rocks", "fieldkit", "checkride"]
+          "observe", "craters", "rocks", "fieldkit", "reading", "wordlab", "retell", "checkride"]
  },
  "missions": {"kind": "outpost", "sites": "mission/sites.json"},
  "concepts": "learning/concepts.json",

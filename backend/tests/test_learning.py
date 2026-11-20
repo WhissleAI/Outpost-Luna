@@ -81,7 +81,7 @@ def test_course_v3_shape():
     c = content.course()
     assert content.check() == []
     ids = [l["id"] for l in c["lessons"]]
-    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 13   # 9 + 4 Field School lessons
+    assert ids[-1] == "checkride" and "words" not in ids and len(ids) == 16   # 9 + 4 Field School + 3 speech lessons (docs/SPEECH_LEARNING.md)
     assert [l["id"] for l in c["lessons"] if l.get("track") == "core" and not l.get("ride")] == \
         ["moon", "phases", "power", "comms", "radiation", "life"]           # 6 core lessons before the ride
     for l in c["lessons"]:

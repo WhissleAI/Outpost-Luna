@@ -15,7 +15,7 @@ def client():
 def test_course_validates():
     assert content.check() == []
     c = content.course()
-    assert 6 <= len(c["lessons"]) <= 13         # v4: 8 lessons and the check ride; 0.5: + 4 Field School lessons
+    assert 6 <= len(c["lessons"]) <= 16         # v4: 8 lessons and the check ride; 0.5: + 4 Field School; + 3 speech lessons
     assert c["lessons"][-1]["id"] == "checkride" and c["lessons"][-1]["badge"]["id"] == c["pass_badge"]
     for l in c["lessons"]:
         assert l["facts"] and all(f["source"]["url"].startswith("http") for f in l["facts"])

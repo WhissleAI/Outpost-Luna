@@ -29,6 +29,9 @@ export const DO = {
   // archaeology (docs/COURSES.md §3.2)
   layers: "Tap the layers oldest first, or say them", rings: "Slide the beam until the bars match",
   hillshade: "Tap the features on the map, or name them", decide: "Pick what you would do",
+  // speech learning (docs/SPEECH_LEARNING.md)
+  read: "Read, then tap, say or type your answer", vocab: "Say the word, or tap it",
+  summary: "Tell it back, then tap Done",
 };
 /** A video step with nothing to guess ("Watch the bright part grow"): no "Guess first" (novice playtest #7). */
 const DO_VIDEO_PLAIN = "Tap Watch, or Skip";
@@ -47,6 +50,9 @@ export const INTRO = {
   rings: "New: a tree-ring match. Line up the patterns, then read the year.",
   hillshade: "New: lidar. Low sun makes small bumps cast shadows.",
   decide: "New: a field call. Every choice gets an answer.",
+  read: "New: read first. Listen, or read it aloud yourself.",
+  vocab: "New: a word lab. Watch out for sound-alikes.",
+  summary: "New: tell it back in your own words.",
 };
 /** [0.3.12] The intro without its "New:" label: the card shows "New" as a chip, and TTS / captions never say "New:". */
 export const introText = t => String(t || "").replace(/^\s*New:\s*/i, "").replace(/^./, c => c.toUpperCase());

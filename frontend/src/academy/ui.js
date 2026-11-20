@@ -23,7 +23,8 @@ import { missionsFlown, unlocked, isExplorer, isField, isBonus, isClass, coreLes
 import { pinInnerHtml, fieldTrackHtml, classTrackHtml } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
 import { FIELD_STEP_TYPES as MOON_FIELD_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
 import { ARCH_BUILDUP_TYPES } from "./arch_steps.js";   // [courses] layers and hillshade build up over turns the same way
-const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES];
+import { SPEECH_STEP_TYPES } from "./speech_steps.js";   // speech learning steps: read, vocab, summary (docs/SPEECH_LEARNING.md)
+const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES, ...SPEECH_STEP_TYPES];
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
 import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
@@ -117,6 +118,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // no name); help and misses climb to the label, then to "here it is"
     gs = !L || L.ride || !["intent", "tap"].includes(acc.type) || !acc.place || (st.ring || []).includes(acc.place) ? { rung: 0 } : { rung: 1, focus: [acc.place] };
     baseRung = gs.rung || 0;
+    if (stepState.rec) clearTimeout(stepState.rec.timer);   // a summary's quiet timer / a read-aloud ends with its step
+    if (stepState.aloud && stepState.aloud.off) stepState.aloud.off();
     stepState = { taps: [] }; pendingBadge = null;
     // a terminator step's night side never leaks into the next step or lesson (it re-locks the Sun when it renders)
     if (globe.setSunDir) globe.setSunDir(null);
@@ -536,7 +539,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const A11 = typeof window !== "undefined" && window.__outpost && window.__outpost.a11y;
     const E = STEP_RENDERERS[acc.type];
     const R = typeof E === "function"
-      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext, state: stepState, guide: gs }))
+      ? (o => ({ html: () => o.html, wire: el => o.bind && o.bind(el), onTap: o.onTap }))(E({ step: st, acc, answer, esc, say: (t, style) => say(t, style, { repeat: true }) /* step buttons ("hear it"): a deliberate replay */, playCrew: m => player.play(m), captions: A11 ? A11.settings.captions : true, globe, locked: waitingNext, state: stepState, guide: gs, lesson: L, stepIndex: i }))
       : (E || { html: () => "" });
     stepTap = R.onTap || null;   // [learning-v3] globe steps (academy/globe_steps.js) take taps on the Moon
     const firstLook = i === 0 && !waitingNext && !feedback;
@@ -678,7 +681,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     let r = null;
     try {
       r = await academyApi.hint({ lesson_id: L.id, step: i, rung: Math.min(3, (gs.rung || 0) + 1),
-        got: st.accept.type === "route" || FIELD_STEP_TYPES.includes(st.accept.type) ? (stepState.got || []) : undefined });
+        got: st.accept.type === "route" || FIELD_STEP_TYPES.includes(st.accept.type) ? (stepState.got || []) : undefined,
+        ...(st.accept.type === "vocab" && stepState.plan ? { plan: stepState.plan } : {}) });
     } catch (e) { r = null; }
     if (!ui.active || view !== "lesson" || L !== at.L || i !== at.i || waitingNext) return "";   // moved on meanwhile
     if (!r || !r.say) { feedback = { kind: "help", text: fallback }; render(); return fallback; }
@@ -737,6 +741,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // [0.5] a Field step builds up: send what counts so far ([0.4.1] the check ride's readback and confirm too)
     const field = FIELD_STEP_TYPES.includes(acc0.type) && (!L.ride || acc0.type === "sequence");
     if (field && !input.got && (stepState.got || []).length) input = { ...input, got: stepState.got.slice() };
+    if (acc0.type === "vocab" && stepState.plan && !input.plan) input = { ...input, plan: stepState.plan.slice() };   // spaced repetition order
     let r;
     const step_s = Math.max(0, Math.round((now() - stepAt) / 100) / 10);   // the reveal needs ~20 s (grade.reveal_due)
     const sk = L.id + ":" + i, hes = !L.ride && !!hesAt && now() - hesAt < HES_MS && !hesUsed.has(sk);
@@ -748,7 +753,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     // the step's grade, for the opt-in turn log's outcome signals (main.js forwards it to the session; docs/DIRECTOR_LOOP.md)
     // [brain] and the cadet's own practice counts (brain_store.js: ids and counts only, on this device; docs/BRAIN.md)
     try { dispatchEvent(new CustomEvent("outpost:lesson-result", { detail: { status: r.status, step_type: (L.steps[i].accept || {}).type,
-      lesson: L.id, shown: !!r.shown, misses, helped: !L.ride && (gs.rung || 0) > baseRung, hes: hes && r.status === "hint", step_s, ride: !!L.ride } })); } catch (e) { /* no window */ }
+      lesson: L.id, shown: !!r.shown, misses, helped: !L.ride && (gs.rung || 0) > baseRung, hes: hes && r.status === "hint", step_s, ride: !!L.ride,
+      lesson_id: L.id, reply: r, input, preview: !!L.preview } })); } catch (e) { /* no window */ }   // + speech steps' counts (academy/speech_steps.js)
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
     if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }
@@ -1039,6 +1045,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       const b = far !== near && panel.querySelector(`.g-side[data-c="${far ? "far" : "near"}"]`);
       if (b && !b.disabled) { b.click(); return true; }
     }
+    // a speech step collecting words (a summary, or reading aloud): it keeps them until the cadet is done
+    if (stepState.onText && stepState.onText(text)) return true;
     // tap steps: naming the place counts too (hands-free, and kids who can't tap); the server grades it
     return answer({ text });
   }

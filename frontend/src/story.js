@@ -277,7 +277,7 @@ export const TRACKS = [
   { id: "foundations", title: "Foundations", lessons: ["moon", "phases", "comms"] },
   { id: "systems", title: "Outpost systems", lessons: ["power", "radiation", "life"] },
   { id: "qual", title: "Qualification", lessons: ["checkride"] },
-  { id: "explorer", title: "Explorer", lessons: ["gravity", "history"] },
+  { id: "explorer", title: "Explorer", lessons: ["gravity", "history", "reading", "wordlab", "retell"] },
   { id: "field", title: "Field School", lessons: ["observe", "craters", "rocks", "fieldkit"] },
 ];
 /** Field School (0.5, course.json track "field"): four geology lessons that open after the check ride (explorer.js). */
@@ -325,6 +325,9 @@ export const LESSON_BLURB = {
   craters: "Impacts, rays and lava. Which came first?",
   rocks: "Name real Apollo rocks. The oldest is 4.4 billion years.",
   fieldkit: "Rake, tongs, hammer, scoop. Pack your geology kit.",
+  reading: "Read about Moon ice. Answer, or read it aloud.",
+  wordlab: "Crater or creator? Practise space words, then use one.",
+  retell: "Watch the hammer and feather. Then tell it back.",
 };
 export const WHY_TITLE = "Why this matters";
 export const WHY = "The first crew landing is planned for Artemis IV, in 2028.";
@@ -383,6 +386,9 @@ export const LESSON_STORY = {
   craters: { beat: "Every crater tells a story. Let's read some." },
   rocks: { beat: "Apollo brought rocks home. Let's meet them." },
   fieldkit: { beat: "Last stop: pack your field kit for the pole." },
+  reading: { beat: "Scientists read before they fly. Let's read." },
+  wordlab: { beat: "Words are tools. Let's sharpen a few." },
+  retell: { beat: "Good crews can tell what they saw. Let's practise." },
 };
 
 /** CAPCOM's lines that use the call sign (the spoken form is passed in, so a typed name is never read aloud). */

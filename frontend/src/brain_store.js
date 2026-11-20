@@ -18,6 +18,11 @@
 //     secs    seconds on graded steps (each step capped at 5 minutes, so a walk away doesn't count)
 //   days: ["2026-11-19", ...]   the days with a graded step, newest last, at most 60
 //   course: "moon"               which course the lesson ids belong to (default "moon"; ready for more courses)
+//   speech: { c: { <course>: {read, questions, aloud, aloud_words, summaries, points, words: {<glossary word>:
+//            {box, due: YYYY-MM-DD, n}}} } }   reading / vocab / summary counts and the vocab spaced repetition
+//            (academy/speech_store.js; docs/SPEECH_LEARNING.md). Counts and glossary words only, never what was said.
+
+import { parse as parseSpeech } from "./academy/speech_store.js";
 
 export const KEY = "outpost-brain";
 export const MAX_DAYS = 60;
@@ -42,6 +47,8 @@ export function clean(raw) {
     if (!ID.test(id) || !v || typeof v !== "object") continue;
     out.lessons[id] = Object.fromEntries(FIELDS.map(f => [f, n(v[f])]));
   }
+  const sp = parseSpeech(raw.speech);
+  if (Object.keys(sp.c).length) out.speech = sp;
   out.days = [...new Set((Array.isArray(raw.days) ? raw.days : []).filter(d => typeof d === "string" && DAY.test(d)))].sort().slice(-MAX_DAYS);
   return out;
 }

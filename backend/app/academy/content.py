@@ -14,7 +14,8 @@ ACCEPT_TYPES = ("intent", "command", "tap", "keywords", "choice",
                 "predict", "globe_side", "terminator", "compare", "route", "earth_view",   # globe steps: grade.py
                 "describe", "sequence", "rounds",   # Field School steps: grade.py FIELD_TYPES
                 "video",   # a NASA video step (docs/MEDIA.md): predict → watch or skip → reveal; never blocks
-                "layers", "rings", "hillshade", "decide")   # archaeology steps: app/academy/arch_steps.py
+                "layers", "rings", "hillshade", "decide",   # archaeology steps: app/academy/arch_steps.py
+                "read", "vocab", "summary")   # speech learning steps: app/academy/speech.py, docs/SPEECH_LEARNING.md
 PREP_MAX_STEPS = 3      # a mission-prep task: 3 spoken steps or fewer
 PREP_END = "Tell me when it's ready."   # how a prep task's last line ends: never the trigger word "done" (the open mic
                                         # would hear our own "done" back, docs/COPY.md); the button still says Done
@@ -176,6 +177,9 @@ def public() -> dict:
             acc["media"] = a.get("media")
             if (a.get("guess") or {}).get("options"):   # "Guess first": the chips, not the answer (the reply has it)
                 acc["guess"] = {"options": [{"id": o["id"], "label": o["label"]} for o in a["guess"]["options"]]}
+        if a["type"] in ("read", "vocab", "summary"):   # speech learning steps: passage, questions, items; no answers
+            from .speech import public_accept as speech_public
+            acc = speech_public(a)
         if a["type"].startswith("vocab_"):           # Space words: options without the answer key
             from .vocab import public_accept
             acc = public_accept(a)
@@ -426,6 +430,9 @@ def check(c: dict | None = None) -> list[str]:
                 probs += [f"{lid}[{i}]: {p}" for p in check_step(a)]
             probs += [f"{lid}[{i}]: {p}" for p in _check_globe_step(s, a)]
             probs += [f"{lid}[{i}]: {p}" for p in check_field_step(s, a)]
+            if a.get("type") in ("read", "vocab", "summary"):
+                from .speech import check_step as speech_check
+                probs += [f"{lid}[{i}]: {p}" for p in speech_check(s, a)]
             probs += [f"{lid}[{i}]: {p}" for p in check_video_step(s)]
             if a.get("type") in ARCH_TYPES:
                 from .arch_steps import check_step as arch_check

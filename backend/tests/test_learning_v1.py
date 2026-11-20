@@ -29,13 +29,14 @@ def test_new_lessons_core_and_explorer_tracks():
     c = content.course()
     ids = [l["id"] for l in c["lessons"]]
     assert ids == ["moon", "phases", "power", "comms", "radiation", "life", "gravity", "history",
-                   "observe", "craters", "rocks", "fieldkit", "checkride"]   # + Field School (test_field_school.py)
+                   "observe", "craters", "rocks", "fieldkit", "reading", "wordlab", "retell", "checkride"]   # + Field School (test_field_school.py)
     track = {l["id"]: (l["track"], l.get("unlock_after_missions")) for l in c["lessons"]}
     # novice playtest 2026-11-16 #22: Apollo's trace step opens after the check ride, not a second mission
     assert track["gravity"] == ("explorer", 1) and track["history"] == ("explorer", None)
     assert content.lesson("history")["unlock_after"] == "checkride"
     assert all(t == ("core", None) for k, t in track.items()
-               if k not in ("gravity", "history") and content.lesson(k)["track"] != "field")
+               if k not in ("gravity", "history", "reading", "wordlab", "retell") and content.lesson(k)["track"] != "field")
+    assert all(track[k] == ("explorer", None) for k in ("reading", "wordlab", "retell"))   # docs/SPEECH_LEARNING.md
     ph, gr = content.lesson("phases"), content.lesson("gravity")
     assert ph["badge"]["name"] == "Moon Watcher" and set(ph["ngss"]) == {"1-ESS1-1", "MS-ESS1-1"}
     assert gr["badge"]["name"] == "Moonwalker" and gr["ngss"] == ["5-PS2-1"]
@@ -107,7 +108,7 @@ def test_cold_trap_wording_and_second_source():
 # ---- video steps ------------------------------------------------------------------------------------------------------
 def test_every_video_step_is_valid_and_names_a_known_video():
     vs = _videos()
-    assert len(vs) == 7
+    assert len(vs) == 9   # + the speech lessons' psr and hammer_feather hooks
     for lid, i, s in vs:
         assert content.check_video_step(s) == [], (lid, i)
         assert s["media"] in content.VIDEO_IDS                     # VIDEO_MEDIA comes from the video catalog
