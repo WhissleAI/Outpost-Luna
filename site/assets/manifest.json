@@ -6,13 +6,17 @@
  "assets": [
   {
    "id": "ear",
+   "version": "2",
+   "min_app": "0.4.2",
+   "max_app": null,
+   "requires": [],
    "title": "Speech model (Arc Transcriber Space)",
    "required": true,
-   "file": "outpost-luna-v2-ear-176d324.tar",
-   "url": "https://www.dropbox.com/scl/fi/tzi64ub64mvwegpll4xkk/outpost-luna-v2-ear-176d324.tar?rlkey=hp0a1s8ih29xmv2f4ls5sjkme&dl=1",
-   "sha256": "ea1b54f07b6eca960bbcf379bca74e6dfdb7092de24493451d4d742dd1f204ba",
-   "size": 460595200,
-   "unpacked_size": 460571964,
+   "file": "outpost-luna-v2-ear-176d324-fp16-2.tar",
+   "url": null,
+   "sha256": "66c3092d7e375e708dc7ae44ae29aa8b35674a80ffa61481e1201f0992b84a4f",
+   "size": 403025920,
+   "unpacked_size": 403004221,
    "n_files": 24,
    "env": "ARC_SPACE_DIR",
    "subdir": "nft2",
@@ -33,13 +37,13 @@
     },
     {
      "path": "NOTICE",
-     "size": 1354,
-     "sha256": "666d757439d549747ec671e851f9b3b867066c3f3591f7ee8b3da7cc7979089a"
+     "size": 1633,
+     "sha256": "4933ff0c11f0496509fca8f48c317ac3786da23d3d30e2df5ab708afd857f059"
     },
     {
      "path": "nft2/adapters.safetensors",
-     "size": 18707468,
-     "sha256": "0624399e9817debf2d54c842fd6fa46f6ae602ee5fa81ebd274243921047b5f9"
+     "size": 9355126,
+     "sha256": "487f33acca206f90f09b41f2f260c3ad75217abb673bb96135be7a975561fd12"
     },
     {
      "path": "nft2/config.json",
@@ -63,8 +67,8 @@
     },
     {
      "path": "nft2/decoder/model.safetensors",
-     "size": 96442080,
-     "sha256": "f0dde9ec3e74ab26bcc534f99f5c9479edc3d1b945e6c5e65ea627ef7fb9b30c"
+     "size": 48226400,
+     "sha256": "04d1d584f4bc5790f8b2e51783ebfb97439d165cb4e01ee404886ab1f430e7b9"
     },
     {
      "path": "nft2/decoder/processor_config.json",
@@ -145,11 +149,18 @@
    "source": {
     "repo": "WhissleAI/arc-transcriber-space",
     "revision": "176d32449b070893739db21e15ea5320af005a68",
-    "licence": "CC BY-NC 4.0"
+    "licence": "CC BY-NC 4.0",
+    "modified": "model_server/tools/ear_quant.py --decoder fp16 --adapters fp16"
    },
    "fallback": {
-    "kind": "files",
-    "base": "https://huggingface.co/WhissleAI/arc-transcriber-space/resolve/176d32449b070893739db21e15ea5320af005a68/",
+    "kind": "pack",
+    "version": "1",
+    "file": "outpost-luna-v2-ear-176d324.tar",
+    "url": "https://www.dropbox.com/scl/fi/tzi64ub64mvwegpll4xkk/outpost-luna-v2-ear-176d324.tar?rlkey=hp0a1s8ih29xmv2f4ls5sjkme&dl=1",
+    "sha256": "ea1b54f07b6eca960bbcf379bca74e6dfdb7092de24493451d4d742dd1f204ba",
+    "size": 460595200,
+    "unpacked_size": 460571964,
+    "n_files": 24,
     "files": [
      {
       "path": "LICENSE",
@@ -271,12 +282,134 @@
       "size": 145150,
       "sha256": "d68e86adca1aacf1d46cdd91ea24dfae0d902c9548544f71e23543e1eab4f902"
      }
-    ]
-   },
-   "version": "1",
-   "min_app": "0.3.0",
-   "max_app": null,
-   "requires": []
+    ],
+    "fallback": {
+     "kind": "files",
+     "base": "https://huggingface.co/WhissleAI/arc-transcriber-space/resolve/176d32449b070893739db21e15ea5320af005a68/",
+     "files": [
+      {
+       "path": "LICENSE",
+       "size": 22053,
+       "sha256": "47377b0214c20476d0c6a2c934d9b9845e54155f8df860e7f668eaf8f460b11a"
+      },
+      {
+       "path": "NAMES_LISTS.md",
+       "size": 5047,
+       "sha256": "2e658739d01b1e8a344da39d1ec39cf83ec4e09b739c734225835a6857a25343"
+      },
+      {
+       "path": "NOTICE",
+       "size": 1354,
+       "sha256": "666d757439d549747ec671e851f9b3b867066c3f3591f7ee8b3da7cc7979089a"
+      },
+      {
+       "path": "nft2/adapters.safetensors",
+       "size": 18707468,
+       "sha256": "0624399e9817debf2d54c842fd6fa46f6ae602ee5fa81ebd274243921047b5f9"
+      },
+      {
+       "path": "nft2/config.json",
+       "size": 106792,
+       "sha256": "52e25a3a2b3b424ba6d7708eb0e6a028819e453aaae03adfec8fa7dbcfe1e30c"
+      },
+      {
+       "path": "nft2/decoder/LICENSE",
+       "size": 14180,
+       "sha256": "fa7d1174dd8af6a7cd280be20b80d10095ed4c19b5b20b61a7715c3ad790dc5f"
+      },
+      {
+       "path": "nft2/decoder/config.json",
+       "size": 1537,
+       "sha256": "5c00a220c4588d8ccc525eb0d9b0e9c23788addd0cab9007976fb7fcdfd5a0e9"
+      },
+      {
+       "path": "nft2/decoder/generation_config.json",
+       "size": 247,
+       "sha256": "76738b486ca48ac8504af13a4978f62ff80502be99ed0dd9fdc286cfa8f9cb99"
+      },
+      {
+       "path": "nft2/decoder/model.safetensors",
+       "size": 96442080,
+       "sha256": "f0dde9ec3e74ab26bcc534f99f5c9479edc3d1b945e6c5e65ea627ef7fb9b30c"
+      },
+      {
+       "path": "nft2/decoder/processor_config.json",
+       "size": 340,
+       "sha256": "41db69af4b4f77d88e3d9d403d3bda2d027547b8880cda6507f2ac23dc09f1c1"
+      },
+      {
+       "path": "nft2/decoder/tokenizer.json",
+       "size": 1691637,
+       "sha256": "0d34dabb14ef0f1e0e92541d79646d7c833df7bd3228743faa2e3533745f4cc1"
+      },
+      {
+       "path": "nft2/decoder/tokenizer_config.json",
+       "size": 294,
+       "sha256": "68abd67d38150c56e3b44af16f005a5220d6ec2380cc98de16c35415c620c5af"
+      },
+      {
+       "path": "nft2/encoder_onnx/config.json",
+       "size": 1874,
+       "sha256": "05d404b2a0989f62508a03555a957f5c57f071da3645f107512d2d2b9d59e0cf"
+      },
+      {
+       "path": "nft2/encoder_onnx/decoder.onnx",
+       "size": 17393816,
+       "sha256": "54e0ceb0e6b417181f50f4f95cdec862b59b131d14d242eebc7add0bd8fa4cad"
+      },
+      {
+       "path": "nft2/encoder_onnx/encoder.onnx",
+       "size": 1196317,
+       "sha256": "f2b88309e2a53a0b6c9e59d399eb4ad2e588b333f48900245b709518bd977bfc"
+      },
+      {
+       "path": "nft2/encoder_onnx/encoder.weights",
+       "size": 282249216,
+       "sha256": "b88cf2c219e38aaf6e7f44019824b240d1ddb845708dba2a5ca7c18f7bf1de5f"
+      },
+      {
+       "path": "nft2/encoder_onnx/encoder_first.onnx",
+       "size": 1195151,
+       "sha256": "fcc691840f1eecf64a44724a1835472ccd1434c50f182d34f2cf0cecb68f6967"
+      },
+      {
+       "path": "nft2/encoder_onnx/frontend.npz",
+       "size": 84342,
+       "sha256": "3fff5d0b6d6c2ce0e88c81bbc90811a28b674be7decb693f5563e1b70d86c9d4"
+      },
+      {
+       "path": "nft2/encoder_onnx/joint_enc.onnx",
+       "size": 1313547,
+       "sha256": "c750897280ebbb98dd2e4592d4860a1b886ec2606f50c29b025e9c903b822ecf"
+      },
+      {
+       "path": "nft2/encoder_onnx/joint_net.onnx",
+       "size": 2628502,
+       "sha256": "99a11294cb863bb96bbba9746abd5a8499ff9358c52c34f193a62de0deae7180"
+      },
+      {
+       "path": "nft2/encoder_onnx/tokenizer.model",
+       "size": 260690,
+       "sha256": "6fdbb245a2b0020c7466e1f2b2913fe5bc282a6981c78f2366b6662ed0905f6d"
+      },
+      {
+       "path": "nft2/encoder_onnx/tokens.txt",
+       "size": 11896,
+       "sha256": "618dc110fc2213886b52e063ff42329bbdf37a266ca7705184090fa5f39f3131"
+      },
+      {
+       "path": "nft2/model.q4.safetensors",
+       "size": 37098434,
+       "sha256": "cccf781963855beedcfd439fd7740a8756ae5b80518700eac7ac55906eccdc9f"
+      },
+      {
+       "path": "nft2/tags.json",
+       "size": 145150,
+       "sha256": "d68e86adca1aacf1d46cdd91ea24dfae0d902c9548544f71e23543e1eab4f902"
+      }
+     ]
+    }
+   }
   },
   {
    "id": "tagger",
@@ -4121,13 +4254,17 @@
   },
   {
    "id": "crew",
+   "version": "2",
+   "min_app": "0.1.0",
+   "max_app": null,
+   "requires": [],
    "title": "Artemis II crew audio",
    "required": false,
-   "file": "outpost-luna-v2-crew.tar",
-   "url": "https://www.dropbox.com/scl/fi/qtov3tuekvl0t0eh6cqz1/outpost-luna-v2-crew.tar?rlkey=h93fihp4a4xxxduuwpfeilh8r&dl=1",
-   "sha256": "69af856b62ecca8638ffa8086d8b6d8cfa5872321829a25601ffdeac1d0f6379",
-   "size": 175360000,
-   "unpacked_size": 175301358,
+   "file": "outpost-luna-v2-crew-2.tar",
+   "url": null,
+   "sha256": "8483e217810d1914129cfb4b4adce7f880a3f556d396f7502633ce1c9a1c61fe",
+   "size": 116961280,
+   "unpacked_size": 116891644,
    "n_files": 76,
    "env": "MEDIA_AUDIO_DIR",
    "subdir": "",
@@ -4137,328 +4274,716 @@
    "files": [
     {
      "path": "NOTICE",
-     "size": 290
+     "size": 290,
+     "sha256": "2535f3303215504bdb1ade76eca382c02ca46769c9626da4759b58c0815ec2bb"
     },
     {
      "path": "audio/art002a000005-ck-swampcolors.mp3",
-     "size": 1092274
+     "size": 728338,
+     "sha256": "acb9990a9001909f49310448b17c14807ca412b1c89cf1d46da500ac042fe005"
     },
     {
      "path": "audio/art002a000005-ck-vg-relief-color-audio.mp3",
-     "size": 451296
+     "size": 301008,
+     "sha256": "aadbbe19ed3de3bed3c370b3e6e748871337fe9049375a609274b89aff514daf"
     },
     {
      "path": "audio/art002a000005.mp3",
-     "size": 4595877
+     "size": 3064053,
+     "sha256": "81db412b3c5de59c65c318b736e318b63140660d0b66df67fb102791c3692daf"
     },
     {
      "path": "audio/art002a000006.mp3",
-     "size": 3923828
+     "size": 2616020,
+     "sha256": "fb8cbb073b05b67f7f229727ea35a72f6ef8f9193a066832b94dc4ba7858be21"
     },
     {
      "path": "audio/art002a000007.mp3",
-     "size": 1376604
+     "size": 917868,
+     "sha256": "144922549c8816b77b8e946ca6cb188efee12ee1f01a3412dfdd49d0042010f0"
     },
     {
      "path": "audio/art002a000008.mp3",
-     "size": 6237327
+     "size": 4158351,
+     "sha256": "763626afbd23dad65cc11a3858946cadb9c0bd92fee3bca089ccb33bfce77176"
     },
     {
      "path": "audio/art002a000009.mp3",
-     "size": 3563244
+     "size": 2375628,
+     "sha256": "fd47b550fbe3e016409ca67e83f361dcaba28494cb91de6091bc9542e3bdc7d1"
     },
     {
      "path": "audio/art002a000010.mp3",
-     "size": 928765
+     "size": 619309,
+     "sha256": "f200303635069a4db574f49ad6a0e7cc83885140c81fb7bcd8cce95d3fbad6b2"
     },
     {
      "path": "audio/art002a000011-ck-sobeautiful-final.mp3",
-     "size": 938724
+     "size": 625956,
+     "sha256": "99badf8ebd657f9451a2a531f64ec93697ba07627b8c202658defff4eeeb0bef"
     },
     {
      "path": "audio/art002a000011.mp3",
-     "size": 2403525
+     "size": 1602501,
+     "sha256": "560cfb321426378a118c52c77bea7d514431ecd56243aa04bb7c5c51a49bdca8"
     },
     {
      "path": "audio/art002a000012.mp3",
-     "size": 2333344
+     "size": 1555696,
+     "sha256": "a312c34d4e74881f9d14038386fbba9b6086d12f1150e0cea970c6ac374e192a"
     },
     {
      "path": "audio/art002a000013.mp3",
-     "size": 1911282
+     "size": 1274322,
+     "sha256": "2efa68f681139a41af6595de94d958ccea63d16b5f78e413e829de9dbf511a78"
     },
     {
      "path": "audio/art002a000014.mp3",
-     "size": 485431
+     "size": 323767,
+     "sha256": "2e152eeb54e5428c707e1414e78c44fc011183d799357acf3db2756e69022bc8"
     },
     {
      "path": "audio/art002a000015-omg-stop-it.mp3",
-     "size": 315327
+     "size": 210351,
+     "sha256": "1647bee0f91e300d21c52c3d5526b65e756271c2be52b35ab8efc844a409899b"
     },
     {
      "path": "audio/art002a000015.mp3",
-     "size": 2331174
+     "size": 1554246,
+     "sha256": "4ccc622aee9ac5bf26ce3702f72d02a5f6be1eccd0b5ba224122f4d6406c72d8"
     },
     {
      "path": "audio/art002a000016.mp3",
-     "size": 1703052
+     "size": 1135500,
+     "sha256": "855bb8122fb6f411af59c95fb50141e774f054ce94dba2590e3f3cfe89b18bf0"
     },
     {
      "path": "audio/art002a000017.mp3",
-     "size": 7836590
+     "size": 5224526,
+     "sha256": "cc4708c5eada770b8ae3df4da6c297fee9d7626e209f5281ae0c36e112947c3f"
     },
     {
      "path": "audio/art002a000018.mp3",
-     "size": 3474410
+     "size": 2316410,
+     "sha256": "e8a72e7fd4ea08c52acae7ecd2c0faac534c7718b0c5e9e8ecf10aeca39518f9"
     },
     {
      "path": "audio/art002a000019-reid-geologist.mp3",
-     "size": 359840
+     "size": 240032,
+     "sha256": "f64139e595fc536730212ac0d15503deb097775e7e27d7836799b5b7c6f8a8e2"
     },
     {
      "path": "audio/art002a000019.mp3",
-     "size": 2812276
+     "size": 1874980,
+     "sha256": "eb47c19b12ccfc686f5f3745d2905e1e1a2fb24ae8ad7c249ec2da55470640f2"
     },
     {
      "path": "audio/art002a000020.mp3",
-     "size": 2936979
+     "size": 1958115,
+     "sha256": "fde0103a08e4028546ad6febb4730682b9d366307e6f706ddad72e03d1d0e0e3"
     },
     {
      "path": "audio/art002a000021.mp3",
-     "size": 2721854
+     "size": 1814702,
+     "sha256": "f5924f2bbc59c5605d895d89de7ad46db0f6cc2c3dc7622046fb935251af7541"
     },
     {
      "path": "audio/art002a000022.mp3",
-     "size": 1727242
+     "size": 1151626,
+     "sha256": "8cc5f244cd0419ebd5cff00b8f5d28c3472d4802bb2bd0f9aa08a91b8602d3bb"
     },
     {
      "path": "audio/art002a000023.mp3",
-     "size": 5797844
+     "size": 3865364,
+     "sha256": "e9b379541f76821a5bef70ef76693cff4b6767890696da9e8868cbf8e5cb66eb"
     },
     {
      "path": "audio/art002a000024-clipped.mp3",
-     "size": 257893
+     "size": 172069,
+     "sha256": "cc17641d4cb1c826b6c00abbaefc584e67e71f2e91c4cc86ceb638134a3aa143"
     },
     {
      "path": "audio/art002a000024.mp3",
-     "size": 6812177
+     "size": 4541585,
+     "sha256": "f6562be49e9374b0e3c426c8fb0753c4348581c4c7e0a573d1c6fea14faf1573"
     },
     {
      "path": "audio/art002a000025-reid-tourist.mp3",
-     "size": 969973
+     "size": 646789,
+     "sha256": "8b7c04ab0eb15bc3e3c0995ecaefd20b885973c006dca26c6e9a285147f46ff4"
     },
     {
      "path": "audio/art002a000025.mp3",
-     "size": 2721689
+     "size": 1814585,
+     "sha256": "d8384fceca061ed47ee214d7d63ddf3ce2a490cafa57e65349d51e008084d323"
     },
     {
      "path": "audio/art002a000026.mp3",
-     "size": 3192893
+     "size": 2128733,
+     "sha256": "3fd6804abe63050e0abd1fab8a727349c1e271e4bec0299442e94919e542eaea"
     },
     {
      "path": "audio/art002a000028.mp3",
-     "size": 10676817
+     "size": 7118001,
+     "sha256": "a691347007a856825703cd8e1653cd6ce16276ba3836cfb1b90f1741c96b40dc"
     },
     {
      "path": "audio/art002a000029.mp3",
-     "size": 4468857
+     "size": 2979369,
+     "sha256": "5676abefadefe716ae29ea39128e855fe8d0edc006ce993210bebc8ae2daf109"
     },
     {
      "path": "audio/art002a000030.mp3",
-     "size": 1696425
+     "size": 1131081,
+     "sha256": "76c8e2b53c20aa9b106712d72b2ab37b9b207b9b5f31cd77d5c846f1d8382073"
     },
     {
      "path": "audio/art002a000031.mp3",
-     "size": 1382213
+     "size": 921605,
+     "sha256": "4cbc545c1ccffbfe7f12ed037159c81ba5eccfbdf9ab9eed1709750c9466d1e5"
     },
     {
      "path": "audio/art002a000032.mp3",
-     "size": 581425
+     "size": 387745,
+     "sha256": "4a832cf798f4960d559b433c37c4373c6679e8934f7ce38de90a45a82718378a"
     },
     {
      "path": "audio/art002a000033.mp3",
-     "size": 777853
+     "size": 518701,
+     "sha256": "651a3b89db1271d3663a05a3ca51080fc9809f5736d80358048b95d42fc98542"
     },
     {
      "path": "audio/art002a000034.mp3",
-     "size": 4354512
+     "size": 2903136,
+     "sha256": "c24310c2efd70321e1bf495c33712df0507c6d2658aeba74ce9da5c80541ad94"
     },
     {
      "path": "audio/art002a000035.mp3",
-     "size": 5026713
+     "size": 3351273,
+     "sha256": "d253fbfbf08ac7dcb12d7b278542fb4127e24dac3f687e1e522a2eee1a7f465c"
     },
     {
      "path": "audio/art002a000036.mp3",
-     "size": 1235181
+     "size": 823581,
+     "sha256": "d76b6036cdc9faaeb4beaa54cd6cd61b562f96b1fcd475e1a6170cbd1f8d1395"
     },
     {
      "path": "audio/art002a000037.mp3",
-     "size": 5606314
+     "size": 3737674,
+     "sha256": "e24b5b312894d9c1d4bec0cef795a13dad208a01ad056d6f68bd7148f568c7d9"
     },
     {
      "path": "audio/art002a00003708-clipped.mp3",
-     "size": 2066085
+     "size": 1377525,
+     "sha256": "c088ec7cc66e460e5790e4c0899391984e8947e56601d666c1e9f82c9680d4cb"
     },
     {
      "path": "audio/art002a000038.mp3",
-     "size": 4472615
+     "size": 2981879,
+     "sha256": "39338a8d82084cf282d9f378f347fbbc0e0e83863e080a7d29ec750f9dccbe73"
     },
     {
      "path": "audio/art002a000039.mp3",
-     "size": 5184677
+     "size": 3456581,
+     "sha256": "26503881349e0ef0e995a6374b1ef32ec9586a5f7057fa67a517c5f6e257bc7c"
     },
     {
      "path": "audio/art002a000040.mp3",
-     "size": 1653504
+     "size": 1102464,
+     "sha256": "bcf792075363821c267cb56d8f1134851351869f5aeb3607136a9940ed03fd46"
     },
     {
      "path": "audio/art002a000041.mp3",
-     "size": 3155131
+     "size": 2103547,
+     "sha256": "a915b46ae4ea461c3b52115f5359902c4c3970dca81f2ad951028efdc3f071bc"
     },
     {
      "path": "audio/art002a000042.mp3",
-     "size": 3610897
+     "size": 2407393,
+     "sha256": "3261bca3703d9036fe0bb6af4024fd0b929769bae1620e0ae322713aa449a706"
     },
     {
      "path": "audio/art002a000043.mp3",
-     "size": 3644312
+     "size": 2429672,
+     "sha256": "25bfd741169f8d3c27ea22f1b16cbdd3ecad0568123e2e5ad7d6d29902a0e508"
     },
     {
      "path": "audio/art002a000044.mp3",
-     "size": 1846750
+     "size": 1231294,
+     "sha256": "981dafb45581b380a2915d324f0a159ec978e352f62bc50906b0112a61b2c000"
     },
     {
      "path": "audio/art002a000045.mp3",
-     "size": 1125874
+     "size": 750706,
+     "sha256": "074fcb5c02f49c5626d665f15283cb7fa639acb698b44db38e5a9123cb2e51e2"
     },
     {
      "path": "audio/art002a000046-clipped.mp3",
-     "size": 306982
+     "size": 204982,
+     "sha256": "23f359eaec0dd5dbd800a5e96bfb5074a27c3c38a6b322ffd405c9d2930efbdc"
     },
     {
      "path": "audio/art002a000046.mp3",
-     "size": 3918625
+     "size": 2612545,
+     "sha256": "3f22f03e28ce3e464c36fc555ed10b9c5b1314f0c5a54e8897f3052b7a32b66a"
     },
     {
      "path": "audio/art002a000047.mp3",
-     "size": 2443053
+     "size": 1628829,
+     "sha256": "9bc749daa0c44951f75ab01fe9cafda0e8263108b9c848a894856b660ef603bd"
     },
     {
      "path": "audio/art002a000048.mp3",
-     "size": 666828
+     "size": 444684,
+     "sha256": "69813753a0a7beb1eb97f37ad84b8008dbfc83f6d5088534946776abb0c85f5d"
     },
     {
      "path": "audio/art002a000049.mp3",
-     "size": 2687410
+     "size": 1791730,
+     "sha256": "be127c7e2af6b1257863aab1613b732fcb6556ba3d25eaea126435ecc0aa658e"
     },
     {
      "path": "audio/art002a00004915-clipped.mp3",
-     "size": 852033
+     "size": 568161,
+     "sha256": "786f110a7eb1e162408a9b9ba9fbcba0ced74087750cd15b642156b1d1c41d0c"
     },
     {
      "path": "audio/art002a000052-alt.mp3",
-     "size": 12461737
+     "size": 8307961,
+     "sha256": "9a5bf5ccccf01e94ccb7d334a40f216fae4798c83d1ae4fc6f5b215e6ae0c907"
     },
     {
      "path": "audio/art002a000052-jeremy-pulses-of-light.mp3",
-     "size": 692252
+     "size": 461660,
+     "sha256": "a0fad68d105f5e1f4f0e386962ae1f2b7046cb16a99ac345f9986fe0b5997982"
     },
     {
      "path": "audio/art002a000052-jeremy-stars-depth.mp3",
-     "size": 193522
+     "size": 129154,
+     "sha256": "9df908167af5dfee33a6cd575a34d5304a41cb12a168d967b1209591813aaa29"
     },
     {
      "path": "audio/art002a000053-part-1-clipped.mp3",
-     "size": 929945
+     "size": 620105,
+     "sha256": "f5a3379aad4f2ba5067eb4611900fd6ebb74e9a715560ff5017f3cc2e201d72e"
     },
     {
      "path": "audio/art002a000053.mp3",
-     "size": 6514959
+     "size": 4343439,
+     "sha256": "3ac47e0e2bbd7a96e4d61f5247292f83f08f9ac1d579f3a33cd900ea0fb3f317"
     },
     {
      "path": "audio/artemis-ii-breaks-apollo-13-distance-record.mp3",
-     "size": 487721
+     "size": 325289,
+     "sha256": "ec9597dca2658a0e16aaa0667d168e08e155d0eee2649313f8aa0d985a5145ff"
     },
     {
      "path": "audio/artemis-ii-go-for-translunar-injection.mp3",
-     "size": 180704
+     "size": 120608,
+     "sha256": "4cd42b0991f8c807a5bcdea63d801829da07aa6c4d24c8470a790cdf2c76ef88"
     },
     {
      "path": "audio/artemis-ii-good-burn.mp3",
-     "size": 53948
+     "size": 36092,
+     "sha256": "443bb57245929f6f19f6fe07ce3ea4652fd2290b28a02530f421af853fa43bfd"
     },
     {
      "path": "audio/artemis-ii-houston-we-have-you-loud-and-clear-1.mp3",
-     "size": 132625
+     "size": 88561,
+     "sha256": "3160a024946563f28eeed53e94cd7d16208371d11c4a4eabdab36d295b96086c"
     },
     {
      "path": "audio/artemis-ii-launch-full-send.mp3",
-     "size": 192778
+     "size": 128650,
+     "sha256": "b0c52c18d1f70f1453d1d0631f15190c160acda9a50176facd1c3cd3d3bdef12"
     },
     {
      "path": "audio/artemis-ii-launch-go-no-go-poll.mp3",
-     "size": 1024961
+     "size": 683441,
+     "sha256": "f743d5efd51468ea3202774722ade0678af59347baf2af9b99b765a959ca2845"
     },
     {
      "path": "audio/artemis-ii-liftoff.mp3",
-     "size": 157335
+     "size": 105015,
+     "sha256": "decdc176b4004cc03e64fdd678f98615eadd22bcc73065340fd4406108d31d02"
     },
     {
      "path": "audio/artemis-ii-message-from-apollo-astronaut-charlie-duke.mp3",
-     "size": 283685
+     "size": 189269,
+     "sha256": "237ce24699cc4ad9cfb66a1df21ea8829967c5e2d918c4c0d2b6dee10147a725"
     },
     {
      "path": "audio/artemis-ii-message-from-apollo-astronaut-jim-lovell.mp3",
-     "size": 300670
+     "size": 200590,
+     "sha256": "ffd5761488c53595e73b0993598a38b57344c712abc865af59be8be7b9261c26"
     },
     {
      "path": "audio/artemis-ii-names-new-craters-integrity-and-carroll.mp3",
-     "size": 815482
+     "size": 543802,
+     "sha256": "28387f7317f801ec8d93799643db04ad4a8939248cb8c31bfc035d74aee0a341"
     },
     {
      "path": "audio/artemis-ii-splashdown-shorter.mp3",
-     "size": 309557
+     "size": 206501,
+     "sha256": "499601bdccba7c1623f1a5199663ecdec8d797d945510b50bbd45b72961c747c"
     },
     {
      "path": "audio/christina-koch-clip-privileged-to-be-part-of-artemis-ii-crew.mp3",
-     "size": 211563
+     "size": 141195,
+     "sha256": "dc23f848b62b6910fe99fea5e7d1c8790f0e5219f8b41a8bca3569e1538790ef"
     },
     {
      "path": "audio/jeremy-hansen-clip-inspired-by-neil-armstrong.mp3",
-     "size": 260489
+     "size": 173801,
+     "sha256": "54ac0fb75901507e72dba8d41fc82b482a1273c3f2ec5d6deda34f966ad26c7a"
     },
     {
      "path": "audio/reid-wiseman-clip-artemis-builds-on-a-solid-legacy.mp3",
-     "size": 269139
+     "size": 179571,
+     "sha256": "db852a1cdb95d76b1af0b7528da528bbcf8fe567eee8988d8fa652c133b42a7a"
     },
     {
      "path": "audio/victor-glover-clip-exploring-is-who-we-are.mp3",
-     "size": 132755
+     "size": 88643,
+     "sha256": "63ec4a1e80ce9b45fcaf63a4cdac8e8976292c8cd991036360717297a47366eb"
     },
     {
      "path": "trim.json",
-     "size": 41421
+     "size": 41419,
+     "sha256": "6ace37cf0b627a46f5dd1348a092048b0d967b673b8e6e3b18ef1556c8c2e565"
     }
    ],
-   "version": "1",
-   "min_app": "0.1.0",
-   "max_app": null,
-   "requires": []
+   "fallback": {
+    "kind": "pack",
+    "version": "1",
+    "file": "outpost-luna-v2-crew.tar",
+    "url": "https://www.dropbox.com/scl/fi/qtov3tuekvl0t0eh6cqz1/outpost-luna-v2-crew.tar?rlkey=h93fihp4a4xxxduuwpfeilh8r&dl=1",
+    "sha256": "69af856b62ecca8638ffa8086d8b6d8cfa5872321829a25601ffdeac1d0f6379",
+    "size": 175360000,
+    "unpacked_size": 175301358,
+    "n_files": 76,
+    "files": [
+     {
+      "path": "NOTICE",
+      "size": 290
+     },
+     {
+      "path": "audio/art002a000005-ck-swampcolors.mp3",
+      "size": 1092274
+     },
+     {
+      "path": "audio/art002a000005-ck-vg-relief-color-audio.mp3",
+      "size": 451296
+     },
+     {
+      "path": "audio/art002a000005.mp3",
+      "size": 4595877
+     },
+     {
+      "path": "audio/art002a000006.mp3",
+      "size": 3923828
+     },
+     {
+      "path": "audio/art002a000007.mp3",
+      "size": 1376604
+     },
+     {
+      "path": "audio/art002a000008.mp3",
+      "size": 6237327
+     },
+     {
+      "path": "audio/art002a000009.mp3",
+      "size": 3563244
+     },
+     {
+      "path": "audio/art002a000010.mp3",
+      "size": 928765
+     },
+     {
+      "path": "audio/art002a000011-ck-sobeautiful-final.mp3",
+      "size": 938724
+     },
+     {
+      "path": "audio/art002a000011.mp3",
+      "size": 2403525
+     },
+     {
+      "path": "audio/art002a000012.mp3",
+      "size": 2333344
+     },
+     {
+      "path": "audio/art002a000013.mp3",
+      "size": 1911282
+     },
+     {
+      "path": "audio/art002a000014.mp3",
+      "size": 485431
+     },
+     {
+      "path": "audio/art002a000015-omg-stop-it.mp3",
+      "size": 315327
+     },
+     {
+      "path": "audio/art002a000015.mp3",
+      "size": 2331174
+     },
+     {
+      "path": "audio/art002a000016.mp3",
+      "size": 1703052
+     },
+     {
+      "path": "audio/art002a000017.mp3",
+      "size": 7836590
+     },
+     {
+      "path": "audio/art002a000018.mp3",
+      "size": 3474410
+     },
+     {
+      "path": "audio/art002a000019-reid-geologist.mp3",
+      "size": 359840
+     },
+     {
+      "path": "audio/art002a000019.mp3",
+      "size": 2812276
+     },
+     {
+      "path": "audio/art002a000020.mp3",
+      "size": 2936979
+     },
+     {
+      "path": "audio/art002a000021.mp3",
+      "size": 2721854
+     },
+     {
+      "path": "audio/art002a000022.mp3",
+      "size": 1727242
+     },
+     {
+      "path": "audio/art002a000023.mp3",
+      "size": 5797844
+     },
+     {
+      "path": "audio/art002a000024-clipped.mp3",
+      "size": 257893
+     },
+     {
+      "path": "audio/art002a000024.mp3",
+      "size": 6812177
+     },
+     {
+      "path": "audio/art002a000025-reid-tourist.mp3",
+      "size": 969973
+     },
+     {
+      "path": "audio/art002a000025.mp3",
+      "size": 2721689
+     },
+     {
+      "path": "audio/art002a000026.mp3",
+      "size": 3192893
+     },
+     {
+      "path": "audio/art002a000028.mp3",
+      "size": 10676817
+     },
+     {
+      "path": "audio/art002a000029.mp3",
+      "size": 4468857
+     },
+     {
+      "path": "audio/art002a000030.mp3",
+      "size": 1696425
+     },
+     {
+      "path": "audio/art002a000031.mp3",
+      "size": 1382213
+     },
+     {
+      "path": "audio/art002a000032.mp3",
+      "size": 581425
+     },
+     {
+      "path": "audio/art002a000033.mp3",
+      "size": 777853
+     },
+     {
+      "path": "audio/art002a000034.mp3",
+      "size": 4354512
+     },
+     {
+      "path": "audio/art002a000035.mp3",
+      "size": 5026713
+     },
+     {
+      "path": "audio/art002a000036.mp3",
+      "size": 1235181
+     },
+     {
+      "path": "audio/art002a000037.mp3",
+      "size": 5606314
+     },
+     {
+      "path": "audio/art002a00003708-clipped.mp3",
+      "size": 2066085
+     },
+     {
+      "path": "audio/art002a000038.mp3",
+      "size": 4472615
+     },
+     {
+      "path": "audio/art002a000039.mp3",
+      "size": 5184677
+     },
+     {
+      "path": "audio/art002a000040.mp3",
+      "size": 1653504
+     },
+     {
+      "path": "audio/art002a000041.mp3",
+      "size": 3155131
+     },
+     {
+      "path": "audio/art002a000042.mp3",
+      "size": 3610897
+     },
+     {
+      "path": "audio/art002a000043.mp3",
+      "size": 3644312
+     },
+     {
+      "path": "audio/art002a000044.mp3",
+      "size": 1846750
+     },
+     {
+      "path": "audio/art002a000045.mp3",
+      "size": 1125874
+     },
+     {
+      "path": "audio/art002a000046-clipped.mp3",
+      "size": 306982
+     },
+     {
+      "path": "audio/art002a000046.mp3",
+      "size": 3918625
+     },
+     {
+      "path": "audio/art002a000047.mp3",
+      "size": 2443053
+     },
+     {
+      "path": "audio/art002a000048.mp3",
+      "size": 666828
+     },
+     {
+      "path": "audio/art002a000049.mp3",
+      "size": 2687410
+     },
+     {
+      "path": "audio/art002a00004915-clipped.mp3",
+      "size": 852033
+     },
+     {
+      "path": "audio/art002a000052-alt.mp3",
+      "size": 12461737
+     },
+     {
+      "path": "audio/art002a000052-jeremy-pulses-of-light.mp3",
+      "size": 692252
+     },
+     {
+      "path": "audio/art002a000052-jeremy-stars-depth.mp3",
+      "size": 193522
+     },
+     {
+      "path": "audio/art002a000053-part-1-clipped.mp3",
+      "size": 929945
+     },
+     {
+      "path": "audio/art002a000053.mp3",
+      "size": 6514959
+     },
+     {
+      "path": "audio/artemis-ii-breaks-apollo-13-distance-record.mp3",
+      "size": 487721
+     },
+     {
+      "path": "audio/artemis-ii-go-for-translunar-injection.mp3",
+      "size": 180704
+     },
+     {
+      "path": "audio/artemis-ii-good-burn.mp3",
+      "size": 53948
+     },
+     {
+      "path": "audio/artemis-ii-houston-we-have-you-loud-and-clear-1.mp3",
+      "size": 132625
+     },
+     {
+      "path": "audio/artemis-ii-launch-full-send.mp3",
+      "size": 192778
+     },
+     {
+      "path": "audio/artemis-ii-launch-go-no-go-poll.mp3",
+      "size": 1024961
+     },
+     {
+      "path": "audio/artemis-ii-liftoff.mp3",
+      "size": 157335
+     },
+     {
+      "path": "audio/artemis-ii-message-from-apollo-astronaut-charlie-duke.mp3",
+      "size": 283685
+     },
+     {
+      "path": "audio/artemis-ii-message-from-apollo-astronaut-jim-lovell.mp3",
+      "size": 300670
+     },
+     {
+      "path": "audio/artemis-ii-names-new-craters-integrity-and-carroll.mp3",
+      "size": 815482
+     },
+     {
+      "path": "audio/artemis-ii-splashdown-shorter.mp3",
+      "size": 309557
+     },
+     {
+      "path": "audio/christina-koch-clip-privileged-to-be-part-of-artemis-ii-crew.mp3",
+      "size": 211563
+     },
+     {
+      "path": "audio/jeremy-hansen-clip-inspired-by-neil-armstrong.mp3",
+      "size": 260489
+     },
+     {
+      "path": "audio/reid-wiseman-clip-artemis-builds-on-a-solid-legacy.mp3",
+      "size": 269139
+     },
+     {
+      "path": "audio/victor-glover-clip-exploring-is-who-we-are.mp3",
+      "size": 132755
+     },
+     {
+      "path": "trim.json",
+      "size": 41421
+     }
+    ]
+   }
   },
   {
    "id": "videos",
-   "version": "2",
-   "min_version": "2",
-   "min_app": "0.1.0",
+   "version": "3",
+   "min_app": "0.4.3",
    "max_app": null,
    "requires": [],
+   "min_version": "2",
    "title": "NASA videos",
    "required": false,
-   "file": "outpost-luna-v2-videos.tar",
-   "url": "https://www.dropbox.com/scl/fi/nvgewjmx13o2stepcuzpc/outpost-luna-v2-videos.tar?rlkey=oikdxotlm0oiou5ul3znbvnej&dl=1",
-   "sha256": "f5981dc87ebdcc6250ccc9965e854f788c095f4b5768a6d452348716d3b0d98c",
-   "size": 424867840,
-   "unpacked_size": 424833795,
+   "file": "outpost-luna-v2-videos-3.tar",
+   "url": null,
+   "sha256": "ce875e1f349302895495046b5204ccf08e5cdaafb3550627ba2101b4ee0902a3",
+   "size": 207462400,
+   "unpacked_size": 207425428,
    "n_files": 38,
    "env": "VIDEO_PACK_DIR",
    "subdir": "",
@@ -4488,8 +5013,8 @@
     },
     {
      "path": "far_side_view.mp4",
-     "size": 45399345,
-     "sha256": "ca1736aa98a7ab3d54b3e459908d7143709204e36669c945a035a37875444fc8"
+     "size": 10983095,
+     "sha256": "6df7c2f624494d7693de374e3ac3216e511f2c0d00a38a9415332661ab8c4802"
     },
     {
      "path": "far_side_view.vtt",
@@ -4513,8 +5038,8 @@
     },
     {
      "path": "ltv.mp4",
-     "size": 24726141,
-     "sha256": "019df7d59ad5d7a479d9fd265dbca8c781f0c3bc121fe3a0f037e7ab68f556ac"
+     "size": 15906915,
+     "sha256": "3eb7e00ec978c091dad66a95d7d4afadc27428174f82a7e97bddff9c39f1acc2"
     },
     {
      "path": "ltv.vtt",
@@ -4528,8 +5053,8 @@
     },
     {
      "path": "lunar_dust.mp4",
-     "size": 46080368,
-     "sha256": "2bc2f4030969f26e6a032a64e93c77d729eff8201c32f3f671d94633c0ee4963"
+     "size": 19993727,
+     "sha256": "570e72cde31c0cbc0c027f2424464103118665fabf9c3a90eca381ff00d1fa28"
     },
     {
      "path": "lunar_dust.vtt",
@@ -4543,8 +5068,8 @@
     },
     {
      "path": "lunar_eclipse.mp4",
-     "size": 35593136,
-     "sha256": "141c23470dbf8fa8985030ab0647f8e97bdbcb111b17a094f919ac2d73716403"
+     "size": 12678057,
+     "sha256": "83a7766a49919989df60c08e1b1a1cf9c59a85a953f4c141c30707eece662d4e"
     },
     {
      "path": "lunar_eclipse.vtt",
@@ -4558,8 +5083,8 @@
     },
     {
      "path": "meet_crew.mp4",
-     "size": 39367061,
-     "sha256": "57e8ee8232744bba4930a0126c1e082582f4410aa44740e4aa1cda83e2e2bcd3"
+     "size": 14403465,
+     "sha256": "e18dbbecec64d7a7e9e450e97402621d658a9a9747af70313075934c98cecfb1"
     },
     {
      "path": "meet_crew.vtt",
@@ -4573,8 +5098,8 @@
     },
     {
      "path": "moon_base_6mo.mp4",
-     "size": 19725118,
-     "sha256": "512bba7961fff5efaa2aade2bbd58195c43f682cfc8cec5e8ffb2cbd26638ee3"
+     "size": 9706639,
+     "sha256": "91e4e3b25fd62a03b826f6f5caf9b6d5c1e9fefd81969eb59989334e3eb8b9e7"
     },
     {
      "path": "moon_base_6mo.vtt",
@@ -4588,8 +5113,8 @@
     },
     {
      "path": "moon_phases_2025.mp4",
-     "size": 75595723,
-     "sha256": "ab059e75e3f29addb58faffbf720d918dc511e1e406be5d8a653aea94e149b4e"
+     "size": 39843587,
+     "sha256": "cca34022e40183332a09c6461b96596f039fb272afe599c5f9da17fcdb77fea0"
     },
     {
      "path": "moon_weather.jpg",
@@ -4598,8 +5123,8 @@
     },
     {
      "path": "moon_weather.mp4",
-     "size": 26382697,
-     "sha256": "59125a0797f2976e59e6599636410203d9617f19883f434f91e4bec72c4c6c75"
+     "size": 14292471,
+     "sha256": "79be7554d057dbb7faff9b36bbcdc6eaf80e72672c9a9902dbea1200d213305d"
     },
     {
      "path": "moon_weather.vtt",
@@ -4613,8 +5138,8 @@
     },
     {
      "path": "phases_loop.mp4",
-     "size": 3836605,
-     "sha256": "3cf3e8f4e7a29ae96fa9eaa32e7c313dc8843be672365a30fbcd4a1aa67acf44"
+     "size": 2993923,
+     "sha256": "feed79c972f2d8afe0f1db83501bb5b43d089d58bbaa067eff6eb1fdda090453"
     },
     {
      "path": "psr.jpg",
@@ -4623,8 +5148,8 @@
     },
     {
      "path": "psr.mp4",
-     "size": 32881024,
-     "sha256": "7cfeeb5cb9bb085e0aa92c9fc58670cce09b7029e1ce8cb8d68123cdae53b0f4"
+     "size": 17134389,
+     "sha256": "20b9b850156e280370abb6c49f21af985a989a9743033faaac5afc829a9ff70f"
     },
     {
      "path": "psr.vtt",
@@ -4638,8 +5163,8 @@
     },
     {
      "path": "south_pole_shadows.mp4",
-     "size": 20700703,
-     "sha256": "a97956da479bc75f11a846f6873673022142c9339eeb74c2f5a843083b630051"
+     "size": 10923361,
+     "sha256": "490fb7a5896f0f0f1ad7a7f8f12241d787f7aea4307aee9955e0d5da85a0e288"
     },
     {
      "path": "water_extraction.jpg",
@@ -4648,15 +5173,217 @@
     },
     {
      "path": "water_extraction.mp4",
-     "size": 29418081,
-     "sha256": "8a73bad0011fd86dd3d5fb727b7fca1c352b717451a051abc02c7312b893d551"
+     "size": 13438006,
+     "sha256": "f28fd9eee870e5c094c98608ee5fbbdde793f79ae43d070a8c8f8cc60c759732"
     },
     {
      "path": "water_extraction.vtt",
      "size": 2702,
      "sha256": "1df744d0db3f67ee1dd3638cbc7797e51c01423a0dc14ea75565b905c3a9d1c4"
     }
-   ]
+   ],
+   "fallback": {
+    "kind": "pack",
+    "version": "2",
+    "file": "outpost-luna-v2-videos.tar",
+    "url": "https://www.dropbox.com/scl/fi/nvgewjmx13o2stepcuzpc/outpost-luna-v2-videos.tar?rlkey=oikdxotlm0oiou5ul3znbvnej&dl=1",
+    "sha256": "f5981dc87ebdcc6250ccc9965e854f788c095f4b5768a6d452348716d3b0d98c",
+    "size": 424867840,
+    "unpacked_size": 424833795,
+    "n_files": 38,
+    "files": [
+     {
+      "path": "NOTICE",
+      "size": 290,
+      "sha256": "2535f3303215504bdb1ade76eca382c02ca46769c9626da4759b58c0815ec2bb"
+     },
+     {
+      "path": "diy_crater_nasa.jpg",
+      "size": 41313,
+      "sha256": "d2441061e1a930bbe8230dea1f34fc29849d18390752744e93f1be7bd842deff"
+     },
+     {
+      "path": "diy_crater_nasa.mp4",
+      "size": 19300492,
+      "sha256": "6852bd6faef938d725a6052ff266510df9c5b2263d2d8b475eb29a22d519d5ec"
+     },
+     {
+      "path": "far_side_view.jpg",
+      "size": 162574,
+      "sha256": "4f83610333136f420d76ac851e367a8cde18e40f285e1e464f17ce51d1bc5c71"
+     },
+     {
+      "path": "far_side_view.mp4",
+      "size": 45399345,
+      "sha256": "ca1736aa98a7ab3d54b3e459908d7143709204e36669c945a035a37875444fc8"
+     },
+     {
+      "path": "far_side_view.vtt",
+      "size": 2094,
+      "sha256": "03ec8f41044984f616503bafe988e88d07838cce6a48bcb744f7b021fb454dc3"
+     },
+     {
+      "path": "hammer_feather.jpg",
+      "size": 1102369,
+      "sha256": "ae6fcca54747f49e717f825c2245a12e40a7640255d65175af1a7defa929657b"
+     },
+     {
+      "path": "hammer_feather.mp4",
+      "size": 4103437,
+      "sha256": "1fdd97ba37bbc111c5ebb4ec5a299ffc5057eca5659b1eaeb4a44e8eff27e870"
+     },
+     {
+      "path": "ltv.jpg",
+      "size": 11248,
+      "sha256": "33d3e0ad9efb0164a90a6212f95449b26b3e29762898417c73c11115a8620365"
+     },
+     {
+      "path": "ltv.mp4",
+      "size": 24726141,
+      "sha256": "019df7d59ad5d7a479d9fd265dbca8c781f0c3bc121fe3a0f037e7ab68f556ac"
+     },
+     {
+      "path": "ltv.vtt",
+      "size": 2213,
+      "sha256": "2675e0b66c544eef1c21394565434e330707593b0974cf94dd9af55bb07f4123"
+     },
+     {
+      "path": "lunar_dust.jpg",
+      "size": 10080,
+      "sha256": "951bfcb1a6d3e1049e08c42ea1d836372776a4401477e63d6f1766258eb16833"
+     },
+     {
+      "path": "lunar_dust.mp4",
+      "size": 46080368,
+      "sha256": "2bc2f4030969f26e6a032a64e93c77d729eff8201c32f3f671d94633c0ee4963"
+     },
+     {
+      "path": "lunar_dust.vtt",
+      "size": 3941,
+      "sha256": "0e9ae88cac1196134c78f865ed44943d75d1c1988340fbfd6c14d0319950adce"
+     },
+     {
+      "path": "lunar_eclipse.jpg",
+      "size": 7135,
+      "sha256": "3a449a430052251bcc4ff9948ef102f9ad24f94bdf3abbec0b5fc3f7df681892"
+     },
+     {
+      "path": "lunar_eclipse.mp4",
+      "size": 35593136,
+      "sha256": "141c23470dbf8fa8985030ab0647f8e97bdbcb111b17a094f919ac2d73716403"
+     },
+     {
+      "path": "lunar_eclipse.vtt",
+      "size": 2353,
+      "sha256": "a04f92e2a220a644a43d8368e0e06f38419b04732dc448d004084b5d8dd47ce1"
+     },
+     {
+      "path": "meet_crew.jpg",
+      "size": 4169,
+      "sha256": "61e0c79978d522ea802c7e9b404915390159dda3783544a3b22b90d560c8d584"
+     },
+     {
+      "path": "meet_crew.mp4",
+      "size": 39367061,
+      "sha256": "57e8ee8232744bba4930a0126c1e082582f4410aa44740e4aa1cda83e2e2bcd3"
+     },
+     {
+      "path": "meet_crew.vtt",
+      "size": 3471,
+      "sha256": "1d9da65b34b1eeaac452fd0f39bbcc623cfd9db6f924768cc108a7305c4498e1"
+     },
+     {
+      "path": "moon_base_6mo.jpg",
+      "size": 16525,
+      "sha256": "1f077c3184800c0c07bfaa0ffceb3558e623ad8f3ae28a3c2151d8b3914eb17f"
+     },
+     {
+      "path": "moon_base_6mo.mp4",
+      "size": 19725118,
+      "sha256": "512bba7961fff5efaa2aade2bbd58195c43f682cfc8cec5e8ffb2cbd26638ee3"
+     },
+     {
+      "path": "moon_base_6mo.vtt",
+      "size": 1661,
+      "sha256": "caf30f7bcf9714f6ca2abca69f1c534a2314ede8df9f8742e413a35c36a04bb1"
+     },
+     {
+      "path": "moon_phases_2025.jpg",
+      "size": 117656,
+      "sha256": "9d43962ffb1ee7ed646698ef050d1590821bb7ad52fe8467c7417a40d63ef1ae"
+     },
+     {
+      "path": "moon_phases_2025.mp4",
+      "size": 75595723,
+      "sha256": "ab059e75e3f29addb58faffbf720d918dc511e1e406be5d8a653aea94e149b4e"
+     },
+     {
+      "path": "moon_weather.jpg",
+      "size": 3593,
+      "sha256": "4adebd69bf393bab974a3b4fd5be9f8be4af24b4e6c21531bdf0a694b5570a25"
+     },
+     {
+      "path": "moon_weather.mp4",
+      "size": 26382697,
+      "sha256": "59125a0797f2976e59e6599636410203d9617f19883f434f91e4bec72c4c6c75"
+     },
+     {
+      "path": "moon_weather.vtt",
+      "size": 2056,
+      "sha256": "a609686b1099aa949584872396825d3d9361d104b1fad67f944c2ec632b096a6"
+     },
+     {
+      "path": "phases_loop.jpg",
+      "size": 121750,
+      "sha256": "8d5f66e42bc87725af56d45f4801003da7176828028d30282a0abf8b22ade0ca"
+     },
+     {
+      "path": "phases_loop.mp4",
+      "size": 3836605,
+      "sha256": "3cf3e8f4e7a29ae96fa9eaa32e7c313dc8843be672365a30fbcd4a1aa67acf44"
+     },
+     {
+      "path": "psr.jpg",
+      "size": 13167,
+      "sha256": "5f253ac38180ccf48170f03a5836fbef494f33749d656d3eb63d1418f9cca6b0"
+     },
+     {
+      "path": "psr.mp4",
+      "size": 32881024,
+      "sha256": "7cfeeb5cb9bb085e0aa92c9fc58670cce09b7029e1ce8cb8d68123cdae53b0f4"
+     },
+     {
+      "path": "psr.vtt",
+      "size": 2751,
+      "sha256": "8835de2231d7d27f6c224f85287f05c37226585e0680566629b46fb4e201a707"
+     },
+     {
+      "path": "south_pole_shadows.jpg",
+      "size": 75692,
+      "sha256": "7165e60bc0506417d5bd2486024f4fe31a61c834c3b34f1eac8d46b3afc52b75"
+     },
+     {
+      "path": "south_pole_shadows.mp4",
+      "size": 20700703,
+      "sha256": "a97956da479bc75f11a846f6873673022142c9339eeb74c2f5a843083b630051"
+     },
+     {
+      "path": "water_extraction.jpg",
+      "size": 13061,
+      "sha256": "6070b587f4cd598ead65b80e6c3efccc50b07366a99aba10e8d6deaf5710e0d8"
+     },
+     {
+      "path": "water_extraction.mp4",
+      "size": 29418081,
+      "sha256": "8a73bad0011fd86dd3d5fb727b7fca1c352b717451a051abc02c7312b893d551"
+     },
+     {
+      "path": "water_extraction.vtt",
+      "size": 2702,
+      "sha256": "1df744d0db3f67ee1dd3638cbc7797e51c01423a0dc14ea75565b905c3a9d1c4"
+     }
+    ]
+   }
   },
   {
    "id": "site_layers",
@@ -5052,6 +5779,6 @@
   "size": 884664442
  },
  "remote_url": "https://whissleai.github.io/Outpost-Luna/assets/manifest.json",
- "published_at": "2026-11-20T07:45:10Z",
- "version": "2026.11.20.0745"
+ "published_at": "2026-11-20T16:16:11Z",
+ "version": "2026.11.20.1616"
 }

@@ -262,13 +262,28 @@ SITE_DROP_GLOBS = ["**/*.pyi", "**/*.a", "**/*.lib", "**/*.pdb", "torch/lib/*.li
 UNUSED_PACKAGES = ["pip", "setuptools", "pkg_resources", "_distutils_hack", "wheel", "pygments", "networkx", "hf_xet"]
 UNUSED_FILES = ["distutils-precedence.pth", "torch/bin/protoc*", "numpy/f2py", "bin", "onnxruntime/transformers",
                 "onnxruntime/quantization", "onnxruntime/tools"]
+# The model server's site only (checked 2026-11-19 by importing app.main, tts_steer, embed, voice_pack, routes_meta,
+# os_voices, arctag, nft2 and steertts_edge.ort from a copy without them, plus an embedder InferenceSession):
+#   onnxruntime/capi/libonnxruntime.*.dylib / .so (33 MB): the C-API library for C callers. `import onnxruntime` never
+#     loads it (onnxruntime_pybind11_state links the runtime statically: otool -L), and libarc loads its own pinned
+#     copy from resources/native/onnxruntime. onnxruntime.dll stays on Windows (the .pyd links it there).
+#   huggingface_hub + fsspec + filelock + tqdm: only steertts_edge's from_pretrained(<repo id>) imports it, lazily; the
+#     app passes a local folder (STEER_TTS_MODEL) and runs with HF_HUB_OFFLINE=1.
+#   google (protobuf): nothing imports it (an onnxruntime dependency for its tools / onnx export paths).
+#   scipy/{cluster,differentiate,fftpack,io,misc,odr}: the app uses scipy.signal.resample_poly only, and importing
+#     scipy.signal loads none of these.
+MODELS_UNUSED_PACKAGES = ["huggingface_hub", "fsspec", "filelock", "tqdm", "protobuf"]
+MODELS_UNUSED_FILES = ["onnxruntime/capi/libonnxruntime.*.dylib", "onnxruntime/capi/libonnxruntime.so*", "google",
+                       "scipy/cluster", "scipy/differentiate", "scipy/fftpack", "scipy/io", "scipy/misc", "scipy/odr"]
 HEADERS = {".h", ".hpp", ".hxx", ".cuh", ".inl", ".tcc"}
 
 
 def _unused(site: Path) -> list[Path]:
-    """The UNUSED_PACKAGES (+ their dist-info), UNUSED_FILES and header-only include/ dirs in one site folder."""
-    out = [p for f in UNUSED_FILES for p in site.glob(f)]
-    for name in UNUSED_PACKAGES:
+    """The UNUSED_PACKAGES (+ their dist-info), UNUSED_FILES and header-only include/ dirs in one site folder (plus
+    the MODELS_UNUSED_* in the model server's)."""
+    models = site.name == "models"
+    out = [p for f in UNUSED_FILES + (MODELS_UNUSED_FILES if models else []) for p in site.glob(f)]
+    for name in UNUSED_PACKAGES + (MODELS_UNUSED_PACKAGES if models else []):
         out += [site / name, *site.glob(f"{name}-*.dist-info")]
     out += [d for d in site.rglob("include") if d.is_dir() and all(f.suffix in HEADERS for f in d.rglob("*") if f.is_file())]
     return out
@@ -319,6 +334,21 @@ def trim(py_dir: Path, sites: list[Path]) -> None:
 APP_IGNORE = shutil.ignore_patterns("__pycache__", ".pytest_cache", "*.pyc", ".DS_Store", ".env", ".env.*")
 
 
+DATA_BASE_IGNORE = shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", "turnlog", ".DS_Store", ".env")
+
+
+def data_ignore(d, names) -> set[str]:
+    """What stage_app leaves out of backend/data: media / caches / logs (first-run assets or per-user), the voice pack's
+    clips (only lines.json ships), and data/video/local: tools/video_catalog.py's work folder (the NASA pack_files and
+    the video pack's `pack` copies, gitignored; they reach users in the video pack, never inside the app: 174 MB)."""
+    out = set(DATA_BASE_IGNORE(d, names))
+    if Path(d).name == "voice_pack":
+        out |= {n for n in names if n != "lines.json"}
+    if Path(d).name == "video" and Path(d).parent.name == "data":
+        out |= {"local"} & set(names)
+    return out
+
+
 def stage_app(skip_frontend: bool):
     app = RES / "app"
     shutil.rmtree(app, ignore_errors=True)
@@ -326,13 +356,6 @@ def stage_app(skip_frontend: bool):
     # data: read-only in the bundle. media/img (the Moon map) is mapped by electron-builder; cache/ and tts_cache/ are
     # rebuilt in the per-user folder (CACHE_DIR). The recorded voice pack's clips + index.json, the crew audio and the
     # videos are first-run assets (desktop/assets.manifest.json, VOICE_PACK_DIR etc.): only lines.json stays here.
-    base_ignore = shutil.ignore_patterns("media", "cache", "tts_cache", "video_cache", "turnlog", ".DS_Store", ".env")
-
-    def data_ignore(d, names):
-        out = set(base_ignore(d, names))
-        if Path(d).name == "voice_pack":
-            out |= {n for n in names if n != "lines.json"}
-        return out
     shutil.copytree(ROOT / "backend/data", app / "backend/data", ignore=data_ignore)
     shutil.copytree(ROOT / "model_server/app", app / "model_server/app", ignore=APP_IGNORE)
     shutil.copy2(DESK / "runtime/launch.py", app / "launch.py")
@@ -363,11 +386,59 @@ def stage_app(skip_frontend: bool):
 def precompile(py: Path, dirs: list[Path]) -> None:
     """Bytecode in the bundle, never re-validated (unchecked-hash): the bundle is read-only and signed, so Python must
     neither check source mtimes nor write .pyc next to them at run time (the app sets PYTHONDONTWRITEBYTECODE=1).
-    Cross-build: the target's python.exe cannot run here, so this machine's CPython of the same version compiles."""
+    Cross-build: the target's python.exe cannot run here, so this machine's CPython of the same version compiles.
+
+    -f and PYTHONDONTWRITEBYTECODE=1 for the compiler itself: without them, the interpreter that runs compileall wrote
+    TIMESTAMP .pyc for its own start-up imports (encodings, re, enum, functools, ...: trim() had just deleted them) and
+    compileall then skipped those as up to date. Installing the app changes the sources' mtimes, so those .pyc went
+    stale, and any run of the bundle's Python without PYTHONDONTWRITEBYTECODE (smoke-installed, a hand run) rewrote
+    them inside the signed app: `codesign --verify --deep --strict` failed after the first launch (0.4.x).
+    bytecode_problems() then refuses a bundle with any .py that lacks an unchecked-hash .pyc."""
     if CROSS:
         py = host_python()
-    subprocess.run([str(py), "-m", "compileall", "-q", "-j0", "--invalidation-mode", "unchecked-hash",
-                    *[str(d) for d in dirs if d.exists()]], check=False)
+    env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+    env.pop("PYTHONPYCACHEPREFIX", None)
+    todo = [d for d in dirs if d.exists()]
+    subprocess.run([str(py), "-m", "compileall", "-q", "-f", "-j0", "--invalidation-mode", "unchecked-hash",
+                    *[str(d) for d in todo]], check=False, env=env)
+    bad = bytecode_problems(todo)
+    if bad:
+        sys.exit(f"{len(bad)} .py without an unchecked-hash .pyc (the app would write bytecode into its signed "
+                 f"bundle): {', '.join(str(p) for p in bad[:8])}{' ...' if len(bad) > 8 else ''}")
+
+
+PYC_TAG = f"cpython-{PY_VERSION.replace('.', '')}"
+
+
+def pyc_flags(pyc: Path) -> int | None:
+    """The PEP 552 flags word of a .pyc (0 timestamp, 1 unchecked hash, 3 checked hash); None if unreadable."""
+    try:
+        with open(pyc, "rb") as f:
+            head = f.read(8)
+    except OSError:
+        return None
+    return int.from_bytes(head[4:8], "little") if len(head) == 8 else None
+
+
+def bytecode_problems(dirs: list[Path], tag: str | None = None) -> list[Path]:
+    """Every .py under `dirs` whose __pycache__/<name>.<tag>.pyc is missing or not unchecked-hash (flags != 1).
+    Files compileall cannot compile for this Python (lib2to3 grammar fixtures, py2-only test data) are not imported by
+    the app; they are listed too, so a new one is seen, unless they hold a syntax error (then no .pyc can exist)."""
+    tag = tag or PYC_TAG
+    bad = []
+    for d in dirs:
+        for src in d.rglob("*.py"):
+            pyc = src.parent / "__pycache__" / f"{src.stem}.{tag}.pyc"
+            if pyc_flags(pyc) == 1:
+                continue
+            try:
+                compile(src.read_bytes(), str(src), "exec", dont_inherit=True)
+            except (SyntaxError, ValueError):
+                continue        # not valid Python for this version: never imported, nothing can be written for it
+            except OSError:
+                pass
+            bad.append(src)
+    return bad
 
 
 def du(p: Path) -> float:

@@ -23,7 +23,8 @@
 //          min_version}]: other assets it needs), min_version (in the BUNDLED manifest: the oldest installed version
 //          this app build accepts; older is replaced in the foreground), licence, files [{path, size}], env, subdir,
 //          fallback ({kind: "files", base, files: [{path, size, sha256}]} or {kind: "tar_members", url, sha256, size,
-//          members: [{from, path, size, sha256}], inline: [{path, text}]}, optional)
+//          members: [{from, path, size, sha256}], inline: [{path, text}]} or {kind: "pack", version, file, url, sha256,
+//          size, unpacked_size, files, fallback?}: the previous published version, optional)
 "use strict";
 const fs = require("fs");
 const fsp = require("fs/promises");
@@ -61,11 +62,17 @@ function validateManifest(m, { allow = ALLOW_HOSTS } = {}) {
     if (!(Number.isFinite(a.size) && a.size > 0)) err.push(`${id}: size missing`);
     if (typeof a.file !== "string" || !/^[\w.-]+$/.test(a.file)) err.push(`${id}: bad file name`);
     if (a.url != null && !hostAllowed(a.url, allow)) err.push(`${id}: url not https on an allowed host`);
-    if (a.fallback) {
-      // kind "files": a base URL + per-file sha256; kind "tar_members": one https tar (sha256) whose listed members are taken
-      if (!hostAllowed(a.fallback.base || a.fallback.url, allow)) err.push(`${id}: fallback not https on an allowed host`);
-      if (a.fallback.kind === "tar_members" && !SHA_RE.test(a.fallback.sha256 || "")) err.push(`${id}: fallback tar sha256`);
-      for (const f of a.fallback.files || []) if (f.sha256 && !SHA_RE.test(f.sha256)) err.push(`${id}: fallback file sha256`);
+    // kind "files": a base URL + per-file sha256; kind "tar_members": one https tar (sha256) whose listed members are
+    // taken; kind "pack": the previous published version (its tar url + sha256 + files), itself with a fallback
+    for (let fb = a.fallback, depth = 0; fb; fb = fb.kind === "pack" ? fb.fallback : null, depth++) {
+      if (depth > 2) { err.push(`${id}: fallback nested too deep`); break; }
+      if (!hostAllowed(fb.base || fb.url, allow)) err.push(`${id}: fallback not https on an allowed host`);
+      if ((fb.kind === "tar_members" || fb.kind === "pack") && !SHA_RE.test(fb.sha256 || "")) err.push(`${id}: fallback tar sha256`);
+      if (fb.kind === "pack" && (!(Number.isFinite(fb.size) && fb.size > 0) || typeof fb.file !== "string" || !/^[\w.-]+$/.test(fb.file))) err.push(`${id}: fallback pack size / file`);
+      for (const f of fb.files || []) {
+        if (f.sha256 && !SHA_RE.test(f.sha256)) err.push(`${id}: fallback file sha256`);
+        try { AS.safeRel(f.path); } catch { err.push(`${id}: unsafe fallback file path ${f.path}`); }
+      }
     }
     for (const f of a.files || []) {
       try { AS.safeRel(f.path); } catch { err.push(`${id}: unsafe file path ${f.path}`); }

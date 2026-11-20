@@ -41,16 +41,16 @@ with the chunked upload-session API, makes public links and checks each one anon
 
 | id | what | required | download | installed as |
 |---|---|---|---|---|
-| `ear` | Arc Transcriber Space `nft2/` + LICENSE + NOTICE (CC BY-NC 4.0) | yes | 461 MB | `ARC_SPACE_DIR` |
+| `ear` | Arc Transcriber Space `nft2/` + LICENSE + NOTICE (CC BY-NC 4.0; decoder + adapters stored float16 from v2, docs/LOCAL_EAR.md "Lighter ear") | yes | 403 MB | `ARC_SPACE_DIR` |
 | `tagger` | Arc Tagger model (v0.3 int8; run by the 0.5.0 library, kids domain built in) + LICENSE + NOTICE | yes | 12 MB | `ARCTAG_MODEL_DIR` |
 | `embedder` | all-MiniLM-L6-v2 int8 ONNX (Apache-2.0) | yes | 23 MB | `EMBED_MODEL_DIR` |
 | `voice` | the recorded Nora voice pack (889 clips) | yes | 14 MB | `VOICE_PACK_DIR` |
-| `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 175 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
-| `videos` | the video pack: 14 NASA videos (13 `nasa_file` + the `pack_file` crater re-encode) + captions + posters, 38 files | no | 425 MB | `VIDEO_PACK_DIR` (copied into the video cache) |
+| `crew` | trimmed Artemis II crew audio + `trim.json` (NASA) | no | 117 MB | `MEDIA_AUDIO_DIR` (served as `/media/audio`) |
+| `videos` | the video pack: 14 NASA videos (13 `nasa_file` + the `pack_file` crater re-encode) + captions + posters, 38 files | no | 207 MB (v3: 12 lighter re-encodes, docs/MEDIA.md) | `VIDEO_PACK_DIR` (copied into the video cache) |
 | `site_layers` | the site navigator's polar map layers (NASA LRO; `make site-layers`, docs/SITE_NAVIGATOR.md) | no | 20 MB | `SITE_LAYERS_DIR` |
 
-First launch downloads **510 MB** (required) and then about 620 MB more in the background (crew 175, videos 425, map
-layers 20); after that the app is fully offline. The offline zip (`outpost-luna-assets-v2.zip`, 885 MB) predates the
+First launch downloads **452 MB** (required; 510 MB until the 0.4.3 packs are uploaded: the app then takes the previous
+ones) and then about 360 MB more in the background (crew 117, videos 207, map layers 20, NASA views 14); after that the app is fully offline. The offline zip (`outpost-luna-assets-v2.zip`, 885 MB) predates the
 14-video pack: it holds the four required assets, the crew audio and the earlier 8-video set (199 MB); the current video
 pack replaces it the next time the computer is online. The flow (`desktop/main/assets.js`, `firstrun.html`):
 
@@ -58,8 +58,11 @@ pack replaces it the next time the computer is online. The flow (`desktop/main/a
   `%APPDATA%\Outpost Luna\assets`); `state.json` records what is installed.
 - Downloads resume from `assets/.dl/<file>.part` with HTTP Range, are checked against the manifest's sha256, unpacked
   into `.staging/<id>`, every file's size checked, then renamed into place (the old copy moved aside first). A failed
-  check never installs. Three tries with backoff; the ear can also come straight from Hugging Face at the pinned
-  revision (`fallback`) when its link fails.
+  check never installs. Three tries with backoff. A re-packed asset (a new `version`) carries the PREVIOUS published
+  pack as its `fallback` (`kind: "pack"`: that version's file, url, sha256 and files, and its own fallback): until the
+  new tar is uploaded (`url: null`), or whenever its link fails, the app installs the previous pack as that version
+  (`assets.js fromPrevious`; state.json records it, so the model check uses its files) and a later update brings the
+  new one. The ear's previous pack can in turn come straight from Hugging Face at the pinned revision.
 - The first-run screen shows the overall total and percent, the speed and the time left (`firstrun_progress.js`, tested
   in `firstrun_progress.test.js`), a "one time, then fully offline" line, each required asset's progress, **Try again**, **Continue later** (quits; the `.part`
   files stay and resume next launch) and **Import offline pack…** (a `.zip` from Dropbox or a USB stick: its tars are
@@ -145,7 +148,7 @@ The pieces, also runnable on their own:
 |---|---|
 | `make desktop-python` | `desktop/scripts/build_python.py`: python-build-standalone 3.11 via `uv python install`; `uv export --frozen` of `backend/uv.lock` and `model_server/uv.lock` installed with `uv pip install --target` into `site/backend` and `site/models` (two folders because the numpy pins differ: 2.x vs 1.26); the vendored `arc-transcriber` wheel (on a Windows target also the pinned pywinrt + comtypes speech packages, checked present); trims (stdlib tests, tk, `torch/include`, `torch/share`, `tests/`, `*.pyi`, static libs, header-only `include/` dirs, and the packages nothing imports at run time: see "What the build drops"); precompiles bytecode with `--invalidation-mode unchecked-hash`; stages `backend/app`, `backend/data` (no media or caches), `model_server/app`, `frontend/dist` |
 | `make data` | `backend/pipeline/fetch_media.py`: the 74 crew clips and the Moon map from nasa.gov into `backend/data/media` (resumable) |
-| `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 48 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
+| `make media-desktop` | `backend/pipeline/trim_media.py`: the installer's crew clips (playable stretches only, mono 32 kbps) + `trim.json` into `backend/data/media/desktop` (see "Crew audio in the installer") |
 | `make asset-pack` / `make asset-upload` | the first-run assets (above) |
 | `make desktop-libarc` | CMake build of `desktop/vendor/libarc` (libarc + the Arc Transcriber Space backend) -> `libarc.dylib` / `arc.dll`, plus the pinned ONNX Runtime it loads at run time -> `native/onnxruntime/` (see "The engine boundary") |
 | `make bindings` | regenerate the model server's C bindings from `arc.h` / `arctag.h` (`model_server/tools/gen_bindings.py`) |
@@ -281,7 +284,7 @@ encoder, decoder and tokenizer, and `Arc.from_pretrained` only downloads when gi
 
 NASA's originals (`backend/data/media/audio`, 547 MB, 9.3 h) are 96-192 kbps stereo whose two channels are identical.
 `backend/pipeline/trim_media.py` (build step 2; `make media-desktop`) writes the installer's copy to
-`backend/data/media/desktop`: **175 MB, 8.1 h**.
+`backend/data/media/desktop`: **117 MB, 8.1 h** (175 MB at 24 kHz / 48 kbps before 0.4.3).
 
 - **What is kept.** Everything the app can ask the player to play, each span padded by 1 s and merged across gaps
   under 3 s: every moment `moments.cut_clip` makes (they tile all of a clip's words, kid-safe or not), every artifact
@@ -289,10 +292,13 @@ NASA's originals (`backend/data/media/audio`, 547 MB, 9.3 h) are 96-192 kbps ste
   (t - 2 .. t + 4 s) of every vocab term (`academy.vocab.terms()`). What goes is the silence between moments (a moment
   stops at its `t1`, then fades for 200 ms), so the head and tail of a clip and the long gaps in the 20-minute
   recordings. `backend/tests/test_trim_media.py` checks that every playable span fits inside one kept stretch.
-- **Encoding.** Mono (the L+R average; the channels are identical, so the level is unchanged), 24 kHz, 48 kbps CBR
-  MP3 (CBR seeks exactly in every browser), via the ffmpeg 7.1 + LAME in the pinned `imageio-ffmpeg==0.6.0` wheel.
-  Measured against the originals: 0-1 sample offset at every checked moment, waveform correlation 0.97-1.00, RMS
-  level -0.4 dB (the encoder's low-pass). ID3 tags: title, "NASA", and the nasa.gov source URL; the attribution in
+- **Encoding.** Mono (the L+R average; the channels are identical, so the level is unchanged), 24 kHz, 32 kbps CBR
+  MP3 (CBR seeks exactly in every browser; MP3 because every player the app has, Electron on Mac and Windows and the
+  iPad's WKWebView, plays it, and the clip file names stay `.mp3`), via the ffmpeg 7.1 + LAME in the pinned
+  `imageio-ffmpeg==0.6.0` wheel. 0.4.3 vs the 24 kHz / 48 kbps files (all 74): integrated loudness (EBU R128) within
+  0.2 LU on every file, `trim.json` segment times identical (one clip's kept stretch moved 30 ms because its playable
+  spans changed, not the encoding), and the ear on 60 crew segments cut from the files: WER 12.00% vs 11.93%, name links
+  67.3% vs 65.3% (docs/LOCAL_EAR.md "Lighter ear" has the other candidates: 16 kHz cost the ear 1.9-2.4 pt). ID3 tags: title, "NASA", and the nasa.gov source URL; the attribution in
   `clips.json` / `clips_manifest.json` and the app's credit line are untouched.
 - **Clip time vs file time.** All data stays in the original clip's time. `trim.json` maps it:
   `segs = [[clip_t0, file_t0, len], ...]` per file; the backend adds a clip's `segs` to `GET /api/clips/<id>`, and the
@@ -317,6 +323,44 @@ binding does not link the C-API dylib, and `lsof` shows it unmapped during infer
 stays: `import torch` refuses to start without it on macOS / Linux. Not dropped: sympy, scipy, `torch._inductor`,
 `torch._dynamo`, `torch.distributed`, `torch.testing` (all imported by `import torch` itself) and `transformers/models`.
 Result: `python/` 57 -> 39 MB, `site/models/` 812 -> 728 MB, `site/backend/` 48 -> 47 MB.
+
+**0.4.3: the model server's site, lighter.** The 0.4.2 bundle (740 MB unpacked) still had the C-API
+`onnxruntime/capi/libonnxruntime.1.32.0.dylib` (34 MB: the line above was written but the list never had it) and
+packages the torch-free model server no longer imports. `MODELS_UNUSED_*` in `build_python.py` drops, from
+`site/models` only: that dylib (and `libonnxruntime.so*`; `onnxruntime.dll` stays, the Windows `.pyd` links it),
+`huggingface_hub` + `fsspec` + `filelock` + `tqdm` (only `steertts_edge.from_pretrained(<repo id>)` imports it, lazily;
+the app passes a folder), `google` / protobuf (nothing imports it) and `scipy/{cluster,differentiate,fftpack,io,misc,odr}`
+(the app calls `scipy.signal.resample_poly` only; importing `scipy.signal` loads none of them). Checked by importing
+`app.main`, `tts_steer`, `embed`, `voice_pack`, `routes_meta`, `os_voices`, `arctag`, `nft2` and `steertts_edge.ort`
+from a copy of the 0.4.2 site without them, plus an embedder `InferenceSession`. **54 MB** less: `site/models` 251.7
+-> 197.8 MB; the whole app 740 -> 701.5 MB unpacked (measured on an APFS clone of the installed 0.4.2 with this
+branch's `trim()`, `stage_app()` and `precompile()` applied, then launched headless: see "Bytecode" below).
+`desktop/tests/test_bundle.py` checks the list.
+
+`stage_app()` also leaves out `backend/data/video/local/`: `tools/video_catalog.py`'s work folder (gitignored; the
+NASA `pack_file` re-encodes and the video pack's `pack` copies). It was copied into the app on a machine that had run
+`--derive` or `--pack` (174 MB of video inside the installer); the videos reach users only in the video pack.
+
+### Bytecode: nothing is ever written into the signed app
+
+0.4.2 broke its own signature after the first launch: `codesign --verify --deep --strict` said "a sealed resource is
+missing or invalid" because Python had written `.pyc` files into `Contents/Resources/python/lib/python3.11/re/
+__pycache__/` and 73 other places. Cause: `precompile()` ran `python -m compileall` WITHOUT `PYTHONDONTWRITEBYTECODE`,
+so the compiler's own start-up imports (encodings, re, enum, functools, shutil, ...: `trim()` had just deleted their
+`.pyc`) were written as TIMESTAMP `.pyc`, and compileall then skipped them as up to date instead of writing
+unchecked-hash ones. Installing the app changes the sources' mtimes, so those 74 went stale, and any run of the
+bundle's Python without `PYTHONDONTWRITEBYTECODE` rewrote them in place (`make smoke-installed` ran `smoke.py` that
+way; so does a hand run). Reproduced on an APFS clone of the installed 0.4.2: one `python3 -c "import re"` and the seal
+is broken.
+
+Fixed three ways: `precompile()` runs compileall with `-f` and `PYTHONDONTWRITEBYTECODE=1`, then `bytecode_problems()`
+fails the build if any `.py` lacks an unchecked-hash `.pyc` (0 left on the same clone, then re-signed: a run with
+bytecode writes allowed and the sources' mtimes changed leaves the seal intact); `launch.py` sets
+`sys.dont_write_bytecode` before it imports anything else (the shell already sets `PYTHONDONTWRITEBYTECODE=1` for both
+children); `release_check.py` runs the bundle's Python with `PYTHONDONTWRITEBYTECODE=1` and its `quit` gate re-runs
+`codesign --verify --strict --deep` on the test app after the run. `PYTHONPYCACHEPREFIX` is not used: Python would
+then read bytecode only from that folder, ignore the bundle's own and compile every module from source at each launch.
+`desktop/tests/test_bundle.py` covers it (stale timestamp `.pyc` are replaced, an mtime change leaves nothing to write).
 
 ## Where things go at run time
 

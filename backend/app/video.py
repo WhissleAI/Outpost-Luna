@@ -210,6 +210,15 @@ def validate(items) -> list[str]:
                 out.append(f"{vid}: a prefetch item needs its size in bytes (the download check)")
         if v.get("sha256") and not re.fullmatch(r"[0-9a-f]{64}", str(v["sha256"])):
             out.append(f"{vid}: sha256 must be 64 hex characters")
+        pk = v.get("pack")
+        if pk is not None:   # the video pack's lighter copy of a NASA file (tools/video_catalog.py --pack)
+            if src != "nasa_file" or not v.get("prefetch"):
+                out.append(f"{vid}: only a pinned nasa_file has a pack copy")
+            if not (isinstance(pk, dict) and isinstance(pk.get("derive"), str) and pk["derive"].strip()):
+                out.append(f"{vid}: pack.derive must be the ffmpeg arguments that make the pack copy")
+            elif not (isinstance(pk.get("bytes"), int) and pk["bytes"] > 0
+                      and re.fullmatch(r"[0-9a-f]{64}", str(pk.get("sha256", "")))):
+                out.append(f"{vid}: pack needs its bytes and sha256 (the installed copy is checked against them)")
         fb = v.get("fallback")
         if fb is not None:
             if fb == vid or fb not in ids:
@@ -528,8 +537,7 @@ def from_pack(v: dict, kind: str, pinned: bool = False) -> bool:
     src = Path(settings.video_pack_dir) / n
     if not src.is_file():
         return False
-    if kind == "video" and ((v.get("bytes") and src.stat().st_size != v["bytes"])
-                            or (v.get("sha256") and file_sha256(src) != v["sha256"])):
+    if kind == "video" and not pack_copy_ok(v, src):
         return False
     with c.name_lock(n):
         if not c.has(n):
@@ -539,6 +547,19 @@ def from_pack(v: dict, kind: str, pinned: bool = False) -> bool:
             os.replace(tmp, c.path(n))
             c.add(n, pinned)
     return True
+
+
+def pack_copy_ok(v: dict, src: Path) -> bool:
+    """The installed video pack's file is the catalog's: the NASA file itself (bytes + sha256), or the pack's lighter
+    re-encode of it (`pack`: bytes + sha256; video pack v3, docs/MEDIA.md "The video pack"). Either plays the same."""
+    n = src.stat().st_size
+    wants = [w for w in (v, v.get("pack") or {}) if w.get("bytes") or w.get("sha256")]
+    if not wants:
+        return True               # nothing pinned to check against (as before)
+    for w in wants:
+        if (not w.get("bytes") or n == w["bytes"]) and (not w.get("sha256") or file_sha256(src) == w["sha256"]):
+            return True
+    return False
 
 
 def pack_has(v: dict) -> bool:

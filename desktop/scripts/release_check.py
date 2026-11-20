@@ -229,6 +229,7 @@ class App:
                 raise GateError(f"not a .app: {target}")
             self.exe = next((target / "Contents/MacOS").iterdir())
             self.res = target / "Contents/Resources"
+            self.target = target
             rc, out = run(["codesign", "--verify", "--strict", "--deep", str(target)], timeout=600)
             info["codesign"] = "ok" if rc == 0 else out.strip()[-300:]
             rc2, out2 = run(["spctl", "-a", "-vv", "-t", "exec", str(target)], timeout=300)
@@ -314,7 +315,7 @@ class App:
             sys.platform, ("libarctag.so", "libarc.so"))
         env.update({"ARCTAG_LIB": str(nat / lib[0]), "ARC_LIB": str(nat / lib[1]), "HF_HOME": str(self.ud / "hf"),
                     "MOON_PARENT_PID": str(os.getpid()), "PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1",
-                    "PYTHONUTF8": "1", "HF_HUB_OFFLINE": "1", "OS_TTS": "off"})
+                    "PYTHONUTF8": "1", "PYTHONDONTWRITEBYTECODE": "1", "HF_HUB_OFFLINE": "1", "OS_TTS": "off"})
         port = free_port()
         py = self.res / ("python/python.exe" if IS_WIN else "python/bin/python3")
         out = open(self.work / "legacy_models.log", "ab")
@@ -609,7 +610,8 @@ def gate_smoke(rep: Report, app: App, info: dict, t0: float):
         "model sha256 verified": (eng.get("verify") or {}).get("verified") is True,
     }
     py = app.res / ("python/python.exe" if IS_WIN else "python/bin/python3")
-    env = {**os.environ, "PYTHONPATH": str(app.res / "site/backend"), "PYTHONUTF8": "1"}
+    env = {**os.environ, "PYTHONPATH": str(app.res / "site/backend"), "PYTHONUTF8": "1",
+           "PYTHONDONTWRITEBYTECODE": "1"}   # never write .pyc into the (signed) bundle under test
     env.pop("LUNA_TOKEN", None)
     rc, out = run([str(py), "-u", str(ROOT / "desktop/scripts/smoke.py"), "--engine",
                    str(app.engine_file)], env=env, timeout=600)
@@ -1339,10 +1341,17 @@ def main():
                     if "soak" in app_gates:
                         gate_soak(rep, app, soak_min)
                     q = app.quit()
-                    rep.add("quit", "pass" if q["clean"] else "fail",
+                    # the run must leave the bundle as signed: a .pyc written into it (0.4.x) breaks the seal
+                    seal = True
+                    if IS_MAC and info.get("signed_ok") and getattr(app, "target", None):
+                        rc, out = run(["codesign", "--verify", "--strict", "--deep", str(app.target)], timeout=600)
+                        seal = rc == 0
+                        q["codesign_after_run"] = "ok" if seal else out.strip()[-300:]
+                    rep.add("quit", "pass" if q["clean"] and seal else "fail",
                             f"quit in {q['seconds']} s; engine.json {'removed' if q['engine_json_removed'] else 'LEFT'}; "
                             f"children {'all gone' if not q['children_left'] else 'LEFT ' + str(q['children_left'])}"
-                            + ("; had to force-kill" if q["forced"] else ""), **q)
+                            + ("; had to force-kill" if q["forced"] else "")
+                            + ("" if seal else "; the run changed the signed bundle (codesign fails after launch)"), **q)
         if "fuzz" in gates:
             gate_fuzz_c(rep, app, fuzz_s, seed, work)
     except KeyboardInterrupt:

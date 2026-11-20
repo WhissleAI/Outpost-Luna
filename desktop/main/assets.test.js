@@ -196,7 +196,9 @@ test("the bundled manifest lists the required assets with sizes and sha256s", ()
   const ear = m.assets.find((x) => x.id === "ear");
   assert.ok(ear.licence.includes("LICENSE") && ear.licence.includes("NOTICE"));
   assert.ok(ear.files.some((f) => f.path === "LICENSE") && ear.files.some((f) => f.path === "NOTICE"));
-  assert.equal(ear.fallback.kind, "files");
+  // 0.4.3: the lighter ear (fp16 parts) falls back to the previous published pack, which falls back to Hugging Face
+  const fb = ear.fallback.kind === "pack" ? ear.fallback.fallback : ear.fallback;
+  assert.equal(fb.kind, "files");
   assert.ok(A.requiredBytes(m) > 400e6);
 });
 
@@ -272,7 +274,8 @@ test("videos v1 installed, the 0.3.11 manifest wants v2: outdated, fetched after
     files: Object.entries(old).map(([p, b]) => ({ path: p, size: b.length })) } }));
   const { srv, base } = await serve({});                  // the v2 pack is not reachable (404)
   try {
-    const a = { ...vid, url: base + "/videos.tar" };
+    // neither the new pack nor its fallback (the previous published pack) is reachable
+    const a = { ...vid, url: base + "/videos.tar", fallback: vid.fallback && { ...vid.fallback, url: base + "/prev.tar" } };
     const store = A.createStore({ dir, manifest: { assets: [a] }, backoffMs: 1 });
     assert.equal(store.check(a), "outdated");
     const needs = U.setupNeeds(store.status(), { assets: [a] });
@@ -370,4 +373,52 @@ test("course pack: built-in assets are never removable; a failure is recorded fo
   assert.deepEqual(store.removals(), []);
   store.failed("course_testland", "School network mode is on, so nothing downloads.");
   assert.match(fs.readFileSync(path.join(dir, ".failed/course_testland"), "utf8"), /School network/);
+});
+
+test("a lighter pack before its upload (url null) or with a broken link installs the previous pack (fallback kind pack)", async () => {
+  const U = require("./updates");
+  // v1: the shipped pack (its tar, its files); v2: the lighter re-pack, other files
+  const { tarBuf: v1tar, asset: v1, files: v1files } = fixture();
+  const v2files = { "LICENSE": Buffer.from("licence text\n"), "nft2/config.json": Buffer.from('{"a":2}'),
+    "nft2/big.bin": crypto.randomBytes(30000) };
+  const v2tar = tar(v2files);
+  const { srv, hits, base } = await serve({ "/v1.tar": v1tar, "/v2.tar": Buffer.from(v2tar).fill(7, 600, 700) });
+  try {
+    const prev = { kind: "pack", version: "1", file: "v1.tar", url: base + "/v1.tar", sha256: v1.sha256, size: v1.size,
+      unpacked_size: v1.unpacked_size, files: v1.files.map((f) => ({ ...f, sha256: sha(v1files[f.path]) })) };
+    const v2 = { ...v1, version: "2", file: "v2.tar", url: null, sha256: sha(v2tar), size: v2tar.length,
+      unpacked_size: 30100, files: Object.entries(v2files).map(([p, b]) => ({ path: p, size: b.length, sha256: sha(b) })),
+      fallback: prev };
+    assert.deepEqual(U.validateManifest({ assets: [{ ...v2, fallback: { ...prev, url: "https://www.dropbox.com/v1.tar?dl=1" } }] }), []);
+    assert.ok(U.validateManifest({ assets: [{ ...v2, fallback: { ...prev, url: "https://evil.example/v1.tar" } }] }).length);
+    assert.ok(U.validateManifest({ assets: [{ ...v2, fallback: { ...prev, url: "https://www.dropbox.com/v1.tar", sha256: "x" } }] }).length);
+    // 1. not uploaded yet: the previous pack is installed AS v1 (its files in state.json: the model check reads them)
+    const dir = tmp(), logs = [];
+    const store = A.createStore({ dir, manifest: { assets: [v2] }, backoffMs: 1, retries: 2, log: (m) => logs.push(m) });
+    await store.download(v2);
+    const st = JSON.parse(fs.readFileSync(path.join(dir, "state.json"), "utf8")).ear;
+    assert.equal(st.version, "1");
+    assert.equal(st.sha256, v1.sha256);
+    assert.deepEqual(st.files.map((f) => f.path).sort(), Object.keys(v1files).sort());
+    assert.ok(st.files.every((f) => /^[0-9a-f]{64}$/.test(f.sha256)));
+    assert.deepEqual(fs.readFileSync(path.join(dir, "ear/nft2/big.bin")), v1files["nft2/big.bin"]);
+    assert.equal(store.check(v2), "installed");                  // no min_version: the previous pack is a full install
+    assert.ok(logs.some((l) => /has no link yet; installing v1/.test(l)));
+    // 2. uploaded but its link serves a damaged file: refused, then the previous pack
+    const dir2 = tmp();
+    const v2up = { ...v2, url: base + "/v2.tar" };
+    const s2 = A.createStore({ dir: dir2, manifest: { assets: [v2up] }, backoffMs: 1, retries: 2 });
+    await s2.download(v2up);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir2, "state.json"), "utf8")).ear.version, "1");
+    assert.ok(hits.some((h) => h.url === "/v2.tar") && hits.some((h) => h.url === "/v1.tar"));
+    // 3. the v1 install is offered v2 by the update check once v2 has a link (and never while it has none)
+    const fetchImpl = async () => ({ status: 200, text: async () => JSON.stringify({ assets: [{ ...v2, url: "https://www.dropbox.com/v2.tar?dl=1",
+      fallback: { ...prev, url: "https://www.dropbox.com/v1.tar?dl=1" } }] }) });
+    const up = U.createUpdater({ store, bundled: { assets: [v2] }, appVersion: "0.4.3", fetchImpl });
+    const r = await up.check();
+    assert.deepEqual(r.updates.map((x) => x.id), ["ear"]);
+    const none = U.createUpdater({ store, bundled: { assets: [v2] }, appVersion: "0.4.3",
+      fetchImpl: async () => ({ status: 200, text: async () => JSON.stringify({ assets: [{ ...v2, fallback: { ...prev, url: "https://www.dropbox.com/v1.tar?dl=1" } }] }) }) });
+    assert.deepEqual((await none.check()).updates, []);
+  } finally { srv.close(); }
 });

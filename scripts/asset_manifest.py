@@ -26,6 +26,16 @@ SCHEMA = 2
 DEFAULTS = {"version": "1", "min_app": "0.1.0", "max_app": None, "requires": []}
 
 
+def cmp_version(a: str, b: str) -> int:
+    """"0.4.10" vs "0.4.9": numeric dotted compare (desktop/main/assets.js cmpVersion). -1 | 0 | 1"""
+    def parts(v):
+        return [int(x) if x.isdigit() else 0 for x in str(v or "0").lstrip("v").split("-")[0].split("+")[0].split(".")]
+    x, y = parts(a), parts(b)
+    n = max(len(x), len(y))
+    x, y = x + [0] * (n - len(x)), y + [0] * (n - len(y))
+    return (x > y) - (x < y)
+
+
 def read() -> dict:
     for p in (PUBLISHED, BUNDLED):
         if p.exists():

@@ -11,9 +11,9 @@ const P = require("./firstrun_progress");
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "assets.manifest.json"), "utf8"));
 const REQUIRED = MANIFEST.assets.filter((a) => a.required).map((a) => ({ id: a.id, title: a.title, size: a.size, done: 0, state: "missing" }));
 
-test("summarize: the required assets add up to the ~510 MB the docs promise; installed counts in full", () => {
+test("summarize: the required assets add up to the ~452 MB the docs promise; installed counts in full", () => {
   const s = P.summarize(REQUIRED);
-  assert.equal(P.bytes(s.total), "510 MB");
+  assert.equal(P.bytes(s.total), "452 MB");
   assert.equal(s.pct, 0);
   const half = REQUIRED.map((a) => (a.id === "ear" ? { ...a, done: a.size / 2 } : { ...a, state: "installed" }));
   const h = P.summarize(half);

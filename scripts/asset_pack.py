@@ -130,13 +130,46 @@ def fetch(url: str, dst: Path, want_sha: str | None = None) -> None:
 
 
 # ------------------------------------------------------------------------------------------------- sources
-def src_ear() -> list[tuple[str, Path | bytes]]:
+def src_ear_upstream() -> list[tuple[str, Path | bytes]]:
+    """The ear exactly as published (WhissleAI/arc-transcriber-space at EAR_REVISION): the Hugging Face fallback's files."""
     base = Path(os.environ.get("ARC_SPACE_SRC", ROOT / "model_server/models/arc-space"))
     for rel in EAR_FILES:
         if not (base / rel).exists():
             print(f"  ear: downloading {rel} from Hugging Face @ {EAR_REVISION[:7]}", flush=True)
             fetch(HF + rel, base / rel)
     return [(rel, base / rel) for rel in EAR_FILES]
+
+
+# The lighter ear (docs/LOCAL_EAR.md "Lighter ear"): the text decoder and the adapters stored float16 (libarc widens them
+# to float32 at load), by model_server/tools/ear_quant.py (deterministic). Every read-out the app uses measured identical to
+# the upstream files' (docs/LOCAL_EAR.md). The int8 encoder (--encoder int8) did NOT pass the accuracy bar and is not packed.
+# EAR_LITE=0 packs the upstream files as they are. The NOTICE says what changed (CC BY-NC 4.0 section 3(a)(1)(B)).
+EAR_LITE = os.environ.get("EAR_LITE", "1") != "0"
+EAR_LITE_ARGS = ["--decoder", "fp16", "--adapters", "fp16"]
+EAR_LITE_TAG = "fp16"
+EAR_LITE_NOTICE = ("\nModified by Whissle for Outpost Luna (model_server/tools/ear_quant.py " + " ".join(EAR_LITE_ARGS) +
+                   "): nft2/decoder/model.safetensors and nft2/adapters.safetensors are stored as float16 (read back as "
+                   "float32 at load). Everything else is the upstream file at the revision above.\n")
+
+
+def src_ear() -> list[tuple[str, Path | bytes]]:
+    up = src_ear_upstream()
+    if not EAR_LITE:
+        return up
+    import subprocess
+    base = dict(up)["nft2/config.json"].parent
+    lite = OUT / "src-ear-lite" / "nft2"
+    print(f"  ear: quantizing {base} -> {lite}", flush=True)
+    subprocess.run(["uv", "run", "--no-project", "--with", "onnx==1.23.2", "--with", "numpy==1.26.4", "python",
+                    str(ROOT / "model_server/tools/ear_quant.py"), "--src", str(base), "--out", str(lite), *EAR_LITE_ARGS],
+                   check=True, stdout=subprocess.DEVNULL)
+    out = []
+    for rel, src in up:
+        if rel.startswith("nft2/"):
+            continue
+        out.append((rel, src.read_bytes() + EAR_LITE_NOTICE.encode() if rel == "NOTICE" else src))
+    out += [(f"nft2/{p.relative_to(lite).as_posix()}", p) for p in sorted(lite.rglob("*")) if p.is_file()]
+    return out
 
 
 def src_tagger():
@@ -188,7 +221,13 @@ def src_videos():
                 out.append((f"{v['id']}.{ext}", local / f"{v['id']}.{ext}"))
     for v in pins:
         vid, mp4 = v["id"], stage / f"{v['id']}.mp4"
-        if not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
+        if v.get("pack"):   # video pack v3: the lighter copy (tools/video_catalog.py --pack), checked against the catalog
+            pk = local / "pack" / f"{vid}.mp4"
+            if not (pk.exists() and pk.stat().st_size == v["pack"].get("bytes") and sha256_file(pk) == v["pack"].get("sha256")):
+                sys.exit(f"videos: {pk} missing or not the catalog's pack copy (sha256): run `uv run python "
+                         f"tools/video_catalog.py --pack --only {vid}` in backend/ (docs/MEDIA.md)")
+            mp4 = pk
+        elif not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
             if (have / mp4.name).exists() and sha256_file(have / mp4.name) == v["sha256"]:
                 stage.mkdir(parents=True, exist_ok=True)
                 mp4.write_bytes((have / mp4.name).read_bytes())
@@ -373,6 +412,21 @@ def write_tar(dst: Path, files: list[tuple[str, Path | bytes]]) -> list[dict]:
     return listing
 
 
+VIDEO_PACK_MIN_APP = "0.4.3"   # the first app whose video.py accepts the catalog's `pack` copies
+
+
+def previous_pack(prev: dict) -> dict:
+    """A published manifest entry -> a fallback of kind "pack" (desktop/main/assets.js fromPrevious)."""
+    fb = {"kind": "pack", "version": str(prev.get("version", "1"))}
+    for k in ("file", "url", "sha256", "size", "unpacked_size", "n_files", "files"):
+        if k in prev:
+            fb[k] = prev[k]
+    inner = prev.get("fallback")
+    if inner and inner.get("kind") != "pack":
+        fb["fallback"] = inner
+    return fb
+
+
 def build(only: set[str] | None) -> dict:
     OUT.mkdir(parents=True, exist_ok=True)
     old = asset_manifest.read()
@@ -385,11 +439,22 @@ def build(only: set[str] | None) -> dict:
             continue
         t = time.time()
         files = src()
-        stem = f"{aid}-{EAR_REVISION[:7]}" if aid == "ear" else aid
+        stem = f"{aid}-{EAR_REVISION[:7]}" + (f"-{EAR_LITE_TAG}" if EAR_LITE else "") if aid == "ear" else aid
         fname = f"outpost-luna-{PACK}-{stem}.tar"
         listing = write_tar(OUT / fname, files)
         sha, size = sha256_file(OUT / fname), (OUT / fname).stat().st_size
         same = prev and prev.get("sha256") == sha
+        if same and prev.get("file") and prev["file"] != fname:
+            (OUT / fname).replace(OUT / prev["file"])     # unchanged: keep the published name (its url points at it)
+            fname = prev["file"]
+        elif prev and not same:
+            # a new version is a NEW file name (`<stem>-<version>.tar`, the version asset_manifest.write assigns): the
+            # upload must never overwrite the published tar behind the old link, which older apps still download
+            # (their bundled manifest pins its sha256) and which this entry's fallback ("pack") points at
+            nver = str(int(str(prev.get("version", "1")).split(".")[0]) + 1)
+            vname = f"outpost-luna-{PACK}-{stem}-{nver}.tar"
+            (OUT / fname).replace(OUT / vname)
+            fname = vname
         url = prev.get("url") if same else None
         keep = {k: prev[k] for k in ("version", "min_app", "max_app", "requires", "min_version") if prev and k in prev}
         a = {"id": aid, **keep, "title": title, "required": req, "file": fname, "url": url, "sha256": sha, "size": size,
@@ -419,9 +484,25 @@ def build(only: set[str] | None) -> dict:
             a["note"] = "A course pack (docs/COURSES.md §4.2): installed into <assets>/course_<id>/, removable."
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
-            a["fallback"] = {"kind": "files", "base": HF,
-                             "files": [{"path": x["path"], "size": x["size"],
-                                        "sha256": sha256_file(dict(files)[x["path"]])} for x in listing]}
+            if EAR_LITE:
+                a["source"]["modified"] = "model_server/tools/ear_quant.py " + " ".join(EAR_LITE_ARGS)
+                a.setdefault("min_app", "0.4.2")
+                if prev and prev.get("min_app") and asset_manifest.cmp_version(prev["min_app"], "0.4.2") < 0:
+                    a["min_app"] = "0.4.2"   # measured on 0.4.2's libarc + ONNX Runtime 1.32 (docs/LOCAL_EAR.md)
+            else:
+                a["fallback"] = {"kind": "files", "base": HF,
+                                 "files": [{"path": x["path"], "size": x["size"],
+                                            "sha256": sha256_file(dict(files)[x["path"]])} for x in listing]}
+        if aid == "videos" and any(v.get("pack") for v in json.loads((ROOT / "backend/data/video/catalog.json").read_text())):
+            # the pack copies are accepted by backend/app/video.py pack_copy_ok from this app version on
+            if not prev or prev.get("sha256") != sha:
+                a["min_app"] = VIDEO_PACK_MIN_APP
+        if prev and not same and prev.get("url") and prev.get("sha256"):
+            # until the new tar is uploaded, or if its link ever fails: the previous published pack, as that version
+            # (desktop/main/assets.js fromPrevious); its own fallback (the ear's Hugging Face files) rides along
+            a["fallback"] = previous_pack(prev)
+        elif prev and not same and (prev.get("fallback") or {}).get("kind") == "pack" and not a.get("fallback"):
+            a["fallback"] = prev["fallback"]     # rebuilt again before an upload: still the last published pack
         assets.append(a)
         print(f"  {aid:9s} {size / 1e6:8.1f} MB  {len(listing):4d} files  {sha[:12]}  {'url kept' if url else 'NEW (upload)'}"
               f"  {time.time() - t:.0f} s", flush=True)

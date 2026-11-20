@@ -13,7 +13,12 @@
   "age": "7-12",
   "source_page": "https://svs.gsfc.nasa.gov/14992",
   "bytes": 3836605,
-  "sha256": "3cf3e8f4e7a29ae96fa9eaa32e7c313dc8843be672365a30fbcd4a1aa67acf44"
+  "sha256": "3cf3e8f4e7a29ae96fa9eaa32e7c313dc8843be672365a30fbcd4a1aa67acf44",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1600k -bufsize 3200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 2993923,
+   "sha256": "feed79c972f2d8afe0f1db83501bb5b43d089d58bbaa067eff6eb1fdda090453"
+  }
  },
  {
   "id": "lunar_eclipse",
@@ -31,7 +36,12 @@
   "nasa_id": "GSFC_20140408_LRO_M11516_Lunar",
   "source_page": "https://images.nasa.gov/details/GSFC_20140408_LRO_M11516_Lunar",
   "bytes": 35593136,
-  "sha256": "141c23470dbf8fa8985030ab0647f8e97bdbcb111b17a094f919ac2d73716403"
+  "sha256": "141c23470dbf8fa8985030ab0647f8e97bdbcb111b17a094f919ac2d73716403",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 12678057,
+   "sha256": "83a7766a49919989df60c08e1b1a1cf9c59a85a953f4c141c30707eece662d4e"
+  }
  },
  {
   "id": "hammer_feather",
@@ -65,7 +75,12 @@
   "nasa_id": "jsc2023m000179_Lunar_Dust_is_Difficult_230928",
   "source_page": "https://images.nasa.gov/details/jsc2023m000179_Lunar_Dust_is_Difficult_230928",
   "bytes": 46080368,
-  "sha256": "2bc2f4030969f26e6a032a64e93c77d729eff8201c32f3f671d94633c0ee4963"
+  "sha256": "2bc2f4030969f26e6a032a64e93c77d729eff8201c32f3f671d94633c0ee4963",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 19993727,
+   "sha256": "570e72cde31c0cbc0c027f2424464103118665fabf9c3a90eca381ff00d1fa28"
+  }
  },
  {
   "id": "psr",
@@ -83,7 +98,12 @@
   "nasa_id": "GSFC_20130306_Moons_m11218_Shadowed",
   "source_page": "https://images.nasa.gov/details/GSFC_20130306_Moons_m11218_Shadowed",
   "bytes": 32881024,
-  "sha256": "7cfeeb5cb9bb085e0aa92c9fc58670cce09b7029e1ce8cb8d68123cdae53b0f4"
+  "sha256": "7cfeeb5cb9bb085e0aa92c9fc58670cce09b7029e1ce8cb8d68123cdae53b0f4",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 17134389,
+   "sha256": "20b9b850156e280370abb6c49f21af985a989a9743033faaac5afc829a9ff70f"
+  }
  },
  {
   "id": "water_extraction",
@@ -101,7 +121,12 @@
   "nasa_id": "How Will We Extract Water on the Moon",
   "source_page": "https://images.nasa.gov/details/How%20Will%20We%20Extract%20Water%20on%20the%20Moon",
   "bytes": 29418081,
-  "sha256": "8a73bad0011fd86dd3d5fb727b7fca1c352b717451a051abc02c7312b893d551"
+  "sha256": "8a73bad0011fd86dd3d5fb727b7fca1c352b717451a051abc02c7312b893d551",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 13438006,
+   "sha256": "f28fd9eee870e5c094c98608ee5fbbdde793f79ae43d070a8c8f8cc60c759732"
+  }
  },
  {
   "id": "moon_weather",
@@ -119,7 +144,12 @@
   "nasa_id": "Is There Weather on the Moon",
   "source_page": "https://images.nasa.gov/details/Is%20There%20Weather%20on%20the%20Moon",
   "bytes": 26382697,
-  "sha256": "59125a0797f2976e59e6599636410203d9617f19883f434f91e4bec72c4c6c75"
+  "sha256": "59125a0797f2976e59e6599636410203d9617f19883f434f91e4bec72c4c6c75",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1600k -bufsize 3200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 14292471,
+   "sha256": "79be7554d057dbb7faff9b36bbcdc6eaf80e72672c9a9902dbea1200d213305d"
+  }
  },
  {
   "id": "moon_base_6mo",
@@ -137,7 +167,12 @@
   "nasa_id": "NASA_Moon_Base-First_Six_Months",
   "source_page": "https://images.nasa.gov/details/NASA_Moon_Base-First_Six_Months",
   "bytes": 19725118,
-  "sha256": "512bba7961fff5efaa2aade2bbd58195c43f682cfc8cec5e8ffb2cbd26638ee3"
+  "sha256": "512bba7961fff5efaa2aade2bbd58195c43f682cfc8cec5e8ffb2cbd26638ee3",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 9706639,
+   "sha256": "91e4e3b25fd62a03b826f6f5caf9b6d5c1e9fefd81969eb59989334e3eb8b9e7"
+  }
  },
  {
   "id": "far_side_view",
@@ -154,7 +189,12 @@
   "age": "7-12",
   "source_page": "https://svs.gsfc.nasa.gov/4253",
   "bytes": 45399345,
-  "sha256": "ca1736aa98a7ab3d54b3e459908d7143709204e36669c945a035a37875444fc8"
+  "sha256": "ca1736aa98a7ab3d54b3e459908d7143709204e36669c945a035a37875444fc8",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 10983095,
+   "sha256": "6df7c2f624494d7693de374e3ac3216e511f2c0d00a38a9415332661ab8c4802"
+  }
  },
  {
   "id": "south_pole_shadows",
@@ -171,7 +211,12 @@
   "source_page": "https://svs.gsfc.nasa.gov/4893",
   "note": "The silent visualization (no narration): NASA's narrated cut credits Universal Production Music.",
   "bytes": 20700703,
-  "sha256": "a97956da479bc75f11a846f6873673022142c9339eeb74c2f5a843083b630051"
+  "sha256": "a97956da479bc75f11a846f6873673022142c9339eeb74c2f5a843083b630051",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 10923361,
+   "sha256": "490fb7a5896f0f0f1ad7a7f8f12241d787f7aea4307aee9955e0d5da85a0e288"
+  }
  },
  {
   "id": "meet_crew",
@@ -190,7 +235,12 @@
   "source_page": "https://images.nasa.gov/details/jsc2026m000054_Artemis_II_Crew_Talks_about_the_Moon_AVAIL",
   "note": "Replaces the YouTube 'Artemis II: Meet the Astronauts' (lPyl6d2FJGw), which NASA hosts nowhere as a file.",
   "bytes": 39367061,
-  "sha256": "57e8ee8232744bba4930a0126c1e082582f4410aa44740e4aa1cda83e2e2bcd3"
+  "sha256": "57e8ee8232744bba4930a0126c1e082582f4410aa44740e4aa1cda83e2e2bcd3",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 14403465,
+   "sha256": "e18dbbecec64d7a7e9e450e97402621d658a9a9747af70313075934c98cecfb1"
+  }
  },
  {
   "id": "ltv",
@@ -208,7 +258,12 @@
   "nasa_id": "jsc2024m000100_NASA _Artemis_Lunar_Terrain_Vehicle_(Official NASA Trailer)-MP4",
   "source_page": "https://images.nasa.gov/details/jsc2024m000100_NASA%20_Artemis_Lunar_Terrain_Vehicle_(Official%20NASA%20Trailer)-MP4",
   "bytes": 24726141,
-  "sha256": "019df7d59ad5d7a479d9fd265dbca8c781f0c3bc121fe3a0f037e7ab68f556ac"
+  "sha256": "019df7d59ad5d7a479d9fd265dbca8c781f0c3bc121fe3a0f037e7ab68f556ac",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1600k -bufsize 3200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 15906915,
+   "sha256": "3eb7e00ec978c091dad66a95d7d4afadc27428174f82a7e97bddff9c39f1acc2"
+  }
  },
  {
   "id": "diy_crater_nasa",
@@ -280,6 +335,11 @@
   "source_page": "https://svs.gsfc.nasa.gov/5415",
   "note": "The silent cut of the same visualization: NASA's YouTube cut credits Universal Production Music.",
   "bytes": 75595723,
-  "sha256": "ab059e75e3f29addb58faffbf720d918dc511e1e406be5d8a653aea94e149b4e"
+  "sha256": "ab059e75e3f29addb58faffbf720d918dc511e1e406be5d8a653aea94e149b4e",
+  "pack": {
+   "derive": "-map 0:v:0 -map 0:a:0? -c:v libx264 -preset slow -crf 23 -maxrate 1100k -bufsize 2200k -profile:v high -level:v 4.0 -pix_fmt yuv420p -threads 2 -c:a aac -b:a 96k -map_metadata -1 -movflags +faststart",
+   "bytes": 39843587,
+   "sha256": "cca34022e40183332a09c6461b96596f039fb272afe599c5f9da17fcdb77fea0"
+  }
  }
 ]
