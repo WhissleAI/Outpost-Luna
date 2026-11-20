@@ -17,6 +17,7 @@
 //     pause   extra-early hints the app gave after a long pause (the app's action, not a trait: docs/BRAIN.md §6)
 //     secs    seconds on graded steps (each step capped at 5 minutes, so a walk away doesn't count)
 //   days: ["2026-11-19", ...]   the days with a graded step, newest last, at most 60
+//   course: "moon"               which course the lesson ids belong to (default "moon"; ready for more courses)
 
 export const KEY = "outpost-brain";
 export const MAX_DAYS = 60;
@@ -27,12 +28,14 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const UNGRADED = new Set(["video", "predict"]);
 const FIELDS = ["steps", "first", "helped", "shown", "misses", "pause", "secs"];
 
-export const blank = () => ({ v: 1, lessons: {}, days: [] });
+export const COURSE = "moon";   // the course these counts belong to (a future course switcher adds others)
+const COURSE_ID = /^[a-z0-9][a-z0-9-]{0,23}$/;
+export const blank = (course = COURSE) => ({ v: 1, course, lessons: {}, days: [] });
 const n = x => (Number.isFinite(+x) && +x > 0 ? Math.min(1e6, Math.floor(+x)) : 0);
 
 /** Keep only known ids, whole counts and real dates (pure). */
 export function clean(raw) {
-  const out = blank();
+  const out = blank(raw && typeof raw.course === "string" && COURSE_ID.test(raw.course) ? raw.course : COURSE);
   if (!raw || typeof raw !== "object") return out;
   const ls = raw.lessons && typeof raw.lessons === "object" ? raw.lessons : {};
   for (const [id, v] of Object.entries(ls)) {

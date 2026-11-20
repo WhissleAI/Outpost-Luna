@@ -127,7 +127,8 @@ export function voiceLines(learned) {
 
 // ---------- the star map (inline SVG, no script) ----------
 // Each track is a constellation along its own path; stars on a track are joined by a line where both are learned.
-const PATHS = { core: [[48, 200], [300, 70]], explorer: [[340, 52], [450, 34]], field: [[470, 110], [600, 196]], class: [[330, 236], [590, 250]] };
+const PATHS = { core: [[44, 214], [330, 64]], explorer: [[370, 56], [470, 40]], field: [[440, 126], [610, 206]], class: [[330, 246], [600, 252]] };
+// labels alternate below / above along a track, so neighbouring stars' names never overlap
 export function layout(list) {
   const by = {};
   list.forEach(s => (by[s.track] = by[s.track] || []).push(s));
@@ -136,7 +137,7 @@ export function layout(list) {
     const [[x0, y0], [x1, y1]] = PATHS[t] || PATHS.class;
     ss.forEach((s, k) => {
       const f = ss.length === 1 ? 0.5 : k / (ss.length - 1);
-      out.push({ ...s, x: Math.round(x0 + (x1 - x0) * f), y: Math.round(y0 + (y1 - y0) * f + (k % 2 ? -14 : 10)) });
+      out.push({ ...s, i: k, x: Math.round(x0 + (x1 - x0) * f), y: Math.round(y0 + (y1 - y0) * f + (k % 2 ? -14 : 10)) });
     });
   });
   return out;
@@ -154,7 +155,7 @@ export function starMapSvg(list) {
     const pts5 = Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * 0.45 : r; return `${(s.x + rr * Math.cos(a)).toFixed(1)},${(s.y + rr * Math.sin(a)).toFixed(1)}`; }).join(" ");
     return `<g class="bm-star is-${s.state}"><title>${esc(s.title)}: ${esc(COPY.legend[s.state === "lit" ? "lit" : s.state === "practising" ? "practising" : "dim"])}</title>
       ${s.state === "lit" ? `<circle cx="${s.x}" cy="${s.y}" r="${r + 7}" class="bm-glow"/>` : ""}<polygon points="${pts5}"/>
-      <text x="${s.x}" y="${s.y + r + 14}" text-anchor="middle">${esc(s.star)}</text></g>`;
+      <text x="${s.x}" y="${s.i % 2 ? s.y - r - 7 : s.y + r + 14}" text-anchor="middle">${esc(s.star)}</text></g>`;
   };
   return `<svg class="bm-map" viewBox="0 0 640 280" role="img" aria-label="${esc(`${pts.filter(s => s.state === "lit").length} of ${pts.length} stars lit`)}">
     ${lines.join("")}${pts.map(star).join("")}</svg>`;
@@ -190,7 +191,7 @@ export function cadetHtml(d) {
 export const GROWN = {
   title: "Practice",
   none: "No graded lesson steps yet.",
-  th: ["Lesson", "What it teaches", "Steps", "First try", "With help", "Shown", "Time"],
+  th: ["Lesson", "What it teaches", "Steps", "First try", "With help", "Shown", "Minutes"],
   ngss: "NGSS hooks",
   ngssNote: "Standards the lessons cite. Not an alignment review.",
   hard: t => `Needed the most help: ${t}.`,
@@ -203,7 +204,7 @@ export function practiceHtml(brain, lessons) {
   const rows = practice(brain, lessons), t = totals(rows), hard = hardest(rows), days = store.clean(brain).days.length;
   if (!rows.length) return `<section class="pg-block"><h5>${esc(GROWN.title)}</h5><p class="set-help">${esc(GROWN.none)}</p></section>`;
   const tr = r => `<tr><td>${esc(r.title)}</td><td>${esc(r.idea)}${r.ngss.length ? `<small class="bm-ngss">${esc(r.ngss.join(", "))}</small>` : ""}</td>
-    <td>${r.steps}</td><td>${r.first}${r.steps ? `<small> (${r.firstPct}%)</small>` : ""}</td><td>${r.helped}</td><td>${r.shown}</td><td>${r.mins} min</td></tr>`;
+    <td>${r.steps}</td><td>${r.first}${r.steps ? `<small> (${r.firstPct}%)</small>` : ""}</td><td>${r.helped}</td><td>${r.shown}</td><td>${r.mins}</td></tr>`;
   return `<section class="pg-block pg-practice"><h5>${esc(GROWN.title)}</h5>
     <p class="pg-cur">${esc(GROWN.totals(t))} ${esc(GROWN.days(days))}</p>
     <p class="pg-cur">${esc(GROWN.hints(t.misses, t.pause))}</p>

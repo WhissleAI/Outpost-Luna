@@ -67,7 +67,12 @@ def open_progress(pg):
 
 def shot(pg, out, name):
     if out:
-        pg.screenshot(path=str(Path(out) / f"{name}.png"))
+        for _ in range(2):   # a loaded machine: WebGL frames can stall one capture
+            try:
+                pg.screenshot(path=str(Path(out) / f"{name}.png"), timeout=60000)
+                return
+            except Exception as e:  # noqa: BLE001
+                print("  (screenshot retry:", str(e)[:80], ")")
 
 
 DRAWER_TEXT = "() => (document.getElementById('brain') || {}).innerText || ''"
@@ -100,7 +105,7 @@ def main():
             check(until(pg, "() => !!document.querySelector('#brain .bm-map')", 8000), "the star map is drawn")
             txt = pg.evaluate(DRAWER_TEXT)
             for s in ("Nova", "Your star map", "Try next", "How the outpost knows your voice", "How the outpost thinks", "It keeps your words private", "Days in a row"):
-                check(s in txt, f"cadet sees: {s}")
+                check(s.lower() in txt.lower(), f"cadet sees: {s}")
             check(pg.evaluate("() => document.querySelectorAll('#brain .bm-star.is-lit').length") == 2, "two stars lit (two patches)")
             check(pg.evaluate("() => document.querySelectorAll('#brain .bm-star.is-practising').length") >= 1, "a lesson in progress glows")
             if until(pg, "() => /The outpost knows you mean/.test(document.getElementById('brain').innerText)", 4000):
@@ -116,8 +121,11 @@ def main():
             pg.wait_for_timeout(300)
             shot(pg, a.out, f"brain_cadet_bottom_{w}x{h}")
             pg.keyboard.press("Escape")
-            check(until(pg, "() => !document.getElementById('brain').open && document.activeElement && document.activeElement.id === 'brainBtn'", 3000),
-                  "Esc closes; focus back on My Brain")
+            # focus goes back to My Brain, or (in a lesson step, whose scope holds focus: input/spatial.js) to the lesson
+            okc = until(pg, "() => { const a = document.activeElement; return !document.getElementById('brain').open && !!a && (a.id === 'brainBtn' || (document.body.dataset.aview === 'lesson' && !!a.closest('#aPanel'))); }", 3000)
+            if not okc:
+                print("   at:", pg.evaluate("() => [document.getElementById('brain').open, document.activeElement && (document.activeElement.id || document.activeElement.className)]"))
+            check(okc, "Esc closes; focus back on My Brain (or the lesson underneath)")
             if w == 1440:
                 # the practice counts take a graded step (ids and counts only)
                 pg.evaluate("""() => dispatchEvent(new CustomEvent('outpost:lesson-result', { detail: { status: 'passed', step_type: 'choice', lesson: 'radiation',

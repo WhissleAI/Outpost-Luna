@@ -112,7 +112,7 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 ## 5. The one new store: practice counts (`frontend/src/brain_store.js`)
 
 - **Key:** `localStorage["outpost-brain"]`, per cadet (prefs.js `PROFILE_KEYS`, so it moves with the profile).
-- **Shape:** `{v:1, lessons:{<lessonId>:{steps, first, helped, shown, misses, pause, secs}}, days:[YYYY-MM-DD…≤60]}`.
+- **Shape:** `{v:1, course:"moon", lessons:{<lessonId>:{steps, first, helped, shown, misses, pause, secs}}, days:[YYYY-MM-DD…≤60]}`.
 - **What feeds it:** the Academy's `outpost:lesson-result` event (`frontend/src/academy/ui.js` `answer`). That event
   now also carries `lesson`, `shown`, `misses`, `helped`, `hes`, `step_s` and `ride`. The session still forwards only
   `status` and `step_type` to the turn log.

@@ -51,6 +51,9 @@ test("clean: no words, names or call signs survive, whatever is stored", () => {
   assert.deepEqual(Object.keys(c.lessons), ["moon"]);
   assert.deepEqual(c.lessons.moon, { steps: 2, first: 1, helped: 0, shown: 0, misses: 0, pause: 0, secs: 0 });
   assert.deepEqual(c.days, ["2026-11-19"]);
+  assert.equal(c.course, "moon", "the default course");
+  assert.equal(S.clean({ course: "archaeology" }).course, "archaeology");
+  assert.equal(S.clean({ course: "Alex's notes" }).course, "moon", "a course id is a slug, never text");
 });
 
 test("store: add / load / wipe on a Storage; at most 60 days", () => {

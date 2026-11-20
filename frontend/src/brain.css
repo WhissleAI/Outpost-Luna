@@ -51,7 +51,12 @@
 .bm-ic{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--color-accent-soft);color:var(--color-accent)}
 
 /* the grown-ups' side (progress.js): the practice table and this computer's counts */
-.pg-tbl table{min-width:560px}
+.pg-tbl table{min-width:0}
+.pg-tbl th,.pg-tbl td{padding:var(--space-2)}
+.pg-tbl th{letter-spacing:.04em}
+.pg-tbl td:nth-child(n+3),.pg-tbl th:nth-child(n+3){text-align:right}
+.pg-tbl td:nth-child(n+3){white-space:nowrap}
+.pg-tbl td:nth-child(2){min-width:10rem}
 .pg-tbl td small{display:block;color:var(--color-text-3);font-size:var(--text-xs)}
 .pg-tbl td small.bm-ngss{margin-top:2px}
 .pg-ctl{margin:0;padding-left:1.2em;font-size:var(--text-sm);color:var(--color-text-2);display:flex;flex-direction:column;gap:2px}
