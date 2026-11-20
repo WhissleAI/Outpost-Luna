@@ -26,6 +26,9 @@ export const DO = {
   // Field School (0.5): reports that build up over turns
   describe: "Say what you see, or tap the words", sequence: "Say them in order, or tap them",
   rounds: "Tap an answer, or say it",
+  // archaeology (docs/COURSES.md §3.2)
+  layers: "Tap the layers oldest first, or say them", rings: "Slide the beam until the bars match",
+  hillshade: "Tap the features on the map, or name them", decide: "Pick what you would do",
 };
 /** A video step with nothing to guess ("Watch the bright part grow"): no "Guess first" (novice playtest #7). */
 const DO_VIDEO_PLAIN = "Tap Watch, or Skip";
@@ -40,6 +43,10 @@ export const INTRO = {
   describe: "New: a crew report. Say what you see, bit by bit.",
   sequence: "New: a readback in order. One at a time is fine.",
   rounds: "New: a few quick rounds, one answer each.",
+  layers: "New: a dig. Order the layers from oldest to youngest.",
+  rings: "New: a tree-ring match. Line up the patterns, then read the year.",
+  hillshade: "New: lidar. Low sun makes small bumps cast shadows.",
+  decide: "New: a field call. Every choice gets an answer.",
 };
 /** [0.3.12] The intro without its "New:" label: the card shows "New" as a chip, and TTS / captions never say "New:". */
 export const introText = t => String(t || "").replace(/^\s*New:\s*/i, "").replace(/^./, c => c.toUpperCase());

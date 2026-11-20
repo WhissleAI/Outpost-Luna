@@ -39,16 +39,20 @@ def test_the_moon_globe_is_the_globe_js_default():
     assert f"MOON_KM = {MOON['globe']['km']}" in js
 
 
-def test_the_archaeology_draft_has_the_right_shape_and_its_files_are_planned():
+def test_the_archaeology_draft_has_the_right_shape_and_its_lessons_exist():
+    # P3 (feat/archaeology-content): lessons, places, entities and ear vocab are written; the season and voice pack
+    # are still planned (P4 / P5)
     errs, planned = courses.validate(ARCH)
     assert errs == []
-    assert "courses/archaeology/course.json" in planned and ARCH["globe"]["body"] == "earth"
+    assert "courses/archaeology/course.json" not in planned and ARCH["globe"]["body"] == "earth"
+    assert set(planned) <= {"courses/archaeology/concepts.json", "courses/archaeology/voice_pack/index.json",
+                            "courses/archaeology/seasons.json"}
 
 
 def test_a_published_course_must_have_its_files():
-    m = copy.deepcopy(ARCH) | {"status": "pack"}
+    m = copy.deepcopy(ARCH) | {"status": "pack", "missions": {"kind": "survey_season", "sites": "courses/archaeology/nope.json"}}
     errs, _ = courses.validate(m)
-    assert any(e["at"] == "lessons.source" for e in errs)
+    assert any(e["at"] == "missions.sites" for e in errs)
 
 
 def test_bad_manifests_say_where():

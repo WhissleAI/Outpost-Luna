@@ -1,0 +1,2407 @@
+{
+ "_note": "Archaeology v1 (docs/COURSES.md §3, docs/courses/archaeology/LESSONS.md). Grades 9-12. Ids are bare here; the loader prefixes them `archaeology:` (content.prefixed). Every fact cites sources.json by source_id. Respect rules (§1.5): park-level places only, no human remains, Ancestral Puebloans / moved, tribal views only in their own published words, shown not spoken.",
+ "title": "Field Archaeology: the Mesa Verde region",
+ "pass_badge": "season_lead",
+ "reading_level": "9-12",
+ "roles": {
+  "capcom": {
+   "name": "Field Director",
+   "analogy": "Your CAPCOM on the dig: the crew lead who calls the next move."
+  },
+  "houston": {
+   "name": "the Lab",
+   "analogy": "Your Houston: samples go out, results come back after a delay. A radiocarbon lab can take days or weeks."
+  }
+ },
+ "teacher_note": "Draft for teacher review. Before a classroom pilot, review the course (especially Who decides?, Many voices and Mesa Verde, around 1280) with Crow Canyon's education team or a tribal cultural office. No tribe has endorsed this course.",
+ "lessons": [
+  {
+   "id": "what_is",
+   "title": "Clues, not treasure",
+   "minutes": 4,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "field_scout",
+    "name": "Field Scout",
+    "glyph": "F"
+   },
+   "unit": "What archaeology is",
+   "standards": [
+    "CO SS History 1.1",
+    "C3 D1"
+   ],
+   "brief": "Archaeologists read the past from what people left behind. Your Field Director is your CAPCOM on the dig. The Lab is your Houston: results come back later.",
+   "steps": [
+    {
+     "prompt": "What is an archaeologist mostly looking for?",
+     "accept": {
+      "type": "predict",
+      "answer": "clues",
+      "options": [
+       {
+        "id": "treasure",
+        "label": "Treasure to collect",
+        "say": [
+         "treasure",
+         "gold"
+        ]
+       },
+       {
+        "id": "clues",
+        "label": "Clues about daily life",
+        "say": [
+         "clues",
+         "daily life",
+         "evidence"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "Clues. A broken pot can say more than gold.",
+     "fail": "Pick one.",
+     "reveal": "Clues. A broken pot can say more than gold."
+    },
+    {
+     "prompt": "Find Mesa Verde National Park, in the southwest corner of Colorado.",
+     "accept": {
+      "type": "intent",
+      "place": "mesa_verde",
+      "radius_deg": 1.5
+     },
+     "hint": "Southwest Colorado, near the Four Corners.",
+     "success": "That's it. Nearly 5,000 sites are protected here.",
+     "fail": "Not there yet.",
+     "globe": {
+      "do": "fly",
+      "place": "four_corners"
+     }
+    },
+    {
+     "prompt": "Which of these is evidence you could check yourself?",
+     "accept": {
+      "type": "choice",
+      "answer": "beam",
+      "options": [
+       {
+        "id": "beam",
+        "label": "A roof beam with a tree-ring date",
+        "say": [
+         "beam",
+         "tree ring"
+        ]
+       },
+       {
+        "id": "post",
+        "label": "A story posted online",
+        "say": [
+         "story",
+         "online"
+        ]
+       },
+       {
+        "id": "movie",
+        "label": "A scene in a movie",
+        "say": [
+         "movie"
+        ]
+       }
+      ]
+     },
+     "hint": "Evidence can be measured again by someone else.",
+     "success": "Right. Anyone can re-measure a dated beam.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Name the field that studies the past through what people left.",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "archaeology",
+        "archeology",
+        "archaeologist",
+        "archeologist"
+       ]
+      ]
+     },
+     "hint": "It starts with arch.",
+     "success": "Archaeology. Clues first, then claims.",
+     "fail": "Not the word I need."
+    },
+    {
+     "prompt": "On a park trail you spot a piece of broken pottery. What do you do?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "leave",
+        "label": "Photograph it and leave it",
+        "say": [
+         "photo",
+         "photograph",
+         "leave it"
+        ],
+        "reply": "That's the call. Where it lies is part of the clue. Tell a ranger.",
+        "best": true
+       },
+       {
+        "id": "take",
+        "label": "Take it home to keep it safe",
+        "say": [
+         "take it",
+         "home",
+         "keep it"
+        ],
+        "reply": "It feels safe, but once moved it loses its place in the story. Leave it, report it."
+       },
+       {
+        "id": "hide",
+        "label": "Hide it so nobody takes it",
+        "say": [
+         "hide"
+        ],
+        "reply": "Kind thought, but moving it erases where it was. Photograph it and tell a ranger."
+       }
+      ],
+      "law": {
+       "title": "NPS: if you find an artifact",
+       "text": "Leave it where you found it, take a picture, and show a park ranger where it is.",
+       "source": {
+        "title": "What If I Find an Artifact? (NPS Archeology Program rack card PDF)",
+        "url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "That's the call. Where it lies is part of the clue. Tell a ranger.",
+     "fail": "Pick one."
+    }
+   ],
+   "photo": {
+    "file": "photo_cliff_palace.jpg",
+    "alt": "Cliff Palace, many stone rooms and towers built under a sandstone overhang above a wooded canyon.",
+    "credit": "NPS Photo",
+    "source": {
+     "title": "View of Cliff Palace from above",
+     "url": "https://npgallery.nps.gov/AssetDetail/ff500f3a-155d-451f-672f-70437d482b09"
+    }
+   },
+   "facts": [
+    {
+     "text": "Mesa Verde National Park protects nearly 5,000 archeological sites, including 600 cliff dwellings.",
+     "source_id": "mv_sites",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Management - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/management/index.htm"
+     }
+    },
+    {
+     "text": "Digging up or removing an archaeological resource on public or Indian lands needs a permit (ARPA).",
+     "source_id": "arpa",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "16 U.S. Code § 470ee - Prohibited acts and criminal penalties | LII / Legal Information Institute",
+      "url": "https://www.law.cornell.edu/uscode/text/16/470ee"
+     }
+    },
+    {
+     "text": "NPS asks visitors who find an artifact to leave it, photograph it, and show a ranger.",
+     "source_id": "leave_it",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "What If I Find an Artifact? (NPS Archeology Program rack card PDF)",
+      "url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf"
+     }
+    }
+   ]
+  },
+  {
+   "id": "survey",
+   "title": "Read the land from above",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "sky_surveyor",
+    "name": "Sky Surveyor",
+    "glyph": "S"
+   },
+   "unit": "Survey and remote sensing",
+   "standards": [
+    "CO SS Geography 3.1",
+    "AP Human Geography Unit 1"
+   ],
+   "brief": "Good survey starts from above and on foot, before anyone digs. In the 1970s, NASA scanners helped look for ancient roads at Chaco.",
+   "photo": {
+    "file": "four_corners.jpg",
+    "alt": "The Four Corners region from orbit: mesas, canyons and the Mesa Verde plateau.",
+    "credit": "NASA Earth Observatory / USGS Landsat",
+    "source": {
+     "title": "NASA images and media guidelines",
+     "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+    }
+   },
+   "steps": [
+    {
+     "prompt": "Before anyone digs, what should a survey team do first?",
+     "accept": {
+      "type": "predict",
+      "answer": "look",
+      "options": [
+       {
+        "id": "look",
+        "label": "Look from above and walk the land",
+        "say": [
+         "look",
+         "walk",
+         "above"
+        ]
+       },
+       {
+        "id": "dig",
+        "label": "Dig test holes everywhere",
+        "say": [
+         "dig",
+         "holes"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "Look first. It is cheap, and it harms nothing.",
+     "fail": "Pick one.",
+     "reveal": "Look first. It is cheap, and it harms nothing."
+    },
+    {
+     "prompt": "Lidar maps the ground by timing what?",
+     "accept": {
+      "type": "choice",
+      "answer": "laser",
+      "options": [
+       {
+        "id": "laser",
+        "label": "Laser pulses",
+        "say": [
+         "laser",
+         "light",
+         "pulses"
+        ]
+       },
+       {
+        "id": "sound",
+        "label": "Sound waves",
+        "say": [
+         "sound"
+        ]
+       },
+       {
+        "id": "radio",
+        "label": "Radio from space",
+        "say": [
+         "radio"
+        ]
+       }
+      ]
+     },
+     "hint": "It uses light, sent and caught again.",
+     "success": "Laser pulses. Their travel time gives the distance to the ground.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Low sun on Chapin Mesa. Find three of the four sites the park shows visitors here.",
+     "accept": {
+      "type": "hillshade",
+      "need": 3,
+      "image": {
+       "low": "far_view_low_sun.jpg",
+       "high": "far_view_high_sun.jpg",
+       "w": 1400,
+       "h": 1000,
+       "width_m": 1000.0,
+       "alt": "Lidar hillshade of the Far View area on Chapin Mesa, lit by a low sun.",
+       "credit": "USGS 3DEP lidar",
+       "source": {
+        "title": "USGS 3D Elevation Program",
+        "url": "https://www.usgs.gov/3d-elevation-program"
+       }
+      },
+      "targets": [
+       {
+        "id": "mummy_lake",
+        "label": "Far View Reservoir",
+        "say": [
+         "mummy lake",
+         "reservoir",
+         "the ring",
+         "round one"
+        ],
+        "x": 0.4707,
+        "y": 0.2544,
+        "r": 0.035
+       },
+       {
+        "id": "far_view_house",
+        "label": "Far View House",
+        "say": [
+         "far view house",
+         "far view"
+        ],
+        "x": 0.5755,
+        "y": 0.6706,
+        "r": 0.035
+       },
+       {
+        "id": "pipe_shrine_house",
+        "label": "Pipe Shrine House",
+        "say": [
+         "pipe shrine"
+        ],
+        "x": 0.5963,
+        "y": 0.7456,
+        "r": 0.035
+       },
+       {
+        "id": "coyote_village",
+        "label": "Coyote Village",
+        "say": [
+         "coyote"
+        ],
+        "x": 0.3745,
+        "y": 0.827,
+        "r": 0.035
+       }
+      ]
+     },
+     "hint": "Look for a round ring and squarish bumps with sharp shadows.",
+     "success": "Found them. Low light makes low walls cast long shadows.",
+     "fail": "Nothing the park marks there.",
+     "do": "Tap the sites on the map, or name them"
+    },
+    {
+     "prompt": "What is walking the land in straight, evenly spaced lines called?",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "transect",
+        "transects",
+        "pedestrian survey",
+        "survey",
+        "walking survey"
+       ]
+      ]
+     },
+     "hint": "Starts with trans, or just: a walking survey.",
+     "success": "A transect survey. Even spacing keeps it fair.",
+     "fail": "Not the word I need."
+    },
+    {
+     "prompt": "Describe the reservoir on the map: its size, shape and shadows.",
+     "accept": {
+      "type": "describe",
+      "descriptors": [
+       "size",
+       "shape",
+       "shadow"
+      ],
+      "need": 2
+     },
+     "hint": "How big, what shape, where is the dark edge?",
+     "success": "Good field notes. What it held is still debated.",
+     "fail": "Tell me what you see.",
+     "example": "It's a small round ring, with a shadow on one side."
+    }
+   ],
+   "facts": [
+    {
+     "text": "Lidar sends brief pulses of light to the ground; their travel time gives the distance.",
+     "source_id": "lidar_how",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "What is Lidar data and where can I download it? | U.S. Geological Survey",
+      "url": "https://www.usgs.gov/faqs/what-lidar-data-and-where-can-i-download-it"
+     }
+    },
+    {
+     "text": "Lighting a lidar surface from a low angle makes subtle bumps visible.",
+     "source_id": "lidar_low_sun",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Historic Environment Surveys of woodland using LiDAR (Forest Research technical note, UK Forestry Commission, 2008)",
+      "url": "https://cdn.forestresearch.gov.uk/2008/02/lidar_fc_note_web_2008.pdf"
+     }
+    },
+    {
+     "text": "NASA's 1978 Spinoff reported scanner data helping the Park Service look for prehistoric roads at Chaco.",
+     "source_id": "chaco_spinoff",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Archeological Surveys - NASA Technical Reports Server (NTRS)",
+      "url": "https://ntrs.nasa.gov/citations/20070018879"
+     }
+    },
+    {
+     "text": "The Far View community includes Far View House, Pipe Shrine House, Coyote Village and Far View Reservoir, now dry.",
+     "source_id": "far_view",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Far View Community Sites (U.S. National Park Service)",
+      "url": "https://www.nps.gov/places/farviewsites.htm"
+     }
+    }
+   ]
+  },
+  {
+   "id": "layers",
+   "title": "Layers tell time",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "layer_reader",
+    "name": "Layer Reader",
+    "glyph": "L"
+   },
+   "unit": "Excavation and stratigraphy",
+   "standards": [
+    "CO SS History 1.1",
+    "NGSS HS-ESS1-6 (methods analogy)"
+   ],
+   "brief": "Soil piles up like pages in a book: the bottom page was written first. This trench is a teaching drawing, not a real site.",
+   "steps": [
+    {
+     "prompt": "In undisturbed ground, which layer is oldest?",
+     "accept": {
+      "type": "predict",
+      "answer": "bottom",
+      "options": [
+       {
+        "id": "bottom",
+        "label": "The bottom layer",
+        "say": [
+         "bottom",
+         "lowest",
+         "deepest"
+        ]
+       },
+       {
+        "id": "top",
+        "label": "The top layer",
+        "say": [
+         "top"
+        ]
+       },
+       {
+        "id": "thick",
+        "label": "The thickest layer",
+        "say": [
+         "thickest",
+         "thick"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "The bottom. That's the law of superposition.",
+     "fail": "Pick one.",
+     "reveal": "The bottom. That's the law of superposition."
+    },
+    {
+     "prompt": "This trench cuts an old pithouse. Order its layers from oldest to youngest.",
+     "accept": {
+      "type": "layers",
+      "layers": [
+       {
+        "id": "topsoil",
+        "label": "Topsoil",
+        "say": [
+         "top soil",
+         "dirt on top"
+        ],
+        "h": 1,
+        "tone": "soil"
+       },
+       {
+        "id": "collapse",
+        "label": "Roof fall",
+        "say": [
+         "roof",
+         "collapse",
+         "rubble",
+         "fallen roof"
+        ],
+        "h": 1.4,
+        "tone": "rubble"
+       },
+       {
+        "id": "ash",
+        "label": "Ash",
+        "say": [
+         "ashes",
+         "burned layer",
+         "fire"
+        ],
+        "h": 0.6,
+        "tone": "ash",
+        "finds": "charcoal"
+       },
+       {
+        "id": "floor",
+        "label": "House floor",
+        "say": [
+         "floor",
+         "the floor"
+        ],
+        "h": 0.6,
+        "tone": "floor",
+        "finds": "potsherd"
+       },
+       {
+        "id": "rock",
+        "label": "Sandstone",
+        "say": [
+         "bedrock",
+         "rock",
+         "sand stone"
+        ],
+        "h": 1,
+        "tone": "rock"
+       }
+      ],
+      "pit": {
+       "id": "pit",
+       "label": "Pit",
+       "say": [
+        "the pit",
+        "hole",
+        "the hole"
+       ],
+       "from": "topsoil",
+       "to": "ash"
+      },
+      "order": [
+       "rock",
+       "floor",
+       "ash",
+       "collapse",
+       "pit",
+       "topsoil"
+      ]
+     },
+     "hint": "Start at the bottom. A pit is as young as the layers it cuts.",
+     "success": "Right. Floor, a fire, the roof fell, then someone dug a pit.",
+     "fail": "Not that order.",
+     "do": "Tap the layers oldest first, or say them"
+    },
+    {
+     "prompt": "A pit cuts down through three layers. The pit is...",
+     "accept": {
+      "type": "choice",
+      "answer": "younger",
+      "options": [
+       {
+        "id": "younger",
+        "label": "Younger than all three",
+        "say": [
+         "younger"
+        ]
+       },
+       {
+        "id": "older",
+        "label": "Older than all three",
+        "say": [
+         "older"
+        ]
+       },
+       {
+        "id": "same",
+        "label": "The same age as the middle one",
+        "say": [
+         "same age",
+         "middle"
+        ]
+       }
+      ]
+     },
+     "hint": "Could you dig a hole through a layer that wasn't there yet?",
+     "success": "Younger. Whatever cuts a layer came after it.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "What is the study of layers called?",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "stratigraphy",
+        "strata",
+        "stratigraphic"
+       ]
+      ]
+     },
+     "hint": "It starts with strat, like strata.",
+     "success": "Stratigraphy. Layers are a timeline you can read.",
+     "fail": "Not the word I need."
+    },
+    {
+     "prompt": "Put the dig steps in order.",
+     "accept": {
+      "type": "sequence",
+      "items": [
+       {
+        "id": "dig",
+        "label": "Dig one layer",
+        "say": [
+         "dig",
+         "dig one layer"
+        ]
+       },
+       {
+        "id": "photo",
+        "label": "Photograph it in place",
+        "say": [
+         "photo",
+         "photograph",
+         "picture"
+        ]
+       },
+       {
+        "id": "bag",
+        "label": "Bag and label",
+        "say": [
+         "bag",
+         "label"
+        ]
+       },
+       {
+        "id": "notes",
+        "label": "Write it up",
+        "say": [
+         "write",
+         "notes",
+         "record"
+        ]
+       }
+      ]
+     },
+     "hint": "Find it, photograph it, then bag it.",
+     "success": "That's a clean record.",
+     "fail": "Not that order."
+    }
+   ],
+   "facts": [
+    {
+     "text": "Law of Superposition: in any undisturbed sequence of deposits, the deeper layers are older than those above them.",
+     "source_id": "superposition",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Glossary (U.S. National Park Service) [Southwest archeology glossary]",
+      "url": "https://www.nps.gov/articles/southwest-glossary.htm"
+     }
+    },
+    {
+     "text": "Younger rocks or structures cut across older ones: a cut is younger than what it cuts.",
+     "source_id": "intrusive_pit",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Geologic Principles—Cross-cutting Relationships (U.S. National Park Service)",
+      "url": "https://www.nps.gov/articles/geologic-principles-cross-cutting-relationships.htm"
+     }
+    },
+    {
+     "text": "An archeological disturbance, natural or cultural, can dislodge and mix deposits.",
+     "source_id": "site_formation",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Glossary - Archeology (U.S. National Park Service)",
+      "url": "https://www.nps.gov/subjects/archeology/glossary.htm"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_pithouse_mesa_top.jpg",
+    "alt": "Excavated pithouse under a protective shelter: a shallow round pit with post holes, firepit and antechamber.",
+    "credit": "NPS / Sandy Groves",
+    "source": {
+     "title": "Pithouse Archeological Site (Mesa Top Loop)",
+     "url": "https://npgallery.nps.gov/AssetDetail/ba677d75-f9ca-480a-bad0-25dc47bdebab"
+    }
+   }
+  },
+  {
+   "id": "dating",
+   "title": "Dating the past",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "ring_counter",
+    "name": "Ring Counter",
+    "glyph": "R"
+   },
+   "unit": "Dating: tree rings and radiocarbon",
+   "standards": [
+    "CO SS Geography 4.2",
+    "NGSS HS-ESS1-6 (methods analogy)"
+   ],
+   "brief": "A roof beam can tell you the year its tree was cut. Like Houston, the Lab answers after a delay: radiocarbon results take days or weeks.",
+   "steps": [
+    {
+     "prompt": "Can a roof beam give the exact year its tree was cut?",
+     "accept": {
+      "type": "predict",
+      "answer": "yes",
+      "options": [
+       {
+        "id": "yes",
+        "label": "Yes, from its tree rings",
+        "say": [
+         "yes",
+         "rings"
+        ]
+       },
+       {
+        "id": "no",
+        "label": "No, only a rough guess",
+        "say": [
+         "no",
+         "guess"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "Yes. In the Southwest, tree rings can give the exact year.",
+     "fail": "Pick one.",
+     "reveal": "Yes. In the Southwest, tree rings can give the exact year."
+    },
+    {
+     "prompt": "Slide this beam until its rings match the master pattern. Then say its outer year.",
+     "accept": {
+      "type": "rings",
+      "series": "itrdb_co652",
+      "master": [
+       1200,
+       1290
+      ],
+      "beam": [
+       1226,
+       1275
+      ],
+      "start": 1288,
+      "tol": 1
+     },
+     "hint": "Match the very narrow rings first.",
+     "success": "1275. The same year the park reports for a Long House beam.",
+     "fail": "Not that year.",
+     "do": "Slide the beam until the bars match, then lock in"
+    },
+    {
+     "prompt": "For trees that need rain, a wide ring usually means a year that was...",
+     "accept": {
+      "type": "choice",
+      "answer": "wet",
+      "options": [
+       {
+        "id": "wet",
+        "label": "Wet",
+        "say": [
+         "wet",
+         "rainy"
+        ]
+       },
+       {
+        "id": "dry",
+        "label": "Dry",
+        "say": [
+         "dry"
+        ]
+       },
+       {
+        "id": "cold",
+        "label": "Cold",
+        "say": [
+         "cold"
+        ]
+       }
+      ]
+     },
+     "hint": "More water, more growth.",
+     "success": "Wet. Rainy years grow wide rings.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "The Lab dates a piece of charcoal by radiocarbon. What comes back?",
+     "accept": {
+      "type": "predict",
+      "answer": "range",
+      "options": [
+       {
+        "id": "range",
+        "label": "A range of years",
+        "say": [
+         "range"
+        ]
+       },
+       {
+        "id": "exact",
+        "label": "One exact year",
+        "say": [
+         "exact",
+         "one year"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "A range of years, like 1220 to 1290. Rings can give the exact year.",
+     "fail": "Pick one.",
+     "reveal": "A range of years, like 1220 to 1290. Rings can give the exact year."
+    },
+    {
+     "prompt": "Tree-ring dating has a long name. Say it.",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "dendrochronology",
+        "dendro",
+        "tree ring dating",
+        "tree-ring dating"
+       ]
+      ]
+     },
+     "hint": "Dendro means tree. Chronology means time.",
+     "success": "Dendrochronology. Tree time.",
+     "fail": "Not the word I need."
+    }
+   ],
+   "facts": [
+    {
+     "text": "Researchers at Mesa Verde and the University of Arizona's tree-ring lab have used dendrochronology since 1923.",
+     "source_id": "mv_treering_lab",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm"
+     }
+    },
+    {
+     "text": "A core from a Long House construction beam showed its tree was cut in 1275.",
+     "source_id": "longhouse_1275",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm"
+     }
+    },
+    {
+     "text": "The last tree-ring date in the region is 1281; by 1300, people had left the Mesa Verde region.",
+     "source_id": "last_date_1281",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm"
+     }
+    },
+    {
+     "text": "Moisture-limited trees grow wider rings in rainy periods and narrower rings in dry ones.",
+     "source_id": "wide_rings_wet",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "How Can Tree Rings Teach Us About Climate? | News | National Centers for Environmental Information (NCEI)",
+      "url": "https://www.ncei.noaa.gov/news/how-can-tree-rings-teach-us-about-climate"
+     }
+    },
+    {
+     "text": "Radiocarbon dates are often reported as a range.",
+     "source_id": "radiocarbon_range",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Archaeological Dating - Crow Canyon Archaeological Center",
+      "url": "https://crowcanyon.org/education/learn-about-archaeology/archaeological-dating/"
+     }
+    },
+    {
+     "text": "The ring pattern is from the Mesa Verde Douglas-fir measurements, ITRDB CO652 (Stahle et al. 2015).",
+     "source_id": "itrdb_co652",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Stahle - Mancos River + Mesa Verde - PSME - ITRDB CO652 (NOAA/WDS Paleoclimatology)",
+      "url": "https://www.ncei.noaa.gov/access/paleo-search/study/19080"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_long_house.jpg",
+    "alt": "Long House, a cliff dwelling of stone rooms and an open plaza sheltered beneath a huge arched alcove.",
+    "credit": "NPS / Cade Valcarce",
+    "source": {
+     "title": "Long House on Wetherill Mesa",
+     "url": "https://npgallery.nps.gov/AssetDetail/ff525fb8-155d-451f-6725-104754b23d95"
+    }
+   }
+  },
+  {
+   "id": "stuff",
+   "title": "Things people left",
+   "minutes": 4,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "object_reader",
+    "name": "Object Reader",
+    "glyph": "O"
+   },
+   "unit": "Material culture and site formation",
+   "standards": [
+    "CO SS History 1.1"
+   ],
+   "brief": "Everyday things tell how people lived. Where a thing is found matters as much as the thing.",
+   "steps": [
+    {
+     "prompt": "A flat stone slab and a hand-sized stone. What were they for?",
+     "accept": {
+      "type": "predict",
+      "answer": "corn",
+      "options": [
+       {
+        "id": "corn",
+        "label": "Grinding corn",
+        "say": [
+         "corn",
+         "grinding",
+         "food"
+        ]
+       },
+       {
+        "id": "weapon",
+        "label": "Weapons",
+        "say": [
+         "weapon",
+         "fighting"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "Grinding corn. They are a mano and a metate.",
+     "fail": "Pick one.",
+     "reveal": "Grinding corn. They are a mano and a metate."
+    },
+    {
+     "prompt": "Name each object.",
+     "accept": {
+      "type": "rounds",
+      "options": [
+       {
+        "id": "mano",
+        "label": "Mano",
+        "say": [
+         "mano"
+        ]
+       },
+       {
+        "id": "metate",
+        "label": "Metate",
+        "say": [
+         "metate"
+        ]
+       },
+       {
+        "id": "sherd",
+        "label": "Potsherd",
+        "say": [
+         "potsherd",
+         "sherd",
+         "shard"
+        ]
+       },
+       {
+        "id": "midden",
+        "label": "Midden",
+        "say": [
+         "midden"
+        ]
+       }
+      ],
+      "rounds": [
+       {
+        "id": "hand",
+        "prompt": "The hand stone that does the grinding?",
+        "answer": "mano",
+        "hint": "Mano is Spanish for hand.",
+        "yes": "Mano."
+       },
+       {
+        "id": "slab",
+        "prompt": "The big flat stone it rubs on?",
+        "answer": "metate",
+        "hint": "The bigger one of the pair.",
+        "yes": "Metate."
+       },
+       {
+        "id": "piece",
+        "prompt": "A broken piece of a clay pot?",
+        "answer": "sherd",
+        "hint": "Pot plus sherd.",
+        "yes": "Potsherd."
+       },
+       {
+        "id": "heap",
+        "prompt": "A heap of household trash?",
+        "answer": "midden",
+        "hint": "It rhymes with hidden.",
+        "yes": "Midden."
+       }
+      ]
+     },
+     "hint": "One object at a time.",
+     "success": "All four. A midden is a great record of daily life.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Rain washed a potsherd down a slope. Can we say it was used right where we found it?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "moved",
+        "label": "Not exactly: it moved",
+        "say": [
+         "moved",
+         "not exactly",
+         "no"
+        ],
+        "reply": "Right. Water and other disturbance move things after people leave.",
+        "best": true
+       },
+       {
+        "id": "here",
+        "label": "Yes, right where it is",
+        "say": [
+         "yes",
+         "right here"
+        ],
+        "reply": "Careful: it was found here, but it may have moved. Where it was used is uncertain."
+       }
+      ],
+      "law": {
+       "title": "Context",
+       "text": "An artifact's position and what lies with it, in space and time, is part of the evidence.",
+       "source": {
+        "title": "Glossary - Archeology (U.S. National Park Service)",
+        "url": "https://www.nps.gov/subjects/archeology/glossary.htm"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Right. Water and other disturbance move things after people leave.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Which of these is a trash heap?",
+     "accept": {
+      "type": "choice",
+      "answer": "midden",
+      "options": [
+       {
+        "id": "midden",
+        "label": "A midden",
+        "say": [
+         "midden"
+        ]
+       },
+       {
+        "id": "kiva",
+        "label": "A kiva",
+        "say": [
+         "kiva"
+        ]
+       },
+       {
+        "id": "mesa",
+        "label": "A mesa",
+        "say": [
+         "mesa"
+        ]
+       }
+      ]
+     },
+     "hint": "It rhymes with hidden.",
+     "success": "A midden. Trash tells you what people ate and used.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Describe this potsherd: its color, texture and size.",
+     "accept": {
+      "type": "describe",
+      "descriptors": [
+       "tone",
+       "texture",
+       "size"
+      ],
+      "need": 2
+     },
+     "hint": "What color? Smooth or rough? How big?",
+     "success": "Good notes. Others can check them later.",
+     "fail": "Tell me what you see.",
+     "example": "It's a small gray piece, smooth on one side, with black lines."
+    }
+   ],
+   "facts": [
+    {
+     "text": "A mano and metate were used for grinding corn; corn was grown at Mesa Verde beginning about 450 CE.",
+     "source_id": "mano_metate",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Artifact Gallery - Mano and Metate - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/education/artifactgallery_manometate.htm"
+     }
+    },
+    {
+     "text": "A midden is a refuse, or trash, deposit resulting from human activities.",
+     "source_id": "midden",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Glossary (U.S. National Park Service) [Southwest archeology glossary]",
+      "url": "https://www.nps.gov/articles/southwest-glossary.htm"
+     }
+    },
+    {
+     "text": "Context is the position and associations of an artifact in space and time.",
+     "source_id": "site_formation",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Glossary - Archeology (U.S. National Park Service)",
+      "url": "https://www.nps.gov/subjects/archeology/glossary.htm"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_far_view_house.jpg",
+    "alt": "Low stone walls of Pipe Shrine House in front, with the larger Far View House pueblo behind.",
+    "credit": "NPS Photo",
+    "source": {
+     "title": "Far View House (background) and Pipe Shrine House (foreground)",
+     "url": "https://npgallery.nps.gov/AssetDetail/ff5f99bf-155d-451f-67c9-b7900ffed9c7"
+    }
+   }
+  },
+  {
+   "id": "law",
+   "title": "Who decides?",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "steward",
+    "name": "Steward",
+    "glyph": "W"
+   },
+   "unit": "Ethics and law",
+   "standards": [
+    "CO SS Civics 6.1",
+    "CO SS Civics 7.2"
+   ],
+   "brief": "US law protects sites on public and tribal land. It also says who must be asked first.",
+   "steps": [
+    {
+     "prompt": "Can anyone dig on public land if they are careful?",
+     "accept": {
+      "type": "predict",
+      "answer": "permit",
+      "options": [
+       {
+        "id": "permit",
+        "label": "No, it needs a permit",
+        "say": [
+         "permit",
+         "no"
+        ]
+       },
+       {
+        "id": "yes",
+        "label": "Yes, if they're careful",
+        "say": [
+         "yes",
+         "careful"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "No. Digging on public or Indian lands needs a permit.",
+     "fail": "Pick one.",
+     "reveal": "No. Digging on public or Indian lands needs a permit."
+    },
+    {
+     "prompt": "Match each law to what it does.",
+     "accept": {
+      "type": "rounds",
+      "options": [
+       {
+        "id": "antiquities",
+        "label": "Antiquities Act, 1906",
+        "say": [
+         "antiquities"
+        ]
+       },
+       {
+        "id": "arpa",
+        "label": "ARPA, 1979",
+        "say": [
+         "arpa",
+         "archaeological resources"
+        ]
+       },
+       {
+        "id": "nhpa",
+        "label": "NHPA Section 106",
+        "say": [
+         "nhpa",
+         "section one oh six",
+         "106"
+        ]
+       },
+       {
+        "id": "nagpra",
+        "label": "NAGPRA, 1990",
+        "say": [
+         "nagpra",
+         "graves"
+        ]
+       }
+      ],
+      "rounds": [
+       {
+        "id": "first",
+        "prompt": "The first US law to protect sites on federal lands?",
+        "answer": "antiquities",
+        "hint": "The oldest one, from 1906.",
+        "yes": "Antiquities Act."
+       },
+       {
+        "id": "permit",
+        "prompt": "Makes digging without a permit a crime?",
+        "answer": "arpa",
+        "hint": "Archaeological Resources Protection Act.",
+        "yes": "ARPA."
+       },
+       {
+        "id": "review",
+        "prompt": "Agencies must weigh a project's effects on historic places?",
+        "answer": "nhpa",
+        "hint": "A review, numbered 106.",
+        "yes": "Section 106."
+       },
+       {
+        "id": "return",
+        "prompt": "Returns ancestors and sacred objects to tribes?",
+        "answer": "nagpra",
+        "hint": "Its name says repatriation.",
+        "yes": "NAGPRA."
+       }
+      ]
+     },
+     "hint": "One law at a time.",
+     "success": "Four laws, one idea: ask before you dig.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "A road is planned across a recorded site. What happens first?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "review",
+        "label": "Review with tribes and the State first",
+        "say": [
+         "review",
+         "tribes",
+         "state"
+        ],
+        "reply": "Yes. The Section 106 review comes before building, with tribes consulted.",
+        "best": true
+       },
+       {
+        "id": "build",
+        "label": "Build, then look for sites",
+        "say": [
+         "build"
+        ],
+        "reply": "That skips the review. The law asks for it before work starts."
+       }
+      ],
+      "law": {
+       "title": "NHPA Section 106",
+       "text": "Federal agencies must consider a project's effects on historic places, consulting the State and interested tribes.",
+       "source": {
+        "title": "An Introduction to Section 106 | Advisory Council on Historic Preservation",
+        "url": "https://www.achp.gov/protecting-historic-properties/section-106-process/introduction-section-106"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Yes. The Section 106 review comes before building, with tribes consulted.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Under NAGPRA, ancestors and sacred objects belong first to...",
+     "accept": {
+      "type": "choice",
+      "answer": "tribes",
+      "options": [
+       {
+        "id": "tribes",
+        "label": "Lineal descendants and tribes",
+        "say": [
+         "tribes",
+         "descendants"
+        ]
+       },
+       {
+        "id": "museums",
+        "label": "Museums",
+        "say": [
+         "museums"
+        ]
+       },
+       {
+        "id": "collectors",
+        "label": "Collectors",
+        "say": [
+         "collectors"
+        ]
+       }
+      ]
+     },
+     "hint": "Think: whose ancestors are they?",
+     "success": "Descendants and tribes. The 2024 rules require their consent.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Taking care of sites so they last for the future is called...",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "stewardship",
+        "steward",
+        "stewards"
+       ]
+      ]
+     },
+     "hint": "It starts with stew.",
+     "success": "Stewardship. It's everyone's job.",
+     "fail": "Not the word I need."
+    }
+   ],
+   "facts": [
+    {
+     "text": "The Antiquities Act, signed June 8th, 1906, was the first U.S. law to give general protection to such resources on federal lands.",
+     "source_id": "antiquities_act",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Antiquities Act of 1906 - Archeology (U.S. National Park Service)",
+      "url": "https://www.nps.gov/subjects/archeology/antiquities-act.htm"
+     }
+    },
+    {
+     "text": "ARPA (1979): no one may excavate or remove an archaeological resource on public or Indian lands without a permit.",
+     "source_id": "arpa",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "16 U.S. Code § 470ee - Prohibited acts and criminal penalties | LII / Legal Information Institute",
+      "url": "https://www.law.cornell.edu/uscode/text/16/470ee"
+     }
+    },
+    {
+     "text": "Section 106 of the NHPA of 1966 requires federal agencies to consider effects on historic properties.",
+     "source_id": "nhpa_106",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "An Introduction to Section 106 | Advisory Council on Historic Preservation",
+      "url": "https://www.achp.gov/protecting-historic-properties/section-106-process/introduction-section-106"
+     }
+    },
+    {
+     "text": "Since 1990, NAGPRA has provided for the return of Native American remains and cultural items to descendants and tribes.",
+     "source_id": "nagpra",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Native American Graves Protection and Repatriation Act (U.S. National Park Service)",
+      "url": "https://www.nps.gov/subjects/nagpra/index.htm"
+     }
+    },
+    {
+     "text": "NAGPRA rules in force since 2024 require free, prior, and informed consent before research on human remains or cultural items.",
+     "source_id": "nagpra",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Native American Graves Protection and Repatriation Act (U.S. National Park Service)",
+      "url": "https://www.nps.gov/subjects/nagpra/index.htm"
+     }
+    }
+   ]
+  },
+  {
+   "id": "voices",
+   "title": "Many voices",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "listener",
+    "name": "Listener",
+    "glyph": "V"
+   },
+   "unit": "Indigenous perspectives and consultation",
+   "standards": [
+    "CO SS Geography 4.3",
+    "CO SS Civics 7.2",
+    "HB19-1192"
+   ],
+   "brief": "The people of Mesa Verde moved south. Their descendants live today, and they describe these places in their own words.",
+   "steps": [
+    {
+     "prompt": "What happened to the people of Mesa Verde around 1300?",
+     "accept": {
+      "type": "predict",
+      "answer": "moved",
+      "options": [
+       {
+        "id": "moved",
+        "label": "They moved south; their descendants live today",
+        "say": [
+         "moved",
+         "south",
+         "migrated"
+        ]
+       },
+       {
+        "id": "gone",
+        "label": "They died out",
+        "say": [
+         "died",
+         "died out"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "They moved. Today's Pueblo and Hopi people are their direct descendants.",
+     "fail": "Pick one.",
+     "reveal": "They moved. Today's Pueblo and Hopi people are their direct descendants."
+    },
+    {
+     "prompt": "A Pueblo ranger at Mesa Verde says where her people live now. Where?",
+     "accept": {
+      "type": "choice",
+      "answer": "south",
+      "options": [
+       {
+        "id": "south",
+        "label": "In Pueblos to the south",
+        "say": [
+         "south",
+         "pueblos"
+        ]
+       },
+       {
+        "id": "park",
+        "label": "Inside the park",
+        "say": [
+         "park",
+         "inside"
+        ]
+       },
+       {
+        "id": "east",
+        "label": "On the East Coast",
+        "say": [
+         "east coast"
+        ]
+       }
+      ]
+     },
+     "hint": "Read her words above.",
+     "success": "In 21 Pueblos in New Mexico, Arizona and Texas.",
+     "fail": "Not that one.",
+     "quote": {
+      "text": "I would like visitors to know that we didn't just leave and disappear. When the ancestors left Mesa Verde, they migrated toward the south, where we still live today in 21 Pueblos in the states of New Mexico, Arizona, and Texas.",
+      "who": "Thelma Jean \"TJ\" Atsye, park ranger, Laguna Pueblo",
+      "source": {
+       "title": "Mesa Top Loop Drive Audio Tour: A Pueblo Perspective on Mesa Verde (U.S. National Park Service)",
+       "url": "https://www.nps.gov/podcasts/podcasts-mtl-audiotour.htm"
+      }
+     }
+    },
+    {
+     "prompt": "A tribe asks your project not to dig in one area. What do you do?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "change",
+        "label": "Change the plan",
+        "say": [
+         "change",
+         "change the plan"
+        ],
+        "reply": "That's consultation working. The plan changes, and trust grows.",
+        "best": true
+       },
+       {
+        "id": "dig",
+        "label": "Dig anyway, but carefully",
+        "say": [
+         "dig anyway",
+         "carefully"
+        ],
+        "reply": "Careful digging still ignores what they asked. Change the plan and keep talking."
+       }
+      ],
+      "law": {
+       "title": "Consultation",
+       "text": "Section 106 consulting parties include interested federally recognized Indian tribes.",
+       "source": {
+        "title": "An Introduction to Section 106 | Advisory Council on Historic Preservation",
+        "url": "https://www.achp.gov/protecting-historic-properties/section-106-process/introduction-section-106"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "That's consultation working. The plan changes, and trust grows.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Which of these are among Mesa Verde's associated tribes?",
+     "accept": {
+      "type": "choice",
+      "answer": "hopi_zuni",
+      "options": [
+       {
+        "id": "hopi_zuni",
+        "label": "Hopi and Zuni",
+        "say": [
+         "hopi",
+         "zuni"
+        ]
+       },
+       {
+        "id": "maya",
+        "label": "Maya and Aztec",
+        "say": [
+         "maya",
+         "aztec"
+        ]
+       },
+       {
+        "id": "inca",
+        "label": "Inca",
+        "say": [
+         "inca"
+        ]
+       }
+      ]
+     },
+     "hint": "Both live in the Southwest today.",
+     "success": "Hopi and Zuni, among 27 Pueblos and Tribes.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Talking with descendant communities before and during research is called...",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "consultation",
+        "consult",
+        "consulting"
+       ]
+      ]
+     },
+     "hint": "It starts with con.",
+     "success": "Consultation. Ask first, and keep asking.",
+     "fail": "Not the word I need."
+    }
+   ],
+   "facts": [
+    {
+     "text": "The Pueblo and Hopi people are the direct descendants of those who built and lived at Mesa Verde.",
+     "source_id": "descendants",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "People - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://home.nps.gov/meve/learn/historyculture/people.htm"
+     }
+    },
+    {
+     "text": "NPS ranger TJ Atsye, Laguna Pueblo, asks visitors to say Ancestral Pueblo, a term that suits today's Pueblo people.",
+     "source_id": "ancestral_puebloans_term",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Mesa Top Loop Drive Audio Tour: A Pueblo Perspective on Mesa Verde (U.S. National Park Service)",
+      "url": "https://www.nps.gov/podcasts/podcasts-mtl-audiotour.htm"
+     }
+    },
+    {
+     "text": "Mesa Verde names 27 associated Pueblos and Tribes, including the Hopi Tribe and the Pueblo of Zuni.",
+     "source_id": "mv_tribes_26",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "The 26 Associated Tribes of Mesa Verde (NPS PDF, 26meve_associated_tribes_508)",
+      "url": "https://www.nps.gov/meve/learn/historyculture/upload/26meve_associated_tribes_508.pdf"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_far_view_kivas_tower.jpg",
+    "alt": "Two roofless round kivas lined with stone masonry, with a round one-storey stone tower behind them.",
+    "credit": "NPS Photo",
+    "source": {
+     "title": "Far View Sites: Tower and Un-roofed Kivas",
+     "url": "https://npgallery.nps.gov/AssetDetail/4d9a5aa0-d77a-4dc9-a788-06ad6f95d571"
+    }
+   }
+  },
+  {
+   "id": "mesa_verde",
+   "title": "Mesa Verde, around 1280",
+   "minutes": 6,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "case_builder",
+    "name": "Case Builder",
+    "glyph": "C"
+   },
+   "unit": "Case study: drought, tree rings, migration",
+   "standards": [
+    "CO SS Geography 4.2",
+    "CO SS History 2.2"
+   ],
+   "brief": "Join the clues: rings, layers and people's own histories. There is no single answer here, only evidence.",
+   "steps": [
+    {
+     "prompt": "Very narrow tree rings across the late 1200s suggest...",
+     "accept": {
+      "type": "predict",
+      "answer": "drought",
+      "options": [
+       {
+        "id": "drought",
+        "label": "Drought",
+        "say": [
+         "drought",
+         "dry"
+        ]
+       },
+       {
+        "id": "floods",
+        "label": "Floods",
+        "say": [
+         "flood",
+         "floods"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "Drought. Researchers call 1276 to 1299 the Great Drought.",
+     "fail": "Pick one.",
+     "reveal": "Drought. Researchers call 1276 to 1299 the Great Drought."
+    },
+    {
+     "prompt": "Order Mesa Verde's homes, oldest first.",
+     "accept": {
+      "type": "sequence",
+      "items": [
+       {
+        "id": "pit",
+        "label": "Pithouses",
+        "say": [
+         "pithouses",
+         "pit houses",
+         "pithouse"
+        ]
+       },
+       {
+        "id": "pueblo",
+        "label": "Mesa-top pueblos",
+        "say": [
+         "pueblos",
+         "mesa top",
+         "above ground"
+        ]
+       },
+       {
+        "id": "cliff",
+        "label": "Cliff dwellings",
+        "say": [
+         "cliff",
+         "cliff dwellings"
+        ]
+       },
+       {
+        "id": "move",
+        "label": "The move south",
+        "say": [
+         "move",
+         "moved",
+         "south",
+         "migration"
+        ]
+       }
+      ]
+     },
+     "hint": "Partly underground came first.",
+     "success": "About 550 to 1300: pithouses, pueblos, cliffs, then south.",
+     "fail": "Not that order."
+    },
+    {
+     "prompt": "The last tree-ring date in the region is...",
+     "accept": {
+      "type": "choice",
+      "answer": "y1281",
+      "options": [
+       {
+        "id": "y1281",
+        "label": "1281",
+        "say": [
+         "1281",
+         "twelve eighty one"
+        ]
+       },
+       {
+        "id": "y1066",
+        "label": "1066",
+        "say": [
+         "1066"
+        ]
+       },
+       {
+        "id": "y1492",
+        "label": "1492",
+        "say": [
+         "1492"
+        ]
+       }
+      ]
+     },
+     "hint": "Close to the Long House beam.",
+     "success": "1281. By 1300, people had moved south.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "A classmate says one cause explains the move. You...",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "more",
+        "label": "Ask for more evidence",
+        "say": [
+         "evidence",
+         "ask",
+         "more"
+        ],
+        "reply": "Good science. Drought, crop failure and social change are all discussed.",
+        "best": true
+       },
+       {
+        "id": "agree",
+        "label": "Agree: it was only drought",
+        "say": [
+         "agree",
+         "only drought"
+        ],
+        "reply": "Drought mattered, but people had survived droughts before. Look for more causes."
+       }
+      ],
+      "law": {
+       "title": "Several causes",
+       "text": "NPS: drought and crop failure, depleted land, and social and political problems are all offered.",
+       "source": {
+        "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+        "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Good science. Drought, crop failure and social change are all discussed.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Say one reason people may have moved.",
+     "accept": {
+      "type": "keywords",
+      "any": [
+       [
+        "drought",
+        "dry",
+        "crop",
+        "crops",
+        "farming",
+        "water",
+        "conflict",
+        "war",
+        "social",
+        "religious",
+        "religion",
+        "resources",
+        "change"
+       ]
+      ]
+     },
+     "hint": "Think about rain, crops and neighbors.",
+     "success": "That's one. Researchers and descendants weigh several together.",
+     "fail": "Not the word I need."
+    }
+   ],
+   "facts": [
+    {
+     "text": "People first settled at Mesa Verde about A.D. 550 and lived in pithouses.",
+     "source_id": "pithouse",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+      "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf"
+     }
+    },
+    {
+     "text": "Most cliff dwellings were built from the late 1190s to the late 1270s.",
+     "source_id": "cliff_dwelling_dates",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Colorado: Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/articles/mesaverde.htm"
+     }
+    },
+    {
+     "text": "There is consensus the Great Drought of A.D. 1276 to 1299 played a role, alongside social, political and economic factors.",
+     "source_id": "move_reasons",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+      "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf"
+     }
+    },
+    {
+     "text": "The last tree-ring date in the region is 1281.",
+     "source_id": "last_date_1281",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+      "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_spruce_tree_house.jpg",
+    "alt": "Spruce Tree House, multi-storey stone walls under a cliff overhang, with a roofless round room in front.",
+    "credit": "NPS Photo",
+    "source": {
+     "title": "Spruce Tree House",
+     "url": "https://npgallery.nps.gov/AssetDetail/ff556ef3-155d-451f-6760-3a1892e1879d"
+    }
+   }
+  },
+  {
+   "id": "capstone",
+   "title": "Survey season (preview)",
+   "minutes": 5,
+   "place": "mesa_verde",
+   "badge": {
+    "id": "season_lead",
+    "name": "Season Lead",
+    "glyph": "P"
+   },
+   "unit": "Capstone",
+   "standards": [
+    "C3 D1",
+    "C3 D3",
+    "C3 D4"
+   ],
+   "brief": "You lead a two-week survey of a made-up mesa tract: real methods, no real site. The full season mission comes later.",
+   "steps": [
+    {
+     "prompt": "Day one. Fieldwork could start tomorrow. What comes first?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "consult",
+        "label": "Write to the tribes' cultural offices, then wait",
+        "say": [
+         "write",
+         "tribes",
+         "consult",
+         "wait"
+        ],
+        "reply": "Consult first. Their answers can change your plan.",
+        "best": true
+       },
+       {
+        "id": "start",
+        "label": "Start now, write later",
+        "say": [
+         "start",
+         "now"
+        ],
+        "reply": "Fast, but it skips consultation. Trust is hard to rebuild."
+       }
+      ],
+      "law": {
+       "title": "NHPA Section 106",
+       "text": "Federal agencies must consider a project's effects on historic places, consulting the State and interested tribes.",
+       "source": {
+        "title": "An Introduction to Section 106 | Advisory Council on Historic Preservation",
+        "url": "https://www.achp.gov/protecting-historic-properties/section-106-process/introduction-section-106"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Consult first. Their answers can change your plan.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Which look comes first, before any digging?",
+     "accept": {
+      "type": "choice",
+      "answer": "lidar",
+      "options": [
+       {
+        "id": "lidar",
+        "label": "A lidar hillshade at low sun",
+        "say": [
+         "lidar",
+         "hillshade"
+        ]
+       },
+       {
+        "id": "pits",
+        "label": "Test pits everywhere",
+        "say": [
+         "test pits",
+         "pits"
+        ]
+       },
+       {
+        "id": "detector",
+        "label": "A metal detector sweep",
+        "say": [
+         "metal detector",
+         "detector"
+        ]
+       }
+      ]
+     },
+     "hint": "Which one never touches the ground?",
+     "success": "Lidar first. It sees the mesa without touching it.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "On a transect, you spot a stone arrowhead. You...",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "record",
+        "label": "Photograph, locate, note it, and leave it",
+        "say": [
+         "photograph",
+         "record",
+         "leave it"
+        ],
+        "reply": "Recorded and left. That's how a survey works.",
+        "best": true
+       },
+       {
+        "id": "pick",
+        "label": "Pick it up so it's safe",
+        "say": [
+         "pick it up",
+         "pick"
+        ],
+        "reply": "Once it moves, it loses its context. Record it in place instead."
+       }
+      ],
+      "law": {
+       "title": "ARPA, 1979",
+       "text": "No one may dig up or remove an archaeological resource on public or Indian lands without a permit.",
+       "source": {
+        "title": "16 U.S. Code § 470ee - Prohibited acts and criminal penalties | LII / Legal Information Institute",
+        "url": "https://www.law.cornell.edu/uscode/text/16/470ee"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Recorded and left. That's how a survey works.",
+     "fail": "Pick one."
+    },
+    {
+     "prompt": "Order the season.",
+     "accept": {
+      "type": "sequence",
+      "items": [
+       {
+        "id": "consult",
+        "label": "Consult the tribes",
+        "say": [
+         "consult",
+         "tribes"
+        ]
+       },
+       {
+        "id": "look",
+        "label": "Look from above",
+        "say": [
+         "look",
+         "lidar",
+         "above"
+        ]
+       },
+       {
+        "id": "walk",
+        "label": "Walk transects",
+        "say": [
+         "walk",
+         "transects"
+        ]
+       },
+       {
+        "id": "date",
+        "label": "Send to the Lab",
+        "say": [
+         "samples",
+         "lab",
+         "send"
+        ]
+       }
+      ]
+     },
+     "hint": "Ask first, touch last.",
+     "success": "That's a season done in the right order.",
+     "fail": "Not that order."
+    },
+    {
+     "prompt": "Your report is done. Where does the site's location go?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "private",
+        "label": "To the tribes and the State site file",
+        "say": [
+         "tribes",
+         "state",
+         "site file"
+        ],
+        "reply": "Right. Locations stay private so sites stay safe.",
+        "best": true
+       },
+       {
+        "id": "online",
+        "label": "Online, so people can visit",
+        "say": [
+         "online",
+         "post"
+        ],
+        "reply": "That puts the site at risk. Keep locations out of public posts."
+       }
+      ],
+      "law": {
+       "title": "Locations stay private",
+       "text": "Under the NHPA, agencies withhold a historic place's location when sharing it risks harm.",
+       "source": {
+        "title": "54 U.S. Code § 307103 - Access to information | LII / Legal Information Institute",
+        "url": "https://www.law.cornell.edu/uscode/text/54/307103"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Right. Locations stay private so sites stay safe.",
+     "fail": "Pick one."
+    }
+   ],
+   "facts": [
+    {
+     "text": "Colorado's archaeological site location records are restricted to qualified professionals.",
+     "source_id": "colorado_sitefiles",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "Access Qualifications - OAHP Resource Center (Office of Archaeology and Historic Preservation, state.co.us)",
+      "url": "https://sites.google.com/state.co.us/oahp-resource-center/services/access-qualifications"
+     }
+    },
+    {
+     "text": "Federal agencies withhold a historic property's location when disclosure may risk harm to it.",
+     "source_id": "location_confidential",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "54 U.S. Code § 307103 - Access to information | LII / Legal Information Institute",
+      "url": "https://www.law.cornell.edu/uscode/text/54/307103"
+     }
+    },
+    {
+     "text": "NPS asks visitors not to post artifact photos or locations on social media.",
+     "source_id": "leave_it",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "What If I Find an Artifact? (NPS Archeology Program rack card PDF)",
+      "url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf"
+     }
+    }
+   ],
+   "photo": {
+    "file": "photo_far_view_reservoir.jpg",
+    "alt": "Low stone walls of an ancient channel leading into the Far View Reservoir, among juniper trees.",
+    "credit": "NPS / Chris Roundtree",
+    "source": {
+     "title": "Far View Reservoir (Mummy Lake)",
+     "url": "https://npgallery.nps.gov/AssetDetail/8885e3d0-5b7f-4a5a-99c5-3a0460033cd1"
+    }
+   }
+  },
+  {
+   "id": "chimney_rock",
+   "title": "Moonrise at Chimney Rock",
+   "minutes": 3,
+   "place": "chimney_rock",
+   "bridge": "moon",
+   "badge": {
+    "id": "moon_watcher",
+    "name": "Moon Watcher",
+    "glyph": "M"
+   },
+   "unit": "The Moon and Earth bridge",
+   "standards": [
+    "CO SS History 1.1",
+    "NGSS MS-ESS1-1 (hook)"
+   ],
+   "brief": "The Moon course meets this one in southwest Colorado. At Chimney Rock, the Moon sometimes rises between two stone spires.",
+   "steps": [
+    {
+     "prompt": "How often does the Moon rise between Chimney Rock's two spires?",
+     "accept": {
+      "type": "predict",
+      "answer": "y186",
+      "options": [
+       {
+        "id": "y186",
+        "label": "About every 18.6 years",
+        "say": [
+         "eighteen",
+         "18.6",
+         "eighteen point six"
+        ]
+       },
+       {
+        "id": "month",
+        "label": "Every month",
+        "say": [
+         "month"
+        ]
+       },
+       {
+        "id": "year",
+        "label": "Every year",
+        "say": [
+         "year"
+        ]
+       }
+      ]
+     },
+     "hint": "Any guess is fine.",
+     "success": "About every 18.6 years, at the major lunar standstill.",
+     "fail": "Pick one.",
+     "reveal": "About every 18.6 years, at the major lunar standstill."
+    },
+    {
+     "prompt": "Find Chimney Rock National Monument in southwest Colorado.",
+     "accept": {
+      "type": "intent",
+      "place": "chimney_rock",
+      "radius_deg": 1.5
+     },
+     "hint": "East of Mesa Verde, in the San Juan National Forest.",
+     "success": "There. The two spires are Chimney Rock and Companion Rock.",
+     "fail": "Not there yet."
+    },
+    {
+     "prompt": "After the 2024 and 2025 viewings, when is the next major standstill?",
+     "accept": {
+      "type": "choice",
+      "answer": "y2044",
+      "options": [
+       {
+        "id": "y2044",
+        "label": "2044",
+        "say": [
+         "2044",
+         "twenty forty four"
+        ]
+       },
+       {
+        "id": "y2030",
+        "label": "2030",
+        "say": [
+         "2030"
+        ]
+       },
+       {
+        "id": "y2100",
+        "label": "2100",
+        "say": [
+         "2100"
+        ]
+       }
+      ]
+     },
+     "hint": "Add 18.6 years to 2025.",
+     "success": "2044. Mark your calendar.",
+     "fail": "Not that one."
+    },
+    {
+     "prompt": "Did the people of Chimney Rock build to watch the Moon? How should we say it?",
+     "accept": {
+      "type": "decide",
+      "options": [
+       {
+        "id": "interp",
+        "label": "Scholars think they likely watched it",
+        "say": [
+         "scholars",
+         "likely",
+         "interpretation"
+        ],
+        "reply": "Well said. It's a strong interpretation, not a proven fact.",
+        "best": true
+       },
+       {
+        "id": "fact",
+        "label": "It's a proven fact",
+        "say": [
+         "proven",
+         "fact"
+        ],
+        "reply": "We can't prove intent. Say it's an interpretation, and show the evidence."
+       }
+      ],
+      "law": {
+       "title": "Interpretation",
+       "text": "The Forest Service says the ancestral people would have seen the moonrises; 25 tribes are affiliated with Chimney Rock.",
+       "source": {
+        "title": "San Juan National Forest | Northern Major Lunar Standstill | Forest Service",
+        "url": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill"
+       }
+      }
+     },
+     "hint": "There's no trick. Pick what you would do.",
+     "success": "Well said. It's a strong interpretation, not a proven fact.",
+     "fail": "Pick one."
+    }
+   ],
+   "facts": [
+    {
+     "text": "The major lunar standstill occurs every 18.6 years; at Chimney Rock the Moon aligns between its two spires.",
+     "source_id": "chimney_rock",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "San Juan National Forest | Northern Major Lunar Standstill | Forest Service",
+      "url": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill"
+     }
+    },
+    {
+     "text": "Chimney Rock held viewing events in 2024 and 2025; the moonrise won't be seen again until 2044.",
+     "source_id": "chimney_rock",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "San Juan National Forest | Northern Major Lunar Standstill | Forest Service",
+      "url": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill"
+     }
+    },
+    {
+     "text": "25 tribes have a cultural or traditional affiliation to Chimney Rock.",
+     "source_id": "chimney_rock",
+     "from": [
+      "courses/archaeology/sources.json"
+     ],
+     "source": {
+      "title": "San Juan National Forest | Northern Major Lunar Standstill | Forest Service",
+      "url": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -52,6 +52,10 @@ def tour_beats(level: str = "cadet") -> list[str]:
 def answer_for(step: dict, gaz=None, vocab=None, got: list | None = None) -> str:
     acc = step["accept"]
     k = acc["type"]
+    # archaeology steps (docs/COURSES.md §3.2): the dig, the ring match, the hillshade, the field call
+    if k in ("layers", "rings", "hillshade", "decide"):
+        from app.academy.arch_steps import answer_for as arch_answer
+        return arch_answer(step, got)
     # Field School steps (docs/LEARNING_DESIGN.md §12): they build up over turns; `got` is the last reply's
     if k == "describe":
         return step.get("example") or "it's big and round, bright, with long shadows"

@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from .. import safety as safety_, steering
-from . import content, guide, ride as rides
+from . import arch_steps, content, guide, ride as rides
 from .grade import FIELD_TYPES, REVEAL_AFTER, grade, plausible, references, reveal_due, similar, text_only
 
 router = APIRouter()
@@ -130,6 +130,8 @@ async def academy_attempt(req: AttemptReq):
         return _ignored(les["id"], req.step)          # a video step is never missed: only watch / skip move it on
     if st["accept"]["type"] in FIELD_TYPES:
         return _field_reply(les, req, st, ok, extra)
+    if not ok and st["accept"]["type"] == "decide":
+        return _ignored(les["id"], req.step)          # an ethics call: only a choice moves it on (never a miss)
     if not ok and st["accept"]["type"] == "predict":
         return _ignored(les["id"], req.step)          # [0.3.12] a guess step: only a guess moves it on; other words never
         #                                               count as a miss, so they never reveal the answer before a guess
@@ -141,6 +143,8 @@ async def academy_attempt(req: AttemptReq):
         say = st["success"]
         if st["accept"]["type"] == "predict" and not extra.get("correct"):
             say = st["reveal"]                          # a guess is never wrong: "your guess" vs "the data"
+        if st["accept"]["type"] == "decide" and ok:     # every call gets its own reply, then the law card (on screen)
+            say = next((o["reply"] for o in st["accept"]["options"] if o["id"] == extra.get("choice")), say)
         if st["accept"]["type"] == "video" and extra.get("guess"):   # the guess, acknowledged, then the answer
             say = (GUESS_RIGHT if extra.get("correct") else GUESS_OTHER) + say
         if shown:
@@ -183,6 +187,19 @@ def _field_reply(les: dict, req: AttemptReq, st: dict, ok: bool, extra: dict) ->
     if kind == "sequence" and grew and extra.get("next"):
         new = [i["label"] for i in acc["items"] if i["id"] in got[len(prior):]]
         return _out(lid, req.step, "progress", f"Yes: {', '.join(new)}. What comes next?", **extra)
+    if kind == "layers" and grew and extra.get("next"):
+        new = [i["label"] for i in arch_steps._seq_items(acc) if i["id"] in got[len(prior):]]
+        return _out(lid, req.step, "progress", f"Yes: {', '.join(new)}. What came next?", **extra)
+    if kind == "layers" and extra.get("trap") == "pit":   # the intrusive pit, named too early: why, never "wrong"
+        if reveal_due(req.misses + 1, req.step_s):
+            return passed(st["success"], shown=True)
+        return _miss(les, req, st, extra)
+    if kind == "hillshade" and extra.get("new") and extra.get("next"):
+        name = next(t["label"] for t in acc["targets"] if t["id"] == extra["new"][-1])
+        left = min(int(acc.get("need") or len(acc["targets"])), len(acc["targets"])) - len(got)
+        return _out(lid, req.step, "progress", f"Yes: {name}. {left} more to find.", **extra)
+    if kind == "hillshade" and extra.get("again"):        # a found one tapped again: not a miss
+        return _ignored(lid, req.step, got=got)
     if kind == "rounds" and grew and extra.get("next"):
         rd = next(r for r in acc["rounds"] if r["id"] == got[-1])
         nx = next(r for r in acc["rounds"] if r["id"] == extra["next"])
@@ -332,6 +349,8 @@ def _answer_of(st: dict) -> dict:
         return {"order": [i["id"] for i in a["items"]], "say": ", ".join(i["label"] for i in a["items"])}
     if a["type"] == "rounds":
         return {"choice": a["rounds"][-1]["answer"]}
+    if a["type"] in arch_steps.ARCH_TYPES:
+        return arch_steps.answer_of(st)
     return {}
 
 

@@ -1,0 +1,326 @@
+{
+ "_note": "Every source the Archaeology course cites, opened and checked on 2026-11-19 (docs/COURSES.md §1 rule: [read] only). `quote` is verbatim from the page; `note` records corrections we applied (e.g. 27 vs 26 associated tribes, the debated purpose of Far View Reservoir). Facts in course.json name their source by `source_id`; every number in a fact appears in its source's quote or note (backend/tests/test_archaeology_course.py).",
+ "checked": "2026-11-19",
+ "sources": [
+  {
+   "id": "mv_sites",
+   "status": "supported",
+   "title": "Management - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/meve/learn/management/index.htm",
+   "quote": "Today, with over 52,000 acres, Mesa Verde National Park preserves and protects nearly 5,000 archeological sites, which includes 600 cliff dwellings, and over three million associated objects in the park's research collection.",
+   "note": "Suggested cliff_dwellings_home.htm and index.htm give NO site/cliff-dwelling totals. Also: History & Culture page https://www.nps.gov/meve/learn/historyculture/index.htm 'Mesa Verde preserves nearly 5,000 ancestral sites.' NPS Places page says 'more than 5,000 archeological sites including 600 alcove dwellings' - NPS wording varies; use 'nearly 5,000' and 'about 600'."
+  },
+  {
+   "id": "mv_treering_lab",
+   "status": "partly",
+   "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm",
+   "quote": "Researchers at Mesa Verde National Park and the Laboratory of Tree-Ring Research at the University of Arizona have used dendrochronology since 1923. ... a core is a pencil- or dowel-shaped piece that is drilled from within original wood ... such as a roof beam, door lintel, or wall peg.",
+   "note": "Page says both 'have used dendrochronology since 1923' - it does not explicitly call it a partnership since 1923. Safer wording: 'Researchers at Mesa Verde and the University of Arizona's Laboratory of Tree-Ring Research have used tree-ring dating since 1923.' Cores: roof beam, door lintel, or wall peg."
+  },
+  {
+   "id": "longhouse_1275",
+   "status": "supported",
+   "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm",
+   "quote": "Photo: Archeologist Nichols is coring a construction beam at Long House in the 1960s. By studying the core, researchers learned that the tree used for the beam was cut in 1275.",
+   "note": ""
+  },
+  {
+   "id": "last_date_1281",
+   "status": "supported",
+   "title": "Artifact Gallery - Tree Rings - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/meve/learn/education/tree-rings.htm",
+   "quote": "The last tree-ring date in the region is 1281. So the last year anyone cut down a tree to construct a new building was 1281. ... within the next 20 years, the Ancestral Pueblo people continued to move away, and by 1300, had left the Mesa Verde and Four Corners Region.",
+   "note": "Exact quote matches."
+  },
+  {
+   "id": "cliff_dwelling_dates",
+   "status": "partly",
+   "title": "Colorado: Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/articles/mesaverde.htm",
+   "quote": "In the late 1100s, some people began to move back into the cliff-side alcoves. Mostly constructed from the late 1190s to late 1270s, these cliff dwellings range in size from one-room structures to villages of more than 150 rooms, such as Cliff Palace and Long House.",
+   "note": "NPS pages differ: mesaverde.htm 'late 1190s to late 1270s'; Places page (https://www.nps.gov/meve/learn/historyculture/places.htm) 'Most cliffside villages were constructed between 1180 and 1280 CE.'; Cliff Dwellings page 'built most of the cliff dwellings from 1180 CE to 1300 CE.' Recommend 'mostly in the 1200s (about 1190s-1270s)' citing mesaverde.htm."
+  },
+  {
+   "id": "mv_tribes_26",
+   "status": "partly",
+   "title": "The 26 Associated Tribes of Mesa Verde (NPS PDF, 26meve_associated_tribes_508)",
+   "url": "https://www.nps.gov/meve/learn/historyculture/upload/26meve_associated_tribes_508.pdf",
+   "quote": "Today, there are 26 tribes that have a special relationship with Mesa Verde National Park. • The 19 Pueblos of New Mexico: Taos, Picuris, Sandia, Isleta, Ohkay Owingeh, Santa Clara, San Ildefonso, Nambe, Tesuque, Jemez, Cochiti, Pojoaque, Santo Domingo, San Felipe, Santa Ana, Zia, Laguna, Acoma, and Zuni.",
+   "note": "CORRECTION: the PDF still lists 26 (19 NM Pueblos + Hopi Tribe, Ysleta del Sur Pueblo, Navajo Nation, Ute Mountain Ute Tribe, Southern Ute, Northern Ute [Ute Indian Tribe], Jicarilla Apache Nation), but current NPS pages say 27: park home page https://www.nps.gov/meve/index.htm 'the park protects the rich cultural heritage of 27 Pueblos and Tribes'; People page https://home.nps.gov/meve/learn/historyculture/people.htm 'continued by the 27 associated Pueblos, Tribes, and Nations' and names Jicarilla AND Mescalero Apache (Mescalero is not in the 26 PDF; 27th is inferred, not stated as a list). Use '27 associated Pueblos and Tribes' or omit the number. The older article mesaverde.htm still says 26."
+  },
+  {
+   "id": "ancestral_puebloans_term",
+   "status": "supported",
+   "title": "Mesa Top Loop Drive Audio Tour: A Pueblo Perspective on Mesa Verde (U.S. National Park Service)",
+   "url": "https://www.nps.gov/podcasts/podcasts-mtl-audiotour.htm",
+   "quote": "Anasazi is sometimes translated as the “other ones” or the “ancient enemies.” This term does not suit today’s Pueblo people, and for that reason we ask that you call them the Ancestral Pueblo.",
+   "note": "Spoken by NPS ranger TJ Atsye (Laguna Pueblo). Also NPS PDF 'Ancestral Pueblo People and Their World' https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf: 'Archeologists have called these people Anasazi, from a Navajo word sometimes translated as “the ancient ones” or “ancient enemies.” We now call them the Ancestral Pueblo people, reflecting their modern descendants.' Mesa Verde uses 'Ancestral Pueblo people'; NPS Southwest glossary (https://www.nps.gov/articles/southwest-glossary.htm) uses 'Ancestral Puebloans' and calls the old term 'antiquated'."
+  },
+  {
+   "id": "descendants",
+   "status": "supported",
+   "title": "People - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://home.nps.gov/meve/learn/historyculture/people.htm",
+   "quote": "The Pueblo and Hopi people are the direct descendants of those who built and lived in the communities at Mesa Verde and surrounding sites. When their ancestors left Mesa Verde, they created new villages or joined pre-existing ones along the Rio Grande River Valley, Little Colorado River drainages, and the Hopi Mesas.",
+   "note": "Requested URL www.nps.gov/meve/historyculture/people.htm redirected to home.nps.gov/meve/learn/historyculture/people.htm. Also NPS article mesaverde.htm: 'By the 1280s, the sounds of construction ... moved southward toward the Pueblos of today—on the Hopi mesas of Arizona and along the Rio Grande and its tributaries in New Mexico.' NPS Southwest glossary: 'descendants of which include Hopi, Zuni, and other modern Southwest Puebloans.' Section heading on People page: 'We Are Still Here'."
+  },
+  {
+   "id": "indigenous_voice",
+   "status": "supported",
+   "title": "Mesa Top Loop Drive Audio Tour: A Pueblo Perspective on Mesa Verde (U.S. National Park Service)",
+   "url": "https://www.nps.gov/podcasts/podcasts-mtl-audiotour.htm",
+   "quote": "I would like visitors to know that we didn't just leave and disappear. When the ancestors left Mesa Verde, they migrated toward the south, where we still live today in 21 Pueblos in the states of New Mexico, Arizona, and Texas.",
+   "note": "Speaker as the page gives it: 'My name is Thelma Jean Atsye, TJ for short, and I am a park ranger here at Mesa Verde. I am Laguna Pueblo, a direct descendent of the people who used to live here.' Second quote, same page: 'I hope that when you hear our stories, you will begin to see these places as we do—not as ruins, but as homes.' Hopi CPO / Crow Canyon 'Visit With Respect' video not transcribed on pages opened."
+  },
+  {
+   "id": "move_reasons",
+   "status": "supported",
+   "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+   "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf",
+   "quote": "Several theories offer reasons for their migration. We know that the last quarter of the A.D. 1200s saw drought and crop failures—but these people had survived earlier droughts. Maybe after hundreds of years of intensive use the land and its resources ... were depleted. Perhaps there were social and political problems",
+   "note": "Great Drought: Crow Canyon, 'The A.D. 1130–1180 Megadrought in the Northern Southwest' https://crowcanyon.org/news/the-a-d-1130-1180-megadrought-in-the-northern-southwest/: 'In addition to a myriad of social, political, and economic factors, there is consensus the Great Drought of A.D. 1276–1299 played a role in the final depopulation of the northern Southwest.' (It adds the Great Drought was less severe than earlier droughts.) Crow Canyon PMVR https://crowcanyon.org/EducationProducts/peoples_mesa_verde/pueblo_III_overview.php: 'Deteriorating environmental conditions, food shortages, and social conflict ... appear to have contributed'. NPS People page: 'persistent drought, limited resources, and social change. For Pueblo people, migration is an important cultural activity'. Conflict also in Pueblo voice (audio tour: oral histories of raids)."
+  },
+  {
+   "id": "arpa",
+   "status": "supported",
+   "title": "16 U.S. Code § 470ee - Prohibited acts and criminal penalties | LII / Legal Information Institute",
+   "url": "https://www.law.cornell.edu/uscode/text/16/470ee",
+   "quote": "No person may excavate, remove, damage, or otherwise alter or deface, or attempt to excavate, remove, damage, or otherwise alter or deface any archaeological resource located on public lands or Indian lands unless such activity is pursuant to a permit issued under section 470cc of this title",
+   "note": "Statute says 'public lands or Indian lands' (not 'federal'). Pub. L. 96-95, Oct. 31, 1979. NPS laws page (https://www.nps.gov/subjects/archeology/laws-regulations-guidelines.htm) is only an index, no ARPA wording."
+  },
+  {
+   "id": "antiquities_act",
+   "status": "supported",
+   "title": "Antiquities Act of 1906 - Archeology (U.S. National Park Service)",
+   "url": "https://www.nps.gov/subjects/archeology/antiquities-act.htm",
+   "quote": "An Act for the Preservation of American Antiquities (Antiquities Act) was signed into law on June 8th, 1906. The Act was the first U.S. law to provide general legal protection of cultural and natural resources of historic or scientific interest on federal lands.",
+   "note": "Keep the qualifier 'on federal lands'."
+  },
+  {
+   "id": "nhpa_106",
+   "status": "supported",
+   "title": "An Introduction to Section 106 | Advisory Council on Historic Preservation",
+   "url": "https://www.achp.gov/protecting-historic-properties/section-106-process/introduction-section-106",
+   "quote": "Section 106 of the National Historic Preservation Act of 1966 (NHPA) requires federal agencies to consider the effects on historic properties of projects they carry out, assist, fund, permit, license, or approve throughout the country.",
+   "note": "Consultation: ACHP 'Initiating Section 106' https://www.achp.gov/protecting-historic-properties/section-106-process/initiating-section-106: 'Consulting parties may include the State (or Tribal) Historic Preservation Officer, the local government, an applicant for federal assistance (if one is involved), and interested federally recognized Indian tribes or Native Hawaiian organizations.'"
+  },
+  {
+   "id": "nagpra",
+   "status": "supported",
+   "title": "Native American Graves Protection and Repatriation Act (U.S. National Park Service)",
+   "url": "https://www.nps.gov/subjects/nagpra/index.htm",
+   "quote": "Since 1990, Federal law has provided for the protection and return of Native American human remains, funerary objects, sacred objects, and objects of cultural patrimony. ... human remains and other cultural items removed from Federal or tribal lands belong, in the first instance, to lineal descendants, Indian Tribes, and Native Hawaiian organizations.",
+   "note": "Rule: Federal Register https://www.federalregister.gov/documents/2023/12/13/2023-27040/native-american-graves-protection-and-repatriation-act-systematic-processes-for-disposition-or (verified via FR API: publication 2023-12-13, effective 2024-01-12, citation 88 FR 86452, CFR 43 part 10). Regulation text, eCFR 43 CFR 10.1(d) https://www.ecfr.gov/current/title-43/subtitle-A/part-10/subpart-A/section-10.1 (read via eCFR versioner API): '(d) Duty of care. These regulations require a museum, Federal agency, or DHHL to care for, safeguard, and preserve any human remains or cultural items in its custody...' and must '(3) Obtain free, prior, and informed consent from lineal descendants, Indian Tribes, or Native Hawaiian organizations prior to allowing any exhibition of, access to, or research on human remains or cultural items.' Note: FR abstract itself does not use these phrases. ecfr.gov and federalregister.gov HTML block scripted clients; content read from their official APIs."
+  },
+  {
+   "id": "location_confidential",
+   "status": "supported",
+   "title": "54 U.S. Code § 307103 - Access to information | LII / Legal Information Institute",
+   "url": "https://www.law.cornell.edu/uscode/text/54/307103",
+   "quote": "shall withhold from disclosure to the public information about the location, character, or ownership of a historic property if the Secretary and the agency determine that disclosure may— (1) cause a significant invasion of privacy; (2) risk harm to the historic property; or (3) impede the use of a traditional religious site by practitioners.",
+   "note": "NHPA says 'shall withhold' (mandatory when criteria met), not merely 'may'. ARPA: https://www.law.cornell.edu/uscode/text/16/470hh 'Information concerning the nature and location of any archaeological resource for which the excavation or removal requires a permit ... may not be made available to the public ... unless the Federal land manager concerned determines that such disclosure would— (1) further the purposes of this chapter ... and (2) not create a risk of harm to such resources'."
+  },
+  {
+   "id": "colorado_sitefiles",
+   "status": "supported",
+   "title": "Access Qualifications - OAHP Resource Center (Office of Archaeology and Historic Preservation, state.co.us)",
+   "url": "https://sites.google.com/state.co.us/oahp-resource-center/services/access-qualifications",
+   "quote": "Restricted records include archaeological, paleontological, and any type of owner-restricted information. Requestors expecting to receive or access archaeological and/or paleontological locational data must generally be Secretary of the Interior (SOI) qualified for archaeology.",
+   "note": "historycolorado.org/node/3925 (redirects to /file-access) blocks automated clients (HTTP 202/403) - unreachable. The OAHP resource site (official state.co.us Google Site) says: 'OAHP ... restricts access to some cultural resource information. This policy is supported by CRS 24-72-203(1), CRS 24-80-405(2), and the Archaeological Resource Protection Act (ARPA)'. Wording is 'restricted', not 'confidential'."
+  },
+  {
+   "id": "chimney_rock",
+   "status": "supported",
+   "title": "San Juan National Forest | Northern Major Lunar Standstill | Forest Service",
+   "url": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill",
+   "quote": "The Major Lunar Standstill is an astronomical event that occurs every 18.6 years. It is visible from Chimney Rock National Monument where the moon aligns between the two sandstone spires, Chimney Rock and Companion Rock. ... This dramatic moonrise won’t be seen again until 2044.",
+   "note": "Also: 'Chimney Rock National Monument held multiple Major Lunar Standstill viewing events in 2024 and 2025.' Tribes: 'The Zuni tribe is one of 25 tribes with a cultural or traditional affiliation to Chimney Rock.' Framing: the page presents ancestral observation as likely, not proven ('the ancestral Puebloans of Chimney Rock would have seen the moonrises shift ... In time they would have noticed...'); it does NOT explicitly label the alignment an interpretation. Course should add that framing itself."
+  },
+  {
+   "id": "chaco_spinoff",
+   "status": "partly",
+   "title": "Archeological Surveys - NASA Technical Reports Server (NTRS)",
+   "url": "https://ntrs.nasa.gov/citations/20070018879",
+   "quote": "NASA's Technology Applications Center at the University of New Mexico is interpreting multispectral scanner data and demonstrating how aerospace scanning techniques can uncover features of prehistoric ruins not visible in conventional aerial photographs. ... the National Park Service was interested in the potential of multispectral scanning for producing evidence of prehistoric roads",
+   "note": "Spinoff 1978 (pub. date January 1, 1978) speaks of multispectral scanning and the NPS's interest in road evidence; scanner aircraft was provided by Bendix; it does not mention thermal/TIMS. For thermal (TIMS) road finds use NASA Science/Earth Observatory 'Peering through the Sands of Time' https://science.nasa.gov/earth/earth-observatory/searching-for-the-origins-of-space-archaeology/: 'Using several tools—the Thermal Infrared Multispectral Scanner (TIMS) ... he charted Chaco Canyon ... Sever found ancient roadways that let to sacred sites—roads 30 feet wide and “straight as an arrow.” Fieldwork by ground-based teams verified the finds.' (sic 'let to'). NTRS record: 'Work of the US Gov. Public Use Permitted.'"
+  },
+  {
+   "id": "lidar_how",
+   "status": "supported",
+   "title": "What is Lidar data and where can I download it? | U.S. Geological Survey",
+   "url": "https://www.usgs.gov/faqs/what-lidar-data-and-where-can-i-download-it",
+   "quote": "The laser scanner transmits brief pulses of light to the ground surface. Those pulses are reflected or scattered back and their travel time is used to calculate the distance between the laser scanner and the ground.",
+   "note": ""
+  },
+  {
+   "id": "lidar_low_sun",
+   "status": "supported",
+   "title": "Historic Environment Surveys of woodland using LiDAR (Forest Research technical note, UK Forestry Commission, 2008)",
+   "url": "https://cdn.forestresearch.gov.uk/2008/02/lidar_fc_note_web_2008.pdf",
+   "quote": "These are created from the LiDAR surface models by artificially lighting them in the same way that the sun will create highlights and shadows on the landscape. Lighting the model from a low elevation angle allows subtle changes in the surface model to become apparent.",
+   "note": "Not a USGS/NPS/NOAA page (UK government forestry research agency); no US agency page found quickly. Optional claim."
+  },
+  {
+   "id": "radiocarbon_range",
+   "status": "supported",
+   "title": "Archaeological Dating - Crow Canyon Archaeological Center",
+   "url": "https://crowcanyon.org/education/learn-about-archaeology/archaeological-dating/",
+   "quote": "For example, the results of dendrochronology (tree-ring) analysis may tell us that a particular roof beam was from a tree chopped down in A.D. 1262. ... Radiocarbon dates are often reported as a range.",
+   "note": "Same page: dendrochronology is 'the most precise dating tool available to archaeologists who work in areas where trees are particularly responsive to annual variations in precipitation, such as the American Southwest.' NPS tree-ring page adds: 'not all tree-ring samples produce a cutting date ... a few have even revealed the exact year a tree was cut.'"
+  },
+  {
+   "id": "wide_rings_wet",
+   "status": "supported",
+   "title": "How Can Tree Rings Teach Us About Climate? | News | National Centers for Environmental Information (NCEI)",
+   "url": "https://www.ncei.noaa.gov/news/how-can-tree-rings-teach-us-about-climate",
+   "quote": "Trees that depend heavily on moisture during the growing season will have wider rings during rainy periods and narrower rings during dry periods.",
+   "note": "NCEI states it for moisture-limited trees generally; Southwest link from Crow Canyon dating page ('trees are particularly responsive to annual variations in precipitation, such as the American Southwest'). NPS tree-ring page only says ring width depends on precipitation ('some rings are wide, some narrow'). Opened URL https://www.ncei.noaa.gov/node/78 redirected to the news URL above."
+  },
+  {
+   "id": "superposition",
+   "status": "supported",
+   "title": "Glossary (U.S. National Park Service) [Southwest archeology glossary]",
+   "url": "https://www.nps.gov/articles/southwest-glossary.htm",
+   "quote": "Law of Superposition: A basic law of geology and archeology stating that in any undisturbed sequence of deposits, the deeper layers are older than those above them.",
+   "note": "Also NPS 'Geologic Principles—Superposition and Original Horizontality' https://www.nps.gov/articles/geologic-principles-superposition-and-original-horizontality.htm and NPS teacher lesson https://www.nps.gov/teachers/classrooms/stratigraphy-and-superposition-in-archeology.htm ('Typically, the strata get older as archeologists dig into the earth, because layers accumulate one on top of another.')."
+  },
+  {
+   "id": "intrusive_pit",
+   "status": "partly",
+   "title": "Geologic Principles—Cross-cutting Relationships (U.S. National Park Service)",
+   "url": "https://www.nps.gov/articles/geologic-principles-cross-cutting-relationships.htm",
+   "quote": "The geologic axiom or general law that states that relative ages of rock units and geologic structures can be established: younger rocks or structures cut across older rocks or structures.",
+   "note": "Geological principle, not archaeology-specific (no pit example). Archaeological application is a standard inference; could add NPS glossary 'Disturbance: An event or sequence of events, either natural or cultural, that dislodges and disrupts archeological deposits.' (https://www.nps.gov/subjects/archeology/glossary.htm)."
+  },
+  {
+   "id": "midden",
+   "status": "supported",
+   "title": "Glossary (U.S. National Park Service) [Southwest archeology glossary]",
+   "url": "https://www.nps.gov/articles/southwest-glossary.htm",
+   "quote": "Midden: Refuse, or trash, deposit resulting from human activities.",
+   "note": "Also NPS Archeology glossary https://www.nps.gov/subjects/archeology/glossary.htm 'Midden: A domestic waste dump usually consisting of bone, shells, other organic material and oftentimes artifacts.' Mesa Verde-specific (NPS PDF ancestral_pueblo_people_2018): 'Much of what we know about daily life here comes from these garbage heaps, or kitchen middens.'"
+  },
+  {
+   "id": "mano_metate",
+   "status": "supported",
+   "title": "Artifact Gallery - Mano and Metate - Mesa Verde National Park (U.S. National Park Service)",
+   "url": "https://www.nps.gov/meve/learn/education/artifactgallery_manometate.htm",
+   "quote": "This mano (Spanish for “hand”) and metate (the larger stone surface) were used for grinding corn before it was cooked. Corn originated in MesoAmerica and was grown in Mesa Verde beginning about 450 CE.",
+   "note": ""
+  },
+  {
+   "id": "kiva",
+   "status": "supported",
+   "title": "Mesa Top Loop Drive Audio Tour: A Pueblo Perspective on Mesa Verde (U.S. National Park Service)",
+   "url": "https://www.nps.gov/podcasts/podcasts-mtl-audiotour.htm",
+   "quote": "The kivas that you see here are just like the kivas that the present-day Pueblo people still use today for religious dances, ceremonies, celebrations, and as gathering places for the community. ... Many Pueblo kivas today are still circular and underground, but some kivas are square, rectangular, or aboveground.",
+   "note": "Also NPS mesaverde.htm: 'Most villages included undergound kivas, thought to have been used as ceremonial chambers.' (sic 'undergound'). Cliff Dwellings page: 'Spaces such as kivas were set aside for communal and ceremonial spaces.'"
+  },
+  {
+   "id": "pithouse",
+   "status": "supported",
+   "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+   "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf",
+   "quote": "The first people settled in Mesa Verde ... about A.D. 550. ... They lived in pithouses clustered into small villages usually built on mesa tops but sometimes in cliff recesses. ... About A.D. 750 they began building houses above ground, with upright walls made of poles and mud.",
+   "note": "Also NPS Places page: 'pithouses built in c.550 CE as seasonal homes for individual family, half above-ground and half below-ground.' NPS mesaverde.htm: 'At first, they lived in pithouses ... Later, as their population grew, they built larger houses of adobe, called pueblos.'"
+  },
+  {
+   "id": "mv_sequence_years",
+   "status": "supported",
+   "title": "Ancestral Pueblo People and Their World (NPS Mesa Verde PDF)",
+   "url": "https://www.nps.gov/meve/learn/historyculture/upload/ancestral_pueblo_people_2018_508_01-24-18-2.pdf",
+   "quote": "About A.D. 750 they began building houses above ground ... By A.D. 1000 the people of Mesa Verde had advanced from pole-and-adobe construction to skillful stone masonry. ... About A.D. 1200, another major population shift saw people begin to move back into the cliff alcoves ... By about A.D. 1300, Mesa Verde was deserted.",
+   "note": "Start: 'about A.D. 550' (Basketmakers, pithouses). Classic Period A.D. 1100-1300. Cliff dwellings: mesaverde.htm 'late 1190s to late 1270s'. NPS does not label 'Basketmaker III' with dates on pages opened; Crow Canyon PMVR covers Basketmaker III pithouses (https://crowcanyon.org/EducationProducts/peoples_mesa_verde/basketmaker_III_housing.php). Crow Canyon puts final departure 'by about A.D. 1285'."
+  },
+  {
+   "id": "far_view",
+   "status": "partly",
+   "title": "Far View Community Sites (U.S. National Park Service)",
+   "url": "https://www.nps.gov/places/farviewsites.htm",
+   "quote": "This mesa top community includes Far View House, Pipe Shrine House, Coyote Village, Far View Reservoir (currently dry), Megalithic House, and Far View Tower. In ancient times, it was a place of modest homes interspersed with small farm fields.",
+   "note": "Location on page: 'Four miles (6.4 km) north of the Chapin Mesa Archeological Museum'. NO latitude/longitude published on either NPS page opened (no per-site NPS place pages found; probed URLs 404). Also https://www.nps.gov/meve/learn/historyculture/mt_far_view_sites.htm ('Far View was one of the most densely populated parts of the mesa from A.D. 900 to about A.D. 1300'). Current NPS pages call it 'Far View Reservoir'/'a dry reservoir' and do not use 'Mummy Lake' or explain its function. CAUTION: USGS-authored study (Benson et al. 2014, https://pubs.usgs.gov/publication/70182174) argues 'The structure ... known historically as Mummy Lake and more recently as Far View Reservoir is not part of a water collection, impoundment, or redistribution system' and proposes an unroofed ceremonial structure. Present function as debated, do not state flatly it held water."
+  },
+  {
+   "id": "site_formation",
+   "status": "partly",
+   "title": "Glossary - Archeology (U.S. National Park Service)",
+   "url": "https://www.nps.gov/subjects/archeology/glossary.htm",
+   "quote": "Disturbance: An event or sequence of events, either natural or cultural, that dislodges and disrupts archeological deposits.",
+   "note": "Supports natural/cultural disturbance moving deposits; does not list water/animals/erosion. Same glossary: 'Context: Position and associations of an artifact, feature, or archeological find in space and time.' A fuller site-formation page was not verified."
+  },
+  {
+   "id": "leave_it",
+   "status": "supported",
+   "title": "What If I Find an Artifact? (NPS Archeology Program rack card PDF)",
+   "url": "https://www.nps.gov/subjects/archeology/upload/RackArtifactsVisitors_508.pdf",
+   "quote": "Leave the artifact where you found it. Please don’t pick it up, move it, throw it, put it in your pocket or your bag, or bury it. ... Snap a picture of the artifact where you found it. ... Show a park ranger your pictures and the location of the artifact.",
+   "note": "Also: 'Please don’t post them on social media.' NPS Leave No Trace page https://www.nps.gov/articles/leave-no-trace-seven-principles.htm: 'Preserve the past: examine, photograph, but do not touch cultural or historic structures and artifacts.'"
+  },
+  {
+   "id": "noaa_licence",
+   "status": "partly",
+   "title": "NCEI PD-10-2-02 Open Data Policy (signed PDF)",
+   "url": "https://www.ncei.noaa.gov/sites/default/files/2023-12/NCEI%20PD-10-2-02%20-%20Open%20Data%20Policy%20Signed.pdf",
+   "quote": "Environmental data and information produced by NOAA or any Federal agency are available fully and openly to data users unless explicitly exempt from release by Federal law, regulation or policy. These data are in the public domain in the United States. To serve our international partners and customers, NCEI will work to ensure a Creative Commons CC0 license is applied.",
+   "note": "CAVEAT: CO652 was contributed by non-federal researchers (Stahle et al., Univ. of Arkansas); for non-federal data NCEI only 'will encourage providers to apply a Creative Commons CC0 (preferred) or CC BY 4.0 license'. The CO652 record states no licence, only: 'Please cite original publication, online resource, dataset and publication DOIs (where available), and date accessed when using downloaded data.' Treat as openly available with citation required; licence not explicitly CC0 for this dataset. CO652: landing page https://www.ncei.noaa.gov/access/paleo-search/study/19080 (HTTP 200; metadata read via NCEI JSON mirrored at paleo.ltrr.arizona.edu/json/noaa-tree-19080.json); study name 'Stahle - Mancos River + Mesa Verde - PSME - ITRDB CO652'; species Douglas-fir, Pseudotsuga menziesii (PSME); years 480-2011 CE; site Mancos River, 37.2739, -108.3478; DOI https://doi.org/10.25921/241f-xa86; publication Stahle et al., 'Bridging the Gap with Subfossil Douglas-fir at Mesa Verde, Colorado' (Tree-Ring Research 2015). Files (NCEI lists www1.ncdc.noaa.gov; www.ncei.noaa.gov path verified 200): https://www.ncei.noaa.gov/pub/data/paleo/treering/measurements/northamerica/usa/co652.rwl (header 'MANMV ... Douglas-fir ... 480 2011'), plus co652e.rwl, co652l.rwl, co652-noaa.rwl, co652e-noaa.rwl, co652l-noaa.rwl, and correlation-stats/co652.txt. NO .crn chronology file is listed for this study; chronologies/northamerica/usa/co652.crn and co652-noaa.crn return 404 - the course must build its own chronology from .rwl or pick another study."
+  },
+  {
+   "id": "nps_media_pd",
+   "status": "partly",
+   "title": "Disclaimer (U.S. National Park Service)",
+   "url": "https://www.nps.gov/aboutus/disclaimer.htm",
+   "quote": "Thus, material created by the National Park Service and presented on this website, unless otherwise indicated, is generally considered in the public domain. ... a citation or acknowledgement of the National Park Service as the source is appreciated.",
+   "note": "Page does not prescribe the exact credit line 'NPS Photo' (that string is used in NPS captions, e.g. the archeology rack card '(NPS photo)'). Page warns not all content is NPS-owned and the Arrowhead logo is a protected trademark."
+  },
+  {
+   "id": "usgs_pd",
+   "status": "supported",
+   "title": "3D Elevation Program | U.S. Geological Survey",
+   "url": "https://www.usgs.gov/3d-elevation-program",
+   "quote": "All 3DEP products are available free of charge and without use restrictions.",
+   "note": "Landsat: 'Are there any restrictions on the use or redistribution of Landsat data?' https://www.usgs.gov/faqs/are-there-any-restrictions-use-or-redistribution-landsat-data: 'There are no restrictions on Landsat data downloaded from the USGS; it can be used or redistributed as desired. We do request that you include a statement of the data source when citing, copying, or reprinting USGS Landsat data or images.'"
+  },
+  {
+   "id": "nasa_media",
+   "status": "supported",
+   "title": "Guidelines for using NASA Images and Media Guidelines",
+   "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+   "quote": "NASA content – images, audio, video, and media files ... generally are not subject to copyright in the United States. You may use this material for educational or informational purposes ... NASA should be acknowledged as the source of the material.",
+   "note": "Exceptions: NASA insignia/logos not public domain; third-party copyrighted images are marked. Earth Observatory images often credit specific data (e.g. 'using Landsat data from the U.S. Geological Survey') - keep the full credit line."
+  },
+  {
+   "id": "crow_canyon",
+   "status": "supported",
+   "title": "Education - Crow Canyon Archaeological Center",
+   "url": "https://crowcanyon.org/education/",
+   "quote": "School group programs are designed for students in grades 4 through 12. Core activities include archaeology, Ancestral Pueblo history, the scientific process, and the complex interactions between humans and their environments — past and present.",
+   "note": "Address on site footer: 'Crow Canyon Archaeological Center 23390 Road K Cortez, CO 81321'. Resource: 'Peoples of the Mesa Verde Region' https://crowcanyon.org/resources/peoples-of-the-mesa-verde-region/ ('People have lived in the Mesa Verde region of the American Southwest for thousands of years. These are their stories...'), content at https://crowcanyon.org/EducationProducts/peoples_mesa_verde/index.php (old .asp URLs redirect/404)."
+  },
+  {
+   "id": "lab_turnaround",
+   "status": "supported",
+   "title": "Turnaround - NOSAMS (Woods Hole Oceanographic Institution)",
+   "url": "https://www2.whoi.edu/site/nosams/radiocarbon-services/turnaround/",
+   "quote": "Samples are processed in the order received. The times shown reflect the average of all submission-to-report intervals for routine analyses during each of the indicated quarters.",
+   "note": "Values are in a chart image on the page ('NOSAMS Turnaround Time (average)', Oct 2024-Jul 2026): organic carbon roughly 5-10 weeks, inorganic/CO2 about 3-7 weeks, graphite about 1-2 weeks (read from the chart; not text). Commercial lab SGS Beta Analytic homepage https://www.radiocarbon.com/: 'Fast delivery guaranteed (3-14 business days)'. So 'days to weeks' is fair (up to ~2 months at NOSAMS). Tree-ring link: see mv_treering_lab (NPS says Mesa Verde researchers and LTRR used dendrochronology since 1923; it does not say every sample is sent there)."
+  },
+  {
+   "id": "field_director",
+   "status": "partly",
+   "title": "Archaeology as a Career (Society for American Archaeology)",
+   "url": "https://saa.org/Member/SAAMember/About-Archaeology/Archaeology-as-a-Career.aspx",
+   "quote": "Archaeologists employed in CRM firms may work as temporary field or laboratory assistants. Or they may be project managers or administrators. CRM archaeologists direct field and lab work and manage staff.",
+   "note": "SAA page does not use the titles 'field director' or 'crew chief'. RPA requires 'work experience supervising archaeology field and lab projects' (same page). Title-specific wording found only in job postings (e.g. SAA Career Center), not an education page; NPS career pages probed returned 404."
+  },
+  {
+   "id": "itrdb_co652",
+   "status": "supported",
+   "title": "Stahle - Mancos River + Mesa Verde - PSME - ITRDB CO652 (NOAA/WDS Paleoclimatology)",
+   "url": "https://www.ncei.noaa.gov/access/paleo-search/study/19080",
+   "quote": "Stahle, D.W.; Stahle, D.K.; Edmondson, J.R.; LeQuesne, C.; Therrell, M.D.; Burns, J.N.; Kvamme, E.; Schulman, E.; Nash, S. (2015-07-21): NOAA/WDS Paleoclimatology - Stahle - Mancos River + Mesa Verde - PSME - ITRDB CO652. NOAA National Centers for Environmental Information. https://doi.org/10.25921/241f-xa86. Accessed 2026-11-19. Publication: Stahle, D.W., J.R. Edmondson, J.N. Burns, D.K. Stahle, D.J. Burnette, E. Kvamme, C. Lequesne, and M.D. Therrell. 2015. Bridging the Gap with Subfossil Douglas-fir at Mesa Verde, Colorado. Tree-Ring Research, 71(2), 53-66. doi: 10.3959/1536-1098-71.2.53",
+   "note": "Data: https://www.ncei.noaa.gov/pub/data/paleo/treering/measurements/northamerica/usa/co652.rwl. NCEI publishes only raw measurements for CO652 (no .crn chronology file). Standard chronology computed here from the 197 total-ring-width series in co652.rwl: each series detrended with a negative-exponential curve (fallback: negative linear or mean), ratio indices, Tukey biweight robust mean per year. Early centuries (before about AD 900) rest on fewer than 10 series; see sample_depth. Licence: No licence is stated on the NCEI record (its data-licence field is empty). NCEI use constraint: \"Please cite original publication, online resource, dataset and publication DOIs (where available), and date accessed when using downloaded data. If there is no publication information, please cite investigator, title, online resource, and date accessed.\""
+  }
+ ]
+}

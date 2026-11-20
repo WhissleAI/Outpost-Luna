@@ -1,6 +1,10 @@
 # Courses: from a Moon app to a school of courses
 
 Status: **plan + spike** (branch `docs/courses-plan`). Nothing in this doc is built yet except the spike in §6.
+**P3 content (branch `feat/archaeology-content`):** the 10 Archaeology lessons, the `layers` / `rings` / `hillshade` /
+`decide` step types (`backend/app/academy/arch_steps.py`, `frontend/src/academy/arch_steps.js`), the course pack's data
+and media (`backend/data/courses/archaeology/`), verified sources, and the ear measurement (`docs/ARC_FEEDBACK.md`).
+They play behind a dev flag until P1/P2 land (`docs/courses/archaeology/LESSONS.md`).
 First new course: **Archaeology**, shown to a high-school archaeology teacher in Colorado.
 Course drafts: `docs/courses/archaeology/` (`LESSONS.md`, `DEMO.md`, `course.manifest.json`).
 

@@ -1,0 +1,100 @@
+{
+ "source": "Park-level points only (docs/COURSES.md \u00a71.5 rule 1): one visitor-area point per park or center, rounded to 2 decimals and marked estimated. No site coordinates, ever. Facts cite sources.json.",
+ "places": [
+  {
+   "id": "mesa_verde",
+   "name": "Mesa Verde National Park",
+   "lat": 37.18,
+   "lon": -108.49,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "Nearly 5,000 archeological sites, including 600 cliff dwellings.",
+   "aliases": [
+    "mesa verde",
+    "mesa verdy",
+    "mesa berde",
+    "mesa very",
+    "verde"
+   ],
+   "kind": "park",
+   "source": "https://www.nps.gov/meve/learn/management/index.htm"
+  },
+  {
+   "id": "four_corners",
+   "name": "Four Corners",
+   "lat": 37.0,
+   "lon": -109.05,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "Where Colorado, Utah, Arizona and New Mexico meet.",
+   "aliases": [
+    "four corners",
+    "for corners"
+   ],
+   "kind": "park",
+   "source": "https://www.usgs.gov/faqs/are-there-any-restrictions-use-or-redistribution-landsat-data"
+  },
+  {
+   "id": "chimney_rock",
+   "name": "Chimney Rock National Monument",
+   "lat": 37.19,
+   "lon": -107.31,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "Every 18.6 years the Moon rises between its two spires.",
+   "aliases": [
+    "chimney rock",
+    "companion rock",
+    "chimney rocks"
+   ],
+   "kind": "park",
+   "source": "https://www.fs.usda.gov/r02/sanjuan/recreation/discover-history/northern-major-lunar-standstill"
+  },
+  {
+   "id": "hovenweep",
+   "name": "Hovenweep National Monument",
+   "lat": 37.38,
+   "lon": -109.07,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "Stone towers at the heads of canyons, on the Utah-Colorado line.",
+   "aliases": [
+    "hovenweep",
+    "hoven weep"
+   ],
+   "kind": "park",
+   "source": "https://www.nps.gov/hove/index.htm"
+  },
+  {
+   "id": "chaco",
+   "name": "Chaco Culture National Historical Park",
+   "lat": 36.06,
+   "lon": -107.96,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "NASA scanners helped map its ancient roads from the air.",
+   "aliases": [
+    "chaco",
+    "chaco canyon",
+    "choco canyon"
+   ],
+   "kind": "park",
+   "source": "https://science.nasa.gov/earth/earth-observatory/searching-for-the-origins-of-space-archaeology/"
+  },
+  {
+   "id": "crow_canyon",
+   "name": "Crow Canyon Archaeological Center",
+   "lat": 37.35,
+   "lon": -108.62,
+   "diameter_km": 0,
+   "estimated": true,
+   "fact": "A research and education center near Cortez, Colorado, for grades 4 to 12.",
+   "aliases": [
+    "crow canyon",
+    "cortez"
+   ],
+   "kind": "park",
+   "source": "https://crowcanyon.org/education/"
+  }
+ ]
+}

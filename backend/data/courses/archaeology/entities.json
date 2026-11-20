@@ -1,0 +1,959 @@
+{
+ "schema": "whissle.entities/1",
+ "app": "outpost_luna",
+ "course": "archaeology",
+ "_note": "The Archaeology course's entity registry (docs/COURSES.md §4.1 `entities`): places (park-level and NPS visitor sites only), nations and peoples (as NPS lists them), terms and laws. The ear's names list and keyterms come from here (decision 4: names lists bias and verify names; no second ear). `kind` maps onto the ear's current kind set (site / organization / product) until the Arc team adds place / people / term / law (docs/ARC_FEEDBACK.md, archaeology section). Pronunciation hints are in `say` where English spelling misleads.",
+ "screens": {
+  "map": {
+   "cap": 60,
+   "groups": [
+    [
+     "place"
+    ],
+    [
+     "nation"
+    ],
+    [
+     "term",
+     20
+    ],
+    [
+     "law"
+    ]
+   ]
+  },
+  "lesson": {
+   "cap": 60,
+   "groups": [
+    [
+     "term"
+    ],
+    [
+     "place"
+    ],
+    [
+     "law"
+    ],
+    [
+     "nation"
+    ]
+   ]
+  },
+  "library": {
+   "same_as": "map"
+  }
+ },
+ "default_screen": "map",
+ "entities": [
+  {
+   "id": "mesa_verde",
+   "type": "place",
+   "group": "place",
+   "name": "Mesa Verde",
+   "kind": "site",
+   "aliases": [
+    "Mesa Verde National Park"
+   ],
+   "mishears": [
+    "mesa verdy",
+    "mesa berde",
+    "mesa very"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "mesa_verde"
+   },
+   "lessons": [
+    "what_is",
+    "dating",
+    "law",
+    "voices",
+    "mesa_verde"
+   ]
+  },
+  {
+   "id": "four_corners",
+   "type": "place",
+   "group": "place",
+   "name": "Four Corners",
+   "kind": "site",
+   "aliases": [
+    "Four Corners Monument"
+   ],
+   "mishears": [
+    "for corners"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "four_corners"
+   },
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "chimney_rock",
+   "type": "place",
+   "group": "place",
+   "name": "Chimney Rock",
+   "kind": "site",
+   "aliases": [
+    "Chimney Rock National Monument"
+   ],
+   "mishears": [
+    "chimney rocks"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "chimney_rock"
+   },
+   "lessons": [
+    "chimney_rock"
+   ]
+  },
+  {
+   "id": "companion_rock",
+   "type": "place",
+   "group": "place",
+   "name": "Companion Rock",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [],
+   "lessons": [
+    "chimney_rock"
+   ]
+  },
+  {
+   "id": "hovenweep",
+   "type": "place",
+   "group": "place",
+   "name": "Hovenweep",
+   "kind": "site",
+   "aliases": [
+    "Hovenweep National Monument"
+   ],
+   "mishears": [
+    "hoven weep",
+    "hovenwheat"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "hovenweep"
+   },
+   "lessons": [],
+   "say": "HOH-ven-weep"
+  },
+  {
+   "id": "canyons_of_the_ancients",
+   "type": "place",
+   "group": "place",
+   "name": "Canyons of the Ancients",
+   "kind": "site",
+   "aliases": [
+    "Canyons of the Ancients National Monument"
+   ],
+   "mishears": [
+    "canyons of the agents"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "canyons_of_the_ancients"
+   },
+   "lessons": []
+  },
+  {
+   "id": "chaco",
+   "type": "place",
+   "group": "place",
+   "name": "Chaco Canyon",
+   "kind": "site",
+   "aliases": [
+    "Chaco Culture National Historical Park",
+    "Chaco"
+   ],
+   "mishears": [
+    "choco canyon",
+    "taco canyon"
+   ],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "chaco"
+   },
+   "lessons": [
+    "survey"
+   ],
+   "say": "CHAH-koh"
+  },
+  {
+   "id": "crow_canyon",
+   "type": "place",
+   "group": "place",
+   "name": "Crow Canyon",
+   "kind": "site",
+   "aliases": [
+    "Crow Canyon Archaeological Center"
+   ],
+   "mishears": [],
+   "ref": {
+    "source": "courses/archaeology/places.json",
+    "id": "crow_canyon"
+   },
+   "lessons": []
+  },
+  {
+   "id": "cortez",
+   "type": "place",
+   "group": "place",
+   "name": "Cortez",
+   "kind": "site",
+   "aliases": [
+    "Cortez, Colorado"
+   ],
+   "mishears": [
+    "cortes"
+   ],
+   "lessons": []
+  },
+  {
+   "id": "cliff_palace",
+   "type": "place",
+   "group": "place",
+   "name": "Cliff Palace",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [
+    "cliff palis"
+   ],
+   "lessons": [
+    "what_is",
+    "mesa_verde"
+   ]
+  },
+  {
+   "id": "spruce_tree_house",
+   "type": "place",
+   "group": "place",
+   "name": "Spruce Tree House",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [
+    "spruce three house"
+   ],
+   "lessons": [
+    "mesa_verde"
+   ]
+  },
+  {
+   "id": "long_house",
+   "type": "place",
+   "group": "place",
+   "name": "Long House",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [
+    "longhouse"
+   ],
+   "lessons": [
+    "dating"
+   ]
+  },
+  {
+   "id": "balcony_house",
+   "type": "place",
+   "group": "place",
+   "name": "Balcony House",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [],
+   "lessons": []
+  },
+  {
+   "id": "far_view_house",
+   "type": "place",
+   "group": "place",
+   "name": "Far View House",
+   "kind": "site",
+   "aliases": [
+    "Far View"
+   ],
+   "mishears": [
+    "far few house",
+    "farview house"
+   ],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "pipe_shrine_house",
+   "type": "place",
+   "group": "place",
+   "name": "Pipe Shrine House",
+   "kind": "site",
+   "aliases": [
+    "Pipe Shrine"
+   ],
+   "mishears": [
+    "pipe shine house"
+   ],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "coyote_village",
+   "type": "place",
+   "group": "place",
+   "name": "Coyote Village",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "mummy_lake",
+   "type": "place",
+   "group": "place",
+   "name": "Mummy Lake",
+   "kind": "site",
+   "aliases": [
+    "Far View Reservoir"
+   ],
+   "mishears": [
+    "mommy lake"
+   ],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "chapin_mesa",
+   "type": "place",
+   "group": "place",
+   "name": "Chapin Mesa",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [
+    "chaplain mesa",
+    "chapen mesa"
+   ],
+   "lessons": [
+    "survey",
+    "stuff"
+   ]
+  },
+  {
+   "id": "wetherill_mesa",
+   "type": "place",
+   "group": "place",
+   "name": "Wetherill Mesa",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [
+    "weather ill mesa",
+    "weatherall mesa"
+   ],
+   "lessons": [
+    "dating"
+   ]
+  },
+  {
+   "id": "colorado",
+   "type": "place",
+   "group": "place",
+   "name": "Colorado",
+   "kind": "site",
+   "aliases": [],
+   "mishears": [],
+   "lessons": []
+  },
+  {
+   "id": "hopi",
+   "type": "people",
+   "group": "nation",
+   "name": "Hopi",
+   "kind": "organization",
+   "aliases": [
+    "Hopi Tribe"
+   ],
+   "mishears": [
+    "hopey"
+   ],
+   "say": "HOH-pee"
+  },
+  {
+   "id": "zuni",
+   "type": "people",
+   "group": "nation",
+   "name": "Zuni",
+   "kind": "organization",
+   "aliases": [
+    "Pueblo of Zuni",
+    "Zuni Pueblo"
+   ],
+   "mishears": [
+    "zoony"
+   ],
+   "say": "ZOO-nee"
+  },
+  {
+   "id": "acoma",
+   "type": "people",
+   "group": "nation",
+   "name": "Acoma",
+   "kind": "organization",
+   "aliases": [
+    "Pueblo of Acoma"
+   ],
+   "mishears": [
+    "a coma"
+   ],
+   "say": "AH-koh-muh"
+  },
+  {
+   "id": "laguna",
+   "type": "people",
+   "group": "nation",
+   "name": "Laguna",
+   "kind": "organization",
+   "aliases": [
+    "Pueblo of Laguna"
+   ],
+   "mishears": []
+  },
+  {
+   "id": "taos",
+   "type": "people",
+   "group": "nation",
+   "name": "Taos Pueblo",
+   "kind": "organization",
+   "aliases": [
+    "Taos"
+   ],
+   "mishears": [
+    "towels pueblo"
+   ]
+  },
+  {
+   "id": "santa_clara",
+   "type": "people",
+   "group": "nation",
+   "name": "Santa Clara Pueblo",
+   "kind": "organization",
+   "aliases": [
+    "Santa Clara"
+   ],
+   "mishears": []
+  },
+  {
+   "id": "ohkay_owingeh",
+   "type": "people",
+   "group": "nation",
+   "name": "Ohkay Owingeh",
+   "kind": "organization",
+   "aliases": [],
+   "mishears": [
+    "okay owing a",
+    "okay o wing a"
+   ],
+   "say": "oh-KAY oh-WING-eh"
+  },
+  {
+   "id": "ute_mountain_ute",
+   "type": "people",
+   "group": "nation",
+   "name": "Ute Mountain Ute",
+   "kind": "organization",
+   "aliases": [
+    "Ute Mountain Ute Tribe"
+   ],
+   "mishears": [
+    "you mountain you"
+   ]
+  },
+  {
+   "id": "southern_ute",
+   "type": "people",
+   "group": "nation",
+   "name": "Southern Ute",
+   "kind": "organization",
+   "aliases": [
+    "Southern Ute Indian Tribe"
+   ],
+   "mishears": [
+    "southern you"
+   ]
+  },
+  {
+   "id": "navajo",
+   "type": "people",
+   "group": "nation",
+   "name": "Navajo Nation",
+   "kind": "organization",
+   "aliases": [
+    "Navajo",
+    "Diné",
+    "Dine"
+   ],
+   "mishears": [
+    "dinay",
+    "the nay"
+   ],
+   "say": "Diné: dih-NEH"
+  },
+  {
+   "id": "pueblo_peoples",
+   "type": "people",
+   "group": "nation",
+   "name": "Pueblo peoples",
+   "kind": "organization",
+   "aliases": [
+    "Pueblo people",
+    "Puebloan",
+    "Pueblos"
+   ],
+   "mishears": [
+    "pueblo and",
+    "pebble"
+   ]
+  },
+  {
+   "id": "ancestral_puebloans",
+   "type": "people",
+   "group": "nation",
+   "name": "Ancestral Puebloans",
+   "kind": "organization",
+   "aliases": [
+    "Ancestral Pueblo people",
+    "Ancestral Pueblo"
+   ],
+   "mishears": [
+    "ancestral pueblo ins",
+    "ancestral pueblo wins"
+   ]
+  },
+  {
+   "id": "archaeology",
+   "type": "term",
+   "group": "term",
+   "name": "archaeology",
+   "kind": "product",
+   "aliases": [
+    "archeology",
+    "archaeologist",
+    "archeologist"
+   ],
+   "mishears": [
+    "ark ology",
+    "arky ology"
+   ],
+   "lessons": [
+    "what_is"
+   ]
+  },
+  {
+   "id": "dendrochronology",
+   "type": "term",
+   "group": "term",
+   "name": "dendrochronology",
+   "kind": "product",
+   "aliases": [
+    "tree-ring dating",
+    "tree ring dating",
+    "dendro"
+   ],
+   "mishears": [
+    "dendro chronology",
+    "then throw chronology",
+    "den drew chronology"
+   ],
+   "lessons": [
+    "dating"
+   ],
+   "say": "DEN-droh-kruh-NOL-uh-jee"
+  },
+  {
+   "id": "stratigraphy",
+   "type": "term",
+   "group": "term",
+   "name": "stratigraphy",
+   "kind": "product",
+   "aliases": [
+    "strata",
+    "stratum"
+   ],
+   "mishears": [
+    "strat ography",
+    "strategy graphy"
+   ],
+   "lessons": [
+    "layers"
+   ]
+  },
+  {
+   "id": "superposition",
+   "type": "term",
+   "group": "term",
+   "name": "law of superposition",
+   "kind": "product",
+   "aliases": [
+    "superposition"
+   ],
+   "mishears": [
+    "super position"
+   ],
+   "lessons": [
+    "layers"
+   ]
+  },
+  {
+   "id": "radiocarbon",
+   "type": "term",
+   "group": "term",
+   "name": "radiocarbon dating",
+   "kind": "product",
+   "aliases": [
+    "radiocarbon",
+    "carbon dating",
+    "carbon-14",
+    "C-14"
+   ],
+   "mishears": [
+    "radio carbon"
+   ],
+   "lessons": [
+    "dating"
+   ]
+  },
+  {
+   "id": "kiva",
+   "type": "term",
+   "group": "term",
+   "name": "kiva",
+   "kind": "product",
+   "aliases": [
+    "kivas"
+   ],
+   "mishears": [
+    "keeva",
+    "kiwa",
+    "key va"
+   ],
+   "lessons": [
+    "stuff",
+    "mesa_verde"
+   ],
+   "say": "KEE-vuh"
+  },
+  {
+   "id": "pithouse",
+   "type": "term",
+   "group": "term",
+   "name": "pithouse",
+   "kind": "product",
+   "aliases": [
+    "pit house",
+    "pithouses"
+   ],
+   "mishears": [],
+   "lessons": [
+    "stuff",
+    "mesa_verde"
+   ]
+  },
+  {
+   "id": "metate",
+   "type": "term",
+   "group": "term",
+   "name": "metate",
+   "kind": "product",
+   "aliases": [
+    "metates"
+   ],
+   "mishears": [
+    "meta tay",
+    "me tatty",
+    "metatay"
+   ],
+   "lessons": [
+    "stuff"
+   ],
+   "say": "meh-TAH-tay"
+  },
+  {
+   "id": "mano",
+   "type": "term",
+   "group": "term",
+   "name": "mano",
+   "kind": "product",
+   "aliases": [
+    "manos"
+   ],
+   "mishears": [
+    "mono",
+    "mana"
+   ],
+   "lessons": [
+    "stuff"
+   ],
+   "say": "MAH-no"
+  },
+  {
+   "id": "potsherd",
+   "type": "term",
+   "group": "term",
+   "name": "potsherd",
+   "kind": "product",
+   "aliases": [
+    "sherd",
+    "shard",
+    "potsherds",
+    "pot shard"
+   ],
+   "mishears": [
+    "pot heard",
+    "pot shirt"
+   ],
+   "lessons": [
+    "stuff",
+    "layers"
+   ]
+  },
+  {
+   "id": "midden",
+   "type": "term",
+   "group": "term",
+   "name": "midden",
+   "kind": "product",
+   "aliases": [
+    "middens",
+    "trash heap"
+   ],
+   "mishears": [
+    "midnight",
+    "mitten"
+   ],
+   "lessons": [
+    "stuff"
+   ]
+  },
+  {
+   "id": "lidar",
+   "type": "term",
+   "group": "term",
+   "name": "lidar",
+   "kind": "product",
+   "aliases": [
+    "LiDAR",
+    "light detection and ranging"
+   ],
+   "mishears": [
+    "lie dar",
+    "lighter"
+   ],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "hillshade",
+   "type": "term",
+   "group": "term",
+   "name": "hillshade",
+   "kind": "product",
+   "aliases": [
+    "hill shade",
+    "shaded relief"
+   ],
+   "mishears": [],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "transect",
+   "type": "term",
+   "group": "term",
+   "name": "transect",
+   "kind": "product",
+   "aliases": [
+    "transects",
+    "pedestrian survey",
+    "survey"
+   ],
+   "mishears": [
+    "trance act"
+   ],
+   "lessons": [
+    "survey"
+   ]
+  },
+  {
+   "id": "stewardship",
+   "type": "term",
+   "group": "term",
+   "name": "stewardship",
+   "kind": "product",
+   "aliases": [
+    "steward"
+   ],
+   "mishears": [],
+   "lessons": [
+    "law"
+   ]
+  },
+  {
+   "id": "consultation",
+   "type": "term",
+   "group": "term",
+   "name": "consultation",
+   "kind": "product",
+   "aliases": [
+    "consult",
+    "tribal consultation"
+   ],
+   "mishears": [],
+   "lessons": [
+    "voices",
+    "law"
+   ]
+  },
+  {
+   "id": "repatriation",
+   "type": "term",
+   "group": "term",
+   "name": "repatriation",
+   "kind": "product",
+   "aliases": [
+    "repatriate"
+   ],
+   "mishears": [
+    "re patriation"
+   ],
+   "lessons": [
+    "law"
+   ]
+  },
+  {
+   "id": "lunar_standstill",
+   "type": "term",
+   "group": "term",
+   "name": "major lunar standstill",
+   "kind": "product",
+   "aliases": [
+    "lunar standstill",
+    "standstill"
+   ],
+   "mishears": [
+    "lunar stand still"
+   ],
+   "lessons": [
+    "chimney_rock"
+   ]
+  },
+  {
+   "id": "douglas_fir",
+   "type": "term",
+   "group": "term",
+   "name": "Douglas fir",
+   "kind": "product",
+   "aliases": [
+    "Douglas-fir"
+   ],
+   "mishears": [
+    "douglas fur"
+   ],
+   "lessons": [
+    "dating"
+   ]
+  },
+  {
+   "id": "yucca",
+   "type": "term",
+   "group": "term",
+   "name": "yucca",
+   "kind": "product",
+   "aliases": [
+    "yucca sandal"
+   ],
+   "mishears": [
+    "yuka"
+   ],
+   "lessons": [
+    "stuff"
+   ]
+  },
+  {
+   "id": "arpa",
+   "type": "law",
+   "group": "law",
+   "name": "ARPA",
+   "kind": "product",
+   "aliases": [
+    "Archaeological Resources Protection Act"
+   ],
+   "mishears": [
+    "arpa",
+    "our pa",
+    "are pa"
+   ],
+   "lessons": [
+    "law"
+   ]
+  },
+  {
+   "id": "nagpra",
+   "type": "law",
+   "group": "law",
+   "name": "NAGPRA",
+   "kind": "product",
+   "aliases": [
+    "Native American Graves Protection and Repatriation Act"
+   ],
+   "mishears": [
+    "nag pra",
+    "nag prah",
+    "nagra"
+   ],
+   "lessons": [
+    "law"
+   ],
+   "say": "NAG-pruh"
+  },
+  {
+   "id": "nhpa",
+   "type": "law",
+   "group": "law",
+   "name": "NHPA",
+   "kind": "product",
+   "aliases": [
+    "National Historic Preservation Act",
+    "Section 106"
+   ],
+   "mishears": [
+    "section one oh six"
+   ],
+   "lessons": [
+    "law"
+   ]
+  },
+  {
+   "id": "antiquities_act",
+   "type": "law",
+   "group": "law",
+   "name": "Antiquities Act",
+   "kind": "product",
+   "aliases": [
+    "Antiquities Act of 1906"
+   ],
+   "mishears": [
+    "antiquity act"
+   ],
+   "lessons": [
+    "law"
+   ]
+  }
+ ]
+}
