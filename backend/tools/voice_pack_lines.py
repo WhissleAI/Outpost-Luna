@@ -149,7 +149,7 @@ class Harvest:
 def academy_says() -> tuple[list[dict], list[dict]]:
     """Flight School replies, composed by the real code (routes.py constants, guide.ladder)."""
     from app.academy import content, guide
-    from app.academy.routes import GUESS_OTHER, GUESS_RIGHT, SHOWN
+    from app.academy.routes import GUESS_OTHER, GUESS_RIGHT, shown_line
     says, live = [], []
     src = "backend/app/academy/routes.py"
     add = lambda t, s=src: says.append({"lines": [t], "source": s, "role": ROLE_CAPCOM})  # noqa: E731
@@ -171,7 +171,7 @@ def academy_says() -> tuple[list[dict], list[dict]]:
             for line in [st["success"], st.get("reveal")]:
                 if line:
                     add(line)
-                    add(SHOWN + line)
+                    add(shown_line(line, L["id"]))   # "Here it is." + the line (a course pack's loses its praise)
             if kind == "video" and (st["accept"].get("guess") or {}).get("options"):   # the guess, then the answer
                 add(GUESS_RIGHT + st["success"])
                 add(GUESS_OTHER + st["success"])

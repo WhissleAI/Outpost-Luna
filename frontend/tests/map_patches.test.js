@@ -72,7 +72,8 @@ test("[arch-patches] lessons on one spot get distinct, stable slots; a lone stop
 
 test("[arch-patches] the map lays out shared spots off the Moon only, and the route layer honours the slot", () => {
   const ui = src("../src/academy/ui.js"), globe = src("../src/globe.js");
-  assert.match(ui, /if \(!moonGlobe\(\)\) clusterNudges\(stops, region \? \{ deg: 0\.2, gap: 34 \} : undefined\)/);
+  assert.match(ui, /const near = region \? \{ deg: 0\.2, gap: 34 \} : undefined/);
+  assert.match(ui, /if \(!moonGlobe\(\)\) clusterNudges\(stops, near\)/);
   assert.match(globe, /s\.bx = s\.x \+ \(\(s\.nudge && s\.nudge\[0\]\) \|\| 0\)/);
 });
 

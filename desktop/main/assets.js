@@ -464,11 +464,16 @@ function createStore({ dir, manifest, log = () => {}, fetchImpl = globalThis.fet
     fs.writeFileSync(flag(".active", a.id), "");
     // [courses] "<done> <total>" bytes in the flag, at most once a percent, so the backend can show real progress
     // (course_packs.py progress(): the first-run course pick and Course storage)
-    let pct = -1;
+    // [arch QA] and, after the bytes, the phase ("verify", then "install"): the pick said nothing for ~5 s at 100%
+    let pct = -1, phase = "download";
     const onProgress = (p) => {
       if (opts.onProgress) opts.onProgress(p);
       const n = p && p.total > 0 ? Math.floor((100 * p.done) / p.total) : -1;
-      if (n > pct) { pct = n; try { fs.writeFileSync(flag(".active", a.id), `${p.done} ${p.total}`); } catch { /* best effort */ } }
+      const ph = p && p.phase && p.phase !== "download" && p.phase !== "import" ? p.phase : "download";
+      if (n > pct || ph !== phase) {
+        pct = Math.max(pct, n); phase = ph;
+        try { fs.writeFileSync(flag(".active", a.id), `${p.done} ${p.total}${ph !== "download" ? ` ${ph}` : ""}`); } catch { /* best effort */ }
+      }
     };
     try { return await downloadOne(a, { ...opts, onProgress }); }
     finally {

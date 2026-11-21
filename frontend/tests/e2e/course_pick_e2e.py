@@ -40,8 +40,11 @@ from silent import LAUNCH_ARGS, silence  # noqa: E402
 
 results: list[tuple[bool, str]] = []
 # the tar the backend looks for in COURSE_PACK_SRC: the manifest entry's file name (a new version is a new name)
-TAR = next(x["file"] for x in json.loads((Path(_d).parents[2] / "desktop/assets.manifest.json").read_text())["assets"]
-           if x["id"] == "course_archaeology")
+_PACK = next(x for x in json.loads((Path(_d).parents[2] / "desktop/assets.manifest.json").read_text())["assets"]
+             if x["id"] == "course_archaeology")
+TAR = _PACK["file"]
+_MB = _PACK["size"] / 1e6   # the pick shows the pack's size as storage_ui.js size() writes it (v2 grew from 4.6 MB)
+SIZE = f"{_MB / 1000:.1f} GB" if _MB >= 1000 else f"{round(_MB)} MB" if _MB >= 10 else f"{_MB:.1f} MB"
 
 
 def ok(cond, what):
@@ -143,7 +146,7 @@ def main():
             if to_pick(pg, a, "keys"):
                 txt = pg.inner_text("#aPanel")
                 for s in ("Pick your course", "The Moon", "Junior Astronaut Academy", "grades 3-8 · Built in · starts now",
-                          "Archaeology", "Field Archaeology: the Mesa Verde region", "grades 9-12 · 4.6 MB", "Skip"):
+                          "Archaeology", "Field Archaeology: the Mesa Verde region", f"grades 9-12 · {SIZE}", "Skip"):
                     ok(s in txt, f"the pick shows: {s}")
                 ok(until(pg, f"() => ({ACTIVE})() === 'moon'", 3000), "keys: focus starts on the Moon (Enter / A starts it)")
                 ok(pg.evaluate("() => document.documentElement.scrollWidth <= innerWidth + 1"), "no sideways scroll")

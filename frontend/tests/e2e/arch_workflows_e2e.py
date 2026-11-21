@@ -4,7 +4,8 @@ in archaeology is a bit choppy"). tests/arch_playtest.test.js has the pure parts
 A fresh cadet picks a call sign, then Archaeology, and:
   1. the lesson map is the Four Corners region, close: every pin in view (they were spread over North America),
      Chimney Rock at its own point, the Next-up card naming the lesson's site ("Cliff Palace");
-  2. lesson 1: "um, I don't know" gets a hint; a typed non-answer gets the step again (it was silence); the find step
+  2. lesson 1: "um, I don't know" gets a hint; a typed wrong word is a miss with a hint, typed filler gets the step
+     again (both were silence); the find step
      names no neighbour on the spot to find ("Four Corners" over Mesa Verde); a keywords step says "Say the word"
      (not "radio practice"); captions name the Field Director (not CAPCOM); the header never wraps;
   3. a reload mid-lesson picks up at the same step;
@@ -143,7 +144,10 @@ def main():
         body = pg.inner_text("#aPanel")
         ok("Say the word" in body and "radio" not in body.lower() and "order back" not in body, "the keywords step says 'Say the word' (not radio practice)")
         type_(pg, "dinosaur bones")
-        ok(until(pg, f"() => /Name the field/.test(({FB})())", 8000), f"a typed non-answer gets the step again, not silence ({pg.evaluate(FB)!r})")
+        # [arch QA 0.5.2] a typed wrong word is a try: a miss with the next hint (the ladder then climbs to the reveal)
+        ok(until(pg, f"() => /Not the word I need\\. It starts with arch/.test(({FB})())", 8000), f"a typed wrong word is a miss with a hint, not silence ({pg.evaluate(FB)!r})")
+        type_(pg, "um")
+        ok(until(pg, f"() => /Name the field/.test(({FB})())", 8000), f"typed filler gets the step again, not silence ({pg.evaluate(FB)!r})")
         who = until(pg, "() => (document.querySelector('#captionBar .cap-who') || {}).textContent", 8000) or ""
         ok(who in ("Field Director", "") and "CAPCOM" not in pg.inner_text("#captionBar"), f"captions name the Field Director ({who!r})")
         shot(pg, a.out, "aw_typed_nonanswer")

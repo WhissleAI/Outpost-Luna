@@ -3,6 +3,7 @@
 // (docs/COURSES.md §4.3); left out, it is the Moon exactly as before (MOON_BODY).
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { fanFits, REGION_DIST } from "./academy/pins.js";   // [arch QA] zoom-aware clusters of route pins
 
 const R = 1, MOON_KM = 1737.4;
 /** The globe's body when a course names none: the Moon, its LRO colour map and its radius (docs/COURSES.md §4.3). */
@@ -101,7 +102,8 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     scene.add(ring); sel = f;
     ghosts.forEach(g => g.el.classList.toggle("is-on", g.a === f));
     label.textContent = f.name;
-    if (f.est) { const s = document.createElement("small"); s.textContent = "est."; label.append(s); }
+    // [arch QA] "est." only on the Moon (crew-estimated spots); Earth courses mark parks at park level on purpose
+    if (f.est && BODY.name === MOON_BODY.name) { const s = document.createElement("small"); s.textContent = "est."; label.append(s); }
     label.hidden = false;
   }
 
@@ -230,19 +232,40 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
   const rlayer = document.createElement("div"); rlayer.className = "route"; rlayer.hidden = true; stage.append(rlayer);
   const rsvg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); rsvg.setAttribute("class", "route-lines"); rsvg.setAttribute("aria-hidden", "true");
   rlayer.append(rsvg);
-  let rstops = [], rdone = 0;
+  let rstops = [], rdone = 0, rgroups = [];
   const route = {
-    /** stops: [{id, lat, lon, el, nudge:[dx,dy]}]; done = how many stops (from the start) are complete */
-    set(stops, done = 0) {
-      rlayer.querySelectorAll(".route-stop, .route-dot").forEach(e => e.remove());
+    /** stops: [{id, lat, lon, el, nudge:[dx,dy], group?: {g, n, lat, lon}}]; done = how many stops (from the start) are
+     *  complete. [arch QA] opts.cluster: {label(n) -> aria text, onPick(group)}: stops sharing a group fan out round
+     *  their spot only while the fan fits the zoom (academy/pins.js fanFits); further out one count pin stands in. */
+    set(stops, done = 0, opts = {}) {
+      rlayer.querySelectorAll(".route-stop, .route-dot, .route-cluster").forEach(e => e.remove());
       rstops = stops.map(s => {
         const dot = document.createElement("i"); dot.className = "route-dot"; rlayer.append(dot);
         s.el.classList.add("route-stop"); rlayer.append(s.el);
         s.el.dataset.lat = s.lat; s.el.dataset.lon = s.lon;   // [keys] focusing a pin flies the globe there (input/spatial.js)
         return { ...s, dot, p: ll2v(s.lat, s.lon, R * 1.003), x: 0, y: 0, on: false };
       });
+      rgroups = [];
+      rstops.forEach(s => {
+        const gi = s.group && s.group.n > 1 ? s.group.g : null; if (gi == null) return;
+        let g = rgroups.find(x => x.g === gi);
+        if (!g) {
+          const el = document.createElement("button"); el.type = "button"; el.className = "route-cluster"; el.hidden = true;
+          g = { g: gi, lat: s.group.lat, lon: s.group.lon, el, members: [], p: ll2v(s.group.lat, s.group.lon, R * 1.003), q: ll2v(s.group.lat + 1, s.group.lon, R * 1.003) };
+          el.onclick = e => { e.stopPropagation(); if (opts.cluster && opts.cluster.onPick) opts.cluster.onPick(g); else flyTo(g.lat, g.lon, REGION_DIST); };
+          rlayer.append(el); rgroups.push(g);
+        }
+        g.members.push(s); s.grp = g; s.el.classList.add("in-fan");
+      });
+      rgroups.forEach(g => {
+        const n = g.members.length, nx = g.members.some(s => s.el.classList.contains("is-next"));
+        g.el.innerHTML = `<b>${n}</b>`; g.el.classList.toggle("is-next", nx);
+        g.el.setAttribute("aria-label", opts.cluster && opts.cluster.label ? opts.cluster.label(n) : `${n} lessons here. Zoom in`);
+      });
       rdone = done; rlayer.hidden = !rstops.length;
     },
+    /** [arch QA] tests / tools: which shared spots show one count pin right now */
+    get collapsed() { return rgroups.filter(g => g.collapsed).map(g => ({ lat: g.lat, lon: g.lon, n: g.members.length })); },
     clear() { route.set([]); },
   };
   function tickRoute() {
@@ -256,9 +279,24 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       s.x = (tmp.x + 1) / 2 * w; s.y = (1 - tmp.y) / 2 * h; s.bx = s.x + ((s.nudge && s.nudge[0]) || 0); s.by = s.y + ((s.nudge && s.nudge[1]) || 0);   // nudge: a fixed slot round a shared spot (academy/pins.js clusterNudges)
       s.r = (s.el.offsetWidth || 44) / 2 + (s.el.classList.contains("is-next") ? 42 : 8);   // the next pin keeps room for its label (playtest #28: it covered the pin below)
     });
+    // [arch QA] a shared spot's fan, or one count pin when the fan would cover more ground than the place does
+    rgroups.forEach(g => {
+      tmp.copy(g.p).project(camera); const cx = (tmp.x + 1) / 2 * w, cy = (1 - tmp.y) / 2 * h;
+      tmp.copy(g.q).project(camera); const ppd = Math.hypot((tmp.x + 1) / 2 * w - cx, (1 - tmp.y) / 2 * h - cy);
+      const fan = Math.max(...g.members.map(s => Math.hypot((s.nudge && s.nudge[0]) || 0, (s.nudge && s.nudge[1]) || 0) + 22));
+      const f = g.p.clone().normalize().dot(cam);
+      g.collapsed = !fanFits(fan, ppd);
+      if (g.collapsed) g.members.forEach(s => { s.on = false; });
+      g.el.hidden = !g.collapsed || f <= 0.3;
+      g.el.style.transform = `translate(${cx.toFixed(1)}px,${cy.toFixed(1)}px)`;
+      g.el.tabIndex = g.el.hidden ? -1 : 0;
+    });
     const vis = rstops.filter(s => s.on);
     for (let it = 0; it < 12; it++) vis.forEach((a, i) => vis.slice(i + 1).forEach(b => {
-      const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01, need = a.r + b.r;
+      // pins of one fan keep their slots (already a pin apart): only a real overlap moves them (the next pin's title
+      // label is hidden in a fan, school.css .in-fan: the map card names it, hover and focus still show it)
+      const dx = b.bx - a.bx, dy = b.by - a.by, d = Math.hypot(dx, dy) || 0.01,
+        need = a.grp && a.grp === b.grp ? ((a.el.offsetWidth || 44) + (b.el.offsetWidth || 44)) / 2 + 2 : a.r + b.r;
       if (d >= need) return;
       if (d < 0.5) { a.bx -= need / 2; b.bx += need / 2; return; }   // two lessons on the same place (a Class pin on a NASA one): side by side
       const k = (need - d) / 2 / d; a.bx -= dx * k; a.by -= dy * k; b.bx += dx * k; b.by += dy * k;
@@ -268,6 +306,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       s.dot.style.transform = `translate(${s.x.toFixed(1)}px,${s.y.toFixed(1)}px)`; s.dot.style.opacity = Math.hypot(s.bx - s.x, s.by - s.y) > 4 ? op : 0;
       s.el.style.transform = `translate(${s.bx.toFixed(1)}px,${s.by.toFixed(1)}px)`; s.el.style.opacity = op;
       s.el.style.visibility = s.on ? "" : "hidden"; s.el.tabIndex = s.on ? 0 : -1;
+      if (!s.on) s.dot.style.opacity = 0;
     });
     // the route follows the surface: each leg is a great-circle arc, drawn only where it faces the camera
     let d = "", dd = "";
@@ -292,7 +331,10 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       if (solid) dd += seg; else d += seg;
     }
     rsvg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>`;
+    // [arch QA] a fanned pin's leader: a thin line back to the true spot, so it never reads as another place
+    const lead = rstops.filter(s => s.on && s.grp && Math.hypot(s.bx - s.x, s.by - s.y) > 4)
+      .map(s => `M${s.x.toFixed(1)},${s.y.toFixed(1)}L${s.bx.toFixed(1)},${s.by.toFixed(1)}`).join("");
+    rsvg.innerHTML = `<path class="route-todo" d="${d}"/><path class="route-done" d="${dd}"/>${lead ? `<path class="route-lead" d="${lead}"/>` : ""}`;
   }
 
   // ---------- Guide marks (academy/guide.js, docs/PLAYTEST.md): what a Flight School step is about ----------
@@ -613,16 +655,42 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     const over = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
     const dots = pos.map(q => [q.x - 7, q.y - 7, q.x + 7, q.y + 7]), labels = [];
     pos.forEach((q, i) => {
-      const b = [q.x + 4, q.y - 14, q.x + 10 + q.g.w, q.y + 8];
-      const hit = labels.some(o => over(b, o)) || dots.some((d, j) => j !== i && over(b, d));
-      q.g.el.classList.toggle("no-label", hit);
-      if (!hit) labels.push(b);
+      const free = b => !labels.some(o => over(b, o)) && !dots.some((d, j) => j !== i && over(b, d));
+      // [arch QA] a label that has no room on the right tries the left (Hovenweep sat unlabelled next to Crow Canyon)
+      const right = [q.x + 4, q.y - 14, q.x + 10 + q.g.w, q.y + 8], left = [q.x - 10 - q.g.w, q.y - 14, q.x - 4, q.y + 8];
+      const b = free(right) ? right : free(left) ? left : null;
+      q.g.el.classList.toggle("no-label", !b);
+      q.g.el.classList.toggle("is-left", b === left);
+      if (b) labels.push(b);
     });
     if (ctxMoon) {   // the context Moon rides behind the globe, low on the right of the view, wherever the camera turns
       const c = camera.position.clone().normalize(), right = new THREE.Vector3().crossVectors(camera.up, c).normalize(),
         up = new THREE.Vector3().crossVectors(c, right).normalize();
       ctxMoon.position.copy(c.multiplyScalar(-6)).add(right.multiplyScalar(3.4)).add(up.multiplyScalar(-1.0));
     }
+  }
+  // [arch QA] The Moon -> Earth bridge (a lesson's `bridge: "moon"`, Chimney Rock): the sphere wears another body's map
+  // for a moment, then its own again. Resolves when this body is back. Less motion: a short hold, no flight.
+  let altTex = null, bridgeEnd = null;
+  function bridgeFrom(map = MOON_BODY.map, ms = 2400) {
+    if (map === BODY.map) return Promise.resolve();
+    if (bridgeEnd) bridgeEnd();   // a bridge already on: this body back first, then the new one
+    if (!altTex) { altTex = new THREE.TextureLoader().load(map); altTex.colorSpace = THREE.SRGBColorSpace; }
+    label.hidden = true;
+    // this body's own extras (a draped regional picture, the context Moon) never show on the other body
+    const extras = [...overlays, ...(ctxMoon ? [ctxMoon] : [])], was = extras.map(o => o.visible);
+    extras.forEach(o => { o.visible = false; });
+    const own = moon.material.map;   // this body's map as it is now (setBaseMap may have swapped it)
+    moon.material.map = altTex; moon.material.needsUpdate = true; stage.dataset.bridge = "moon";
+    return new Promise(res => {
+      const t = setTimeout(() => end(), lessMotion() ? 900 : ms);
+      const end = () => {
+        clearTimeout(t); bridgeEnd = null;
+        moon.material.map = own; moon.material.needsUpdate = true; extras.forEach((o, k) => { o.visible = was[k]; });
+        delete stage.dataset.bridge; res();
+      };
+      bridgeEnd = end;
+    });
   }
   let ctxMoon = null;
   /** The Moon in Earth's sky, as context (not to scale: at true scale it would sit 60 Earth radii away). onPick on a tap. */
@@ -671,7 +739,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     // 0.4 real NASA views (media/nasa_views.js; all optional, today's visuals until called)
     setSky, setPolarCap, setHardwareModels, setOrbiters,
     // [courses] Earth extras (a course Library): a draped regional picture, labelled markers, the Moon as context
-    setOverlay, setMarkers, setMoonContext, setBaseMap, get baseMap() { return baseUrl; }, get markerCount() { return cmarks.length; }, get overlayCount() { return overlays.length; },
+    setOverlay, setMarkers, setMoonContext, setBaseMap, get baseMap() { return baseUrl; }, bridgeFrom, get bridging() { return stage.dataset.bridge || ""; }, get markerCount() { return cmarks.length; }, get overlayCount() { return overlays.length; },
     get hasContextMoon() { return !!ctxMoon; },
     /** The body's name ("Moon", "Earth"): spoken lines say which globe turns. */
     get bodyName() { return BODY.name; },

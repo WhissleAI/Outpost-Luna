@@ -198,7 +198,12 @@ def public() -> dict:
         if a["type"] in ARCH_TYPES:                  # layers, rings, hillshade, decide (arch_steps.py)
             from .arch_steps import public_accept as arch_public
             acc = arch_public(a, course=c.get("course"))
-        return {k: v for k, v in s.items() if k not in ("accept",)} | {"accept": acc}
+        out = {k: v for k, v in s.items() if k not in ("accept",)} | {"accept": acc}
+        ph = s.get("photo")
+        if isinstance(ph, dict) and ph.get("file") and c.get("course"):   # [arch QA] the step's own picture to describe
+            from .arch_steps import media_url
+            out["photo"] = {**ph, "url": media_url(c["course"], ph["file"])}
+        return out
     def lesson_out(l: dict) -> dict:
         ph = l.get("photo")
         if isinstance(ph, dict) and ph.get("file") and c.get("course"):   # a course pack's photo: its media URL

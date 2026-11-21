@@ -97,6 +97,8 @@ const clearQuestion = t => { const q = String(t || "").toLowerCase().replace(/[^
 /** First two sentences: a tour stop's short story. */
 /** Router intents a running / paused flow owns: they never pause it (main.js heard). */
 const FLOW_NAV = ["next", "prev", "back", "accept_offer", "resume", "pause", "repeat", "start"];
+/** [arch QA] an estimated place's note: the Moon's crew-estimated spots; an Earth course shows parks at park level */
+const estNote = () => (courseState.active === "moon" || !courseState.active ? "Location estimated from the crew's own directions." : "Shown at park level, never a site's exact spot.");
 const shortStory = t => ((t || "").match(/[^.!?]+[.!?]+/g) || [t || ""]).slice(0, 2).join(" ").trim();
 
 async function boot() {
@@ -314,7 +316,7 @@ async function boot() {
     const used = () => { if (heard) logKid(); voice.clearWords(); voice.show("idle"); };
     if (a11y && await a11y.handleText(text)) { used(); return; }   // [a11y] "where am I?", "faster", "press next"
     if (missionUI.active && await missionUI.handleText(text)) { used(); return; }
-    if (academyUI.active && await academyUI.handleText(text, { typed: !heard })) { used(); return; }   // Academy
+    if (academyUI.active && await academyUI.handleText(text, { typed: !heard, sure: !heard || !!opts.ptt })) { used(); return; }   // Academy (typed / Space: a real try)
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -354,7 +356,7 @@ async function boot() {
     if (f) { if (f.id !== turn.lastPlace) chime(); globe.showFeature(f); if (r.view) globe.flyTo(r.view.lat, r.view.lon); turn.lastPlace = f.id; }
     const token = card.show({
       title: f ? f.name : "Guide", place: !!f, asked, say: r.source === "none" ? `${say} ${TRY}` : say, arc, claims: r.claims,
-      note: f && f.est ? "Location estimated from the crew's own directions." : "",
+      note: f && f.est ? estNote() : "",
     });
     if (r.action !== "play") offerCrew(token, f, moment);
     if (player.active) player.stop(true);
@@ -574,7 +576,7 @@ async function boot() {
       globe.showFeature(f); turn.lastPlace = f.id;
       if (fieldLib && fieldLib.lib) { fieldLib.openPlace(f); scheduleNudge(); return; }   // [courses] its real photo + sources
       const token = card.show({ title: f.name, place: true, say: f.fact, arc: readoutLine({ source: "tap", action: "fly" }),
-        note: f.est ? "Location estimated from the crew's own directions." : "" });
+        note: f.est ? estNote() : "" });
       offerCrew(token, f, null);
       guideSay(f.fact);
     } else {
@@ -735,7 +737,8 @@ async function boot() {
     if (a11yCmd) { if (a11y) await a11y.handleText(a11yCmd); return; }
     if (intent === "a11y") { if (vbar && vbar.handleText(text)) return; if (a11y) await a11y.handleText(text); return; }
     if (intent === "answer") {
-      if (academyUI.active) await academyUI.answerText(text);
+      // [arch QA] the router decided it is this step's answer (a real try): a wrong word is a miss with a hint
+      if (academyUI.active) await academyUI.answerText(text, { sure: true });
       return;
     }
     if (intent === "brain") { if (brain) { const was = brain.isOpen; brain.toggle(); if (!was && text) guideSay(BRAIN_COPY.say, { voice: CAPCOM_VOICE }); } return; }   // [brain] B, voice "my brain"

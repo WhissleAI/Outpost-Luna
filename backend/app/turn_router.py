@@ -1074,16 +1074,23 @@ def route(text: str, ctx: Ctx, act: list[str] | None = None) -> dict:
         if ctx.step_type not in ("intent", "keywords", "vocab_say") and WH.match(norm(raw)) and \
                 clear_question(raw, dd, act, ctx.dd_strong) and not _names_option(raw, ctx):
             return out("question", "question_in_lesson")
-        if single and ctx.step_type in ("keywords", "command") and not _names_option(raw, ctx):
+        # [arch QA] a try the kid clearly meant: typed, Space held, or (a name / word step) Arc sure it was for us.
+        # Its content words are a real try ("history", "Colorado", "show me Denver"): a miss with the next hint, not
+        # a silent "Didn't catch that" forever. Filler ("um", "okay") has no content words and stays ignored.
+        # (Not on guess / ethics-call / video steps, which never count a miss, nor on the check ride, a scored shift.)
+        sure = s == "lesson" and ctx.step_type not in NO_MISS_STEPS and \
+            (not heard or explicit or (ctx.step_type in SURE_STEPS and dd is not None and dd >= ctx.dd_strong))
+        if single and ctx.step_type in ("keywords", "command") and not _names_option(raw, ctx) and \
+                not (sure and ctx.step_type in SURE_STEPS):
             return out("ignore", "too_short", notice=bool(dd is not None and dd >= ctx.dd_strong))
         if heard and len(ws) > 14 and not _names_option(raw, ctx) and (dd is None or dd < ctx.dd_strong):
             return out("ignore", "chatter")      # a long ramble with no answer in it, not clearly to us
-        if not _plausible(raw, ctx, dd):
+        if not _plausible(raw, ctx, dd, sure=sure):
             # "Oh, it's", "okay", "alright": not a try. Silent, and never a miss (the grader agrees: grade.plausible).
             return out("ignore", "not_an_answer", notice=bool(not heard or (dd is not None and dd >= ctx.dd_strong)))
         if heard and not explicit and not yesno_counts(raw, ctx, dd):
             return out("ignore", "room_yes_no")   # a room "yes" / "no" while the question is still being asked
-        return out("answer", "step")
+        return out("answer", "step", **({"sure": True} if sure else {}))
     if s == "cabin":
         if clear_question(raw, dd, act, ctx.dd_strong) and not re.search(r"\b(power|shields?|rover|shelter|heaters?|science|"
                                                           r"greenhouse|comms|life support|oxygen|battery|dose|"
@@ -1176,12 +1183,17 @@ def _option_key(text: str, ctx: Ctx) -> bool:
     return n > 0 and option_index(text, n) is not None
 
 
-def _plausible(text: str, ctx: Ctx, dd: float | None, strict: bool = False) -> bool:
+SURE_STEPS = ("keywords", "intent")   # [arch QA] a word / a place: one confident spoken word is a real try
+NO_MISS_STEPS = ("predict", "decide", "video")   # the grader never counts a miss there (academy/routes.py)
+
+
+def _plausible(text: str, ctx: Ctx, dd: float | None, strict: bool = False, sure: bool = False) -> bool:
     """A real try at the open step (academy/grade.plausible: an option, the expected content, or >= 3 content words
     that Arc says were for us). Everything else on a step screen is ignored and never counts as a miss. strict: only
     the step's own words count (not the >= 3 content words fallback)."""
     from .academy.grade import plausible
-    return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options, strict=strict)
+    return plausible(ctx.step, text, dd, ctx.dd_min, step_type=ctx.step_type, options=ctx.step_options, strict=strict,
+                     sure=sure)
 
 
 _LEAD = re.compile(r"^(?:(?:um|uh|oh|okay|ok|so|i think|it s|its|it is|my answer is|i say|i pick)\s+)+")

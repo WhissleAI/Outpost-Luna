@@ -24,6 +24,7 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const hasMissions = () => onMoon() || !!(courseState.info && courseState.info.missions === "outpost");
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
+const moonCourse = onMoon;
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // Every lesson step the Academy grades lands in the practice counts (ids and counts only; brain_store.js).
@@ -104,11 +105,14 @@ export const SKILLS = {
 export const lessonKey = (id, course = courseState.active) => (!course || course === "moon" ? id : qid(course, id));
 /** [courses] The course's own big ideas (manifest big_ideas, docs/COURSES.md §4.8), else the table above (the Moon's). */
 const courseSkill = l => { const b = l && ((courseState.info && courseState.info.big_ideas) || {})[splitQid(l.id).id];
-  return b && b.star ? { star: b.star, idea: b.idea || "", ngss: Array.isArray(b.codes) ? b.codes : [] } : null; };
+  return b && b.star ? { star: b.star, idea: b.idea || "", ngss: Array.isArray(b.codes) && b.codes.length ? b.codes : Array.isArray(l.standards) ? l.standards : [] } : null; };
 // [courses] another course's lesson with no big idea in its manifest: the star is its patch's name ("Layer Reader"),
 // not the first two words of its title ("Clues, not" / "Moonrise at" read as cut off)
 const courseStar = l => (l && l.badge && l.badge.name && splitQid(l.id).course !== "moon" ? l.badge.name : "");
-export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: courseStar(l) || String((l && l.title) || "").split(" ").slice(0, 2).join(" "), idea: (l && l.title) || "", ngss: [] };
+// [arch QA] no big idea in an older pack's manifest: the lesson's unit ("Excavation and stratigraphy"), never its title
+// again, and its own standards codes
+export const skillOf = l => courseSkill(l) || SKILLS[l && l.id] || { star: courseStar(l) || String((l && l.title) || "").split(" ").slice(0, 2).join(" "),
+  idea: (l && (l.teaches || l.unit || l.title)) || "", ngss: Array.isArray(l && l.standards) ? l.standards : [] };
 
 const trackOf = l => (l.ride || (!isClass(l) && !isExplorer(l) && !isField(l)) ? "core" : isField(l) ? "field" : isExplorer(l) ? "explorer" : "class");
 const badgeId = l => (l && l.badge && l.badge.id) || "";
@@ -288,8 +292,11 @@ export const GROWN = {
   title: "Practice",
   none: "No graded lesson steps yet.",
   th: ["Lesson", "What it teaches", "Steps", "First try", "With help", "Shown", "Minutes"],
-  ngss: "NGSS hooks",
+  get ngss() { return moonCourse() ? "NGSS hooks" : "Standards"; },   // [arch QA] Archaeology cites Colorado + C3 + NGSS
   ngssNote: "Standards the lessons cite. Not an alignment review.",
+  /** [arch QA] the course's standards list (manifest `standards`): what a teacher files with the Progress page */
+  frameworks: list => (list || []).filter(f => f && f.framework && (f.codes || []).length)
+    .map(f => `${f.framework}: ${f.codes.join(", ")}`).join(". "),
   hard: t => `Needed the most help: ${t}.`,
   totals: t => `${t.steps} steps answered, ${t.firstPct}% on the first try, about ${t.mins} min on lessons.`,
   hints: (m, p) => `${m} tries weren't right yet.${p ? ` The app gave ${p} hint${p === 1 ? "" : "s"} early, after a long pause.` : ""}`,
@@ -306,7 +313,7 @@ export function practiceHtml(brain, lessons) {
     <p class="pg-cur">${esc(GROWN.hints(t.misses, t.pause))}</p>
     ${hard.length ? `<p class="pg-cur">${esc(GROWN.hard(hard.map(r => r.title).join(", ")))}</p>` : ""}
     <div class="tbl pg-tbl"><table><thead><tr>${GROWN.th.map(h => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(tr).join("")}</tbody></table></div>
-    <p class="foot">${esc(GROWN.ngss)}: ${esc(GROWN.ngssNote)}</p></section>`;
+    <p class="foot">${esc(GROWN.ngss)}: ${esc(GROWN.ngssNote)}${!moonCourse() && GROWN.frameworks(courseState.info && courseState.info.standards) ? ` ${esc(GROWN.frameworks(courseState.info.standards))}.` : ""}</p></section>`;
 }
 
 // ---------- this computer's numbers (GET /api/brain/summary), on the playing cadet's card ----------
