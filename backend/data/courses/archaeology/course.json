@@ -6,11 +6,11 @@
  "roles": {
   "capcom": {
    "name": "Field Director",
-   "analogy": "Your CAPCOM on the dig: the crew lead who calls the next move."
+   "analogy": "The crew lead on the dig, who calls the next move. (On the Moon course: CAPCOM.)"
   },
   "houston": {
    "name": "the Lab",
-   "analogy": "Your Houston: samples go out, results come back after a delay. A radiocarbon lab can take days or weeks."
+   "analogy": "Samples go out, results come back after a delay. A radiocarbon lab can take days or weeks. (On the Moon course: Houston.)"
   }
  },
  "teacher_note": "Draft for teacher review. Before a classroom pilot, review the course (especially Who decides?, Many voices and Mesa Verde, around 1280) with Crow Canyon's education team or a tribal cultural office. No tribe has endorsed this course.",
@@ -20,6 +20,7 @@
    "title": "Clues, not treasure",
    "minutes": 4,
    "place": "mesa_verde",
+   "site": "Cliff Palace",
    "badge": {
     "id": "field_scout",
     "name": "Field Scout",
@@ -30,7 +31,7 @@
     "CO SS History 1.1",
     "C3 D1"
    ],
-   "brief": "Archaeologists read the past from what people left behind. Your Field Director is your CAPCOM on the dig. The Lab is your Houston: results come back later.",
+   "brief": "Archaeologists read the past from what people left behind. Your Field Director calls the next move. The Lab sends results back later.",
    "steps": [
     {
      "prompt": "What is an archaeologist mostly looking for?",
@@ -228,6 +229,7 @@
    "title": "Read the land from above",
    "minutes": 5,
    "place": "mesa_verde",
+   "site": "Chapin Mesa from above",
    "badge": {
     "id": "sky_surveyor",
     "name": "Sky Surveyor",
@@ -471,6 +473,7 @@
    "title": "Layers tell time",
    "minutes": 5,
    "place": "mesa_verde",
+   "site": "Mesa Top Loop pithouse",
    "badge": {
     "id": "layer_reader",
     "name": "Layer Reader",
@@ -753,6 +756,7 @@
    "title": "Dating the past",
    "minutes": 5,
    "place": "mesa_verde",
+   "site": "Long House",
    "badge": {
     "id": "ring_counter",
     "name": "Ring Counter",
@@ -763,7 +767,7 @@
     "CO SS Geography 4.2",
     "NGSS HS-ESS1-6 (methods analogy)"
    ],
-   "brief": "A roof beam can tell you the year its tree was cut. Like Houston, the Lab answers after a delay: radiocarbon results take days or weeks.",
+   "brief": "A roof beam can tell you the year its tree was cut. The Lab answers after a delay: radiocarbon results take days or weeks.",
    "steps": [
     {
      "prompt": "Can a roof beam give the exact year its tree was cut?",
@@ -978,6 +982,7 @@
    "title": "Things people left",
    "minutes": 4,
    "place": "mesa_verde",
+   "site": "Far View House",
    "badge": {
     "id": "object_reader",
     "name": "Object Reader",
@@ -1495,6 +1500,7 @@
    "title": "Many voices",
    "minutes": 5,
    "place": "mesa_verde",
+   "site": "Far View sites",
    "badge": {
     "id": "listener",
     "name": "Listener",
@@ -1721,6 +1727,7 @@
    "title": "Mesa Verde, around 1280",
    "minutes": 6,
    "place": "mesa_verde",
+   "site": "Spruce Tree House",
    "badge": {
     "id": "case_builder",
     "name": "Case Builder",
@@ -2022,6 +2029,7 @@
    "title": "Survey season (preview)",
    "minutes": 5,
    "place": "mesa_verde",
+   "site": "A made-up mesa nearby",
    "badge": {
     "id": "season_lead",
     "name": "Season Lead",

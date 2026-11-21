@@ -15,7 +15,12 @@ import { callSign } from "./story.js";
 import { isClass, isExplorer, isField } from "./explorer.js";
 import { readCadets, summarize } from "./progress.js";
 import { activeProfile } from "./learning_ui.js";
-import { courseLabel, courseState, qid, splitQid } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
+import { courseLabel, courseState, qid, splitQid, roleName } from "./courses.js";   // [courses] big ideas from the course manifest; counts per course
+const onMoon = () => !courseState.active || courseState.active === "moon";
+const app = () => (onMoon() ? "the outpost" : "the app");
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+/** [courses] a course with no outpost missions (Archaeology): no Missions count on the cadet's page. */
+const hasMissions = () => onMoon() || !!(courseState.info && courseState.info.missions === "outpost");
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -28,6 +33,8 @@ export const COPY = {
   close: "Close My Brain",
   say: "Here's your brain. The stars are what you've learned.",
   cadet: "Cadet", commander: "Commander",
+  // [courses] another course's rank is its own crew word: Cadet / Commander are the Moon's (its check ride)
+  get rank() { return onMoon() ? "" : "Field crew"; },
   change: "Change call sign",
   stats: { stars: "Stars lit", patches: "Patches", missions: "Missions", streak: "Days in a row" },
   mapTitle: "Your star map",
@@ -35,18 +42,21 @@ export const COPY = {
   legend: { lit: "Learned", practising: "Practising", dim: "Not yet" },
   tryTitle: "Try next",
   get tryGo() { return `Go to ${courseLabel("school", "Flight School")}`; },   // [courses] Field School in Archaeology
-  voiceTitle: "How the outpost knows your voice",
-  get voiceEmpty() { return !courseState.active || courseState.active === "moon" ? "Talk to CAPCOM. The outpost learns how you say Moon names." : "Talk to your guide. The outpost learns how you say place names."; },
-  alias: (heard, name) => `You say “${heard}”. The outpost knows you mean ${name}.`,
-  waits: "You take a moment before you answer. The outpost waits for you.",
-  quick: "You answer quickly. The outpost answers quickly too.",
-  thinkTitle: "How the outpost thinks",
-  think: [
-    ["hear", "It listens", "It turns your voice into words, right here on this computer."],
-    ["comms", "It checks who you're talking to", "Talking to a friend? It stays quiet. Talking to CAPCOM? It answers."],
-    ["shield", "It keeps your words private", "Names and addresses stay secret. Rude words get filtered."],
-    ["radio", "It takes turns", "One voice at a time. You can always cut in."],
-  ],
+  // [courses] "the outpost" is the Moon's base: another course says "the app" (and names its own guide)
+  get voiceTitle() { return `How ${app()} knows your voice`; },
+  get voiceEmpty() { return onMoon() ? "Talk to CAPCOM. The outpost learns how you say Moon names." : `Talk to your ${roleName("capcom", "guide")}. The app learns how you say place names.`; },
+  alias: (heard, name) => `You say “${heard}”. ${cap(app())} knows you mean ${name}.`,
+  get waits() { return `You take a moment before you answer. ${cap(app())} waits for you.`; },
+  get quick() { return `You answer quickly. ${cap(app())} answers quickly too.`; },
+  get thinkTitle() { return `How ${app()} thinks`; },
+  get think() {
+    return [
+      ["hear", "It listens", "It turns your voice into words, right here on this computer."],
+      ["comms", "It checks who you're talking to", `Talking to a friend? It stays quiet. Talking to ${roleName("capcom", "CAPCOM")}? It answers.`],
+      ["shield", "It keeps your words private", "Names and addresses stay secret. Rude words get filtered."],
+      ["radio", "It takes turns", "One voice at a time. You can always cut in."],
+    ];
+  },
   foot: "Saved on this computer only. A grown-up can see it all in Settings, For grown-ups.",
   loading: "Loading…",
 };
@@ -182,9 +192,9 @@ export function cadetHtml(d) {
   const voice = voiceLines(d.learned);
   const stat = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
   return `<header class="bm-head"><span class="set-av" aria-hidden="true">${esc(cs.slice(0, 1).toUpperCase())}</span>
-      <div class="bm-who"><h1 id="brainTitle">${esc(cs)}</h1><p>${esc(academy.qualified ? COPY.commander : COPY.cadet)}</p></div>
+      <div class="bm-who"><h1 id="brainTitle">${esc(cs)}</h1><p>${esc(COPY.rank || (academy.qualified ? COPY.commander : COPY.cadet))}</p></div>
       <button type="button" class="btn" data-bm-cs>${icon("astronaut", { size: 16 })}${esc(COPY.change)}</button></header>
-    <dl class="mx-score bm-stats">${stat(COPY.stats.stars, `${lit}<small> of ${list.length}</small>`)}${stat(COPY.stats.patches, (academy.badges || []).length)}${stat(COPY.stats.missions, (d.flown || []).length)}${stat(COPY.stats.streak, st)}</dl>
+    <dl class="mx-score bm-stats">${stat(COPY.stats.stars, `${lit}<small> of ${list.length}</small>`)}${stat(COPY.stats.patches, (academy.badges || []).length)}${hasMissions() ? stat(COPY.stats.missions, (d.flown || []).length) : ""}${stat(COPY.stats.streak, st)}</dl>
     <section class="bm-sec"><h2>${esc(COPY.mapTitle)}</h2><p class="bm-line">${esc(COPY.mapLine)}</p>
       ${list.length ? starMapSvg(list) : `<p class="set-help">${esc(COPY.loading)}</p>`}
       <ul class="bm-legend">${["lit", "practising", "dim"].map(k => `<li class="is-${k}"><i aria-hidden="true"></i>${esc(COPY.legend[k])}</li>`).join("")}</ul></section>

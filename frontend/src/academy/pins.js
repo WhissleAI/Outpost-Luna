@@ -72,3 +72,19 @@ export function clusterNudges(stops, { deg = 3, gap = 34 } = {}) {
     return [Math.round(r * Math.cos(t)), Math.round(r * Math.sin(t))];
   });
 }
+
+/** [courses] Where a non-Moon course's lesson map looks: its lessons' region, close up. Archaeology's ten lessons sit at
+ *  two parks 105 km apart; the map used to show the whole continent (the next lesson's place at 4.2 globe radii), so
+ *  the Mesa Verde cluster read as pins in Canada and Texas. The view is the lessons' middle (weighted by lesson, so
+ *  the park holding nine sits in the middle and Chimney Rock off to one side), close enough that they fill the view
+ *  (a draped regional picture, the Field Library's, shows there). Lessons spread wider than `maxDeg` (a course across
+ *  a continent): null, and the map keeps the old whole-globe view.
+ *  -> {lat, lon, dist, deg}: deg = how far the places spread from the middle. Pure. */
+export function regionOf(points, { maxDeg = 12, near = 1.09, perDeg = 0.035 } = {}) {
+  const ps = (points || []).filter(p => p && Number.isFinite(+p.lat) && Number.isFinite(+p.lon));
+  if (!ps.length) return null;
+  const lat = ps.reduce((s, p) => s + +p.lat, 0) / ps.length, lon = ps.reduce((s, p) => s + +p.lon, 0) / ps.length;
+  const deg = Math.max(...ps.map(p => Math.hypot(+p.lat - lat, (+p.lon - lon) * Math.cos(lat * Math.PI / 180))));
+  if (deg > maxDeg) return null;
+  return { lat: +lat.toFixed(3), lon: +lon.toFixed(3), dist: +(near + deg * perDeg).toFixed(3), deg: +deg.toFixed(3) };
+}

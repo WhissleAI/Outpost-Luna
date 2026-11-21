@@ -40,6 +40,7 @@ from silent import LAUNCH_ARGS, silence  # noqa: E402
 
 results: list[tuple[bool, str]] = []
 VID = "arch_lidar_space"
+OPEN = f"() => {{ window.__outpost.video.openVideo('{VID}', {{context: 'library'}}); }}"
 ON_MAP = "() => document.body.dataset.aview === 'map'"
 PICK = "() => document.body.dataset.aview === 'home' && !!document.querySelector('#aPanel .a-crs-opt')"
 CHIP = "() => { const c = document.getElementById('courseChip'); return c ? {text: c.textContent, dl: c.dataset.dl ?? null, label: c.getAttribute('aria-label'), hidden: c.hidden} : null; }"
@@ -155,7 +156,7 @@ def main():
            f"the switch saved the course's 5 videos from its pack, no network ({pr and pr['videos']})")
         _, av = call(a.api, f"/api/video/{VID}/available")
         ok(av and av["status"] == "cached", f"{VID} plays from the saved file ({av})")
-        pg.evaluate(f"() => window.__outpost.video.openVideo('{VID}', {{context: 'library'}})")
+        pg.evaluate(OPEN)   # not awaited: openVideo settles when the dialog closes
         ok(until(pg, "() => { const d = document.getElementById('vidDlg'); return d && d.open && !!d.querySelector('video.vid-video') && !d.dataset.card; }", 8000),
            "the course video opens in our player (no card, no stream)")
         ok(until(pg, "() => { const v = document.querySelector('#vidDlg video'); return v && v.readyState >= 1 && v.src.includes('/api/video/'); }", 15000),
@@ -229,7 +230,7 @@ def main():
                 return route.fulfill(status=200, content_type="application/json", body=json.dumps({"id": VID, "status": "downloading"}))
             route.continue_()
         pg.route(f"**/api/video/{VID}/available", avail)
-        pg.evaluate(f"() => window.__outpost.video.openVideo('{VID}', {{context: 'library'}})")
+        pg.evaluate(OPEN)   # not awaited: openVideo settles when the dialog closes
         ok(until(pg, "() => document.getElementById('vidDlg').dataset.card === 'downloading'", 6000), "a video on its way: the 'downloading' card")
         txt = pg.inner_text("#vidDlg")
         ok("still downloading" in txt and "plays here as soon as it's ready" in txt, "it says so calmly")

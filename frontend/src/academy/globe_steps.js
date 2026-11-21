@@ -27,7 +27,7 @@ function bindOptions(root, ctx) {
 }
 
 /** Run a step's globe directive. Missing globe features are skipped (older globe.js), never an error. */
-export function runDirective(globe, g) {
+export function runDirective(globe, g, { target = null, placeById = O.placeById } = {}) {
   if (!globe || !g) return;
   const call = (fn, ...a) => (typeof globe[fn] === "function" ? globe[fn](...a) : undefined);
   if (g.do !== "fly" && g.do !== "earth") call("clearHighlight");   // the lesson's place ring would distract
@@ -35,7 +35,10 @@ export function runDirective(globe, g) {
     case "pole": call("poleView", g.pole || "south", g.dist); break;
     case "side": call("flyTo", 0, g.lon != null ? g.lon : g.side === "far" ? 180 : 0, g.dist || 3.4); break;
     case "sun": call("setSunDir", 0, g.sun_lon); call("flyTo", 0, g.view_lon != null ? g.view_lon : 0, g.dist || 3.4); break;
-    case "fly": case "earth": if (g.place && O.placeById) { const f = O.placeById(g.place); if (f) call("showFeature", f); } else if (g.lat != null) call("flyTo", g.lat, g.lon, g.dist); break;
+    case "fly": case "earth": if (g.place && placeById) { const f = placeById(g.place); if (f) call("showFeature", f);
+      // [courses playtest] a find step that flies to a NEIGHBOUR ("Find Mesa Verde", flown to the Four Corners): the
+      // flight only. Its ring and name ("Four Corners") sat on the very spot the kid had to find, naming the wrong place.
+      if (f && target && target !== g.place) call("clearHighlight"); } else if (g.lat != null) call("flyTo", g.lat, g.lon, g.dist); break;
     case "pair": case "route": call("poleView", "south", g.dist || 2.4); break;
     case "zoom": call("flyTo", g.lat || 0, g.lon || 0, 4.5); setTimeout(() => call("poleView", "south", 1.8), 1400); break;
     default: break;

@@ -703,7 +703,9 @@ def offer_lead(text: str) -> str | None:
 def nav_intent(text: str, ctx: Ctx) -> tuple[str, str | None] | None:
     """(intent, arg) for a navigation turn in this screen, else None."""
     q = norm(text)
-    q = re.sub(r"^(?:okay|ok|um|uh|so|hey|capcom|please)\s+", "", q)
+    # leading fillers, any number of them ("um so I don't know", "hmm okay help"): the same strip as the client's
+    # a11y.js parseCommand, so a hesitant "I don't know" still climbs the hint ladder
+    q = re.sub(r"^(?:(?:okay|ok|um+|uh+|uhm|erm?|hmm+|mm+|so|hey|capcom|please)\s+)+", "", q)
     q = re.sub(r"\s+(?:please|now|capcom)$", "", q)
     if not q:
         return None

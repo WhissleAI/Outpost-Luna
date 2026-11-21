@@ -7,12 +7,16 @@
 // Every control is a button, a choice or a field in the Settings sheet, so Tab, arrows, a controller (buttons and
 // choices; typing needs a keyboard) and "press <label>" reach it like any other setting. The sheet redraws itself
 // (a11y.js renderPanel): everything typed lives in `S`, never only in the DOM.
+import { courseLabel, courseState } from "./courses.js";
+const moonCourse = () => !courseState.active || courseState.active === "moon";
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || { stepRenderers: {} }) : { stepRenderers: {} };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 export const COPY = {
   title: "Class lessons",
-  line: "Write lessons for your class. They show up in Flight School next to NASA's.",
+  // [courses] the course's own school ("Field School") and lessons; the Moon's say Flight School and NASA, as before
+  get line() { return moonCourse() ? "Write lessons for your class. They show up in Flight School next to NASA's."
+    : `Write lessons for your class. They show up in ${courseLabel("school", "Field School")} next to the course's own.`; },
   empty: "No class lessons yet.",
   newLesson: "New lesson",
   importPack: "Import a pack…",
