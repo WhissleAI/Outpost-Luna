@@ -80,7 +80,8 @@ def arch(b, base, out, vw, vh):
     pg.click("#libraryBtn"); pg.wait_for_timeout(2500)
     check(pg.locator(".flib").is_visible(), f"[{tag}] Library: the Field Library panel")
     tabs = pg.locator(".flib-tabs [data-shelf]").all_inner_texts()
-    check(len(tabs) == 7 and "Watch" in tabs and "Sentinel-2" in tabs and "Climate record" in tabs, f"[{tag}] ... with its shelves {tabs}")
+    check(len(tabs) == 8 and "Watch" in tabs and "Sentinel-2" in tabs and "Climate record" in tabs and "Clues in the data" in tabs,
+          f"[{tag}] ... with its shelves {tabs}")
     check(g["m"] >= 8, f"[{tag}] places and NASA views named on the globe ({g['m']})")
     vis = pg.evaluate("[...document.querySelectorAll('.cmark')].filter(e => !e.classList.contains('is-hidden') && e.getBoundingClientRect().width > 0).length")
     check(vis >= 5, f"[{tag}] ... in view ({vis})")
@@ -110,6 +111,13 @@ def arch(b, base, out, vw, vh):
     check("NOAA" in pg.locator("#card").inner_text() and "Chart: " in pg.locator("#card").inner_text(), f"[{tag}] ... a chart, credited to NOAA NCEI")
     pg.wait_for_timeout(800)
     pg.screenshot(path=f"{out}/field_library-climate-{tag}.png")
+    pg.click('[data-shelf="data"]'); pg.wait_for_timeout(400)
+    pg.click('[data-item="drought_timeline"]')
+    check(until(pg, "() => { const s = document.querySelector('svg.chart'); return !!s && s.getBoundingClientRect().width > 0 && s.querySelectorAll('path, rect').length > 0; }"),
+          f"[{tag}] Clues in the data: the interactive drought chart draws")
+    pg.wait_for_timeout(600)
+    pg.screenshot(path=f"{out}/field_library-data-{tag}.png")
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(400)
 
     pg.evaluate("document.querySelector('.cmark[data-id=\"place:hovenweep\"]').click()")
     check(until(pg, "() => /Hovenweep/.test(document.getElementById('cardTitle').textContent)"), f"[{tag}] a place marker opens its card")

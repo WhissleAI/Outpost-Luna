@@ -685,6 +685,10 @@ Builds on the playtest round (#197: regional map, course-own words, typed non-an
   It is on the GitHub `assets-v2` pre-release only (the manifests' `url`) for now; v4 (Dropbox, GitHub mirror) is its
   `pack` fallback. When v5 goes up on Dropbox too, `scripts/upload_assets.py` makes Dropbox the `url` and
   `scripts/upload_assets_github.py` puts GitHub back in `mirrors` (RELEASING.md "First-run assets: upload to both").
+- **Pack v6** (0.5.5, sha256 `ead869d2…`, 40.6 MB, 47 files, `min_version: 6`, `min_app: 0.5.3`): v5 plus the open-data
+  shelf "Clues in the data" (drought timeline, four tree-ring records, radiocarbon dates, rivers layer) and the 2025
+  Sentinel-2 view. GitHub `assets-v2` is its `url` for now, with v5 as the `pack` fallback; the same Dropbox step as v5
+  applies. The new `moon_views` asset (v1, 4.3 MB) ships the same way.
 - Tests: `backend/tests/test_arch_qa_tries.py`, `frontend/tests/arch_qa.test.js`, end to end
   `frontend/tests/e2e/arch_qa_e2e.py` (+ `arch_patches_e2e.py`).
 

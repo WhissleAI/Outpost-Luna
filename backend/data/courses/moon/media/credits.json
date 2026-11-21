@@ -10,7 +10,9 @@
   "width": 4096,
   "height": 2048,
   "bytes": 1706400,
-  "sha256": "b733dcfc70deb3b955bdd8398bdf26eb339c7e9465500a945056f395b4d223e3"
+  "sha256": "b733dcfc70deb3b955bdd8398bdf26eb339c7e9465500a945056f395b4d223e3",
+  "licence_class": "cc0",
+  "licence_evidence": "https://astrogeology.usgs.gov/search/map/unified_geologic_map_of_the_moon_1_5m_2020"
  },
  {
   "file": "moon_height.jpg",
@@ -22,6 +24,8 @@
   "width": 4096,
   "height": 2048,
   "bytes": 2796581,
-  "sha256": "8c7edabd45350b5d46c597b3f9592d58c6e2de9df97de8fdb816394ed4407a7b"
+  "sha256": "8c7edabd45350b5d46c597b3f9592d58c6e2de9df97de8fdb816394ed4407a7b",
+  "licence_class": "pd",
+  "licence_evidence": "https://astrogeology.usgs.gov/search/map/moon_lro_lola_color_shaded_relief_388m_v4"
  }
 ]

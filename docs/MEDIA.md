@@ -271,7 +271,7 @@ Total 4.3 MB. **Skipped:** LROC NAC crops of the Apollo sites. The PDS RDR mosai
 not practical in this round (QuickMap / website JPGs are not used: not the PDS). Also skipped for licence reasons: JAXA,
 ISRO, CNSA, the UNESCO feed, GVP, Seshat, OSM.
 
-**Checks.** `backend/tests/test_open_data.py` (the gate, chart parsing, the new kinds, the route, the Archaeology data
+**Checks.** `backend/tests/test_open_data_kinds.py` (the gate, chart parsing, the new kinds, the route, the Archaeology data
 and its wording), `backend/tests/test_moon_views.py` (API, paths, licences, manifest), `frontend/tests/open_data.test.js`
 and `moon_views.test.js`. Render check without the app: `node frontend/tests/fixtures/render_open_data.mjs <out.html>`
 writes the real charts into a static page for a headless screenshot.

@@ -245,7 +245,7 @@ def test_natural_earth_layer_lines_up_with_the_overlay_box():
 
 def test_every_new_file_is_credited_hashed_and_the_pack_stays_modest():
     new = [c for c in CRED if c["file"].endswith((".json", ".csv", ".glb")) or c["file"].startswith(("s2_", "layer_"))]
-    assert len(new) == 5
+    assert len(new) == 7     # #194's five + main's two Sentinel-2 views (#192)
     for c in new:
         p = D / "media" / c["file"]
         import hashlib
