@@ -636,29 +636,32 @@ Library is unchanged).
 - The Moon's `library.json` has layers only: Age (USGS Unified Geologic Map, CC0) and Height (USGS LOLA colour relief,
   public domain). It ships in the app.
 - Tests: `backend/tests/test_open_data.py`, `frontend/tests/map_layers.test.js`, and the two runs of `field_library_e2e.py`.
-### 4.12 Archaeology flow fixes (QA 0.5.2, pack v3)
 
+### 4.12 Archaeology flow fixes (QA 0.5.2, pack v5)
+
+Builds on the playtest round (#197: regional map, course-own words, typed non-answers never silent).
 - **A typed try is a try.** On a lesson step, a turn the kid clearly meant (typed, Space held, or, on a keywords /
   intent step, Arc sure it was for us: dd >= dd_strong) counts any content word as a real try
   (`turn_router` `sure` -> `grade.plausible(sure=True)`; the client sends `input.sure` with the router's "answer"):
-  "history", "Colorado", "show me Denver" are misses with the next hint, then the reveal. Filler ("um", "okay"), our own
-  echo and unsure room words are still ignored. Guess / ethics-call / video steps and the check ride keep their rules.
-- **Course words, not Moon words.** The keywords intro is per course (`guide.introFor`: the Moon keeps "radio
-  practice"); no "cadet" outside the Moon (no learner label: "Here we go."); My Brain and Progress show the course's
-  school ("Field School") and no "Missions" stat without an outpost mission; the class editor names the course's school.
-- **The map frames the region.** An Earth course lands at `pins.REGION_DIST` on its next stop (SW Colorado), and a
-  lesson flies to its place. Lessons that share a spot (`pins.clusterOf`) fan out round it (leader lines to the true
-  spot) only while the fan covers at most 4 degrees of ground (`pins.fanFits`); zoomed further out one count pin stands
-  in for them (tap: zoom back in). Before, nine fanned pins at continent zoom put Chimney Rock's pin in Mexico.
+  "history", "Colorado", "show me Denver" are misses with the next hint, then the reveal. Filler, our own echo and
+  unsure room words are still ignored (a typed turn with no content word still gets the step again, `typedNudge`).
+  Guess / ethics-call / video steps and the check ride keep their rules.
+- **No "cadet" outside the Moon.** The manifest has no learner word (and a new `labels` key would make older apps
+  skip the pack), so a line with no spoken call sign is "Here we go." / "Nice work." there.
+- **Zoom-aware clusters.** On top of the regional view (`pins.regionOf`), lessons that share a spot (`pins.clusterOf`)
+  fan out round it with leader lines only while the fan covers at most 4 degrees of ground (`pins.fanFits`); zoomed
+  further out, one count pin stands in (tap: back to the region). A lesson flies to its place (`pins.REGION_DIST`).
+- **The Moon -> Earth bridge** (`bridge: "moon"`, `globe.bridgeFrom`): Chimney Rock opens on the Moon, then Earth, then
+  flies to the monument.
 - **First download says what it is doing.** The desktop app writes the phase after the bytes into `.active/<asset>`
   ("<done> <total> verify|install"); `GET /api/courses/packs` returns it as `phase`; the pick shows the percent, then
   "Checking the download…", "Installing…", "Opening Archaeology…". Course storage shows the percent too. Removing the
   playing course says so on the Moon map after the reload.
-- **Progress for grown-ups.** The manifest's `big_ideas` (one factual line per lesson, with the lesson's standards
-  codes) fill "What it teaches"; the footer lists the course's standards frameworks and codes.
-- **Pack v3** (`outpost-luna-v2-course_archaeology-3.tar`, built with `COURSE_PACK_VIDEOS=1`): course.json (two describe
-  pictures) and the manifest's `big_ideas`. `min_version` stays 2 until v3 is uploaded (RELEASING.md "First-run
-  assets: upload to both").
+- **Progress for grown-ups.** "What it teaches" comes from the manifest's `big_ideas` (an older pack without them: the
+  lesson's `unit`, never its title again); the footer lists the course's standards frameworks and codes.
+- **Pack v5** (`outpost-luna-v2-course_archaeology-5.tar`, built with `COURSE_PACK_VIDEOS=1`): course.json (the two
+  describe steps' pictures). `min_version` stays 4 until v5 is uploaded (RELEASING.md "First-run assets: upload to
+  both").
 - Tests: `backend/tests/test_arch_qa_tries.py`, `frontend/tests/arch_qa.test.js`, end to end
   `frontend/tests/e2e/arch_qa_e2e.py` (+ `arch_patches_e2e.py`).
 
