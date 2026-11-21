@@ -18,14 +18,17 @@ import { coreLessons, fieldLessons, isExplorer, isField, unlocked } from "./expl
 import { debriefStory } from "./mission/objective.js";
 import { brainOf, computerHtml, practiceHtml } from "./brain.js";   // [brain] the grown-ups' Brain: practice counts + this computer's numbers
 import { parse as parseSpeech, summary as speechSummary } from "./academy/speech_store.js";   // reading / words / summaries counts
-import { activeCourse, courseLabel, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
+import { activeCourse, courseLabel, courseState, playingCourse, validCourse, viewOfRaw } from "./courses.js";   // the course being played: its progress and its words
+/** [courses] The playing course flies outpost missions (the Moon); Archaeology has none (a season engine is P4). */
+const hasMissions = () => { const c = courseState.active; return !c || c === "moon" || !!(courseState.info && courseState.info.missions === "outpost"); };
 
 const O = typeof window !== "undefined" ? (window.__outpost = window.__outpost || {}) : {};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 export const COPY = {
   title: "Progress",
-  line: "Lessons, practice, patches and missions for each cadet on this computer, and how the app works with them.",
+  // [courses] a course with no outpost missions (Archaeology) has no missions to report
+  get line() { return `Lessons, practice, patches${hasMissions() ? " and missions" : ""} for each cadet on this computer, and how the app works with them.`; },
   print: "Print",
   loading: "Loading progress…",
   none: "No cadets yet.",
@@ -184,7 +187,7 @@ export function cadetHtml(cadet, lessons, { debriefs = {}, patch = defaultPatch,
   return `<article class="pg-cadet${cadet.active ? " is-active" : ""}" data-cadet="${esc(cadet.id)}" aria-label="${esc(name)}">
     <header class="pg-head"><span class="set-av" aria-hidden="true">${esc(name.slice(0, 1).toUpperCase())}</span>
       <h4>${esc(name)}</h4>${tag}${cadet.active ? `<span class="set-tag pg-now">${esc(COPY.playing)}</span>` : ""}</header>
-    <dl class="mx-score pg-stats">${stat(courseLabel("lessons", COPY.lessons), `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(courseLabel("patches", COPY.nasaPatches), `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${stat(COPY.missions, cadet.flown.length)}</dl>
+    <dl class="mx-score pg-stats">${stat(courseLabel("lessons", COPY.lessons), `${s.core.done}<small> of ${s.core.of}</small>`)}${stat(courseLabel("patches", COPY.nasaPatches), `${s.nasa.earned.length}<small> of ${s.nasa.total}</small>`)}${hasMissions() || cadet.flown.length ? stat(COPY.missions, cadet.flown.length) : ""}</dl>
     ${s.current ? `<p class="pg-cur"><b>${esc(COPY.inProgress)}</b> ${esc(s.current.title)}, ${esc(COPY.step(s.current.i, s.current.n))}</p>` : ""}
     <section class="pg-block"><h5>${esc(COPY.patches)}</h5>${nasaPatches}</section>
     ${brain ? practiceHtml(brain, lessons) : ""}

@@ -11,7 +11,7 @@ backend/tools/handsfree_run.py answer_for, the same script the backend's voice-f
   - the map shows every earned patch as a pin in colour, on the globe and not covered by anything, and in the header
     strip; an earned pin stays where it was (Mesa Verde holds nine lessons: they used to be flung across the continent,
     somewhere else after every lesson); the map's small print is not the Moon's Artemis line;
-  - after a reload (a relaunch) the same patches are there; My Brain lights one star per patch, named after it.
+  - after a reload (a relaunch) the same patches are there; My Brain lights one star per patch, named after its big idea.
 
 Screenshots (--out) at 1440x900: the patch screen and the map after each lesson, My Brain at the end.
 
@@ -179,14 +179,15 @@ def main():
             check(strip == order[: n + 1], f"map after L{n + 1}: the header strip has every earned patch {strip}")
             mtxt = pg.evaluate("() => document.getElementById('aPanel').innerText")
             check("Artemis" not in mtxt and "Moon Base" not in mtxt, "the map's small print isn't the Moon's")
-        # a relaunch keeps them; My Brain lights one star per patch, named after it
+        # a relaunch keeps them; My Brain lights one star per patch, named after its big idea
         pg.reload(); pg.wait_for_selector(".apanel.is-map .mp-card", timeout=60000); pg.wait_for_timeout(3000)
         check(pg.evaluate(STRIP) == order[: len(earned)], f"after a reload: the same patches {pg.evaluate(STRIP)}")
         pg.click("#brainBtn"); pg.wait_for_timeout(2000)
         shot(pg, a.out, "arch_brain")
         btxt = pg.evaluate("() => (document.getElementById('brain') || {}).innerText || ''")
-        names = [lessons[l]["badge"]["name"] for l in order[: len(earned)]]
-        check(all(nm in btxt for nm in names), f"My Brain names the stars after the patches {names}")
+        big = json.loads((ROOT / "backend/data/courses/archaeology.json").read_text()).get("big_ideas") or {}   # [courses playtest] the big ideas
+        names = [(big.get(l.split(":")[-1]) or {}).get("star") or lessons[l]["badge"]["name"] for l in order[: len(earned)]]
+        check(all(nm in btxt for nm in names), f"My Brain names the stars after the big ideas {names}")
         check(f"{len(earned)} of {len(order)}" in btxt.replace("\n", " "), "My Brain: one star lit per patch")
         check("Go to Field School" in btxt or len(earned) == len(order), "My Brain's button names Field School")
         check(not errs, f"no page errors or unknown-patch warnings {errs[:3]}")

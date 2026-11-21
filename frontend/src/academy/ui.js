@@ -20,15 +20,15 @@ import { APP_TAGLINE } from "../brand.js";
 import { SCHOOL, LESSON_STORY, CAPCOM, OFFER, CALLSIGNS, CALLSIGN_COPY, CREDIT, PRETEND_BASE, callSign, LESSON_BLURB, TRANSITION, COURSE_DONE, COURSE_CREDIT, HELP, PRETEND_TECH, PRETEND_TECH_TIP, PREP, EXPLORER, FIELD, CLASS } from "../story.js";
 import { isAvailable, openVideo, getVideo, watchLabel, catalog as videoCatalog } from "../media/video.js";   // [media] the patch-screen video
 import { missionsFlown, unlocked, isExplorer, isField, isBonus, isClass, coreLessons, fieldLessons } from "../explorer.js";   // explorer lessons open after missions; Field School after the ride
-import { pinInnerHtml, fieldTrackHtml, classTrackHtml, clusterNudges } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
+import { pinInnerHtml, fieldTrackHtml, classTrackHtml, clusterNudges, regionOf } from "./pins.js";   // [0.4.1] numbered pins, a lock on locked ones, the Field School track
 import { FIELD_STEP_TYPES as MOON_FIELD_TYPES } from "./field_steps.js";   // [0.5] Field School steps: describe, sequence, rounds
 import { ARCH_BUILDUP_TYPES } from "./arch_steps.js";   // [courses] layers and hillshade build up over turns the same way
 import { SPEECH_STEP_TYPES } from "./speech_steps.js";   // speech learning steps: read, vocab, summary (docs/SPEECH_LEARNING.md)
 const FIELD_STEP_TYPES = [...MOON_FIELD_TYPES, ...ARCH_BUILDUP_TYPES, ...SPEECH_STEP_TYPES];
 import { image as viewImage, onViews } from "../media/nasa_views.js";   // [0.5] a lesson's NASA photo hook (optional pack)
-import { marks, doLine, helpLine, INTRO, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
+import { marks, doLine, helpLine, introFor, introText, prepPlace, prepVideos, firstUse, needsTurn } from "./guide.js";
 import { earnedPatches, patchStripHtml } from "./earned.js";   // the map header's earned patches (always in view)
-import { courseState, courseLabel } from "../courses.js";
+import { courseState, courseLabel, setRoles, roleName } from "../courses.js";
 import { options as pickOptions, shouldOffer as offerPick, mountPick, WELCOME_KEY } from "../course_pick.js";   // [courses] the first-run course pick
 /** The camera gestures are on (gesture/ui.js): the do-lines say the gesture. */
 const gesturesOn = () => { try { return !!(window.__outpost && window.__outpost.gestures && window.__outpost.gestures.active); } catch (e) { return false; } };
@@ -101,7 +101,7 @@ try {   // share one registry: keep anything registered before this module loade
  */
 export function createAcademyUI({ globe, placeById, say, player, alertSound = () => {}, stop = () => {}, goMission = () => {}, openLibrary = () => {}, onProgress = () => {} }) {
   const panel = document.getElementById("aPanel");
-  let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false;
+  let course = null, prog = progress.load(), view = "off", L = null, i = 0, misses = 0, waitingNext = false, busy = false, typedTurn = false;
   let stepKey = "", stepAt = 0;   // which step is open and since when (render() stamps it): the reveal waits ~20 s
   const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
   // [0.6] hesitation (docs/LEARNING_DESIGN.md §13): the session flags a heard turn with fillers or a long pause
@@ -129,7 +129,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     stepState = { taps: [] }; pendingBadge = null;
     // a terminator step's night side never leaks into the next step or lesson (it re-locks the Sun when it renders)
     if (globe.setSunDir) globe.setSunDir(null);
-    const t = acc.type; intro = t && !L.ride && firstUse(t) ? INTRO[t] : null;
+    const t = acc.type; intro = t && !L.ride && firstUse(t) ? introFor(t) : null;
   };
   /** Merge a hint reply into the guidance state: help never takes back what the card already shows. */
   const climb = (g, r) => ({ ...g, rung: Math.max(g.rung || 0, r.rung || 0), focus: r.focus || g.focus,
@@ -163,7 +163,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   function fetchCourse() {
     if (course) return Promise.resolve(course);
     return coursePending || (coursePending = academyApi.course().then(c => {
-      if (!course) { course = c; registerClassLessons(c.lessons); }
+      if (!course) { course = c; registerClassLessons(c.lessons); setRoles(c.roles); }
       try { dispatchEvent(new CustomEvent("outpost:patches", { detail: {} })); } catch (e) { /* tests */ }
       return course;
     }, e => { coursePending = null; throw e; }));
@@ -172,7 +172,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
    *  screen keeps playing; the map repaints with the new pins. */
   function reloadCourse() {
     return academyApi.course().then(c => {
-      course = c; coursePending = null; registerClassLessons(c.lessons);
+      course = c; coursePending = null; registerClassLessons(c.lessons); setRoles(c.roles);
       try { (window.__outpost = window.__outpost || {}).patchTotal = lessons().filter(l => !isClass(l)).length; } catch (e) { /* tests */ }
       if (ui.active && view === "map") showMap(true);
       try { dispatchEvent(new CustomEvent("outpost:patches", { detail: {} })); } catch (e) { /* tests */ }
@@ -280,13 +280,20 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   const shuffled = () => [...CALLSIGNS].sort(() => Math.random() - .5);
   let csDeck = shuffled(), csTyped = null;
   function showCallSign(back, reshuffled) {
-    view = "callsign"; setLayout("home"); if (!reshuffled) globe.flyTo(-20, 10, 3.2);
+    // [courses playtest] another course's call-sign screen is its own: its name and program, its region on the globe and
+    // its imagery credit (it said "Junior Astronaut Mission Trainer / Nobody's landed at the pole yet" over Africa)
+    const region = mapRegion(), info = courseState.info || {};
+    view = "callsign"; setLayout("home");
+    if (!reshuffled) { if (region) globe.flyTo(region.lat, region.lon, region.dist); else globe.flyTo(-20, 10, 3.2); }
     const cur = callSign.get(), pick = (!reshuffled && cur) || csDeck[0];
+    const hero = moonCourse() ? { eyebrow: APP_TAGLINE, lines: [SCHOOL.hero, SCHOOL.hero2] }
+      : { eyebrow: [info.title, info.grades ? `grades ${info.grades}` : ""].filter(Boolean).join(" · "),
+          lines: [info.program || info.title || "", `${courseLabel("school", "Field School")} starts here.`].filter(Boolean) };
     panel.innerHTML = `
       <div class="h-wrap">
         <div class="h-copy">
-          <p class="eyebrow">${esc(APP_TAGLINE)}</p>
-          <h1 class="h-title">${esc(SCHOOL.hero)}<br>${esc(SCHOOL.hero2)}</h1>
+          <p class="eyebrow">${esc(hero.eyebrow)}</p>
+          <h1 class="h-title">${hero.lines.map(esc).join("<br>")}</h1>
         </div>
         <form class="h-form" id="aCsForm">
           <label class="h-label" for="aCsIn">${esc(CALLSIGN_COPY.title)}</label>
@@ -299,7 +306,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
           <p class="h-err" id="aCsErr" role="status" hidden></p>
           <button type="submit" class="btn-primary h-start" id="aCsGo">${esc(back ? CALLSIGN_COPY.save : UI.begin)}${icon("chevron-right")}</button>
         </form>
-        <p class="h-credit">${esc(CREDIT)} ${esc(PRETEND_BASE)}</p>
+        <p class="h-credit">${esc(mapCredit())}</p>
       </div>`;
     const input = panel.querySelector("#aCsIn");
     const err = panel.querySelector("#aCsErr");
@@ -359,10 +366,15 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** A lesson's place on the Moon: course data first, then the fallback table. */
   function placeOf(l) {
     const p = l && l.place;
-    if (p && typeof p === "object" && p.lat != null) return { name: p.name || "", lat: +p.lat, lon: +p.lon };
-    if (typeof p === "string") { const f = placeById(p); if (f) return { name: f.name.split(" (")[0], lat: f.lat, lon: f.lon }; }
+    // [courses] a lesson's `site` (course.json: "Cliff Palace", "Long House") names the spot inside its park; the pin
+    // stays at the park's published point (docs/COURSES.md §1.5 rule 1: park-level places only, never a site's coordinates)
+    const site = l && typeof l.site === "string" && l.site.trim() ? l.site.trim() : "";
+    if (p && typeof p === "object" && p.lat != null) return { name: site || p.name || "", park: p.name || "", lat: +p.lat, lon: +p.lon };
+    if (typeof p === "string") { const f = placeById(p); if (f) return { name: site || f.name.split(" (")[0], park: f.name.split(" (")[0], lat: f.lat, lon: f.lon }; }
     return (l && LESSON_PLACE[l.id]) || LESSON_PLACE.moon;
   }
+  /** [courses] A non-Moon course's lesson map: its region, close (pins.js regionOf), or null (the whole-globe view). */
+  function mapRegion() { return moonGlobe() ? null : regionOf(lessons().map(placeOf)); }
   /** [courses] The globe is the Moon (its polar route layout and NASA credit stay exactly as they were). */
   function moonGlobe() { const g = courseState.info && courseState.info.globe; return moonCourse() || !g || !g.body || g.body === "moon"; }
   /** The map's small print: the Moon's NASA / pretend-outpost line; another globe credits its own imagery (or nothing). */
@@ -372,7 +384,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
   /** A pin (or its patch in the header strip) tapped: select it and fly there; a second tap opens it. */
   function pickPin(l, sel) {
     if (sel && sel.id === l.id) { openLesson(l.id); return; }
-    const at = placeOf(l); mapSel = l.id; showMap(true); globe.flyTo(at.lat, at.lon, 2.6);
+    const at = placeOf(l); mapSel = l.id; showMap(true);
+    if (!mapRegion()) globe.flyTo(at.lat, at.lon, 2.6);   // [courses] a regional map stays put: every pin is already in view
   }
   function showMap(quiet) {
     if (!callSign.get()) return showCallSign();
@@ -383,7 +396,10 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     const H = panel.clientHeight || innerHeight; globe.setViewport(Math.max(.55, (H - 250) / H));
     // face the next stop (a polar one turns the south pole toward the cadet); the done legs stay in view
     // a polar next stop zooms to a ~35° field round the pole so the polar pins spread out; anywhere else, the whole Moon
-    if (!quiet || !mapSel) { const c = placeOf(sel || ls[0]); const polar = Math.abs(c.lat) > 70; globe.flyTo(polar ? Math.sign(c.lat) * 89 : c.lat, c.lon, polar ? 1.8 : 4.2, polar ? 88 : 75); }
+    // [courses] another course's lessons that share a region: the region, close, so its pins sit round their park
+    const region = mapRegion();
+    if (region && (!quiet || !mapSel)) globe.flyTo(region.lat, region.lon, region.dist);
+    else if (!quiet || !mapSel) { const c = placeOf(sel || ls[0]); const polar = Math.abs(c.lat) > 70; globe.flyTo(polar ? Math.sign(c.lat) * 89 : c.lat, c.lon, polar ? 1.8 : 4.2, polar ? 88 : 75); }
     // pins: earned patch art for done lessons, a grey outline for the rest; the next one is bigger and labelled
     const stops = ls.map((l, k) => {
       const done = has(l.badge.id), next = nx && nx.id === l.id, at = placeOf(l);
@@ -392,7 +408,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       b.dataset.l = l.id;
       const no = l.ride || isBonus(l) ? "" : String(lessonNo(l).n);
       if (!open(l)) b.classList.add("is-locked");   // a locked explorer pin: tap it (or Enter) to read when it opens
-      b.setAttribute("aria-label", `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : isClass(l) ? CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name) + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, locked. ${lockedText(l)}` : ""}. ${at.name}`);
+      const said = `${no ? no + ". " : ""}${isField(l) ? FIELD.name + ": " : isClass(l) ? CLASS.eyebrow((l.pack && l.pack.title) || CLASS.name) + ": " : ""}${l.title}${done ? `, ${l.badge.name} patch earned` : next ? ", next up" : !open(l) ? `, locked. ${lockedText(l)}` : ""}`;
+      b.setAttribute("aria-label", `${said}${/[.!?]$/.test(said) ? "" : "."} ${at.name}${at.park && at.park !== at.name ? `, ${at.park}` : ""}`);   // "Who decides?" not "Who decides?."
       // [0.4.1] the core lesson number always shows on the pin; a locked pin carries a lock
       b.innerHTML = pinInnerHtml({ patchHtml: patch(l.id, { earned: done, size: next ? 64 : 44 }), no, locked: !open(l), title: l.title, esc, lockIcon: icon("lock", { size: 12 }) });
       b.onclick = () => pickPin(l, sel);
@@ -401,7 +418,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     });
     // [courses] lessons that share a spot (Archaeology: nine at Mesa Verde) get fixed slots round it, so an earned pin
     // stays where it was lesson after lesson (pins.js clusterNudges). The Moon's route is laid out as it always was.
-    if (!moonGlobe()) clusterNudges(stops).forEach((nd, k) => { if (nd) stops[k].nudge = nd; });
+    // On the regional map only spots closer than ~20 km share slots (Chimney Rock, 105 km off, keeps its own place).
+    if (!moonGlobe()) clusterNudges(stops, region ? { deg: 0.2, gap: 34 } : undefined).forEach((nd, k) => { if (nd) stops[k].nudge = nd; });
     globe.route.set(stops, n);
     const k = sel ? ls.indexOf(sel) : -1, selDone = sel && has(sel.badge.id), at = sel && placeOf(sel);
     const cta = ctaFor(sel, nx, n);
@@ -606,7 +624,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     panel.innerHTML = `
       <header class="a-head m-head">
         <button type="button" class="btn-quiet a-back" id="aBack" aria-label="Back to the map">${icon("chevron-left", { size: 18 })}${esc(UI.map)}</button>
-        <span class="eyebrow a-where">${esc(eyebrowOf(L))} · ${esc(UI.step(i + 1, L.steps.length))}</span>
+        <span class="eyebrow a-where">${esc(eyebrowOf(L))}<span class="sr-only"> · ${esc(UI.step(i + 1, L.steps.length))}</span></span>
         <span class="a-steps" role="img" aria-label="${esc(UI.step(i + 1, L.steps.length))}">${L.steps.map((_, j) => `<i class="${j < i || (j === i && waitingNext) ? "is-done" : j === i ? "is-now" : ""}"></i>`).join("")}</span>
       </header>
       <div class="a-body">
@@ -645,7 +663,7 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     if (cb) cb.onclick = () => Promise.resolve(clip.note ? say(clip.note) : null)   // frame the clip first ("She means the night side")
       .then(() => player.play({ clip_id: clip.clip_id, t0: clip.t0, t1: clip.t1, speaker: clip.who, places: [], jargon: [] }));
     if (!waitingNext && R.wire) R.wire(panel.querySelector("#aInput"), ctx);
-    if (!waitingNext && !stepState.directed && st.globe && !GLOBE_STEP_TYPES.includes(acc.type)) runDirective(globe, st.globe);
+    if (!waitingNext && !stepState.directed && st.globe && !GLOBE_STEP_TYPES.includes(acc.type)) runDirective(globe, st.globe, { target: acc.place || null });
     stepState.directed = true;
     if (waitingNext) lockInput(panel.querySelector("#aInput"));
     const slot = panel.querySelector("#aRideSlot"); if (slot && rideEl) { slot.replaceWith(rideEl); if (ride.state) rideCk.update(ride.state); }
@@ -752,7 +770,16 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
     feedback = { kind: "help", text: line }; render();
     return line;
   }
-  try { Object.assign((window.__outpost = window.__outpost || {}), { help, explain }); } catch (e) { /* tests */ }
+  /** [courses playtest] A typed turn that isn't an answer ("dinosaur bones" on a keywords step): the step again, simply,
+   *  keeping the hint already on the card ("It starts with arch."). Never a miss. -> the line to say ("" outside a step). */
+  function typedNudge() {
+    if (!ui.active || view !== "lesson" || !L || waitingNext) return "";
+    const prev = feedback && (feedback.kind === "help" || feedback.kind === "retry") ? String(feedback.text || "") : "";
+    const line = explain();
+    if (prev && !line.includes(prev)) { feedback = { kind: "help", text: `${line} ${prev}` }; render(); }
+    return line;
+  }
+  try { Object.assign((window.__outpost = window.__outpost || {}), { help, explain, typedNudge }); } catch (e) { /* tests */ }
 
   /** After the answer the step stays on screen, locked: the kid's pick, the right one, and any data the reply carried. */
   function lockInput(el) {
@@ -806,7 +833,13 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
       lesson_id: L.id, reply: r, input, preview: !!L.preview } })); } catch (e) { /* no window */ }   // + speech steps' counts (academy/speech_steps.js)
     if (!ui.active || view !== "lesson") return true;   // the kid switched mode while it was graded: never speak or render
     // not a try (grade.plausible: "Oh, it's", "okay", room talk): no miss, no line, nothing changes on screen
-    if (r.status === "ignored") { if (btn) btn.classList.remove("is-busy"); return true; }
+    if (r.status === "ignored") {
+      if (btn) btn.classList.remove("is-busy");
+      // [courses playtest] typed on purpose ("dinosaurs" on a two-choice guess): say what the step wants, never silence.
+      // An open-mic turn stays silent (room talk must never cost a line); a button tap is never ignored.
+      if (typedTurn && input && input.text && !btn) { typedTurn = false; const line = typedNudge(); if (line) speakLine(line, null); }
+      return true;
+    }
     if (r.state && ride) { ride.state = r.state; syncRideGlobe(); }
     if (ride && r.events && r.events.length) ride.events = r.events;
     if (r.status === "progress" && field) {   // [0.5] a Field step: a descriptor, an item or a round counted
@@ -1055,7 +1088,8 @@ export function createAcademyUI({ globe, placeById, say, player, alertSound = ()
 
   // ---------- inputs from the rest of the app ----------
   /** A typed or spoken turn. True when the Academy used it. */
-  async function handleText(text) {
+  async function handleText(text, { typed = false } = {}) {
+    typedTurn = !!typed;   // [courses playtest] a typed non-answer gets the step again, never silence (answer() below)
     if (!ui.active) return false;
     const t = text.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
     if (view === "coursepick" && picker) return picker.handleText(text);

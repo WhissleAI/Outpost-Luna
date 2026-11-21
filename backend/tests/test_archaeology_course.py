@@ -151,8 +151,11 @@ def test_the_voice_roles_are_explained_as_the_capcom_houston_analogy():
     r = RAW["roles"]
     assert r["capcom"]["name"] == "Field Director" and "CAPCOM" in r["capcom"]["analogy"]
     assert r["houston"]["name"] == "the Lab" and "Houston" in r["houston"]["analogy"] and "delay" in r["houston"]["analogy"]
-    assert "CAPCOM" in RAW["lessons"][0]["brief"] and "Houston" in RAW["lessons"][0]["brief"]
-    assert "Houston" in next(l for l in RAW["lessons"] if l["id"] == "dating")["brief"]
+    # [courses playtest] the briefs say what the roles DO: a teen who starts with Archaeology never met CAPCOM or
+    # Houston (the analogy stays in `roles`, for a Moon-course veteran; the app names the voices from `roles`)
+    first, dating = RAW["lessons"][0]["brief"], next(l for l in RAW["lessons"] if l["id"] == "dating")["brief"]
+    assert "Field Director" in first and "Lab" in first and "CAPCOM" not in first and "Houston" not in first
+    assert "Lab" in dating and "delay" in dating and "Houston" not in dating
 
 
 def test_teacher_note_says_review_before_a_pilot():

@@ -140,6 +140,16 @@ def test_help_routes_to_the_hint(text, screen):
     assert r["outcome"] == "navigate" and r.get("intent") == "a11y", (text, screen, r)
 
 
+@pytest.mark.parametrize("text", ["um I don't know", "uh, hmm, I don't know", "so what do I do", "okay um help",
+                                  "umm idk"])
+@pytest.mark.parametrize("source", ["typed", "voice"])
+def test_a_hesitant_help_still_climbs_the_ladder(text, source):
+    """[courses playtest] a novice's "um, I don't know" is the commonest help there is; one leading filler used to be
+    stripped, two ("uh, hmm, …") left it an ignored non-answer. The client's a11y.js parseCommand strips the same."""
+    r = route(text, ctx("lesson", step_type="keywords", source=source, dd=0.9 if source == "voice" else None))
+    assert r["outcome"] == "navigate" and r.get("intent") == "a11y", (text, source, r)
+
+
 def test_help_never_eats_an_answer():
     for text in ["say again", "help the crew", "orientale then ohm", "I don't know that one yet"]:
         r = route(text, ctx("lesson", step_type="keywords"))

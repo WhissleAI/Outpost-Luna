@@ -72,6 +72,34 @@ test("[arch-patches] lessons on one spot get distinct, stable slots; a lone stop
 
 test("[arch-patches] the map lays out shared spots off the Moon only, and the route layer honours the slot", () => {
   const ui = src("../src/academy/ui.js"), globe = src("../src/globe.js");
-  assert.match(ui, /if \(!moonGlobe\(\)\) clusterNudges\(stops\)/);
+  assert.match(ui, /if \(!moonGlobe\(\)\) clusterNudges\(stops, region \? \{ deg: 0\.2, gap: 34 \} : undefined\)/);
   assert.match(globe, /s\.bx = s\.x \+ \(\(s\.nudge && s\.nudge\[0\]\) \|\| 0\)/);
+});
+
+// [courses playtest] The Archaeology map showed the whole continent: the Mesa Verde cluster read as pins in Canada and
+// Texas. It now looks at the lessons' region, close (pins.js regionOf), and only spots under ~20 km apart share slots.
+test("[courses playtest] the Archaeology lesson map is its region, close; Chimney Rock keeps its own place", async () => {
+  const { regionOf, clusterNudges } = await import("../src/academy/pins.js");
+  const ARCH = JSON.parse(src("../../backend/data/courses/archaeology/course.json"));
+  const PLACES = Object.fromEntries(JSON.parse(src("../../backend/data/courses/archaeology/places.json")).places.map(p => [p.id, p]));
+  const stops = ARCH.lessons.map(l => PLACES[l.place]);
+  const r = regionOf(stops);
+  assert.ok(r, "a region");
+  assert.ok(r.dist > 1 && r.dist < 1.2, `close up (${r.dist} globe radii; the old map was 4.2)`);
+  assert.ok(Math.abs(r.lat - 37.18) < 0.2 && r.lon > -108.6 && r.lon < -108, `centred on the Mesa Verde cluster (${r.lat}, ${r.lon})`);
+  const nd = clusterNudges(stops, { deg: 0.2, gap: 34 });
+  const cr = ARCH.lessons.findIndex(l => l.place === "chimney_rock");
+  assert.equal(nd[cr], null, "Chimney Rock (105 km off) sits at its own point");
+  assert.equal(nd.filter(Boolean).length, stops.length - 1, "the nine Mesa Verde lessons share the park's slots");
+  // the Moon's lessons (and a course spread over a continent) keep the whole-globe view
+  assert.equal(regionOf([{ lat: 37, lon: -108 }, { lat: 51, lon: 0 }]), null);
+  assert.equal(regionOf([]), null);
+  // a pin never names a site's coordinates: every lesson's pin is a gazetteer park point; `site` is only a name
+  for (const l of ARCH.lessons) {
+    assert.equal(typeof l.place, "string", `${l.id}: the pin is a park-level place id (docs/COURSES.md §1.5 rule 1)`);
+    if (l.site != null) assert.ok(typeof l.site === "string" && l.site.length <= 28, `${l.id}: site is a short name`);
+  }
+  const ui = src("../src/academy/ui.js");
+  assert.match(ui, /if \(region && \(!quiet \|\| !mapSel\)\) globe\.flyTo\(region\.lat, region\.lon, region\.dist\)/, "the map flies to the region");
+  assert.match(ui, /if \(!mapRegion\(\)\) globe\.flyTo\(at\.lat, at\.lon, 2\.6\)/, "picking a pin keeps the regional view still");
 });

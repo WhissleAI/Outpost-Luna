@@ -5,6 +5,7 @@ import { TOUR, MOON_BASE } from "./story.js";
 import { isAvailable, openVideo, offlineLine } from "./media/video.js";   // Help: replay NASA's Moon Base video
 import { icon } from "./assets/icons.js";
 import { maskProfanity } from "./profanity.js";   // [P0] the transcript never shows a rude word
+import { roleName } from "./courses.js";   // [courses] the transcript names the course's guide (Field Director)
 import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./reset.js";   // Settings → Reset (docs/RESET.md)
@@ -87,7 +88,10 @@ export const CONFUSED_RE = /^(what|what what|huh|hmm what|eh|what do you mean|wh
 
 /** A typed or spoken a11y command → {cmd, arg} or null. Kept narrow so lesson answers aren't swallowed. */
 export function parseCommand(text) {
-  const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  // [courses playtest] "um, I don't know" / "hmm so what do I do" climb the hint ladder like the bare words (the session
+  // router strips the same fillers: backend/app/turn_router.py nav_intent); a filler alone stays nothing
+  const t = String(text || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()
+    .replace(/^(?:(?:um+|uh+|uhm|erm?|hmm+|mm+|so|okay|ok)\s+)+(?=\S)/, "");
   if (!t) return null;
   if (/^(where am i|what screen is this|what s on (the )?screen|describe (the )?screen)$/.test(t)) return { cmd: "where" };
   if (/^(what can i do|what can i say|help me|options|what are my options)$/.test(t)) return { cmd: "options" };
@@ -421,7 +425,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   // ---- transcript ----
   function fillTranscript() {
     const ol = panel.querySelector("#a11yTranscript"); if (!ol) return;
-    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? "CAPCOM" : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
+    ol.innerHTML = (O.transcript || []).slice(-60).map(e => `<li><b>${escH(e.who === "crew" ? "Crew" : e.who === "capcom" ? roleName("capcom", "CAPCOM") : e.who === "kid" ? "You" : e.who === "describe" ? "Description" : "Guide")}:</b> ${escH(e.who === "kid" ? maskProfanity(e.text) : e.text)}</li>`).join("");
   }
   window.addEventListener("outpost:transcript", () => { if (!panel.hidden) fillTranscript(); });
 

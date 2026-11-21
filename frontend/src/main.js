@@ -20,7 +20,7 @@ import { installMissionLearning } from "./mission_learning.js";   // Moon Base o
 import { createAcademyUI } from "./academy/ui.js";   // Academy
 import { APP_NAME, APP_TAGLINE } from "./brand.js";
 import { callSign, HELP, rideReady, SCHOOL, TRANSITION } from "./story.js";
-import { courseState, courseLabel, syncCourse } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
+import { courseState, courseLabel, syncCourse, roleName } from "./courses.js";   // courses (docs/COURSES.md): the Moon is course #1
 import { installCourseSwitch } from "./course_switch.js";
 import "./course_switch.css";
 import { moreCourses } from "./course_store_ui.js";   // Settings → For grown-ups → Course storage: download / remove / switch (docs/COURSES.md §4.2)
@@ -120,7 +120,8 @@ async function boot() {
     TRANSITION.firstMap.say = "Each pin is a lesson. Earn the patches.";
     if (courseState.info.missions !== "outpost") $("modeMission").hidden = true;   // no outpost mission in this course (a season engine is P4)
   }
-  if (courseState.active !== "moon") { $("loading").textContent = `Loading ${courseState.info.title}…`; $("stage").setAttribute("aria-label", (courseState.info.globe && courseState.info.globe.name) || courseState.info.title); }
+  if (courseState.active !== "moon") { $("loading").textContent = `Loading ${courseState.info.title}…`; $("stage").setAttribute("aria-label", (courseState.info.globe && courseState.info.globe.name) || courseState.info.title);
+    $("q").setAttribute("aria-label", "Type your answer"); }   // [courses playtest] not "Type to CAPCOM" in another course
   // Until the backend ships hardware, the UI runs on clearly labelled sample artifacts.
   const sample = courseState.active === "moon" && !places.some(p => p.kind === "artifact");   // Moon hardware samples: the Moon course only
   if (sample) places = places.concat(SAMPLE_ARTIFACTS.map(a => ({ ...a, km: 0, hw: hwType(a) })));
@@ -287,6 +288,7 @@ async function boot() {
       if (!heard && a11y && await a11y.handleText(text)) { $("q").value = ""; return; }   // typed a11y commands stay local
       $("q").value = ""; pushScreen(true);
       // [P0] a spoken turn waits for the router's `heard` decision (voice.decided): no words, no "Thinking" before it
+      if (!heard && !opts.ptt) turn.typedAt = performance.now();   // [courses playtest] a typed non-answer: the step again (heard below)
       session.typed(text, opts.ptt ? "ptt" : heard ? "voice" : "typed", heard ? { dd: opts.dd ?? null, safety: opts.safety || null } : null);
       if (!heard) { voice.clearWords(); voice.show("idle"); }
       return "session";
@@ -305,7 +307,7 @@ async function boot() {
     const used = () => { if (heard) logKid(); voice.clearWords(); voice.show("idle"); };
     if (a11y && await a11y.handleText(text)) { used(); return; }   // [a11y] "where am I?", "faster", "press next"
     if (missionUI.active && await missionUI.handleText(text)) { used(); return; }
-    if (academyUI.active && await academyUI.handleText(text)) { used(); return; }   // Academy
+    if (academyUI.active && await academyUI.handleText(text, { typed: !heard })) { used(); return; }   // Academy
     // [session] Mission mode with a live session: the turn goes up the socket; decisions come back on their own.
     if (missionUI.active && missionUI.running && !missionUI.sample && useSession()) {
       session.typed(text, source); voice.clearWords(); voice.show("idle"); return;
@@ -328,7 +330,7 @@ async function boot() {
     if (missionUI.active) {
       // Mission mode: the globe stays on the outpost. Non-mission answers are shown and spoken, without flying or touring.
       if (await missionUI.handleDirector(r)) { voice.show("idle"); return; }
-      card.show({ title: "CAPCOM", asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
+      card.show({ title: roleName("capcom", "CAPCOM"), asked: text, say: r.say || "Say a mission command, like “shields to 40” or “end shift”.", arc: readoutLine(r) });
       await guideSay(r.say, { voice: CAPCOM_VOICE, style: sayStyle(r) }); return;   // audio floor: CAPCOM voice
     }
     await act(r, text, my);
@@ -623,7 +625,16 @@ async function boot() {
       // not for us: a held tour plays on. [0.4.1] room talk on a guess or a choice (the router's crew_talk) says so
       // a quiet exact answer comes back as one chip (crewpick.js); anything else heard clears an old one
       if (d.reason === "crew_talk" && d.pick) crewPick.show(d.pick); else crewPick.hide();
-      if (d.outcome === "ignore") { if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined); releaseHold(600); return; }
+      if (d.outcome === "ignore") {
+        // [courses playtest] a typed turn that isn't an answer ("dinosaurs" on a two-choice guess): the step again, simply
+        // (academy explain), not a 1-second "Didn't catch that" a kid who typed carefully reads as being ignored
+        const typed = turn.typedAt && performance.now() - turn.typedAt < 8000;
+        const O = window.__outpost || {};
+        if (typed && d.reason === "not_an_answer" && academyUI.active && typeof O.typedNudge === "function") {
+          turn.typedAt = 0; const line = O.typedNudge(); if (line) guideSay(line, { voice: CAPCOM_VOICE });
+        } else if (d.notice) voice.notice(d.reason === "crew_talk" ? CREW_TALK : undefined);
+        releaseHold(600); return;
+      }
       // [P0] kid text is masked wherever it shows: a turn Arc Tagger's safety tags flagged (d.safety) shows nothing at
       // all; the offline word list catches what the tagger misses (profanity.js)
       const shownText = d.safety ? "" : maskProfanity(d.text);
@@ -643,8 +654,8 @@ async function boot() {
     answer: d => {   // an explorer answer outside the cabin: the client renders it (artifacts, tours, crew audio)
       if (videoOpen()) return;   // [media]
       const r = d.r || {}, my = ++turn.seq;
-      if (missionUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
-      if (academyUI.active) { card.show({ title: "CAPCOM", asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      if (missionUI.active) { card.show({ title: roleName("capcom", "CAPCOM"), asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
+      if (academyUI.active) { card.show({ title: roleName("capcom", "CAPCOM"), asked: d.asked, say: r.source === "none" ? `${r.say} ${TRY}` : r.say, claims: r.claims }); guideSay(r.say, { voice: CAPCOM_VOICE }); return; }
       act(r, d.asked, my);
     },
   };

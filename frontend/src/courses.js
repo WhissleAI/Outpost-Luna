@@ -136,6 +136,15 @@ export const courseState = { active: DEFAULT_COURSE, courses: [MOON_INFO], info:
 export const courseInfo = () => courseState.info;
 /** The course's word for a label (labels: course, school, lessons, patches, patch). */
 export const courseLabel = (k, fb = "") => ((courseState.info && courseState.info.labels) || {})[k] || MOON_INFO.labels[k] || fb;
+/** [courses] The course's names for its voices (course.json `roles`: capcom → "Field Director", houston → "the Lab"),
+ *  set from GET /api/academy/course (academy/ui.js). The Moon keeps CAPCOM and Houston. */
+export function setRoles(r) { courseState.roles = r && typeof r === "object" && !Array.isArray(r) ? r : null; }
+/** "Field Director" for "capcom" in Archaeology; `fb` ("CAPCOM") on the Moon or with no role. Sentence-start case. */
+export function roleName(role, fb = "") {
+  if (!courseState.active || courseState.active === DEFAULT_COURSE) return fb;
+  const n = courseState.roles && courseState.roles[role] && courseState.roles[role].name;
+  return typeof n === "string" && n.trim() ? n.trim().replace(/^the\b/, "The") : fb;
+}
 /** Installed courses the switcher offers (it stays hidden with fewer than two). */
 export const installed = () => courseState.courses.filter(c => c && c.status !== "draft");
 
