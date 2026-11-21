@@ -102,7 +102,8 @@ macOS `~/Library/Application Support/Outpost Luna/`, Windows `%APPDATA%\Outpost 
 | Mission autosave (`cache/saves/`): the orders given, not recordings | always, so a mission resumes |
 | Settings, cadet call signs, lesson progress and patches | always (the app's local storage) |
 | What the app learned about how a cadet says names (small JSON, no audio) | always; Settings → For grown-ups shows and clears it |
-| The voice-guide turn log: what it heard, as text, no audio, no names | on by default; a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it |
+| The voice-guide turn log: what it heard, as text, no audio, no names | on by default; a grown-up can switch it off (Settings → Listening → "Help improve the voice guide") or delete it; kept 30 days |
+| The safety ledger: per cadet and day, how often the safety check acted (no words) | always; care entries 30 days, others 60 |
 | Playtest audio clips | only during a playtest a grown-up starts, with permission (Settings → For grown-ups → Voice log and playtest), exported as one zip to a place they choose |
 | Saved NASA videos, logs (scrubbed, capped at 75 MB), local counters | always; logs never hold words or audio |
 
@@ -110,6 +111,30 @@ macOS `~/Library/Application Support/Outpost Luna/`, Windows `%APPDATA%\Outpost 
 words in memory on this computer; the camera
 (only if gestures are turned on in Settings) is read frame by frame and never stored. A diagnostics file is made only
 when a grown-up saves one, to a place they choose; nothing is uploaded.
+
+## Data we keep about a child
+
+The plain-language list of every data element the app keeps about a student, why, where, for how long, and how it is
+destroyed. The retention policy and the security program behind it: `docs/SECURITY.md` "Retention". "User folder" is
+`~/Library/Application Support/Outpost Luna/` (macOS) or `%APPDATA%\Outpost Luna\` (Windows). "Browser storage" is the
+app window's own storage inside that folder. Nothing in this table is sent to Whissle or anyone else.
+
+| Data element | Purpose | Where | Kept for | How it is deleted |
+|---|---|---|---|---|
+| Call sign (a made-up name like "Comet", not a real name) | Greet the cadet, label their progress | Browser storage, per cadet | Until deleted | Settings → Cadets; Reset → Erase progress too |
+| Lesson progress, patches, the half-done step | Resume lessons, show progress | Browser storage, per cadet | Until deleted (like a gradebook) | Settings → Cadets → Reset progress; Reset → Erase progress too |
+| Practice counts: per lesson steps, first try, with help, shown, misses, minutes, help asks, mix-up kinds; practice days | The grown-ups' Progress page and the cadet's My Brain | Browser storage `outpost-brain`, per cadet | Counts until deleted; practice days 60 days | As above |
+| Missions flown, the paused mission's orders | Resume a mission, unlock lessons | Browser storage; user folder `cache/saves/` | Until the mission ends or is deleted | Reset |
+| What the app learned about how the cadet says names, end-of-turn wait (no audio) | Understand this cadet better | User folder `cache/learning/`, one file per cadet, mode 0600 | A name fades (45-day half-life since last used) and is dropped; until deleted | Settings → What the app has learned; Reset |
+| Voice-guide turn log: redacted text of what was said to the app (no names, addresses or numbers; private turns as `<private>`), the cadet profile, course, day, and the app's decisions | Improve the voice guide; the Progress page's talk counts | User folder `cache/turnlog/` | 30 days, at most 5 MB | Settings → Voice log and playtest → Delete what's saved; turn it off there; Reset |
+| Playtest audio clips | A grown-up's playtest, with their permission | User folder `cache/turnlog/playtest/` | 30 days, and only while a playtest runs (3 h at most) | Delete what's saved; Reset |
+| Safety ledger: per cadet and day, how often the safety check acted (language, unkind, care, personal info, unsafe request), which check caught it, the screen and course. No words | The care note for grown-ups; optional language / kindness counts | User folder `cache/safety/`, mode 0600 | Care entries 30 days; others 60 days | Reset; deleted automatically when they expire |
+| "Show language and kindness counts" choice | A grown-up's view setting | Browser storage `outpost-grownup` | Until changed | Reset |
+| Spoken-line audio cache (the app's own voice, not the child's) | Speak faster | User folder `cache/tts/` | Until deleted | Reset |
+| Logs and local counters (scrubbed: no words, audio, names or tokens) | Troubleshooting | User folder `logs/` | Capped at 75 MB | Delete the folder |
+
+Not kept at all: audio (outside a grown-up's playtest), camera frames, emotion, ability or personality labels, times
+finer than a day, anything about one cadet on another cadet's page.
 
 ## Uninstall cleanly
 

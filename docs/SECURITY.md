@@ -81,6 +81,52 @@ kid's words); `POST /api/learn/reset` and `/api/learn/forget` need
 the token and the page's `X-Outpost-Reset: 1` header. What is stored, and where: `docs/ON_DEVICE_LEARNING.md` (one small
 JSON per cadet and one per computer, 0600, no audio, no transcripts).
 
+## Retention: what we keep about a child, for how long, and how it is destroyed
+
+This is the app's written data-retention policy. It covers everything Outpost Luna keeps on the computer about a child
+(per cadet profile). Nothing in it is sent to Whissle or anyone else; there are no accounts and no server copy.
+
+**Policy.**
+
+1. **Keep only what a feature needs, only on this computer.** Words a child said are kept only in the redacted turn
+   log (below), never in the Brain, the safety ledger, logs, metrics or the diagnostics file.
+2. **Every behaviour and safety record expires on a clock, not only a size cap.** The turn log keeps 30 days
+   (`backend/app/turnlog.py` `RETAIN_DAYS`; lines older than that are dropped once a day, Playtest clips too); the
+   safety ledger keeps care entries 30 days and every other kind 60 days (`backend/app/safety_ledger.py`); the Brain's
+   practice days keep 60 (`frontend/src/brain_store.js` `MAX_DAYS`).
+3. **A grown-up can destroy it all at once, at any time.** Settings → For grown-ups → Reset Outpost Luna ("Start
+   over" deletes the turn log, Playtest audio, the safety ledger, on-device learning and the spoken-line cache; "Erase
+   progress too" also deletes lesson progress and the Brain's practice counts; "Reset everything" also deletes the
+   downloads). The desktop shell deletes the folders after stopping the engine (`desktop/main/reset.js`), so no file
+   survives on Windows because it was open. "Delete what's saved" (Voice log and playtest) deletes the turn log alone.
+   Uninstall + deleting the user folder (`docs/SCHOOL_IT.md` "Uninstall cleanly") removes everything.
+4. **Destruction is deletion of the file**, not a flag. There is no backup, cloud copy or recycle step inside the app.
+   (An OS-level backup a family or school runs, such as Time Machine or a disk image, is outside the app.)
+5. **Exports are a grown-up's explicit act.** A Playtest export (turn log + audio) is a zip a grown-up saves where
+   they choose; the safety ledger is never in it. A diagnostics file never holds words or audio.
+
+**Per-data-element table** (what, purpose, where, retention, how deleted): `docs/SCHOOL_IT.md` "Data we keep about a
+child". That table is the plain-language disclosure for schools (for example under Colorado's Student Data Transparency
+and Security Act, C.R.S. 22-16-101 et seq.).
+
+**Security program for this data** (the amended COPPA rule's written-program requirement, compliance date 2026-04-22):
+the data never leaves the device (loopback-only servers, the `LocalGuard` Host / Origin / token checks above, no
+accounts); the files that hold a child's data are in the per-user folder, and the learning and safety files are mode
+0600 on macOS (Windows: the user's own `%APPDATA%` ACLs); every API that returns per-child counts needs the per-launch
+token (`diag.authorized`: `/api/brain/summary`, `/api/safety/flags`, `/api/learn`); words are redacted before they are
+written and private turns are stored as `<private>`; tests assert that no words, names or call signs reach the Brain
+or the ledger (`backend/tests/test_brain.py`, `backend/tests/test_brain_signals.py`). Who reviews it, how often, and
+the vendor list (none receive child data today) are for the owner and counsel to fill in.
+
+**Open for legal review.**
+- The Playtest export's consent wording ("I'm the parent or guardian, or I have their permission.",
+  `frontend/src/playtest_ui.js`) and whether a school setting needs a different consent path before audio is recorded
+  and exported. Behaviour is unchanged in this release, apart from keeping the safety ledger out of the export.
+- Whether the turn log should stay on by default (`frontend/src/prefs.js` `improve: true`) for school installs.
+- Lesson progress and practice counts (not the dated behaviour records) are kept until a grown-up erases them, like a
+  gradebook. Whether a school needs an automatic end-of-year destruction date for these.
+- The US-centric help line in the care banner (988).
+
 ## Check for updates
 
 The one request the app makes to the internet on its own behalf after setup, and only when asked (Settings → App
