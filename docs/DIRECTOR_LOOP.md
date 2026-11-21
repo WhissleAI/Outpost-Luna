@@ -36,10 +36,11 @@ Every run writes `director_model/runs/<date>/report.md` (the before / after tabl
 switch is Listening → "Help improve the voice guide" (`prefs.improve`), stored per cadet profile on the device, like
 every other setting. Settings → For grown-ups → "Voice log and playtest" says plainly that it is on and what it keeps.
 
-- **Turning it off sticks.** An explicit off stays off. Prefs saved before 0.4.3 held the old off-by-default
-  (`improve: false` with no `improve_v`); they turn on once (`normalizePrefs`, the `improve_v: 2` migration flag).
-  An opt-out made before 0.4.3 cannot be told apart from that default, so it turns on once too; turning it off again
-  sticks.
+- **Turning it off sticks.** An explicit off stays off.
+- **Existing installs keep their setting (0.5.2).** Only a new install (no saved prefs) starts with it on. Prefs saved
+  before 0.4.3 (no `improve_v`) keep exactly what they stored: off stays off, an old opt-in stays on (`normalizePrefs`).
+  0.4.3–0.5.1 switched such saves on once; 0.5.2 stops doing that. A save that 0.4.3–0.5.1 already marked
+  (`improve_v: 2`) keeps its current value.
 - **The backend logs only on the client's word.** It logs when the client's prefs say `improve: true` (the app sends
   its prefs on every connect) or while a playtest runs. A client that never sends prefs (headless tools, the
   generator) writes nothing.

@@ -27,12 +27,16 @@ test("prefs: the barge-in thresholds follow the voice filter (relaxed / normal /
   delete globalThis.window;
 });
 
-test("prefs: 'Help improve the voice guide' is on by default; an explicit off stays off; old saved prefs turn on once", () => {
+test("prefs: 'Help improve the voice guide' is on for new installs; existing installs keep their setting; an explicit off stays off", () => {
   assert.equal(PREF_DEFAULTS.improve, true);
-  assert.equal(normalizePrefs({}).improve, true);
+  assert.equal(normalizePrefs({}).improve, true, "a new install (nothing saved) starts on");
+  assert.equal(normalizePrefs(null).improve, true);
   assert.equal(normalizePrefs({}).improve_v, 2);
-  // before 0.4.3 every saved profile held improve:false (the old default) and no improve_v: on, once
-  assert.equal(normalizePrefs({ improve: false, volume: 0.5 }).improve, true);
+  // [0.5.2] prefs saved before 0.4.3 (no improve_v) keep what they had: off stays off, never switched on
+  assert.equal(normalizePrefs({ improve: false, volume: 0.5 }).improve, false);
+  assert.equal(normalizePrefs({ volume: 0.5 }).improve, false, "an old save without the key had the old default: off");
+  assert.equal(normalizePrefs({ improve: true, volume: 0.5 }).improve, true, "an old opt-in stays on");
+  assert.equal(normalizePrefs(JSON.parse(JSON.stringify(normalizePrefs({ improve: false, volume: 0.5 })))).improve, false, "and stays off after a save and a reload");
   // after the migration the switch is the grown-up's choice: an explicit false stays off
   const off = normalizePrefs({ ...normalizePrefs({ improve: false }), improve: false });
   assert.equal(off.improve, false);
