@@ -188,6 +188,8 @@ body:not([data-mode="cadet"]) .rocks{display:none}
 .rk-title{margin:2px 0 var(--space-1);font-size:var(--text-lg);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-tight)}
 .rk-story{margin:0 0 var(--space-2);font-size:var(--text-sm);line-height:var(--leading-normal)}
 .rk-credit{margin:0 0 var(--space-2);font-size:var(--text-xs)}
+.rk-facts{margin:0 0 var(--space-2);padding-left:1.1em;font-size:var(--text-xs);line-height:var(--leading-snug)}
+.rk-facts .rk-fsrc{list-style:none;margin-left:-1.1em;color:var(--color-on-space-2)}
 .rk-credit a{color:var(--color-on-space-2)}
 .rk-list{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-2) var(--space-3) var(--space-3);border-top:1px solid var(--color-glass-line);flex:0 1 auto;overflow:auto}
 .rk-group{display:flex;flex-wrap:wrap;gap:4px;align-items:center}

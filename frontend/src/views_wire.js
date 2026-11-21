@@ -4,8 +4,42 @@
 //   - the "Moon rocks" tray in the Library toolbar: six Apollo samples + the NASA hardware models, in 3D
 //   - a sharp south pole: the site navigator's LOLA relief (the site_layers asset) draped over the globe's polar texels
 // Every piece waits for its optional asset; without it nothing changes.
+//   - open Moon data (the optional moon_views pack, media/moon_views.js): the "Rock ages" layer (USGS geologic map) with
+//     its key, the Smithsonian's Columbia in the tray, Lunar Sample Compendium facts on the rocks
 import { onViews, skyTransform, modelForArtifact, loadModel } from "./media/nasa_views.js";
 import { createRocksTray } from "./media/rocks_tray.js";
+import { onMoonViews, factsFor } from "./media/moon_views.js";
+
+const escH = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/** The key of a globe layer (its legend, credit and note) as HTML. Pure (tested). */
+export function layerKeyHtml(l) {
+  return `<header class="ml-head"><h2>${escH(l.title)}</h2></header>
+    <ul class="flv-legend" aria-label="Map key">${(l.legend || []).map(x => `<li><i style="background:${escH(x.color)}" aria-hidden="true"></i>${escH(x.label)}</li>`).join("")}</ul>
+    ${l.note ? `<p class="ml-note">${escH(l.note)}</p>` : ""}<p class="ml-credit"><a href="${escH(l.source)}" target="_blank" rel="noopener">${escH(l.credit)}</a></p>`;
+}
+
+/** The Library's layer switch (Moon only): a toolbar button that drapes the layer and shows its key. */
+export function wireLayer({ globe, stage, hudRow, layer }) {
+  if (!layer || !hudRow || !globe.setOverlay) return null;
+  let mesh = null;
+  const b = document.createElement("button");
+  b.type = "button"; b.id = "layerBtn"; b.setAttribute("aria-pressed", "false"); b.textContent = layer.title;
+  const key = document.createElement("aside");
+  key.className = "mlayer"; key.hidden = true; key.setAttribute("aria-label", layer.title + " key"); key.innerHTML = layerKeyHtml(layer);
+  stage.append(key); hudRow.append(b);
+  function set(on) {
+    if (on && !mesh) mesh = globe.setOverlay({ url: layer.url, bounds: layer.bounds, lift: 1.0012, opacity: layer.opacity || 0.6, minDistance: 1.3 });
+    if (mesh) mesh.visible = on;
+    key.hidden = !on; b.setAttribute("aria-pressed", String(on));
+    return on;
+  }
+  b.onclick = () => set(b.getAttribute("aria-pressed") !== "true");
+  // the layer belongs to the Library: leaving it hides the layer
+  new MutationObserver(() => { if (document.body.dataset.mode !== "cadet" && b.getAttribute("aria-pressed") === "true") set(false); })
+    .observe(document.body, { attributes: true, attributeFilter: ["data-mode"] });
+  return { button: b, key, set, get on() { return b.getAttribute("aria-pressed") === "true"; } };
+}
 
 /** Orbiters shown in the Library (not to scale; LADEE is labelled with its years: it ended in 2014). */
 export const ORBITERS = [
@@ -14,7 +48,13 @@ export const ORBITERS = [
 ];
 
 export function wireViews({ globe, stage, hudRow, log = console.warn }) {
-  const out = { tray: null, button: null };
+  const out = { tray: null, button: null, layer: null };
+  let moon = null;
+  onMoonViews(m => {
+    moon = m;
+    if (!out.layer && m.layers[0]) out.layer = wireLayer({ globe, stage, hudRow, layer: m.layers[0] });
+    if (out.tray) { out.tray.addModels(m.models); out.tray.addFacts(id => factsFor(id)); }
+  });
   onViews(async v => {
     if (v.sky) globe.setSky(v.sky.url, skyTransform(v.sky));
     const byId = Object.fromEntries(v.models.map(m => [m.id, m]));
@@ -31,7 +71,7 @@ export function wireViews({ globe, stage, hudRow, log = console.warn }) {
       const b = document.createElement("button");
       b.type = "button"; b.id = "rocksBtn"; b.setAttribute("aria-pressed", "false"); b.textContent = "Moon rocks";
       hudRow.append(b);
-      const tray = createRocksTray({ host: stage, views: v,
+      const tray = createRocksTray({ host: stage, views: { ...v, models: [...v.models, ...(moon ? moon.models : [])] }, factsFor: id => factsFor(id),
         onOpen: () => b.setAttribute("aria-pressed", "true"), onClose: () => { b.setAttribute("aria-pressed", "false"); b.focus({ preventScroll: true }); } });
       b.onclick = () => (tray.isOpen ? tray.close() : tray.open());
       // the tray belongs to the Library: leaving it closes the tray

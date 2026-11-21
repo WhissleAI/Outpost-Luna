@@ -45,6 +45,10 @@
   {
    "label": "Watch: lasers from space",
    "do": "item:v_lidar"
+  },
+  {
+   "label": "Drought timeline",
+   "do": "item:drought_timeline"
   }
  ],
  "featured": [
@@ -64,7 +68,7 @@
   {
    "id": "orbit",
    "title": "Earth from orbit",
-   "by": "NASA",
+   "by": "NASA and Copernicus",
    "items": [
     {
      "id": "mv_landsat",
@@ -74,6 +78,14 @@
      "title": "Mesa Verde from Landsat 8",
      "caption": "15 August 2016. Canyons cut the green tableland where the cliff dwellings hide.",
      "source": "nasa_media"
+    },
+    {
+     "id": "s2_mesa_verde",
+     "kind": "image",
+     "file": "s2_mesa_verde.jpg",
+     "place": "mesa_verde",
+     "title": "Mesa Verde from Sentinel-2",
+     "caption": "25 September 2025, from Europe's Sentinel-2. Each pixel is 10 m: see the long mesa fingers and the canyons between them."
     },
     {
      "id": "region",
@@ -299,6 +311,84 @@
      "kind": "video",
      "video": "arch_landsat_moon",
      "caption": "Every full Moon, Landsat turns around to check its camera on the Moon."
+    }
+   ]
+  },
+  {
+   "id": "data",
+   "title": "Clues in the data",
+   "by": "NOAA, tree-ring scientists, p3k14c and Natural Earth",
+   "items": [
+    {
+     "id": "drought_timeline",
+     "kind": "chart",
+     "file": "drought_mesa_verde.json",
+     "place": "mesa_verde",
+     "title": "Drought timeline AD 722–2011",
+     "caption": "Tree rings record wet and dry years at Mesa Verde. The Great Drought of 1276–1299 came just as many families moved south to new homes. Drought was one of several reasons they migrated.",
+     "summary": "Line chart of a moisture index rebuilt from Douglas-fir tree rings at Mesa Verde, AD 722 to 2011. Above zero is wetter than usual, below zero drier. The Great Drought, 1276 to 1299, is marked: dry years cluster there, in the same decades people migrated south.",
+     "chart_type": "line",
+     "y_label": "Wetter (+) or drier (−)",
+     "bands": [
+      {
+       "from": 1276,
+       "to": 1299,
+       "label": "Great Drought 1276–1299"
+      }
+     ]
+    },
+    {
+     "id": "rings_compare",
+     "kind": "chart",
+     "file": "tree_rings_1200_1320.json",
+     "title": "Four tree-ring records, side by side",
+     "caption": "Ring widths from four places around the Four Corners, AD 1200–1320. Narrow rings fall in the same dry years everywhere. Matching them is how scientists crossdate a roof beam.",
+     "summary": "Line chart of four tree-ring width records from Mesa Verde and Dolores in Colorado and Gobernador and the Chuska Mountains in New Mexico, AD 1200 to 1320. 1 means an average ring. The lines dip together in dry years, especially during the Great Drought, 1276 to 1299, which is marked.",
+     "chart_type": "line",
+     "bands": [
+      {
+       "from": 1276,
+       "to": 1299,
+       "label": "Great Drought"
+      }
+     ]
+    },
+    {
+     "id": "radiocarbon",
+     "kind": "chart",
+     "file": "radiocarbon_four_corners.json",
+     "title": "Radiocarbon dates near here",
+     "caption": "How many charcoal, wood and seed samples from the Four Corners region were dated to each century. Counts for the whole region only: no site locations.",
+     "note": "Radiocarbon years are not calendar years, so this is a rough guide.",
+     "summary": "Bar chart of radiocarbon-dated charcoal, wood and seed samples from the Four Corners region, per century from 1000 BC to AD 1500. Counts rise after 200 BC, stay high until about AD 1100, then drop sharply after 1200. Ages are uncalibrated.",
+     "chart_type": "bar"
+    },
+    {
+     "id": "rivers_layer",
+     "kind": "layer",
+     "file": "layer_rivers_states.png",
+     "title": "Rivers and state lines",
+     "caption": "The San Juan, Animas and Dolores rivers and the state lines that meet at the Four Corners. Water decided where people could farm.",
+     "bounds": {
+      "west": -110.2,
+      "south": 35.7,
+      "east": -106.9,
+      "north": 38.0
+     },
+     "legend": [
+      {
+       "color": "#ffffff",
+       "label": "State line"
+      },
+      {
+       "color": "#4fb3ff",
+       "label": "River"
+      },
+      {
+       "color": "#9fd3ff",
+       "label": "Dry wash (water only sometimes)"
+      }
+     ]
     }
    ]
   }

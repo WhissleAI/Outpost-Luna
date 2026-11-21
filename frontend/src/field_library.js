@@ -7,12 +7,41 @@
 // Pure helpers first (tests/field_library.test.js), then installFieldLibrary(), which main.js calls on a non-Moon globe.
 // Nothing here runs on the Moon, and a course without a library (or an older pack without one) keeps today's screen.
 
+import { parseChart, chartSvg, tableHtml, nearestX, xAt, yearText, colourIndex } from "./media/chart.js";
+
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const LIBRARY_API = "/api/course/library";
-const MEDIA_URL = /^\/api\/(courses\/[a-z][a-z0-9-]{1,23}\/media\/[a-z0-9][a-z0-9_.-]{0,80}\.(?:jpg|png)|video\/[a-z0-9_]{2,40}\/poster)$/;
+export const KINDS = ["image", "video", "place", "chart", "model", "layer"];
+// a course media name is one flat segment with ONE dot (no "..", no double extensions: app/courses.py MEDIA_NAME)
+const MEDIA_URL = /^\/api\/(courses\/[a-z][a-z0-9-]{1,23}\/media\/[a-z0-9][a-z0-9_-]{0,80}\.(?:jpg|png)|video\/[a-z0-9_]{2,40}\/poster)$/;
+const DATA_URL = /^\/api\/courses\/[a-z][a-z0-9-]{1,23}\/media\/[a-z0-9][a-z0-9_-]{0,80}\.(json|csv|glb)$/;
+// which kind may load which data file
+const DATA_EXT = { chart: ["json", "csv"], model: ["glb"] };
 
 /** Only our own origin's course media and video posters (the app's CSP and school networks: nothing hot-linked). */
 export const safeUrl = u => (typeof u === "string" && MEDIA_URL.test(u) ? u : null);
+
+/** A chart's data (.json / .csv) or a model (.glb) from the course's own media, for that kind only; else null. Pure. */
+export function safeDataUrl(u, kind) {
+  const m = typeof u === "string" ? DATA_URL.exec(u) : null;
+  return m && (DATA_EXT[kind] || []).includes(m[1]) ? u : null;
+}
+
+/** A layer's bounds and legend, checked: {bounds, legend: [{color, label}], opacity} or null. Pure. */
+export function layerSpec(it) {
+  const b = it && it.bounds, ok = v => Number.isFinite(v);
+  if (!b || ![b.west, b.south, b.east, b.north].every(ok) || !(b.west < b.east && b.south < b.north)) return null;
+  const legend = (Array.isArray(it.legend) ? it.legend : []).filter(x => x && /^#[0-9a-fA-F]{6}$/.test(String(x.color)) && x.label);
+  if (!legend.length) return null;
+  const op = Number(it.opacity);
+  return { bounds: { west: b.west, south: b.south, east: b.east, north: b.north }, legend, opacity: op >= 0.2 && op <= 1 ? op : 1 };
+}
+
+/** The picture a tile or the ribbon shows: a photo, a video's poster; charts, models and layers have none (a glyph). Pure. */
+export const thumbUrl = it => (it.kind === "image" ? it.url : it.kind === "video" ? it.poster : null) || null;
+
+/** What a shelf tile says under its title. Pure. */
+export const kindLabel = it => ({ chart: "Chart", model: "3D model", layer: "Map layer", place: "Place", video: "Video" }[it.kind] || it.by || "");
 
 /** GET /api/course/library -> the library the screen draws, or null (no library: keep today's Library). Pure. */
 export function normalizeLibrary(raw) {
@@ -20,11 +49,14 @@ export function normalizeLibrary(raw) {
   const items = new Map();
   const shelves = raw.shelves.map(sh => ({
     id: String(sh.id), title: String(sh.title || ""), by: String(sh.by || ""),
-    items: (sh.items || []).filter(it => it && it.id && ["image", "video", "place"].includes(it.kind)).map(it => {
-      const o = { ...it, shelf: String(sh.id), by: String(sh.by || ""), url: safeUrl(it.url), poster: safeUrl(it.poster) };
+    items: (sh.items || []).filter(it => it && it.id && KINDS.includes(it.kind)).map(it => {
+      const o = { ...it, shelf: String(sh.id), by: String(sh.by || ""), poster: safeUrl(it.poster),
+        url: it.kind === "chart" || it.kind === "model" ? safeDataUrl(it.url, it.kind) : safeUrl(it.url) };
+      if (it.kind === "layer") { const L = layerSpec(it); if (!L || !o.url || !/\.png$/.test(o.url)) return null; Object.assign(o, L); }
+      if ((it.kind === "chart" || it.kind === "model") && !o.url) return null;   // a data file from anywhere else: never loaded
       items.set(o.id, o);
       return o;
-    }),
+    }).filter(Boolean),
   })).filter(sh => sh.items.length);
   if (!shelves.length) return null;
   const overlays = (raw.overlays || []).map(o => ({ ...o, url: safeUrl(o.url) })).filter(o => o.url && o.bounds);
@@ -79,13 +111,32 @@ export function placeEntry(f, lib, k = 0) {
 /** The card for a library item (a picture or a place item). Pure. */
 export function itemEntry(it, placeById = () => null) {
   const p = it.place ? placeById(it.place) : null;
+  const data = it.kind === "chart" || it.kind === "model" || it.kind === "layer";
   const e = { title: it.title || (p && p.name) || "", place: !!p, say: it.caption || (p && p.fact) || "",
-              eyebrow: [it.kind === "image" ? (it.label || "Real photo") : "", it.by].filter(Boolean).join(" · ") };
+              eyebrow: [it.kind === "image" ? (it.label || "Real photo") : data ? kindLabel(it) : "", it.by].filter(Boolean).join(" · ") };
   if (it.kind === "image" && it.url) e.photo = { src: it.url, alt: it.image_alt || it.title, credit: imageCredit(it), caption: it.image_title || it.title,
                                                 ...(it.label ? { creditLabel: it.label } : {}) };
-  e.sources = [it.source, it.image_source_url ? { title: `${it.label || "Photo"} source`, url: it.image_source_url } : null].filter(x => x && x.url);
+  if (data && imageCredit(it)) e.note = (it.note ? it.note + " " : "") + "Data: " + imageCredit(it);
+  e.sources = [it.source, it.image_source_url ? { title: data ? "Data source" : `${it.label || "Photo"} source`, url: it.image_source_url } : null].filter(x => x && x.url);
   return e;
 }
+
+/** The viewer's body for a chart once its data are in: the SVG, a legend for 2+ series, the table view. Pure. */
+export function chartView(it, chart) {
+  const opts = { title: it.title, summary: it.summary, bands: it.bands, x_label: it.x_label || chart.x_label, y_label: it.y_label || chart.y_label,
+    type: it.chart_type || chart.type || "line", x_format: chart.x_format || "number", zero: !!chart.zero };
+  const many = chart.series.length > 1;
+  return `<figure class="flv-fig">${chartSvg(chart, opts)}
+    ${many ? `<ul class="ch-legend" aria-label="Legend">${chart.series.map((s, i) => { const k = colourIndex(chart.series, i);
+      return `<li><i class="ch-key ${k < 0 ? "ch-kf" : "ch-k" + k}" aria-hidden="true"></i>${esc(s.label)}</li>`; }).join("")}</ul>` : ""}
+    <figcaption>${esc(it.summary || "")}</figcaption></figure>
+    <p class="flv-read" aria-live="polite"></p>
+    <details class="flv-table"><summary>Show the numbers</summary>${tableHtml(chart, { x_label: opts.x_label, x_format: opts.x_format, caption: it.title })}</details>`;
+}
+
+/** A layer's legend as HTML. Pure. */
+export const legendHtml = L => `<ul class="flv-legend" aria-label="Map key">${L.legend.map(x =>
+  `<li><i style="background:${esc(x.color)}" aria-hidden="true"></i>${esc(x.label)}</li>`).join("")}</ul>`;
 
 // ------------------------------------------------------------------------------------------------ the screen
 /**
@@ -107,16 +158,81 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
     else if (Number.isFinite(it.lat) && Number.isFinite(it.lon)) globe.flyTo(it.lat, it.lon, 1.16);
     else if (lib.overlays.some(o => o.url === it.url) && lib.home) globe.flyTo(lib.home.lat, lib.home.lon, lib.home.dist || 1.1);   // the draped region
     else if (mapUrl && it.url === mapUrl) globe.flyTo(30, -100, 3.4);   // the globe's own map: the whole globe
+    else if (it.kind === "layer" && it.bounds) { const b = it.bounds; globe.flyTo((b.south + b.north) / 2, (b.west + b.east) / 2, (lib.home && lib.home.dist) || 1.1); }
   }
   function openItem(id) {
     const it = lib && lib.items.get(id); if (!it) return false;
     if (it.kind === "video") { if (openVideo) openVideo(it.video, { context: "library" }); return true; }
     fly(it);
     if (it.kind === "place") { const p = placeById(it.place); if (p) openPlace(p, it.caption); return true; }
-    card.show({ ...itemEntry(it, placeById), actions: actionsFor(it) });
+    const acts = actionsFor(it);
+    if (it.kind === "layer") acts.unshift({ label: layerOn(it) ? "Hide this layer" : "Show this layer", hot: true, onClick: () => { toggleLayer(it); openItem(it.id); } });
+    card.show({ ...itemEntry(it, placeById), actions: acts });
+    if (it.kind === "chart" || it.kind === "model" || it.kind === "layer") openView(it);
     say(it.caption || it.title);
     return true;
   }
+
+  // ---- the viewer: a chart, a 3D model or a map layer's key, beside the card ----
+  const view = document.createElement("aside");
+  view.className = "flv"; view.hidden = true; view.setAttribute("role", "dialog"); view.setAttribute("aria-label", "Open data");
+  let viewSeq = 0, tt = null;
+  const layers = new Map();   // item id -> the globe's overlay mesh (made on first show)
+  const layerOn = it => !!(layers.get(it.id) && layers.get(it.id).visible);
+  function toggleLayer(it, on = !layerOn(it)) {
+    if (!globe.setOverlay) return false;
+    let m = layers.get(it.id);
+    if (!m && on) { m = globe.setOverlay({ url: it.url, bounds: it.bounds, lift: 1.0012, opacity: it.opacity }); if (m) layers.set(it.id, m); }
+    if (m) m.visible = on;
+    if (view.dataset.item === it.id) drawLayerView(it);
+    return on;
+  }
+  function closeView() { view.hidden = true; viewSeq++; if (tt) tt.stop(); }
+  function frame(it, body) {
+    view.dataset.item = it.id;
+    view.innerHTML = `<header class="flv-head"><h2>${esc(it.title)}</h2><button type="button" class="flv-close" aria-label="Close">×</button></header>
+      <div class="flv-body">${body}</div><p class="flv-credit">${esc(imageCredit(it))}</p>`;
+    view.querySelector(".flv-close").onclick = closeView;
+    view.hidden = false;
+  }
+  function drawLayerView(it) {
+    frame(it, `${legendHtml(it)}<button type="button" class="pill hot flv-toggle" aria-pressed="${layerOn(it)}">${layerOn(it) ? "Hide layer" : "Show layer"}</button>`);
+    view.querySelector(".flv-toggle").onclick = () => toggleLayer(it);
+  }
+  async function openView(it) {
+    const my = ++viewSeq;
+    if (it.kind === "layer") { if (!layerOn(it)) toggleLayer(it, true); drawLayerView(it); return; }
+    if (it.kind === "model") {
+      frame(it, `<div class="flv-3d"><canvas aria-hidden="true"></canvas><p class="flv-wait">Loading…</p></div><p class="flv-hint">Drag to turn</p>`);
+      try {
+        const { createTurntable } = await import("./media/turntable.js");
+        if (my !== viewSeq) return;
+        if (tt) tt.dispose();
+        tt = createTurntable(view.querySelector("canvas")); tt.start();
+        const ok = await tt.show(it.url);
+        if (my === viewSeq && ok) view.querySelector(".flv-wait").hidden = true;
+      } catch (e) { if (my === viewSeq) view.querySelector(".flv-wait").textContent = "This model didn't load."; }
+      return;
+    }
+    frame(it, `<p class="flv-wait">Loading the data…</p>`);
+    let chart = null;
+    try {
+      const r = await fetchFn(it.url);
+      chart = r && r.ok ? parseChart(await r.text(), it.url) : null;
+    } catch (e) { chart = null; }
+    if (my !== viewSeq) return;
+    if (!chart) { view.querySelector(".flv-wait").textContent = "This chart's data didn't load."; return; }
+    view.querySelector(".flv-body").innerHTML = chartView(it, chart);
+    const svg = view.querySelector("svg.chart"), read = view.querySelector(".flv-read"), cross = svg && svg.querySelector(".ch-cross");
+    if (svg) svg.addEventListener("pointermove", ev => {   // hover: a crosshair and the values at that year
+      const r = svg.getBoundingClientRect(), f = (ev.clientX - r.left) / Math.max(1, r.width), x = xAt(chart, f);
+      const vals = nearestX(chart, x), fx = chart.x_format === "year" ? yearText : v => String(v);
+      read.textContent = `${fx(vals[0].x)}: ` + vals.map(v => `${chart.series.length > 1 ? v.label + " " : ""}${Math.round(v.y * 100) / 100}`).join(" · ");
+      if (cross) { const vx = (f * 640).toFixed(1); cross.setAttribute("x1", vx); cross.setAttribute("x2", vx); cross.setAttribute("visibility", "visible"); }
+    });
+    if (svg) svg.addEventListener("pointerleave", () => { if (cross) cross.setAttribute("visibility", "hidden"); });
+  }
+  view.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); closeView(); } });
   function actionsFor(it) {
     const out = [];
     const p = it.place ? placeById(it.place) : null;
@@ -139,8 +255,8 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
   }
 
   function thumb(it) {
-    const img = it.kind === "video" ? it.poster : it.url;
-    const meta = it.kind === "video" ? `Video · ${lengthText(it.duration_s)}` : it.kind === "place" ? "Place" : it.by;
+    const img = thumbUrl(it);
+    const meta = it.kind === "video" ? `Video · ${lengthText(it.duration_s)}` : it.kind === "image" ? it.by : kindLabel(it);
     return `<li><button type="button" class="flib-item k-${esc(it.kind)}" data-item="${esc(it.id)}">
       <span class="flib-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async">` : ""}${it.kind === "video" ? '<i class="flib-play" aria-hidden="true"></i>' : ""}</span>
       <span class="flib-txt"><b>${esc(it.title || "")}</b><small>${esc(meta)}</small></span></button></li>`;
@@ -159,11 +275,11 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
     panel.querySelectorAll("img").forEach(i => (i.onerror = () => { i.remove(); }));
   }
   function drawRibbon() {
-    const pick = lib.featured.map(id => lib.items.get(id)).filter(it => it && (it.url || it.poster));
-    const list = (pick.length >= 3 ? pick : [...lib.items.values()].filter(it => it.url || it.poster).slice(0, 4));
+    const pick = lib.featured.map(id => lib.items.get(id)).filter(it => it && thumbUrl(it));
+    const list = (pick.length >= 3 ? pick : [...lib.items.values()].filter(it => thumbUrl(it)).slice(0, 4));
     ribbon.innerHTML = `<p class="flib-rb-h"><b>Real views</b><span>${esc([...new Set(lib.shelves.map(s => s.by).filter(Boolean))].slice(0, 3).join(" · "))}</span></p>
       <div class="flib-rb-row">${list.map(it => `<button type="button" class="flib-rb-item" data-item="${esc(it.id)}" title="${esc(it.title)}">
-        <img src="${esc(it.kind === "video" ? it.poster : it.url)}" alt="${esc(it.title)}" loading="lazy" decoding="async">${it.kind === "video" ? '<i class="flib-play" aria-hidden="true"></i>' : ""}</button>`).join("")}</div>
+        <img src="${esc(thumbUrl(it))}" alt="${esc(it.title)}" loading="lazy" decoding="async">${it.kind === "video" ? '<i class="flib-play" aria-hidden="true"></i>' : ""}</button>`).join("")}</div>
       <button type="button" class="flib-rb-open" data-open>Open the ${esc(lib.title)}</button>`;
     ribbon.querySelectorAll("[data-item]").forEach(b => (b.onclick = () => { const id = b.dataset.item, it = lib.items.get(id);
       if (it && it.kind === "video") { openItem(id); return; } goLibrary(); setTimeout(() => openItem(id), 350); }));
@@ -192,7 +308,7 @@ export function installFieldLibrary({ stage, chipsEl, globe, card, places, place
                 ...(v ? [{ label: `Watch: ${v.title}`, onClick: () => openItem(v.id) }] : [])] });
   }
 
-  stage.append(panel, ribbon);
+  stage.append(panel, ribbon, view);
   const ready = Promise.resolve().then(() => fetchFn(LIBRARY_API)).then(r => (r && r.ok ? r.json() : null)).catch(() => null).then(raw => {
     lib = normalizeLibrary(raw);
     if (!lib) return null;

@@ -323,6 +323,24 @@ def src_nasa_views():
 # ---- end nasa_views --------------------------------------------------------------------------------------------------
 
 
+# ---- moon_views (open Moon data beyond NASA's pack; docs/MEDIA.md "Moon views") ------------------------------------------
+MOON_VIEWS_MIN_APP = "0.5.3"   # the first app with backend/app/moon_views.py
+
+
+def src_moon_views():
+    """The staged folder scripts/moon_views_build.py writes (index.json + NOTICE + photos/ layers/ models/),
+    backend/data/cache/moon_views by default. Every file index.json lists must be there, every licence one we ship."""
+    d = Path(os.environ.get("MOON_VIEWS_SRC", ROOT / "backend/data/cache/moon_views"))
+    if not (d / "index.json").exists() or not (d / "NOTICE").exists():
+        sys.exit(f"{d}: Moon views missing: run `make moon-views` (scripts/moon_views_build.py) first")
+    import moon_views_build
+    bad = moon_views_build.validate_index(json.loads((d / "index.json").read_text(encoding="utf-8")), d)
+    if bad:
+        sys.exit(f"{d}/index.json: " + "; ".join(bad))
+    return [(p.relative_to(d).as_posix(), p) for p in sorted(d.rglob("*")) if p.is_file() and not p.name.startswith(".")]
+# ---- end moon_views --------------------------------------------------------------------------------------------------
+
+
 # id, title, required, source, licence files, env var + subfolder the app points at
 ASSETS = [
     ("ear", "Speech model (Arc Transcriber Space)", True, src_ear, ["LICENSE", "NOTICE"], "ARC_SPACE_DIR", "nft2"),
@@ -336,6 +354,8 @@ ASSETS = [
     ("site_layers", "Landing-site map layers (NASA LRO)", False, src_site_layers, ["NOTICE"], "SITE_LAYERS_DIR", ""),
     # real NASA sky, models, rocks and photos (optional; without it the app keeps its procedural visuals)
     ("nasa_views", "NASA views (sky, 3D models, Moon rocks, photos)", False, src_nasa_views, ["NOTICE"], "NASA_VIEWS_DIR", ""),
+    # open Moon data: Apollo photos, USGS rock ages, Smithsonian Columbia, sample facts (optional; app 0.5.3+)
+    ("moon_views", "Moon views (Apollo photos, rock ages, Columbia 3D)", False, src_moon_views, ["NOTICE"], "MOON_VIEWS_DIR", ""),
 ]
 
 
@@ -368,6 +388,14 @@ def src_course(f: Path):
     errs, _ = validate(pack, data=folder)
     if errs:
         sys.exit(f"{f.name}: the pack would not load: {errs[0]['at']}: {errs[0]['msg']}")
+    # the licence gate (app/course_library.py licence_problems): every credited file must be pd | cc0 | by | by-sa
+    # (by-sa unmodified); nc, nd, unknown or a missing licence_class stops the build
+    from app.course_library import licence_problems
+    cred = folder / "media" / "credits.json"
+    if cred.is_file():
+        bad = licence_problems(json.loads(cred.read_text(encoding="utf-8")))
+        if bad:
+            sys.exit(f"{f.name}: " + "; ".join(bad[:5]))
     if "course.manifest.json" in have:
         sys.exit(f"{f.name}: course.manifest.json is the pack's own name; rename that file in {folder}")
     files.append(("course.manifest.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))
@@ -422,6 +450,19 @@ def course_assets() -> list:
         if isinstance(m, dict) and m.get("status") == "pack":
             out.append((f"course_{m['id']}", f"Course: {m['title']}", False, (lambda f=f: src_course(f)), [], "", ""))
     return out
+
+
+OPEN_DATA_MIN_APP = "0.5.3"   # the first app whose course_library.py knows chart / model / layer and licence_class
+
+
+def course_needs_open_data(files: dict) -> bool:
+    """Does the pack's library use an item kind older apps do not know (chart, model, layer)?"""
+    src = files.get("library.json")
+    try:
+        lib = json.loads(src if isinstance(src, bytes) else Path(src).read_bytes()) if src is not None else {}
+    except (OSError, ValueError):
+        return False
+    return any(it.get("kind") in ("chart", "model", "layer") for sh in lib.get("shelves") or [] for it in sh.get("items") or [])
 
 
 def course_card(aid: str) -> dict:
@@ -531,12 +572,24 @@ def build(only: set[str] | None) -> dict:
             a.setdefault("version", "1"); a.setdefault("min_app", "0.4.0")
             a["note"] = ("Optional: the real NASA star sky, hardware models, Astromaterials 3D Moon rocks, photos and SDO "
                          "frames (scripts/nasa_views_build.py). The app works without them, with its own visuals.")
+        if aid == "moon_views":   # new in 0.5.3; url null until uploaded (scripts/upload_assets.py)
+            a.setdefault("version", "1"); a.setdefault("min_app", MOON_VIEWS_MIN_APP)
+            a["note"] = ("Optional: open Moon data beyond NASA's pack: one Apollo surface photo per landing site, the USGS "
+                         "geologic map as a Rock ages layer (CC0), the Smithsonian's Columbia in 3D (CC0) and Lunar Sample "
+                         "Compendium facts (scripts/moon_views_build.py). The app works without it.")
         if aid.startswith("course_"):   # a course pack: downloaded when a grown-up picks it (Storage / the switcher)
             a.setdefault("version", "1")   # older apps never fetch it: on_demand, and they have no courses
             a["on_demand"] = True
             if course_card(aid):
                 a["course"] = course_card(aid)
             a["note"] = "A course pack (docs/COURSES.md §4.2): installed into <assets>/course_<id>/, removable."
+            if not same and course_needs_open_data(dict(files)):
+                # library kinds chart / model / layer: an older app's validator would reject the whole library, so
+                # older apps keep the previous pack (its fallback) and this app replaces it (min_version)
+                if asset_manifest.cmp_version(a.get("min_app") or "0.1.0", OPEN_DATA_MIN_APP) < 0:
+                    a["min_app"] = OPEN_DATA_MIN_APP
+                nver = str(int(str(prev.get("version", "1")).split(".")[0]) + 1) if prev else "1"
+                a["min_version"] = nver
         if aid == "ear":   # until the Dropbox upload, or if it ever fails: the same files straight from Hugging Face
             a["source"] = {"repo": EAR_REPO, "revision": EAR_REVISION, "licence": "CC BY-NC 4.0"}
             if EAR_LITE:
@@ -558,6 +611,8 @@ def build(only: set[str] | None) -> dict:
             a["fallback"] = previous_pack(prev)
         elif prev and not same and (prev.get("fallback") or {}).get("kind") == "pack" and not a.get("fallback"):
             a["fallback"] = prev["fallback"]     # rebuilt again before an upload: still the last published pack
+        elif same and (prev.get("fallback") or {}).get("kind") == "pack" and not a.get("fallback"):
+            a["fallback"] = prev["fallback"]     # rebuilt unchanged: keep the fallback until this tar is uploaded
         assets.append(a)
         print(f"  {aid:9s} {size / 1e6:8.1f} MB  {len(listing):4d} files  {sha[:12]}  {'url kept' if url else 'NEW (upload)'}"
               f"  {time.time() - t:.0f} s", flush=True)

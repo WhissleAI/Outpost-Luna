@@ -7,6 +7,7 @@ import { api, normMoment, hwType } from "./api.js";
 import { SAMPLE_ARTIFACTS } from "./dev-artifacts.js";
 import { createGlobe } from "./globe.js";
 import { wireViews } from "./views_wire.js";   // 0.4 real NASA views (optional nasa_views pack)
+import { artifactActions as moonPhotoActions } from "./media/moon_views.js";   // open Moon data: "Real photo here" (optional moon_views pack)
 import { createCard, readoutLine } from "./card.js";
 import { createPlayer } from "./player.js";
 import "./floor.css";               // the voice bar's styles (was imported by voice.js; kept in the same cascade order)
@@ -390,7 +391,7 @@ async function boot() {
   // ---------- ghost hardware ----------
   function artifactEntry(a, extra = {}) {
     const eyebrow = [extra.eyebrow, HW_LABEL[a.hw], sample ? "Sample data" : ""].filter(Boolean).join(" · ");
-    return { title: a.name, artifact: a, ...extra, eyebrow, actions: [...voiceActions(a), ...(extra.actions || [])] };
+    return { title: a.name, artifact: a, ...extra, eyebrow, actions: [...voiceActions(a), ...moonPhotoActions(a, e => card.show(e)), ...(extra.actions || [])] };
   }
   /** "▶ Hear Charlie Duke": the artifact's own audio segments, played through the crew player. */
   function voiceActions(a) {
