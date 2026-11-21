@@ -696,8 +696,12 @@ Builds on the playtest round (#197: regional map, course-own words, typed non-an
   shelf "Clues in the data" (drought timeline, four tree-ring records, radiocarbon dates, rivers layer) and the 2025
   Sentinel-2 view. GitHub `assets-v2` is its `url` for now, with v5 as the `pack` fallback; the same Dropbox step as v5
   applies. The new `moon_views` asset (v1, 4.3 MB) ships the same way.
+- **Pack v7** (0.5.6, sha256 `c8c5b025…`, 41.3 MB, 50 files, `min_version: 7`, `min_app: 0.5.3`): v6 plus the NPS rack
+  card (the PDF and its two pages, library `docs`) and the seamless Four Corners overlay (owner playtest of 0.5.5). GitHub
+  `assets-v2` is its `url`; v6 (Dropbox, GitHub mirror) is its `pack` fallback. An older app takes v7 too: it ignores
+  `docs` and the PDF, and gets the better overlay.
 - Tests: `backend/tests/test_arch_qa_tries.py`, `frontend/tests/arch_qa.test.js`, end to end
-  `frontend/tests/e2e/arch_qa_e2e.py` (+ `arch_patches_e2e.py`).
+  `frontend/tests/e2e/arch_qa_e2e.py` (+ `arch_patches_e2e.py`, and `arch_playtest056_e2e.py` for 0.5.6).
 
 ---
 
