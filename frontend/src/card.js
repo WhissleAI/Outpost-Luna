@@ -74,8 +74,8 @@ export function createCard() {
     title.classList.toggle("is-hw", !!a);
     title.dataset.hw = a ? a.hw || "lander" : "";
     meta.textContent = ""; story.textContent = ""; moreBody.textContent = ""; crew.textContent = ""; sources.textContent = "";
-    img.hidden = true; more.open = false;
-    if (!a) { [meta, story, more, crew, sources].forEach(x => { x.hidden = true; }); return; }
+    img.hidden = true; more.open = false; img.title = "";
+    if (!a) { [meta, story, more, crew, sources].forEach(x => { x.hidden = true; }); renderPhoto(e); return; }
     if (a.agency) meta.append(el("span", "agency", a.agency));
     const bits = [a.mission, a.landed ? "landed " + a.landed.slice(0, 4) : "", a.status].filter(Boolean);
     meta.append(el("span", "", bits.join(" · ")));
@@ -88,6 +88,19 @@ export function createCard() {
     if (names.length) { crew.append(el("b", "", "Crew ")); crew.append(names.join(", ")); }
     crew.hidden = !names.length;
     (a.sources || []).filter(x => x && x.url).forEach(x => {
+      const l = el("a", "chip-src", x.title || new URL(x.url).hostname); l.href = x.url; l.target = "_blank"; l.rel = "noopener"; sources.append(l);
+    });
+    sources.hidden = !sources.childElementCount;
+  }
+
+  /** [courses] A real photo on a place / library card (field_library.js): the picture, its credit line, its sources. */
+  function renderPhoto(e) {
+    const p = e.photo;
+    if (p && p.src) {
+      img.src = p.src; img.alt = p.alt || e.title || ""; img.title = p.caption || ""; img.hidden = false; img.onerror = () => { img.hidden = true; };
+      if (p.credit) { meta.append(el("span", "photo-credit", "Photo: " + p.credit)); meta.hidden = false; }
+    }
+    (e.sources || []).filter(x => x && x.url).forEach(x => {
       const l = el("a", "chip-src", x.title || new URL(x.url).hostname); l.href = x.url; l.target = "_blank"; l.rel = "noopener"; sources.append(l);
     });
     sources.hidden = !sources.childElementCount;

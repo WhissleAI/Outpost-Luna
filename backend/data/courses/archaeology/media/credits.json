@@ -130,5 +130,41 @@
   "height": 800,
   "bytes": 342618,
   "sha256": "e19a84f0b3f37e131d61c46ac471b7844a4972818490c464f66fd40cca00ec9a"
+ },
+ {
+  "file": "four_corners_region.jpg",
+  "title": "The Mesa Verde region and the Four Corners: orthoimagery, 35.7-38.0 N, 110.2-106.9 W (equirectangular)",
+  "credit": "USGS The National Map: Orthoimagery (USDA, USGS; Blue Marble: Next Generation and Landsat)",
+  "licence": "Public domain (US Government work)",
+  "source_url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer",
+  "alt": "Aerial view of the Four Corners region: the canyon-cut Mesa Verde plateau, Sleeping Ute Mountain, farm fields and the San Juan River.",
+  "width": 2000,
+  "height": 1394,
+  "bytes": 916159,
+  "sha256": "095b1c73281ba1cff35bd8c1064ffb55cf6c1525a9e9724fa17af17b5d27d660"
+ },
+ {
+  "file": "iss_wupatki.jpg",
+  "title": "Arizona's Wupatki National Monument, from the International Space Station (iss073e0886930, 1 October 2025)",
+  "credit": "NASA (Expedition 73 crew, International Space Station)",
+  "licence": "Public domain (US Government work)",
+  "source_url": "https://images.nasa.gov/details/iss073e0886930",
+  "alt": "Red and brown desert seen from orbit, cut by a winding dry river and a dark lava field, on the edge of the Colorado Plateau.",
+  "width": 1200,
+  "height": 800,
+  "bytes": 214662,
+  "sha256": "281fb954487914a8487cbc47d5568406d7fa3f6ac5ceaab8d1d7bc10efc157f2"
+ },
+ {
+  "file": "iss_pastora_san_juan.jpg",
+  "title": "Pastora Peak inside Arizona's Navajo Nation, with the San Juan River (iss073e1199153, 29 November 2025)",
+  "credit": "NASA (Expedition 73 crew, International Space Station)",
+  "licence": "Public domain (US Government work)",
+  "source_url": "https://images.nasa.gov/details/iss073e1199153",
+  "alt": "A dark, rugged mountain in red desert seen from orbit, with the San Juan River winding across the upper right.",
+  "width": 1200,
+  "height": 800,
+  "bytes": 252094,
+  "sha256": "3da7a9e587bfbf1110381428edaed244f9322981f0a6e5e0cbdb12004d13dd78"
  }
 ]

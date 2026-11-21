@@ -448,7 +448,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     od.copy(p).sub(camera.position); const t = -camera.position.dot(od) / od.lengthSq();
     return t > 0 && t < 1 && oc.copy(od).multiplyScalar(t).add(camera.position).length() < R;
   }
-  function tickViews(now) {
+  let tickViews = function (now) {
     const on = layer.style.display !== "none" && document.body.dataset.mode === "cadet";
     hw3d.visible = orbit3d.visible = on;
     if (!orbiters.length) return;
@@ -464,7 +464,7 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
       tmp.copy(p).project(camera);
       o.tag.style.transform = `translate(${((tmp.x + 1) / 2 * w).toFixed(1)}px,${((1 - tmp.y) / 2 * h).toFixed(1)}px)`;
     });
-  }
+  };
 
   // Viewport band: in the Mission cabin the Moon is seen through a window at the top of the stage, so the camera's
   // view is shifted (setViewOffset) to centre the globe in that band. null = the whole stage, as before.
@@ -534,6 +534,95 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     else onMiss();   // [audit2] a tap on space used to do nothing at all
   });
 
+  // ---------- [courses] Earth extras: a regional picture draped on the globe, labelled markers, the Moon as context ----------
+  // A course's Library (backend app/course_library.py) can drape an equirectangular lat/lon picture over its region
+  // (Archaeology: USGS orthoimagery of the Four Corners) and name places and NASA views on the globe. All optional:
+  // never called on the Moon, whose globe stays exactly as it was.
+  const overlays = [];
+  /** Drape `url` (an equirectangular picture) between bounds {west, south, east, north} (degrees). Allows a closer zoom,
+   *  since the picture is far sharper than the whole-globe map there. */
+  function setOverlay({ url, bounds: b, minDistance = 1.05 } = {}) {
+    if (!url || !b) return null;
+    const t = new THREE.TextureLoader().load(url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const D = Math.PI / 180;
+    // three's sphere: phi = azimuth = (lon + 180)°, theta = polar = (90 - lat)° (the same frame as ll2v)
+    const g = new THREE.SphereGeometry(R * 1.0006, 64, 48, (b.west + 180) * D, (b.east - b.west) * D, (90 - b.north) * D, (b.north - b.south) * D);
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: t, roughness: 1, metalness: 0, transparent: true, opacity: 1 }));
+    scene.add(m); overlays.push(m);
+    controls.minDistance = Math.min(controls.minDistance, minDistance);
+    return m;
+  }
+  const mlayer2 = document.createElement("div"); mlayer2.className = "cmarks"; stage.append(mlayer2);
+  let cmarks = [];
+  /** Labelled markers [{id, lat, lon, label, kind: "place" | "view" | "video"}]; pick(marker) on a tap. Shown with the
+   *  Library's decor (setDecor), hidden round the back; labels only when zoomed in (they would pile up from afar). */
+  function setMarkers(list, pick = () => {}) {
+    mlayer2.textContent = "";
+    cmarks = (list || []).filter(m => Number.isFinite(m.lat) && Number.isFinite(m.lon)).map(m => {
+      const el = document.createElement("button"); el.type = "button"; el.className = "cmark k-" + (m.kind || "place");
+      el.dataset.id = m.id;
+      const t = document.createElement("span"); t.className = "cm-label"; t.textContent = m.label || ""; el.append(t);
+      el.setAttribute("aria-label", m.aria || m.label || m.id);
+      el.onclick = e => { e.stopPropagation(); pick(m); };
+      mlayer2.append(el);
+      return { m, el, p: ll2v(m.lat, m.lon, R * 1.002), w: 0 };
+    });
+    // the HTML markers name the places: the plain 3D dots would be 50 km blobs at a regional zoom
+    if (cmarks.length) pins.clear();
+    return cmarks.length;
+  }
+  function tickMarks() {
+    const on = cmarks.length && decorOn && !mi.on && userPins;
+    mlayer2.style.display = on ? "" : "none";
+    if (!on && !ctxMoon) return;
+    const w = stage.clientWidth, h = stage.clientHeight, d = camera.position.length();
+    mlayer2.classList.toggle("is-far", d > 1.9);
+    // labels never pile up: in list order (places first), a label that would cover another marker's dot or a label
+    // already drawn hides (hover or focus still shows it)
+    const pos = [];
+    cmarks.forEach(g => {
+      if (!on) return;
+      const facing = g.p.dot(camera.position) / g.p.length() > R * 1.01;
+      g.el.classList.toggle("is-hidden", !facing);
+      if (!facing) return;
+      tmp.copy(g.p).project(camera);
+      const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h;
+      g.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+      if (!g.w) g.w = (g.el.firstChild && g.el.firstChild.offsetWidth) || 0;
+      pos.push({ g, x, y });
+    });
+    const over = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+    const dots = pos.map(q => [q.x - 7, q.y - 7, q.x + 7, q.y + 7]), labels = [];
+    pos.forEach((q, i) => {
+      const b = [q.x + 4, q.y - 14, q.x + 10 + q.g.w, q.y + 8];
+      const hit = labels.some(o => over(b, o)) || dots.some((d, j) => j !== i && over(b, d));
+      q.g.el.classList.toggle("no-label", hit);
+      if (!hit) labels.push(b);
+    });
+    if (ctxMoon) {   // the context Moon rides behind the globe, low on the right of the view, wherever the camera turns
+      const c = camera.position.clone().normalize(), right = new THREE.Vector3().crossVectors(camera.up, c).normalize(),
+        up = new THREE.Vector3().crossVectors(c, right).normalize();
+      ctxMoon.position.copy(c.multiplyScalar(-6)).add(right.multiplyScalar(3.4)).add(up.multiplyScalar(-1.0));
+    }
+  }
+  let ctxMoon = null;
+  /** The Moon in Earth's sky, as context (not to scale: at true scale it would sit 60 Earth radii away). onPick on a tap. */
+  function setMoonContext({ map = MOON_BODY.map, onPick } = {}) {
+    if (ctxMoon) return ctxMoon;
+    const t = new THREE.TextureLoader().load(map); t.colorSpace = THREE.SRGBColorSpace;
+    ctxMoon = new THREE.Mesh(new THREE.SphereGeometry(0.27, 48, 32), new THREE.MeshBasicMaterial({ map: t, color: 0xd8d8d8 }));   // a full Moon: lit by itself, not by the globe's Sun
+    ctxMoon.name = "context-moon";
+    scene.add(ctxMoon);
+    if (onPick) renderer.domElement.addEventListener("pointerup", e => {
+      const r = renderer.domElement.getBoundingClientRect();
+      ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      if (ray.intersectObject(ctxMoon)[0] && !ray.intersectObject(moon)[0]) onPick();
+    });
+    return ctxMoon;
+  }
+  (function hookMarks() { const f = tickViews; tickViews = now => { f(now); tickMarks(); }; })();
+
   return {
     showFeature, highlight, flyTo, nearest, mission, setViewport, setSunDir, poleView, centerLatLon,   // [learning-v3] sun / pole / centre
     /** Screen position (px in the stage) of a surface point, and whether it faces the camera. Used by the site pins. */
@@ -562,6 +651,11 @@ export function createGlobe({ stage, label, loading, places, onTap, onArtifact =
     route, guide,
     // 0.4 real NASA views (media/nasa_views.js; all optional, today's visuals until called)
     setSky, setPolarCap, setHardwareModels, setOrbiters,
+    // [courses] Earth extras (a course Library): a draped regional picture, labelled markers, the Moon as context
+    setOverlay, setMarkers, setMoonContext, get markerCount() { return cmarks.length; }, get overlayCount() { return overlays.length; },
+    get hasContextMoon() { return !!ctxMoon; },
+    /** The body's name ("Moon", "Earth"): spoken lines say which globe turns. */
+    get bodyName() { return BODY.name; },
     get skyReal() { return !!skyMesh; }, get polarCap() { return !!cap; },
     /** Drop the highlight ring and its label (a globe step that moves the camera starts clean). */
     clearHighlight() { if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null; } sel = null; label.hidden = true; ghosts.forEach(g => g.el.classList.remove("is-on")); },

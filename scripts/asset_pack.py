@@ -371,7 +371,36 @@ def src_course(f: Path):
     if "course.manifest.json" in have:
         sys.exit(f"{f.name}: course.manifest.json is the pack's own name; rename that file in {folder}")
     files.append(("course.manifest.json", (json.dumps(pack, indent=1, ensure_ascii=False) + "\n").encode()))
+    if os.environ.get("COURSE_PACK_VIDEOS") == "1":   # optional: the course's pinned NASA videos, for offline schools
+        files += course_videos(pack["id"], folder / pack["videos"]) if isinstance(pack.get("videos"), str) else []
     return files
+
+
+def course_videos(cid: str, vfile: Path) -> list:
+    """COURSE_PACK_VIDEOS=1: the course's pinned (prefetch) NASA videos as video/<id>.mp4 (+ .vtt captions, .jpg poster),
+    downloaded from NASA and checked against videos.json's sha256. The backend plays them from <pack>/video
+    (app/video.py course_video_dir). Off by default: they add their sizes (bytes) to the course pack."""
+    sys.path.insert(0, str(ROOT / "backend"))
+    from app.video import has_cues, srt_to_vtt
+    stage, out = OUT / f"src-course-{cid}-video", []
+    for v in json.loads(vfile.read_text(encoding="utf-8")):
+        if not (v.get("prefetch") and v.get("source") == "nasa_file"):
+            continue
+        mp4 = stage / f"{v['id']}.mp4"
+        if not (mp4.exists() and sha256_file(mp4) == v["sha256"]):
+            print(f"  {cid}: downloading video {v['id']} ({v['bytes'] / 1e6:.0f} MB) from NASA", flush=True)
+            fetch(v["file_url"], mp4, v["sha256"])
+        out.append((f"video/{mp4.name}", mp4))
+        for ext, key in (("vtt", "captions_url"), ("jpg", "poster_url")):
+            p = stage / f"{v['id']}.{ext}"
+            if not p.exists() and v.get(key):
+                fetch(v[key], p)
+                if ext == "vtt":
+                    vtt = srt_to_vtt(p.read_bytes().decode("utf-8", "replace"))
+                    p.write_text(vtt, encoding="utf-8") if has_cues(vtt) else p.unlink()
+            if p.exists():
+                out.append((f"video/{p.name}", p))
+    return out
 
 
 def course_assets() -> list:

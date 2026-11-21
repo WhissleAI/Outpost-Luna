@@ -328,6 +328,8 @@ packs. Schema, validator and loader: `backend/app/courses.py` (spike). The Moon'
 | `standards` | `[{framework, codes, note}]` | Progress, Brain, teacher pack |
 | `sensitivity` | location and content rules (§1.5) | content checks (tests) |
 | `class_packs` | teachers may attach packs to this course | class editor |
+| `library` | the course's Library screen: shelves of real pictures, videos and places (§4.11) | `app/course_library.py`, `field_library.js` |
+| `videos` | the course's own NASA videos (the `catalog.json` schema), merged into the video catalog while it is active | `app/video.py catalog()` |
 
 ### 4.2 Download, delete, switch
 
@@ -583,6 +585,33 @@ offline, School network mode, a failed download, a second call sign, the Moon-on
 through `COURSE_PACK_SRC`), and `keys_e2e.py` walks the pick by keys.
 Screenshots: `img/courses/first_run_*.jpg` (the pick, the progress, offline, School network mode, a failed download, the
 Archaeology welcome, the Moon-only chip; 1440x900 and 1280x720).
+
+### 4.11 Course library: real NASA Earth views, sites and videos
+
+The Moon's Library is its hardware, crew audio and the NASA views pack. A non-Moon course brings its own, as data in its
+folder (no course ids in code):
+
+- `library.json` (`outpost-luna-library` v1): shelves of items (`image`: a file in `media/`, credited in
+  `media/credits.json`; `video`: an id in the course's `videos.json`; `place`: a gazetteer id), each with an optional
+  `place` or `lat`/`lon` (a labelled marker on the globe) and `source` (a `sources.json` id). Plus `overlays` (an
+  equirectangular picture draped on the globe between its bounds), `tour` (gazetteer stops), `chips` (the askbar),
+  `featured` (the Field School map's "Real views" ribbon), `home` (where the Library's camera starts) and `moon` (the
+  context Moon in Earth's sky, not to scale). `app/course_library.py` validates every file, credit, id and bounds and
+  serves the resolved library at `GET /api/course/library` (`{"shelves": []}` on the Moon or a pack without one).
+- `videos.json`: NASA files in the base catalog's schema (`app/video.py validate()`), each marked `course: <id>` and
+  merged into `/api/video/catalog` only while that course is active. They stream through the backend on first play
+  and are pinned for the background download; an installed course pack may carry them as `video/<id>.mp4|.vtt|.jpg`
+  (`scripts/asset_pack.py` with `COURSE_PACK_VIDEOS=1`), which the backend copies into the cache instead.
+
+Archaeology's library: Earth from orbit (Landsat 8 Mesa Verde, two ISS astronaut photos of the Colorado Plateau, the
+Blue Marble), Mesa Verde sites (seven NPS photos), lidar (two USGS 3DEP hillshades), Watch (NASA: remote sensing from the
+space station, GEDI lidar from orbit, Landsat's pushbroom sensor, tree rings and Southwest drought) and The Moon, from
+here (Chimney Rock's lunar standstill, Landsat's monthly Moon calibration). USGS orthoimagery of the Four Corners
+(110.2-106.9 W, 35.7-38.0 N) is draped on the globe, so the Library zooms into the region with real imagery.
+Client: `frontend/src/field_library.js` (+ `globe.js setOverlay / setMarkers / setMoonContext`, all opt-in). Tests:
+`backend/tests/test_course_library.py`, `frontend/tests/field_library.test.js`, end to end
+`frontend/tests/e2e/field_library_e2e.py` (Archaeology at 1440x900 and 1280x720; `--moon-base` checks the Moon's
+Library is unchanged).
 
 ---
 

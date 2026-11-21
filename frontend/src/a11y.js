@@ -444,9 +444,10 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
   function wrapGlobe(globe, placeById) {
     if (!globe || globe.__a11y) return; globe.__a11y = true;
     const sf = globe.showFeature.bind(globe);
-    globe.showFeature = (f, ...a) => { if (f && f.name) describe(`The Moon turns to ${f.name}.`); return sf(f, ...a); };
+    const turns = () => (globe.bodyName && globe.bodyName !== "Moon" ? `${globe.bodyName} turns` : "The Moon turns");   // [courses]
+    globe.showFeature = (f, ...a) => { if (f && f.name) describe(`${turns()} to ${f.name}.`); return sf(f, ...a); };
     const fly = globe.flyTo.bind(globe);
-    globe.flyTo = (lat, lon, ...a) => { describe(`The Moon turns to ${Math.abs(Math.round(lat))}° ${lat >= 0 ? "north" : "south"}, ${Math.abs(Math.round(lon))}° ${lon >= 0 ? "east" : "west"}.`); return fly(lat, lon, ...a); };
+    globe.flyTo = (lat, lon, ...a) => { describe(`${turns()} to ${Math.abs(Math.round(lat))}° ${lat >= 0 ? "north" : "south"}, ${Math.abs(Math.round(lon))}° ${lon >= 0 ? "east" : "west"}.`); return fly(lat, lon, ...a); };
     O.flyTo = id => { const f = placeById && placeById(id); if (f) globe.showFeature(f); };
   }
   // Cards, banners, HUD alerts and badges: watched in the DOM (no coupling to the UIs that draw them).
