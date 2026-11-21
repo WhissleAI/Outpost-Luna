@@ -355,7 +355,9 @@ def hint(st: dict, rung: int, got: list | None, extra: dict | None = None, lead:
             return out
         out["say"] = lead + h
         if rung >= 2 and nxt:
-            out |= {"answer": nxt["id"], "phrase": nxt["label"]}
+            # [arch QA] the next layer glows (its chip and its band in the trench); its name is NOT handed over in a
+            # "Say: …" box at this rung (that gave the answer away). "help" a third time shows it.
+            out |= {"answer": nxt["id"]}
             out["say"] = lead + "The next layer glows on the card."
         return out
     if t == "rings":
