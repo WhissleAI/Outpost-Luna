@@ -5,7 +5,7 @@
      typed filler ("um") is still ignored;
   2. the two describe steps show the picture they ask about;
   3. no Moon words on a keywords step ("radio practice", "Say the order back") or in the lesson hello ("cadet");
-  4. the map lands on the course's region (not the continent), with Mesa Verde's ten pins fanned out round it, and
+  4. the map lands on the course's region (not the continent), with Mesa Verde's nine pins fanned out round it, and
      zoomed far out they fold into one count pin;
   7. Moonrise at Chimney Rock opens on the Moon, then Earth, then flies to Chimney Rock;
   8. a wrong guess is acknowledged ("You guessed: …"); a decide step's other call offers Try again; the tree-ring
@@ -117,7 +117,7 @@ def main():
         pg.evaluate("() => window.__outpost.globe.flyTo(37.18, -108.49, 4.2)"); pg.wait_for_timeout(2200)
         c = pg.evaluate("() => ({ c: window.__outpost.globe.route.collapsed, btn: !!document.querySelector('.route .route-cluster:not([hidden])') })")
         shot(pg, a.out, "qa_map_far")
-        check(c["c"] and c["c"][0]["n"] == 10 and c["btn"], f"#4 zoomed out: one count pin for the ten lessons {c}")
+        check(c["c"] and c["c"][0]["n"] == 9 and c["btn"], f"#4 zoomed out: one count pin for Mesa Verde's nine lessons (Chimney Rock keeps its own pin) {c}")
         pg.click(".route .route-cluster:not([hidden])"); pg.wait_for_timeout(2200)
         check(pg.evaluate("() => window.__outpost.globe.distance") < 2, "#4 the count pin zooms back in to the region")
 
@@ -127,7 +127,8 @@ def main():
         check(not any(w in (f0["how"] + f0["intro"]).lower() for w in ("radio", "order back")), f"#3 the keywords step's line is not the Moon's radio drill: {f0['how'] or f0['intro']!r}")
         t0 = time.time()
         typed(pg, "um")
-        check(not panel(pg)["fb"], "#1 typed filler ('um') is still ignored")
+        fu = panel(pg)["fb"]   # never a miss: at most the step again (the playtest round's typed nudge), never "Not the word"
+        check("Not the word" not in fu and "card" not in fu.lower(), f"#1 typed filler ('um') is not a miss: {fu!r}")
         typed(pg, "history")
         f1 = panel(pg)
         check("Not the word" in f1["fb"] or "Not quite" in f1["fb"], f"#1 typed 'history' is a miss with a hint: {f1['fb']!r}")
