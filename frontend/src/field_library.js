@@ -7,7 +7,7 @@
 // Pure helpers first (tests/field_library.test.js), then installFieldLibrary(), which main.js calls on a non-Moon globe.
 // Nothing here runs on the Moon, and a course without a library (or an older pack without one) keeps today's screen.
 
-import { parseChart, chartSvg, tableHtml, nearestX, xAt, yearText } from "./media/chart.js";
+import { parseChart, chartSvg, tableHtml, nearestX, xAt, yearText, colourIndex } from "./media/chart.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const LIBRARY_API = "/api/course/library";
@@ -126,7 +126,8 @@ export function chartView(it, chart) {
     type: it.chart_type || chart.type || "line", x_format: chart.x_format || "number", zero: !!chart.zero };
   const many = chart.series.length > 1;
   return `<figure class="flv-fig">${chartSvg(chart, opts)}
-    ${many ? `<ul class="ch-legend" aria-label="Legend">${chart.series.map((s, k) => `<li><i class="ch-key ch-k${k}" aria-hidden="true"></i>${esc(s.label)}</li>`).join("")}</ul>` : ""}
+    ${many ? `<ul class="ch-legend" aria-label="Legend">${chart.series.map((s, i) => { const k = colourIndex(chart.series, i);
+      return `<li><i class="ch-key ${k < 0 ? "ch-kf" : "ch-k" + k}" aria-hidden="true"></i>${esc(s.label)}</li>`; }).join("")}</ul>` : ""}
     <figcaption>${esc(it.summary || "")}</figcaption></figure>
     <p class="flv-read" aria-live="polite"></p>
     <details class="flv-table"><summary>Show the numbers</summary>${tableHtml(chart, { x_label: opts.x_label, x_format: opts.x_format, caption: it.title })}</details>`;

@@ -56,7 +56,13 @@ export function parseChart(text, name = "chart.json") {
 }
 
 /** "AD 1276", "500 BC" (x as a calendar year, 0 = 1 BC is never used by the packs). Pure. */
-export const yearText = x => (x < 0 ? `${Math.round(-x)} BC` : `AD ${Math.round(x)}`);
+export const yearText = x => (x < 0 ? `${Math.round(-x)} BC` : `AD ${Math.max(1, Math.round(x))}`);   // there is no year 0
+
+/** A series' colour slot: context series (`faint`) are neutral grey (-1) and take no slot; the others count 0, 1, 2… Pure. */
+export function colourIndex(series, i) {
+  if (series[i] && series[i].faint) return -1;
+  return series.slice(0, i).filter(s => !s.faint).length;
+}
 
 /** Round tick steps (1, 2, 5 × 10^n) covering [a, b] with about n ticks. Pure. */
 export function ticks(a, b, n = 5) {
@@ -86,7 +92,7 @@ const fmtY = v => (Math.abs(v) >= 100 ? String(Math.round(v)) : String(Math.roun
  */
 export function chartSvg(chart, opts = {}) {
   const c = { ...chart, ...opts, type: opts.type || chart.type || "line", x_format: opts.x_format || chart.x_format || "number" };
-  const W = opts.width || 640, H = opts.height || 300, many = c.series.length > 1;
+  const W = opts.width || 640, H = opts.height || 300, many = c.series.filter(s => !s.faint).length > 1;
   const L = 52, R = many ? 96 : 16, T = 22, B = 40;
   const e = extent(c, opts.bands || chart.bands), pw = W - L - R, ph = H - T - B;
   const bar = c.type === "bar";
@@ -112,29 +118,34 @@ export function chartSvg(chart, opts = {}) {
   if (c.x_label) out.push(`<text class="ch-label" x="${L + pw / 2}" y="${H - 4}" text-anchor="middle">${esc(c.x_label)}</text>`);
   if (c.y_label) out.push(`<text class="ch-label" transform="translate(12 ${T + ph / 2}) rotate(-90)" text-anchor="middle">${esc(c.y_label)}</text>`);
   // the data
-  c.series.forEach((s, k) => {
+  const ends = [];
+  c.series.forEach((s, i) => {
+    const k = colourIndex(c.series, i), cls = k < 0 ? "ch-faint" : `ch-s${k}`;
     if (bar) {
       const g = Math.max(0.5, Math.min(2, bw * 0.15));   // the 2px surface gap between bars, narrower on dense charts
-      out.push(`<g class="ch-s${k} ch-bars">${s.points.map(([x, y]) => {
+      out.push(`<g class="${cls} ch-bars">${s.points.map(([x, y]) => {
         const y0 = sy(Math.max(e.y0, Math.min(0, y))), y1 = sy(Math.max(0, y)), h = Math.max(y0 - y1, y ? 1 : 0);
         return `<rect x="${(sx(x) - bw / 2 + g / 2).toFixed(1)}" y="${y1.toFixed(1)}" width="${Math.max(0.5, bw - g).toFixed(1)}" height="${h.toFixed(1)}" rx="${bw > 8 ? 2 : 0}"/>`;
       }).join("")}</g>`);
     } else {
       const d = s.points.map(([x, y], i) => `${i ? "L" : "M"}${sx(x).toFixed(1)} ${sy(y).toFixed(1)}`).join("");
-      out.push(`<path class="ch-s${k} ch-line${s.faint ? " is-faint" : ""}" d="${d}"/>`);
+      out.push(`<path class="${cls} ch-line" d="${d}"/>`);
     }
-    if (many) {   // direct end label: identity by name, not colour alone
+    if (many && k >= 0) {   // direct end label: identity by name, not colour alone (context series: the legend names it)
       const [x, y] = s.points[s.points.length - 1];
-      out.push(`<text class="ch-end ch-t${k}" x="${(sx(x) + 6).toFixed(1)}" y="${(sy(y) + 4).toFixed(1)}">${esc(s.short || s.label)}</text>`);
+      ends.push({ k, x: sx(x) + 6, y: sy(y) + 4, text: s.short || s.label });
     }
   });
+  // end labels never overlap: in y order, each at least 13 px below the one above
+  ends.sort((a, b) => a.y - b.y).forEach((l, i, all) => { if (i && l.y - all[i - 1].y < 13) l.y = all[i - 1].y + 13; });
+  ends.forEach(l => out.push(`<text class="ch-end ch-t${l.k}" x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}">${esc(l.text)}</text>`));
   out.push(`<line class="ch-cross" x1="0" x2="0" y1="${T}" y2="${T + ph}" visibility="hidden"/>`, "</svg>");
   return out.join("");
 }
 
 /** The plot's x for a pointer at fraction f (0..1) of the SVG width, with the same layout as chartSvg. Pure. */
 export function xAt(chart, f, opts = {}) {
-  const W = opts.width || 640, L = 52, R = chart.series.length > 1 ? 96 : 16;
+  const W = opts.width || 640, L = 52, R = chart.series.filter(s => !s.faint).length > 1 ? 96 : 16;
   const e = extent(chart, []), px = Math.max(0, Math.min(1, (f * W - L) / (W - L - R)));
   return e.x0 + px * (e.x1 - e.x0);
 }
