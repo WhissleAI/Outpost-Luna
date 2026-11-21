@@ -42,7 +42,7 @@ what it keeps.
 | **Screen masking** (`frontend/src/profanity.js` `maskProfanity`) | Masks rude words in on-screen kid text. Stores nothing. |
 | **Session Director** (`docs/SESSION_CONTRACT.md`) | Streams in, typed decisions out, under the floor rules: one voice at a time, the kid always wins, never talk over the kid, silence is fine. The learned model (`backend/app/director_model/runtime.py`) runs in `guarded` mode: r12 xl on "quiet", r10 on hot and echo (`director_model/RESULTS.md` round 12). The privacy guard always wins. |
 | **On-device learning** (`docs/ON_DEVICE_LEARNING.md`, `backend/app/learn/`) | Learns per cadet: name aliases (2 confirmations, or 1 at p ≥ 0.85; cap 24; 45-day half-life), the end-of-turn wait (0.5 to 0.8 s), pace and yes/no words. Learns per computer: the echo path. Kept in `profile-<id>.json` and `device.json`, mode 0600. Shown in Settings → What the app has learned (`frontend/src/learning_ui.js`). |
-| **Turn log v2** (`backend/app/turnlog.py`) | Opt-in through `prefs.improve`, or during a grown-up's Playtest session. Redacted text (`<callsign>`, `<name>`, `<address>`, `<number>`), with numbers and enums only for the ear, room, router and Director. Signals: repeat, negate, retap, hint, pass, undo, confirm. Capped at 5 MB total. `DELETE /api/turnlog` empties it. |
+| **Turn log v2** (`backend/app/turnlog.py`) | On by default since 0.4.3 (`prefs.improve`, Settings → Listening → "Help improve the voice guide"; an explicit off stays off, and prefs saved before 0.4.3 keep what they had), and always during a grown-up's Playtest session. On the device only. Redacted text (`<callsign>`, `<name>`, `<address>`, `<number>`), with numbers and enums only for the ear, room, router and Director. Signals: repeat, negate, retap, hint, pass, undo, confirm. Capped at 5 MB total. `DELETE /api/turnlog` empties it. |
 | **Room state** (`frontend/src/room.js`) | Calm, busy or loud, plus a listen mode (open, hold, offer, type). Only the label is sent. The turn log copies the label. |
 | **0.6 voice signals** (`docs/GAMEPLAY.md` §14) | Radio readback (`backend/app/mission/readback.py`): in-session praise or a nudge, never counted. Hesitation (`backend/app/hesitation.py`): fillers, a pause of 2.5 s or more, or low confidence move the hint ladder one rung early, once per step. The pause itself is never stored or shown. |
 | **Learning data** | The course (`backend/data/academy/course.json`, 13 lessons). Sourced facts (`backend/data/learning/concepts.json`, 31 concepts, no lesson mapping). `atm-academy` holds patches, qualified, and the half-done step. `outpost-missions-flown:<call sign>`. Debriefs are computed live (stars, grade, objectives, good calls, physics "numbers" lines) and not kept. The paused mission is `saves/mission.json`. Class lessons. |
@@ -91,7 +91,7 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 | Practice days | `days` (60 at most) | "Practised on N days" | Grown-ups | Regularity | Dates only |
 | Speaking participation | `GET /api/brain/summary` `talk` (turn log, when on) | Turns, voice vs typed, answered vs let pass, room calm/busy/loud | Grown-ups, on the playing cadet's card (it's this computer's, not one cadet's) | Voice confidence, and whether a busy room pushes to typing | Never reads the log's text |
 | Mission decisions | debriefs (`GET /api/mission/{id}/debrief`) | Stars, grade, objectives, Try next (unchanged from #165) | Grown-ups | Applying science to safety calls | Live only, not kept |
-| Safety summary | turn log `guard`, `Session.flags` | "N turns kept private by the privacy guard or the word filter." Care suggestions as a count | Grown-ups | Reassurance that the guard works | Never the words |
+| Safety summary | turn log router reason `safety` (filtered) and `guard` (privacy), `Session.flags` | Rude words filtered, and turns kept private by the privacy guard, as two counts (split since D9). Care suggestions as a count | Grown-ups | Reassurance that the guard works | Never the words |
 | What the app adapted | `learn` `describe(include_aliases=False)` | Names learned (count), the end-of-turn wait | Grown-ups | Explains why the app feels different for this cadet | The names themselves are in What the app has learned (remove or reset, one tap each) |
 | Data controls | existing sections | Pointers: Voice log and playtest (on/off, delete, export), What the app has learned (remove/reset), Reset (erase progress too) | Grown-ups | — | Every stored item has a delete |
 
@@ -145,8 +145,10 @@ It sits behind the 3-second grown-up hold, one card per cadet, and is printable.
 
 - **Loopback only:** the `LocalGuard` middleware on every route (`backend/app/main.py`), plus the local token like
   `GET /api/learn` (`diag.authorized`).
-- **Returns** `{days, talk:{turns, voice, typed, answered, passed_by, days, room:{calm,busy,loud}, signals:{hint,pass,repeat,negate,undo}}, safety:{guarded, care}, adapted:{names, wait_s, turns, waits_longer}, log:{turns, bytes}, words:false}`.
-- **Reads only** the turn log's `k`, `src`, `day`, `router.outcome`, `room.state`, `guard` and the signal `sig`. Never
+- **Returns** `{days, talk:{turns, voice, typed, answered, passed_by, days, room:{calm,busy,loud}, signals:{hint,pass,repeat,negate,undo}}, safety:{guarded, filtered, privacy, care}, adapted:{names, wait_s, turns, waits_longer}, log:{turns, bytes}, words:false}`.
+- **Day window:** turns and outcome signals both honour `days` (signal lines carry their `day` since D9; an older
+  signal line without one counts only without a window).
+- **Reads only** the turn log's `k`, `src`, `day`, `router.outcome`, `router.reason`, `room.state`, `guard` and the signal `sig`. Never
   `text`, alias heard forms or call signs (`backend/tests/test_brain.py`
   `test_summary_has_no_words_names_or_call_signs`).
 

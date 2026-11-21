@@ -1,7 +1,7 @@
 """Settings → Reset Outpost Luna (docs/RESET.md): erase what this computer remembers about the kid.
 
 Two levels:
-  start  "Start over": the server's per-user state. That is the opt-in turn log, the TTS cache (spoken lines), and
+  start  "Start over": the server's per-user state. That is the turn log (on by default since 0.4.3), the TTS cache (spoken lines), and
          the in-memory missions, sessions, check rides and standing orders. The downloaded assets (models, the voice
          pack, crew audio, NASA videos) stay, so nothing has to download again.
   all    "Reset everything": the above, plus the NASA video cache and the embedding vector cache, plus the first-run

@@ -152,6 +152,10 @@ test("computerHtml: talk, room, safety and adapted counts; the log-off state; ne
     assert.ok(h.includes(t), t);
   assert.ok(B.computerHtml(null).includes(B.COMPUTER.off));
   assert.ok(B.computerHtml({ talk: { turns: 0 }, safety: { guarded: 0, care: 1 } }).includes("suggested a break"));
+  // [D9] profanity split from privacy when the backend gives both
+  const sp = B.computerHtml({ talk: { turns: 0 }, safety: { guarded: 3, filtered: 1, privacy: 2, care: 0 } });
+  assert.ok(sp.includes("Rude words filtered: 1 turn.") && sp.includes("privacy guard (names, addresses): 2 turns"), sp);
+  assert.ok(!sp.includes("or the word filter"));
 });
 
 test("progress sheet: practice per cadet, this computer's counts on the playing cadet's card only", () => {

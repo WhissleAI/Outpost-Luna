@@ -2,7 +2,7 @@
 //
 //   Start over        erases settings and the rest on this computer: every pref (voice, theme, Mute, expressiveness, the
 //                     recorded voice, gesture calibration, coach marks seen, the tour, the first-mission briefing),
-//                     mission debriefs, the opt-in turn log and the spoken-line cache. The downloaded assets stay.
+//                     mission debriefs, the turn log and the spoken-line cache. The downloaded assets stay.
 //   Reset everything  the same, plus the NASA video cache, the other caches and the first-run downloads, so the next
 //                     launch starts from scratch.
 //
