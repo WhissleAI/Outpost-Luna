@@ -44,6 +44,8 @@ async def lifespan(app: FastAPI):
     # Local brain: build the cards now, embed the question + command banks in the background (disk-cached; fails open).
     asyncio.create_task(_warm_brain())
     asyncio.create_task(video.prefetch_task())   # NASA video: pinned files on first online launch (docs/MEDIA.md)
+    # [0.5.2] a cadet already on a course (no switch this launch) still gets its outdated pack replaced (min_version)
+    course_packs.on_course_change()
     yield
     video.stop_prefetch()
     diag.shutdown()
