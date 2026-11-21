@@ -9,6 +9,7 @@ import { roleName } from "./courses.js";   // [courses] the transcript names the
 import { moreVoicesHint, engineChoiceHtml } from "./prefs.js";   // Settings → Voice: where a parent adds clearer OS voices
 import { onIntent } from "./input/intents.js";   // [robustness] Settings is modal for gestures, keys and the controller too
 import { zoneHtml, confirmHtml, bindConfirm, holdButtonHtml, bindHold } from "./reset.js";   // Settings → Reset (docs/RESET.md)
+import { askHtml as pinAskHtml, checkPin, pinSet, COPY as PIN } from "./teacher_pin.js";   // [D7] the teacher PIN after the hold
 
 /** [0.4.1] Settings → For grown-ups: one section, behind the 3-second hold, for everything that erases or saves files.
  *  Kids' settings (voice, speed, theme, captions…) stay open. Extra sections with `grownup: true` (Videos, Help &
@@ -17,7 +18,7 @@ export const GROWNUPS = {
   title: "For grown-ups",
   gate: "Progress, courses, class lessons, reset, videos, diagnostics, the voice log and the school network. Hold the button for 3 seconds to open them.",
   hold: "Hold for 3 seconds to open",
-  inside: ["See progress", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
+  inside: ["See progress", "Class summary", "Teacher PIN", "Get or remove courses", "Write class lessons", "Reset the app", "Clear saved videos", "Save diagnostics", "What the app has learned", "Voice log and playtest", "School network", "Reset my patches"],
   patches: "Reset my patches",
   patchesNote: "Hold for 3 seconds. Clears this cadet's patches and lesson progress. The call sign stays.",
   sayLocked: "Here's Reset, in For grown-ups. A grown-up holds the button for 3 seconds to open it.",
@@ -39,7 +40,8 @@ export const IMPROVE = {
   clear: "Delete what's saved",
 };
 /** The grown-ups section's HTML (pure; tests/settings_gate.test.js). parts: [{id, title, html}] drawn when open. */
-export function grownupsHtml({ open = false, parts = [], esc = x => String(x) } = {}) {
+export function grownupsHtml({ open = false, parts = [], esc = x => String(x), pin = false, pinMsg = "" } = {}) {
+  if (!open && pin) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">${pinAskHtml(pinMsg)}</div>`;   // [D7] the PIN step
   if (!open) return `<div class="gu-gate" role="group" aria-label="${esc(GROWNUPS.title)}">
       <p class="set-help">${esc(GROWNUPS.gate)}</p>
       <ul class="gu-list">${GROWNUPS.inside.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
@@ -195,6 +197,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     ["cadets", "Cadets"], ["help", "Help"], ["grownups", GROWNUPS.title]];   // the grown-ups section (Reset and the rest): always last (docs/RESET.md)
   // guOpen: the grown-up held the gate (until Settings closes)
   let section = "voice", resetArmed = false, resetView = null, unbindReset = () => {}, steerPoll = 0, guOpen = false;
+  let guPin = false, pinMsg = "";   // [D7] the hold fired and a teacher PIN is set: the PIN step shows until it is right
   function renderPanel() {
     const PA = O.prefsApi, P = PA ? PA.value : {};
     const sw = (k, label, help) => `<label class="a11y-sw"><input type="checkbox" data-k="${k}" ${S[k] ? "checked" : ""}><span><b>${label}</b><small>${help}</small></span></label>`;
@@ -264,7 +267,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     const parts = resetView ? [{ id: "reset", title: "Reset", html: confirmHtml(resetView) }]
       : [...guExtras.filter(x => x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })), { id: "reset", title: "Reset", html: zoneHtml() }, ...guExtras.filter(x => !x.first).map(x => ({ id: x.id, title: x.title, html: body[x.id] })),   // `first`: Progress opens the section
         ...(PA ? [{ id: "patches", title: GROWNUPS.patches, html: `${holdButtonHtml(GROWNUPS.patches, "data-prof-reset")}<small class="rs-note">${escH(GROWNUPS.patchesNote)}</small>` }] : [])];
-    body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH });
+    body.grownups = grownupsHtml({ open: guOpen, parts, esc: escH, pin: guPin, pinMsg });
     const shown = order.filter(([id]) => body[id] && !guExtras.some(x => x.id === id));
     if (!shown.some(([id]) => id === section)) section = shown[0][0];
     panel.innerHTML = `
@@ -282,7 +285,17 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       // [D4] the safety notes waiting for a grown-up: a count on the gate (never what they are, until the hold)
       if (gate) safetyNotes().then(n => { const el = panel.querySelector("[data-gu-notes]"); if (el && n) { el.textContent = GROWNUPS.notes(n); el.hidden = false; } });
       // the grown-up gate: the shared 3-second hold (a click or a tap does nothing); open until Settings closes
-      if (gate) { const h = bindHold(gate, { onFire: () => { guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
+      if (gate) { const h = bindHold(gate, { onFire: () => {
+        if (pinSet()) { guPin = true; pinMsg = ""; renderPanel(); const p = panel.querySelector("[data-gu-pin]"); if (p) p.focus({ preventScroll: true }); return; }   // [D7]
+        guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); } }); undo.push(() => h.destroy()); }
+      // [D7] the teacher PIN: right -> For grown-ups opens (until Settings closes); wrong -> say so (5 wrong: wait 30 s)
+      const pf = panel.querySelector("[data-gu-pin-form]");
+      if (pf) pf.onsubmit = async e => {
+        e.preventDefault();
+        const r = await checkPin(pf.querySelector("[data-gu-pin]").value);
+        if (r.ok) { guPin = false; pinMsg = ""; guOpen = true; renderPanel(); const f = panel.querySelector(".gu-part button"); if (f) f.focus({ preventScroll: true }); return; }
+        pinMsg = r.wait ? PIN.wait(r.wait) : PIN.wrong; renderPanel(); const p = panel.querySelector("[data-gu-pin]"); if (p) p.focus({ preventScroll: true });
+      };
       // "Reset my patches": its own 3-second hold too
       const pr = panel.querySelector("[data-prof-reset]");
       if (pr && PA) { const h = bindHold(pr, { onFire: () => PA.resetProgress() }); undo.push(() => h.destroy()); }
@@ -333,7 +346,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
       try { dispatchEvent(new CustomEvent("outpost:modal-open", { detail: { kind: "settings" } })); } catch (e) { /* the calibration steps aside */ }
       renderPanel(); panel.hidden = false; scrim.hidden = false; btn.setAttribute("aria-expanded", "true");
       { const f = panel.querySelector('.set-nav [aria-current="page"]') || panel.querySelector(".set-nav button, input"); if (f) f.focus(); }
-    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
+    } else { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; guPin = false; pinMsg = ""; resetView = null; btn.setAttribute("aria-expanded", "false"); btn.focus(); }
   }
   scrim.addEventListener("click", () => open(false));
   // [robustness] Settings is modal: while it is up, gestures / keys / the controller move and press inside it, and screen
@@ -350,7 +363,7 @@ export function initA11y({ floor, say, ask, setMode, tap, places = [], playCrew 
     return !IN_SETTINGS.has(ev.name);
   }, { priority: 90 });
   // a native modal (the video overlay) opening on top: close Settings, so nothing sits inert underneath it
-  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
+  addEventListener("outpost:modal-open", e => { if (e.detail && e.detail.kind === "settings") return; if (!panel.hidden) { panel.hidden = true; scrim.hidden = true; resetArmed = false; guOpen = false; guPin = false; pinMsg = ""; resetView = null; btn.setAttribute("aria-expanded", "false"); } });
   addEventListener("outpost:voice-missing", () => { section = "voice"; if (panel.hidden) open(true); else renderPanel(); });
   // [courses] the switcher's "Get more courses": For grown-ups (behind the hold), where Course storage lives
   addEventListener("outpost:course-storage", () => { section = "grownups"; resetView = null; if (panel.hidden) open(true); else renderPanel(); { const b = panel.querySelector('[data-crs-act="get"]') || panel.querySelector("[data-gu-open]"); if (b) b.focus(); } });

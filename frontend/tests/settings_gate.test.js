@@ -115,7 +115,8 @@ test("For grown-ups: the videos, diagnostics and learning sections are grown-up 
   assert.match(a11y, /\["voice", "Voice"\][\s\S]*\["read", "Reading & captions"\], \["display", "Display"\][\s\S]*\["grownups", GROWNUPS\.title\]\]/);
   assert.doesNotMatch(a11y, /\["reset", "Reset"\]/);
   // the gate is the shared hold, and closing Settings locks it again
-  assert.match(a11y, /bindHold\(gate, \{ onFire: \(\) => \{ guOpen = true;/);
+  // [D7] with a teacher PIN set, the hold leads to the PIN step; without one it opens at once
+  assert.match(a11y, /bindHold\(gate, \{ onFire: \(\) => \{\s*if \(pinSet\(\)\) \{ guPin = true;[^\n]*\n\s*guOpen = true;/);
   assert.match(a11y, /panel\.hidden = true; scrim\.hidden = true; resetArmed = false; guOpen = false;/);
   // voice "reset" opens For grown-ups, never past the gate
   assert.match(a11y, /case "reset": section = "grownups";/);

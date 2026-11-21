@@ -57,6 +57,8 @@ import { installCrew } from "./crew.js";   // [D3] crew rotation: cadets take tu
 import "./brain.css";
 import { installBrain, COPY as BRAIN_COPY } from "./brain.js";   // [brain] My Brain (docs/BRAIN.md)
 import "./progress.js";         // Settings → For grown-ups → Progress (lessons, patches, missions per cadet; printable)
+import "./class_summary.js";    // [D7] Settings → For grown-ups → Class summary (every cadet on this computer; counts only)
+import "./teacher_pin.js";      // [D7] Settings → For grown-ups → Teacher PIN (a real gate after the hold)
 import "./class_editor.css";
 import "./class_editor.js";     // Settings → For grown-ups → Class lessons (teacher-written lessons, docs/CURRICULUM.md)
 import "./diagnostics_ui.js";   // Settings → Help & diagnostics (the diagnostics file, docs/DIAGNOSTICS.md)
